@@ -1,5 +1,5 @@
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Role } from '@/models/access-control'
-import type { Member } from '@/models/common'
 import { QueryClient } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -7,33 +7,29 @@ import { consoleClient, consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import MemberMenu from '../member-menu'
 
-const { mockWorkspaceRoleListHook, mockUpdateRolesOfMemberHook } = vi.hoisted(() => ({
+const { mockWorkspaceRoleListHook, mockUpdateRolesOfMember } = vi.hoisted(() => ({
   mockWorkspaceRoleListHook: vi.fn(),
-  mockUpdateRolesOfMemberHook: vi.fn(),
+  mockUpdateRolesOfMember: vi.fn(),
 }))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
   return mockConsoleOperationHooks(await importOriginal(), {
     'workspaces.current.rbac.roles.get': () => mockWorkspaceRoleListHook(),
-    'workspaces.current.rbac.members.byMemberId.rbacRoles.put': () => mockUpdateRolesOfMemberHook(),
   })
 })
 
-vi.mock('@/service/console', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/console')>()),
-  consoleClient: {
-    workspaces: {
-      current: {
-        members: {
-          byMemberId: {
-            delete: vi.fn(),
-          },
-        },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: { workspaces: { current: { members: { byMemberId: { delete: vi.fn() } } } } },
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.rbac.members.byMemberId.rbacRoles.put': mockUpdateRolesOfMember,
+    }),
+  }
+})
 vi.mock('@/app/notifications', () => ({
   toast: {
     success: vi.fn(),
@@ -58,7 +54,7 @@ const roles = [
   createRole({ id: 'role-2', name: 'Second role' }),
 ]
 
-const member: Member = {
+const member: AccountWithRoleResponse = {
   id: 'member-1',
   name: 'Member User',
   email: 'member@example.com',
@@ -73,8 +69,6 @@ const member: Member = {
 }
 
 describe('MemberMenu', () => {
-  const mockUpdateRolesOfMember = vi.fn()
-
   const createQueryClient = () =>
     new QueryClient({
       defaultOptions: {
@@ -94,9 +88,6 @@ describe('MemberMenu', () => {
     vi.mocked(consoleClient.workspaces.current.members.byMemberId.delete).mockResolvedValue({
       result: 'success',
       tenant_id: 'tenant-1',
-    })
-    vi.mocked(mockUpdateRolesOfMemberHook).mockReturnValue({
-      mutateAsync: mockUpdateRolesOfMember,
     })
     vi.mocked(mockWorkspaceRoleListHook).mockReturnValue({
       data: {
@@ -166,13 +157,10 @@ describe('MemberMenu', () => {
     await user.click(screen.getByRole('radio', { name: /Second role/i }))
     await user.click(screen.getByRole('button', { name: /common\.operation\.confirm/i }))
 
-    expect(mockUpdateRolesOfMember).toHaveBeenCalledWith(
-      {
-        params: { member_id: 'member-1' },
-        body: { role_ids: ['role-2'] },
-      },
-      expect.any(Object),
-    )
+    expect(mockUpdateRolesOfMember).toHaveBeenCalledWith({
+      params: { member_id: 'member-1' },
+      body: { role_ids: ['role-2'] },
+    })
   })
 
   it('should require confirmation before removing a member', async () => {

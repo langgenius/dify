@@ -1,7 +1,8 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ComponentProps } from 'react'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { DataSet, SummaryIndexSetting } from '@/models/datasets'
+import type { SummaryIndexSetting } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, screen } from '@testing-library/react'
 import {
@@ -9,7 +10,8 @@ import {
   ModelStatusEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
@@ -163,12 +165,12 @@ describe('IndexingSection', () => {
     score_threshold: 0.5,
   }
 
-  const mockDataset: DataSet = {
+  const mockDataset: DatasetDetailWithPartialMembersResponse = {
     ...createDatasetFixture(),
     id: 'dataset-1',
     name: 'Test Dataset',
     description: 'Test description',
-    permission: DatasetPermission.onlyMe,
+    permission: PermissionLevel.onlyMe,
     icon_info: {
       icon_type: 'emoji',
       icon: '📚',

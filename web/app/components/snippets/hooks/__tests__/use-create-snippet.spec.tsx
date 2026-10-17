@@ -1,6 +1,6 @@
 import { act } from '@testing-library/react'
 import { PipelineInputVarType } from '@/models/pipeline'
-import { renderHook } from '@/test/console/render'
+import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
 import { useCreateSnippet } from '../use-create-snippet'
 
 const {
@@ -23,27 +23,6 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
 }))
 
-vi.mock('@/service/use-snippets', () => ({
-  useCreateSnippetMutation: () => ({
-    mutateAsync: mockMutateAsync,
-    isPending: false,
-  }),
-}))
-
-vi.mock('@/service/console', () => ({
-  consoleClient: {
-    snippets: {
-      bySnippetId: {
-        workflows: {
-          draft: {
-            post: mockSyncDraftWorkflow,
-          },
-        },
-      },
-    },
-  },
-}))
-
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => ({
@@ -57,6 +36,18 @@ vi.mock('@/app/notifications', () => ({
     error: (...args: unknown[]) => mockToastError(...args),
   },
 }))
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.customizedSnippets.post': mockMutateAsync,
+      'snippets.bySnippetId.workflows.draft.post': mockSyncDraftWorkflow,
+    }),
+  }
+})
 
 describe('useCreateSnippet', () => {
   beforeEach(() => {

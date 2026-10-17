@@ -1,10 +1,9 @@
-import type { DocumentContextValue } from '@/app/components/datasets/documents/detail/context'
 import type {
-  ChildChunkDetail,
-  ChunkingMode,
-  ParentMode,
-  SegmentDetailModel,
-} from '@/models/datasets'
+  ChildChunkResponse,
+  SegmentResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
+import type { DocumentContextValue } from '@/app/components/datasets/documents/detail/context'
+import type { ChunkingMode, ParentMode } from '@/models/datasets'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
@@ -44,12 +43,12 @@ const {
     off: vi.fn(),
   },
   mockSegmentListData: {
-    data: [] as SegmentDetailModel[],
+    data: [] as SegmentResponse[],
     total: 0,
     total_pages: 0,
   },
   mockChildSegmentListData: {
-    data: [] as ChildChunkDetail[],
+    data: [] as ChildChunkResponse[],
     total: 0,
     total_pages: 0,
   },
@@ -80,25 +79,6 @@ vi.mock('@/app/notifications', () => ({
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({ eventEmitter: mockEventEmitter }),
 }))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'datasets.byDatasetId.documents.byDocumentId.segments.get': () => ({
-      isLoading: false,
-      data: mockSegmentListData,
-    }),
-    'datasets.byDatasetId.documents.byDocumentId.segment.byAction.patch': () => ({
-      mutateAsync: mockOnChangeSwitch,
-    }),
-    'datasets.byDatasetId.documents.byDocumentId.segments.delete': () => ({
-      mutateAsync: mockOnDelete,
-    }),
-    'datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.patch': () => ({
-      mutateAsync: vi.fn(),
-    }),
-  })
-})
 
 const segmentListsKey = consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.get.key({
   input: { params: { dataset_id: 'test-dataset-id', document_id: 'test-document-id' } },
@@ -230,9 +210,7 @@ vi.mock('../common/batch-action', () => ({
   ),
 }))
 
-const createMockSegmentDetail = (
-  overrides: Partial<SegmentDetailModel> = {},
-): SegmentDetailModel => ({
+const createMockSegmentDetail = (overrides: Partial<SegmentResponse> = {}): SegmentResponse => ({
   id: `segment-${Math.random().toString(36).substr(2, 9)}`,
   position: 1,
   document_id: 'doc-1',
@@ -263,7 +241,9 @@ const createMockSegmentDetail = (
   ...overrides,
 })
 
-const _createMockChildChunk = (overrides: Partial<ChildChunkDetail> = {}): ChildChunkDetail => ({
+const _createMockChildChunk = (
+  overrides: Partial<ChildChunkResponse> = {},
+): ChildChunkResponse => ({
   id: `child-${Math.random().toString(36).substr(2, 9)}`,
   position: 1,
   segment_id: 'segment-1',
@@ -278,13 +258,22 @@ const _createMockChildChunk = (overrides: Partial<ChildChunkDetail> = {}): Child
 const createQueryClient = () =>
   new QueryClient({
     defaultOptions: {
-      queries: { retry: false },
+      queries: { retry: false, staleTime: Infinity },
       mutations: { retry: false },
     },
   })
 
 const createWrapper = () => {
   const queryClient = createQueryClient()
+  queryClient.setQueryData<typeof mockSegmentListData>(
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.get.queryKey({
+      input: {
+        params: { dataset_id: mockDatasetId.current, document_id: mockDocumentId.current },
+        query: { page: 1, limit: 10, keyword: '', enabled: 'all' },
+      },
+    }),
+    { ...mockSegmentListData },
+  )
   return ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
@@ -804,7 +793,7 @@ describe('Batch Action Callbacks', () => {
     const enableButton = screen.getByTestId('batch-enable')
     fireEvent.click(enableButton)
 
-    expect(mockOnChangeSwitch).toHaveBeenCalled()
+    await waitFor(() => expect(mockOnChangeSwitch).toHaveBeenCalled())
   })
 
   it('should call onChangeSwitch with false when batch disable is clicked', async () => {
@@ -822,7 +811,7 @@ describe('Batch Action Callbacks', () => {
     const disableButton = screen.getByTestId('batch-disable')
     fireEvent.click(disableButton)
 
-    expect(mockOnChangeSwitch).toHaveBeenCalled()
+    await waitFor(() => expect(mockOnChangeSwitch).toHaveBeenCalled())
   })
 
   it('should call onDelete when batch delete is clicked', async () => {
@@ -840,7 +829,7 @@ describe('Batch Action Callbacks', () => {
     const deleteButton = screen.getByTestId('batch-delete')
     fireEvent.click(deleteButton)
 
-    expect(mockOnDelete).toHaveBeenCalled()
+    await waitFor(() => expect(mockOnDelete).toHaveBeenCalled())
   })
 })
 
@@ -904,43 +893,6 @@ describe('refreshChunkListDataWithDetailChanged callback', () => {
       expectOtherStatusListsMarkedStale()
     },
   )
-})
-
-// Batch Action Callback Coverage Tests
-
-describe('Batch Action callback simulation', () => {
-  // This test simulates the batch action callback behavior
-  // to ensure the arrow function callbacks are covered
-
-  it('should simulate onBatchEnable callback behavior', () => {
-    const mockOnChangeSwitch = vi.fn()
-
-    // Simulate the callback: () => segmentListDataHook.onChangeSwitch(true, '')
-    const onBatchEnable = () => mockOnChangeSwitch(true, '')
-    onBatchEnable()
-
-    expect(mockOnChangeSwitch).toHaveBeenCalledWith(true, '')
-  })
-
-  it('should simulate onBatchDisable callback behavior', () => {
-    const mockOnChangeSwitch = vi.fn()
-
-    // Simulate the callback: () => segmentListDataHook.onChangeSwitch(false, '')
-    const onBatchDisable = () => mockOnChangeSwitch(false, '')
-    onBatchDisable()
-
-    expect(mockOnChangeSwitch).toHaveBeenCalledWith(false, '')
-  })
-
-  it('should simulate onBatchDelete callback behavior', () => {
-    const mockOnDelete = vi.fn()
-
-    // Simulate the callback: () => segmentListDataHook.onDelete('')
-    const onBatchDelete = () => mockOnDelete('')
-    onBatchDelete()
-
-    expect(mockOnDelete).toHaveBeenCalledWith('')
-  })
 })
 
 // Additional Coverage Tests for Inline Callbacks (lines 56-66, 78-83, 254)
@@ -1073,4 +1025,22 @@ describe('Inline callback and hook initialization coverage', () => {
 
     expect(searchInput)!.toHaveValue('test query')
   })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.documents.byDocumentId.segments.get': async () => ({
+        ...mockSegmentListData,
+      }),
+      'datasets.byDatasetId.documents.byDocumentId.segment.byAction.patch': mockOnChangeSwitch,
+      'datasets.byDatasetId.documents.byDocumentId.segments.delete': mockOnDelete,
+      'datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.patch': async () => ({
+        result: 'success',
+      }),
+    }),
+  }
 })

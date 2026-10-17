@@ -84,7 +84,7 @@ When('I create a new Agent v2 API key', async function (this: DifyWorld) {
 })
 
 Then('I should see the newly generated Agent v2 API key', async function (this: DifyWorld) {
-  const generatedKeyDialog = this.getPage().getByRole('alertdialog', {
+  const generatedKeyDialog = this.getPage().getByRole('dialog', {
     name: CREATED_API_KEY_DIALOG_NAME,
   })
   const generatedKey = generatedKeyDialog.getByRole('textbox', { name: 'Secret Key' })
@@ -95,7 +95,7 @@ Then('I should see the newly generated Agent v2 API key', async function (this: 
 })
 
 When('I copy the newly generated Agent v2 API key', async function (this: DifyWorld) {
-  const generatedKeyDialog = this.getPage().getByRole('alertdialog', {
+  const generatedKeyDialog = this.getPage().getByRole('dialog', {
     name: CREATED_API_KEY_DIALOG_NAME,
   })
 
@@ -105,7 +105,7 @@ When('I copy the newly generated Agent v2 API key', async function (this: DifyWo
 Then(
   'the newly generated Agent v2 API key should show it was copied',
   async function (this: DifyWorld) {
-    const generatedKeyDialog = this.getPage().getByRole('alertdialog', {
+    const generatedKeyDialog = this.getPage().getByRole('dialog', {
       name: CREATED_API_KEY_DIALOG_NAME,
     })
 
@@ -117,7 +117,7 @@ Then(
 
 When('I close the newly generated Agent v2 API key', async function (this: DifyWorld) {
   const page = this.getPage()
-  const generatedKeyDialog = page.getByRole('alertdialog', { name: CREATED_API_KEY_DIALOG_NAME })
+  const generatedKeyDialog = page.getByRole('dialog', { name: CREATED_API_KEY_DIALOG_NAME })
 
   await generatedKeyDialog.getByRole('button', { name: 'I have saved this key' }).click()
   await expect(generatedKeyDialog).not.toBeVisible()

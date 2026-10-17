@@ -34,11 +34,6 @@ vi.mock('@/app/components/base/file-uploader', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/file-uploader/utils', () => ({
-  getProcessedFilesFromResponse: (files: FileEntity[]) =>
-    files.map((f) => ({ ...f, name: `processed-${f.id}` })),
-}))
-
 describe('AgentContent', () => {
   const mockItem: ChatItem = {
     id: '1',
@@ -121,14 +116,30 @@ describe('AgentContent', () => {
       agent_thoughts: [
         {
           thought: 'T1',
-          message_files: [{ id: 'file1' }, { id: 'file2' }],
+          message_files: [
+            {
+              id: 'file1',
+              related_id: 'upload-1',
+              filename: 'report.pdf',
+              mime_type: 'application/pdf',
+              type: 'document',
+              transfer_method: 'local_file',
+            },
+            {
+              id: 'file2',
+              related_id: 'upload-2',
+              filename: 'notes.txt',
+              mime_type: 'text/plain',
+              type: 'document',
+              transfer_method: 'local_file',
+            },
+          ],
         },
       ],
     }
-    render(<AgentContent item={itemWithFiles as ChatItem} />)
-    expect(screen.getByTestId('file-list-component')).toHaveTextContent(
-      'processed-file1, processed-file2',
-    )
+    // Historical thought responses carry server file metadata before AgentContent normalizes it.
+    render(<AgentContent item={itemWithFiles as unknown as ChatItem} />)
+    expect(screen.getByTestId('file-list-component')).toHaveTextContent('report.pdf, notes.txt')
   })
 
   it('renders nothing if no annotation, content, or thoughts', () => {

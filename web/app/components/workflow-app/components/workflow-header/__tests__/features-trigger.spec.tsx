@@ -215,9 +215,9 @@ vi.mock('@/app/components/app/app-publisher', () => ({
   },
 }))
 
-vi.mock('@/service/use-workflow', () => ({
+vi.mock('@/service/use-workflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-workflow')>()),
   useInvalidateAppWorkflow: () => mockUpdatePublishedWorkflow,
-  usePublishWorkflow: () => ({ mutateAsync: mockPublishWorkflow }),
   useResetWorkflowVersionHistory: () => mockResetWorkflowVersionHistory,
 }))
 
@@ -251,6 +251,11 @@ const renderWithToast = (
     }),
   }
 }
+
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  post: (...args: unknown[]) => mockPublishWorkflow(...args),
+}))
 
 describe('FeaturesTrigger', () => {
   beforeEach(() => {
@@ -617,10 +622,8 @@ describe('FeaturesTrigger', () => {
 
       // Assert
       await waitFor(() => {
-        expect(mockPublishWorkflow).toHaveBeenCalledWith({
-          url: '/apps/app-id/workflows/publish',
-          title: '',
-          releaseNotes: '',
+        expect(mockPublishWorkflow).toHaveBeenCalledWith('/apps/app-id/workflows/publish', {
+          body: { marked_name: '', marked_comment: '' },
         })
         expect(mockUpdatePublishedWorkflow).toHaveBeenCalledWith('app-id')
         expect(mockInvalidateQueries).toHaveBeenCalledWith({
@@ -750,10 +753,8 @@ describe('FeaturesTrigger', () => {
 
       // Assert
       await waitFor(() => {
-        expect(mockPublishWorkflow).toHaveBeenCalledWith({
-          url: '/apps/app-1/workflows/publish',
-          title: 'Test title',
-          releaseNotes: 'Test notes',
+        expect(mockPublishWorkflow).toHaveBeenCalledWith('/apps/app-1/workflows/publish', {
+          body: { marked_name: 'Test title', marked_comment: 'Test notes' },
         })
       })
     })
@@ -768,10 +769,8 @@ describe('FeaturesTrigger', () => {
 
       // Assert
       await waitFor(() => {
-        expect(mockPublishWorkflow).toHaveBeenCalledWith({
-          url: '/apps/app-id/workflows/publish/custom',
-          title: 'Custom title',
-          releaseNotes: 'Custom notes',
+        expect(mockPublishWorkflow).toHaveBeenCalledWith('/apps/app-id/workflows/publish/custom', {
+          body: { marked_name: 'Custom title', marked_comment: 'Custom notes' },
         })
       })
     })

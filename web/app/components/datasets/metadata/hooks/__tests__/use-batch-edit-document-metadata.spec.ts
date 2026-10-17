@@ -1,5 +1,6 @@
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vite-plus/test'
+import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
 import { DataType, UpdateType } from '../../types'
 import useBatchEditDocumentMetadata from '../use-batch-edit-document-metadata'
 
@@ -28,13 +29,15 @@ type MetadataItemWithEdit = {
 
 // Mock useBatchUpdateDocMetadata
 const mockMutateAsync = vi.fn().mockResolvedValue({})
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'datasets.byDatasetId.documents.metadata.post': () => ({
-      mutateAsync: mockMutateAsync,
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.documents.metadata.post': (input) => mockMutateAsync(input),
     }),
-  })
+  }
 })
 
 vi.mock('@/app/notifications', () => ({

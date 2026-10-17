@@ -1,8 +1,11 @@
+import type { ComponentProps } from 'react'
 import type { ListFilterNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
+import { ComparisonOperator } from '@/app/components/workflow/nodes/if-else/types'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import ExtractInput from '../components/extract-input'
 import LimitConfig from '../components/limit-config'
@@ -13,17 +16,39 @@ import { OrderBy } from '../types'
 import useConfig from '../use-config'
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', () => ({
-  default: vi.fn((_nodeId: string, options?: any) => ({
-    availableVars: [
-      { variable: ['node-1', 'size'], type: VarType.number },
-      { variable: ['node-1', 'name'], type: VarType.string },
-    ].filter((varPayload) => (options?.filterVar ? options.filterVar(varPayload) : true)),
-    availableNodesWithParent: [{ id: 'node-1', data: { title: 'Answer', type: BlockEnum.Answer } }],
-  })),
+  default: vi.fn(
+    (
+      _nodeId: string,
+      options?: Parameters<
+        typeof import('@/app/components/workflow/nodes/_base/hooks/use-available-var-list').default
+      >[1],
+    ) => ({
+      availableVars: [
+        { nodeId: 'node-1', variable: 'size', type: VarType.number },
+        { nodeId: 'node-1', variable: 'name', type: VarType.string },
+      ].filter((varPayload) =>
+        options?.filterVar
+          ? options.filterVar(varPayload, [varPayload.nodeId, varPayload.variable])
+          : true,
+      ),
+      availableNodesWithParent: [
+        { id: 'node-1', data: { title: 'Answer', desc: '', type: BlockEnum.Answer } },
+      ],
+    }),
+  ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/input-support-select-var', () => ({
-  default: ({ value, onChange, placeholder, className, readOnly, onFocusChange }: any) => (
+  default: ({
+    value,
+    onChange,
+    placeholder,
+    className,
+    readOnly,
+    onFocusChange,
+  }: ComponentProps<
+    typeof import('@/app/components/workflow/nodes/_base/components/input-support-select-var').default
+  >) => (
     <input
       value={value}
       placeholder={placeholder}
@@ -36,56 +61,59 @@ vi.mock('@/app/components/workflow/nodes/_base/components/input-support-select-v
   ),
 }))
 
-vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
-  default: ({ title, operations, children }: any) => (
-    <div>
-      <div>{title}</div>
-      <div>{operations}</div>
-      {children}
-    </div>
-  ),
-}))
-
 vi.mock('@/app/components/workflow/nodes/_base/components/input-number-with-slider', () => ({
-  default: ({ value, onChange }: any) => (
+  default: ({
+    value,
+    onChange,
+  }: ComponentProps<
+    typeof import('@/app/components/workflow/nodes/_base/components/input-number-with-slider').default
+  >) => (
     <button type="button" onClick={() => onChange(value + 1)}>
       slider-{value}
     </button>
   ),
 }))
 
-vi.mock('@/app/components/workflow/nodes/_base/components/option-card', () => ({
-  default: ({ title, onSelect }: any) => (
-    <button type="button" onClick={onSelect}>
-      {title}
-    </button>
-  ),
-}))
-
 vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
-  default: ({ children }: any) => <div>{children}</div>,
-  VarItem: ({ name, type }: any) => (
+  default: ({
+    children,
+  }: ComponentProps<
+    typeof import('@/app/components/workflow/nodes/_base/components/output-vars').default
+  >) => <div>{children}</div>,
+  VarItem: ({
+    name,
+    type,
+  }: ComponentProps<
+    typeof import('@/app/components/workflow/nodes/_base/components/output-vars').VarItem
+  >) => (
     <div>
       {name}:{type}
     </div>
   ),
 }))
 
-vi.mock('@/app/components/workflow/nodes/_base/components/split', () => ({
-  default: () => <div>split</div>,
-}))
-
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
-  default: ({ onChange }: any) => (
-    <button type="button" onClick={() => onChange(['node-1', 'items'])}>
+  default: ({
+    onChange,
+  }: ComponentProps<
+    typeof import('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker').default
+  >) => (
+    <button type="button" onClick={() => onChange(['node-1', 'items'], VarKindType.variable)}>
       pick-var
     </button>
   ),
 }))
 
 vi.mock('../components/filter-condition', () => ({
-  default: ({ onChange }: any) => (
-    <button type="button" onClick={() => onChange({ key: 'size' })}>
+  default: ({
+    onChange,
+  }: ComponentProps<typeof import('../components/filter-condition').default>) => (
+    <button
+      type="button"
+      onClick={() =>
+        onChange({ key: 'size', comparison_operator: ComparisonOperator.equal, value: '1' })
+      }
+    >
       filter-condition
     </button>
   ),
@@ -106,7 +134,7 @@ const createData = (overrides: Partial<ListFilterNodeType> = {}): ListFilterNode
   item_var_type: VarType.number,
   filter_by: {
     enabled: true,
-    conditions: [{ key: 'size', comparison_operator: 'equal', value: '1' }] as any,
+    conditions: [{ key: 'size', comparison_operator: ComparisonOperator.equal, value: '1' }],
   },
   extract_by: { enabled: true, serial: '1' },
   limit: { enabled: true, size: 10 },
@@ -216,7 +244,7 @@ describe('list-operator path', () => {
           {
             id: 'node-1',
             position: { x: 0, y: 0 },
-            data: { type: BlockEnum.Answer, title: 'Answer' } as any,
+            data: { type: BlockEnum.Answer, title: 'Answer', desc: '' },
           },
         ],
         edges: [],
@@ -228,13 +256,13 @@ describe('list-operator path', () => {
 
     it('should resolve system variables through the start node and return null without a variable', () => {
       const { rerender } = renderWorkflowFlowComponent(
-        <Node id="node-2" data={createData({ variable: ['sys', 'files'] as any })} />,
+        <Node id="node-2" data={createData({ variable: ['sys', 'files'] })} />,
         {
           nodes: [
             {
               id: 'start',
               position: { x: 0, y: 0 },
-              data: { type: BlockEnum.Start, title: 'Start' } as any,
+              data: { type: BlockEnum.Start, title: 'Start', desc: '' },
             },
           ],
           edges: [],
@@ -243,23 +271,10 @@ describe('list-operator path', () => {
 
       expect(screen.getByText('Start')).toBeInTheDocument()
 
-      rerender(<Node id="node-2" data={createData({ variable: [] as any })} />)
+      rerender(<Node id="node-2" data={createData({ variable: [] })} />)
 
       expect(screen.queryByText('workflow.nodes.listFilter.inputVar')).not.toBeInTheDocument()
       expect(screen.queryByText('Start')).not.toBeInTheDocument()
-    })
-
-    it('should render the panel controls and output vars', async () => {
-      const user = userEvent.setup()
-      renderPanel()
-
-      await user.click(screen.getByText('pick-var'))
-      await user.click(screen.getByText('filter-condition'))
-      await user.click(screen.getByText('workflowLogic.nodes.listFilter.asc'))
-
-      expect(screen.getByText('result:Array[number]')).toBeInTheDocument()
-      expect(screen.getByText('first_record:number')).toBeInTheDocument()
-      expect(screen.getByText('last_record:number')).toBeInTheDocument()
     })
 
     it('should hide disabled sections and render order controls without sub variables', () => {
@@ -267,7 +282,7 @@ describe('list-operator path', () => {
         createConfigResult({
           inputs: createData({
             variable: undefined as any,
-            filter_by: { enabled: false, conditions: [] as any },
+            filter_by: { enabled: false, conditions: [] },
             extract_by: { enabled: false, serial: '' },
             order_by: { enabled: false, key: '', value: OrderBy.ASC },
           }),

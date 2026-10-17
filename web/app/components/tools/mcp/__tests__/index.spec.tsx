@@ -1,13 +1,15 @@
 import type { ToolWithProvider } from '@/app/components/workflow/types'
-import { act, fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { render } from '@/test/console/render'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
 import MCPList from '../index'
 
 type MockProvider = {
   id: string
   name: string
-  type: string
+  type: 'mcp' | 'api'
 }
 
 type MockDetail = MockProvider | undefined
@@ -16,33 +18,12 @@ type MockDetail = MockProvider | undefined
 const mockRefetch = vi.fn()
 const mockUpdateMCP = vi.fn()
 const mockDeleteMCP = vi.fn()
-const mockUseAllMCPTools = vi.fn()
+const getProviders = vi.fn()
 let mockProviders: MockProvider[] = []
-let mockIsLoadingToolProviders = false
+let seedProviders = true
 const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: ['mcp.manage'] as string[],
 }))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.tools.mcp.get': ({ enabled }: { enabled?: boolean }) => {
-      mockUseAllMCPTools(enabled)
-      return {
-        data: mockProviders,
-        isLoading: mockIsLoadingToolProviders,
-        refetch: mockRefetch,
-      }
-    },
-    'workspaces.current.toolProvider.mcp.put': () => ({
-      mutateAsync: mockUpdateMCP,
-    }),
-    'workspaces.current.toolProvider.mcp.delete': () => ({
-      mutateAsync: mockDeleteMCP,
-      isPending: false,
-    }),
-  })
-})
 
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
@@ -180,12 +161,36 @@ vi.mock('../modal', () => ({
     ) : null,
 }))
 
+const providersResponse = () => mockProviders.map((provider) => createToolProviderFixture(provider))
+const render = (ui: React.ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  if (seedProviders)
+    queryClient.setQueryData<ReturnType<typeof providersResponse>>(
+      consoleQuery.workspaces.current.tools.mcp.get.queryKey(),
+      providersResponse(),
+    )
+  return renderWithConsoleQuery(ui, { queryClient })
+}
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.mcp.get': (input) => getProviders(input),
+      'workspaces.current.toolProvider.mcp.put': (input) => mockUpdateMCP(input),
+      'workspaces.current.toolProvider.mcp.delete': (input) => mockDeleteMCP(input),
+    }),
+  }
+})
+
 describe('MCPList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.useFakeTimers()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
     mockProviders = []
-    mockIsLoadingToolProviders = false
+    seedProviders = true
+    getProviders.mockImplementation(() => Promise.resolve(providersResponse()))
     mockConsoleState.workspacePermissionKeys = ['mcp.manage']
     mockRefetch.mockResolvedValue(undefined)
     mockUpdateMCP.mockResolvedValue({ result: 'success' })
@@ -206,7 +211,7 @@ describe('MCPList', () => {
         <MCPList providers={providers} isLoading={false} onRefresh={mockRefetch} searchText="" />,
       )
 
-      expect(mockUseAllMCPTools).toHaveBeenCalledWith(false)
+      expect(getProviders).not.toHaveBeenCalled()
       expect(screen.getByTestId('provider-card-1')).toBeInTheDocument()
     })
 
@@ -216,14 +221,15 @@ describe('MCPList', () => {
       expect(screen.getByTestId('create-card')).toBeInTheDocument()
     })
 
-    it('should render providers read-only when user lacks mcp.manage', () => {
+    it('should render providers read-only when user lacks mcp.manage', async () => {
+      seedProviders = false
       mockConsoleState.workspacePermissionKeys = []
       mockProviders = [{ id: '1', name: 'Provider 1', type: 'mcp' }]
 
       render(<MCPList searchText="" />)
 
-      expect(mockUseAllMCPTools).toHaveBeenCalledWith(true)
-      expect(screen.getByTestId('provider-card-1')).toBeInTheDocument()
+      await waitFor(() => expect(getProviders).toHaveBeenCalled())
+      expect(await screen.findByTestId('provider-card-1')).toBeInTheDocument()
       expect(screen.queryByTestId('create-card')).not.toBeInTheDocument()
     })
 
@@ -237,7 +243,8 @@ describe('MCPList', () => {
     })
 
     it('should render card skeletons while tool providers are loading', () => {
-      mockIsLoadingToolProviders = true
+      seedProviders = false
+      getProviders.mockReturnValue(new Promise(() => {}))
       render(<MCPList searchText="" />)
 
       expect(screen.getAllByTestId('mcp-card-skeleton')).toHaveLength(6)
@@ -366,7 +373,7 @@ describe('MCPList', () => {
         await Promise.resolve()
       })
 
-      expect(mockRefetch).toHaveBeenCalled()
+      expect(getProviders).toHaveBeenCalled()
     })
 
     it('should show detail panel with trigger authorize after create', async () => {
@@ -427,7 +434,7 @@ describe('MCPList', () => {
         await Promise.resolve()
       })
 
-      expect(mockRefetch).toHaveBeenCalled()
+      expect(getProviders).toHaveBeenCalled()
       expect(screen.getByTestId('detail-panel')).toBeInTheDocument()
       expect(screen.getByTestId('detail-name')).toHaveTextContent('Toolbar Provider')
       expect(screen.getByTestId('trigger-authorize')).toHaveTextContent('true')
@@ -484,7 +491,7 @@ describe('MCPList', () => {
           provider_id: '1',
         },
       })
-      expect(mockRefetch).toHaveBeenCalled()
+      expect(getProviders).toHaveBeenCalled()
       expect(screen.getByTestId('detail-panel')).toBeInTheDocument()
       expect(screen.getByTestId('trigger-authorize')).toHaveTextContent('true')
     })
@@ -534,7 +541,7 @@ describe('MCPList', () => {
       })
 
       expect(mockDeleteMCP).toHaveBeenCalledWith({ body: { provider_id: '1' } })
-      expect(mockRefetch).toHaveBeenCalled()
+      expect(getProviders).toHaveBeenCalled()
       expect(screen.queryByTestId('detail-panel')).not.toBeInTheDocument()
     })
 
@@ -549,7 +556,7 @@ describe('MCPList', () => {
         await Promise.resolve()
       })
 
-      expect(mockRefetch).not.toHaveBeenCalled()
+      expect(getProviders).not.toHaveBeenCalled()
       expect(screen.getByText('tools.mcp.delete')).toBeInTheDocument()
     })
   })
@@ -567,7 +574,8 @@ describe('MCPList', () => {
 
     it('should have overflow hidden while loading', () => {
       mockProviders = []
-      mockIsLoadingToolProviders = true
+      seedProviders = false
+      getProviders.mockReturnValue(new Promise(() => {}))
       render(<MCPList searchText="" />)
 
       const grid = document.querySelector('.grid')

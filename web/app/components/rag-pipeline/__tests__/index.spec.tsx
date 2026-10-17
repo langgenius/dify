@@ -17,18 +17,6 @@ vi.mock('../store', () => ({
   createRagPipelineSliceSlice: vi.fn(),
 }))
 
-vi.mock('@/app/components/workflow/utils', () => ({
-  initialNodes: () => [{ id: 'node-1' }],
-  initialEdges: () => [{ id: 'edge-1' }],
-}))
-
-vi.mock('../utils', () => ({
-  processNodesWithoutDataSource: (nodes: unknown[]) => ({
-    nodes,
-    viewport: { x: 10, y: 20, zoom: 2 },
-  }),
-}))
-
 vi.mock('../components/conversion', () => ({
   default: () => <div>Conversion</div>,
 }))
@@ -89,6 +77,6 @@ describe('RagPipeline', () => {
 
     render(<RagPipelineWrapper />)
 
-    expect(screen.getByText('Pipeline 1/1/2')).toBeInTheDocument()
+    expect(screen.getByText('Pipeline 0/0/1')).toBeInTheDocument()
   })
 })

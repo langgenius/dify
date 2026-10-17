@@ -1,6 +1,8 @@
 import type { ReactElement } from 'react'
 import { screen } from '@testing-library/react'
 import { StrictMode } from 'react'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { seedAppDetail } from '@/test/console/query-data'
@@ -74,7 +76,7 @@ vi.mock('../hooks/use-workflow-init', async () => {
       return {
         data: {
           graph: {
-            nodes: [{ id: 'raw-node' }],
+            nodes: [createNode({ id: 'raw-node', data: { type: BlockEnum.Start } })],
             edges: [],
             viewport: { x: 0, y: 0, zoom: 1 },
           },
@@ -84,22 +86,6 @@ vi.mock('../hooks/use-workflow-init', async () => {
         fileUploadConfigResponse: null,
       }
     },
-  }
-})
-
-vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/workflow/utils')>()
-  return {
-    ...actual,
-    initialNodes: () => [
-      {
-        id: 'node-1',
-        type: 'custom',
-        position: { x: 0, y: 0 },
-        data: { title: 'Start', type: 'start' },
-      },
-    ],
-    initialEdges: () => [],
   }
 })
 

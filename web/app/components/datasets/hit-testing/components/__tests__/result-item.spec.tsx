@@ -1,4 +1,4 @@
-import type { HitTesting } from '@/models/datasets'
+import type { HitTestingRecord } from '@dify/contracts/api/console/datasets/types.gen'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vite-plus/test'
@@ -6,10 +6,10 @@ import { createHitTestingRecordFixture } from '@/test/fixtures/hit-testing'
 import { ResultItem } from '../result-item'
 
 function makePayload(
-  overrides: Partial<Omit<HitTesting, 'segment'>> & {
-    segment?: Partial<HitTesting['segment']>
+  overrides: Partial<Omit<HitTestingRecord, 'segment'>> & {
+    segment?: Partial<HitTestingRecord['segment']>
   } = {},
-): HitTesting {
+): HitTestingRecord {
   return createHitTestingRecordFixture({
     score: 0.95,
     ...overrides,

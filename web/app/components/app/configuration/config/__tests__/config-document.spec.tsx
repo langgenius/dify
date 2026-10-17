@@ -1,23 +1,19 @@
 import type { FeatureStoreState } from '@/app/components/base/features/store'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { renderWithDebugConfiguration } from '@/test/debug-configuration'
 import ConfigDocument from '../config-document'
 
-const mockUseContext = vi.fn()
-vi.mock('use-context-selector', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('use-context-selector')>()
-  return {
-    ...actual,
-    useContext: (context: unknown) => mockUseContext(context),
-  }
-})
+let configuration: Parameters<typeof renderWithDebugConfiguration>[1] = {}
+const render = (ui: Parameters<typeof renderWithDebugConfiguration>[0]) =>
+  renderWithDebugConfiguration(ui, configuration)
 
 const mockUseFeatures = vi.fn()
 const mockUseFeaturesStore = vi.fn()
 vi.mock('@/app/components/base/features/hooks', () => ({
-  useFeatures: (selector: (state: FeatureStoreState) => any) => mockUseFeatures(selector),
+  useFeatures: (selector: (state: FeatureStoreState) => unknown) => mockUseFeatures(selector),
   useFeaturesStore: () => mockUseFeaturesStore(),
 }))
 
@@ -53,9 +49,9 @@ const setupFeatureStore = (allowedTypes: SupportUploadFileTypes[] = []) => {
 const renderConfigDocument = (options: SetupOptions = {}) => {
   const { isVisible = true, allowedTypes = [] } = options
   setupFeatureStore(allowedTypes)
-  mockUseContext.mockReturnValue({
+  configuration = {
     isShowDocumentConfig: isVisible,
-  })
+  }
   const user = userEvent.setup()
   render(<ConfigDocument />)
   return {

@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import type { Timeout as TimeoutPayload } from '../../types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -15,12 +14,6 @@ vi.mock('react-i18next', () => ({
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: { nodesDefaultConfigs: object }) => unknown) =>
     selector({ nodesDefaultConfigs: {} }),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/collapse', () => ({
-  FieldCollapse: ({ children, title }: { children: ReactNode; title: string }) => (
-    <section aria-label={title}>{children}</section>
-  ),
 }))
 
 type TimeoutHarnessProps = {
@@ -45,8 +38,10 @@ function TimeoutHarness({ onChange, readonly = false }: TimeoutHarnessProps) {
 }
 
 describe('HTTP timeout fields', () => {
-  it('associates every timeout with its visible label and description', () => {
+  it('associates every timeout with its visible label and description', async () => {
+    const user = userEvent.setup()
     render(<TimeoutHarness onChange={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'nodes.http.timeout.title' }))
 
     const connectInput = screen.getByRole('textbox', {
       name: 'nodes.http.timeout.connectLabel',
@@ -63,6 +58,7 @@ describe('HTTP timeout fields', () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
     render(<TimeoutHarness onChange={onChange} />)
+    await user.click(screen.getByRole('button', { name: 'nodes.http.timeout.title' }))
     const connectInput = screen.getByRole('textbox', {
       name: 'nodes.http.timeout.connectLabel',
     })
@@ -80,6 +76,7 @@ describe('HTTP timeout fields', () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
     render(<TimeoutHarness readonly onChange={onChange} />)
+    await user.click(screen.getByRole('button', { name: 'nodes.http.timeout.title' }))
     const connectInput = screen.getByRole('textbox', {
       name: 'nodes.http.timeout.connectLabel',
     })

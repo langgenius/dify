@@ -1,36 +1,43 @@
-import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
+import type { ComponentProps } from 'react'
+import type { ConfigurationAppMode } from '@/app/components/app/configuration/hooks/configuration-lifecycle/types'
 import type { ModelConfig, PromptVariable } from '@/models/debug'
 import type { ToolItem } from '@/types/app'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import * as React from 'react'
-import * as useContextSelector from 'use-context-selector'
+import { renderWithDebugConfiguration } from '@/test/debug-configuration'
 import { AgentStrategy, ModelModeType } from '@/types/app'
 import Config from '../index'
 
-vi.mock('use-context-selector', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('use-context-selector')>()
-  return {
-    ...actual,
-    useContext: vi.fn(),
-  }
-})
+let configuration: Parameters<typeof renderWithDebugConfiguration>[1] = {}
+const render = (ui: Parameters<typeof renderWithDebugConfiguration>[0]) =>
+  renderWithDebugConfiguration(ui, configuration)
 
 const mockFormattingDispatcher = vi.fn()
 vi.mock('../../debug/hooks', () => ({
   useFormattingChangedDispatcher: () => mockFormattingDispatcher,
 }))
 
-let latestConfigPromptProps: any
+let latestConfigPromptProps:
+  | ComponentProps<typeof import('@/app/components/app/configuration/config-prompt').default>
+  | undefined
 vi.mock('@/app/components/app/configuration/config-prompt', () => ({
-  default: (props: any) => {
+  default: (
+    props: ComponentProps<
+      typeof import('@/app/components/app/configuration/config-prompt').default
+    >,
+  ) => {
     latestConfigPromptProps = props
     return <div data-testid="config-prompt" />
   },
 }))
 
-let latestConfigVarProps: any
+let latestConfigVarProps:
+  | ComponentProps<typeof import('@/app/components/app/configuration/config-var').default>
+  | undefined
 vi.mock('@/app/components/app/configuration/config-var', () => ({
-  default: (props: any) => {
+  default: (
+    props: ComponentProps<typeof import('@/app/components/app/configuration/config-var').default>,
+  ) => {
     latestConfigVarProps = props
     return <div data-testid="config-var" />
   },
@@ -56,16 +63,22 @@ vi.mock('../config-audio', () => ({
   default: () => <div data-testid="config-audio" />,
 }))
 
-let latestHistoryPanelProps: any
+let latestHistoryPanelProps:
+  | ComponentProps<typeof import('../../config-prompt/conversation-history/history-panel').default>
+  | undefined
 vi.mock('../../config-prompt/conversation-history/history-panel', () => ({
-  default: (props: any) => {
+  default: (
+    props: ComponentProps<
+      typeof import('../../config-prompt/conversation-history/history-panel').default
+    >,
+  ) => {
     latestHistoryPanelProps = props
     return <div data-testid="history-panel" />
   },
 }))
 
 type MockContext = {
-  mode: AppMode
+  mode: ConfigurationAppMode
   isAdvancedMode: boolean
   modelModeType: ModelModeType
   isAgent: boolean
@@ -135,11 +148,9 @@ const createContextValue = (overrides: Partial<MockContext> = {}): MockContext =
   ...overrides,
 })
 
-const mockUseContext = vi.mocked(useContextSelector.useContext)
-
 const renderConfig = (contextOverrides: Partial<MockContext> = {}) => {
   const contextValue = createContextValue(contextOverrides)
-  mockUseContext.mockReturnValue(contextValue)
+  configuration = contextValue
   return {
     contextValue,
     ...render(<Config />),
@@ -189,8 +200,8 @@ describe('Config - Rendering', () => {
     })
 
     expect(screen.getByTestId('history-panel')).toBeInTheDocument()
-    expect(latestHistoryPanelProps.showWarning).toBe(true)
-    expect(latestHistoryPanelProps.onShowEditModal).toBe(showHistoryModal)
+    expect(latestHistoryPanelProps!.showWarning).toBe(true)
+    expect(latestHistoryPanelProps!.onShowEditModal).toBe(showHistoryModal)
   })
 })
 
@@ -201,7 +212,7 @@ describe('Config - Prompt Handling', () => {
     const previousVariables = contextValue.modelConfig.configs.prompt_variables
     const additions = [createPromptVariable({ key: 'new', name: 'New' })]
 
-    latestConfigPromptProps.onChange('Updated template', additions)
+    latestConfigPromptProps!.onChange!('Updated template', additions)
 
     expect(contextValue.setPrevPromptConfig).toHaveBeenCalledWith(contextValue.modelConfig.configs)
     expect(contextValue.setModelConfig).toHaveBeenCalledWith(
@@ -219,7 +230,7 @@ describe('Config - Prompt Handling', () => {
     const { contextValue } = renderConfig()
     const unchangedTemplate = contextValue.modelConfig.configs.prompt_template
 
-    latestConfigPromptProps.onChange(unchangedTemplate, [createPromptVariable({ key: 'added' })])
+    latestConfigPromptProps!.onChange!(unchangedTemplate, [createPromptVariable({ key: 'added' })])
 
     expect(contextValue.setPrevPromptConfig).toHaveBeenCalledWith(contextValue.modelConfig.configs)
     expect(mockFormattingDispatcher).not.toHaveBeenCalled()
@@ -229,7 +240,7 @@ describe('Config - Prompt Handling', () => {
     const { contextValue } = renderConfig()
     const replacementVariables = [createPromptVariable({ key: 'replacement' })]
 
-    latestConfigVarProps.onPromptVariablesChange(replacementVariables)
+    latestConfigVarProps!.onPromptVariablesChange!(replacementVariables)
 
     expect(contextValue.setPrevPromptConfig).toHaveBeenCalledWith(contextValue.modelConfig.configs)
     expect(contextValue.setModelConfig).toHaveBeenCalledWith(

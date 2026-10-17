@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react'
 import type { Credential, CustomModel, ModelProvider } from '../../../declarations'
 import { act, renderHook } from '@testing-library/react'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { ConfigurationMethodEnum, ModelModalModeEnum, ModelTypeEnum } from '../../../declarations'
 import { useAuth } from '../use-auth'
 
@@ -36,21 +36,6 @@ vi.mock('@/app/notifications', async (importOriginal) => {
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useModelModalHandler: () => mockOpenModelModal,
   useRefreshModel: () => ({ handleRefreshModel: mockHandleRefreshModel }),
-}))
-
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    workspaces: {
-      current: {
-        modelProviders: { byProvider: { models: { delete: { mutationOptions: () => ({}) } } } },
-      },
-    },
-  },
-}))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
-  useMutation: () => ({ mutateAsync: mockDeleteModelService }),
 }))
 
 vi.mock('../use-auth-service', () => ({
@@ -90,10 +75,11 @@ describe('useAuth', () => {
     model_type: ModelTypeEnum.textGeneration,
   }
 
-  const createWrapper = ({ children }: { children: ReactNode }) => <>{children}</>
+  let createWrapper = createConsoleQueryWrapper().wrapper
 
   beforeEach(() => {
     vi.clearAllMocks()
+    createWrapper = createConsoleQueryWrapper().wrapper
     mockDeleteModelService.mockResolvedValue({ result: 'success' })
     mockDeleteProviderCredential.mockResolvedValue({ result: 'success' })
     mockDeleteModelCredential.mockResolvedValue({ result: 'success' })
@@ -401,4 +387,16 @@ describe('useAuth', () => {
 
     expect(mockActiveProviderCredential).toHaveBeenCalledTimes(1)
   })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.modelProviders.byProvider.models.delete': (input) =>
+        mockDeleteModelService(input),
+    }),
+  }
 })

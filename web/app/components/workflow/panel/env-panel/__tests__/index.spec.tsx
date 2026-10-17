@@ -21,8 +21,6 @@ const {
   mockDoSyncWorkflowDraft,
   mockGetNodes,
   mockSetNodes,
-  mockFindUsedVarNodes,
-  mockUpdateNodeVars,
   mockVariableTriggerState,
   mockUpdateEnvironmentVariables,
   mockFetchWorkflowDraft,
@@ -45,18 +43,6 @@ const {
   }),
   mockGetNodes: vi.fn<() => MockWorkflowNode[]>(() => []),
   mockSetNodes: vi.fn<(nodes: MockWorkflowNode[]) => void>(),
-  mockFindUsedVarNodes: vi.fn<
-    (selector: string[], nodes: MockWorkflowNode[]) => MockWorkflowNode[]
-  >(() => []),
-  mockUpdateNodeVars: vi.fn<
-    (node: MockWorkflowNode, currentSelector: string[], nextSelector: string[]) => MockWorkflowNode
-  >((node, _currentSelector, nextSelector) => ({
-    ...node,
-    data: {
-      ...node.data,
-      nextSelector,
-    },
-  })),
   mockVariableTriggerState: {
     savePayload: undefined as EnvironmentVariable | undefined,
   },
@@ -115,11 +101,6 @@ vi.mock('reactflow', () => ({
       setNodes: mockSetNodes,
     }),
   }),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/utils', () => ({
-  findUsedVarNodes: mockFindUsedVarNodes,
-  updateNodeVars: mockUpdateNodeVars,
 }))
 
 vi.mock('../requests', () => ({
@@ -252,7 +233,6 @@ describe('EnvPanel container', () => {
     mockSetNodes.mockImplementation((nodes) => {
       mockGetNodes.mockReturnValue(nodes)
     })
-    mockFindUsedVarNodes.mockReturnValue([])
     mockVariableTriggerState.savePayload = undefined
     mockUpdateEnvironmentVariables.mockResolvedValue({})
     mockFetchWorkflowDraft.mockRejectedValue(new Error('draft refresh unavailable'))
@@ -548,9 +528,11 @@ describe('EnvPanel container', () => {
       value: '[__HIDDEN__]',
       value_type: 'secret',
     })
-    mockFindUsedVarNodes.mockReturnValue([{ id: 'node-1' }])
     mockGetNodes.mockReturnValue([
-      { id: 'node-1', data: { nextSelector: ['env', env.name] } },
+      {
+        id: 'node-1',
+        data: { type: 'code', variables: [{ variable: 'key', value_selector: ['env', env.name] }] },
+      },
       { id: 'node-2', data: { untouched: true } },
     ])
 
@@ -577,16 +559,11 @@ describe('EnvPanel container', () => {
     expect(store.getState().envSecrets).toEqual({
       [env.id]: '[__HIDDEN__]',
     })
-    expect(mockUpdateNodeVars).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'node-1' }),
-      ['env', env.name],
-      ['env', 'renamed_key'],
-    )
     expect(mockSetNodes).toHaveBeenCalledWith([
       expect.objectContaining({
         id: 'node-1',
         data: expect.objectContaining({
-          nextSelector: ['env', 'renamed_key'],
+          variables: [{ variable: 'key', value_selector: ['env', 'renamed_key'] }],
         }),
       }),
       expect.objectContaining({ id: 'node-2' }),
@@ -658,7 +635,6 @@ describe('EnvPanel container', () => {
         },
       },
     }
-    mockFindUsedVarNodes.mockReturnValue([llmNode])
     mockGetNodes.mockReturnValue([llmNode])
     mockFetchModelParameterRulesForModel.mockResolvedValue([
       {
@@ -786,7 +762,6 @@ describe('EnvPanel container', () => {
       },
     }
     mockVariableTriggerState.savePayload = nextEnv
-    mockFindUsedVarNodes.mockReturnValue([llmNode])
     mockGetNodes.mockReturnValue([llmNode])
 
     const { store } = renderWithProviders(<EnvPanel />, {
@@ -854,7 +829,6 @@ describe('EnvPanel container', () => {
         resolveRules = resolve
       }),
     )
-    mockFindUsedVarNodes.mockReturnValue([staleNode])
     mockGetNodes.mockReturnValue([staleNode])
 
     const { store } = renderWithProviders(<EnvPanel />, {
@@ -919,7 +893,6 @@ describe('EnvPanel container', () => {
       value_type: 'llm',
       value: { provider: 'new-provider', name: 'new-model', mode: 'chat' },
     })
-    mockFindUsedVarNodes.mockReturnValue([llmNode])
     mockGetNodes.mockReturnValue([llmNode])
     mockFetchModelParameterRulesForModel.mockRejectedValueOnce(new Error('network error'))
 
@@ -954,7 +927,6 @@ describe('EnvPanel container', () => {
       value_type: 'llm',
       value: { provider: 'new-provider', name: 'new-model', mode: 'chat' },
     })
-    mockFindUsedVarNodes.mockReturnValue([])
     mockUpdateEnvironmentVariables.mockRejectedValueOnce(new Error('environment API failed'))
     mockDoSyncWorkflowDraft.mockImplementationOnce(async (_notRefresh, callback) => {
       callback?.onError?.()
@@ -1110,7 +1082,6 @@ describe('EnvPanel container', () => {
       value_type: 'llm',
       value: { provider: 'new-provider', name: 'new-model', mode: 'chat' },
     })
-    mockFindUsedVarNodes.mockReturnValue([llmNode])
     mockGetNodes.mockReturnValue([llmNode])
     mockDoSyncWorkflowDraft.mockImplementationOnce(async (_notRefresh, callback) => {
       mockGetNodes.mockReturnValue([
@@ -1182,7 +1153,6 @@ describe('EnvPanel container', () => {
       value_type: 'llm',
       value: { provider: 'new-provider', name: 'new-model', mode: 'chat' },
     })
-    mockFindUsedVarNodes.mockReturnValue([llmNode])
     mockGetNodes.mockReturnValue([llmNode])
     mockDoSyncWorkflowDraft.mockImplementationOnce(async (_notRefresh, callback) => {
       callback?.onSettled?.()
@@ -1229,7 +1199,6 @@ describe('EnvPanel container', () => {
         resolveFirstRules = resolve
       }),
     )
-    mockFindUsedVarNodes.mockReturnValue([llmNode])
     mockGetNodes.mockReturnValue([llmNode])
     mockVariableTriggerState.savePayload = createEnv({
       id: env.id,
@@ -1293,7 +1262,6 @@ describe('EnvPanel container', () => {
         }),
       )
       .mockResolvedValueOnce({})
-    mockFindUsedVarNodes.mockReturnValue([])
     mockVariableTriggerState.savePayload = createEnv({
       id: env.id,
       name: env.name,
@@ -1474,7 +1442,6 @@ describe('EnvPanel container', () => {
       },
     }
     mockVariableTriggerState.savePayload = localEnv
-    mockFindUsedVarNodes.mockReturnValue([llmNode])
     mockGetNodes.mockReturnValue([llmNode])
     mockFetchWorkflowDraft.mockResolvedValueOnce({ environment_variables: [serverEnv] })
 
@@ -1623,9 +1590,11 @@ describe('EnvPanel container', () => {
   it('should require confirmation before deleting affected secret variables', async () => {
     const user = userEvent.setup()
     const env = createEnv()
-    mockFindUsedVarNodes.mockReturnValue([{ id: 'node-1' }])
     mockGetNodes.mockReturnValue([
-      { id: 'node-1', data: { nextSelector: ['env', env.name] } },
+      {
+        id: 'node-1',
+        data: { type: 'code', variables: [{ variable: 'key', value_selector: ['env', env.name] }] },
+      },
       { id: 'node-2', data: { untouched: true } },
     ])
 
@@ -1650,10 +1619,12 @@ describe('EnvPanel container', () => {
       expect(store.getState().environmentVariables).toEqual([])
     })
     expect(store.getState().envSecrets).toEqual({})
-    expect(mockUpdateNodeVars).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'node-1' }),
-      ['env', env.name],
-      [],
-    )
+    expect(mockSetNodes).toHaveBeenLastCalledWith([
+      expect.objectContaining({
+        id: 'node-1',
+        data: expect.objectContaining({ variables: [{ variable: 'key', value_selector: [] }] }),
+      }),
+      expect.objectContaining({ id: 'node-2' }),
+    ])
   })
 })

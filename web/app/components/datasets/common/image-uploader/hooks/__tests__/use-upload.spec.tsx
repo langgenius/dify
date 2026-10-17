@@ -43,11 +43,10 @@ type FileUploadOptions = {
 }
 
 const mockFileUpload = vi.fn<(options: FileUploadOptions) => void>()
-const mockGetFileUploadErrorMessage = vi.fn(() => 'Upload error')
 
-vi.mock('@/app/components/base/file-uploader/utils', () => ({
+vi.mock('@/app/components/base/file-uploader/utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/app/components/base/file-uploader/utils')>()),
   fileUpload: (options: FileUploadOptions) => mockFileUpload(options),
-  getFileUploadErrorMessage: () => mockGetFileUploadErrorMessage(),
 }))
 
 const createWrapper = () => {
@@ -377,7 +376,9 @@ describe('useUpload hook', () => {
       })
 
       await waitFor(() => {
-        expect(toast.error).toHaveBeenCalledWith('Upload error')
+        expect(toast.error).toHaveBeenCalledWith(
+          'common.fileUploader.uploadFromComputerUploadError',
+        )
       })
     })
   })
@@ -439,7 +440,9 @@ describe('useUpload hook', () => {
       })
 
       await waitFor(() => {
-        expect(toast.error).toHaveBeenCalledWith('Upload error')
+        expect(toast.error).toHaveBeenCalledWith(
+          'common.fileUploader.uploadFromComputerUploadError',
+        )
       })
     })
   })

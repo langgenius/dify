@@ -3,24 +3,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DocumentActionType } from '@/models/datasets'
-import * as useDocument from '@/service/knowledge/use-document'
+import { createDeferred } from '@/test/deferred'
 import { useDocumentActions } from '../use-document-actions'
 
-vi.mock('@/service/knowledge/use-document')
-
 const { mockMutateAsync } = vi.hoisted(() => ({ mockMutateAsync: vi.fn() }))
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  const mutation = () => ({ mutateAsync: mockMutateAsync, isPending: false })
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'datasets.byDatasetId.documents.status.byAction.batch.patch': mutation,
-    'datasets.byDatasetId.documents.generateSummary.post': mutation,
-    'datasets.byDatasetId.documents.delete': mutation,
-    'datasets.byDatasetId.retry.post': mutation,
-  })
-})
-
-const mockUseDocumentDownloadZip = vi.mocked(useDocument.useDocumentDownloadZip)
 
 const createConsoleQueryClient = () =>
   new QueryClient({
@@ -37,32 +23,23 @@ const createWrapper = () => {
   )
 }
 
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.documents.status.byAction.batch.patch': mockMutateAsync,
+      'datasets.byDatasetId.documents.generateSummary.post': mockMutateAsync,
+      'datasets.byDatasetId.documents.delete': mockMutateAsync,
+      'datasets.byDatasetId.retry.post': mockMutateAsync,
+    }),
+  }
+})
+
 describe('useDocumentActions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-
-    const createMockMutation = () => ({
-      mutateAsync: mockMutateAsync,
-      isPending: false,
-      isError: false,
-      isSuccess: false,
-      isIdle: true,
-      data: undefined,
-      error: null,
-      mutate: vi.fn(),
-      reset: vi.fn(),
-      status: 'idle' as const,
-      variables: undefined,
-      context: undefined,
-      failureCount: 0,
-      failureReason: null,
-      submittedAt: 0,
-    })
-
-    mockUseDocumentDownloadZip.mockReturnValue({
-      ...createMockMutation(),
-      isPending: false,
-    } as unknown as ReturnType<typeof useDocument.useDocumentDownloadZip>)
   })
 
   describe('handleAction', () => {
@@ -203,39 +180,9 @@ describe('useDocumentActions', () => {
   })
 
   describe('handleBatchDownload', () => {
-    it('should not proceed when already downloading', async () => {
-      mockUseDocumentDownloadZip.mockReturnValue({
-        mutateAsync: mockMutateAsync,
-        isPending: true,
-      } as unknown as ReturnType<typeof useDocument.useDocumentDownloadZip>)
-
-      const { result } = renderHook(
-        () =>
-          useDocumentActions({
-            datasetId: 'ds1',
-            selectedIds: ['doc1'],
-            downloadableSelectedIds: ['doc1'],
-            onUpdate: vi.fn(),
-            onClearSelection: vi.fn(),
-          }),
-        { wrapper: createWrapper() },
-      )
-
-      await act(async () => {
-        await result.current.handleBatchDownload()
-      })
-
-      expect(mockMutateAsync).not.toHaveBeenCalled()
-    })
-
     it('should call download mutation with downloadable ids', async () => {
       const mockBlob = new Blob(['test'])
       mockMutateAsync.mockResolvedValue(mockBlob)
-
-      mockUseDocumentDownloadZip.mockReturnValue({
-        mutateAsync: mockMutateAsync,
-        isPending: false,
-      } as unknown as ReturnType<typeof useDocument.useDocumentDownloadZip>)
 
       const { result } = renderHook(
         () =>
@@ -260,27 +207,34 @@ describe('useDocumentActions', () => {
     })
   })
 
-  describe('isDownloadingZip', () => {
-    it('should reflect isPending state from mutation', () => {
-      mockUseDocumentDownloadZip.mockReturnValue({
-        mutateAsync: mockMutateAsync,
-        isPending: true,
-      } as unknown as ReturnType<typeof useDocument.useDocumentDownloadZip>)
-
-      const { result } = renderHook(
-        () =>
-          useDocumentActions({
-            datasetId: 'ds1',
-            selectedIds: [],
-            downloadableSelectedIds: [],
-            onUpdate: vi.fn(),
-            onClearSelection: vi.fn(),
-          }),
-        { wrapper: createWrapper() },
-      )
-
-      expect(result.current.isDownloadingZip).toBe(true)
+  it('tracks the download request while the archive is being prepared', async () => {
+    const pending = createDeferred<Blob>()
+    mockMutateAsync.mockReturnValue(pending.promise)
+    const { result } = renderHook(
+      () =>
+        useDocumentActions({
+          datasetId: 'ds1',
+          selectedIds: ['doc1'],
+          downloadableSelectedIds: ['doc1'],
+          onUpdate: vi.fn(),
+          onClearSelection: vi.fn(),
+        }),
+      { wrapper: createWrapper() },
+    )
+    let download: Promise<void>
+    act(() => {
+      download = result.current.handleBatchDownload()
     })
+    await waitFor(() => expect(result.current.isDownloadingZip).toBe(true))
+    await act(async () => {
+      await result.current.handleBatchDownload()
+    })
+    expect(mockMutateAsync).toHaveBeenCalledOnce()
+    await act(async () => {
+      pending.resolve(new Blob(['archive']))
+      await download
+    })
+    await waitFor(() => expect(result.current.isDownloadingZip).toBe(false))
   })
 
   describe('error handling', () => {
@@ -338,11 +292,6 @@ describe('useDocumentActions', () => {
     it('should show error toast when handleBatchDownload fails', async () => {
       mockMutateAsync.mockRejectedValue(new Error('Download failed'))
 
-      mockUseDocumentDownloadZip.mockReturnValue({
-        mutateAsync: mockMutateAsync,
-        isPending: false,
-      } as unknown as ReturnType<typeof useDocument.useDocumentDownloadZip>)
-
       const { result } = renderHook(
         () =>
           useDocumentActions({
@@ -365,11 +314,6 @@ describe('useDocumentActions', () => {
 
     it('should show error toast when handleBatchDownload returns null blob', async () => {
       mockMutateAsync.mockResolvedValue(null)
-
-      mockUseDocumentDownloadZip.mockReturnValue({
-        mutateAsync: mockMutateAsync,
-        isPending: false,
-      } as unknown as ReturnType<typeof useDocument.useDocumentDownloadZip>)
 
       const { result } = renderHook(
         () =>
@@ -446,3 +390,8 @@ describe('useDocumentActions', () => {
     })
   })
 })
+
+vi.mock('@/service/datasets', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/datasets')>()),
+  downloadDocumentsZip: mockMutateAsync,
+}))

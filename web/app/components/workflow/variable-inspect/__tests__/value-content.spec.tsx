@@ -5,14 +5,6 @@ import { VarType } from '@/app/components/workflow/types'
 import { VarInInspectType } from '@/types/workflow'
 import ValueContent from '../value-content'
 
-vi.mock('@/app/components/base/file-uploader/utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/base/file-uploader/utils')>()
-  return {
-    ...actual,
-    getProcessedFiles: (files: unknown[]) => files,
-  }
-})
-
 vi.mock(
   '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/schema-editor',
   () => ({
@@ -65,15 +57,15 @@ vi.mock('../value-content-sections', () => ({
     onChange: (files: Array<Record<string, unknown>>) => void
   }) => (
     <div>
-      <button onClick={() => onChange([{ upload_file_id: '' }])}>file-pending</button>
-      <button onClick={() => onChange([{ upload_file_id: 'file-1', name: 'report.pdf' }])}>
+      <button onClick={() => onChange([{ uploadedId: '' }])}>file-pending</button>
+      <button onClick={() => onChange([{ uploadedId: 'file-1', name: 'report.pdf' }])}>
         file-uploaded
       </button>
       <button
         onClick={() =>
           onChange([
-            { upload_file_id: 'file-1', name: 'a.pdf' },
-            { upload_file_id: 'file-2', name: 'b.pdf' },
+            { uploadedId: 'file-1', name: 'a.pdf' },
+            { uploadedId: 'file-2', name: 'b.pdf' },
           ])
         }
       >

@@ -1,26 +1,8 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { DeleteAgentDialog } from '../delete-agent-dialog'
 
-const mutationMock = vi.hoisted(() => ({
-  isPending: false,
-  mutate: vi.fn(),
-}))
-
-vi.mock('@tanstack/react-query', () => ({
-  useMutation: () => mutationMock,
-}))
-
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    agent: {
-      byAgentId: {
-        delete: {
-          mutationOptions: vi.fn(() => ({})),
-        },
-      },
-    },
-  },
-}))
+const mutateRequest = vi.hoisted(() => vi.fn())
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
@@ -29,6 +11,17 @@ vi.mock('react-i18next', async () => {
     'roster.deleteDialog.description': agentV2['roster.deleteDialog.description'],
     'roster.deleteDialog.title': agentV2['roster.deleteDialog.title'],
   })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'agent.byAgentId.delete': mutateRequest,
+    }),
+  }
 })
 
 describe('DeleteAgentDialog', () => {

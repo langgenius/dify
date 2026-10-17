@@ -65,10 +65,6 @@ vi.mock(
   }),
 )
 
-vi.mock('../_base/components/config-vision', () => ({
-  default: () => null,
-}))
-
 vi.mock('../../_base/components/variable/var-reference-picker', () => ({
   default: () => null,
 }))

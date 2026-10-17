@@ -88,10 +88,6 @@ vi.mock('@/service/console', async (importOriginal) => ({
   },
 }))
 
-vi.mock('@/utils/encryption', () => ({
-  encryptVerificationCode: (code: string) => code,
-}))
-
 vi.mock('@/utils/timezone', () => ({
   getBrowserTimezone: () => 'Asia/Singapore',
 }))
@@ -252,7 +248,7 @@ describe('CheckCode', () => {
 
     expect(consoleClient.emailCodeLogin.validity.post).toHaveBeenCalledWith({
       body: {
-        code: '123456',
+        code: 'MTIzNDU2',
         email: 'user@example.com',
         language: expect.any(String),
         timezone: 'Asia/Singapore',

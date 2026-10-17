@@ -7,7 +7,15 @@ import type { AppIconType } from '@/types/app'
 import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.gen'
 import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogCloseButton,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
@@ -147,21 +155,16 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
 
   return (
     <>
-      <button
-        type="button"
-        aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-        className="absolute top-5 right-5 z-10 cursor-pointer border-none bg-transparent p-1.5 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-        onClick={onHide}
-      >
-        <span aria-hidden className="i-ri-close-line size-5 text-text-tertiary" />
-      </button>
-      <DialogTitle className="relative pb-3 title-2xl-semi-bold text-xl text-text-primary">
-        {!isCreate
-          ? t(($) => $['mcp.modal.editTitle'], { ns: 'tools' })
-          : t(($) => $['mcp.modal.title'], { ns: 'tools' })}
-      </DialogTitle>
+      <DialogHeader>
+        <DialogTitle>
+          {!isCreate
+            ? t(($) => $['mcp.modal.editTitle'], { ns: 'tools' })
+            : t(($) => $['mcp.modal.title'], { ns: 'tools' })}
+        </DialogTitle>
+        <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+      </DialogHeader>
 
-      <div className="space-y-5 py-3">
+      <DialogBody className="space-y-5">
         {/* Server URL */}
         <div>
           <div className="mb-1 flex h-6 items-center">
@@ -345,17 +348,16 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
             onSseReadTimeoutChange={actions.setSseReadTimeout}
           />
         )}
-      </div>
+      </DialogBody>
 
-      {/* Actions */}
-      <div className="flex flex-row-reverse pt-5">
-        <Button disabled={isSubmitDisabled} className="ml-2" variant="primary" onClick={submit}>
+      <DialogFooter>
+        <Button onClick={onHide}>{t(($) => $['mcp.modal.cancel'], { ns: 'tools' })}</Button>
+        <Button disabled={isSubmitDisabled} variant="primary" onClick={submit}>
           {data
             ? t(($) => $['mcp.modal.save'], { ns: 'tools' })
             : t(($) => $['mcp.modal.confirm'], { ns: 'tools' })}
         </Button>
-        <Button onClick={onHide}>{t(($) => $['mcp.modal.cancel'], { ns: 'tools' })}</Button>
-      </div>
+      </DialogFooter>
     </>
   )
 }
@@ -377,7 +379,7 @@ const MCPModal: FC<DuplicateAppModalProps> = ({ data, show, onConfirm, onHide })
         if (!open) onHide()
       }}
     >
-      <DialogContent className="w-full max-w-130! border-none p-6 text-left align-middle">
+      <DialogContent className="w-130">
         <MCPModalContent key={formKey} data={data} onConfirm={onConfirm} onHide={onHide} />
       </DialogContent>
     </Dialog>

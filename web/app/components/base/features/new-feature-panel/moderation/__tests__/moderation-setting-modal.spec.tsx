@@ -1,16 +1,17 @@
 import type { AppConfigJsonValue } from '@dify/contracts/api/console/apps/types.gen'
 import type { TFunction } from 'i18next'
 import type { ModerationConfig } from '@/models/debug'
-import { act, fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as i18n from 'react-i18next'
 import { buildConfigurationDatasetConfigs } from '@/app/components/app/configuration/hooks/configuration-lifecycle/dataset'
 import { createPublishHandler } from '@/app/components/app/configuration/hooks/configuration-lifecycle/publish'
 import { buildPublishedConfig } from '@/app/components/app/configuration/hooks/configuration-lifecycle/published-config'
 import { createFeaturesStore } from '@/app/components/base/features/store'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { renderWithConsoleQuery as renderWithoutUrlState } from '@/test/console/query-data'
 import { createAppModelConfigFixture } from '@/test/fixtures/app'
 import { withSelectorKey } from '@/test/i18n-mock'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { ModelModeType } from '@/types/app'
 import ModerationSettingModal from '../moderation-setting-modal'
 
@@ -20,12 +21,6 @@ vi.mock('@/app/notifications', () => ({
     error: (message: string) => mockNotify({ type: 'error', message }),
   },
 }))
-
-const mockSetSettingsDestination = vi.fn()
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
-})
 
 let mockCodeBasedExtensions: { data: { data: Record<string, unknown>[] } } = { data: { data: [] } }
 let mockModelProvidersData: {
@@ -49,16 +44,6 @@ let mockModelProvidersData: {
   isPending: false,
   refetch: vi.fn(),
 }
-
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/declarations',
-  async (importOriginal) => ({
-    ...(await importOriginal<
-      typeof import('@/app/components/header/account-setting/model-provider-page/declarations')
-    >()),
-    CustomConfigurationStatusEnum: { active: 'active' },
-  }),
-)
 
 vi.mock('@/app/components/header/account-setting/api-based-extension-page/selector', () => ({
   ApiBasedExtensionSelector: ({ onChange }: { value: string; onChange: (v: string) => void }) => (
@@ -87,6 +72,9 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     'workspaces.current.modelProviders.get': () => mockModelProvidersData,
   })
 })
+
+const onUrlUpdate = vi.fn()
+const render = createNuqsTestRenderer(renderWithoutUrlState, () => ({ onUrlUpdate }))
 
 describe('ModerationSettingModal', () => {
   const onSave = vi.fn()
@@ -212,7 +200,7 @@ describe('ModerationSettingModal', () => {
 
     const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
     closeButton.focus()
-    fireEvent.keyDown(closeButton, { key: 'Escape' })
+    fireEvent.keyDown(closeButton, { key: 'a' })
 
     expect(onCancel).not.toHaveBeenCalled()
   })
@@ -680,7 +668,9 @@ describe('ModerationSettingModal', () => {
 
     fireEvent.click(screen.getByText(/settings\.provider/))
 
-    expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('provider'),
+    )
   })
 
   it('should not save when OpenAI type is selected but not configured', async () => {

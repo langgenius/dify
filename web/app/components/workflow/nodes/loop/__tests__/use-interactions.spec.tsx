@@ -7,7 +7,6 @@ import { useNodeLoopInteractions } from '../use-interactions'
 
 const mockGetNodes = vi.hoisted(() => vi.fn())
 const mockSetNodes = vi.hoisted(() => vi.fn())
-const mockGenerateNewNode = vi.hoisted(() => vi.fn())
 
 vi.mock('reactflow', async () => {
   const actual = await vi.importActual<typeof import('reactflow')>('reactflow')
@@ -38,11 +37,6 @@ vi.mock('../../../hooks/use-nodes-meta-data', async (importOriginal) => {
     }),
   }
 })
-
-vi.mock('@/app/components/workflow/utils', () => ({
-  generateNewNode: (...args: unknown[]) => mockGenerateNewNode(...args),
-  getNodeCustomTypeByNodeDataType: () => 'custom',
-}))
 
 describe('useNodeLoopInteractions', () => {
   beforeEach(() => {
@@ -154,35 +148,18 @@ describe('useNodeLoopInteractions', () => {
         data: { type: BlockEnum.Code, title: 'Code', desc: '' },
       }),
     ])
-    mockGenerateNewNode.mockReturnValue({
-      newNode: createNode({
-        id: 'generated',
-        parentId: 'new-loop',
-        data: {
-          type: BlockEnum.Code,
-          title: 'Code 3',
-          desc: '',
-          isInLoop: true,
-          loop_id: 'new-loop',
-        },
-      }),
-    })
-
     const { result } = renderHook(() => useNodeLoopInteractions())
     const copyResult = result.current.handleNodeLoopChildrenCopy('loop-node', 'new-loop', {
       existing: 'mapped',
     })
 
-    expect(mockGenerateNewNode).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: 'custom',
-        parentId: 'new-loop',
-      }),
-    )
-    expect(copyResult.copyChildren).toHaveLength(1)
+    expect(copyResult.copyChildren).toMatchObject([
+      { parentId: 'new-loop', type: 'custom', data: { type: BlockEnum.Code, loop_id: 'new-loop' } },
+    ])
+    expect(copyResult.copyChildren[0]!.id).not.toBe('child-node')
     expect(copyResult.newIdMapping).toEqual({
       existing: 'mapped',
-      'child-node': 'new-loopgeneratednew-loop0',
+      'child-node': copyResult.copyChildren[0]!.id,
     })
   })
 })

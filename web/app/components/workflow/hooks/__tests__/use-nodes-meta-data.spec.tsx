@@ -1,31 +1,32 @@
+import type { ToolProviderApiEntityResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Node } from '../../types'
+import { waitFor } from '@testing-library/react'
 import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { CollectionType } from '@/app/components/tools/types'
+import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
 import { useNodeMetaData, useNodesMetaData } from '../use-nodes-meta-data'
 
 vi.mock('@/context/i18n', () => ({
-  useGetLanguage: () => 'en-US',
+  useGetLanguage: () => 'en_US',
 }))
 
-const buildInToolsState = vi.hoisted(
-  () => [] as Array<{ id: string; author: string; description: Record<string, string> }>,
-)
-const customToolsState = vi.hoisted(
-  () => [] as Array<{ id: string; author: string; description: Record<string, string> }>,
-)
-const workflowToolsState = vi.hoisted(
-  () => [] as Array<{ id: string; author: string; description: Record<string, string> }>,
-)
+const buildInToolsState = vi.hoisted(() => [] as ToolProviderApiEntityResponse[])
+const customToolsState = vi.hoisted(() => [] as ToolProviderApiEntityResponse[])
+const workflowToolsState = vi.hoisted(() => [] as ToolProviderApiEntityResponse[])
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.tools.builtin.get': () => ({ data: buildInToolsState }),
-    'workspaces.current.tools.api.get': () => ({ data: customToolsState }),
-    'workspaces.current.tools.workflow.get': () => ({ data: workflowToolsState }),
-  })
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.builtin.get': async () => buildInToolsState,
+      'workspaces.current.tools.api.get': async () => customToolsState,
+      'workspaces.current.tools.workflow.get': async () => workflowToolsState,
+    }),
+  }
 })
 
 const createNode = (overrides: Partial<Node> = {}): Node =>
@@ -60,14 +61,16 @@ describe('useNodesMetaData', () => {
     })
   })
 
-  it('resolves built-in tool metadata from tool providers', () => {
-    buildInToolsState.push({
-      id: 'provider-1',
-      author: 'Provider Author',
-      description: {
-        'en-US': 'Built-in provider description',
-      },
-    })
+  it('resolves built-in tool metadata from tool providers', async () => {
+    buildInToolsState.push(
+      createToolProviderFixture({
+        id: 'provider-1',
+        author: 'Provider Author',
+        description: {
+          en_US: 'Built-in provider description',
+        },
+      }),
+    )
 
     const toolNode = createNode({
       data: {
@@ -87,6 +90,7 @@ describe('useNodesMetaData', () => {
       },
     })
 
+    await waitFor(() => expect(result.current.author).toBe('Provider Author'))
     expect(result.current).toEqual(
       expect.objectContaining({
         author: 'Provider Author',

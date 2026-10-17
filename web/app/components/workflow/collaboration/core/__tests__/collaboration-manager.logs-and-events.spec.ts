@@ -397,8 +397,8 @@ describe('CollaborationManager logs and event helpers', () => {
     const { manager, internals } = setupManagerWithDoc()
     const updatedNode = createNode('n-after-undo-redo')
     const updatedEdge = createEdge('e-after-undo-redo', 'n-after-undo-redo', 'n-target')
-    internals.nodesMap?.set(updatedNode.id, updatedNode as unknown as Record<string, unknown>)
-    internals.edgesMap?.set(updatedEdge.id, updatedEdge as unknown as Record<string, unknown>)
+    internals.nodesMap?.set(updatedNode.id, updatedNode as Record<string, unknown>)
+    internals.edgesMap?.set(updatedEdge.id, updatedEdge as Record<string, unknown>)
 
     const setNodesSpy = vi.fn()
     const setEdgesSpy = vi.fn()

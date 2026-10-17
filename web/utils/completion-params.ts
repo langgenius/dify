@@ -62,7 +62,7 @@ export const mergeValidCompletionParams = (
           return
         }
         if (Array.isArray(rule.options) && rule.options.length) {
-          if (!(rule.options as string[]).includes(value)) {
+          if (!rule.options.includes(value)) {
             removedDetails[key] = 'unsupported option'
             return
           }

@@ -145,14 +145,18 @@ vi.mock('@/service/use-triggers', () => ({
   useInvalidateAllTriggerPlugins: () => vi.fn(),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.tools.builtin.get': () => ({ data: [] }),
-    'workspaces.current.tools.api.get': () => ({ data: [] }),
-    'workspaces.current.tools.workflow.get': () => ({ data: [] }),
-    'workspaces.current.tools.mcp.get': () => ({ data: [] }),
-  })
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.builtin.get': async () => [],
+      'workspaces.current.tools.api.get': async () => [],
+      'workspaces.current.tools.workflow.get': async () => [],
+      'workspaces.current.tools.mcp.get': async () => [],
+    }),
+  }
 })
 
 vi.mock('@/app/components/plugins/marketplace/query', () => ({
@@ -179,7 +183,13 @@ const renderTargetHandle = (dataOverrides: Partial<CommonNodeType> = {}) => {
       nodeSelectorClassName="custom-selector"
       handleClassName="custom-target-handle"
     />,
-    { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
+    {
+      resource: {
+        kind: 'app',
+        appId: 'app-1',
+        mode: mockHooksState.isChatflow ? 'advanced-chat' : 'workflow',
+      },
+    },
   )
 }
 
@@ -196,7 +206,13 @@ const renderSourceHandle = (
       handleClassName="custom-source-handle"
       {...propsOverrides}
     />,
-    { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
+    {
+      resource: {
+        kind: 'app',
+        appId: 'app-1',
+        mode: mockHooksState.isChatflow ? 'advanced-chat' : 'workflow',
+      },
+    },
   )
 }
 
@@ -322,7 +338,11 @@ describe('node-handle', () => {
     it('restores the previous focus when the start selector opens automatically', async () => {
       const user = userEvent.setup()
       render(<button type="button">Previous action</button>, {
-        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+        resource: {
+          kind: 'app',
+          appId: 'app-1',
+          mode: mockHooksState.isChatflow ? 'advanced-chat' : 'workflow',
+        },
       })
       const previousAction = screen.getByRole('button', { name: 'Previous action' })
       await user.click(previousAction)
@@ -388,11 +408,4 @@ describe('node-handle', () => {
       expect(mockWorkflowStoreSetState).not.toHaveBeenCalled()
     })
   })
-})
-
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => mockHooksState.isChatflow) }
 })

@@ -1,15 +1,12 @@
+import type {
+  DatasetDetailWithPartialMembersResponse,
+  DocumentDetailResponse,
+  IndexingEstimateResponse,
+  PreProcessingRule,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { DataSourceProvider, NotionPage } from '@/models/common'
-import type {
-  CrawlOptions,
-  CrawlResultItem,
-  CustomFile,
-  DataSet,
-  FileIndexingEstimateResponse,
-  FullDocumentDetail,
-  PreProcessingRule,
-  Rules,
-} from '@/models/datasets'
+import type { CrawlOptions, CrawlResultItem, CustomFile, Rules } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -50,7 +47,7 @@ vi.mock('@/hooks/use-breakpoints', async (importOriginal) => {
 })
 
 const mockDataset: Pick<
-  DataSet,
+  DatasetDetailWithPartialMembersResponse,
   | 'id'
   | 'doc_form'
   | 'data_source_type'
@@ -86,8 +83,8 @@ vi.mock('@/context/dataset-detail', () => ({
 }))
 
 const mockEmbeddingModelList = [
-  { provider: 'openai', model: 'text-embedding-ada-002' },
-  { provider: 'cohere', model: 'embed-english-v3.0' },
+  { provider: 'openai', models: [{ model: 'text-embedding-ada-002', features: [] }] },
+  { provider: 'cohere', models: [{ model: 'embed-english-v3.0', features: [] }] },
 ]
 const mockDefaultEmbeddingModel = {
   provider: { provider: 'openai' },
@@ -128,8 +125,21 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   useDefaultModel: () => ({ data: mockDefaultEmbeddingModel }),
 }))
 
-const mockFetchDefaultProcessRuleMutate = vi.fn()
-const mockResetFileEstimate = vi.fn()
+const mockFetchDefaultProcessRuleMutate = vi.fn(() =>
+  Promise.resolve({
+    mode: 'custom',
+    rules: {
+      segmentation: { separator: '\\n', max_tokens: 500, chunk_overlap: 50 },
+      pre_processing_rules: [
+        { id: 'remove_extra_spaces', enabled: true },
+        { id: 'remove_urls_emails', enabled: false },
+      ],
+      parent_mode: 'paragraph',
+      subchunk_segmentation: { separator: '\\n', max_tokens: 256 },
+    },
+    limits: { indexing_max_segmentation_tokens_length: 4000 },
+  }),
+)
 // Mock amplitude tracking (external service)
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
@@ -157,10 +167,6 @@ vi.mock('@/app/components/datasets/common/document-picker/preview-document-picke
     </div>
   ),
   /* oxlint-enable typescript/no-explicit-any */
-}))
-
-vi.mock('@/app/components/datasets/settings/utils', () => ({
-  checkShowMultiModalTip: () => false,
 }))
 
 // Mock complex child components to avoid deep dependency chains when rendering StepTwo
@@ -227,7 +233,9 @@ const createMockWebsitePage = (overrides?: Partial<CrawlResultItem>): CrawlResul
     ...overrides,
   }) as CrawlResultItem
 
-const createMockDocumentDetail = (overrides?: Partial<FullDocumentDetail>): FullDocumentDetail =>
+const createMockDocumentDetail = (
+  overrides?: Partial<DocumentDetailResponse>,
+): DocumentDetailResponse =>
   ({
     id: 'doc-1',
     doc_form: ChunkingMode.text,
@@ -240,7 +248,7 @@ const createMockDocumentDetail = (overrides?: Partial<FullDocumentDetail>): Full
       },
     },
     ...overrides,
-  }) as FullDocumentDetail
+  }) as DocumentDetailResponse
 
 const createMockRules = (overrides?: Partial<Rules>): Rules => ({
   segmentation: { separator: '\\n\\n', max_tokens: 1024, chunk_overlap: 50 },
@@ -254,8 +262,8 @@ const createMockRules = (overrides?: Partial<Rules>): Rules => ({
 })
 
 const createMockEstimate = (
-  overrides?: Partial<FileIndexingEstimateResponse>,
-): FileIndexingEstimateResponse => ({
+  overrides?: Partial<IndexingEstimateResponse>,
+): IndexingEstimateResponse => ({
   total_segments: 10,
   tokens: 5000,
   total_price: 0.01,
@@ -1775,7 +1783,7 @@ describe('PreviewPanel', () => {
     onClose: vi.fn(),
     dataSourceType: DataSourceType.FILE,
     currentDocForm: ChunkingMode.text,
-    estimate: undefined as FileIndexingEstimateResponse | undefined,
+    estimate: undefined as IndexingEstimateResponse | undefined,
     parentChildConfig: defaultParentChildConfig,
     isSetting: false,
     pickerFiles: [{ id: 'file-1', name: 'test.pdf', extension: 'pdf' }],
@@ -2290,10 +2298,13 @@ describe('StepTwo Component', () => {
       async (key) => {
         const user = userEvent.setup()
         render(<StepTwo {...defaultStepTwoProps} />)
+        await user.click(
+          screen.getByRole('button', { name: 'datasetCreation.stepTwo.previewChunk' }),
+        )
+        expect(await screen.findByText('Chunk 1 content')).toBeInTheDocument()
         const input = screen.getByRole('textbox', { name: 'datasetCreation.stepTwo.separator' })
         await user.click(input)
         await user.keyboard(key === 'ArrowLeft' ? '{Home}' : '{End}')
-        mockResetFileEstimate.mockClear()
         await user.keyboard(`{${key}}`)
 
         expect(screen.getByRole('radio', { name: 'datasetCreation.stepTwo.general' })).toBeChecked()
@@ -2302,7 +2313,7 @@ describe('StepTwo Component', () => {
         ).not.toBeChecked()
         expect(input).toBeInTheDocument()
         expect(input).toHaveFocus()
-        expect(mockResetFileEstimate).not.toHaveBeenCalled()
+        expect(screen.getByText('Chunk 1 content')).toBeInTheDocument()
       },
     )
 
@@ -2321,9 +2332,9 @@ describe('StepTwo Component', () => {
   })
 
   describe('Initialization', () => {
-    it('should fetch default process rule when not in setting mode', () => {
+    it('should fetch default process rule when not in setting mode', async () => {
       render(<StepTwo {...defaultStepTwoProps} />)
-      expect(mockFetchDefaultProcessRuleMutate).toHaveBeenCalled()
+      await waitFor(() => expect(mockFetchDefaultProcessRuleMutate).toHaveBeenCalled())
     })
 
     it('should apply config from rules when in setting mode with document detail', () => {
@@ -2630,50 +2641,26 @@ describe('StepTwo Component', () => {
   })
 })
 
+// Embedding catalog is fixed form metadata; requests owned by step two use real mutations.
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  const createdDocuments = (data: unknown) =>
-    vi.fn(async (_input: unknown, options?: { onSuccess?: (data: unknown) => void }) => {
-      options?.onSuccess?.(data)
-      return data
-    })
   return mockConsoleOperationHooks(await importOriginal(), {
     'workspaces.current.models.modelTypes.byModelType.get': () => ({
       data: mockEmbeddingModelList,
     }),
-    'datasets.processRule.get': (options: { onSuccess?: (data: unknown) => void }) => ({
-      mutate: (input: unknown) => {
-        mockFetchDefaultProcessRuleMutate(input)
-        options.onSuccess?.({
-          mode: 'custom',
-          rules: {
-            segmentation: { separator: '\\n', max_tokens: 500, chunk_overlap: 50 },
-            pre_processing_rules: [
-              { id: 'remove_extra_spaces', enabled: true },
-              { id: 'remove_urls_emails', enabled: false },
-            ],
-            parent_mode: 'paragraph',
-            subchunk_segmentation: { separator: '\\n', max_tokens: 256 },
-          },
-          limits: { indexing_max_segmentation_tokens_length: 4000 },
-        })
-      },
-      isPending: false,
-    }),
-    'datasets.indexingEstimate.post': () => ({
-      mutate: vi.fn(),
-      data: undefined,
-      isIdle: true,
-      isPending: false,
-      reset: mockResetFileEstimate,
-    }),
-    'datasets.init.post': () => ({
-      mutateAsync: createdDocuments({ dataset: { id: 'new-dataset-id' } }),
-      isPending: false,
-    }),
-    'datasets.byDatasetId.documents.post': () => ({
-      mutateAsync: createdDocuments({ document: { id: 'new-doc-id' } }),
-      isPending: false,
-    }),
   })
+})
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.processRule.get': () => mockFetchDefaultProcessRuleMutate(),
+      'datasets.indexingEstimate.post': () => Promise.resolve(createMockEstimate()),
+      'datasets.init.post': () => Promise.resolve({ dataset: { id: 'new-dataset-id' } }),
+      'datasets.byDatasetId.documents.post': () =>
+        Promise.resolve({ document: { id: 'new-doc-id' } }),
+    }),
+  }
 })

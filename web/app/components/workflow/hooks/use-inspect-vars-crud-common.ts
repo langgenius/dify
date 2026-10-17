@@ -1,5 +1,5 @@
+import type { SchemaDefinitionItemResponse } from '@dify/contracts/api/console/spec/types.gen'
 import type { Node, ValueSelector } from '@/app/components/workflow/types'
-import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { VarInInspect } from '@/types/workflow'
 import { useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
@@ -120,7 +120,7 @@ export const useInspectVarsCrudCommon = () => {
   )
 
   const fetchInspectVarValue = useCallback(
-    async (selector: ValueSelector, schemaTypeDefinitions: SchemaTypeDefinition[]) => {
+    async (selector: ValueSelector, schemaTypeDefinitions: SchemaDefinitionItemResponse[]) => {
       const { setNodeInspectVars, dataSourceList } = workflowStore.getState()
       const nodeId = selector[0]
       const isSystemVar = nodeId === 'sys'

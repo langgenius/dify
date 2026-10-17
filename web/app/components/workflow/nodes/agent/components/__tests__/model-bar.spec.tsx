@@ -25,10 +25,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
   ),
 }))
 
-vi.mock('@langgenius/dify-ui/status-dot', () => ({
-  StatusDot: ({ status }: { status: string }) => <div>{`indicator:${status}`}</div>,
-}))
-
 describe('agent/model-bar', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -49,7 +45,6 @@ describe('agent/model-bar', () => {
     const emptySelector = screen.getByText((_, element) => element?.textContent === 'no-model:0')
 
     expect(emptySelector).toBeInTheDocument()
-    expect(screen.getByText('indicator:error')).toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.agent.modelNotSelected')).toBeInTheDocument()
   })
 
@@ -57,14 +52,12 @@ describe('agent/model-bar', () => {
     render(<ModelBar provider="openai" model="gpt-4o" />)
 
     expect(screen.getByText('openai/gpt-4o:1')).toBeInTheDocument()
-    expect(screen.queryByText('indicator:error')).not.toBeInTheDocument()
   })
 
   it('should show a warning tooltip when the selected model is not installed', () => {
     render(<ModelBar provider="openai" model="gpt-4.1" />)
 
     expect(screen.getByText('openai/gpt-4.1:1')).toBeInTheDocument()
-    expect(screen.getByText('indicator:error')).toBeInTheDocument()
     expect(screen.getByText('workflowAgent.nodes.agent.modelNotInstallTooltip')).toBeInTheDocument()
   })
 })

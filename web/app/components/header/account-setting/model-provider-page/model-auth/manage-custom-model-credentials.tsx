@@ -11,7 +11,7 @@ import {
   ModelModalModeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Authorized from './authorized'
-import { useCustomModels } from './hooks'
+import { getCustomModels } from './hooks'
 
 type ManageCustomModelCredentialsProps = {
   provider: ModelProvider
@@ -26,7 +26,7 @@ const ManageCustomModelCredentials = ({
   onOpenChange,
 }: ManageCustomModelCredentialsProps) => {
   const { t } = useTranslation(['common', 'modelProvider'])
-  const customModels = useCustomModels(provider)
+  const customModels = getCustomModels(provider)
   const noModels = !customModels.length
 
   const renderTrigger = useCallback(

@@ -2,16 +2,11 @@ import type { ListFilterNodeType } from '../types'
 import { render, screen } from '@testing-library/react'
 import { useNodes } from 'reactflow'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
-import { isSystemVar } from '../../_base/components/variable/utils'
 import Node from '../node'
 import { OrderBy } from '../types'
 
 vi.mock('reactflow', () => ({
   useNodes: vi.fn(),
-}))
-
-vi.mock('../../_base/components/variable/utils', () => ({
-  isSystemVar: vi.fn(),
 }))
 
 vi.mock('../../_base/components/variable/variable-label', () => ({
@@ -25,7 +20,6 @@ vi.mock('../../_base/components/variable/variable-label', () => ({
 }))
 
 const mockUseNodes = vi.mocked(useNodes)
-const mockIsSystemVar = vi.mocked(isSystemVar)
 
 const createData = (overrides: Partial<ListFilterNodeType> = {}): ListFilterNodeType => ({
   title: 'List Operator',
@@ -63,7 +57,7 @@ const createData = (overrides: Partial<ListFilterNodeType> = {}): ListFilterNode
 describe('list-operator/node', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsSystemVar.mockReturnValue(false)
+
     mockUseNodes.mockReturnValue([
       {
         id: 'answer-node',
@@ -90,8 +84,6 @@ describe('list-operator/node', () => {
   })
 
   it('resolves system variables through the start node', () => {
-    mockIsSystemVar.mockReturnValue(true)
-
     render(
       <Node
         id="list-node"

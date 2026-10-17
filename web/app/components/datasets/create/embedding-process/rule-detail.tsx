@@ -1,5 +1,5 @@
+import type { ProcessRuleResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
-import type { ProcessRuleResponse } from '@/models/datasets'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FieldInfo } from '@/app/components/datasets/documents/detail/metadata'

@@ -39,13 +39,6 @@ vi.mock('@/service/console/browser', () => ({
   },
 }))
 
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-  }
-})
-
 vi.mock('@/context/modal-context', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/context/modal-context')>()
   return {

@@ -9,22 +9,24 @@ import { ChunkingMode } from '@/models/datasets'
 import { mockEmojiData, renderWithEmoji as testingLibraryRender } from '@/test/emoji-picker'
 import EditPipelineInfo from '../edit-pipeline-info'
 
-const render = (ui: ReactElement) =>
+const render = (ui: ReactElement<{ onClose: () => void }>) =>
   testingLibraryRender(
-    <Dialog open>
+    <Dialog open onOpenChange={(open) => !open && ui.props.onClose()}>
       <DialogContent>{ui}</DialogContent>
     </Dialog>,
   )
 
 const mockUpdatePipeline = vi.fn()
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'rag.pipeline.customized.templates.byTemplateId.patch': () => ({
-      mutateAsync: mockUpdatePipeline,
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipeline.customized.templates.byTemplateId.patch': (input) => mockUpdatePipeline(input),
     }),
-  })
+  }
 })
 
 const { mockToastError } = vi.hoisted(() => ({
@@ -168,10 +170,7 @@ describe('EditPipelineInfo', () => {
 
     it('should submit with Enter from the name input', async () => {
       const user = userEvent.setup()
-      mockUpdatePipeline.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockUpdatePipeline.mockResolvedValue(undefined)
 
       render(<EditPipelineInfo {...defaultProps} />)
 
@@ -184,10 +183,7 @@ describe('EditPipelineInfo', () => {
     })
 
     it('should invalidate template list on successful save', async () => {
-      mockUpdatePipeline.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockUpdatePipeline.mockResolvedValue(undefined)
 
       render(<EditPipelineInfo {...defaultProps} />)
 
@@ -202,10 +198,7 @@ describe('EditPipelineInfo', () => {
     })
 
     it('should call onClose on successful save', async () => {
-      mockUpdatePipeline.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockUpdatePipeline.mockResolvedValue(undefined)
 
       render(<EditPipelineInfo {...defaultProps} />)
 
@@ -292,10 +285,7 @@ describe('EditPipelineInfo', () => {
     })
 
     it('should save correct icon_info when starting with image icon type', async () => {
-      mockUpdatePipeline.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockUpdatePipeline.mockResolvedValue(undefined)
 
       const props = {
         ...defaultProps,
@@ -316,16 +306,12 @@ describe('EditPipelineInfo', () => {
               }),
             }),
           }),
-          expect.any(Object),
         )
       })
     })
 
     it('should save correct icon_info when starting with emoji icon type', async () => {
-      mockUpdatePipeline.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockUpdatePipeline.mockResolvedValue(undefined)
 
       render(<EditPipelineInfo {...defaultProps} />)
 
@@ -342,7 +328,6 @@ describe('EditPipelineInfo', () => {
               }),
             }),
           }),
-          expect.any(Object),
         )
       })
     })
@@ -367,10 +352,7 @@ describe('EditPipelineInfo', () => {
     })
 
     it('should switch from image icon to emoji icon when selected', async () => {
-      mockUpdatePipeline.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockUpdatePipeline.mockResolvedValue(undefined)
 
       const props = {
         ...defaultProps,
@@ -401,7 +383,6 @@ describe('EditPipelineInfo', () => {
               }),
             }),
           }),
-          expect.any(Object),
         )
       })
     })
@@ -471,10 +452,7 @@ describe('EditPipelineInfo', () => {
     })
 
     it('should save with new emoji icon selection', async () => {
-      mockUpdatePipeline.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockUpdatePipeline.mockResolvedValue(undefined)
 
       render(<EditPipelineInfo {...defaultProps} />)
 
@@ -497,16 +475,12 @@ describe('EditPipelineInfo', () => {
               }),
             }),
           }),
-          expect.any(Object),
         )
       })
     })
 
     it('should save after confirming a real emoji selection from an image icon', async () => {
-      mockUpdatePipeline.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockUpdatePipeline.mockResolvedValue(undefined)
 
       render(<EditPipelineInfo {...defaultProps} pipeline={createImagePipelineTemplate()} />)
 
@@ -532,7 +506,6 @@ describe('EditPipelineInfo', () => {
               }),
             }),
           }),
-          expect.any(Object),
         )
       })
     })
@@ -541,10 +514,7 @@ describe('EditPipelineInfo', () => {
   // Save Request Tests
   describe('Save Request', () => {
     it('should send correct request with emoji icon', async () => {
-      mockUpdatePipeline.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockUpdatePipeline.mockResolvedValue(undefined)
 
       render(<EditPipelineInfo {...defaultProps} />)
 
@@ -563,16 +533,12 @@ describe('EditPipelineInfo', () => {
               }),
             }),
           }),
-          expect.any(Object),
         )
       })
     })
 
     it('should send correct request with image icon', async () => {
-      mockUpdatePipeline.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockUpdatePipeline.mockResolvedValue(undefined)
 
       const props = {
         ...defaultProps,
@@ -593,7 +559,6 @@ describe('EditPipelineInfo', () => {
               }),
             }),
           }),
-          expect.any(Object),
         )
       })
     })
@@ -603,7 +568,7 @@ describe('EditPipelineInfo', () => {
     it('should have close button in header', () => {
       render(<EditPipelineInfo {...defaultProps} />)
       const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
-      expect(closeButton).toHaveClass('right-5', 'top-5')
+      expect(closeButton.parentElement).toContainElement(screen.getByText(/editPipelineInfo/i))
     })
   })
 })

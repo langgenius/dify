@@ -1,7 +1,8 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { render, screen } from '@testing-library/react'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import DatasetCardHeader from '../dataset-card-header'
@@ -23,13 +24,15 @@ vi.mock('react-i18next', async () => {
   }
 })
 
-const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
+const createDataset = (
+  overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
+): DatasetDetailWithPartialMembersResponse => ({
   ...createDatasetFixture(),
   id: 'dataset-1',
   name: 'Test Dataset',
   description: 'Test description',
   provider: 'vendor',
-  permission: DatasetPermission.allTeamMembers,
+  permission: PermissionLevel.allTeamMembers,
   data_source_type: DataSourceType.FILE,
   indexing_technique: IndexingType.QUALIFIED,
   embedding_available: true,
@@ -56,7 +59,7 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   },
   retrieval_model_dict: {
     search_method: RETRIEVE_METHOD.semantic,
-  } as DataSet['retrieval_model_dict'],
+  } as DatasetDetailWithPartialMembersResponse['retrieval_model_dict'],
   external_knowledge_info: {
     external_knowledge_id: '',
     external_knowledge_api_id: '',

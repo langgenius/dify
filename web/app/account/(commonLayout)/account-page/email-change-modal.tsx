@@ -1,10 +1,16 @@
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogCloseButton,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { ORPCError } from '@orpc/client'
-import { RiCloseLine } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
@@ -189,8 +195,9 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="w-105! p-6!">
+      <DialogContent className="w-105">
         <form
+          className="contents"
           onSubmit={(event) => {
             event.preventDefault()
             if (step === STEP.start) void sendCodeToOriginEmail()
@@ -199,233 +206,232 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
             else void submitNewEmail()
           }}
         >
-          <IconButton
-            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-            className="absolute top-5 right-5 size-8"
-            onClick={onClose}
-          >
-            <RiCloseLine aria-hidden className="size-5 text-text-tertiary" />
-          </IconButton>
           {step === STEP.start && (
             <>
-              <DialogTitle className="pb-3 title-2xl-semi-bold text-text-primary">
-                {t(($) => $['account.changeEmail.title'], { ns: 'accountSettings' })}
-              </DialogTitle>
-              <div className="space-y-0.5 pt-1 pb-2">
-                <div className="body-md-medium text-text-warning">
-                  {t(($) => $['account.changeEmail.authTip'], { ns: 'accountSettings' })}
+              <DialogHeader>
+                <DialogTitle>
+                  {t(($) => $['account.changeEmail.title'], { ns: 'accountSettings' })}
+                </DialogTitle>
+                <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+              </DialogHeader>
+              <DialogBody>
+                <div className="space-y-0.5 pt-1 pb-2">
+                  <div className="body-md-medium text-text-warning">
+                    {t(($) => $['account.changeEmail.authTip'], { ns: 'accountSettings' })}
+                  </div>
+                  <div className="body-md-regular text-text-secondary">
+                    <Trans
+                      i18nKey={($) => $['account.changeEmail.content1']}
+                      ns="accountSettings"
+                      components={{
+                        email: <span className="body-md-medium text-text-primary"></span>,
+                      }}
+                      values={{ email }}
+                    />
+                  </div>
                 </div>
-                <div className="body-md-regular text-text-secondary">
-                  <Trans
-                    i18nKey={($) => $['account.changeEmail.content1']}
-                    ns="accountSettings"
-                    components={{
-                      email: <span className="body-md-medium text-text-primary"></span>,
-                    }}
-                    values={{ email }}
-                  />
-                </div>
-              </div>
-              <div className="pt-3"></div>
-              <div className="space-y-2">
-                <Button className="w-full!" variant="primary" type="submit">
+              </DialogBody>
+              <DialogFooter className="flex-col items-stretch">
+                <Button variant="primary" type="submit">
                   {t(($) => $['account.changeEmail.sendVerifyCode'], { ns: 'accountSettings' })}
                 </Button>
-                <Button className="w-full!" onClick={onClose}>
+                <Button onClick={onClose}>
                   {t(($) => $['operation.cancel'], { ns: 'common' })}
                 </Button>
-              </div>
+              </DialogFooter>
             </>
           )}
           {step === STEP.verifyOrigin && (
             <>
-              <DialogTitle className="pb-3 title-2xl-semi-bold text-text-primary">
-                {t(($) => $['account.changeEmail.verifyEmail'], { ns: 'accountSettings' })}
-              </DialogTitle>
-              <div className="space-y-0.5 pt-1 pb-2">
-                <div className="body-md-regular text-text-secondary">
-                  <Trans
-                    i18nKey={($) => $['account.changeEmail.content2']}
-                    ns="accountSettings"
-                    components={{
-                      email: <span className="body-md-medium text-text-primary"></span>,
-                    }}
-                    values={{ email }}
-                  />
+              <DialogHeader>
+                <DialogTitle>
+                  {t(($) => $['account.changeEmail.verifyEmail'], { ns: 'accountSettings' })}
+                </DialogTitle>
+                <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+              </DialogHeader>
+              <DialogBody>
+                <div className="space-y-0.5 pt-1 pb-2">
+                  <div className="body-md-regular text-text-secondary">
+                    <Trans
+                      i18nKey={($) => $['account.changeEmail.content2']}
+                      ns="accountSettings"
+                      components={{
+                        email: <span className="body-md-medium text-text-primary"></span>,
+                      }}
+                      values={{ email }}
+                    />
+                  </div>
                 </div>
-              </div>
-              <Field name="code" className="pt-3">
-                <FieldLabel>
-                  {t(($) => $['account.changeEmail.codeLabel'], { ns: 'accountSettings' })}
-                </FieldLabel>
-                <Input
-                  className="w-full!"
-                  placeholder={t(($) => $['account.changeEmail.codePlaceholder'], {
-                    ns: 'accountSettings',
-                  })}
-                  value={code}
-                  onValueChange={(value) => setCode(value)}
-                  autoComplete="one-time-code"
-                  maxLength={6}
-                />
-              </Field>
-              <div className="mt-3 space-y-2">
-                <Button
-                  disabled={code.length !== 6}
-                  className="w-full!"
-                  variant="primary"
-                  type="submit"
-                >
+                <Field name="code" className="pt-3">
+                  <FieldLabel>
+                    {t(($) => $['account.changeEmail.codeLabel'], { ns: 'accountSettings' })}
+                  </FieldLabel>
+                  <Input
+                    className="w-full!"
+                    placeholder={t(($) => $['account.changeEmail.codePlaceholder'], {
+                      ns: 'accountSettings',
+                    })}
+                    value={code}
+                    onValueChange={(value) => setCode(value)}
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                  />
+                </Field>
+              </DialogBody>
+              <DialogFooter className="flex-col items-stretch">
+                <Button disabled={code.length !== 6} variant="primary" type="submit">
                   {t(($) => $['account.changeEmail.continue'], { ns: 'accountSettings' })}
                 </Button>
-                <Button className="w-full!" onClick={onClose}>
+                <Button onClick={onClose}>
                   {t(($) => $['operation.cancel'], { ns: 'common' })}
                 </Button>
-              </div>
-              <div className="mt-3 flex items-center gap-1 system-xs-regular text-text-tertiary">
-                <span>
-                  {t(($) => $['account.changeEmail.resendTip'], { ns: 'accountSettings' })}
-                </span>
-                {time > 0 && (
+                <div className="flex items-center gap-1 system-xs-regular text-text-tertiary">
                   <span>
-                    {t(($) => $['account.changeEmail.resendCount'], {
-                      ns: 'accountSettings',
-                      count: time,
-                    })}
+                    {t(($) => $['account.changeEmail.resendTip'], { ns: 'accountSettings' })}
                   </span>
-                )}
-                {!time && (
-                  <button
-                    type="button"
-                    onClick={sendCodeToOriginEmail}
-                    className="cursor-pointer rounded-sm system-xs-medium text-text-accent-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                  >
-                    {t(($) => $['account.changeEmail.resend'], { ns: 'accountSettings' })}
-                  </button>
-                )}
-              </div>
+                  {time > 0 && (
+                    <span>
+                      {t(($) => $['account.changeEmail.resendCount'], {
+                        ns: 'accountSettings',
+                        count: time,
+                      })}
+                    </span>
+                  )}
+                  {!time && (
+                    <button
+                      type="button"
+                      onClick={sendCodeToOriginEmail}
+                      className="cursor-pointer rounded-sm system-xs-medium text-text-accent-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                    >
+                      {t(($) => $['account.changeEmail.resend'], { ns: 'accountSettings' })}
+                    </button>
+                  )}
+                </div>
+              </DialogFooter>
             </>
           )}
           {step === STEP.newEmail && (
             <>
-              <DialogTitle className="pb-3 title-2xl-semi-bold text-text-primary">
-                {t(($) => $['account.changeEmail.newEmail'], { ns: 'accountSettings' })}
-              </DialogTitle>
-              <div className="space-y-0.5 pt-1 pb-2">
-                <div className="body-md-regular text-text-secondary">
-                  {t(($) => $['account.changeEmail.content3'], { ns: 'accountSettings' })}
+              <DialogHeader>
+                <DialogTitle>
+                  {t(($) => $['account.changeEmail.newEmail'], { ns: 'accountSettings' })}
+                </DialogTitle>
+                <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+              </DialogHeader>
+              <DialogBody>
+                <div className="space-y-0.5 pt-1 pb-2">
+                  <div className="body-md-regular text-text-secondary">
+                    {t(($) => $['account.changeEmail.content3'], { ns: 'accountSettings' })}
+                  </div>
                 </div>
-              </div>
-              <Field name="email" invalid={newEmailExited || unAvailableEmail} className="pt-3">
-                <FieldLabel>
-                  {t(($) => $['account.changeEmail.emailLabel'], { ns: 'accountSettings' })}
-                </FieldLabel>
-                <Input
-                  className="w-full!"
-                  placeholder={t(($) => $['account.changeEmail.emailPlaceholder'], {
-                    ns: 'accountSettings',
-                  })}
-                  value={mail}
-                  onValueChange={(value) => handleNewEmailValueChange(value)}
-                  type="email"
-                  autoComplete="email"
-                />
-                {newEmailExited && (
-                  <FieldError match>
-                    {t(($) => $['account.changeEmail.existingEmail'], { ns: 'accountSettings' })}
-                  </FieldError>
-                )}
-                {unAvailableEmail && (
-                  <FieldError match>
-                    {t(($) => $['account.changeEmail.unAvailableEmail'], { ns: 'accountSettings' })}
-                  </FieldError>
-                )}
-              </Field>
-              <div className="mt-3 space-y-2">
-                <Button
-                  disabled={isSendCodeDisabled}
-                  className="w-full!"
-                  variant="primary"
-                  type="submit"
-                >
+                <Field name="email" invalid={newEmailExited || unAvailableEmail} className="pt-3">
+                  <FieldLabel>
+                    {t(($) => $['account.changeEmail.emailLabel'], { ns: 'accountSettings' })}
+                  </FieldLabel>
+                  <Input
+                    className="w-full!"
+                    placeholder={t(($) => $['account.changeEmail.emailPlaceholder'], {
+                      ns: 'accountSettings',
+                    })}
+                    value={mail}
+                    onValueChange={(value) => handleNewEmailValueChange(value)}
+                    type="email"
+                    autoComplete="email"
+                  />
+                  {newEmailExited && (
+                    <FieldError match>
+                      {t(($) => $['account.changeEmail.existingEmail'], { ns: 'accountSettings' })}
+                    </FieldError>
+                  )}
+                  {unAvailableEmail && (
+                    <FieldError match>
+                      {t(($) => $['account.changeEmail.unAvailableEmail'], {
+                        ns: 'accountSettings',
+                      })}
+                    </FieldError>
+                  )}
+                </Field>
+              </DialogBody>
+              <DialogFooter className="flex-col items-stretch">
+                <Button disabled={isSendCodeDisabled} variant="primary" type="submit">
                   {t(($) => $['account.changeEmail.sendVerifyCode'], { ns: 'accountSettings' })}
                 </Button>
-                <Button className="w-full!" onClick={onClose}>
+                <Button onClick={onClose}>
                   {t(($) => $['operation.cancel'], { ns: 'common' })}
                 </Button>
-              </div>
+              </DialogFooter>
             </>
           )}
           {step === STEP.verifyNew && (
             <>
-              <DialogTitle className="pb-3 title-2xl-semi-bold text-text-primary">
-                {t(($) => $['account.changeEmail.verifyNew'], { ns: 'accountSettings' })}
-              </DialogTitle>
-              <div className="space-y-0.5 pt-1 pb-2">
-                <div className="body-md-regular text-text-secondary">
-                  <Trans
-                    i18nKey={($) => $['account.changeEmail.content4']}
-                    ns="accountSettings"
-                    components={{
-                      email: <span className="body-md-medium text-text-primary"></span>,
-                    }}
-                    values={{ email: mail }}
-                  />
+              <DialogHeader>
+                <DialogTitle>
+                  {t(($) => $['account.changeEmail.verifyNew'], { ns: 'accountSettings' })}
+                </DialogTitle>
+                <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+              </DialogHeader>
+              <DialogBody>
+                <div className="space-y-0.5 pt-1 pb-2">
+                  <div className="body-md-regular text-text-secondary">
+                    <Trans
+                      i18nKey={($) => $['account.changeEmail.content4']}
+                      ns="accountSettings"
+                      components={{
+                        email: <span className="body-md-medium text-text-primary"></span>,
+                      }}
+                      values={{ email: mail }}
+                    />
+                  </div>
                 </div>
-              </div>
-              <Field name="code" className="pt-3">
-                <FieldLabel>
-                  {t(($) => $['account.changeEmail.codeLabel'], { ns: 'accountSettings' })}
-                </FieldLabel>
-                <Input
-                  className="w-full!"
-                  placeholder={t(($) => $['account.changeEmail.codePlaceholder'], {
-                    ns: 'accountSettings',
-                  })}
-                  value={code}
-                  onValueChange={(value) => setCode(value)}
-                  autoComplete="one-time-code"
-                  maxLength={6}
-                />
-              </Field>
-              <div className="mt-3 space-y-2">
-                <Button
-                  disabled={code.length !== 6}
-                  className="w-full!"
-                  variant="primary"
-                  type="submit"
-                >
+                <Field name="code" className="pt-3">
+                  <FieldLabel>
+                    {t(($) => $['account.changeEmail.codeLabel'], { ns: 'accountSettings' })}
+                  </FieldLabel>
+                  <Input
+                    className="w-full!"
+                    placeholder={t(($) => $['account.changeEmail.codePlaceholder'], {
+                      ns: 'accountSettings',
+                    })}
+                    value={code}
+                    onValueChange={(value) => setCode(value)}
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                  />
+                </Field>
+              </DialogBody>
+              <DialogFooter className="flex-col items-stretch">
+                <Button disabled={code.length !== 6} variant="primary" type="submit">
                   {t(($) => $['account.changeEmail.changeTo'], {
                     ns: 'accountSettings',
                     email: mail,
                   })}
                 </Button>
-                <Button className="w-full!" onClick={onClose}>
+                <Button onClick={onClose}>
                   {t(($) => $['operation.cancel'], { ns: 'common' })}
                 </Button>
-              </div>
-              <div className="mt-3 flex items-center gap-1 system-xs-regular text-text-tertiary">
-                <span>
-                  {t(($) => $['account.changeEmail.resendTip'], { ns: 'accountSettings' })}
-                </span>
-                {time > 0 && (
+                <div className="flex items-center gap-1 system-xs-regular text-text-tertiary">
                   <span>
-                    {t(($) => $['account.changeEmail.resendCount'], {
-                      ns: 'accountSettings',
-                      count: time,
-                    })}
+                    {t(($) => $['account.changeEmail.resendTip'], { ns: 'accountSettings' })}
                   </span>
-                )}
-                {!time && (
-                  <button
-                    type="button"
-                    onClick={sendCodeToNewEmail}
-                    className="cursor-pointer rounded-sm system-xs-medium text-text-accent-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                  >
-                    {t(($) => $['account.changeEmail.resend'], { ns: 'accountSettings' })}
-                  </button>
-                )}
-              </div>
+                  {time > 0 && (
+                    <span>
+                      {t(($) => $['account.changeEmail.resendCount'], {
+                        ns: 'accountSettings',
+                        count: time,
+                      })}
+                    </span>
+                  )}
+                  {!time && (
+                    <button
+                      type="button"
+                      onClick={sendCodeToNewEmail}
+                      className="cursor-pointer rounded-sm system-xs-medium text-text-accent-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                    >
+                      {t(($) => $['account.changeEmail.resend'], { ns: 'accountSettings' })}
+                    </button>
+                  )}
+                </div>
+              </DialogFooter>
             </>
           )}
         </form>

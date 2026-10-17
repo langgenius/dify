@@ -23,32 +23,6 @@ vi.mock('@/app/components/datasets/documents/create-from-pipeline/data-source/st
   }),
 }))
 
-vi.mock('@/app/components/workflow/types', async () => {
-  const actual = await vi.importActual<typeof import('@/app/components/workflow/types')>(
-    '@/app/components/workflow/types',
-  )
-  return {
-    ...actual,
-    BlockEnum: {
-      ...actual.BlockEnum,
-      DataSource: 'data-source',
-    },
-  }
-})
-
-vi.mock('../../types', () => ({
-  TestRunStep: {
-    dataSource: 'dataSource',
-    documentProcessing: 'documentProcessing',
-  },
-}))
-
-vi.mock('@/models/datasets', () => ({
-  CrawlStep: {
-    init: 'init',
-  },
-}))
-
 describe('useTestRunSteps', () => {
   afterEach(() => {
     vi.clearAllMocks()
@@ -126,12 +100,12 @@ describe('useDatasourceOptions', () => {
     expect(result.current[0]).toEqual({
       label: 'Source A',
       value: 'ds-1',
-      data: expect.objectContaining({ type: 'data-source' }),
+      data: expect.objectContaining({ type: BlockEnum.DataSource }),
     })
     expect(result.current[1]).toEqual({
       label: 'Source B',
       value: 'ds-2',
-      data: expect.objectContaining({ type: 'data-source' }),
+      data: expect.objectContaining({ type: BlockEnum.DataSource }),
     })
   })
 

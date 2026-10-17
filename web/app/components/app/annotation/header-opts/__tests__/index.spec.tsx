@@ -15,7 +15,11 @@ const mockCSVDownloader = vi.fn(({ children }) => <>{children}</>)
 
 vi.mock('react-papaparse', () => ({
   useCSVDownloader: () => ({
-    CSVDownloader: (props: any) => mockCSVDownloader(props),
+    CSVDownloader: (
+      props: ComponentProps<
+        ReturnType<typeof import('react-papaparse').useCSVDownloader>['CSVDownloader']
+      >,
+    ) => mockCSVDownloader(props),
     Type: { Link: 'link' },
   }),
   jsonToCSV: (data: unknown) => mockJsonToCSV(data),

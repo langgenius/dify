@@ -1,6 +1,7 @@
 'use client'
+import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ComboboxChangeEventDetails } from '@langgenius/dify-ui/combobox'
-import type { ParentMode, SimpleDocumentDetail } from '@/models/datasets'
+import type { ParentMode } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Combobox,
@@ -26,9 +27,12 @@ import FileIcon from '../document-file-icon'
 import DocumentList from './document-list'
 
 // The list query and the document detail query both describe the picked document.
-export type PickerDocument = Pick<SimpleDocumentDetail, 'id' | 'doc_form' | 'data_source_info'> & {
+export type PickerDocument = Pick<
+  DocumentWithSegmentsResponse,
+  'id' | 'doc_form' | 'data_source_info'
+> & {
   name?: string | null
-  data_source_detail_dict?: SimpleDocumentDetail['data_source_detail_dict'] | null
+  data_source_detail_dict?: DocumentWithSegmentsResponse['data_source_detail_dict'] | null
 }
 
 type Props = Readonly<{

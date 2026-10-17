@@ -1,16 +1,16 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { OperationKey } from '@orpc/tanstack-query'
-import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { QueryClient } from '@tanstack/react-query'
 import { act, waitFor } from '@testing-library/react'
 import {
   ChunkingMode,
-  DatasetPermission,
   DataSourceType,
   RerankingModeEnum,
   WeightedScoreEnum,
 } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { consoleQuery } from '@/service/console'
 import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
 import { renderHook as renderHookWithConsoleState } from '@/test/console/render'
@@ -61,12 +61,12 @@ vi.mock('@/features/system-features/state', async () => {
   }))
 })
 
-const createDefaultMockDataset = (): DataSet => ({
+const createDefaultMockDataset = (): DatasetDetailWithPartialMembersResponse => ({
   ...createDatasetFixture(),
   id: 'dataset-1',
   name: 'Test Dataset',
   description: 'Test description',
-  permission: DatasetPermission.onlyMe,
+  permission: PermissionLevel.onlyMe,
   icon_info: {
     icon_type: 'emoji',
     icon: '📚',
@@ -118,11 +118,14 @@ const createDefaultMockDataset = (): DataSet => ({
   permission_keys: [DatasetACLPermission.Edit],
 })
 
-let mockDataset: DataSet = createDefaultMockDataset()
+let mockDataset: DatasetDetailWithPartialMembersResponse = createDefaultMockDataset()
 
 vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (
-    selector: (state: { dataset: DataSet | null; mutateDatasetRes: () => void }) => unknown,
+    selector: (state: {
+      dataset: DatasetDetailWithPartialMembersResponse | null
+      mutateDatasetRes: () => void
+    }) => unknown,
   ) => {
     const state = {
       dataset: mockDataset,
@@ -135,11 +138,6 @@ vi.mock('@/context/dataset-detail', () => ({
 // Mock services
 vi.mock('@/service/datasets', () => ({
   updateDatasetSetting: vi.fn().mockResolvedValue({}),
-}))
-
-vi.mock('@/app/components/datasets/common/check-rerank-model', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/app/components/datasets/common/check-rerank-model')>()),
-  isReRankModelSelected: () => true,
 }))
 
 vi.mock('@/app/notifications', () => ({
@@ -161,7 +159,7 @@ describe('useFormState', () => {
 
       expect(result.current.name).toBe('Test Dataset')
       expect(result.current.description).toBe('Test description')
-      expect(result.current.permission).toBe(DatasetPermission.onlyMe)
+      expect(result.current.permission).toBe(PermissionLevel.onlyMe)
       expect(result.current.indexMethod).toBe(IndexingType.QUALIFIED)
       expect(result.current.keywordNumber).toBe(10)
     })
@@ -236,10 +234,10 @@ describe('useFormState', () => {
       const { result } = renderHook(() => useFormState(mockDataset))
 
       act(() => {
-        result.current.setPermission(DatasetPermission.allTeamMembers)
+        result.current.setPermission(PermissionLevel.allTeamMembers)
       })
 
-      expect(result.current.permission).toBe(DatasetPermission.allTeamMembers)
+      expect(result.current.permission).toBe(PermissionLevel.allTeamMembers)
     })
 
     it('should update indexMethod when setIndexMethod is called', () => {
@@ -444,7 +442,7 @@ describe('useFormState', () => {
         body: expect.objectContaining({
           name: 'Test Dataset',
           description: 'Test description',
-          permission: DatasetPermission.onlyMe,
+          permission: PermissionLevel.onlyMe,
         }),
       })
     })
@@ -557,7 +555,7 @@ describe('useFormState', () => {
       const { result } = renderHook(() => useFormState(mockDataset))
 
       act(() => {
-        result.current.setPermission(DatasetPermission.partialMembers)
+        result.current.setPermission(PermissionLevel.partialMembers)
         result.current.setSelectedMemberIDs(['user-1', 'user-2'])
       })
 
@@ -635,6 +633,7 @@ describe('useFormState', () => {
       const configWithWeights: RetrievalConfig = {
         ...result.current.retrievalConfig,
         search_method: RETRIEVE_METHOD.hybrid,
+        reranking_mode: RerankingModeEnum.WeightedScore,
         weights: {
           weight_type: WeightedScoreEnum.Customized,
           vector_setting: {
@@ -906,7 +905,14 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
           },
         }))()
       if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
-      return { data: [] }
+      return {
+        data: [
+          {
+            provider: 'langgenius/xinference/xinference',
+            models: [{ model: 'bge-reranker-v2-m3', features: [] }],
+          },
+        ],
+      }
     },
   }
 })

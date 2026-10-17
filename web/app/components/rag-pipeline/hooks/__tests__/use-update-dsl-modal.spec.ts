@@ -13,7 +13,7 @@ class MockFileReader {
     this.onload?.call(this as unknown as FileReader, event)
   }
 }
-vi.stubGlobal('FileReader', MockFileReader as unknown as typeof FileReader)
+vi.stubGlobal('FileReader', MockFileReader as typeof FileReader)
 
 const toastMocks = vi.hoisted(() => {
   const call = vi.fn()
@@ -64,27 +64,22 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/utils', () => ({
-  initialNodes: (nodes: unknown[]) => nodes,
-  initialEdges: (edges: unknown[]) => edges,
-}))
-
-vi.mock('@/app/components/workflow/constants', () => ({
-  WORKFLOW_DATA_UPDATE: 'WORKFLOW_DATA_UPDATE',
-}))
-
 vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
   usePluginDependencies: () => ({
     handleCheckPluginDependencies: mockHandleCheckPluginDependencies,
   }),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'rag.pipelines.imports.post': () => ({ mutateAsync: mockImportDSL }),
-    'rag.pipelines.imports.byImportId.confirm.post': () => ({ mutateAsync: mockImportDSLConfirm }),
-  })
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.imports.post': (input) => mockImportDSL(input),
+      'rag.pipelines.imports.byImportId.confirm.post': (input) => mockImportDSLConfirm(input),
+    }),
+  }
 })
 
 vi.mock('@/service/workflow', () => ({
@@ -188,7 +183,7 @@ describe('useUpdateDSLModal', () => {
       })
 
       await act(async () => {
-        await (result.current.handleImport as unknown as AsyncFn)()
+        await (result.current.handleImport as AsyncFn)()
       })
 
       expect(mockImportDSL).toHaveBeenCalledWith({
@@ -204,7 +199,7 @@ describe('useUpdateDSLModal', () => {
       const { result } = renderUpdateDSLModal()
 
       await act(async () => {
-        await (result.current.handleImport as unknown as AsyncFn)()
+        await (result.current.handleImport as AsyncFn)()
       })
 
       expect(mockImportDSL).not.toHaveBeenCalled()
@@ -217,7 +212,7 @@ describe('useUpdateDSLModal', () => {
       })
 
       await act(async () => {
-        await (result.current.handleImport as unknown as AsyncFn)()
+        await (result.current.handleImport as AsyncFn)()
       })
 
       expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
@@ -230,7 +225,7 @@ describe('useUpdateDSLModal', () => {
       })
 
       await act(async () => {
-        await (result.current.handleImport as unknown as AsyncFn)()
+        await (result.current.handleImport as AsyncFn)()
       })
 
       expect(mockOnImport).toHaveBeenCalled()
@@ -243,7 +238,7 @@ describe('useUpdateDSLModal', () => {
       })
 
       await act(async () => {
-        await (result.current.handleImport as unknown as AsyncFn)()
+        await (result.current.handleImport as AsyncFn)()
       })
 
       expect(mockOnCancel).toHaveBeenCalled()
@@ -256,7 +251,7 @@ describe('useUpdateDSLModal', () => {
       })
 
       await act(async () => {
-        await (result.current.handleImport as unknown as AsyncFn)()
+        await (result.current.handleImport as AsyncFn)()
       })
 
       expect(mockEmit).toHaveBeenCalled()
@@ -269,7 +264,7 @@ describe('useUpdateDSLModal', () => {
       })
 
       await act(async () => {
-        await (result.current.handleImport as unknown as AsyncFn)()
+        await (result.current.handleImport as AsyncFn)()
       })
 
       expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('test-pipeline-id', true)
@@ -288,7 +283,7 @@ describe('useUpdateDSLModal', () => {
       })
 
       await act(async () => {
-        await (result.current.handleImport as unknown as AsyncFn)()
+        await (result.current.handleImport as AsyncFn)()
       })
 
       expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }))
@@ -311,7 +306,7 @@ describe('useUpdateDSLModal', () => {
       })
 
       await act(async () => {
-        await (result.current.handleImport as unknown as AsyncFn)()
+        await (result.current.handleImport as AsyncFn)()
         await vi.advanceTimersByTimeAsync(350)
       })
 
@@ -342,7 +337,7 @@ describe('useUpdateDSLModal', () => {
       })
 
       await act(async () => {
-        await (result.current.handleImport as unknown as AsyncFn)()
+        await (result.current.handleImport as AsyncFn)()
         await vi.advanceTimersByTimeAsync(350)
       })
 
@@ -368,7 +363,7 @@ describe('useUpdateDSLModal', () => {
       })
 
       await act(async () => {
-        await (result.current.handleImport as unknown as AsyncFn)()
+        await (result.current.handleImport as AsyncFn)()
       })
 
       expect(toastMocks.call).toHaveBeenCalledWith({
@@ -386,7 +381,7 @@ describe('useUpdateDSLModal', () => {
       })
 
       await act(async () => {
-        await (result.current.handleImport as unknown as AsyncFn)()
+        await (result.current.handleImport as AsyncFn)()
       })
 
       expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
@@ -413,7 +408,7 @@ describe('useUpdateDSLModal', () => {
       })
 
       await act(async () => {
-        await (result.current.handleImport as unknown as AsyncFn)()
+        await (result.current.handleImport as AsyncFn)()
       })
 
       expect(toastMocks.call).toHaveBeenCalledWith({
@@ -435,7 +430,7 @@ describe('useUpdateDSLModal', () => {
       })
 
       await act(async () => {
-        await (result.current.handleImport as unknown as AsyncFn)()
+        await (result.current.handleImport as AsyncFn)()
       })
 
       expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
@@ -459,7 +454,7 @@ describe('useUpdateDSLModal', () => {
       })
 
       await act(async () => {
-        await (result.current.handleImport as unknown as AsyncFn)()
+        await (result.current.handleImport as AsyncFn)()
         await vi.advanceTimersByTimeAsync(350)
       })
 
@@ -478,7 +473,7 @@ describe('useUpdateDSLModal', () => {
       await setupPendingState(result)
 
       await act(async () => {
-        await (result.current.onUpdateDSLConfirm as unknown as AsyncFn)()
+        await (result.current.onUpdateDSLConfirm as AsyncFn)()
       })
 
       expect(mockImportDSLConfirm).toHaveBeenCalledWith({ params: { import_id: 'import-id' } })
@@ -494,7 +489,7 @@ describe('useUpdateDSLModal', () => {
       await setupPendingState(result)
 
       await act(async () => {
-        await (result.current.onUpdateDSLConfirm as unknown as AsyncFn)()
+        await (result.current.onUpdateDSLConfirm as AsyncFn)()
       })
 
       expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
@@ -511,7 +506,7 @@ describe('useUpdateDSLModal', () => {
       await setupPendingState(result)
 
       await act(async () => {
-        await (result.current.onUpdateDSLConfirm as unknown as AsyncFn)()
+        await (result.current.onUpdateDSLConfirm as AsyncFn)()
       })
 
       expect(mockOnImport).toHaveBeenCalled()
@@ -528,7 +523,7 @@ describe('useUpdateDSLModal', () => {
       await setupPendingState(result)
 
       await act(async () => {
-        await (result.current.onUpdateDSLConfirm as unknown as AsyncFn)()
+        await (result.current.onUpdateDSLConfirm as AsyncFn)()
       })
 
       expect(toastMocks.call).toHaveBeenCalledWith({
@@ -544,7 +539,7 @@ describe('useUpdateDSLModal', () => {
       await setupPendingState(result)
 
       await act(async () => {
-        await (result.current.onUpdateDSLConfirm as unknown as AsyncFn)()
+        await (result.current.onUpdateDSLConfirm as AsyncFn)()
       })
 
       expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
@@ -569,7 +564,7 @@ describe('useUpdateDSLModal', () => {
       await setupPendingState(result)
 
       await act(async () => {
-        await (result.current.onUpdateDSLConfirm as unknown as AsyncFn)()
+        await (result.current.onUpdateDSLConfirm as AsyncFn)()
       })
 
       expect(toastMocks.call).toHaveBeenCalledWith({
@@ -588,7 +583,7 @@ describe('useUpdateDSLModal', () => {
       await setupPendingState(result)
 
       await act(async () => {
-        await (result.current.onUpdateDSLConfirm as unknown as AsyncFn)()
+        await (result.current.onUpdateDSLConfirm as AsyncFn)()
       })
 
       expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
@@ -598,7 +593,7 @@ describe('useUpdateDSLModal', () => {
       const { result } = renderUpdateDSLModal()
 
       await act(async () => {
-        await (result.current.onUpdateDSLConfirm as unknown as AsyncFn)()
+        await (result.current.onUpdateDSLConfirm as AsyncFn)()
       })
 
       expect(mockImportDSLConfirm).not.toHaveBeenCalled()
@@ -616,7 +611,7 @@ describe('useUpdateDSLModal', () => {
       })
 
       await act(async () => {
-        await (result.current.handleImport as unknown as AsyncFn)()
+        await (result.current.handleImport as AsyncFn)()
       })
 
       expect(mockOnCancel).toHaveBeenCalled()

@@ -1,15 +1,15 @@
 import type { Mock } from 'vite-plus/test'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render as renderWithoutUrlState, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { checkJinaReaderTaskStatus, createJinaReaderTask } from '@/service/datasets'
 import { createHttpError } from '@/service/http-error'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { sleep } from '@/utils'
 import JinaReader from '../index'
 
-const { mockRouterPush, mockSetSettingsDestination } = vi.hoisted(() => ({
+const { mockRouterPush } = vi.hoisted(() => ({
   mockRouterPush: vi.fn(),
-  mockSetSettingsDestination: vi.fn(),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -26,11 +26,6 @@ vi.mock('@/service/datasets', () => ({
 vi.mock('@/utils', () => ({
   sleep: vi.fn(() => Promise.resolve()),
 }))
-
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
-})
 
 // Mock doc link context
 vi.mock('@/context/i18n', () => ({
@@ -67,6 +62,9 @@ const createDefaultProps = (overrides: Partial<Parameters<typeof JinaReader>[0]>
   onCrawlOptionsChange: vi.fn(),
   ...overrides,
 })
+
+const onUrlUpdate = vi.fn()
+const render = createNuqsTestRenderer(renderWithoutUrlState, () => ({ onUrlUpdate }))
 
 describe('JinaReader', () => {
   beforeEach(() => {
@@ -399,14 +397,12 @@ describe('JinaReader', () => {
       const configButton = screen.getByText('datasetCreation.stepOne.website.configureJinaReader')
       fireEvent.click(configButton)
 
-      expect(mockSetSettingsDestination).toHaveBeenCalledTimes(1)
       expect(mockRouterPush).not.toHaveBeenCalled()
 
       // Rerender and click again
       rerender(<JinaReader {...props} />)
       fireEvent.click(configButton)
 
-      expect(mockSetSettingsDestination).toHaveBeenCalledTimes(2)
       expect(mockRouterPush).not.toHaveBeenCalled()
     })
 
@@ -445,7 +441,9 @@ describe('JinaReader', () => {
       const configButton = screen.getByText('datasetCreation.stepOne.website.configureJinaReader')
       await userEvent.click(configButton)
 
-      expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
+      await waitFor(() =>
+        expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('data-source'),
+      )
       expect(mockRouterPush).not.toHaveBeenCalled()
     })
 

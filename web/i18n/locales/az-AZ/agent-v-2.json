@@ -363,5 +363,6 @@
   "agentDetail.versionHistory.filter": "Versiyaları süzgəcdən keçir",
   "agentDetail.versionHistory.restore": "Bərpa et",
   "agentDetail.versionHistory.versionName": "Versiya {{version}}",
-  "agentDetail.versionHistory.viewOnly": "Yalnız baxış"
+  "agentDetail.versionHistory.viewOnly": "Yalnız baxış",
+  "exportAgent": "Agent-i ixrac et"
 }

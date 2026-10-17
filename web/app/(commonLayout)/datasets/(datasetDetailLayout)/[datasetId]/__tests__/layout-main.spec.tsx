@@ -1,6 +1,7 @@
 import { screen, waitFor } from '@testing-library/react'
 import { createHttpError } from '@/service/http-error'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { renderWithConsoleQuery as renderWithConsoleQueryWithoutUrlState } from '@/test/console/query-data'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { DatasetACLPermission } from '@/utils/permission'
 import CreateDocumentsPage from '../documents/create/page'
 import DatasetDetailLayout from '../layout-main'
@@ -12,6 +13,12 @@ const mockNavigation = vi.hoisted(() => ({
   useRouter: vi.fn(),
 }))
 
+const onUrlUpdate = vi.fn()
+const renderWithConsoleQuery = createNuqsTestRenderer(
+  renderWithConsoleQueryWithoutUrlState,
+  () => ({ onUrlUpdate }),
+)
+
 const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
   renderWithConsoleQuery(ui, {
     systemFeatures: {
@@ -22,11 +29,6 @@ const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
 vi.mock('@/next/navigation', () => mockNavigation)
 
 const { mockDatasetDetailQuery } = vi.hoisted(() => ({ mockDatasetDetailQuery: vi.fn() }))
-
-vi.mock('nuqs', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('nuqs')>()),
-  useQueryState: () => [null, vi.fn()],
-}))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useDefaultModel: () => ({ data: undefined }),

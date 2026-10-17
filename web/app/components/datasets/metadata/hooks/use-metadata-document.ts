@@ -1,5 +1,5 @@
+import type { DocumentDetailResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { BuiltInMetadataItem, MetadataItemWithValue } from '../types'
-import type { FullDocumentDetail } from '@/models/datasets'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { get } from 'es-toolkit/compat'
 import { useCallback, useState } from 'react'
@@ -14,7 +14,7 @@ import useCheckMetadataName from './use-check-metadata-name'
 type Props = Readonly<{
   datasetId: string
   documentId: string
-  docDetail: FullDocumentDetail
+  docDetail: DocumentDetailResponse
 }>
 const useMetadataDocument = ({ datasetId, documentId, docDetail }: Props) => {
   const { t } = useTranslation(['common'])

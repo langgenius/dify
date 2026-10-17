@@ -5,17 +5,6 @@ import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient } from '@/service/console'
 import ChangePasswordForm from '../page'
 
-const countdownState = vi.hoisted(() => ({
-  onEnd: undefined as (() => void) | undefined,
-}))
-
-vi.mock('ahooks', () => ({
-  useCountDown: ({ leftTime, onEnd }: { leftTime?: number; onEnd?: () => void }) => {
-    countdownState.onEnd = onEnd
-    return [leftTime ?? 0]
-  },
-}))
-
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(),
   useSearchParams: vi.fn(),
@@ -56,12 +45,12 @@ const encodedSigninUrl =
 
 const setSearchParams = (params: Record<string, string>) => {
   mockUseSearchParams.mockReturnValue(
-    new URLSearchParams(params) as unknown as ReturnType<typeof useSearchParams>,
+    new URLSearchParams(params) as ReturnType<typeof useSearchParams>,
   )
 }
 
 const completePasswordChange = async () => {
-  const user = userEvent.setup()
+  const user = userEvent.setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
   render(<ChangePasswordForm />)
 
   expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.changePassword')
@@ -80,7 +69,6 @@ const completePasswordChange = async () => {
 describe('Reset Password Set Password Page', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    countdownState.onEnd = undefined
     mockUseRouter.mockReturnValue({ replace: mockReplace } as unknown as ReturnType<
       typeof useRouter
     >)
@@ -161,10 +149,15 @@ describe('Reset Password Set Password Page', () => {
 
     it('should preserve redirect_url when the countdown returns to sign in automatically', async () => {
       setSearchParams({ token: 'reset-token', redirect_url: redirectUrl })
-      await completePasswordChange()
-
-      expect(countdownState.onEnd).toBeTypeOf('function')
-      act(() => countdownState.onEnd?.())
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      try {
+        await completePasswordChange()
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(5000)
+        })
+      } finally {
+        vi.useRealTimers()
+      }
 
       expect(mockReplace).toHaveBeenCalledWith(encodedSigninUrl)
     })

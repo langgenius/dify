@@ -211,11 +211,11 @@ export function isMermaidCodeComplete(code: string): boolean {
 /**
  * Helper to wait for DOM element with retry mechanism
  */
-export function waitForDOMElement(
-  callback: () => Promise<any>,
+export function waitForDOMElement<T>(
+  callback: () => Promise<T>,
   maxAttempts = 3,
   delay = 100,
-): Promise<any> {
+): Promise<T> {
   return new Promise((resolve, reject) => {
     let attempts = 0
     const tryRender = async () => {

@@ -181,14 +181,18 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.tools.builtin.get': () => ({ data: [] }),
-    'workspaces.current.tools.api.get': () => ({ data: [] }),
-    'workspaces.current.tools.mcp.get': () => ({ data: [] }),
-    'workspaces.current.tools.workflow.get': () => ({ data: [] }),
-  })
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.builtin.get': async () => [],
+      'workspaces.current.tools.api.get': async () => [],
+      'workspaces.current.tools.mcp.get': async () => [],
+      'workspaces.current.tools.workflow.get': async () => [],
+    }),
+  }
 })
 
 vi.mock('@/service/workflow', () => ({
@@ -291,34 +295,6 @@ vi.mock('../comment/thread', () => ({
 
 vi.mock('../hooks/use-workflow-comment', () => ({
   useWorkflowComment: () => workflowCommentState,
-}))
-
-vi.mock('../base/confirm', () => ({
-  default: ({
-    isShow,
-    title,
-    desc,
-    onConfirm,
-    onCancel,
-  }: {
-    isShow: boolean
-    title?: string
-    desc?: string
-    onConfirm: () => void
-    onCancel: () => void
-  }) =>
-    isShow ? (
-      <div role="alertdialog" data-testid="confirm-dialog">
-        {title && <div>{title}</div>}
-        {desc && <div>{desc}</div>}
-        <button type="button" onClick={onConfirm}>
-          common.operation.confirm
-        </button>
-        <button type="button" onClick={onCancel}>
-          common.operation.cancel
-        </button>
-      </div>
-    ) : null,
 }))
 
 vi.mock('../candidate-node', () => ({
@@ -937,11 +913,4 @@ describe('Workflow edge event wiring', () => {
       window.dispatchEvent(gestureEvent)
     })
   })
-})
-
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => false) }
 })

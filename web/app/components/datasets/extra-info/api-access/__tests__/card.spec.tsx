@@ -28,14 +28,17 @@ vi.mock('@/context/dataset-detail', () => ({
     }),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'datasets.byDatasetId.apiKeys.byStatus.post': () => ({
-      mutateAsync: (input: { params: { status: string } }) =>
-        input.params.status === 'enable' ? mockEnableApi(input) : mockDisableApi(input),
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.apiKeys.byStatus.post': (input) =>
+        ((input: { params: { status: string } }) =>
+          input.params.status === 'enable' ? mockEnableApi(input) : mockDisableApi(input))(input),
     }),
-  })
+  }
 })
 
 vi.mock('@/hooks/use-api-access-url', () => ({

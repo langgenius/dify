@@ -1,12 +1,9 @@
 'use client'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { Member } from '@/models/common'
-import type {
-  DataSet,
-  IconInfo,
-  SummaryIndexSetting as SummaryIndexSettingType,
-} from '@/models/datasets'
+import type { IconInfo, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -21,7 +18,7 @@ import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { DatasetPermission } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { consoleQuery } from '@/service/console'
 import { updateDatasetSetting } from '@/service/datasets'
 import { getDatasetACLCapabilities } from '@/utils/permission'
@@ -35,7 +32,7 @@ const DEFAULT_APP_ICON: IconInfo = {
   icon_url: '',
 }
 
-export const useFormState = (currentDataset: DataSet) => {
+export const useFormState = (currentDataset: DatasetDetailWithPartialMembersResponse) => {
   const { t } = useTranslation(['appDebug', 'common', 'datasetSettings'])
   const mutateDatasets = useDatasetDetailContextWithSelector((state) => state.mutateDatasetRes)
   const { data: currentUserId } = useSuspenseQuery({
@@ -70,7 +67,7 @@ export const useFormState = (currentDataset: DataSet) => {
   )
 
   // Permission state
-  const [permission, setPermission] = useState<DatasetPermission | undefined>(
+  const [permission, setPermission] = useState<PermissionLevel | undefined>(
     currentDataset.permission,
   )
   const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(
@@ -135,7 +132,7 @@ export const useFormState = (currentDataset: DataSet) => {
   }, [queryClient])
 
   // Derive member list from API data
-  const memberList = useMemo<Member[]>(() => {
+  const memberList = useMemo<AccountWithRoleResponse[]>(() => {
     return membersData?.accounts ?? []
   }, [membersData])
 
@@ -222,7 +219,7 @@ export const useFormState = (currentDataset: DataSet) => {
         }
       }
 
-      if (permission === DatasetPermission.partialMembers) {
+      if (permission === PermissionLevel.partialMembers) {
         body.partial_member_list = selectedMemberIDs.map((id) => {
           return {
             user_id: id,

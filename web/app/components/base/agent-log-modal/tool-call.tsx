@@ -1,6 +1,6 @@
 'use client'
+import type { AgentToolCallResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
-import type { ToolCall } from '@/models/log'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiCheckboxCircleLine, RiErrorWarningLine } from '@remixicon/react'
 import { useState } from 'react'
@@ -10,7 +10,7 @@ import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 
-const getToolIcon = (icon: ToolCall['tool_icon']) => {
+const getToolIcon = (icon: AgentToolCallResponse['tool_icon']) => {
   if (typeof icon === 'string') return icon
   if (icon?.content !== undefined && icon.background !== undefined)
     return { content: icon.content, background: icon.background }
@@ -18,7 +18,7 @@ const getToolIcon = (icon: ToolCall['tool_icon']) => {
 }
 
 type Props = Readonly<{
-  toolCall: Partial<ToolCall> & Pick<ToolCall, 'status'>
+  toolCall: Partial<AgentToolCallResponse> & Pick<AgentToolCallResponse, 'status'>
   isLLM: boolean
   isFinal?: boolean
   tokens?: number

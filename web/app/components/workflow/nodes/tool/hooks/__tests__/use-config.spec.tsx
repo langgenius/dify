@@ -13,8 +13,6 @@ const queryClientWrapper = createQueryClientWrapper(queryClient)
 const mockSetInputs = vi.hoisted(() => vi.fn())
 const mockSetControlPromptEditorRerenderKey = vi.hoisted(() => vi.fn())
 const mockUseCurrentToolCollection = vi.hoisted(() => vi.fn())
-const mockGetConfiguredValue = vi.hoisted(() => vi.fn())
-const mockToolParametersToFormSchemas = vi.hoisted(() => vi.fn())
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useLanguage: () => 'en_US',
@@ -35,11 +33,6 @@ vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
     inputs: data,
     setInputs: mockSetInputs,
   }),
-}))
-
-vi.mock('@/app/components/tools/utils/to-form-schema', () => ({
-  getConfiguredValue: (...args: unknown[]) => mockGetConfiguredValue(...args),
-  toolParametersToFormSchemas: (...args: unknown[]) => mockToolParametersToFormSchemas(...args),
 }))
 
 vi.mock('@/service/tools', () => ({
@@ -77,7 +70,7 @@ const currentTool = {
   name: 'google_search',
   parameters: [
     {
-      variable: 'query',
+      name: 'query',
       form: 'llm',
       label: { en_US: 'Query' },
       type: 'string',
@@ -85,7 +78,7 @@ const currentTool = {
       default: 'default query',
     },
     {
-      variable: 'api_key',
+      name: 'api_key',
       form: 'credential',
       label: { en_US: 'API Key' },
       type: 'string',
@@ -99,14 +92,14 @@ const currentToolWithoutDefaults = {
   name: 'google_search',
   parameters: [
     {
-      variable: 'query',
+      name: 'query',
       form: 'llm',
       label: { en_US: 'Query' },
       type: 'string',
       required: true,
     },
     {
-      variable: 'api_key',
+      name: 'api_key',
       form: 'credential',
       label: { en_US: 'API Key' },
       type: 'string',
@@ -133,19 +126,6 @@ describe('useConfig', () => {
         tools: [currentTool],
       },
     })
-
-    mockToolParametersToFormSchemas.mockImplementation((parameters) => parameters)
-    mockGetConfiguredValue.mockImplementation(
-      (_value, schema: Array<{ variable: string; default?: string }>) => {
-        return schema.reduce<Record<string, ReturnType<typeof createToolVarInput>>>(
-          (acc, item) => {
-            acc[item.variable] = createToolVarInput(item.default || '')
-            return acc
-          },
-          {} as Record<string, ReturnType<typeof createToolVarInput>>,
-        )
-      },
-    )
   })
 
   afterEach(() => {
@@ -204,7 +184,6 @@ describe('useConfig', () => {
           tools: [currentToolWithoutDefaults],
         },
       })
-      mockGetConfiguredValue.mockReturnValue({})
 
       renderHook(() => useConfig('tool-node-1', createNodeData()), { wrapper: queryClientWrapper })
 

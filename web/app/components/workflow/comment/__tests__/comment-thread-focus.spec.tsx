@@ -1,4 +1,8 @@
-import type { UserProfile, WorkflowCommentDetail, WorkflowCommentList } from '../types'
+import type {
+  WorkflowCommentBasic,
+  WorkflowCommentDetail,
+} from '@dify/contracts/api/console/apps/types.gen'
+import type { UserProfile } from '../types'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
@@ -33,7 +37,7 @@ vi.mock('../../store', () => ({
   useWorkflowStore: () => ({ getState: () => storeState }),
 }))
 
-const createComment = (): WorkflowCommentDetail & WorkflowCommentList => ({
+const createComment = (): WorkflowCommentDetail & WorkflowCommentBasic => ({
   id: 'comment-1',
   position_x: 120,
   position_y: 80,

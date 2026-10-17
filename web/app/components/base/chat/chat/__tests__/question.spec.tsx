@@ -9,9 +9,6 @@ import { ChatContextProvider } from '../context-provider'
 import Question from '../question'
 
 // Global Mocks
-vi.mock('@react-aria/interactions', () => ({
-  useFocusVisible: () => ({ isFocusVisible: false }),
-}))
 vi.mock('../content-switch', () => ({
   default: ({
     count,

@@ -1,5 +1,6 @@
 import { ORPCError } from '@orpc/client'
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { consoleClient } from '@/service/console'
@@ -112,8 +113,8 @@ vi.mock('@/service/workflow', () => ({
   singleNodeRun: vi.fn(),
 }))
 
-vi.mock('@/service/console', async () => {
-  const { consoleOperationStub } = await import('@/test/console/operation-hooks')
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   return {
     consoleClient: {
       apps: {
@@ -122,18 +123,7 @@ vi.mock('@/service/console', async () => {
         },
       },
     },
-    consoleQuery: {
-      workspaces: {
-        current: {
-          tools: {
-            builtin: { get: consoleOperationStub('workspaces.current.tools.builtin.get') },
-            api: { get: consoleOperationStub('workspaces.current.tools.api.get') },
-            workflow: { get: consoleOperationStub('workspaces.current.tools.workflow.get') },
-            mcp: { get: consoleOperationStub('workspaces.current.tools.mcp.get') },
-          },
-        },
-      },
-    },
+    consoleQuery: actual.consoleQuery,
   }
 })
 
@@ -149,79 +139,29 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
-vi.mock('../components/variable/use-match-schema-type', () => ({
-  default: () => ({
-    schemaTypeDefinitions: [],
-  }),
-}))
-
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/use-match-schema-type', () => ({
   default: () => ({
     schemaTypeDefinitions: [],
   }),
 }))
 
-vi.mock('@/app/components/workflow/nodes/assigner/default', () => ({
-  default: {},
-}))
-vi.mock('@/app/components/workflow/nodes/code/default', () => ({
-  default: {},
-}))
-vi.mock('@/app/components/workflow/nodes/document-extractor/default', () => ({
-  default: {},
-}))
-vi.mock('@/app/components/workflow/nodes/http/default', () => ({
-  default: {},
-}))
-vi.mock('@/app/components/workflow/nodes/human-input/default', () => ({
-  default: {},
-}))
-vi.mock('@/app/components/workflow/nodes/if-else/default', () => ({
-  default: {},
-}))
-vi.mock('@/app/components/workflow/nodes/iteration/default', () => ({
-  default: {},
-}))
-vi.mock('@/app/components/workflow/nodes/knowledge-retrieval/default', () => ({
-  default: {},
-}))
-vi.mock('@/app/components/workflow/nodes/llm/default', () => ({
-  default: {},
-}))
-vi.mock('@/app/components/workflow/nodes/loop/default', () => ({
-  default: {},
-}))
-vi.mock('@/app/components/workflow/nodes/parameter-extractor/default', () => ({
-  default: {},
-}))
-vi.mock('@/app/components/workflow/nodes/question-classifier/default', () => ({
-  default: {},
-}))
-vi.mock('@/app/components/workflow/nodes/template-transform/default', () => ({
-  default: {},
-}))
-vi.mock('@/app/components/workflow/nodes/tool/default', () => ({
-  default: {},
-}))
-vi.mock('@/app/components/workflow/nodes/variable-assigner/default', () => ({
-  default: {},
-}))
-
 const renderUseOneStepRun = (type: BlockEnum = BlockEnum.IfElse) =>
-  renderHook(() =>
-    useOneStepRun({
-      id: 'if-else-node',
-      resource: { kind: 'app', appId: 'app-id', mode: 'workflow' },
+  renderHook(
+    () =>
+      useOneStepRun({
+        id: 'if-else-node',
+        resource: { kind: 'app', appId: 'app-id', mode: 'workflow' },
 
-      data: {
-        type,
-        title: 'IF/ELSE',
-        desc: '',
-      },
-      defaultRunInputData: {},
-      isRunAfterSingleRun: false,
-      isPaused: false,
-    }),
+        data: {
+          type,
+          title: 'IF/ELSE',
+          desc: '',
+        },
+        defaultRunInputData: {},
+        isRunAfterSingleRun: false,
+        isPaused: false,
+      }),
+    { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
   )
 
 describe('useOneStepRun single-run input vars', () => {
@@ -335,11 +275,4 @@ describe('useOneStepRun single-run input vars', () => {
     expect(reportError).toHaveBeenCalledWith(error)
     expect(reportError.mock.calls[0]?.[0]).toBe(error)
   })
-})
-
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => false) }
 })

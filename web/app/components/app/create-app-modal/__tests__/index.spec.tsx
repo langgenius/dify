@@ -19,15 +19,6 @@ const mockConsoleState = vi.hoisted(() => ({
 const mockConsoleStateReader = vi.hoisted(() => vi.fn())
 const mockCreateApp = vi.hoisted(() => vi.fn())
 
-vi.mock('ahooks', () => ({
-  useDebounceFn: <T extends (...args: unknown[]) => unknown>(fn: T) => {
-    const run = (...args: Parameters<T>) => fn(...args)
-    const cancel = vi.fn()
-    const flush = vi.fn()
-    return { run, cancel, flush }
-  },
-  useHover: () => false,
-}))
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(),
   useParams: () => ({}),

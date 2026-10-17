@@ -9,14 +9,6 @@ vi.mock('../../hooks', () => ({
   useLanguage: () => 'en_US',
 }))
 
-vi.mock('@/app/components/base/tag-input', () => ({
-  default: ({ onChange }: { onChange: (v: string[]) => void }) => (
-    <button onClick={() => onChange(['tag1', 'tag2'])} data-testid="tag-input">
-      Tag
-    </button>
-  ),
-}))
-
 let promptEditorOnChange: ((text: string) => void) | undefined
 let capturedWorkflowNodesMap: Record<string, { title: string; type: string }> | undefined
 
@@ -193,7 +185,8 @@ describe('ParameterItem', () => {
     expect(screen.getByText('a'))!.toBeInTheDocument()
   })
 
-  it('should render tag input for tag type', () => {
+  it('adds a stop sequence on Tab without replacing existing sequences', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
     render(
       <ParameterItem
@@ -206,8 +199,9 @@ describe('ParameterItem', () => {
       />,
     )
     expect(screen.getByText('placeholder'))!.toBeInTheDocument()
-    fireEvent.click(screen.getByTestId('tag-input'))
-    expect(onChange).toHaveBeenCalledWith(['tag1', 'tag2'])
+    await user.type(screen.getByRole('textbox'), 'STOP')
+    await user.tab()
+    expect(onChange).toHaveBeenCalledWith(['a', 'STOP'])
   })
 
   it('should render boolean radios and update value on click', () => {

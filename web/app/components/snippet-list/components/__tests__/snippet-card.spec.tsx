@@ -1,13 +1,50 @@
 import type { SnippetListItem } from '@/types/snippet'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { render } from '@/test/console/render'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import SnippetCard from '../snippet-card'
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.members.get': () => ({
-      data: {
+const {
+  deleteSnippet,
+  mockDownloadBlob,
+  exportSnippet,
+  mockOnRefresh,
+  mockRenderTagSelector,
+  mockWorkspacePermissionKeys,
+  mockToastError,
+  mockToastSuccess,
+  updateSnippet,
+} = vi.hoisted(() => ({
+  deleteSnippet: vi.fn(),
+  mockDownloadBlob: vi.fn(),
+  exportSnippet: vi.fn(),
+  mockWorkspacePermissionKeys: vi.fn(() => ['snippets.create_and_modify', 'snippets.management']),
+  mockOnRefresh: vi.fn(),
+  mockRenderTagSelector: vi.fn(),
+  mockToastError: vi.fn(),
+  mockToastSuccess: vi.fn(),
+  updateSnippet: vi.fn(),
+}))
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: {
+      workspaces: {
+        current: {
+          customizedSnippets: {
+            bySnippetId: {
+              patch: updateSnippet,
+              delete: deleteSnippet,
+              export: { get: exportSnippet },
+            },
+          },
+        },
+      },
+    },
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.members.get': async () => ({
         accounts: [
           {
             id: 'creator-id',
@@ -32,32 +69,10 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
             status: 'active',
           },
         ],
-      },
+      }),
     }),
-  })
+  }
 })
-
-const {
-  mockDeleteMutate,
-  mockDownloadBlob,
-  mockExportMutateAsync,
-  mockOnRefresh,
-  mockRenderTagSelector,
-  mockWorkspacePermissionKeys,
-  mockToastError,
-  mockToastSuccess,
-  mockUpdateMutate,
-} = vi.hoisted(() => ({
-  mockDeleteMutate: vi.fn(),
-  mockDownloadBlob: vi.fn(),
-  mockExportMutateAsync: vi.fn(),
-  mockWorkspacePermissionKeys: vi.fn(() => ['snippets.create_and_modify', 'snippets.management']),
-  mockOnRefresh: vi.fn(),
-  mockRenderTagSelector: vi.fn(),
-  mockToastError: vi.fn(),
-  mockToastSuccess: vi.fn(),
-  mockUpdateMutate: vi.fn(),
-}))
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -71,20 +86,6 @@ vi.mock('@/context/permission-state', async () => {
     workspacePermissionKeys: mockWorkspacePermissionKeys(),
   }))
 })
-
-vi.mock('@/service/use-snippets', () => ({
-  useDeleteSnippetMutation: () => ({
-    mutate: mockDeleteMutate,
-    isPending: false,
-  }),
-  useExportSnippetMutation: () => ({
-    mutateAsync: mockExportMutateAsync,
-  }),
-  useUpdateSnippetMutation: () => ({
-    mutate: mockUpdateMutate,
-    isPending: false,
-  }),
-}))
 
 vi.mock('@/utils/time', () => ({
   formatTime: () => 'formatted-time',
@@ -145,6 +146,9 @@ const createSnippet = (overrides: Partial<SnippetListItem> = {}): SnippetListIte
 describe('SnippetCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    updateSnippet.mockReset().mockResolvedValue(createSnippet())
+    deleteSnippet.mockReset().mockResolvedValue({ result: 'success' })
+    exportSnippet.mockReset().mockResolvedValue('snippet-yaml')
     mockWorkspacePermissionKeys.mockReturnValue([
       'snippets.create_and_modify',
       'snippets.management',
@@ -152,21 +156,21 @@ describe('SnippetCard', () => {
   })
 
   describe('Rendering', () => {
-    it('should render updater name and updated time from member data', () => {
+    it('should render updater name and updated time from member data', async () => {
       render(<SnippetCard snippet={createSnippet()} />)
 
       expect(screen.getByText('Tone Rewriter')).toBeInTheDocument()
-      expect(screen.getByText('Updater')).toBeInTheDocument()
+      expect(await screen.findByText('Updater')).toBeInTheDocument()
       expect(screen.getByText('formatted-time')).toBeInTheDocument()
       expect(screen.queryByText('snippet.usageCount:{"count":19}')).not.toBeInTheDocument()
       expect(screen.queryByText('Creator')).not.toBeInTheDocument()
       expect(screen.queryByRole('img')).not.toBeInTheDocument()
     })
 
-    it('should fall back to creator name when updater is unavailable', () => {
+    it('should fall back to creator name when updater is unavailable', async () => {
       render(<SnippetCard snippet={createSnippet({ updated_by: 'missing-user' })} />)
 
-      expect(screen.getByText('Creator')).toBeInTheDocument()
+      expect(await screen.findByText('Creator')).toBeInTheDocument()
       expect(screen.getByText('formatted-time')).toBeInTheDocument()
     })
 
@@ -316,7 +320,7 @@ describe('SnippetCard', () => {
 
     it('should export a snippet from the operations menu', async () => {
       mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
-      mockExportMutateAsync.mockResolvedValue('snippet-yaml')
+      exportSnippet.mockResolvedValue('snippet-yaml')
 
       render(<SnippetCard snippet={createSnippet()} />)
 
@@ -328,7 +332,10 @@ describe('SnippetCard', () => {
       fireEvent.click(await screen.findByRole('menuitem', { name: 'snippet.menu.exportSnippet' }))
 
       await waitFor(() => {
-        expect(mockExportMutateAsync).toHaveBeenCalledWith({ snippetId: 'snippet-1' })
+        expect(exportSnippet).toHaveBeenCalledWith({
+          params: { snippet_id: 'snippet-1' },
+          query: { include_secret: 'false', workflow_id: undefined },
+        })
         expect(mockDownloadBlob).toHaveBeenCalledWith(
           expect.objectContaining({
             fileName: 'Tone Rewriter.yml',
@@ -339,7 +346,7 @@ describe('SnippetCard', () => {
 
     it('should show an error toast when snippet export fails', async () => {
       mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
-      mockExportMutateAsync.mockRejectedValue(new Error('export failed'))
+      exportSnippet.mockRejectedValue(new Error('export failed'))
 
       render(<SnippetCard snippet={createSnippet()} />)
 
@@ -357,9 +364,7 @@ describe('SnippetCard', () => {
     })
 
     it('should update snippet info from the operations menu', async () => {
-      mockUpdateMutate.mockImplementation((_payload, options?: { onSuccess?: () => void }) => {
-        options?.onSuccess?.()
-      })
+      updateSnippet.mockResolvedValue(createSnippet())
 
       render(<SnippetCard snippet={createSnippet()} onRefresh={mockOnRefresh} />)
 
@@ -375,29 +380,19 @@ describe('SnippetCard', () => {
       fireEvent.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
 
       await waitFor(() => {
-        expect(mockUpdateMutate).toHaveBeenCalledWith(
-          {
-            params: { snippetId: 'snippet-1' },
-            body: {
-              name: 'Updated Snippet',
-              description: 'Rewrites rough drafts.',
-            },
+        expect(updateSnippet).toHaveBeenCalledWith({
+          params: { snippet_id: 'snippet-1' },
+          body: {
+            name: 'Updated Snippet',
+            description: 'Rewrites rough drafts.',
           },
-          expect.objectContaining({
-            onSuccess: expect.any(Function),
-            onError: expect.any(Function),
-          }),
-        )
+        })
         expect(mockOnRefresh).toHaveBeenCalled()
       })
     })
 
-    it('should show update errors from the mutation callback', async () => {
-      mockUpdateMutate.mockImplementation(
-        (_payload, options?: { onError?: (error: Error) => void }) => {
-          options?.onError?.(new Error('Update failed'))
-        },
-      )
+    it('should show update errors without refreshing the list', async () => {
+      updateSnippet.mockRejectedValue(new Error('Update failed'))
 
       render(<SnippetCard snippet={createSnippet({ description: '' })} onRefresh={mockOnRefresh} />)
 
@@ -413,14 +408,13 @@ describe('SnippetCard', () => {
       fireEvent.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
 
       await waitFor(() => {
-        expect(mockUpdateMutate).toHaveBeenCalledWith(
+        expect(updateSnippet).toHaveBeenCalledWith(
           expect.objectContaining({
             body: {
               name: 'Updated Snippet',
               description: '',
             },
           }),
-          expect.any(Object),
         )
         expect(mockToastError).toHaveBeenCalledWith('Update failed')
       })
@@ -428,9 +422,7 @@ describe('SnippetCard', () => {
     })
 
     it('should delete a snippet from the operations menu', async () => {
-      mockDeleteMutate.mockImplementation((_payload, options?: { onSuccess?: () => void }) => {
-        options?.onSuccess?.()
-      })
+      deleteSnippet.mockResolvedValue({ result: 'success' })
 
       render(<SnippetCard snippet={createSnippet()} onRefresh={mockOnRefresh} />)
 
@@ -443,25 +435,15 @@ describe('SnippetCard', () => {
       fireEvent.click(screen.getByRole('button', { name: 'snippet.menu.deleteSnippet' }))
 
       await waitFor(() => {
-        expect(mockDeleteMutate).toHaveBeenCalledWith(
-          {
-            params: { snippetId: 'snippet-1' },
-          },
-          expect.objectContaining({
-            onSuccess: expect.any(Function),
-            onError: expect.any(Function),
-          }),
-        )
+        expect(deleteSnippet).toHaveBeenCalledWith({
+          params: { snippet_id: 'snippet-1' },
+        })
         expect(mockOnRefresh).toHaveBeenCalled()
       })
     })
 
-    it('should show delete errors from the mutation callback', async () => {
-      mockDeleteMutate.mockImplementation(
-        (_payload, options?: { onError?: (error: Error) => void }) => {
-          options?.onError?.(new Error('Delete failed'))
-        },
-      )
+    it('should show delete errors without refreshing the list', async () => {
+      deleteSnippet.mockRejectedValue(new Error('Delete failed'))
 
       render(<SnippetCard snippet={createSnippet()} onRefresh={mockOnRefresh} />)
 

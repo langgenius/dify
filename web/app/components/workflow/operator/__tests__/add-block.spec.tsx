@@ -8,27 +8,13 @@ import { BlockClassification } from '../../block-selector/types'
 import { BlockEnum } from '../../types'
 import AddBlock from '../add-block'
 
-const {
-  mockHandlePaneContextmenuCancel,
-  mockWorkflowStoreSetState,
-  mockGenerateNewNode,
-  mockGetNodeCustomTypeByNodeDataType,
-  mockGetNodesWithSameDefaultDataType,
-} = vi.hoisted(() => ({
+const { mockHandlePaneContextmenuCancel, mockWorkflowStoreSetState } = vi.hoisted(() => ({
   mockHandlePaneContextmenuCancel: vi.fn(),
   mockWorkflowStoreSetState: vi.fn(),
-  mockGenerateNewNode: vi.fn(({ type, data }: { type: string; data: Record<string, unknown> }) => ({
-    newNode: { id: 'generated-node', type, data, position: { x: 0, y: 0 } },
-  })),
-  mockGetNodeCustomTypeByNodeDataType: vi.fn((type: string) => `${type}-custom`),
-  mockGetNodesWithSameDefaultDataType: vi.fn(
-    (nodes: Array<{ data: { type?: BlockEnum } }>, type: BlockEnum) =>
-      nodes.filter((node) => node.data.type === type),
-  ),
 }))
 
 let mockNodesReadOnly = false
-let mockIsChatMode = false
+let chatflowMode = false
 let mockFlowType: EditorResource['kind'] = 'app'
 
 const answerBlock: NodeDefault = {
@@ -84,16 +70,6 @@ vi.mock('../../store', () => ({
   useWorkflowStore: () => ({ setState: mockWorkflowStoreSetState }),
 }))
 
-vi.mock('../../utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../utils')>()
-  return {
-    ...actual,
-    generateNewNode: mockGenerateNewNode,
-    getNodeCustomTypeByNodeDataType: mockGetNodeCustomTypeByNodeDataType,
-    getNodesWithSameDefaultDataType: mockGetNodesWithSameDefaultDataType,
-  }
-})
-
 vi.mock('@/service/use-plugins', () => ({
   useFeaturedToolsRecommendations: () => ({ plugins: [], isLoading: false }),
   useFeaturedTriggersRecommendations: () => ({ plugins: [], isLoading: false }),
@@ -104,14 +80,18 @@ vi.mock('@/service/use-triggers', () => ({
   useInvalidateAllTriggerPlugins: () => vi.fn(),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.tools.builtin.get': () => ({ data: [] }),
-    'workspaces.current.tools.api.get': () => ({ data: [] }),
-    'workspaces.current.tools.workflow.get': () => ({ data: [] }),
-    'workspaces.current.tools.mcp.get': () => ({ data: [] }),
-  })
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.builtin.get': async () => [],
+      'workspaces.current.tools.api.get': async () => [],
+      'workspaces.current.tools.workflow.get': async () => [],
+      'workspaces.current.tools.mcp.get': async () => [],
+    }),
+  }
 })
 
 vi.mock('@/app/components/plugins/marketplace/query', () => ({
@@ -119,13 +99,17 @@ vi.mock('@/app/components/plugins/marketplace/query', () => ({
 }))
 
 const renderWithReactFlow = (nodes: Array<ReturnType<typeof createNode>> = []) =>
-  renderWorkflowFlowComponent(<AddBlock />, { nodes, edges: [] })
+  renderWorkflowFlowComponent(<AddBlock />, {
+    resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
+    nodes,
+    edges: [],
+  })
 
 describe('AddBlock', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockNodesReadOnly = false
-    mockIsChatMode = false
+    chatflowMode = false
     mockFlowType = 'app'
   })
 
@@ -184,25 +168,12 @@ describe('AddBlock', () => {
     await user.click(screen.getByRole('button', { name: 'workflow.common.addBlock' }))
     await user.click(screen.getByRole('button', { name: 'Answer' }))
 
-    expect(mockGenerateNewNode).toHaveBeenCalledWith({
-      type: 'answer-custom',
-      data: {
-        title: 'Answer 3',
-        desc: '',
-        type: BlockEnum.Answer,
-        _isCandidate: true,
-      },
-      position: { x: 0, y: 0 },
-    })
     expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({
-      candidateNode: expect.objectContaining({ id: 'generated-node' }),
+      candidateNode: expect.objectContaining({
+        id: expect.any(String),
+        type: 'custom',
+        data: expect.objectContaining({ type: BlockEnum.Answer, _isCandidate: true }),
+      }),
     })
   })
-})
-
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => mockIsChatMode) }
 })

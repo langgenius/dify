@@ -1,7 +1,7 @@
+import type { WorkflowFeaturesConfigPayload } from '@dify/contracts/api/console/apps/types.gen'
 import type { StartNodeType } from './nodes/start/types'
 import type { CommonNodeType, InputVar, Node } from './types'
 import type { PromptVariable } from '@/models/debug'
-import type { WorkflowDraftFeaturesPayload } from '@/service/workflow'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback } from 'react'
 import { useNodes } from 'reactflow'
@@ -46,7 +46,7 @@ const Features = () => {
       const currentFeatures = featuresStore.getState().features
 
       // Transform features to match the expected server format (same as doSyncWorkflowDraft)
-      const transformedFeatures: WorkflowDraftFeaturesPayload = {
+      const transformedFeatures: WorkflowFeaturesConfigPayload = {
         opening_statement: currentFeatures.opening?.enabled
           ? currentFeatures.opening?.opening_statement || ''
           : '',

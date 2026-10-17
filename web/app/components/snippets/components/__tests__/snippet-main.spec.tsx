@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { WorkflowProps } from '@/app/components/workflow'
-import type { SnippetDetail, SnippetDetailPayload, SnippetInputField } from '@/models/snippet'
+import type { InputVar } from '@/models/pipeline'
+import type { SnippetDetail, SnippetDetailPayload } from '@/models/snippet'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -63,7 +64,7 @@ vi.mock('@/context/permission-state', async () => {
 let capturedHooksStore: Record<string, unknown> | undefined
 let capturedWorkflowNodes: WorkflowProps['nodes'] | undefined
 let snippetDetailStoreState: {
-  onFieldsChange?: (fields: SnippetInputField[]) => void
+  onFieldsChange?: (fields: InputVar[]) => void
   readonly: boolean
   reset: typeof mockReset
   setNavigationState: typeof mockSetNavigationState
@@ -74,13 +75,6 @@ let snippetDetailStoreState: {
 vi.mock('@/app/components/snippets/store', () => ({
   useSnippetDetailStore: (selector: (state: typeof snippetDetailStoreState) => unknown) =>
     selector(snippetDetailStoreState),
-}))
-
-vi.mock('@/service/use-snippet-workflows', () => ({
-  usePublishSnippetWorkflowMutation: () => ({
-    mutateAsync: mockPublishSnippetMutateAsync,
-    isPending: false,
-  }),
 }))
 
 vi.mock('../../hooks/use-file-settings', () => ({ useFileSettings: () => ({ enabled: true }) }))
@@ -258,6 +252,18 @@ const createDraftNode = (id = 'draft-node') =>
     position: { x: 10, y: 20 },
     data: { type: BlockEnum.Code, title: 'Draft node' },
   }) as WorkflowProps['nodes'][number]
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'snippets.bySnippetId.workflows.publish.post': (...args: unknown[]) =>
+        mockPublishSnippetMutateAsync(...args),
+    }),
+  }
+})
 
 describe('SnippetMain', () => {
   beforeEach(() => {
@@ -484,7 +490,8 @@ describe('SnippetMain', () => {
 
       await waitFor(() => {
         expect(mockPublishSnippetMutateAsync).toHaveBeenCalledWith({
-          params: { snippetId: 'snippet-1' },
+          params: { snippet_id: 'snippet-1' },
+          body: {},
         })
       })
     })
