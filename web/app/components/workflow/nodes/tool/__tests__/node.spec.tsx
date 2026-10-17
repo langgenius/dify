@@ -6,6 +6,11 @@ import Node from '../node'
 
 const mockUseNodePluginInstallation = vi.hoisted(() => vi.fn())
 const mockUseCurrentToolCollection = vi.hoisted(() => vi.fn())
+const mockUseNodes = vi.hoisted(() => vi.fn())
+
+vi.mock('reactflow', () => ({
+  useNodes: mockUseNodes,
+}))
 
 vi.mock('../../../hooks/use-node-plugin-installation', () => ({
   useNodePluginInstallation: mockUseNodePluginInstallation,
@@ -49,6 +54,7 @@ describe('ToolNode', () => {
       currentTools: [],
       currCollection: undefined,
     })
+    mockUseNodes.mockReturnValue([])
   })
 
   describe('Authorization Warning', () => {
