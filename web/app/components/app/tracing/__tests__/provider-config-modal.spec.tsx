@@ -248,64 +248,6 @@ describe('ProviderConfigModal', () => {
     )
   })
 
-<<<<<<< HEAD
-  describe('Nested Overlay Behavior', () => {
-    it('keeps the provider list open and starts a fresh draft after closing the dialog', async () => {
-      const user = userEvent.setup()
-      renderConfigButton()
-
-      await user.click(screen.getByRole('button', { name: 'Open tracing' }))
-      await waitFor(() => {
-        expect(screen.getByText('app.tracing.tracing')).toBeInTheDocument()
-      })
-
-      const configActions = screen.getAllByText('app.tracing.config')
-      await user.click(configActions[0]!)
-      await waitFor(() => {
-        expect(
-          screen.getByText('app.tracing.configProvider.titleapp.tracing.langfuse.title'),
-        ).toBeInTheDocument()
-      })
-      expect(screen.getByRole('dialog')).toBeInTheDocument()
-
-      const host = screen.getByRole('textbox', { name: 'Host' })
-      await user.clear(host)
-      await user.type(host, 'https://draft.langfuse.com')
-      await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
-      await waitFor(() =>
-        expect(
-          screen.queryByRole('button', { name: 'common.operation.close' }),
-        ).not.toBeInTheDocument(),
-      )
-      expect(screen.getByText('app.tracing.tracing')).toBeInTheDocument()
-      const configButton = screen.getAllByRole('button', { name: 'app.tracing.config' })[0]!
-      await waitFor(() => expect(configButton).toHaveFocus())
-      await user.click(configButton)
-      expect(screen.getByRole('textbox', { name: 'Host' })).toHaveValue('')
-    })
-=======
-  describe('Rendering', () => {
-    it.each(providerFieldLabels)(
-      'should render %s fields when adding a provider',
-      async (provider, expectedLabels) => {
-        renderProviderConfigModal({ type: provider })
-
-        expect(
-          screen.getByText(`app.tracing.configProvider.titleapp.tracing.${provider}.title`),
-        ).toBeInTheDocument()
-        expectedLabels.forEach((label) => {
-          expect(screen.getByRole('textbox', { name: label })).toBeInTheDocument()
-        })
-        await waitFor(() =>
-          expect(screen.getByRole('textbox', { name: expectedLabels[0] })).toHaveFocus(),
-        )
-        expect(
-          screen.getByRole('button', { name: 'common.operation.saveAndEnable' }),
-        ).toBeInTheDocument()
-      },
-    )
->>>>>>> eee0f2136a (refactor: simplify tracing component ownership and remove legacy code)
-  })
 
   describe('Saving', () => {
     it('submits a new config with Enter and chooses the provider', async () => {
