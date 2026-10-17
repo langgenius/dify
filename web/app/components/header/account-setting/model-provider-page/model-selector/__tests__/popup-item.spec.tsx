@@ -17,6 +17,7 @@ import {
   ConfigurationMethodEnum,
   CustomConfigurationStatusEnum,
   ModelFeatureEnum,
+  ModelModalModeEnum,
   ModelStatusEnum,
   ModelTypeEnum,
   PreferredProviderTypeEnum,
@@ -177,15 +178,16 @@ const previewCardProps = () => ({
 
 const createPopupItemNode = (node: ReactElement) => node
 
-const renderPopupItem = (node: ReactElement) => {
+const renderPopupItem = (
+  node: ReactElement,
+  detail = createProviderResponseFixture({
+    provider: 'openai',
+    custom_configuration: { status: 'active', current_credential_name: 'my-api-key' },
+  }),
+) => {
   const queryClient = createConsoleQueryClient()
   queryClient.setQueryData(modelProviderDetailsQueryOptions().queryKey, {
-    data: [
-      createProviderResponseFixture({
-        provider: 'openai',
-        custom_configuration: { status: 'active', current_credential_name: 'my-api-key' },
-      }),
-    ],
+    data: [detail],
   })
   queryClient.setQueryData(consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(), {
     ...mockProviderSummary(),
@@ -367,7 +369,15 @@ describe('PopupItem', () => {
 
     expect(onSelect).not.toHaveBeenCalled()
     await waitFor(() => {
-      expect(mockSetShowModelModal).toHaveBeenCalled()
+      expect(mockSetShowModelModal).toHaveBeenCalledWith(
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            currentConfigurationMethod: ConfigurationMethodEnum.predefinedModel,
+            isModelCredential: false,
+            mode: ModelModalModeEnum.configProviderCredential,
+          }),
+        }),
+      )
     })
 
     const call = mockSetShowModelModal.mock.calls[0]![0] as { onSaveCallback?: () => void }
@@ -375,6 +385,62 @@ describe('PopupItem', () => {
 
     expect(mockUpdateModelProviders).toHaveBeenCalled()
     expect(mockUpdateModelList).toHaveBeenCalledWith(ModelTypeEnum.textGeneration)
+  })
+
+  it('opens model credentials for an unconfigured custom model', async () => {
+    const user = userEvent.setup()
+    mockProviderSummary.mockReturnValue({
+      data: [makeProvider({ configurate_methods: ['customizable-model'] })],
+    })
+    renderPopupItem(
+      <PopupItem
+        {...previewCardProps()}
+        model={makeModel({ models: [makeModelItem({ status: ModelStatusEnum.noConfigure })] })}
+        onHide={vi.fn()}
+      />,
+      createProviderResponseFixture({ configurate_methods: ['customizable-model'] }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'COMMON.OPERATION.ADD' }))
+
+    await waitFor(() =>
+      expect(mockSetShowModelModal).toHaveBeenCalledWith(
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            currentConfigurationMethod: ConfigurationMethodEnum.customizableModel,
+            isModelCredential: true,
+            model: { model: 'gpt-4', model_type: ModelTypeEnum.textGeneration },
+            mode: ModelModalModeEnum.configModelCredential,
+          }),
+        }),
+      ),
+    )
+  })
+
+  it('opens add-model setup instead of provider credentials for a custom-only provider', async () => {
+    const user = userEvent.setup()
+    mockProviderSummary.mockReturnValue({
+      data: [makeProvider({ configurate_methods: ['customizable-model'] })],
+    })
+    renderPopupItem(
+      <PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />,
+      createProviderResponseFixture({ configurate_methods: ['customizable-model'] }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'modelProvider.modelProvider.addModel' }))
+
+    await waitFor(() =>
+      expect(mockSetShowModelModal).toHaveBeenCalledWith(
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            currentConfigurationMethod: ConfigurationMethodEnum.customizableModel,
+            isModelCredential: true,
+            mode: ModelModalModeEnum.configCustomModel,
+          }),
+        }),
+      ),
+    )
+    expect(screen.queryByRole('button', { name: /my-api-key/ })).not.toBeInTheDocument()
   })
 
   it('should show selected state when defaultModel matches', () => {
