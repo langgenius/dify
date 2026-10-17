@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = "==3.13.*"
 resolution-markers = [
     "sys_platform == 'win32'",
@@ -1392,7 +1392,6 @@ docs = [
 name = "dify-api"
 version = "1.17.1"
 source = { virtual = "." }
-default-groups = ["kms", "storage", "tools", "trace-all", "vdb-all"]
 dependencies = [
     { name = "aliyun-log-python-sdk" },
     { name = "azure-identity" },
@@ -1715,7 +1714,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-httpx", specifier = "==0.65b0" },
     { name = "opentelemetry-instrumentation-redis", specifier = "==0.65b0" },
     { name = "opentelemetry-instrumentation-sqlalchemy", specifier = "==0.65b0" },
-    { name = "opentelemetry-propagator-b3", specifier = ">=1.45.0,<2.0.0" },
+    { name = "opentelemetry-propagator-b3", specifier = ">=1.45.1,<2.0.0" },
     { name = "psycogreen", specifier = ">=1.0.2,<2.0.0" },
     { name = "psycopg2-binary", specifier = ">=2.9.12,<3.0.0" },
     { name = "python-socketio", specifier = ">=5.13.0,<6.0.0" },
@@ -4724,15 +4723,15 @@ wheels = [
 
 [[package]]
 name = "opentelemetry-propagator-b3"
-version = "1.45.0"
+version = "1.45.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "opentelemetry-api" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ac/df/0370f28b9a74e8509ae0d036b1346ee57315c2aa1037d438a6b95564c1ce/opentelemetry_propagator_b3-1.45.0.tar.gz", hash = "sha256:3c0fcffff85bf0fdd5c72a0d3255872d098dc9c36d6d31f3bb2b27179a376f96", size = 9480, upload-time = "2026-09-25T12:32:40.004Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d3/29/3a3e0ab089773324faaa4fe40c13cfc6a0a78410368578a30ee3453fc2a3/opentelemetry_propagator_b3-1.45.1.tar.gz", hash = "sha256:0f7d346b2cc2e9ec157c4e5c03f787d8631e61edc4b71978bb3bca2bb228db94", size = 9476, upload-time = "2026-10-06T17:33:10.358Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1a/d8/b07682be2cadfba9ec5c485098ceecc1d9e4c3b4a590ca710fddb6df5429/opentelemetry_propagator_b3-1.45.0-py3-none-any.whl", hash = "sha256:6bfb9ce952ebfde0122b832664f0251b19de22bf31be55f7b442999fe7bab505", size = 8333, upload-time = "2026-09-25T12:32:21.451Z" },
+    { url = "https://files.pythonhosted.org/packages/6a/ed/425cf8b9b312bbe6d42d94283e19946d54f48963a1104c5ad65b51f8b332/opentelemetry_propagator_b3-1.45.1-py3-none-any.whl", hash = "sha256:cd811519968dced23dda1240f2adf488e579d1361340a666af8540cd8a1e17ac", size = 8333, upload-time = "2026-10-06T17:32:50.935Z" },
 ]
 
 [[package]]
