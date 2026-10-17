@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { Footer } from '../footer'
 
 const defaultProps = {
@@ -24,7 +25,8 @@ describe('Footer', () => {
     expect(screen.getByText('Enter')).toBeInTheDocument()
   })
 
-  it('offers prefix buttons only for the empty input', () => {
+  it('offers command and search prefixes for the empty input', async () => {
+    const user = userEvent.setup()
     render(<Footer {...defaultProps} />)
 
     expect(
@@ -34,6 +36,10 @@ describe('Footer', () => {
       screen.getByRole('button', { name: 'app.gotoAnything.selectSearchType' }),
     ).toBeInTheDocument()
     expect(screen.queryByText('Enter')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'app.gotoAnything.groups.commands' }))
+    expect(defaultProps.onSelectMode).toHaveBeenLastCalledWith('/')
+    await user.click(screen.getByRole('button', { name: 'app.gotoAnything.selectSearchType' }))
+    expect(defaultProps.onSelectMode).toHaveBeenLastCalledWith('@')
   })
 
   it('does not suggest Enter when nothing can be selected', () => {

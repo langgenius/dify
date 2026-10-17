@@ -1,5 +1,6 @@
 import type { Shape } from '../../store/workflow'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
@@ -21,8 +22,6 @@ const mockEmitRestoreIntent = vi.fn()
 const mockEmitRestoreComplete = vi.fn()
 const mockEmitWorkflowUpdate = vi.fn()
 const mockNotify = vi.fn()
-const mockRunAndHistory = vi.fn()
-const mockViewHistory = vi.fn()
 
 let mockNodesReadOnly = false
 let mockTheme: 'light' | 'dark' = 'light'
@@ -69,13 +68,27 @@ vi.mock('@/hooks/use-theme', () => ({
   }),
 }))
 
-vi.mock('@/service/use-workflow', () => ({
+vi.mock('@/service/use-workflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-workflow')>()),
   useInvalidateAllLastRun: () => mockInvalidAllLastRun,
   useResetWorkflowVersionHistory: () => mockResetWorkflowVersionHistory,
-  useRestoreWorkflow: () => ({
-    mutateAsync: mockRestoreWorkflow,
-  }),
 }))
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.workflows.byWorkflowId.restore.post': (input) =>
+        mockRestoreWorkflow('app', input),
+      'rag.pipelines.byPipelineId.workflows.byWorkflowId.restore.post': (input) =>
+        mockRestoreWorkflow('pipeline', input),
+      'snippets.bySnippetId.workflows.byWorkflowId.restore.post': (input) =>
+        mockRestoreWorkflow('snippet', input),
+    }),
+  }
+})
 
 vi.mock('../../collaboration/core/collaboration-manager', () => ({
   collaborationManager: {
@@ -119,10 +132,7 @@ vi.mock('../global-variable-button', () => ({
 }))
 
 vi.mock('../run-and-history', () => ({
-  default: (props: object) => {
-    mockRunAndHistory(props)
-    return <div data-testid="run-and-history" />
-  },
+  default: () => <div data-testid="run-and-history" />,
 }))
 
 vi.mock('../version-history-button', () => ({
@@ -143,7 +153,6 @@ vi.mock('../running-title', () => ({
 
 vi.mock('../view-history', () => ({
   default: (props: { withText?: boolean }) => {
-    mockViewHistory(props)
     return <div data-testid="view-history">{props.withText ? 'with-text' : 'icon-only'}</div>
   },
 }))
@@ -200,7 +209,7 @@ describe('Header layout components', () => {
   })
 
   describe('HeaderInNormal', () => {
-    it('should render slots, pass read-only state to action buttons, and start restoring mode', () => {
+    it('should render slots, pass read-only state to action buttons, and start restoring mode', async () => {
       mockNodesReadOnly = true
       mockUseNodes.mockReturnValue([createSelectedNode()])
 
@@ -230,9 +239,9 @@ describe('Header layout components', () => {
       expect(screen.getByText('chat-trigger')).toBeInTheDocument()
       expect(screen.getByTestId('env-button')).toHaveTextContent('true')
       expect(screen.getByTestId('global-variable-button')).toHaveTextContent('true')
-      expect(mockRunAndHistory).toHaveBeenCalledTimes(1)
+      expect(screen.getByTestId('run-and-history')).toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: 'version-history' }))
+      await userEvent.setup().click(screen.getByRole('button', { name: 'version-history' }))
 
       expect(mockHandleBackupDraft).toHaveBeenCalledTimes(1)
       expect(mockHandleNodeSelect).toHaveBeenCalledWith('node-selected', true)
@@ -262,7 +271,7 @@ describe('Header layout components', () => {
   })
 
   describe('HeaderInRestoring', () => {
-    it('should cancel restoring mode and reopen the editor state', () => {
+    it('should cancel restoring mode and reopen the editor state', async () => {
       const { store } = renderWorkflowComponent(<HeaderInRestoring />, {
         initialStoreState: {
           isRestoring: true,
@@ -274,7 +283,9 @@ describe('Header layout components', () => {
         },
       })
 
-      fireEvent.click(screen.getByRole('button', { name: 'workflow.common.exitVersions' }))
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: 'workflow.common.exitVersions' }))
 
       expect(mockHandleLoadBackupDraft).toHaveBeenCalledTimes(1)
       expect(store.getState().isRestoring).toBe(false)
@@ -307,10 +318,12 @@ describe('Header layout components', () => {
         },
       )
 
-      fireEvent.click(screen.getByRole('button', { name: 'workflow.common.restore' }))
+      await userEvent.setup().click(screen.getByRole('button', { name: 'workflow.common.restore' }))
 
       await waitFor(() => {
-        expect(mockRestoreWorkflow).toHaveBeenCalledWith('version-1')
+        expect(mockRestoreWorkflow).toHaveBeenCalledWith('app', {
+          params: { app_id: 'flow-1', workflow_id: 'version-1' },
+        })
         expect(store.getState().showWorkflowVersionHistoryPanel).toBe(false)
         expect(store.getState().isRestoring).toBe(false)
         expect(store.getState().backupDraft).toBeUndefined()
@@ -337,6 +350,40 @@ describe('Header layout components', () => {
       expect(onRestoreSettled).toHaveBeenCalledTimes(1)
     })
 
+    it('keeps the draft recoverable and reports failure when restoration is rejected', async () => {
+      mockRestoreWorkflow.mockRejectedValueOnce(new Error('Restore failed'))
+      const backupDraft = createBackupDraft()
+      const onRestoreSettled = vi.fn()
+      const { store } = renderWorkflowComponent(
+        <HeaderInRestoring onRestoreSettled={onRestoreSettled} />,
+        {
+          initialStoreState: {
+            isRestoring: true,
+            backupDraft,
+            currentVersion: createCurrentVersion(),
+          },
+          resource: { kind: 'app', appId: 'flow-1', mode: 'workflow' },
+        },
+      )
+
+      await userEvent.setup().click(screen.getByRole('button', { name: 'workflow.common.restore' }))
+
+      await waitFor(() => expect(onRestoreSettled).toHaveBeenCalledTimes(1))
+      expect(store.getState().isRestoring).toBe(true)
+      expect(store.getState().backupDraft).toEqual(backupDraft)
+      expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
+      expect(mockEmitWorkflowUpdate).not.toHaveBeenCalled()
+      expect(mockEmitRestoreComplete).toHaveBeenCalledWith({
+        versionId: 'version-1',
+        success: false,
+        error: 'restore failed',
+      })
+      expect(mockNotify).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'workflowHistory.versionHistory.action.restoreFailure',
+      })
+    })
+
     it('should restore rag pipeline versions without emitting collaboration events', async () => {
       const currentVersion = createCurrentVersion()
 
@@ -353,10 +400,12 @@ describe('Header layout components', () => {
         },
       })
 
-      fireEvent.click(screen.getByRole('button', { name: 'workflow.common.restore' }))
+      await userEvent.setup().click(screen.getByRole('button', { name: 'workflow.common.restore' }))
 
       await waitFor(() => {
-        expect(mockRestoreWorkflow).toHaveBeenCalledWith('version-1')
+        expect(mockRestoreWorkflow).toHaveBeenCalledWith('pipeline', {
+          params: { pipeline_id: 'pipeline-1', workflow_id: 'version-1' },
+        })
         expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalledTimes(1)
       })
       expect(mockEmitRestoreIntent).not.toHaveBeenCalled()
@@ -380,10 +429,12 @@ describe('Header layout components', () => {
         },
       })
 
-      fireEvent.click(screen.getByRole('button', { name: 'workflow.common.restore' }))
+      await userEvent.setup().click(screen.getByRole('button', { name: 'workflow.common.restore' }))
 
       await waitFor(() => {
-        expect(mockRestoreWorkflow).toHaveBeenCalledWith('version-1')
+        expect(mockRestoreWorkflow).toHaveBeenCalledWith('snippet', {
+          params: { snippet_id: 'snippet-1', workflow_id: 'version-1' },
+        })
         expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalledTimes(1)
       })
       expect(mockEmitRestoreIntent).not.toHaveBeenCalled()
@@ -393,7 +444,7 @@ describe('Header layout components', () => {
   })
 
   describe('HeaderInHistory', () => {
-    it('should render the history trigger with text and return to edit mode', () => {
+    it('should render the history trigger with text and return to edit mode', async () => {
       const { store } = renderWorkflowComponent(
         <HeaderInHistory viewHistoryProps={{ historyUrl: '/history' } as never} />,
         {
@@ -408,15 +459,12 @@ describe('Header layout components', () => {
       expect(screen.getByText('running-title')).toBeInTheDocument()
       expect(screen.getByTestId('view-history')).toHaveTextContent('with-text')
 
-      fireEvent.click(screen.getByRole('button', { name: 'workflow.common.goBackToEdit' }))
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: 'workflow.common.goBackToEdit' }))
 
       expect(mockHandleLoadBackupDraft).toHaveBeenCalledTimes(1)
       expect(store.getState().historyWorkflowData).toBeUndefined()
-      expect(mockViewHistory).toHaveBeenCalledWith(
-        expect.objectContaining({
-          withText: true,
-        }),
-      )
     })
   })
 })

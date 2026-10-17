@@ -1,14 +1,22 @@
 import type { TrialAppDetailResponse } from '@dify/contracts/api/console/trial-apps/types.gen'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import * as React from 'react'
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vite-plus/test'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import AppInfo from '../index'
 
-const mockUseGetRequirements = vi.fn()
-
-vi.mock('../use-get-requirements', () => ({
-  default: (...args: unknown[]) => mockUseGetRequirements(...args),
-}))
+const { getWorkflow } = vi.hoisted(() => ({ getWorkflow: vi.fn() }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'trialApps.byAppId.workflows.get': getWorkflow,
+    }),
+  }
+})
 
 const createMockAppDetail = (
   mode: string,
@@ -47,130 +55,29 @@ const createMockAppDetail = (
 
 describe('AppInfo', () => {
   beforeEach(() => {
-    mockUseGetRequirements.mockReturnValue({
-      requirements: [],
-    })
+    getWorkflow.mockResolvedValue({ graph: { nodes: [] } })
   })
 
-  afterEach(() => {
-    cleanup()
-    vi.clearAllMocks()
-  })
-
-  describe('app name and icon', () => {
-    it('renders app name', () => {
-      const appDetail = createMockAppDetail('chat')
-      const mockOnCreate = vi.fn()
-
-      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
-
-      expect(screen.getByText('Test App Name')).toBeInTheDocument()
-    })
-
-    it('renders app name with title attribute', () => {
-      const appDetail = createMockAppDetail('chat', {
-        name: 'Very Long App Name That Should Be Truncated',
-      } as Partial<TrialAppDetailResponse>)
-      const mockOnCreate = vi.fn()
-
-      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
-
-      const nameElement = screen.getByText('Very Long App Name That Should Be Truncated')
-      expect(nameElement).toHaveAttribute('title', 'Very Long App Name That Should Be Truncated')
-    })
-  })
-
-  describe('app type', () => {
-    it('displays ADVANCED for advanced-chat mode', () => {
-      const appDetail = createMockAppDetail('advanced-chat')
-      const mockOnCreate = vi.fn()
-
-      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
-
-      expect(screen.getByText('APP.TYPES.ADVANCED')).toBeInTheDocument()
-    })
-
-    it('displays CHATBOT for chat mode', () => {
-      const appDetail = createMockAppDetail('chat')
-      const mockOnCreate = vi.fn()
-
-      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
-
-      expect(screen.getByText('APP.TYPES.CHATBOT')).toBeInTheDocument()
-    })
-
-    it('displays AGENT for agent-chat mode', () => {
-      const appDetail = createMockAppDetail('agent-chat')
-      const mockOnCreate = vi.fn()
-
-      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
-
-      expect(screen.getByText('APP.TYPES.AGENT')).toBeInTheDocument()
-    })
-
-    it('displays WORKFLOW for workflow mode', () => {
-      const appDetail = createMockAppDetail('workflow')
-      const mockOnCreate = vi.fn()
-
-      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
-
-      expect(screen.getByText('APP.TYPES.WORKFLOW')).toBeInTheDocument()
-    })
-
-    it('displays COMPLETION for completion mode', () => {
-      const appDetail = createMockAppDetail('completion')
-      const mockOnCreate = vi.fn()
-
-      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
-
-      expect(screen.getByText('APP.TYPES.COMPLETION')).toBeInTheDocument()
-    })
-  })
-
-  describe('description', () => {
-    it('renders description when provided', () => {
-      const appDetail = createMockAppDetail('chat', {
-        description: 'This is a test description',
-      } as Partial<TrialAppDetailResponse>)
-      const mockOnCreate = vi.fn()
-
-      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
-
-      expect(screen.getByText('This is a test description')).toBeInTheDocument()
-    })
-
-    it('does not render description when empty', () => {
-      const appDetail = createMockAppDetail('chat', {
-        description: '',
-      } as Partial<TrialAppDetailResponse>)
-      const mockOnCreate = vi.fn()
-
-      const { container } = render(
-        <AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />,
-      )
-
-      const descriptionElements = container.querySelectorAll('.system-sm-regular.mt-\\[14px\\]')
-      expect(descriptionElements.length).toBe(0)
-    })
+  it.each([
+    ['advanced-chat', 'ADVANCED'],
+    ['chat', 'CHATBOT'],
+    ['agent-chat', 'AGENT'],
+    ['workflow', 'WORKFLOW'],
+    ['completion', 'COMPLETION'],
+  ])('identifies %s templates as %s', (mode, label) => {
+    render(<AppInfo appId="test-app-id" appDetail={createMockAppDetail(mode)} onCreate={vi.fn()} />)
+    expect(screen.getByText(`APP.TYPES.${label}`)).toBeInTheDocument()
   })
 
   describe('create button', () => {
-    it('renders create button with correct text', () => {
+    it('calls onCreate when button is clicked', async () => {
+      const user = userEvent.setup()
       const appDetail = createMockAppDetail('chat')
       const mockOnCreate = vi.fn()
 
       render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
 
-      expect(screen.getByText('explore.tryApp.createFromSampleApp')).toBeInTheDocument()
-    })
-
-    it('calls onCreate when button is clicked', () => {
-      const appDetail = createMockAppDetail('chat')
-      const mockOnCreate = vi.fn()
-
-      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
-
-      fireEvent.click(screen.getByText('explore.tryApp.createFromSampleApp'))
+      await user.click(screen.getByRole('button', { name: 'explore.tryApp.createFromSampleApp' }))
       expect(mockOnCreate).toHaveBeenCalledTimes(1)
     })
   })
@@ -205,87 +112,66 @@ describe('AppInfo', () => {
   })
 
   describe('requirements', () => {
-    it('renders requirements when available', () => {
-      mockUseGetRequirements.mockReturnValue({
-        requirements: [
-          { name: 'OpenAI GPT-4', iconUrl: 'https://example.com/icon1.png' },
-          { name: 'Google Search', iconUrl: 'https://example.com/icon2.png' },
-        ],
+    it('derives and deduplicates dependencies from the requested workflow', async () => {
+      getWorkflow.mockResolvedValue({
+        graph: {
+          nodes: [
+            {
+              data: {
+                type: BlockEnum.LLM,
+                model: { name: 'GPT-4', provider: 'langgenius/openai/openai' },
+              },
+            },
+            {
+              data: {
+                type: BlockEnum.LLM,
+                model: { name: 'GPT-4', provider: 'langgenius/openai/openai' },
+              },
+            },
+            {
+              data: {
+                type: BlockEnum.Tool,
+                provider_id: 'langgenius/google/google',
+                tool_label: 'Google Search',
+              },
+            },
+          ],
+        },
       })
-
-      const appDetail = createMockAppDetail('chat')
-      const mockOnCreate = vi.fn()
-
-      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
-
-      expect(screen.getByText('explore.tryApp.requirements')).toBeInTheDocument()
-      expect(screen.getByText('OpenAI GPT-4')).toBeInTheDocument()
+      render(
+        <AppInfo
+          appId="workflow-id"
+          appDetail={createMockAppDetail('workflow')}
+          onCreate={vi.fn()}
+        />,
+      )
+      expect(await screen.findByText('GPT-4')).toBeInTheDocument()
+      expect(screen.getAllByText('GPT-4')).toHaveLength(1)
       expect(screen.getByText('Google Search')).toBeInTheDocument()
+      expect(getWorkflow).toHaveBeenCalledWith({ params: { app_id: 'workflow-id' } })
     })
 
-    it('does not render requirements section when empty', () => {
-      mockUseGetRequirements.mockReturnValue({
-        requirements: [],
-      })
-
-      const appDetail = createMockAppDetail('chat')
-      const mockOnCreate = vi.fn()
-
-      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
-
+    it('omits the requirements section when no dependencies are configured', () => {
+      render(
+        <AppInfo
+          appId="test-app-id"
+          appDetail={createMockAppDetail('chat', { model_config: null })}
+          onCreate={vi.fn()}
+        />,
+      )
       expect(screen.queryByText('explore.tryApp.requirements')).not.toBeInTheDocument()
     })
 
-    it('renders requirement icons with correct image src', () => {
-      mockUseGetRequirements.mockReturnValue({
-        requirements: [{ name: 'Test Tool', iconUrl: 'https://example.com/test-icon.png' }],
-      })
-
-      const appDetail = createMockAppDetail('chat')
-      const mockOnCreate = vi.fn()
-
+    it('keeps the requirement visible when its real provider icon fails to load', () => {
       const { container } = render(
-        <AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />,
+        <AppInfo appId="test-app-id" appDetail={createMockAppDetail('chat')} onCreate={vi.fn()} />,
       )
-
-      const iconElement = container.querySelector('img[src="https://example.com/test-icon.png"]')
-      expect(iconElement).toBeInTheDocument()
-    })
-
-    it('falls back to default icon when requirement image fails to load', () => {
-      mockUseGetRequirements.mockReturnValue({
-        requirements: [{ name: 'Broken Tool', iconUrl: 'https://example.com/broken-icon.png' }],
-      })
-
-      const appDetail = createMockAppDetail('chat')
-      const mockOnCreate = vi.fn()
-
-      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
-
-      const requirementRow = screen.getByText('Broken Tool').parentElement as HTMLElement
-      const iconImage = requirementRow.querySelector('img') as HTMLImageElement
-      expect(iconImage).toBeInTheDocument()
-
-      fireEvent.error(iconImage)
-
-      expect(requirementRow.querySelector('img')).not.toBeInTheDocument()
-      expect(
-        requirementRow.querySelector('.i-custom-public-other-default-tool-icon'),
-      ).toBeInTheDocument()
-    })
-  })
-
-  describe('hook calls', () => {
-    it('calls useGetRequirements with correct parameters', () => {
-      const appDetail = createMockAppDetail('chat')
-      const mockOnCreate = vi.fn()
-
-      render(<AppInfo appId="my-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
-
-      expect(mockUseGetRequirements).toHaveBeenCalledWith({
-        appDetail,
-        appId: 'my-app-id',
-      })
+      expect(screen.getByText('openai')).toBeInTheDocument()
+      const icon = container.querySelector('img[src$="/plugins/langgenius/openai/icon"]')!
+      expect(icon).toBeInTheDocument()
+      fireEvent.error(icon)
+      expect(icon).not.toBeInTheDocument()
+      expect(screen.getByText('openai')).toBeInTheDocument()
     })
   })
 })

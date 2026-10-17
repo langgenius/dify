@@ -196,15 +196,13 @@ export function useAgentConfigureBuildDraftData({
     data: buildDraftData,
     dataUpdatedAt: buildDraftDataUpdatedAt,
     error: buildDraftError,
-    isError: isBuildDraftError,
     isPending: isBuildDraftPending,
     refetch: refetchBuildDraft,
   } = buildDraftQuery
   const buildDraftNotFound = isNotFoundError(buildDraftError)
   const resolvedSoulSource: AgentConfigureSoulSource = isViewingVersion
     ? 'view-version'
-    : (soulSourceOverride ??
-      (!buildDraftNotFound && !!buildDraftData && !isBuildDraftError ? 'build-draft' : 'draft'))
+    : (soulSourceOverride ?? (!buildDraftNotFound && !!buildDraftData ? 'build-draft' : 'draft'))
   const hasActiveBuildDraft = resolvedSoulSource === 'build-draft'
   const soulSource = !isBuildMode && hasActiveBuildDraft ? 'draft' : resolvedSoulSource
   const isBuildDraftActive = soulSource === 'build-draft'

@@ -1,7 +1,7 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import Panel from '../index'
 
-let mockIsChatMode = true
 let mockIsWorkflowPage = false
 const mockSetShowGlobalVariablePanel = vi.fn()
 
@@ -18,20 +18,17 @@ vi.mock('../../../constants', () => ({
   isInWorkflowPage: () => mockIsWorkflowPage,
 }))
 
-vi.mock('../../../hooks/use-workflow', () => ({}))
-
 describe('global-variable-panel path', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockIsChatMode = true
     mockIsWorkflowPage = false
   })
 
   it('should render workflow trigger variables for non-chat workflow pages', () => {
-    mockIsChatMode = false
     mockIsWorkflowPage = true
 
-    render(<Panel />)
+    render(<Panel />, {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     expect(screen.queryByText('sys.conversation_id')).not.toBeInTheDocument()
     expect(screen.queryByText('sys.dialog_count')).not.toBeInTheDocument()
@@ -40,11 +37,4 @@ describe('global-variable-panel path', () => {
       screen.getByText('workflow.globalVar.fieldsDescription.triggerTimestamp'),
     ).toBeInTheDocument()
   })
-})
-
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => mockIsChatMode) }
 })

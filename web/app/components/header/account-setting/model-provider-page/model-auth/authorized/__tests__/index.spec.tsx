@@ -1,5 +1,7 @@
-import type { Credential, CustomModel, ModelProvider } from '../../../declarations'
-import { fireEvent, screen, within } from '@testing-library/react'
+import type { ComponentPropsWithRef } from 'react'
+import type { Credential, ModelProvider } from '../../../declarations'
+import { screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
 import { ConfigurationMethodEnum, ModelTypeEnum } from '../../../declarations'
 import Authorized from '../index'
@@ -33,45 +35,6 @@ vi.mock('../../hooks', () => ({
   }),
 }))
 
-vi.mock('../authorized-item', () => ({
-  default: ({
-    credentials,
-    model,
-    disabled,
-    disableEdit,
-    disableDelete,
-    onEdit,
-    onDelete,
-    onItemClick,
-  }: {
-    credentials: Credential[]
-    model?: CustomModel
-    disabled?: boolean
-    disableEdit?: boolean
-    disableDelete?: boolean
-    onEdit?: (credential: Credential, model?: CustomModel) => void
-    onDelete?: (credential: Credential, model?: CustomModel) => void
-    onItemClick?: (credential: Credential, model?: CustomModel) => void
-  }) => (
-    <div data-testid="authorized-item">
-      {credentials.map((cred: Credential) => (
-        <div key={cred.credential_id}>
-          <span>{cred.credential_name}</span>
-          <button disabled={disabled || disableEdit} onClick={() => onEdit?.(cred, model)}>
-            Edit
-          </button>
-          <button disabled={disabled || disableDelete} onClick={() => onDelete?.(cred, model)}>
-            Delete
-          </button>
-          <button disabled={disabled} onClick={() => onItemClick?.(cred, model)}>
-            Select
-          </button>
-        </div>
-      ))}
-    </div>
-  ),
-}))
-
 describe('Authorized', () => {
   const mockProvider: ModelProvider = {
     provider: 'openai',
@@ -93,14 +56,14 @@ describe('Authorized', () => {
     },
   ]
 
-  const mockRenderTrigger = (open?: boolean) => (
-    <button>
+  const mockRenderTrigger = (open: boolean, triggerProps: ComponentPropsWithRef<'button'>) => (
+    <button {...triggerProps} type="button">
       Trigger
       {open ? 'Open' : 'Closed'}
     </button>
   )
 
-  const getTrigger = () => screen.getAllByRole('button', { name: /trigger\s*(open|closed)/i })[0]!
+  const getTrigger = () => screen.getByRole('button', { name: /trigger\s*(open|closed)/i })
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -109,7 +72,7 @@ describe('Authorized', () => {
     mockWorkspacePermissionKeys = ['credential.use', 'credential.create', 'credential.manage']
   })
 
-  it('should render trigger and open popup when trigger is clicked', () => {
+  it('should render trigger and open popup when trigger is clicked', async () => {
     render(
       <Authorized
         provider={mockProvider}
@@ -120,17 +83,16 @@ describe('Authorized', () => {
     )
 
     const trigger = getTrigger()
-    expect(trigger).not.toHaveAttribute('data-popup-open')
+    expect(screen.queryByRole('button', { name: 'API Key 1' })).not.toBeInTheDocument()
 
-    fireEvent.click(trigger)
+    await userEvent.setup().click(trigger)
 
-    expect(trigger).toHaveAttribute('data-popup-open', '')
     expect(trigger.textContent).toMatch(/trigger\s*open/i)
-    expect(screen.getByTestId('authorized-item'))!.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'API Key 1' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /addApiKey/i }))!.toBeInTheDocument()
   })
 
-  it('should call handleOpenModal when triggerOnlyOpenModal is true', () => {
+  it('should call handleOpenModal when triggerOnlyOpenModal is true', async () => {
     render(
       <Authorized
         provider={mockProvider}
@@ -141,11 +103,11 @@ describe('Authorized', () => {
       />,
     )
 
-    fireEvent.click(getTrigger())
+    await userEvent.setup().click(getTrigger())
     expect(mockHandleOpenModal).toHaveBeenCalled()
   })
 
-  it('should call onItemClick when credential is selected', () => {
+  it('should call onItemClick when credential is selected', async () => {
     const onItemClick = vi.fn()
     render(
       <Authorized
@@ -157,13 +119,13 @@ describe('Authorized', () => {
       />,
     )
 
-    fireEvent.click(getTrigger())
-    fireEvent.click(screen.getAllByRole('button', { name: 'Select' })[0]!)
+    await userEvent.setup().click(getTrigger())
+    await userEvent.setup().click(screen.getByRole('button', { name: 'API Key 1' }))
 
     expect(onItemClick).toHaveBeenCalledWith(mockCredentials[0], mockItems[0]!.model)
   })
 
-  it('should call handleActiveCredential when onItemClick is not provided', () => {
+  it('should call handleActiveCredential when onItemClick is not provided', async () => {
     render(
       <Authorized
         provider={mockProvider}
@@ -173,13 +135,13 @@ describe('Authorized', () => {
       />,
     )
 
-    fireEvent.click(getTrigger())
-    fireEvent.click(screen.getAllByRole('button', { name: 'Select' })[0]!)
+    await userEvent.setup().click(getTrigger())
+    await userEvent.setup().click(screen.getByRole('button', { name: 'API Key 1' }))
 
     expect(mockHandleActiveCredential).toHaveBeenCalledWith(mockCredentials[0], mockItems[0]!.model)
   })
 
-  it('should call handleOpenModal with fixed model fields when adding model credential', () => {
+  it('should call handleOpenModal with fixed model fields when adding model credential', async () => {
     render(
       <Authorized
         provider={mockProvider}
@@ -194,8 +156,10 @@ describe('Authorized', () => {
       />,
     )
 
-    fireEvent.click(getTrigger())
-    fireEvent.click(screen.getByText(/addModelCredential/))
+    await userEvent.setup().click(getTrigger())
+    const addCredential = screen.getByRole('button', { name: /addModelCredential/ })
+    addCredential.focus()
+    await userEvent.setup().keyboard('{Enter}')
 
     expect(mockHandleOpenModal).toHaveBeenCalledWith(undefined, {
       model: 'gpt-4',
@@ -203,7 +167,7 @@ describe('Authorized', () => {
     })
   })
 
-  it('should not render add action when hideAddAction is true', () => {
+  it('should not render add action when hideAddAction is true', async () => {
     render(
       <Authorized
         provider={mockProvider}
@@ -214,11 +178,11 @@ describe('Authorized', () => {
       />,
     )
 
-    fireEvent.click(getTrigger())
+    await userEvent.setup().click(getTrigger())
     expect(screen.queryByRole('button', { name: /addApiKey/i })).not.toBeInTheDocument()
   })
 
-  it('should allow use-only users to switch credentials but not add, edit, or delete them', () => {
+  it('should allow use-only users to switch credentials but not add, edit, or delete them', async () => {
     mockWorkspacePermissionKeys = ['credential.use']
 
     render(
@@ -230,10 +194,10 @@ describe('Authorized', () => {
       />,
     )
 
-    fireEvent.click(getTrigger())
-    fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0]!)
-    fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0]!)
-    fireEvent.click(screen.getAllByRole('button', { name: 'Select' })[0]!)
+    await userEvent.setup().click(getTrigger())
+    expect(screen.queryByRole('button', { name: /operation.edit/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /operation.delete/ })).not.toBeInTheDocument()
+    await userEvent.setup().click(screen.getByRole('button', { name: 'API Key 1' }))
 
     expect(mockHandleActiveCredential).toHaveBeenCalledWith(mockCredentials[0], mockItems[0]!.model)
     expect(mockHandleOpenModal).not.toHaveBeenCalled()
@@ -241,7 +205,7 @@ describe('Authorized', () => {
     expect(screen.queryByRole('button', { name: /addApiKey/i })).not.toBeInTheDocument()
   })
 
-  it('should allow create-only users to add credentials but not switch, edit, or delete existing credentials', () => {
+  it('should allow create-only users to add credentials but not switch, edit, or delete existing credentials', async () => {
     mockWorkspacePermissionKeys = ['credential.create']
 
     render(
@@ -253,11 +217,11 @@ describe('Authorized', () => {
       />,
     )
 
-    fireEvent.click(getTrigger())
-    fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0]!)
-    fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0]!)
-    fireEvent.click(screen.getAllByRole('button', { name: 'Select' })[0]!)
-    fireEvent.click(screen.getByRole('button', { name: /addApiKey/i }))
+    await userEvent.setup().click(getTrigger())
+    expect(screen.queryByRole('button', { name: /operation.edit/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /operation.delete/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'API Key 1' })).not.toBeInTheDocument()
+    await userEvent.setup().click(screen.getByRole('button', { name: /addApiKey/i }))
 
     expect(mockHandleActiveCredential).not.toHaveBeenCalled()
     expect(mockOpenConfirmDelete).not.toHaveBeenCalled()
@@ -265,7 +229,7 @@ describe('Authorized', () => {
     expect(mockHandleOpenModal).toHaveBeenCalledWith(undefined, undefined)
   })
 
-  it('should allow manage-only users to edit and delete credentials but not switch or add them', () => {
+  it('should allow manage-only users to edit and delete credentials but not switch or add them', async () => {
     mockWorkspacePermissionKeys = ['credential.manage']
 
     render(
@@ -277,12 +241,12 @@ describe('Authorized', () => {
       />,
     )
 
-    fireEvent.click(getTrigger())
-    fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0]!)
-    fireEvent.click(getTrigger())
-    fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0]!)
-    fireEvent.click(getTrigger())
-    fireEvent.click(screen.getAllByRole('button', { name: 'Select' })[0]!)
+    await userEvent.setup().click(getTrigger())
+    await userEvent.setup().click(screen.getAllByRole('button', { name: /operation.edit/ })[0]!)
+    await userEvent.setup().click(getTrigger())
+    await userEvent.setup().click(screen.getAllByRole('button', { name: /operation.delete/ })[0]!)
+    await userEvent.setup().click(getTrigger())
+    expect(screen.queryByRole('button', { name: 'API Key 1' })).not.toBeInTheDocument()
 
     expect(mockHandleOpenModal).toHaveBeenCalledWith(mockCredentials[0], mockItems[0]!.model)
     expect(mockOpenConfirmDelete).toHaveBeenCalledWith(mockCredentials[0], mockItems[0]!.model)
@@ -290,7 +254,7 @@ describe('Authorized', () => {
     expect(screen.queryByRole('button', { name: /addApiKey/i })).not.toBeInTheDocument()
   })
 
-  it('should show confirm dialog and call confirm handler when delete is confirmed', () => {
+  it('should show confirm dialog and call confirm handler when delete is confirmed', async () => {
     mockDeleteCredentialId = 'cred-1'
 
     render(
@@ -302,11 +266,11 @@ describe('Authorized', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /common.operation.confirm/i }))
+    await userEvent.setup().click(screen.getByRole('button', { name: /common.operation.confirm/i }))
     expect(mockHandleConfirmDelete).toHaveBeenCalled()
   })
 
-  it('should close confirm dialog when deletion is cancelled', () => {
+  it('should close confirm dialog when deletion is cancelled', async () => {
     mockDeleteCredentialId = 'cred-1'
 
     render(
@@ -319,7 +283,7 @@ describe('Authorized', () => {
     )
 
     const dialog = screen.getByRole('alertdialog')
-    fireEvent.click(within(dialog).getByRole('button', { name: /operation.cancel/i }))
+    await userEvent.setup().click(within(dialog).getByRole('button', { name: /operation.cancel/i }))
 
     expect(mockCloseConfirmDelete).toHaveBeenCalledTimes(1)
   })
@@ -341,5 +305,23 @@ describe('Authorized', () => {
     expect(
       within(dialog).getByRole('button', { name: /common.operation.confirm/i }),
     )!.toBeDisabled()
+  })
+  it.each([
+    { label: 'provider disallows custom credentials', allowCustomToken: false, disabled: false },
+    { label: 'control is disabled', allowCustomToken: true, disabled: true },
+  ])('does not open credential creation when $label', async ({ allowCustomToken, disabled }) => {
+    render(
+      <Authorized
+        provider={{ ...mockProvider, allow_custom_token: allowCustomToken }}
+        configurationMethod={ConfigurationMethodEnum.predefinedModel}
+        items={[]}
+        renderTrigger={mockRenderTrigger}
+        triggerOnlyOpenModal
+        disabled={disabled}
+      />,
+    )
+    await userEvent.setup().click(getTrigger())
+    expect(mockHandleOpenModal).not.toHaveBeenCalled()
+    expect(screen.queryByRole('button', { name: /addApiKey/ })).not.toBeInTheDocument()
   })
 })

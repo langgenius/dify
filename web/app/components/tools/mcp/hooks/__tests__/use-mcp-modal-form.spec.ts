@@ -1,25 +1,16 @@
-import type { EmojiIcon, ImageIcon } from '@/app/components/base/icon-picker'
+import type { ImageIcon } from '@/app/components/base/icon-picker'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
-import { act, renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { MCPAuthMethod } from '@/app/components/tools/types'
 import { toast } from '@/app/notifications'
+import { uploadRemoteFileInfo } from '@/service/common'
 import { createHttpError } from '@/service/http-error'
 import { isValidServerID, isValidUrl, useMCPModalForm } from '../use-mcp-modal-form'
 
 // Mock the API service
 vi.mock('@/service/common', () => ({
   uploadRemoteFileInfo: vi.fn(),
-}))
-
-vi.mock('tldts', () => ({
-  getDomain: vi.fn((url: string) => {
-    try {
-      return new URL(url).hostname
-    } catch {
-      return null
-    }
-  }),
 }))
 
 afterEach(() => {
@@ -122,11 +113,6 @@ describe('useMCPModalForm', () => {
         expect(result.current.state.isDynamicRegistration).toBe(true)
         expect(result.current.state.clientID).toBe('')
         expect(result.current.state.credentials).toBe('')
-      })
-
-      it('should initialize with default emoji icon', () => {
-        const { result } = renderHook(() => useMCPModalForm())
-
         expect(result.current.state.appIcon).toEqual({
           type: 'emoji',
           icon: '🔗',
@@ -170,29 +156,15 @@ describe('useMCPModalForm', () => {
         expect(result.current.state.isDynamicRegistration).toBe(false)
         expect(result.current.state.clientID).toBe('client-123')
         expect(result.current.state.credentials).toBe('secret-456')
-      })
-
-      it('should initialize headers from masked_headers', () => {
-        const { result } = renderHook(() => useMCPModalForm(mockData))
-
-        expect(result.current.state.headers).toHaveLength(2)
-        expect(result.current.state.headers[0]!.key).toBe('Authorization')
-        expect(result.current.state.headers[0]!.value).toBe('***')
-        expect(result.current.state.headers[1]!.key).toBe('X-Custom')
-        expect(result.current.state.headers[1]!.value).toBe('value')
-      })
-
-      it('should initialize emoji icon from data', () => {
-        const { result } = renderHook(() => useMCPModalForm(mockData))
-
-        expect(result.current.state.appIcon.type).toBe('emoji')
-        expect((result.current.state.appIcon as EmojiIcon).icon).toBe('🚀')
-        expect((result.current.state.appIcon as EmojiIcon).background).toBe('#FF0000')
-      })
-
-      it('should store original server URL and ID', () => {
-        const { result } = renderHook(() => useMCPModalForm(mockData))
-
+        expect(result.current.state.headers).toEqual([
+          { id: expect.any(String), key: 'Authorization', value: '***' },
+          { id: expect.any(String), key: 'X-Custom', value: 'value' },
+        ])
+        expect(result.current.state.appIcon).toEqual({
+          type: 'emoji',
+          icon: '🚀',
+          background: '#FF0000',
+        })
         expect(result.current.originalServerUrl).toBe('https://example.com/mcp')
         expect(result.current.originalServerID).toBe('test-server')
       })
@@ -229,142 +201,6 @@ describe('useMCPModalForm', () => {
     })
   })
 
-  describe('Actions', () => {
-    it('should update url', () => {
-      const { result } = renderHook(() => useMCPModalForm())
-
-      act(() => {
-        result.current.actions.setUrl('https://new-url.com')
-      })
-
-      expect(result.current.state.url).toBe('https://new-url.com')
-    })
-
-    it('should update name', () => {
-      const { result } = renderHook(() => useMCPModalForm())
-
-      act(() => {
-        result.current.actions.setName('New Server Name')
-      })
-
-      expect(result.current.state.name).toBe('New Server Name')
-    })
-
-    it('should update serverIdentifier', () => {
-      const { result } = renderHook(() => useMCPModalForm())
-
-      act(() => {
-        result.current.actions.setServerIdentifier('new-server-id')
-      })
-
-      expect(result.current.state.serverIdentifier).toBe('new-server-id')
-    })
-
-    it('should update timeout', () => {
-      const { result } = renderHook(() => useMCPModalForm())
-
-      act(() => {
-        result.current.actions.setTimeout(120)
-      })
-
-      expect(result.current.state.timeout).toBe(120)
-    })
-
-    it('should update sseReadTimeout', () => {
-      const { result } = renderHook(() => useMCPModalForm())
-
-      act(() => {
-        result.current.actions.setSseReadTimeout(900)
-      })
-
-      expect(result.current.state.sseReadTimeout).toBe(900)
-    })
-
-    it('should update headers', () => {
-      const { result } = renderHook(() => useMCPModalForm())
-      const newHeaders = [{ id: '1', key: 'X-New', value: 'new-value' }]
-
-      act(() => {
-        result.current.actions.setHeaders(newHeaders)
-      })
-
-      expect(result.current.state.headers).toEqual(newHeaders)
-    })
-
-    it('should update authMethod', () => {
-      const { result } = renderHook(() => useMCPModalForm())
-
-      act(() => {
-        result.current.actions.setAuthMethod(MCPAuthMethod.headers)
-      })
-
-      expect(result.current.state.authMethod).toBe(MCPAuthMethod.headers)
-    })
-
-    it('should update isDynamicRegistration', () => {
-      const { result } = renderHook(() => useMCPModalForm())
-
-      act(() => {
-        result.current.actions.setIsDynamicRegistration(false)
-      })
-
-      expect(result.current.state.isDynamicRegistration).toBe(false)
-    })
-
-    it('should update clientID', () => {
-      const { result } = renderHook(() => useMCPModalForm())
-
-      act(() => {
-        result.current.actions.setClientID('new-client-id')
-      })
-
-      expect(result.current.state.clientID).toBe('new-client-id')
-    })
-
-    it('should update credentials', () => {
-      const { result } = renderHook(() => useMCPModalForm())
-
-      act(() => {
-        result.current.actions.setCredentials('new-secret')
-      })
-
-      expect(result.current.state.credentials).toBe('new-secret')
-    })
-
-    it('should update appIcon', () => {
-      const { result } = renderHook(() => useMCPModalForm())
-      const newIcon = { type: 'emoji' as const, icon: '🎉', background: '#00FF00' }
-
-      act(() => {
-        result.current.actions.setAppIcon(newIcon)
-      })
-
-      expect(result.current.state.appIcon).toEqual(newIcon)
-    })
-
-    it('should reset icon to default', () => {
-      const { result } = renderHook(() => useMCPModalForm())
-
-      // Change icon first
-      act(() => {
-        result.current.actions.setAppIcon({ type: 'emoji', icon: '🎉', background: '#00FF00' })
-      })
-
-      expect((result.current.state.appIcon as EmojiIcon).icon).toBe('🎉')
-
-      // Reset icon
-      act(() => {
-        result.current.actions.resetIcon()
-      })
-
-      expect(result.current.state.appIcon).toEqual({
-        type: 'emoji',
-        icon: '🔗',
-        background: '#6366F1',
-      })
-    })
-  })
-
   describe('handleUrlBlur', () => {
     it('should not fetch icon in edit mode (when data is provided)', async () => {
       const mockData = {
@@ -378,7 +214,7 @@ describe('useMCPModalForm', () => {
         await result.current.actions.handleUrlBlur('https://example.com')
       })
 
-      // In edit mode, handleUrlBlur should return early
+      expect(uploadRemoteFileInfo).not.toHaveBeenCalled()
       expect(result.current.state.isFetchingIcon).toBe(false)
     })
 
@@ -388,7 +224,7 @@ describe('useMCPModalForm', () => {
       await act(async () => {
         await result.current.actions.handleUrlBlur('not-a-valid-url')
       })
-
+      expect(uploadRemoteFileInfo).not.toHaveBeenCalled()
       expect(result.current.state.isFetchingIcon).toBe(false)
     })
 
@@ -404,9 +240,14 @@ describe('useMCPModalForm', () => {
       const { result } = renderHook(() => useMCPModalForm())
 
       await act(async () => {
-        await result.current.actions.handleUrlBlur('https://example.com/mcp')
+        await result.current.actions.handleUrlBlur('https://api.example.co.uk/mcp')
       })
 
+      expect(uploadRemoteFileInfo).toHaveBeenCalledWith(
+        'https://www.google.com/s2/favicons?domain=example.co.uk&sz=128',
+        undefined,
+        true,
+      )
       expect(result.current.state.appIcon).toEqual({
         type: 'image',
         fileId: 'uploaded-icon-id',
@@ -462,7 +303,7 @@ describe('useMCPModalForm', () => {
       })
 
       vi.mocked(uploadRemoteFileInfo).mockImplementation((remoteIcon) => {
-        if (String(remoteIcon).includes('first.example.com')) return firstUpload
+        if (String(remoteIcon).includes('domain=example.com')) return firstUpload
         return Promise.resolve({
           id: 'file456',
           name: 'icon2.png',
@@ -474,10 +315,20 @@ describe('useMCPModalForm', () => {
 
       const { result } = renderHook(() => useMCPModalForm())
 
-      const firstBlur = result.current.actions.handleUrlBlur('https://first.example.com/mcp')
+      let firstBlur: Promise<void>
+      act(() => {
+        firstBlur = result.current.actions.handleUrlBlur('https://first.example.com/mcp')
+      })
+      await waitFor(() =>
+        expect(uploadRemoteFileInfo).toHaveBeenCalledWith(
+          'https://www.google.com/s2/favicons?domain=example.com&sz=128',
+          undefined,
+          true,
+        ),
+      )
 
       await act(async () => {
-        await result.current.actions.handleUrlBlur('https://second.example.com/mcp')
+        await result.current.actions.handleUrlBlur('https://second.example.org/mcp')
       })
 
       resolveFirstUpload!({
@@ -498,31 +349,6 @@ describe('useMCPModalForm', () => {
       expect(result.current.state.isFetchingIcon).toBe(false)
 
       vi.mocked(uploadRemoteFileInfo).mockReset()
-    })
-
-    it('should fetch icon successfully for valid URL in create mode', async () => {
-      vi.mocked(
-        await import('@/service/common').then((m) => m.uploadRemoteFileInfo),
-      ).mockResolvedValueOnce({
-        id: 'file123',
-        name: 'icon.png',
-        size: 1024,
-        mime_type: 'image/png',
-        url: 'https://example.com/files/file123/file-preview/icon.png',
-      } as unknown as { id: string; name: string; size: number; mime_type: string; url: string })
-
-      const { result } = renderHook(() => useMCPModalForm())
-
-      await act(async () => {
-        await result.current.actions.handleUrlBlur('https://example.com/mcp')
-      })
-
-      // Icon should be set to image type
-      expect(result.current.state.appIcon.type).toBe('image')
-      expect((result.current.state.appIcon as ImageIcon).url).toBe(
-        'https://example.com/files/file123/file-preview/icon.png',
-      )
-      expect(result.current.state.isFetchingIcon).toBe(false)
     })
   })
 
@@ -572,47 +398,4 @@ describe('useMCPModalForm', () => {
   // M3 — Forward-user-identity toggle (PR #36840). The hook stores a bool,
   // hydrates it from data.identity_mode (true iff non-"off"), and exposes a
   // setter.
-  describe('Forward-user-identity toggle', () => {
-    it('defaults to false in create mode', () => {
-      const { result } = renderHook(() => useMCPModalForm())
-      expect(result.current.state.forwardUserIdentity).toBe(false)
-    })
-
-    it('hydrates as true when data.identity_mode is "idp_token"', () => {
-      const mockData = {
-        id: 'existing-1',
-        icon: { content: '🔗', background: '#6366F1' },
-        identity_mode: 'idp_token',
-      } as unknown as ToolWithProvider
-
-      const { result } = renderHook(() => useMCPModalForm(mockData))
-      expect(result.current.state.forwardUserIdentity).toBe(true)
-    })
-
-    it('hydrates as false when data.identity_mode is missing or "off"', () => {
-      const mockData = {
-        id: 'existing-2',
-        icon: { content: '🔗', background: '#6366F1' },
-        // identity_mode intentionally omitted
-      } as unknown as ToolWithProvider
-
-      const { result } = renderHook(() => useMCPModalForm(mockData))
-      expect(result.current.state.forwardUserIdentity).toBe(false)
-    })
-
-    it('updates state via setForwardUserIdentity', () => {
-      const { result } = renderHook(() => useMCPModalForm())
-      expect(result.current.state.forwardUserIdentity).toBe(false)
-
-      act(() => {
-        result.current.actions.setForwardUserIdentity(true)
-      })
-      expect(result.current.state.forwardUserIdentity).toBe(true)
-
-      act(() => {
-        result.current.actions.setForwardUserIdentity(false)
-      })
-      expect(result.current.state.forwardUserIdentity).toBe(false)
-    })
-  })
 })

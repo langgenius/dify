@@ -1,4 +1,5 @@
 import type { MermaidConfig } from 'mermaid'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import mermaid from 'mermaid'
 import * as React from 'react'
@@ -113,7 +114,7 @@ type FlowchartProps = {
 }
 
 const Flowchart = (props: FlowchartProps) => {
-  const { t } = useTranslation(['app'])
+  const { t } = useTranslation(['app', 'common'])
   const [svgString, setSvgString] = useState<string | null>(null)
   const [look, setLook] = useState<'classic' | 'handDrawn'>('classic')
   const [isInitialized, setIsInitialized] = useState(false)
@@ -159,7 +160,7 @@ const Flowchart = (props: FlowchartProps) => {
   /**
    * Handle rendering errors
    */
-  const handleRenderError = (error: any) => {
+  const handleRenderError = (error: unknown) => {
     console.error('Mermaid rendering error:', error)
 
     // On any render error, assume the mermaid state is corrupted and force a re-initialization.
@@ -180,7 +181,14 @@ const Flowchart = (props: FlowchartProps) => {
   // Initialize mermaid
   useEffect(() => {
     const api = initMermaid()
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Synchronize loading and error UI with the imperative Mermaid renderer initialization and debounced rendering lifecycle.
     if (api) setIsInitialized(true)
+    else {
+      // oxlint-disable-next-line eslint-react/set-state-in-effect -- Synchronize loading and error UI with the imperative Mermaid renderer initialization and debounced rendering lifecycle.
+      setIsLoading(false)
+      // oxlint-disable-next-line eslint-react/set-state-in-effect -- Synchronize loading and error UI with the imperative Mermaid renderer initialization and debounced rendering lifecycle.
+      setErrMsg(t(($) => $['api.actionFailed'], { ns: 'common' }))
+    }
   }, [])
 
   // Update theme when prop changes, but allow internal override.
@@ -201,7 +209,7 @@ const Flowchart = (props: FlowchartProps) => {
   }, [props.theme])
 
   const renderFlowchart = useCallback(
-    async (primitiveCode: string) => {
+    async (primitiveCode: string, isCurrent: () => boolean) => {
       /* v8 ignore next */
       if (!isInitialized || !containerRef.current) {
         /* v8 ignore next */
@@ -260,6 +268,7 @@ const Flowchart = (props: FlowchartProps) => {
 
         // Step 2: Render chart
         const svgGraph = await renderMermaidChart(finalCode, look)
+        if (!isCurrent()) return
 
         // Step 3: Apply theme to SVG using the extracted processSvgForTheme function
         const processedSvg = processSvgForTheme(
@@ -272,13 +281,13 @@ const Flowchart = (props: FlowchartProps) => {
         // Step 4: Clean up SVG code
         const cleanedSvg = cleanUpSvgCode(processedSvg)
 
-        diagramCache.set(cacheKey, cleanedSvg as string)
-        setSvgString(cleanedSvg as string)
+        diagramCache.set(cacheKey, cleanedSvg)
+        setSvgString(cleanedSvg)
 
         setIsLoading(false)
       } catch (error) {
         // Error handling
-        handleRenderError(error)
+        if (isCurrent()) handleRenderError(error)
       }
     },
     [chartId, isInitialized, look, currentTheme, t],
@@ -328,7 +337,7 @@ const Flowchart = (props: FlowchartProps) => {
               curve: 'linear',
               ranker: 'tight-tree',
             }
-            config.flowchart = flowchartConfig as unknown as MermaidConfig['flowchart']
+            config.flowchart = flowchartConfig as MermaidConfig['flowchart']
           }
 
           if (currentTheme === 'dark') {
@@ -386,10 +395,13 @@ const Flowchart = (props: FlowchartProps) => {
   // It triggers whenever the code, theme, or style changes.
   useEffect(() => {
     if (!isInitialized) return
+    let active = true
 
     // Don't render if code is too short
     if (!props.PrimitiveCode || props.PrimitiveCode.length < 10) {
+      // oxlint-disable-next-line eslint-react/set-state-in-effect -- Synchronize loading and error UI with the imperative Mermaid renderer initialization and debounced rendering lifecycle.
       setIsLoading(false)
+      // oxlint-disable-next-line eslint-react/set-state-in-effect -- Synchronize loading and error UI with the imperative Mermaid renderer initialization and debounced rendering lifecycle.
       setSvgString(null)
       return
     }
@@ -397,6 +409,7 @@ const Flowchart = (props: FlowchartProps) => {
     // Use a timeout to handle streaming code and debounce rendering
     if (renderTimeoutRef.current) clearTimeout(renderTimeoutRef.current)
 
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Synchronize loading and error UI with the imperative Mermaid renderer initialization and debounced rendering lifecycle.
     setIsLoading(true)
 
     renderTimeoutRef.current = setTimeout(() => {
@@ -415,10 +428,15 @@ const Flowchart = (props: FlowchartProps) => {
         return
       }
 
-      if (configureMermaid(props.PrimitiveCode)) renderFlowchart(props.PrimitiveCode)
+      if (configureMermaid(props.PrimitiveCode)) renderFlowchart(props.PrimitiveCode, () => active)
+      else {
+        setIsLoading(false)
+        setErrMsg(t(($) => $['api.actionFailed'], { ns: 'common' }))
+      }
     }, 300) // 300ms debounce
 
     return () => {
+      active = false
       clearTimeout(renderTimeoutRef.current)
     }
   }, [props.PrimitiveCode, look, currentTheme, isInitialized, configureMermaid, renderFlowchart])
@@ -496,8 +514,10 @@ const Flowchart = (props: FlowchartProps) => {
     <div ref={props.ref as React.RefObject<HTMLDivElement>} className={themeClasses.container}>
       <div className={themeClasses.segmented}>
         <div className="msh-segmented-group">
-          <label className="msh-segmented-item m-2 flex w-50 items-center space-x-1">
-            <div
+          <div className="msh-segmented-item m-2 flex w-50 items-center space-x-1">
+            <Button
+              type="button"
+              aria-pressed={look === 'classic'}
               key="classic"
               className={getLookButtonClass('classic')}
               onClick={() => {
@@ -511,8 +531,10 @@ const Flowchart = (props: FlowchartProps) => {
               <div className="msh-segmented-item-label">
                 {t(($) => $['mermaid.classic'], { ns: 'app' })}
               </div>
-            </div>
-            <div
+            </Button>
+            <Button
+              type="button"
+              aria-pressed={look === 'handDrawn'}
               key="handDrawn"
               className={getLookButtonClass('handDrawn')}
               onClick={() => {
@@ -526,8 +548,8 @@ const Flowchart = (props: FlowchartProps) => {
               <div className="msh-segmented-item-label">
                 {t(($) => $['mermaid.handDrawn'], { ns: 'app' })}
               </div>
-            </div>
-          </label>
+            </Button>
+          </div>
         </div>
       </div>
 

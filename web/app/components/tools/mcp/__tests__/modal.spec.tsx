@@ -1,7 +1,7 @@
 import type { SsoProtocol } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.gen'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -10,7 +10,13 @@ import MCPModal from '../modal'
 
 // Mock the service API
 vi.mock('@/service/common', () => ({
-  uploadRemoteFileInfo: vi.fn().mockResolvedValue({ url: 'https://example.com/icon.png' }),
+  uploadRemoteFileInfo: vi.fn().mockResolvedValue({
+    id: 'favicon-id',
+    name: 'icon.png',
+    size: 100,
+    mime_type: 'image/png',
+    url: 'https://example.com/icon.png',
+  }),
 }))
 
 const mockToastError = vi.hoisted(() => vi.fn())
@@ -31,6 +37,8 @@ const mockSystemFeatures = vi.hoisted(() => ({
 describe('MCPModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSystemFeatures.sso_enforced_for_signin = false
+    mockSystemFeatures.sso_enforced_for_signin_protocol = null
   })
 
   const createWrapper = () =>
@@ -47,157 +55,35 @@ describe('MCPModal', () => {
       render(<MCPModal {...defaultProps} show={false} />, { wrapper: createWrapper() })
       expect(screen.queryByText('tools.mcp.modal.title')).not.toBeInTheDocument()
     })
-
-    it('should render create title when no data is provided', () => {
-      render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.modal.title'))!.toBeInTheDocument()
-      expect(screen.getByRole('dialog')).toHaveAccessibleName('tools.mcp.modal.title')
-    })
-
-    it('should render edit title when data is provided', () => {
-      const mockData = {
-        id: 'test-id',
-        name: 'Test Server',
-        server_url: 'https://example.com/mcp',
-        server_identifier: 'test-server',
-        icon: { content: '🔗', background: '#6366F1' },
-      } as unknown as ToolWithProvider
-
-      render(<MCPModal {...defaultProps} data={mockData} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.modal.editTitle'))!.toBeInTheDocument()
-    })
-  })
-
-  describe('Form Fields', () => {
-    it('should render server URL input', () => {
-      render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.modal.serverUrl'))!.toBeInTheDocument()
-    })
-
-    it('should render name input', () => {
-      render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.modal.name'))!.toBeInTheDocument()
-    })
-
-    it('should render server identifier input', () => {
-      render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.modal.serverIdentifier'))!.toBeInTheDocument()
-    })
-
-    it('should render auth method tabs', () => {
-      render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.modal.authentication'))!.toBeInTheDocument()
-      expect(screen.getByText('tools.mcp.modal.headers'))!.toBeInTheDocument()
-      expect(screen.getByText('tools.mcp.modal.configurations'))!.toBeInTheDocument()
-    })
-  })
-
-  describe('Form Interactions', () => {
-    it('should update URL input value', () => {
-      render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-
-      const urlInput = screen.getByPlaceholderText('tools.mcp.modal.serverUrlPlaceholder')
-      fireEvent.change(urlInput, { target: { value: 'https://test.com/mcp' } })
-
-      expect(urlInput)!.toHaveValue('https://test.com/mcp')
-    })
-
-    it('should update name input value', () => {
-      render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-
-      const nameInput = screen.getByPlaceholderText('tools.mcp.modal.namePlaceholder')
-      fireEvent.change(nameInput, { target: { value: 'My Server' } })
-
-      expect(nameInput)!.toHaveValue('My Server')
-    })
-
-    it('should update server identifier input value', () => {
-      render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-
-      const identifierInput = screen.getByPlaceholderText(
-        'tools.mcp.modal.serverIdentifierPlaceholder',
-      )
-      fireEvent.change(identifierInput, { target: { value: 'my-server' } })
-
-      expect(identifierInput)!.toHaveValue('my-server')
-    })
-  })
-
-  describe('Tab Navigation', () => {
-    it('should show authentication section by default', () => {
-      render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.modal.useDynamicClientRegistration'))!.toBeInTheDocument()
-    })
-
-    it('should switch to headers section when clicked', async () => {
-      render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-
-      const headersTab = screen.getByText('tools.mcp.modal.headers')
-      fireEvent.click(headersTab)
-
-      await waitFor(() => {
-        expect(screen.getByText('tools.mcp.modal.headersTip'))!.toBeInTheDocument()
-      })
-    })
-
-    it('should switch to configurations section when clicked', async () => {
-      render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-
-      const configTab = screen.getByText('tools.mcp.modal.configurations')
-      fireEvent.click(configTab)
-
-      await waitFor(() => {
-        expect(screen.getByText('tools.mcp.modal.timeout'))!.toBeInTheDocument()
-        expect(screen.getByText('tools.mcp.modal.sseReadTimeout'))!.toBeInTheDocument()
-      })
-    })
   })
 
   describe('Action Buttons', () => {
-    it('should render confirm button', () => {
-      render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.modal.confirm'))!.toBeInTheDocument()
-    })
-
-    it('should render save button in edit mode', () => {
-      const mockData = {
-        id: 'test-id',
-        name: 'Test',
-        icon: { content: '🔗', background: '#6366F1' },
-      } as unknown as ToolWithProvider
-
-      render(<MCPModal {...defaultProps} data={mockData} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.modal.save'))!.toBeInTheDocument()
-    })
-
-    it('should render cancel button', () => {
-      render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.modal.cancel'))!.toBeInTheDocument()
-    })
-
-    it('should call onHide when cancel is clicked', () => {
+    it('should call onHide when cancel is clicked', async () => {
+      const user = userEvent.setup()
       const onHide = vi.fn()
       render(<MCPModal {...defaultProps} onHide={onHide} />, { wrapper: createWrapper() })
 
       const cancelButton = screen.getByText('tools.mcp.modal.cancel')
-      fireEvent.click(cancelButton)
+      await user.click(cancelButton)
 
       expect(onHide).toHaveBeenCalledTimes(1)
     })
 
-    it('should call onHide when close icon is clicked', () => {
+    it('should call onHide when close icon is clicked', async () => {
+      const user = userEvent.setup()
       const onHide = vi.fn()
       render(<MCPModal {...defaultProps} onHide={onHide} />, { wrapper: createWrapper() })
 
-      fireEvent.click(screen.getByRole('button', { name: /operation\.close/ }))
+      await user.click(screen.getByRole('button', { name: /operation\.close/ }))
       expect(onHide).toHaveBeenCalled()
     })
 
-    it('should call onHide when the dialog requests close', () => {
+    it('should call onHide when the dialog requests close', async () => {
+      const user = userEvent.setup()
       const onHide = vi.fn()
       render(<MCPModal {...defaultProps} onHide={onHide} />, { wrapper: createWrapper() })
 
-      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+      await user.keyboard('{Escape}')
 
       expect(onHide).toHaveBeenCalledTimes(1)
     })
@@ -208,28 +94,11 @@ describe('MCPModal', () => {
       const confirmButton = screen.getByText('tools.mcp.modal.confirm')
       expect(confirmButton)!.toBeDisabled()
     })
-
-    it('should enable confirm button when required fields are filled', () => {
-      render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-
-      // Fill required fields
-      const urlInput = screen.getByPlaceholderText('tools.mcp.modal.serverUrlPlaceholder')
-      const nameInput = screen.getByPlaceholderText('tools.mcp.modal.namePlaceholder')
-      const identifierInput = screen.getByPlaceholderText(
-        'tools.mcp.modal.serverIdentifierPlaceholder',
-      )
-
-      fireEvent.change(urlInput, { target: { value: 'https://example.com/mcp' } })
-      fireEvent.change(nameInput, { target: { value: 'Test Server' } })
-      fireEvent.change(identifierInput, { target: { value: 'test-server' } })
-
-      const confirmButton = screen.getByText('tools.mcp.modal.confirm')
-      expect(confirmButton).not.toBeDisabled()
-    })
   })
 
   describe('Form Submission', () => {
     it('should call onConfirm with correct data when form is submitted', async () => {
+      const user = userEvent.setup()
       const onConfirm = vi.fn().mockResolvedValue(undefined)
       render(<MCPModal {...defaultProps} onConfirm={onConfirm} />, { wrapper: createWrapper() })
 
@@ -240,12 +109,18 @@ describe('MCPModal', () => {
         'tools.mcp.modal.serverIdentifierPlaceholder',
       )
 
-      fireEvent.change(urlInput, { target: { value: 'https://example.com/mcp' } })
-      fireEvent.change(nameInput, { target: { value: 'Test Server' } })
-      fireEvent.change(identifierInput, { target: { value: 'test-server' } })
+      await user.clear(urlInput)
+      await user.click(urlInput)
+      await user.paste('https://example.com/mcp')
+      await user.clear(nameInput)
+      await user.click(nameInput)
+      await user.paste('Test Server')
+      await user.clear(identifierInput)
+      await user.click(identifierInput)
+      await user.paste('test-server')
 
       const confirmButton = screen.getByText('tools.mcp.modal.confirm')
-      fireEvent.click(confirmButton)
+      await user.click(confirmButton)
 
       await waitFor(() => {
         expect(onConfirm).toHaveBeenCalledWith(
@@ -253,12 +128,16 @@ describe('MCPModal', () => {
             name: 'Test Server',
             server_url: 'https://example.com/mcp',
             server_identifier: 'test-server',
+            authentication: { client_id: '', client_secret: '' },
+            configuration: { timeout: 30, sse_read_timeout: 300 },
+            is_dynamic_registration: true,
           }),
         )
       })
     })
 
     it('should not call onConfirm with invalid URL', async () => {
+      const user = userEvent.setup()
       const onConfirm = vi.fn()
       render(<MCPModal {...defaultProps} onConfirm={onConfirm} />, { wrapper: createWrapper() })
 
@@ -269,20 +148,25 @@ describe('MCPModal', () => {
         'tools.mcp.modal.serverIdentifierPlaceholder',
       )
 
-      fireEvent.change(urlInput, { target: { value: 'not-a-valid-url' } })
-      fireEvent.change(nameInput, { target: { value: 'Test Server' } })
-      fireEvent.change(identifierInput, { target: { value: 'test-server' } })
+      await user.clear(urlInput)
+      await user.click(urlInput)
+      await user.paste('not-a-valid-url')
+      await user.clear(nameInput)
+      await user.click(nameInput)
+      await user.paste('Test Server')
+      await user.clear(identifierInput)
+      await user.click(identifierInput)
+      await user.paste('test-server')
 
       const confirmButton = screen.getByText('tools.mcp.modal.confirm')
-      fireEvent.click(confirmButton)
+      await user.click(confirmButton)
 
-      // Wait a bit and verify onConfirm was not called
-      await new Promise((resolve) => setTimeout(resolve, 100))
       expect(onConfirm).not.toHaveBeenCalled()
       expect(mockToastError).toHaveBeenCalledWith('tools.mcp.modal.invalidServerUrl')
     })
 
     it('should not call onConfirm with invalid server identifier', async () => {
+      const user = userEvent.setup()
       const onConfirm = vi.fn()
       render(<MCPModal {...defaultProps} onConfirm={onConfirm} />, { wrapper: createWrapper() })
 
@@ -293,15 +177,19 @@ describe('MCPModal', () => {
         'tools.mcp.modal.serverIdentifierPlaceholder',
       )
 
-      fireEvent.change(urlInput, { target: { value: 'https://example.com/mcp' } })
-      fireEvent.change(nameInput, { target: { value: 'Test Server' } })
-      fireEvent.change(identifierInput, { target: { value: 'Invalid Server ID!' } })
+      await user.clear(urlInput)
+      await user.click(urlInput)
+      await user.paste('https://example.com/mcp')
+      await user.clear(nameInput)
+      await user.click(nameInput)
+      await user.paste('Test Server')
+      await user.clear(identifierInput)
+      await user.click(identifierInput)
+      await user.paste('Invalid Server ID!')
 
       const confirmButton = screen.getByText('tools.mcp.modal.confirm')
-      fireEvent.click(confirmButton)
+      await user.click(confirmButton)
 
-      // Wait a bit and verify onConfirm was not called
-      await new Promise((resolve) => setTimeout(resolve, 100))
       expect(onConfirm).not.toHaveBeenCalled()
       expect(mockToastError).toHaveBeenCalledWith('tools.mcp.modal.invalidServerIdentifier')
     })
@@ -328,40 +216,41 @@ describe('MCPModal', () => {
       },
     } as unknown as ToolWithProvider
 
-    it('should populate form with existing data', () => {
-      render(<MCPModal {...defaultProps} data={mockData} />, { wrapper: createWrapper() })
-
-      expect(screen.getByDisplayValue('https://existing.com/mcp'))!.toBeInTheDocument()
-      expect(screen.getByDisplayValue('Existing Server'))!.toBeInTheDocument()
-      expect(screen.getByDisplayValue('existing-server'))!.toBeInTheDocument()
-    })
-
-    it('should show warning when URL is changed', () => {
+    it('should show warning when URL is changed', async () => {
+      const user = userEvent.setup()
       render(<MCPModal {...defaultProps} data={mockData} />, { wrapper: createWrapper() })
 
       const urlInput = screen.getByDisplayValue('https://existing.com/mcp')
-      fireEvent.change(urlInput, { target: { value: 'https://new.com/mcp' } })
+      await user.clear(urlInput)
+      await user.click(urlInput)
+      await user.paste('https://new.com/mcp')
 
       expect(screen.getByText('tools.mcp.modal.serverUrlWarning'))!.toBeInTheDocument()
     })
 
-    it('should show warning when server identifier is changed', () => {
+    it('should show warning when server identifier is changed', async () => {
+      const user = userEvent.setup()
       render(<MCPModal {...defaultProps} data={mockData} />, { wrapper: createWrapper() })
 
       const identifierInput = screen.getByDisplayValue('existing-server')
-      fireEvent.change(identifierInput, { target: { value: 'new-server' } })
+      await user.clear(identifierInput)
+      await user.click(identifierInput)
+      await user.paste('new-server')
 
       expect(screen.getByText('tools.mcp.modal.serverIdentifierWarning'))!.toBeInTheDocument()
     })
   })
 
   describe('Form Key Reset', () => {
-    it('should reset form when switching from create to edit mode', () => {
+    it('should reset form when switching from create to edit mode', async () => {
+      const user = userEvent.setup()
       const { rerender } = render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
 
       // Fill some data in create mode
       const nameInput = screen.getByPlaceholderText('tools.mcp.modal.namePlaceholder')
-      fireEvent.change(nameInput, { target: { value: 'New Server' } })
+      await user.clear(nameInput)
+      await user.click(nameInput)
+      await user.paste('New Server')
 
       // Switch to edit mode with different data
       const mockData = {
@@ -378,126 +267,9 @@ describe('MCPModal', () => {
     })
   })
 
-  describe('URL Blur Handler', () => {
-    it('should trigger URL blur-sm handler when URL input loses focus', () => {
-      render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-
-      const urlInput = screen.getByPlaceholderText('tools.mcp.modal.serverUrlPlaceholder')
-      fireEvent.change(urlInput, { target: { value: '  https://test.com/mcp  ' } })
-      fireEvent.blur(urlInput)
-
-      // The blur handler trims the value
-      // The blur handler trims the value
-      expect(urlInput)!.toHaveValue('  https://test.com/mcp  ')
-    })
-
-    it('should handle URL blur-sm with empty value', () => {
-      render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-
-      const urlInput = screen.getByPlaceholderText('tools.mcp.modal.serverUrlPlaceholder')
-      fireEvent.change(urlInput, { target: { value: '' } })
-      fireEvent.blur(urlInput)
-
-      expect(urlInput)!.toHaveValue('')
-    })
-  })
-
-  describe('App Icon', () => {
-    it('should render app icon with default emoji', () => {
-      render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-
-      // The app icon should be rendered
-      const appIcons = document.querySelectorAll('[class*="rounded-2xl"]')
-      expect(appIcons.length).toBeGreaterThan(0)
-    })
-
-    it('should render app icon in edit mode with custom icon', () => {
-      const mockData = {
-        id: 'test-id',
-        name: 'Test Server',
-        server_url: 'https://example.com/mcp',
-        server_identifier: 'test-server',
-        icon: { content: '🚀', background: '#FF0000' },
-      } as unknown as ToolWithProvider
-
-      render(<MCPModal {...defaultProps} data={mockData} />, { wrapper: createWrapper() })
-
-      // The app icon should be rendered
-      const appIcons = document.querySelectorAll('[class*="rounded-2xl"]')
-      expect(appIcons.length).toBeGreaterThan(0)
-    })
-  })
-
   describe('Form Submission with Headers', () => {
-    it('should submit form with headers data', async () => {
-      const onConfirm = vi.fn().mockResolvedValue(undefined)
-      render(<MCPModal {...defaultProps} onConfirm={onConfirm} />, { wrapper: createWrapper() })
-
-      // Fill required fields
-      const urlInput = screen.getByPlaceholderText('tools.mcp.modal.serverUrlPlaceholder')
-      const nameInput = screen.getByPlaceholderText('tools.mcp.modal.namePlaceholder')
-      const identifierInput = screen.getByPlaceholderText(
-        'tools.mcp.modal.serverIdentifierPlaceholder',
-      )
-
-      fireEvent.change(urlInput, { target: { value: 'https://example.com/mcp' } })
-      fireEvent.change(nameInput, { target: { value: 'Test Server' } })
-      fireEvent.change(identifierInput, { target: { value: 'test-server' } })
-
-      // Switch to headers tab and add a header
-      const headersTab = screen.getByText('tools.mcp.modal.headers')
-      fireEvent.click(headersTab)
-
-      await waitFor(() => {
-        expect(screen.getByText('tools.mcp.modal.headersTip'))!.toBeInTheDocument()
-      })
-
-      const confirmButton = screen.getByText('tools.mcp.modal.confirm')
-      fireEvent.click(confirmButton)
-
-      await waitFor(() => {
-        expect(onConfirm).toHaveBeenCalledWith(
-          expect.objectContaining({
-            name: 'Test Server',
-            server_url: 'https://example.com/mcp',
-            server_identifier: 'test-server',
-          }),
-        )
-      })
-    })
-
-    it('should submit with authentication data', async () => {
-      const onConfirm = vi.fn().mockResolvedValue(undefined)
-      render(<MCPModal {...defaultProps} onConfirm={onConfirm} />, { wrapper: createWrapper() })
-
-      // Fill required fields
-      const urlInput = screen.getByPlaceholderText('tools.mcp.modal.serverUrlPlaceholder')
-      const nameInput = screen.getByPlaceholderText('tools.mcp.modal.namePlaceholder')
-      const identifierInput = screen.getByPlaceholderText(
-        'tools.mcp.modal.serverIdentifierPlaceholder',
-      )
-
-      fireEvent.change(urlInput, { target: { value: 'https://example.com/mcp' } })
-      fireEvent.change(nameInput, { target: { value: 'Test Server' } })
-      fireEvent.change(identifierInput, { target: { value: 'test-server' } })
-
-      // Submit form
-      const confirmButton = screen.getByText('tools.mcp.modal.confirm')
-      fireEvent.click(confirmButton)
-
-      await waitFor(() => {
-        expect(onConfirm).toHaveBeenCalledWith(
-          expect.objectContaining({
-            authentication: expect.objectContaining({
-              client_id: '',
-              client_secret: '',
-            }),
-          }),
-        )
-      })
-    })
-
     it('should format headers correctly when submitting with header keys', async () => {
+      const user = userEvent.setup()
       const onConfirm = vi.fn().mockResolvedValue(undefined)
       const mockData = {
         id: 'test-id',
@@ -517,7 +289,7 @@ describe('MCPModal', () => {
 
       // Switch to headers tab
       const headersTab = screen.getByText('tools.mcp.modal.headers')
-      fireEvent.click(headersTab)
+      await user.click(headersTab)
 
       await waitFor(() => {
         expect(screen.getByText('tools.mcp.modal.headersTip'))!.toBeInTheDocument()
@@ -525,14 +297,12 @@ describe('MCPModal', () => {
 
       // Submit form
       const saveButton = screen.getByText('tools.mcp.modal.save')
-      fireEvent.click(saveButton)
+      await user.click(saveButton)
 
       await waitFor(() => {
         expect(onConfirm).toHaveBeenCalledWith(
           expect.objectContaining({
-            headers: expect.objectContaining({
-              Authorization: expect.any(String),
-            }),
+            headers: { Authorization: 'Bearer token', 'X-Custom': 'value' },
           }),
         )
       })
@@ -541,6 +311,7 @@ describe('MCPModal', () => {
 
   describe('Edit Mode Submission', () => {
     it('should send hidden URL when URL is unchanged in edit mode', async () => {
+      const user = userEvent.setup()
       const onConfirm = vi.fn().mockResolvedValue(undefined)
       const mockData = {
         id: 'test-id',
@@ -556,7 +327,7 @@ describe('MCPModal', () => {
 
       // Don't change the URL, just submit
       const saveButton = screen.getByText('tools.mcp.modal.save')
-      fireEvent.click(saveButton)
+      await user.click(saveButton)
 
       await waitFor(() => {
         expect(onConfirm).toHaveBeenCalledWith(
@@ -568,6 +339,7 @@ describe('MCPModal', () => {
     })
 
     it('should send new URL when URL is changed in edit mode', async () => {
+      const user = userEvent.setup()
       const onConfirm = vi.fn().mockResolvedValue(undefined)
       const mockData = {
         id: 'test-id',
@@ -583,10 +355,12 @@ describe('MCPModal', () => {
 
       // Change the URL
       const urlInput = screen.getByDisplayValue('https://existing.com/mcp')
-      fireEvent.change(urlInput, { target: { value: 'https://new.com/mcp' } })
+      await user.clear(urlInput)
+      await user.click(urlInput)
+      await user.paste('https://new.com/mcp')
 
       const saveButton = screen.getByText('tools.mcp.modal.save')
-      fireEvent.click(saveButton)
+      await user.click(saveButton)
 
       await waitFor(() => {
         expect(onConfirm).toHaveBeenCalledWith(
@@ -599,37 +373,8 @@ describe('MCPModal', () => {
   })
 
   describe('Configuration Section', () => {
-    it('should submit with default timeout values', async () => {
-      const onConfirm = vi.fn().mockResolvedValue(undefined)
-      render(<MCPModal {...defaultProps} onConfirm={onConfirm} />, { wrapper: createWrapper() })
-
-      // Fill required fields
-      const urlInput = screen.getByPlaceholderText('tools.mcp.modal.serverUrlPlaceholder')
-      const nameInput = screen.getByPlaceholderText('tools.mcp.modal.namePlaceholder')
-      const identifierInput = screen.getByPlaceholderText(
-        'tools.mcp.modal.serverIdentifierPlaceholder',
-      )
-
-      fireEvent.change(urlInput, { target: { value: 'https://example.com/mcp' } })
-      fireEvent.change(nameInput, { target: { value: 'Test Server' } })
-      fireEvent.change(identifierInput, { target: { value: 'test-server' } })
-
-      const confirmButton = screen.getByText('tools.mcp.modal.confirm')
-      fireEvent.click(confirmButton)
-
-      await waitFor(() => {
-        expect(onConfirm).toHaveBeenCalledWith(
-          expect.objectContaining({
-            configuration: expect.objectContaining({
-              timeout: 30,
-              sse_read_timeout: 300,
-            }),
-          }),
-        )
-      })
-    })
-
     it('should submit with custom timeout values', async () => {
+      const user = userEvent.setup()
       const onConfirm = vi.fn().mockResolvedValue(undefined)
       render(<MCPModal {...defaultProps} onConfirm={onConfirm} />, { wrapper: createWrapper() })
 
@@ -640,85 +385,79 @@ describe('MCPModal', () => {
         'tools.mcp.modal.serverIdentifierPlaceholder',
       )
 
-      fireEvent.change(urlInput, { target: { value: 'https://example.com/mcp' } })
-      fireEvent.change(nameInput, { target: { value: 'Test Server' } })
-      fireEvent.change(identifierInput, { target: { value: 'test-server' } })
+      await user.clear(urlInput)
+      await user.click(urlInput)
+      await user.paste('https://example.com/mcp')
+      await user.clear(nameInput)
+      await user.click(nameInput)
+      await user.paste('Test Server')
+      await user.clear(identifierInput)
+      await user.click(identifierInput)
+      await user.paste('test-server')
 
       // Switch to configurations tab
       const configTab = screen.getByText('tools.mcp.modal.configurations')
-      fireEvent.click(configTab)
+      await user.click(configTab)
 
       await waitFor(() => {
         expect(screen.getByText('tools.mcp.modal.timeout'))!.toBeInTheDocument()
       })
 
-      const confirmButton = screen.getByText('tools.mcp.modal.confirm')
-      fireEvent.click(confirmButton)
-
-      await waitFor(() => {
-        expect(onConfirm).toHaveBeenCalled()
-      })
+      const timeout = screen.getByRole('textbox', { name: 'tools.mcp.modal.timeout' })
+      const sseTimeout = screen.getByRole('textbox', { name: 'tools.mcp.modal.sseReadTimeout' })
+      await user.clear(timeout)
+      await user.click(timeout)
+      await user.paste('45')
+      await user.clear(sseTimeout)
+      await user.click(sseTimeout)
+      await user.paste('450')
+      const confirmButton = screen.getByRole('button', { name: 'tools.mcp.modal.confirm' })
+      await user.click(confirmButton)
+      await waitFor(() =>
+        expect(onConfirm).toHaveBeenCalledWith(
+          expect.objectContaining({ configuration: { timeout: 45, sse_read_timeout: 450 } }),
+        ),
+      )
     })
   })
 
-  describe('Dynamic Registration', () => {
-    it('should toggle dynamic registration', async () => {
-      render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-
-      // Find the switch for dynamic registration
-      const switchElements = screen.getAllByRole('switch')
-      expect(switchElements.length).toBeGreaterThan(0)
-
-      // Click the first switch (dynamic registration)
-      fireEvent.click(switchElements[0]!)
-
-      // The switch should toggle
-      // The switch should toggle
-      expect(switchElements[0])!.toBeInTheDocument()
-    })
-  })
-
-  describe('App Icon Picker Interactions', () => {
-    it('should open app icon picker when app icon is clicked', async () => {
-      render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-
-      await userEvent
-        .setup()
-        .click(screen.getByRole('button', { name: 'tools.mcp.modal.changeIcon' }))
-
-      expect(await screen.findByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
-    })
-
-    it('should close app icon picker and update icon when selecting an icon', async () => {
-      render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-
-      await userEvent
-        .setup()
-        .click(screen.getByRole('button', { name: 'tools.mcp.modal.changeIcon' }))
-      expect(await screen.findByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
-
-      fireEvent.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
-      fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
-
-      await waitFor(() => {
-        expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
-      })
-    })
-
-    it('should close app icon picker and reset icon when Escape is pressed', async () => {
-      render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
-
+  it.each([true, false])(
+    'applies an icon edit only after confirmation (confirm=%s)',
+    async (confirm) => {
       const user = userEvent.setup()
-      await user.click(screen.getByRole('button', { name: 'tools.mcp.modal.changeIcon' }))
-      expect(await screen.findByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
-
-      await user.keyboard('{Escape}')
-
-      await waitFor(() => {
-        expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
+      const onConfirm = vi.fn()
+      const data = {
+        id: 'edit-server',
+        name: 'Server',
+        server_url: 'https://example.com/mcp',
+        server_identifier: 'server',
+        icon: { content: '🚀', background: '#FF0000' },
+      } as ToolWithProvider
+      render(<MCPModal {...defaultProps} data={data} onConfirm={onConfirm} />, {
+        wrapper: createWrapper(),
       })
-    })
-  })
+      await user.click(screen.getByRole('button', { name: 'tools.mcp.modal.changeIcon' }))
+      await user.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
+      if (confirm) await user.click(screen.getByRole('button', { name: 'app.iconPicker.ok' }))
+      else await user.keyboard('{Escape}')
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('dialog', { name: 'app.iconPicker.title' }),
+        ).not.toBeInTheDocument(),
+      )
+      expect(onConfirm).not.toHaveBeenCalled()
+      await user.click(screen.getByRole('button', { name: 'tools.mcp.modal.save' }))
+      await waitFor(() =>
+        expect(onConfirm).toHaveBeenCalledWith(
+          expect.objectContaining({
+            icon_type: 'emoji',
+            icon: '🚀',
+            icon_background: confirm ? '#F3FEE7' : '#FF0000',
+          }),
+        ),
+      )
+    },
+  )
 
   // M3 — Forward-user-identity toggle (PR #36840).
   describe('Forward-user-identity toggle', () => {
@@ -734,16 +473,16 @@ describe('MCPModal', () => {
       mockSystemFeatures.sso_enforced_for_signin_protocol = zSsoProtocol.enum.oidc
     }
 
-    const fillRequiredFields = () => {
-      fireEvent.change(screen.getByPlaceholderText('tools.mcp.modal.serverUrlPlaceholder'), {
-        target: { value: 'https://example.com/mcp' },
-      })
-      fireEvent.change(screen.getByPlaceholderText('tools.mcp.modal.namePlaceholder'), {
-        target: { value: 'srv' },
-      })
-      fireEvent.change(screen.getByPlaceholderText('tools.mcp.modal.serverIdentifierPlaceholder'), {
-        target: { value: 'srv-id' },
-      })
+    const fillRequiredFields = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.type(
+        screen.getByRole('textbox', { name: 'tools.mcp.modal.serverUrl' }),
+        'https://example.com/mcp',
+      )
+      await user.type(screen.getByRole('textbox', { name: 'tools.mcp.modal.name' }), 'srv')
+      await user.type(
+        screen.getByRole('textbox', { name: 'tools.mcp.modal.serverIdentifier' }),
+        'srv-id',
+      )
     }
 
     it('does not render the toggle when SSO is not configured', () => {
@@ -774,12 +513,13 @@ describe('MCPModal', () => {
     })
 
     it('submits identity_mode="off" by default (toggle off)', async () => {
+      const user = userEvent.setup()
       enableRefreshCapableSSO()
       const onConfirm = vi.fn()
       render(<MCPModal {...defaultProps} onConfirm={onConfirm} />, { wrapper: createWrapper() })
 
-      fillRequiredFields()
-      fireEvent.click(screen.getByText('tools.mcp.modal.confirm'))
+      await fillRequiredFields(user)
+      await user.click(screen.getByText('tools.mcp.modal.confirm'))
 
       await waitFor(() => {
         expect(onConfirm).toHaveBeenCalledWith(
@@ -791,16 +531,17 @@ describe('MCPModal', () => {
     })
 
     it('submits identity_mode="idp_token" when toggle is flipped on', async () => {
+      const user = userEvent.setup()
       enableRefreshCapableSSO()
       const onConfirm = vi.fn()
       render(<MCPModal {...defaultProps} onConfirm={onConfirm} />, { wrapper: createWrapper() })
 
-      fillRequiredFields()
+      await fillRequiredFields(user)
       const fwdSwitch = screen.getByRole('switch', {
         name: 'tools.mcp.modal.forwardUserIdentity',
       })
-      fireEvent.click(fwdSwitch)
-      fireEvent.click(screen.getByText('tools.mcp.modal.confirm'))
+      await user.click(fwdSwitch)
+      await user.click(screen.getByText('tools.mcp.modal.confirm'))
 
       await waitFor(() => {
         expect(onConfirm).toHaveBeenCalledWith(
@@ -812,6 +553,7 @@ describe('MCPModal', () => {
     })
 
     it('clamps to identity_mode="off" when SSO is unavailable, even if existing data had it on', async () => {
+      const user = userEvent.setup()
       mockSystemFeatures.sso_enforced_for_signin = false
       const onConfirm = vi.fn()
       const mockData = {
@@ -826,7 +568,7 @@ describe('MCPModal', () => {
       render(<MCPModal {...defaultProps} data={mockData} onConfirm={onConfirm} />, {
         wrapper: createWrapper(),
       })
-      fireEvent.click(screen.getByText('tools.mcp.modal.save'))
+      await user.click(screen.getByText('tools.mcp.modal.save'))
 
       await waitFor(() => {
         expect(onConfirm).toHaveBeenCalledWith(

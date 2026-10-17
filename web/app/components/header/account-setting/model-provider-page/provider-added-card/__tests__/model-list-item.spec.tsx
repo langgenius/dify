@@ -1,312 +1,166 @@
-import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
-import type { ModelItem, ModelProvider } from '../../declarations'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { disableModel, enableModel } from '@/service/common'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { render } from '@/test/console/render'
-import { ModelStatusEnum } from '../../declarations'
+import type { ModelItem } from '../../declarations'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { consoleClient } from '@/service/console'
+import { createProviderResponseFixture } from '@/test/console/model-provider'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { ConfigurationMethodEnum, ModelStatusEnum, ModelTypeEnum } from '../../declarations'
+import { modelProviderDetailsQueryOptions } from '../../utils'
 import ModelListItem from '../model-list-item'
 
-let mockModelLoadBalancingEnabled = false
-let mockPlanType: CloudPlan = 'professional'
-let mockWorkspacePermissionKeys: string[] = ['plugin.model_config']
-
-function createWrapper(deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'CLOUD') {
-  return createConsoleQueryWrapper({
-    systemFeatures: { deployment_edition: deploymentEdition },
-    features: {
-      billing: { subscription: { plan: mockPlanType } },
-      model_load_balancing_enabled: mockModelLoadBalancingEnabled,
-    },
-  }).wrapper
-}
-
+const { permissions, updateModelList } = vi.hoisted(() => ({
+  permissions: { value: ['plugin.model_config'] as string[] },
+  updateModelList: vi.fn(),
+}))
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
+  return createPermissionStateModuleMock(() => ({ workspacePermissionKeys: permissions.value }))
 })
-
-vi.mock('@/service/common', () => ({
-  enableModel: vi.fn(),
-  disableModel: vi.fn(),
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
+  const { zGetFeaturesResponse } = await import('@dify/contracts/api/console/features/zod.gen')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'features.get': () => zGetFeaturesResponse.parse({}),
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.modelProviders.byProvider.models.enable.patch': vi.fn(),
+      'workspaces.current.modelProviders.byProvider.models.disable.patch': vi.fn(),
+    }),
+  }
+})
+vi.mock('../../hooks', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../hooks')>()),
+  useUpdateModelList: () => updateModelList,
 }))
 
-vi.mock('../../hooks', () => ({
-  useUpdateModelList: () => vi.fn(),
-}))
+const provider = modelProviderDetailsQueryOptions().select!({
+  data: [createProviderResponseFixture({ provider: 'test-provider' })],
+}).data[0]!
+const model: ModelItem = {
+  model: 'gpt-4',
+  label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' },
+  model_type: ModelTypeEnum.textGeneration,
+  fetch_from: ConfigurationMethodEnum.predefinedModel,
+  status: ModelStatusEnum.active,
+  model_properties: {},
+  deprecated: false,
+  load_balancing_enabled: false,
+  has_invalid_load_balancing_configs: false,
+}
+const mutations = consoleClient.workspaces.current.modelProviders.byProvider.models
+const configName = 'common.operation.config'
 
-vi.mock('../../model-icon', () => ({
-  default: () => <div data-testid="model-icon" />,
-}))
+beforeEach(() => {
+  vi.clearAllMocks()
+  permissions.value = ['plugin.model_config']
+})
+afterEach(() => vi.useRealTimers())
 
-vi.mock('../../model-name', () => ({
-  default: ({
-    children,
-    nameClassName,
-    nameId,
-  }: {
-    children: React.ReactNode
-    nameClassName?: string
-    nameId?: string
-  }) => (
-    <div data-testid="model-name" className={nameClassName}>
-      <span id={nameId}>gpt-4</span>
-      {children}
-    </div>
-  ),
-}))
-
-vi.mock('../../model-auth', () => ({
-  ConfigModel: ({ onClick }: { onClick: () => void }) => (
-    <button type="button" onClick={onClick}>
-      modify load balancing
-    </button>
-  ),
-}))
-
-describe('ModelListItem', () => {
-  const mockProvider = {
-    provider: 'test-provider',
-  } as unknown as ModelProvider
-
-  const mockModel = {
-    model: 'gpt-4',
-    model_type: 'llm',
-    fetch_from: 'system',
-    status: 'active',
-    deprecated: false,
-    load_balancing_enabled: false,
-    has_invalid_load_balancing_configs: false,
-  } as unknown as ModelItem
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockModelLoadBalancingEnabled = false
-    mockPlanType = 'professional'
-    mockWorkspacePermissionKeys = ['plugin.model_config']
-  })
-
-  it('keeps model configuration available outside Cloud without a Sandbox placeholder', () => {
-    render(<ModelListItem model={mockModel} provider={mockProvider} isConfigurable />, {
-      wrapper: createWrapper('COMMUNITY'),
-    })
-    expect(screen.getByRole('button', { name: 'modify load balancing' })).toBeInTheDocument()
-  })
-
-  it('should render model item with icon and name', () => {
-    render(<ModelListItem model={mockModel} provider={mockProvider} isConfigurable={false} />, {
-      wrapper: createWrapper(),
-    })
-    expect(screen.getByTestId('model-icon')).toBeInTheDocument()
-    expect(screen.getByTestId('model-name')).toBeInTheDocument()
-    expect(screen.getByRole('switch', { name: 'gpt-4' })).toBeInTheDocument()
-  })
-
-  it('should disable an active model when switch is clicked', async () => {
+it.each([
+  { status: ModelStatusEnum.active, action: 'disable' as const },
+  { status: ModelStatusEnum.disabled, action: 'enable' as const },
+])(
+  '$action submits the selected model and refreshes the owning model list',
+  async ({ status, action }) => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
-    render(
+    renderWithConsoleQuery(
       <ModelListItem
-        model={mockModel}
-        provider={mockProvider}
+        model={{ ...model, status }}
+        provider={provider}
         isConfigurable={false}
         onChange={onChange}
       />,
-      { wrapper: createWrapper() },
     )
-    fireEvent.click(screen.getByRole('switch'))
 
-    await waitFor(
-      () => {
-        expect(disableModel).toHaveBeenCalled()
-        expect(onChange).toHaveBeenCalledWith('test-provider')
-      },
-      { timeout: 2000 },
+    await user.click(screen.getByRole('switch', { name: 'GPT-4' }))
+    expect(mutations[action].patch).not.toHaveBeenCalled()
+
+    await waitFor(() =>
+      expect(mutations[action].patch).toHaveBeenCalledExactlyOnceWith({
+        params: { provider: 'test-provider' },
+        body: { model: 'gpt-4', model_type: 'llm' },
+      }),
     )
-  })
+    expect(updateModelList).toHaveBeenCalledWith(ModelTypeEnum.textGeneration)
+    expect(onChange).toHaveBeenCalledWith('test-provider')
+  },
+)
 
-  it('should enable a disabled model when switch is clicked', async () => {
-    const onChange = vi.fn()
-    const disabledModel = { ...mockModel, status: ModelStatusEnum.disabled }
-    render(
-      <ModelListItem
-        model={disabledModel}
-        provider={mockProvider}
-        isConfigurable={false}
-        onChange={onChange}
-      />,
-      { wrapper: createWrapper() },
-    )
-    fireEvent.click(screen.getByRole('switch'))
-
-    await waitFor(
-      () => {
-        expect(enableModel).toHaveBeenCalled()
-        expect(onChange).toHaveBeenCalledWith('test-provider')
-      },
-      { timeout: 2000 },
-    )
-  })
-
-  it('should open load balancing config action when available', () => {
-    mockModelLoadBalancingEnabled = true
+it.each([
+  {
+    edition: 'COMMUNITY' as const,
+    plan: 'professional' as const,
+    balancing: false,
+    configurable: true,
+  },
+  { edition: 'CLOUD' as const, plan: 'sandbox' as const, balancing: false, configurable: true },
+  {
+    edition: 'CLOUD' as const,
+    plan: 'professional' as const,
+    balancing: false,
+    configurable: false,
+  },
+  { edition: 'CLOUD' as const, plan: 'professional' as const, balancing: true, configurable: true },
+])(
+  'gates configuration for $edition/$plan with load balancing $balancing',
+  async ({ edition, plan, balancing, configurable }) => {
+    const user = userEvent.setup()
     const onModifyLoadBalancing = vi.fn()
-
-    render(
+    renderWithConsoleQuery(
       <ModelListItem
-        model={mockModel}
-        provider={mockProvider}
-        isConfigurable={false}
+        model={model}
+        provider={provider}
+        isConfigurable
         onModifyLoadBalancing={onModifyLoadBalancing}
       />,
-      { wrapper: createWrapper() },
+      {
+        systemFeatures: { deployment_edition: edition },
+        features: { billing: { subscription: { plan } }, model_load_balancing_enabled: balancing },
+      },
     )
+    if (configurable) {
+      await user.click(screen.getByRole('button', { name: configName }))
+      expect(onModifyLoadBalancing).toHaveBeenCalledExactlyOnceWith(model)
+    } else {
+      expect(screen.queryByRole('button', { name: configName })).not.toBeInTheDocument()
+    }
+  },
+)
 
-    fireEvent.click(screen.getByRole('button', { name: 'modify load balancing' }))
-    expect(onModifyLoadBalancing).toHaveBeenCalledWith(mockModel)
+it('hides model controls without model configuration permission', () => {
+  permissions.value = []
+  renderWithConsoleQuery(<ModelListItem model={model} provider={provider} isConfigurable />, {
+    features: { model_load_balancing_enabled: true },
   })
-
-  it('should allow model status and load balancing controls with plugin.model_config', () => {
-    mockWorkspacePermissionKeys = ['plugin.model_config']
-    mockModelLoadBalancingEnabled = true
-
-    render(
-      <ModelListItem
-        model={mockModel}
-        provider={mockProvider}
-        isConfigurable
-        onModifyLoadBalancing={vi.fn()}
-      />,
-      { wrapper: createWrapper() },
-    )
-
-    expect(screen.getByRole('switch')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'modify load balancing' })).toBeInTheDocument()
-  })
-
-  it('should hide model status and load balancing controls without plugin.model_config', () => {
-    mockWorkspacePermissionKeys = []
-    mockModelLoadBalancingEnabled = true
-
-    render(
-      <ModelListItem
-        model={mockModel}
-        provider={mockProvider}
-        isConfigurable
-        onModifyLoadBalancing={vi.fn()}
-      />,
-      { wrapper: createWrapper() },
-    )
-
-    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'modify load balancing' })).not.toBeInTheDocument()
-  })
-
-  // Deprecated branches: opacity-60, disabled switch, no ConfigModel
-  it('should show deprecated model with opacity and disabled switch', () => {
-    // Arrange
-    const deprecatedModel = { ...mockModel, deprecated: true } as unknown as ModelItem
-    mockModelLoadBalancingEnabled = true
-
-    // Act
-    const { container } = render(
-      <ModelListItem model={deprecatedModel} provider={mockProvider} isConfigurable={false} />,
-      { wrapper: createWrapper() },
-    )
-
-    // Assert
-    expect(container.querySelector('.opacity-60')).toBeInTheDocument()
-    expect(screen.getByTestId('model-name')).toHaveClass('line-through')
-    expect(screen.queryByRole('button', { name: 'modify load balancing' })).not.toBeInTheDocument()
-  })
-
-  // Load balancing badge: visible when all 4 conditions met
-  it('should show load balancing badge when all conditions are met', () => {
-    // Arrange
-    mockModelLoadBalancingEnabled = true
-    const lbModel = {
-      ...mockModel,
-      load_balancing_enabled: true,
-      has_invalid_load_balancing_configs: false,
-      deprecated: false,
-    } as unknown as ModelItem
-
-    // Act
-    render(<ModelListItem model={lbModel} provider={mockProvider} isConfigurable={false} />, {
-      wrapper: createWrapper(),
-    })
-
-    // Assert - Badge component should render
-    const badge = document.querySelector('.border-text-accent-secondary')
-    expect(badge).toBeInTheDocument()
-  })
-
-  // 'sandbox': ConfigModel shown without load balancing enabled
-  it('should show ConfigModel for sandbox plan even without load balancing enabled', () => {
-    // Arrange - set plan type to sandbox and keep load balancing disabled
-    mockModelLoadBalancingEnabled = false
-    mockPlanType = 'sandbox'
-
-    // Act
-    render(<ModelListItem model={mockModel} provider={mockProvider} isConfigurable={false} />, {
-      wrapper: createWrapper(),
-    })
-
-    // Assert - ConfigModel should show because plan.type === 'sandbox'
-    expect(screen.getByRole('button', { name: 'modify load balancing' })).toBeInTheDocument()
-  })
-
-  // Negative proof: non-sandbox plan without load balancing should NOT show ConfigModel
-  it('should hide ConfigModel for non-sandbox plan without load balancing enabled', () => {
-    // Arrange - set plan type to non-sandbox and keep load balancing disabled
-    mockModelLoadBalancingEnabled = false
-    mockPlanType = 'professional'
-
-    // Act
-    render(<ModelListItem model={mockModel} provider={mockProvider} isConfigurable={false} />, {
-      wrapper: createWrapper(),
-    })
-
-    // Assert - ConfigModel should NOT show because plan.type !== 'sandbox' and load balancing is disabled
-    expect(screen.queryByRole('button', { name: 'modify load balancing' })).not.toBeInTheDocument()
-  })
-
-  // model.status=credentialRemoved: switch disabled, no ConfigModel
-  it('should disable switch and hide ConfigModel when status is credentialRemoved', () => {
-    // Arrange
-    const removedModel = {
-      ...mockModel,
-      status: ModelStatusEnum.credentialRemoved,
-    } as unknown as ModelItem
-    mockModelLoadBalancingEnabled = true
-
-    // Act
-    render(<ModelListItem model={removedModel} provider={mockProvider} isConfigurable={false} />, {
-      wrapper: createWrapper(),
-    })
-
-    // Assert - ConfigModel should not render because status is not active/disabled
-    expect(screen.queryByRole('button', { name: 'modify load balancing' })).not.toBeInTheDocument()
-    const statusSwitch = screen.getByRole('switch')
-    expect(statusSwitch).toHaveAttribute('aria-disabled', 'true')
-    fireEvent.click(statusSwitch)
-    expect(statusSwitch).toHaveAttribute('aria-checked', 'false')
-    expect(enableModel).not.toHaveBeenCalled()
-    expect(disableModel).not.toHaveBeenCalled()
-  })
-
-  // isConfigurable=true: hover class on row
-  it('should apply hover class when isConfigurable is true', () => {
-    // Act
-    const { container } = render(
-      <ModelListItem model={mockModel} provider={mockProvider} isConfigurable={true} />,
-      { wrapper: createWrapper() },
-    )
-
-    // Assert
-    expect(
-      container.querySelector('.hover\\:bg-components-panel-on-panel-item-bg-hover'),
-    ).toBeInTheDocument()
-  })
+  expect(screen.getByText('GPT-4')).toBeInTheDocument()
+  expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: configName })).not.toBeInTheDocument()
 })
+
+it.each([
+  { deprecated: true, status: ModelStatusEnum.active },
+  { deprecated: false, status: ModelStatusEnum.credentialRemoved },
+])(
+  'prevents configuration and toggling for unavailable models ($deprecated/$status)',
+  async (state) => {
+    const user = userEvent.setup()
+    renderWithConsoleQuery(
+      <ModelListItem model={{ ...model, ...state }} provider={provider} isConfigurable />,
+      {
+        features: { model_load_balancing_enabled: true },
+      },
+    )
+    const toggle = screen.getByRole('switch', { name: 'GPT-4' })
+    expect(toggle).toHaveAttribute('aria-disabled', 'true')
+    expect(toggle).not.toBeChecked()
+    await user.click(toggle)
+    expect(mutations.enable.patch).not.toHaveBeenCalled()
+    expect(mutations.disable.patch).not.toHaveBeenCalled()
+    expect(screen.queryByRole('button', { name: configName })).not.toBeInTheDocument()
+  },
+)

@@ -1,9 +1,11 @@
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ChangeEvent } from 'react'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
+import { ORPCError } from '@orpc/client'
 import { act, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/image-uploader/utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { imageUpload } from '@/app/components/base/image-uploader/utils'
+import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderHookWithConsoleQuery } from '@/test/console/query-data'
 import useWebAppBrand from '../use-web-app-brand'
 
@@ -19,7 +21,8 @@ let customConfigQueryPending = false
 let customConfigQueryError: Error | undefined
 const renderHook = <Result, Props = void>(callback: (props: Props) => Result) => {
   const queryClient = createConsoleQueryClient()
-  if (seedCustomConfig) queryClient.setQueryData(['custom-config'], customConfig)
+  if (seedCustomConfig)
+    queryClient.setQueryData(consoleQuery.workspaces.customConfig.get.queryKey(), customConfig)
 
   return renderHookWithConsoleQuery(callback, {
     systemFeatures: {
@@ -59,45 +62,17 @@ vi.mock('@/app/notifications', () => ({
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const consoleQuery = new Proxy(actual.consoleQuery, {
-    get(target, prop, receiver) {
-      if (prop === 'workspaces') {
-        return new Proxy(target.workspaces, {
-          get(workspacesTarget, workspaceProp, workspaceReceiver) {
-            if (workspaceProp === 'customConfig') {
-              return {
-                get: {
-                  key: () => ['custom-config'],
-                  queryOptions: () => ({
-                    queryKey: ['custom-config'],
-                    queryFn: async () => {
-                      if (customConfigQueryPending) return new Promise<never>(() => {})
-                      if (customConfigQueryError)
-                        return Promise.reject(new Error(customConfigQueryError.message))
-                      return customConfig
-                    },
-                  }),
-                },
-                post: {
-                  mutationOptions: () => ({
-                    mutationFn: (variables: unknown) => mockUpdateCustomConfig(variables),
-                  }),
-                },
-              }
-            }
-
-            return Reflect.get(workspacesTarget, workspaceProp, workspaceReceiver)
-          },
-        })
-      }
-
-      return Reflect.get(target, prop, receiver)
-    },
-  })
-
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleQuery,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.customConfig.get': async () => {
+        if (customConfigQueryPending) return new Promise<never>(() => {})
+        if (customConfigQueryError) throw customConfigQueryError
+        return customConfig
+      },
+      'workspaces.customConfig.post': (variables) => mockUpdateCustomConfig(variables),
+    }),
   }
 })
 vi.mock('@/context/workspace-state', async () => {
@@ -115,13 +90,12 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@/app/components/base/image-uploader/utils', () => ({
+vi.mock('@/app/components/base/image-uploader/utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/app/components/base/image-uploader/utils')>()),
   imageUpload: vi.fn(),
-  getImageUploadErrorMessage: vi.fn(),
 }))
 
 const mockImageUpload = vi.mocked(imageUpload)
-const mockGetImageUploadErrorMessage = vi.mocked(getImageUploadErrorMessage)
 
 const testUserProfile = {
   id: '',
@@ -152,6 +126,7 @@ describe('useWebAppBrand', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockImageUpload.mockReset()
 
     setConsoleState(createConsoleState())
     currentBrandingOverrides = {}
@@ -165,8 +140,9 @@ describe('useWebAppBrand', () => {
     customConfigQueryError = undefined
     mockUpdateCustomConfig.mockResolvedValue(customConfig)
     canReplaceLogo = true
-    mockGetImageUploadErrorMessage.mockReturnValue('upload error')
   })
+
+  afterEach(() => vi.restoreAllMocks())
 
   // Derived state from context and store inputs.
   describe('derived state', () => {
@@ -208,16 +184,24 @@ describe('useWebAppBrand', () => {
       expect(result.current.uploadDisabled).toBe(false)
     })
 
-    it('should disable uploads in sandbox workspaces and when branding is removed', () => {
-      canReplaceLogo = false
-      customConfig = { ...customConfig, remove_webapp_brand: true }
-
-      const { result } = renderHook(() => useWebAppBrand())
-
-      expect(!result.current.canReplaceLogo).toBe(true)
-      expect(result.current.webappBrandRemoved).toBe(true)
-      expect(result.current.uploadDisabled).toBe(true)
-    })
+    it.each([
+      { enabled: false, removed: false },
+      { enabled: true, removed: true },
+    ])(
+      'blocks uploads for logo entitlement=$enabled and brand removal=$removed',
+      ({ enabled, removed }) => {
+        canReplaceLogo = enabled
+        customConfig = { ...customConfig, remove_webapp_brand: removed }
+        const { result } = renderHook(() => useWebAppBrand())
+        expect(result.current.uploadDisabled).toBe(true)
+        act(() =>
+          result.current.handleChange({
+            target: { files: [new File(['logo'], 'logo.png', { type: 'image/png' })] },
+          } as unknown as ChangeEvent<HTMLInputElement>),
+        )
+        expect(mockImageUpload).not.toHaveBeenCalled()
+      },
+    )
 
     it('should fall back to an empty workspace logo when branding is disabled', () => {
       currentBrandingOverrides = { enabled: false, workspace_logo: '' }
@@ -249,11 +233,14 @@ describe('useWebAppBrand', () => {
       seedCustomConfig = false
       customConfigQueryError = new Error('custom config unavailable')
 
-      const { result } = renderHook(() => useWebAppBrand())
+      const { result, queryClient } = renderHook(() => useWebAppBrand())
 
       await waitFor(() => {
-        expect(result.current.isCustomConfigUnavailable).toBe(true)
+        expect(
+          queryClient.getQueryState(consoleQuery.workspaces.customConfig.get.queryKey())?.status,
+        ).toBe('error')
       })
+      expect(result.current.isCustomConfigUnavailable).toBe(true)
       expect(result.current.uploadDisabled).toBe(true)
     })
   })
@@ -295,9 +282,9 @@ describe('useWebAppBrand', () => {
     })
 
     it('should update upload state after a successful file upload', () => {
-      mockImageUpload.mockImplementation(({ onProgressCallback, onSuccessCallback }) => {
-        onProgressCallback(100)
-        onSuccessCallback({ id: 'new-logo' })
+      let upload!: Parameters<typeof imageUpload>[0]
+      mockImageUpload.mockImplementation((options) => {
+        upload = options
       })
 
       const { result } = renderHook(() => useWebAppBrand())
@@ -308,31 +295,23 @@ describe('useWebAppBrand', () => {
         } as unknown as ChangeEvent<HTMLInputElement>)
       })
 
+      act(() => upload.onProgressCallback(50))
+      expect(result.current.uploadProgress).toBe(50)
+      expect(result.current.uploading).toBe(true)
+      expect(mockImageUpload).toHaveBeenCalledWith(
+        expect.objectContaining({ file: expect.any(File) }),
+        false,
+        '/workspaces/custom-config/webapp-logo/upload',
+      )
+      act(() => upload.onSuccessCallback({ id: 'new-logo' }))
       expect(result.current.fileId).toBe('new-logo')
       expect(result.current.uploadProgress).toBe(100)
       expect(result.current.uploading).toBe(false)
     })
 
-    it('should expose the uploading state while progress is incomplete', () => {
-      mockImageUpload.mockImplementation(({ onProgressCallback }) => {
-        onProgressCallback(50)
-      })
-
-      const { result } = renderHook(() => useWebAppBrand())
-
-      act(() => {
-        result.current.handleChange({
-          target: { files: [new File(['logo'], 'logo.png', { type: 'image/png' })] },
-        } as unknown as ChangeEvent<HTMLInputElement>)
-      })
-
-      expect(result.current.uploadProgress).toBe(50)
-      expect(result.current.uploading).toBe(true)
-    })
-
     it('should surface upload errors and set the failure state', () => {
       mockImageUpload.mockImplementation(({ onErrorCallback }) => {
-        onErrorCallback({ response: { code: 'forbidden' } })
+        onErrorCallback(new ORPCError('forbidden', { message: 'Workspace upload denied' }))
       })
 
       const { result } = renderHook(() => useWebAppBrand())
@@ -343,10 +322,9 @@ describe('useWebAppBrand', () => {
         } as unknown as ChangeEvent<HTMLInputElement>)
       })
 
-      expect(mockGetImageUploadErrorMessage).toHaveBeenCalled()
       expect(mockNotify).toHaveBeenCalledWith({
         type: 'error',
-        message: 'upload error',
+        message: 'Workspace upload denied',
       })
       expect(result.current.uploadProgress).toBe(-1)
     })

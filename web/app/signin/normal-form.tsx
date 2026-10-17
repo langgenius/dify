@@ -10,7 +10,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { invitationCheck } from '@/service/common'
+import { consoleClient } from '@/service/console'
 import { isUnauthorizedError } from '@/service/http-error'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { basePath } from '@/utils/var'
@@ -58,13 +58,7 @@ function NormalForm() {
     isError: isInviteCheckError,
   } = useQuery({
     queryKey: ['signin', 'invite-check', inviteToken],
-    queryFn: () =>
-      invitationCheck({
-        url: '/activate/check',
-        params: {
-          token: inviteToken,
-        },
-      }),
+    queryFn: () => consoleClient.activate.check.get({ query: { token: inviteToken } }),
     enabled: isInviteLink,
     retry: false,
     refetchOnWindowFocus: false,

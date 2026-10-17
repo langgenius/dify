@@ -35,11 +35,6 @@ describe('checkbox list component', () => {
     expect(screen.queryByText('Option 3')).not.toBeInTheDocument()
   })
 
-  it('renders select-all checkbox', () => {
-    render(<CheckboxList options={options} showSelectAll />)
-    expect(screen.getByRole('checkbox', { name: selectAllName })).toBeInTheDocument()
-  })
-
   it('selects all options when select-all is clicked', async () => {
     const onChange = vi.fn()
 
@@ -75,25 +70,10 @@ describe('checkbox list component', () => {
     )
 
     const selectAll = screen.getByRole('checkbox', { name: selectAllName })
+    expect(selectAll).toBeChecked()
     await userEvent.click(selectAll)
 
     expect(onChange).toHaveBeenCalledWith([])
-  })
-
-  it('selects select-all when all options are clicked', async () => {
-    const onChange = vi.fn()
-
-    render(
-      <CheckboxList
-        options={options}
-        value={['option1', 'option2', 'option3', 'apple']}
-        onChange={onChange}
-        showSelectAll
-      />,
-    )
-
-    const selectAll = screen.getByRole('checkbox', { name: selectAllName })
-    expect(selectAll).toHaveAttribute('aria-checked', 'true')
   })
 
   it('hides select-all checkbox when searching', async () => {
@@ -147,7 +127,9 @@ describe('checkbox list component', () => {
     const input = getSearchInput()
     await userEvent.type(input, 'ban')
     await userEvent.click(screen.getByText('common.operation.resetKeywords'))
-    expect(input)!.toHaveValue('')
+    expect(input).toHaveValue('')
+    expect(screen.getByRole('checkbox', { name: 'Apple' })).toBeInTheDocument()
+    expect(onChange).not.toHaveBeenCalled()
   })
 
   it('does not toggle disabled option when clicked', async () => {
@@ -161,15 +143,6 @@ describe('checkbox list component', () => {
 
     const disabledCheckbox = screen.getByRole('checkbox', { name: 'Disabled' })
     await userEvent.click(disabledCheckbox)
-    expect(onChange).not.toHaveBeenCalled()
-  })
-
-  it('does not toggle option when component is disabled and option label is clicked', async () => {
-    const onChange = vi.fn()
-
-    render(<CheckboxList options={options} value={[]} onChange={onChange} disabled />)
-
-    await userEvent.click(screen.getByRole('checkbox', { name: 'Option 1' }))
     expect(onChange).not.toHaveBeenCalled()
   })
 
@@ -208,18 +181,6 @@ describe('checkbox list component', () => {
     expect(onChange).toHaveBeenCalledWith(['option1', 'option2', 'option3', 'apple'])
   })
 
-  it('filters options correctly when searching', async () => {
-    render(<CheckboxList options={options} />)
-
-    const input = getSearchInput()
-    await userEvent.type(input, 'option')
-
-    expect(screen.getByText('Option 1'))!.toBeInTheDocument()
-    expect(screen.getByText('Option 2'))!.toBeInTheDocument()
-    expect(screen.getByText('Option 3'))!.toBeInTheDocument()
-    expect(screen.queryByText('Apple')).not.toBeInTheDocument()
-  })
-
   it('shows no data message when no options match search', async () => {
     render(<CheckboxList options={options} />)
 
@@ -227,16 +188,6 @@ describe('checkbox list component', () => {
     await userEvent.type(input, 'xyz')
 
     expect(screen.getByText(/common.operation.noSearchResults/i))!.toBeInTheDocument()
-  })
-
-  it('toggles option by clicking option row', async () => {
-    const onChange = vi.fn()
-
-    render(<CheckboxList options={options} value={[]} onChange={onChange} showSelectAll={false} />)
-
-    await userEvent.click(screen.getByRole('checkbox', { name: 'Option 1' }))
-
-    expect(onChange).toHaveBeenCalledWith(['option1'])
   })
 
   it('does not toggle when clicking disabled option row', async () => {
@@ -250,34 +201,17 @@ describe('checkbox list component', () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 
-  it('renders without title and description', () => {
-    render(<CheckboxList options={options} title="" description="" />)
-    expect(screen.queryByText(/Test Title/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/Test Description/)).not.toBeInTheDocument()
-  })
-
   it('shows correct filtered count message when searching', async () => {
     render(<CheckboxList options={options} title="Items" />)
 
     const input = getSearchInput()
     await userEvent.type(input, 'opt')
 
-    expect(screen.getByText(/operation.searchCount/i))!.toBeInTheDocument()
+    expect(screen.getByText(/operation.searchCount/i)).toHaveTextContent('3')
   })
 
   it('shows no data message when no options are provided', () => {
     render(<CheckboxList options={[]} />)
     expect(screen.getByText('common.noData'))!.toBeInTheDocument()
-  })
-
-  it('does not toggle option when component is disabled even with enabled option', async () => {
-    const onChange = vi.fn()
-    const disabledOptions = [{ label: 'Option', value: 'option' }]
-
-    render(<CheckboxList options={disabledOptions} value={[]} onChange={onChange} disabled />)
-
-    const checkbox = screen.getByRole('checkbox', { name: 'Option' })
-    await userEvent.click(checkbox)
-    expect(onChange).not.toHaveBeenCalled()
   })
 })

@@ -1,21 +1,24 @@
 import type { ReactElement } from 'react'
 import type { EmailConfig } from '../../../types'
 import { fireEvent, screen } from '@testing-library/react'
-import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
-import { render as renderWithConsoleState } from '@/test/console/render'
+import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import EmailConfigureModal from '../email-configure-modal'
 
 const mockToastError = vi.hoisted(() => vi.fn())
-const mockConsoleState = vi.hoisted(() => ({
-  userProfile: {
-    email: 'owner@example.com',
-  },
-}))
-
 const render = (ui: ReactElement) =>
-  renderWithConsoleState(ui, {
-    wrapper: createAccountProfileQueryWrapper(mockConsoleState.userProfile),
-  })
+  renderWithConsoleQuery(ui, { accountProfile: { email: 'owner@example.com' } })
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.members.get': () => ({ accounts: [] }),
+    }),
+  }
+})
 
 vi.mock('@/app/notifications', () => ({
   toast: {
@@ -30,55 +33,6 @@ vi.mock('../mail-body-input', () => ({
       value={value}
       onChange={(e) => onChange(e.target.value)}
     />
-  ),
-}))
-
-vi.mock('../recipient', () => ({
-  default: ({
-    data,
-    onChange,
-  }: {
-    data: EmailConfig['recipients']
-    onChange: (value: EmailConfig['recipients']) => void
-  }) => (
-    <div>
-      <div data-testid="recipient-state">
-        {data.whole_workspace ? 'workspace' : `items:${data.items.length}`}
-      </div>
-      <button
-        type="button"
-        onClick={() =>
-          onChange({
-            whole_workspace: false,
-            items: [{ type: 'external', email: 'notify@example.com' }],
-          })
-        }
-      >
-        set-external-recipient
-      </button>
-      <button
-        type="button"
-        onClick={() =>
-          onChange({
-            whole_workspace: true,
-            items: [],
-          })
-        }
-      >
-        set-workspace-recipient
-      </button>
-      <button
-        type="button"
-        onClick={() =>
-          onChange({
-            whole_workspace: false,
-            items: [],
-          })
-        }
-      >
-        clear-recipient
-      </button>
-    </div>
   ),
 }))
 
@@ -104,7 +58,7 @@ describe('human-input/delivery-method/email-configure-modal', () => {
     render(
       <EmailConfigureModal
         open
-        config={createEmailConfig()}
+        config={createEmailConfig({ recipients: { whole_workspace: false, items: [] } })}
         onOpenChange={vi.fn()}
         onConfirm={handleConfirm}
       />,
@@ -125,7 +79,7 @@ describe('human-input/delivery-method/email-configure-modal', () => {
     fireEvent.change(screen.getByLabelText('mail-body-input'), {
       target: { value: 'Please review {{#url#}} now' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'set-workspace-recipient' }))
+    fireEvent.click(screen.getByRole('switch', { name: /emailConfigure.allMembers/ }))
     fireEvent.click(
       screen.getByRole('switch', {
         name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigure.debugMode',
@@ -165,7 +119,7 @@ describe('human-input/delivery-method/email-configure-modal', () => {
     fireEvent.change(screen.getByLabelText('mail-body-input'), {
       target: { value: '   ' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'set-workspace-recipient' }))
+    fireEvent.click(screen.getByRole('switch', { name: /emailConfigure.allMembers/ }))
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
     expect(mockToastError).toHaveBeenCalledWith(
       'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigure.bodyRequired',
@@ -184,7 +138,7 @@ describe('human-input/delivery-method/email-configure-modal', () => {
     fireEvent.change(screen.getByLabelText('mail-body-input'), {
       target: { value: 'Ready {{#url#}}' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'clear-recipient' }))
+    fireEvent.click(screen.getByRole('switch', { name: /emailConfigure.allMembers/ }))
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
     expect(mockToastError).toHaveBeenCalledWith(
       'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigure.recipientsRequired',
@@ -192,7 +146,7 @@ describe('human-input/delivery-method/email-configure-modal', () => {
     expect(handleConfirm).not.toHaveBeenCalled()
   })
 
-  it('should close from both the icon trigger and the cancel button', () => {
+  it('should close from both the icon trigger and the cancel button', async () => {
     const handleOpenChange = vi.fn()
     render(
       <EmailConfigureModal
@@ -203,8 +157,9 @@ describe('human-input/delivery-method/email-configure-modal', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('dialog').querySelector('.absolute') as HTMLDivElement)
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
     expect(handleOpenChange).toHaveBeenCalledTimes(2)
     expect(handleOpenChange).toHaveBeenCalledWith(false)

@@ -49,7 +49,7 @@ const ContextBlockReplacementBlock = ({
         decoratorTransform(textNode, getMatch, createContextBlockNode),
       ),
     )
-  }, [])
+  }, [editor, getMatch, createContextBlockNode])
 
   return null
 }

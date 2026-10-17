@@ -1,11 +1,21 @@
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { resolvePostLoginRedirect, setPostLoginRedirect } from '../post-login-redirect'
 
 describe('post-login redirect utilities', () => {
+  const storageKey = 'dify_post_login_redirect'
+  let previousRedirect: string | null
+
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useRealTimers()
-    window.sessionStorage.clear()
+    previousRedirect = sessionStorage.getItem(storageKey)
+    sessionStorage.removeItem(storageKey)
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    if (previousRedirect === null) sessionStorage.removeItem(storageKey)
+    else sessionStorage.setItem(storageKey, previousRedirect)
   })
 
   it('should use the redirect_url query param first', () => {
@@ -115,25 +125,16 @@ describe('post-login redirect utilities', () => {
     expect(resolvePostLoginRedirect()).toEqual({ kind: 'internal', href: '/' })
   })
 
-  it('should preserve the device path and query-key allowlist', () => {
-    setPostLoginRedirect('/device?user_code=ABCD&next=/apps')
-    setPostLoginRedirect('/apps')
+  it.each(['/device?user_code=ABCD&next=/apps', '/apps'])(
+    'rejects stored redirects outside the path and query allowlist: %s',
+    (target) => {
+      setPostLoginRedirect(target)
 
-    expect(resolvePostLoginRedirect()).toEqual({ kind: 'internal', href: '/' })
-  })
+      expect(resolvePostLoginRedirect()).toEqual({ kind: 'internal', href: '/' })
+    },
+  )
 
-  it('should preserve every Marketplace OAuth authorize parameter across signin', () => {
-    setPostLoginRedirect(
-      '/account/oauth/authorize?client_id=marketplace-client&redirect_uri=https%3A%2F%2Fapi.marketplace.dify.ai%2Fapi%2Fv1%2Fauth%2Fcallback%2Fdify&state=oauth-state&response_type=code',
-    )
-
-    expect(resolvePostLoginRedirect()).toEqual({
-      kind: 'internal',
-      href: '/account/oauth/authorize?client_id=marketplace-client&redirect_uri=https%3A%2F%2Fapi.marketplace.dify.ai%2Fapi%2Fv1%2Fauth%2Fcallback%2Fdify&state=oauth-state&response_type=code',
-    })
-  })
-
-  it('should preserve marketplace utm_source on the OAuth authorize return path', () => {
+  it('should preserve OAuth parameters and Marketplace attribution across signin', () => {
     setPostLoginRedirect(
       '/account/oauth/authorize?client_id=marketplace-client&redirect_uri=https%3A%2F%2Fapi.marketplace.dify.ai%2Fapi%2Fv1%2Fauth%2Fcallback%2Fdify&state=oauth-state&response_type=code&utm_source=dify_marketplace',
     )

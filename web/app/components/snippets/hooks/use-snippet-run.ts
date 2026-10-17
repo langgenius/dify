@@ -1,6 +1,6 @@
 import type { IOtherOptions } from '@/service/base'
 import type { SnippetDraftRunPayload } from '@/types/snippet'
-import type { VersionHistory } from '@/types/workflow'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
 import { useCallback, useRef } from 'react'
@@ -277,7 +277,7 @@ export const useSnippetRun = () => {
   )
 
   const handleRestoreFromPublishedWorkflow = useCallback(
-    (publishedWorkflow: VersionHistory) => {
+    (publishedWorkflow: FetchWorkflowDraftResponse) => {
       const nodes = publishedWorkflow.graph.nodes.map((node) => ({
         ...node,
         selected: false,

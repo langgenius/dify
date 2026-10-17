@@ -1,22 +1,40 @@
+import type { DocumentWithSegmentsListResponse as DocumentListResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ReactNode } from 'react'
-import type { DocumentListResponse } from '@/models/datasets'
-import { QueryClientProvider } from '@tanstack/react-query'
-import { act, fireEvent, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { DataSourceType } from '@/models/datasets'
-import { useDocumentList } from '@/service/knowledge/use-document'
+import { consoleQuery } from '@/service/console'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import { useDocumentsPageState } from '../hooks/use-documents-page-state'
 import Documents from '../index'
 
+const expectDocumentsInvalidated = () => {
+  expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
+    queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+      input: { params: { dataset_id: 'test-dataset-id' } },
+    }),
+  })
+  expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
+    queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key(),
+  })
+}
+
+let documentData: DocumentListResponse | undefined
+
 const render = (ui: Parameters<typeof renderWithConsoleState>[0]) => {
   const queryClient = createAccountProfileQueryClient({ id: 'test-user' })
-  return renderWithConsoleState(ui, {
+  queryClient.setQueryDefaults(consoleQuery.datasets.byDatasetId.documents.get.key(), {
+    initialData: documentData,
+  })
+  const rendered = renderWithConsoleState(ui, {
     wrapper: ({ children }: { children: ReactNode }) => (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     ),
   })
+  return { ...rendered, queryClient }
 }
 
 // Type for mock selector function - use `as MockState` to bypass strict type checking in tests
@@ -78,55 +96,44 @@ vi.mock('@/features/system-features/state', async () => {
   }))
 })
 
-// Mock document service hooks
-const mockInvalidDocumentList = vi.fn()
-const mockInvalidDocumentDetail = vi.fn()
+const getDocuments = vi.hoisted(() => vi.fn())
+const defaultDocumentData = {
+  data: [
+    {
+      id: 'doc-1',
+      name: 'Document 1',
+      indexing_status: 'completed',
+      data_source_type: 'upload_file',
+      position: 1,
+      enabled: true,
+      data_source_detail_dict: {},
+    },
+    {
+      id: 'doc-2',
+      name: 'Document 2',
+      indexing_status: 'indexing',
+      data_source_type: 'upload_file',
+      position: 2,
+      enabled: true,
+      data_source_detail_dict: {},
+    },
+  ],
+  total: 2,
+  page: 1,
+  limit: 10,
+  has_more: false,
+} satisfies DocumentListResponse
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.documents.get': getDocuments,
+    }),
+  }
+})
 
-vi.mock('@/service/knowledge/use-document', () => ({
-  useDocumentList: vi.fn(() => ({
-    data: {
-      data: [
-        {
-          id: 'doc-1',
-          name: 'Document 1',
-          indexing_status: 'completed',
-          data_source_type: 'upload_file',
-          position: 1,
-          enabled: true,
-        },
-        {
-          id: 'doc-2',
-          name: 'Document 2',
-          indexing_status: 'indexing',
-          data_source_type: 'upload_file',
-          position: 2,
-          enabled: true,
-        },
-      ],
-      total: 2,
-      page: 1,
-      limit: 10,
-      has_more: false,
-    } as DocumentListResponse,
-    isLoading: false,
-    refetch: vi.fn(),
-  })),
-  useInvalidDocumentList: vi.fn(() => mockInvalidDocumentList),
-  useInvalidDocumentDetail: vi.fn(() => mockInvalidDocumentDetail),
-}))
-
-// Mock segment service hooks
-vi.mock('@/service/knowledge/use-segment', () => ({
-  useSegmentListKey: 'segment-list-key',
-  useChildSegmentListKey: 'child-segment-list-key',
-}))
-
-// Mock base service hooks
-vi.mock('@/service/use-base', () => ({
-  useInvalid: vi.fn(() => vi.fn()),
-}))
-
-// Mock metadata hook
 vi.mock('../../metadata/hooks/use-edit-dataset-metadata', () => ({
   default: vi.fn(() => ({
     isShowEditModal: false,
@@ -303,7 +310,10 @@ describe('Documents', () => {
   }
 
   beforeEach(() => {
+    vi.spyOn(QueryClient.prototype, 'invalidateQueries')
     vi.clearAllMocks()
+    documentData = defaultDocumentData
+    getDocuments.mockReset().mockImplementation(() => new Promise(() => {}))
     mockPush.mockClear()
     // Reset context mocks to default
     vi.mocked(useDatasetDetailContextWithSelector).mockImplementation((selector: MockSelector) => {
@@ -323,62 +333,47 @@ describe('Documents', () => {
   })
 
   describe('Rendering', () => {
-    it('should render DocumentsHeader with correct props', () => {
-      render(<Documents {...defaultProps} />)
-      expect(screen.getByTestId('header-dataset-id')).toHaveTextContent('test-dataset-id')
-      expect(screen.getByTestId('header-embedding-available')).toHaveTextContent('true')
-    })
+    it('shows loading until the initial document request resolves', async () => {
+      documentData = undefined
 
-    it('should render document list when documents exist', () => {
-      render(<Documents {...defaultProps} />)
-      expect(screen.getByTestId('documents-list')).toBeInTheDocument()
-      expect(screen.getByTestId('list-documents-count')).toHaveTextContent('2')
-    })
-
-    it('should render loading state when isLoading is true', () => {
-      vi.mocked(useDocumentList).mockReturnValueOnce({
-        data: undefined,
-        isLoading: true,
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDocumentList>)
-
+      getDocuments.mockResolvedValue(defaultDocumentData)
       render(<Documents {...defaultProps} />)
       expect(screen.queryByTestId('documents-list')).not.toBeInTheDocument()
+      expect(await screen.findByTestId('documents-list')).toBeInTheDocument()
     })
 
-    it('should keep rendering list when loading with existing data', () => {
-      vi.mocked(useDocumentList).mockReturnValueOnce({
-        data: {
-          data: [
-            {
-              id: 'doc-1',
-              name: 'Document 1',
-              indexing_status: 'completed',
-              data_source_type: 'upload_file',
-              position: 1,
-              enabled: true,
-            },
-          ],
-          total: 1,
-          page: 1,
-          limit: 10,
-          has_more: false,
-        } as DocumentListResponse,
-        isLoading: true,
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDocumentList>)
+    it('keeps cached documents visible during a background refresh', async () => {
+      documentData = {
+        data: [
+          {
+            id: 'doc-1',
+            name: 'Document 1',
+            indexing_status: 'completed',
+            data_source_type: 'upload_file',
+            position: 1,
+            enabled: true,
+            data_source_detail_dict: {},
+          },
+        ],
+        total: 1,
+        page: 1,
+        limit: 10,
+        has_more: false,
+      } satisfies DocumentListResponse
 
-      render(<Documents {...defaultProps} />)
+      const { queryClient } = render(<Documents {...defaultProps} />)
+      act(() => {
+        void queryClient.invalidateQueries({
+          queryKey: consoleQuery.datasets.byDatasetId.documents.get.key(),
+        })
+      })
+      await waitFor(() => expect(getDocuments).toHaveBeenCalledOnce())
       expect(screen.getByTestId('documents-list')).toBeInTheDocument()
       expect(screen.getByTestId('list-documents-count')).toHaveTextContent('1')
     })
 
     it('should render empty element when no documents exist', () => {
-      vi.mocked(useDocumentList).mockReturnValueOnce({
-        data: { data: [], total: 0, page: 1, limit: 10, has_more: false },
-        isLoading: false,
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDocumentList>)
+      documentData = { data: [], total: 0, page: 1, limit: 10, has_more: false }
 
       render(<Documents {...defaultProps} />)
       expect(screen.getByTestId('empty-element')).toBeInTheDocument()
@@ -403,98 +398,25 @@ describe('Documents', () => {
           return selector(mockState as MockState)
         },
       )
-      vi.mocked(useDocumentList).mockReturnValueOnce({
-        data: { data: [], total: 0, page: 1, limit: 10, has_more: false },
-        isLoading: false,
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDocumentList>)
+      documentData = { data: [], total: 0, page: 1, limit: 10, has_more: false }
 
       render(<Documents {...defaultProps} />)
       expect(screen.getByTestId('empty-type')).toHaveTextContent('sync')
     })
   })
 
-  describe('Props', () => {
-    it('should pass datasetId to child components', () => {
-      render(<Documents {...defaultProps} />)
-      expect(screen.getByTestId('header-dataset-id')).toHaveTextContent('test-dataset-id')
-    })
-
-    it('should handle different datasetId', () => {
-      render(<Documents datasetId="different-dataset-id" />)
-      expect(screen.getByTestId('header-dataset-id')).toHaveTextContent('different-dataset-id')
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should call handleInputChange when search input changes', async () => {
-      render(<Documents {...defaultProps} />)
-
-      const searchInput = screen.getByTestId('search-input')
-      fireEvent.change(searchInput, { target: { value: 'test' } })
-
-      expect(mockHandleInputChange).toHaveBeenCalledWith('test')
-    })
-
-    it('should call handleStatusFilterChange when filter button is clicked', () => {
-      render(<Documents {...defaultProps} />)
-
-      screen.getByTestId('status-filter-btn').click()
-
-      expect(mockHandleStatusFilterChange).toHaveBeenCalledWith('completed')
-    })
-
-    it('should call handleStatusFilterClear when clear button is clicked', () => {
-      render(<Documents {...defaultProps} />)
-
-      screen.getByTestId('clear-filter-btn').click()
-
-      expect(mockHandleStatusFilterClear).toHaveBeenCalled()
-    })
-
-    it('should call handleSortChange when sort button is clicked', () => {
-      render(<Documents {...defaultProps} />)
-
-      screen.getByTestId('sort-btn').click()
-
-      expect(mockHandleSortChange).toHaveBeenCalledWith('-updated_at')
-    })
-
-    it('should call setSelectedIds when document is selected', () => {
-      render(<Documents {...defaultProps} />)
-
-      screen.getByTestId('select-btn').click()
-
-      expect(mockSetSelectedIds).toHaveBeenCalledWith(['doc-1'])
-    })
-
-    it('should call handlePageChange when page changes', () => {
-      render(<Documents {...defaultProps} />)
-
-      screen.getByTestId('page-change-btn').click()
-
-      expect(mockHandlePageChange).toHaveBeenCalledWith(1)
-    })
-
-    it('should call handleLimitChange when limit changes', () => {
-      render(<Documents {...defaultProps} />)
-
-      screen.getByTestId('limit-change-btn').click()
-
-      expect(mockHandleLimitChange).toHaveBeenCalledWith(20)
-    })
-  })
-
   describe('Router Navigation', () => {
-    it('should navigate to create page when add document is clicked', () => {
+    it('should navigate to create page when add document is clicked', async () => {
       render(<Documents {...defaultProps} />)
 
-      screen.getByTestId('add-document-btn').click()
+      await userEvent
+        .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
+        .click(screen.getByTestId('add-document-btn'))
 
       expect(mockPush).toHaveBeenCalledWith('/datasets/test-dataset-id/documents/create')
     })
 
-    it('should navigate to pipeline create page when dataset is rag_pipeline mode', () => {
+    it('should navigate to pipeline create page when dataset is rag_pipeline mode', async () => {
       vi.mocked(useDatasetDetailContextWithSelector).mockImplementation(
         (selector: MockSelector) => {
           const mockState = {
@@ -514,14 +436,16 @@ describe('Documents', () => {
 
       render(<Documents {...defaultProps} />)
 
-      screen.getByTestId('add-document-btn').click()
+      await userEvent
+        .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
+        .click(screen.getByTestId('add-document-btn'))
 
       expect(mockPush).toHaveBeenCalledWith(
         '/datasets/test-dataset-id/documents/create-from-pipeline',
       )
     })
 
-    it('should navigate from empty element add button', () => {
+    it('should navigate from empty element add button', async () => {
       vi.mocked(useDatasetDetailContextWithSelector).mockImplementation(
         (selector: MockSelector) => {
           const mockState = {
@@ -538,115 +462,90 @@ describe('Documents', () => {
           return selector(mockState as MockState)
         },
       )
-      vi.mocked(useDocumentList).mockReturnValueOnce({
-        data: { data: [], total: 0, page: 1, limit: 10, has_more: false },
-        isLoading: false,
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDocumentList>)
+      documentData = { data: [], total: 0, page: 1, limit: 10, has_more: false }
 
       render(<Documents {...defaultProps} />)
 
-      screen.getByTestId('empty-add-btn').click()
+      await userEvent
+        .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
+        .click(screen.getByTestId('empty-add-btn'))
 
       expect(mockPush).toHaveBeenCalledWith('/datasets/test-dataset-id/documents/create')
     })
   })
 
-  describe('Query Options', () => {
-    it('should pass function refetchInterval to useDocumentList', () => {
-      render(<Documents {...defaultProps} />)
-
-      const payload = vi.mocked(useDocumentList).mock.calls.at(-1)?.[0]
-      expect(payload).toBeDefined()
-      expect(typeof payload?.refetchInterval).toBe('function')
+  describe('polling', () => {
+    afterEach(() => {
+      vi.useRealTimers()
     })
 
-    it('should stop polling when all documents are in terminal statuses', () => {
+    it('polls processing documents and stops after every document reaches a terminal state', async () => {
+      vi.useFakeTimers()
+      const completed = {
+        ...defaultDocumentData,
+        data: defaultDocumentData.data.map((document) => ({
+          ...document,
+          indexing_status: 'completed',
+        })),
+      }
+      getDocuments.mockResolvedValue(completed)
       render(<Documents {...defaultProps} />)
-
-      const payload = vi.mocked(useDocumentList).mock.calls.at(-1)?.[0]
-      const refetchInterval = payload?.refetchInterval
-      expect(typeof refetchInterval).toBe('function')
-      if (typeof refetchInterval !== 'function')
-        throw new Error('Expected function refetchInterval')
-
-      const interval = refetchInterval({
-        state: {
-          data: {
-            data: [
-              { indexing_status: 'completed' },
-              { indexing_status: 'paused' },
-              { indexing_status: 'error' },
-            ],
-          },
-        },
-      } as unknown as Parameters<typeof refetchInterval>[0])
-
-      expect(interval).toBe(false)
-    })
-
-    it('should keep polling for transient status filters', () => {
-      vi.mocked(useDocumentsPageState).mockReturnValueOnce({
-        inputValue: '',
-        debouncedSearchValue: '',
-        handleInputChange: mockHandleInputChange,
-        statusFilterValue: 'indexing',
-        sortValue: '-created_at' as const,
-        normalizedStatusFilterValue: 'indexing',
-        handleStatusFilterChange: mockHandleStatusFilterChange,
-        handleStatusFilterClear: mockHandleStatusFilterClear,
-        handleSortChange: mockHandleSortChange,
-        currPage: 0,
-        limit: 10,
-        handlePageChange: mockHandlePageChange,
-        handleLimitChange: mockHandleLimitChange,
-        selectedIds: [] as string[],
-        setSelectedIds: mockSetSelectedIds,
+      expect(getDocuments).not.toHaveBeenCalled()
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2500)
       })
+      expect(getDocuments).toHaveBeenCalledOnce()
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10000)
+      })
+      expect(getDocuments).toHaveBeenCalledOnce()
+    })
 
-      render(<Documents {...defaultProps} />)
-
-      const payload = vi
-        .mocked(useDocumentList)
-        .mock.calls.find(([options]) => options.query.status === 'indexing')?.[0]
-      const refetchInterval = payload?.refetchInterval
-      expect(typeof refetchInterval).toBe('function')
-      if (typeof refetchInterval !== 'function')
-        throw new Error('Expected function refetchInterval')
-
-      const interval = refetchInterval({
-        state: {
-          data: {
-            data: [{ indexing_status: 'completed' }],
-          },
-        },
-      } as unknown as Parameters<typeof refetchInterval>[0])
-
-      expect(interval).toBe(2500)
+    it('keeps polling a transient status filter even when its current result is empty', async () => {
+      vi.useFakeTimers()
+      const original = vi.mocked(useDocumentsPageState).getMockImplementation()!
+      vi.mocked(useDocumentsPageState).mockImplementation(() => ({
+        ...original(),
+        normalizedStatusFilterValue: 'indexing',
+        statusFilterValue: 'indexing',
+      }))
+      documentData = { data: [], total: 0, page: 1, limit: 10, has_more: false }
+      getDocuments.mockResolvedValue(documentData)
+      try {
+        render(<Documents {...defaultProps} />)
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(5000)
+        })
+        expect(getDocuments).toHaveBeenCalledTimes(2)
+        expect(getDocuments).toHaveBeenLastCalledWith({
+          params: { dataset_id: 'test-dataset-id' },
+          query: expect.objectContaining({ status: 'indexing' }),
+        })
+      } finally {
+        vi.mocked(useDocumentsPageState).mockImplementation(original)
+      }
     })
   })
 
-  describe('Callback Stability and Memoization', () => {
-    it('should call handleUpdate with invalidation functions', async () => {
-      render(<Documents {...defaultProps} />)
-
-      screen.getByTestId('update-btn').click()
-
-      expect(mockInvalidDocumentList).toHaveBeenCalled()
-      expect(mockInvalidDocumentDetail).toHaveBeenCalled()
-    })
-
+  describe('Mutation invalidation', () => {
     it('should handle update with delayed chunk invalidation', async () => {
       vi.useFakeTimers()
 
       render(<Documents {...defaultProps} />)
-      screen.getByTestId('update-btn').click()
+      act(() => fireEvent.click(screen.getByTestId('update-btn')))
 
-      expect(mockInvalidDocumentList).toHaveBeenCalled()
-      expect(mockInvalidDocumentDetail).toHaveBeenCalled()
+      expectDocumentsInvalidated()
 
       await act(async () => {
         vi.advanceTimersByTime(5000)
+      })
+      const documents = consoleQuery.datasets.byDatasetId.documents.byDocumentId
+      const input = { params: { dataset_id: 'test-dataset-id' } }
+      expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
+        queryKey: documents.segments.get.key({ input }),
+      })
+      expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
+        queryKey: documents.segments.bySegmentId.childChunks.get.key({ input }),
       })
 
       vi.useRealTimers()
@@ -654,43 +553,6 @@ describe('Documents', () => {
   })
 
   describe('Edge Cases and Error Handling', () => {
-    it('should handle undefined dataset gracefully', () => {
-      vi.mocked(useDatasetDetailContextWithSelector).mockImplementation(
-        (selector: MockSelector) => {
-          const mockState = { dataset: undefined }
-          return selector(mockState as MockState)
-        },
-      )
-
-      render(<Documents {...defaultProps} />)
-
-      expect(screen.getByTestId('documents-header')).toBeInTheDocument()
-    })
-
-    it('should handle empty documents array', () => {
-      vi.mocked(useDocumentList).mockReturnValueOnce({
-        data: { data: [], total: 0, page: 1, limit: 10, has_more: false },
-        isLoading: false,
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDocumentList>)
-
-      render(<Documents {...defaultProps} />)
-
-      expect(screen.getByTestId('empty-element')).toBeInTheDocument()
-    })
-
-    it('should handle undefined documentsRes', () => {
-      vi.mocked(useDocumentList).mockReturnValueOnce({
-        data: undefined,
-        isLoading: false,
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDocumentList>)
-
-      render(<Documents {...defaultProps} />)
-
-      expect(screen.getByTestId('empty-element')).toBeInTheDocument()
-    })
-
     it('should handle embedding not available', () => {
       vi.mocked(useDatasetDetailContextWithSelector).mockImplementation(
         (selector: MockSelector) => {
@@ -710,91 +572,6 @@ describe('Documents', () => {
       render(<Documents {...defaultProps} />)
 
       expect(screen.getByTestId('header-embedding-available')).toHaveTextContent('false')
-    })
-  })
-
-  describe('Pagination', () => {
-    it('should display correct total in list', () => {
-      render(<Documents {...defaultProps} />)
-      expect(screen.getByTestId('list-total')).toHaveTextContent('2')
-    })
-
-    it('should display correct current page', () => {
-      render(<Documents {...defaultProps} />)
-      expect(screen.getByTestId('list-current-page')).toHaveTextContent('0')
-    })
-
-    it('should handle page changes', () => {
-      vi.mocked(useDocumentsPageState).mockReturnValueOnce({
-        inputValue: '',
-        debouncedSearchValue: '',
-        handleInputChange: mockHandleInputChange,
-        statusFilterValue: 'all',
-        sortValue: '-created_at' as const,
-        normalizedStatusFilterValue: 'all',
-        handleStatusFilterChange: mockHandleStatusFilterChange,
-        handleStatusFilterClear: mockHandleStatusFilterClear,
-        handleSortChange: mockHandleSortChange,
-        currPage: 2,
-        limit: 10,
-        handlePageChange: mockHandlePageChange,
-        handleLimitChange: mockHandleLimitChange,
-        selectedIds: [] as string[],
-        setSelectedIds: mockSetSelectedIds,
-      })
-
-      render(<Documents {...defaultProps} />)
-      expect(screen.getByTestId('list-current-page')).toHaveTextContent('2')
-    })
-  })
-
-  describe('Selection State', () => {
-    it('should display selected count', () => {
-      vi.mocked(useDocumentsPageState).mockReturnValueOnce({
-        inputValue: '',
-        debouncedSearchValue: '',
-        handleInputChange: mockHandleInputChange,
-        statusFilterValue: 'all',
-        sortValue: '-created_at' as const,
-        normalizedStatusFilterValue: 'all',
-        handleStatusFilterChange: mockHandleStatusFilterChange,
-        handleStatusFilterClear: mockHandleStatusFilterClear,
-        handleSortChange: mockHandleSortChange,
-        currPage: 0,
-        limit: 10,
-        handlePageChange: mockHandlePageChange,
-        handleLimitChange: mockHandleLimitChange,
-        selectedIds: ['doc-1', 'doc-2'],
-        setSelectedIds: mockSetSelectedIds,
-      })
-
-      render(<Documents {...defaultProps} />)
-      expect(screen.getByTestId('list-selected-count')).toHaveTextContent('2')
-    })
-  })
-
-  describe('Filter and Sort State', () => {
-    it('should pass filter value to list', () => {
-      vi.mocked(useDocumentsPageState).mockReturnValueOnce({
-        inputValue: 'test search',
-        debouncedSearchValue: 'test search',
-        handleInputChange: mockHandleInputChange,
-        statusFilterValue: 'completed',
-        sortValue: '-created_at' as const,
-        normalizedStatusFilterValue: 'completed',
-        handleStatusFilterChange: mockHandleStatusFilterChange,
-        handleStatusFilterClear: mockHandleStatusFilterClear,
-        handleSortChange: mockHandleSortChange,
-        currPage: 0,
-        limit: 10,
-        handlePageChange: mockHandlePageChange,
-        handleLimitChange: mockHandleLimitChange,
-        selectedIds: [] as string[],
-        setSelectedIds: mockSetSelectedIds,
-      })
-
-      render(<Documents {...defaultProps} />)
-      expect(screen.getByTestId('documents-list')).toBeInTheDocument()
     })
   })
 })

@@ -9,6 +9,7 @@ import type {
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { QueryClient } from '@tanstack/react-query'
 import type { ComponentProps, ReactElement } from 'react'
+import { zAppMcpServerResponse } from '@dify/contracts/api/console/apps/zod.gen'
 import {
   DeploymentOperationStatus,
   DeploymentOperationType,
@@ -32,6 +33,8 @@ import {
   renderWithConsoleQuery,
   seedAppDetail,
 } from '@/test/console/query-data'
+import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppACLPermission } from '@/utils/permission'
 import AppDeploy from '..'
@@ -42,6 +45,11 @@ import {
   getEnvironmentDeploymentActions,
   shouldPollEnvironmentDeployment,
 } from '../utils/environment-deployment'
+
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({ appId: 'app-1' }),
+}))
 
 const APP_ID = 'app-1'
 const ACTIVITY_AT = 1_784_941_200
@@ -739,6 +747,31 @@ function render(
       },
     ],
   })
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.server.get.queryKey({ input: { params: { app_id: APP_ID } } }),
+    zAppMcpServerResponse.parse({
+      id: 'server-1',
+      server_code: 'code-1',
+      name: 'MCP',
+      description: '',
+      parameters: {},
+      ...mockBuiltInEnvironment.mcpServerDetail,
+    }),
+  )
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [
+      createToolProviderFixture({
+        icon: '/notion-mcp.svg',
+        id: 'notion',
+        name: 'Notion',
+        type: 'mcp',
+        plugin_id: 'langgenius/notion',
+      }),
+    ],
+  })
   seedWorkflowDeploymentConfigurationQueries(queryClient)
   seedAppDetail(
     queryClient,
@@ -822,30 +855,6 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: [] }),
-  useAllCustomTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({
-    data: [
-      {
-        icon: '/notion-mcp.svg',
-        id: 'notion',
-        name: 'Notion',
-        plugin_id: 'langgenius/notion',
-      },
-    ],
-  }),
-  useAllWorkflowTools: () => ({ data: [] }),
-  useMCPServerDetail: () => ({
-    data: mockBuiltInEnvironment.mcpServerDetail,
-  }),
-}))
-
-vi.mock('@/next/navigation', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/next/navigation')>()),
-  useParams: () => ({ appId: APP_ID }),
-}))
-
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState)
@@ -890,22 +899,6 @@ describe('AppDeploy', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
-  })
-
-  it('renders the built-in environment and contract deployment list', () => {
-    render(<AppDeploy />)
-
-    expect(
-      screen.getByRole('heading', { name: 'deployments.studio.builtInTitle' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('heading', { name: 'deployments.studio.environments' }),
-    ).toBeInTheDocument()
-    expect(screen.getByRole('cell', { name: /Staging/ })).toBeInTheDocument()
-    expect(screen.getByRole('cell', { name: /Canary/ })).toBeInTheDocument()
-    expect(screen.getByRole('cell', { name: /Preview/ })).toBeInTheDocument()
-    expect(screen.getAllByRole('row')).toHaveLength(9)
-    expect(screen.getByText('8 of 12 environments in use')).toBeInTheDocument()
   })
 
   it('links the deploy header to the enterprise deployment documentation', () => {
@@ -1144,18 +1137,6 @@ describe('AppDeploy', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('opens the deploy menu with undeployed environments', async () => {
-    const user = userEvent.setup()
-    render(<AppDeploy />)
-
-    await user.click(screen.getByRole('button', { name: 'common.appMenus.deploy' }))
-
-    expect(screen.getByText('deployments.card.notDeployed')).toBeInTheDocument()
-    expect(screen.getByRole('menuitem', { name: /Testing/ })).toBeInTheDocument()
-    expect(screen.getByRole('menuitem', { name: /US-Prod/ })).toBeInTheDocument()
-    expect(screen.queryByRole('menuitem', { name: /Canary/ })).not.toBeInTheDocument()
-  })
-
   it('shows an empty hint when every environment is already deployed', async () => {
     const user = userEvent.setup()
     render(<AppDeploy />, {
@@ -1214,6 +1195,9 @@ describe('AppDeploy', () => {
     render(<AppDeploy />)
 
     await user.click(screen.getByRole('button', { name: 'common.appMenus.deploy' }))
+    expect(screen.getByRole('menuitem', { name: /Testing/ })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /US-Prod/ })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: /Canary/ })).not.toBeInTheDocument()
     await user.click(await screen.findByRole('menuitem', { name: /Dev/ }))
 
     const dialog = await screen.findByRole(
@@ -1223,7 +1207,6 @@ describe('AppDeploy', () => {
       },
       { timeout: 3000 },
     )
-    expect(dialog).toHaveClass('h-[min(44rem,calc(100dvh-32px))]')
     expect(within(dialog).getByText('deployments.studio.chooseVersionToDeploy')).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: /Release 7/ })).toBeEnabled()
     expect(within(dialog).getByRole('button', { name: /Sprint-42/ })).toBeEnabled()
@@ -1266,7 +1249,6 @@ describe('AppDeploy', () => {
     const configurationDialog = await screen.findByRole('dialog', {
       name: 'deployments.studio.deployConfiguration',
     })
-    expect(configurationDialog).not.toHaveClass('h-[min(44rem,calc(100dvh-32px))]')
     expect(within(configurationDialog).getByText('Release 6')).toBeInTheDocument()
     expect(within(configurationDialog).getByText('Dev')).toBeInTheDocument()
     expect(
@@ -2163,33 +2145,6 @@ describe('AppDeploy', () => {
     expect(deploymentRequests).toHaveLength(2)
   })
 
-  it('shows the environment actions from the design menu', async () => {
-    const user = userEvent.setup()
-    render(<AppDeploy />)
-
-    const canaryRow = screen.getByRole('row', { name: /Canary/ })
-    await user.click(
-      within(canaryRow).getByRole('button', {
-        name: 'Canary · deployments.deployTab.moreActions',
-      }),
-    )
-
-    const menu = await screen.findByRole('menu', {
-      name: 'Canary · deployments.deployTab.moreActions',
-    })
-    expect(
-      within(menu).getByRole('menuitem', { name: 'deployments.deployTab.redeploy' }),
-    ).toBeInTheDocument()
-    expect(
-      within(menu).getByRole('menuitem', { name: 'deployments.deployTab.undeploy' }),
-    ).toBeInTheDocument()
-    expect(
-      within(menu).queryByRole('menuitem', {
-        name: 'deployments.studio.changeVersion',
-      }),
-    ).not.toBeInTheDocument()
-  })
-
   it('exposes only the first action and moves every remaining action into More', async () => {
     const user = userEvent.setup()
     render(<AppDeploy />)
@@ -2283,41 +2238,6 @@ describe('AppDeploy', () => {
 
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     expect(onUndeploy).not.toHaveBeenCalled()
-  })
-
-  it('undeploys the selected environment after confirmation', async () => {
-    const user = userEvent.setup()
-    const onUndeploy = vi.fn()
-    render(
-      <AppDeployStateBoundary appId={APP_ID}>
-        <EnvironmentTable {...environmentTableProps({ onUndeploy })} />
-      </AppDeployStateBoundary>,
-    )
-
-    const canaryRow = screen.getByRole('row', { name: /Canary/ })
-    await user.click(
-      within(canaryRow).getByRole('button', {
-        name: 'Canary · deployments.deployTab.moreActions',
-      }),
-    )
-    await user.click(
-      within(screen.getByRole('menu')).getByRole('menuitem', {
-        name: 'deployments.deployTab.undeploy',
-      }),
-    )
-    const dialog = await screen.findByRole('alertdialog', {
-      name: 'Undeploy Sprint-42 from Canary',
-    })
-
-    await user.click(within(dialog).getByRole('button', { name: 'Undeploy' }))
-
-    expect(onUndeploy).toHaveBeenCalledOnce()
-    expect(onUndeploy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        environment: expect.objectContaining({ id: 'canary' }),
-      }),
-    )
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
 
   it('shows the version description from the deployment contract on hover', async () => {

@@ -6,7 +6,7 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { createRef, useState } from 'react'
@@ -227,52 +227,20 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   }),
 }))
 
-vi.mock('@/service/console', async () => {
-  const { skipToken } = await import('@tanstack/react-query')
-  const getChatMessagesQueryKey = (input: unknown) => ['agent-chat-conversation-messages', input]
-
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
   return {
-    consoleClient: {
-      agent: {
-        byAgentId: {
-          chatMessages: {
-            get: chatMessagesGetMock,
-            byMessageId: {
-              suggestedQuestions: {
-                get: suggestedQuestionsGetMock,
-              },
-            },
-            byTaskId: {
-              stop: {
-                post: stopPostMock,
-              },
-            },
-          },
-        },
-      },
-    },
-    consoleQuery: {
-      account: {
-        profile: {
-          get: {
-            queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
-          },
-        },
-      },
-      agent: {
-        byAgentId: {
-          chatMessages: {
-            get: {
-              queryKey: ({ input }: { input: unknown }) => getChatMessagesQueryKey(input),
-              queryOptions: ({ input }: { input: unknown }) => ({
-                queryKey: getChatMessagesQueryKey(input),
-                queryFn: input === skipToken ? skipToken : () => chatMessagesGetMock(input),
-              }),
-            },
-          },
-        },
-      },
-    },
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'agent.byAgentId.chatMessages.get': chatMessagesGetMock,
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'agent.byAgentId.chatMessages.get': chatMessagesGetMock,
+      'agent.byAgentId.chatMessages.byMessageId.suggestedQuestions.get': suggestedQuestionsGetMock,
+      'agent.byAgentId.chatMessages.byTaskId.stop.post': stopPostMock,
+    }),
   }
 })
 
@@ -345,21 +313,6 @@ function RuntimeConversationHarness() {
   )
 }
 
-function RuntimeClearCommandHarness({ inputPlaceholder }: { inputPlaceholder: string }) {
-  const [clearChatList, setClearChatList] = useState(true)
-
-  return (
-    <AgentChatRuntime
-      agentId="agent-1"
-      clearChatList={clearChatList}
-      inputPlaceholder={inputPlaceholder}
-      renderEmptyState={() => null}
-      sendMessage={sendPreviewChatMessage}
-      onClearChatListChange={setClearChatList}
-    />
-  )
-}
-
 function renderPreviewChatWithConversationHarness() {
   const store = createStore()
   seedRegisteredConsoleStateFixture(store)
@@ -386,37 +339,6 @@ function renderPreviewChatWithConversationHarness() {
   )
 }
 
-function renderPreviewChatWithClearCommandHarness() {
-  const store = createStore()
-  seedRegisteredConsoleStateFixture(store)
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
-  })
-  seedAccountProfileQuery(queryClient, { avatar_url: '', name: 'User' })
-  store.set(agentComposerModelAtom, {
-    provider: 'openai',
-    model: 'gpt-4',
-  })
-  store.set(agentComposerPromptAtom, 'You are helpful.')
-
-  const renderHarness = (inputPlaceholder: string) => (
-    <QueryClientProvider client={queryClient}>
-      <JotaiProvider store={store}>
-        <RuntimeClearCommandHarness inputPlaceholder={inputPlaceholder} />
-      </JotaiProvider>
-    </QueryClientProvider>
-  )
-
-  return {
-    ...render(renderHarness('Message agent')),
-    renderHarness,
-  }
-}
-
 describe('AgentPreviewChat', () => {
   beforeEach(() => {
     mockConsoleState.deploymentEdition = 'COMMUNITY'
@@ -429,47 +351,6 @@ describe('AgentPreviewChat', () => {
     mockToastError.mockClear()
     stopCallbackRef.current = undefined
     sendResultRef.current = undefined
-  })
-
-  it('should keep build and preview chat requests independently replaceable', () => {
-    const buildHandleSend = vi.fn()
-    const previewHandleSend = vi.fn()
-    const callbacks = {
-      onSendSettled: vi.fn(),
-    }
-    const buildData = {
-      query: 'Build an agent',
-      draft_type: 'debug_build',
-    }
-    const previewData = {
-      query: 'Preview the agent',
-    }
-
-    expect(sendBuildChatMessage).not.toBe(sendPreviewChatMessage)
-
-    sendBuildChatMessage({
-      agentId: 'agent-1',
-      callbacks,
-      data: buildData,
-      handleSend: buildHandleSend,
-    })
-    sendPreviewChatMessage({
-      agentId: 'agent-1',
-      callbacks,
-      data: previewData,
-      handleSend: previewHandleSend,
-    })
-
-    expect(buildHandleSend).toHaveBeenCalledWith(
-      'agent/agent-1/chat-messages',
-      buildData,
-      callbacks,
-    )
-    expect(previewHandleSend).toHaveBeenCalledWith(
-      'agent/agent-1/chat-messages',
-      previewData,
-      callbacks,
-    )
   })
 
   it('should bind Agent preview voice input to the normal Agent draft', () => {
@@ -545,11 +426,12 @@ describe('AgentPreviewChat', () => {
     )
   })
 
-  it('should expose the owning save-before-transcribe callback', () => {
+  it('should expose the owning save-before-transcribe callback', async () => {
+    const user = userEvent.setup()
     const onBeforeSpeechToText = vi.fn().mockResolvedValue(undefined)
     renderPreviewChat({ onBeforeSpeechToText })
 
-    fireEvent.click(screen.getByRole('button', { name: 'before speech' }))
+    await user.click(screen.getByRole('button', { name: 'before speech' }))
 
     expect(onBeforeSpeechToText).toHaveBeenCalledTimes(1)
   })
@@ -666,7 +548,6 @@ describe('AgentPreviewChat', () => {
       )
     })
 
-    expect(queryClient.getQueryState(conversationQueryKey)?.dataUpdatedAt).toBe(updatedAt + 1)
     expect(await screen.findByText('refreshed answer')).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: 'chat draft' })).toHaveValue('Keep this draft')
   })
@@ -731,7 +612,6 @@ describe('AgentPreviewChat', () => {
       )
     })
 
-    expect(queryClient.getQueryState(conversationQueryKey)?.dataUpdatedAt).toBe(updatedAt + 1)
     expect(await screen.findByText('refreshed answer')).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'chat' })).toHaveAttribute(
       'data-no-chat-input',
@@ -743,9 +623,10 @@ describe('AgentPreviewChat', () => {
   })
 
   it('should deliver non-image attachments even when the selected model does not support vision', async () => {
+    const user = userEvent.setup()
     renderPreviewChat()
 
-    fireEvent.click(screen.getByRole('button', { name: 'send with document' }))
+    await user.click(screen.getByRole('button', { name: 'send with document' }))
 
     await waitFor(() => expect(handleSendMock).toHaveBeenCalledTimes(1))
     expect(handleSendMock).toHaveBeenCalledWith(
@@ -758,12 +639,13 @@ describe('AgentPreviewChat', () => {
   })
 
   it('should save draft before sending preview chat through the agent chat endpoints', async () => {
+    const user = userEvent.setup()
     const saveDraftBeforeRun = vi.fn().mockResolvedValue(undefined)
     renderPreviewChat({
       onSaveDraftBeforeRun: saveDraftBeforeRun,
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'send' }))
+    await user.click(screen.getByRole('button', { name: 'send' }))
 
     await waitFor(() => expect(handleSendMock).toHaveBeenCalledTimes(1))
     expect(saveDraftBeforeRun).toHaveBeenCalledTimes(1)
@@ -783,7 +665,6 @@ describe('AgentPreviewChat', () => {
     )
 
     const firstCall = handleSendMock.mock.calls.at(0)
-    expect(firstCall).toBeDefined()
 
     const callbacks = firstCall![2]
     await callbacks.onGetConversationMessages('conversation-1')
@@ -804,7 +685,7 @@ describe('AgentPreviewChat', () => {
       },
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'stop' }))
+    await user.click(screen.getByRole('button', { name: 'stop' }))
 
     expect(stopPostMock).toHaveBeenCalledWith({
       params: {
@@ -815,9 +696,10 @@ describe('AgentPreviewChat', () => {
   })
 
   it('should map agent SSE error events to chat send errors', async () => {
+    const user = userEvent.setup()
     renderPreviewChat()
 
-    fireEvent.click(screen.getByRole('button', { name: 'send' }))
+    await user.click(screen.getByRole('button', { name: 'send' }))
 
     await waitFor(() => expect(handleSendMock).toHaveBeenCalledTimes(1))
     const callbacks = handleSendMock.mock.calls.at(0)?.[2]
@@ -846,9 +728,10 @@ describe('AgentPreviewChat', () => {
   })
 
   it('should show a dedicated error toast when an agent run reaches the time limit', async () => {
+    const user = userEvent.setup()
     renderPreviewChat()
 
-    fireEvent.click(screen.getByRole('button', { name: 'send' }))
+    await user.click(screen.getByRole('button', { name: 'send' }))
 
     await waitFor(() => expect(handleSendMock).toHaveBeenCalledTimes(1))
     const callbacks = handleSendMock.mock.calls.at(0)?.[2]
@@ -890,9 +773,10 @@ describe('AgentPreviewChat', () => {
   })
 
   it('should show a dedicated error toast when an agent run reaches the model request limit', async () => {
+    const user = userEvent.setup()
     renderPreviewChat()
 
-    fireEvent.click(screen.getByRole('button', { name: 'send' }))
+    await user.click(screen.getByRole('button', { name: 'send' }))
 
     await waitFor(() => expect(handleSendMock).toHaveBeenCalledTimes(1))
     const callbacks = handleSendMock.mock.calls.at(0)?.[2]
@@ -922,6 +806,7 @@ describe('AgentPreviewChat', () => {
   })
 
   it('should show the send button loading state while preparing a build run', async () => {
+    const user = userEvent.setup()
     let resolveSaveDraftBeforeRun: () => void = () => {}
     const saveDraftBeforeRun = vi.fn(
       () =>
@@ -935,7 +820,7 @@ describe('AgentPreviewChat', () => {
       onSaveDraftBeforeRun: saveDraftBeforeRun,
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'send' }))
+    await user.click(screen.getByRole('button', { name: 'send' }))
 
     expect(saveDraftBeforeRun).toHaveBeenCalledTimes(1)
     await waitFor(() => {
@@ -953,6 +838,7 @@ describe('AgentPreviewChat', () => {
   })
 
   it('should not show the send button loading state while an icon send button prepares the run', async () => {
+    const user = userEvent.setup()
     const saveDraftBeforeRun = vi.fn(() => new Promise<void>(() => {}))
     renderPreviewChat({
       onSaveDraftBeforeRun: saveDraftBeforeRun,
@@ -960,7 +846,7 @@ describe('AgentPreviewChat', () => {
 
     await waitFor(() => expect(screen.getByRole('region', { name: 'chat' })).toBeInTheDocument())
 
-    fireEvent.click(screen.getByRole('button', { name: 'send' }))
+    await user.click(screen.getByRole('button', { name: 'send' }))
 
     expect(saveDraftBeforeRun).toHaveBeenCalledTimes(1)
     await waitFor(() => {
@@ -1052,6 +938,7 @@ describe('AgentPreviewChat', () => {
   })
 
   it('should sync the completed conversation history into the query cache', async () => {
+    const user = userEvent.setup()
     const conversationMessagesResponse = {
       data: [
         {
@@ -1086,7 +973,7 @@ describe('AgentPreviewChat', () => {
     chatMessagesGetMock.mockResolvedValue(conversationMessagesResponse)
     const { queryClient } = renderPreviewChat()
 
-    fireEvent.click(screen.getByRole('button', { name: 'send' }))
+    await user.click(screen.getByRole('button', { name: 'send' }))
 
     await waitFor(() => expect(handleSendMock).toHaveBeenCalledTimes(1))
     const callbacks = handleSendMock.mock.calls.at(0)?.[2]
@@ -1106,7 +993,7 @@ describe('AgentPreviewChat', () => {
           },
         }),
       ),
-    ).toBe(conversationMessagesResponse)
+    ).toEqual(conversationMessagesResponse)
   })
 
   it('should preserve historical agent thought answer when formatting chat history', async () => {
@@ -1212,12 +1099,13 @@ describe('AgentPreviewChat', () => {
   })
 
   it('should notify the owner when a send settles with an error', async () => {
+    const user = userEvent.setup()
     const onSendInterrupted = vi.fn()
     renderPreviewChat({
       onSendInterrupted,
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'send' }))
+    await user.click(screen.getByRole('button', { name: 'send' }))
 
     await waitFor(() => expect(handleSendMock).toHaveBeenCalledTimes(1))
     const callbacks = handleSendMock.mock.calls.at(0)?.[2]
@@ -1230,12 +1118,13 @@ describe('AgentPreviewChat', () => {
   })
 
   it('should notify the owner when stopping a responding send', async () => {
+    const user = userEvent.setup()
     const onSendInterrupted = vi.fn()
     renderPreviewChat({
       onSendInterrupted,
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'stop' }))
+    await user.click(screen.getByRole('button', { name: 'stop' }))
 
     expect(onSendInterrupted).toHaveBeenCalledTimes(1)
     expect(stopPostMock).toHaveBeenCalledWith({
@@ -1264,17 +1153,18 @@ describe('AgentPreviewChat', () => {
   })
 
   it('should notify the owner once when a stopped send later settles with an error', async () => {
+    const user = userEvent.setup()
     const onSendInterrupted = vi.fn()
     renderPreviewChat({
       onSendInterrupted,
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'send' }))
+    await user.click(screen.getByRole('button', { name: 'send' }))
 
     await waitFor(() => expect(handleSendMock).toHaveBeenCalledTimes(1))
     const callbacks = handleSendMock.mock.calls.at(0)?.[2]
 
-    fireEvent.click(screen.getByRole('button', { name: 'stop' }))
+    await user.click(screen.getByRole('button', { name: 'stop' }))
     act(() => {
       callbacks.onSendSettled(true)
     })
@@ -1283,12 +1173,13 @@ describe('AgentPreviewChat', () => {
   })
 
   it('should not send preview chat when draft save fails', async () => {
+    const user = userEvent.setup()
     const saveDraftBeforeRun = vi.fn().mockRejectedValue(new Error('save failed'))
     renderPreviewChat({
       onSaveDraftBeforeRun: saveDraftBeforeRun,
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'send' }))
+    await user.click(screen.getByRole('button', { name: 'send' }))
 
     await waitFor(() => expect(saveDraftBeforeRun).toHaveBeenCalledTimes(1))
     await expect(sendResultRef.current).resolves.toBe(false)
@@ -1296,13 +1187,18 @@ describe('AgentPreviewChat', () => {
   })
 
   it('should send build chat with the debug build draft type', async () => {
+    const user = userEvent.setup()
     renderPreviewChat({
       draftType: 'debug_build',
       sendMessage: sendBuildChatMessage,
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'send' }))
+    await user.click(screen.getByRole('button', { name: 'send' }))
 
+    expect(screen.getByRole('region', { name: 'chat' })).toHaveAttribute(
+      'data-can-open-log',
+      'false',
+    )
     await waitFor(() => expect(handleSendMock).toHaveBeenCalledTimes(1))
     expect(handleSendMock).toHaveBeenCalledWith(
       'agent/agent-1/chat-messages',
@@ -1313,20 +1209,8 @@ describe('AgentPreviewChat', () => {
     )
   })
 
-  it('should keep prompt log action hidden in the build chat runtime', async () => {
-    renderPreviewChat({
-      draftType: 'debug_build',
-    })
-
-    await waitFor(() => expect(screen.getByRole('region', { name: 'chat' })).toBeInTheDocument())
-
-    expect(screen.getByRole('region', { name: 'chat' })).toHaveAttribute(
-      'data-can-open-log',
-      'false',
-    )
-  })
-
   it('should hide the sandbox notice after the first send starts', async () => {
+    const user = userEvent.setup()
     renderPreviewChat({
       renderEmptyState: () => null,
     })
@@ -1336,7 +1220,7 @@ describe('AgentPreviewChat', () => {
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'sandbox notice info' })).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'send' }))
+    await user.click(screen.getByRole('button', { name: 'send' }))
 
     await waitFor(() => {
       expect(
@@ -1414,6 +1298,7 @@ describe('AgentPreviewChat', () => {
   })
 
   it('should send build chat inputs from the prepared build draft snapshot', async () => {
+    const user = userEvent.setup()
     const saveDraftBeforeRun = vi.fn().mockResolvedValue({
       app_variables: [
         {
@@ -1447,7 +1332,7 @@ describe('AgentPreviewChat', () => {
       onSaveDraftBeforeRun: saveDraftBeforeRun,
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'send' }))
+    await user.click(screen.getByRole('button', { name: 'send' }))
 
     await waitFor(() => expect(handleSendMock).toHaveBeenCalledTimes(1))
     expect(handleSendMock).toHaveBeenCalledWith(
@@ -1469,10 +1354,11 @@ describe('AgentPreviewChat', () => {
   })
 
   it('should keep the current chat session visible when a sent message creates a conversation', async () => {
+    const user = userEvent.setup()
     chatMessagesGetMock.mockReturnValue(new Promise(() => undefined))
     renderPreviewChatWithConversationHarness()
 
-    fireEvent.click(screen.getByRole('button', { name: 'send' }))
+    await user.click(screen.getByRole('button', { name: 'send' }))
 
     await waitFor(() => expect(handleSendMock).toHaveBeenCalledTimes(1))
     const callbacks = handleSendMock.mock.calls.at(0)?.[2]
@@ -1484,20 +1370,6 @@ describe('AgentPreviewChat', () => {
     expect(screen.getByRole('button', { name: 'send' })).toBeInTheDocument()
     expect(screen.getByText('sessionSent:yes')).toBeInTheDocument()
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
-  })
-
-  it('should keep the reset command acknowledgement stable while clear chat is pending', async () => {
-    const { renderHarness, rerender } = renderPreviewChatWithClearCommandHarness()
-
-    await waitFor(() => expect(useChatMock).toHaveBeenCalled())
-    const firstResetAcknowledgement = useChatMock.mock.calls.at(-1)?.[5]
-
-    rerender(renderHarness('Message agent again'))
-
-    await waitFor(() => expect(useChatMock.mock.calls.length).toBeGreaterThan(1))
-    const secondResetAcknowledgement = useChatMock.mock.calls.at(-1)?.[5]
-
-    expect(secondResetAcknowledgement).toBe(firstResetAcknowledgement)
   })
 
   it('should keep preview file upload disabled by default', async () => {

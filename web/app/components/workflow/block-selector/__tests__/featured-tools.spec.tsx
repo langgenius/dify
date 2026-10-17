@@ -46,10 +46,12 @@ const mockUseTheme = vi.mocked(useTheme)
 describe('FeaturedTools', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    localStorage.clear()
+    localStorage.removeItem('workflow_tools_featured_collapsed')
     mockUseGetLanguage.mockReturnValue('en_US')
     mockUseTheme.mockReturnValue({ theme: Theme.light } as ReturnType<typeof useTheme>)
   })
+
+  afterEach(() => localStorage.removeItem('workflow_tools_featured_collapsed'))
 
   it('reveals featured tools in batches and then returns to the initial list', async () => {
     const user = userEvent.setup()

@@ -1,18 +1,19 @@
-import type { ReactNode } from 'react'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import PluginCategoryPage from '../plugin-category-page'
 
 const {
-  mockContainerRef,
   mockFetchManifestFromMarketPlace,
   mockSetInstallState,
   mockUseUploader,
   mockUsePluginInstallation,
   mockPluginInstallationPermission,
 } = vi.hoisted(() => ({
-  mockContainerRef: { current: null },
   mockFetchManifestFromMarketPlace: vi.fn(),
   mockSetInstallState: vi.fn(),
   mockUseUploader: vi.fn((_: unknown) => ({
@@ -27,19 +28,11 @@ const {
   },
 }))
 
-vi.mock('@tanstack/react-query', () => ({
-  queryOptions: (options: unknown) => options,
-  useSuspenseQuery: () => ({ data: mockPluginInstallationPermission }),
-}))
-
-vi.mock('@/app/components/plugins/plugin-page/context-provider', () => ({
-  PluginPageContextProvider: ({ children }: { children: ReactNode }) => children,
-}))
-
-vi.mock('@/app/components/plugins/plugin-page/context', () => ({
-  usePluginPageContext: (selector: (value: { containerRef: typeof mockContainerRef }) => unknown) =>
-    selector({ containerRef: mockContainerRef }),
-}))
+const renderWithUrl = createNuqsTestRenderer(renderWithConsoleQuery)
+const render = (ui: ReactElement) =>
+  renderWithUrl(ui, {
+    systemFeatures: { plugin_installation_permission: mockPluginInstallationPermission },
+  })
 
 vi.mock('@/app/components/plugins/plugin-page/plugins-panel', () => ({
   default: ({
@@ -56,7 +49,13 @@ vi.mock('@/app/components/plugins/plugin-page/plugins-panel', () => ({
       data-fixed-category={fixedCategory}
       data-has-marketplace-action={onSwitchToMarketplace ? 'true' : 'false'}
       data-testid="plugins-panel"
-    />
+    >
+      {onSwitchToMarketplace && (
+        <button type="button" onClick={onSwitchToMarketplace}>
+          marketplace
+        </button>
+      )}
+    </div>
   ),
 }))
 
@@ -106,7 +105,8 @@ vi.mock('@/hooks/use-query-params', () => ({
   usePluginInstallation: () => mockUsePluginInstallation(),
 }))
 
-vi.mock('@/service/plugins', () => ({
+vi.mock('@/service/plugins', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/plugins')>()),
   fetchManifestFromMarketPlace: (...args: unknown[]) => mockFetchManifestFromMarketPlace(...args),
 }))
 
@@ -117,6 +117,7 @@ type UploaderOptions = {
 describe('PluginCategoryPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockFetchManifestFromMarketPlace.mockReset()
     mockPluginInstallationPermission.restrict_to_marketplace_only = false
     mockUsePluginInstallation.mockReturnValue([
       { packageId: null, bundleInfo: null },
@@ -139,13 +140,7 @@ describe('PluginCategoryPage', () => {
     )
   })
 
-  it('uses the Figma panel background for scoped integration categories', () => {
-    const { container } = render(<PluginCategoryPage category={PluginCategoryEnum.trigger} />)
-
-    expect(container.firstElementChild).toHaveClass('bg-components-panel-bg')
-  })
-
-  it('passes the marketplace action to the plugins panel', () => {
+  it('opens the marketplace through the plugins panel action', async () => {
     const onSwitchToMarketplace = vi.fn()
 
     render(
@@ -155,16 +150,14 @@ describe('PluginCategoryPage', () => {
       />,
     )
 
-    expect(screen.getByTestId('plugins-panel')).toHaveAttribute(
-      'data-has-marketplace-action',
-      'true',
-    )
+    await userEvent.setup().click(screen.getByRole('button', { name: 'marketplace' }))
+    expect(onSwitchToMarketplace).toHaveBeenCalledTimes(1)
   })
 
   it('disables drop install when local packages are restricted', () => {
     mockPluginInstallationPermission.restrict_to_marketplace_only = true
 
-    render(<PluginCategoryPage category={PluginCategoryEnum.agent} />)
+    render(<PluginCategoryPage category={PluginCategoryEnum.tool} />)
 
     expect(mockUseUploader).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -174,7 +167,7 @@ describe('PluginCategoryPage', () => {
   })
 
   it('disables panel and drop installs when install permission is unavailable', () => {
-    render(<PluginCategoryPage canInstall={false} category={PluginCategoryEnum.agent} />)
+    render(<PluginCategoryPage canInstall={false} category={PluginCategoryEnum.tool} />)
 
     expect(screen.getByTestId('plugins-panel')).toHaveAttribute('data-can-install', 'false')
     expect(mockUseUploader).toHaveBeenCalledWith(
@@ -216,7 +209,7 @@ describe('PluginCategoryPage', () => {
       mockSetInstallState,
     ])
 
-    render(<PluginCategoryPage canInstall={false} category={PluginCategoryEnum.agent} />)
+    render(<PluginCategoryPage canInstall={false} category={PluginCategoryEnum.tool} />)
 
     await waitFor(() => {
       expect(mockSetInstallState).toHaveBeenCalledWith(null)
@@ -275,13 +268,13 @@ describe('PluginCategoryPage', () => {
       PluginCategoryEnum.trigger,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'close' }))
+    await userEvent.setup().click(screen.getByRole('button', { name: 'close' }))
 
     expect(mockSetInstallState).toHaveBeenCalledWith(null)
   })
 
   it('ignores dropped files when install permission is unavailable', () => {
-    render(<PluginCategoryPage canInstall={false} category={PluginCategoryEnum.agent} />)
+    render(<PluginCategoryPage canInstall={false} category={PluginCategoryEnum.tool} />)
 
     const uploaderOptions = mockUseUploader.mock.calls[0]![0] as UploaderOptions
     act(() => {

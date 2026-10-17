@@ -1,7 +1,20 @@
-import { waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
+import { createWorkflowResponseFixture } from '@/test/fixtures/workflow-response'
 import CreateFromPipeline from '../index'
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.datasourcePlugins.get': async () => [],
+    }),
+  }
+})
 
 const mockPlan = {
   usage: { vectorSpace: 50 },
@@ -11,6 +24,16 @@ const mockPlan = {
 
 const render = (ui: React.ReactElement, vectorSpaceUsageUnknown = false) => {
   const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.rag.pipelines.byPipelineId.workflows.publish.get.queryKey({
+      input: { params: { pipeline_id: 'test-pipeline-id' } },
+    }),
+    createWorkflowResponseFixture(),
+  )
+  queryClient.setQueryData(
+    consoleQuery.files.upload.get.queryKey(),
+    createFileUploadConfigFixture(),
+  )
   queryClient.setQueryData(consoleQuery.features.vectorSpace.get.queryOptions().queryKey, {
     size: mockPlan.usage.vectorSpace,
     limit: mockPlan.total.vectorSpace,
@@ -26,7 +49,6 @@ const render = (ui: React.ReactElement, vectorSpaceUsageUnknown = false) => {
 let mockDatasetPermissionKeys = ['dataset.acl.use']
 let mockAllFileLoaded = false
 const mockRouterReplace = vi.fn()
-const mockStepOneContent = vi.fn()
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -89,37 +111,14 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: () => ({
-    data: { file_size_limit: 15, batch_count_limit: 5 },
-  }),
-}))
+// Later processing steps are independent of the first-step permission/capacity guard.
+vi.mock('../steps', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../steps')>()
+  return { ...actual, StepTwoContent: () => null, StepThreeContent: () => null }
+})
 
-vi.mock('@/service/use-pipeline', () => ({
-  usePublishedPipelineInfo: () => ({
-    data: { graph: { nodes: [] } },
-    isFetching: false,
-  }),
-}))
-
-vi.mock('../data-source/store', () => ({
-  useDataSourceStore: () => ({ getState: () => ({}) }),
-}))
-
-vi.mock('../data-source/store/provider', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-}))
-
-vi.mock('../steps', () => ({
-  StepOneContent: (props: object) => {
-    mockStepOneContent(props)
-    return null
-  },
-  StepTwoContent: () => null,
-  StepThreeContent: () => null,
-}))
-
-vi.mock('../hooks', () => ({
+vi.mock('../hooks', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../hooks')>()),
   useAddDocumentsSteps: () => ({
     steps: [],
     currentStep: 1,
@@ -182,7 +181,6 @@ vi.mock('../hooks', () => ({
 describe('CreateFromPipeline permission guard', () => {
   beforeEach(() => {
     mockRouterReplace.mockClear()
-    mockStepOneContent.mockClear()
     mockDatasetPermissionKeys = ['dataset.acl.use']
     mockAllFileLoaded = false
     mockPlan.type = 'professional'
@@ -198,24 +196,22 @@ describe('CreateFromPipeline permission guard', () => {
     })
   })
 
-  it('requires sandbox users to retry when vector space usage is unknown', () => {
+  it('requires sandbox users to retry when vector space usage is unknown', async () => {
     mockAllFileLoaded = true
     mockPlan.type = 'sandbox'
 
     render(<CreateFromPipeline />, true)
 
-    expect(mockStepOneContent).toHaveBeenCalledWith(
-      expect.objectContaining({ isShowVectorSpaceUnavailable: true }),
-    )
+    expect(await screen.findByRole('alert')).toHaveTextContent('billing.plansCommon.unavailable')
+    expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBeInTheDocument()
   })
 
-  it('allows paid users to continue when vector space usage is unknown', () => {
+  it('allows paid users to continue when vector space usage is unknown', async () => {
     mockAllFileLoaded = true
 
     render(<CreateFromPipeline />, true)
 
-    expect(mockStepOneContent).toHaveBeenCalledWith(
-      expect.objectContaining({ isShowVectorSpaceUnavailable: false }),
-    )
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.operation.retry' })).not.toBeInTheDocument()
   })
 })

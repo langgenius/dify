@@ -1,135 +1,117 @@
-import type { IndexingType } from '../use-indexing-config'
-import type { NotionPage } from '@/models/common'
-import type { ChunkingMode, CrawlResultItem, CustomFile, ProcessRule } from '@/models/datasets'
-import { renderHook } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { DataSourceType } from '@/models/datasets'
+import { DataSourceProvider } from '@/models/common'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
+import { useIndexingEstimate } from '../use-indexing-estimate'
 
-// Hoisted mocks
-const mocks = vi.hoisted(() => ({
-  fileMutate: vi.fn(),
-  fileReset: vi.fn(),
-  notionMutate: vi.fn(),
-  notionReset: vi.fn(),
-  webMutate: vi.fn(),
-  webReset: vi.fn(),
-}))
-
-vi.mock('@/service/knowledge/use-create-dataset', () => ({
-  useFetchFileIndexingEstimateForFile: () => ({
-    mutate: mocks.fileMutate,
-    reset: mocks.fileReset,
-    data: { tokens: 100, total_segments: 5 },
-    isIdle: true,
-    isPending: false,
-  }),
-  useFetchFileIndexingEstimateForNotion: () => ({
-    mutate: mocks.notionMutate,
-    reset: mocks.notionReset,
-    data: null,
-    isIdle: true,
-    isPending: false,
-  }),
-  useFetchFileIndexingEstimateForWeb: () => ({
-    mutate: mocks.webMutate,
-    reset: mocks.webReset,
-    data: null,
-    isIdle: true,
-    isPending: false,
-  }),
-}))
-
-const { useIndexingEstimate } = await import('../use-indexing-estimate')
+const estimate = vi.hoisted(() => vi.fn())
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.indexingEstimate.post': estimate,
+    }),
+  }
+})
 
 describe('useIndexingEstimate', () => {
-  const defaultOptions = {
+  const defaultOptions: Parameters<typeof useIndexingEstimate>[0] = {
     dataSourceType: DataSourceType.FILE,
-    currentDocForm: 'text_model' as ChunkingMode,
+    datasetId: 'dataset-1',
+    currentDocForm: ChunkingMode.text,
     docLanguage: 'English',
-    files: [{ id: 'f-1', name: 'test.txt' }] as unknown as CustomFile[],
-    previewNotionPage: {} as unknown as NotionPage,
-    notionCredentialId: '',
-    previewWebsitePage: {} as unknown as CrawlResultItem,
-    indexingTechnique: 'high_quality' as unknown as IndexingType,
-    processRule: { mode: 'custom', rules: {} } as unknown as ProcessRule,
+    files: [{ id: 'f-1', name: 'test.txt' }],
+    previewNotionPage: {
+      page_id: 'page-1',
+      page_name: 'Page',
+      page_icon: null,
+      type: 'page',
+      workspace_id: 'workspace-1',
+    },
+    notionCredentialId: 'credential-1',
+    previewWebsitePage: {
+      source_url: 'https://example.com',
+      title: 'Example',
+      markdown: 'Content',
+      description: '',
+    },
+    websiteCrawlProvider: DataSourceProvider.jinaReader,
+    websiteCrawlJobId: 'job-1',
+    indexingTechnique: 'high_quality',
+    processRule: {
+      mode: 'custom',
+      rules: { pre_processing_rules: [], segmentation: { separator: '\n', max_tokens: 500 } },
+    },
   }
 
+  const sentBody = () => estimate.mock.calls.at(-1)?.[0].body
+
   beforeEach(() => {
-    vi.clearAllMocks()
+    estimate.mockReset().mockResolvedValue({ tokens: 100, total_segments: 5 })
   })
 
-  describe('currentMutation selection', () => {
-    it('should select file mutation for FILE type', () => {
-      const { result } = renderHook(() => useIndexingEstimate(defaultOptions))
-      expect(result.current.estimate).toEqual({ tokens: 100, total_segments: 5 })
+  it('moves from idle through pending to the estimate and clears the result on reset', async () => {
+    const request = createDeferred<{ tokens: number; total_segments: number }>()
+    estimate.mockReturnValue(request.promise)
+    const { result } = renderHook(() => useIndexingEstimate(defaultOptions))
+    expect(result.current.isIdle).toBe(true)
+    expect(result.current.estimate).toBeUndefined()
+    act(() => result.current.fetchEstimate())
+    await waitFor(() => expect(result.current.isPending).toBe(true))
+    await act(async () => request.resolve({ tokens: 100, total_segments: 5 }))
+    await waitFor(() => expect(result.current.estimate).toEqual({ tokens: 100, total_segments: 5 }))
+    expect(result.current.isPending).toBe(false)
+    expect(sentBody()).toMatchObject({
+      info_list: { data_source_type: 'upload_file', file_info_list: { file_ids: ['f-1'] } },
+      doc_form: 'text_model',
+      dataset_id: 'dataset-1',
     })
-
-    it('should select notion mutation for NOTION type', () => {
-      const { result } = renderHook(() =>
-        useIndexingEstimate({
-          ...defaultOptions,
-          dataSourceType: DataSourceType.NOTION,
-        }),
-      )
-      expect(result.current.estimate).toBeNull()
-    })
-
-    it('should select web mutation for WEB type', () => {
-      const { result } = renderHook(() =>
-        useIndexingEstimate({
-          ...defaultOptions,
-          dataSourceType: DataSourceType.WEB,
-        }),
-      )
-      expect(result.current.estimate).toBeNull()
-    })
+    act(() => result.current.reset())
+    await waitFor(() => expect(result.current.isIdle).toBe(true))
+    expect(result.current.estimate).toBeUndefined()
   })
 
   describe('fetchEstimate', () => {
-    it('should call file mutate for FILE type', () => {
-      const { result } = renderHook(() => useIndexingEstimate(defaultOptions))
-      result.current.fetchEstimate()
-      expect(mocks.fileMutate).toHaveBeenCalledOnce()
-    })
-
-    it('should call notion mutate for NOTION type', () => {
+    it('estimates the previewed Notion page', async () => {
       const { result } = renderHook(() =>
-        useIndexingEstimate({
-          ...defaultOptions,
-          dataSourceType: DataSourceType.NOTION,
-        }),
+        useIndexingEstimate({ ...defaultOptions, dataSourceType: DataSourceType.NOTION }),
       )
-      result.current.fetchEstimate()
-      expect(mocks.notionMutate).toHaveBeenCalledOnce()
+      await act(async () => result.current.fetchEstimate())
+
+      expect(sentBody()).toMatchObject({
+        info_list: {
+          data_source_type: 'notion_import',
+          notion_info_list: [
+            {
+              credential_id: 'credential-1',
+              workspace_id: 'workspace-1',
+              pages: [{ page_id: 'page-1' }],
+            },
+          ],
+        },
+      })
     })
 
-    it('should call web mutate for WEB type', () => {
+    it('estimates the previewed website page', async () => {
       const { result } = renderHook(() =>
-        useIndexingEstimate({
-          ...defaultOptions,
-          dataSourceType: DataSourceType.WEB,
-        }),
+        useIndexingEstimate({ ...defaultOptions, dataSourceType: DataSourceType.WEB }),
       )
-      result.current.fetchEstimate()
-      expect(mocks.webMutate).toHaveBeenCalledOnce()
-    })
-  })
+      await act(async () => result.current.fetchEstimate())
 
-  describe('state properties', () => {
-    it('should expose isIdle', () => {
-      const { result } = renderHook(() => useIndexingEstimate(defaultOptions))
-      expect(result.current.isIdle).toBe(true)
-    })
-
-    it('should expose isPending', () => {
-      const { result } = renderHook(() => useIndexingEstimate(defaultOptions))
-      expect(result.current.isPending).toBe(false)
-    })
-
-    it('should expose reset function', () => {
-      const { result } = renderHook(() => useIndexingEstimate(defaultOptions))
-      result.current.reset()
-      expect(mocks.fileReset).toHaveBeenCalledOnce()
+      expect(sentBody()).toMatchObject({
+        info_list: {
+          data_source_type: 'website_crawl',
+          website_info_list: {
+            provider: DataSourceProvider.jinaReader,
+            job_id: 'job-1',
+            urls: ['https://example.com'],
+          },
+        },
+      })
     })
   })
 })

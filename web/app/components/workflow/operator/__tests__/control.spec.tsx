@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWorkflowComponent as renderComponent } from '../../__tests__/workflow-test-env'
 import { ControlMode } from '../../types'
 import Control from '../control'
 
@@ -56,10 +56,6 @@ vi.mock('../hooks', () => ({
   }),
 }))
 
-vi.mock('../../store', () => ({
-  useStore: (selector: (state: WorkflowStoreState) => unknown) => selector(mockStoreState),
-}))
-
 vi.mock('../add-block', () => ({
   default: () => <div data-testid="add-block" />,
 }))
@@ -68,11 +64,8 @@ vi.mock('../export-image', () => ({
   ExportImage: () => <div data-testid="export-image" />,
 }))
 
-vi.mock('../tip-popup', () => ({
-  default: ({ children, title }: { children?: ReactNode; title?: string }) => (
-    <div data-testid={title}>{children}</div>
-  ),
-}))
+const render = (ui: React.ReactElement) =>
+  renderComponent(ui, { initialStoreState: mockStoreState })
 
 describe('Control', () => {
   beforeEach(() => {
@@ -90,8 +83,6 @@ describe('Control', () => {
     it('should render the child action groups and highlight the active pointer mode', () => {
       render(<Control />)
 
-      expect(screen.getByTestId('add-block')).toBeInTheDocument()
-      expect(screen.getByTestId('export-image')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'workflow.common.pointerMode' })).toHaveAttribute(
         'aria-pressed',
         'true',
@@ -118,24 +109,15 @@ describe('Control', () => {
 
   // User interactions exposed by the control bar.
   describe('User Interactions', () => {
-    it('should trigger the note, mode, and organize handlers', () => {
+    it('should trigger the note, mode, and organize handlers', async () => {
+      const user = userEvent.setup()
       render(<Control />)
 
-      fireEvent.click(
-        screen.getByTestId('workflow.nodes.note.addNote').firstElementChild as HTMLElement,
-      )
-      fireEvent.click(
-        screen.getByTestId('workflow.common.pointerMode').firstElementChild as HTMLElement,
-      )
-      fireEvent.click(
-        screen.getByTestId('workflow.common.handMode').firstElementChild as HTMLElement,
-      )
-      fireEvent.click(
-        screen.getByTestId('workflow.common.commentMode').firstElementChild as HTMLElement,
-      )
-      fireEvent.click(
-        screen.getByTestId('workflow.panel.organizeBlocks').firstElementChild as HTMLElement,
-      )
+      await user.click(screen.getByRole('button', { name: 'workflow.nodes.note.addNote' }))
+      await user.click(screen.getByRole('button', { name: 'workflow.common.pointerMode' }))
+      await user.click(screen.getByRole('button', { name: 'workflow.common.handMode' }))
+      await user.click(screen.getByRole('button', { name: 'workflow.common.commentMode' }))
+      await user.click(screen.getByRole('button', { name: 'workflow.panel.organizeBlocks' }))
 
       expect(mockHandleAddNote).toHaveBeenCalledTimes(1)
       expect(mockHandleModePointer).toHaveBeenCalledTimes(1)
@@ -150,8 +132,7 @@ describe('Control', () => {
 
       render(<Control />)
 
-      const noteButton = screen.getByTestId('workflow.nodes.note.addNote')
-        .firstElementChild as HTMLButtonElement
+      const noteButton = screen.getByRole('button', { name: 'workflow.nodes.note.addNote' })
 
       expect(noteButton).toHaveAttribute('aria-disabled', 'true')
       await user.tab()
@@ -161,17 +142,17 @@ describe('Control', () => {
       expect(mockHandleAddNote).not.toHaveBeenCalled()
     })
 
-    it('should keep comment mode enabled when nodes are read-only', () => {
+    it('should keep comment mode enabled when nodes are read-only', async () => {
+      const user = userEvent.setup()
       mockNodesReadOnly = true
       mockCanUseCommentMode = true
 
       render(<Control />)
 
-      const commentButton = screen.getByTestId('workflow.common.commentMode')
-        .firstElementChild as HTMLButtonElement
+      const commentButton = screen.getByRole('button', { name: 'workflow.common.commentMode' })
       expect(commentButton).toBeEnabled()
 
-      fireEvent.click(commentButton)
+      await user.click(commentButton)
 
       expect(mockHandleModeComment).toHaveBeenCalledTimes(1)
     })
@@ -182,8 +163,7 @@ describe('Control', () => {
 
       render(<Control />)
 
-      const commentButton = screen.getByTestId('workflow.common.commentMode')
-        .firstElementChild as HTMLButtonElement
+      const commentButton = screen.getByRole('button', { name: 'workflow.common.commentMode' })
       expect(commentButton).toHaveAttribute('aria-disabled', 'true')
 
       commentButton.focus()

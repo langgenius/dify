@@ -87,7 +87,7 @@ describe('image-uploader utils', () => {
 
       expect(upload).toHaveBeenCalledTimes(1)
 
-      const [options, isPublic, url] = (vi.mocked(upload).mock.calls[0] ?? []) as [any, any, any]
+      const [options, isPublic, url] = vi.mocked(upload).mock.calls[0]!
       expect(isPublic).toBe(true)
       expect(url).toBe('/files/upload')
       expect(options.xhr).toBeInstanceOf(XMLHttpRequest)
@@ -114,12 +114,14 @@ describe('image-uploader utils', () => {
       expect(callbacks.onSuccessCallback).not.toHaveBeenCalled()
     })
 
-    it('should report progress percentage when progress is computable', () => {
+    it('should report progress percentage when progress is computable', async () => {
       const file = new File(['hello'], 'image.png', { type: 'image/png' })
       const callbacks = createCallbacks()
       vi.mocked(upload).mockImplementation(
         (options: { onprogress?: (e: ProgressEvent) => void }) => {
-          options.onprogress?.({ lengthComputable: true, loaded: 5, total: 8 } as ProgressEvent)
+          options.onprogress?.(
+            new ProgressEvent('progress', { lengthComputable: true, loaded: 5, total: 8 }),
+          )
           return Promise.resolve({ id: 'uploaded-id' })
         },
       )
@@ -127,14 +129,19 @@ describe('image-uploader utils', () => {
       imageUpload({ file, ...callbacks })
 
       expect(callbacks.onProgressCallback).toHaveBeenCalledWith(62)
+      await waitFor(() =>
+        expect(callbacks.onSuccessCallback).toHaveBeenCalledWith({ id: 'uploaded-id' }),
+      )
     })
 
-    it('should not report progress when length is not computable', () => {
+    it('should not report progress when length is not computable', async () => {
       const file = new File(['hello'], 'image.png', { type: 'image/png' })
       const callbacks = createCallbacks()
       vi.mocked(upload).mockImplementation(
         (options: { onprogress?: (e: ProgressEvent) => void }) => {
-          options.onprogress?.({ lengthComputable: false, loaded: 5, total: 8 } as ProgressEvent)
+          options.onprogress?.(
+            new ProgressEvent('progress', { lengthComputable: false, loaded: 5, total: 8 }),
+          )
           return Promise.resolve({ id: 'uploaded-id' })
         },
       )
@@ -142,6 +149,9 @@ describe('image-uploader utils', () => {
       imageUpload({ file, ...callbacks })
 
       expect(callbacks.onProgressCallback).not.toHaveBeenCalled()
+      await waitFor(() =>
+        expect(callbacks.onSuccessCallback).toHaveBeenCalledWith({ id: 'uploaded-id' }),
+      )
     })
   })
 })

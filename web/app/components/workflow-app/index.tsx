@@ -2,7 +2,7 @@
 
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useEffect, useMemo } from 'react'
 import { isWorkflowAppMode } from '@/app/components/apps/app-type'
@@ -21,7 +21,6 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useParams, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { fetchRunDetail } from '@/service/log'
-import { useAppTriggers } from '@/service/use-tools'
 import { getAppACLCapabilities } from '@/utils/permission'
 import WorkflowAppMain from './components/workflow-main'
 import { useGetRunAndTraceUrl } from './hooks/use-get-run-and-trace-url'
@@ -56,10 +55,14 @@ const WorkflowAppWithAdditionalContext = () => {
     [appDetail.maintainer, appDetail.permission_keys, currentUserId, workspacePermissionKeys],
   )
   const isWorkflowMode = appDetail.mode === 'workflow'
-  const { data: triggersResponse } = useAppTriggers(isWorkflowMode ? appId : undefined, {
-    staleTime: 5 * 60 * 1000, // 5 minutes cache
-    refetchOnWindowFocus: false,
-  })
+  const { data: triggersResponse } = useQuery(
+    consoleQuery.apps.byAppId.triggers.get.queryOptions({
+      input: { params: { app_id: appId } },
+      enabled: isWorkflowMode && !!appId,
+      staleTime: 5 * 60 * 1000, // 5 minutes cache
+      refetchOnWindowFocus: false,
+    }),
+  )
 
   // Sync trigger statuses to store when data loads
   useEffect(() => {

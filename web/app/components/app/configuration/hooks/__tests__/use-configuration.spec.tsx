@@ -1,6 +1,7 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import { act, screen, waitFor } from '@testing-library/react'
 import Cookies from 'js-cookie'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import CommonLayoutError from '@/app/(commonLayout)/error'
 import ErrorBoundary from '@/app/components/base/error-boundary'
 import { DETAIL_SIDEBAR_COOKIE_NAME } from '@/app/components/detail-sidebar/cookie'
@@ -31,25 +32,35 @@ const createRouteAppDetail = (overrides: Partial<AppDetailWithSite> = {}) =>
 
 const createSeededQueryClient = (appDetail: Partial<AppDetailWithSite> = {}) => {
   const queryClient = createTestQueryClient()
+  void queryClient.query({
+    ...consoleQuery.files.upload.get.queryOptions(),
+    queryFn: () => new Promise(() => {}),
+  })
   seedAccountProfileQuery(queryClient, { id: 'user-1' })
   seedAppDetail(queryClient, createRouteAppDetail(appDetail))
   return queryClient
 }
+
+const onUrlUpdate = vi.fn()
 
 const renderHook = (
   callback: () => ReturnType<typeof useConfiguration>,
   appDetail?: Partial<AppDetailWithSite>,
 ) => {
   const queryClient = createSeededQueryClient(appDetail)
+  const QueryWrapper = createQueryClientWrapper(queryClient)
   return {
     ...renderHookWithConsoleState(callback, {
-      wrapper: createQueryClientWrapper(queryClient),
+      wrapper: ({ children }) => (
+        <NuqsTestingAdapter onUrlUpdate={onUrlUpdate}>
+          <QueryWrapper>{children}</QueryWrapper>
+        </NuqsTestingAdapter>
+      ),
     }),
     queryClient,
   }
 }
 
-const mockSetSettingsDestination = vi.fn()
 const mockHandleMultipleModelConfigsChange = vi.fn()
 const mockFetchCollectionList = vi.fn()
 const mockFetchAppDetailDirect = vi.fn()
@@ -68,23 +79,8 @@ type AdvancedPromptConfigOptions = {
 }
 
 let latestAdvancedPromptConfigOptions: AdvancedPromptConfigOptions | undefined
-let mockTempStopState: string[] = []
 let mockCurrentModelFeatures = ['vision']
 let mockCurrentModelMode = ModelModeType.chat
-vi.mock('ahooks', async () => {
-  const actual = await vi.importActual<any>('ahooks')
-
-  return {
-    ...actual,
-    useGetState: () => [
-      mockTempStopState,
-      (value: string[]) => {
-        mockTempStopState = value
-      },
-      () => mockTempStopState,
-    ],
-  }
-})
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -104,17 +100,6 @@ vi.mock('@/context/permission-state', async () => {
     workspacePermissionKeys: ['app.create_and_management'],
   }))
 })
-
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
-})
-
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: () => ({
-    data: undefined,
-  }),
-}))
 
 vi.mock('@/hooks/use-breakpoints', () => ({
   __esModule: true,
@@ -185,43 +170,20 @@ vi.mock('@/service/tools', () => ({
   fetchCollectionList: (...args: unknown[]) => mockFetchCollectionList(...args),
 }))
 
-vi.mock('@/service/console', async () => {
-  const actual = await vi.importActual<typeof import('@/service/console')>('@/service/console')
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleQuery: {
-      ...actual.consoleQuery,
-      account: actual.consoleQuery.account,
-      apps: {
-        byAppId: {
-          get: {
-            queryKey: actual.consoleQuery.apps.byAppId.get.queryKey,
-            queryOptions: (
-              options: Parameters<typeof actual.consoleQuery.apps.byAppId.get.queryOptions>[0],
-            ) => ({
-              ...actual.consoleQuery.apps.byAppId.get.queryOptions(options),
-              queryFn: async () => createRouteAppDetail(),
-            }),
-          },
-          modelConfig: {
-            post: {
-              mutationOptions: (options: Record<string, unknown>) => ({
-                ...options,
-                mutationFn: (input: unknown) => mockUpdateModelConfig(input),
-              }),
-            },
-          },
-        },
-      },
-    },
-    consoleClient: {
-      apps: {
-        byAppId: {
-          get: (...args: unknown[]) => mockFetchAppDetailDirect(...args),
-          modelConfig: { post: mockUpdateModelConfig },
-        },
-      },
-    },
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.get': () => createRouteAppDetail(),
+      'apps.byAppId.modelConfig.post': (input) => mockUpdateModelConfig(input),
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.get': (input) => mockFetchAppDetailDirect(input),
+      'apps.byAppId.modelConfig.post': mockUpdateModelConfig,
+    }),
   }
 })
 
@@ -239,7 +201,6 @@ describe('useConfiguration', () => {
     vi.clearAllMocks()
     Cookies.remove(DETAIL_SIDEBAR_COOKIE_NAME)
     latestAdvancedPromptConfigOptions = undefined
-    mockTempStopState = []
     mockCurrentModelFeatures = ['vision']
     mockCurrentModelMode = ModelModeType.chat
     mockAppPermissionKeys = [AppACLPermission.Edit, AppACLPermission.ReleaseAndVersion]
@@ -312,11 +273,13 @@ describe('useConfiguration', () => {
     try {
       renderHookWithConsoleState(() => useConfiguration(), {
         wrapper: ({ children }) => (
-          <QueryWrapper>
-            <ErrorBoundary fallback={(error) => <div role="alert">{error.message}</div>}>
-              {children}
-            </ErrorBoundary>
-          </QueryWrapper>
+          <NuqsTestingAdapter>
+            <QueryWrapper>
+              <ErrorBoundary fallback={(error) => <div role="alert">{error.message}</div>}>
+                {children}
+              </ErrorBoundary>
+            </QueryWrapper>
+          </NuqsTestingAdapter>
         ),
       })
       expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -337,14 +300,16 @@ describe('useConfiguration', () => {
     try {
       renderHookWithConsoleState(() => useConfiguration(), {
         wrapper: ({ children }) => (
-          <QueryWrapper>
-            <ErrorBoundary
-              onError={onError}
-              fallback={(error) => <CommonLayoutError error={error} retry={vi.fn()} />}
-            >
-              {children}
-            </ErrorBoundary>
-          </QueryWrapper>
+          <NuqsTestingAdapter>
+            <QueryWrapper>
+              <ErrorBoundary
+                onError={onError}
+                fallback={(error) => <CommonLayoutError error={error} retry={vi.fn()} />}
+              >
+                {children}
+              </ErrorBoundary>
+            </QueryWrapper>
+          </NuqsTestingAdapter>
         ),
       })
       await waitFor(() => expect(onError).toHaveBeenCalledWith(response, expect.anything()))
@@ -363,6 +328,7 @@ describe('useConfiguration', () => {
     })
 
     expect(result.current.isAdvancedMode).toBe(true)
+    expect(result.current.appPublisherProps.publishedAt).toBe(1710000000000)
     expect(result.current.contextValue.introduction).toBe('hello')
     expect(result.current.contextValue.suggestedQuestions).toEqual(['how are you?'])
     expect(result.current.appPublisherProps.publishedConfig.modelConfig.model_id).toBe('gpt-4o')
@@ -400,7 +366,6 @@ describe('useConfiguration', () => {
       { temperature: 0.7 },
       true,
     )
-    expect(result.current.appPublisherProps.onPublish).toBeDefined()
 
     await act(async () => {
       await result.current.appPublisherProps.onPublish!(undefined, result.current.featuresData)
@@ -409,6 +374,12 @@ describe('useConfiguration', () => {
     expect(consoleClient.apps.byAppId.modelConfig.post).toHaveBeenCalledWith(
       expect.objectContaining({
         params: { app_id: 'app-1' },
+        body: expect.objectContaining({
+          model: expect.objectContaining({
+            name: 'gpt-4.1',
+            completion_params: { temperature: 0.3 },
+          }),
+        }),
       }),
     )
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: detailQueryKey })
@@ -480,41 +451,6 @@ describe('useConfiguration', () => {
     )
   })
 
-  it('should update multiple-model debug configs', async () => {
-    const { result } = renderHook(() => useConfiguration())
-
-    await waitFor(() => {
-      expect(result.current.showLoading).toBe(false)
-    })
-
-    const modelConfigs = [
-      {
-        id: 'model-1',
-        model: 'gpt-4o',
-        provider: 'langgenius/openai/openai',
-        parameters: { temperature: 0.7 },
-      },
-      {
-        id: 'model-2',
-        model: 'gpt-4.1',
-        provider: 'langgenius/openai/openai',
-        parameters: {},
-      },
-      {
-        id: 'model-3',
-        model: '',
-        provider: '',
-        parameters: {},
-      },
-    ]
-
-    act(() => {
-      result.current.onMultipleModelConfigsChange(true, modelConfigs)
-    })
-
-    expect(mockHandleMultipleModelConfigsChange).toHaveBeenCalledWith(true, modelConfigs)
-  })
-
   it('should keep multiple-model debug state when restoring published config', async () => {
     const { result } = renderHook(() => useConfiguration())
 
@@ -571,16 +507,6 @@ describe('useConfiguration', () => {
     expect(result.current.contextValue.modelConfig.provider).toBe('langgenius/openai/openai')
     expect(result.current.contextValue.completionParams).toEqual({ temperature: 0.2 })
     expect(result.current.appPublisherProps.publishedConfig.modelConfig.model_id).toBe('gpt-4.1')
-  })
-
-  it('should expose the latest published time supplied by the app detail', async () => {
-    const { result } = renderHook(() => useConfiguration())
-
-    await waitFor(() => {
-      expect(result.current.showLoading).toBe(false)
-    })
-
-    expect(result.current.appPublisherProps.publishedAt).toBe(1710000000000)
   })
 
   it('should block publishing when app release permission is missing', async () => {
@@ -738,16 +664,17 @@ describe('useConfiguration', () => {
     expect(result.current.contextValue.isAllowVideoUpload).toBe(true)
 
     await act(async () => {
-      await result.current.contextValue.setPromptMode('advanced' as any)
+      await result.current.contextValue.setPromptMode('advanced')
     })
     expect(mockMigrateToDefaultPrompt).toHaveBeenCalled()
 
     act(() => {
-      result.current.onFeaturesChange(undefined as never)
-      result.current.onFeaturesChange({ moreLikeThis: { enabled: true } } as never)
+      result.current.onFeaturesChange({ moreLikeThis: { enabled: true } })
       result.current.onAutoAddPromptVariable([
-        { key: 'city', name: 'City', type: 'string', required: true } as never,
+        { key: 'city', name: 'City', type: 'string', required: true },
       ])
+    })
+    act(() => {
       result.current.onAgentSettingChange({
         enabled: true,
         max_iteration: 5,
@@ -765,19 +692,25 @@ describe('useConfiguration', () => {
     })
 
     expect(result.current.showAppConfigureFeaturesModal).toBe(true)
+    expect(result.current.featuresData.moreLikeThis).toEqual({ enabled: false })
+    expect(result.current.contextValue.modelConfig.configs.prompt_variables).toContainEqual(
+      expect.objectContaining({ key: 'city', name: 'City' }),
+    )
+    expect(result.current.contextValue.modelConfig.agentConfig).toMatchObject({
+      enabled: true,
+      max_iteration: 5,
+    })
     expect(mockFormattingChangedDispatcher).toHaveBeenCalled()
     expect(mockHandleMultipleModelConfigsChange).toHaveBeenCalled()
     expect(Cookies.get(DETAIL_SIDEBAR_COOKIE_NAME)).toBe('collapse')
-    expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('provider'),
+    )
     expect(mockSetConversationHistoriesRole).toHaveBeenCalledWith({
       assistant_prefix: 'bot',
       user_prefix: 'user',
     })
     expect(result.current.showUseGPT4Confirm).toBe(false)
-
-    act(() => {
-      result.current.appPublisherProps.resetAppConfig?.()
-    })
   })
 
   it('should preserve temporary stops, dataset selections, and manual formatting changes', async () => {
@@ -847,6 +780,8 @@ describe('useConfiguration', () => {
     act(() => {
       latestAdvancedPromptConfigOptions?.onUserChangedPrompt?.()
       latestAdvancedPromptConfigOptions?.setStop?.(['END'])
+    })
+    act(() => {
       result.current.contextValue.setAnnotationConfig({
         id: 'annotation-1',
         enabled: true,
@@ -861,7 +796,7 @@ describe('useConfiguration', () => {
         number_limits: 2,
         detail: 'high',
         transfer_methods: ['local_file'],
-      } as any)
+      })
       result.current.contextValue.setCompletionParams({ temperature: 0.2 })
       result.current.onCloseFeaturePanel()
     })

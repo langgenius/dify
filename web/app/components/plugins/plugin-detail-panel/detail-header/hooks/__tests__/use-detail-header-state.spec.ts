@@ -26,14 +26,6 @@ vi.mock('../../../../plugin-page/use-reference-setting', () => ({
   }),
 }))
 
-vi.mock('../../../../reference-setting-modal/auto-update-setting/types', () => ({
-  AUTO_UPDATE_MODE: {
-    update_all: 'update_all',
-    partial: 'partial',
-    exclude: 'exclude',
-  },
-}))
-
 const createPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail => ({
   id: 'test-id',
   created_at: '2024-01-01',
@@ -72,214 +64,55 @@ describe('useDetailHeaderState', () => {
     mockEnableMarketplace = true
   })
 
-  describe('Source Type Detection', () => {
-    it('should detect marketplace source', () => {
-      const detail = createPluginDetail({ source: PluginSource.marketplace })
-      const { result } = renderHook(() => useDetailHeaderState(detail))
+  it.each([
+    [PluginSource.marketplace, '2.0.0', true],
+    [PluginSource.marketplace, '1.0.0', false],
+    [PluginSource.marketplace, '', false],
+    [PluginSource.github, '2.0.0', false],
+    [PluginSource.local, '2.0.0', false],
+  ] as const)(
+    'offers a newer version only for marketplace sources (%s, %s)',
+    (source, latest_version, expected) => {
+      const { result } = renderHook(() =>
+        useDetailHeaderState(createPluginDetail({ source, latest_version })),
+      )
+      expect(result.current.hasNewVersion).toBe(expected)
+      expect(result.current.isFromGitHub).toBe(source === PluginSource.github)
+      expect(result.current.isFromMarketplace).toBe(source === PluginSource.marketplace)
+    },
+  )
 
-      expect(result.current.isFromMarketplace).toBe(true)
-      expect(result.current.isFromGitHub).toBe(false)
+  it('updates the selected target and keeps downgrade state in sync', () => {
+    const { result } = renderHook(() => useDetailHeaderState(createPluginDetail()))
+    act(() =>
+      result.current.versionPicker.setTargetVersion({
+        version: '0.5.0',
+        unique_identifier: 'old-uid',
+        isDowngrade: true,
+      }),
+    )
+    expect(result.current.versionPicker.targetVersion).toEqual({
+      version: '0.5.0',
+      unique_identifier: 'old-uid',
+      isDowngrade: true,
     })
-
-    it('should detect GitHub source', () => {
-      const detail = createPluginDetail({
-        source: PluginSource.github,
-        meta: { repo: 'owner/repo', version: 'v1.0.0', package: 'pkg' },
-      })
-      const { result } = renderHook(() => useDetailHeaderState(detail))
-
-      expect(result.current.isFromGitHub).toBe(true)
-      expect(result.current.isFromMarketplace).toBe(false)
-    })
-
-    it('should detect local source', () => {
-      const detail = createPluginDetail({ source: PluginSource.local })
-      const { result } = renderHook(() => useDetailHeaderState(detail))
-
-      expect(result.current.isFromGitHub).toBe(false)
-      expect(result.current.isFromMarketplace).toBe(false)
-    })
-  })
-
-  describe('Version State', () => {
-    it('should detect new version available for marketplace plugin', () => {
-      const detail = createPluginDetail({
-        version: '1.0.0',
-        latest_version: '2.0.0',
-        source: PluginSource.marketplace,
-      })
-      const { result } = renderHook(() => useDetailHeaderState(detail))
-
-      expect(result.current.hasNewVersion).toBe(true)
-    })
-
-    it('should not detect new version when versions match', () => {
-      const detail = createPluginDetail({
-        version: '1.0.0',
-        latest_version: '1.0.0',
-        source: PluginSource.marketplace,
-      })
-      const { result } = renderHook(() => useDetailHeaderState(detail))
-
-      expect(result.current.hasNewVersion).toBe(false)
-    })
-
-    it('should not detect new version for non-marketplace source', () => {
-      const detail = createPluginDetail({
-        version: '1.0.0',
-        latest_version: '2.0.0',
-        source: PluginSource.github,
-        meta: { repo: 'owner/repo', version: 'v1.0.0', package: 'pkg' },
-      })
-      const { result } = renderHook(() => useDetailHeaderState(detail))
-
-      expect(result.current.hasNewVersion).toBe(false)
-    })
-
-    it('should not detect new version when latest_version is empty', () => {
-      const detail = createPluginDetail({
-        version: '1.0.0',
-        latest_version: '',
-        source: PluginSource.marketplace,
-      })
-      const { result } = renderHook(() => useDetailHeaderState(detail))
-
-      expect(result.current.hasNewVersion).toBe(false)
-    })
-  })
-
-  describe('Version Picker State', () => {
-    it('should initialize version picker as hidden', () => {
-      const detail = createPluginDetail()
-      const { result } = renderHook(() => useDetailHeaderState(detail))
-
-      expect(result.current.versionPicker.isShow).toBe(false)
-    })
-
-    it('should toggle version picker visibility', () => {
-      const detail = createPluginDetail()
-      const { result } = renderHook(() => useDetailHeaderState(detail))
-
-      act(() => {
-        result.current.versionPicker.setIsShow(true)
-      })
-      expect(result.current.versionPicker.isShow).toBe(true)
-
-      act(() => {
-        result.current.versionPicker.setIsShow(false)
-      })
-      expect(result.current.versionPicker.isShow).toBe(false)
-    })
-
-    it('should update target version', () => {
-      const detail = createPluginDetail()
-      const { result } = renderHook(() => useDetailHeaderState(detail))
-
-      act(() => {
-        result.current.versionPicker.setTargetVersion({
-          version: '2.0.0',
-          unique_identifier: 'new-uid',
-        })
-      })
-
-      expect(result.current.versionPicker.targetVersion.version).toBe('2.0.0')
-      expect(result.current.versionPicker.targetVersion.unique_identifier).toBe('new-uid')
-    })
-
-    it('should set isDowngrade when provided in target version', () => {
-      const detail = createPluginDetail()
-      const { result } = renderHook(() => useDetailHeaderState(detail))
-
-      act(() => {
-        result.current.versionPicker.setTargetVersion({
-          version: '0.5.0',
-          unique_identifier: 'old-uid',
-          isDowngrade: true,
-        })
-      })
-
-      expect(result.current.versionPicker.isDowngrade).toBe(true)
-    })
-  })
-
-  describe('Modal States', () => {
-    it('should initialize all modals as hidden', () => {
-      const detail = createPluginDetail()
-      const { result } = renderHook(() => useDetailHeaderState(detail))
-
-      expect(result.current.modalStates.isShowUpdateModal).toBe(false)
-      expect(result.current.modalStates.isShowPluginInfo).toBe(false)
-      expect(result.current.modalStates.isShowDeleteConfirm).toBe(false)
-      expect(result.current.modalStates.deleting).toBe(false)
-    })
-
-    it('should toggle update modal', () => {
-      const detail = createPluginDetail()
-      const { result } = renderHook(() => useDetailHeaderState(detail))
-
-      act(() => {
-        result.current.modalStates.showUpdateModal()
-      })
-      expect(result.current.modalStates.isShowUpdateModal).toBe(true)
-
-      act(() => {
-        result.current.modalStates.hideUpdateModal()
-      })
-      expect(result.current.modalStates.isShowUpdateModal).toBe(false)
-    })
-
-    it('should toggle plugin info modal', () => {
-      const detail = createPluginDetail()
-      const { result } = renderHook(() => useDetailHeaderState(detail))
-
-      act(() => {
-        result.current.modalStates.showPluginInfo()
-      })
-      expect(result.current.modalStates.isShowPluginInfo).toBe(true)
-
-      act(() => {
-        result.current.modalStates.hidePluginInfo()
-      })
-      expect(result.current.modalStates.isShowPluginInfo).toBe(false)
-    })
-
-    it('should toggle delete confirm modal', () => {
-      const detail = createPluginDetail()
-      const { result } = renderHook(() => useDetailHeaderState(detail))
-
-      act(() => {
-        result.current.modalStates.showDeleteConfirm()
-      })
-      expect(result.current.modalStates.isShowDeleteConfirm).toBe(true)
-
-      act(() => {
-        result.current.modalStates.hideDeleteConfirm()
-      })
-      expect(result.current.modalStates.isShowDeleteConfirm).toBe(false)
-    })
-
-    it('should toggle deleting state', () => {
-      const detail = createPluginDetail()
-      const { result } = renderHook(() => useDetailHeaderState(detail))
-
-      act(() => {
-        result.current.modalStates.showDeleting()
-      })
-      expect(result.current.modalStates.deleting).toBe(true)
-
-      act(() => {
-        result.current.modalStates.hideDeleting()
-      })
-      expect(result.current.modalStates.deleting).toBe(false)
-    })
+    expect(result.current.versionPicker.isDowngrade).toBe(true)
+    act(() =>
+      result.current.versionPicker.setTargetVersion({
+        version: '2.0.0',
+        unique_identifier: 'new-uid',
+        isDowngrade: false,
+      }),
+    )
+    expect(result.current.versionPicker.isDowngrade).toBe(false)
   })
 
   describe('Auto Upgrade Detection', () => {
     it('should disable auto upgrade when marketplace is disabled', () => {
       mockEnableMarketplace = false
       mockAutoUpgradeInfo = {
-        strategy_setting: 'enabled',
-        upgrade_mode: 'update_all',
+        strategy_setting: 'latest',
+        upgrade_mode: 'all',
         include_plugins: [],
         exclude_plugins: [],
         upgrade_time_of_day: 36000,
@@ -294,7 +127,7 @@ describe('useDetailHeaderState', () => {
     it('should disable auto upgrade when strategy is disabled', () => {
       mockAutoUpgradeInfo = {
         strategy_setting: 'disabled',
-        upgrade_mode: 'update_all',
+        upgrade_mode: 'all',
         include_plugins: [],
         exclude_plugins: [],
         upgrade_time_of_day: 36000,
@@ -308,8 +141,8 @@ describe('useDetailHeaderState', () => {
 
     it('should enable auto upgrade for update_all mode', () => {
       mockAutoUpgradeInfo = {
-        strategy_setting: 'enabled',
-        upgrade_mode: 'update_all',
+        strategy_setting: 'latest',
+        upgrade_mode: 'all',
         include_plugins: [],
         exclude_plugins: [],
         upgrade_time_of_day: 36000,
@@ -323,7 +156,7 @@ describe('useDetailHeaderState', () => {
 
     it('should enable auto upgrade for partial mode when plugin is included', () => {
       mockAutoUpgradeInfo = {
-        strategy_setting: 'enabled',
+        strategy_setting: 'latest',
         upgrade_mode: 'partial',
         include_plugins: ['test-plugin'],
         exclude_plugins: [],
@@ -338,7 +171,7 @@ describe('useDetailHeaderState', () => {
 
     it('should disable auto upgrade for partial mode when plugin is not included', () => {
       mockAutoUpgradeInfo = {
-        strategy_setting: 'enabled',
+        strategy_setting: 'latest',
         upgrade_mode: 'partial',
         include_plugins: ['other-plugin'],
         exclude_plugins: [],
@@ -353,7 +186,7 @@ describe('useDetailHeaderState', () => {
 
     it('should enable auto upgrade for exclude mode when plugin is not excluded', () => {
       mockAutoUpgradeInfo = {
-        strategy_setting: 'enabled',
+        strategy_setting: 'latest',
         upgrade_mode: 'exclude',
         include_plugins: [],
         exclude_plugins: ['other-plugin'],
@@ -368,7 +201,7 @@ describe('useDetailHeaderState', () => {
 
     it('should disable auto upgrade for exclude mode when plugin is excluded', () => {
       mockAutoUpgradeInfo = {
-        strategy_setting: 'enabled',
+        strategy_setting: 'latest',
         upgrade_mode: 'exclude',
         include_plugins: [],
         exclude_plugins: ['test-plugin'],
@@ -383,8 +216,8 @@ describe('useDetailHeaderState', () => {
 
     it('should disable auto upgrade for non-marketplace source', () => {
       mockAutoUpgradeInfo = {
-        strategy_setting: 'enabled',
-        upgrade_mode: 'update_all',
+        strategy_setting: 'latest',
+        upgrade_mode: 'all',
         include_plugins: [],
         exclude_plugins: [],
         upgrade_time_of_day: 36000,

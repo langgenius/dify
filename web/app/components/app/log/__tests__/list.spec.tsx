@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { MessageDetailResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -15,7 +15,7 @@ const mockUpdateLogMessageFeedbacks = vi.fn()
 const mockFeedbackResult = vi.fn()
 const mockUpdateLogMessageAnnotations = vi.fn()
 const mockOnRefresh = vi.fn()
-const mockCompletionRefetch = vi.fn()
+const completionDetailRequest = vi.fn()
 const mockDelAnnotation = vi.fn()
 
 let mockChatConversationDetail: Record<string, unknown> | undefined
@@ -34,32 +34,31 @@ vi.mock('@/hooks/use-breakpoints', () => ({
   },
 }))
 
-vi.mock('@/service/use-log', () => ({
-  useChatConversationDetail: () => ({
-    data: mockChatConversationDetail,
-  }),
-  useCompletionConversationDetail: () => ({
-    data: mockCompletionConversationDetail,
-    refetch: mockCompletionRefetch,
-  }),
-}))
-
-vi.mock('@/service/log', () => ({
-  fetchChatMessages: (...args: unknown[]) => mockFetchChatMessages(...args),
-  updateLogMessageFeedbacks: (...args: unknown[]) => mockUpdateLogMessageFeedbacks(...args),
-  updateLogMessageAnnotations: (...args: unknown[]) => mockUpdateLogMessageAnnotations(...args),
-}))
-
-vi.mock('@/service/annotation', () => ({
-  delAnnotation: (...args: unknown[]) => mockDelAnnotation(...args),
-}))
-
-vi.mock('@/app/components/base/loading-placeholder', () => ({
-  LoadingPlaceholder: () => <div>loading</div>,
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.chatConversations.byConversationId.get': () =>
+        mockChatConversationDetail ?? new Promise(() => {}),
+      'apps.byAppId.completionConversations.byConversationId.get': (input) =>
+        completionDetailRequest(input),
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.chatMessages.get': (input) => mockFetchChatMessages(input),
+      'apps.byAppId.feedbacks.post': (input) => mockUpdateLogMessageFeedbacks(input),
+      'apps.byAppId.annotations.post': (input) => mockUpdateLogMessageAnnotations(input),
+      'apps.byAppId.annotations.byAnnotationId.delete': (input) => mockDelAnnotation(input),
+    }),
+  }
+})
 
 vi.mock('@/app/components/app/log/model-info', () => ({
-  default: ({ model }: { model: string }) => <div data-testid="model-info">{model}</div>,
+  default: ({ model }: { model: { name: string } }) => (
+    <div data-testid="model-info">{model.name}</div>
+  ),
 }))
 
 vi.mock('@/app/components/app/log/var-panel', () => ({
@@ -68,10 +67,6 @@ vi.mock('@/app/components/app/log/var-panel', () => ({
       {varList.map((item) => `${item.label}:${item.value}`).join(',')}
     </div>
   ),
-}))
-
-vi.mock('@/app/components/base/copy-icon', () => ({
-  default: ({ content }: { content: string }) => <div data-testid="copy-icon">{content}</div>,
 }))
 
 vi.mock('@/app/components/app/text-generate/item', () => ({
@@ -103,7 +98,7 @@ vi.mock('@/app/components/base/chat/chat', () => ({
     switchSibling,
     onOpenLog,
   }: {
-    chatList: Array<{ id: string }>
+    chatList: IChatItem[]
     onFeedback: (mid: string, value: { rating: string; content?: string }) => Promise<void>
     onAnnotationAdded: (
       annotationId: string,
@@ -119,6 +114,12 @@ vi.mock('@/app/components/base/chat/chat', () => ({
   }) => (
     <div data-testid="chat-panel" data-log-enabled={String(!!onOpenLog)}>
       <div>{chatList.length}</div>
+      {chatList.map((item) => (
+        <div key={item.id}>
+          <span>{item.content}</span>
+          <span>{item.annotation?.logAnnotation?.content}</span>
+        </div>
+      ))}
       {onOpenLog && (
         <>
           <button
@@ -237,13 +238,16 @@ vi.mock('@/app/components/base/prompt-log-modal', () => ({
   ),
 }))
 
-vi.mock('@/app/components/workflow/context', () => ({
-  WorkflowContextProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
-}))
-
 const createLogs = () => ({
+  has_more: false,
+  limit: 20,
+  page: 1,
+  total: 1,
   data: [
     {
+      from_source: 'api',
+      status: 'normal',
+      summary: '',
       id: 'conversation-1',
       name: 'hello world',
       from_account_name: 'demo-user',
@@ -259,8 +263,14 @@ const createLogs = () => ({
 })
 
 const createCompletionLogs = () => ({
+  has_more: false,
+  limit: 20,
+  page: 1,
+  total: 1,
   data: [
     {
+      from_source: 'api',
+      status: 'normal',
       id: 'conversation-1',
       from_account_name: 'demo-user',
       read_at: null,
@@ -269,24 +279,34 @@ const createCompletionLogs = () => ({
       updated_at: 1710000000,
       created_at: 1710000000,
       message: {
+        message: 'Question',
+        query: 'Question',
         inputs: {
           query: 'Question',
         },
         answer: 'Answer',
       },
       annotation: {
+        id: 'annotation-1',
         content: 'Annotated answer',
-        account: {
-          name: 'Admin',
-        },
+        account: { id: 'account-1', email: 'admin@example.com', name: 'Admin' },
         created_at: 1710000100,
       },
     },
   ],
 })
 
-const createChatMessage = (id: string, overrides: Record<string, unknown> = {}) => ({
+const createChatMessage = (
+  id: string,
+  overrides: Partial<MessageDetailResponse> = {},
+): MessageDetailResponse => ({
   id,
+  conversation_id: 'conversation-1',
+  agent_thoughts: [],
+  metadata: {},
+  from_source: 'console',
+  provider_response_latency: 0,
+  status: 'normal',
   answer: `Assistant reply ${id}`,
   query: `Question ${id}`,
   created_at: 1710000000,
@@ -298,17 +318,17 @@ const createChatMessage = (id: string, overrides: Record<string, unknown> = {}) 
   message_files: [],
   answer_tokens: 10,
   message_tokens: 5,
-  parent_message_id: undefined,
+  parent_message_id: null,
   ...overrides,
 })
 
 const renderConversationList = ({
-  appDetail = { id: 'app-1', mode: 'chat' as const } as any,
-  logs = createLogs() as any,
+  appDetail = createAppDetailFixture({ id: 'app-1', mode: 'chat' }),
+  logs = createLogs(),
   searchParams = '?page=2',
 }: {
-  appDetail?: any
-  logs?: any
+  appDetail?: React.ComponentProps<typeof ConversationList>['appDetail']
+  logs?: React.ComponentProps<typeof ConversationList>['logs']
   searchParams?: string
 } = {}) => {
   const queryClient = createAccountProfileQueryClient({ timezone: 'Asia/Shanghai' })
@@ -322,9 +342,13 @@ const renderConversationList = ({
 
 describe('ConversationList', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     mockChatConversationDetail = undefined
     mockCompletionConversationDetail = undefined
+    completionDetailRequest.mockImplementation(
+      () => mockCompletionConversationDetail ?? new Promise(() => {}),
+    )
+    mockUpdateLogMessageFeedbacks.mockResolvedValue(undefined)
     mockDelAnnotation.mockResolvedValue(undefined)
     mockFetchChatMessages.mockResolvedValue({
       data: [],
@@ -333,12 +357,13 @@ describe('ConversationList', () => {
   })
 
   it('should render chat rows and push the conversation id into the url when a row is clicked', async () => {
+    const user = userEvent.setup()
     const { onUrlUpdate } = renderConversationList()
 
     expect(screen.getByText('hello world')).toBeInTheDocument()
     expect(screen.getAllByText('formatted-1710000000')).toHaveLength(2)
 
-    fireEvent.click(screen.getByText('hello world'))
+    await user.click(screen.getByText('hello world'))
 
     await waitFor(() => {
       expect(onUrlUpdate).toHaveBeenCalled()
@@ -352,9 +377,13 @@ describe('ConversationList', () => {
   })
 
   it('exposes the unread marker only for unread conversations', () => {
-    const unreadLog = createLogs().data[0]
+    const unreadLog = createLogs().data[0]!
     renderConversationList({
       logs: {
+        has_more: false,
+        limit: 20,
+        page: 1,
+        total: 2,
         data: [
           unreadLog,
           { ...unreadLog, id: 'conversation-2', name: 'read conversation', read_at: 1710000100 },
@@ -397,14 +426,13 @@ describe('ConversationList', () => {
   )
 
   it('should close the drawer and refresh', async () => {
+    const user = userEvent.setup()
     mockChatConversationDetail = {
       id: 'conversation-1',
       created_at: 1710000000,
+      introduction: 'Hello there',
       model_config: {
-        model: 'gpt-4o',
-        configs: {
-          introduction: 'Hello there',
-        },
+        model: { provider: 'openai', name: 'gpt-4o', mode: 'chat', completion_params: {} },
         user_input_form: [],
       },
       message: {
@@ -419,7 +447,7 @@ describe('ConversationList', () => {
     expect(
       await screen.findByRole('dialog', { name: 'appLog.detail.conversationId' }),
     ).toBeInTheDocument()
-    fireEvent.click(await screen.findByRole('button', { name: /(?:^|\.)operation\.close(?=$|:)/ }))
+    await user.click(await screen.findByRole('button', { name: /(?:^|\.)operation\.close(?=$|:)/ }))
 
     expect(mockOnRefresh).toHaveBeenCalledTimes(1)
 
@@ -436,17 +464,16 @@ describe('ConversationList', () => {
   it.each([true, false])(
     'settles admin feedback with the request outcome (success: %s)',
     async (succeeded) => {
+      const user = userEvent.setup()
       mockFeedbackResult.mockClear()
       if (!succeeded)
         mockUpdateLogMessageFeedbacks.mockRejectedValueOnce(new Error('Feedback failed'))
       mockChatConversationDetail = {
         id: 'conversation-1',
         created_at: 1710000000,
+        introduction: 'Hello there',
         model_config: {
-          model: 'gpt-4o',
-          configs: {
-            introduction: 'Hello there',
-          },
+          model: { provider: 'openai', name: 'gpt-4o', mode: 'chat', completion_params: {} },
           user_input_form: [
             {
               query: {
@@ -485,11 +512,8 @@ describe('ConversationList', () => {
 
       await waitFor(() => {
         expect(mockFetchChatMessages).toHaveBeenCalledWith({
-          url: '/apps/app-1/chat-messages',
-          params: {
-            conversation_id: 'conversation-1',
-            limit: 10,
-          },
+          params: { app_id: 'app-1' },
+          query: { conversation_id: 'conversation-1', limit: 10 },
         })
       })
 
@@ -500,11 +524,11 @@ describe('ConversationList', () => {
       expect(screen.getByTestId('var-panel')).toHaveTextContent('query:Latest question')
       expect(screen.getByTestId('model-info')).toHaveTextContent('gpt-4o')
 
-      fireEvent.click(screen.getByText('chat-feedback'))
+      await user.click(screen.getByText('chat-feedback'))
 
       await waitFor(() => {
         expect(mockUpdateLogMessageFeedbacks).toHaveBeenCalledWith({
-          url: '/apps/app-1/feedbacks',
+          params: { app_id: 'app-1' },
           body: {
             message_id: 'message-1',
             rating: 'like',
@@ -526,11 +550,9 @@ describe('ConversationList', () => {
       mockChatConversationDetail = {
         id: 'conversation-1',
         created_at: 1710000000,
+        introduction: 'Hello there',
         model_config: {
-          model: 'gpt-4o',
-          configs: {
-            introduction: 'Hello there',
-          },
+          model: { provider: 'openai', name: 'gpt-4o', mode: 'chat', completion_params: {} },
           user_input_form: [],
         },
         message: {
@@ -543,7 +565,7 @@ describe('ConversationList', () => {
       })
 
       renderConversationList({
-        appDetail: { id: 'app-1', mode } as any,
+        appDetail: createAppDetailFixture({ id: 'app-1', mode }),
         searchParams: '?conversation_id=conversation-1',
       })
 
@@ -552,11 +574,12 @@ describe('ConversationList', () => {
   )
 
   it('should render completion details and refetch after feedback updates', async () => {
+    const user = userEvent.setup()
     mockCompletionConversationDetail = {
       id: 'conversation-1',
       created_at: 1710000000,
       model_config: {
-        model: 'gpt-4o-mini',
+        model: { provider: 'openai', name: 'gpt-4o-mini', mode: 'chat', completion_params: {} },
         user_input_form: [
           {
             query: {
@@ -577,8 +600,8 @@ describe('ConversationList', () => {
     }
 
     renderConversationList({
-      appDetail: { id: 'app-1', mode: 'completion' as const } as any,
-      logs: createCompletionLogs() as any,
+      appDetail: createAppDetailFixture({ id: 'app-1', mode: 'completion' as const }),
+      logs: createCompletionLogs(),
       searchParams: '?page=2&conversation_id=conversation-1',
     })
 
@@ -590,27 +613,43 @@ describe('ConversationList', () => {
     expect(screen.getByTestId('text-generation')).toHaveAttribute('data-log-enabled', 'false')
     expect(screen.queryByTestId('prompt-log-modal')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('completion-feedback'))
+    mockCompletionConversationDetail = {
+      ...mockCompletionConversationDetail,
+      message: {
+        ...(mockCompletionConversationDetail.message as Record<string, unknown>),
+        answer: 'Updated generated output',
+      },
+    }
+    await user.click(screen.getByText('completion-feedback'))
 
     await waitFor(() => {
       expect(mockUpdateLogMessageFeedbacks).toHaveBeenCalledWith({
-        url: '/apps/app-1/feedbacks',
+        params: { app_id: 'app-1' },
         body: {
           message_id: 'message-1',
           rating: 'like',
           content: 'great',
         },
       })
-      expect(mockCompletionRefetch).toHaveBeenCalled()
+      expect(completionDetailRequest).toHaveBeenCalledTimes(2)
+      expect(screen.getByText('Updated generated output')).toBeVisible()
     })
   })
 
   it('should render chatflow status cells and feedback counters for advanced chat logs', () => {
     renderConversationList({
-      appDetail: { id: 'app-1', mode: 'advanced-chat' as const } as any,
+      appDetail: createAppDetailFixture({ id: 'app-1', mode: 'advanced-chat' as const }),
       logs: {
+        has_more: false,
+        limit: 20,
+        page: 1,
+        total: 4,
         data: [
           {
+            from_source: 'api',
+            status: 'normal',
+            summary: '',
+            annotated: false,
             id: 'conversation-pending',
             name: 'Pending row',
             from_account_name: 'user-a',
@@ -623,6 +662,10 @@ describe('ConversationList', () => {
             created_at: 1710000000,
           },
           {
+            from_source: 'api',
+            status: 'normal',
+            summary: '',
+            annotated: false,
             id: 'conversation-success',
             name: 'Success row',
             from_account_name: 'user-b',
@@ -635,6 +678,10 @@ describe('ConversationList', () => {
             created_at: 1710000000,
           },
           {
+            from_source: 'api',
+            status: 'normal',
+            summary: '',
+            annotated: false,
             id: 'conversation-partial',
             name: 'Partial row',
             from_account_name: 'user-c',
@@ -647,6 +694,10 @@ describe('ConversationList', () => {
             created_at: 1710000000,
           },
           {
+            from_source: 'api',
+            status: 'normal',
+            summary: '',
+            annotated: false,
             id: 'conversation-failure',
             name: 'Failure row',
             from_account_name: 'user-d',
@@ -659,7 +710,7 @@ describe('ConversationList', () => {
             created_at: 1710000000,
           },
         ],
-      } as any,
+      },
     })
 
     expect(screen.getByText('Pending')).toBeInTheDocument()
@@ -671,14 +722,13 @@ describe('ConversationList', () => {
   })
 
   it('should support annotation changes and paginated scroll loading in the detail drawer', async () => {
+    const user = userEvent.setup()
     mockChatConversationDetail = {
       id: 'conversation-1',
       created_at: 1710000000,
+      introduction: 'Hello there',
       model_config: {
-        model: 'gpt-4o',
-        configs: {
-          introduction: 'Hello there',
-        },
+        model: { provider: 'openai', name: 'gpt-4o', mode: 'chat', completion_params: {} },
         user_input_form: [
           {
             query: {
@@ -700,7 +750,7 @@ describe('ConversationList', () => {
             annotation: {
               id: 'annotation-1',
               content: 'Annotated answer',
-              account: { name: 'Admin' },
+              account: { id: 'account-1', name: 'Admin', email: 'admin@example.com' },
             },
           }),
           createChatMessage('message-2', { parent_message_id: 'message-1' }),
@@ -724,12 +774,16 @@ describe('ConversationList', () => {
       expect(screen.getByText(/(?:^|\.)detail\.loading\.\.\.(?=$|:)/)).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByText('chat-add-annotation'))
-    fireEvent.click(screen.getByText('chat-edit-annotation'))
-    fireEvent.click(screen.getByText('chat-remove-annotation'))
+    await user.click(screen.getByText('chat-add-annotation'))
+    expect(await screen.findByText('Edited answer')).toBeVisible()
+    await user.click(screen.getByText('chat-edit-annotation'))
+    expect(await screen.findByText('Updated answer')).toBeVisible()
+    await user.click(screen.getByText('chat-remove-annotation'))
 
     await waitFor(() => {
-      expect(mockDelAnnotation).toHaveBeenCalledWith('app-1', 'annotation-2')
+      expect(mockDelAnnotation).toHaveBeenCalledWith({
+        params: { app_id: 'app-1', annotation_id: 'annotation-2' },
+      })
     })
 
     const scrollableDiv = document.getElementById('scrollableDiv') as HTMLDivElement
@@ -755,7 +809,7 @@ describe('ConversationList', () => {
         message: { inputs: {} },
       }
       renderConversationList({
-        appDetail: { id: 'app-1', mode: 'advanced-chat' as const },
+        appDetail: createAppDetailFixture({ id: 'app-1', mode: 'advanced-chat' as const }),
         searchParams: '?conversation_id=conversation-1',
       })
       const user = userEvent.setup()
@@ -778,7 +832,7 @@ describe('ConversationList', () => {
       message: { inputs: {} },
     }
     renderConversationList({
-      appDetail: { id: 'app-1', mode: 'advanced-chat' as const },
+      appDetail: createAppDetailFixture({ id: 'app-1', mode: 'advanced-chat' as const }),
       searchParams: '?conversation_id=conversation-1',
     })
     const user = userEvent.setup()

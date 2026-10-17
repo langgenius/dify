@@ -143,7 +143,6 @@
   "retrieval.full_text_search.title": "Pencarian Teks Lengkap",
   "retrieval.hybrid_search.description": "Jalankan pencarian teks lengkap dan pencarian vektor secara bersamaan, peringkatkan ulang untuk memilih kecocokan terbaik untuk kueri pengguna. Pengguna dapat memilih untuk mengatur bobot atau mengonfigurasi ke model Rerank.",
   "retrieval.hybrid_search.title": "Pencarian Hibrida",
-  "retrieval.invertedIndex.title": "Indeks Terbalik",
   "retrieval.keyword_search.description": "Indeks Terbalik adalah struktur yang digunakan untuk pengambilan yang efisien. Diatur berdasarkan istilah, setiap istilah menunjuk ke dokumen atau halaman web yang berisinya.",
   "retrieval.keyword_search.title": "Indeks Terbalik",
   "retrieval.semantic_search.description": "Hasilkan penyematan kueri dan cari potongan teks yang paling mirip dengan representasi vektornya.",

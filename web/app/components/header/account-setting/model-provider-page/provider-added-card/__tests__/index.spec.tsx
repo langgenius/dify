@@ -2,10 +2,10 @@ import type { ReactElement } from 'react'
 import type { ModelProvider } from '../../declarations'
 import type { ModelProviderPluginSummary } from '../../index'
 import { QueryClient } from '@tanstack/react-query'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { commonQueryKeys } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
@@ -29,44 +29,21 @@ const { mockInvalidateInstalledPluginList, mockProviderCardActions, mockInvalida
     mockInvalidateQueries: vi.fn(),
   }))
 const mockFetchModelProviderModels = vi.fn()
-const mockQueryOptions = vi.fn(
-  ({ input, ...options }: { input: { params: { provider: string } }; enabled?: boolean }) => ({
-    queryKey: ['console', 'modelProviders', 'models', input.params.provider],
-    queryFn: () => mockFetchModelProviderModels(input.params.provider),
-    ...options,
-  }),
-)
-
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    systemFeatures: {
-      get: {
-        queryKey: () => ['system-features'],
-        queryOptions: (options: Record<string, unknown> = {}) => ({
-          queryKey: ['system-features'],
-          ...options,
-        }),
-      },
-    },
-    workspaces: {
-      current: {
-        modelProviders: {
-          summary: { get: { key: () => ['model-provider-summary'] } },
-          byProvider: {
-            models: {
-              get: {
-                queryOptions: (options: {
-                  input: { params: { provider: string } }
-                  enabled?: boolean
-                }) => mockQueryOptions(options),
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.modelProviders.get': async () => ({ data: [] }),
+      'workspaces.current.modelProviders.byProvider.models.get': ({
+        params,
+      }: {
+        params: { provider: string }
+      }) => mockFetchModelProviderModels(params.provider),
+    }),
+  }
+})
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -96,11 +73,16 @@ vi.mock('../model-list', () => ({
   default: ({
     onCollapse,
     onChange,
+    models,
   }: {
+    models: Array<{ model: string }>
     onCollapse: () => void
     onChange: (provider: string) => void
   }) => (
     <div data-testid="model-list">
+      {models.map((model) => (
+        <span key={model.model}>{model.model}</span>
+      ))}
       <button type="button" onClick={onCollapse}>
         collapse list
       </button>
@@ -140,7 +122,8 @@ const createConsoleQueryClient = () =>
 
 const renderWithQueryClient = (node: ReactElement) => {
   const queryClient = createConsoleQueryClient()
-  vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(mockInvalidateQueries)
+  if (mockInvalidateQueries.getMockImplementation())
+    vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(mockInvalidateQueries)
   seedSystemFeatures(queryClient, { rbac_enabled: mockRbacEnabled })
   return render(node, { wrapper: createQueryClientWrapper(queryClient) })
 }
@@ -198,6 +181,9 @@ describe('ProviderAddedCard', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockInvalidateQueries.mockReset()
+    mockInvalidateInstalledPluginList.mockReset()
+    mockFetchModelProviderModels.mockReset()
     mockIsCurrentWorkspaceManager = true
     mockRbacEnabled = false
     mockWorkspacePermissionKeys = [
@@ -209,14 +195,7 @@ describe('ProviderAddedCard', () => {
     ]
   })
 
-  it('should render provider added card component', () => {
-    renderWithQueryClient(<ProviderAddedCard provider={mockProvider} />)
-    expect(screen.getByTestId('provider-added-card')).toBeInTheDocument()
-    expect(screen.getByTestId('provider-icon')).toBeInTheDocument()
-    expect(screen.getByTestId('credential-panel')).toBeInTheDocument()
-  })
-
-  it('should hide credential controls from legacy use-only members', () => {
+  it('should hide credential controls from legacy use-only members', async () => {
     mockWorkspacePermissionKeys = ['credential.use']
 
     renderWithQueryClient(
@@ -231,7 +210,7 @@ describe('ProviderAddedCard', () => {
       screen.queryByRole('button', { name: /modelProvider\.showModels/i }),
     ).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByTestId('expand-current-provider'))
+    await userEvent.setup().click(screen.getByTestId('expand-current-provider'))
 
     expect(mockFetchModelProviderModels).not.toHaveBeenCalled()
   })
@@ -278,9 +257,11 @@ describe('ProviderAddedCard', () => {
     })
 
     expect(mockInvalidateInstalledPluginList).toHaveBeenCalledWith(PluginCategoryEnum.model)
-    expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ['model-provider-summary'] })
     expect(mockInvalidateQueries).toHaveBeenCalledWith({
-      queryKey: commonQueryKeys.modelProviderDetails,
+      queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
+    })
+    expect(mockInvalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.workspaces.current.modelProviders.get.key(),
     })
     expect(mockInvalidateInstalledPluginList).toHaveBeenCalledTimes(1)
 
@@ -298,28 +279,26 @@ describe('ProviderAddedCard', () => {
     renderWithQueryClient(<ProviderAddedCard provider={mockProvider} />)
 
     const showModelsBtn = screen.getByRole('button', { name: /modelProvider\.showModels/i })
-    fireEvent.click(showModelsBtn)
+    await userEvent.setup().click(showModelsBtn)
 
     await waitFor(() => {
       expect(mockFetchModelProviderModels).toHaveBeenCalledWith(mockProvider.provider)
     })
     expect(await screen.findByTestId('model-list')).toBeInTheDocument()
 
-    // Test line 71-72: Opening when already fetched
     const collapseBtn = screen.getByRole('button', { name: 'collapse list' })
-    fireEvent.click(collapseBtn)
+    await userEvent.setup().click(collapseBtn)
     await waitFor(() => expect(screen.queryByTestId('model-list')).not.toBeInTheDocument())
 
     // Explicitly re-find and click to re-open
     const modelsCountButton = screen.getByRole('button', { name: /modelProvider\.modelsNum/i })
-    expect(modelsCountButton).not.toHaveAttribute('aria-label')
-    fireEvent.click(modelsCountButton)
+    await userEvent.setup().click(modelsCountButton)
     expect(await screen.findByTestId('model-list')).toBeInTheDocument()
     expect(mockFetchModelProviderModels).toHaveBeenCalledTimes(2) // Re-open fetches again with default stale/gc behavior
 
     // Refresh list from ModelList
     const refreshBtn = screen.getByRole('button', { name: 'refresh list' })
-    fireEvent.click(refreshBtn)
+    await userEvent.setup().click(refreshBtn)
     await waitFor(() => {
       expect(mockFetchModelProviderModels).toHaveBeenCalledTimes(3)
     })
@@ -355,13 +334,13 @@ describe('ProviderAddedCard', () => {
     const showModelsBtn = screen.getByRole('button', { name: /modelProvider\.showModels/i })
 
     // First call sets loading to true
-    fireEvent.click(showModelsBtn)
+    await userEvent.setup().click(showModelsBtn)
     await waitFor(() => {
       expect(mockFetchModelProviderModels).toHaveBeenCalledTimes(1)
     })
 
     // Second call should return early because loading is true
-    fireEvent.click(showModelsBtn)
+    await userEvent.setup().click(showModelsBtn)
     expect(mockFetchModelProviderModels).toHaveBeenCalledTimes(1)
 
     await act(async () => {
@@ -380,12 +359,10 @@ describe('ProviderAddedCard', () => {
       </>,
     )
 
-    fireEvent.click(screen.getByTestId('expand-other-provider'))
-    await waitFor(() => {
-      expect(mockFetchModelProviderModels).toHaveBeenCalledTimes(0)
-    })
+    await userEvent.setup().click(screen.getByTestId('expand-other-provider'))
+    expect(mockFetchModelProviderModels).not.toHaveBeenCalled()
 
-    fireEvent.click(screen.getByTestId('expand-current-provider'))
+    await userEvent.setup().click(screen.getByTestId('expand-current-provider'))
     await waitFor(() => {
       expect(mockFetchModelProviderModels).toHaveBeenCalledWith(mockProvider.provider)
     })

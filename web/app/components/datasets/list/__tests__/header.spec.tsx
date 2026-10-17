@@ -7,10 +7,6 @@ vi.mock('@/features/tag-management/components/tag-filter', () => ({
   TagFilter: () => <div />,
 }))
 
-vi.mock('@/app/components/datasets/create/website/base/checkbox-with-label', () => ({
-  default: () => <span>include all</span>,
-}))
-
 vi.mock('../../extra-info/service-api', () => ({
   ServiceApi: () => <button type="button">service api</button>,
 }))
@@ -114,24 +110,10 @@ describe('DatasetListHeader', () => {
     )
     expect(createMenuHighlightPart).toBeInTheDocument()
     expect(screen.getByRole('menu', { hidden: true })).toHaveAttribute('aria-hidden', 'true')
-  })
-
-  it('keeps the tour-opened create menu as presentation only', () => {
-    render(
-      <DatasetListHeader
-        {...defaultProps}
-        stepByStepTourCreateMenuOpen
-        stepByStepTourCreateMenuTarget={STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreate}
-        stepByStepTourCreateMenuHighlightPart={
-          STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreateMenu
-        }
-      />,
-    )
-
+    // The guided-tour menu is deliberately presentation-only, even for direct events.
     fireEvent.click(
       screen.getByRole('menuitem', { name: 'dataset.firstEmpty.createTitle', hidden: true }),
     )
-
     expect(defaultProps.onCreateDataset).not.toHaveBeenCalled()
   })
 })

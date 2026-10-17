@@ -35,7 +35,7 @@ const ChatWrapper = ({
   showInputsFieldsPanel,
   onHide,
 }: ChatWrapperProps & {
-  ref: React.RefObject<ChatWrapperRefType>
+  ref: React.RefObject<ChatWrapperRefType | null>
 }) => {
   const nodes = useNodes<StartNodeType>()
   const startNode = nodes.find((node) => node.data.type === BlockEnum.Start)
@@ -54,7 +54,8 @@ const ChatWrapper = ({
     const initInputs: Record<string, any> = {}
     if (startVariables) {
       startVariables.forEach((variable) => {
-        if (variable.default) initInputs[variable.variable] = variable.default
+        if (variable.default !== undefined && variable.default !== null)
+          initInputs[variable.variable] = variable.default
       })
     }
     return initInputs

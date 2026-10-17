@@ -85,16 +85,11 @@ type ParameterExtractorNodeData = {
   }
 }
 
-type ManagerDoc = LoroDoc | { commit: () => void }
-
 type CollaborationManagerInternals = {
-  doc: ManagerDoc
+  doc: LoroDoc
   nodesMap: LoroMap
   edgesMap: LoroMap
-  syncNodes: (oldNodes: Node[], newNodes: Node[]) => void
-  syncEdges: (oldEdges: Edge[], newEdges: Edge[]) => void
   applyNodePanelPresenceUpdate: (update: NodePanelPresenceEventData) => void
-  forceDisconnect: () => void
   activeConnections: Set<string>
   isUndoRedoInProgress: boolean
   crdtTrusted: boolean
@@ -254,26 +249,24 @@ const setupManager = (): {
   return { manager, internals }
 }
 
-describe('CollaborationManager syncNodes', () => {
+describe('CollaborationManager graph synchronization', () => {
   let manager: CollaborationManager
-  let internals: CollaborationManagerInternals
 
   beforeEach(() => {
     const setup = setupManager()
     manager = setup.manager
-    internals = setup.internals
 
     const initialNode = createNodeSnapshot(['a'])
-    internals.syncNodes([], [deepClone(initialNode)])
+    manager.setNodes([], [deepClone(initialNode)])
   })
 
   it('updates collaborators map when a single client adds a variable', () => {
     const base = [createNodeSnapshot(['a'])]
     const next = [createNodeSnapshot(['a', 'b'])]
 
-    internals.syncNodes(base, next)
+    manager.setNodes(base, next)
 
-    const stored = (manager.getNodes() as Node[]).find((node) => node.id === NODE_ID)
+    const stored = manager.getNodes().find((node) => node.id === NODE_ID)
     expect(stored).toBeDefined()
     expect(getVariables(stored!)).toEqual(['a', 'b'])
   })
@@ -283,14 +276,14 @@ describe('CollaborationManager syncNodes', () => {
     const userA = [createNodeSnapshot(['a', 'b'])]
     const userB = [createNodeSnapshot(['a', 'c'])]
 
-    internals.syncNodes(base, userA)
+    manager.setNodes(base, userA)
 
-    const afterUserA = (manager.getNodes() as Node[]).find((node) => node.id === NODE_ID)
+    const afterUserA = manager.getNodes().find((node) => node.id === NODE_ID)
     expect(getVariables(afterUserA!)).toEqual(['a', 'b'])
 
-    internals.syncNodes(base, userB)
+    manager.setNodes(base, userB)
 
-    const finalNode = (manager.getNodes() as Node[]).find((node) => node.id === NODE_ID)
+    const finalNode = manager.getNodes().find((node) => node.id === NODE_ID)
     const finalVariables = getVariables(finalNode!)
 
     expect(finalVariables).toEqual(['a', 'c'])
@@ -317,10 +310,10 @@ describe('CollaborationManager syncNodes', () => {
       },
     ]
 
-    internals.syncNodes(base, userA)
-    internals.syncNodes(base, userB)
+    manager.setNodes(base, userA)
+    manager.setNodes(base, userB)
 
-    const finalNode = (manager.getNodes() as Node[]).find((node) => node.id === NODE_ID)
+    const finalNode = manager.getNodes().find((node) => node.id === NODE_ID)
     const finalVariable = getVariableObject(finalNode!, 'a')
 
     expect(finalVariable?.label).toBe('A from userB')
@@ -329,7 +322,7 @@ describe('CollaborationManager syncNodes', () => {
 
   it('reflects the last writer when concurrent removal and edits happen', () => {
     const base = [createNodeSnapshot(['a', 'b'])]
-    internals.syncNodes([], [deepClone(base[0])!])
+    manager.setNodes([], [deepClone(base[0])!])
     const userA = [
       {
         ...createNodeSnapshot(['a']),
@@ -346,23 +339,23 @@ describe('CollaborationManager syncNodes', () => {
           ...createNodeSnapshot(['a']).data,
           variables: [
             createVariable('a'),
-            createVariable('b', { label: 'B edited but should vanish' }),
+            createVariable('b', { label: 'B from the latest snapshot' }),
           ],
         },
       },
     ]
 
-    internals.syncNodes(base, userA)
-    internals.syncNodes(base, userB)
+    manager.setNodes(base, userA)
+    manager.setNodes(base, userB)
 
-    const finalNode = (manager.getNodes() as Node[]).find((node) => node.id === NODE_ID)
+    const finalNode = manager.getNodes().find((node) => node.id === NODE_ID)
     const finalVariables = getVariables(finalNode!)
     expect(finalVariables).toEqual(['a', 'b'])
-    expect(getVariableObject(finalNode!, 'b')).toBeDefined()
+    expect(getVariableObject(finalNode!, 'b')?.label).toBe('B from the latest snapshot')
   })
 
   it('synchronizes prompt_template list updates across collaborators', () => {
-    const { manager: promptManager, internals: promptInternals } = setupManager()
+    const { manager: promptManager } = setupManager()
 
     const baseTemplate = [
       {
@@ -373,7 +366,7 @@ describe('CollaborationManager syncNodes', () => {
     ]
 
     const baseNode = createLLMNodeSnapshot(baseTemplate)
-    promptInternals.syncNodes([], [deepClone(baseNode)])
+    promptManager.setNodes([], [deepClone(baseNode)])
 
     const updatedTemplates = [
       ...baseTemplate,
@@ -385,9 +378,9 @@ describe('CollaborationManager syncNodes', () => {
     ]
 
     const updatedNode = createLLMNodeSnapshot(updatedTemplates)
-    promptInternals.syncNodes([deepClone(baseNode)], [deepClone(updatedNode)])
+    promptManager.setNodes([deepClone(baseNode)], [deepClone(updatedNode)])
 
-    const stored = (promptManager.getNodes() as Node[]).find((node) => node.id === LLM_NODE_ID)
+    const stored = promptManager.getNodes().find((node) => node.id === LLM_NODE_ID)
     expect(stored).toBeDefined()
 
     const storedTemplates = getPromptTemplates(stored!)
@@ -404,16 +397,16 @@ describe('CollaborationManager syncNodes', () => {
     ]
     const editedNode = createLLMNodeSnapshot(editedTemplates)
 
-    promptInternals.syncNodes([deepClone(updatedNode)], [deepClone(editedNode)])
+    promptManager.setNodes([deepClone(updatedNode)], [deepClone(editedNode)])
 
-    const final = (promptManager.getNodes() as Node[]).find((node) => node.id === LLM_NODE_ID)
+    const final = promptManager.getNodes().find((node) => node.id === LLM_NODE_ID)
     const finalTemplates = getPromptTemplates(final!)
     expect(finalTemplates).toHaveLength(1)
     expect(finalTemplates[0]!.text).toBe('updated system prompt')
   })
 
   it('keeps parameter list in sync when nodes add, edit, or remove parameters', () => {
-    const { manager: parameterManager, internals: parameterInternals } = setupManager()
+    const { manager: parameterManager } = setupManager()
 
     const baseParameters: ParameterItem[] = [
       { description: 'bb', name: 'aa', required: false, type: 'string' },
@@ -421,7 +414,7 @@ describe('CollaborationManager syncNodes', () => {
     ]
 
     const baseNode = createParameterExtractorNodeSnapshot(baseParameters)
-    parameterInternals.syncNodes([], [deepClone(baseNode)])
+    parameterManager.setNodes([], [deepClone(baseNode)])
 
     const updatedParameters: ParameterItem[] = [
       ...baseParameters,
@@ -429,9 +422,9 @@ describe('CollaborationManager syncNodes', () => {
     ]
 
     const updatedNode = createParameterExtractorNodeSnapshot(updatedParameters)
-    parameterInternals.syncNodes([deepClone(baseNode)], [deepClone(updatedNode)])
+    parameterManager.setNodes([deepClone(baseNode)], [deepClone(updatedNode)])
 
-    const stored = (parameterManager.getNodes() as Node[]).find((node) => node.id === PARAM_NODE_ID)
+    const stored = parameterManager.getNodes().find((node) => node.id === PARAM_NODE_ID)
     expect(stored).toBeDefined()
     expect(getParameters(stored!)).toEqual(updatedParameters)
 
@@ -440,32 +433,17 @@ describe('CollaborationManager syncNodes', () => {
     ]
     const editedNode = createParameterExtractorNodeSnapshot(editedParameters)
 
-    parameterInternals.syncNodes([deepClone(updatedNode)], [deepClone(editedNode)])
+    parameterManager.setNodes([deepClone(updatedNode)], [deepClone(editedNode)])
 
-    const final = (parameterManager.getNodes() as Node[]).find((node) => node.id === PARAM_NODE_ID)
+    const final = parameterManager.getNodes().find((node) => node.id === PARAM_NODE_ID)
     expect(getParameters(final!)).toEqual(editedParameters)
   })
 
-  it('handles nodes without data gracefully', () => {
-    const emptyNode: Node = {
-      id: 'empty-node',
-      type: 'custom',
-      position: { x: 0, y: 0 },
-      data: undefined as unknown as CommonNodeType<Record<string, never>>,
-    }
-
-    internals.syncNodes([], [deepClone(emptyNode)])
-
-    const stored = (manager.getNodes() as Node[]).find((node) => node.id === 'empty-node')
-    expect(stored).toBeDefined()
-    expect(stored?.data).toEqual({})
-  })
-
-  it('preserves CRDT list instances when synchronizing parsed state back into the manager', () => {
-    const { manager: promptManager, internals: promptInternals } = setupManager()
+  it('accepts edits to parsed prompt data without losing existing messages', () => {
+    const { manager: promptManager } = setupManager()
 
     const base = createLLMNodeSnapshot([{ id: 'system', role: 'system', text: 'base' }])
-    promptInternals.syncNodes([], [deepClone(base)])
+    promptManager.setNodes([], [deepClone(base)])
 
     const storedBefore = promptManager.getNodes().find((node) => node.id === LLM_NODE_ID) as
       | Node<LLMNodeData>
@@ -483,39 +461,16 @@ describe('CollaborationManager syncNodes', () => {
       text: 'mutated',
     })
 
-    promptInternals.syncNodes([baseNode], [mutatedNode])
+    promptManager.setNodes([baseNode], [mutatedNode])
 
     const storedAfter = promptManager.getNodes().find((node) => node.id === LLM_NODE_ID) as
       | Node<LLMNodeData>
       | undefined
     const templatesAfter = storedAfter?.data.prompt_template
-    expect(Array.isArray(templatesAfter)).toBe(true)
-    expect(templatesAfter).toHaveLength(2)
-  })
-
-  it('reuses CRDT list when syncing parameters repeatedly', () => {
-    const { manager: parameterManager, internals: parameterInternals } = setupManager()
-
-    const initialParameters: ParameterItem[] = [
-      { description: 'desc', name: 'param', required: false, type: 'string' },
-    ]
-    const node = createParameterExtractorNodeSnapshot(initialParameters)
-    parameterInternals.syncNodes([], [deepClone(node)])
-
-    const stored = parameterManager
-      .getNodes()
-      .find((n) => n.id === PARAM_NODE_ID) as Node<ParameterExtractorNodeData>
-    const mutatedNode = deepClone(stored)
-    mutatedNode.data.parameters[0]!.description = 'updated'
-
-    parameterInternals.syncNodes([stored], [mutatedNode])
-
-    const storedAfter = parameterManager.getNodes().find((n) => n.id === PARAM_NODE_ID) as
-      | Node<ParameterExtractorNodeData>
-      | undefined
-    const params = storedAfter?.data.parameters ?? []
-    expect(params).toHaveLength(1)
-    expect(params[0]!.description).toBe('updated')
+    expect(templatesAfter).toEqual([
+      { id: 'system', role: 'system', text: 'base' },
+      { id: 'user', role: 'user', text: 'mutated' },
+    ])
   })
 
   it('filters out transient/private data keys while keeping allowlisted ones', () => {
@@ -534,9 +489,9 @@ describe('CollaborationManager syncNodes', () => {
       },
     }
 
-    internals.syncNodes([], [deepClone(nodeWithPrivate)])
+    manager.setNodes([], [deepClone(nodeWithPrivate)])
 
-    const stored = (manager.getNodes() as Node[]).find((node) => node.id === 'private-node')!
+    const stored = manager.getNodes().find((node) => node.id === 'private-node')!
     const storedData = stored.data as CommonNodeType<{ _foo?: string }>
     expect(storedData._foo).toBeUndefined()
     expect(storedData._children).toEqual([{ nodeId: 'child-a', nodeType: BlockEnum.Start }])
@@ -545,7 +500,7 @@ describe('CollaborationManager syncNodes', () => {
 
   it('removes list fields when they are omitted in the update snapshot', () => {
     const baseNode = createNodeSnapshot(['alpha'])
-    internals.syncNodes([], [deepClone(baseNode)])
+    manager.setNodes([], [deepClone(baseNode)])
 
     const withoutVariables: Node<StartNodeData> = {
       ...deepClone(baseNode),
@@ -555,9 +510,9 @@ describe('CollaborationManager syncNodes', () => {
     }
     delete (withoutVariables.data as CommonNodeType<{ variables?: WorkflowVariable[] }>).variables
 
-    internals.syncNodes([deepClone(baseNode)], [withoutVariables])
+    manager.setNodes([deepClone(baseNode)], [withoutVariables])
 
-    const stored = (manager.getNodes() as Node[]).find((node) => node.id === NODE_ID)!
+    const stored = manager.getNodes().find((node) => node.id === NODE_ID)!
     const storedData = stored.data as CommonNodeType<{ variables?: WorkflowVariable[] }>
     expect(storedData.variables).toBeUndefined()
   })
@@ -655,90 +610,34 @@ describe('CollaborationManager syncNodes', () => {
   })
 })
 
-describe('CollaborationManager public API wrappers', () => {
+describe('CollaborationManager lifecycle and presence', () => {
   let manager: CollaborationManager
   let internals: CollaborationManagerInternals
-  const baseNodes: Node[] = []
-  const updatedNodes: Node[] = [
-    {
-      id: 'new-node',
-      type: 'custom',
-      position: { x: 0, y: 0 },
-      data: {
-        type: BlockEnum.Start,
-        title: 'New node',
-        desc: '',
-      },
-    },
-  ]
-  const baseEdges: Edge[] = []
-  const updatedEdges: Edge[] = [
-    {
-      id: 'edge-1',
-      source: 'source',
-      target: 'target',
-      type: 'default',
-      data: {
-        sourceType: BlockEnum.Start,
-        targetType: BlockEnum.End,
-      },
-    },
-  ]
 
   beforeEach(() => {
-    manager = new CollaborationManager()
-    internals = getManagerInternals(manager)
-    internals.crdtTrusted = true
+    ;({ manager, internals } = setupManager())
   })
 
-  it('setNodes delegates to syncNodes and commits the CRDT document', () => {
-    const commit = vi.fn()
-    internals.doc = { commit }
-    const syncSpy = vi.spyOn(internals, 'syncNodes').mockImplementation(() => undefined)
-
-    manager.setNodes(baseNodes, updatedNodes)
-
-    expect(syncSpy).toHaveBeenCalledWith(baseNodes, updatedNodes)
-    expect(commit).toHaveBeenCalled()
-    syncSpy.mockRestore()
-  })
-
-  it('setNodes skips syncing when undo/redo replay is running', () => {
-    const commit = vi.fn()
-    internals.doc = { commit }
+  it('does not replace graph data while undo/redo is being replayed', () => {
+    const initial = createNodeSnapshot(['a'])
+    manager.setNodes([], [initial])
+    const before = manager.getNodes()
     internals.isUndoRedoInProgress = true
-    const syncSpy = vi.spyOn(internals, 'syncNodes').mockImplementation(() => undefined)
-
-    manager.setNodes(baseNodes, updatedNodes)
-
-    expect(syncSpy).not.toHaveBeenCalled()
-    expect(commit).not.toHaveBeenCalled()
-    syncSpy.mockRestore()
+    manager.setNodes(before, [createNodeSnapshot(['b'])])
+    expect(manager.getNodes()).toEqual(before)
+    internals.isUndoRedoInProgress = false
+    manager.setNodes(before, [createNodeSnapshot(['b'])])
+    expect(getVariables(manager.getNodes()[0]!)).toEqual(['b'])
   })
 
-  it('setEdges delegates to syncEdges and commits the CRDT document', () => {
-    const commit = vi.fn()
-    internals.doc = { commit }
-    const syncSpy = vi.spyOn(internals, 'syncEdges').mockImplementation(() => undefined)
-
-    manager.setEdges(baseEdges, updatedEdges)
-
-    expect(syncSpy).toHaveBeenCalledWith(baseEdges, updatedEdges)
-    expect(commit).toHaveBeenCalled()
-    syncSpy.mockRestore()
-  })
-
-  it('disconnect tears down the collaboration state only when last connection closes', () => {
-    const forceSpy = vi.spyOn(internals, 'forceDisconnect').mockImplementation(() => undefined)
+  it('retains the graph until the last connection is released', () => {
+    manager.setNodes([], [createNodeSnapshot(['a'])])
     internals.activeConnections.add('conn-a')
     internals.activeConnections.add('conn-b')
-
     manager.disconnect('conn-a')
-    expect(forceSpy).not.toHaveBeenCalled()
-
+    expect(getVariables(manager.getNodes()[0]!)).toEqual(['a'])
     manager.disconnect('conn-b')
-    expect(forceSpy).toHaveBeenCalledTimes(1)
-    forceSpy.mockRestore()
+    expect(manager.getNodes()).toEqual([])
   })
 
   it('applyNodePanelPresenceUpdate keeps a client visible on a single node at a time', () => {

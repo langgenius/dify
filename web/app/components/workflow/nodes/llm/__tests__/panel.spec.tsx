@@ -4,7 +4,7 @@ import type { ModelParameterModalProps } from '@/app/components/header/account-s
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { PanelProps } from '@/types/workflow'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { consoleQuery } from '@/service/console'
@@ -56,6 +56,7 @@ vi.mock(
         />
         <button
           type="button"
+          disabled={modelSelectorReadonly || readonly}
           onClick={() => setModel({ provider: 'anthropic', modelId: 'claude-3-5-sonnet' })}
         >
           Select direct model
@@ -64,10 +65,6 @@ vi.mock(
     ),
   }),
 )
-
-vi.mock('../_base/components/config-vision', () => ({
-  default: () => null,
-}))
 
 vi.mock('../../_base/components/variable/var-reference-picker', () => ({
   default: () => null,
@@ -192,6 +189,8 @@ describe('LLM Panel', () => {
     mockUseConfig.mockReturnValue(buildUseConfigResult())
   })
 
+  afterEach(() => panelQueryClient.clear())
+
   describe('Model Warning Dot', () => {
     it('should not show the model warning dot when the node only has a connection checklist issue', () => {
       renderPanel()
@@ -309,11 +308,7 @@ describe('LLM Panel', () => {
 
     renderPanel({ model_selector: [] })
 
-    expect(screen.getByTestId('model-parameter-modal')).toHaveAttribute(
-      'data-model-selector-readonly',
-      'true',
-    )
-    expect(screen.getByTestId('model-parameter-modal')).toHaveAttribute('data-readonly', 'true')
+    expect(screen.getByRole('button', { name: 'Select direct model' })).toBeDisabled()
     await user.click(screen.getByText('workflow.nodes.common.typeSwitch.variable'))
     expect(screen.getByText('for_summarize')).toBeInTheDocument()
     expect(screen.queryByText('API_KEY')).not.toBeInTheDocument()
@@ -363,7 +358,7 @@ describe('LLM Panel', () => {
     expect(handleModelSelectorChange).not.toHaveBeenCalled()
 
     await user.click(screen.getByRole('radio', { name: 'workflow.nodes.common.typeSwitch.input' }))
-    resolveParameters({ params: {}, removedDetails: {} })
+    await act(async () => resolveParameters({ params: {}, removedDetails: {} }))
 
     await waitFor(() => {
       expect(handleModelSourceChange).toHaveBeenCalledWith(false)
@@ -416,7 +411,7 @@ describe('LLM Panel', () => {
       }),
     )
     rendered.rerender(renderPanelElement())
-    resolveParameters({ params: { temperature: 0.7 }, removedDetails: {} })
+    await act(async () => resolveParameters({ params: { temperature: 0.7 }, removedDetails: {} }))
 
     await waitFor(() => expect(mockFetchAndMergeValidCompletionParams).toHaveBeenCalledTimes(1))
     expect(handleModelChanged).not.toHaveBeenCalled()
@@ -445,7 +440,7 @@ describe('LLM Panel', () => {
     expect(handleModelChanged).not.toHaveBeenCalled()
 
     rendered.rerender(renderPanelElement())
-    resolveParameters({ params: { temperature: 0.7 }, removedDetails: {} })
+    await act(async () => resolveParameters({ params: { temperature: 0.7 }, removedDetails: {} }))
 
     await waitFor(() => {
       expect(handleModelChanged).toHaveBeenCalledWith(

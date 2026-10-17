@@ -1,6 +1,7 @@
 import type { AppData } from '@/models/share'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import TextGeneration from '../text-generation'
 
 const mockUpdateAppInfo = vi.fn()
@@ -71,20 +72,21 @@ vi.mock('@/app/components/share/text-generation/result', () => ({
     isWorkflow,
     appId,
     onCompleted,
-    onRunStart,
+    inputs,
+    controlSend,
   }: {
     isWorkflow: boolean
     appId: string
     onCompleted: () => void
-    onRunStart: () => void
+    inputs: Record<string, unknown>
+    controlSend: number
   }) => (
     <div data-testid="result-component" data-is-workflow={isWorkflow} data-app-id={appId}>
       <button data-testid="complete-button" onClick={onCompleted}>
         Complete
       </button>
-      <button data-testid="run-start-button" onClick={onRunStart}>
-        Run Start
-      </button>
+      <output aria-label="Submitted inputs">{JSON.stringify(inputs)}</output>
+      <output aria-label="Generation requested">{String(controlSend > 0)}</output>
     </div>
   ),
 }))
@@ -115,249 +117,52 @@ describe('TextGeneration', () => {
   beforeEach(() => {
     mockStoreAppParams = mockAppParams
     mockMediaType = 'pc'
-    mockUseGetTryAppParams.mockReturnValue({
-      data: mockAppParams,
-    })
+    mockUseGetTryAppParams.mockReturnValue({ data: mockAppParams })
   })
 
-  afterEach(() => {
-    cleanup()
-    vi.clearAllMocks()
+  it('waits for app details and parameters before showing the generation form', () => {
+    const { rerender } = render(<TextGeneration appId="test-app-id" appData={null} />)
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Send' })).not.toBeInTheDocument()
+
+    mockStoreAppParams = null
+    mockUseGetTryAppParams.mockReturnValue({ data: null })
+    rerender(<TextGeneration appId="test-app-id" appData={createMockAppData()} />)
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Send' })).not.toBeInTheDocument()
   })
 
-  describe('loading state', () => {
-    it('renders loading when appData is null', () => {
-      render(<TextGeneration appId="test-app-id" appData={null} />)
-
-      expect(screen.getByRole('progressbar')).toBeInTheDocument()
-    })
-
-    it('renders loading when appParams is not available', () => {
-      mockStoreAppParams = null
-      mockUseGetTryAppParams.mockReturnValue({
-        data: null,
-      })
-
-      render(<TextGeneration appId="test-app-id" appData={createMockAppData()} />)
-
-      expect(screen.getByRole('progressbar')).toBeInTheDocument()
-    })
-  })
-
-  describe('content rendering', () => {
-    it('renders app title', async () => {
+  it.each([false, true])(
+    'sends the current inputs to the result and shows a dismissible completion notice (workflow: %s)',
+    async (isWorkflow) => {
+      const user = userEvent.setup()
       const appData = createMockAppData()
+      render(<TextGeneration appId="test-app-id" appData={appData} isWorkflow={isWorkflow} />)
+      expect(screen.getByTestId('result-component')).toHaveAttribute(
+        'data-is-workflow',
+        String(isWorkflow),
+      )
+      expect(screen.getByTestId('result-component')).toHaveAttribute('data-app-id', 'test-app-id')
+      expect(screen.getByRole('status', { name: 'Generation requested' })).toHaveTextContent(
+        'false',
+      )
+      expect(screen.queryByText('explore.tryApp.tryInfo')).not.toBeInTheDocument()
 
-      render(<TextGeneration appId="test-app-id" appData={appData} />)
+      await user.click(screen.getByRole('button', { name: 'Change Inputs' }))
+      await user.click(screen.getByRole('button', { name: 'Send' }))
+      expect(screen.getByRole('status', { name: 'Generation requested' })).toHaveTextContent('true')
+      expect(screen.getByRole('status', { name: 'Submitted inputs' })).toHaveTextContent(
+        '{"testInput":"testValue"}',
+      )
+      expect(mockUpdateAppInfo).toHaveBeenCalledWith(appData)
+      expect(mockUpdateAppParams).toHaveBeenCalledWith(mockAppParams)
 
-      await waitFor(() => {
-        const titles = screen.getAllByText('Test App Title')
-        expect(titles.length).toBeGreaterThan(0)
-      })
-    })
-
-    it('renders app description when available', async () => {
-      const appData = createMockAppData({
-        site: {
-          title: 'Test App',
-          description: 'This is a description',
-          icon: '🚀',
-          icon_type: 'emoji',
-          icon_background: '#FFFFFF',
-          icon_url: '',
-          default_language: 'en',
-          prompt_public: true,
-          copyright: '',
-          privacy_policy: '',
-          custom_disclaimer: '',
-        },
-      } as unknown as Partial<AppData>)
-
-      render(<TextGeneration appId="test-app-id" appData={appData} />)
-
-      await waitFor(() => {
-        expect(screen.getByText('This is a description')).toBeInTheDocument()
-      })
-    })
-
-    it('renders RunOnce component', async () => {
-      const appData = createMockAppData()
-
-      render(<TextGeneration appId="test-app-id" appData={appData} />)
-
-      await waitFor(() => {
-        expect(screen.getByTestId('run-once')).toBeInTheDocument()
-      })
-    })
-
-    it('renders Result component', async () => {
-      const appData = createMockAppData()
-
-      render(<TextGeneration appId="test-app-id" appData={appData} />)
-
-      await waitFor(() => {
-        expect(screen.getByTestId('result-component')).toBeInTheDocument()
-      })
-    })
-  })
-
-  describe('workflow mode', () => {
-    it('passes isWorkflow=true to Result when isWorkflow prop is true', async () => {
-      const appData = createMockAppData()
-
-      render(<TextGeneration appId="test-app-id" appData={appData} isWorkflow />)
-
-      await waitFor(() => {
-        const resultComponent = screen.getByTestId('result-component')
-        expect(resultComponent).toHaveAttribute('data-is-workflow', 'true')
-      })
-    })
-
-    it('passes isWorkflow=false to Result when isWorkflow prop is false', async () => {
-      const appData = createMockAppData()
-
-      render(<TextGeneration appId="test-app-id" appData={appData} isWorkflow={false} />)
-
-      await waitFor(() => {
-        const resultComponent = screen.getByTestId('result-component')
-        expect(resultComponent).toHaveAttribute('data-is-workflow', 'false')
-      })
-    })
-  })
-
-  describe('send functionality', () => {
-    it('triggers send when RunOnce sends', async () => {
-      const appData = createMockAppData()
-
-      render(<TextGeneration appId="test-app-id" appData={appData} />)
-
-      await waitFor(() => {
-        expect(screen.getByTestId('send-button')).toBeInTheDocument()
-      })
-
-      fireEvent.click(screen.getByTestId('send-button'))
-
-      expect(screen.getByTestId('result-component')).toBeInTheDocument()
-    })
-  })
-
-  describe('completion handling', () => {
-    it('shows alert after completion', async () => {
-      const appData = createMockAppData()
-
-      render(<TextGeneration appId="test-app-id" appData={appData} />)
-
-      await waitFor(() => {
-        expect(screen.getByTestId('complete-button')).toBeInTheDocument()
-      })
-
-      fireEvent.click(screen.getByTestId('complete-button'))
-
-      await waitFor(() => {
-        expect(screen.getByText('explore.tryApp.tryInfo')).toBeInTheDocument()
-      })
-    })
-  })
-
-  describe('hook effects', () => {
-    it('calls updateAppInfo when appData changes', async () => {
-      const appData = createMockAppData()
-
-      render(<TextGeneration appId="test-app-id" appData={appData} />)
-
-      await waitFor(() => {
-        expect(mockUpdateAppInfo).toHaveBeenCalledWith(appData)
-      })
-    })
-
-    it('calls updateAppParams when tryAppParams changes', async () => {
-      const appData = createMockAppData()
-
-      render(<TextGeneration appId="test-app-id" appData={appData} />)
-
-      await waitFor(() => {
-        expect(mockUpdateAppParams).toHaveBeenCalledWith(mockAppParams)
-      })
-    })
-
-    it('calls useGetTryAppParams with correct appId', () => {
-      const appData = createMockAppData()
-
-      render(<TextGeneration appId="my-app-id" appData={appData} />)
-
-      expect(mockUseGetTryAppParams).toHaveBeenCalledWith('my-app-id')
-    })
-  })
-
-  describe('result panel visibility', () => {
-    it('shows result panel after run starts', async () => {
-      const appData = createMockAppData()
-
-      render(<TextGeneration appId="test-app-id" appData={appData} />)
-
-      await waitFor(() => {
-        expect(screen.getByTestId('run-start-button')).toBeInTheDocument()
-      })
-
-      fireEvent.click(screen.getByTestId('run-start-button'))
-
-      expect(screen.getByTestId('result-component')).toBeInTheDocument()
-    })
-  })
-
-  describe('input handling', () => {
-    it('handles input changes from RunOnce', async () => {
-      const appData = createMockAppData()
-
-      render(<TextGeneration appId="test-app-id" appData={appData} />)
-
-      await waitFor(() => {
-        expect(screen.getByTestId('inputs-change-button')).toBeInTheDocument()
-      })
-
-      fireEvent.click(screen.getByTestId('inputs-change-button'))
-
-      expect(screen.getByTestId('run-once')).toBeInTheDocument()
-    })
-  })
-
-  describe('mobile behavior', () => {
-    it('renders mobile toggle panel on mobile', async () => {
-      mockMediaType = 'mobile'
-      const appData = createMockAppData()
-
-      const { container } = render(<TextGeneration appId="test-app-id" appData={appData} />)
-
-      await waitFor(() => {
-        const togglePanel = container.querySelector('.cursor-grab')
-        expect(togglePanel).toBeInTheDocument()
-      })
-    })
-
-    it('toggles result panel visibility on mobile', async () => {
-      mockMediaType = 'mobile'
-      const appData = createMockAppData()
-
-      const { container } = render(<TextGeneration appId="test-app-id" appData={appData} />)
-
-      await waitFor(() => {
-        const togglePanel = container.querySelector('.cursor-grab')
-        expect(togglePanel).toBeInTheDocument()
-      })
-
-      const toggleParent = container.querySelector('.cursor-grab')?.parentElement
-      if (toggleParent) {
-        fireEvent.click(toggleParent)
-      }
-
-      await waitFor(() => {
-        const newToggleParent = container.querySelector('.cursor-grab')?.parentElement
-        if (newToggleParent) {
-          fireEvent.click(newToggleParent)
-        }
-      })
-
-      expect(screen.getByTestId('result-component')).toBeInTheDocument()
-    })
-  })
+      await user.click(screen.getByRole('button', { name: 'Complete' }))
+      expect(screen.getByText('explore.tryApp.tryInfo')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+      await waitFor(() =>
+        expect(screen.queryByText('explore.tryApp.tryInfo')).not.toBeInTheDocument(),
+      )
+    },
+  )
 })

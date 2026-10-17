@@ -1,17 +1,21 @@
-import type { MutableRefObject } from 'react'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { KnowledgeRetrievalNodeType } from '../../types'
-import type { DataSet } from '@/models/datasets'
 import { act, renderHook, waitFor } from '@testing-library/react'
+import { useRef, useState } from 'react'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { DATASET_DEFAULT } from '@/config'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
 import useKnowledgeModelConfig from '../use-knowledge-model-config'
 
-const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
+const createDataset = (
+  overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
+): DatasetDetailWithPartialMembersResponse => ({
+  ...createDatasetFixture(),
   id: 'dataset-1',
   name: 'Dataset Name',
-  indexing_status: 'completed',
   icon_info: {
     icon: '📙',
     icon_background: '#FFF4ED',
@@ -19,33 +23,22 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
     icon_url: '',
   },
   description: 'Dataset description',
-  permission: DatasetPermission.onlyMe,
+  permission: PermissionLevel.onlyMe,
   data_source_type: DataSourceType.FILE,
-  indexing_technique: 'high_quality' as DataSet['indexing_technique'],
+  indexing_technique:
+    'high_quality' as DatasetDetailWithPartialMembersResponse['indexing_technique'],
   created_by: 'user-1',
   updated_by: 'user-1',
   updated_at: 1690000000,
   app_count: 0,
   doc_form: ChunkingMode.text,
   document_count: 1,
-  total_document_count: 1,
   word_count: 1000,
   provider: 'internal',
   embedding_model: 'text-embedding-3',
   embedding_model_provider: 'openai',
   embedding_available: true,
   retrieval_model_dict: {
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_model: {
-      reranking_provider_name: '',
-      reranking_model_name: '',
-    },
-    top_k: 5,
-    score_threshold_enabled: false,
-    score_threshold: 0,
-  },
-  retrieval_model: {
     search_method: RETRIEVE_METHOD.semantic,
     reranking_enable: false,
     reranking_model: {
@@ -100,266 +93,146 @@ const createPayload = (
   ...overrides,
 })
 
-const createState = (initialInputs: KnowledgeRetrievalNodeType) => {
-  const inputRef = { current: initialInputs } as MutableRefObject<KnowledgeRetrievalNodeType>
-  const setInputs = vi.fn((nextInputs: KnowledgeRetrievalNodeType) => {
-    inputRef.current = nextInputs
+type Options = Partial<
+  Pick<
+    Parameters<typeof useKnowledgeModelConfig>[0],
+    'currentProvider' | 'currentModel' | 'fallbackRerankModel' | 'hasRerankDefaultModel'
+  >
+>
+const selectedDatasets = [createDataset()]
+const fallbackRerankModel = { provider: 'rerank-provider', model: 'rerank-model' }
+const modelDefaults: Options = {
+  currentProvider: { provider: 'openai' },
+  currentModel: { model: 'gpt-4o-mini', model_properties: { mode: 'chat' } },
+  fallbackRerankModel,
+  hasRerankDefaultModel: true,
+}
+const renderConfig = (initialInputs: KnowledgeRetrievalNodeType, options: Options = {}) => {
+  const config = { fallbackRerankModel: {}, hasRerankDefaultModel: false, ...options }
+  return renderHook(() => {
+    const [inputs, setInputs] = useState(initialInputs)
+    const inputRef = useRef(inputs)
+    inputRef.current = inputs
+    const actions = useKnowledgeModelConfig({
+      inputs,
+      inputRef,
+      setInputs,
+      selectedDatasets,
+      ...config,
+    })
+    return { inputs, ...actions }
   })
-
-  return { inputRef, setInputs }
 }
 
-describe('use-knowledge-model-config', () => {
-  const selectedDatasets = [createDataset()]
-  const fallbackRerankModel = {
-    provider: 'rerank-provider',
-    model: 'rerank-model',
-  }
-
-  it('creates missing single retrieval config when the model or completion params change', async () => {
-    const { inputRef, setInputs } = createState(
+describe('useKnowledgeModelConfig', () => {
+  it('initializes missing model and retrieval defaults from available providers', async () => {
+    const { result } = renderConfig(
       createPayload({
-        retrieval_mode: RETRIEVE_TYPE.multiWay,
-        single_retrieval_config: undefined,
-        multiple_retrieval_config: undefined,
-      }),
-    )
-
-    const { result } = renderHook(() =>
-      useKnowledgeModelConfig({
-        inputs: inputRef.current,
-        inputRef,
-        setInputs,
-        selectedDatasets,
-        currentProvider: undefined,
-        currentModel: undefined,
-        fallbackRerankModel: {},
-        hasRerankDefaultModel: false,
-      }),
-    )
-
-    await waitFor(() => {
-      expect(setInputs).toHaveBeenCalledWith(
-        expect.objectContaining({
-          multiple_retrieval_config: expect.objectContaining({
-            top_k: DATASET_DEFAULT.top_k,
-            reranking_enable: false,
-          }),
-        }),
-      )
-    })
-
-    setInputs.mockClear()
-
-    act(() => {
-      inputRef.current = createPayload({
         retrieval_mode: RETRIEVE_TYPE.oneWay,
         single_retrieval_config: undefined,
-      })
-      result.current.handleModelChanged({
-        provider: 'anthropic',
-        modelId: 'claude-sonnet',
-      })
-    })
-
-    expect(setInputs).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({
-        single_retrieval_config: {
-          model: {
-            provider: 'anthropic',
-            name: 'claude-sonnet',
-            mode: 'chat' as const,
-            completion_params: {},
-          },
-        },
+      }),
+      modelDefaults,
+    )
+    await waitFor(() =>
+      expect(result.current.inputs.single_retrieval_config).toEqual({
+        model: { provider: 'openai', name: 'gpt-4o-mini', mode: 'chat', completion_params: {} },
       }),
     )
-
-    setInputs.mockClear()
-
-    act(() => {
-      inputRef.current = createPayload({
-        retrieval_mode: RETRIEVE_TYPE.oneWay,
-        single_retrieval_config: undefined,
-      })
-      result.current.handleCompletionParamsChange({ temperature: 0.2 })
-      result.current.handleCompletionParamsChange({ temperature: 0.2 })
+    expect(result.current.inputs.multiple_retrieval_config).toMatchObject({
+      top_k: DATASET_DEFAULT.top_k,
+      reranking_enable: true,
     })
-
-    expect(setInputs).toHaveBeenCalledTimes(1)
-    expect(setInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        single_retrieval_config: {
-          model: {
-            provider: '',
-            name: '',
-            mode: '',
-            completion_params: { temperature: 0.2 },
-          },
-        },
-      }),
-    )
   })
 
-  it('hydrates defaults, respects initialized rerank state, and updates retrieval config changes', async () => {
-    const { inputRef, setInputs } = createState(
-      createPayload({
-        retrieval_mode: RETRIEVE_TYPE.oneWay,
-        single_retrieval_config: undefined,
-        multiple_retrieval_config: undefined,
+  it('creates a missing single retrieval model on selection and preserves completion parameters', () => {
+    const { result } = renderConfig(createPayload({ single_retrieval_config: undefined }))
+    expect(result.current.inputs.multiple_retrieval_config).toMatchObject({
+      top_k: DATASET_DEFAULT.top_k,
+      reranking_enable: false,
+    })
+    act(() => result.current.handleCompletionParamsChange({ temperature: 0.2 }))
+    const inputs = result.current.inputs
+    act(() => result.current.handleCompletionParamsChange({ temperature: 0.2 }))
+    expect(result.current.inputs).toBe(inputs)
+    act(() =>
+      result.current.handleModelChanged({ provider: 'anthropic', modelId: 'claude-sonnet' }),
+    )
+    expect(result.current.inputs.single_retrieval_config).toEqual({
+      model: {
+        provider: 'anthropic',
+        name: 'claude-sonnet',
+        mode: 'chat',
+        completion_params: { temperature: 0.2 },
+      },
+    })
+  })
+
+  it('initializes an empty single-retrieval model when selected before editing parameters', () => {
+    const { result } = renderConfig(createPayload({ single_retrieval_config: undefined }))
+    act(() =>
+      result.current.handleModelChanged({
+        provider: 'openai',
+        modelId: 'completion-model',
+        mode: 'completion',
       }),
     )
+    expect(result.current.inputs.single_retrieval_config).toEqual({
+      model: {
+        provider: 'openai',
+        name: 'completion-model',
+        mode: 'completion',
+        completion_params: {},
+      },
+    })
+  })
 
-    const { result } = renderHook(() =>
-      useKnowledgeModelConfig({
-        inputs: inputRef.current,
-        inputRef,
-        setInputs,
-        selectedDatasets,
-        currentProvider: { provider: 'openai' },
-        currentModel: {
-          model: 'gpt-4o-mini',
-          model_properties: {
-            mode: 'chat' as const,
-          },
-        },
-        fallbackRerankModel,
-        hasRerankDefaultModel: true,
-      }),
+  it('retains edits while switching retrieval modes and applies reranker defaults', () => {
+    const { result } = renderConfig(
+      createPayload({ retrieval_mode: RETRIEVE_TYPE.oneWay }),
+      modelDefaults,
     )
-
-    await waitFor(() => {
-      expect(setInputs).toHaveBeenCalledWith(
-        expect.objectContaining({
-          single_retrieval_config: {
-            model: {
-              provider: 'openai',
-              name: 'gpt-4o-mini',
-              mode: 'chat' as const,
-              completion_params: {},
-            },
-          },
-          multiple_retrieval_config: expect.objectContaining({
-            top_k: DATASET_DEFAULT.top_k,
-            reranking_enable: true,
-          }),
-        }),
-      )
+    act(() => result.current.handleRetrievalModeChange(RETRIEVE_TYPE.multiWay))
+    expect(result.current.inputs.multiple_retrieval_config).toMatchObject({
+      top_k: DATASET_DEFAULT.top_k,
+      reranking_enable: true,
+      reranking_model: fallbackRerankModel,
     })
-
-    setInputs.mockClear()
-
-    act(() => {
-      result.current.handleRetrievalModeChange(RETRIEVE_TYPE.multiWay)
-    })
-
-    expect(setInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        retrieval_mode: RETRIEVE_TYPE.multiWay,
-        multiple_retrieval_config: expect.objectContaining({
-          top_k: DATASET_DEFAULT.top_k,
-          reranking_enable: true,
-          reranking_model: {
-            provider: 'rerank-provider',
-            model: 'rerank-model',
-          },
-        }),
-      }),
+    act(() =>
+      result.current.handleMultipleRetrievalConfigChange({ top_k: 8, score_threshold: 0.4 }),
     )
-
-    setInputs.mockClear()
-
-    act(() => {
-      result.current.handleMultipleRetrievalConfigChange({
-        top_k: 8,
-        score_threshold: 0.4,
-      })
+    expect(result.current.inputs.multiple_retrieval_config).toMatchObject({
+      top_k: 8,
+      score_threshold: 0.4,
+      reranking_enable: true,
     })
+    act(() => result.current.handleRetrievalModeChange(RETRIEVE_TYPE.oneWay))
+    expect(result.current.inputs.retrieval_mode).toBe(RETRIEVE_TYPE.oneWay)
+    expect(result.current.inputs.single_retrieval_config?.model.name).toBe('gpt-4o-mini')
+    expect(result.current.inputs.multiple_retrieval_config?.top_k).toBe(8)
+  })
 
-    expect(setInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        multiple_retrieval_config: expect.objectContaining({
-          top_k: 8,
-          score_threshold: 0.4,
-          reranking_enable: true,
-        }),
-      }),
-    )
-
-    setInputs.mockClear()
-
-    act(() => {
-      inputRef.current = createPayload({
-        retrieval_mode: RETRIEVE_TYPE.multiWay,
-        single_retrieval_config: undefined,
-        multiple_retrieval_config: {
-          top_k: 5,
-          score_threshold: 0.2,
-        },
-      })
-      result.current.handleRetrievalModeChange(RETRIEVE_TYPE.oneWay)
-    })
-
-    expect(setInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        retrieval_mode: RETRIEVE_TYPE.oneWay,
+  it.each([RETRIEVE_TYPE.oneWay, RETRIEVE_TYPE.multiWay])(
+    'preserves configured %s settings when defaults are available',
+    (mode) => {
+      const inputs = createPayload({
+        retrieval_mode: mode,
         single_retrieval_config: {
           model: {
-            provider: 'openai',
-            name: 'gpt-4o-mini',
-            mode: 'chat' as const,
-            completion_params: {},
-          },
-        },
-      }),
-    )
-
-    const configuredState = createState(
-      createPayload({
-        retrieval_mode: RETRIEVE_TYPE.oneWay,
-        single_retrieval_config: {
-          model: {
-            provider: 'openai',
-            name: 'gpt-4o-mini',
-            mode: 'chat' as const,
-            completion_params: {},
+            provider: 'custom-provider',
+            name: 'chosen-model',
+            mode: 'chat',
+            completion_params: { temperature: 0.8 },
           },
         },
         multiple_retrieval_config: {
           top_k: 6,
           score_threshold: 0.1,
-          reranking_enable: true,
-          reranking_model: {
-            provider: 'rerank-provider',
-            model: 'rerank-model',
-          },
+          reranking_enable: false,
+          reranking_model: { provider: 'chosen-reranker', model: 'chosen-model' },
         },
-      }),
-    )
-
-    renderHook(() =>
-      useKnowledgeModelConfig({
-        inputs: configuredState.inputRef.current,
-        inputRef: configuredState.inputRef,
-        setInputs: configuredState.setInputs,
-        selectedDatasets,
-        currentProvider: { provider: 'openai' },
-        currentModel: {
-          model: 'gpt-4o-mini',
-          model_properties: {
-            mode: 'chat' as const,
-          },
-        },
-        fallbackRerankModel,
-        hasRerankDefaultModel: true,
-      }),
-    )
-
-    await act(async () => {
-      await Promise.resolve()
-    })
-
-    expect(configuredState.setInputs).toHaveBeenCalledTimes(0)
-  })
+      })
+      const { result } = renderConfig(inputs, modelDefaults)
+      expect(result.current.inputs).toBe(inputs)
+    },
+  )
 })

@@ -61,7 +61,7 @@ describe('useLastRun', () => {
     vi.clearAllMocks()
   })
 
-  it('syncs the draft before opening a custom single-run form', () => {
+  it('requests draft sync and opens a custom single-run form without running the node', () => {
     const { result } = renderWorkflowHook(() =>
       useLastRun({
         id: 'data-source-node',

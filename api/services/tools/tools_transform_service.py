@@ -518,17 +518,17 @@ class ToolTransformService:
             props: dict[str, dict[str, Any]], required: list[str], prefix: str = ""
         ) -> list[ToolParameter]:
             """Process properties recursively"""
-            TYPE_MAPPING = {"integer": "number", "float": "number"}
-            COMPLEX_TYPES = ["array", "object"]
+            type_mapping = {"integer": "number", "float": "number"}
+            complex_types = ["array", "object"]
 
             parameters = []
             for name, prop in props.items():
                 current_description = prop.get("description", "")
                 prop_type = resolve_property_type(prop)
-                if prop_type in TYPE_MAPPING:
-                    prop_type = TYPE_MAPPING[prop_type]
+                if prop_type in type_mapping:
+                    prop_type = type_mapping[prop_type]
                 # Keep the raw schema for multi-type unions so the LLM sees every accepted type, not just prop_type.
-                input_schema = prop if prop_type in COMPLEX_TYPES or schema_accepts_multiple_types(prop) else None
+                input_schema = prop if prop_type in complex_types or schema_accepts_multiple_types(prop) else None
                 parameters.append(
                     create_parameter(name, current_description, prop_type, name in required, input_schema)
                 )

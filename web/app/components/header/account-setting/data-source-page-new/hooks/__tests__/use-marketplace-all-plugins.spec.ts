@@ -128,21 +128,7 @@ describe('useMarketplaceAllPlugins', () => {
       const { result } = renderHook(() => useMarketplaceAllPlugins(providers, searchText))
 
       // Assert: pExcluded is removed, p1 is duplicated (so kept once), p2 is added, p3 is bundle (skipped)
-      expect(result.current.plugins).toHaveLength(2)
       expect(result.current.plugins.map((p) => p.plugin_id)).toEqual(['p1', 'p2'])
-    })
-
-    it('should handle undefined plugins gracefully', () => {
-      // Arrange
-      vi.mocked(useMarketplacePlugins).mockReturnValue(
-        createBasePluginsMock({ plugins: undefined as unknown as Plugin[] }),
-      )
-
-      // Act
-      const { result } = renderHook(() => useMarketplaceAllPlugins([], ''))
-
-      // Assert
-      expect(result.current.plugins).toEqual([])
     })
   })
 

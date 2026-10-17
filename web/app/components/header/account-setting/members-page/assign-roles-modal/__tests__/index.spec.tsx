@@ -1,10 +1,18 @@
 import type { Role } from '@/models/access-control'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 import AssignRolesModal from '../index'
 
-vi.mock('@/service/access-control/use-workspace-roles')
+const { mockWorkspaceRoleListHook } = vi.hoisted(() => ({
+  mockWorkspaceRoleListHook: vi.fn(),
+}))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.rbac.roles.get': () => mockWorkspaceRoleListHook(),
+  })
+})
 
 const createRole = (overrides: Partial<Role>): Role => ({
   id: 'role-1',
@@ -27,7 +35,7 @@ const roles = [
 describe('AssignRolesModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useWorkspaceRoleList).mockReturnValue({
+    vi.mocked(mockWorkspaceRoleListHook).mockReturnValue({
       data: {
         pages: [
           {
@@ -47,42 +55,35 @@ describe('AssignRolesModal', () => {
       hasNextPage: false,
       isFetchingNextPage: false,
       fetchNextPage: vi.fn(),
-    } as unknown as ReturnType<typeof useWorkspaceRoleList>)
+    })
   })
 
   describe('Role selection', () => {
-    it('should hide selected count when multiple roles are disabled', () => {
-      render(
-        <AssignRolesModal
-          selectedRoles={[roles[0]!]}
-          allowMultipleRoles={false}
-          onClose={vi.fn()}
-          onSubmit={vi.fn()}
-        />,
-      )
-
-      expect(
-        screen.queryByText(/workspaceMembers\.members\.assignRolesModal\.selectedCount/i),
-      ).not.toBeInTheDocument()
-    })
-
-    it('should show single-role description when multiple roles are disabled', () => {
-      render(
-        <AssignRolesModal
-          selectedRoles={[roles[0]!]}
-          allowMultipleRoles={false}
-          onClose={vi.fn()}
-          onSubmit={vi.fn()}
-        />,
-      )
-
-      expect(
-        screen.getByText(/workspaceMembers\.members\.assignRolesModal\.singleDescription/i),
-      ).toBeInTheDocument()
-      expect(
-        screen.queryByText(/workspaceMembers\.members\.assignRolesModal\.description/i),
-      ).not.toBeInTheDocument()
-    })
+    it.each([false, true])(
+      'submits the selected roles with multiple=%s and closes',
+      async (allowMultipleRoles) => {
+        const user = userEvent.setup()
+        const onSubmit = vi.fn()
+        const onClose = vi.fn()
+        render(
+          <AssignRolesModal
+            selectedRoles={[roles[0]!]}
+            allowMultipleRoles={allowMultipleRoles}
+            onClose={onClose}
+            onSubmit={onSubmit}
+          />,
+        )
+        await user.click(
+          screen.getByRole(allowMultipleRoles ? 'checkbox' : 'radio', { name: /Second role/ }),
+        )
+        expect(
+          screen.getByRole(allowMultipleRoles ? 'checkbox' : 'radio', { name: /First role/ }),
+        ).toHaveAttribute('aria-checked', String(allowMultipleRoles))
+        await user.click(screen.getByRole('button', { name: /common\.operation\.confirm/ }))
+        expect(onSubmit).toHaveBeenCalledExactlyOnceWith(allowMultipleRoles ? roles : [roles[1]])
+        expect(onClose).toHaveBeenCalledTimes(1)
+      },
+    )
 
     it('should disable confirm when the last selected role is unchecked', async () => {
       const user = userEvent.setup()

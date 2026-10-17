@@ -28,7 +28,7 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
-from controllers.common.schema import JsonResponseWithStatus, register_schema_models
+from controllers.common.schema import JsonResponseWithStatus, register_response_schema_models, register_schema_models
 from controllers.web import web_ns
 from extensions.ext_application_services import application_services
 from fields.file_fields import FileResponse, FileWithSignedUrl
@@ -80,7 +80,8 @@ class HumanInputFileUploadFormPayload(BaseModel):
     url: HttpUrl | None = Field(default=None, description="Remote file URL")
 
 
-register_schema_models(web_ns, HumanInputFileUploadFormPayload, FileResponse, FileWithSignedUrl)
+register_schema_models(web_ns, HumanInputFileUploadFormPayload)
+register_response_schema_models(web_ns, FileResponse, FileWithSignedUrl)
 
 
 def _extract_hitl_upload_token() -> str:

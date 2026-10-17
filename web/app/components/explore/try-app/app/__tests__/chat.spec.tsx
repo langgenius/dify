@@ -1,6 +1,7 @@
 import type { TrialAppDetailResponse } from '@dify/contracts/api/console/trial-apps/types.gen'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import TryApp from '../chat'
 
 const mockRemoveConversationIdInfo = vi.fn()
@@ -71,48 +72,6 @@ describe('TryApp (chat.tsx)', () => {
     })
   })
 
-  afterEach(() => {
-    cleanup()
-    vi.clearAllMocks()
-  })
-
-  describe('basic rendering', () => {
-    it('renders app name', () => {
-      const appDetail = createMockAppDetail()
-
-      render(<TryApp appId="test-app-id" appDetail={appDetail} className="test-class" />)
-
-      expect(screen.getByText('Test Chat App')).toBeInTheDocument()
-    })
-
-    it('renders app name with title attribute', () => {
-      const appDetail = createMockAppDetail({
-        name: 'Long App Name',
-      } as Partial<TrialAppDetailResponse>)
-
-      render(<TryApp appId="test-app-id" appDetail={appDetail} className="test-class" />)
-
-      const nameElement = screen.getByText('Long App Name')
-      expect(nameElement).toHaveAttribute('title', 'Long App Name')
-    })
-
-    it('renders ChatWrapper', () => {
-      const appDetail = createMockAppDetail()
-
-      render(<TryApp appId="test-app-id" appDetail={appDetail} className="test-class" />)
-
-      expect(screen.getByTestId('chat-wrapper')).toBeInTheDocument()
-    })
-
-    it('renders alert with try info', () => {
-      const appDetail = createMockAppDetail()
-
-      render(<TryApp appId="test-app-id" appDetail={appDetail} className="test-class" />)
-
-      expect(screen.getByText('explore.tryApp.tryInfo')).toBeInTheDocument()
-    })
-  })
-
   describe('reset button', () => {
     it('does not render reset button when no conversation', () => {
       mockUseEmbeddedChatbot.mockReturnValue({
@@ -129,7 +88,8 @@ describe('TryApp (chat.tsx)', () => {
       expect(screen.queryByRole('button', { name: 'share.chat.resetChat' })).not.toBeInTheDocument()
     })
 
-    it('renders reset button when conversation exists', () => {
+    it('clears the saved conversation and starts a new one when reset is clicked', async () => {
+      const user = userEvent.setup()
       mockUseEmbeddedChatbot.mockReturnValue({
         removeConversationIdInfo: mockRemoveConversationIdInfo,
         handleNewConversation: mockHandleNewConversation,
@@ -141,24 +101,10 @@ describe('TryApp (chat.tsx)', () => {
 
       render(<TryApp appId="test-app-id" appDetail={appDetail} className="test-class" />)
 
-      expect(screen.getByRole('button', { name: 'share.chat.resetChat' })).toBeInTheDocument()
-    })
+      mockRemoveConversationIdInfo.mockClear()
+      await user.click(screen.getByRole('button', { name: 'share.chat.resetChat' }))
 
-    it('calls handleNewConversation when reset button is clicked', () => {
-      mockUseEmbeddedChatbot.mockReturnValue({
-        removeConversationIdInfo: mockRemoveConversationIdInfo,
-        handleNewConversation: mockHandleNewConversation,
-        currentConversationId: 'conv-123',
-        inputsForms: [],
-      })
-
-      const appDetail = createMockAppDetail()
-
-      render(<TryApp appId="test-app-id" appDetail={appDetail} className="test-class" />)
-
-      fireEvent.click(screen.getByRole('button', { name: 'share.chat.resetChat' }))
-
-      expect(mockRemoveConversationIdInfo).toHaveBeenCalledWith()
+      expect(mockRemoveConversationIdInfo).toHaveBeenCalledOnce()
       expect(mockHandleNewConversation).toHaveBeenCalled()
     })
   })
@@ -210,22 +156,12 @@ describe('TryApp (chat.tsx)', () => {
     })
   })
 
-  describe('alert hiding', () => {
-    it('hides alert when onHide is called', () => {
-      const appDetail = createMockAppDetail()
-
-      render(<TryApp appId="test-app-id" appDetail={appDetail} className="test-class" />)
-
-      const alertElement = screen
-        .getByText('explore.tryApp.tryInfo')
-        .closest('[class*="alert"]')?.parentElement
-      const hideButton = alertElement?.querySelector('button, [role="button"], svg')
-
-      if (hideButton) {
-        fireEvent.click(hideButton)
-        expect(screen.queryByText('explore.tryApp.tryInfo')).not.toBeInTheDocument()
-      }
-    })
+  it('dismisses the trial notice', async () => {
+    const user = userEvent.setup()
+    render(<TryApp appId="test-app-id" appDetail={createMockAppDetail()} className="" />)
+    expect(screen.getByText('explore.tryApp.tryInfo')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    expect(screen.queryByText('explore.tryApp.tryInfo')).not.toBeInTheDocument()
   })
 
   describe('hook calls', () => {

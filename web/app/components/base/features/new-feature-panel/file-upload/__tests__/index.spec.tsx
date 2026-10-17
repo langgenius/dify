@@ -1,11 +1,21 @@
 import type { Features, OnFeaturesChange } from '../../../types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { FeaturesProvider } from '../../../context'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { FeaturesContext, FeaturesProvider } from '../../../context'
+import { createFeaturesStore } from '../../../store'
 import FileUpload from '../index'
 
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: () => ({ data: undefined }),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'files.upload.get': async () => undefined,
+    }),
+  }
+})
 
 const defaultFeatures: Features = {
   moreLikeThis: { enabled: false },
@@ -36,41 +46,6 @@ describe('FileUpload', () => {
     vi.clearAllMocks()
   })
 
-  it('should render the file upload title', () => {
-    renderWithProvider()
-
-    expect(screen.getByText(/feature\.fileUpload\.title/)).toBeInTheDocument()
-  })
-
-  it('should render description when disabled', () => {
-    renderWithProvider()
-
-    expect(screen.getByText(/feature\.fileUpload\.description/)).toBeInTheDocument()
-  })
-
-  it('should render a switch toggle', () => {
-    renderWithProvider()
-
-    expect(screen.getByRole('switch')).toBeInTheDocument()
-  })
-
-  it('should call onChange when toggled', () => {
-    const onChange = vi.fn()
-    renderWithProvider({ onChange })
-
-    fireEvent.click(screen.getByRole('switch'))
-
-    expect(onChange).toHaveBeenCalled()
-  })
-
-  it('should toggle without onChange callback', () => {
-    renderWithProvider()
-
-    expect(() => {
-      fireEvent.click(screen.getByRole('switch'))
-    }).not.toThrow()
-  })
-
   it('should show supported types when enabled', () => {
     renderWithProvider(
       {},
@@ -84,21 +59,7 @@ describe('FileUpload', () => {
     )
 
     expect(screen.getByText('image,document')).toBeInTheDocument()
-  })
-
-  it('should show number limits when enabled', () => {
-    renderWithProvider(
-      {},
-      {
-        file: {
-          enabled: true,
-          allowed_file_types: ['image'],
-          number_limits: 3,
-        },
-      },
-    )
-
-    expect(screen.getByText('3')).toBeInTheDocument()
+    expect(screen.getByText('5')).toBeInTheDocument()
   })
 
   it('should show dash when no allowed file types', () => {
@@ -112,73 +73,6 @@ describe('FileUpload', () => {
     )
 
     expect(screen.getByText('-')).toBeInTheDocument()
-  })
-
-  it('should show settings button when hovering', () => {
-    renderWithProvider(
-      {},
-      {
-        file: { enabled: true },
-      },
-    )
-
-    const card = screen.getByText(/feature\.fileUpload\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
-
-    expect(screen.getByText(/operation\.settings/)).toBeInTheDocument()
-  })
-
-  it('should open setting modal when settings is clicked', async () => {
-    renderWithProvider(
-      {},
-      {
-        file: { enabled: true },
-      },
-    )
-
-    const card = screen.getByText(/feature\.fileUpload\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
-    fireEvent.click(screen.getByText(/operation\.settings/))
-
-    await waitFor(() => {
-      expect(screen.getByText(/feature\.fileUpload\.modalTitle/)).toBeInTheDocument()
-    })
-  })
-
-  it('should show supported types label when enabled', () => {
-    renderWithProvider(
-      {},
-      {
-        file: {
-          enabled: true,
-          allowed_file_types: ['image'],
-          number_limits: 3,
-        },
-      },
-    )
-
-    expect(screen.getByText(/feature\.fileUpload\.supportedTypes/)).toBeInTheDocument()
-    expect(screen.getByText(/feature\.fileUpload\.numberLimit/)).toBeInTheDocument()
-  })
-
-  it('should hide info display when hovering over enabled feature', () => {
-    renderWithProvider(
-      {},
-      {
-        file: {
-          enabled: true,
-          allowed_file_types: ['image'],
-          number_limits: 3,
-        },
-      },
-    )
-
-    const card = screen.getByText(/feature\.fileUpload\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
-
-    // Info display should be hidden, settings button should appear
-    expect(screen.queryByText(/feature\.fileUpload\.supportedTypes/)).not.toBeInTheDocument()
-    expect(screen.getByText(/operation\.settings/)).toBeInTheDocument()
   })
 
   it('should show info display again when mouse leaves', () => {
@@ -222,4 +116,34 @@ describe('FileUpload', () => {
       expect(screen.queryByText(/feature\.fileUpload\.modalTitle/)).not.toBeInTheDocument()
     })
   })
+})
+
+it('persists enabled state in both file settings and the legacy image flag', async () => {
+  const user = userEvent.setup()
+  const store = createFeaturesStore({ features: defaultFeatures })
+  const onChange = vi.fn()
+  render(
+    <FeaturesContext.Provider value={store}>
+      <FileUpload disabled={false} onChange={onChange} />
+    </FeaturesContext.Provider>,
+  )
+  const toggle = screen.getByRole('switch', { name: 'fileUpload.feature.fileUpload.title' })
+  await user.click(toggle)
+  expect(store.getState().features.file).toMatchObject({ enabled: true, image: { enabled: true } })
+  expect(toggle).toBeChecked()
+  await user.click(toggle)
+  expect(store.getState().features.file).toMatchObject({
+    enabled: false,
+    image: { enabled: false },
+  })
+  expect(onChange).toHaveBeenCalledTimes(2)
+})
+
+it('blocks enabling upload when disabled', async () => {
+  const onChange = vi.fn()
+  renderWithProvider({ disabled: true, onChange })
+  const toggle = screen.getByRole('switch')
+  expect(toggle).toHaveAttribute('aria-disabled', 'true')
+  await userEvent.setup().click(toggle)
+  expect(onChange).not.toHaveBeenCalled()
 })

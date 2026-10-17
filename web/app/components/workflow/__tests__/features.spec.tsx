@@ -1,131 +1,59 @@
-import type { InputVar } from '../types'
 import type { PromptVariable } from '@/models/debug'
-import { screen } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useNodes } from 'reactflow'
+import { FeaturesContext } from '@/app/components/base/features/context'
+import { createFeaturesStore } from '@/app/components/base/features/store'
 import Features from '../features'
 import { InputVarType } from '../types'
 import { createStartNode } from './fixtures'
 import { renderWorkflowFlowComponent } from './workflow-test-env'
 
+const featureStore = createFeaturesStore()
 const mockHandleAddVariable = vi.fn()
 const mockUpdateFeatures = vi.fn()
-const mockFeaturesStore = {
-  getState: () => ({
-    features: {
-      opening: {
-        enabled: false,
-        opening_statement: '',
-        suggested_questions: [],
-      },
-      suggested: false,
-      text2speech: false,
-      speech2text: false,
-      citation: false,
-      moderation: false,
-      file: false,
-    },
-  }),
-}
-
-let mockIsChatMode = true
-let mockNodesReadOnly = false
-
-vi.mock('../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../hooks/use-workflow')>()
-  return {
-    ...actual,
-
-    useNodesReadOnly: () => ({
-      nodesReadOnly: mockNodesReadOnly,
-    }),
-  }
-})
+const mockOpenOpeningModal = vi.fn<
+  (options: {
+    payload: {
+      workflowVariables: unknown[]
+      onAutoAddPromptVariable: (variables: PromptVariable[]) => void
+    }
+  }) => void
+>()
 
 vi.mock('../nodes/start/use-config', () => ({
-  default: () => ({
-    handleAddVariable: mockHandleAddVariable,
-  }),
+  default: () => ({ handleAddVariable: mockHandleAddVariable }),
 }))
-
 vi.mock('@/service/workflow', () => ({
   updateFeatures: (...args: unknown[]) => mockUpdateFeatures(...args),
 }))
-
-vi.mock('@/app/components/base/features/hooks', () => ({
-  useFeaturesStore: () => mockFeaturesStore,
+vi.mock('@/context/modal-context', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/context/modal-context')>()),
+  useModalContext: () => ({
+    hasBlockingModalOpen: false,
+    setShowOpeningModal: mockOpenOpeningModal,
+  }),
 }))
-
-vi.mock('@/app/components/base/features/new-feature-panel', () => ({
-  default: ({
-    show,
-    isChatMode,
-    disabled,
-    onChange,
-    onClose,
-    onAutoAddPromptVariable,
-    workflowVariables,
-  }: {
-    show: boolean
-    isChatMode: boolean
-    disabled: boolean
-    onChange: () => void
-    onClose: () => void
-    onAutoAddPromptVariable: (variables: PromptVariable[]) => void
-    workflowVariables: InputVar[]
-  }) => {
-    if (!show) return null
-
-    return (
-      <section aria-label="new feature panel">
-        <div>{isChatMode ? 'chat mode' : 'completion mode'}</div>
-        <div>{disabled ? 'panel disabled' : 'panel enabled'}</div>
-        <ul aria-label="workflow variables">
-          {workflowVariables.map((variable) => (
-            <li key={variable.variable}>{`${variable.label}:${variable.variable}`}</li>
-          ))}
-        </ul>
-        <button type="button" onClick={onChange}>
-          open features
-        </button>
-        <button type="button" onClick={onClose}>
-          close features
-        </button>
-        <button
-          type="button"
-          onClick={() =>
-            onAutoAddPromptVariable([
-              {
-                key: 'opening_statement',
-                name: 'Opening Statement',
-                type: 'string',
-                max_length: 200,
-                required: true,
-              },
-            ])
-          }
-        >
-          add required variable
-        </button>
-        <button
-          type="button"
-          onClick={() =>
-            onAutoAddPromptVariable([
-              {
-                key: 'optional_statement',
-                name: 'Optional Statement',
-                type: 'string',
-                max_length: 120,
-              },
-            ])
-          }
-        >
-          add optional variable
-        </button>
-      </section>
-    )
-  },
-}))
+vi.mock(
+  '@/app/components/header/account-setting/model-provider-page/hooks',
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import('@/app/components/header/account-setting/model-provider-page/hooks')
+    >()),
+    useDefaultModel: () => ({ data: null }),
+  }),
+)
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'codeBasedExtension.get': async () => undefined,
+    }),
+  }
+})
 
 const startNode = createStartNode({
   id: 'start-node',
@@ -133,107 +61,96 @@ const startNode = createStartNode({
     variables: [{ variable: 'existing_variable', label: 'Existing Variable' }],
   },
 })
-
-const DelayedFeatures = () => {
+function ReadyFeatures() {
   const nodes = useNodes()
-
-  if (!nodes.length) return null
-
-  return <Features />
+  return nodes.length ? <Features /> : null
+}
+function renderFeatures(mode: 'advanced-chat' | 'workflow' = 'advanced-chat') {
+  return renderWorkflowFlowComponent(
+    <NuqsTestingAdapter>
+      <FeaturesContext.Provider value={featureStore}>
+        <ReadyFeatures />
+      </FeaturesContext.Provider>
+    </NuqsTestingAdapter>,
+    {
+      resource: { kind: 'app', appId: 'app-1', mode },
+      nodes: [startNode],
+      edges: [],
+      initialStoreState: { showFeaturesPanel: true },
+    },
+  )
 }
 
-const renderFeatures = (
-  options?: Omit<NonNullable<Parameters<typeof renderWorkflowFlowComponent>[1]>, 'nodes' | 'edges'>,
-) => {
-  const mergedInitialStoreState = {
-    appId: 'app-1',
-    ...(options?.initialStoreState || {}),
-  }
-
-  return renderWorkflowFlowComponent(<DelayedFeatures />, {
-    nodes: [startNode],
-    edges: [],
-    ...options,
-    initialStoreState: mergedInitialStoreState,
-  })
-}
-
-describe('Features', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockIsChatMode = true
-    mockNodesReadOnly = false
-    mockUpdateFeatures.mockResolvedValue(undefined)
-  })
-
-  describe('Rendering', () => {
-    it('should pass workflow context to the feature panel', () => {
-      renderFeatures()
-
-      expect(screen.getByText('chat mode')).toBeInTheDocument()
-      expect(screen.getByText('panel enabled')).toBeInTheDocument()
-      expect(screen.getByRole('list', { name: 'workflow variables' })).toHaveTextContent(
-        'Existing Variable:existing_variable',
-      )
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should sync the draft and open the workflow feature panel when users change features', async () => {
-      const user = userEvent.setup()
-      const { store } = renderFeatures()
-
-      await user.click(screen.getByRole('button', { name: 'open features' }))
-
-      await vi.waitFor(() => {
-        expect(mockUpdateFeatures).toHaveBeenCalledTimes(1)
-        expect(store.getState().showFeaturesPanel).toBe(true)
-      })
-    })
-
-    it('should close the workflow feature panel and transform required prompt variables', async () => {
-      const user = userEvent.setup()
-      const { store } = renderFeatures({
-        initialStoreState: {
-          showFeaturesPanel: true,
-        },
-      })
-
-      await user.click(screen.getByRole('button', { name: 'close features' }))
-      expect(store.getState().showFeaturesPanel).toBe(false)
-
-      await user.click(screen.getByRole('button', { name: 'add required variable' }))
-      expect(mockHandleAddVariable).toHaveBeenCalledWith({
-        variable: 'opening_statement',
-        label: 'Opening Statement',
-        type: InputVarType.textInput,
-        max_length: 200,
-        required: true,
-        options: [],
-      })
-    })
-
-    it('should default prompt variables to optional when required is omitted', async () => {
-      const user = userEvent.setup()
-
-      renderFeatures()
-
-      await user.click(screen.getByRole('button', { name: 'add optional variable' }))
-      expect(mockHandleAddVariable).toHaveBeenCalledWith({
-        variable: 'optional_statement',
-        label: 'Optional Statement',
-        type: InputVarType.textInput,
-        max_length: 120,
-        required: false,
-        options: [],
-      })
-    })
-  })
+beforeEach(() => {
+  vi.clearAllMocks()
+  featureStore.setState({ features: createFeaturesStore().getState().features })
+  mockUpdateFeatures.mockResolvedValue(undefined)
 })
 
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => mockIsChatMode) }
+it('persists a feature toggle through the workflow API and closes the panel', async () => {
+  const user = userEvent.setup()
+  const { store } = renderFeatures()
+  const toggle = await screen.findByRole('switch', {
+    name: 'appDebug.feature.suggestedQuestionsAfterAnswer.title',
+  })
+  await user.click(toggle)
+  expect(toggle).toBeChecked()
+  await waitFor(() =>
+    expect(mockUpdateFeatures).toHaveBeenCalledWith({
+      appId: 'app-1',
+      features: expect.objectContaining({
+        opening_statement: '',
+        suggested_questions: [],
+        suggested_questions_after_answer: { enabled: true },
+      }),
+    }),
+  )
+  await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+  expect(store.getState().showFeaturesPanel).toBe(false)
 })
+
+it('omits chat-only feature controls for a workflow app', () => {
+  renderFeatures('workflow')
+  expect(screen.getByRole('dialog', { name: 'workflow.common.features' })).toBeInTheDocument()
+  expect(
+    screen.queryByRole('switch', { name: 'appDebug.feature.conversationOpener.title' }),
+  ).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole('switch', { name: 'appDebug.feature.suggestedQuestionsAfterAnswer.title' }),
+  ).not.toBeInTheDocument()
+})
+
+it.each([true, undefined])(
+  'converts an opening variable with required=%s into a start-node input',
+  async (required) => {
+    featureStore.setState({
+      features: {
+        ...featureStore.getState().features,
+        opening: { enabled: true, opening_statement: 'Hello' },
+      },
+    })
+    const user = userEvent.setup()
+    renderFeatures()
+    await user.hover(screen.getByText('appDebug.feature.conversationOpener.title'))
+    const edit = screen.getByRole('button', { name: 'appDebug.openingStatement.writeOpener' })
+    expect(edit).toBeEnabled()
+    edit.focus()
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(mockOpenOpeningModal).toHaveBeenCalled())
+    const { payload } = mockOpenOpeningModal.mock.calls[0]![0]
+    expect(startNode.data).toMatchObject({ variables: payload.workflowVariables })
+    act(() =>
+      payload.onAutoAddPromptVariable([
+        { key: 'name', name: 'Name', type: 'string', max_length: 120, required },
+      ]),
+    )
+    expect(mockHandleAddVariable).toHaveBeenCalledExactlyOnceWith({
+      variable: 'name',
+      label: 'Name',
+      type: InputVarType.textInput,
+      max_length: 120,
+      required: !!required,
+      options: [],
+    })
+  },
+)

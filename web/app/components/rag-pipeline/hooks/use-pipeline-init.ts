@@ -1,7 +1,8 @@
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { ORPCError } from '@orpc/client'
 import { useAtomValue } from 'jotai'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { toIconInfo } from '@/app/components/datasets/dataset-fields'
 import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
@@ -16,7 +17,8 @@ export const usePipelineInit = () => {
   const [isLoading, setIsLoading] = useState(true)
   const { pipelineId } = useAtomValue(knowledgePipelineIdentityAtom)
   const knowledgeName = useDatasetDetailContextWithSelector((s) => s.dataset)?.name
-  const knowledgeIcon = useDatasetDetailContextWithSelector((s) => s.dataset)?.icon_info
+  const datasetIcon = useDatasetDetailContextWithSelector((s) => s.dataset?.icon_info)
+  const knowledgeIcon = useMemo(() => toIconInfo(datasetIcon), [datasetIcon])
 
   useEffect(() => {
     workflowStore.setState({ knowledgeName, knowledgeIcon })

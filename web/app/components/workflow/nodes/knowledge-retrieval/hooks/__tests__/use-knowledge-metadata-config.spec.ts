@@ -11,15 +11,6 @@ import {
 } from '../../types'
 import useKnowledgeMetadataConfig from '../use-knowledge-metadata-config'
 
-let uuidCounter = 0
-
-vi.mock('uuid', () => ({
-  v4: vi.fn(() => {
-    uuidCounter += 1
-    return `condition-${uuidCounter}`
-  }),
-}))
-
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', () => ({
   __esModule: true,
   default: vi.fn(),
@@ -57,7 +48,6 @@ const createState = (initialInputs: KnowledgeRetrievalNodeType) => {
 describe('use-knowledge-metadata-config', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    uuidCounter = 0
 
     mockUseAvailableVarList.mockImplementation((_id, config) => {
       const activeConfig = config!
@@ -105,29 +95,26 @@ describe('use-knowledge-metadata-config', () => {
         id: 'meta-1',
         name: 'topic',
         type: MetadataFilteringVariableType.string,
-        value: 'topic',
       })
       result.current.handleAddCondition({
         id: 'meta-2',
         name: 'score',
         type: MetadataFilteringVariableType.number,
-        value: '10',
       })
     })
 
-    const firstCondition = setInputs.mock.calls[1]![0].metadata_filtering_conditions!
-      .conditions[0] as MetadataFilteringCondition
-    const secondCondition = setInputs.mock.calls[2]![0].metadata_filtering_conditions!
-      .conditions[1] as MetadataFilteringCondition
+    const [firstCondition, secondCondition] = inputRef.current.metadata_filtering_conditions!
+      .conditions as [MetadataFilteringCondition, MetadataFilteringCondition]
+    expect(firstCondition!.id).not.toBe(secondCondition!.id)
 
     act(() => {
-      result.current.handleUpdateCondition(secondCondition.id, {
+      result.current.handleUpdateCondition(secondCondition!.id, {
         ...secondCondition,
         comparison_operator: ComparisonOperator.largerThan,
         value: 0.8,
       })
       result.current.handleToggleConditionLogicalOperator()
-      result.current.handleRemoveCondition(firstCondition.id)
+      result.current.handleRemoveCondition(firstCondition!.id)
       result.current.handleMetadataModelChange({
         provider: 'openai',
         modelId: 'gpt-4.1-mini',
@@ -225,8 +212,7 @@ describe('use-knowledge-metadata-config', () => {
       })
     })
 
-    expect(setInputs).toHaveBeenNthCalledWith(1, initialPayload)
-    expect(setInputs).toHaveBeenNthCalledWith(2, initialPayload)
+    expect(inputRef.current).toEqual(initialPayload)
   })
 
   it('falls back to chat mode, preserves completion params, and toggles or back to and', () => {
@@ -302,7 +288,6 @@ describe('use-knowledge-metadata-config', () => {
       })
     })
 
-    expect(setInputs).toHaveBeenNthCalledWith(1, initialPayload)
-    expect(setInputs).toHaveBeenNthCalledWith(2, initialPayload)
+    expect(inputRef.current).toEqual(initialPayload)
   })
 })

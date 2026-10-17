@@ -1,17 +1,14 @@
 import type { ErrorHandleMode, ValueSelector, Var } from '../../types'
 import type { IterationNodeType } from './types'
 import type { VarKindType } from '@/app/components/workflow/nodes/_base/types'
+import { useQuery } from '@tanstack/react-query'
 import { isEqual } from 'es-toolkit/predicate'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-} from '@/service/use-tools'
+import { consoleQuery } from '@/service/console'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 import { useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
 import { useStore } from '../../store'
@@ -58,10 +55,22 @@ const useConfig = (id: string, payload: IterationNodeType) => {
   // output
   const { getIterationNodeChildren } = useWorkflow()
   const iterationChildrenNodes = getIterationNodeChildren(id)
-  const { data: buildInTools } = useAllBuiltInTools()
-  const { data: customTools } = useAllCustomTools()
-  const { data: workflowTools } = useAllWorkflowTools()
-  const { data: mcpTools } = useAllMCPTools()
+  const { data: buildInTools } = useQuery(
+    consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: customTools } = useQuery(
+    consoleQuery.workspaces.current.tools.api.get.queryOptions({ select: selectToolsWithProvider }),
+  )
+  const { data: workflowTools } = useQuery(
+    consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: mcpTools } = useQuery(
+    consoleQuery.workspaces.current.tools.mcp.get.queryOptions({ select: selectToolsWithProvider }),
+  )
   const dataSourceList = useStore((s) => s.dataSourceList)
   const allPluginInfoList = {
     buildInTools: buildInTools || [],

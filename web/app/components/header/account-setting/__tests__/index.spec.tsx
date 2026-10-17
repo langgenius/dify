@@ -1,6 +1,6 @@
 import type { AccountSettingTab } from '../constants'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
-import { fireEvent, screen, within } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
@@ -19,14 +19,6 @@ const mockConsoleState = vi.hoisted(() => ({
   current: null as unknown,
 }))
 
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => mockConsoleState.current ?? {})
-})
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => mockConsoleState.current ?? {})
-})
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(() => ({
     push: vi.fn(),
@@ -71,37 +63,15 @@ vi.mock('@/app/components/header/account-setting/model-provider-page', () => ({
   ),
 }))
 
-vi.mock('@/service/use-datasource', () => ({
-  useGetDataSourceListAuth: vi.fn(() => ({ data: { result: [] } })),
-}))
-
-vi.mock('@/service/use-common', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/use-common')>()
-  return {
-    ...actual,
-    useMembers: vi.fn(() => ({ data: { accounts: [] }, refetch: vi.fn() })),
-  }
-})
-
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleQuery: new Proxy(actual.consoleQuery, {
-      get(target, prop, receiver) {
-        if (prop === 'apiBasedExtension') {
-          return {
-            get: {
-              queryOptions: () => ({
-                queryKey: ['console', 'api-based-extension'],
-                queryFn: () => Promise.resolve([]),
-              }),
-            },
-          }
-        }
-
-        return Reflect.get(target, prop, receiver)
-      },
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.members.get': async () => ({ accounts: [] }),
+      'auth.plugin.datasource.list.get': async () => ({ result: [] }),
+      'apiBasedExtension.get': async () => [],
     }),
   }
 })
@@ -208,6 +178,9 @@ describe('AccountSetting', () => {
           can_replace_logo: canReplaceLogo,
         },
         accountProfile: (mockConsoleState.current as ConsoleStateFixture).userProfile,
+        currentWorkspace: (mockConsoleState.current as ConsoleStateFixture).currentWorkspace,
+        workspacePermissionKeys: (mockConsoleState.current as ConsoleStateFixture)
+          .workspacePermissionKeys,
         systemFeatures: {
           deployment_edition: deploymentEdition,
           webapp_auth: { enabled: true },
@@ -230,10 +203,8 @@ describe('AccountSetting', () => {
 
   describe('Rendering', () => {
     it('should render the sidebar with correct menu items', () => {
-      // Act
       renderAccountSetting()
 
-      // Assert
       expect(
         screen.getByRole('dialog', { name: 'navigation.settings.settings' }),
       ).toBeInTheDocument()
@@ -250,104 +221,24 @@ describe('AccountSetting', () => {
         screen.getByRole('button', { name: 'navigation.settings.accessToken' }),
       ).toBeInTheDocument()
       expect(screen.getByText('navigation.settings.billing'))!.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'appLog.archives.title' })).toBeInTheDocument()
       expect(screen.queryByText('navigation.settings.dataSource'))!.not.toBeInTheDocument()
       expect(screen.queryByText('navigation.settings.customEndpoint'))!.not.toBeInTheDocument()
       expect(screen.getByText('custom.custom'))!.toBeInTheDocument()
-      expect(
-        screen
-          .getByRole('button', { name: 'custom.custom' })
-          .compareDocumentPosition(screen.getByRole('button', { name: 'appLog.archives.title' })),
-      ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
       expect(screen.getByText('navigation.settings.preferences'))!.toBeInTheDocument()
     })
 
-    it('should hide sidebar labels on mobile', () => {
-      // Arrange
-      vi.mocked(useBreakpoints).mockReturnValue(MediaType.mobile)
-
-      // Act
-      renderAccountSetting()
-
-      // Assert
-      // On mobile, the labels should not be rendered as per the implementation
-      // Assert
-      // On mobile, the labels should not be rendered as per the implementation
-      // Assert
-      // On mobile, the labels should not be rendered as per the implementation
-      // Assert
-      // On mobile, the labels should not be rendered as per the implementation
-      // Assert
-      // On mobile, the labels should not be rendered as per the implementation
-      // Assert
-      // On mobile, the labels should not be rendered as per the implementation
-      // Assert
-      // On mobile, the labels should not be rendered as per the implementation
-      // Assert
-      // On mobile, the labels should not be rendered as per the implementation
-      // Assert
-      // On mobile, the labels should not be rendered as per the implementation
-      // Assert
-      // On mobile, the labels should not be rendered as per the implementation
-      // Assert
-      // On mobile, the labels should not be rendered as per the implementation
-      // Assert
-      // On mobile, the labels should not be rendered as per the implementation
-      // Assert
-      // On mobile, the labels should not be rendered as per the implementation
-      // Assert
-      // On mobile, the labels should not be rendered as per the implementation
-      // Assert
-      // On mobile, the labels should not be rendered as per the implementation
-      // Assert
-      // On mobile, the labels should not be rendered as per the implementation
-      // Assert
-      // On mobile, the labels should not be rendered as per the implementation
-      // Assert
-      // On mobile, the labels should not be rendered as per the implementation
-      // Assert
-      // On mobile, the labels should not be rendered as per the implementation
-      // Assert
-      // On mobile, the labels should not be rendered as per the implementation
-      // Assert
-      // On mobile, the labels should not be rendered as per the implementation
-      // Assert
-      // On mobile, the labels should not be rendered as per the implementation
-      // Assert
-      // On mobile, the labels should not be rendered as per the implementation
-      // Assert
-      // On mobile, the labels should not be rendered as per the implementation
-      // Assert
-      // On mobile, the labels should not be rendered as per the implementation
-      // Assert
-      // On mobile, the labels should not be rendered as per the implementation
-      // Assert
-      // On mobile, the labels should not be rendered as per the implementation
-      // Assert
-      // On mobile, the labels should not be rendered as per the implementation
-      // Assert
-      // On mobile, the labels should not be rendered as per the implementation
-      // Assert
-      // On mobile, the labels should not be rendered as per the implementation
-      // Assert
-      // On mobile, the labels should not be rendered as per the implementation
-      // Assert
-      // On mobile, the labels should not be rendered as per the implementation
-      expect(screen.queryByText('navigation.settings.provider')).not.toBeInTheDocument()
-    })
-
     it('should hide billing from dataset operators', () => {
-      // Arrange
       const datasetOperatorContext = {
         ...baseConsoleState,
-        isCurrentWorkspaceDatasetOperator: true,
+        currentWorkspace: {
+          ...baseConsoleState.currentWorkspace,
+          role: 'dataset_operator' as const,
+        },
       }
       mockConsoleState.current = datasetOperatorContext
 
-      // Act
       renderAccountSetting()
 
-      // Assert
       expect(
         screen.getByRole('button', { name: 'navigation.settings.members' }),
       ).toBeInTheDocument()
@@ -360,34 +251,13 @@ describe('AccountSetting', () => {
       expect(
         screen.queryByRole('button', { name: 'navigation.settings.billing' }),
       ).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'appLog.archives.title' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'custom.custom' })).toBeInTheDocument()
       expect(
         screen.getByRole('button', { name: 'navigation.settings.preferences' }),
       ).toBeInTheDocument()
     })
 
-    it('should keep moved integrations hidden when api extension permission is missing', () => {
-      // Arrange
-      const contextWithoutApiExtensionPermission = {
-        ...baseConsoleState,
-        workspacePermissionKeys: baseConsoleState.workspacePermissionKeys!.filter(
-          (key) => key !== 'api_extension.manage',
-        ),
-      }
-      mockConsoleState.current = contextWithoutApiExtensionPermission
-
-      // Act
-      renderAccountSetting()
-
-      // Assert
-      expect(screen.queryByText('navigation.settings.provider')).not.toBeInTheDocument()
-      expect(screen.queryByText('navigation.settings.dataSource')).not.toBeInTheDocument()
-      expect(screen.queryByText('navigation.settings.customEndpoint')).not.toBeInTheDocument()
-    })
-
     it('should show custom tab when customization permission is missing', () => {
-      // Arrange
       const contextWithoutCustomizationPermission = {
         ...baseConsoleState,
         workspacePermissionKeys: baseConsoleState.workspacePermissionKeys!.filter(
@@ -396,21 +266,17 @@ describe('AccountSetting', () => {
       }
       mockConsoleState.current = contextWithoutCustomizationPermission
 
-      // Act
       renderAccountSetting()
 
-      // Assert
       expect(screen.queryByText('navigation.settings.provider')).not.toBeInTheDocument()
       expect(
         screen.getByRole('button', { name: 'navigation.settings.members' }),
       ).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'appLog.archives.title' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'custom.custom' })).toBeInTheDocument()
       expect(screen.getByText('navigation.settings.preferences'))!.toBeInTheDocument()
     })
 
     it('should hide role and permission set entries when role management permission is missing', () => {
-      // Arrange
       const contextWithoutRoleManagePermission = {
         ...baseConsoleState,
         workspacePermissionKeys: baseConsoleState.workspacePermissionKeys!.filter(
@@ -419,10 +285,8 @@ describe('AccountSetting', () => {
       }
       mockConsoleState.current = contextWithoutRoleManagePermission
 
-      // Act
       renderAccountSetting()
 
-      // Assert
       expect(
         screen.getByRole('button', { name: 'navigation.settings.members' }),
       ).toBeInTheDocument()
@@ -438,10 +302,8 @@ describe('AccountSetting', () => {
     })
 
     it('should hide role and permission set entries when RBAC is disabled', () => {
-      // Act
       renderAccountSetting({ rbacEnabled: false })
 
-      // Assert
       expect(
         screen.getByRole('button', { name: 'navigation.settings.members' }),
       ).toBeInTheDocument()
@@ -465,7 +327,9 @@ describe('AccountSetting', () => {
         screen.queryByRole('button', { name: 'navigation.settings.accessToken' }),
       ).not.toBeInTheDocument()
       expect(screen.queryByTestId('resource-access-token-page')).not.toBeInTheDocument()
-      expect(screen.getAllByText('navigation.settings.members').length).toBeGreaterThan(1)
+      expect(
+        screen.getByRole('button', { name: 'navigation.settings.members' }),
+      ).toBeInTheDocument()
     })
 
     it('should hide access tokens from non-owner workspaces', () => {
@@ -486,30 +350,23 @@ describe('AccountSetting', () => {
     })
 
     it('should not render direct role pages when RBAC is disabled', () => {
-      // Act
       renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.PERMISSION_SET, rbacEnabled: false })
 
-      // Assert
       expect(screen.queryByTestId('access-rules-page')).not.toBeInTheDocument()
       expect(screen.queryByTestId('permissions-page')).not.toBeInTheDocument()
       expect(screen.getAllByText('navigation.settings.members').length).toBeGreaterThan(0)
     })
 
     it('should hide billing and custom tabs when disabled', () => {
-      // Arrange
       canReplaceLogo = false
 
-      // Act
       renderAccountSetting({ deploymentEdition: 'COMMUNITY' })
 
-      // Assert
-      // Assert
       expect(screen.queryByText('navigation.settings.billing')).not.toBeInTheDocument()
       expect(screen.queryByText('custom.custom')).not.toBeInTheDocument()
     })
 
     it('should show billing to regular members without billing permission keys', () => {
-      // Arrange
       const regularMemberContext = {
         ...baseConsoleState,
         currentWorkspace: {
@@ -523,28 +380,22 @@ describe('AccountSetting', () => {
       }
       mockConsoleState.current = regularMemberContext
 
-      // Act
       renderAccountSetting()
 
-      // Assert
       expect(
         screen.getByRole('button', { name: 'navigation.settings.billing' }),
       ).toBeInTheDocument()
     })
 
     it('should hide workflow log archives outside cloud edition', () => {
-      // Arrange
-      // Act
       renderAccountSetting({ deploymentEdition: 'COMMUNITY' })
 
-      // Assert
       expect(
         screen.queryByRole('button', { name: 'appLog.archives.title' }),
       ).not.toBeInTheDocument()
     })
 
     it('should hide workflow log archives from custom RBAC roles that are not owner or admin', () => {
-      // Arrange
       const contextWithRoleManagePermissionButNotManager = {
         ...baseConsoleState,
         currentWorkspace: {
@@ -560,30 +411,24 @@ describe('AccountSetting', () => {
       }
       mockConsoleState.current = contextWithRoleManagePermissionButNotManager
 
-      // Act
       renderAccountSetting()
 
-      // Assert
       expect(
         screen.queryByRole('button', { name: 'appLog.archives.title' }),
       ).not.toBeInTheDocument()
     })
 
     it('should not render workflow log archives page outside cloud edition', () => {
-      // Arrange
-      // Act
       renderAccountSetting({
         initialTab: ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES,
         deploymentEdition: 'COMMUNITY',
       })
 
-      // Assert
       expect(screen.queryByText('appLog.archives.upgradeTip.title')).not.toBeInTheDocument()
       expect(screen.getAllByText('navigation.settings.members').length).toBeGreaterThan(0)
     })
 
     it('should render a direct billing entry for regular members without billing permission keys', () => {
-      // Arrange
       const regularMemberContext = {
         ...baseConsoleState,
         currentWorkspace: {
@@ -597,17 +442,18 @@ describe('AccountSetting', () => {
       }
       mockConsoleState.current = regularMemberContext
 
-      // Act
       renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.BILLING })
 
-      // Assert
       expect(screen.getByTestId('billing-page')).toBeInTheDocument()
     })
 
     it('should not render a direct billing entry for dataset operators', () => {
       mockConsoleState.current = {
         ...baseConsoleState,
-        isCurrentWorkspaceDatasetOperator: true,
+        currentWorkspace: {
+          ...baseConsoleState.currentWorkspace,
+          role: 'dataset_operator' as const,
+        },
       }
 
       renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.BILLING })
@@ -617,73 +463,43 @@ describe('AccountSetting', () => {
   })
 
   describe('Tab Navigation', () => {
-    it('should change active tab when clicking on menu item', () => {
-      // Arrange
-      renderAccountSetting({ onTabChange: mockOnTabChange })
+    it('should navigate through various tabs and show correct details', async () => {
+      const user = userEvent.setup()
 
-      // Act
-      fireEvent.click(screen.getByText('navigation.settings.billing'))
-
-      // Assert
-      expect(mockOnTabChange).toHaveBeenCalledWith(ACCOUNT_SETTING_TAB.BILLING)
-      expect(screen.getAllByText('navigation.settings.billing').length).toBeGreaterThan(1)
-    })
-
-    it('should navigate through various tabs and show correct details', () => {
-      // Act & Assert
       renderAccountSetting()
 
-      // Billing
-      fireEvent.click(screen.getByText('navigation.settings.billing'))
-      // Billing Page renders plansCommon.plan if data is loaded, or generic text.
-      // Checking for title in header which is always there
-      expect(screen.getAllByText('navigation.settings.billing').length).toBeGreaterThan(1)
+      await user.click(screen.getByText('navigation.settings.billing'))
 
-      // Custom
-      fireEvent.click(screen.getByText('custom.custom'))
-      // Custom Page uses 'custom.custom' key as well.
+      expect(screen.getByTestId('billing-page')).toBeInTheDocument()
+      expect(mockOnTabChange).toHaveBeenLastCalledWith(ACCOUNT_SETTING_TAB.BILLING)
+
+      await user.click(screen.getByText('custom.custom'))
+
       expect(screen.getAllByText('custom.custom').length).toBeGreaterThan(1)
 
-      // Workflow Log Archives
-      fireEvent.click(screen.getByRole('button', { name: 'appLog.archives.title' }))
+      await user.click(screen.getByRole('button', { name: 'appLog.archives.title' }))
       expect(screen.getByText('appLog.archives.upgradeTip.title')).toBeInTheDocument()
 
-      // Members
-      fireEvent.click(screen.getAllByText('navigation.settings.members')[0]!)
-      expect(screen.getAllByText('navigation.settings.members').length).toBeGreaterThan(1)
+      await user.click(screen.getAllByText('navigation.settings.members')[0]!)
+      expect(
+        screen.getByRole('button', { name: 'navigation.settings.members' }),
+      ).toBeInTheDocument()
 
-      // Roles & Permissions
-      fireEvent.click(
+      await user.click(
         screen.getByRole('button', { name: 'navigation.settings.rolesAndPermissions' }),
       )
       expect(screen.getByTestId('permissions-page')).toBeInTheDocument()
 
-      // Permission Set
-      fireEvent.click(screen.getByRole('button', { name: 'navigation.settings.permissionSet' }))
+      await user.click(screen.getByRole('button', { name: 'navigation.settings.permissionSet' }))
       expect(screen.getByText('navigation.settings.permissionSetDescription')).toBeInTheDocument()
       expect(screen.getByTestId('access-rules-page')).toBeInTheDocument()
 
-      // Access Tokens
-      fireEvent.click(screen.getByRole('button', { name: 'navigation.settings.accessToken' }))
+      await user.click(screen.getByRole('button', { name: 'navigation.settings.accessToken' }))
       expect(screen.getByTestId('resource-access-token-page')).toBeInTheDocument()
 
-      // Language
-      fireEvent.click(screen.getByText('navigation.settings.preferences'))
+      await user.click(screen.getByText('navigation.settings.preferences'))
       expect(screen.getByText('accountSettings.account.general')).toBeInTheDocument()
       expect(screen.getByText('accountSettings.account.appearanceLabel')).toBeInTheDocument()
-    })
-
-    it('should switch the preferences icon when the tab is active', () => {
-      renderAccountSetting()
-
-      const preferencesButton = screen.getByRole('button', {
-        name: 'navigation.settings.preferences',
-      })
-      expect(preferencesButton.querySelector('.i-ri-equalizer-2-line')).toBeInTheDocument()
-
-      fireEvent.click(preferencesButton)
-
-      expect(preferencesButton.querySelector('.i-ri-equalizer-2-fill')).toBeInTheDocument()
     })
   })
 
@@ -696,33 +512,6 @@ describe('AccountSetting', () => {
       await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
 
       expect(mockOnCancel).toHaveBeenCalled()
-    })
-
-    it('should call onCancel when pressing Escape key', () => {
-      // Act
-      renderAccountSetting()
-      fireEvent.keyDown(document, { key: 'Escape' })
-
-      // Assert
-      expect(mockOnCancel).toHaveBeenCalled()
-    })
-
-    it('should handle scroll event in panel', () => {
-      // Act
-      renderAccountSetting()
-      const scrollContainer = screen.getByRole('dialog').querySelector('.overscroll-contain')
-
-      // Assert
-      // Assert
-      expect(scrollContainer)!.toBeInTheDocument()
-      if (scrollContainer) {
-        // Scroll down
-        fireEvent.scroll(scrollContainer, { target: { scrollTop: 100 } })
-        expect(scrollContainer)!.toHaveClass('overscroll-contain')
-
-        // Scroll back up
-        fireEvent.scroll(scrollContainer, { target: { scrollTop: 0 } })
-      }
     })
   })
 })

@@ -1,4 +1,3 @@
-import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import { act } from '@testing-library/react'
 import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { VarType } from '../../../types'
@@ -9,12 +8,7 @@ const mockUseNodes = vi.hoisted(() => vi.fn())
 const mockUseNodeDataUpdate = vi.hoisted(() => vi.fn())
 const mockUseWorkflow = vi.hoisted(() => vi.fn())
 const mockUseWorkflowVariables = vi.hoisted(() => vi.fn())
-const mockUseIsChatMode = vi.hoisted(() => vi.fn())
 const mockUseWorkflowStore = vi.hoisted(() => vi.fn())
-const mockFlowType = vi.hoisted(() => ({
-  value: undefined as EditorResource['kind'] | undefined,
-}))
-
 vi.mock('reactflow', () => ({
   useStoreApi: () => mockUseStoreApi(),
   useNodes: () => mockUseNodes(),
@@ -51,17 +45,6 @@ vi.mock('@/app/components/workflow/store', () => ({
   useWorkflowStore: () => mockUseWorkflowStore(),
 }))
 
-vi.mock('@/app/components/workflow/hooks-store/store', () => ({
-  useHooksStore: (
-    selector: (state: { configsMap?: { resourceKind?: EditorResource['kind'] } }) => unknown,
-  ) =>
-    selector({
-      configsMap: {
-        resourceKind: mockFlowType.value,
-      },
-    }),
-}))
-
 describe('variable-assigner/hooks', () => {
   const mockHandleNodeDataUpdate = vi.fn()
   const mockSetNodes = vi.fn()
@@ -71,7 +54,6 @@ describe('variable-assigner/hooks', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockFlowType.value = undefined
     getNodes.mockReturnValue([
       {
         id: 'assigner-1',
@@ -113,7 +95,6 @@ describe('variable-assigner/hooks', () => {
     mockUseWorkflowVariables.mockReturnValue({
       getNodeAvailableVars: vi.fn(),
     })
-    mockUseIsChatMode.mockReturnValue(false)
   })
 
   it('should append target variables, ignore duplicates, and update grouped variables', () => {
@@ -123,15 +104,17 @@ describe('variable-assigner/hooks', () => {
 
     act(() => {
       result.current.handleAssignVariableValueChange('assigner-1', ['start', 'bar'], {
+        variable: 'value',
         type: VarType.number,
-      } as never)
+      })
       result.current.handleAssignVariableValueChange('assigner-1', ['start', 'foo'], {
+        variable: 'value',
         type: VarType.number,
-      } as never)
+      })
       result.current.handleAssignVariableValueChange(
         'assigner-1',
         ['start', 'grouped'],
-        { type: VarType.arrayString } as never,
+        { variable: 'grouped', type: VarType.arrayString },
         'group-1',
       )
     })
@@ -200,7 +183,7 @@ describe('variable-assigner/hooks', () => {
         'assigner-1',
         'group-1',
         ['start', 'output'],
-        { type: VarType.object } as never,
+        { variable: 'output', type: VarType.object },
       )
     })
 
@@ -310,7 +293,17 @@ describe('variable-assigner/hooks', () => {
         vars: [{ variable: 'bar' }],
       },
     ])
+    expect(getNodeAvailableVars).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        parentNode: { id: 'parent-node' },
+        beforeNodes: [{ id: 'before-1' }],
+        hideEnv: true,
+        isChatflow: false,
+      }),
+    )
     expect(result.current('missing-node', 'target', () => true)).toEqual([])
+    expect(getNodeAvailableVars).toHaveBeenCalledTimes(2)
   })
 
   it('should filter system variables when the current flow is a snippet', () => {
@@ -348,11 +341,4 @@ describe('variable-assigner/hooks', () => {
       },
     ])
   })
-})
-
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => mockUseIsChatMode()) }
 })

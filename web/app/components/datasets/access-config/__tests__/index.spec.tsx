@@ -1,5 +1,5 @@
 import type { AccessRulesEditorProps } from '@/app/components/access-rules-editor'
-import { act, screen } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import {
   useDatasetAccessRules,
   useDatasetResourceWhitelist,
@@ -74,11 +74,10 @@ const mockMutations = vi.hoisted(() => ({
   updateAutomaticIncludeWorkspaceMembers: vi.fn(),
   updateUserAccessSettings: vi.fn(),
   removeMemberBindings: vi.fn(),
-  removeMemberBindingsAsync: vi.fn(),
-  isUpdatingAutomaticIncludeWorkspaceMembers: false,
 }))
 
-vi.mock('@/service/access-control/use-dataset-access-config', () => ({
+vi.mock('@/service/access-control/use-dataset-access-config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/access-control/use-dataset-access-config')>()),
   useDatasetAccessRules: vi.fn(() => ({
     data: { items: mockDatasetAccessRules.items },
     isLoading: mockDatasetAccessRules.isLoading,
@@ -94,17 +93,6 @@ vi.mock('@/service/access-control/use-dataset-access-config', () => ({
   useDatasetResourceWhitelist: vi.fn(() => ({ data: mockDatasetResourceWhitelist.data })),
   useDatasetResourceWhitelistConfig: vi.fn(() => ({
     data: mockDatasetResourceWhitelistConfig.data,
-  })),
-  useUpdateDatasetAutomaticIncludeWorkspaceMembers: vi.fn(() => ({
-    mutate: mockMutations.updateAutomaticIncludeWorkspaceMembers,
-    isPending: mockMutations.isUpdatingAutomaticIncludeWorkspaceMembers,
-  })),
-  useUpdateDatasetUserAccessSettings: vi.fn(() => ({
-    mutate: mockMutations.updateUserAccessSettings,
-  })),
-  useRemoveDatasetAccessPolicyMemberBindings: vi.fn(() => ({
-    mutate: mockMutations.removeMemberBindings,
-    mutateAsync: mockMutations.removeMemberBindingsAsync,
   })),
 }))
 
@@ -135,6 +123,22 @@ vi.mock('@/app/components/access-rules-editor', () => ({
   },
 }))
 
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.rbac.datasets.byDatasetId.whitelist.put':
+        mockMutations.updateAutomaticIncludeWorkspaceMembers,
+      'workspaces.current.rbac.datasets.byDatasetId.users.byTargetAccountId.accessPolicies.put':
+        mockMutations.updateUserAccessSettings,
+      'workspaces.current.rbac.datasets.byDatasetId.accessPolicies.byPolicyId.memberBindings.delete':
+        mockMutations.removeMemberBindings,
+    }),
+  }
+})
+
 describe('DatasetAccessConfigPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -155,8 +159,9 @@ describe('DatasetAccessConfigPage', () => {
     mockDatasetResourceWhitelistConfig.data = {
       automatic_include_workspace_members: false,
     }
-    mockMutations.isUpdatingAutomaticIncludeWorkspaceMembers = false
-    mockMutations.removeMemberBindingsAsync.mockResolvedValue(undefined)
+    mockMutations.removeMemberBindings.mockResolvedValue({})
+    mockMutations.updateUserAccessSettings.mockResolvedValue({})
+    mockMutations.updateAutomaticIncludeWorkspaceMembers.mockResolvedValue({})
     mockDatasetDetail.dataset = {
       maintainer: 'maintainer-1',
       permission_keys: [DatasetACLPermission.AccessConfig],
@@ -198,19 +203,19 @@ describe('DatasetAccessConfigPage', () => {
     expect(useDatasetResourceWhitelistConfig).toHaveBeenCalledWith('dataset-1', {
       enabled: true,
     })
-    expect(mockAccessRulesEditor.props?.automaticIncludeWorkspaceMembers).toBe(true)
-    expect(mockAccessRulesEditor.props?.existingAccountIds).toEqual(['maintainer-1', 'account-2'])
-    expect(mockAccessRulesEditor.props?.currentPage).toBe(1)
-    expect(mockAccessRulesEditor.props?.pageSize).toBe(10)
-    expect(mockAccessRulesEditor.props?.totalCount).toBe(21)
-    expect(mockAccessRulesEditor.props?.totalPages).toBe(2)
-    expect(mockAccessRulesEditor.props?.maintainerId).toBe('maintainer-1')
+    expect(mockAccessRulesEditor.props!.automaticIncludeWorkspaceMembers).toBe(true)
+    expect(mockAccessRulesEditor.props!.existingAccountIds).toEqual(['maintainer-1', 'account-2'])
+    expect(mockAccessRulesEditor.props!.currentPage).toBe(1)
+    expect(mockAccessRulesEditor.props!.pageSize).toBe(10)
+    expect(mockAccessRulesEditor.props!.totalCount).toBe(21)
+    expect(mockAccessRulesEditor.props!.totalPages).toBe(2)
+    expect(mockAccessRulesEditor.props!.maintainerId).toBe('maintainer-1')
   })
 
   it('should request the selected member page', () => {
     render(<DatasetAccessConfigPage datasetId="dataset-1" />)
 
-    act(() => mockAccessRulesEditor.props?.onPageChange?.(2))
+    act(() => mockAccessRulesEditor.props!.onPageChange!(2))
 
     expect(useDatasetUserAccessSettings).toHaveBeenLastCalledWith(
       'dataset-1',
@@ -224,8 +229,8 @@ describe('DatasetAccessConfigPage', () => {
   it('should request the selected page size from the first page', () => {
     render(<DatasetAccessConfigPage datasetId="dataset-1" />)
 
-    act(() => mockAccessRulesEditor.props?.onPageChange?.(3))
-    act(() => mockAccessRulesEditor.props?.onPageSizeChange?.(25))
+    act(() => mockAccessRulesEditor.props!.onPageChange!(3))
+    act(() => mockAccessRulesEditor.props!.onPageSizeChange!(25))
 
     expect(useDatasetUserAccessSettings).toHaveBeenLastCalledWith(
       'dataset-1',
@@ -234,17 +239,19 @@ describe('DatasetAccessConfigPage', () => {
       25,
       { enabled: true },
     )
-    expect(mockAccessRulesEditor.props?.pageSize).toBe(25)
+    expect(mockAccessRulesEditor.props!.pageSize).toBe(25)
   })
 
-  it('should return to the first page when automatic member inclusion is disabled', () => {
+  it('should return to the first page when automatic member inclusion is disabled', async () => {
     mockDatasetResourceWhitelistConfig.data = {
       automatic_include_workspace_members: true,
     }
     render(<DatasetAccessConfigPage datasetId="dataset-1" />)
-    act(() => mockAccessRulesEditor.props?.onPageChange?.(2))
+    act(() => mockAccessRulesEditor.props!.onPageChange!(2))
 
-    act(() => mockAccessRulesEditor.props?.onAutomaticIncludeWorkspaceMembersChange?.(false))
+    await act(async () => {
+      mockAccessRulesEditor.props!.onAutomaticIncludeWorkspaceMembersChange!(false)
+    })
 
     expect(useDatasetUserAccessSettings).toHaveBeenLastCalledWith(
       'dataset-1',
@@ -255,7 +262,7 @@ describe('DatasetAccessConfigPage', () => {
     )
   })
 
-  it('should jump to the new last page after adding a member', () => {
+  it('should jump to the new last page after adding a member', async () => {
     mockDatasetUserAccessSettings.pagination = {
       current_page: 1,
       per_page: 10,
@@ -268,12 +275,11 @@ describe('DatasetAccessConfigPage', () => {
     }
     render(<DatasetAccessConfigPage datasetId="dataset-1" />)
 
-    act(() => mockAccessRulesEditor.props?.onAddAccessSubject?.('account-11', ['default']))
+    await act(async () => {
+      mockAccessRulesEditor.props!.onAddAccessSubject!('account-11', ['default'])
+    })
 
-    const callbacks = mockMutations.updateUserAccessSettings.mock.calls.at(-1)?.[1] as {
-      onSuccess: () => void
-    }
-    act(() => callbacks.onSuccess())
+    await act(async () => {})
     expect(useDatasetUserAccessSettings).toHaveBeenLastCalledWith(
       'dataset-1',
       expect.any(String),
@@ -295,7 +301,7 @@ describe('DatasetAccessConfigPage', () => {
       total_pages: 2,
     }
     render(<DatasetAccessConfigPage datasetId="dataset-1" />)
-    act(() => mockAccessRulesEditor.props?.onPageChange?.(2))
+    act(() => mockAccessRulesEditor.props!.onPageChange!(2))
 
     mockDatasetUserAccessSettings.data = []
     mockDatasetUserAccessSettings.pagination = {
@@ -306,7 +312,7 @@ describe('DatasetAccessConfigPage', () => {
     }
     mockDatasetUserAccessSettings.isPlaceholderData = true
     await act(async () => {
-      await mockAccessRulesEditor.props?.onBatchRemoveAccessPolicyMemberBindings?.([
+      await mockAccessRulesEditor.props!.onBatchRemoveAccessPolicyMemberBindings!([
         { accessPolicyId: 'default', accountIds: ['account-11', 'account-12'] },
       ])
     })
@@ -318,7 +324,7 @@ describe('DatasetAccessConfigPage', () => {
       10,
       { enabled: true },
     )
-    expect(mockAccessRulesEditor.props?.isLoadingUserAccessSettings).toBe(true)
+    expect(mockAccessRulesEditor.props!.isLoadingUserAccessSettings).toBe(true)
   })
 
   it('should disable all access config queries when permission is missing', () => {
@@ -368,22 +374,28 @@ describe('DatasetAccessConfigPage', () => {
   it('should wire switch, policy update, and removal mutations', async () => {
     render(<DatasetAccessConfigPage datasetId="dataset-1" />)
 
-    mockAccessRulesEditor.props?.onAutomaticIncludeWorkspaceMembersChange?.(true)
-    expect(mockMutations.updateAutomaticIncludeWorkspaceMembers).toHaveBeenCalledWith(
-      true,
-      expect.objectContaining({ onError: expect.any(Function), onSuccess: expect.any(Function) }),
+    mockAccessRulesEditor.props!.onAutomaticIncludeWorkspaceMembersChange!(true)
+    await waitFor(() =>
+      expect(mockMutations.updateAutomaticIncludeWorkspaceMembers).toHaveBeenCalledWith({
+        params: { dataset_id: 'dataset-1' },
+        body: { automatic_include_workspace_members: true },
+      }),
     )
 
-    mockAccessRulesEditor.props?.onUserAccessPoliciesChange?.('account-1', ['policy-1'])
-    expect(mockMutations.updateUserAccessSettings).toHaveBeenCalledWith(
-      { accountId: 'account-1', accessPolicyIds: ['policy-1'] },
-      expect.objectContaining({ onSettled: expect.any(Function) }),
+    mockAccessRulesEditor.props!.onUserAccessPoliciesChange!('account-1', ['policy-1'])
+    await waitFor(() =>
+      expect(mockMutations.updateUserAccessSettings).toHaveBeenCalledWith({
+        params: { dataset_id: 'dataset-1', target_account_id: 'account-1' },
+        body: { access_policy_ids: ['policy-1'] },
+      }),
     )
 
-    mockAccessRulesEditor.props?.onRemoveAccessPolicyMemberBinding?.('account-3', 'policy-3')
-    expect(mockMutations.removeMemberBindings).toHaveBeenCalledWith(
-      [{ accessPolicyId: 'policy-3', accountIds: ['account-3'] }],
-      expect.objectContaining({ onSettled: expect.any(Function) }),
+    mockAccessRulesEditor.props!.onRemoveAccessPolicyMemberBinding!('account-3', 'policy-3')
+    await waitFor(() =>
+      expect(mockMutations.removeMemberBindings).toHaveBeenCalledWith({
+        params: { dataset_id: 'dataset-1', policy_id: 'policy-3' },
+        body: { account_ids: ['account-3'] },
+      }),
     )
 
     const removals = [
@@ -391,10 +403,16 @@ describe('DatasetAccessConfigPage', () => {
       { accessPolicyId: 'default', accountIds: ['account-4'] },
     ]
     await act(async () => {
-      await mockAccessRulesEditor.props?.onBatchRemoveAccessPolicyMemberBindings?.(removals)
+      await mockAccessRulesEditor.props!.onBatchRemoveAccessPolicyMemberBindings!(removals)
     })
-    expect(mockMutations.removeMemberBindingsAsync).toHaveBeenCalledOnce()
-    expect(mockMutations.removeMemberBindingsAsync).toHaveBeenCalledWith(removals)
+    expect(mockMutations.removeMemberBindings).toHaveBeenCalledWith({
+      params: { dataset_id: 'dataset-1', policy_id: 'policy-1' },
+      body: { account_ids: ['account-1', 'account-2'] },
+    })
+    expect(mockMutations.removeMemberBindings).toHaveBeenCalledWith({
+      params: { dataset_id: 'dataset-1', policy_id: 'default' },
+      body: { account_ids: ['account-4'] },
+    })
   })
 
   it('should block member changes but allow permission updates during automatic inclusion', async () => {
@@ -403,22 +421,23 @@ describe('DatasetAccessConfigPage', () => {
     }
     render(<DatasetAccessConfigPage datasetId="dataset-1" />)
 
-    mockAccessRulesEditor.props?.onAddAccessSubject?.('account-2', ['default'])
-    mockAccessRulesEditor.props?.onRemoveAccessPolicyMemberBinding?.('account-2', 'policy-1')
+    mockAccessRulesEditor.props!.onAddAccessSubject!('account-2', ['default'])
+    mockAccessRulesEditor.props!.onRemoveAccessPolicyMemberBinding!('account-2', 'policy-1')
     await act(async () => {
-      await mockAccessRulesEditor.props?.onBatchRemoveAccessPolicyMemberBindings?.([
+      await mockAccessRulesEditor.props!.onBatchRemoveAccessPolicyMemberBindings!([
         { accessPolicyId: 'policy-1', accountIds: ['account-2'] },
       ])
     })
 
     expect(mockMutations.updateUserAccessSettings).not.toHaveBeenCalled()
     expect(mockMutations.removeMemberBindings).not.toHaveBeenCalled()
-    expect(mockMutations.removeMemberBindingsAsync).not.toHaveBeenCalled()
 
-    mockAccessRulesEditor.props?.onUserAccessPoliciesChange?.('account-2', ['policy-2'])
-    expect(mockMutations.updateUserAccessSettings).toHaveBeenCalledWith(
-      { accountId: 'account-2', accessPolicyIds: ['policy-2'] },
-      expect.objectContaining({ onSettled: expect.any(Function) }),
+    mockAccessRulesEditor.props!.onUserAccessPoliciesChange!('account-2', ['policy-2'])
+    await waitFor(() =>
+      expect(mockMutations.updateUserAccessSettings).toHaveBeenCalledWith({
+        params: { dataset_id: 'dataset-1', target_account_id: 'account-2' },
+        body: { access_policy_ids: ['policy-2'] },
+      }),
     )
   })
 })

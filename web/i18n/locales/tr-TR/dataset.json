@@ -143,7 +143,6 @@
   "retrieval.full_text_search.title": "Tam Metin Arama",
   "retrieval.hybrid_search.description": "Tam metin arama ve vektör aramalarını aynı anda çalıştırın, kullanıcı sorgusu için en iyi eşleşmeyi seçmek için yeniden sıralayın. Kullanıcılar ağırlıklar ayarlayabilir veya bir Yeniden Sıralama modeli yapılandırabilir.",
   "retrieval.hybrid_search.title": "Hibrit Arama",
-  "retrieval.invertedIndex.title": "Ters İndeks",
   "retrieval.keyword_search.description": "Ters İndeks, verimli erişim için kullanılan bir yapıdır. Terimlere göre düzenlenen her terim, onu içeren belgelere veya web sayfalarına işaret eder.",
   "retrieval.keyword_search.title": "Ters Çevrilmiş İndeks",
   "retrieval.semantic_search.description": "Sorgu yerleştirmelerini oluşturun ve vektör temsiline en benzeyen metin parçasını arayın.",

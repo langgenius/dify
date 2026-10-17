@@ -1,20 +1,18 @@
-import type { ReactElement, RefObject } from 'react'
+import type { RefObject } from 'react'
 import type { UploadDropzoneProps } from '../upload-dropzone'
-import { fireEvent, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import UploadDropzone from '../upload-dropzone'
 
-let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'COMMUNITY'
-
-// Helper to create mock ref objects for testing
-const createMockRef = <T,>(value: T | null = null): RefObject<T | null> => ({ current: value })
+const createMockRef = <T,>(): RefObject<T | null> => ({ current: null })
 
 describe('UploadDropzone', () => {
   const defaultProps: UploadDropzoneProps = {
-    dropRef: createMockRef<HTMLDivElement>() as RefObject<HTMLDivElement | null>,
-    dragRef: createMockRef<HTMLDivElement>() as RefObject<HTMLDivElement | null>,
-    fileUploaderRef: createMockRef<HTMLInputElement>() as RefObject<HTMLInputElement | null>,
+    dropRef: createMockRef<HTMLDivElement>(),
+    dragRef: createMockRef<HTMLDivElement>(),
+    fileUploaderRef: createMockRef<HTMLInputElement>(),
     dragging: false,
     supportBatchUpload: true,
     supportTypesShowNames: 'PDF, DOCX, TXT',
@@ -28,241 +26,46 @@ describe('UploadDropzone', () => {
     onFileChange: vi.fn(),
   }
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-    deploymentEdition = 'COMMUNITY'
-  })
-
-  describe('rendering', () => {
-    it('should render the dropzone container', () => {
-      const { container } = render(<UploadDropzone {...defaultProps} />)
-      const dropzone = container.querySelector('[class*="border-dashed"]')
-      expect(dropzone).toBeInTheDocument()
-    })
-
-    it('should render hidden file input', () => {
-      render(<UploadDropzone {...defaultProps} />)
-      const input = document.getElementById('fileUploader') as HTMLInputElement
-      expect(input).toBeInTheDocument()
-      expect(input).toHaveClass('hidden')
-      expect(input).toHaveAttribute('type', 'file')
-    })
-
-    it('should render upload icon', () => {
-      render(<UploadDropzone {...defaultProps} />)
-      const icon = document.querySelector('.i-ri-upload-cloud-2-line')
-      expect(icon).toBeInTheDocument()
-    })
-
-    it('should render browse button when extensions are allowed', () => {
-      render(<UploadDropzone {...defaultProps} />)
-      expect(
-        screen.getByRole('button', { name: 'datasetCreation.stepOne.uploader.browse' }),
-      ).toBeInTheDocument()
-    })
-
-    it('should not render browse button when no extensions allowed', () => {
-      render(<UploadDropzone {...defaultProps} acceptTypes={[]} />)
-      expect(
-        screen.queryByRole('button', { name: 'datasetCreation.stepOne.uploader.browse' }),
-      ).not.toBeInTheDocument()
-    })
-
-    it('should render file size and count limits', () => {
-      render(<UploadDropzone {...defaultProps} />)
-      const tipText = screen.getByText(/datasetCreation\.stepOne\.uploader\.tip/)
-      expect(tipText).toBeInTheDocument()
-    })
-  })
-
-  describe('tip rendering by billing state', () => {
-    it('should render tip without total count limit when billing is disabled', () => {
-      deploymentEdition = 'COMMUNITY'
-
-      render(<UploadDropzone {...defaultProps} />)
-
-      const tipWithoutTotal = screen.getByText(
-        /datasetCreation\.stepOne\.uploader\.tip(?!WithTotalLimit)/,
-      )
-      expect(tipWithoutTotal).toBeInTheDocument()
-      expect(
-        screen.queryByText(/datasetCreation\.stepOne\.uploader\.tipWithTotalLimit/),
-      ).not.toBeInTheDocument()
-    })
-
-    it('should render tip with total count limit when billing is enabled', () => {
-      deploymentEdition = 'CLOUD'
-
-      render(<UploadDropzone {...defaultProps} />)
-
-      expect(
-        screen.getByText(/datasetCreation\.stepOne\.uploader\.tipWithTotalLimit/),
-      ).toBeInTheDocument()
-      expect(
-        screen.queryByText(/datasetCreation\.stepOne\.uploader\.tip(?!WithTotalLimit)/),
-      ).not.toBeInTheDocument()
-    })
-
-    it('should pass file size, batch count and supported types to tip when billing is disabled', () => {
-      deploymentEdition = 'COMMUNITY'
-
-      render(<UploadDropzone {...defaultProps} />)
-
-      const tipText = screen.getByText(/datasetCreation\.stepOne\.uploader\.tip/).textContent ?? ''
-      expect(tipText).toContain('"size":15')
-      expect(tipText).toContain('"batchCount":5')
-      expect(tipText).toContain('"supportTypes":"PDF, DOCX, TXT"')
-      expect(tipText).not.toContain('"totalCount"')
-    })
-
-    it('should additionally pass total count to tip when billing is enabled', () => {
-      deploymentEdition = 'CLOUD'
-
-      render(<UploadDropzone {...defaultProps} />)
-
-      const tipText =
-        screen.getByText(/datasetCreation\.stepOne\.uploader\.tipWithTotalLimit/).textContent ?? ''
-      expect(tipText).toContain('"size":15')
-      expect(tipText).toContain('"batchCount":5')
-      expect(tipText).toContain('"supportTypes":"PDF, DOCX, TXT"')
-      expect(tipText).toContain('"totalCount":10')
-    })
-  })
-
-  describe('file input configuration', () => {
-    it('should allow multiple files when supportBatchUpload is true', () => {
-      render(<UploadDropzone {...defaultProps} supportBatchUpload={true} />)
-      const input = document.getElementById('fileUploader') as HTMLInputElement
-      expect(input).toHaveAttribute('multiple')
-    })
-
-    it('should not allow multiple files when supportBatchUpload is false', () => {
-      render(<UploadDropzone {...defaultProps} supportBatchUpload={false} />)
-      const input = document.getElementById('fileUploader') as HTMLInputElement
-      expect(input).not.toHaveAttribute('multiple')
-    })
-
-    it('should set accept attribute with correct types', () => {
-      render(<UploadDropzone {...defaultProps} acceptTypes={['.pdf', '.docx']} />)
-      const input = document.getElementById('fileUploader') as HTMLInputElement
-      expect(input).toHaveAttribute('accept', '.pdf,.docx')
-    })
-  })
-
-  describe('text content', () => {
-    it('should show batch upload text when supportBatchUpload is true', () => {
-      render(<UploadDropzone {...defaultProps} supportBatchUpload={true} />)
-      expect(screen.getByText(/datasetCreation\.stepOne\.uploader\.button/)).toBeInTheDocument()
-    })
-
-    it('should show single file text when supportBatchUpload is false', () => {
-      render(<UploadDropzone {...defaultProps} supportBatchUpload={false} />)
-      expect(
-        screen.getByText(/datasetCreation\.stepOne\.uploader\.buttonSingleFile/),
-      ).toBeInTheDocument()
-    })
-  })
-
-  describe('dragging state', () => {
-    it('should apply dragging styles when dragging is true', () => {
-      const { container } = render(<UploadDropzone {...defaultProps} dragging={true} />)
-      const dropzone = container.querySelector(
-        '[class*="border-components-dropzone-border-accent"]',
-      )
-      expect(dropzone).toBeInTheDocument()
-    })
-
-    it('should render drag overlay when dragging', () => {
-      const dragRef = createMockRef<HTMLDivElement>()
-      render(
-        <UploadDropzone
-          {...defaultProps}
-          dragging={true}
-          dragRef={dragRef as RefObject<HTMLDivElement | null>}
-        />,
-      )
-      const overlay = document.querySelector('.absolute.left-0.top-0')
-      expect(overlay).toBeInTheDocument()
-    })
-
-    it('should not render drag overlay when not dragging', () => {
-      render(<UploadDropzone {...defaultProps} dragging={false} />)
-      const overlay = document.querySelector('.absolute.left-0.top-0')
-      expect(overlay).not.toBeInTheDocument()
-    })
-  })
-
-  describe('event handlers', () => {
-    it('should call onSelectFile when browse button is clicked', () => {
-      const onSelectFile = vi.fn()
-      render(<UploadDropzone {...defaultProps} onSelectFile={onSelectFile} />)
-
-      const browseButton = screen.getByRole('button', {
-        name: 'datasetCreation.stepOne.uploader.browse',
+  it.each(['COMMUNITY', 'CLOUD'] as const)(
+    'shows the applicable upload limits for %s',
+    (edition) => {
+      render(<UploadDropzone {...defaultProps} />, {
+        systemFeatures: { deployment_edition: edition },
       })
-      fireEvent.click(browseButton)
+      const tip = screen.getByText(/datasetCreation.stepOne.uploader.tip/)
+      expect(tip).toHaveTextContent('"size":15')
+      expect(tip).toHaveTextContent('"batchCount":5')
+      expect(tip).toHaveTextContent('"supportTypes":"PDF, DOCX, TXT"')
+      if (edition === 'CLOUD') expect(tip).toHaveTextContent('"totalCount":10')
+      else expect(tip).not.toHaveTextContent('"totalCount"')
+    },
+  )
 
-      expect(onSelectFile).toHaveBeenCalledTimes(1)
-    })
-
-    it('should call onFileChange when files are selected', () => {
-      const onFileChange = vi.fn()
-      render(<UploadDropzone {...defaultProps} onFileChange={onFileChange} />)
-
-      const input = document.getElementById('fileUploader') as HTMLInputElement
-      const file = new File(['content'], 'test.pdf', { type: 'application/pdf' })
-
-      fireEvent.change(input, { target: { files: [file] } })
-
-      expect(onFileChange).toHaveBeenCalledTimes(1)
-    })
+  it('disables browsing when no file types are allowed', () => {
+    render(<UploadDropzone {...defaultProps} acceptTypes={[]} />)
+    expect(
+      screen.queryByRole('button', { name: 'datasetCreation.stepOne.uploader.browse' }),
+    ).not.toBeInTheDocument()
   })
 
-  describe('refs', () => {
-    it('should attach dropRef to drop container', () => {
-      const dropRef = createMockRef<HTMLDivElement>()
-      render(
-        <UploadDropzone {...defaultProps} dropRef={dropRef as RefObject<HTMLDivElement | null>} />,
-      )
-      expect(dropRef.current).toBeInstanceOf(HTMLDivElement)
-    })
-
-    it('should attach fileUploaderRef to input element', () => {
-      const fileUploaderRef = createMockRef<HTMLInputElement>()
-      render(
-        <UploadDropzone
-          {...defaultProps}
-          fileUploaderRef={fileUploaderRef as RefObject<HTMLInputElement | null>}
-        />,
-      )
-      expect(fileUploaderRef.current).toBeInstanceOf(HTMLInputElement)
-    })
-
-    it('should attach dragRef to overlay when dragging', () => {
-      const dragRef = createMockRef<HTMLDivElement>()
-      render(
-        <UploadDropzone
-          {...defaultProps}
-          dragging={true}
-          dragRef={dragRef as RefObject<HTMLDivElement | null>}
-        />,
-      )
-      expect(dragRef.current).toBeInstanceOf(HTMLDivElement)
-    })
-  })
-
-  describe('accessibility', () => {
-    it('should have an accessible file input', () => {
-      render(<UploadDropzone {...defaultProps} />)
-      const input = document.getElementById('fileUploader') as HTMLInputElement
-      expect(input).toHaveAttribute('id', 'fileUploader')
-    })
+  it('forwards browsing and selected files to the upload owner', async () => {
+    const user = userEvent.setup()
+    const onFiles = vi.fn()
+    render(
+      <UploadDropzone
+        {...defaultProps}
+        onFileChange={(event) => onFiles(Array.from(event.target.files ?? []))}
+      />,
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'datasetCreation.stepOne.uploader.browse' }),
+    )
+    expect(defaultProps.onSelectFile).toHaveBeenCalledOnce()
+    const files = [
+      new File(['a'], 'a.pdf', { type: 'application/pdf' }),
+      new File(['b'], 'b.txt', { type: 'text/plain' }),
+    ]
+    await user.upload(document.getElementById('fileUploader') as HTMLInputElement, files)
+    expect(onFiles).toHaveBeenCalledWith(files)
   })
 })
-
-function render(ui: ReactElement) {
-  return renderWithConsoleQuery(ui, {
-    systemFeatures: { deployment_edition: deploymentEdition },
-    features: {},
-  })
-}

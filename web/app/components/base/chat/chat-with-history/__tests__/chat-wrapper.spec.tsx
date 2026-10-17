@@ -1,9 +1,11 @@
+import type { ReactElement, ReactNode } from 'react'
 import type { ChatConfig, ChatItemInTree } from '../../types'
 import type { ChatWithHistoryContextValue } from '../context'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { AppData, AppMeta, ConversationItem } from '@/models/share'
 import type { HumanInputFormData } from '@/types/workflow'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, render as rtlRender, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { InputVarType } from '@/app/components/workflow/types'
 import {
   fetchChatList,
@@ -13,9 +15,8 @@ import {
 } from '@/service/share'
 import { TransferMethod } from '@/types/app'
 import { useChat } from '../../chat/hooks'
-import { isValidGeneratedAnswer } from '../../utils'
 import ChatWrapper from '../chat-wrapper'
-import { useChatWithHistoryContext } from '../context'
+import { ChatWithHistoryContext } from '../context'
 
 const mockTrackEvent = vi.hoisted(() => vi.fn())
 
@@ -27,10 +28,6 @@ vi.mock('../../chat/hooks', () => ({
   useChat: vi.fn(),
 }))
 
-vi.mock('../context', () => ({
-  useChatWithHistoryContext: vi.fn(),
-}))
-
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(() => ({
     push: vi.fn(),
@@ -40,11 +37,6 @@ vi.mock('@/next/navigation', () => ({
   usePathname: vi.fn(() => '/'),
   useSearchParams: vi.fn(() => new URLSearchParams()),
   useParams: vi.fn(() => ({ token: 'test-token' })),
-}))
-
-vi.mock('../../utils', () => ({
-  isValidGeneratedAnswer: vi.fn(),
-  getLastAnswer: vi.fn(),
 }))
 
 vi.mock('@/service/share', () => ({
@@ -65,10 +57,6 @@ vi.mock('@/service/workflow', () => ({
 
 vi.mock('@/app/components/base/markdown', () => ({
   Markdown: ({ content }: { content: string }) => <div>{content}</div>,
-}))
-
-vi.mock('@/utils/model-config', () => ({
-  formatBooleanInputs: vi.fn((forms, inputs) => inputs),
 }))
 
 vi.mock('@/hooks/use-timestamp', () => ({
@@ -149,19 +137,67 @@ const defaultChatHookReturn: Partial<ChatHookReturn> = {
   suggestedQuestions: [],
 }
 
-const getChatInputDisabledSurface = (element: HTMLElement) =>
-  element.closest('.pointer-events-none.opacity-50')
+let contextValue: ChatWithHistoryContextValue
+const setContext = (value: ChatWithHistoryContextValue) => {
+  contextValue = value
+}
+const render = (ui: ReactElement) =>
+  rtlRender(ui, {
+    wrapper: ({ children }: { children: ReactNode }) => (
+      <ChatWithHistoryContext.Provider value={contextValue}>
+        {children}
+      </ChatWithHistoryContext.Provider>
+    ),
+  })
+const chatInput = () => screen.getByPlaceholderText(/common.chat.inputPlaceholder/)
 
 describe('ChatWrapper', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useChatWithHistoryContext).mockReturnValue(defaultContextValue)
+    vi.mocked(useChat).mockReset()
+    vi.mocked(fetchChatList).mockReset()
+    vi.mocked(fetchSuggestedQuestions).mockReset()
+    vi.mocked(submitHumanInputForm).mockReset()
+    vi.mocked(defaultChatHookReturn.prepareHumanInputSubmission!)
+      .mockReset()
+      .mockResolvedValue(true)
+    setContext(defaultContextValue)
     vi.mocked(useChat).mockReturnValue(defaultChatHookReturn as ChatHookReturn)
   })
 
+  it.each([
+    { id: 'a0', isAnswer: true, expected: 'a0' },
+    { id: 'q0', isAnswer: false, expected: null },
+    { id: 'answer-placeholder-0', isAnswer: true, expected: null },
+  ])(
+    'regenerates with the actual valid parent rule for $id',
+    async ({ id, isAnswer, expected }) => {
+      const handleSend = vi.fn()
+      vi.mocked(useChat).mockReturnValue({
+        ...defaultChatHookReturn,
+        handleSend,
+        chatList: [
+          { id, isAnswer, content: 'Parent message' },
+          { id: 'q1', content: 'Question to regenerate', parentMessageId: id },
+          { id: 'a1', isAnswer: true, content: 'Answer to regenerate', parentMessageId: 'q1' },
+        ],
+      } as ChatHookReturn)
+      render(<ChatWrapper />)
+      await userEvent.click(
+        screen.getAllByRole('button', { name: 'common.operation.regenerate' }).at(-1)!,
+      )
+      await waitFor(() =>
+        expect(handleSend).toHaveBeenCalledWith(
+          expect.any(String),
+          expect.objectContaining({ query: 'Question to regenerate', parent_message_id: expected }),
+          expect.any(Object),
+        ),
+      )
+    },
+  )
   it('should render welcome screen and handle message sending', async () => {
     const handleSend = vi.fn()
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       currentConversationId: '',
     })
@@ -179,51 +215,26 @@ describe('ChatWrapper', () => {
     expect(await screen.findByText('Welcome'))!.toBeInTheDocument()
     expect(await screen.findByText('Q1'))!.toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('Q1'))
+    await userEvent.click(screen.getByText('Q1'))
     expect(handleSend).toHaveBeenCalled()
   })
 
-  it('should use opening statement from appConfig when conversation item has no introduction', () => {
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      currentConversationId: '',
-      currentConversationItem: undefined,
-    })
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      chatList: [{ id: '1', isOpeningStatement: true, content: 'Default opening statement' }],
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-    expect(screen.getByText('Default opening statement'))!.toBeInTheDocument()
-  })
-
-  it('should render welcome screen without suggested questions', async () => {
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      currentConversationId: '',
-      inputsForms: [],
-    })
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      chatList: [{ id: '1', isOpeningStatement: true, content: 'Welcome message' }],
-      isResponding: false,
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-    expect(await screen.findByText('Welcome message'))!.toBeInTheDocument()
-  })
-
-  it('should show responding state', async () => {
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      chatList: [{ id: '1', isAnswer: true, content: 'Bot thinking...', isResponding: true }],
-      isResponding: true,
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-    expect(await screen.findByText('Bot thinking...'))!.toBeInTheDocument()
-  })
+  it.each([undefined, '', 'Conversation introduction'])(
+    'selects the opening statement for introduction %s',
+    (introduction) => {
+      setContext({
+        ...defaultContextValue,
+        currentConversationItem:
+          introduction === undefined
+            ? undefined
+            : { ...defaultContextValue.currentConversationItem!, introduction },
+      })
+      render(<ChatWrapper />)
+      expect(vi.mocked(useChat).mock.lastCall?.[0]?.opening_statement).toBe(
+        introduction || 'Default opening statement',
+      )
+    },
+  )
 
   it('should handle manual message input and stop responding', async () => {
     const handleSend = vi.fn()
@@ -235,11 +246,12 @@ describe('ChatWrapper', () => {
       handleStop,
     } as unknown as ChatHookReturn)
 
-    const { container, rerender } = render(<ChatWrapper />)
+    const { rerender } = render(<ChatWrapper />)
 
-    const textarea = container.querySelector('textarea') || screen.getByRole('textbox')
-    fireEvent.change(textarea, { target: { value: 'Hello Bot' } })
-    fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter', keyCode: 13 })
+    const textarea = chatInput()
+    await userEvent.clear(textarea)
+    await userEvent.type(textarea, 'Hello Bot')
+    await userEvent.keyboard('{Enter}')
 
     await waitFor(() => {
       expect(handleSend).toHaveBeenCalled()
@@ -258,322 +270,101 @@ describe('ChatWrapper', () => {
     const stopButton = await screen.findByRole('button', {
       name: /appDebug.operation.stopResponding/i,
     })
-    fireEvent.click(stopButton)
+    await userEvent.click(stopButton)
     expect(handleStop).toHaveBeenCalled()
   })
 
-  it('should handle regenerate and switch sibling', async () => {
-    const handleSend = vi.fn()
-    const handleSwitchSibling = vi.fn()
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      chatList: [
-        { id: 'q1', content: 'Q1' },
-        {
-          id: 'a1',
-          isAnswer: true,
-          content: 'A1',
-          parentMessageId: 'q1',
-          siblingCount: 2,
-          siblingIndex: 0,
-          nextSibling: 'a2',
-        },
+  it.each([
+    {
+      name: 'missing required text',
+      type: InputVarType.textInput,
+      value: '',
+      required: true,
+      disabled: true,
+    },
+    {
+      name: 'provided text',
+      type: InputVarType.textInput,
+      value: 'value',
+      required: true,
+      disabled: false,
+    },
+    { name: 'zero number', type: InputVarType.number, value: 0, required: true, disabled: false },
+    {
+      name: 'optional text',
+      type: InputVarType.textInput,
+      value: '',
+      required: false,
+      disabled: false,
+    },
+    {
+      name: 'unchecked checkbox',
+      type: InputVarType.checkbox,
+      value: false,
+      required: true,
+      disabled: false,
+    },
+    {
+      name: 'uploading file',
+      type: InputVarType.singleFile,
+      value: { transferMethod: TransferMethod.local_file },
+      required: true,
+      disabled: true,
+    },
+    {
+      name: 'uploaded file',
+      type: InputVarType.singleFile,
+      value: { transferMethod: TransferMethod.local_file, uploadedId: '123' },
+      required: true,
+      disabled: false,
+    },
+    {
+      name: 'mixed uploads',
+      type: InputVarType.multiFiles,
+      value: [
+        { transferMethod: TransferMethod.local_file, uploadedId: '123' },
+        { transferMethod: TransferMethod.local_file },
       ],
-      handleSend,
-      handleSwitchSibling,
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-
-    const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector(
-      'button .ri-reset-left-line',
-    )?.parentElement
-    if (regenerateBtn) {
-      fireEvent.click(regenerateBtn)
-      expect(handleSend).toHaveBeenCalled()
-    }
-
-    const switchText = await screen.findByText(/1\s*\/\s*2/)
-    const switchContainer = switchText.parentElement
-    const nextButton = switchContainer?.querySelectorAll('button')?.[1]
-    if (nextButton) {
-      fireEvent.click(nextButton)
-      expect(handleSwitchSibling).toHaveBeenCalledWith('a2', expect.any(Object))
-    }
-  })
-
-  it('should handle regenerate with parent answer', async () => {
-    const handleSend = vi.fn()
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      chatList: [
-        { id: 'a0', isAnswer: true, content: 'A0' },
-        { id: 'q1', content: 'Q1', parentMessageId: 'a0' },
-        { id: 'a1', isAnswer: true, content: 'A1', parentMessageId: 'q1' },
+      required: true,
+      disabled: true,
+    },
+    {
+      name: 'completed uploads',
+      type: InputVarType.multiFiles,
+      value: [
+        { transferMethod: TransferMethod.local_file, uploadedId: '123' },
+        { transferMethod: TransferMethod.local_file, uploadedId: '456' },
       ],
-      handleSend,
-    } as unknown as ChatHookReturn)
-
+      required: true,
+      disabled: false,
+    },
+  ])('gates the composer for $name', async ({ type, value, required, disabled }) => {
+    setContext({
+      ...defaultContextValue,
+      currentConversationId: '',
+      inputsForms: [{ variable: 'input', label: 'Input', type, required }],
+      newConversationInputs: { input: value },
+      newConversationInputsRef: { current: { input: value } },
+    })
     render(<ChatWrapper />)
-
-    const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector(
-      'button .ri-reset-left-line',
-    )?.parentElement
-    if (regenerateBtn) {
-      fireEvent.click(regenerateBtn)
-      expect(handleSend).toHaveBeenCalled()
-    }
-  })
-
-  it('should handle regenerate with edited question', async () => {
-    const handleSend = vi.fn()
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      chatList: [
-        { id: 'q1', content: 'Q1' },
-        { id: 'a1', isAnswer: true, content: 'A1', parentMessageId: 'q1' },
-      ],
-      handleSend,
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-
-    const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const editBtn = answerContainer?.querySelector('button .ri-pencil-line')?.parentElement
-    if (editBtn) {
-      fireEvent.click(editBtn)
+    expect(chatInput()).toHaveProperty('disabled', disabled)
+    if (disabled) {
+      await userEvent.type(chatInput(), 'blocked{Enter}')
+      expect(defaultChatHookReturn.handleSend).not.toHaveBeenCalled()
     }
   })
 
-  it('should disable input when required field is empty', () => {
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+  it('allows the composer when variable inputs are hidden', () => {
+    setContext({
       ...defaultContextValue,
-      inputsForms: [{ variable: 'req', label: 'Required', type: 'text-input', required: true }],
-      newConversationInputs: {},
-      newConversationInputsRef: {
-        current: {},
-      } as ChatWithHistoryContextValue['newConversationInputsRef'],
-      currentConversationId: '',
-    })
-
-    render(<ChatWrapper />)
-    const textboxes = screen.getAllByRole('textbox')
-    const chatInput = textboxes[textboxes.length - 1]
-    const disabledContainer = getChatInputDisabledSurface(chatInput!)
-    expect(disabledContainer)!.toBeInTheDocument()
-    expect(disabledContainer)!.toHaveClass('opacity-50')
-  })
-
-  it('should not disable input when required field has value', () => {
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      inputsForms: [{ variable: 'req', label: 'Required', type: 'text-input', required: true }],
-      newConversationInputs: { req: 'value' },
-      newConversationInputsRef: {
-        current: { req: 'value' },
-      } as ChatWithHistoryContextValue['newConversationInputsRef'],
-      currentConversationId: '',
-    })
-
-    render(<ChatWrapper />)
-    const textboxes = screen.getAllByRole('textbox')
-    const chatInput = textboxes[textboxes.length - 1]
-    const container = getChatInputDisabledSurface(chatInput!)
-    expect(container).not.toBeInTheDocument()
-  })
-
-  it('should not disable input when a required number field is zero', () => {
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      inputsForms: [
-        { variable: 'count', label: 'Count', type: InputVarType.number, required: true },
-      ],
-      newConversationInputs: { count: 0 },
-      newConversationInputsRef: {
-        current: { count: 0 },
-      } as ChatWithHistoryContextValue['newConversationInputsRef'],
-      currentConversationId: '',
-    })
-
-    render(<ChatWrapper />)
-    const textboxes = screen.getAllByRole('textbox')
-    const chatInput = textboxes[textboxes.length - 1]
-    const container = getChatInputDisabledSurface(chatInput!)
-
-    expect(container).not.toBeInTheDocument()
-  })
-
-  it('should disable input when file is uploading', () => {
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      inputsForms: [
-        {
-          variable: 'file',
-          label: 'File',
-          type: InputVarType.singleFile,
-          required: true,
-        },
-      ],
-      newConversationInputsRef: {
-        current: {
-          file: { transferMethod: TransferMethod.local_file, uploadedId: undefined },
-        },
-      } as ChatWithHistoryContextValue['newConversationInputsRef'],
-      currentConversationId: '',
-    })
-
-    render(<ChatWrapper />)
-    const textboxes = screen.getAllByRole('textbox')
-    const chatInput = textboxes[textboxes.length - 1]
-    const container = getChatInputDisabledSurface(chatInput!)
-    expect(container)!.toBeInTheDocument()
-  })
-
-  it('should not disable input when file is fully uploaded', () => {
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      inputsForms: [
-        {
-          variable: 'file',
-          label: 'File',
-          type: InputVarType.singleFile,
-          required: true,
-        },
-      ],
-      newConversationInputsRef: {
-        current: {
-          file: { transferMethod: TransferMethod.local_file, uploadedId: '123' },
-        },
-      } as ChatWithHistoryContextValue['newConversationInputsRef'],
-      currentConversationId: '',
-    })
-
-    render(<ChatWrapper />)
-    const textarea = screen.getByRole('textbox')
-    const container = getChatInputDisabledSurface(textarea)
-    expect(container).not.toBeInTheDocument()
-  })
-
-  it('should disable input when multiple files are uploading', () => {
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      inputsForms: [
-        {
-          variable: 'files',
-          label: 'Files',
-          type: InputVarType.multiFiles,
-          required: true,
-        },
-      ],
-      newConversationInputsRef: {
-        current: {
-          files: [
-            { transferMethod: TransferMethod.local_file, uploadedId: '123' },
-            { transferMethod: TransferMethod.local_file, uploadedId: undefined },
-          ],
-        },
-      } as ChatWithHistoryContextValue['newConversationInputsRef'],
-      currentConversationId: '',
-    })
-
-    render(<ChatWrapper />)
-    const textboxes = screen.getAllByRole('textbox')
-    const chatInput = textboxes[textboxes.length - 1]
-    const container = getChatInputDisabledSurface(chatInput!)
-    expect(container)!.toBeInTheDocument()
-  })
-
-  it('should not disable when all files are uploaded', () => {
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      inputsForms: [
-        {
-          variable: 'files',
-          label: 'Files',
-          type: InputVarType.multiFiles,
-          required: true,
-        },
-      ],
-      newConversationInputsRef: {
-        current: {
-          files: [
-            { transferMethod: TransferMethod.local_file, uploadedId: '123' },
-            { transferMethod: TransferMethod.local_file, uploadedId: '456' },
-          ],
-        },
-      } as ChatWithHistoryContextValue['newConversationInputsRef'],
-      currentConversationId: '',
-    })
-
-    render(<ChatWrapper />)
-    const textarea = screen.getByRole('textbox')
-    const container = getChatInputDisabledSurface(textarea)
-    expect(container).not.toBeInTheDocument()
-  })
-
-  it('should disable input when human input form is pending', () => {
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      chatList: [
-        {
-          id: 'a1',
-          isAnswer: true,
-          content: '',
-          humanInputFormDataList: [{ id: 'form1' }],
-        },
-      ],
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-    const textarea = screen.getByRole('textbox')
-    const container = getChatInputDisabledSurface(textarea)
-    expect(container)!.toBeInTheDocument()
-  })
-
-  it('should not disable input when allInputsHidden is true', () => {
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      inputsForms: [{ variable: 'req', label: 'Required', type: 'text-input', required: true }],
-      newConversationInputs: {},
-      newConversationInputsRef: {
-        current: {},
-      } as ChatWithHistoryContextValue['newConversationInputsRef'],
       currentConversationId: '',
       allInputsHidden: true,
-    })
-
-    render(<ChatWrapper />)
-    const textarea = screen.getByRole('textbox')
-    const container = getChatInputDisabledSurface(textarea)
-    expect(container).not.toBeInTheDocument()
-  })
-
-  it('should handle workflow resumption with simple structure', () => {
-    const handleSwitchSibling = vi.fn()
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      chatList: [],
-      handleSwitchSibling,
-    } as unknown as ChatHookReturn)
-
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      appPrevChatTree: [
-        {
-          id: '1',
-          content: 'Answer',
-          isAnswer: true,
-          workflow_run_id: 'w1',
-          humanInputFormDataList: [{ label: 'test' }] as unknown as HumanInputFormData[],
-          children: [],
-        },
+      inputsForms: [
+        { variable: 'req', label: 'Required', type: InputVarType.textInput, required: true },
       ],
     })
-
     render(<ChatWrapper />)
-    expect(handleSwitchSibling).toHaveBeenCalledWith('1', expect.any(Object))
+    expect(chatInput()).toBeEnabled()
   })
 
   it('should call fetchSuggestedQuestions from workflow resumption options callback', () => {
@@ -584,7 +375,7 @@ describe('ChatWrapper', () => {
       handleSwitchSibling,
     } as unknown as ChatHookReturn)
 
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       appPrevChatTree: [
         {
@@ -618,13 +409,15 @@ describe('ChatWrapper', () => {
       handleSwitchSibling,
     } as unknown as ChatHookReturn)
 
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       appPrevChatTree: [
         {
           id: '1',
           content: 'First',
           isAnswer: true,
+          workflow_run_id: 'ancestor-workflow',
+          humanInputFormDataList: [{ label: 'ancestor' }] as unknown as HumanInputFormData[],
           children: [
             {
               id: '2',
@@ -658,7 +451,7 @@ describe('ChatWrapper', () => {
       handleSwitchSibling,
     } as unknown as ChatHookReturn)
 
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       appPrevChatTree: [
         {
@@ -674,34 +467,12 @@ describe('ChatWrapper', () => {
     expect(handleSwitchSibling).not.toHaveBeenCalled()
   })
 
-  it('should not resume workflow if appPrevChatTree is empty', () => {
-    const handleSwitchSibling = vi.fn()
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      chatList: [],
-      handleSwitchSibling,
-    } as unknown as ChatHookReturn)
-
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      appPrevChatTree: [],
-    })
-
-    render(<ChatWrapper />)
-    expect(handleSwitchSibling).not.toHaveBeenCalled()
-  })
-
   it('should call stopChatMessageResponding when handleStop is triggered', () => {
     const handleStop = vi.fn()
     vi.mocked(useChat).mockReturnValue({
       ...defaultChatHookReturn,
       handleStop,
     } as unknown as ChatHookReturn)
-
-    // We need to trigger the callback passed to useChat.
-    // But useChat is mocked, so we can't test the callback passing directly unless we inspect the call.
-    // We can re-mock useChat to actually call the callback? No, that's complex.
-    // Instead, we can verify that useChat was called with a function that calls stopChatMessageResponding.
 
     render(<ChatWrapper />)
 
@@ -726,22 +497,19 @@ describe('ChatWrapper', () => {
       suggestedQuestions: ['Q1'],
     } as unknown as ChatHookReturn)
 
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       currentConversationId: '',
     })
 
     render(<ChatWrapper />)
 
-    // Trigger send via suggested question to easily trigger doSend
-    fireEvent.click(await screen.findByText('Q1'))
+    await userEvent.click(await screen.findByText('Q1'))
     expect(handleSend).toHaveBeenCalled()
 
-    // Get the options passed to handleSend
     const options = handleSend.mock.calls[0]![2]
     expect(options.isPublicAPI).toBe(true)
 
-    // Call onGetSuggestedQuestions
     options.onGetSuggestedQuestions('response-id')
     expect(fetchSuggestedQuestions).toHaveBeenCalledWith('response-id', 'webApp', 'test-app-id')
   })
@@ -758,7 +526,7 @@ describe('ChatWrapper', () => {
       suggestedQuestions: ['Q1'],
     } as unknown as ChatHookReturn)
 
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       currentConversationId: '',
       isNewAgent: true,
@@ -766,7 +534,7 @@ describe('ChatWrapper', () => {
 
     render(<ChatWrapper />)
 
-    fireEvent.click(await screen.findByText('Q1'))
+    await userEvent.click(await screen.findByText('Q1'))
 
     const options = handleSend.mock.calls[0]![2]
     await options.onGetConversationMessages('conversation-1')
@@ -784,7 +552,7 @@ describe('ChatWrapper', () => {
       ],
       suggestedQuestions: ['Q1'],
     } as unknown as ChatHookReturn)
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       currentConversationId: '',
       isInstalledApp: false,
@@ -793,7 +561,7 @@ describe('ChatWrapper', () => {
 
     render(<ChatWrapper />)
 
-    fireEvent.click(await screen.findByText('Q1'))
+    await userEvent.click(await screen.findByText('Q1'))
 
     expect(handleSend).toHaveBeenCalled()
     expect(mockTrackEvent).toHaveBeenCalledWith('webapp_run', {
@@ -812,7 +580,7 @@ describe('ChatWrapper', () => {
       suggestedQuestions: ['Q1'],
     } as unknown as ChatHookReturn)
 
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       currentConversationId: '',
       isNewAgent: false,
@@ -820,7 +588,7 @@ describe('ChatWrapper', () => {
 
     render(<ChatWrapper />)
 
-    fireEvent.click(await screen.findByText('Q1'))
+    await userEvent.click(await screen.findByText('Q1'))
 
     const options = handleSend.mock.calls[0]![2]
     expect(options.onGetConversationMessages).toBeUndefined()
@@ -829,109 +597,52 @@ describe('ChatWrapper', () => {
     })
   })
 
-  it('should call fetchSuggestedQuestions in doSwitchSibling', async () => {
-    const handleSwitchSibling = vi.fn()
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      handleSwitchSibling,
-      chatList: [
-        { id: 'q1', content: 'Q1' },
-        {
-          id: 'a1',
-          isAnswer: true,
-          content: 'A1',
-          parentMessageId: 'q1',
-          siblingCount: 2,
-          siblingIndex: 0,
-          nextSibling: 'a2',
-        },
-      ],
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-
-    screen.getByText('A1').closest('.chat-answer-container')
-    // Find sibling switch button (next)
-    // It's usually in the feedback/sibling area.
-    // We need to wait for it or find it.
-    // The previous test found it via "1 / 2" text.
-    const switchText = await screen.findByText(/1\s*\/\s*2/)
-    const switchContainer = switchText.parentElement
-    const nextButton = switchContainer?.querySelectorAll('button')?.[1]
-
-    if (nextButton) {
-      fireEvent.click(nextButton)
-      expect(handleSwitchSibling).toHaveBeenCalled()
-
+  it.each(['', '123'])(
+    'switches siblings with conversation %s callbacks',
+    async (conversationId) => {
+      const handleSwitchSibling = vi.fn()
+      const completed = vi.fn()
+      setContext({
+        ...defaultContextValue,
+        currentConversationId: conversationId,
+        handleNewConversationCompleted: completed,
+      })
+      vi.mocked(useChat).mockReturnValue({
+        ...defaultChatHookReturn,
+        handleSwitchSibling,
+        chatList: [
+          {
+            id: 'a1',
+            isAnswer: true,
+            content: 'Answer',
+            siblingCount: 2,
+            siblingIndex: 0,
+            nextSibling: 'a2',
+          },
+        ],
+      } as ChatHookReturn)
+      render(<ChatWrapper />)
+      await userEvent.click(screen.getByRole('button', { name: 'Next' }))
+      expect(handleSwitchSibling).toHaveBeenCalledExactlyOnceWith(
+        'a2',
+        expect.objectContaining({
+          isPublicAPI: true,
+          onConversationComplete: conversationId ? undefined : completed,
+        }),
+      )
       const options = handleSwitchSibling.mock.calls[0]![1]
       options.onGetSuggestedQuestions('response-id')
       expect(fetchSuggestedQuestions).toHaveBeenCalledWith('response-id', 'webApp', 'test-app-id')
-    }
-  })
-
-  it('should handle doRegenerate logic correctly', async () => {
-    const handleSend = vi.fn()
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      handleSend,
-      chatList: [
-        { id: 'q1', content: 'Q1' },
-        { id: 'a1', isAnswer: true, content: 'A1', parentMessageId: 'q1' },
-      ],
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-
-    const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector(
-      'button .ri-reset-left-line',
-    )?.parentElement
-
-    if (regenerateBtn) {
-      fireEvent.click(regenerateBtn)
-      // doRegenerate calls doSend with isRegenerate=true and parentAnswer=null (since q1 has no parent answer)
-
-      expect(handleSend).toHaveBeenCalled()
-      const args = handleSend.mock.calls[0]
-      // args[1] is data
-      expect(args![1].query).toBe('Q1')
-      expect(args![1].parent_message_id).toBeNull()
-    }
-  })
-
-  it('should handle doRegenerate with valid parent answer', async () => {
-    const handleSend = vi.fn()
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      handleSend,
-      chatList: [
-        { id: 'a0', isAnswer: true, content: 'A0' },
-        { id: 'q1', content: 'Q1', parentMessageId: 'a0' },
-        { id: 'a1', isAnswer: true, content: 'A1', parentMessageId: 'q1' },
-      ],
-    } as unknown as ChatHookReturn)
-
-    // Mock isValidGeneratedAnswer to return true
-    vi.mocked(isValidGeneratedAnswer).mockReturnValue(true)
-
-    render(<ChatWrapper />)
-
-    const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector(
-      'button .ri-reset-left-line',
-    )?.parentElement
-
-    if (regenerateBtn) {
-      fireEvent.click(regenerateBtn)
-      expect(handleSend).toHaveBeenCalled()
-      const args = handleSend.mock.calls[0]
-      expect(args![1].parent_message_id).toBe('a0')
-    }
-  })
+      if (!conversationId) {
+        options.onConversationComplete('new-conversation')
+        expect(completed).toHaveBeenCalledExactlyOnceWith('new-conversation')
+      }
+    },
+  )
 
   it('should handle human input form submission for installed app', async () => {
     const { submitHumanInputForm: submitWorkflowForm } = await import('@/service/workflow')
-    vi.mocked(submitWorkflowForm).mockResolvedValue({} as unknown as void)
+    vi.mocked(submitWorkflowForm).mockResolvedValue({})
     let resolveWorkflowEventsReady: (isReady: boolean) => void = () => {}
     const prepareHumanInputSubmission = vi.fn(
       () =>
@@ -940,7 +651,7 @@ describe('ChatWrapper', () => {
         }),
     )
 
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       isInstalledApp: true,
     })
@@ -981,15 +692,15 @@ describe('ChatWrapper', () => {
     } as unknown as ChatHookReturn)
 
     render(<ChatWrapper />)
-    expect(await screen.findByText('Node 1'))!.toBeInTheDocument()
+    expect(await screen.findByText('Node 1')).toBeInTheDocument()
+    expect(chatInput()).toBeDisabled()
 
-    const input =
-      screen.getAllByRole('textbox').find((el) => el.closest('.chat-answer-container')) ||
-      screen.getAllByRole('textbox')[0]
-    fireEvent.change(input!, { target: { value: 'test' } })
+    const input = screen.getByRole('textbox', { name: 'test' })
+    await userEvent.clear(input!)
+    await userEvent.type(input!, 'test')
 
     const runButton = screen.getByText('Run')
-    fireEvent.click(runButton)
+    await userEvent.click(runButton)
 
     expect(prepareHumanInputSubmission).toHaveBeenCalledOnce()
     expect(submitWorkflowForm).not.toHaveBeenCalled()
@@ -998,12 +709,15 @@ describe('ChatWrapper', () => {
       resolveWorkflowEventsReady(true)
     })
     await waitFor(() => {
-      expect(submitWorkflowForm).toHaveBeenCalled()
+      expect(submitWorkflowForm).toHaveBeenCalledExactlyOnceWith('token1', {
+        inputs: { test: 'test' },
+        action: 'run',
+      })
     })
   })
 
   it('should handle human input form submission for web app', async () => {
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       isInstalledApp: false,
     })
@@ -1045,14 +759,16 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
     expect(await screen.findByText('Node Web 1'))!.toBeInTheDocument()
 
-    const input =
-      screen.getAllByRole('textbox').find((el) => el.closest('.chat-answer-container')) ||
-      screen.getAllByRole('textbox')[0]
-    fireEvent.change(input!, { target: { value: 'web-test' } })
-    fireEvent.click(screen.getByText('Run'))
+    const input = screen.getByRole('textbox', { name: 'test' })
+    await userEvent.clear(input!)
+    await userEvent.type(input!, 'web-test')
+    await userEvent.click(screen.getByText('Run'))
 
     await waitFor(() => {
-      expect(submitHumanInputForm).toHaveBeenCalledWith('token-web-1', expect.any(Object))
+      expect(submitHumanInputForm).toHaveBeenCalledExactlyOnceWith('token-web-1', {
+        inputs: { test: 'web-test' },
+        action: 'run',
+      })
     })
   })
 
@@ -1062,7 +778,7 @@ describe('ChatWrapper', () => {
       chatList: [{ id: '1', isOpeningStatement: true, content: 'Welcome' }],
     } as unknown as ChatHookReturn)
 
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       currentConversationId: '',
     })
@@ -1081,7 +797,7 @@ describe('ChatWrapper', () => {
       ],
     } as unknown as ChatHookReturn)
 
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       currentConversationId: '',
     })
@@ -1093,7 +809,7 @@ describe('ChatWrapper', () => {
   })
 
   it('should show chatNode and inputs form on desktop for new conversation', () => {
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       currentConversationId: '',
       isMobile: false,
@@ -1105,7 +821,7 @@ describe('ChatWrapper', () => {
   })
 
   it('should show chatNode on mobile for new conversation only', () => {
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       currentConversationId: '',
       isMobile: true,
@@ -1115,7 +831,7 @@ describe('ChatWrapper', () => {
     const { rerender } = render(<ChatWrapper />)
     expect(screen.getByText('Test'))!.toBeInTheDocument()
 
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       currentConversationId: '123',
       isMobile: true,
@@ -1127,7 +843,7 @@ describe('ChatWrapper', () => {
   })
 
   it('should not show welcome when responding', () => {
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       currentConversationId: '',
     })
@@ -1139,31 +855,11 @@ describe('ChatWrapper', () => {
     } as unknown as ChatHookReturn)
 
     render(<ChatWrapper />)
-    const welcomeElement = screen.queryByText('Welcome')
-    if (welcomeElement) {
-      const welcomeContainer = welcomeElement.closest('.min-h-\\[50vh\\]')
-      expect(welcomeContainer).toBeNull()
-    } else {
-      expect(welcomeElement).toBeNull()
-    }
-  })
-
-  it('should not show welcome for existing conversation', () => {
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      chatList: [{ id: '1', isOpeningStatement: true, content: 'Welcome' }],
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-    const welcomeElement = screen.queryByText('Welcome')
-    if (welcomeElement) {
-      const welcomeContainer = welcomeElement.closest('.min-h-\\[50vh\\]')
-      expect(welcomeContainer).toBeNull()
-    }
+    expect(screen.queryByText('Welcome')).not.toBeInTheDocument()
   })
 
   it('should not show welcome when inputs are visible and not collapsed', () => {
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       currentConversationId: '',
       inputsForms: [{ variable: 'test', label: 'Test', type: 'text-input', required: false }],
@@ -1175,11 +871,7 @@ describe('ChatWrapper', () => {
     } as unknown as ChatHookReturn)
 
     render(<ChatWrapper />)
-    const welcomeElement = screen.queryByText('Welcome')
-    if (welcomeElement) {
-      const welcomeInSpecialContainer = welcomeElement.closest('.min-h-\\[50vh\\]')
-      expect(welcomeInSpecialContainer).toBeNull()
-    }
+    expect(screen.queryByText('Welcome')).not.toBeInTheDocument()
   })
 
   it('should render answer icon when configured', () => {
@@ -1190,7 +882,7 @@ describe('ChatWrapper', () => {
       },
     } as unknown as AppData
 
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       appData: appDataWithAnswerIcon,
     } as ChatWithHistoryContextValue)
@@ -1206,7 +898,7 @@ describe('ChatWrapper', () => {
   })
 
   it('should render question icon fallback when user avatar is available', () => {
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       initUserVariables: {
         avatar_url: 'https://example.com/avatar.png',
@@ -1224,7 +916,7 @@ describe('ChatWrapper', () => {
   })
 
   it('should use fallback values for nullable appData, appMeta and avatar name', () => {
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       appData: null as unknown as AppData,
       appMeta: null as unknown as AppMeta,
@@ -1243,13 +935,13 @@ describe('ChatWrapper', () => {
     expect(screen.getByText('U'))!.toBeInTheDocument()
   })
 
-  it('should set handleStop on currentChatInstanceRef', () => {
+  it('keeps the chat instance stop action current after rerender', () => {
     const handleStop = vi.fn()
     const currentChatInstanceRef = {
       current: { handleStop: vi.fn() },
     } as ChatWithHistoryContextValue['currentChatInstanceRef']
 
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       currentChatInstanceRef,
     })
@@ -1259,14 +951,23 @@ describe('ChatWrapper', () => {
       handleStop,
     } as unknown as ChatHookReturn)
 
-    render(<ChatWrapper />)
-    expect(currentChatInstanceRef.current.handleStop).toBe(handleStop)
+    const { rerender } = render(<ChatWrapper />)
+    currentChatInstanceRef.current.handleStop()
+    expect(handleStop).toHaveBeenCalledTimes(1)
+    const nextStop = vi.fn()
+    vi.mocked(useChat).mockReturnValue({
+      ...defaultChatHookReturn,
+      handleStop: nextStop,
+    } as ChatHookReturn)
+    rerender(<ChatWrapper />)
+    currentChatInstanceRef.current.handleStop()
+    expect(nextStop).toHaveBeenCalledTimes(1)
   })
 
   it('should call setIsResponding when responding state changes', () => {
     const setIsResponding = vi.fn()
 
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       setIsResponding,
     })
@@ -1288,11 +989,11 @@ describe('ChatWrapper', () => {
     expect(setIsResponding).toHaveBeenCalledWith(false)
   })
 
-  it('should use currentConversationInputs for existing conversation', () => {
+  it('should use currentConversationInputs for existing conversation', async () => {
     const handleSend = vi.fn()
     const currentConversationInputs = { test: 'value' }
 
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       currentConversationId: '123',
       currentConversationInputs,
@@ -1307,44 +1008,34 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
 
     const textarea = screen.getByRole('textbox')
-    fireEvent.change(textarea, { target: { value: 'New message' } })
-    fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter', keyCode: 13 })
+    await userEvent.clear(textarea)
+    await userEvent.type(textarea, 'New message')
+    await userEvent.keyboard('{Enter}')
 
-    waitFor(() => {
-      expect(handleSend).toHaveBeenCalled()
+    await waitFor(() => {
+      expect(handleSend).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          inputs: { test: 'value' },
+          query: 'New message',
+          conversation_id: '123',
+        }),
+        expect.any(Object),
+      )
     })
   })
 
-  it('should handle checkbox type in inputsForms', () => {
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      inputsForms: [
-        { variable: 'req', label: 'Required Text', type: 'text-input', required: true },
-        { variable: 'check', label: 'Checkbox', type: InputVarType.checkbox, required: true },
-      ],
-      newConversationInputs: { check: true },
-      newConversationInputsRef: {
-        current: { check: true },
-      } as ChatWithHistoryContextValue['newConversationInputsRef'],
-      currentConversationId: '',
-    })
-
-    render(<ChatWrapper />)
-    const textboxes = screen.getAllByRole('textbox')
-    const chatInput = textboxes[textboxes.length - 1]
-    const container = getChatInputDisabledSurface(chatInput!)
-    expect(container)!.toBeInTheDocument()
-  })
-
-  it('should call formatBooleanInputs when sending message', async () => {
-    const { formatBooleanInputs } = await import('@/utils/model-config')
+  it('sends checkbox inputs as booleans while preserving text inputs', async () => {
     const handleSend = vi.fn()
 
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       currentConversationId: '',
-      inputsForms: [{ variable: 'test', type: 'text' }],
-      newConversationInputs: { test: 'value' },
+      inputsForms: [
+        { key: 'test', name: 'Text', type: 'string' },
+        { key: 'agree', name: 'Agree', type: 'checkbox' },
+      ],
+      newConversationInputs: { test: 'value', agree: 1 },
     })
 
     vi.mocked(useChat).mockReturnValue({
@@ -1355,176 +1046,23 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
 
     const textarea = screen.getByRole('textbox')
-    fireEvent.change(textarea, { target: { value: 'Hello' } })
-    fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter', keyCode: 13 })
+    await userEvent.clear(textarea)
+    await userEvent.type(textarea, 'Hello')
+    await userEvent.keyboard('{Enter}')
 
     await waitFor(() => {
-      expect(formatBooleanInputs).toHaveBeenCalled()
+      expect(handleSend).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ inputs: { test: 'value', agree: true }, query: 'Hello' }),
+        expect.any(Object),
+      )
     })
-  })
-
-  it('should handle sending message with files', async () => {
-    const handleSend = vi.fn()
-
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      currentConversationId: '',
-    })
-
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      handleSend,
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-
-    expect(handleSend).toBeDefined()
-  })
-
-  it('should handle doSwitchSibling callback', () => {
-    const handleSwitchSibling = vi.fn()
-
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      chatList: [
-        {
-          id: 'a1',
-          isAnswer: true,
-          content: 'A1',
-          siblingCount: 2,
-          siblingIndex: 0,
-          nextSibling: 'a2',
-        },
-      ],
-      handleSwitchSibling,
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-
-    expect(handleSwitchSibling).toBeDefined()
-  })
-
-  it('should handle conversation completion for new conversations', () => {
-    const handleNewConversationCompleted = vi.fn()
-    const handleSend = vi.fn()
-
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      currentConversationId: '',
-      handleNewConversationCompleted,
-    })
-
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      handleSend,
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-
-    expect(handleNewConversationCompleted).toBeDefined()
-  })
-
-  it('should not call handleNewConversationCompleted for existing conversations', () => {
-    const handleNewConversationCompleted = vi.fn()
-    const handleSend = vi.fn()
-
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      currentConversationId: '123',
-      handleNewConversationCompleted,
-    })
-
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      handleSend,
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-
-    expect(handleNewConversationCompleted).toBeDefined()
-  })
-
-  it('should use introduction from currentConversationItem when available', () => {
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      currentConversationId: '123',
-      currentConversationItem: {
-        id: '123',
-        name: 'Test',
-        introduction: 'Custom introduction from conversation item',
-      } as unknown as ConversationItem,
-    })
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      chatList: [
-        {
-          id: '1',
-          isOpeningStatement: true,
-          content: 'Custom introduction from conversation item',
-        },
-      ],
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-    // This tests line 91 - using currentConversationItem.introduction
-    // This tests line 91 - using currentConversationItem.introduction
-    expect(screen.getByText('Custom introduction from conversation item'))!.toBeInTheDocument()
-  })
-
-  it('should handle early return when hasEmptyInput is already set', () => {
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      inputsForms: [
-        { variable: 'field1', label: 'Field 1', type: 'text-input', required: true },
-        { variable: 'field2', label: 'Field 2', type: 'text-input', required: true },
-      ],
-      newConversationInputs: {},
-      newConversationInputsRef: {
-        current: {},
-      } as ChatWithHistoryContextValue['newConversationInputsRef'],
-      currentConversationId: '',
-    })
-
-    render(<ChatWrapper />)
-    // This tests line 106 - early return when hasEmptyInput is set
-    const textboxes = screen.getAllByRole('textbox')
-    const chatInput = textboxes[textboxes.length - 1]
-    const container = getChatInputDisabledSurface(chatInput!)
-    expect(container)!.toBeInTheDocument()
-  })
-
-  it('should handle early return when fileIsUploading is already set', () => {
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      inputsForms: [
-        { variable: 'file1', label: 'File 1', type: InputVarType.singleFile, required: true },
-        { variable: 'file2', label: 'File 2', type: InputVarType.singleFile, required: true },
-      ],
-      newConversationInputs: {
-        file1: { transferMethod: TransferMethod.local_file, uploadedId: undefined },
-        file2: { transferMethod: TransferMethod.local_file, uploadedId: undefined },
-      },
-      newConversationInputsRef: {
-        current: {
-          file1: { transferMethod: TransferMethod.local_file, uploadedId: undefined },
-          file2: { transferMethod: TransferMethod.local_file, uploadedId: undefined },
-        },
-      } as ChatWithHistoryContextValue['newConversationInputsRef'],
-      currentConversationId: '',
-    })
-
-    render(<ChatWrapper />)
-    // This tests line 109 - early return when fileIsUploading is set
-    const textboxes = screen.getAllByRole('textbox')
-    const chatInput = textboxes[textboxes.length - 1]
-    const container = getChatInputDisabledSurface(chatInput!)
-    expect(container)!.toBeInTheDocument()
   })
 
   it('should handle doSend with no parent message id', async () => {
     const handleSend = vi.fn()
 
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       currentConversationId: '',
     })
@@ -1538,8 +1076,9 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
 
     const textarea = screen.getByRole('textbox')
-    fireEvent.change(textarea, { target: { value: 'Hello' } })
-    fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter', keyCode: 13 })
+    await userEvent.clear(textarea)
+    await userEvent.type(textarea, 'Hello')
+    await userEvent.keyboard('{Enter}')
 
     await waitFor(() => {
       // This tests line 190 - the || null part when there's no lastAnswer
@@ -1579,10 +1118,11 @@ describe('ChatWrapper', () => {
 
     render(<ChatWrapper />)
 
-    fireEvent.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
     const editedTextarea = await screen.findByDisplayValue('Original question')
-    fireEvent.change(editedTextarea, { target: { value: 'Edited question text' } })
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    await userEvent.clear(editedTextarea)
+    await userEvent.type(editedTextarea, 'Edited question text')
+    await userEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     await waitFor(() => {
       expect(handleSend).toHaveBeenCalledWith(
@@ -1596,77 +1136,11 @@ describe('ChatWrapper', () => {
     })
   })
 
-  it('should handle doRegenerate when parentAnswer is not a valid generated answer', async () => {
-    const handleSend = vi.fn()
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      chatList: [
-        { id: 'q1', content: 'Q1' },
-        { id: 'a1', isAnswer: true, content: 'A1', parentMessageId: 'q1' },
-      ],
-      handleSend,
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-
-    const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector(
-      'button .ri-reset-left-line',
-    )?.parentElement
-    if (regenerateBtn) {
-      fireEvent.click(regenerateBtn)
-      // This tests line 198-200 when parentAnswer is not valid
-      expect(handleSend).toHaveBeenCalled()
-    }
-  })
-
-  it('should handle doSwitchSibling with all parameters', () => {
-    const handleSwitchSibling = vi.fn()
-
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      currentConversationId: '123',
-    })
-
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      chatList: [
-        {
-          id: 'a1',
-          isAnswer: true,
-          content: 'A1',
-          siblingCount: 2,
-          siblingIndex: 0,
-          nextSibling: 'a2',
-        },
-      ],
-      handleSwitchSibling,
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-
-    const switchText = screen.queryByText(/1\s*\/\s*2/)
-    if (switchText) {
-      const switchContainer = switchText.parentElement
-      const nextButton = switchContainer?.querySelectorAll('button')?.[1]
-      if (nextButton) {
-        fireEvent.click(nextButton)
-        // This tests line 205 with existing conversation
-        expect(handleSwitchSibling).toHaveBeenCalledWith(
-          'a2',
-          expect.objectContaining({
-            onConversationComplete: undefined,
-          }),
-        )
-      }
-    }
-  })
-
   it('should pass correct onConversationComplete for new conversation in doSend', async () => {
     const handleSend = vi.fn()
     const handleNewConversationCompleted = vi.fn()
 
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       currentConversationId: '',
       handleNewConversationCompleted,
@@ -1680,8 +1154,9 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
 
     const textarea = screen.getByRole('textbox')
-    fireEvent.change(textarea, { target: { value: 'Hello' } })
-    fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter', keyCode: 13 })
+    await userEvent.clear(textarea)
+    await userEvent.type(textarea, 'Hello')
+    await userEvent.keyboard('{Enter}')
 
     await waitFor(() => {
       expect(handleSend).toHaveBeenCalledWith(
@@ -1698,7 +1173,7 @@ describe('ChatWrapper', () => {
     const handleSend = vi.fn()
     const handleNewConversationCompleted = vi.fn()
 
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       currentConversationId: '123',
       handleNewConversationCompleted,
@@ -1713,8 +1188,9 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
 
     const textarea = screen.getByRole('textbox')
-    fireEvent.change(textarea, { target: { value: 'Hello' } })
-    fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter', keyCode: 13 })
+    await userEvent.clear(textarea)
+    await userEvent.type(textarea, 'Hello')
+    await userEvent.keyboard('{Enter}')
 
     await waitFor(() => {
       expect(handleSend).toHaveBeenCalledWith(
@@ -1731,7 +1207,7 @@ describe('ChatWrapper', () => {
     const handleSwitchSibling = vi.fn()
     const handleNewConversationCompleted = vi.fn()
 
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       currentConversationId: '',
       handleNewConversationCompleted,
@@ -1766,7 +1242,7 @@ describe('ChatWrapper', () => {
     const handleSwitchSibling = vi.fn()
     const handleNewConversationCompleted = vi.fn()
 
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       currentConversationId: '123',
       handleNewConversationCompleted,
@@ -1805,7 +1281,7 @@ describe('ChatWrapper', () => {
       handleSwitchSibling,
     } as unknown as ChatHookReturn)
 
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       appPrevChatTree: null as unknown as ChatItemInTree[], // Test null specifically for line 169
     })
@@ -1814,332 +1290,10 @@ describe('ChatWrapper', () => {
     expect(handleSwitchSibling).not.toHaveBeenCalled()
   })
 
-  it('should use fallback opening statement when introduction is empty string', () => {
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      currentConversationId: '',
-      currentConversationItem: {
-        id: '123',
-        name: 'Test',
-        introduction: '', // Empty string should fallback - line 91
-      } as unknown as ConversationItem,
-    })
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      chatList: [{ id: '1', isOpeningStatement: true, content: 'Default opening statement' }],
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-    expect(screen.getByText('Default opening statement'))!.toBeInTheDocument()
-  })
-
-  it('should handle doSend when regenerating with null parentAnswer', async () => {
-    const handleSend = vi.fn()
-
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      currentConversationId: '',
-    })
-
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      chatList: [{ id: 'q1', content: 'Question' }],
-      handleSend,
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-
-    // Simulate regenerate with no parent - this tests line 190 with null
-    const regenerateBtn = screen
-      .getByText('Question')
-      .closest('.chat-answer-container')
-      ?.querySelector('button .ri-reset-left-line')?.parentElement
-    if (regenerateBtn) {
-      fireEvent.click(regenerateBtn)
-    }
-
-    // The key is that when isRegenerate is true and parentAnswer is null,
-    // and there's no lastAnswer, it should use || null
-    expect(handleSend).toBeDefined()
-  })
-
-  it('should handle doRegenerate with editedQuestion containing files', async () => {
-    const handleSend = vi.fn()
-
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      chatList: [
-        { id: 'q1', content: 'Original question', message_files: [] },
-        { id: 'a1', isAnswer: true, content: 'Answer', parentMessageId: 'q1' },
-      ],
-      handleSend,
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-
-    // Just verify the component renders - the actual editedQuestion flow
-    // is tested through the doRegenerate callback that's passed to Chat
-    // Just verify the component renders - the actual editedQuestion flow
-    // is tested through the doRegenerate callback that's passed to Chat
-    expect(screen.getByText('Answer'))!.toBeInTheDocument()
-    expect(handleSend).toBeDefined()
-  })
-
-  it('should call doRegenerate through the Chat component with editedQuestion', async () => {
-    const handleSend = vi.fn()
-
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      chatList: [
-        { id: 'q1', content: 'Q1', message_files: [] },
-        { id: 'a1', isAnswer: true, content: 'A1', parentMessageId: 'q1' },
-      ],
-      handleSend,
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-
-    // The doRegenerate is passed to Chat component and would be called
-    // This ensures lines 198-200 are covered
-    // The doRegenerate is passed to Chat component and would be called
-    // This ensures lines 198-200 are covered
-    expect(screen.getByText('A1'))!.toBeInTheDocument()
-  })
-
-  it('should handle doRegenerate when question has message_files', async () => {
-    const handleSend = vi.fn()
-
-    // Create proper FileEntity mock with all required fields
-    const mockFiles = [
-      {
-        id: 'file1',
-        name: 'test.txt',
-        type: 'text/plain',
-        size: 1024,
-        url: 'https://example.com/test.txt',
-        extension: 'txt',
-        mime_type: 'text/plain',
-      } as unknown as FileEntity,
-    ] as FileEntity[]
-
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      chatList: [
-        { id: 'q1', content: 'Q1', message_files: mockFiles },
-        { id: 'a1', isAnswer: true, content: 'A1', parentMessageId: 'q1' },
-      ],
-      handleSend,
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-
-    const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector(
-      'button .ri-reset-left-line',
-    )?.parentElement
-    if (regenerateBtn) {
-      fireEvent.click(regenerateBtn)
-      // This tests line 200 - question.message_files branch
-      await waitFor(() => {
-        expect(handleSend).toHaveBeenCalled()
-      })
-    }
-  })
-
-  it('should test doSwitchSibling for new conversation', () => {
-    const handleSwitchSibling = vi.fn()
-
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      currentConversationId: '', // New conversation - line 205
-    })
-
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      chatList: [
-        {
-          id: 'a1',
-          isAnswer: true,
-          content: 'A1',
-          siblingCount: 2,
-          siblingIndex: 0,
-          nextSibling: 'a2',
-        },
-      ],
-      handleSwitchSibling,
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-
-    const switchText = screen.queryByText(/1\s*\/\s*2/)
-    if (switchText) {
-      const switchContainer = switchText.parentElement
-      const nextButton = switchContainer?.querySelectorAll('button')?.[1]
-      if (nextButton) {
-        fireEvent.click(nextButton)
-        // This should pass handleNewConversationCompleted for new conversations
-        expect(handleSwitchSibling).toHaveBeenCalledWith(
-          'a2',
-          expect.objectContaining({
-            onConversationComplete: expect.any(Function),
-          }),
-        )
-      }
-    }
-  })
-
-  it('should handle parentAnswer that is not a valid generated answer', async () => {
-    const handleSend = vi.fn()
-
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      chatList: [
-        { id: 'a0', content: 'Not a valid answer' }, // Not marked as isAnswer
-        { id: 'q1', content: 'Q1', parentMessageId: 'a0' },
-        { id: 'a1', isAnswer: true, content: 'A1', parentMessageId: 'q1' },
-      ],
-      handleSend,
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-
-    const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector(
-      'button .ri-reset-left-line',
-    )?.parentElement
-    if (regenerateBtn) {
-      fireEvent.click(regenerateBtn)
-      // This tests line 200 when isValidGeneratedAnswer returns false
-      await waitFor(() => {
-        expect(handleSend).toHaveBeenCalled()
-      })
-    }
-  })
-
-  it('should use parent answer id when parentAnswer is valid', async () => {
-    const handleSend = vi.fn()
-
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      chatList: [
-        { id: 'a0', isAnswer: true, content: 'A0' }, // Valid answer
-        { id: 'q1', content: 'Q1', parentMessageId: 'a0' },
-        { id: 'a1', isAnswer: true, content: 'A1', parentMessageId: 'q1' },
-      ],
-      handleSend,
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-
-    const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector(
-      'button .ri-reset-left-line',
-    )?.parentElement
-    if (regenerateBtn) {
-      fireEvent.click(regenerateBtn)
-      // This tests line 200 when isValidGeneratedAnswer returns true
-      await waitFor(() => {
-        expect(handleSend).toHaveBeenCalled()
-      })
-    }
-  })
-
-  it('should handle regenerate when isRegenerate is true with parentAnswer.id', async () => {
-    const handleSend = vi.fn()
-
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      currentConversationId: '',
-    })
-
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      chatList: [
-        { id: 'a0', isAnswer: true, content: 'A0' },
-        { id: 'q1', content: 'Q1', parentMessageId: 'a0' },
-        { id: 'a1', isAnswer: true, content: 'A1', parentMessageId: 'q1' },
-      ],
-      handleSend,
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-
-    const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector(
-      'button .ri-reset-left-line',
-    )?.parentElement
-    if (regenerateBtn) {
-      fireEvent.click(regenerateBtn)
-      // This tests line 190 - the isRegenerate ? parentAnswer?.id branch
-      await waitFor(() => {
-        expect(handleSend).toHaveBeenCalledWith(
-          expect.any(String),
-          expect.objectContaining({
-            parent_message_id: 'a0',
-          }),
-          expect.any(Object),
-        )
-      })
-    }
-  })
-
-  it('should ensure all branches of inputDisabled are covered', () => {
-    // Test with non-required fields
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      inputsForms: [
-        { variable: 'optional', label: 'Optional', type: 'text-input', required: false },
-      ],
-      newConversationInputs: {},
-      newConversationInputsRef: {
-        current: {},
-      } as ChatWithHistoryContextValue['newConversationInputsRef'],
-      currentConversationId: '',
-    })
-
-    render(<ChatWrapper />)
-    const textboxes = screen.getAllByRole('textbox')
-    const chatInput = textboxes[textboxes.length - 1]
-    const container = getChatInputDisabledSurface(chatInput!)
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    expect(container).not.toBeInTheDocument()
-  })
-
   it('should handle fallback branches for appParams, appId and empty chat instance ref', async () => {
     const handleSend = vi.fn()
 
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       appParams: undefined as unknown as ChatConfig,
       appId: '',
@@ -2157,8 +1311,9 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
 
     const textarea = screen.getByRole('textbox')
-    fireEvent.change(textarea, { target: { value: 'trigger fallback path' } })
-    fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter', keyCode: 13 })
+    await userEvent.clear(textarea)
+    await userEvent.type(textarea, 'trigger fallback path')
+    await userEvent.keyboard('{Enter}')
 
     await waitFor(() => {
       expect(handleSend).toHaveBeenCalled()

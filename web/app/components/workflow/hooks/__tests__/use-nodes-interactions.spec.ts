@@ -31,8 +31,6 @@ const runtimeNodesMetaDataMap = vi.hoisted(() => ({
 
 const runtimeState = vi.hoisted(() => ({
   isChatflow: false,
-  nodesReadOnly: false,
-  workflowReadOnly: false,
 }))
 
 let currentNodes: Node[] = []
@@ -42,16 +40,9 @@ vi.mock('reactflow', async () =>
   (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock(),
 )
 
-vi.mock('../use-workflow', () => ({
-  useWorkflow: () => ({
-    getAfterNodesInSameBranch: () => [],
-  }),
-  useNodesReadOnly: () => ({
-    getNodesReadOnly: () => runtimeState.nodesReadOnly,
-  }),
-  useWorkflowReadOnly: () => ({
-    getWorkflowReadOnly: () => runtimeState.workflowReadOnly,
-  }),
+vi.mock('../use-workflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../use-workflow')>()),
+  useWorkflow: () => ({ getAfterNodesInSameBranch: () => [] }),
 }))
 
 vi.mock('../use-helpline', () => ({
@@ -116,11 +107,16 @@ vi.mock('../use-workflow-history', async (importOriginal) => ({
 
 describe('useNodesInteractions', () => {
   beforeEach(() => {
+    vi.restoreAllMocks()
     vi.clearAllMocks()
     resetReactFlowMockState()
+    rfState.setNodes.mockImplementation((nodes) => {
+      rfState.nodes = nodes
+    })
+    rfState.setEdges.mockImplementation((edges) => {
+      rfState.edges = edges
+    })
     runtimeState.isChatflow = false
-    runtimeState.nodesReadOnly = false
-    runtimeState.workflowReadOnly = false
     mockCreateInlineAgentBinding.mockImplementation(
       (
         _nodeId: string,
@@ -157,7 +153,7 @@ describe('useNodesInteractions', () => {
         target: 'node-2',
       }),
     ]
-    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+    rfState.nodes = currentNodes
     rfState.edges = currentEdges as unknown as typeof rfState.edges
     runtimeNodesMetaDataMap.value = {}
   })
@@ -170,6 +166,11 @@ describe('useNodesInteractions', () => {
     }
 
     const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
+      resource: {
+        kind: 'app',
+        appId: 'app-1',
+        mode: runtimeState.isChatflow ? 'advanced-chat' : 'workflow',
+      },
       historyStore: {
         nodes: currentNodes,
         edges: currentEdges,
@@ -178,6 +179,11 @@ describe('useNodesInteractions', () => {
 
     act(() => {
       result.current.handleNodeDragStart({} as never, node!, currentNodes)
+      result.current.handleNodeDragStop({} as never, node, currentNodes)
+    })
+    expect(mockHandleSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockSaveStateToHistory).not.toHaveBeenCalled()
+    act(() => {
       result.current.handleNodeDragStop({} as never, movedNode, currentNodes)
     })
 
@@ -208,6 +214,11 @@ describe('useNodesInteractions', () => {
     ]
 
     const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
+      resource: {
+        kind: 'app',
+        appId: 'app-1',
+        mode: runtimeState.isChatflow ? 'advanced-chat' : 'workflow',
+      },
       initialStoreState: {
         contextMenuTarget: { type: 'edge', edgeId: 'edge-1' },
       },
@@ -228,8 +239,13 @@ describe('useNodesInteractions', () => {
   })
 
   it('skips undo and redo when the workflow is read-only', () => {
-    runtimeState.workflowReadOnly = true
     const { result } = renderWorkflowHook(() => useNodesInteractions(), {
+      resource: {
+        kind: 'app',
+        appId: 'app-1',
+        mode: runtimeState.isChatflow ? 'advanced-chat' : 'workflow',
+      },
+      initialStoreState: { canvasReadOnly: true },
       historyStore: {
         nodes: currentNodes,
         edges: currentEdges,
@@ -265,7 +281,7 @@ describe('useNodesInteractions', () => {
         target: 'node-1',
       }),
     ]
-    const isConnectedSpy = vi.spyOn(collaborationManager, 'isConnected').mockReturnValue(true)
+    vi.spyOn(collaborationManager, 'isConnected').mockReturnValue(true)
     const emitHistoryActionSpy = vi
       .spyOn(collaborationManager, 'emitHistoryAction')
       .mockImplementation(() => undefined)
@@ -277,6 +293,11 @@ describe('useNodesInteractions', () => {
       .mockImplementation(() => undefined)
 
     const { result } = renderWorkflowHook(() => useNodesInteractions(), {
+      resource: {
+        kind: 'app',
+        appId: 'app-1',
+        mode: runtimeState.isChatflow ? 'advanced-chat' : 'workflow',
+      },
       historyStore: {
         nodes: historyNodes,
         edges: historyEdges,
@@ -288,11 +309,14 @@ describe('useNodesInteractions', () => {
       result.current.handleHistoryForward()
     })
 
-    expect(collabSetNodesSpy).toHaveBeenCalledTimes(2)
-    expect(collabSetEdgesSpy).toHaveBeenCalledTimes(2)
+    expect(collabSetNodesSpy).toHaveBeenLastCalledWith(
+      expect.any(Array),
+      historyNodes,
+      'nodes:history-forward',
+    )
+    expect(collabSetEdgesSpy).toHaveBeenLastCalledWith(expect.any(Array), historyEdges)
     expect(emitHistoryActionSpy).toHaveBeenNthCalledWith(1, 'undo')
     expect(emitHistoryActionSpy).toHaveBeenNthCalledWith(2, 'redo')
-    expect(isConnectedSpy).toHaveBeenCalled()
   })
 
   it('does not broadcast history changes when collaboration is disconnected', () => {
@@ -325,6 +349,11 @@ describe('useNodesInteractions', () => {
       .mockImplementation(() => undefined)
 
     const { result } = renderWorkflowHook(() => useNodesInteractions(), {
+      resource: {
+        kind: 'app',
+        appId: 'app-1',
+        mode: runtimeState.isChatflow ? 'advanced-chat' : 'workflow',
+      },
       historyStore: {
         nodes: historyNodes,
         edges: historyEdges,
@@ -343,6 +372,11 @@ describe('useNodesInteractions', () => {
 
   it('ignores node click selection in comment control mode', () => {
     const { result } = renderWorkflowHook(() => useNodesInteractions(), {
+      resource: {
+        kind: 'app',
+        appId: 'app-1',
+        mode: runtimeState.isChatflow ? 'advanced-chat' : 'workflow',
+      },
       initialStoreState: {
         controlMode: ControlMode.Comment,
       },
@@ -374,10 +408,15 @@ describe('useNodesInteractions', () => {
       }),
     ]
     currentEdges = []
-    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+    rfState.nodes = currentNodes
     rfState.edges = currentEdges as unknown as typeof rfState.edges
 
     const { result } = renderWorkflowHook(() => useNodesInteractions(), {
+      resource: {
+        kind: 'app',
+        appId: 'app-1',
+        mode: runtimeState.isChatflow ? 'advanced-chat' : 'workflow',
+      },
       historyStore: {
         nodes: currentNodes,
         edges: currentEdges,
@@ -409,7 +448,7 @@ describe('useNodesInteractions', () => {
         id: 'to-node',
         position: { x: 120, y: 120 },
         data: {
-          type: BlockEnum.Code,
+          type: BlockEnum.VariableAggregator,
           title: 'To',
           desc: '',
         },
@@ -422,10 +461,15 @@ describe('useNodesInteractions', () => {
         target: 'to-node',
       }),
     ]
-    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+    rfState.nodes = currentNodes
     rfState.edges = currentEdges as unknown as typeof rfState.edges
 
     const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
+      resource: {
+        kind: 'app',
+        appId: 'app-1',
+        mode: runtimeState.isChatflow ? 'advanced-chat' : 'workflow',
+      },
       historyStore: {
         nodes: currentNodes,
         edges: currentEdges,
@@ -441,15 +485,26 @@ describe('useNodesInteractions', () => {
 
     act(() => {
       result.current.handleNodeEnter({} as never, currentNodes[1] as Node)
+    })
+    expect(store.getState().enteringNodePayload?.nodeId).toBe('to-node')
+    expect(rfState.nodes.find((node) => node.id === 'to-node')?.data._isEntering).toBe(true)
+    expect(rfState.edges[0]?.data._connectedNodeIsHovering).toBe(true)
+    act(() => {
       result.current.handleNodeLeave({} as never, currentNodes[1] as Node)
     })
 
-    expect(rfState.setNodes).toHaveBeenCalled()
-    expect(rfState.setEdges).toHaveBeenCalled()
+    expect(store.getState().enteringNodePayload).toBeUndefined()
+    expect(rfState.nodes.every((node) => !node.data._isEntering)).toBe(true)
+    expect(rfState.edges[0]?.data._connectedNodeIsHovering).toBe(false)
   })
 
   it('stores connecting payload from collaborative nodes when connect starts', () => {
     const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
+      resource: {
+        kind: 'app',
+        appId: 'app-1',
+        mode: runtimeState.isChatflow ? 'advanced-chat' : 'workflow',
+      },
       historyStore: {
         nodes: currentNodes,
         edges: currentEdges,
@@ -476,6 +531,11 @@ describe('useNodesInteractions', () => {
 
   it('returns early for node add/change when metadata for node type is missing', () => {
     const { result } = renderWorkflowHook(() => useNodesInteractions(), {
+      resource: {
+        kind: 'app',
+        appId: 'app-1',
+        mode: runtimeState.isChatflow ? 'advanced-chat' : 'workflow',
+      },
       historyStore: {
         nodes: currentNodes,
         edges: currentEdges,
@@ -496,7 +556,8 @@ describe('useNodesInteractions', () => {
     expect(rfState.setEdges).not.toHaveBeenCalled()
   })
 
-  it('creates an inline agent binding before syncing an added Agent v2 node', () => {
+  it('keeps an added Agent v2 node temporary until its binding is created', () => {
+    mockCreateInlineAgentBinding.mockImplementation(() => {})
     currentNodes = [
       createNode({
         id: 'node-1',
@@ -508,7 +569,7 @@ describe('useNodesInteractions', () => {
         },
       }),
     ]
-    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+    rfState.nodes = currentNodes
     rfState.edges = []
     rfState.setNodes.mockImplementation((nextNodes) => {
       rfState.nodes = nextNodes
@@ -532,6 +593,11 @@ describe('useNodesInteractions', () => {
     }
 
     const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
+      resource: {
+        kind: 'app',
+        appId: 'app-1',
+        mode: runtimeState.isChatflow ? 'advanced-chat' : 'workflow',
+      },
       historyStore: {
         nodes: currentNodes,
         edges: [],
@@ -554,23 +620,24 @@ describe('useNodesInteractions', () => {
       )
     })
 
-    const agentNode = rfState.nodes.find((node) => node.data.type === BlockEnum.AgentV2)
-    const firstSetNodesPayload = rfState.setNodes.mock.calls[0]?.[0]
-    const pendingAgentNode = firstSetNodesPayload.find(
-      (node: Node) => node.data.type === BlockEnum.AgentV2,
+    const pendingNode = rfState.nodes.find((node) => node.data.type === BlockEnum.AgentV2)!
+    expect(pendingNode.data._isTempNode).toBe(true)
+    const completeBinding = mockCreateInlineAgentBinding.mock.calls[0]?.[1]?.onSuccess
+    expect(completeBinding).toBeTypeOf('function')
+    act(() =>
+      completeBinding!({
+        binding_type: 'inline_agent',
+        agent_id: 'inline-agent-1',
+        current_snapshot_id: 'inline-snapshot-1',
+      }),
     )
-    const finalSetNodesPayload = rfState.setNodes.mock.calls.at(-1)?.[0]
-    const finalAgentNode = finalSetNodesPayload.find(
-      (node: Node) => node.data.type === BlockEnum.AgentV2,
-    )
-
-    expect(pendingAgentNode?.data._isTempNode).toBe(true)
-    expect(agentNode?.data.agent_binding).toEqual({
+    const agentNode = rfState.nodes.find((node) => node.id === pendingNode.id)!
+    expect(agentNode.data.agent_binding).toEqual({
       binding_type: 'inline_agent',
       agent_id: 'inline-agent-1',
       current_snapshot_id: 'inline-snapshot-1',
     })
-    expect(finalAgentNode?.data._isTempNode).toBeUndefined()
+    expect(agentNode.data._isTempNode).toBeUndefined()
     expect(mockCreateInlineAgentBinding).toHaveBeenCalledWith(
       agentNode?.id,
       expect.objectContaining({
@@ -593,7 +660,7 @@ describe('useNodesInteractions', () => {
         },
       }),
     ]
-    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+    rfState.nodes = currentNodes
     rfState.edges = []
     rfState.setNodes.mockImplementation((nextNodes) => {
       rfState.nodes = nextNodes
@@ -617,6 +684,11 @@ describe('useNodesInteractions', () => {
     }
 
     const { result } = renderWorkflowHook(() => useNodesInteractions(), {
+      resource: {
+        kind: 'app',
+        appId: 'app-1',
+        mode: runtimeState.isChatflow ? 'advanced-chat' : 'workflow',
+      },
       historyStore: {
         nodes: currentNodes,
         edges: [],
@@ -665,9 +737,14 @@ describe('useNodesInteractions', () => {
         },
       }),
     ]
-    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+    rfState.nodes = currentNodes
 
     const { result } = renderWorkflowHook(() => useNodesInteractions(), {
+      resource: {
+        kind: 'app',
+        appId: 'app-1',
+        mode: runtimeState.isChatflow ? 'advanced-chat' : 'workflow',
+      },
       historyStore: {
         nodes: currentNodes,
         edges: currentEdges,
@@ -705,9 +782,14 @@ describe('useNodesInteractions', () => {
         },
       }),
     ]
-    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+    rfState.nodes = currentNodes
 
     const { result } = renderWorkflowHook(() => useNodesInteractions(), {
+      resource: {
+        kind: 'app',
+        appId: 'app-1',
+        mode: runtimeState.isChatflow ? 'advanced-chat' : 'workflow',
+      },
       historyStore: {
         nodes: currentNodes,
         edges: currentEdges,
@@ -750,9 +832,14 @@ describe('useNodesInteractions', () => {
         },
       }),
     ]
-    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+    rfState.nodes = currentNodes
 
     const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
+      resource: {
+        kind: 'app',
+        appId: 'app-1',
+        mode: runtimeState.isChatflow ? 'advanced-chat' : 'workflow',
+      },
       historyStore: {
         nodes: currentNodes,
         edges: currentEdges,
@@ -766,197 +853,49 @@ describe('useNodesInteractions', () => {
     expect(store.getState().clipboardElements).toEqual([])
   })
 
-  it('loads nodes/edges from collaborative state for delete, disconnect, dim and undim actions', () => {
-    currentNodes = [
-      createNode({
-        id: 'node-a',
-        data: {
-          type: BlockEnum.Code,
-          title: 'A',
-          desc: '',
-          selected: true,
-        },
-      }),
-      createNode({
-        id: 'node-b',
-        position: { x: 160, y: 0 },
-        data: {
-          type: BlockEnum.Code,
-          title: 'B',
-          desc: '',
-        },
-      }),
-    ]
-    currentEdges = [
-      createEdge({
-        id: 'edge-a-b',
-        source: 'node-a',
-        target: 'node-b',
-      }),
-    ]
-    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
-    rfState.edges = currentEdges as unknown as typeof rfState.edges
-
-    const { result } = renderWorkflowHook(() => useNodesInteractions(), {
-      historyStore: {
-        nodes: currentNodes,
-        edges: currentEdges,
-      },
-    })
-
-    act(() => {
-      result.current.handleNodesDelete()
-      result.current.handleNodeDisconnect('node-a')
-      result.current.dimOtherNodes()
-      result.current.undimAllNodes()
-    })
-
-    expect(rfState.setNodes).toHaveBeenCalled()
-    expect(rfState.setEdges).toHaveBeenCalled()
-  })
-
-  it('reads collaborative nodes when dragging/selecting/connecting nodes', () => {
-    currentNodes = [
-      createNode({
-        id: 'drag-node-1',
-        data: {
-          type: BlockEnum.Code,
-          title: 'Drag1',
-          desc: '',
-          selected: true,
-        },
-      }),
-      createNode({
-        id: 'drag-node-2',
-        position: { x: 180, y: 0 },
-        data: {
-          type: BlockEnum.Code,
-          title: 'Drag2',
-          desc: '',
-        },
-      }),
-    ]
-    currentEdges = [
-      createEdge({
-        id: 'drag-edge',
-        source: 'drag-node-1',
-        target: 'drag-node-2',
-      }),
-    ]
-    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
-    rfState.edges = currentEdges as unknown as typeof rfState.edges
-
-    const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
-      historyStore: {
-        nodes: currentNodes,
-        edges: currentEdges,
-      },
-    })
-    store.setState({
-      connectingNodePayload: {
-        nodeId: 'drag-node-1',
-        handleType: 'source',
-        handleId: 'source',
-      } as never,
-      enteringNodePayload: {
-        nodeId: 'drag-node-2',
-      } as never,
-    })
-
-    act(() => {
-      result.current.handleNodeDrag(
-        { stopPropagation: vi.fn() } as never,
-        currentNodes[0] as Node,
-        currentNodes as Node[],
-      )
-      result.current.handleNodeSelect('drag-node-2')
-      result.current.handleNodeConnect({
-        source: 'drag-node-1',
-        target: 'drag-node-2',
-        sourceHandle: 'source',
-        targetHandle: 'target',
+  it.each(['delete', 'disconnect'] as const)(
+    '%s removes only the affected connections',
+    (action) => {
+      rfState.nodes = [
+        createNode({ id: 'node-a', data: { type: BlockEnum.Code, selected: true } }),
+        createNode({ id: 'node-b', data: { type: BlockEnum.Code } }),
+        createNode({ id: 'node-c', data: { type: BlockEnum.Code } }),
+      ]
+      rfState.edges = [
+        createEdge({ id: 'a-b', source: 'node-a', target: 'node-b' }),
+        createEdge({ id: 'b-c', source: 'node-b', target: 'node-c' }),
+      ] as typeof rfState.edges
+      const { result } = renderWorkflowHook(() => useNodesInteractions())
+      act(() => {
+        if (action === 'delete') result.current.handleNodesDelete()
+        else result.current.handleNodeDisconnect('node-a')
       })
-      result.current.handleNodeConnectEnd({ clientX: 0, clientY: 0 } as never)
+      expect(rfState.edges.map((edge) => edge.id)).toEqual(['b-c'])
+      expect(rfState.nodes.map((node) => node.id)).toEqual(
+        action === 'delete' ? ['node-b', 'node-c'] : ['node-a', 'node-b', 'node-c'],
+      )
+      expect(mockHandleSyncWorkflowDraft).toHaveBeenCalled()
+    },
+  )
+
+  it('persists resize dimensions and ignores resizing a read-only canvas', () => {
+    const { result, store } = renderWorkflowHook(() => useNodesInteractions())
+    const resize = { x: 30, y: 40, width: 260, height: 140, direction: [1, 1] }
+    act(() => result.current.handleNodeResize('node-1', resize))
+    expect(rfState.nodes[0]).toMatchObject({
+      position: { x: 30, y: 40 },
+      width: 260,
+      height: 140,
+      data: { width: 260, height: 140 },
     })
-
-    expect(rfState.setNodes).toHaveBeenCalled()
-    expect(rfState.setEdges).toHaveBeenCalled()
-  })
-
-  it('uses metadata defaults during add/change/paste and reads collaborative nodes on resize', () => {
-    runtimeNodesMetaDataMap.value = {
-      [BlockEnum.Code]: {
-        defaultValue: {
-          type: BlockEnum.Code,
-          title: 'Code',
-          desc: '',
-        },
-        metaData: {
-          isSingleton: false,
-        },
-      },
-      [BlockEnum.Answer]: {
-        defaultValue: {
-          type: BlockEnum.Answer,
-          title: 'Answer',
-          desc: '',
-        },
-        metaData: {
-          isSingleton: false,
-        },
-      },
-    }
-
-    currentNodes = [
-      createNode({
-        id: 'meta-node-1',
-        data: {
-          type: BlockEnum.Code,
-          title: 'Meta',
-          desc: '',
-          selected: false,
-        },
-      }),
-    ]
-    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
-    rfState.edges = []
-
-    const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
-      historyStore: {
-        nodes: currentNodes,
-        edges: [],
-      },
-    })
-    store.setState({
-      clipboardElements: [
-        createNode({
-          id: 'clipboard-node',
-          data: {
-            type: BlockEnum.Code,
-            title: 'Clipboard',
-            desc: '',
-          },
-        }),
-      ] as never,
-      mousePosition: {
-        pageX: 60,
-        pageY: 80,
-      } as never,
-    })
-
+    expect(mockSaveStateToHistory).toHaveBeenCalledWith('NodeResize', { nodeId: 'node-1' })
+    const saved = rfState.nodes
     act(() => {
-      result.current.handleNodeAdd({ nodeType: BlockEnum.Code }, { prevNodeId: 'meta-node-1' })
-      result.current.handleNodeChange('meta-node-1', BlockEnum.Answer, 'source')
-      result.current.handleNodesPaste()
-      result.current.handleNodeResize('meta-node-1', {
-        x: 0,
-        y: 0,
-        width: 260,
-        height: 140,
-      } as never)
+      store.setState({ canvasReadOnly: true })
+      result.current.handleNodeResize('node-1', { ...resize, width: 500 })
     })
-
-    expect(rfState.setNodes).toHaveBeenCalled()
+    expect(rfState.nodes).toEqual(saved)
+    expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledTimes(1)
   })
 
   describe('pasted conversation memory', () => {
@@ -987,7 +926,13 @@ describe('useNodesInteractions', () => {
           id: 'source-node',
           data: { type, memory, prompt_template: promptTemplate },
         })
-        const { result, store } = renderWorkflowHook(() => useNodesInteractions())
+        const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
+          resource: {
+            kind: 'app',
+            appId: 'app-1',
+            mode: runtimeState.isChatflow ? 'advanced-chat' : 'workflow',
+          },
+        })
         store.setState({ clipboardElements: [sourceNode], clipboardEdges: [] })
 
         await act(async () => {
@@ -1021,7 +966,13 @@ describe('useNodesInteractions', () => {
           parentId: sourceContainer.id,
           data: { type: BlockEnum.LLM, memory, prompt_template: promptTemplate },
         })
-        const { result, store } = renderWorkflowHook(() => useNodesInteractions())
+        const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
+          resource: {
+            kind: 'app',
+            appId: 'app-1',
+            mode: runtimeState.isChatflow ? 'advanced-chat' : 'workflow',
+          },
+        })
         store.setState({ clipboardElements: [sourceContainer, sourceChild], clipboardEdges: [] })
 
         await act(async () => {
@@ -1068,10 +1019,15 @@ describe('useNodesInteractions', () => {
         }),
       ]
       currentEdges = []
-      rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+      rfState.nodes = currentNodes
       rfState.edges = currentEdges as unknown as typeof rfState.edges
 
       const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
+        resource: {
+          kind: 'app',
+          appId: 'app-1',
+          mode: runtimeState.isChatflow ? 'advanced-chat' : 'workflow',
+        },
         historyStore: {
           nodes: currentNodes,
           edges: currentEdges,
@@ -1126,10 +1082,15 @@ describe('useNodesInteractions', () => {
         }),
       ]
       currentEdges = []
-      rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+      rfState.nodes = currentNodes
       rfState.edges = currentEdges as unknown as typeof rfState.edges
 
       const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
+        resource: {
+          kind: 'app',
+          appId: 'app-1',
+          mode: runtimeState.isChatflow ? 'advanced-chat' : 'workflow',
+        },
         historyStore: {
           nodes: currentNodes,
           edges: currentEdges,
@@ -1216,10 +1177,15 @@ describe('useNodesInteractions', () => {
           }),
         ]
         currentEdges = []
-        rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+        rfState.nodes = currentNodes
         rfState.edges = currentEdges as unknown as typeof rfState.edges
 
         const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
+          resource: {
+            kind: 'app',
+            appId: 'app-1',
+            mode: runtimeState.isChatflow ? 'advanced-chat' : 'workflow',
+          },
           historyStore: {
             nodes: currentNodes,
             edges: currentEdges,
@@ -1309,10 +1275,15 @@ describe('useNodesInteractions', () => {
         }),
       ]
       currentEdges = []
-      rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+      rfState.nodes = currentNodes
       rfState.edges = currentEdges as unknown as typeof rfState.edges
 
       const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
+        resource: {
+          kind: 'app',
+          appId: 'app-1',
+          mode: runtimeState.isChatflow ? 'advanced-chat' : 'workflow',
+        },
         historyStore: {
           nodes: currentNodes,
           edges: currentEdges,
@@ -1388,11 +1359,4 @@ describe('useNodesInteractions', () => {
       },
     )
   })
-})
-
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => runtimeState.isChatflow) }
 })

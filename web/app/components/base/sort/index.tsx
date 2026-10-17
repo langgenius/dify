@@ -22,7 +22,7 @@ type Props = Readonly<{
   onSelect: (value: string) => void
 }>
 
-function Sort({ order, value, items, onSelect }: Props) {
+function Sort({ order = '', value, items, onSelect }: Props) {
   const { t } = useTranslation(['appLog'])
 
   const triggerContent = useMemo(() => {

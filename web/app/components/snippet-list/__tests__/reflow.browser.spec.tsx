@@ -13,15 +13,10 @@ const mockQueryState = vi.hoisted(() => ({
   tagIDs: [] as string[],
 }))
 
-vi.mock('@/service/use-snippets', () => ({
-  useConfirmSnippetImportMutation: () => ({ isPending: false, mutateAsync: vi.fn() }),
-  useCreateSnippetMutation: () => ({ isPending: false, mutateAsync: vi.fn() }),
-  useDeleteSnippetMutation: () => ({ isPending: false, mutate: vi.fn() }),
-  useExportSnippetMutation: () => ({ mutateAsync: vi.fn() }),
-  useImportSnippetDSLMutation: () => ({ isPending: false, mutateAsync: vi.fn() }),
+vi.mock('@/service/use-snippets', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-snippets')>()),
   useInfiniteSnippetList: (params: unknown, options: unknown) =>
     mockUseInfiniteSnippetList(params, options),
-  useUpdateSnippetMutation: () => ({ isPending: false, mutate: vi.fn() }),
 }))
 
 vi.mock('../hooks/use-snippets-query-state', () => ({
@@ -48,21 +43,6 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@/service/use-common', () => ({
-  useMembers: () => ({
-    data: {
-      accounts: [
-        {
-          avatar_url: null,
-          id: 'creator-1',
-          name: 'Alice',
-          status: 'active',
-        },
-      ],
-    },
-  }),
-}))
-
 vi.mock('@/features/account-profile/client', () => ({
   userProfileQueryOptions: () => ({
     queryFn: async () => ({ profile: { id: 'creator-1' } }),
@@ -70,33 +50,19 @@ vi.mock('@/features/account-profile/client', () => ({
   }),
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleClient: {
-    snippets: {
-      bySnippetId: {
-        workflows: {
-          draft: {
-            post: vi.fn(),
-          },
-        },
-      },
-    },
-  },
-  consoleQuery: {
-    tags: {
-      get: {
-        key: () => ['tags'],
-        queryOptions: ({ input }: { input: { query: { type: string } } }) => ({
-          queryFn: async () => [],
-          queryKey: ['tags', input.query.type],
-        }),
-      },
-      post: {
-        mutationOptions: () => ({ mutationFn: vi.fn() }),
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.members.get': async () => ({
+        accounts: [{ avatar_url: null, id: 'creator-1', name: 'Alice', status: 'active' }],
+      }),
+      'tags.get': async () => [],
+    }),
+  }
+})
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -141,7 +107,6 @@ const renderSnippetList = async () => {
     },
   })
   queryClient.setQueryData(['account-profile'], { profile: { id: 'creator-1' } })
-  queryClient.setQueryData(['tags', 'snippet'], [])
 
   const store = createStore()
   seedRegisteredConsoleStateFixture(store)

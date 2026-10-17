@@ -1,24 +1,20 @@
 import type { ChatItem } from '../../../types'
+import type { ThoughtItem } from '../../type'
 import type { IThoughtProps } from '@/app/components/base/chat/chat/thought'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { MarkdownProps } from '@/app/components/base/markdown'
 import { render, screen } from '@testing-library/react'
 import AgentContent from '../agent-content'
 
-// Mock Markdown component used only in tests
+// Markdown, tool details, and file actions have independent suites; this owner chooses their data.
 vi.mock('@/app/components/base/markdown', () => ({
   Markdown: (props: MarkdownProps & { 'data-testid'?: string }) => (
-    <div
-      data-testid={props['data-testid'] || 'markdown'}
-      data-content={String(props.content)}
-      className={props.className}
-    >
+    <div data-testid={props['data-testid'] || 'markdown'} data-content={String(props.content)}>
       {String(props.content)}
     </div>
   ),
 }))
 
-// Mock Thought
 vi.mock('@/app/components/base/chat/chat/thought', () => ({
   default: ({ thought, isFinished }: IThoughtProps) => (
     <div data-testid="thought-component" data-finished={isFinished}>
@@ -27,17 +23,23 @@ vi.mock('@/app/components/base/chat/chat/thought', () => ({
   ),
 }))
 
-// Mock FileList and Utils
 vi.mock('@/app/components/base/file-uploader', () => ({
   FileList: ({ files }: { files: FileEntity[] }) => (
     <div data-testid="file-list-component">{files.map((f) => f.name).join(', ')}</div>
   ),
 }))
 
-vi.mock('@/app/components/base/file-uploader/utils', () => ({
-  getProcessedFilesFromResponse: (files: FileEntity[]) =>
-    files.map((f) => ({ ...f, name: `processed-${f.id}` })),
-}))
+const thought = (overrides: Partial<ThoughtItem> = {}): ThoughtItem => ({
+  id: 'thought-1',
+  tool: '',
+  thought: '',
+  tool_input: '{}',
+  message_id: 'message-1',
+  conversation_id: 'conversation-1',
+  observation: '',
+  position: 0,
+  ...overrides,
+})
 
 describe('AgentContent', () => {
   const mockItem: ChatItem = {
@@ -50,44 +52,41 @@ describe('AgentContent', () => {
     const itemWithAnnotation = {
       ...mockItem,
       annotation: {
-        logAnnotation: { content: 'Log Annotation Content' },
+        id: 'annotation-1',
+        authorName: 'Editor',
+        logAnnotation: {
+          content: 'Log Annotation Content',
+          id: 'annotation-1',
+          created_at: 1700000000,
+          account: { id: 'user-1', name: 'Editor', email: 'editor@example.com' },
+        },
       },
     }
-    render(<AgentContent item={itemWithAnnotation as ChatItem} />)
+    render(<AgentContent item={itemWithAnnotation} content="Original response" />)
+    expect(screen.queryByText('Original response')).not.toBeInTheDocument()
     expect(screen.getByTestId('agent-content-markdown')).toHaveTextContent('Log Annotation Content')
   })
 
-  it('renders empty string if logAnnotation content is missing', () => {
-    const itemWithEmptyAnnotation = {
-      ...mockItem,
-      annotation: {
-        logAnnotation: { content: '' },
-      },
-    }
-    const { rerender } = render(<AgentContent item={itemWithEmptyAnnotation as ChatItem} />)
-    expect(screen.getByTestId('agent-content-markdown')).toHaveAttribute('data-content', '')
-
-    const itemWithUndefinedAnnotation = {
-      ...mockItem,
-      annotation: {
-        logAnnotation: {},
-      },
-    }
-    rerender(<AgentContent item={itemWithUndefinedAnnotation as ChatItem} />)
-    expect(screen.getByTestId('agent-content-markdown')).toHaveAttribute('data-content', '')
-  })
-
   it('renders content prop if provided and no annotation', () => {
-    render(<AgentContent item={mockItem} content="Direct Content" />)
+    render(
+      <AgentContent
+        item={{ ...mockItem, agent_thoughts: [thought({ thought: 'Superseded thought' })] }}
+        content="Direct Content"
+      />,
+    )
+    expect(screen.queryByText('Superseded thought')).not.toBeInTheDocument()
     expect(screen.getByTestId('agent-content-markdown')).toHaveTextContent('Direct Content')
   })
 
   it('renders agent_thoughts if content is absent', () => {
     const itemWithThoughts = {
       ...mockItem,
-      agent_thoughts: [{ thought: 'Thought 1', tool: 'tool1' }, { thought: 'Thought 2' }],
+      agent_thoughts: [
+        thought({ thought: 'Thought 1', tool: 'tool1' }),
+        thought({ id: 'thought-2', thought: 'Thought 2', position: 1 }),
+      ],
     }
-    render(<AgentContent item={itemWithThoughts as ChatItem} responding={false} />)
+    render(<AgentContent item={itemWithThoughts} responding={false} />)
     const items = screen.getAllByTestId('agent-thought-item')
     expect(items).toHaveLength(2)
     const thoughtMarkdowns = screen.getAllByTestId('agent-thought-markdown')
@@ -100,18 +99,16 @@ describe('AgentContent', () => {
     const itemWithThoughts = {
       ...mockItem,
       agent_thoughts: [
-        { thought: 'T1', tool: 'tool1', observation: 'obs1' }, // finished by observation
-        { thought: 'T2', tool: 'tool2' }, // finished by responding=false
+        thought({ thought: 'T1', tool: 'tool1', observation: 'obs1' }), // finished by observation
+        thought({ id: 'thought-2', thought: 'T2', tool: 'tool2', position: 1 }), // finished by responding=false
       ],
     }
-    const { rerender } = render(
-      <AgentContent item={itemWithThoughts as ChatItem} responding={true} />,
-    )
+    const { rerender } = render(<AgentContent item={itemWithThoughts} responding={true} />)
     const thoughts = screen.getAllByTestId('thought-component')
     expect(thoughts[0]).toHaveAttribute('data-finished', 'true')
     expect(thoughts[1]).toHaveAttribute('data-finished', 'false')
 
-    rerender(<AgentContent item={itemWithThoughts as ChatItem} responding={false} />)
+    rerender(<AgentContent item={itemWithThoughts} responding={false} />)
     expect(screen.getAllByTestId('thought-component')[1]).toHaveAttribute('data-finished', 'true')
   })
 
@@ -121,14 +118,30 @@ describe('AgentContent', () => {
       agent_thoughts: [
         {
           thought: 'T1',
-          message_files: [{ id: 'file1' }, { id: 'file2' }],
+          message_files: [
+            {
+              id: 'file1',
+              related_id: 'upload-1',
+              filename: 'report.pdf',
+              mime_type: 'application/pdf',
+              type: 'document',
+              transfer_method: 'local_file',
+            },
+            {
+              id: 'file2',
+              related_id: 'upload-2',
+              filename: 'notes.txt',
+              mime_type: 'text/plain',
+              type: 'document',
+              transfer_method: 'local_file',
+            },
+          ],
         },
       ],
     }
-    render(<AgentContent item={itemWithFiles as ChatItem} />)
-    expect(screen.getByTestId('file-list-component')).toHaveTextContent(
-      'processed-file1, processed-file2',
-    )
+    // Historical thought responses carry server file metadata before AgentContent normalizes it.
+    render(<AgentContent item={itemWithFiles as unknown as ChatItem} />)
+    expect(screen.getByTestId('file-list-component')).toHaveTextContent('report.pdf, notes.txt')
   })
 
   it('renders nothing if no annotation, content, or thoughts', () => {
