@@ -55,10 +55,6 @@ function setup(source: ExternalTraceSource, responses: Array<TraceRun | number>,
 const PROVIDER = '{"provider":"app.tracing.langfuse.title"}'
 
 describe('ExternalTraceRow', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('links an accepted workflow run to its frozen third-party trace', async () => {
     setup(workflowRun, [accepted])
 
