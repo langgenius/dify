@@ -1,3 +1,4 @@
+import type { WorkflowRunInfo } from '../../run/workflow-tool-tracing-context'
 import type { Shape } from '../../store/workflow'
 import type { HumanInputFilledFormData, HumanInputFormData } from '@/types/workflow'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
@@ -60,7 +61,15 @@ vi.mock('@/app/components/workflow/run/result-panel', () => ({
 }))
 
 vi.mock('@/app/components/workflow/run/tracing-panel', () => ({
-  default: ({ list }: { list: unknown[] }) => <div data-testid="tracing-panel">{list.length}</div>,
+  default: ({ list, workflowRun }: { list: unknown[]; workflowRun?: WorkflowRunInfo }) => (
+    <div
+      data-testid="tracing-panel"
+      data-app-id={workflowRun?.appId}
+      data-run-id={workflowRun?.runId}
+    >
+      {list.length}
+    </div>
+  ),
 }))
 
 vi.mock('@/app/components/workflow/panel/inputs-panel', () => ({
@@ -283,6 +292,21 @@ describe('WorkflowPreview', () => {
 
     expect(screen.getByTestId('tracing-panel')).toHaveTextContent('0')
     expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
+  })
+
+  it('passes the editor app identity and run ID to tracing', () => {
+    renderWorkflowComponent(<WorkflowPreview />, {
+      resource: { kind: 'app', appId: 'preview-app', mode: 'workflow' },
+      initialStoreState: {
+        workflowRunningData: createWorkflowRunningData({
+          result: createWorkflowResult({ id: 'preview-run' }),
+          tracing: [createNodeTracing()],
+        }),
+      },
+    })
+
+    expect(screen.getByTestId('tracing-panel')).toHaveAttribute('data-app-id', 'preview-app')
+    expect(screen.getByTestId('tracing-panel')).toHaveAttribute('data-run-id', 'preview-run')
   })
 
   it('should keep inert tabs disabled without run data and switch among result, detail, and tracing when data exists', async () => {
