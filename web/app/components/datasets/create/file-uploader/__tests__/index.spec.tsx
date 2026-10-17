@@ -3,6 +3,7 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
+import { routeFetchTo } from '@/test/console/fetch'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { PROGRESS_COMPLETE, PROGRESS_ERROR, PROGRESS_NOT_STARTED } from '../constants'
 import FileUploader from '../index'
@@ -22,6 +23,10 @@ const render = (ui: React.ReactElement) => {
 vi.mock('@/service/base', () => ({
   upload: vi.fn().mockResolvedValue({ id: 'uploaded-id' }),
 }))
+// The upload limits query is not under test; it fails like an unreachable console API.
+routeFetchTo(async () => {
+  throw new TypeError('Failed to fetch')
+})
 
 vi.mock('@/i18n/language', () => ({
   LanguagesSupported: ['en-US', 'zh-Hans'],

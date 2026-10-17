@@ -699,7 +699,6 @@ export function resetDetailPageFixture() {
       throw new Error(`Unexpected Skill detail request: ${url}`)
     return Response.json({ data: [] })
   })
-  vi.stubGlobal('fetch', mocks.modelParameterRulesFetch)
   mocks.routeSkillId = 'skill-1'
   mocks.defaultTextGenerationModel = {
     provider: {

@@ -4,12 +4,13 @@ import type { CustomFile as File } from '@/models/datasets'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { routeFetchTo } from '@/test/console/fetch'
 import FilePreview from '../index'
 
 const mocks = vi.hoisted(() => ({
   request: vi.fn<(url: string) => Promise<Response>>(),
 }))
-vi.mock('@/service/base', () => ({ request: mocks.request }))
+routeFetchTo(mocks.request)
 
 const createFile = (overrides: Partial<File> = {}): File =>
   Object.assign(new globalThis.File(['Preview'], 'document.txt', { type: 'text/plain' }), {
