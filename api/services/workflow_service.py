@@ -38,6 +38,7 @@ from core.workflow.node_factory import (
 from core.workflow.node_runtime import (
     apply_dify_debug_email_recipient,
 )
+from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
     render_form_content_before_submission,
@@ -46,7 +47,13 @@ from core.workflow.nodes.human_input.callback import (
 from core.workflow.nodes.human_input.entities import FormInputConfig, HumanInputNodeData
 from core.workflow.nodes.human_input.enums import HumanInputFormKind
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
-from core.workflow.system_variables import build_bootstrap_variables, build_system_variables, default_system_variables
+from core.workflow.system_variables import (
+    SystemVariableKey,
+    build_bootstrap_variables,
+    build_system_variables,
+    default_system_variables,
+    system_variable_selector,
+)
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
@@ -1156,14 +1163,19 @@ class WorkflowService:
         Run draft workflow node
         """
         files = files or []
+        node_config = draft_workflow.get_node_config_by_id(node_id)
+        node_type = Workflow.get_node_type_from_node_config(node_config)
+        node_data = node_config["data"]
+        is_agent_preview = is_dify_agent_node_data(node_data)
+        if is_agent_preview and (
+            draft_workflow.tenant_id != app_model.tenant_id or draft_workflow.app_id != app_model.id
+        ):
+            raise ValueError("Workflow does not belong to the application")
 
         with Session(bind=db.engine, expire_on_commit=False) as session, session.begin():
             draft_var_srv = WorkflowDraftVariableService(session)
             draft_var_srv.prefill_conversation_variable_default_values(draft_workflow, user_id=account.id)
 
-        node_config = draft_workflow.get_node_config_by_id(node_id)
-        node_type = Workflow.get_node_type_from_node_config(node_config)
-        node_data = node_config["data"]
         if is_start_node_type(node_type):
             with Session(bind=db.engine) as session, session.begin():
                 draft_var_srv = WorkflowDraftVariableService(session)
@@ -1223,18 +1235,6 @@ class WorkflowService:
             variable_loader=variable_loader,
         )
 
-        # run draft workflow node
-        start_at = time.perf_counter()
-        node_execution = self._handle_single_step_result(
-            invoke_node_fn=lambda: run,
-            start_at=start_at,
-            node_id=node_id,
-        )
-
-        # Set workflow_id on the NodeExecution
-        node_execution.workflow_id = draft_workflow.id
-
-        # Create repository and save the node execution
         repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=db.engine,
             tenant_id=app_model.tenant_id,
@@ -1242,7 +1242,56 @@ class WorkflowService:
             app_id=app_model.id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
-        repository.save(node_execution)
+
+        # Agent workspace and tracing ownership are resolved while the node is running.
+        # single_step_run has bound the execution ID but has not consumed its generator.
+        # Commit that caller before execution, just as graph execution does on node-start.
+        start_at = time.perf_counter()
+        prepared_execution = None
+        if is_agent_preview:
+            # Standalone previews have no WorkflowRun. The general debug bootstrap
+            # inserts a synthetic run ID; do not use it as this caller's owner.
+            variable_pool.remove(system_variable_selector(SystemVariableKey.WORKFLOW_EXECUTION_ID))
+            node = run[0]
+            prepared_execution = WorkflowNodeExecution(
+                id=node.execution_id,
+                node_execution_id=node.execution_id,
+                workflow_id=draft_workflow.id,
+                index=1,
+                node_id=node_id,
+                node_type=node.node_type,
+                title=node.title,
+                status=WorkflowNodeExecutionStatus.RUNNING,
+                created_at=naive_utc_now(),
+            )
+            repository.save_synchronously(prepared_execution)
+
+        try:
+            node_execution = self._handle_single_step_result(
+                invoke_node_fn=lambda: run,
+                start_at=start_at,
+                node_id=node_id,
+                prepared_execution=prepared_execution,
+            )
+        except BaseException:
+            if prepared_execution is not None:
+                prepared_execution.status = WorkflowNodeExecutionStatus.FAILED
+                prepared_execution.error = "Agent preview execution interrupted"
+                prepared_execution.elapsed_time = time.perf_counter() - start_at
+                prepared_execution.finished_at = naive_utc_now()
+                try:
+                    repository.save_synchronously(prepared_execution)
+                except Exception as persistence_error:
+                    logging.getLogger(__name__).warning(
+                        "Agent preview terminal persistence failed (%s)", type(persistence_error).__name__
+                    )
+            raise
+
+        node_execution.workflow_id = draft_workflow.id
+        if prepared_execution is not None:
+            repository.save_synchronously(node_execution)
+        else:
+            repository.save(node_execution)
 
         workflow_node_execution = self._node_execution_service_repo.get_execution_by_id(node_execution.id)
         if workflow_node_execution is None:
@@ -1649,6 +1698,7 @@ class WorkflowService:
         ],
         start_at: float,
         node_id: str,
+        prepared_execution: WorkflowNodeExecution | None = None,
     ) -> WorkflowNodeExecution:
         """
         Handle single step execution and return WorkflowNodeExecution.
@@ -1657,6 +1707,7 @@ class WorkflowService:
             invoke_node_fn: Function to invoke node execution
             start_at: Execution start time
             node_id: ID of the node being executed
+            prepared_execution: Already committed Agent caller; other nodes create their result after execution.
 
         Returns:
             WorkflowNodeExecution: The execution result
@@ -1664,7 +1715,7 @@ class WorkflowService:
         node, node_run_result, run_succeeded, error = self._execute_node_safely(invoke_node_fn)
 
         # Create base node execution
-        node_execution = WorkflowNodeExecution(
+        node_execution = prepared_execution or WorkflowNodeExecution(
             id=str(uuid.uuid4()),
             workflow_id="",  # Single-step execution has no workflow ID
             index=1,
@@ -1675,6 +1726,8 @@ class WorkflowService:
             created_at=naive_utc_now(),
             finished_at=naive_utc_now(),
         )
+        node_execution.elapsed_time = time.perf_counter() - start_at
+        node_execution.finished_at = naive_utc_now()
 
         # Populate execution result data
         self._populate_execution_result(node_execution, node_run_result, run_succeeded, error)

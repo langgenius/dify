@@ -1419,6 +1419,31 @@ class MultiModalTransferConfig(BaseSettings):
 
 
 class OpsTraceConfig(BaseSettings):
+    OPS_AGENT_TRACE_ENABLED: bool = Field(
+        default=False, description="Enable application-scoped Agent tracing collection and delivery."
+    )
+    OPS_AGENT_TRACE_MAX_SPANS: PositiveInt = Field(
+        default=4096, description="Maximum runtime spans per application trace."
+    )
+    OPS_AGENT_TRACE_MAX_BYTES: PositiveInt = Field(
+        default=16777216, description="Maximum runtime payload bytes per application trace."
+    )
+    OPS_AGENT_TRACE_BATCH_MAX_BYTES: PositiveInt = Field(
+        default=2097152, description="Maximum inner tracing request body bytes."
+    )
+    OPS_AGENT_TRACE_COLLECTION_TIMEOUT: PositiveInt = Field(
+        default=180, description="Seconds after terminal execution to wait for final Agent batches."
+    )
+    OPS_AGENT_TRACE_EXPORT_LEASE_SECONDS: PositiveInt = Field(
+        default=120, description="Export lease before unconfirmed delivery becomes uncertain."
+    )
+    OPS_AGENT_TRACE_MAX_ATTEMPTS: PositiveInt = Field(
+        default=8, description="Attempts for known retryable trace export failures."
+    )
+    OPS_AGENT_TRACE_RETENTION_DAYS: PositiveInt = Field(
+        default=7, description="Retention of trace payloads and encrypted destination snapshots."
+    )
+
     OPS_TRACE_UNIFIED_ENABLED: bool = Field(
         description="Enable unified ops tracing for providers registered in the unified registry.",
         default=False,
@@ -1459,6 +1484,10 @@ class CeleryBeatConfig(BaseSettings):
 
 
 class CeleryScheduleTasksConfig(BaseSettings):
+    ENABLE_APPLICATION_TRACE_RECONCILE_TASK: bool = Field(
+        description="Enable periodic application trace recovery and retention cleanup when Agent tracing is enabled",
+        default=True,
+    )
     ENABLE_CONVERSATION_CLEANUP_TASK: bool = Field(
         description="Enable periodic recovery of soft-deleted conversation cleanup",
         default=True,

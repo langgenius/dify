@@ -226,12 +226,6 @@ class AppReference:
 
 
 @dataclass(frozen=True, slots=True)
-class AppTraceSettings:
-    enabled: bool = False
-    tracing_provider: str | None = None
-
-
-@dataclass(frozen=True, slots=True)
 class AppCreationSettings:
     app: dict[str, Any]
     model_config: dict[str, Any] | None
