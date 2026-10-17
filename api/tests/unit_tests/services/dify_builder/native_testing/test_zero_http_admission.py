@@ -148,6 +148,8 @@ def delivery_factory(case, context):
     bind_dify_workflow_file_runtime()
     owner = BoundaryOwnerState(ref=context.ref)
     runtime = SimpleNamespace(
+        # Mirrors the real runtime default; Code binding stays off for this case.
+        code_qualification=None,
         host=SimpleNamespace(
             boundary_owner=owner,
             control_sink=SimpleNamespace(record_control=case.forbidden_io),

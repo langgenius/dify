@@ -138,6 +138,8 @@ def make_host(state, authorization, monkeypatch, *, snapshot=None):
         runtime.variable_pool.add(("start", "items"), ["one", "two"])
         bridge = build_delivery_bridge(
             runtime=SimpleNamespace(
+                # Mirrors the real runtime default; Code binding stays off here.
+                code_qualification=None,
                 host=host,
                 lifecycle=SimpleNamespace(
                     store=state,

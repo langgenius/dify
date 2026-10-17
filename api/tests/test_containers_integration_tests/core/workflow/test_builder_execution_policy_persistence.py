@@ -198,7 +198,8 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
     from extensions.ext_database import db
 
     merge_revision = "f9a3c62de418"
-    current_head = "e59b7d32a6c1"
+    current_head = "7d2b9c4e61a8"
+    dispatch_head = "e59b7d32a6c1"
     owner_head = "f47a1c90d2e8"
     continuation_head = "d28f0e3c912a"
     native_head = "c67e12a904bf"
@@ -209,7 +210,10 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
     config.set_main_option("script_location", str(Path(__file__).parents[4] / "migrations"))
     scripts = ScriptDirectory.from_config(config)
     assert scripts.get_heads() == [current_head]
-    dispatch_revision = scripts.get_revision(current_head)
+    code_revision = scripts.get_revision(current_head)
+    assert code_revision is not None
+    assert code_revision.down_revision == dispatch_head
+    dispatch_revision = scripts.get_revision(dispatch_head)
     assert dispatch_revision is not None
     assert dispatch_revision.down_revision == owner_head
     owner_revision = scripts.get_revision(owner_head)
@@ -352,6 +356,7 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
             include_native: bool = False,
             include_continuation: bool = False,
             include_dispatch_claims: bool = False,
+            include_code_physical: bool = False,
         ) -> dict[str, object]:
             inspector = inspect(connection)
             expected_tables = {*tables, "alembic_version"}
@@ -363,6 +368,8 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
                 expected_tables.update(continuation_tables)
             if include_dispatch_claims:
                 expected_tables.add("dify_builder_native_effect_dispatch_claims")
+            if include_code_physical:
+                expected_tables.add("dify_builder_native_code_physical_operations")
             assert set(inspector.get_table_names(schema=schema)) == expected_tables
             return {
                 table: {
@@ -509,7 +516,13 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
         }
         assert migrate("head") == (current_head,)
         assert (
-            witness(include_archive=True, include_native=True, include_continuation=True, include_dispatch_claims=True)
+            witness(
+                include_archive=True,
+                include_native=True,
+                include_continuation=True,
+                include_dispatch_claims=True,
+                include_code_physical=True,
+            )
             == before_continuation
         )
         assert connection.scalar(text("SELECT count(*) FROM dify_builder_native_effect_dispatch_claims")) == 0
