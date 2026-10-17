@@ -1,6 +1,6 @@
 {
   "chunkDetail": "Yığın Detayı",
-  "dateTimeFormat": "GG/AA/YYYY ss:dd ÖÖ/ÖS",
+  "dateTimeFormat": "DD/MM/YYYY HH:mm",
   "desc": "Verilen sorgu metnine göre Bilginin isabet etkisini test edin.",
   "hit.emptyTip": "Geri Alım Testi sonuçları burada gösterilecektir",
   "hit.title": "{{num}} geri alınan paragraflar",

@@ -71,7 +71,7 @@
   "plansCommon.currentPlan": "Mevcut Plan",
   "plansCommon.days": "gün",
   "plansCommon.discountedAnnualPrice": "İndirimli yıllık fiyat: ",
-  "plansCommon.documentProcessingPriority": "Doküman İşleme Önceliği",
+  "plansCommon.documentProcessingPriority": " Doküman İşleme Önceliği",
   "plansCommon.documentProcessingPriorityTip": "Daha yüksek belge işleme önceliği için lütfen planınızı yükseltin.",
   "plansCommon.documentProcessingPriorityUpgrade": "Daha fazla veriyi daha yüksek doğrulukla ve daha hızlı işleyin.",
   "plansCommon.documents": "{{count,number}} Bilgi Belgesi",
