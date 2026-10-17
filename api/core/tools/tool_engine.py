@@ -80,6 +80,9 @@ class ToolEngine:
                 with contextlib.suppress(ValidationError):
                     tool_parameters = _tool_parameters_adapter.validate_json(tool_parameters)
                 if not isinstance(tool_parameters, dict):
+                    # Keep legacy interpolation for valid JSON scalars; malformed input stays raw.
+                    with contextlib.suppress(json.JSONDecodeError):
+                        tool_parameters = json.loads(tool_parameters)
                     raise ValueError(f"tool_parameters should be a dict, but got a string: {tool_parameters}")
 
         try:

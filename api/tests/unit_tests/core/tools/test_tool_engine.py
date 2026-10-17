@@ -463,13 +463,26 @@ def test_agent_invoke_parses_json_string_parameters(sqlite_session: Session):
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-@pytest.mark.parametrize("bad_parameters", ["[1, 2]", "not json", ""])
-def test_agent_invoke_rejects_non_dict_parameter_string(sqlite_session: Session, bad_parameters: str):
+@pytest.mark.parametrize(
+    ("bad_parameters", "interpolated_value"),
+    [
+        pytest.param("[1, 2]", "[1, 2]", id="array"),
+        pytest.param('"quoted"', "quoted", id="json-string"),
+        pytest.param("null", "None", id="null"),
+        pytest.param("true", "True", id="boolean"),
+        pytest.param('["a"]', "['a']", id="string-array"),
+        pytest.param("not json", "not json", id="invalid-json"),
+        pytest.param("", "", id="empty-string"),
+    ],
+)
+def test_agent_invoke_rejects_non_dict_parameter_string(
+    sqlite_session: Session, bad_parameters: str, interpolated_value: str
+):
     tool = _build_tool()
     callback = DifyAgentCallbackHandler()
     message = _message()
 
-    with pytest.raises(ValueError, match="tool_parameters should be a dict"):
+    with pytest.raises(ValueError) as exc_info:
         ToolEngine.agent_invoke(
             session=sqlite_session,
             tool=tool,
@@ -480,3 +493,5 @@ def test_agent_invoke_rejects_non_dict_parameter_string(sqlite_session: Session,
             invoke_from=InvokeFrom.DEBUGGER,
             agent_tool_callback=callback,
         )
+
+    assert str(exc_info.value) == f"tool_parameters should be a dict, but got a string: {interpolated_value}"
