@@ -39,7 +39,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
           },
         })
         if (syncFailed) {
-          toast.error(t(($) => $.exportAppFailed, { ns: 'app' }))
+          toast.error(t(($) => $.exportFailed, { ns: 'app' }))
           return false
         }
       }
@@ -62,7 +62,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         return await exportWorkflow({ include, workflowId })
       } catch (error) {
         toast.error(
-          t(($) => $.exportAppFailed, { ns: 'app' }),
+          t(($) => $.exportFailed, { ns: 'app' }),
           { description: getErrorMessage(error) },
         )
         return false
@@ -94,7 +94,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       } satisfies ExportSecretEnvironmentEvent)
     } catch (error) {
       toast.error(
-        t(($) => $.exportAppFailed, { ns: 'app' }),
+        t(($) => $.exportFailed, { ns: 'app' }),
         {
           description: getErrorMessage(error),
         },

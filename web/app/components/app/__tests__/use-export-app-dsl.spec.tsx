@@ -167,7 +167,7 @@ describe('useExportAppDsl', () => {
       ).resolves.toEqual({ status: 'downloaded' })
     })
 
-    expect(mocks.toastSuccess).toHaveBeenCalledWith('app.exportAppSuccess')
+    expect(mocks.toastSuccess).toHaveBeenCalledWith('app.ifpkgDownloaded')
     expect(mocks.exportAppDsl).toHaveBeenCalledWith(
       { params: { app_id: 'agent-app-id' }, query: { include_secret: false, format: 'ifpkg' } },
       expect.objectContaining({ context: expect.objectContaining({ silent: true }) }),
@@ -282,7 +282,7 @@ describe('useExportAppDsl', () => {
     await act(async () => {
       await result.current.exportAppDsl({ appId: 'app-id', appName: 'App' })
     })
-    expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('app.exportAppFailed', {
+    expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('app.exportFailed', {
       description: 'HTTP 502',
     })
     expect(mocks.downloadBlob).not.toHaveBeenCalled()
@@ -384,10 +384,9 @@ describe('useExportAppDsl', () => {
           error: expect.any(Function),
         }),
       )
-      expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith(
-        format === 'yaml' ? 'app.exportFailed' : 'app.exportAppFailed',
-        { description: "Package contains unusable Skill 'news-source-verification'" },
-      )
+      expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('app.exportFailed', {
+        description: "Package contains unusable Skill 'news-source-verification'",
+      })
       expect(mocks.downloadBlob).not.toHaveBeenCalled()
     },
   )
@@ -531,7 +530,7 @@ describe('useExportWorkflowAppDsl', () => {
       ).resolves.toEqual({ status: 'failed' })
     })
 
-    expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('app.exportAppFailed', {
+    expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('app.exportFailed', {
       description: 'Draft unavailable',
     })
     expect(mocks.toastPromise).not.toHaveBeenCalled()
@@ -555,7 +554,7 @@ describe('useExportWorkflowAppDsl', () => {
     })
 
     expect(mocks.toastPromise).toHaveBeenCalledTimes(1)
-    expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('app.exportAppFailed', {
+    expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('app.exportFailed', {
       description: 'Export unavailable',
     })
     expect(mocks.toastSuccess).not.toHaveBeenCalled()

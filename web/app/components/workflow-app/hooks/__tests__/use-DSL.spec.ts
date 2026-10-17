@@ -178,7 +178,7 @@ describe('useDSLByCanEdit', () => {
     expect(mockExportAppConfig).not.toHaveBeenCalled()
     expect(mockDownloadBlob).not.toHaveBeenCalled()
     expect(toastMocks.call).toHaveBeenCalledTimes(1)
-    expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'app.exportAppFailed' })
+    expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
   })
 
   it('allows export when draft synchronization is skipped for read-only access', async () => {
@@ -338,7 +338,7 @@ workflow:
     await waitFor(() => {
       expect(toastMocks.call).toHaveBeenCalledWith({
         type: 'error',
-        message: 'app.exportAppFailed',
+        message: 'app.exportFailed',
         description: 'Package contains unusable Skill',
       })
     })
@@ -359,7 +359,7 @@ workflow:
     await waitFor(() => {
       expect(toastMocks.call).toHaveBeenCalledWith({
         type: 'error',
-        message: 'app.exportAppFailed',
+        message: 'app.exportFailed',
         description: 'draft fetch failed',
       })
     })

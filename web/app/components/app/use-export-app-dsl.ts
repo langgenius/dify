@@ -90,8 +90,7 @@ function useExportAppDslMessages() {
     loading: tCommon(($) => $['operation.exporting']),
     success: tCommon(($) => $['operation.downloadSuccess']),
     error: tApp(($) => $.exportFailed),
-    packageSuccess: tApp(($) => $.exportAppSuccess),
-    packageError: tApp(($) => $.exportAppFailed),
+    packageSuccess: tApp(($) => $.ifpkgDownloaded),
   }
 }
 
@@ -111,7 +110,7 @@ async function downloadAppDsl(
         timeout: 3000,
       }),
       error: (error) => ({
-        title: input.format === 'yaml' ? messages.error : messages.packageError,
+        title: messages.error,
         description: getErrorMessage(error),
       }),
     })
@@ -141,7 +140,7 @@ export function useExportAppDsl() {
   return {
     exportAppDsl,
     isExporting: isPending,
-    errorMessage: error ? (getErrorMessage(error) ?? messages.packageError) : undefined,
+    errorMessage: error ? (getErrorMessage(error) ?? messages.error) : undefined,
     reset,
   }
 }
@@ -157,7 +156,7 @@ export function useExportWorkflowAppDsl() {
         secretEnvList = await getSecretEnvironmentVariables(queryClient, input.appId)
       } catch (error) {
         if (input.feedback !== 'dialog') {
-          toast.error(messages.packageError, { description: getErrorMessage(error) })
+          toast.error(messages.error, { description: getErrorMessage(error) })
         }
         throw error
       }
@@ -183,7 +182,7 @@ export function useExportWorkflowAppDsl() {
   return {
     exportWorkflowAppDsl,
     isExporting: isPending,
-    errorMessage: error ? (getErrorMessage(error) ?? messages.packageError) : undefined,
+    errorMessage: error ? (getErrorMessage(error) ?? messages.error) : undefined,
     reset,
   }
 }
