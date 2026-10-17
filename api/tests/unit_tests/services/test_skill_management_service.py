@@ -3195,7 +3195,28 @@ def test_build_assistant_attachment_context_extracts_docx_text() -> None:
     assert "Binary attachment available" not in context
 
 
-def test_build_assistant_attachment_context_extracts_xlsx_text() -> None:
+@pytest.mark.parametrize(
+    ("shared_items", "cell_indices", "expected_text"),
+    [
+        pytest.param("<si><t>Forecast Q1</t></si>", [0], "Forecast Q1\n42", id="plain"),
+        pytest.param(
+            '<si><r><t xml:space="preserve">Hello </t></r><r><t>world</t></r></si><si><t>Second</t></si>',
+            [0, 1],
+            "Hello world\nSecond\n42",
+            id="rich-text",
+        ),
+        pytest.param("<si/><si><t>Second</t></si>", [1, 1], "Second\nSecond\n42", id="empty-item"),
+        pytest.param(
+            '<si><t>漢字</t><rPh sb="0" eb="2"><t>かんじ</t></rPh></si><si><t>Second</t></si>',
+            [0, 1],
+            "漢字\nSecond\n42",
+            id="phonetic-annotation",
+        ),
+    ],
+)
+def test_build_assistant_attachment_context_extracts_xlsx_text(
+    shared_items: str, cell_indices: list[int], expected_text: str
+) -> None:
     attachment = SkillAssistAttachmentPayload(
         tool_file_id="xlsx-file-1",
         name="forecast.xlsx",
@@ -3205,13 +3226,13 @@ def test_build_assistant_attachment_context_extracts_xlsx_text() -> None:
     payload = _zip_payload(
         {
             "xl/sharedStrings.xml": (
-                '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-                "<si><t>Forecast Q1</t></si>"
-                "</sst>"
+                f'<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">{shared_items}</sst>'
             ),
             "xl/worksheets/sheet1.xml": (
                 '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-                '<sheetData><row><c t="s"><v>0</v></c><c><v>42</v></c></row></sheetData>'
+                "<sheetData><row>"
+                + "".join(f'<c t="s"><v>{index}</v></c>' for index in cell_indices)
+                + "<c><v>42</v></c></row></sheetData>"
                 "</worksheet>"
             ),
         }
@@ -3227,8 +3248,7 @@ def test_build_assistant_attachment_context_extracts_xlsx_text() -> None:
         )
 
     assert "--- forecast.xlsx" in context
-    assert "Forecast Q1" in context
-    assert "42" in context
+    assert expected_text in context
     assert "Binary attachment available" not in context
 
 
