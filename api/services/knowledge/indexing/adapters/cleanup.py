@@ -63,6 +63,11 @@ def clean_document_indexes(
         high_quality = dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY
         node_ids = list(dict.fromkeys([*summary_node_ids, *body_node_ids]))
         vector_type = Vector.resolve_vector_type(dataset, session=session) if high_quality and node_ids else None
+        has_child_keyword_table = (
+            get_dataset_keyword_table(dataset, session=session) is not None
+            if high_quality and doc_form == IndexStructureType.PARENT_CHILD_INDEX and body_node_ids
+            else False
+        )
         session.expunge(dataset)
 
     if not node_ids and not summary_ids and not child_ids:
@@ -71,7 +76,7 @@ def clean_document_indexes(
     if high_quality:
         if node_ids:
             Vector(dataset, session=None, vector_type=vector_type).delete_by_ids(node_ids)
-    elif body_node_ids:
+    if body_node_ids and (not high_quality or has_child_keyword_table):
         # The keyword adapter owns its lock and storage I/O; callbacks only do SQL.
         def read() -> tuple[str, str | None]:
             with new_session() as session:
