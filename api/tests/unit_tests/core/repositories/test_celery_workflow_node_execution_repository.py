@@ -437,9 +437,10 @@ class TestCeleryWorkflowNodeExecutionRepository:
         assert result[0].index == 2
         assert result[1].index == 1
 
+    @pytest.mark.parametrize("workflow_state", ["uncached", "cached", "standalone"])
     @patch("core.repositories.celery_workflow_node_execution_repository.save_workflow_node_execution_task")
     def test_save_execution_data_delegates_and_refreshes_cache(
-        self, mock_task, sqlite_session_factory, account, sample_workflow_node_execution
+        self, mock_task, sqlite_session_factory, account, sample_workflow_node_execution, workflow_state
     ):
         """`save_execution_data` is part of the repository protocol and must exist.
 
@@ -453,7 +454,12 @@ class TestCeleryWorkflowNodeExecutionRepository:
             app_id="test-app",
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         )
-        repo.save(sample_workflow_node_execution)
+        if workflow_state == "standalone":
+            sample_workflow_node_execution = sample_workflow_node_execution.model_copy(
+                update={"workflow_execution_id": None}
+            )
+        elif workflow_state == "cached":
+            repo.save(sample_workflow_node_execution)
 
         with patch.object(repo._sql_repository, "save_execution_data") as save_execution_data:
             repo.save_execution_data(sample_workflow_node_execution)
@@ -462,7 +468,9 @@ class TestCeleryWorkflowNodeExecutionRepository:
         # The SQL repository mutates the domain model in place, so the cache must
         # still expose the very same instance afterwards.
         assert repo._execution_cache[sample_workflow_node_execution.id] is sample_workflow_node_execution
-        assert (
-            sample_workflow_node_execution.id
-            in repo._workflow_execution_mapping[sample_workflow_node_execution.workflow_execution_id]
-        )
+        if workflow_state == "standalone":
+            assert repo._workflow_execution_mapping == {}
+        else:
+            assert repo._workflow_execution_mapping[sample_workflow_node_execution.workflow_execution_id] == [
+                sample_workflow_node_execution.id
+            ]
