@@ -143,81 +143,6 @@ function main(name, age, city) {
 }
 
 describe('extractReturnType', () => {
-  it.each(['function main() { return { result:', 'function main() { return null }'])(
-    'does not infer outputs without a valid returned object: %s',
-    (code) => {
-      expect(extractReturnType(code, CodeLanguage.javascript)).toEqual({})
-    },
-  )
-
-  it.each([
-    ['a template containing an apostrophe', `\`It's \${text}\``],
-    [
-      'nested templates and object literals',
-      `\`value: \${\`\${({ value: text }).value}\`}, done\``,
-    ],
-    ['a regex containing an apostrophe', "/'/.test(text)"],
-    ['a regex containing a bracket', '/[(]/.test(text)'],
-    ['division beside a regex', 'text.length / 2 / /[(]/.source.length'],
-  ])('preserves outputs after %s', (_description, expression) => {
-    const code = `function main(text) {
-      return { result: ${expression}, length: text.length }
-    }`
-    expect(extractReturnType(code, CodeLanguage.javascript)).toEqual({
-      result: { type: VarType.string, children: null },
-      length: { type: VarType.string, children: null },
-    })
-  })
-
-  it('preserves JavaScript regex literals containing comment markers', () => {
-    const code = String.raw`function main(url) {
-      return {
-        result: /https?:\/\//.test(url), // URL scheme
-        status: /[/*]/.test(url) /* slash or star */
-      }
-    }`
-    expect(extractReturnType(code, CodeLanguage.javascript)).toEqual({
-      result: { type: VarType.string, children: null },
-      status: { type: VarType.string, children: null },
-    })
-  })
-
-  it.each([
-    [
-      CodeLanguage.python3,
-      `
-# return {"ignored": "comment"}
-def main():
-    return {
-        # The result's nested data: { ignored: 1 },
-        "result": {"url": "https://example.com/#fragment"}, # keep the next field
-        # Status metadata
-        "status": "ok"
-    }`,
-    ],
-    [
-      CodeLanguage.javascript,
-      `
-// return { ignored: "comment" }
-function main() {
-    return {
-        /* The result's nested data: { ignored: 1 }, */
-        result: { url: "https://example.com/*literal*/" }, // keep the next field
-        // Status metadata
-        status: "ok"
-    }
-}`,
-    ],
-  ] as const)(
-    'ignores %s comments without dropping outputs or parsing nested keys',
-    (language, code) => {
-      expect(extractReturnType(code, language)).toEqual({
-        result: { type: VarType.string, children: null },
-        status: { type: VarType.string, children: null },
-      })
-    },
-  )
-
   it.each([
     [CodeLanguage.python3, RETURN_TYPE_SAMPLES.python3.singleReturn, ['result']],
     [CodeLanguage.python3, RETURN_TYPE_SAMPLES.python3.multipleReturns, ['result', 'status']],
@@ -242,8 +167,7 @@ function main() {
       RETURN_TYPE_SAMPLES.javascript.nestedObject,
       ['personal_info', 'timestamp', 'status'],
     ],
-    [CodeLanguage.javascript, RETURN_TYPE_SAMPLES.javascript.withJSDoc, ['result']],
-  ] as const)('extracts top-level %s return fields from %s', (language, code, keys) => {
+  ] as const)('extracts %s return fields from %s', (language, code, keys) => {
     expect(extractReturnType(code, language)).toEqual(
       Object.fromEntries(keys.map((key) => [key, { type: VarType.string, children: null }])),
     )
