@@ -99,6 +99,20 @@ it('keeps the edit draft on failure, guards pending dismissal and closes only af
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 })
 
+it('keeps the edit draft after an outside press and still allows explicit cancellation', async () => {
+  const user = userEvent.setup()
+  render(<MetadataEntry />)
+  const name = await screen.findByRole('textbox', { name: 'app.newApp.captionName' })
+  await user.clear(name)
+  await user.type(name, 'Unsaved draft')
+  await user.click(document.body)
+  expect(screen.getByRole('dialog')).toBeInTheDocument()
+  expect(name).toHaveValue('Unsaved draft')
+  expect(service.request).not.toHaveBeenCalled()
+  await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+})
+
 it('discards a cancelled draft and initializes the next edit session from saved data', async () => {
   const user = userEvent.setup()
   render(<MetadataEntry />)

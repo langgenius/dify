@@ -17,7 +17,7 @@ import {
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
-import { useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useExportAppDsl, useExportWorkflowAppDsl } from '@/app/components/app/use-export-app-dsl'
 
@@ -27,6 +27,7 @@ type ExportAppDialogProps = Pick<AlertDialogProps, 'open' | 'onOpenChange'> & {
 
 export function ExportAppDialog({ appDetail, open, onOpenChange }: ExportAppDialogProps) {
   const actionsRef = useRef<AlertDialogActions>(null)
+  const confirmLabelId = useId()
   const { t } = useTranslation(['workflow', 'common'])
   const [secrets, setSecrets] = useState<EnvironmentVariableItemResponse[]>([])
   const { exportWorkflowAppDsl, isExporting: isChecking } = useExportWorkflowAppDsl()
@@ -85,13 +86,16 @@ export function ExportAppDialog({ appDetail, open, onOpenChange }: ExportAppDial
               <AlertDialogConfirmButton
                 tone="default"
                 loading={isPending}
+                aria-labelledby={confirmLabelId}
                 onClick={() => {
                   void check()
                 }}
               >
-                {isPending
-                  ? t(($) => $['operation.exporting'], { ns: 'common' })
-                  : t(($) => $['operation.confirm'], { ns: 'common' })}
+                <span id={confirmLabelId}>
+                  {isPending
+                    ? t(($) => $['operation.exporting'], { ns: 'common' })
+                    : t(($) => $['operation.confirm'], { ns: 'common' })}
+                </span>
               </AlertDialogConfirmButton>
             </AlertDialogFooter>
           </>
@@ -111,6 +115,7 @@ function ExportSecretsForm({
   onSubmit: (includeSecret: boolean) => void
 }) {
   const { t } = useTranslation(['app', 'workflow', 'common'])
+  const submitLabelId = useId()
   const [includeSecret, setIncludeSecret] = useState(false)
   return (
     <Form
@@ -165,12 +170,19 @@ function ExportSecretsForm({
         <AlertDialogCancelButton type="button" disabled={isPending}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </AlertDialogCancelButton>
-        <AlertDialogConfirmButton type="submit" tone="default" loading={isPending}>
-          {isPending
-            ? t(($) => $['operation.exporting'], { ns: 'common' })
-            : includeSecret
-              ? t(($) => $['exportSecret.title'], { ns: 'app' })
-              : t(($) => $.exportApp, { ns: 'app' })}
+        <AlertDialogConfirmButton
+          type="submit"
+          tone="default"
+          loading={isPending}
+          aria-labelledby={submitLabelId}
+        >
+          <span id={submitLabelId}>
+            {isPending
+              ? t(($) => $['operation.exporting'], { ns: 'common' })
+              : includeSecret
+                ? t(($) => $['exportSecret.title'], { ns: 'app' })
+                : t(($) => $.exportApp, { ns: 'app' })}
+          </span>
         </AlertDialogConfirmButton>
       </AlertDialogFooter>
     </Form>

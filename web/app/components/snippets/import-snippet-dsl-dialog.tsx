@@ -242,10 +242,10 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
             <DialogTitle>{t(($) => $.importDialogTitle, { ns: 'snippet' })}</DialogTitle>
             <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
           </DialogHeader>
-          <Tabs value={currentTab} onValueChange={handleTabChange}>
+          <Tabs className="contents" value={currentTab} onValueChange={handleTabChange}>
             <TabsList
               aria-label={t(($) => $.importDialogTitle, { ns: 'snippet' })}
-              className="h-9 gap-6 border-b border-divider-subtle px-6"
+              className="h-9 shrink-0 gap-6 border-b border-divider-subtle px-6"
             >
               <TabsTab
                 value={ImportSnippetDSLDialogTab.FromFile}
@@ -262,26 +262,30 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
                 {t(($) => $.importFromDSLUrl, { ns: 'snippet' })}
               </TabsTab>
             </TabsList>
-            <TabsPanel value={ImportSnippetDSLDialogTab.FromFile} tabIndex={-1}>
-              <DialogBody>
-                <Uploader className="mt-0" file={currentFile} updateFile={handleFileChange} />
-              </DialogBody>
+            <TabsPanel
+              value={ImportSnippetDSLDialogTab.FromFile}
+              tabIndex={-1}
+              render={<DialogBody />}
+            >
+              <Uploader className="mt-0" file={currentFile} updateFile={handleFileChange} />
             </TabsPanel>
-            <TabsPanel value={ImportSnippetDSLDialogTab.FromUrl} tabIndex={-1}>
-              <DialogBody>
-                <label
-                  htmlFor={dslUrlInputId}
-                  className="mb-1 block system-md-semibold text-text-secondary"
-                >
-                  DSL URL
-                </label>
-                <Input
-                  id={dslUrlInputId}
-                  placeholder={t(($) => $.importFromDSLUrlPlaceholder, { ns: 'snippet' }) || ''}
-                  value={dslUrl}
-                  onChange={(event) => setDslUrl(event.target.value)}
-                />
-              </DialogBody>
+            <TabsPanel
+              value={ImportSnippetDSLDialogTab.FromUrl}
+              tabIndex={-1}
+              render={<DialogBody />}
+            >
+              <label
+                htmlFor={dslUrlInputId}
+                className="mb-1 block system-md-semibold text-text-secondary"
+              >
+                DSL URL
+              </label>
+              <Input
+                id={dslUrlInputId}
+                placeholder={t(($) => $.importFromDSLUrlPlaceholder, { ns: 'snippet' }) || ''}
+                value={dslUrl}
+                onChange={(event) => setDslUrl(event.target.value)}
+              />
             </TabsPanel>
           </Tabs>
           <DialogFooter>

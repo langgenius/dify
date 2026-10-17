@@ -115,6 +115,7 @@ export function AppMetadataDialog({
     <Dialog
       actionsRef={actionsRef}
       open={open}
+      disablePointerDismissal={operation === 'edit'}
       onOpenChange={(nextOpen, details) => {
         if (!nextOpen && isPending && details.reason !== 'imperative-action') details.cancel()
         else onOpenChange?.(nextOpen, details)
