@@ -77,7 +77,7 @@ export function CustomizeDialog({
         <span aria-hidden className="i-custom-vender-deploy-code-block size-4" />
         {triggerLabel ?? t(($) => $['overview.appInfo.customize.entry'], { ns: 'appOverview' })}
       </DialogTrigger>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] w-160">
+      <DialogContent className="w-160">
         <DialogHeader>
           <DialogTitle>
             {t(($) => $[`${prefixCustomize}.title`], { ns: 'appOverview' })}

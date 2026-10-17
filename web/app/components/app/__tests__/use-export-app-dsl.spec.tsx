@@ -2,7 +2,10 @@ import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, renderHook, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import { ExportAppDialog } from '@/app/components/app-sidebar/app-info/export-app-dialog'
 import { createHttpError, httpErrorFromResponse } from '@/service/http-error'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import AppExportConfirmModal from '../export-confirm-modal'
 import { useExportAppDsl, useExportWorkflowAppDsl } from '../use-export-app-dsl'
 
@@ -33,24 +36,24 @@ const mocks = vi.hoisted(() => ({
   ),
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleClient: {
-    apps: {
-      byAppId: {
-        export: {
-          get: mocks.exportAppDsl,
-        },
-        workflows: {
-          draft: {
-            environmentVariables: {
-              get: mocks.getEnvironmentVariables,
+vi.mock('@/service/console', async () => {
+  const { createTanstackQueryUtils } = await import('@orpc/tanstack-query')
+  return {
+    consoleQuery: createTanstackQueryUtils(
+      {
+        apps: {
+          byAppId: {
+            export: { get: mocks.exportAppDsl },
+            workflows: {
+              draft: { environmentVariables: { get: mocks.getEnvironmentVariables } },
             },
           },
         },
       },
-    },
-  },
-}))
+      { path: ['console'] },
+    ),
+  }
+})
 
 vi.mock('@/utils/download', () => ({
   downloadBlob: mocks.downloadBlob,
@@ -59,6 +62,7 @@ vi.mock('@/utils/download', () => ({
 vi.mock('@/app/notifications', () => ({
   toast: {
     error: mocks.toastError,
+    success: mocks.toastSuccess,
     promise: mocks.toastPromise,
   },
 }))
@@ -96,14 +100,20 @@ describe('useExportAppDsl', () => {
       .mockResolvedValueOnce(new File(['package'], 'app.ifpkg'))
 
     function ExportConfirmation() {
-      const { exportAppDsl, isExporting } = useExportAppDsl()
+      const { exportAppDsl, isExporting, errorMessage } = useExportAppDsl()
       return (
         <AppExportConfirmModal
           envList={[{ name: 'TOKEN', value: 'masked' }]}
           isExporting={isExporting}
+          errorMessage={errorMessage}
           onClose={onClose}
           onConfirm={async (includeSecret) => {
-            const result = await exportAppDsl({ appId: 'app-1', appName: 'App', includeSecret })
+            const result = await exportAppDsl({
+              appId: 'app-1',
+              appName: 'App',
+              includeSecret,
+              feedback: 'dialog',
+            })
             return result.status === 'downloaded'
           }}
         />
@@ -124,16 +134,17 @@ describe('useExportAppDsl', () => {
     })
     expect(onClose).not.toHaveBeenCalled()
     expect(screen.getByRole('checkbox')).toBeChecked()
-    expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('app.exportAppFailed', {
-      description: 'Skill unavailable',
-    })
+    expect(await screen.findByRole('alert')).toHaveTextContent('Skill unavailable')
+    expect(mocks.toastError).not.toHaveBeenCalled()
+    expect(mocks.toastPromise).not.toHaveBeenCalled()
     await user.click(await screen.findByRole('button', { name: 'app.exportSecret.title' }))
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
     expect(mocks.exportAppDsl).toHaveBeenLastCalledWith(
       expect.objectContaining({ query: expect.objectContaining({ include_secret: true }) }),
-      { context: { silent: true } },
+      expect.objectContaining({ context: expect.objectContaining({ silent: true }) }),
     )
     expect(mocks.downloadBlob).toHaveBeenCalledTimes(1)
+    expect(mocks.toastSuccess).not.toHaveBeenCalled()
   })
 
   it.each([
@@ -156,10 +167,10 @@ describe('useExportAppDsl', () => {
       ).resolves.toEqual({ status: 'downloaded' })
     })
 
-    expect(mocks.toastSuccess).toHaveBeenCalledWith('app.exportAppSuccess')
+    expect(mocks.toastSuccess).toHaveBeenCalledWith('app.ifpkgDownloaded')
     expect(mocks.exportAppDsl).toHaveBeenCalledWith(
       { params: { app_id: 'agent-app-id' }, query: { include_secret: false, format: 'ifpkg' } },
-      { context: { silent: true } },
+      expect.objectContaining({ context: expect.objectContaining({ silent: true }) }),
     )
     expect(mocks.downloadBlob).toHaveBeenCalledWith({ data: archive, fileName })
     const [{ data }] = mocks.downloadBlob.mock.calls[0] as [{ data: Blob }]
@@ -194,13 +205,35 @@ describe('useExportAppDsl', () => {
           format: 'ifpkg',
         },
       },
-      { context: { silent: true } },
+      expect.objectContaining({ context: expect.objectContaining({ silent: true }) }),
     )
     expect(mocks.downloadBlob).toHaveBeenCalledWith({
       data: archive,
       fileName: 'Support Agent.ifpkg',
     })
     expect(mocks.getEnvironmentVariables).not.toHaveBeenCalled()
+  })
+
+  it('fetches a fresh file on each export and releases the file query afterward', async () => {
+    const first = new File(['first'], 'first.ifpkg')
+    const second = new File(['second'], 'second.ifpkg')
+    mocks.exportAppDsl.mockResolvedValueOnce(first).mockResolvedValueOnce(second)
+    const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } })
+    const { result } = renderHook(() => useExportAppDsl(), {
+      wrapper: ({ children }) => (
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      ),
+    })
+    const input = { appId: 'app-1', appName: 'App' }
+    await act(async () => {
+      await result.current.exportAppDsl(input)
+    })
+    await act(async () => {
+      await result.current.exportAppDsl(input)
+    })
+    expect(mocks.exportAppDsl).toHaveBeenCalledTimes(2)
+    expect(mocks.downloadBlob).toHaveBeenLastCalledWith({ data: second, fileName: 'second.ifpkg' })
+    await waitFor(() => expect(queryClient.getQueryCache().getAll()).toHaveLength(0))
   })
 
   it('allows retrying a failed version export and downloads only the successful response', async () => {
@@ -232,7 +265,7 @@ describe('useExportAppDsl', () => {
         params: { app_id: input.appId },
         query: { include_secret: false, version_id: input.versionId },
       },
-      { context: { silent: true } },
+      expect.objectContaining({ context: expect.objectContaining({ silent: true }) }),
     )
     expect(mocks.downloadBlob).toHaveBeenCalledTimes(1)
     expect(mocks.downloadBlob).toHaveBeenCalledWith({
@@ -249,7 +282,7 @@ describe('useExportAppDsl', () => {
     await act(async () => {
       await result.current.exportAppDsl({ appId: 'app-id', appName: 'App' })
     })
-    expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('app.exportAppFailed', {
+    expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('app.exportFailed', {
       description: 'HTTP 502',
     })
     expect(mocks.downloadBlob).not.toHaveBeenCalled()
@@ -271,7 +304,7 @@ describe('useExportAppDsl', () => {
         params: { app_id: '4f6ae8f8-86c8-4ec8-82ef-e27f5932692b' },
         query: { include_secret: false },
       },
-      { context: { silent: true } },
+      expect.objectContaining({ context: expect.objectContaining({ silent: true }) }),
     )
     expect(mocks.toastPromise).toHaveBeenCalledTimes(1)
     expect(mocks.getEnvironmentVariables).not.toHaveBeenCalled()
@@ -351,10 +384,9 @@ describe('useExportAppDsl', () => {
           error: expect.any(Function),
         }),
       )
-      expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith(
-        format === 'yaml' ? 'app.exportFailed' : 'app.exportAppFailed',
-        { description: "Package contains unusable Skill 'news-source-verification'" },
-      )
+      expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('app.exportFailed', {
+        description: "Package contains unusable Skill 'news-source-verification'",
+      })
       expect(mocks.downloadBlob).not.toHaveBeenCalled()
     },
   )
@@ -363,6 +395,44 @@ describe('useExportAppDsl', () => {
 describe('useExportWorkflowAppDsl', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('keeps dialog feedback inline through checking, failure, reopening and retry', async () => {
+    const user = userEvent.setup()
+    const app = createAppDetailFixture({ name: 'Workflow', mode: 'workflow' })
+    mocks.getEnvironmentVariables
+      .mockRejectedValueOnce(new Error('Draft unavailable'))
+      .mockResolvedValue({ items: [] })
+    mocks.exportAppDsl
+      .mockRejectedValueOnce(new Error('Export unavailable'))
+      .mockResolvedValueOnce(new File(['package'], 'workflow.ifpkg'))
+
+    function ExportEntry() {
+      const [open, setOpen] = useState(true)
+      return (
+        <>
+          <button onClick={() => setOpen(true)}>Reopen</button>
+          <ExportAppDialog appDetail={app} open={open} onOpenChange={setOpen} />
+        </>
+      )
+    }
+
+    render(<ExportEntry />, { wrapper: createWrapper() })
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Draft unavailable')
+    expect(mocks.exportAppDsl).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'Reopen' }))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Export unavailable')
+    expect(mocks.toastPromise).not.toHaveBeenCalled()
+    expect(mocks.toastError).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(mocks.toastSuccess).not.toHaveBeenCalled()
+    expect(mocks.downloadBlob).toHaveBeenCalledTimes(1)
   })
 
   it('checks generated workflow environment variables before exporting', async () => {
@@ -381,7 +451,7 @@ describe('useExportWorkflowAppDsl', () => {
 
     expect(mocks.getEnvironmentVariables).toHaveBeenCalledWith(
       { params: { app_id: 'workflow-app-id' } },
-      { context: { silent: true } },
+      expect.objectContaining({ context: expect.objectContaining({ silent: true }) }),
     )
     expect(mocks.getEnvironmentVariables.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.exportAppDsl.mock.invocationCallOrder[0]!,
@@ -390,6 +460,30 @@ describe('useExportWorkflowAppDsl', () => {
       data: expect.any(Blob),
       fileName: 'Support Workflow.yml',
     })
+  })
+
+  it('checks secrets again on a later export instead of reusing the previous environment list', async () => {
+    mocks.getEnvironmentVariables
+      .mockResolvedValueOnce({ items: [] })
+      .mockResolvedValueOnce({ items: [{ name: 'TOKEN', value_type: 'secret', value: 'secret' }] })
+    mocks.exportAppDsl.mockResolvedValue(new File(['package'], 'app.ifpkg'))
+    const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } })
+    const { result } = renderHook(() => useExportWorkflowAppDsl(), {
+      wrapper: ({ children }) => (
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      ),
+    })
+    const input = { appId: 'app-1', appName: 'App' }
+    await act(async () => {
+      await result.current.exportWorkflowAppDsl(input)
+    })
+    await act(async () => {
+      await expect(result.current.exportWorkflowAppDsl(input)).resolves.toMatchObject({
+        status: 'confirmation-required',
+      })
+    })
+    expect(mocks.getEnvironmentVariables).toHaveBeenCalledTimes(2)
+    expect(mocks.exportAppDsl).toHaveBeenCalledTimes(1)
   })
 
   it('returns generated secret variables without starting a download', async () => {
@@ -417,6 +511,8 @@ describe('useExportWorkflowAppDsl', () => {
 
     expect(mocks.exportAppDsl).not.toHaveBeenCalled()
     expect(mocks.toastPromise).not.toHaveBeenCalled()
+    expect(mocks.toastSuccess).not.toHaveBeenCalled()
+    expect(mocks.toastError).not.toHaveBeenCalled()
   })
 
   it('owns workflow preflight errors without starting a download', async () => {
@@ -434,13 +530,38 @@ describe('useExportWorkflowAppDsl', () => {
       ).resolves.toEqual({ status: 'failed' })
     })
 
-    expect(mocks.toastError).toHaveBeenCalledWith('app.exportAppFailed', {
+    expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('app.exportFailed', {
       description: 'Draft unavailable',
     })
+    expect(mocks.toastPromise).not.toHaveBeenCalled()
     expect(mocks.exportAppDsl).not.toHaveBeenCalled()
   })
 
-  it('keeps one pending lifecycle across the draft check and export', async () => {
+  it('reports an export failure once after a successful secret check', async () => {
+    mocks.getEnvironmentVariables.mockResolvedValue({ items: [] })
+    mocks.exportAppDsl.mockRejectedValue(new Error('Export unavailable'))
+    const { result } = renderHook(() => useExportWorkflowAppDsl(), {
+      wrapper: createWrapper(),
+    })
+
+    await act(async () => {
+      await expect(
+        result.current.exportWorkflowAppDsl({
+          appId: 'workflow-app-id',
+          appName: 'Support Workflow',
+        }),
+      ).resolves.toEqual({ status: 'failed' })
+    })
+
+    expect(mocks.toastPromise).toHaveBeenCalledTimes(1)
+    expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('app.exportFailed', {
+      description: 'Export unavailable',
+    })
+    expect(mocks.toastSuccess).not.toHaveBeenCalled()
+    expect(mocks.downloadBlob).not.toHaveBeenCalled()
+  })
+
+  it('stays pending across both stages but only shows a toast for the export', async () => {
     let resolveEnvironmentVariables: ((value: { items: [] }) => void) | undefined
     let resolveExport: ((value: { data: string }) => void) | undefined
     mocks.getEnvironmentVariables.mockImplementation(
@@ -470,17 +591,27 @@ describe('useExportWorkflowAppDsl', () => {
 
     await waitFor(() => expect(result.current.isExporting).toBe(true))
     expect(mocks.exportAppDsl).not.toHaveBeenCalled()
+    expect(mocks.toastPromise).not.toHaveBeenCalled()
+    expect(mocks.toastSuccess).not.toHaveBeenCalled()
+    expect(mocks.toastError).not.toHaveBeenCalled()
 
     await act(async () => {
       resolveEnvironmentVariables?.({ items: [] })
       await waitFor(() => expect(mocks.exportAppDsl).toHaveBeenCalledTimes(1))
     })
     expect(result.current.isExporting).toBe(true)
+    expect(mocks.toastPromise).toHaveBeenCalledWith(
+      expect.any(Promise),
+      expect.objectContaining({ loading: { title: 'common.operation.exporting' } }),
+    )
 
     await act(async () => {
       resolveExport?.({ data: 'kind: app\n' })
       await exportPromise
     })
     await waitFor(() => expect(result.current.isExporting).toBe(false))
+    expect(mocks.toastSuccess).toHaveBeenCalledExactlyOnceWith('common.operation.downloadSuccess')
+    expect(mocks.toastPromise).toHaveBeenCalledTimes(1)
+    expect(mocks.toastError).not.toHaveBeenCalled()
   })
 })

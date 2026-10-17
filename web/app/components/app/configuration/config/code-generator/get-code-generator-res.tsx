@@ -189,7 +189,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
         if (!open) onClose()
       }}
     >
-      <DialogContent className="h-[min(680px,calc(100dvh-2rem))] max-h-none w-full min-w-285 overflow-hidden">
+      <DialogContent className="h-[min(680px,calc(100dvh-2rem))] w-full min-w-285 overflow-hidden">
         <div className="relative flex h-full min-h-0 flex-wrap">
           <div className="h-full w-142.5 shrink-0 overflow-y-auto border-r border-divider-regular p-6">
             <div className="mb-5">

@@ -125,7 +125,7 @@ describe('AgentPreviewVersionsPanel', () => {
       const user = userEvent.setup()
       const onSelectVersion = renderPanel()
       await user.click(screen.getByRole('button', { name: /moreActions.*Initial release/ }))
-      await user.click(screen.getByRole('menuitem', { name: /export/i }))
+      await user.click(screen.getByRole('menuitem', { name: /agentV2\.exportAgent/ }))
       expect(exportState.exportAppDsl).toHaveBeenCalledWith({
         appId: 'app-1',
         appName: 'My agent',
@@ -146,7 +146,7 @@ describe('AgentPreviewVersionsPanel', () => {
       const user = userEvent.setup()
       renderPanel()
       await user.click(screen.getByRole('button', { name: /moreActions.*Initial release/ }))
-      await user.click(screen.getByRole('menuitem', { name: /export/i }))
+      await user.click(screen.getByRole('menuitem', { name: /agentV2\.exportAgent/ }))
       expect(exportState.onUrlUpdate).toHaveBeenCalledWith(
         expect.objectContaining({ queryString: '?pricing=open' }),
       )
@@ -161,7 +161,7 @@ describe('AgentPreviewVersionsPanel', () => {
         const user = userEvent.setup()
         renderPanel()
         await user.click(screen.getByRole('button', { name: /moreActions.*Initial release/ }))
-        await user.click(screen.getByRole('menuitem', { name: /export/i }))
+        await user.click(screen.getByRole('menuitem', { name: /agentV2\.exportAgent/ }))
         expect(exportState.exportAppDsl).toHaveBeenCalledWith(
           expect.objectContaining({ versionId: 'version-0' }),
         )
@@ -174,7 +174,7 @@ describe('AgentPreviewVersionsPanel', () => {
       const user = userEvent.setup()
       renderPanel()
       await user.click(screen.getByRole('button', { name: /moreActions.*Initial release/ }))
-      const action = screen.getByRole('menuitem', { name: /export/i })
+      const action = screen.getByRole('menuitem', { name: /agentV2\.exportAgent/ })
       expect(action).toHaveAttribute('aria-disabled', 'true')
       await user.click(action)
       expect(exportState.exportAppDsl).not.toHaveBeenCalled()
@@ -300,7 +300,9 @@ describe('AgentPreviewVersionsPanel', () => {
       renderPanel()
       await user.click(screen.getByRole('button', { name: /moreActions.*Initial release/ }))
       expect(screen.getByRole('menuitem', { name: /restore/i })).toBeInTheDocument()
-      expect(screen.queryByRole('menuitem', { name: /export/i })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('menuitem', { name: /agentV2\.exportAgent/ }),
+      ).not.toBeInTheDocument()
     })
 
     it('hides restore without release permission while allowing export', async () => {
@@ -309,7 +311,7 @@ describe('AgentPreviewVersionsPanel', () => {
       renderPanel()
       await user.click(screen.getByRole('button', { name: /moreActions.*Initial release/ }))
       expect(screen.queryByRole('menuitem', { name: /restore/i })).not.toBeInTheDocument()
-      expect(screen.getByRole('menuitem', { name: /export/i })).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: /agentV2\.exportAgent/ })).toBeInTheDocument()
     })
   })
 

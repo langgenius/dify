@@ -209,9 +209,10 @@ const ConfigModal: FC<IConfigModalProps> = ({
         if (!open) onClose()
       }}
     >
-      <DialogContent className="max-h-[calc(100dvh-2rem)]">
+      <DialogContent>
         <form
           noValidate
+          className="contents"
           onSubmit={(event) => {
             event.preventDefault()
             handleConfirm()
@@ -229,7 +230,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
             ref={modalRef}
             tabIndex={-1}
             data-testid="config-modal-scroll-area"
-            className="min-w-0 overflow-x-hidden"
+            className="min-w-0"
           >
             <ConfigModalFormFields
               checkboxDefaultSelectValue={checkboxDefaultSelectValue}

@@ -289,7 +289,7 @@ const ModelLoadBalancingModal = ({
           if (!open) onClose?.()
         }}
       >
-        <DialogContent className="w-160 max-w-none">
+        <DialogContent className="w-160">
           <DialogHeader>
             <DialogTitle>
               {draftConfig?.enabled

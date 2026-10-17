@@ -128,7 +128,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
 
   return (
     <Dialog open onOpenChange={noop}>
-      <DialogContent className="w-160 max-w-none">
+      <DialogContent className="w-160">
         <DialogHeader>
           <DialogTitle>
             {`${action} ${t(($) => $['variableConfig.apiBasedVar'], { ns: 'appDebug' })}`}

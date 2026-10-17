@@ -19,6 +19,7 @@ const mockUserCanAccessApp = vi.hoisted(() => ({
 }))
 const mockAppDslExport = vi.hoisted(() => ({
   exportAppDsl: vi.fn(),
+  reset: vi.fn(),
   isExporting: false,
 }))
 const mockWorkflowAppDslExport = vi.hoisted(() => ({
@@ -309,19 +310,19 @@ vi.mock('next/dynamic', () => ({
     }
     if (fnString.includes('switch-app-modal')) {
       return function MockSwitchAppModal({
-        show,
-        onClose,
+        open,
+        onOpenChange,
       }: {
-        show: boolean
-        onClose: () => void
+        open: boolean
+        onOpenChange: (open: boolean) => void
       }) {
-        if (!show) return null
+        if (!open) return null
         return React.createElement(
           'div',
           { 'data-testid': 'switch-modal' },
           React.createElement(
             'button',
-            { onClick: onClose, 'data-testid': 'close-switch-modal' },
+            { onClick: () => onOpenChange(false), 'data-testid': 'close-switch-modal' },
             'Close',
           ),
         )
@@ -1204,13 +1205,21 @@ describe('AppCard', () => {
       })
     })
 
-    it('should prevent duplicate exports while an app DSL export is pending', () => {
+    it('keeps other menu actions available while preventing duplicate exports', async () => {
       mockAppDslExport.isExporting = true
       render(<AppCard app={mockApp} />)
 
-      const trigger = screen.getByRole('button', { name: 'common.operation.exporting' })
-
-      expect(trigger).toBeDisabled()
+      const trigger = getOperationsTrigger()
+      expect(trigger).not.toBeDisabled()
+      fireEvent.click(trigger)
+      const exportItem = await screen.findByRole('menuitem', { name: 'app.exportApp' })
+      expect(exportItem).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.getByRole('menuitem', { name: 'app.editApp' })).not.toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+      fireEvent.click(exportItem)
+      expect(mockAppDslExport.exportAppDsl).not.toHaveBeenCalled()
     })
   })
 

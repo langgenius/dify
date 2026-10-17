@@ -48,7 +48,7 @@ export function AgentSettingDialog({ disabled, onSave, ...props }: Props) {
       </DialogTrigger>
       <DialogPortal>
         <DialogBackdrop />
-        <DialogPopup className="fixed top-2 right-2 bottom-2 flex w-160 max-w-[calc(100vw-1rem)] flex-col overflow-hidden overscroll-contain rounded-xl">
+        <DialogPopup className="fixed top-2 right-2 bottom-2 flex w-160 max-w-[calc(100vw-1rem)] flex-col overflow-hidden overscroll-contain rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl">
           <AgentSettingsForm
             {...props}
             onSave={(payload) => {

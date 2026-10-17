@@ -1,5 +1,6 @@
 import {
   AlertDialog,
+  AlertDialogBody,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
@@ -65,6 +66,7 @@ export const DeleteConfirm = (props: Props) => {
     <AlertDialog open={isShow} onOpenChange={handleOpenChange}>
       <AlertDialogContent backdropProps={{ forceRender: true }}>
         <form
+          className="contents"
           onSubmit={(event) => {
             event.preventDefault()
             onConfirm()
@@ -82,7 +84,9 @@ export const DeleteConfirm = (props: Props) => {
                   })
                 : t(($) => $[`${tPrefix}.content`], { ns: 'pluginTrigger' })}
             </AlertDialogDescription>
-            {workflowsInUse > 0 && (
+          </AlertDialogHeader>
+          {workflowsInUse > 0 && (
+            <AlertDialogBody>
               <Field name="confirmation">
                 <FieldLabel>
                   {t(($) => $[`${tPrefix}.confirmInputTip`], {
@@ -99,8 +103,8 @@ export const DeleteConfirm = (props: Props) => {
                   })}
                 />
               </Field>
-            )}
-          </AlertDialogHeader>
+            </AlertDialogBody>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancelButton disabled={isDeleting}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

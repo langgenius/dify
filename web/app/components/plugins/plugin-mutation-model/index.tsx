@@ -50,7 +50,7 @@ const PluginMutationModal: FC<Props> = ({
         if (!open) onCancel()
       }}
     >
-      <DialogContent className="w-full min-w-140">
+      <DialogContent className="w-140">
         <DialogHeader>
           <DialogTitle>{modelTitle}</DialogTitle>
           <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />

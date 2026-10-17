@@ -109,6 +109,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
     >
       <DialogContent className="w-130">
         <form
+          className="contents"
           onSubmit={(event) => {
             event.preventDefault()
             onConfirm()

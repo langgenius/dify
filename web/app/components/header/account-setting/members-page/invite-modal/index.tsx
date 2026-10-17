@@ -107,6 +107,7 @@ function InviteForm({
 
   return (
     <Form<InviteFormValues>
+      className="contents"
       ref={ref}
       aria-label={t(($) => $['members.inviteTeamMember'], { ns: 'workspaceMembers' })}
       errors={fieldErrors}

@@ -63,13 +63,10 @@ const AgentLogModal: FC<AgentLogModalProps> = ({
       >
         <DialogPortal>
           <DialogBackdrop className="bg-transparent!" />
-          <DialogPopup className="fixed top-16 bottom-4 left-[max(8px,calc(100vw-1136px))] flex w-120 max-w-[calc(100vw-16px)] flex-col overflow-hidden overscroll-contain rounded-xl py-3">
-            <DialogTitle
-              // oxlint-disable-next-line shadcn/no-restyle -- Side panel keeps its compact header row.
-              className="shrink-0 px-4 py-1"
-            >
-              {t(($) => $['runDetail.workflowTitle'], { ns: 'appLog' })}
-            </DialogTitle>
+          <DialogPopup className="fixed top-16 bottom-4 left-[max(8px,calc(100vw-1136px))] flex w-120 max-w-[calc(100vw-16px)] flex-col overflow-hidden overscroll-contain rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg py-3 shadow-xl">
+            <div className="shrink-0 px-4 py-1">
+              <DialogTitle>{t(($) => $['runDetail.workflowTitle'], { ns: 'appLog' })}</DialogTitle>
+            </div>
             <button
               type="button"
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}

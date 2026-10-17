@@ -79,7 +79,7 @@ const EmptyDatasetCreationModal = ({ show = false, onHide }: IProps) => {
           </DialogDescription>
           <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
-        <Form onFormSubmit={() => void submit()}>
+        <Form className="contents" onFormSubmit={() => void submit()}>
           <DialogBody>
             <Field name="datasetName">
               <FieldLabel className={s.label}>

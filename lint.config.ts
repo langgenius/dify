@@ -31,39 +31,17 @@ export const stylingContractRules = {
         },
         {
           pattern: '^(Dialog|AlertDialog)Content$',
-          // A fixed-height surface may stop scrolling itself (`overflow-hidden`) and hand its
-          // remaining height to content that scrolls (`flex flex-col`).
-          allow: [
-            'w-*',
-            'min-w-*',
-            'max-w-*',
-            'h-*',
-            'min-h-*',
-            'max-h-*',
-            'flex',
-            'flex-col',
-            'overflow-hidden',
-          ],
-          deny: [
-            'flex-1',
-            'flex-auto',
-            'flex-initial',
-            'flex-none',
-            'flex-row',
-            'flex-row-reverse',
-            'flex-col-reverse',
-            'flex-wrap',
-            'flex-nowrap',
-          ],
+          allow: ['w-*', 'min-w-*', 'max-w-*', 'h-*', 'min-h-*', 'max-h-*', 'overflow-hidden'],
+          deny: ['max-w-none', 'max-h-none', 'w-screen', 'h-screen'],
           message:
-            '"{{className}}" is outside the {{component}} styling contract. The surface owns position, chrome and scrolling, and its parts own spacing; callers may only size it. Compose DialogPortal, DialogBackdrop and DialogPopup for a custom surface.',
+            '"{{className}}" is outside the {{component}} styling contract. The surface owns position, chrome and scrolling, and its parts own spacing; callers may only size it within the viewport. Compose DialogPortal, DialogBackdrop and DialogPopup for a custom surface.',
         },
         {
           pattern: '^DialogPopup$',
           allow: ['*'],
           deny: ['top-1/2', 'left-1/2', '-translate-x-1/2', '-translate-y-1/2'],
           message:
-            '"{{className}}" recreates the DialogContent centering. Use DialogContent for a centered dialog; DialogPopup is for a surface that places itself.',
+            '"{{className}}" recreates the DialogContent centering. Use DialogContent for a centered dialog; DialogPopup is the bare dialog element for a surface that places and dresses itself.',
         },
         {
           pattern: '^(Dialog|AlertDialog)(Title|Description)$',
@@ -84,10 +62,11 @@ export const stylingContractRules = {
             '"{{className}}" is outside the DialogFooter styling contract. The footer owns its spacing and alignment; callers may stack full-width actions.',
         },
         {
-          pattern: '^DialogBody$',
+          pattern: '^(Dialog|AlertDialog)Body$',
           allow: ['layout', 'gap-*', 'space-x-*', 'space-y-*'],
+          deny: ['flex-1', 'flex-auto', 'flex-initial', 'flex-none', 'overflow-*'],
           message:
-            '"{{className}}" is outside the DialogBody styling contract. The body owns the content gutter; callers may lay out its content.',
+            '"{{className}}" is outside the {{component}} styling contract. The body owns the content gutter and scrolls between the header and footer; callers may lay out its content.',
         },
       ],
     },

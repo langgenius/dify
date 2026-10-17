@@ -66,6 +66,7 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
     >
       <DialogContent backdropProps={{ forceRender: true }}>
         <form
+          className="contents"
           onSubmit={(e) => {
             e.preventDefault()
             void changeWorkspaceInfo()

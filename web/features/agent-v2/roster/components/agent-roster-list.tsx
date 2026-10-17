@@ -172,7 +172,7 @@ function AgentCardActionMenuItems({
 }: AgentCardActionMenuItemsProps) {
   const { t } = useTranslation(['agentRoster'])
   const { t: tCommon } = useTranslation(['common'])
-  const { t: tApp } = useTranslation(['app'])
+  const { t: tAgent } = useTranslation(['agentV2'])
   const MenuItem = kind === 'context' ? ContextMenuItem : DropdownMenuItem
   const MenuSeparator = kind === 'context' ? ContextMenuSeparator : DropdownMenuSeparator
 
@@ -193,7 +193,7 @@ function AgentCardActionMenuItems({
       {onExport && (
         <MenuItem className="gap-2" disabled={isExporting} onClick={onExport}>
           <span aria-hidden className="i-ri-download-line size-4 shrink-0 text-text-tertiary" />
-          <span>{tApp(($) => $.exportApp)}</span>
+          <span>{tAgent(($) => $.exportAgent)}</span>
         </MenuItem>
       )}
       {onDelete && (onEdit || onDuplicate || onExport) && <MenuSeparator />}
@@ -262,7 +262,7 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
   const handleExport = () => {
     if (!capabilities.canImportExportDSL) return
     if (!agent.app_id) {
-      toast.error(tApp(($) => $.exportAppFailed))
+      toast.error(tApp(($) => $.exportFailed))
       return
     }
 

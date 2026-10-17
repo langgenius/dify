@@ -196,16 +196,16 @@ vi.mock('@/app/components/workflow/features', () => ({
 
 vi.mock('@/app/components/workflow/update-dsl-modal', () => ({
   default: ({
-    onCancel,
+    onOpenChange,
     onBackup,
     onImport,
   }: {
-    onCancel: () => void
+    onOpenChange: (open: boolean) => void
     onBackup: () => void
     onImport: () => void
   }) => (
     <div data-testid="update-dsl-modal">
-      <button type="button" onClick={onCancel}>
+      <button type="button" onClick={() => onOpenChange(false)}>
         cancel-import-dsl
       </button>
       <button type="button" onClick={onBackup}>
