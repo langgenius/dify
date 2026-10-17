@@ -3,9 +3,10 @@ import type {
   PluginCategoryInstalledPluginResponse,
   PluginEntity,
   PluginInstallationItemResponse,
+  PluginInstallTask,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
-import type { Permissions, PluginTaskStart } from '@/app/components/plugins/types'
+import type { Permissions } from '@/app/components/plugins/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -1145,7 +1146,7 @@ describe('usePluginTaskList', () => {
     })
     mockGet.mockResolvedValue({ tasks: [] })
 
-    const startedTask: PluginTaskStart = {
+    const startedTask: PluginInstallTask = {
       id: 'task-new',
       created_at: '2026-06-05T03:34:59.578653Z',
       updated_at: '2026-06-05T03:34:59.578653Z',
@@ -1161,7 +1162,7 @@ describe('usePluginTaskList', () => {
           icon: 'gitlab.png',
           labels: {
             en_US: 'GitLab',
-          } as PluginTaskStart['plugins'][number]['labels'],
+          } as PluginInstallTask['plugins'][number]['labels'],
           source: PluginSource.marketplace,
         },
       ],
@@ -1284,7 +1285,7 @@ describe('usePluginTaskList', () => {
       plugins: [],
     }
     mockGet.mockResolvedValue({ tasks: [staleTask] })
-    const startedTask: PluginTaskStart = {
+    const startedTask: PluginInstallTask = {
       id: 'task-new',
       created_at: '2026-06-05T03:34:59.578653Z',
       updated_at: '2026-06-05T03:34:59.578653Z',
@@ -1300,7 +1301,7 @@ describe('usePluginTaskList', () => {
           icon: 'gitlab.png',
           labels: {
             en_US: 'GitLab',
-          } as PluginTaskStart['plugins'][number]['labels'],
+          } as PluginInstallTask['plugins'][number]['labels'],
           source: PluginSource.marketplace,
         },
       ],

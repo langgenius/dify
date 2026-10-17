@@ -1,5 +1,5 @@
 'use client'
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useTranslation } from 'react-i18next'
 import RetrievalSettings from '../../../external-knowledge-base/create/RetrievalSettings'
@@ -8,7 +8,7 @@ const rowClass = 'flex min-w-0 flex-col gap-2 @3xl/settings:flex-row @3xl/settin
 const labelClass = 'flex shrink-0 flex-col pt-1 @3xl/settings:w-45'
 
 type ExternalKnowledgeSectionProps = {
-  currentDataset: DataSet
+  currentDataset: DatasetDetailWithPartialMembersResponse
   topK: number
   scoreThreshold: number
   scoreThresholdEnabled: boolean

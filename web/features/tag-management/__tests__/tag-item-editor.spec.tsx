@@ -1,7 +1,8 @@
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render as renderComponent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { createTestQueryClient } from '@/test/query-client'
 import { TagItemEditor } from '../components/tag-item-editor'
 
 const tagMocks = vi.hoisted(() => {
@@ -33,17 +34,6 @@ const tagMocks = vi.hoisted(() => {
   }
 })
 
-vi.mock('@tanstack/react-query', () => ({
-  useMutation: (mutationOptions: { mutationFn: (input: unknown) => Promise<unknown> }) => ({
-    isPending: false,
-    mutate: (input: unknown, options?: { onSuccess?: () => void; onError?: () => void }) => {
-      Promise.resolve(mutationOptions.mutationFn(input))
-        .then(() => options?.onSuccess?.())
-        .catch(() => options?.onError?.())
-    },
-  }),
-}))
-
 vi.mock('@/service/console', () => ({
   consoleQuery: {
     tags: {
@@ -74,23 +64,6 @@ vi.mock('@/app/notifications', () => ({
   toast: tagMocks.api,
 }))
 
-vi.mock('ahooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('ahooks')>()
-  return {
-    ...actual,
-    useDebounceFn: (fn: (...args: unknown[]) => void) => ({
-      run: (...args: unknown[]) => fn(...args),
-    }),
-  }
-})
-
-vi.mock('use-context-selector', () => ({
-  createContext: <T,>(defaultValue: T) => React.createContext(defaultValue),
-  useContext: () => ({
-    notify: tagMocks.api,
-  }),
-}))
-
 const baseTag: Tag = {
   id: 'tag-1',
   name: 'Frontend',
@@ -103,6 +76,9 @@ const i18n = {
   removeTag: 'common.operation.remove Frontend',
   renameTag: 'common.operation.rename Frontend',
 }
+
+const render = (ui: Parameters<typeof renderComponent>[0]) =>
+  renderComponent(ui, { wrapper: createQueryClientWrapper(createTestQueryClient()) })
 
 describe('TagItemEditor', () => {
   beforeEach(() => {
@@ -151,7 +127,7 @@ describe('TagItemEditor', () => {
       await waitFor(() => {
         expect(tagMocks.updateTag).toHaveBeenCalledWith('tag-1', 'Frontend V2')
       })
-      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+      await waitFor(() => expect(screen.queryByRole('textbox')).not.toBeInTheDocument())
     })
 
     it('should exit edit mode without calling update when submitted name is unchanged', async () => {
@@ -162,7 +138,7 @@ describe('TagItemEditor', () => {
       await user.keyboard('{Enter}')
 
       expect(tagMocks.updateTag).not.toHaveBeenCalled()
-      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+      await waitFor(() => expect(screen.queryByRole('textbox')).not.toBeInTheDocument())
     })
 
     it('should show validation error and skip update when name is empty', async () => {
@@ -183,7 +159,7 @@ describe('TagItemEditor', () => {
         })
       })
       expect(tagMocks.updateTag).not.toHaveBeenCalled()
-      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+      await waitFor(() => expect(screen.queryByRole('textbox')).not.toBeInTheDocument())
       expect(screen.getByText('Frontend')).toBeInTheDocument()
     })
 
@@ -203,10 +179,12 @@ describe('TagItemEditor', () => {
       await waitFor(() => {
         expect(tagMocks.updateTag).toHaveBeenCalledWith('tag-1', 'Broken Name')
       })
-      expect(tagMocks.record).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'common.actionMsg.modifiedUnsuccessfully',
-      })
+      await waitFor(() =>
+        expect(tagMocks.record).toHaveBeenCalledWith({
+          type: 'error',
+          message: 'common.actionMsg.modifiedUnsuccessfully',
+        }),
+      )
     })
   })
 
@@ -224,10 +202,49 @@ describe('TagItemEditor', () => {
       await waitFor(() => {
         expect(tagMocks.deleteTag).toHaveBeenCalledWith('tag-1')
       })
-      expect(tagMocks.record).toHaveBeenCalledWith({
-        type: 'success',
-        message: 'common.actionMsg.modifiedSuccessfully',
-      })
+      await waitFor(() =>
+        expect(tagMocks.record).toHaveBeenCalledWith({
+          type: 'success',
+          message: 'common.actionMsg.modifiedSuccessfully',
+        }),
+      )
+    })
+
+    it('does not send another delete while the first request is pending', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      let finishDelete!: () => void
+      tagMocks.deleteTag.mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            finishDelete = resolve
+          }),
+      )
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      const onTagsChange = vi.fn()
+      try {
+        render(
+          <TagItemEditor tag={{ ...baseTag, binding_count: '0' }} onTagsChange={onTagsChange} />,
+        )
+        const remove = screen.getByRole('button', { name: i18n.removeTag })
+        await user.click(remove)
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(200)
+        })
+        expect(tagMocks.deleteTag).toHaveBeenCalledOnce()
+        expect(onTagsChange).not.toHaveBeenCalled()
+        await user.click(remove)
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(200)
+        })
+        expect(tagMocks.deleteTag).toHaveBeenCalledOnce()
+        await act(async () => {
+          finishDelete()
+          await vi.advanceTimersByTimeAsync(0)
+        })
+        expect(onTagsChange).toHaveBeenCalledOnce()
+      } finally {
+        vi.useRealTimers()
+      }
     })
 
     it('should open confirm modal and delete on confirm when binding count is non-zero', async () => {
@@ -276,10 +293,12 @@ describe('TagItemEditor', () => {
       await waitFor(() => {
         expect(tagMocks.deleteTag).toHaveBeenCalledWith('tag-1')
       })
-      expect(tagMocks.record).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'common.actionMsg.modifiedUnsuccessfully',
-      })
+      await waitFor(() =>
+        expect(tagMocks.record).toHaveBeenCalledWith({
+          type: 'error',
+          message: 'common.actionMsg.modifiedUnsuccessfully',
+        }),
+      )
     })
   })
 })

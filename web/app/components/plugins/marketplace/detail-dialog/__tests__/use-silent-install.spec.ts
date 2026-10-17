@@ -1,18 +1,13 @@
 import type { Plugin } from '@/app/components/plugins/types'
-import { act, renderHook } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum, TaskStatus } from '@/app/components/plugins/types'
+import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
 import { useSilentMarketplaceInstall } from '../use-silent-install'
 
 const mockInstallPackageFromMarketPlace = vi.fn()
 const mockRefreshPluginList = vi.fn()
 const mockCheckTaskStatus = vi.fn()
-
-vi.mock('@/service/use-plugins', () => ({
-  useInstallPackageFromMarketPlace: () => ({
-    mutateAsync: mockInstallPackageFromMarketPlace,
-  }),
-}))
 
 vi.mock('@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list', () => ({
   default: () => ({ refreshPluginList: mockRefreshPluginList }),
@@ -34,6 +29,18 @@ const plugin = {
   category: PluginCategoryEnum.tool,
 } as Plugin
 
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.plugin.install.marketplace.post': (...args: unknown[]) =>
+        mockInstallPackageFromMarketPlace(...args),
+    }),
+  }
+})
+
 describe('useSilentMarketplaceInstall', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -48,7 +55,9 @@ describe('useSilentMarketplaceInstall', () => {
     const { result } = renderHook(() => useSilentMarketplaceInstall())
 
     await expect(result.current.install(plugin)).resolves.toEqual({ status: 'success' })
-    expect(mockInstallPackageFromMarketPlace).toHaveBeenCalledWith(plugin.latest_package_identifier)
+    expect(mockInstallPackageFromMarketPlace).toHaveBeenCalledWith({
+      body: { plugin_unique_identifiers: [plugin.latest_package_identifier] },
+    })
     expect(mockCheckTaskStatus).not.toHaveBeenCalled()
     expect(mockRefreshPluginList).toHaveBeenCalledWith(plugin)
   })
@@ -99,7 +108,7 @@ describe('useSilentMarketplaceInstall', () => {
     const first = result.current.install(plugin)
     const second = result.current.install(plugin)
 
-    expect(mockInstallPackageFromMarketPlace).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(mockInstallPackageFromMarketPlace).toHaveBeenCalledTimes(1))
 
     await act(async () => {
       resolveInstall?.({ all_installed: true, task_id: 'task-4' })

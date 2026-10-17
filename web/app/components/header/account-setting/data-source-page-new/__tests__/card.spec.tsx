@@ -1,4 +1,4 @@
-import type { DataSourceAuth } from '../types'
+import type { DatasourceProviderAuthResponse } from '@dify/contracts/api/console/auth/types.gen'
 import type { AddOAuthButtonProps } from '@/app/components/plugins/plugin-auth/types'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { FormTypeEnum } from '@/app/components/base/form/types'
@@ -7,7 +7,7 @@ import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { openOAuthPopup } from '@/hooks/use-oauth'
-import { render } from '@/test/console/render'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import Card from '../card'
 import { useDataSourceAuthUpdate } from '../hooks'
 
@@ -95,13 +95,16 @@ vi.mock('@/hooks/use-oauth', () => ({
 
 const { mockGetPluginOAuthUrl } = vi.hoisted(() => ({ mockGetPluginOAuthUrl: vi.fn() }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'oauth.plugin.byProviderId.datasource.getAuthorizationUrl.get': () => ({
-      mutateAsync: mockGetPluginOAuthUrl,
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'oauth.plugin.byProviderId.datasource.getAuthorizationUrl.get': (input) =>
+        mockGetPluginOAuthUrl(input),
     }),
-  })
+  }
 })
 
 vi.mock('../hooks', () => ({
@@ -142,7 +145,7 @@ describe('Card Component', () => {
     ...overrides,
   })
 
-  const mockItem: DataSourceAuth = {
+  const mockItem: DatasourceProviderAuthResponse = {
     author: 'Test Author',
     provider: 'test-provider',
     plugin_id: 'test-plugin-id',
@@ -507,7 +510,7 @@ describe('Card Component', () => {
   describe('Integration', () => {
     it('should call handleAuthUpdate when Configure component triggers update', async () => {
       // Arrange
-      const configurableItem: DataSourceAuth = {
+      const configurableItem: DatasourceProviderAuthResponse = {
         ...mockItem,
         credential_schema: [
           {
@@ -533,7 +536,7 @@ describe('Card Component', () => {
     it('should disable configure credential actions when user lacks credential.create', () => {
       // Arrange
       mockWorkspacePermissionKeys = ['credential.use']
-      const configurableItem: DataSourceAuth = {
+      const configurableItem: DatasourceProviderAuthResponse = {
         ...mockItem,
         credential_schema: [
           {

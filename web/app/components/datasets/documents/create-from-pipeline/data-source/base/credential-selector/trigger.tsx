@@ -1,11 +1,11 @@
-import type { DataSourceCredential } from '@/types/pipeline'
+import type { DatasourceCredentialResponse } from '@dify/contracts/api/console/auth/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine } from '@remixicon/react'
 import * as React from 'react'
 import { CredentialIcon } from '@/app/components/datasets/common/credential-icon'
 
 type TriggerProps = {
-  currentCredential: DataSourceCredential | undefined
+  currentCredential: DatasourceCredentialResponse | undefined
   isOpen: boolean
 }
 

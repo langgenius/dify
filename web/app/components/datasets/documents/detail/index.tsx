@@ -1,7 +1,8 @@
 'use client'
 
+import type { DocumentDetailResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
-import type { FileItem, FullDocumentDetail } from '@/models/datasets'
+import type { FileItem } from '@/models/datasets'
 import type { SegmentImportStatus } from '@/types/dataset'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -273,7 +274,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
     ],
   )
 
-  const docDetail = useMemo((): FullDocumentDetail | undefined => {
+  const docDetail = useMemo((): DocumentDetailResponse | undefined => {
     if (!documentDetail) return undefined
     return {
       ...documentDetail,

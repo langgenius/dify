@@ -1,13 +1,16 @@
 import { QueryClient } from '@tanstack/react-query'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { IndexingType } from '@/app/components/datasets/create/step-two/hooks/use-indexing-config'
+import DatasetDetailContext from '@/context/dataset-detail'
 import { consoleQuery } from '@/service/console'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { renderWithConsoleQuery as renderWithoutUrlState } from '@/test/console/query-data'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import DocumentSettings from '../document-settings'
 
 const mockPush = vi.fn()
 const mockBack = vi.fn()
-const mockSetSettingsDestination = vi.fn()
 const mockUseDocumentTitle = vi.hoisted(() => vi.fn())
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
@@ -15,18 +18,6 @@ vi.mock('@/next/navigation', () => ({
     back: mockBack,
   }),
 }))
-
-// Mock use-context-selector
-vi.mock('use-context-selector', async (importOriginal) => {
-  const actual = (await importOriginal()) as Record<string, unknown>
-  return {
-    ...actual,
-    useContext: () => ({
-      indexingTechnique: 'qualified',
-      dataset: { id: 'dataset-1', name: 'Dataset 1' },
-    }),
-  }
-})
 
 vi.mock('@/hooks/use-document-title', () => ({
   default: mockUseDocumentTitle,
@@ -125,10 +116,28 @@ vi.mock('@/app/components/datasets/create/step-two', () => ({
   ),
 }))
 
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
-})
+const onUrlUpdate = vi.fn()
+const renderWithUrlState = createNuqsTestRenderer(renderWithoutUrlState, () => ({ onUrlUpdate }))
+const render = (
+  ui: Parameters<typeof renderWithUrlState>[0],
+  ...options: [Parameters<typeof renderWithUrlState>[1]?]
+) => {
+  const wrap = (content: Parameters<typeof renderWithUrlState>[0]) => (
+    <DatasetDetailContext.Provider
+      value={{
+        indexingTechnique: IndexingType.QUALIFIED,
+        dataset: createDatasetFixture({ id: 'dataset-1', name: 'Dataset 1' }),
+      }}
+    >
+      {content}
+    </DatasetDetailContext.Provider>
+  )
+  const rendered = renderWithUrlState(wrap(ui), ...options)
+  return {
+    ...rendered,
+    rerender: (nextUi: Parameters<typeof rendered.rerender>[0]) => rendered.rerender(wrap(nextUi)),
+  }
+}
 
 describe('DocumentSettings', () => {
   beforeEach(() => {
@@ -227,12 +236,14 @@ describe('DocumentSettings', () => {
       expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/documents/document-1')
     })
 
-    it('should open model provider integrations settings when setting button is clicked', () => {
+    it('should open model provider integrations settings when setting button is clicked', async () => {
       render(<DocumentSettings {...defaultProps} />)
 
       fireEvent.click(screen.getByTestId('setting-btn'))
 
-      expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
+      await waitFor(() =>
+        expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('provider'),
+      )
     })
   })
 

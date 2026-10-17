@@ -53,7 +53,7 @@ it('clears a completed plugin installation task using the keyboard and returns f
   await userEvent.tab()
   const clear = screen.getByRole('button', { name: 'Clear Installed Plugin' })
   await expect.element(clear).toHaveFocus()
-  expect(clear.element().checkVisibility({ checkOpacity: true })).toBe(true)
+  await expect.poll(() => clear.element().checkVisibility({ checkOpacity: true })).toBe(true)
   await userEvent.keyboard('{Enter}')
   expect(service.clear).toHaveBeenCalledExactlyOnceWith({ taskId: 'task-1', pluginId: 'plugin-1' })
   await expect.element(taskDetails).not.toBeInTheDocument()

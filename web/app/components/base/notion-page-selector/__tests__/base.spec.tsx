@@ -1,10 +1,11 @@
-import type { DataSourceCredential } from '../../../header/account-setting/data-source-page-new/types'
+import type { DatasourceCredentialResponse } from '@dify/contracts/api/console/auth/types.gen'
 import type { DataSourceNotionWorkspace } from '@/models/common'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render as renderWithoutUrlState, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 import { consoleQuery } from '@/service/console'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import NotionPageSelector from '../base'
 
 vi.mock('@tanstack/react-virtual')
@@ -20,17 +21,11 @@ vi.mock('@tanstack/react-query', async (importOriginal) => ({
   useQueryClient: () => ({ invalidateQueries: mockInvalidateQueries }),
 }))
 
-const mockSetSettingsDestination = vi.fn()
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
-})
-
 const buildCredential = (
   id: string,
   name: string,
   workspaceName: string,
-): DataSourceCredential => ({
+): DatasourceCredentialResponse => ({
   id,
   name,
   type: CredentialTypeEnum.OAUTH2,
@@ -42,7 +37,7 @@ const buildCredential = (
   },
 })
 
-const mockCredentialList: DataSourceCredential[] = [
+const mockCredentialList: DatasourceCredentialResponse[] = [
   buildCredential('c1', 'Cred 1', 'Workspace 1'),
   buildCredential('c2', 'Cred 2', 'Workspace 2'),
 ]
@@ -111,6 +106,9 @@ const createPreImportResult = ({
   isError,
 })
 
+const onUrlUpdate = vi.fn()
+const render = createNuqsTestRenderer(renderWithoutUrlState, () => ({ onUrlUpdate }))
+
 describe('NotionPageSelector Base', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -133,7 +131,9 @@ describe('NotionPageSelector Base', () => {
     const connectButton = screen.getByRole('button', { name: 'datasetCreation.stepOne.connect' })
     await user.click(connectButton)
 
-    expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('data-source'),
+    )
   })
 
   it('should render page selector and allow selecting a page tree', async () => {
@@ -220,7 +220,9 @@ describe('NotionPageSelector Base', () => {
     await user.click(
       screen.getByRole('button', { name: 'common.dataSource.notion.selector.configure' }),
     )
-    expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('data-source'),
+    )
   })
 
   it('should preview a page and call onPreview when callback is provided', async () => {

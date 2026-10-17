@@ -1,7 +1,9 @@
 'use client'
 
-import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
-import type { AppTrigger } from '@/app/components/tools/types'
+import type {
+  AppDetailWithSite,
+  WorkflowTriggerResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
@@ -24,7 +26,7 @@ function TriggerIcon({
   trigger,
   triggerPlugins,
 }: {
-  trigger: AppTrigger
+  trigger: WorkflowTriggerResponse
   triggerPlugins: TriggerWithProvider[]
 }) {
   const blockType =
@@ -59,7 +61,7 @@ function TriggerAccessPointItem({
 }: {
   appId: string
   canManageAccessPoint: boolean
-  trigger: AppTrigger
+  trigger: WorkflowTriggerResponse
   triggerPlugins: TriggerWithProvider[]
 }) {
   const { t } = useTranslation(['agentV2', 'appOverview', 'common'])

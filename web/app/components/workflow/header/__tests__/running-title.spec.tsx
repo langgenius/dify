@@ -1,7 +1,7 @@
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import RunningTitle from '../running-title'
 
-let mockIsChatMode = false
+let chatflowMode = false
 const mockFormatWorkflowRunIdentifier = vi.fn()
 
 vi.mock('../../hooks/use-workflow', () => ({}))
@@ -13,12 +13,13 @@ vi.mock('../../utils', () => ({
 describe('RunningTitle', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsChatMode = false
+    chatflowMode = false
     mockFormatWorkflowRunIdentifier.mockReturnValue(' (14:30:25)')
   })
 
   it('should render the test run title in workflow mode', () => {
     const { container } = renderWorkflowComponent(<RunningTitle />, {
+      resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
       initialStoreState: {
         historyWorkflowData: {
           id: 'history-1',
@@ -34,9 +35,10 @@ describe('RunningTitle', () => {
   })
 
   it('should render the test chat title in chat mode', () => {
-    mockIsChatMode = true
+    chatflowMode = true
 
     const { container } = renderWorkflowComponent(<RunningTitle />, {
+      resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
       initialStoreState: {
         historyWorkflowData: {
           id: 'history-2',
@@ -51,16 +53,11 @@ describe('RunningTitle', () => {
   })
 
   it('should handle missing workflow history data', () => {
-    const { container } = renderWorkflowComponent(<RunningTitle />)
+    const { container } = renderWorkflowComponent(<RunningTitle />, {
+      resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
+    })
 
     expect(mockFormatWorkflowRunIdentifier).toHaveBeenCalledWith(undefined)
     expect(container).toHaveTextContent('Test Run (14:30:25)')
   })
-})
-
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => mockIsChatMode) }
 })

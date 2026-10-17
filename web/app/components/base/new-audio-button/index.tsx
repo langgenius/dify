@@ -21,7 +21,7 @@ const AudioBtn = ({ id, voice, value }: AudioBtnProps) => {
 
   const params = useParams()
   const pathname = usePathname()
-  const audio_finished_call = (event: string): any => {
+  const audio_finished_call = (event: string): void => {
     switch (event) {
       case 'ended':
         setAudioState('ended')

@@ -1,4 +1,4 @@
-import type { SnippetInputField } from '@/models/snippet'
+import type { InputVar } from '@/models/pipeline'
 import { act, renderHook } from '@testing-library/react'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { useSnippetDraftStore } from '../../../draft-store'
@@ -12,7 +12,7 @@ vi.mock('../../../hooks/use-nodes-sync-draft', () => ({
   }),
 }))
 
-const createField = (overrides: Partial<SnippetInputField> = {}): SnippetInputField => ({
+const createField = (overrides: Partial<InputVar> = {}): InputVar => ({
   type: PipelineInputVarType.textInput,
   label: 'Blog URL',
   variable: 'blog_url',

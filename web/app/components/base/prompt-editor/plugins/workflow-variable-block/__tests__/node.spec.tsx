@@ -11,7 +11,7 @@ describe('WorkflowVariableBlockNode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     editor = createEditor({
-      nodes: [WorkflowVariableBlockNode as unknown as Klass<LexicalNode>],
+      nodes: [WorkflowVariableBlockNode as Klass<LexicalNode>],
     })
   })
 

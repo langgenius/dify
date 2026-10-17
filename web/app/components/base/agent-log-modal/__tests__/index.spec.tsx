@@ -1,6 +1,5 @@
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { useClickAway } from 'ahooks'
 import AgentLogModal from '../index'
 
 const { mockToast } = vi.hoisted(() => {
@@ -66,10 +65,6 @@ vi.mock('@/hooks/use-timestamp', () => ({
 
 vi.mock('@/app/components/workflow/block-icon', () => ({
   default: () => <div data-testid="block-icon" />,
-}))
-
-vi.mock('ahooks', () => ({
-  useClickAway: vi.fn(),
 }))
 
 const mockLog = {
@@ -156,7 +151,7 @@ describe('AgentLogModal', () => {
     const modal = screen.getByRole('dialog')
     expect(container).not.toContainElement(modal)
     expect(document.body).toContainElement(modal)
-    expect(modal).toHaveClass('fixed', 'w-120!', 'left-[max(8px,calc(100vw-1136px))]!')
+    expect(modal).toHaveClass('fixed', 'w-120', 'left-[max(8px,calc(100vw-1136px))]')
   })
 
   it('should call onCancel when close button is clicked', () => {
@@ -170,46 +165,24 @@ describe('AgentLogModal', () => {
     expect(mockProps.onCancel).toHaveBeenCalledTimes(1)
   })
 
-  it('should call onCancel when clicking away', () => {
+  it('should call onCancel when clicking outside the panel', () => {
     fetchAgentLogDetail.mockReturnValue(new Promise(() => {}))
-
-    let clickAwayHandler!: (event: Event) => void
-    vi.mocked(useClickAway).mockImplementation((callback) => {
-      clickAwayHandler = callback
-    })
-
     render(<AgentLogModal appId="app-id" {...mockProps} />)
-    clickAwayHandler(new Event('click'))
-
-    expect(mockProps.onCancel).toHaveBeenCalledTimes(1)
+    fireEvent.click(document.body)
+    expect(mockProps.onCancel).toHaveBeenCalledOnce()
   })
 
-  it('should ignore click-away before mounted state is set', () => {
+  it('does not close when clicking inside the panel', () => {
     fetchAgentLogDetail.mockReturnValue(new Promise(() => {}))
-    let invoked = false
-    vi.mocked(useClickAway).mockImplementation((callback) => {
-      if (!invoked) {
-        invoked = true
-        callback(new Event('click'))
-      }
-    })
-
     render(<AgentLogModal appId="app-id" {...mockProps} />)
-
+    fireEvent.click(screen.getByText('appLog.runDetail.workflowTitle'))
     expect(mockProps.onCancel).not.toHaveBeenCalled()
   })
 
-  it('should not use click-away to close the floating dialog', () => {
+  it('keeps the floating dialog open when clicking its content', () => {
     fetchAgentLogDetail.mockReturnValue(new Promise(() => {}))
-
-    let clickAwayHandler!: (event: Event) => void
-    vi.mocked(useClickAway).mockImplementation((callback) => {
-      clickAwayHandler = callback
-    })
-
     render(<AgentLogModal appId="app-id" {...mockProps} floating />)
-    clickAwayHandler(new Event('click'))
-
+    fireEvent.click(screen.getByRole('dialog'))
     expect(mockProps.onCancel).not.toHaveBeenCalled()
   })
 

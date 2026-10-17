@@ -35,10 +35,6 @@ vi.mock('reactflow', () => ({
   useNodes: () => mockNodes,
 }))
 
-vi.mock('zustand/react/shallow', () => ({
-  useShallow: <T,>(fn: (state: unknown) => T) => fn,
-}))
-
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
 }))

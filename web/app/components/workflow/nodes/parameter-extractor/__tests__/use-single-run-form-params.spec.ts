@@ -1,11 +1,10 @@
 import type { ParameterExtractorNodeType } from '../types'
 import type { InputVar } from '@/app/components/workflow/types'
-import { renderHook } from '@testing-library/react'
+import { renderWorkflowFlowHook as renderHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import { Resolution } from '@/types/app'
 import useConfigVision from '../../../hooks/use-config-vision'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
-import useNodeCrud from '../../_base/hooks/use-node-crud'
 import { ParamType, ReasoningModeType } from '../types'
 import useSingleRunFormParams from '../use-single-run-form-params'
 
@@ -19,14 +18,8 @@ vi.mock('../../_base/hooks/use-available-var-list', () => ({
   default: vi.fn(),
 }))
 
-vi.mock('../../_base/hooks/use-node-crud', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}))
-
 const mockUseConfigVision = vi.mocked(useConfigVision)
 const mockUseAvailableVarList = vi.mocked(useAvailableVarList)
-const mockUseNodeCrud = vi.mocked(useNodeCrud)
 
 const createData = (
   overrides: Partial<ParameterExtractorNodeType> = {},
@@ -64,10 +57,7 @@ const createData = (
 describe('parameter-extractor/use-single-run-form-params', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseNodeCrud.mockReturnValue({
-      inputs: createData(),
-      setInputs: vi.fn(),
-    } as unknown as ReturnType<typeof useNodeCrud>)
+
     mockUseConfigVision.mockReturnValue({
       isVisionModel: true,
     } as ReturnType<typeof useConfigVision>)

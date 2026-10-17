@@ -62,11 +62,11 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     return currTool ? toolParametersToFormSchemas(currTool.parameters) : []
   }, [currTool])
   const toolInputVarSchema = useMemo(() => {
-    return formSchemas.filter((item: any) => item.form === 'llm')
+    return formSchemas.filter((item) => item.form === 'llm')
   }, [formSchemas])
   // use setting
   const toolSettingSchema = useMemo(() => {
-    return formSchemas.filter((item: any) => item.form !== 'llm')
+    return formSchemas.filter((item) => item.form !== 'llm')
   }, [formSchemas])
   const hasShouldTransferTypeSettingInput = toolSettingSchema.some(
     (item) => item.type === 'boolean' || item.type === 'number-input',

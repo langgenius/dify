@@ -1,4 +1,4 @@
-import type { WorkflowCommentList } from './types'
+import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Suspense, useState } from 'react'
 import ReactFlow, { ReactFlowProvider } from 'reactflow'
@@ -17,7 +17,7 @@ vi.mock('@/features/account-profile/client', () => ({
 vi.mock('./comment-preview', () => ({ default: () => null }))
 vi.mock('./mention-input', () => ({ MentionInput: () => <textarea aria-label="Comment text" /> }))
 
-const comment: WorkflowCommentList = {
+const comment: WorkflowCommentBasic = {
   id: 'comment',
   content: 'Comment',
   created_by: 'author',

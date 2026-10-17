@@ -69,10 +69,6 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
             error: mocks.state.documentError,
             refetch: mocks.detailRefetch,
           },
-    'datasets.batchImportStatus.byJobId.get': () => ({ mutateAsync: mocks.checkProgress }),
-    'datasets.byDatasetId.documents.byDocumentId.segments.batchImport.post': () => ({
-      mutateAsync: mocks.batchImport,
-    }),
   })
 })
 
@@ -288,6 +284,7 @@ vi.mock('@/context/permission-state', async () => {
 describe('DocumentDetail', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.checkProgress.mockResolvedValue({ job_id: 'job-1', job_status: 'completed' })
     vi.spyOn(QueryClient.prototype, 'invalidateQueries')
     vi.useFakeTimers()
     mocks.state.dataset = {
@@ -563,31 +560,17 @@ describe('DocumentDetail', () => {
         fireEvent.click(screen.getByTestId('batch-confirm'))
       })
 
-      expect(mocks.batchImport).toHaveBeenCalledWith(
-        {
-          params: { dataset_id: 'ds-1', document_id: 'doc-1' },
-          body: { upload_file_id: 'file-1' },
-        },
-        expect.objectContaining({
-          onSuccess: expect.any(Function),
-          onError: expect.any(Function),
-        }),
-      )
+      expect(mocks.batchImport).toHaveBeenCalledWith({
+        params: { dataset_id: 'ds-1', document_id: 'doc-1' },
+        body: { upload_file_id: 'file-1' },
+      })
     })
 
-    type JobCallbacks = { onSuccess: (job: { job_id: string; job_status: string }) => void }
-
     it('should poll the import job until it finishes', async () => {
-      mocks.batchImport.mockImplementation((_input: unknown, callbacks: JobCallbacks) =>
-        callbacks.onSuccess({ job_id: 'job-1', job_status: 'waiting' }),
-      )
+      mocks.batchImport.mockResolvedValue({ job_id: 'job-1', job_status: 'waiting' })
       mocks.checkProgress
-        .mockImplementationOnce((_input: unknown, callbacks: JobCallbacks) =>
-          callbacks.onSuccess({ job_id: 'job-1', job_status: 'processing' }),
-        )
-        .mockImplementationOnce((_input: unknown, callbacks: JobCallbacks) =>
-          callbacks.onSuccess({ job_id: 'job-1', job_status: 'completed' }),
-        )
+        .mockResolvedValueOnce({ job_id: 'job-1', job_status: 'processing' })
+        .mockResolvedValueOnce({ job_id: 'job-1', job_status: 'completed' })
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
       fireEvent.click(screen.getByTestId('batch-btn'))
 
@@ -602,19 +585,12 @@ describe('DocumentDetail', () => {
       })
 
       expect(mocks.checkProgress).toHaveBeenCalledTimes(2)
-      expect(mocks.checkProgress).toHaveBeenCalledWith(
-        { params: { job_id: 'job-1' } },
-        expect.any(Object),
-      )
+      expect(mocks.checkProgress).toHaveBeenCalledWith({ params: { job_id: 'job-1' } })
     })
 
     it('should stop polling when the job reports an unknown status', async () => {
-      mocks.batchImport.mockImplementation((_input: unknown, callbacks: JobCallbacks) =>
-        callbacks.onSuccess({ job_id: 'job-1', job_status: 'waiting' }),
-      )
-      mocks.checkProgress.mockImplementation((_input: unknown, callbacks: JobCallbacks) =>
-        callbacks.onSuccess({ job_id: 'job-1', job_status: 'queued' }),
-      )
+      mocks.batchImport.mockResolvedValue({ job_id: 'job-1', job_status: 'waiting' })
+      mocks.checkProgress.mockResolvedValue({ job_id: 'job-1', job_status: 'queued' })
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
       fireEvent.click(screen.getByTestId('batch-btn'))
 
@@ -676,4 +652,17 @@ describe('DocumentDetail', () => {
       expect(screen.getByTestId('document-title')).toBeInTheDocument()
     })
   })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.batchImportStatus.byJobId.get': (input) => mocks.checkProgress(input),
+      'datasets.byDatasetId.documents.byDocumentId.segments.batchImport.post': (input) =>
+        mocks.batchImport(input),
+    }),
+  }
 })

@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react'
-import type { VersionHistory } from '@/types/workflow'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -26,7 +26,9 @@ vi.mock('../publish-with-multiple-model', () => ({
   ),
 }))
 
-const createVersionInfo = (overrides: Partial<VersionHistory> = {}): VersionHistory => ({
+const createVersionInfo = (
+  overrides: Partial<FetchWorkflowDraftResponse> = {},
+): FetchWorkflowDraftResponse => ({
   id: 'workflow-version-1',
   graph: {
     nodes: [],

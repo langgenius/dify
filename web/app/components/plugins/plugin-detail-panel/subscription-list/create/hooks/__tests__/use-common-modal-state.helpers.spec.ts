@@ -21,9 +21,8 @@ type BuilderResponse = {
   subscription_builder: TriggerSubscriptionBuilder
 }
 
-const { mockToastError, mockIsPrivateOrLocalAddress } = vi.hoisted(() => ({
+const { mockToastError } = vi.hoisted(() => ({
   mockToastError: vi.fn(),
-  mockIsPrivateOrLocalAddress: vi.fn(),
 }))
 
 vi.mock('@/app/notifications', () => ({
@@ -32,14 +31,9 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-vi.mock('@/utils/urlValidation', () => ({
-  isPrivateOrLocalAddress: (value: string) => mockIsPrivateOrLocalAddress(value),
-}))
-
 describe('use-common-modal-state helpers', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsPrivateOrLocalAddress.mockReturnValue(false)
   })
 
   it('returns default form values when the form ref is empty', () => {
@@ -190,7 +184,6 @@ describe('use-common-modal-state helpers', () => {
   })
 
   it('syncs callback endpoint and warnings into the subscription form', async () => {
-    mockIsPrivateOrLocalAddress.mockReturnValue(true)
     const setFieldValue = vi.fn()
     const setFields = vi.fn()
     const subscriptionFormRef = {

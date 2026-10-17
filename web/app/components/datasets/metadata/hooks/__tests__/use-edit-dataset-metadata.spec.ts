@@ -1,5 +1,6 @@
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vite-plus/test'
+import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
 import { DataType } from '../../types'
 import useEditDatasetMetadata from '../use-edit-dataset-metadata'
 
@@ -8,39 +9,32 @@ const mockDoRenameMetaData = vi.fn().mockResolvedValue({})
 const mockDoDeleteMetaData = vi.fn().mockResolvedValue({})
 const mockToggleBuiltInStatus = vi.fn().mockResolvedValue({})
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'datasets.byDatasetId.metadata.get': () => ({
-      data: {
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.metadata.get': async () => ({
         doc_metadata: [
           { id: '1', name: 'field_one', type: DataType.string, count: 5 },
           { id: '2', name: 'field_two', type: DataType.number, count: 3 },
         ],
         built_in_field_enabled: false,
-      },
-    }),
-    'datasets.byDatasetId.metadata.post': () => ({
-      mutateAsync: mockDoAddMetaData,
-    }),
-    'datasets.byDatasetId.metadata.byMetadataId.patch': () => ({
-      mutateAsync: mockDoRenameMetaData,
-    }),
-    'datasets.byDatasetId.metadata.byMetadataId.delete': () => ({
-      mutateAsync: mockDoDeleteMetaData,
-    }),
-    'datasets.byDatasetId.metadata.builtIn.byAction.post': () => ({
-      mutateAsync: mockToggleBuiltInStatus,
-    }),
-    'datasets.metadata.builtIn.get': () => ({
-      data: {
+      }),
+      'datasets.byDatasetId.metadata.post': (input) => mockDoAddMetaData(input),
+      'datasets.byDatasetId.metadata.byMetadataId.patch': (input) => mockDoRenameMetaData(input),
+      'datasets.byDatasetId.metadata.byMetadataId.delete': (input) => mockDoDeleteMetaData(input),
+      'datasets.byDatasetId.metadata.builtIn.byAction.post': (input) =>
+        mockToggleBuiltInStatus(input),
+      'datasets.metadata.builtIn.get': async () => ({
         fields: [
           { name: 'created_at', type: DataType.time },
           { name: 'modified_at', type: DataType.time },
         ],
-      },
+      }),
     }),
-  })
+  }
 })
 
 vi.mock('@/app/notifications', () => ({
@@ -56,13 +50,6 @@ vi.mock('@/app/notifications', () => ({
 }))
 
 // Mock useCheckMetadataName
-vi.mock('../use-check-metadata-name', () => ({
-  default: () => ({
-    checkName: (name: string) => ({
-      errorMsg: name && /^[a-z][a-z0-9_]*$/.test(name) ? '' : 'Invalid name',
-    }),
-  }),
-}))
 
 // Mock localStorage
 const localStorageMock = {
@@ -100,9 +87,9 @@ describe('useEditDatasetMetadata', () => {
       expect(typeof result.current.hideEditModal).toBe('function')
     })
 
-    it('should return datasetMetaData', () => {
+    it('should return datasetMetaData after loading', async () => {
       const { result } = renderHook(() => useEditDatasetMetadata(defaultProps))
-      expect(result.current.datasetMetaData).toBeDefined()
+      await waitFor(() => expect(result.current.datasetMetaData).toBeDefined())
     })
 
     it('should return handleAddMetaData function', () => {
@@ -120,14 +107,14 @@ describe('useEditDatasetMetadata', () => {
       expect(typeof result.current.handleDeleteMetaData).toBe('function')
     })
 
-    it('should return builtInMetaData', () => {
+    it('should return builtInMetaData after loading', async () => {
       const { result } = renderHook(() => useEditDatasetMetadata(defaultProps))
-      expect(result.current.builtInMetaData).toBeDefined()
+      await waitFor(() => expect(result.current.builtInMetaData).toBeDefined())
     })
 
-    it('should return builtInEnabled', () => {
+    it('should return builtInEnabled after loading', async () => {
       const { result } = renderHook(() => useEditDatasetMetadata(defaultProps))
-      expect(typeof result.current.builtInEnabled).toBe('boolean')
+      await waitFor(() => expect(typeof result.current.builtInEnabled).toBe('boolean'))
     })
 
     it('should return setBuiltInEnabled function', () => {

@@ -5,24 +5,11 @@ import * as React from 'react'
 import { MAX_PROMPT_MESSAGE_LENGTH } from '@/config'
 import ConfigContext from '@/context/debug-configuration'
 import { PromptRole } from '@/models/debug'
+import { createDebugConfigurationFixture } from '@/test/fixtures/debug-configuration'
 import { ModelModeType } from '@/types/app'
 import Prompt from '../index'
 
-type DebugConfiguration = {
-  isAdvancedMode: boolean
-  currentAdvancedPrompt: PromptItem | PromptItem[]
-  setCurrentAdvancedPrompt: (prompt: PromptItem | PromptItem[], isUserChanged?: boolean) => void
-  modelModeType: ModelModeType
-  dataSets: Array<{
-    id: string
-    name?: string
-  }>
-  hasSetBlockStatus: {
-    context: boolean
-    history: boolean
-    query: boolean
-  }
-}
+type DebugConfiguration = ReturnType<typeof createDebugConfigurationFixture>
 
 const defaultPromptVariables: PromptVariable[] = [
   { key: 'var', name: 'Variable', type: 'string', required: true },
@@ -93,7 +80,7 @@ vi.mock('../advanced-prompt-input', () => ({
   },
 }))
 const getContextValue = (overrides: Partial<DebugConfiguration> = {}): DebugConfiguration => {
-  return {
+  return createDebugConfigurationFixture({
     setCurrentAdvancedPrompt: vi.fn(),
     isAdvancedMode: false,
     currentAdvancedPrompt: [],
@@ -105,7 +92,7 @@ const getContextValue = (overrides: Partial<DebugConfiguration> = {}): DebugConf
       query: false,
     },
     ...overrides,
-  }
+  })
 }
 
 const renderComponent = (
@@ -124,7 +111,7 @@ const renderComponent = (
   return {
     contextValue,
     ...render(
-      <ConfigContext.Provider value={contextValue as any}>
+      <ConfigContext.Provider value={contextValue}>
         <Prompt {...mergedProps} />
       </ConfigContext.Provider>,
     ),

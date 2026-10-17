@@ -85,6 +85,23 @@ describe('TagInput', () => {
     })
   })
 
+  it('associates an external label with the tag entry input', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(
+      <>
+        <label htmlFor="recipient-tags">Recipients</label>
+        <TagInput id="recipient-tags" items={[]} onChange={onChange} />
+      </>,
+    )
+
+    const input = screen.getByRole('textbox', { name: 'Recipients' })
+    await user.click(screen.getByText('Recipients'))
+    expect(input).toHaveFocus()
+    await user.keyboard('alice{Enter}')
+    expect(onChange).toHaveBeenCalledWith(['alice'])
+  })
+
   describe('User Interactions', () => {
     it('should remove item when remove control is clicked', async () => {
       const { onChange } = renderTagInput({ items: ['alpha', 'beta'] })

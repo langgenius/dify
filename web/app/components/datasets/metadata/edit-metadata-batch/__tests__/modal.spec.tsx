@@ -1,36 +1,29 @@
 import type { MetadataItemInBatchEdit, MetadataItemWithEdit } from '../../types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { DataType, UpdateType } from '../../types'
 import EditMetadataBatchModal from '../modal'
 
 // Mock service/API calls
 const mockDoAddMetaData = vi.fn().mockResolvedValue({})
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'datasets.byDatasetId.metadata.post': () => ({
-      mutateAsync: mockDoAddMetaData,
-    }),
-    'datasets.byDatasetId.metadata.get': () => ({
-      data: {
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.metadata.post': (input) => mockDoAddMetaData(input),
+      'datasets.byDatasetId.metadata.get': async () => ({
         doc_metadata: [
           { id: 'existing-1', name: 'existing_field', type: DataType.string },
           { id: 'existing-2', name: 'another_field', type: DataType.number },
         ],
-      },
+      }),
     }),
-  })
+  }
 })
-
-// Mock check name hook to control validation
-let mockCheckNameResult = { errorMsg: '' }
-vi.mock('../../hooks/use-check-metadata-name', () => ({
-  default: () => ({
-    checkName: () => mockCheckNameResult,
-  }),
-}))
 
 // Mock Toast to verify notifications
 const mockToastNotify = vi.fn()
@@ -119,7 +112,6 @@ describe('EditMetadataBatchModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockCheckNameResult = { errorMsg: '' }
   })
 
   const getEditRows = () => screen.getAllByRole('group', { name: /^Edit metadata / })
@@ -351,8 +343,6 @@ describe('EditMetadataBatchModal', () => {
     })
 
     it('should call doAddMetaData when saving new metadata with valid name', async () => {
-      mockCheckNameResult = { errorMsg: '' }
-
       render(<EditMetadataBatchModal {...defaultProps} />)
 
       await waitFor(() => {
@@ -367,8 +357,6 @@ describe('EditMetadataBatchModal', () => {
     })
 
     it('should show success toast when saving with valid name', async () => {
-      mockCheckNameResult = { errorMsg: '' }
-
       render(<EditMetadataBatchModal {...defaultProps} />)
 
       await waitFor(() => {
@@ -390,22 +378,21 @@ describe('EditMetadataBatchModal', () => {
       })
     })
 
-    it('should show error toast when saving with invalid name', async () => {
-      mockCheckNameResult = { errorMsg: 'Name already exists' }
-
+    it('should reject an invalid metadata name without sending a request', async () => {
       render(<EditMetadataBatchModal {...defaultProps} />)
 
       await waitFor(() => {
         expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      await createMetadata()
+      await createMetadata('Invalid name')
 
+      expect(mockDoAddMetaData).not.toHaveBeenCalled()
       await waitFor(() => {
         expect(mockToastNotify).toHaveBeenCalledWith(
           expect.objectContaining({
             type: 'error',
-            message: 'Name already exists',
+            message: 'dataset.metadata.checkName.invalid',
           }),
         )
       })

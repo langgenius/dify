@@ -1,28 +1,9 @@
-import type { AnyFieldApi, AnyFormApi } from '@tanstack/react-form'
 import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
-import { useStore } from '@tanstack/react-form'
+import { useForm, useStore } from '@tanstack/react-form'
 import { act, fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { FormItemValidateStatusEnum, FormTypeEnum } from '@/app/components/base/form/types'
 import BaseForm from '../base-form'
-
-vi.mock('@tanstack/react-form', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-form')>()
-  return {
-    ...actual,
-    useStore: vi.fn((store, selector) => {
-      // If a selector is provided, apply it to a mocked state or the store directly
-      if (selector) {
-        // If the store is a mock with state, use it; otherwise provide a default
-        try {
-          return selector(store?.state || { values: {} })
-        } catch {
-          return {}
-        }
-      }
-      return store?.state?.values || {}
-    }),
-  }
-})
 
 vi.mock('@/service/use-triggers', () => ({
   useTriggerPluginDynamicOptions: () => ({
@@ -129,33 +110,24 @@ describe('BaseForm', () => {
     expect(screen.getByText('Title warning'))!.toBeInTheDocument()
   })
 
-  it('should use formFromProps if provided', () => {
-    const mockState = { values: { kind: 'show' } }
-    const mockStore = {
-      state: mockState,
+  it('uses the supplied form for editing and conditional field visibility', async () => {
+    const user = userEvent.setup()
+    const ExternalForm = () => {
+      const form = useForm({ defaultValues: { kind: 'show', title: 'External title' } })
+      const kind = useStore(form.store, (state) => state.values.kind)
+      return (
+        <>
+          <BaseForm formSchemas={baseSchemas} formFromProps={form} />
+          <output>{kind}</output>
+        </>
+      )
     }
-    vi.mocked(useStore).mockReturnValueOnce(mockState.values)
-    const mockForm = {
-      store: mockStore,
-      Field: ({
-        children,
-        name,
-      }: {
-        children: (field: AnyFieldApi) => React.ReactNode
-        name: string
-      }) =>
-        children({
-          name,
-          state: {
-            value: mockState.values[name as keyof typeof mockState.values],
-            meta: { isTouched: false, errorMap: {} },
-          },
-          form: { store: mockStore },
-        } as unknown as AnyFieldApi),
-      setFieldValue: vi.fn(),
-    }
-    render(<BaseForm formSchemas={baseSchemas} formFromProps={mockForm as unknown as AnyFormApi} />)
-    expect(screen.getByText('Kind'))!.toBeInTheDocument()
+    render(<ExternalForm />)
+    expect(screen.getByDisplayValue('External title')).toBeInTheDocument()
+    await user.clear(screen.getByDisplayValue('show'))
+    await user.type(screen.getAllByRole('textbox')[0]!, 'hide')
+    expect(screen.getByRole('status')).toHaveTextContent('hide')
+    expect(screen.queryByDisplayValue('External title')).not.toBeInTheDocument()
   })
 
   it('should handle setFields with explicit validateStatus', async () => {
@@ -201,26 +173,6 @@ describe('BaseForm', () => {
       fireEvent.submit(container.querySelector('form') as HTMLFormElement)
     })
     expect(onSubmit).toHaveBeenCalled()
-  })
-
-  it('should render nothing if field name does not match schema in renderField', () => {
-    const mockState = { values: { unknown: 'value' } }
-    const mockStore = {
-      state: mockState,
-    }
-    vi.mocked(useStore).mockReturnValueOnce(mockState.values)
-    const mockForm = {
-      store: mockStore,
-      Field: ({ children }: { children: (field: AnyFieldApi) => React.ReactNode }) =>
-        children({
-          name: 'unknown', // field name not in baseSchemas
-          state: { value: 'value', meta: { isTouched: false, errorMap: {} } },
-          form: { store: mockStore },
-        } as unknown as AnyFieldApi),
-      setFieldValue: vi.fn(),
-    }
-    render(<BaseForm formSchemas={baseSchemas} formFromProps={mockForm as unknown as AnyFormApi} />)
-    expect(screen.queryByText('Kind')).not.toBeInTheDocument()
   })
 
   it('should handle undefined formSchemas', () => {

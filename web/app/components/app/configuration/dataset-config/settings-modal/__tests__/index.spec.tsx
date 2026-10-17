@@ -1,7 +1,7 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { OperationKey } from '@orpc/tanstack-query'
 import type { MockedFunction } from 'vite-plus/test'
-import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
@@ -9,18 +9,15 @@ import userEvent from '@testing-library/user-event'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import {
-  ChunkingMode,
-  DatasetPermission,
-  DataSourceType,
-  RerankingModeEnum,
-} from '@/models/datasets'
+import { ChunkingMode, DataSourceType, RerankingModeEnum } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { consoleQuery } from '@/service/console'
 import { updateDatasetSetting } from '@/service/datasets'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { renderWithConsoleQuery as renderWithoutUrlState } from '@/test/console/query-data'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { DatasetACLPermission } from '@/utils/permission'
 import SettingsModal from '../index'
@@ -57,7 +54,6 @@ vi.mock('@/app/components/app/configuration/toast', () => ({
 }))
 const mockOnCancel = vi.fn()
 const mockOnSave = vi.fn()
-const mockSetSettingsDestination = vi.fn()
 
 const mockModelListQuery = vi.fn()
 const mockModelListQueryAndDefaultModel = vi.fn()
@@ -83,16 +79,6 @@ vi.mock('@/service/datasets', () => ({
   updateDatasetSetting: vi.fn(),
 }))
 
-vi.mock('@/service/use-common', async () => ({
-  ...(await vi.importActual('@/service/use-common')),
-  mockMembersQuery: vi.fn(),
-}))
-
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
-})
-
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs${path}`,
 }))
@@ -110,10 +96,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
       {value ? `${value.provider}/${value.model}` : 'no-model'}
     </div>
   ),
-}))
-
-vi.mock('@/app/components/datasets/settings/utils', () => ({
-  checkShowMultiModalTip: (...args: unknown[]) => mockCheckShowMultiModalTip(...args),
 }))
 
 const mockUpdateDatasetSetting = updateDatasetSetting as MockedFunction<typeof updateDatasetSetting>
@@ -134,9 +116,9 @@ const createRetrievalConfig = (overrides: Partial<RetrievalConfig> = {}): Retrie
 })
 
 const createDataset = (
-  overrides: Partial<DataSet> = {},
+  overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
   retrievalOverrides: Partial<RetrievalConfig> = {},
-): DataSet => {
+): DatasetDetailWithPartialMembersResponse => {
   const retrievalConfig = createRetrievalConfig(retrievalOverrides)
   return {
     ...createDatasetFixture(),
@@ -147,7 +129,7 @@ const createDataset = (
       icon_type: 'emoji',
     },
     description: 'Description',
-    permission: DatasetPermission.allTeamMembers,
+    permission: PermissionLevel.allTeamMembers,
     data_source_type: DataSourceType.FILE,
     indexing_technique: IndexingType.QUALIFIED,
     author_name: 'Author',
@@ -193,7 +175,10 @@ const createDataset = (
   }
 }
 
-const renderWithProviders = (dataset: DataSet) => {
+const onUrlUpdate = vi.fn()
+const render = createNuqsTestRenderer(renderWithoutUrlState, () => ({ onUrlUpdate }))
+
+const renderWithProviders = (dataset: DatasetDetailWithPartialMembersResponse) => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } },
   })
@@ -210,9 +195,11 @@ const renderWithProviders = (dataset: DataSet) => {
   )
 }
 
-const createMemberList = (): DataSet['partial_member_list'] => ['member-2']
+const createMemberList = (): DatasetDetailWithPartialMembersResponse['partial_member_list'] => [
+  'member-2',
+]
 
-const renderSettingsModal = async (dataset: DataSet) => {
+const renderSettingsModal = async (dataset: DatasetDetailWithPartialMembersResponse) => {
   renderWithProviders(dataset)
   await waitFor(() => expect(mockUseMembers).toHaveBeenCalled())
 }
@@ -387,7 +374,9 @@ describe('SettingsModal', () => {
       )
 
       // Assert
-      expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
+      await waitFor(() =>
+        expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('provider'),
+      )
     })
   })
 
@@ -487,7 +476,7 @@ describe('SettingsModal', () => {
         expect.objectContaining({
           body: expect.objectContaining({
             name: 'Updated Internal Dataset',
-            permission: DatasetPermission.allTeamMembers,
+            permission: PermissionLevel.allTeamMembers,
           }),
         }),
       )
@@ -592,7 +581,7 @@ describe('SettingsModal', () => {
       const dataset = createDataset(
         {
           provider: 'external',
-          permission: DatasetPermission.partialMembers,
+          permission: PermissionLevel.partialMembers,
           partial_member_list: createMemberList(),
           external_retrieval_model: {
             top_k: 5,
@@ -616,7 +605,7 @@ describe('SettingsModal', () => {
       expect(mockUpdateDatasetSetting).toHaveBeenCalledWith(
         expect.objectContaining({
           body: expect.objectContaining({
-            permission: DatasetPermission.partialMembers,
+            permission: PermissionLevel.partialMembers,
             external_retrieval_model: expect.objectContaining({
               top_k: 5,
             }),
@@ -642,7 +631,7 @@ describe('SettingsModal', () => {
     it('should disable save button while saving', async () => {
       // Arrange
       const user = userEvent.setup()
-      let finishSave!: (dataset: DataSet) => void
+      let finishSave!: (dataset: DatasetDetailWithPartialMembersResponse) => void
       mockUpdateDatasetSetting.mockImplementation(
         () =>
           new Promise((resolve) => {

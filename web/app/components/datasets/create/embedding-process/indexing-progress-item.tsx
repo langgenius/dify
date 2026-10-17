@@ -1,5 +1,5 @@
+import type { DocumentStatusResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ComponentProps, FC } from 'react'
-import type { IndexingStatusResponse } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { RiCheckboxCircleFill } from '@remixicon/react'
@@ -12,7 +12,7 @@ import DocumentFileIcon from '../../common/document-file-icon'
 import { getFileType, getSourcePercent, isSourceEmbedding } from './utils'
 
 type IndexingProgressItemProps = {
-  detail: IndexingStatusResponse
+  detail: DocumentStatusResponse
   name?: string
   sourceType?: DataSourceType
   notionIcon?: ComponentProps<typeof NotionIcon>['src']

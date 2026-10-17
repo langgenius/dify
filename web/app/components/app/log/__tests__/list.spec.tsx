@@ -256,8 +256,15 @@ vi.mock('@/app/components/workflow/context', () => ({
 }))
 
 const createLogs = () => ({
+  has_more: false,
+  limit: 20,
+  page: 1,
+  total: 1,
   data: [
     {
+      from_source: 'api',
+      status: 'normal',
+      summary: '',
       id: 'conversation-1',
       name: 'hello world',
       from_account_name: 'demo-user',
@@ -273,8 +280,14 @@ const createLogs = () => ({
 })
 
 const createCompletionLogs = () => ({
+  has_more: false,
+  limit: 20,
+  page: 1,
+  total: 1,
   data: [
     {
+      from_source: 'api',
+      status: 'normal',
       id: 'conversation-1',
       from_account_name: 'demo-user',
       read_at: null,
@@ -283,16 +296,17 @@ const createCompletionLogs = () => ({
       updated_at: 1710000000,
       created_at: 1710000000,
       message: {
+        message: 'Question',
+        query: 'Question',
         inputs: {
           query: 'Question',
         },
         answer: 'Answer',
       },
       annotation: {
+        id: 'annotation-1',
         content: 'Annotated answer',
-        account: {
-          name: 'Admin',
-        },
+        account: { id: 'account-1', email: 'admin@example.com', name: 'Admin' },
         created_at: 1710000100,
       },
     },
@@ -326,12 +340,12 @@ const createChatMessage = (
 })
 
 const renderConversationList = ({
-  appDetail = { id: 'app-1', mode: 'chat' as const } as any,
-  logs = createLogs() as any,
+  appDetail = createAppDetailFixture({ id: 'app-1', mode: 'chat' }),
+  logs = createLogs(),
   searchParams = '?page=2',
 }: {
-  appDetail?: any
-  logs?: any
+  appDetail?: React.ComponentProps<typeof ConversationList>['appDetail']
+  logs?: React.ComponentProps<typeof ConversationList>['logs']
   searchParams?: string
 } = {}) => {
   const queryClient = createAccountProfileQueryClient({ timezone: 'Asia/Shanghai' })
@@ -375,9 +389,13 @@ describe('ConversationList', () => {
   })
 
   it('exposes the unread marker only for unread conversations', () => {
-    const unreadLog = createLogs().data[0]
+    const unreadLog = createLogs().data[0]!
     renderConversationList({
       logs: {
+        has_more: false,
+        limit: 20,
+        page: 1,
+        total: 2,
         data: [
           unreadLog,
           { ...unreadLog, id: 'conversation-2', name: 'read conversation', read_at: 1710000100 },
@@ -557,7 +575,7 @@ describe('ConversationList', () => {
       })
 
       renderConversationList({
-        appDetail: { id: 'app-1', mode } as any,
+        appDetail: createAppDetailFixture({ id: 'app-1', mode }),
         searchParams: '?conversation_id=conversation-1',
       })
 
@@ -591,8 +609,8 @@ describe('ConversationList', () => {
     }
 
     renderConversationList({
-      appDetail: { id: 'app-1', mode: 'completion' as const } as any,
-      logs: createCompletionLogs() as any,
+      appDetail: createAppDetailFixture({ id: 'app-1', mode: 'completion' as const }),
+      logs: createCompletionLogs(),
       searchParams: '?page=2&conversation_id=conversation-1',
     })
 
@@ -621,10 +639,18 @@ describe('ConversationList', () => {
 
   it('should render chatflow status cells and feedback counters for advanced chat logs', () => {
     renderConversationList({
-      appDetail: { id: 'app-1', mode: 'advanced-chat' as const } as any,
+      appDetail: createAppDetailFixture({ id: 'app-1', mode: 'advanced-chat' as const }),
       logs: {
+        has_more: false,
+        limit: 20,
+        page: 1,
+        total: 4,
         data: [
           {
+            from_source: 'api',
+            status: 'normal',
+            summary: '',
+            annotated: false,
             id: 'conversation-pending',
             name: 'Pending row',
             from_account_name: 'user-a',
@@ -637,6 +663,10 @@ describe('ConversationList', () => {
             created_at: 1710000000,
           },
           {
+            from_source: 'api',
+            status: 'normal',
+            summary: '',
+            annotated: false,
             id: 'conversation-success',
             name: 'Success row',
             from_account_name: 'user-b',
@@ -649,6 +679,10 @@ describe('ConversationList', () => {
             created_at: 1710000000,
           },
           {
+            from_source: 'api',
+            status: 'normal',
+            summary: '',
+            annotated: false,
             id: 'conversation-partial',
             name: 'Partial row',
             from_account_name: 'user-c',
@@ -661,6 +695,10 @@ describe('ConversationList', () => {
             created_at: 1710000000,
           },
           {
+            from_source: 'api',
+            status: 'normal',
+            summary: '',
+            annotated: false,
             id: 'conversation-failure',
             name: 'Failure row',
             from_account_name: 'user-d',
@@ -673,7 +711,7 @@ describe('ConversationList', () => {
             created_at: 1710000000,
           },
         ],
-      } as any,
+      },
     })
 
     expect(screen.getByText('Pending')).toBeInTheDocument()
@@ -769,7 +807,7 @@ describe('ConversationList', () => {
         message: { inputs: {} },
       }
       renderConversationList({
-        appDetail: { id: 'app-1', mode: 'advanced-chat' as const },
+        appDetail: createAppDetailFixture({ id: 'app-1', mode: 'advanced-chat' as const }),
         searchParams: '?conversation_id=conversation-1',
       })
       const user = userEvent.setup()
@@ -792,7 +830,7 @@ describe('ConversationList', () => {
       message: { inputs: {} },
     }
     renderConversationList({
-      appDetail: { id: 'app-1', mode: 'advanced-chat' as const },
+      appDetail: createAppDetailFixture({ id: 'app-1', mode: 'advanced-chat' as const }),
       searchParams: '?conversation_id=conversation-1',
     })
     const user = userEvent.setup()

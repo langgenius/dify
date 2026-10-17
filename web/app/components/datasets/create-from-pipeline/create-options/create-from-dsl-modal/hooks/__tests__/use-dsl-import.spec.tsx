@@ -15,16 +15,16 @@ vi.mock('@/next/navigation', () => ({
 const mockImportDSL = vi.fn()
 const mockImportDSLConfirm = vi.fn()
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'rag.pipelines.imports.post': () => ({
-      mutateAsync: mockImportDSL,
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.imports.post': (input) => mockImportDSL(input),
+      'rag.pipelines.imports.byImportId.confirm.post': (input) => mockImportDSLConfirm(input),
     }),
-    'rag.pipelines.imports.byImportId.confirm.post': () => ({
-      mutateAsync: mockImportDSLConfirm,
-    }),
-  })
+  }
 })
 
 // Mock plugin dependencies hook
@@ -66,15 +66,6 @@ const toastMocks = vi.hoisted(() => {
 vi.mock('@/app/notifications', () => ({
   toast: toastMocks.api,
 }))
-
-vi.mock('use-context-selector', async () => {
-  const actual =
-    await vi.importActual<typeof import('use-context-selector')>('use-context-selector')
-  return {
-    ...actual,
-    useContext: vi.fn(() => ({ notify: toastMocks.api })),
-  }
-})
 
 const createImportDSLResponse = (overrides = {}) => ({
   id: 'import-123',

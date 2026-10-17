@@ -79,14 +79,6 @@ vi.mock('@/app/components/app/configuration/toast', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/chat/utils', () => ({
-  getLastAnswer: (chatList: ChatItemType[]) => chatList.find((item) => item.isAnswer),
-}))
-
-vi.mock('@/utils', () => ({
-  canFindTool: (collectionId: string, providerId: string) => collectionId === providerId,
-}))
-
 vi.mock('@/app/components/base/chat/chat', () => ({
   default: (props: typeof capturedChatProps) => {
     capturedChatProps = props

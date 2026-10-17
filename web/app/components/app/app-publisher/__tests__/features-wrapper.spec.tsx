@@ -1,10 +1,17 @@
+import type { ComponentProps } from 'react'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import {
+  createModelConfigFixture,
+  createPublishedConfigurationFixture,
+} from '@/test/fixtures/debug-configuration'
 import FeaturesWrappedAppPublisher from '../features-wrapper'
 
 const mockSetFeatures = vi.fn()
 const mockOnPublish = vi.fn()
 const mockAppPublisherProps = vi.hoisted(() => ({
-  current: null as null | Record<string, any>,
+  current: null as null | ComponentProps<
+    typeof import('@/app/components/app/app-publisher').AppPublisher
+  >,
 }))
 
 const mockFeatures = {
@@ -31,11 +38,23 @@ const mockFeatures = {
   },
 }
 vi.mock('@/app/components/app/app-publisher', () => ({
-  AppPublisher: (props: Record<string, any>) => {
+  AppPublisher: (
+    props: ComponentProps<typeof import('@/app/components/app/app-publisher').AppPublisher>,
+  ) => {
     mockAppPublisherProps.current = props
     return (
       <div>
-        <button type="button" onClick={() => props.onPublish?.({ id: 'model-1' })}>
+        <button
+          type="button"
+          onClick={() =>
+            props.onPublish?.({
+              id: 'model-1',
+              model: 'gpt-4o',
+              provider: 'openai',
+              parameters: {},
+            })
+          }
+        >
           publish-through-wrapper
         </button>
         <button
@@ -65,8 +84,8 @@ vi.mock('@/app/components/base/features/hooks', () => ({
 
 describe('FeaturesWrappedAppPublisher', () => {
   const resetAppConfig = vi.fn()
-  const publishedConfig = {
-    modelConfig: {
+  const publishedConfig = createPublishedConfigurationFixture({
+    modelConfig: createModelConfigFixture({
       more_like_this: { enabled: true },
       opening_statement: 'Hello there',
       suggested_questions: ['Q1'],
@@ -75,7 +94,12 @@ describe('FeaturesWrappedAppPublisher', () => {
       text_to_speech: { enabled: true },
       suggested_questions_after_answer: { enabled: true },
       retriever_resource: { enabled: true },
-      annotation_reply: { enabled: true },
+      annotation_reply: {
+        enabled: true,
+        id: 'annotation-1',
+        score_threshold: 0.7,
+        embedding_model: { embedding_model_name: 'embedding', embedding_provider_name: 'openai' },
+      },
       file_upload: {
         enabled: true,
         image: {
@@ -89,8 +113,8 @@ describe('FeaturesWrappedAppPublisher', () => {
         allowed_file_upload_methods: ['remote_url'],
         number_limits: 5,
       },
-    },
-  }
+    }),
+  })
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -101,7 +125,7 @@ describe('FeaturesWrappedAppPublisher', () => {
     render(
       <FeaturesWrappedAppPublisher
         appId="app-1"
-        publishedConfig={publishedConfig as any}
+        publishedConfig={publishedConfig}
         onPublish={mockOnPublish}
       />,
     )
@@ -109,7 +133,10 @@ describe('FeaturesWrappedAppPublisher', () => {
     fireEvent.click(screen.getByText('publish-through-wrapper'))
 
     await waitFor(() => {
-      expect(mockOnPublish).toHaveBeenCalledWith({ id: 'model-1' }, mockFeatures)
+      expect(mockOnPublish).toHaveBeenCalledWith(
+        { id: 'model-1', model: 'gpt-4o', provider: 'openai', parameters: {} },
+        mockFeatures,
+      )
     })
   })
 
@@ -117,7 +144,7 @@ describe('FeaturesWrappedAppPublisher', () => {
     render(
       <FeaturesWrappedAppPublisher
         appId="app-1"
-        publishedConfig={publishedConfig as any}
+        publishedConfig={publishedConfig}
         onPublish={mockOnPublish}
       />,
     )
@@ -135,7 +162,7 @@ describe('FeaturesWrappedAppPublisher', () => {
     render(
       <FeaturesWrappedAppPublisher
         appId="app-1"
-        publishedConfig={publishedConfig as any}
+        publishedConfig={publishedConfig}
         resetAppConfig={resetAppConfig}
       />,
     )
@@ -158,7 +185,7 @@ describe('FeaturesWrappedAppPublisher', () => {
           text2speech: { enabled: true },
           suggested: { enabled: true },
           citation: { enabled: true },
-          annotationReply: { enabled: true },
+          annotationReply: publishedConfig.modelConfig.annotation_reply,
         }),
       )
     })
@@ -168,7 +195,7 @@ describe('FeaturesWrappedAppPublisher', () => {
     render(
       <FeaturesWrappedAppPublisher
         appId="app-1"
-        publishedConfig={publishedConfig as any}
+        publishedConfig={publishedConfig}
         resetAppConfig={resetAppConfig}
       />,
     )

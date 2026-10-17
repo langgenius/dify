@@ -47,10 +47,6 @@ vi.mock('@/utils/var', async (importOriginal) => ({
   basePath: '/dify',
 }))
 
-vi.mock('@/utils', () => ({
-  canFindTool: (id: string, target: string) => id === target,
-}))
-
 const baseNodeData = { title: '', desc: '' }
 
 describe('useToolIcon', () => {

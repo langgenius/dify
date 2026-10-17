@@ -1,6 +1,7 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import { act, screen, waitFor } from '@testing-library/react'
 import Cookies from 'js-cookie'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import CommonLayoutError from '@/app/(commonLayout)/error'
 import ErrorBoundary from '@/app/components/base/error-boundary'
 import { DETAIL_SIDEBAR_COOKIE_NAME } from '@/app/components/detail-sidebar/cookie'
@@ -45,20 +46,26 @@ const createSeededQueryClient = (appDetail: Partial<AppDetailWithSite> = {}) => 
   return queryClient
 }
 
+const onUrlUpdate = vi.fn()
+
 const renderHook = (
   callback: () => ReturnType<typeof useConfiguration>,
   appDetail?: Partial<AppDetailWithSite>,
 ) => {
   const queryClient = createSeededQueryClient(appDetail)
+  const QueryWrapper = createQueryClientWrapper(queryClient)
   return {
     ...renderHookWithConsoleState(callback, {
-      wrapper: createQueryClientWrapper(queryClient),
+      wrapper: ({ children }) => (
+        <NuqsTestingAdapter onUrlUpdate={onUrlUpdate}>
+          <QueryWrapper>{children}</QueryWrapper>
+        </NuqsTestingAdapter>
+      ),
     }),
     queryClient,
   }
 }
 
-const mockSetSettingsDestination = vi.fn()
 const mockHandleMultipleModelConfigsChange = vi.fn()
 const mockFetchCollectionList = vi.fn()
 const mockFetchAppDetailDirect = vi.fn()
@@ -77,23 +84,8 @@ type AdvancedPromptConfigOptions = {
 }
 
 let latestAdvancedPromptConfigOptions: AdvancedPromptConfigOptions | undefined
-let mockTempStopState: string[] = []
 let mockCurrentModelFeatures = ['vision']
 let mockCurrentModelMode = ModelModeType.chat
-vi.mock('ahooks', async () => {
-  const actual = await vi.importActual<any>('ahooks')
-
-  return {
-    ...actual,
-    useGetState: () => [
-      mockTempStopState,
-      (value: string[]) => {
-        mockTempStopState = value
-      },
-      () => mockTempStopState,
-    ],
-  }
-})
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -112,11 +104,6 @@ vi.mock('@/context/permission-state', async () => {
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: ['app.create_and_management'],
   }))
-})
-
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
 })
 
 vi.mock('@/hooks/use-breakpoints', () => ({
@@ -243,7 +230,6 @@ describe('useConfiguration', () => {
     vi.clearAllMocks()
     Cookies.remove(DETAIL_SIDEBAR_COOKIE_NAME)
     latestAdvancedPromptConfigOptions = undefined
-    mockTempStopState = []
     mockCurrentModelFeatures = ['vision']
     mockCurrentModelMode = ModelModeType.chat
     mockAppPermissionKeys = [AppACLPermission.Edit, AppACLPermission.ReleaseAndVersion]
@@ -316,11 +302,13 @@ describe('useConfiguration', () => {
     try {
       renderHookWithConsoleState(() => useConfiguration(), {
         wrapper: ({ children }) => (
-          <QueryWrapper>
-            <ErrorBoundary fallback={(error) => <div role="alert">{error.message}</div>}>
-              {children}
-            </ErrorBoundary>
-          </QueryWrapper>
+          <NuqsTestingAdapter>
+            <QueryWrapper>
+              <ErrorBoundary fallback={(error) => <div role="alert">{error.message}</div>}>
+                {children}
+              </ErrorBoundary>
+            </QueryWrapper>
+          </NuqsTestingAdapter>
         ),
       })
       expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -341,14 +329,16 @@ describe('useConfiguration', () => {
     try {
       renderHookWithConsoleState(() => useConfiguration(), {
         wrapper: ({ children }) => (
-          <QueryWrapper>
-            <ErrorBoundary
-              onError={onError}
-              fallback={(error) => <CommonLayoutError error={error} retry={vi.fn()} />}
-            >
-              {children}
-            </ErrorBoundary>
-          </QueryWrapper>
+          <NuqsTestingAdapter>
+            <QueryWrapper>
+              <ErrorBoundary
+                onError={onError}
+                fallback={(error) => <CommonLayoutError error={error} retry={vi.fn()} />}
+              >
+                {children}
+              </ErrorBoundary>
+            </QueryWrapper>
+          </NuqsTestingAdapter>
         ),
       })
       await waitFor(() => expect(onError).toHaveBeenCalledWith(response, expect.anything()))
@@ -742,7 +732,7 @@ describe('useConfiguration', () => {
     expect(result.current.contextValue.isAllowVideoUpload).toBe(true)
 
     await act(async () => {
-      await result.current.contextValue.setPromptMode('advanced' as any)
+      await result.current.contextValue.setPromptMode('advanced')
     })
     expect(mockMigrateToDefaultPrompt).toHaveBeenCalled()
 
@@ -772,7 +762,9 @@ describe('useConfiguration', () => {
     expect(mockFormattingChangedDispatcher).toHaveBeenCalled()
     expect(mockHandleMultipleModelConfigsChange).toHaveBeenCalled()
     expect(Cookies.get(DETAIL_SIDEBAR_COOKIE_NAME)).toBe('collapse')
-    expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('provider'),
+    )
     expect(mockSetConversationHistoriesRole).toHaveBeenCalledWith({
       assistant_prefix: 'bot',
       user_prefix: 'user',
@@ -851,6 +843,8 @@ describe('useConfiguration', () => {
     act(() => {
       latestAdvancedPromptConfigOptions?.onUserChangedPrompt?.()
       latestAdvancedPromptConfigOptions?.setStop?.(['END'])
+    })
+    act(() => {
       result.current.contextValue.setAnnotationConfig({
         id: 'annotation-1',
         enabled: true,
@@ -865,7 +859,7 @@ describe('useConfiguration', () => {
         number_limits: 2,
         detail: 'high',
         transfer_methods: ['local_file'],
-      } as any)
+      })
       result.current.contextValue.setCompletionParams({ temperature: 0.2 })
       result.current.onCloseFeaturePanel()
     })

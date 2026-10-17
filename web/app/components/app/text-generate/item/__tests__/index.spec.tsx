@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AppSourceType } from '@/service/share'
+import { createWorkflowProcessFixture } from '@/test/fixtures/workflow-process'
 import GenerationItem from '../index'
 
 const mockFetchMoreLikeThis = vi.fn()
@@ -247,11 +248,9 @@ describe('GenerationItem', () => {
         messageId="msg-1"
         onRetry={vi.fn()}
         siteInfo={null}
-        workflowProcessData={
-          {
-            resultText: 'workflow result',
-          } as any
-        }
+        workflowProcessData={createWorkflowProcessFixture({
+          resultText: 'workflow result',
+        })}
       />,
     )
 
@@ -277,11 +276,9 @@ describe('GenerationItem', () => {
         messageId="msg-1"
         onRetry={vi.fn()}
         siteInfo={null}
-        workflowProcessData={
-          {
-            resultText: 'workflow result',
-          } as any
-        }
+        workflowProcessData={createWorkflowProcessFixture({
+          resultText: 'workflow result',
+        })}
       />,
     )
 

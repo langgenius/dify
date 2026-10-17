@@ -1,4 +1,3 @@
-import type { ChatItemInTree } from '@/app/components/base/chat/types'
 import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { useChat } from '../../hooks'
 
@@ -10,12 +9,12 @@ const mockSetIterTimes = vi.fn()
 const mockSetLoopTimes = vi.fn()
 const mockSubmitHumanInputForm = vi.fn()
 const mockSseGet = vi.fn()
-const mockGetNodes = vi.fn((): any[] => [])
+const mockGetNodes = vi.fn((): { id: string; type: string; data: Record<string, unknown> }[] => [])
 
-let mockWorkflowRunningData: any = null
+let mockWorkflowRunningData: { result: { status: string } } | null = null
 
 vi.mock('@/service/base', () => ({
-  sseGet: (...args: any[]) => mockSseGet(...args),
+  sseGet: (...args: unknown[]) => mockSseGet(...args),
 }))
 
 vi.mock('@/service/use-workflow', () => ({
@@ -23,7 +22,7 @@ vi.mock('@/service/use-workflow', () => ({
 }))
 
 vi.mock('@/service/workflow', () => ({
-  submitHumanInputForm: (...args: any[]) => mockSubmitHumanInputForm(...args),
+  submitHumanInputForm: (...args: unknown[]) => mockSubmitHumanInputForm(...args),
 }))
 
 vi.mock('@/app/notifications', () => ({
@@ -31,7 +30,7 @@ vi.mock('@/app/notifications', () => ({
     success: vi.fn(),
     error: vi.fn(),
     warning: vi.fn(),
-    info: (...args: any[]) => mockNotify(...args),
+    info: (...args: unknown[]) => mockNotify(...args),
   },
 }))
 
@@ -156,13 +155,10 @@ describe('workflow debug useChat – opening statement stability', () => {
       },
     ]
 
-    const { result, rerender } = renderHook(
-      ({ cfg }) => useChat(cfg, undefined, prevChatTree as ChatItemInTree[]),
-      {
-        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
-        initialProps: { cfg: config },
-      },
-    )
+    const { result, rerender } = renderHook(({ cfg }) => useChat(cfg, undefined, prevChatTree), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      initialProps: { cfg: config },
+    })
 
     const openerBefore = result.current.chatList[0]
     expect(openerBefore!.content).toBe('Updated welcome')

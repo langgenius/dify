@@ -2,7 +2,7 @@ import type { CommandEffect } from './command'
 import type { Descriptor } from './describe'
 import type { HelpEntry, HelpHead, HelpListing, HelpMap } from './help'
 import type { Example, JsonSchema } from '@/plugins/catalog'
-import type { Style } from '@/sys/io/color'
+import type { ColorScheme } from '@/sys/io/color'
 import type { View } from '@/sys/io/view'
 import { inputSchema } from '@/plugins/argv/parse'
 import { GLOBAL_INPUT } from '@/plugins/global-flags'
@@ -20,7 +20,7 @@ export type FieldRow = Readonly<{
   positional: boolean
 }>
 
-type Section = Readonly<{ title: string; lines: (d: Descriptor, style: Style) => string[] }>
+type Section = Readonly<{ title: string; lines: (d: Descriptor, style: ColorScheme) => string[] }>
 type Tagged = Readonly<{ effect?: CommandEffect; kind?: string; deprecated?: boolean }>
 
 const PRESENCE = { Required: 'required', Optional: 'optional' } as const
@@ -187,12 +187,12 @@ function tagsOf(tagged: Tagged): string[] {
 }
 
 // Empty is no cell at all: a styled empty string is escape codes, not nothing.
-function tagCell(tagged: Tagged, style: Style): string[] {
+function tagCell(tagged: Tagged, style: ColorScheme): string[] {
   const tags = tagsOf(tagged)
   return tags.length === 0 ? [] : [style.dim(tags.join(COMMAND_SEPARATOR))]
 }
 
-function descriptorText(d: Descriptor, style: Style): string {
+function descriptorText(d: Descriptor, style: ColorScheme): string {
   const header = [style.bold(d.id), d.summary, ...tagCell(d, style)]
   const blocks = [header.join(GAP)]
   for (const section of SECTIONS) {
@@ -214,7 +214,7 @@ export function descriptorsView(rows: readonly Descriptor[]): View<{ commands: D
   )
 }
 
-function headText(head: HelpHead | undefined, style: Style): string {
+function headText(head: HelpHead | undefined, style: ColorScheme): string {
   if (head === undefined) return ''
   if (head.summary !== undefined) return head.summary
   const noun = head.count === 1 ? COMMAND_NOUN.one : COMMAND_NOUN.many
@@ -232,7 +232,7 @@ export function mapView(map: HelpMap): View<HelpMap> {
   )
 }
 
-function listingRow(entry: HelpEntry, style: Style): string[] {
+function listingRow(entry: HelpEntry, style: ColorScheme): string[] {
   return [entry.id, entry.summary, ...tagCell(entry, style)]
 }
 

@@ -1,7 +1,8 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { RetrievalConfig } from '@/types/app'
 import { render, screen } from '@testing-library/react'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '../../../../create/step-two'
@@ -20,12 +21,12 @@ describe('ExternalKnowledgeSection', () => {
     score_threshold: 0.5,
   }
 
-  const mockDataset: DataSet = {
+  const mockDataset: DatasetDetailWithPartialMembersResponse = {
     ...createDatasetFixture(),
     id: 'dataset-1',
     name: 'External Dataset',
     description: 'External dataset description',
-    permission: DatasetPermission.onlyMe,
+    permission: PermissionLevel.onlyMe,
     icon_info: {
       icon_type: 'emoji',
       icon: '📚',

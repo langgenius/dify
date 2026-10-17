@@ -5,19 +5,11 @@ import { withSelectorKey } from '@/test/i18n-mock'
 import useSingleRunFormParams from '../use-single-run-form-params'
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
-const mockUseIsChatMode = vi.hoisted(() => vi.fn())
+let chatflowMode = false
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => mockUseTranslation(),
 }))
-
-vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
-
-  return {
-    ...actual,
-  }
-})
 
 const createPayload = (overrides: Partial<StartNodeType> = {}): StartNodeType => ({
   title: 'Start',
@@ -45,7 +37,7 @@ describe('start/use-single-run-form-params', () => {
   })
 
   it('should include sys.query and sys.files dependencies for chat mode', () => {
-    mockUseIsChatMode.mockReturnValue(true)
+    chatflowMode = true
 
     const { result } = renderHook(
       () =>
@@ -58,7 +50,13 @@ describe('start/use-single-run-form-params', () => {
           setRunInputData,
           toVarInputs: () => [],
         }),
-      { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
+      {
+        resource: {
+          kind: 'app',
+          appId: 'app-1',
+          mode: chatflowMode ? 'advanced-chat' : 'workflow',
+        },
+      },
     )
 
     expect(result.current.forms).toHaveLength(1)
@@ -83,7 +81,7 @@ describe('start/use-single-run-form-params', () => {
   })
 
   it('should omit sys.query when the workflow is not in chat mode', () => {
-    mockUseIsChatMode.mockReturnValue(false)
+    chatflowMode = false
 
     const { result } = renderHook(
       () =>
@@ -96,7 +94,13 @@ describe('start/use-single-run-form-params', () => {
           setRunInputData,
           toVarInputs: () => [],
         }),
-      { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
+      {
+        resource: {
+          kind: 'app',
+          appId: 'app-1',
+          mode: chatflowMode ? 'advanced-chat' : 'workflow',
+        },
+      },
     )
 
     expect(result.current.forms[0]!.inputs).toEqual(
@@ -107,11 +111,4 @@ describe('start/use-single-run-form-params', () => {
       ['sys', 'files'],
     ])
   })
-})
-
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => mockUseIsChatMode()) }
 })

@@ -1,5 +1,5 @@
 'use client'
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useTranslation } from 'react-i18next'
@@ -9,7 +9,11 @@ import ExternalKnowledgeSection from './components/external-knowledge-section'
 import IndexingSection from './components/indexing-section'
 import { useFormState } from './hooks/use-form-state'
 
-const DatasetSettingsForm = ({ currentDataset }: { currentDataset: DataSet }) => {
+const DatasetSettingsForm = ({
+  currentDataset,
+}: {
+  currentDataset: DatasetDetailWithPartialMembersResponse
+}) => {
   const { t } = useTranslation(['datasetSettings'])
   const {
     canEditSettings,

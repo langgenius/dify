@@ -1,8 +1,10 @@
-import type { ToolWithProvider } from '../../types'
+import type {
+  ToolApiEntity,
+  ToolProviderApiEntityResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ToolValue } from '../types'
 import type { Plugin } from '@/app/components/plugins/types'
-import type { Tool } from '@/app/components/tools/types'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { OperationButton } from '@/app/components/app/configuration/base/operation-button'
@@ -16,7 +18,11 @@ import useTheme from '@/hooks/use-theme'
 import { consoleQuery } from '@/service/console'
 import { createCustomCollection } from '@/service/tools'
 import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery as renderWithQuery,
+} from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import { Theme } from '@/types/app'
 import ToolPicker, { ToolPickerContent } from '../tool-picker'
 
@@ -37,13 +43,28 @@ const mockUseGetLanguage = vi.mocked(useGetLanguage)
 const mockUseTheme = vi.mocked(useTheme)
 const mockUseTags = vi.mocked(useTags)
 const mockUseMarketplacePlugins = vi.mocked(useMarketplacePlugins)
-const { mockBuiltInToolsQuery, mockCustomToolsQuery, mockWorkflowToolsQuery, mockMCPToolsQuery } =
-  vi.hoisted(() => ({
-    mockBuiltInToolsQuery: vi.fn(),
-    mockCustomToolsQuery: vi.fn(),
-    mockWorkflowToolsQuery: vi.fn(),
-    mockMCPToolsQuery: vi.fn(),
-  }))
+let queryClient = createConsoleQueryClient()
+const renderWithConsoleQuery: typeof renderWithQuery = (ui, options) =>
+  renderWithQuery(ui, { ...options, queryClient })
+const { getBuiltInTools, getCustomTools, getWorkflowTools, getMCPTools } = vi.hoisted(() => ({
+  getBuiltInTools: vi.fn(),
+  getCustomTools: vi.fn(),
+  getWorkflowTools: vi.fn(),
+  getMCPTools: vi.fn(),
+}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.builtin.get': getBuiltInTools,
+      'workspaces.current.tools.api.get': getCustomTools,
+      'workspaces.current.tools.workflow.get': getWorkflowTools,
+      'workspaces.current.tools.mcp.get': getMCPTools,
+    }),
+  }
+})
 const mockUseFeaturedToolsRecommendations = vi.mocked(useFeaturedToolsRecommendations)
 
 vi.mock('@/context/i18n', () => ({
@@ -94,10 +115,6 @@ vi.mock('@/service/tools', () => ({
 
 vi.mock('@/service/use-plugins', () => ({
   useFeaturedToolsRecommendations: vi.fn(),
-  useDownloadPlugin: vi.fn(() => ({
-    data: undefined,
-    isLoading: false,
-  })),
   useInstallPackageFromMarketPlace: () => ({
     mutateAsync: mockInstallPackageFromMarketPlace,
     isPending: false,
@@ -112,18 +129,6 @@ vi.mock('@/service/use-plugins', () => ({
     mutateAsync: vi.fn(),
   }),
 }))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.tools.builtin.get': () => mockBuiltInToolsQuery(),
-    'workspaces.current.tools.api.get': ({ enabled }: { enabled?: boolean }) =>
-      mockCustomToolsQuery(enabled),
-    'workspaces.current.tools.workflow.get': ({ enabled }: { enabled?: boolean }) =>
-      mockWorkflowToolsQuery(enabled),
-    'workspaces.current.tools.mcp.get': () => mockMCPToolsQuery(),
-  })
-})
 
 vi.mock('@/app/notifications', () => ({
   toast: {
@@ -211,7 +216,11 @@ vi.mock('@/utils/var', async (importOriginal) => {
   }
 })
 
-const createTool = (name: string, label: string, description = `${label} description`): Tool => ({
+const createTool = (
+  name: string,
+  label: string,
+  description = `${label} description`,
+): ToolApiEntity => ({
   name,
   author: 'author',
   label: {
@@ -227,7 +236,9 @@ const createTool = (name: string, label: string, description = `${label} descrip
   output_schema: {},
 })
 
-const createToolProvider = (overrides: Partial<ToolWithProvider> = {}): ToolWithProvider => ({
+const createToolProvider = (
+  overrides: Partial<ToolProviderApiEntityResponse> = {},
+): ToolProviderApiEntityResponse => ({
   id: 'provider-1',
   name: 'provider-one',
   author: 'Provider Author',
@@ -248,7 +259,6 @@ const createToolProvider = (overrides: Partial<ToolWithProvider> = {}): ToolWith
   labels: [],
   plugin_id: 'plugin-1',
   tools: [createTool('tool-a', 'Tool A')],
-  meta: { version: '1.0.0' } as ToolWithProvider['meta'],
   plugin_unique_identifier: 'plugin-1@1.0.0',
   ...overrides,
 })
@@ -356,14 +366,12 @@ describe('ToolPicker', () => {
     mockUseMarketplacePlugins.mockReturnValue({
       data: undefined,
     } as ReturnType<typeof useMarketplacePlugins>)
-    mockBuiltInToolsQuery.mockReturnValue({ data: builtInTools })
-    mockCustomToolsQuery.mockImplementation((enabled = true) => ({
-      data: enabled ? customTools : [],
-    }))
-    mockWorkflowToolsQuery.mockImplementation((enabled = true) => ({
-      data: enabled ? workflowTools : [],
-    }))
-    mockMCPToolsQuery.mockReturnValue({ data: mcpTools })
+    queryClient = createConsoleQueryClient()
+    seedToolProviders(queryClient, { builtInTools, customTools, workflowTools, mcpTools })
+    getBuiltInTools.mockResolvedValue(builtInTools)
+    getCustomTools.mockResolvedValue(customTools)
+    getWorkflowTools.mockResolvedValue(workflowTools)
+    getMCPTools.mockResolvedValue(mcpTools)
     mockUseFeaturedToolsRecommendations.mockReturnValue({
       plugins: [],
       isLoading: false,
@@ -568,8 +576,10 @@ describe('ToolPicker', () => {
         plugin_id: 'available-plugin',
         label: { en_US: 'Available Plugin' },
       })
-      mockBuiltInToolsQuery.mockReturnValue({
-        data: [createToolProvider({ ...builtInTools[0], plugin_id: installedPlugin.plugin_id })],
+      seedToolProviders(queryClient, {
+        builtInTools: [
+          createToolProvider({ ...builtInTools[0], plugin_id: installedPlugin.plugin_id }),
+        ],
       })
       mockUseMarketplacePlugins.mockImplementation(
         (params) =>
@@ -643,7 +653,7 @@ describe('ToolPicker', () => {
           }) as ReturnType<typeof useMarketplacePlugins>,
       )
       const props = { scope, onSelect: vi.fn(), onSelectMultiple: vi.fn() }
-      const { rerender } = renderWithConsoleQuery(<ToolPickerContent {...props} />, {
+      renderWithConsoleQuery(<ToolPickerContent {...props} />, {
         systemFeatures: { enable_marketplace: true },
       })
 
@@ -651,15 +661,15 @@ describe('ToolPicker', () => {
       expect(await screen.findByText('New Plugin')).toBeInTheDocument()
       expect(screen.getByText('Available Plugin')).toBeInTheDocument()
 
-      mockBuiltInToolsQuery.mockReturnValue({
-        data: [
-          ...builtInTools,
-          createToolProvider({ id: 'new-provider', plugin_id: newlyInstalledPlugin.plugin_id }),
-        ],
+      getBuiltInTools.mockResolvedValue([
+        ...builtInTools,
+        createToolProvider({ id: 'new-provider', plugin_id: newlyInstalledPlugin.plugin_id }),
+      ])
+      await act(async () => {
+        await queryClient.invalidateQueries({ queryKey: toolListKeys.builtin })
       })
-      rerender(<ToolPickerContent {...props} />)
 
-      expect(screen.queryByText('New Plugin')).not.toBeInTheDocument()
+      await waitFor(() => expect(screen.queryByText('New Plugin')).not.toBeInTheDocument())
       expect(screen.getByText('Available Plugin')).toBeInTheDocument()
       expect(screen.queryByText('Built-in Provider')).not.toBeInTheDocument()
     },
@@ -671,7 +681,6 @@ describe('ToolPicker', () => {
       isShow: true,
       supportAddCustomTool: true,
     })
-    for (const key of Object.values(toolListKeys)) queryClient.setQueryData(key, [])
 
     await user.click(screen.getByRole('button', { name: 'tools.addToolModal.custom.tip' }))
     expect(screen.getByTestId('edit-custom-tool-modal')).toBeInTheDocument()
@@ -681,7 +690,7 @@ describe('ToolPicker', () => {
     await waitFor(() => {
       expect(mockCreateCustomCollection).toHaveBeenCalledWith({ name: 'collection-a' })
     })
-    expect(queryClient.getQueryState(toolListKeys.custom)?.isInvalidated).toBe(true)
+    expect(getCustomTools).toHaveBeenCalledTimes(1)
     expect(queryClient.getQueryState(toolListKeys.builtin)?.isInvalidated).toBe(false)
     expect(screen.queryByTestId('edit-custom-tool-modal')).not.toBeInTheDocument()
   })
@@ -694,8 +703,6 @@ describe('ToolPicker', () => {
       supportAddCustomTool: true,
     })
 
-    expect(mockCustomToolsQuery).toHaveBeenCalledWith(true)
-    expect(mockWorkflowToolsQuery).toHaveBeenCalledWith(true)
     expect(screen.getByText('Custom Provider')).toBeInTheDocument()
     expect(screen.getByText('Built-in Provider')).toBeInTheDocument()
     expect(screen.getByText('MCP Provider')).toBeInTheDocument()
@@ -714,11 +721,10 @@ describe('ToolPicker', () => {
       isLoading: false,
     } as ReturnType<typeof useFeaturedToolsRecommendations>)
 
-    const { queryClient } = renderToolPicker({
+    renderToolPicker({
       isShow: true,
       selectedTools: [],
     })
-    for (const key of Object.values(toolListKeys)) queryClient.setQueryData(key, [])
 
     const featuredPluginItem = await screen.findByText('Plugin One')
     await user.hover(featuredPluginItem)
@@ -728,8 +734,8 @@ describe('ToolPicker', () => {
 
     await waitFor(
       () => {
-        for (const key of Object.values(toolListKeys))
-          expect(queryClient.getQueryState(key)?.isInvalidated).toBe(true)
+        for (const request of [getBuiltInTools, getCustomTools, getWorkflowTools, getMCPTools])
+          expect(request).toHaveBeenCalledTimes(1)
       },
       { timeout: 3000 },
     )

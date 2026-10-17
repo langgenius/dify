@@ -39,7 +39,7 @@ type MockChatInputAreaProps = {
   showFileUpload?: boolean
   featureBarReadonly?: boolean
   disabled?: boolean
-  inputs?: Record<string, any>
+  inputs?: Record<string, string | number | boolean>
   inputsForm?: InputForm[]
   speechToTextConfig?: unknown
   visionConfig?: unknown
@@ -141,7 +141,7 @@ const createModelConfig = (promptVariables: PromptVariableWithMeta[] = []): Mode
   mode: ModelModeType.chat,
   configs: {
     prompt_template: '',
-    prompt_variables: promptVariables as unknown as PromptVariable[],
+    prompt_variables: promptVariables as PromptVariable[],
   },
   chat_prompt_config: DEFAULT_CHAT_PROMPT_CONFIG,
   completion_prompt_config: DEFAULT_COMPLETION_PROMPT_CONFIG,

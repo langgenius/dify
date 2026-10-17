@@ -82,15 +82,15 @@ beforeEach(() => {
   toastErrorSpy.mockClear()
 })
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'files.upload.get': () => ({
-      data: mockFileUploadConfig,
-      isLoading: false,
-      error: null,
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'files.upload.get': async () => mockFileUploadConfig,
     }),
-  })
+  }
 })
 
 describe('InputFieldForm', () => {

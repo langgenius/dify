@@ -12,23 +12,6 @@ let mockQuery: DocumentListQuery = {
   sort: '-created_at',
 }
 
-vi.mock('@/models/datasets', () => ({
-  DisplayStatusList: [
-    'queuing',
-    'indexing',
-    'paused',
-    'error',
-    'available',
-    'enabled',
-    'disabled',
-    'archived',
-  ],
-}))
-
-vi.mock('ahooks', () => ({
-  useDebounce: (value: unknown, _options?: { wait?: number }) => value,
-}))
-
 vi.mock('../use-document-list-query-state', async () => {
   const React = await import('react')
   return {

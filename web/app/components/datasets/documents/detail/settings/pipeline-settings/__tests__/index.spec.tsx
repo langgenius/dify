@@ -1,8 +1,9 @@
 import type { PipelineExecutionLogResponse } from '@/models/pipeline'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { DatasourceType } from '@/models/pipeline'
 import { consoleQuery } from '@/service/console'
+import { createDeferred } from '@/test/deferred'
 import PipelineSettings from '../index'
 
 // Mock Next.js router
@@ -26,14 +27,12 @@ vi.mock('@/context/dataset-detail', () => ({
 // Mock API hooks for PipelineSettings
 const mockUsePipelineExecutionLog = vi.fn()
 const mockMutateAsync = vi.fn()
-const mockUseRunPublishedPipeline = vi.fn()
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
   return mockConsoleOperationHooks(await importOriginal(), {
     'datasets.byDatasetId.documents.byDocumentId.pipelineExecutionLog.get': (o: {
       input: { params: { dataset_id: string; document_id: string } }
     }) => mockUsePipelineExecutionLog(o.input.params),
-    'rag.pipelines.byPipelineId.workflows.published.run.post': () => mockUseRunPublishedPipeline(),
     // For ProcessDocuments component
     'rag.pipelines.byPipelineId.workflows.published.processing.parameters.get': () => ({
       data: { variables: [] },
@@ -181,12 +180,7 @@ describe('PipelineSettings', () => {
       isError: false,
     })
 
-    // Default: useRunPublishedPipeline mock
-    mockUseRunPublishedPipeline.mockReturnValue({
-      mutateAsync: mockMutateAsync,
-      isIdle: true,
-      isPending: false,
-    })
+    mockMutateAsync.mockResolvedValue({ data: { outputs: {} } })
   })
 
   // ==================== Rendering Tests ====================
@@ -390,16 +384,12 @@ describe('PipelineSettings', () => {
               original_document_id: 'document-456',
             }),
           }),
-          expect.any(Object),
         )
       })
     })
 
     it('should navigate to documents list after successful process', async () => {
-      mockMutateAsync.mockImplementation((_request, options) => {
-        options?.onSuccess?.()
-        return Promise.resolve({})
-      })
+      mockMutateAsync.mockResolvedValue({})
       const props = createDefaultProps()
 
       renderWithProviders(<PipelineSettings {...props} />)
@@ -413,10 +403,7 @@ describe('PipelineSettings', () => {
     })
 
     it('should invalidate document cache after successful process', async () => {
-      mockMutateAsync.mockImplementation((_request, options) => {
-        options?.onSuccess?.()
-        return Promise.resolve({})
-      })
+      mockMutateAsync.mockResolvedValue({})
       const props = createDefaultProps()
 
       renderWithProviders(<PipelineSettings {...props} />)
@@ -457,17 +444,13 @@ describe('PipelineSettings', () => {
             params: { pipeline_id: mockPipelineId },
             body: expect.objectContaining({ is_preview: true }),
           }),
-          expect.any(Object),
         )
       })
     })
 
     it('should update estimateData on successful preview', async () => {
       const mockOutputs = { total_nodes: 1, total_segments: 0, preview: [], qa_preview: [] }
-      mockMutateAsync.mockImplementation((_req, opts) => {
-        opts?.onSuccess?.({ data: { outputs: mockOutputs } })
-        return Promise.resolve({ data: { outputs: mockOutputs } })
-      })
+      mockMutateAsync.mockResolvedValue({ data: { outputs: mockOutputs } })
       const props = createDefaultProps()
 
       renderWithProviders(<PipelineSettings {...props} />)
@@ -502,20 +485,17 @@ describe('PipelineSettings', () => {
       // Assert - inputs come from initialData which is transformed by useInitialData
       // Since usePublishedPipelineProcessingParams returns empty variables, inputs is {}
       await waitFor(() => {
-        expect(mockMutateAsync).toHaveBeenCalledWith(
-          {
-            params: { pipeline_id: mockPipelineId },
-            body: {
-              inputs: {},
-              start_node_id: 'node-xyz',
-              datasource_type: DatasourceType.localFile,
-              datasource_info_list: [{ related_id: 'file-1', name: 'test.pdf', extension: 'pdf' }],
-              is_preview: true,
-              response_mode: 'blocking',
-            },
+        expect(mockMutateAsync).toHaveBeenCalledWith({
+          params: { pipeline_id: mockPipelineId },
+          body: {
+            inputs: {},
+            start_node_id: 'node-xyz',
+            datasource_type: DatasourceType.localFile,
+            datasource_info_list: [{ related_id: 'file-1', name: 'test.pdf', extension: 'pdf' }],
+            is_preview: true,
+            response_mode: 'blocking',
           },
-          expect.any(Object),
-        )
+        })
       })
     })
   })
@@ -595,10 +575,7 @@ describe('PipelineSettings', () => {
 
     it('should update estimateData after successful preview', async () => {
       const mockEstimateData = { total_nodes: 1, total_segments: 0, preview: [], qa_preview: [] }
-      mockMutateAsync.mockImplementation((_req, opts) => {
-        opts?.onSuccess?.({ data: { outputs: mockEstimateData } })
-        return Promise.resolve({ data: { outputs: mockEstimateData } })
-      })
+      mockMutateAsync.mockResolvedValue({ data: { outputs: mockEstimateData } })
       const props = createDefaultProps()
 
       renderWithProviders(<PipelineSettings {...props} />)
@@ -621,7 +598,6 @@ describe('PipelineSettings', () => {
       await waitFor(() => {
         expect(mockMutateAsync).toHaveBeenCalledWith(
           expect.objectContaining({ body: expect.objectContaining({ is_preview: false }) }),
-          expect.any(Object),
         )
       })
     })
@@ -636,69 +612,41 @@ describe('PipelineSettings', () => {
       await waitFor(() => {
         expect(mockMutateAsync).toHaveBeenCalledWith(
           expect.objectContaining({ body: expect.objectContaining({ is_preview: true }) }),
-          expect.any(Object),
         )
       })
     })
 
-    it('should pass isPending=true to ChunkPreview when preview is pending', async () => {
-      // Arrange - Start with isPending=false so buttons are enabled
-      let isPendingState = false
-      mockUseRunPublishedPipeline.mockImplementation(() => ({
-        mutateAsync: mockMutateAsync,
-        isIdle: !isPendingState,
-        isPending: isPendingState,
-      }))
-
-      // A promise that never resolves to keep the pending state
-      const pendingPromise = new Promise<void>(() => undefined)
-      // When mutateAsync is called, set isPending to true and trigger rerender
-      mockMutateAsync.mockImplementation(() => {
-        isPendingState = true
-        return pendingPromise
-      })
-
-      const props = createDefaultProps()
-      const { rerender } = renderWithProviders(<PipelineSettings {...props} />)
-
-      // Act - Click preview button (sets isPreview.current = true and calls mutateAsync)
+    it('shows preview pending until the request resolves', async () => {
+      const response = createDeferred<{ data: { outputs: object } }>()
+      mockMutateAsync.mockReturnValue(response.promise)
+      renderWithProviders(<PipelineSettings {...createDefaultProps()} />)
       fireEvent.click(screen.getByTestId('preview-btn'))
-
-      // Update mock and rerender to reflect isPending=true state
-      mockUseRunPublishedPipeline.mockReturnValue({
-        mutateAsync: mockMutateAsync,
-        isIdle: false,
-        isPending: true,
-      })
-      rerender(
-        <QueryClientProvider client={createQueryClient()}>
-          <PipelineSettings {...props} />
-        </QueryClientProvider>,
-      )
-
-      // Assert - isPending && isPreview.current should both be true now
-      expect(screen.getByTestId('is-pending')).toHaveTextContent('true')
+      await waitFor(() => expect(screen.getByTestId('is-pending')).toHaveTextContent('true'))
+      expect(screen.getByTestId('preview-btn')).toBeDisabled()
+      await act(async () => response.resolve({ data: { outputs: {} } }))
+      await waitFor(() => expect(screen.getByTestId('is-pending')).toHaveTextContent('false'))
     })
 
-    it('should pass isPending=false to ChunkPreview when process is pending (not preview)', async () => {
-      // Arrange - isPending is true but isPreview.current is false
-      mockUseRunPublishedPipeline.mockReturnValue({
-        mutateAsync: mockMutateAsync,
-        isIdle: false,
-        isPending: true,
-      })
-      mockMutateAsync.mockReturnValue(new Promise<void>(() => undefined))
-      const props = createDefaultProps()
-
-      renderWithProviders(<PipelineSettings {...props} />)
+    it('does not show preview pending when saving documents', async () => {
+      mockMutateAsync.mockReturnValue(new Promise(() => {}))
+      renderWithProviders(<PipelineSettings {...createDefaultProps()} />)
       fireEvent.click(
         screen.getByRole('button', { name: 'datasetPipeline.operations.saveAndProcess' }),
       )
-
-      // Assert - isPending && isPreview.current should be false (true && false = false)
-      await waitFor(() => {
-        expect(screen.getByTestId('is-pending')).toHaveTextContent('false')
-      })
+      await waitFor(() => expect(mockMutateAsync).toHaveBeenCalled())
+      await waitFor(() => expect(screen.getByTestId('preview-btn')).toBeDisabled())
+      expect(screen.getByTestId('is-pending')).toHaveTextContent('false')
     })
   })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.byPipelineId.workflows.published.run.post': (input) => mockMutateAsync(input),
+    }),
+  }
 })
