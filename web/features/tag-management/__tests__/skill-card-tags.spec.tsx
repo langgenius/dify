@@ -1,29 +1,16 @@
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { ComponentProps } from 'react'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { SkillCardTags } from '../components/skill-card-tags'
+import { renderWithTags } from './render'
 
 const mocks = vi.hoisted(() => ({
   onOpenTagManagement: vi.fn(),
   onTagsChange: vi.fn(),
   tagList: [] as Tag[],
   tagSelectorProps: vi.fn(),
-}))
-
-vi.mock('@tanstack/react-query', () => ({
-  useQuery: () => ({ data: mocks.tagList }),
-}))
-
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    tags: {
-      get: {
-        queryOptions: () => ({}),
-      },
-    },
-  },
 }))
 
 vi.mock('../components/tag-selector', () => ({
@@ -45,6 +32,8 @@ vi.mock('../components/tag-selector', () => ({
     )
   },
 }))
+
+const render = (ui: Parameters<typeof renderWithTags>[0]) => renderWithTags(ui, mocks.tagList)
 
 describe('SkillCardTags', () => {
   beforeEach(() => {

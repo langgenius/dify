@@ -1,6 +1,7 @@
 import type { MetadataItemWithValue } from '../../types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { DataType } from '../../types'
 import MetadataDocument from '../index'
 
@@ -30,23 +31,20 @@ vi.mock('../../hooks/use-metadata-document', () => ({
 }))
 
 // Mock service calls
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'datasets.byDatasetId.metadata.get': () => ({
-      data: {
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.metadata.get': async () => ({
         doc_metadata: [],
-      },
+      }),
     }),
-  })
+  }
 })
 
 // Mock check name hook
-vi.mock('../../hooks/use-check-metadata-name', () => ({
-  default: () => ({
-    checkName: () => ({ errorMsg: '' }),
-  }),
-}))
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({

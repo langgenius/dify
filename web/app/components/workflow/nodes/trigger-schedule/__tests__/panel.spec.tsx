@@ -10,22 +10,6 @@ vi.mock('../use-config', () => ({
   default: vi.fn(),
 }))
 
-vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
-  default: ({
-    title,
-    operations,
-    children,
-  }: ComponentProps<
-    typeof import('@/app/components/workflow/nodes/_base/components/field').default
-  >) => (
-    <div>
-      <div>{title}</div>
-      <div>{operations}</div>
-      <div>{children}</div>
-    </div>
-  ),
-}))
-
 vi.mock('../components/frequency-selector', () => ({
   default: ({
     frequency,

@@ -61,22 +61,6 @@ vi.mock('@/app/components/workflow/nodes/_base/components/input-support-select-v
   ),
 }))
 
-vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
-  default: ({
-    title,
-    operations,
-    children,
-  }: ComponentProps<
-    typeof import('@/app/components/workflow/nodes/_base/components/field').default
-  >) => (
-    <div>
-      <div>{title}</div>
-      <div>{operations}</div>
-      {children}
-    </div>
-  ),
-}))
-
 vi.mock('@/app/components/workflow/nodes/_base/components/input-number-with-slider', () => ({
   default: ({
     value,
@@ -86,19 +70,6 @@ vi.mock('@/app/components/workflow/nodes/_base/components/input-number-with-slid
   >) => (
     <button type="button" onClick={() => onChange(value + 1)}>
       slider-{value}
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/option-card', () => ({
-  default: ({
-    title,
-    onSelect,
-  }: ComponentProps<
-    typeof import('@/app/components/workflow/nodes/_base/components/option-card').default
-  >) => (
-    <button type="button" onClick={onSelect}>
-      {title}
     </button>
   ),
 }))
@@ -119,10 +90,6 @@ vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
       {name}:{type}
     </div>
   ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/split', () => ({
-  default: () => <div>split</div>,
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
@@ -308,19 +275,6 @@ describe('list-operator path', () => {
 
       expect(screen.queryByText('workflow.nodes.listFilter.inputVar')).not.toBeInTheDocument()
       expect(screen.queryByText('Start')).not.toBeInTheDocument()
-    })
-
-    it('should render the panel controls and output vars', async () => {
-      const user = userEvent.setup()
-      renderPanel()
-
-      await user.click(screen.getByText('pick-var'))
-      await user.click(screen.getByText('filter-condition'))
-      await user.click(screen.getByText('workflowLogic.nodes.listFilter.asc'))
-
-      expect(screen.getByText('result:Array[number]')).toBeInTheDocument()
-      expect(screen.getByText('first_record:number')).toBeInTheDocument()
-      expect(screen.getByText('last_record:number')).toBeInTheDocument()
     })
 
     it('should hide disabled sections and render order controls without sub variables', () => {

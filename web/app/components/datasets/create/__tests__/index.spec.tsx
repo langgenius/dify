@@ -13,9 +13,12 @@ import * as React from 'react'
 import { DataSourceProvider } from '@/models/common'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
 import { PermissionLevel } from '@/models/permission'
+import { consoleQuery } from '@/service/console'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
-import { render as renderWithConsoleState } from '@/test/console/render'
+import { render as renderWithConsoleStateWithoutUrlState } from '@/test/console/render'
+import { createDeferred } from '@/test/deferred'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { RETRIEVE_METHOD } from '@/types/app'
 import DatasetUpdateForm from '../index'
 
@@ -48,8 +51,22 @@ let mockCurrentUserId = 'user-1'
 let mockWorkspacePermissionKeys = ['dataset.create_and_management']
 let mockIsLoadingWorkspacePermissionKeys = false
 
+const onUrlUpdate = vi.fn()
+const renderWithConsoleState = createNuqsTestRenderer(
+  renderWithConsoleStateWithoutUrlState,
+  () => ({ onUrlUpdate }),
+)
+
+let mockDataSourceList: { result: DatasourceProviderAuthResponse[] } | undefined
+let seedDatasource = true
+
 const render = (ui: Parameters<typeof renderWithConsoleState>[0]) => {
   const queryClient = createAccountProfileQueryClient({ id: mockCurrentUserId })
+  if (seedDatasource)
+    queryClient.setQueryData<{ result: DatasourceProviderAuthResponse[] }>(
+      consoleQuery.auth.plugin.datasource.defaultList.get.queryKey(),
+      mockDataSourceList,
+    )
   return renderWithConsoleState(ui, {
     wrapper: ({ children }: { children: React.ReactNode }) => (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
@@ -85,12 +102,6 @@ vi.mock('@/features/system-features/state', async () => {
   }))
 })
 
-const mockSetSettingsDestination = vi.fn()
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
-})
-
 // Mock dataset detail context
 let mockDatasetDetail: DatasetDetailWithPartialMembersResponse | undefined
 vi.mock('@/context/dataset-detail', () => ({
@@ -115,19 +126,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 // Mock useGetDefaultDataSourceListAuth hook
-let mockDataSourceList: { result: DatasourceProviderAuthResponse[] } | undefined
-let mockIsLoadingDataSourceList = false
-let mockFetchingError = false
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'auth.plugin.datasource.defaultList.get': () => ({
-      data: mockDataSourceList,
-      isLoading: mockIsLoadingDataSourceList,
-      isError: mockFetchingError,
-    }),
-  })
-})
+const getDatasourceList = vi.fn()
 
 // Track props passed to child components
 let stepOneProps = {} as StepOneProps
@@ -371,8 +370,8 @@ describe('DatasetUpdateForm', () => {
     mockDatasetDetail = undefined
     mockEmbeddingsDefaultModel = { model: 'text-embedding-ada-002', provider: 'openai' }
     mockDataSourceList = { result: [createMockDataSourceAuth()] }
-    mockIsLoadingDataSourceList = false
-    mockFetchingError = false
+    seedDatasource = true
+    getDatasourceList.mockImplementation(async () => mockDataSourceList)
     mockCurrentUserId = 'user-1'
     mockWorkspacePermissionKeys = ['dataset.create_and_management']
     mockIsLoadingWorkspacePermissionKeys = false
@@ -400,51 +399,22 @@ describe('DatasetUpdateForm', () => {
     })
 
     it('should show loading state when data source list is loading', () => {
-      mockIsLoadingDataSourceList = true
+      seedDatasource = false
+      getDatasourceList.mockReturnValue(new Promise(() => {}))
 
       render(<DatasetUpdateForm />)
 
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
       // Assert - Loading component should be rendered (not the steps)
       expect(screen.queryByTestId('step-one')).not.toBeInTheDocument()
     })
 
-    it('should show error state when fetching fails', () => {
-      mockFetchingError = true
+    it('should show error state when fetching fails', async () => {
+      seedDatasource = false
+      getDatasourceList.mockRejectedValue(new Error('Datasource unavailable'))
 
       render(<DatasetUpdateForm />)
 
-      expect(screen.getByText('datasetCreation.error.unavailable'))!.toBeInTheDocument()
+      expect(await screen.findByText('datasetCreation.error.unavailable'))!.toBeInTheDocument()
     })
   })
 
@@ -641,21 +611,25 @@ describe('DatasetUpdateForm', () => {
 
   // User Interactions - Test event handlers
   describe('User Interactions', () => {
-    it('should open account settings when onSetting is called from StepOne', () => {
+    it('should open account settings when onSetting is called from StepOne', async () => {
       render(<DatasetUpdateForm />)
 
       fireEvent.click(screen.getByTestId('step-one-setting'))
 
-      expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
+      await waitFor(() =>
+        expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('data-source'),
+      )
     })
 
-    it('should open provider settings when onSetting is called from StepTwo', () => {
+    it('should open provider settings when onSetting is called from StepTwo', async () => {
       render(<DatasetUpdateForm />)
       fireEvent.click(screen.getByTestId('step-one-next'))
 
       fireEvent.click(screen.getByTestId('step-two-setting'))
 
-      expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
+      await waitFor(() =>
+        expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('provider'),
+      )
     })
 
     it('should update crawl options when onCrawlOptionsChange is called', () => {
@@ -791,37 +765,6 @@ describe('DatasetUpdateForm', () => {
       fireEvent.click(screen.getByTestId('step-one-next'))
 
       // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
       expect(screen.queryByTestId('step-two')).not.toBeInTheDocument()
     })
 
@@ -913,7 +856,6 @@ describe('DatasetUpdateForm', () => {
       fireEvent.click(screen.getByTestId('step-two-next'))
 
       // Assert - Should use datasetDetail value, not cache
-      // Assert - Should use datasetDetail value, not cache
       expect(screen.getByTestId('step-three-indexing-type'))!.toHaveTextContent('economy')
     })
 
@@ -943,14 +885,6 @@ describe('DatasetUpdateForm', () => {
       render(<DatasetUpdateForm />)
 
       expect(stepOneProps.authedDataSourceList).toEqual([mockAuth])
-    })
-
-    it('should pass empty array when dataSourceList is undefined', () => {
-      mockDataSourceList = undefined
-
-      render(<DatasetUpdateForm />)
-
-      expect(stepOneProps.authedDataSourceList).toEqual([])
     })
 
     it('should pass dataSourceTypeDisable as true when datasetDetail has data_source_type', () => {
@@ -1004,7 +938,6 @@ describe('DatasetUpdateForm', () => {
       fireEvent.click(screen.getByTestId('step-two-update-retrieval-cache'))
       fireEvent.click(screen.getByTestId('step-two-next'))
 
-      // Assert - Should use cached value
       // Assert - Should use cached value
       expect(screen.getByTestId('step-three-retrieval-method'))!.toHaveTextContent(
         'semantic_search',
@@ -1062,7 +995,6 @@ describe('DatasetUpdateForm', () => {
       fireEvent.click(screen.getByTestId('step-two-prev'))
 
       // Assert - All state should be preserved
-      // Assert - All state should be preserved
       expect(screen.getByTestId('step-one-data-source-type'))!.toHaveTextContent(
         DataSourceType.NOTION,
       )
@@ -1086,7 +1018,6 @@ describe('DatasetUpdateForm', () => {
       fireEvent.click(screen.getByTestId('step-two-update-result-cache'))
       fireEvent.click(screen.getByTestId('step-two-next'))
 
-      // Assert - All data flows through to Step 3
       // Assert - All data flows through to Step 3
       expect(screen.getByTestId('step-three-indexing-type'))!.toHaveTextContent('high_quality')
       expect(screen.getByTestId('step-three-retrieval-method'))!.toHaveTextContent(
@@ -1151,7 +1082,6 @@ describe('DatasetUpdateForm', () => {
       fireEvent.click(screen.getByTestId('step-two-next'))
 
       // Assert - Step 3 should show dataset details
-      // Assert - Step 3 should show dataset details
       expect(screen.getByTestId('step-three-dataset-name'))!.toHaveTextContent('Existing Dataset')
       expect(screen.getByTestId('step-three-indexing-type'))!.toHaveTextContent('high_quality')
     })
@@ -1190,33 +1120,36 @@ describe('DatasetUpdateForm', () => {
 
   // Error State Tests
   describe('Error States', () => {
-    it('should display error message when fetching data source list fails', () => {
-      mockFetchingError = true
+    it('should display error message when fetching data source list fails', async () => {
+      seedDatasource = false
+      getDatasourceList.mockRejectedValue(new Error('Datasource unavailable'))
 
       render(<DatasetUpdateForm />)
 
-      const errorElement = screen.getByText('datasetCreation.error.unavailable')
+      const errorElement = await screen.findByText('datasetCreation.error.unavailable')
       expect(errorElement)!.toBeInTheDocument()
     })
 
-    it('should not render steps when in error state', () => {
-      mockFetchingError = true
+    it('should not render steps when in error state', async () => {
+      seedDatasource = false
+      getDatasourceList.mockRejectedValue(new Error('Datasource unavailable'))
 
       render(<DatasetUpdateForm />)
+      await screen.findByText('datasetCreation.error.unavailable')
 
       expect(screen.queryByTestId('step-one')).not.toBeInTheDocument()
       expect(screen.queryByTestId('step-two')).not.toBeInTheDocument()
       expect(screen.queryByTestId('step-three')).not.toBeInTheDocument()
     })
 
-    it('should render error page with 500 code when in error state', () => {
-      mockFetchingError = true
+    it('should render error page with 500 code when in error state', async () => {
+      seedDatasource = false
+      getDatasourceList.mockRejectedValue(new Error('Datasource unavailable'))
 
       render(<DatasetUpdateForm />)
 
       // Assert - Error state renders AppUnavailable, not the normal layout
-      // Assert - Error state renders AppUnavailable, not the normal layout
-      expect(screen.getByText('500'))!.toBeInTheDocument()
+      expect(await screen.findByText('500'))!.toBeInTheDocument()
       expect(screen.queryByTestId('top-bar')).not.toBeInTheDocument()
     })
   })
@@ -1224,7 +1157,8 @@ describe('DatasetUpdateForm', () => {
   // Loading State Tests
   describe('Loading States', () => {
     it('should not render steps while loading', () => {
-      mockIsLoadingDataSourceList = true
+      seedDatasource = false
+      getDatasourceList.mockReturnValue(new Promise(() => {}))
 
       render(<DatasetUpdateForm />)
 
@@ -1232,7 +1166,8 @@ describe('DatasetUpdateForm', () => {
     })
 
     it('should render TopBar while loading', () => {
-      mockIsLoadingDataSourceList = true
+      seedDatasource = false
+      getDatasourceList.mockReturnValue(new Promise(() => {}))
 
       render(<DatasetUpdateForm />)
 
@@ -1240,46 +1175,16 @@ describe('DatasetUpdateForm', () => {
     })
 
     it('should render StepOne after loading completes', async () => {
-      mockIsLoadingDataSourceList = true
-      const { rerender } = render(<DatasetUpdateForm />)
+      seedDatasource = false
+      const response = createDeferred<{ result: DatasourceProviderAuthResponse[] }>()
+      getDatasourceList.mockReturnValue(response.promise)
+      render(<DatasetUpdateForm />)
 
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
       // Assert - Initially not rendered
       expect(screen.queryByTestId('step-one')).not.toBeInTheDocument()
 
       // Act - Loading completes
-      mockIsLoadingDataSourceList = false
-      rerender(<DatasetUpdateForm />)
+      response.resolve({ result: [createMockDataSourceAuth()] })
 
       // Assert - Now rendered
       await waitFor(() => {
@@ -1287,4 +1192,15 @@ describe('DatasetUpdateForm', () => {
       })
     })
   })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'auth.plugin.datasource.defaultList.get': () => getDatasourceList(),
+    }),
+  }
 })

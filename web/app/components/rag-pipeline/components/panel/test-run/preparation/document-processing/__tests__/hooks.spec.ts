@@ -1,47 +1,59 @@
+import { act, waitFor } from '@testing-library/react'
 import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
+import { createDeferred } from '@/test/deferred'
 import { useInputVariables } from '../hooks'
 
-const mockUseDraftPipelineProcessingParams = vi.hoisted(() =>
-  vi.fn((_params?: unknown, _enabled?: boolean) => ({
-    data: { variables: [{ variable: 'chunkSize' }] },
-    isFetching: true,
-  })),
-)
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: { pipelineId: string }) => string) =>
-    selector({ pipelineId: 'pipeline-1' }),
-}))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'rag.pipelines.byPipelineId.workflows.draft.processing.parameters.get': (o: {
-      input: { params: { pipeline_id: string }; query: { node_id: string } }
-      enabled?: boolean
-    }) =>
-      mockUseDraftPipelineProcessingParams({
-        pipeline_id: o.input.params.pipeline_id,
-        node_id: o.input.query.node_id,
-      }),
-  })
+const { getParams } = vi.hoisted(() => ({ getParams: vi.fn() }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.byPipelineId.workflows.draft.processing.parameters.get': getParams,
+    }),
+  }
 })
+
+const response = {
+  variables: [
+    {
+      variable: 'chunkSize',
+      label: 'Chunk size',
+      type: 'number',
+      required: true,
+      default_value: 100,
+    },
+  ],
+}
+const renderVariables = () =>
+  renderHook(() => useInputVariables('node-1'), {
+    resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+  })
 
 describe('useInputVariables', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    getParams.mockResolvedValue(response)
   })
-
-  it('should query processing params with the current pipeline id and datasource node id', () => {
-    const { result } = renderHook(() => useInputVariables('datasource-node'), {
-      resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+  it('fetches processing parameters for the current pipeline and node', async () => {
+    const { result } = renderVariables()
+    await waitFor(() => expect(result.current.paramsConfig?.variables).toHaveLength(1))
+    expect(result.current.paramsConfig?.variables[0]).toMatchObject(response.variables[0]!)
+    expect(getParams).toHaveBeenCalledWith({
+      params: { pipeline_id: 'pipeline-1' },
+      query: { node_id: 'node-1' },
     })
-
-    expect(mockUseDraftPipelineProcessingParams).toHaveBeenCalledWith({
-      pipeline_id: 'pipeline-1',
-      node_id: 'datasource-node',
-    })
+    expect(result.current.isFetchingParams).toBe(false)
+  })
+  it('stays fetching until processing parameters resolve', async () => {
+    const pending = createDeferred<typeof response>()
+    getParams.mockReturnValue(pending.promise)
+    const { result } = renderVariables()
     expect(result.current.isFetchingParams).toBe(true)
-    expect(result.current.paramsConfig).toEqual({ variables: [{ variable: 'chunkSize' }] })
+    expect(result.current.paramsConfig).toBeUndefined()
+    await act(async () => pending.resolve(response))
+    await waitFor(() => expect(result.current.isFetchingParams).toBe(false))
+    expect(result.current.paramsConfig?.variables).toHaveLength(1)
   })
 })

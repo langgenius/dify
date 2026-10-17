@@ -49,16 +49,6 @@ vi.mock('../../data-source/store', () => ({
 }))
 
 // Mock file upload config
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: vi.fn(() => ({
-    data: {
-      file_size_limit: 15 * 1024 * 1024,
-      batch_count_limit: 20,
-      document_file_extensions: ['.txt', '.md', '.pdf'],
-    },
-    isLoading: false,
-  })),
-}))
 
 // Mock hooks used by data source options
 vi.mock('../../hooks', () => ({
@@ -68,9 +58,6 @@ vi.mock('../../hooks', () => ({
 }))
 
 // Mock useDatasourceIcon hook to avoid complex data source list transformation
-vi.mock('../../data-source-options/hooks', () => ({
-  useDatasourceIcon: vi.fn(() => '/icons/local-file.svg'),
-}))
 
 // Mock the entire local-file component since it has deep context dependencies
 vi.mock('../../data-source/local-file', () => ({

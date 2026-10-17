@@ -1,6 +1,7 @@
 import type { ModelItem, ModelProvider } from '../../declarations'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { ConfigurationMethodEnum } from '../../declarations'
 import ModelLoadBalancingModal from '../model-load-balancing-modal'
 
@@ -69,41 +70,6 @@ vi.mock('@/app/notifications', async (importOriginal) => {
       warning: (message: string) => mockNotify({ type: 'warning', message }),
       info: (message: string) => mockNotify({ type: 'info', message }),
     },
-  }
-})
-
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    workspaces: {
-      current: {
-        modelProviders: {
-          byProvider: {
-            models: {
-              credentials: { get: { queryOptions: () => ({ operation: 'model-credential' }) } },
-              post: { mutationOptions: () => ({ operation: 'update-load-balancing' }) },
-            },
-          },
-        },
-      },
-    },
-  },
-}))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useQuery: (options: { operation?: string }) =>
-      options.operation === 'model-credential'
-        ? { isLoading: false, data: mockCredentialData, refetch: mockRefetch }
-        : actual.useQuery(options as Parameters<typeof actual.useQuery>[0]),
-    useMutation: (options: { operation?: string }) =>
-      options.operation === 'update-load-balancing'
-        ? {
-            mutateAsync: ({ params, body }: { params: { provider: string }; body: unknown }) =>
-              mockMutateAsync(body, params),
-          }
-        : actual.useMutation(options as Parameters<typeof actual.useMutation>[0]),
   }
 })
 
@@ -866,4 +832,27 @@ describe('ModelLoadBalancingModal', () => {
       expect(mockMutateAsync).toHaveBeenCalled()
     })
   })
+})
+
+// Credential snapshots are inputs to the local editable form; saves use the real mutation.
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.modelProviders.byProvider.models.credentials.get': () => ({
+      isLoading: false,
+      data: mockCredentialData,
+      refetch: mockRefetch,
+    }),
+  })
+})
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.modelProviders.byProvider.models.post': ({ params, body }) =>
+        mockMutateAsync(body, params),
+    }),
+  }
 })

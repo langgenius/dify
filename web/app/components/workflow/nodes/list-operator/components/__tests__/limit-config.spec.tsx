@@ -13,24 +13,6 @@ type MockSliderProps = {
 
 const mockSlider = vi.fn<(props: MockSliderProps) => void>()
 
-vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
-  default: ({
-    title,
-    operations,
-    children,
-  }: {
-    title: string
-    operations?: React.ReactNode
-    children?: React.ReactNode
-  }) => (
-    <div>
-      <div>{title}</div>
-      <div>{operations}</div>
-      <div>{children}</div>
-    </div>
-  ),
-}))
-
 vi.mock('@/app/components/workflow/nodes/_base/components/input-number-with-slider', () => ({
   default: (props: MockSliderProps) => {
     mockSlider(props)

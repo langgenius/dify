@@ -9,7 +9,7 @@ const mockUseNodes = vi.hoisted(() => vi.fn())
 const mockUseNodeDataUpdate = vi.hoisted(() => vi.fn())
 const mockUseWorkflow = vi.hoisted(() => vi.fn())
 const mockUseWorkflowVariables = vi.hoisted(() => vi.fn())
-const mockUseIsChatMode = vi.hoisted(() => vi.fn())
+let chatflowMode = false
 const mockUseWorkflowStore = vi.hoisted(() => vi.fn())
 const mockFlowType = vi.hoisted(() => ({
   value: undefined as EditorResource['kind'] | undefined,
@@ -113,12 +113,12 @@ describe('variable-assigner/hooks', () => {
     mockUseWorkflowVariables.mockReturnValue({
       getNodeAvailableVars: vi.fn(),
     })
-    mockUseIsChatMode.mockReturnValue(false)
+    chatflowMode = false
   })
 
   it('should append target variables, ignore duplicates, and update grouped variables', () => {
     const { result } = renderHook(() => useVariableAssigner(), {
-      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
     })
 
     act(() => {
@@ -191,7 +191,7 @@ describe('variable-assigner/hooks', () => {
     ])
 
     const { result } = renderHook(() => useVariableAssigner(), {
-      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
     })
 
     act(() => {
@@ -239,7 +239,7 @@ describe('variable-assigner/hooks', () => {
 
   it('should update the hovered group state on enter and leave', () => {
     const { result } = renderHook(() => useVariableAssigner(), {
-      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
     })
 
     act(() => {
@@ -295,7 +295,7 @@ describe('variable-assigner/hooks', () => {
     })
 
     const { result } = renderHook(() => useGetAvailableVars(), {
-      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
     })
 
     expect(result.current('current-node', 'target', () => true, true)).toEqual([
@@ -348,11 +348,4 @@ describe('variable-assigner/hooks', () => {
       },
     ])
   })
-})
-
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => mockUseIsChatMode()) }
 })

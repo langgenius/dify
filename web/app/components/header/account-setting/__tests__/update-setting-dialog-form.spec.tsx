@@ -1,7 +1,7 @@
 import type { SettingsDestination } from '@/app/components/header/account-setting/query-params'
 import { Dialog } from '@langgenius/dify-ui/dialog'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render as renderWithoutUrlState, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import {
@@ -10,17 +10,10 @@ import {
 } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { UpdateSettingDialogForm } from '../update-setting-dialog-form'
 
-const mockSetSettingsDestination = vi.fn()
 let mockSettingsDestination: SettingsDestination | null = null
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return {
-    ...actual,
-    useQueryState: () => [mockSettingsDestination, mockSetSettingsDestination],
-  }
-})
 
 vi.mock('react-i18next', async () => {
   const { withSelectorKey, withSelectorKeyProps } = await import('@/test/i18n-mock')
@@ -58,6 +51,12 @@ vi.mock(
     default: () => <div data-testid="plugins-picker" />,
   }),
 )
+
+const onUrlUpdate = vi.fn()
+const render = createNuqsTestRenderer(renderWithoutUrlState, () => ({
+  onUrlUpdate,
+  searchParams: mockSettingsDestination ? { settings: mockSettingsDestination } : '',
+}))
 
 function renderForm(ui: React.ReactElement) {
   const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } })
@@ -113,10 +112,12 @@ describe('UpdateSettingDialogForm', () => {
     await user.click(screen.getByText('autoUpdate.changeTimezone'))
 
     expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false, expect.anything())
-    expect(mockSetSettingsDestination).toHaveBeenCalledWith('preferences')
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('preferences'),
+    )
   })
 
-  it('should replace the current destination when timezone link is clicked inside settings', () => {
+  it('should replace the current destination when timezone link is clicked inside settings', async () => {
     mockSettingsDestination = 'provider'
 
     renderForm(
@@ -138,9 +139,13 @@ describe('UpdateSettingDialogForm', () => {
 
     fireEvent.click(screen.getByText('autoUpdate.changeTimezone'))
 
-    expect(mockSetSettingsDestination).toHaveBeenCalledWith('preferences', {
-      history: 'replace',
-      shallow: true,
-    })
+    await waitFor(() =>
+      expect(onUrlUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queryString: '?settings=preferences',
+          options: expect.objectContaining({ history: 'replace', shallow: true }),
+        }),
+      ),
+    )
   })
 })

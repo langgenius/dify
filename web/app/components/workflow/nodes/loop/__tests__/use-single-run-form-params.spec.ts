@@ -14,27 +14,10 @@ import useSingleRunFormParams from '../use-single-run-form-params'
 
 const mockUseIsNodeInLoop = vi.hoisted(() => vi.fn())
 const mockUseWorkflow = vi.hoisted(() => vi.fn())
-const mockFormatTracing = vi.hoisted(() => vi.fn())
-const mockGetNodeUsedVars = vi.hoisted(() => vi.fn())
-const mockGetNodeUsedVarPassToServerKey = vi.hoisted(() => vi.fn())
-const mockGetNodeInfoById = vi.hoisted(() => vi.fn())
-const mockIsSystemVar = vi.hoisted(() => vi.fn())
 
 vi.mock('../../../hooks/use-workflow', () => ({
   useIsNodeInLoop: (...args: unknown[]) => mockUseIsNodeInLoop(...args),
   useWorkflow: () => mockUseWorkflow(),
-}))
-
-vi.mock('@/app/components/workflow/run/utils/format-log', () => ({
-  __esModule: true,
-  default: (...args: unknown[]) => mockFormatTracing(...args),
-}))
-
-vi.mock('../../_base/components/variable/utils', () => ({
-  getNodeUsedVars: (...args: unknown[]) => mockGetNodeUsedVars(...args),
-  getNodeUsedVarPassToServerKey: (...args: unknown[]) => mockGetNodeUsedVarPassToServerKey(...args),
-  getNodeInfoById: (...args: unknown[]) => mockGetNodeInfoById(...args),
-  isSystemVar: (...args: unknown[]) => mockIsSystemVar(...args),
 }))
 
 const createLoopNode = (overrides: Partial<LoopNodeType> = {}): LoopNodeType => ({
@@ -57,6 +40,14 @@ const createVariableNode = (id: string, title: string, type: BlockEnum = BlockEn
       title,
       type,
       desc: '',
+      tool_parameters:
+        id === 'tool-a'
+          ? {
+              answer: { type: 'variable', value: ['start-node', 'answer'] },
+              inner: { type: 'variable', value: ['inner-node', 'secret'] },
+              self: { type: 'variable', value: ['loop-node', 'item'] },
+            }
+          : {},
     },
   }) as Node
 
@@ -81,10 +72,11 @@ const createRunTrace = (): NodeTracing => ({
   outputs_truncated: false,
   status: 'succeeded',
   elapsed_time: 1,
-  metadata: {
-    iterator_length: 0,
-    iterator_index: 0,
-    loop_length: 2,
+  metadata: { iterator_length: 0, iterator_index: 0, loop_length: 2, loop_index: 1 },
+  execution_metadata: {
+    total_tokens: 0,
+    total_price: 0,
+    currency: 'USD',
     loop_index: 1,
   },
   created_at: 0,
@@ -112,23 +104,6 @@ describe('useSingleRunFormParams', () => {
         createVariableNode('start-node', 'Start Node', BlockEnum.Start),
       ],
     })
-    mockGetNodeUsedVars.mockImplementation((node: Node) => {
-      if (node.id === 'tool-a') return [['start-node', 'answer']]
-      if (node.id === 'loop-node') return [['loop-node', 'item']]
-      if (node.id === 'inner-node') return [['inner-node', 'secret']]
-      return []
-    })
-    mockGetNodeUsedVarPassToServerKey.mockReturnValue('passed_key')
-    mockGetNodeInfoById.mockImplementation((nodes: Node[], id: string) =>
-      nodes.find((node) => node.id === id),
-    )
-    mockIsSystemVar.mockReturnValue(false)
-    mockFormatTracing.mockReturnValue([
-      {
-        id: 'formatted-node',
-        execution_metadata: { loop_index: 9 },
-      },
-    ])
   })
 
   it('should build single-run forms and filter out loop-local variables', () => {
@@ -191,7 +166,7 @@ describe('useSingleRunFormParams', () => {
     expect(result.current.forms[0]!.values).toEqual({ question: 'hello' })
     expect(result.current.allVarObject).toEqual({
       'start-node.answer@@@tool-a@@@0': {
-        inSingleRunPassedKey: 'passed_key',
+        inSingleRunPassedKey: '#start-node.answer#',
       },
     })
     expect(result.current.getDependentVars()).toEqual([
@@ -223,11 +198,11 @@ describe('useSingleRunFormParams', () => {
     })
 
     expect(setRunInputData).toHaveBeenCalledWith({ retry: true })
-    expect(mockFormatTracing).toHaveBeenCalledWith([runResult], expect.any(Function))
-    expect(result.current.nodeInfo).toEqual({
-      id: 'formatted-node',
+
+    expect(result.current.nodeInfo).toMatchObject({
+      id: 'trace-1',
       execution_metadata: expect.objectContaining({
-        loop_index: 9,
+        loop_index: 1,
       }),
     })
   })

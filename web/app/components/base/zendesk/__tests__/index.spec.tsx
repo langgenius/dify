@@ -15,7 +15,7 @@ const mocks = vi.hoisted(() => ({
   scriptProps: vi.fn(),
 }))
 
-// Mock react's memo to just return the function
+// happy-dom cannot render async server components; unwrap memo only to invoke the server boundary.
 vi.mock('react', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react')>()
   return {

@@ -42,17 +42,8 @@ vi.mock('@/app/notifications', () => ({
 }))
 
 // Mock file uploader utils
-vi.mock('@/app/components/base/file-uploader/utils', () => ({
-  getFileUploadErrorMessage: (e: Error, defaultMsg: string) => e.message || defaultMsg,
-}))
 
 // Mock format utils used by the shared hook
-vi.mock('@/utils/format', () => ({
-  getFileExtension: (filename: string) => {
-    const parts = filename.split('.')
-    return parts[parts.length - 1] || ''
-  },
-}))
 // Mock i18n config
 vi.mock('@/i18n/language', () => ({
   LanguagesSupported: ['en-US', 'zh-Hans'],

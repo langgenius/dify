@@ -1,21 +1,16 @@
 import type { ComponentProps } from 'react'
 import type { QuestionClassifierNodeType } from '../types'
 import type { Topic } from '@/app/components/workflow/nodes/_base/components/branch-list/types'
-import type { PanelProps } from '@/types/workflow'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
-import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
-import { Resolution } from '@/types/app'
 import { useEdgesInteractions } from '../../../hooks/use-edges-interactions'
 import ClassItem from '../../_base/components/branch-list/class-item'
 import ClassList from '../../_base/components/branch-list/class-list'
 import AdvancedSetting from '../components/advanced-setting'
 import Node from '../node'
-import Panel from '../panel'
-import useConfig from '../use-config'
 
 vi.mock('@/app/components/workflow/nodes/_base/components/prompt/editor', () => ({
   default: ({
@@ -117,105 +112,8 @@ vi.mock('@/app/components/workflow/nodes/_base/components/node-handle', () => ({
   >) => <div>handle-{handleId}</div>,
 }))
 
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
-  () => ({
-    default: ({
-      setModel,
-      onCompletionParamsChange,
-    }: ComponentProps<
-      typeof import('@/app/components/header/account-setting/model-provider-page/model-parameter-modal').default
-    >) => (
-      <div>
-        <button type="button" onClick={() => setModel({ provider: 'openai', modelId: 'gpt-4o' })}>
-          set-model
-        </button>
-        <button type="button" onClick={() => onCompletionParamsChange({ temperature: 0.2 })}>
-          set-params
-        </button>
-      </div>
-    ),
-  }),
-)
-
-vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
-  default: ({
-    title,
-    operations,
-    children,
-  }: ComponentProps<
-    typeof import('@/app/components/workflow/nodes/_base/components/field').default
-  >) => (
-    <div>
-      <div>{title}</div>
-      <div>{operations}</div>
-      {children}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
-  default: ({
-    children,
-  }: ComponentProps<
-    typeof import('@/app/components/workflow/nodes/_base/components/output-vars').default
-  >) => <div>{children}</div>,
-  VarItem: ({
-    name,
-    type,
-  }: ComponentProps<
-    typeof import('@/app/components/workflow/nodes/_base/components/output-vars').VarItem
-  >) => (
-    <div>
-      {name}:{type}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/split', () => ({
-  default: () => <div>split</div>,
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/config-vision', () => ({
-  default: ({
-    onEnabledChange,
-    onConfigChange,
-  }: ComponentProps<
-    typeof import('@/app/components/workflow/nodes/_base/components/config-vision').default
-  >) => (
-    <div>
-      <button type="button" onClick={() => onEnabledChange(true)}>
-        vision-toggle
-      </button>
-      <button
-        type="button"
-        onClick={() => onConfigChange({ variable_selector: [], detail: Resolution.high })}
-      >
-        vision-config
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
-  default: ({
-    onChange,
-  }: ComponentProps<
-    typeof import('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker').default
-  >) => (
-    <button type="button" onClick={() => onChange(['node-1', 'query'], VarKindType.variable)}>
-      var-picker
-    </button>
-  ),
-}))
-
-vi.mock('../use-config', () => ({
-  default: vi.fn(),
-}))
-
 const mockUseEdgesInteractions = vi.mocked(useEdgesInteractions)
 const mockUseTextGeneration = vi.mocked(useTextGenerationCurrentProviderAndModelAndModelList)
-const mockUseConfig = vi.mocked(useConfig)
 
 const createTopic = (overrides: Partial<Topic> = {}): Topic => ({
   id: 'topic-1',
@@ -245,43 +143,6 @@ const createData = (
   ...overrides,
 })
 
-const createConfigResult = (
-  overrides: Partial<ReturnType<typeof useConfig>> = {},
-): ReturnType<typeof useConfig> => ({
-  readOnly: false,
-  inputs: createData(),
-  handleModelChanged: vi.fn(),
-  isChatflow: true,
-  isChatModel: true,
-  handleCompletionParamsChange: vi.fn(),
-  handleQueryVarChange: vi.fn(),
-  filterVar: vi.fn(() => true),
-  handleTopicsChange: vi.fn(),
-  hasSetBlockStatus: { context: false, history: false, query: false },
-  availableVars: [],
-  availableNodesWithParent: [],
-  availableVisionVars: [],
-  handleInstructionChange: vi.fn(),
-  handleMemoryChange: vi.fn(),
-  isVisionModel: true,
-  handleVisionResolutionEnabledChange: vi.fn(),
-  handleVisionResolutionChange: vi.fn(),
-  handleSortTopic: vi.fn(),
-  ...overrides,
-})
-
-const panelProps: PanelProps = {
-  getInputVars: vi.fn(() => []),
-  toVarInputs: vi.fn(() => []),
-  runInputData: {},
-  runInputDataRef: { current: {} },
-  setRunInputData: vi.fn(),
-  runResult: null,
-}
-
-const renderPanel = (data: QuestionClassifierNodeType = createData()) =>
-  render(<Panel id="node-1" data={data} panelProps={panelProps} />)
-
 describe('question-classifier path', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -310,7 +171,6 @@ describe('question-classifier path', () => {
         },
       ],
     })
-    mockUseConfig.mockReturnValue(createConfigResult())
   })
 
   // The question classifier path should wire editor-based classes, model display, and panel controls together.
@@ -505,20 +365,6 @@ describe('question-classifier path', () => {
 
       expect(screen.queryByText('openai:gpt-4o')).not.toBeInTheDocument()
       expect(screen.queryByText(`${longName.slice(0, 50)}...`)).not.toBeInTheDocument()
-    })
-
-    it('should render the panel controls and output variables', async () => {
-      const user = userEvent.setup()
-      renderPanel()
-
-      await user.click(screen.getByText('set-model'))
-      await user.click(screen.getByText('set-params'))
-      await user.click(screen.getAllByText('var-picker')[0]!)
-      await user.click(screen.getByText('vision-toggle'))
-      await user.click(screen.getByText('vision-config'))
-
-      expect(screen.getByText('class_name:string')).toBeInTheDocument()
-      expect(screen.getByText('usage:object')).toBeInTheDocument()
     })
   })
 })

@@ -1,5 +1,5 @@
 import type { PluginDeclaration, PluginManifestInMarket } from '../../types'
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { describe, expect, it } from 'vite-plus/test'
 import { PluginCategoryEnum } from '../../types'
 import {
   convertRepoToUrl,
@@ -9,15 +9,6 @@ import {
   pluginManifestToCardPluginProps,
   toPluginText,
 } from '../utils'
-
-// Mock es-toolkit/compat
-vi.mock('es-toolkit/compat', () => ({
-  isEmpty: (obj: unknown) => {
-    if (obj === null || obj === undefined) return true
-    if (typeof obj === 'object') return Object.keys(obj).length === 0
-    return false
-  },
-}))
 
 describe('pluginManifestToCardPluginProps', () => {
   const createMockPluginDeclaration = (

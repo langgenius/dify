@@ -1,13 +1,18 @@
 import type { Features, OnFeaturesChange } from '../../../types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { FeaturesProvider } from '../../../context'
 import ImageUpload from '../index'
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'files.upload.get': () => ({ data: undefined }),
-  })
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'files.upload.get': async () => undefined,
+    }),
+  }
 })
 
 const defaultFeatures: Features = {

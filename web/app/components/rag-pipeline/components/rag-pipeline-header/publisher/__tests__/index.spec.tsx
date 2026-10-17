@@ -147,25 +147,10 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
 const mockPublishWorkflow = vi.fn()
 const mockPublishAsCustomizedPipeline = vi.fn()
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'rag.pipelines.byPipelineId.customized.publish.post': () => ({
-      mutateAsync: mockPublishAsCustomizedPipeline,
-    }),
-  })
-})
-
 const expectInvalidated = (...path: string[]) =>
   expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
     queryKey: expect.arrayContaining([['console', ...path]]),
   })
-
-vi.mock('@/service/use-workflow', () => ({
-  usePublishWorkflow: () => ({
-    mutateAsync: mockPublishWorkflow,
-  }),
-}))
 
 vi.mock('../../../publish-as-knowledge-pipeline-modal', () => ({
   default: ({
@@ -231,6 +216,23 @@ function publishWithKeyboard() {
   fireEvent.keyDown(target, { key: 'P', ctrlKey: true, shiftKey: true })
   fireEvent.keyUp(target, { key: 'P', ctrlKey: true, shiftKey: true })
 }
+
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  post: (...args: unknown[]) => mockPublishWorkflow(...args),
+}))
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.byPipelineId.customized.publish.post': (input) =>
+        mockPublishAsCustomizedPipeline(input),
+    }),
+  }
+})
 
 describe('publisher', () => {
   beforeEach(() => {
@@ -573,11 +575,10 @@ describe('publisher', () => {
         fireEvent.click(publishButton)
 
         await waitFor(() => {
-          expect(mockPublishWorkflow).toHaveBeenCalledWith({
-            url: '/rag/pipelines/test-pipeline-id/workflows/publish',
-            title: '',
-            releaseNotes: '',
-          })
+          expect(mockPublishWorkflow).toHaveBeenCalledWith(
+            '/rag/pipelines/test-pipeline-id/workflows/publish',
+            { body: { marked_name: '', marked_comment: '' } },
+          )
         })
       })
 

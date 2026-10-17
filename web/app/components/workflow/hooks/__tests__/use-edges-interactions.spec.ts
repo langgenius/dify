@@ -23,10 +23,6 @@ vi.mock('../use-workflow', () => ({
   }),
 }))
 
-vi.mock('../../utils', () => ({
-  getNodesConnectedSourceOrTargetHandleIdsMap: vi.fn(() => ({})),
-}))
-
 type EdgeRuntimeState = {
   _hovering?: boolean
   _isBundled?: boolean

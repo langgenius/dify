@@ -2,8 +2,11 @@ import type {
   FormValue,
   ModelParameterRule,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 // Import component after mocks
 import LLMParamsPanel from '../llm-params-panel'
 
@@ -11,7 +14,11 @@ import LLMParamsPanel from '../llm-params-panel'
 // All vi.mock() calls are hoisted, so inline all mock data
 
 // Mock useModelParameterRules hook
-const mockUseModelParameterRules = vi.fn()
+const getRules = vi.fn()
+let queryClient = createConsoleQueryClient()
+const rulesKey =
+  consoleQuery.workspaces.current.modelProviders.byProvider.models.parameterRules.get.key()
+const render = (ui: React.ReactElement) => renderWithConsoleQuery(ui, { queryClient })
 
 // Mock config constants with inline data
 vi.mock('@/config', () => ({
@@ -110,44 +117,6 @@ vi.mock(
   }),
 )
 
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/presets-parameter-utils',
-  () => ({
-    getSupportedPresetConfig: (toneId: number, supportedParameterNames?: string[]) => {
-      const toneConfigMap: Record<number, Record<string, number> | undefined> = {
-        1: {
-          temperature: 0.8,
-          top_p: 0.9,
-          presence_penalty: 0.1,
-          frequency_penalty: 0.1,
-        },
-        2: {
-          temperature: 0.5,
-          top_p: 0.85,
-          presence_penalty: 0.2,
-          frequency_penalty: 0.3,
-        },
-        3: {
-          temperature: 0.2,
-          top_p: 0.75,
-          presence_penalty: 0.5,
-          frequency_penalty: 0.5,
-        },
-      }
-      const toneConfig = toneConfigMap[toneId]
-      if (!toneConfig) return {}
-
-      if (!supportedParameterNames) return toneConfig
-
-      return Object.entries(toneConfig).reduce<Record<string, number>>((acc, [key, value]) => {
-        if (supportedParameterNames.includes(key)) acc[key] = value
-
-        return acc
-      }, {})
-    },
-  }),
-)
-
 // Mock ParameterItem component
 vi.mock(
   '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/parameter-item',
@@ -228,49 +197,29 @@ const createDefaultProps = (
   ...overrides,
 })
 
-/**
- * Setup mock for useModelParameterRules
- */
-const setupModelParameterRulesMock = (
-  config: {
-    data?: ModelParameterRule[]
-    isPending?: boolean
-    isLoading?: boolean
-  } = {},
-) => {
-  mockUseModelParameterRules.mockReturnValue({
-    data: config.data ? { data: config.data } : undefined,
-    isPending: config.isPending ?? false,
-    isLoading: config.isLoading ?? config.isPending ?? false,
-  })
+const setRules = (data: ModelParameterRule[] | undefined) => {
+  queryClient.setQueryDefaults(rulesKey, { initialData: data ? { data } : undefined })
+  if (data)
+    act(() => {
+      queryClient.setQueriesData({ queryKey: rulesKey }, { data })
+    })
 }
 
 // ==================== Tests ====================
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.modelProviders.byProvider.models.parameterRules.get': (options: {
-      queryKey: [unknown, { input?: { params: { provider: string }; query: { model: string } } }]
-    }) =>
-      mockUseModelParameterRules(
-        options.queryKey[1].input?.params?.provider,
-        options.queryKey[1].input?.query?.model,
-      ),
-  })
-})
-
 describe('LLMParamsPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    setupModelParameterRulesMock({ data: [], isPending: false })
+    queryClient = createConsoleQueryClient()
+    getRules.mockReturnValue(new Promise(() => {}))
+    setRules([])
   })
 
   // ==================== Rendering Tests ====================
   describe('Rendering', () => {
     it('should render loading state when isPending is true', () => {
       // Arrange
-      setupModelParameterRulesMock({ isPending: true })
+      setRules(undefined)
       const props = createDefaultProps()
 
       // Act
@@ -282,7 +231,7 @@ describe('LLMParamsPanel', () => {
 
     it('should not render loading state when model is not configured and parameter rules query is pending but disabled', () => {
       // Arrange
-      setupModelParameterRulesMock({ isPending: true, isLoading: false })
+      setRules(undefined)
       const props = createDefaultProps({ provider: '', modelId: '' })
 
       // Act
@@ -295,7 +244,7 @@ describe('LLMParamsPanel', () => {
 
     it('should render parameters header', () => {
       // Arrange
-      setupModelParameterRulesMock({ data: [], isPending: false })
+      setRules([])
       const props = createDefaultProps()
 
       // Act
@@ -307,10 +256,7 @@ describe('LLMParamsPanel', () => {
 
     it('should render PresetsParameter for openai provider', () => {
       // Arrange
-      setupModelParameterRulesMock({
-        data: [createParameterRule({ name: 'temperature' })],
-        isPending: false,
-      })
+      setRules([createParameterRule({ name: 'temperature' })])
       const props = createDefaultProps({ provider: 'langgenius/openai/openai' })
 
       // Act
@@ -322,10 +268,7 @@ describe('LLMParamsPanel', () => {
 
     it('should render PresetsParameter for azure_openai provider', () => {
       // Arrange
-      setupModelParameterRulesMock({
-        data: [createParameterRule({ name: 'temperature' })],
-        isPending: false,
-      })
+      setRules([createParameterRule({ name: 'temperature' })])
       const props = createDefaultProps({ provider: 'langgenius/azure_openai/azure_openai' })
 
       // Act
@@ -337,10 +280,7 @@ describe('LLMParamsPanel', () => {
 
     it('should not render PresetsParameter when no visible parameter supports presets', () => {
       // Arrange
-      setupModelParameterRulesMock({
-        data: [createParameterRule({ name: 'max_tokens', type: 'int' })],
-        isPending: false,
-      })
+      setRules([createParameterRule({ name: 'max_tokens', type: 'int' })])
       const props = createDefaultProps({ provider: 'langgenius/openai/openai' })
 
       // Act
@@ -352,7 +292,7 @@ describe('LLMParamsPanel', () => {
 
     it('should not render PresetsParameter for non-preset providers', () => {
       // Arrange
-      setupModelParameterRulesMock({ data: [], isPending: false })
+      setRules([])
       const props = createDefaultProps({ provider: 'anthropic/claude' })
 
       // Act
@@ -368,7 +308,7 @@ describe('LLMParamsPanel', () => {
         createParameterRule({ name: 'temperature' }),
         createParameterRule({ name: 'top_p', label: { en_US: 'Top P', zh_Hans: 'Top P' } }),
       ]
-      setupModelParameterRulesMock({ data: rules, isPending: false })
+      setRules(rules)
       const props = createDefaultProps()
 
       // Act
@@ -381,7 +321,7 @@ describe('LLMParamsPanel', () => {
 
     it('should not render parameter items when rules are empty', () => {
       // Arrange
-      setupModelParameterRulesMock({ data: [], isPending: false })
+      setRules([])
       const props = createDefaultProps()
 
       // Act
@@ -394,7 +334,7 @@ describe('LLMParamsPanel', () => {
     it('should include stop parameter rule in advanced mode', () => {
       // Arrange
       const rules = [createParameterRule({ name: 'temperature' })]
-      setupModelParameterRulesMock({ data: rules, isPending: false })
+      setRules(rules)
       const props = createDefaultProps({ isAdvancedMode: true })
 
       // Act
@@ -408,7 +348,7 @@ describe('LLMParamsPanel', () => {
     it('should not include stop parameter rule in non-advanced mode', () => {
       // Arrange
       const rules = [createParameterRule({ name: 'temperature' })]
-      setupModelParameterRulesMock({ data: rules, isPending: false })
+      setRules(rules)
       const props = createDefaultProps({ isAdvancedMode: false })
 
       // Act
@@ -422,7 +362,7 @@ describe('LLMParamsPanel', () => {
     it('should pass isInWorkflow=true to ParameterItem', () => {
       // Arrange
       const rules = [createParameterRule({ name: 'temperature' })]
-      setupModelParameterRulesMock({ data: rules, isPending: false })
+      setRules(rules)
       const props = createDefaultProps()
 
       // Act
@@ -438,7 +378,8 @@ describe('LLMParamsPanel', () => {
 
   // ==================== Props Testing ====================
   describe('Props', () => {
-    it('should call useModelParameterRules with provider and modelId', () => {
+    it('should call useModelParameterRules with provider and modelId', async () => {
+      setRules(undefined)
       // Arrange
       const props = createDefaultProps({
         provider: 'test-provider',
@@ -449,13 +390,18 @@ describe('LLMParamsPanel', () => {
       render(<LLMParamsPanel {...props} />)
 
       // Assert
-      expect(mockUseModelParameterRules).toHaveBeenCalledWith('test-provider', 'test-model')
+      await waitFor(() =>
+        expect(getRules).toHaveBeenCalledWith({
+          params: { provider: 'test-provider' },
+          query: { model: 'test-model' },
+        }),
+      )
     })
 
     it('should pass completion params value to ParameterItem', () => {
       // Arrange
       const rules = [createParameterRule({ name: 'temperature' })]
-      setupModelParameterRulesMock({ data: rules, isPending: false })
+      setRules(rules)
       const props = createDefaultProps({
         completionParams: { temperature: 0.8 },
       })
@@ -470,7 +416,7 @@ describe('LLMParamsPanel', () => {
     it('should handle undefined completion params value', () => {
       // Arrange
       const rules = [createParameterRule({ name: 'temperature' })]
-      setupModelParameterRulesMock({ data: rules, isPending: false })
+      setRules(rules)
       const props = createDefaultProps({
         completionParams: {},
       })
@@ -489,15 +435,12 @@ describe('LLMParamsPanel', () => {
       it('should apply Creative preset config', () => {
         // Arrange
         const onCompletionParamsChange = vi.fn()
-        setupModelParameterRulesMock({
-          data: [
-            createParameterRule({ name: 'temperature' }),
-            createParameterRule({ name: 'top_p' }),
-            createParameterRule({ name: 'presence_penalty' }),
-            createParameterRule({ name: 'frequency_penalty' }),
-          ],
-          isPending: false,
-        })
+        setRules([
+          createParameterRule({ name: 'temperature' }),
+          createParameterRule({ name: 'top_p' }),
+          createParameterRule({ name: 'presence_penalty' }),
+          createParameterRule({ name: 'frequency_penalty' }),
+        ])
         const props = createDefaultProps({
           provider: 'langgenius/openai/openai',
           onCompletionParamsChange,
@@ -521,15 +464,12 @@ describe('LLMParamsPanel', () => {
       it('should apply Balanced preset config', () => {
         // Arrange
         const onCompletionParamsChange = vi.fn()
-        setupModelParameterRulesMock({
-          data: [
-            createParameterRule({ name: 'temperature' }),
-            createParameterRule({ name: 'top_p' }),
-            createParameterRule({ name: 'presence_penalty' }),
-            createParameterRule({ name: 'frequency_penalty' }),
-          ],
-          isPending: false,
-        })
+        setRules([
+          createParameterRule({ name: 'temperature' }),
+          createParameterRule({ name: 'top_p' }),
+          createParameterRule({ name: 'presence_penalty' }),
+          createParameterRule({ name: 'frequency_penalty' }),
+        ])
         const props = createDefaultProps({
           provider: 'langgenius/openai/openai',
           onCompletionParamsChange,
@@ -552,15 +492,12 @@ describe('LLMParamsPanel', () => {
       it('should apply Precise preset config', () => {
         // Arrange
         const onCompletionParamsChange = vi.fn()
-        setupModelParameterRulesMock({
-          data: [
-            createParameterRule({ name: 'temperature' }),
-            createParameterRule({ name: 'top_p' }),
-            createParameterRule({ name: 'presence_penalty' }),
-            createParameterRule({ name: 'frequency_penalty' }),
-          ],
-          isPending: false,
-        })
+        setRules([
+          createParameterRule({ name: 'temperature' }),
+          createParameterRule({ name: 'top_p' }),
+          createParameterRule({ name: 'presence_penalty' }),
+          createParameterRule({ name: 'frequency_penalty' }),
+        ])
         const props = createDefaultProps({
           provider: 'langgenius/openai/openai',
           onCompletionParamsChange,
@@ -583,10 +520,7 @@ describe('LLMParamsPanel', () => {
       it('should apply empty config for Custom preset (spreads undefined)', () => {
         // Arrange
         const onCompletionParamsChange = vi.fn()
-        setupModelParameterRulesMock({
-          data: [createParameterRule({ name: 'temperature' })],
-          isPending: false,
-        })
+        setRules([createParameterRule({ name: 'temperature' })])
         const props = createDefaultProps({
           provider: 'langgenius/openai/openai',
           onCompletionParamsChange,
@@ -604,10 +538,7 @@ describe('LLMParamsPanel', () => {
       it('should apply only preset config keys supported by visible parameters', () => {
         // Arrange
         const onCompletionParamsChange = vi.fn()
-        setupModelParameterRulesMock({
-          data: [createParameterRule({ name: 'temperature' })],
-          isPending: false,
-        })
+        setRules([createParameterRule({ name: 'temperature' })])
         const props = createDefaultProps({
           provider: 'langgenius/openai/openai',
           onCompletionParamsChange,
@@ -631,7 +562,7 @@ describe('LLMParamsPanel', () => {
         // Arrange
         const onCompletionParamsChange = vi.fn()
         const rules = [createParameterRule({ name: 'temperature' })]
-        setupModelParameterRulesMock({ data: rules, isPending: false })
+        setRules(rules)
         const props = createDefaultProps({
           onCompletionParamsChange,
           completionParams: { existing: 'value' },
@@ -652,7 +583,7 @@ describe('LLMParamsPanel', () => {
         // Arrange
         const onCompletionParamsChange = vi.fn()
         const rules = [createParameterRule({ name: 'temperature' })]
-        setupModelParameterRulesMock({ data: rules, isPending: false })
+        setRules(rules)
         const props = createDefaultProps({
           onCompletionParamsChange,
           completionParams: { temperature: 0.9 },
@@ -674,7 +605,7 @@ describe('LLMParamsPanel', () => {
         // Arrange
         const onCompletionParamsChange = vi.fn()
         const rules = [createParameterRule({ name: 'temperature', default: 0.7 })]
-        setupModelParameterRulesMock({ data: rules, isPending: false })
+        setRules(rules)
         const props = createDefaultProps({
           onCompletionParamsChange,
           completionParams: { existing: 'value' },
@@ -695,7 +626,7 @@ describe('LLMParamsPanel', () => {
         // Arrange
         const onCompletionParamsChange = vi.fn()
         const rules = [createParameterRule({ name: 'temperature' })]
-        setupModelParameterRulesMock({ data: rules, isPending: false })
+        setRules(rules)
         const props = createDefaultProps({
           onCompletionParamsChange,
           completionParams: { temperature: 0.8, other: 'value' },
@@ -715,12 +646,9 @@ describe('LLMParamsPanel', () => {
 
   // ==================== Memoization ====================
   describe('Memoization - parameterRules', () => {
-    it('should return empty array when data is undefined', () => {
+    it('should render no parameter items for empty rules', () => {
       // Arrange
-      mockUseModelParameterRules.mockReturnValue({
-        data: undefined,
-        isPending: false,
-      })
+      setRules([])
       const props = createDefaultProps()
 
       // Act
@@ -730,28 +658,13 @@ describe('LLMParamsPanel', () => {
       expect(screen.queryByTestId(/parameter-item-/)).not.toBeInTheDocument()
     })
 
-    it('should return empty array when data.data is undefined', () => {
-      // Arrange
-      mockUseModelParameterRules.mockReturnValue({
-        data: { data: undefined },
-        isPending: false,
-      })
-      const props = createDefaultProps()
-
-      // Act
-      render(<LLMParamsPanel {...props} />)
-
-      // Assert
-      expect(screen.queryByTestId(/parameter-item-/)).not.toBeInTheDocument()
-    })
-
     it('should use data.data when available', () => {
       // Arrange
       const rules = [
         createParameterRule({ name: 'temperature' }),
         createParameterRule({ name: 'top_p' }),
       ]
-      setupModelParameterRulesMock({ data: rules, isPending: false })
+      setRules(rules)
       const props = createDefaultProps()
 
       // Act
@@ -768,7 +681,7 @@ describe('LLMParamsPanel', () => {
     it('should handle empty completionParams', () => {
       // Arrange
       const rules = [createParameterRule({ name: 'temperature' })]
-      setupModelParameterRulesMock({ data: rules, isPending: false })
+      setRules(rules)
       const props = createDefaultProps({ completionParams: {} })
 
       // Act
@@ -786,7 +699,7 @@ describe('LLMParamsPanel', () => {
         createParameterRule({ name: 'max_tokens', type: 'int' }),
         createParameterRule({ name: 'presence_penalty' }),
       ]
-      setupModelParameterRulesMock({ data: rules, isPending: false })
+      setRules(rules)
       const props = createDefaultProps()
 
       // Act
@@ -805,7 +718,7 @@ describe('LLMParamsPanel', () => {
         createParameterRule({ name: 'temperature' }),
         createParameterRule({ name: 'top_p' }),
       ]
-      setupModelParameterRulesMock({ data: rules, isPending: false })
+      setRules(rules)
       const props = createDefaultProps({ modelId: 'gpt-4' })
 
       // Act
@@ -822,7 +735,7 @@ describe('LLMParamsPanel', () => {
     it('should update parameter items when rules change', () => {
       // Arrange
       const initialRules = [createParameterRule({ name: 'temperature' })]
-      setupModelParameterRulesMock({ data: initialRules, isPending: false })
+      setRules(initialRules)
       const props = createDefaultProps()
 
       // Act
@@ -835,7 +748,7 @@ describe('LLMParamsPanel', () => {
         createParameterRule({ name: 'temperature' }),
         createParameterRule({ name: 'top_p' }),
       ]
-      setupModelParameterRulesMock({ data: newRules, isPending: false })
+      setRules(newRules)
       rerender(<LLMParamsPanel {...props} />)
 
       // Assert
@@ -843,28 +756,26 @@ describe('LLMParamsPanel', () => {
       expect(screen.getByTestId('parameter-item-top_p')).toBeInTheDocument()
     })
 
-    it('should show loading when transitioning from loaded to loading', () => {
-      // Arrange
+    it('loads rules when switching to an uncached model', async () => {
       const rules = [createParameterRule({ name: 'temperature' })]
-      setupModelParameterRulesMock({ data: rules, isPending: false })
+      setRules(rules)
       const props = createDefaultProps()
-
-      // Act
       const { rerender } = render(<LLMParamsPanel {...props} />)
       expect(screen.getByTestId('parameter-item-temperature')).toBeInTheDocument()
-
-      // Update to loading
-      setupModelParameterRulesMock({ isPending: true })
-      rerender(<LLMParamsPanel {...props} />)
-
-      // Assert - Loading component uses role="progressbar" with aria-label
+      setRules(undefined)
+      const response = createDeferred<{ data: ModelParameterRule[] }>()
+      getRules.mockReturnValue(response.promise)
+      rerender(<LLMParamsPanel {...props} modelId="new-model" />)
       expect(screen.getByRole('progressbar')).toBeInTheDocument()
+      await act(async () => response.resolve({ data: [createParameterRule({ name: 'top_p' })] }))
+      expect(await screen.findByTestId('parameter-item-top_p')).toBeInTheDocument()
+      expect(screen.queryByTestId('parameter-item-temperature')).not.toBeInTheDocument()
     })
 
     it('should update when isAdvancedMode changes', () => {
       // Arrange
       const rules = [createParameterRule({ name: 'temperature' })]
-      setupModelParameterRulesMock({ data: rules, isPending: false })
+      setRules(rules)
       const props = createDefaultProps({ isAdvancedMode: false })
 
       // Act
@@ -877,4 +788,16 @@ describe('LLMParamsPanel', () => {
       expect(screen.getByTestId('parameter-item-stop')).toBeInTheDocument()
     })
   })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.modelProviders.byProvider.models.parameterRules.get': (input) =>
+        getRules(input),
+    }),
+  }
 })

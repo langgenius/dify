@@ -1,8 +1,8 @@
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { render } from '@/test/console/render'
 import { TagFilter } from '../components/tag-filter'
+import { renderWithTags } from './render'
 
 const { mockUseQueryData } = vi.hoisted(() => ({
   mockUseQueryData: { current: [] as Tag[] },
@@ -10,10 +10,6 @@ const { mockUseQueryData } = vi.hoisted(() => ({
 
 const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: ['app.tag.manage', 'dataset.tag.manage'] as string[],
-}))
-
-vi.mock('@tanstack/react-query', () => ({
-  useQuery: () => ({ data: mockUseQueryData.current }),
 }))
 
 vi.mock('@/context/permission-state', async () => {
@@ -44,6 +40,9 @@ const i18n = {
   noTag: /common\.tag\.noTag/,
   manageTags: 'common.tag.manageTags',
 }
+
+const render = (ui: Parameters<typeof renderWithTags>[0]) =>
+  renderWithTags(ui, mockUseQueryData.current)
 
 describe('TagFilter', () => {
   beforeEach(() => {

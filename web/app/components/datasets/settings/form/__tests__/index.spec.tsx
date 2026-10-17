@@ -163,11 +163,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   useModelModalHandler: () => vi.fn(),
 }))
 
-vi.mock('@/app/components/datasets/common/check-rerank-model', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/app/components/datasets/common/check-rerank-model')>()),
-  isReRankModelSelected: () => true,
-}))
-
 vi.mock('@/app/notifications', () => ({
   toast: {
     error: mockToastError,

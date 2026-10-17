@@ -1,8 +1,15 @@
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  act,
+  fireEvent,
+  render as renderWithoutUrlState,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createHttpError } from '@/service/http-error'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 // Component Import (after mocks)
 import FireCrawl from '../index'
 
@@ -11,9 +18,8 @@ import FireCrawl from '../index'
 // Mock API service
 const mockCreateFirecrawlTask = vi.fn()
 const mockCheckFirecrawlTaskStatus = vi.fn()
-const { mockRouterPush, mockSetSettingsDestination } = vi.hoisted(() => ({
+const { mockRouterPush } = vi.hoisted(() => ({
   mockRouterPush: vi.fn(),
-  mockSetSettingsDestination: vi.fn(),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -26,11 +32,6 @@ vi.mock('@/service/datasets', () => ({
   createFirecrawlTask: (...args: unknown[]) => mockCreateFirecrawlTask(...args),
   checkFirecrawlTaskStatus: (...args: unknown[]) => mockCheckFirecrawlTaskStatus(...args),
 }))
-
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
-})
 
 // Mock sleep utility to speed up tests
 vi.mock('@/utils', () => ({
@@ -79,6 +80,9 @@ const createDeferred = <T,>() => {
 }
 
 // FireCrawl Component Tests
+
+const onUrlUpdate = vi.fn()
+const render = createNuqsTestRenderer(renderWithoutUrlState, () => ({ onUrlUpdate }))
 
 describe('FireCrawl', () => {
   const mockOnPreview = vi.fn()
@@ -177,7 +181,9 @@ describe('FireCrawl', () => {
       const configButton = screen.getByText(/configureFirecrawl/i)
       await user.click(configButton)
 
-      expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
+      await waitFor(() =>
+        expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('data-source'),
+      )
       expect(mockRouterPush).not.toHaveBeenCalled()
     })
   })

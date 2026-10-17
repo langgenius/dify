@@ -14,25 +14,13 @@ vi.mock('@/features/system-features/state', async () => {
   return createSystemFeaturesStateModuleMock(() => deploymentState)
 })
 
-const { debounceState, mockPluginSearch, mockTemplateSearch, mockCheckInstalled } = vi.hoisted(
-  () => ({
-    debounceState: { useRealDebounce: false },
-    mockCheckInstalled: vi.fn((_options: { pluginIds: string[]; enabled: boolean }) => ({
-      installedInfo: {},
-    })),
-    mockPluginSearch: vi.fn(),
-    mockTemplateSearch: vi.fn(),
-  }),
-)
-
-vi.mock('foxact/use-debounced-value', async (importOriginal) => {
-  const original = await importOriginal<typeof import('foxact/use-debounced-value')>()
-
-  return {
-    useDebouncedValue: (value: string, wait: number) =>
-      debounceState.useRealDebounce ? original.useDebouncedValue(value, wait) : value,
-  }
-})
+const { mockPluginSearch, mockTemplateSearch, mockCheckInstalled } = vi.hoisted(() => ({
+  mockCheckInstalled: vi.fn((_options: { pluginIds: string[]; enabled: boolean }) => ({
+    installedInfo: {},
+  })),
+  mockPluginSearch: vi.fn(),
+  mockTemplateSearch: vi.fn(),
+}))
 
 vi.mock('#i18n', async () => {
   const { withSelectorKey } = await import('@/test/i18n-mock')
@@ -112,7 +100,6 @@ describe('EmbeddedMarketplaceSearch', () => {
   beforeEach(() => {
     deploymentState.deploymentEdition = 'CLOUD'
     vi.clearAllMocks()
-    debounceState.useRealDebounce = false
     queryClient = new QueryClient({
       defaultOptions: {
         queries: {

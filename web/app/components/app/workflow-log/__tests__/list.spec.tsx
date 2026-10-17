@@ -78,18 +78,6 @@ vi.mock('@/hooks/use-theme', () => ({
   },
 }))
 
-// Mock ahooks
-vi.mock('ahooks', () => ({
-  useBoolean: (initial: boolean) => {
-    const setters = {
-      setTrue: vi.fn(),
-      setFalse: vi.fn(),
-      toggle: vi.fn(),
-    }
-    return [initial, setters] as const
-  },
-}))
-
 // ============================================================================
 // Test Data Factories
 // ============================================================================

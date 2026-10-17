@@ -83,7 +83,7 @@ vi.mock('@/service/use-triggers', () => ({
 }))
 
 const mockUseAvailableBlocks = vi.mocked(useAvailableBlocks)
-const mockUseIsChatMode = vi.hoisted(() => vi.fn())
+let chatflowMode = false
 const mockUseNodeMetaData = vi.mocked(useNodeMetaData)
 const mockUseNodesInteractions = vi.mocked(useNodesInteractions)
 const mockUseNodesReadOnly = vi.mocked(useNodesReadOnly)
@@ -107,6 +107,7 @@ async function renderDropdownContent({
       showHelpLink={showHelpLink}
     />,
     {
+      resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
       nodes: [],
       edges: [{ id: 'edge-1', source: 'node-0', target: 'node-1', sourceHandle: 'branch-a' }],
     },
@@ -132,7 +133,7 @@ describe('node actions menu details', () => {
       availablePrevBlocks: [BlockEnum.HttpRequest],
       availableNextBlocks: [BlockEnum.HttpRequest],
     } as ReturnType<typeof useAvailableBlocks>)
-    mockUseIsChatMode.mockReturnValue(false)
+    chatflowMode = false
     mockUseNodeMetaData.mockReturnValue({
       isTypeFixed: false,
       isSingleton: false,
@@ -197,6 +198,11 @@ describe('node actions menu details', () => {
         data={{ type: BlockEnum.Code, title: 'Code Node', desc: '' }}
       />,
       {
+        resource: {
+          kind: 'app',
+          appId: 'app-1',
+          mode: chatflowMode ? 'advanced-chat' : 'workflow',
+        },
         nodes: [],
         edges: [{ id: 'edge-1', source: 'node-0', target: 'node-1', sourceHandle: 'branch-a' }],
       },
@@ -316,6 +322,11 @@ describe('node actions menu details', () => {
         showHelpLink={false}
       />,
       {
+        resource: {
+          kind: 'app',
+          appId: 'app-1',
+          mode: chatflowMode ? 'advanced-chat' : 'workflow',
+        },
         nodes: [],
         edges: [],
       },
@@ -350,11 +361,4 @@ describe('node actions menu details', () => {
     expect(screen.queryByText('workflow.common.copy')).not.toBeInTheDocument()
     expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
   })
-})
-
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => mockUseIsChatMode()) }
 })

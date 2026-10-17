@@ -1,6 +1,7 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ReactFlow, { ReactFlowProvider } from 'reactflow'
+import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import AddVariablePopupWithPosition from '../add-variable-popup-with-position'
 
@@ -55,6 +56,7 @@ it('selects a connection variable from the owning canvas and preserves its focus
         </ReactFlow>
       </ReactFlowProvider>
     </>,
+    { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
   )
 
   screen.getByRole('textbox', { name: 'Outside' }).focus()
@@ -72,11 +74,4 @@ it('selects a connection variable from the owning canvas and preserves its focus
     expect.objectContaining({ variable: 'second' }),
   )
   expect(canvas).toHaveFocus()
-})
-
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => false) }
 })

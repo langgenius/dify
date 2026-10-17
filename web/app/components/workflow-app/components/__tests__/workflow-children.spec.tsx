@@ -51,9 +51,9 @@ let mockCanEdit = true
 let eventSubscription:
   | ((value: { type: string; payload: { data: Array<Record<string, unknown>> } }) => void)
   | null = null
-let lastGenerateNodeInput: Record<string, unknown> | null = null
 
-vi.mock('reactflow', () => ({
+vi.mock('reactflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('reactflow')>()),
   useStoreApi: () => ({
     getState: () => ({
       setNodes: mockSetNodes,
@@ -119,23 +119,6 @@ vi.mock('@/app/components/workflow/hooks/use-auto-generate-webhook-url', () => (
   useAutoGenerateWebhookUrl: () => mockAutoGenerateWebhookUrl,
 }))
 
-vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/workflow/utils')>()
-  return {
-    ...actual,
-    generateNewNode: (args: Record<string, unknown>) => {
-      lastGenerateNodeInput = args
-      return {
-        newNode: {
-          id: 'new-node-id',
-          position: args.position,
-          data: args.data,
-        },
-      }
-    },
-  }
-})
-
 vi.mock('@/app/components/workflow/node-catalog', () => ({
   useWorkflowNodeCatalog: () => ({
     nodesMap: {
@@ -160,13 +143,6 @@ vi.mock('@/app/components/workflow/node-catalog', () => ({
     },
   }),
 }))
-
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => false) }
-})
 
 vi.mock('../../hooks/use-auto-onboarding', () => ({
   useAutoOnboarding: () => ({
@@ -353,7 +329,7 @@ describe('WorkflowChildren', () => {
       setShouldAutoOpenStartNodeSelector: mockSetShouldAutoOpenStartNodeSelector,
     }
     eventSubscription = null
-    lastGenerateNodeInput = null
+
     mockCanEdit = true
     mockHandleSyncWorkflowDraft.mockImplementation(
       (_force?: boolean, _notRefresh?: boolean, callback?: { onSuccess?: () => void }) => {
@@ -469,7 +445,7 @@ describe('WorkflowChildren', () => {
 
     await user.click(await screen.findByRole('button', { name: /^select-start-node$/i }))
 
-    expect(lastGenerateNodeInput).toMatchObject({
+    expect(mockSetNodes.mock.lastCall?.[0][0]).toMatchObject({
       data: {
         title: 'Start Title',
         desc: 'Start description',
@@ -478,13 +454,13 @@ describe('WorkflowChildren', () => {
         },
       },
     })
-    expect(mockSetNodes).toHaveBeenCalledWith([expect.objectContaining({ id: 'new-node-id' })])
+    expect(mockSetNodes).toHaveBeenCalledWith([expect.objectContaining({ id: expect.any(String) })])
     expect(mockSetEdges).toHaveBeenCalledWith([])
     expect(mockSetShowOnboarding).toHaveBeenCalledWith(false)
     expect(mockSetHasSelectedStartNode).toHaveBeenCalledWith(true)
     expect(mockSetShouldAutoOpenStartNodeSelector).toHaveBeenCalledWith(true)
     expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true, false, expect.any(Object))
-    expect(mockAutoGenerateWebhookUrl).toHaveBeenCalledWith('new-node-id')
+    expect(mockAutoGenerateWebhookUrl).toHaveBeenCalledWith(mockSetNodes.mock.lastCall?.[0][0].id)
   })
 
   it('should merge non-trigger start node config directly into the default node data', async () => {
@@ -498,7 +474,7 @@ describe('WorkflowChildren', () => {
 
     await user.click(await screen.findByRole('button', { name: /select-start-node-with-config/i }))
 
-    expect(lastGenerateNodeInput).toMatchObject({
+    expect(mockSetNodes.mock.lastCall?.[0][0]).toMatchObject({
       data: {
         title: 'Configured Start Title',
         desc: 'Configured Start Description',
@@ -522,7 +498,7 @@ describe('WorkflowChildren', () => {
 
     await user.click(await screen.findByRole('button', { name: /^select-trigger-plugin$/i }))
 
-    expect(lastGenerateNodeInput).toMatchObject({
+    expect(mockSetNodes.mock.lastCall?.[0][0]).toMatchObject({
       data: {
         plugin_id: 'plugin-id',
         provider_id: 'provider-name',
@@ -558,7 +534,7 @@ describe('WorkflowChildren', () => {
 
     await user.click(await screen.findByRole('button', { name: /select-trigger-plugin-fallback/i }))
 
-    expect(lastGenerateNodeInput).toMatchObject({
+    expect(mockSetNodes.mock.lastCall?.[0][0]).toMatchObject({
       data: {
         title: 'Plugin title',
         desc: 'Plugin description',

@@ -84,6 +84,7 @@ const renderFormInputItem = (props: Partial<ComponentProps<typeof FormInputItem>
       {...props}
     />,
     {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
       edges: [],
       hooksStoreProps: {},
       nodes: [],
@@ -220,10 +221,3 @@ it.each([false, 0])(
     })
   },
 )
-
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => false) }
-})

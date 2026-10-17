@@ -13,7 +13,6 @@ const mockModelListQuery = vi.fn()
 const mockUseFeatures = vi.fn()
 const mockUseTextGeneration = vi.fn()
 const mockUseEventEmitterContextContext = vi.fn()
-const mockPromptVariablesToUserInputsForm = vi.fn()
 const { mockToastError } = vi.hoisted(() => ({
   mockToastError: vi.fn(),
 }))
@@ -56,11 +55,6 @@ vi.mock('@/app/components/app/configuration/toast', () => ({
 
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => mockUseEventEmitterContextContext(),
-}))
-
-vi.mock('@/utils/model-config', () => ({
-  promptVariablesToUserInputsForm: (...args: unknown[]) =>
-    mockPromptVariablesToUserInputsForm(...args),
 }))
 
 vi.mock('@/app/components/app/text-generate/item', () => ({
@@ -158,10 +152,6 @@ const createDefaultMocks = () => {
       },
     },
   })
-
-  mockPromptVariablesToUserInputsForm.mockReturnValue([
-    { variable: 'name', label: 'Name', type: 'text-input', required: true },
-  ])
 }
 
 const renderComponent = (props: Partial<{ modelAndParameter: ModelAndParameter }> = {}) => {
@@ -749,7 +739,14 @@ describe('TextGenerationItem', () => {
   })
 
   describe('promptVariablesToUserInputsForm', () => {
-    it('should call promptVariablesToUserInputsForm with prompt_variables', () => {
+    it('sends the generated input schema with the completion request', () => {
+      const handleSend = vi.fn()
+      mockUseTextGeneration.mockReturnValue({
+        completion: '',
+        handleSend,
+        isResponding: false,
+        messageId: null,
+      })
       const promptVariables = [
         { key: 'name', name: 'Name', type: 'string' },
         { key: 'age', name: 'Age', type: 'number' },
@@ -776,7 +773,30 @@ describe('TextGenerationItem', () => {
 
       renderComponent()
 
-      expect(mockPromptVariablesToUserInputsForm).toHaveBeenCalledWith(promptVariables)
+      eventSubscriptionCallback?.({
+        type: APP_CHAT_WITH_MULTIPLE_MODEL,
+        payload: { message: 'Generate text', files: [] },
+      })
+      expect(handleSend).toHaveBeenCalledWith(
+        'apps/app-123/completion-messages',
+        expect.objectContaining({
+          model_config: expect.objectContaining({
+            user_input_form: [
+              {
+                'text-input': expect.objectContaining({
+                  variable: 'name',
+                  label: 'Name',
+                  required: true,
+                }),
+              },
+              {
+                number: expect.objectContaining({ variable: 'age', label: 'Age', required: true }),
+              },
+            ],
+          }),
+        }),
+        expect.any(Object),
+      )
     })
   })
 })

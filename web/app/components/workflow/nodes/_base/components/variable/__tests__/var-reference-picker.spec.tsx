@@ -99,6 +99,7 @@ describe('VarReferencePicker', () => {
         />
       </div>,
       {
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
         nodes: [startNode, sourceNode, currentNode],
         edges: [],
         hooksStoreProps: {},
@@ -173,11 +174,4 @@ describe('VarReferencePicker', () => {
     })
     expect(onChange).not.toHaveBeenCalled()
   })
-})
-
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => false) }
 })

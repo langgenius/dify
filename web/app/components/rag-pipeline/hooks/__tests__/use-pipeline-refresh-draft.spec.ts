@@ -1,7 +1,9 @@
 import { waitFor } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { usePipelineRefreshDraft } from '../use-pipeline-refresh-draft'
 
 const mockWorkflowStoreGetState = vi.fn()
@@ -21,13 +23,6 @@ vi.mock('@/app/components/workflow/hooks/use-workflow-update', () => ({
 const mockFetchWorkflowDraft = vi.fn()
 vi.mock('@/service/workflow', () => ({
   fetchWorkflowDraft: (url: string) => mockFetchWorkflowDraft(url),
-}))
-
-vi.mock('../../utils', () => ({
-  processNodesWithoutDataSource: (nodes: unknown[], viewport: unknown) => ({
-    nodes,
-    viewport,
-  }),
 }))
 
 describe('usePipelineRefreshDraft', () => {
@@ -51,8 +46,8 @@ describe('usePipelineRefreshDraft', () => {
 
     mockFetchWorkflowDraft.mockResolvedValue({
       graph: {
-        nodes: [{ id: 'node-1' }],
-        edges: [{ id: 'edge-1' }],
+        nodes: [createNode({ id: 'node-1', data: { type: BlockEnum.DataSource } })],
+        edges: [],
         viewport: { x: 0, y: 0, zoom: 1 },
       },
       hash: 'new-hash',

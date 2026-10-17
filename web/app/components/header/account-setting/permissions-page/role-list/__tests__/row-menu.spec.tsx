@@ -1,35 +1,28 @@
 import type { Role } from '@/models/access-control'
-import { fireEvent, screen, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { render } from '@/test/console/render'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import RowMenu from '../row-menu'
 
 const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: ['workspace.role.manage'] as string[],
 }))
 
-const mockCopyRole = vi.hoisted(() =>
-  vi.fn((_variables, options?: { onSuccess?: () => void }) => {
-    options?.onSuccess?.()
-  }),
-)
-const mockDeleteRole = vi.hoisted(() => vi.fn())
-const membersOfRoleQueryMock = vi.hoisted(() => {
-  const response = {
-    data: [],
-    pagination: {
-      total_count: 3,
-      per_page: 1,
-      current_page: 1,
-      total_pages: 3,
-    },
-  }
-
+const { mockCopyRole, mockDeleteRole, getMembersOfRole } = vi.hoisted(() => ({
+  mockCopyRole: vi.fn(),
+  mockDeleteRole: vi.fn(),
+  getMembersOfRole: vi.fn(),
+}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
-    getMembersOfRole: vi.fn((_options?: unknown) => ({
-      data: response,
-      isPending: false,
-    })),
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.rbac.roles.byRoleId.copy.post': mockCopyRole,
+      'workspaces.current.rbac.roles.byRoleId.delete': mockDeleteRole,
+      'workspaces.current.rbac.roles.byRoleId.members.get': getMembersOfRole,
+    }),
   }
 })
 
@@ -74,25 +67,15 @@ const openMenu = async () => {
   }
 }
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.rbac.roles.byRoleId.copy.post': () => ({
-      mutate: mockCopyRole,
-      isPending: false,
-    }),
-    'workspaces.current.rbac.roles.byRoleId.delete': () => ({
-      mutateAsync: mockDeleteRole,
-      isPending: false,
-    }),
-    'workspaces.current.rbac.roles.byRoleId.members.get': (options: unknown) =>
-      membersOfRoleQueryMock.getMembersOfRole(options),
-  })
-})
-
 describe('RowMenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockCopyRole.mockResolvedValue(createRole())
+    mockDeleteRole.mockResolvedValue({ result: 'success' })
+    getMembersOfRole.mockResolvedValue({
+      data: [],
+      pagination: { total_count: 3, per_page: 9999, current_page: 1, total_pages: 1 },
+    })
     document.body
       .querySelectorAll('[role="menu"], [role="menuitem"]')
       .forEach((element) => element.remove())
@@ -226,31 +209,24 @@ describe('RowMenu', () => {
         within(menu).getByRole('menuitem', { name: 'permission.common.duplicateAction' }),
       )
 
-      const dialog = screen.getByRole('alertdialog')
+      const dialog = await screen.findByRole('alertdialog')
       expect(dialog).toHaveTextContent('permission.role.copyMembersTitle')
       expect(dialog).toHaveTextContent(
         'permission.role.copyMembersDescription:{"name":"Editor","count":3}',
       )
-      expect(membersOfRoleQueryMock.getMembersOfRole).toHaveBeenCalledWith(
-        expect.objectContaining({
-          queryKey: [
-            expect.any(Array),
-            expect.objectContaining({
-              input: { params: { role_id: role.id }, query: { page: 1, limit: 9999 } },
-            }),
-          ],
-        }),
-      )
+      expect(getMembersOfRole).toHaveBeenCalledWith({
+        params: { role_id: role.id },
+        query: { page: 1, limit: 9999 },
+      })
 
       await user.click(within(dialog).getByRole('button', { name: 'common.operation.skip' }))
 
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
       expect(mockCopyRole).toHaveBeenCalledTimes(1)
-      expect(mockCopyRole).toHaveBeenCalledWith(
-        { params: { role_id: role.id }, body: { copy_member: false } },
-        expect.objectContaining({
-          onSuccess: expect.any(Function),
-        }),
-      )
+      expect(mockCopyRole).toHaveBeenCalledWith({
+        params: { role_id: role.id },
+        body: { copy_member: false },
+      })
     })
 
     it('should copy member assignments when confirming duplicate with copy', async () => {
@@ -266,17 +242,16 @@ describe('RowMenu', () => {
       await user.click(
         within(menu).getByRole('menuitem', { name: 'permission.common.duplicateAction' }),
       )
-      const dialog = screen.getByRole('alertdialog')
+      const dialog = await screen.findByRole('alertdialog')
 
       await user.click(within(dialog).getByRole('button', { name: 'common.operation.copy' }))
 
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
       expect(mockCopyRole).toHaveBeenCalledTimes(1)
-      expect(mockCopyRole).toHaveBeenCalledWith(
-        { params: { role_id: role.id }, body: { copy_member: true } },
-        expect.objectContaining({
-          onSuccess: expect.any(Function),
-        }),
-      )
+      expect(mockCopyRole).toHaveBeenCalledWith({
+        params: { role_id: role.id },
+        body: { copy_member: true },
+      })
     })
 
     it('should ignore role management actions without manage permission', async () => {

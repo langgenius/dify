@@ -140,11 +140,6 @@ vi.mock('@/service/datasets', () => ({
   updateDatasetSetting: vi.fn().mockResolvedValue({}),
 }))
 
-vi.mock('@/app/components/datasets/common/check-rerank-model', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/app/components/datasets/common/check-rerank-model')>()),
-  isReRankModelSelected: () => true,
-}))
-
 vi.mock('@/app/notifications', () => ({
   toast: {
     success: mockToastSuccess,
@@ -638,6 +633,7 @@ describe('useFormState', () => {
       const configWithWeights: RetrievalConfig = {
         ...result.current.retrievalConfig,
         search_method: RETRIEVE_METHOD.hybrid,
+        reranking_mode: RerankingModeEnum.WeightedScore,
         weights: {
           weight_type: WeightedScoreEnum.Customized,
           vector_setting: {
@@ -909,7 +905,14 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
           },
         }))()
       if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
-      return { data: [] }
+      return {
+        data: [
+          {
+            provider: 'langgenius/xinference/xinference',
+            models: [{ model: 'bge-reranker-v2-m3', features: [] }],
+          },
+        ],
+      }
     },
   }
 })

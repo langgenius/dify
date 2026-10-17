@@ -1,13 +1,13 @@
 import type { DatasourceProviderAuthResponse } from '@dify/contracts/api/console/auth/types.gen'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render as renderWithoutUrlState, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import Website from '../index'
 
-const { mockRouterPush, mockSetSettingsDestination } = vi.hoisted(() => ({
+const { mockRouterPush } = vi.hoisted(() => ({
   mockRouterPush: vi.fn(),
-  mockSetSettingsDestination: vi.fn(),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -15,11 +15,6 @@ vi.mock('@/next/navigation', () => ({
     push: mockRouterPush,
   }),
 }))
-
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
-})
 
 vi.mock('../index.module.css', () => ({
   default: {
@@ -113,6 +108,9 @@ type RenderProps = {
   enableFirecrawl?: boolean
   enableWatercrawl?: boolean
 }
+
+const onUrlUpdate = vi.fn()
+const render = createNuqsTestRenderer(renderWithoutUrlState, () => ({ onUrlUpdate }))
 
 const renderWebsite = ({
   authedDataSourceList = [],
@@ -270,13 +268,15 @@ describe('Website', () => {
   })
 
   describe('NoData Config', () => {
-    it('should navigate to data source settings when NoData onConfig is triggered', () => {
+    it('should navigate to data source settings when NoData onConfig is triggered', async () => {
       renderWebsite({ authedDataSourceList: [] })
 
       const configButton = screen.getByTestId('no-data-config-button')
       fireEvent.click(configButton)
 
-      expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
+      await waitFor(() =>
+        expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('data-source'),
+      )
       expect(mockRouterPush).not.toHaveBeenCalled()
     })
   })

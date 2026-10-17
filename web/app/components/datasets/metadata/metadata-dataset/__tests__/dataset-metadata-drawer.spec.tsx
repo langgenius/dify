@@ -1,28 +1,26 @@
 import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '../../types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { DataType } from '../../types'
 import DatasetMetadataDrawer from '../dataset-metadata-drawer'
 
 // Mock service/API calls
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'datasets.byDatasetId.metadata.get': () => ({
-      data: {
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.metadata.get': async () => ({
         doc_metadata: [{ id: '1', name: 'existing_field', type: DataType.string }],
-      },
+      }),
     }),
-  })
+  }
 })
 
 // Mock check name hook
-vi.mock('../../hooks/use-check-metadata-name', () => ({
-  default: () => ({
-    checkName: () => ({ errorMsg: '' }),
-  }),
-}))
 
 const mockToastNotify = vi.fn()
 vi.mock('@/app/notifications', () => ({

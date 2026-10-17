@@ -2,7 +2,11 @@ import type { AgentConfigSnapshotSummaryResponse } from '@dify/contracts/api/con
 import type { ReactElement } from 'react'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithAccountProfile as renderAccountProfile } from '@/test/console/account-profile'
+import { consoleQuery } from '@/service/console'
+import {
+  createConsoleQueryWrapper,
+  renderWithConsoleQuery as renderAccountProfile,
+} from '@/test/console/query-data'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { AgentPreviewVersionsPanel } from '../versions-panel'
 
@@ -11,8 +15,8 @@ const exportState = vi.hoisted(() => ({
   canRestore: true,
   restoreVersion: vi.fn(async (_input: unknown) => ({ result: 'success' })),
   isExporting: false,
-  edition: 'CLOUD',
-  plan: 'professional' as string | undefined,
+  edition: 'CLOUD' as 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE',
+  plan: 'professional' as 'professional' | 'sandbox' | undefined,
   exportAppDsl: vi.fn(),
   onUrlUpdate: vi.fn(),
 }))
@@ -31,16 +35,6 @@ vi.mock('@/app/components/app/use-export-app-dsl', () => ({
     isExporting: exportState.isExporting,
   }),
 }))
-
-vi.mock('jotai', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('jotai')>()),
-  useAtomValue: () => exportState.edition,
-}))
-
-function render(ui: ReactElement, options?: Parameters<typeof renderAccountProfile>[1]) {
-  const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ onUrlUpdate: exportState.onUrlUpdate })
-  return renderAccountProfile(<NuqsWrapper>{ui}</NuqsWrapper>, options)
-}
 
 const versions: AgentConfigSnapshotSummaryResponse[] = [
   {
@@ -66,17 +60,22 @@ const versions: AgentConfigSnapshotSummaryResponse[] = [
   },
 ]
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-
-  return {
-    ...actual,
-    useQuery: (options: { queryKey: string[] }) =>
-      options.queryKey[0] === 'features'
-        ? { data: exportState.plan }
-        : { data: { data: versions }, isPending: false },
-  }
-})
+function render(ui: ReactElement, options?: Parameters<typeof renderAccountProfile>[1]) {
+  const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ onUrlUpdate: exportState.onUrlUpdate })
+  const { queryClient } = createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: exportState.edition },
+    features: exportState.plan
+      ? { billing: { subscription: { plan: exportState.plan } } }
+      : undefined,
+  })
+  queryClient.setQueryData(
+    consoleQuery.agent.byAgentId.versions.get.queryKey({
+      input: { params: { agent_id: 'agent-1' } },
+    }),
+    { data: versions },
+  )
+  return renderAccountProfile(<NuqsWrapper>{ui}</NuqsWrapper>, { ...options, queryClient })
+}
 
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({
@@ -84,47 +83,18 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
-vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => ({
-    queryKey: ['system-features'],
-    queryFn: async () => ({ deployment_edition: 'CLOUD' }),
-  }),
-}))
-
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    features: { get: { queryOptions: () => ({ queryKey: ['features'] }) } },
-    account: {
-      profile: {
-        get: {
-          queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
-        },
-      },
-    },
-    agent: {
-      byAgentId: {
-        get: { queryKey: () => ['agent'] },
-        composer: { get: { queryKey: () => ['composer'] } },
-        versions: {
-          byVersionId: {
-            restore: {
-              post: {
-                mutationOptions: (options: Record<string, unknown>) => ({
-                  ...options,
-                  mutationFn: exportState.restoreVersion,
-                }),
-              },
-            },
-          },
-          get: {
-            queryOptions: () => ({ queryKey: ['agent-versions'] }),
-            key: () => ['agent-versions'],
-          },
-        },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'features.get': () => new Promise(() => {}),
+      'agent.byAgentId.versions.get': async () => ({ data: versions }),
+      'agent.byAgentId.versions.byVersionId.restore.post': exportState.restoreVersion,
+    }),
+  }
+})
 
 describe('AgentPreviewVersionsPanel', () => {
   beforeEach(() => {
@@ -183,7 +153,7 @@ describe('AgentPreviewVersionsPanel', () => {
       expect(exportState.exportAppDsl).not.toHaveBeenCalled()
     })
 
-    it.each(['COMMUNITY', 'ENTERPRISE'])(
+    it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
       'allows export on %s without a Cloud plan',
       async (edition) => {
         exportState.edition = edition
@@ -296,7 +266,7 @@ describe('AgentPreviewVersionsPanel', () => {
       expect(exportState.restoreVersion).not.toHaveBeenCalled()
     })
 
-    it.each(['COMMUNITY', 'ENTERPRISE'])(
+    it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
       'allows restoration on %s without a Cloud plan',
       async (edition) => {
         exportState.edition = edition

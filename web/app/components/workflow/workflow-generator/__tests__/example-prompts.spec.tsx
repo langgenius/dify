@@ -7,22 +7,6 @@ vi.mock('@/service/workflow-generator', () => ({
   fetchWorkflowInstructionSuggestions: vi.fn(),
 }))
 
-// ahooks' useSessionStorageState keeps an in-memory cache that survives
-// sessionStorage.clear(), leaking suggestions across tests. Swap it for a plain
-// useState so each mount starts cold and the mount-time fetch is deterministic.
-vi.mock('ahooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('ahooks')>()
-  const React = await import('react')
-  return {
-    ...actual,
-    useSessionStorageState: <T,>(key: string, options?: { defaultValue?: T }) => {
-      const stored = sessionStorage.getItem(key)
-      const initial = stored ? JSON.parse(stored) : options?.defaultValue
-      return React.useState<T | undefined>(initial)
-    },
-  }
-})
-
 const mockFetch = vi.mocked(fetchWorkflowInstructionSuggestions)
 
 describe('ExamplePrompts', () => {
