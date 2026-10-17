@@ -1,11 +1,10 @@
+import type {
+  ChildChunkResponse,
+  SegmentResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type { SegmentListContextValue } from '@/app/components/datasets/documents/detail/completed'
 import type { DocumentContextValue } from '@/app/components/datasets/documents/detail/context'
-import type {
-  Attachment,
-  ChildChunkDetail,
-  ParentMode,
-  SegmentDetailModel,
-} from '@/models/datasets'
+import type { Attachment, ParentMode } from '@/models/datasets'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -107,7 +106,7 @@ const createMockAttachment = (overrides: Partial<Attachment> = {}): Attachment =
   ...overrides,
 })
 
-const createMockChildChunk = (overrides: Partial<ChildChunkDetail> = {}): ChildChunkDetail => ({
+const createMockChildChunk = (overrides: Partial<ChildChunkResponse> = {}): ChildChunkResponse => ({
   id: 'child-chunk-1',
   position: 1,
   segment_id: 'segment-1',
@@ -120,8 +119,8 @@ const createMockChildChunk = (overrides: Partial<ChildChunkDetail> = {}): ChildC
 })
 
 const createMockSegmentDetail = (
-  overrides: Partial<SegmentDetailModel & { document?: { name: string } }> = {},
-): SegmentDetailModel & { document?: { name: string } } => ({
+  overrides: Partial<SegmentResponse & { document?: { name: string } }> = {},
+): SegmentResponse & { document?: { name: string } } => ({
   id: 'segment-1',
   position: 1,
   document_id: 'doc-1',
@@ -819,7 +818,7 @@ describe('SegmentCard', () => {
 
     it('should handle empty detail object gracefully', () => {
       render(
-        <SegmentCard loading={false} detail={{} as SegmentDetailModel} focused={defaultFocused} />,
+        <SegmentCard loading={false} detail={{} as SegmentResponse} focused={defaultFocused} />,
       )
 
       expect(screen.getByText(/Chunk/i)).toBeInTheDocument()

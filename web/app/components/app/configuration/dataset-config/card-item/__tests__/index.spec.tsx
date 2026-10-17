@@ -1,12 +1,13 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type * as React from 'react'
 import type { MockedFunction } from 'vite-plus/test'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
-import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import Item from '../index'
@@ -17,9 +18,9 @@ vi.mock('../../settings-modal', () => ({
     onCancel,
     currentDataset,
   }: {
-    currentDataset: DataSet
+    currentDataset: DatasetDetailWithPartialMembersResponse
     onCancel: () => void
-    onSave: (newDataset: DataSet) => void
+    onSave: (newDataset: DatasetDetailWithPartialMembersResponse) => void
   }) => (
     <div>
       <div>Mock settings modal</div>
@@ -55,7 +56,9 @@ const baseRetrievalConfig: RetrievalConfig = {
 
 const defaultIndexingTechnique: IndexingType = 'high_quality' as IndexingType
 
-const createDataset = (overrides: Partial<DataSet> = {}): DataSet => {
+const createDataset = (
+  overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
+): DatasetDetailWithPartialMembersResponse => {
   const { retrieval_model_dict, icon_info, ...restOverrides } = overrides
 
   const resolvedRetrievalModelDict = {
@@ -76,9 +79,9 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => {
     ...createDatasetFixture(),
     id: 'dataset-id',
     name: 'Dataset Name',
-    icon_info: resolvedIconInfo as DataSet['icon_info'],
+    icon_info: resolvedIconInfo,
     description: 'A test dataset',
-    permission: DatasetPermission.onlyMe,
+    permission: PermissionLevel.onlyMe,
     data_source_type: DataSourceType.FILE,
     indexing_technique: defaultIndexingTechnique,
     author_name: 'author',
@@ -119,7 +122,10 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => {
   }
 }
 
-const renderItem = (config: DataSet, props?: Partial<React.ComponentProps<typeof Item>>) => {
+const renderItem = (
+  config: DatasetDetailWithPartialMembersResponse,
+  props?: Partial<React.ComponentProps<typeof Item>>,
+) => {
   const onSave = vi.fn()
   const onRemove = vi.fn()
 

@@ -12,7 +12,7 @@ function getElemCenter(elem: HTMLElement) {
   }
 }
 
-const useFoldAnimInto = (onClose: () => void) => {
+const createFoldAnimInto = (onClose: () => void) => {
   let countDownRunId: number
   const clearCountDown = () => {
     clearTimeout(countDownRunId)
@@ -56,4 +56,4 @@ const useFoldAnimInto = (onClose: () => void) => {
   }
 }
 
-export default useFoldAnimInto
+export default createFoldAnimInto

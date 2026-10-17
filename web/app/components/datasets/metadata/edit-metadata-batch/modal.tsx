@@ -3,8 +3,15 @@ import type { FC } from 'react'
 import type { BuiltInMetadataItem, MetadataItemInBatchEdit, MetadataItemWithEdit } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Dialog,
+  DialogBody,
+  DialogCloseButton,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useMutation } from '@tanstack/react-query'
@@ -134,27 +141,16 @@ const EditMetadataBatchModal: FC<Props> = ({
         if (!open) onHide()
       }}
     >
-      <DialogContent className="w-full max-w-160! overflow-hidden! border-none text-left align-middle">
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute inset-e-6 top-6"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $[`${i18nPrefix}.editMetadata`], { ns: 'dataset' })}
-        </DialogTitle>
-
-        <div className="mt-1 system-xs-medium text-text-accent">
-          {t(($) => $[`${i18nPrefix}.editDocumentsNum`], { ns: 'dataset', num: documentNum })}
-        </div>
-        <div className="max-h-76.25 overflow-x-hidden overflow-y-auto">
-          <div className="mt-4 space-y-2">
+      <DialogContent className="w-160">
+        <DialogHeader>
+          <DialogTitle>{t(($) => $[`${i18nPrefix}.editMetadata`], { ns: 'dataset' })}</DialogTitle>
+          <div className="system-xs-medium text-text-accent">
+            {t(($) => $[`${i18nPrefix}.editDocumentsNum`], { ns: 'dataset', num: documentNum })}
+          </div>
+          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody>
+          <div className="space-y-2">
             {templeList.map((item) => (
               <EditMetadataBatchItem
                 key={item.id}
@@ -196,10 +192,10 @@ const EditMetadataBatchModal: FC<Props> = ({
               />
             </div>
           </div>
-        </div>
+        </DialogBody>
 
-        <div className="mt-4 flex items-center justify-between">
-          <div className="flex items-center select-none">
+        <DialogFooter>
+          <div className="me-auto flex items-center select-none">
             <label className="flex cursor-pointer items-center">
               <Checkbox
                 checked={isApplyToAllSelectDocument}
@@ -222,13 +218,11 @@ const EditMetadataBatchModal: FC<Props> = ({
               </InfotipContent>
             </Infotip>
           </div>
-          <div className="flex items-center space-x-2">
-            <Button onClick={onHide}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
-            <Button onClick={handleSave} variant="primary">
-              {t(($) => $['operation.save'], { ns: 'common' })}
-            </Button>
-          </div>
-        </div>
+          <Button onClick={onHide}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
+          <Button onClick={handleSave} variant="primary">
+            {t(($) => $['operation.save'], { ns: 'common' })}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

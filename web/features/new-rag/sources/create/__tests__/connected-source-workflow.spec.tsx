@@ -1,4 +1,8 @@
 import type {
+  DatasourceCredentialResponse,
+  DatasourceProviderAuthResponse,
+} from '@dify/contracts/api/console/auth/types.gen'
+import type {
   KnowledgeFsSourceConnectionListResponse,
   KnowledgeFsSourceConnectionResponse,
   KnowledgeFsSourceProviderListResponse,
@@ -11,10 +15,6 @@ import type {
   NewKnowledgeOnlineDocumentsSourceDraft,
   NewKnowledgeOnlineDriveSourceDraft,
 } from '../../setup/source-draft'
-import type {
-  DataSourceAuth,
-  DataSourceCredential,
-} from '@/app/components/header/account-setting/data-source-page-new/types'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -236,13 +236,13 @@ const notionProvider: KnowledgeFsSourceProviderResponse = {
   unavailable_reason: null,
 }
 
-const notionCredential: DataSourceCredential = {
+const notionCredential: DatasourceCredentialResponse = {
   avatar_url: '',
   credential: {},
   id: 'notion-credential-1',
   is_default: true,
   name: 'Default Notion',
-  type: 'oauth2' as DataSourceCredential['type'],
+  type: 'oauth2' as DatasourceCredentialResponse['type'],
 }
 
 const notionDatasourcePlugin: DataSourceItem = {
@@ -339,13 +339,13 @@ const s3Provider: KnowledgeFsSourceProviderResponse = {
   unavailable_reason: null,
 }
 
-const s3Credential: DataSourceCredential = {
+const s3Credential: DatasourceCredentialResponse = {
   avatar_url: '',
   credential: { region: 'us-west-2' },
   id: 's3-credential-1',
   is_default: true,
   name: 'AWS S3',
-  type: 'api-key' as DataSourceCredential['type'],
+  type: 'api-key' as DatasourceCredentialResponse['type'],
 }
 
 const s3DatasourcePlugin: DataSourceItem = {
@@ -380,7 +380,7 @@ const s3DatasourcePlugin: DataSourceItem = {
   provider: 'aws_s3_storage',
 }
 
-const s3DatasourceAuth: DataSourceAuth = {
+const s3DatasourceAuth: DatasourceProviderAuthResponse = {
   author: 'langgenius',
   credential_schema: [],
   credentials_list: [s3Credential],
@@ -394,7 +394,9 @@ const s3DatasourceAuth: DataSourceAuth = {
   provider: 'aws_s3_storage',
 }
 
-function notionDatasourceAuth(credentials: DataSourceCredential[] = []): DataSourceAuth {
+function notionDatasourceAuth(
+  credentials: DatasourceCredentialResponse[] = [],
+): DatasourceProviderAuthResponse {
   return {
     author: 'langgenius',
     credential_schema: [],
@@ -750,7 +752,7 @@ describe('ConnectedSourceWorkflow', () => {
       plugin_unique_identifier: 'langgenius/outline_datasource:1.0.0@local',
       provider: 'outline',
     }
-    const outlineDatasourceAuth: DataSourceAuth = {
+    const outlineDatasourceAuth: DatasourceProviderAuthResponse = {
       ...notionDatasourceAuth(),
       label: { en_US: 'Outline', zh_Hans: 'Outline' },
       name: 'outline',
@@ -1212,13 +1214,13 @@ describe('ConnectedSourceWorkflow', () => {
 
   it('uses the Google Drive datasource as the Google Docs transport and imports a selected doc', async () => {
     const user = userEvent.setup()
-    const googleCredential: DataSourceCredential = {
+    const googleCredential: DatasourceCredentialResponse = {
       avatar_url: '',
       credential: {},
       id: 'google-credential-1',
       is_default: true,
       name: 'docs@example.com',
-      type: 'oauth2' as DataSourceCredential['type'],
+      type: 'oauth2' as DatasourceCredentialResponse['type'],
     }
     const googleProvider: KnowledgeFsSourceProviderResponse = {
       ...s3Provider,
@@ -1253,7 +1255,7 @@ describe('ConnectedSourceWorkflow', () => {
       plugin_unique_identifier: 'langgenius/google_drive:1.0.0@local',
       provider: 'google_drive',
     }
-    const googleDatasourceAuth: DataSourceAuth = {
+    const googleDatasourceAuth: DatasourceProviderAuthResponse = {
       ...s3DatasourceAuth,
       credentials_list: [googleCredential],
       description: { en_US: 'Google Drive', zh_Hans: 'Google Drive' },

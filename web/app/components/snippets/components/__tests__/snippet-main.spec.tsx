@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { WorkflowProps } from '@/app/components/workflow'
-import type { SnippetDetail, SnippetDetailPayload, SnippetInputField } from '@/models/snippet'
+import type { InputVar } from '@/models/pipeline'
+import type { SnippetDetail, SnippetDetailPayload } from '@/models/snippet'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -63,7 +64,7 @@ vi.mock('@/context/permission-state', async () => {
 let capturedHooksStore: Record<string, unknown> | undefined
 let capturedWorkflowNodes: WorkflowProps['nodes'] | undefined
 let snippetDetailStoreState: {
-  onFieldsChange?: (fields: SnippetInputField[]) => void
+  onFieldsChange?: (fields: InputVar[]) => void
   readonly: boolean
   reset: typeof mockReset
   setNavigationState: typeof mockSetNavigationState

@@ -1,8 +1,8 @@
+import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { FileEntity } from '../types'
 import type { FileUpload } from '@/app/components/base/features/types'
-import type { FileUploadConfigResponse } from '@/models/common'
 import { act, renderHook } from '@testing-library/react'
-import { useFile, useFileSizeLimit } from '../hooks'
+import { getFileSizeLimit, useFile } from '../hooks'
 
 const mockNotify = vi.fn()
 const mockNavigationState = vi.hoisted(() => ({
@@ -67,40 +67,40 @@ vi.mock('uuid', () => ({
   v4: () => 'mock-uuid',
 }))
 
-describe('useFileSizeLimit', () => {
+describe('getFileSizeLimit', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   it('should return default limits when no config is provided', () => {
-    const { result } = renderHook(() => useFileSizeLimit())
+    const result = getFileSizeLimit()
 
-    expect(result.current.imgSizeLimit).toBe(10 * 1024 * 1024)
-    expect(result.current.docSizeLimit).toBe(15 * 1024 * 1024)
-    expect(result.current.audioSizeLimit).toBe(50 * 1024 * 1024)
-    expect(result.current.videoSizeLimit).toBe(100 * 1024 * 1024)
-    expect(result.current.skillSizeLimit).toBe(50 * 1024 * 1024)
-    expect(result.current.maxFileUploadLimit).toBe(10)
+    expect(result.imgSizeLimit).toBe(10 * 1024 * 1024)
+    expect(result.docSizeLimit).toBe(15 * 1024 * 1024)
+    expect(result.audioSizeLimit).toBe(50 * 1024 * 1024)
+    expect(result.videoSizeLimit).toBe(100 * 1024 * 1024)
+    expect(result.skillSizeLimit).toBe(50 * 1024 * 1024)
+    expect(result.maxFileUploadLimit).toBe(10)
   })
 
   it('should use config values when provided', () => {
-    const config: FileUploadConfigResponse = {
+    const config: UploadConfig = {
       image_file_size_limit: 20,
       file_size_limit: 30,
       audio_file_size_limit: 100,
       video_file_size_limit: 200,
       skill_file_size_limit: 60,
       workflow_file_upload_limit: 20,
-    } as FileUploadConfigResponse
+    } as UploadConfig
 
-    const { result } = renderHook(() => useFileSizeLimit(config))
+    const result = getFileSizeLimit(config)
 
-    expect(result.current.imgSizeLimit).toBe(20 * 1024 * 1024)
-    expect(result.current.docSizeLimit).toBe(30 * 1024 * 1024)
-    expect(result.current.audioSizeLimit).toBe(100 * 1024 * 1024)
-    expect(result.current.videoSizeLimit).toBe(200 * 1024 * 1024)
-    expect(result.current.skillSizeLimit).toBe(60 * 1024 * 1024)
-    expect(result.current.maxFileUploadLimit).toBe(20)
+    expect(result.imgSizeLimit).toBe(20 * 1024 * 1024)
+    expect(result.docSizeLimit).toBe(30 * 1024 * 1024)
+    expect(result.audioSizeLimit).toBe(100 * 1024 * 1024)
+    expect(result.videoSizeLimit).toBe(200 * 1024 * 1024)
+    expect(result.skillSizeLimit).toBe(60 * 1024 * 1024)
+    expect(result.maxFileUploadLimit).toBe(20)
   })
 
   it('should fall back to defaults when config values are zero', () => {
@@ -111,16 +111,16 @@ describe('useFileSizeLimit', () => {
       video_file_size_limit: 0,
       skill_file_size_limit: 0,
       workflow_file_upload_limit: 0,
-    } as FileUploadConfigResponse
+    } as UploadConfig
 
-    const { result } = renderHook(() => useFileSizeLimit(config))
+    const result = getFileSizeLimit(config)
 
-    expect(result.current.imgSizeLimit).toBe(10 * 1024 * 1024)
-    expect(result.current.docSizeLimit).toBe(15 * 1024 * 1024)
-    expect(result.current.audioSizeLimit).toBe(50 * 1024 * 1024)
-    expect(result.current.videoSizeLimit).toBe(100 * 1024 * 1024)
-    expect(result.current.skillSizeLimit).toBe(50 * 1024 * 1024)
-    expect(result.current.maxFileUploadLimit).toBe(10)
+    expect(result.imgSizeLimit).toBe(10 * 1024 * 1024)
+    expect(result.docSizeLimit).toBe(15 * 1024 * 1024)
+    expect(result.audioSizeLimit).toBe(50 * 1024 * 1024)
+    expect(result.videoSizeLimit).toBe(100 * 1024 * 1024)
+    expect(result.skillSizeLimit).toBe(50 * 1024 * 1024)
+    expect(result.maxFileUploadLimit).toBe(10)
   })
 })
 

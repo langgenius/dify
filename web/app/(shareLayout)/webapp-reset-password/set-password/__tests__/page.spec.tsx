@@ -30,9 +30,7 @@ describe('Webapp Reset Password Set Password Page', () => {
       typeof useRouter
     >)
     vi.mocked(useSearchParams).mockReturnValue(
-      new URLSearchParams({ token: 'reset-token' }) as unknown as ReturnType<
-        typeof useSearchParams
-      >,
+      new URLSearchParams({ token: 'reset-token' }) as ReturnType<typeof useSearchParams>,
     )
     vi.mocked(changeWebAppPasswordWithToken).mockResolvedValue({ result: 'success' })
   })

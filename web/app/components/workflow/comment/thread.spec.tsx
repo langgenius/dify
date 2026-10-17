@@ -1,5 +1,5 @@
+import type { WorkflowCommentDetail } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement } from 'react'
-import type { WorkflowCommentDetail } from '@/app/components/workflow/comment/types'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'

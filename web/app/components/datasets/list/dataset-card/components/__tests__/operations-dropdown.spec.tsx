@@ -1,14 +1,15 @@
 import type {
+  DatasetDetailWithPartialMembersResponse,
   KnowledgeFsUpgradeDiscoveryResponse,
   KnowledgeFsUpgradeJobResponse,
 } from '@dify/contracts/api/console/datasets/types.gen'
-import type { DataSet } from '@/models/datasets'
 import { createEvent, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { KnowledgeUpgradeProvider } from '@/features/new-rag/upgrade/knowledge-upgrade-context'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { DatasetACLPermission } from '@/utils/permission'
@@ -54,16 +55,18 @@ vi.mock('@/context/permission-state', async () => {
 })
 describe('OperationsDropdown', () => {
   const createMockDataset = (
-    overrides: Partial<DataSet> & {
+    overrides: Partial<DatasetDetailWithPartialMembersResponse> & {
       knowledge_fs_upgrade?: KnowledgeFsUpgradeDiscoveryResponse
     } = {},
-  ): DataSet & { knowledge_fs_upgrade: KnowledgeFsUpgradeDiscoveryResponse } =>
+  ): DatasetDetailWithPartialMembersResponse & {
+    knowledge_fs_upgrade: KnowledgeFsUpgradeDiscoveryResponse
+  } =>
     ({
       id: 'dataset-1',
       name: 'Test Dataset',
       description: 'Test description',
       provider: 'vendor',
-      permission: DatasetPermission.allTeamMembers,
+      permission: PermissionLevel.allTeamMembers,
       data_source_type: DataSourceType.FILE,
       indexing_technique: IndexingType.QUALIFIED,
       embedding_available: true,
@@ -89,7 +92,9 @@ describe('OperationsDropdown', () => {
         job: null,
       },
       ...overrides,
-    }) as DataSet & { knowledge_fs_upgrade: KnowledgeFsUpgradeDiscoveryResponse }
+    }) as DatasetDetailWithPartialMembersResponse & {
+      knowledge_fs_upgrade: KnowledgeFsUpgradeDiscoveryResponse
+    }
 
   const defaultProps = {
     dataset: createMockDataset(),

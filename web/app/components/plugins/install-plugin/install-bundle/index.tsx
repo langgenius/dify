@@ -2,8 +2,13 @@
 import type { FC } from 'react'
 import type { Dependency, InstallStatus, Plugin, VersionProps } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogClose, DialogContent } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Dialog,
+  DialogCloseButton,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -69,29 +74,12 @@ const InstallBundle: FC<Props> = ({
     >
       <DialogContent
         backdropProps={{ forceRender: true }}
-        className={cn(
-          'w-full max-w-120 overflow-hidden! text-left align-middle',
-          cn(
-            modalClassName,
-            'flex max-h-[calc(100dvh-48px)] min-w-140 flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0',
-          ),
-        )}
+        className={cn('w-120', modalClassName, 'max-h-[calc(100dvh-48px)] min-w-140')}
       >
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute inset-e-6 top-6"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-
-        <div className="flex items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
-          <div className="self-stretch title-2xl-semi-bold text-text-primary">{getTitle()}</div>
-        </div>
+        <DialogHeader>
+          <DialogTitle>{getTitle()}</DialogTitle>
+          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
         <ReadyToInstall
           step={step}
           onStepChange={setStep}

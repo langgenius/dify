@@ -1,5 +1,5 @@
+import type { IndexingEstimateResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ParentChildConfig } from '../../hooks'
-import type { FileIndexingEstimateResponse } from '@/models/datasets'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useRef, useState } from 'react'
@@ -100,7 +100,7 @@ describe('PreviewPanel', () => {
     rerender(
       <PreviewPanel
         {...defaultProps}
-        estimate={{ total_segments: 3, preview: [] } as unknown as FileIndexingEstimateResponse}
+        estimate={{ total_segments: 3, preview: [] } as unknown as IndexingEstimateResponse}
       />,
     )
     expect(screen.getByRole('status')).toHaveTextContent(
@@ -165,48 +165,48 @@ describe('PreviewPanel', () => {
   })
 
   it('should render text preview chunks', () => {
-    const estimate: Partial<FileIndexingEstimateResponse> = {
+    const estimate: Partial<IndexingEstimateResponse> = {
       total_segments: 2,
       preview: [
         { content: 'chunk 1 text', child_chunks: [], summary: '' },
         { content: 'chunk 2 text', child_chunks: [], summary: 'summary text' },
       ],
     }
-    render(<PreviewPanel {...defaultProps} estimate={estimate as FileIndexingEstimateResponse} />)
+    render(<PreviewPanel {...defaultProps} estimate={estimate as IndexingEstimateResponse} />)
     expect(screen.getAllByTestId('chunk-container')).toHaveLength(2)
   })
 
   it('should render QA preview', () => {
-    const estimate: Partial<FileIndexingEstimateResponse> = {
+    const estimate: Partial<IndexingEstimateResponse> = {
       qa_preview: [{ question: 'Q1', answer: 'A1' }],
     }
     render(
       <PreviewPanel
         {...defaultProps}
         currentDocForm={ChunkingMode.qa}
-        estimate={estimate as FileIndexingEstimateResponse}
+        estimate={estimate as IndexingEstimateResponse}
       />,
     )
     expect(screen.getByTestId('qa-preview')).toHaveTextContent('Q1')
   })
 
   it('should render parent-child preview', () => {
-    const estimate: Partial<FileIndexingEstimateResponse> = {
+    const estimate: Partial<IndexingEstimateResponse> = {
       preview: [{ content: 'parent chunk', child_chunks: ['child1', 'child2'], summary: '' }],
     }
     render(
       <PreviewPanel
         {...defaultProps}
         currentDocForm={ChunkingMode.parentChild}
-        estimate={estimate as FileIndexingEstimateResponse}
+        estimate={estimate as IndexingEstimateResponse}
       />,
     )
     expect(screen.getAllByTestId('preview-slice')).toHaveLength(2)
   })
 
   it('should show badge with chunk count for non-QA mode', () => {
-    const estimate: Partial<FileIndexingEstimateResponse> = { total_segments: 5, preview: [] }
-    render(<PreviewPanel {...defaultProps} estimate={estimate as FileIndexingEstimateResponse} />)
+    const estimate: Partial<IndexingEstimateResponse> = { total_segments: 5, preview: [] }
+    render(<PreviewPanel {...defaultProps} estimate={estimate as IndexingEstimateResponse} />)
     expect(screen.getByTestId('badge')).toBeInTheDocument()
   })
 })

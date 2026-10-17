@@ -1,5 +1,7 @@
-import type { DatasetListItemResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { DataSet } from '@/models/datasets'
+import type {
+  DatasetDetailWithPartialMembersResponse,
+  DatasetListItemResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 
 type DatasetCardField =
   | 'app_count'
@@ -27,6 +29,9 @@ type DatasetCardField =
 
 export type DatasetCardItem =
   | Pick<DatasetListItemResponse, DatasetCardField>
-  | (Pick<DataSet, Exclude<DatasetCardField, 'knowledge_fs_upgrade'>> & {
+  | (Pick<
+      DatasetDetailWithPartialMembersResponse,
+      Exclude<DatasetCardField, 'knowledge_fs_upgrade'>
+    > & {
       knowledge_fs_upgrade?: DatasetListItemResponse['knowledge_fs_upgrade']
     })

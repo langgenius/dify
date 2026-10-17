@@ -110,7 +110,7 @@ function buildRehypePlugins(extraPlugins?: PluggableList): PluggableList {
       const overrideNames = new Set(ALLOWED_TAGS[tag])
       const filtered = existing.filter((entry) => {
         const name = typeof entry === 'string' ? entry : entry[0]
-        return !overrideNames.has(name as string)
+        return !overrideNames.has(name)
       })
       mergedAttributes[tag] = [...filtered, ...(ALLOWED_TAGS[tag] ?? [])]
     } else {

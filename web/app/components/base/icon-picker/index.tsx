@@ -111,7 +111,7 @@ export function IconPickerContent({ enableImageUpload }: IconPickerContentProps)
       initialFocus={(interaction) =>
         interaction === 'touch' ? popupRef.current : (focusTargetRef.current ?? true)
       }
-      className="flex max-h-[calc(100dvh-2rem)] w-80.5 flex-col overflow-hidden p-0 text-left"
+      className="flex max-h-[calc(100dvh-2rem)] w-80.5 flex-col overflow-hidden"
     >
       <DialogTitle className="sr-only">
         {t(($) => $['iconPicker.title'], { ns: 'app' })}

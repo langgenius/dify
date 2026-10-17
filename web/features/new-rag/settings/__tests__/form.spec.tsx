@@ -8,8 +8,8 @@ import type {
   KnowledgeFsSpaceDetailResponse,
   KnowledgeFsSpaceUpdatePayload,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ComponentProps, ReactNode } from 'react'
-import type { Member } from '@/models/common'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -47,7 +47,7 @@ const knowledgeQueryMock = vi.hoisted(() => ({
 }))
 
 const membersQueryMock = vi.hoisted(() => ({
-  data: { accounts: [] as Member[] },
+  data: { accounts: [] as AccountWithRoleResponse[] },
   isError: false,
   isPending: false,
   refetch: vi.fn(() => Promise.resolve()),
@@ -385,7 +385,7 @@ function renderForm({
     timezone: string
   }>
   externalAccess?: typeof externalAccess
-  members?: Member[]
+  members?: AccountWithRoleResponse[]
   permissions?: KnowledgeFsPermissionResponse[]
   queryClient?: QueryClient
   settings?: KnowledgeFsSettingsResponse
@@ -460,7 +460,7 @@ const teamMember = {
   role: 'normal',
   roles: [],
   status: 'active',
-} satisfies Member
+} satisfies AccountWithRoleResponse
 
 async function editAllSettings(user: ReturnType<typeof userEvent.setup>) {
   const name = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
@@ -1265,14 +1265,14 @@ describe('KnowledgeSettingsPage workflows', () => {
       role: 'owner',
       roles: [],
       status: 'active',
-    } satisfies Member
+    } satisfies AccountWithRoleResponse
     const member = {
       ...owner,
       email: 'member@example.com',
       id: 'member-1',
       name: 'Team Member',
       role: 'normal',
-    } satisfies Member
+    } satisfies AccountWithRoleResponse
     renderForm({
       members: [owner, member],
     })
@@ -2448,7 +2448,7 @@ describe('KnowledgeSettingsPage workflows', () => {
       role: 'normal',
       roles: [],
       status: 'active',
-    } satisfies Member
+    } satisfies AccountWithRoleResponse
     renderForm({
       members: [member],
       space: {

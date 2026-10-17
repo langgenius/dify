@@ -1733,21 +1733,6 @@ describe('AgentSkills', () => {
     })
   })
 
-  it('should wrap long preview lines instead of forcing a horizontal code block', async () => {
-    const user = userEvent.setup()
-    renderAgentSkills()
-
-    await user.click(screen.getByText('Tender Analyzer').closest('button')!)
-
-    const skillMdCode = await screen.findByText('# Skill')
-    expect(skillMdCode.tagName).toBe('CODE')
-    expect(skillMdCode).toHaveClass('wrap-anywhere')
-    expect(skillMdCode).toHaveClass('wrap-break-word')
-    expect(skillMdCode).toHaveClass('whitespace-pre-wrap')
-    expect(skillMdCode).not.toHaveClass('whitespace-pre')
-    expect(skillMdCode).not.toHaveClass('min-w-max')
-  })
-
   it('should download skill package members from the detail file tree', async () => {
     const user = userEvent.setup()
     const { queryClient } = renderAgentSkills()

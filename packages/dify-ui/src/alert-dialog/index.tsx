@@ -10,8 +10,6 @@ import { modalBackdropClassName, modalPopupAnimationClassName } from '../interna
 import { resolveClassName } from '../internal/resolve-class-name'
 
 const AlertDialog = BaseAlertDialog.Root
-const AlertDialogTitle = BaseAlertDialog.Title
-const AlertDialogDescription = BaseAlertDialog.Description
 const createAlertDialogHandle = BaseAlertDialog.createHandle
 
 type AlertDialogActions = BaseAlertDialog.Root.Actions
@@ -33,9 +31,6 @@ function AlertDialogTrigger<Payload = unknown>({
     />
   )
 }
-type AlertDialogTitleProps = BaseAlertDialog.Title.Props
-type AlertDialogDescriptionProps = BaseAlertDialog.Description.Props
-
 type AlertDialogBackdropProps = BaseAlertDialog.Backdrop.Props
 
 function AlertDialogBackdrop({ className, ...props }: AlertDialogBackdropProps) {
@@ -64,7 +59,8 @@ function AlertDialogContent({
       <BaseAlertDialog.Popup
         className={(state) =>
           cn(
-            'fixed top-1/2 left-1/2 z-50 max-h-[calc(100vh-2rem)] w-120 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
+            // Radius, border and surface match DialogPopup; change both together.
+            'fixed top-1/2 left-1/2 max-h-[calc(100dvh-2rem)] w-120 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
             modalPopupAnimationClassName,
             resolveClassName(className, state),
           )
@@ -74,6 +70,45 @@ function AlertDialogContent({
         {children}
       </BaseAlertDialog.Popup>
     </BaseAlertDialog.Portal>
+  )
+}
+
+type AlertDialogHeaderProps = React.ComponentProps<'div'>
+
+function AlertDialogHeader({ className, ...props }: AlertDialogHeaderProps) {
+  return <div className={cn('flex flex-col gap-2 px-6 pt-6 pb-4', className)} {...props} />
+}
+
+type AlertDialogTitleProps = BaseAlertDialog.Title.Props
+
+function AlertDialogTitle({ className, ...props }: AlertDialogTitleProps) {
+  return (
+    <BaseAlertDialog.Title
+      className={(state) =>
+        cn(
+          // Same look as DialogTitle; change both together.
+          'title-2xl-semi-bold wrap-break-word text-text-primary',
+          resolveClassName(className, state),
+        )
+      }
+      {...props}
+    />
+  )
+}
+
+type AlertDialogDescriptionProps = BaseAlertDialog.Description.Props
+
+function AlertDialogDescription({ className, ...props }: AlertDialogDescriptionProps) {
+  return (
+    <BaseAlertDialog.Description
+      className={(state) =>
+        cn(
+          'system-md-regular wrap-break-word whitespace-pre-wrap text-text-secondary',
+          resolveClassName(className, state),
+        )
+      }
+      {...props}
+    />
   )
 }
 
@@ -90,9 +125,22 @@ function AlertDialogFooter({ className, ...props }: AlertDialogFooterProps) {
 
 type AlertDialogCancelButtonProps = ButtonProps
 
-function AlertDialogCancelButton({ children, ...buttonProps }: AlertDialogCancelButtonProps) {
+function AlertDialogCancelButton({
+  children,
+  className,
+  ...buttonProps
+}: AlertDialogCancelButtonProps) {
   return (
-    <BaseAlertDialog.Close render={<Button {...buttonProps} />}>{children}</BaseAlertDialog.Close>
+    <BaseAlertDialog.Close
+      render={
+        <Button
+          className={(state) => cn('min-w-20', resolveClassName(className, state))}
+          {...buttonProps}
+        />
+      }
+    >
+      {children}
+    </BaseAlertDialog.Close>
   )
 }
 
@@ -101,9 +149,17 @@ type AlertDialogConfirmButtonProps = ButtonProps
 function AlertDialogConfirmButton({
   variant = 'primary',
   tone = 'destructive',
+  className,
   ...props
 }: AlertDialogConfirmButtonProps) {
-  return <Button variant={variant} tone={tone} {...props} />
+  return (
+    <Button
+      variant={variant}
+      tone={tone}
+      className={(state) => cn('min-w-20', resolveClassName(className, state))}
+      {...props}
+    />
+  )
 }
 
 export {
@@ -113,6 +169,7 @@ export {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
   createAlertDialogHandle,
@@ -128,6 +185,7 @@ export type {
   AlertDialogDescriptionProps,
   AlertDialogFooterProps,
   AlertDialogHandle,
+  AlertDialogHeaderProps,
   AlertDialogProps,
   AlertDialogTitleProps,
   AlertDialogTriggerProps,

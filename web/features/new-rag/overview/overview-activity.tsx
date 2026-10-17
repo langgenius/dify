@@ -1,8 +1,8 @@
 'use client'
 
 import type { KnowledgeFsOverviewActivityResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ActivityDateRange, ActivityOperator, ActivityRange } from './overview-activity-types'
-import type { Member } from '@/models/common'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -125,7 +125,7 @@ function compactIdentifier(value: string) {
 
 function activityActor(
   activity: KnowledgeFsOverviewActivityResponse,
-  members: Member[],
+  members: AccountWithRoleResponse[],
   systemLabel: string,
 ) {
   if (activity.actor.type === 'system') return { avatar: null, name: systemLabel, system: true }
@@ -146,7 +146,7 @@ function ActivityActor({
   size = 'xxs',
 }: {
   activity: KnowledgeFsOverviewActivityResponse
-  members: Member[]
+  members: AccountWithRoleResponse[]
   showName?: boolean
   size?: 'xxs' | 'xs'
 }) {

@@ -62,13 +62,11 @@ vi.mock('@/utils/create-app-tracking', () => ({
 const mockRegister = vi.fn()
 const mockReplace = vi.fn()
 
-const mockUseLocale = useLocale as unknown as MockedFunction<typeof useLocale>
-const mockUseSearchParams = useSearchParams as unknown as MockedFunction<typeof useSearchParams>
-const mockUseRouter = useRouter as unknown as MockedFunction<typeof useRouter>
+const mockUseLocale = useLocale as MockedFunction<typeof useLocale>
+const mockUseSearchParams = useSearchParams as MockedFunction<typeof useSearchParams>
+const mockUseRouter = useRouter as MockedFunction<typeof useRouter>
 const mockUseMailRegister = mockMailRegisterHook
-const mockGetBrowserTimezone = getBrowserTimezone as unknown as MockedFunction<
-  typeof getBrowserTimezone
->
+const mockGetBrowserTimezone = getBrowserTimezone as MockedFunction<typeof getBrowserTimezone>
 
 const renderWithQueryClient = (ui: ReactElement) => {
   const queryClient = new QueryClient({
@@ -87,7 +85,7 @@ describe('Signup Set Password Page', () => {
     Cookies.remove('utm_info')
     mockUseLocale.mockReturnValue('zh-Hans')
     mockUseSearchParams.mockReturnValue(
-      new URLSearchParams('token=register-token') as unknown as ReturnType<typeof useSearchParams>,
+      new URLSearchParams('token=register-token') as ReturnType<typeof useSearchParams>,
     )
     mockUseRouter.mockReturnValue({ replace: mockReplace } as unknown as ReturnType<
       typeof useRouter
@@ -195,7 +193,7 @@ describe('Signup Set Password Page', () => {
       mockUseSearchParams.mockReturnValue(
         new URLSearchParams(
           'token=register-token&redirect_url=%2Fapps%3Ftag%3Dworkflow',
-        ) as unknown as ReturnType<typeof useSearchParams>,
+        ) as ReturnType<typeof useSearchParams>,
       )
       mockRegister.mockResolvedValue({ result: 'success', data: {} })
 

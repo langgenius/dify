@@ -1,5 +1,9 @@
+import type {
+  DatasetDetailWithPartialMembersResponse,
+  DatasetDocMetadataResponse,
+  DatasetListResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type { KnowledgeRetrievalNodeType } from '../types'
-import type { DataSet, DataSetListResponse, MetadataInDoc } from '@/models/datasets'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { isEqual } from 'es-toolkit/predicate'
 import { useState } from 'react'
@@ -12,7 +16,8 @@ import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { DATASET_DEFAULT } from '@/config'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { fetchDatasets } from '@/service/datasets'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
@@ -68,7 +73,7 @@ vi.mock('@/service/datasets', () => ({
   fetchDatasets: vi.fn(),
 }))
 
-type DatasetListItem = DataSetListResponse['data'][number]
+type DatasetListItem = DatasetListResponse['data'][number]
 
 const mockUseNodesReadOnly = vi.mocked(useNodesReadOnly)
 const mockUseIsChatMode = vi.hoisted(() => vi.fn())
@@ -93,9 +98,10 @@ const createDataset = (overrides: Partial<DatasetListItem> = {}): DatasetListIte
     icon_url: '',
   },
   description: 'Dataset description',
-  permission: DatasetPermission.onlyMe,
+  permission: PermissionLevel.onlyMe,
   data_source_type: DataSourceType.FILE,
-  indexing_technique: 'high_quality' as DataSet['indexing_technique'],
+  indexing_technique:
+    'high_quality' as DatasetDetailWithPartialMembersResponse['indexing_technique'],
   created_by: 'user-1',
   updated_by: 'user-1',
   updated_at: 1690000000,
@@ -137,7 +143,9 @@ const createDataset = (overrides: Partial<DatasetListItem> = {}): DatasetListIte
   ...overrides,
 })
 
-const createMetadata = (overrides: Partial<MetadataInDoc> = {}): MetadataInDoc => ({
+const createMetadata = (
+  overrides: Partial<DatasetDocMetadataResponse> = {},
+): DatasetDocMetadataResponse => ({
   id: 'meta-1',
   name: 'topic',
   type: MetadataFilteringVariableType.string,
@@ -406,13 +414,15 @@ describe('knowledge-retrieval/use-config', () => {
         createDataset({
           id: 'dataset-2',
           name: 'Economic',
-          indexing_technique: 'economy' as DataSet['indexing_technique'],
+          indexing_technique:
+            'economy' as DatasetDetailWithPartialMembersResponse['indexing_technique'],
           is_multimodal: false,
         }),
         createDataset({
           id: 'dataset-3',
           name: 'High Quality',
-          indexing_technique: 'high_quality' as DataSet['indexing_technique'],
+          indexing_technique:
+            'high_quality' as DatasetDetailWithPartialMembersResponse['indexing_technique'],
           is_multimodal: false,
         }),
       ])

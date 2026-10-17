@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -122,6 +123,7 @@ vi.mock('@/app/components/plugins/readme-panel/entrance', () => ({
 
 vi.mock('@/app/components/base/encrypted-bottom', () => ({
   EncryptedBottom: () => <div data-testid="encrypted-bottom">EncryptedBottom</div>,
+  EncryptedFooter: ({ children }: { children: ReactNode }) => <>{children}</>,
 }))
 
 // Form values storage keyed by form identifier
@@ -328,7 +330,7 @@ describe('Edit Modal Components', () => {
           subscription={createSubscription({ credential_type: type })}
         />,
       )
-      expect(screen.getByTestId('modal')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
 
     it('should render nothing for unknown credential type', () => {
@@ -1003,7 +1005,6 @@ describe('Edit Modal Components', () => {
 
       it('should render EncryptedBottom in credentials step', () => {
         render(<ApiKeyEditModal {...createProps()} />)
-        expect(screen.getByTestId('modal-bottom-slot')).toBeInTheDocument()
         expect(screen.getByTestId('encrypted-bottom')).toBeInTheDocument()
       })
 
@@ -1182,7 +1183,7 @@ describe('Edit Modal Components', () => {
         render(<ApiKeyEditModal {...createProps()} />)
         fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(screen.queryByTestId('modal-bottom-slot')).not.toBeInTheDocument()
+          expect(screen.queryByTestId('encrypted-bottom')).not.toBeInTheDocument()
         })
       })
 
@@ -1600,7 +1601,7 @@ describe('Edit Modal Components', () => {
         mockPluginStoreDetail.declaration.trigger.subscription_constructor.credentials_schema = []
         render(<ApiKeyEditModal {...createProps()} />)
         // Should still show the modal but no credentials form fields
-        expect(screen.getByTestId('modal')).toBeInTheDocument()
+        expect(screen.getByRole('dialog')).toBeInTheDocument()
       })
     })
 

@@ -1,14 +1,14 @@
 'use client'
 
 import type { KnowledgeFsControlSpaceVisibility } from '@dify/contracts/api/console/knowledge-fs/types.gen'
-import type { Member } from '@/models/common'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { useTranslation } from 'react-i18next'
 import PermissionSelector from '@/app/components/datasets/settings/permission-selector'
 
 type KnowledgeSettingsMembersProps = {
   disabled: boolean
   hasError: boolean
-  members: Member[]
+  members: AccountWithRoleResponse[]
   ownerAccountId: string
   selectedMemberIds: string[]
   visibility: KnowledgeFsControlSpaceVisibility

@@ -1,5 +1,6 @@
+import type { DocumentDetailResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { StepTwoFile, StepTwoNotionPage } from '../types'
-import type { CrawlResultItem, DocumentItem, FullDocumentDetail } from '@/models/datasets'
+import type { CrawlResultItem, DocumentItem } from '@/models/datasets'
 import { useCallback, useState } from 'react'
 import { DataSourceType } from '@/models/datasets'
 
@@ -8,7 +9,7 @@ type UsePreviewStateOptions = {
   files: StepTwoFile[]
   notionPages: StepTwoNotionPage[]
   websitePages: CrawlResultItem[]
-  documentDetail?: FullDocumentDetail
+  documentDetail?: DocumentDetailResponse
   datasetId?: string
 }
 

@@ -1,13 +1,15 @@
+import type {
+  DatasetQueryContentResponse,
+  ExternalHitTestingResponse,
+  HitTestingResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type { UseMutateAsyncFunction } from '@tanstack/react-query'
 import type { ChangeEvent } from 'react'
 import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
 import type {
   Attachment,
   ExternalKnowledgeBaseHitTestingRequest,
-  ExternalKnowledgeBaseHitTestingResponse,
   HitTestingRequest,
-  HitTestingResponse,
-  Query,
 } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
@@ -27,10 +29,10 @@ import Textarea from './textarea'
 type QueryInputProps = {
   onUpdateList: () => void
   setHitResult: (res: HitTestingResponse) => void
-  setExternalHitResult: (res: ExternalKnowledgeBaseHitTestingResponse) => void
+  setExternalHitResult: (res: ExternalHitTestingResponse) => void
   loading: boolean
-  queries: Query[]
-  setQueries: (v: Query[]) => void
+  queries: DatasetQueryContentResponse[]
+  setQueries: (v: DatasetQueryContentResponse[]) => void
   isExternal?: boolean
   onClickRetrievalMethod: () => void
   retrievalConfig: RetrievalConfig
@@ -39,7 +41,7 @@ type QueryInputProps = {
   onSubmit?: () => void
   hitTestingMutation: UseMutateAsyncFunction<HitTestingResponse, Error, HitTestingRequest, unknown>
   externalKnowledgeBaseHitTestingMutation: UseMutateAsyncFunction<
-    ExternalKnowledgeBaseHitTestingResponse,
+    ExternalHitTestingResponse,
     Error,
     ExternalKnowledgeBaseHitTestingRequest,
     unknown

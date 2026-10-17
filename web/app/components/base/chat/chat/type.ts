@@ -18,7 +18,7 @@ export type FeedbackType = {
 }
 
 export type FeedbackFunc = (messageId: string, feedback: FeedbackType) => Promise<void>
-export type SubmitAnnotationFunc = (messageId: string, content: string) => Promise<any>
+export type SubmitAnnotationFunc = (messageId: string, content: string) => Promise<unknown>
 
 export type ToolInfoInThought = {
   name: string

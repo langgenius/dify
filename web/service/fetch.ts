@@ -32,8 +32,8 @@ export const ContentType = {
 }
 
 export type FetchOptionType = Omit<RequestInit, 'body'> & {
-  params?: Record<string, any>
-  body?: BodyInit | Record<string, any> | null
+  params?: Record<string, string | number | boolean | undefined>
+  body?: BodyInit | Record<string, unknown> | null
 }
 
 const afterResponse204: AfterResponseHook = async ({ response }) => {

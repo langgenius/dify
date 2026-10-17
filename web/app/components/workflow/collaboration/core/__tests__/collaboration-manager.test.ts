@@ -273,7 +273,7 @@ describe('CollaborationManager syncNodes', () => {
 
     internals.syncNodes(base, next)
 
-    const stored = (manager.getNodes() as Node[]).find((node) => node.id === NODE_ID)
+    const stored = manager.getNodes().find((node) => node.id === NODE_ID)
     expect(stored).toBeDefined()
     expect(getVariables(stored!)).toEqual(['a', 'b'])
   })
@@ -285,12 +285,12 @@ describe('CollaborationManager syncNodes', () => {
 
     internals.syncNodes(base, userA)
 
-    const afterUserA = (manager.getNodes() as Node[]).find((node) => node.id === NODE_ID)
+    const afterUserA = manager.getNodes().find((node) => node.id === NODE_ID)
     expect(getVariables(afterUserA!)).toEqual(['a', 'b'])
 
     internals.syncNodes(base, userB)
 
-    const finalNode = (manager.getNodes() as Node[]).find((node) => node.id === NODE_ID)
+    const finalNode = manager.getNodes().find((node) => node.id === NODE_ID)
     const finalVariables = getVariables(finalNode!)
 
     expect(finalVariables).toEqual(['a', 'c'])
@@ -320,7 +320,7 @@ describe('CollaborationManager syncNodes', () => {
     internals.syncNodes(base, userA)
     internals.syncNodes(base, userB)
 
-    const finalNode = (manager.getNodes() as Node[]).find((node) => node.id === NODE_ID)
+    const finalNode = manager.getNodes().find((node) => node.id === NODE_ID)
     const finalVariable = getVariableObject(finalNode!, 'a')
 
     expect(finalVariable?.label).toBe('A from userB')
@@ -355,7 +355,7 @@ describe('CollaborationManager syncNodes', () => {
     internals.syncNodes(base, userA)
     internals.syncNodes(base, userB)
 
-    const finalNode = (manager.getNodes() as Node[]).find((node) => node.id === NODE_ID)
+    const finalNode = manager.getNodes().find((node) => node.id === NODE_ID)
     const finalVariables = getVariables(finalNode!)
     expect(finalVariables).toEqual(['a', 'b'])
     expect(getVariableObject(finalNode!, 'b')).toBeDefined()
@@ -387,7 +387,7 @@ describe('CollaborationManager syncNodes', () => {
     const updatedNode = createLLMNodeSnapshot(updatedTemplates)
     promptInternals.syncNodes([deepClone(baseNode)], [deepClone(updatedNode)])
 
-    const stored = (promptManager.getNodes() as Node[]).find((node) => node.id === LLM_NODE_ID)
+    const stored = promptManager.getNodes().find((node) => node.id === LLM_NODE_ID)
     expect(stored).toBeDefined()
 
     const storedTemplates = getPromptTemplates(stored!)
@@ -406,7 +406,7 @@ describe('CollaborationManager syncNodes', () => {
 
     promptInternals.syncNodes([deepClone(updatedNode)], [deepClone(editedNode)])
 
-    const final = (promptManager.getNodes() as Node[]).find((node) => node.id === LLM_NODE_ID)
+    const final = promptManager.getNodes().find((node) => node.id === LLM_NODE_ID)
     const finalTemplates = getPromptTemplates(final!)
     expect(finalTemplates).toHaveLength(1)
     expect(finalTemplates[0]!.text).toBe('updated system prompt')
@@ -431,7 +431,7 @@ describe('CollaborationManager syncNodes', () => {
     const updatedNode = createParameterExtractorNodeSnapshot(updatedParameters)
     parameterInternals.syncNodes([deepClone(baseNode)], [deepClone(updatedNode)])
 
-    const stored = (parameterManager.getNodes() as Node[]).find((node) => node.id === PARAM_NODE_ID)
+    const stored = parameterManager.getNodes().find((node) => node.id === PARAM_NODE_ID)
     expect(stored).toBeDefined()
     expect(getParameters(stored!)).toEqual(updatedParameters)
 
@@ -442,7 +442,7 @@ describe('CollaborationManager syncNodes', () => {
 
     parameterInternals.syncNodes([deepClone(updatedNode)], [deepClone(editedNode)])
 
-    const final = (parameterManager.getNodes() as Node[]).find((node) => node.id === PARAM_NODE_ID)
+    const final = parameterManager.getNodes().find((node) => node.id === PARAM_NODE_ID)
     expect(getParameters(final!)).toEqual(editedParameters)
   })
 
@@ -456,7 +456,7 @@ describe('CollaborationManager syncNodes', () => {
 
     internals.syncNodes([], [deepClone(emptyNode)])
 
-    const stored = (manager.getNodes() as Node[]).find((node) => node.id === 'empty-node')
+    const stored = manager.getNodes().find((node) => node.id === 'empty-node')
     expect(stored).toBeDefined()
     expect(stored?.data).toEqual({})
   })
@@ -536,7 +536,7 @@ describe('CollaborationManager syncNodes', () => {
 
     internals.syncNodes([], [deepClone(nodeWithPrivate)])
 
-    const stored = (manager.getNodes() as Node[]).find((node) => node.id === 'private-node')!
+    const stored = manager.getNodes().find((node) => node.id === 'private-node')!
     const storedData = stored.data as CommonNodeType<{ _foo?: string }>
     expect(storedData._foo).toBeUndefined()
     expect(storedData._children).toEqual([{ nodeId: 'child-a', nodeType: BlockEnum.Start }])
@@ -557,7 +557,7 @@ describe('CollaborationManager syncNodes', () => {
 
     internals.syncNodes([deepClone(baseNode)], [withoutVariables])
 
-    const stored = (manager.getNodes() as Node[]).find((node) => node.id === NODE_ID)!
+    const stored = manager.getNodes().find((node) => node.id === NODE_ID)!
     const storedData = stored.data as CommonNodeType<{ variables?: WorkflowVariable[] }>
     expect(storedData.variables).toBeUndefined()
   })

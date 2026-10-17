@@ -1,7 +1,7 @@
 import type { CredentialTypeEnum, PluginPayload } from '../types'
 import { AuthCategory } from '../types'
 
-export const useGetApi = ({ category = AuthCategory.tool, provider }: PluginPayload) => {
+export const getApi = ({ category = AuthCategory.tool, provider }: PluginPayload) => {
   if (category === AuthCategory.tool) {
     return {
       getCredentialInfo: `/workspaces/current/tool-provider/builtin/${provider}/credential/info`,

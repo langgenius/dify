@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
-import type { DatasetPermission } from '@/models/datasets'
+import type { PermissionLevel } from '@/models/permission'
 import { PopoverClose } from '@langgenius/dify-ui/popover'
 import { RadioItem } from '@langgenius/dify-ui/radio-group'
 
 type PermissionItemProps = {
-  value: DatasetPermission
+  value: PermissionLevel
   leftIcon: ReactNode
   text: string
   isSelected: boolean
@@ -35,7 +35,7 @@ const PermissionItem = ({
     return (
       <PopoverClose
         render={
-          <RadioItem<DatasetPermission>
+          <RadioItem<PermissionLevel>
             value={value}
             nativeButton
             render={<button type="button" />}
@@ -49,7 +49,7 @@ const PermissionItem = ({
   }
 
   return (
-    <RadioItem<DatasetPermission> value={value} className={className}>
+    <RadioItem<PermissionLevel> value={value} className={className}>
       {content}
     </RadioItem>
   )

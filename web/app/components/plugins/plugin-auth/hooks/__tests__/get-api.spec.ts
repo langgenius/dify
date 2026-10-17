@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vite-plus/test'
 import { AuthCategory, CredentialTypeEnum } from '../../types'
-import { useGetApi } from '../use-get-api'
+import { getApi } from '../get-api'
 
-describe('useGetApi', () => {
+describe('getApi', () => {
   const provider = 'test-provider'
 
   describe('tool category', () => {
     it('returns correct API paths for tool category', () => {
-      const api = useGetApi({ category: AuthCategory.tool, provider })
+      const api = getApi({ category: AuthCategory.tool, provider })
       expect(api.getCredentialInfo).toBe(
         `/workspaces/current/tool-provider/builtin/${provider}/credential/info`,
       )
@@ -28,7 +28,7 @@ describe('useGetApi', () => {
     })
 
     it('returns a function for getCredentialSchema', () => {
-      const api = useGetApi({ category: AuthCategory.tool, provider })
+      const api = getApi({ category: AuthCategory.tool, provider })
       expect(typeof api.getCredentialSchema).toBe('function')
       const schemaUrl = api.getCredentialSchema('api-key' as never)
       expect(schemaUrl).toBe(
@@ -37,7 +37,7 @@ describe('useGetApi', () => {
     })
 
     it('includes OAuth client endpoints', () => {
-      const api = useGetApi({ category: AuthCategory.tool, provider })
+      const api = getApi({ category: AuthCategory.tool, provider })
       expect(api.getOauthClientSchema).toBe(
         `/workspaces/current/tool-provider/builtin/${provider}/oauth/client-schema`,
       )
@@ -49,7 +49,7 @@ describe('useGetApi', () => {
 
   describe('datasource category', () => {
     it('returns correct API paths for datasource category', () => {
-      const api = useGetApi({ category: AuthCategory.datasource, provider })
+      const api = getApi({ category: AuthCategory.datasource, provider })
       expect(api.getCredentials).toBe(`/auth/plugin/datasource/${provider}`)
       expect(api.addCredential).toBe(`/auth/plugin/datasource/${provider}`)
       expect(api.updateCredential).toBe(`/auth/plugin/datasource/${provider}/update`)
@@ -59,19 +59,19 @@ describe('useGetApi', () => {
     })
 
     it('returns empty string for getCredentialInfo', () => {
-      const api = useGetApi({ category: AuthCategory.datasource, provider })
+      const api = getApi({ category: AuthCategory.datasource, provider })
       expect(api.getCredentialInfo).toBe('')
     })
 
     it('returns a function for getCredentialSchema that returns empty string', () => {
-      const api = useGetApi({ category: AuthCategory.datasource, provider })
+      const api = getApi({ category: AuthCategory.datasource, provider })
       expect(api.getCredentialSchema(CredentialTypeEnum.API_KEY)).toBe('')
     })
   })
 
   describe('other categories', () => {
     it('returns empty strings as fallback for unsupported category', () => {
-      const api = useGetApi({ category: AuthCategory.model, provider })
+      const api = getApi({ category: AuthCategory.model, provider })
       expect(api.getCredentialInfo).toBe('')
       expect(api.setDefaultCredential).toBe('')
       expect(api.getCredentials).toBe('')
@@ -82,14 +82,14 @@ describe('useGetApi', () => {
     })
 
     it('returns a function for getCredentialSchema that returns empty string', () => {
-      const api = useGetApi({ category: AuthCategory.model, provider })
+      const api = getApi({ category: AuthCategory.model, provider })
       expect(api.getCredentialSchema(CredentialTypeEnum.API_KEY)).toBe('')
     })
   })
 
   describe('default category', () => {
     it('defaults to tool category when category is not specified', () => {
-      const api = useGetApi({ provider } as { category: AuthCategory; provider: string })
+      const api = getApi({ provider } as { category: AuthCategory; provider: string })
       expect(api.getCredentialInfo).toContain('tool-provider')
     })
   })

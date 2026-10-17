@@ -1,6 +1,10 @@
 'use client'
 
 import type {
+  DatasourceCredentialResponse,
+  DatasourceProviderAuthResponse,
+} from '@dify/contracts/api/console/auth/types.gen'
+import type {
   KnowledgeFsSourceFileResponse,
   KnowledgeFsSourcePageResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
@@ -15,10 +19,6 @@ import type {
   NewKnowledgeSourceDraft,
 } from '../setup/source-draft'
 import type { Source, SourceConnection, SourceProvider } from '../source-models'
-import type {
-  DataSourceAuth,
-  DataSourceCredential,
-} from '@/app/components/header/account-setting/data-source-page-new/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -159,7 +159,7 @@ function datasourceProviderIcon(
   return datasourceProvider?.plugin.declaration.identity.icon
 }
 
-function credentialRegion(credential: DataSourceCredential | undefined) {
+function credentialRegion(credential: DatasourceCredentialResponse | undefined) {
   const region = Object.entries(credential?.credential ?? {}).find(
     ([key, value]) =>
       ['awsregion', 'region', 'regionname'].includes(normalizeSourceProviderName(key)) &&
@@ -170,7 +170,7 @@ function credentialRegion(credential: DataSourceCredential | undefined) {
 }
 
 function datasourceAuthForProvider(
-  providers: DataSourceAuth[],
+  providers: DatasourceProviderAuthResponse[],
   datasourceProvider: ReturnType<typeof datasourceProviderForOption>,
 ) {
   if (!datasourceProvider) return undefined
@@ -181,7 +181,7 @@ function datasourceAuthForProvider(
   )
 }
 
-function preferredCredential(provider?: DataSourceAuth) {
+function preferredCredential(provider?: DatasourceProviderAuthResponse) {
   return (
     provider?.credentials_list.find((credential) => credential.is_default) ??
     provider?.credentials_list[0]

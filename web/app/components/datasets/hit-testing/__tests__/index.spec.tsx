@@ -1,7 +1,12 @@
+import type {
+  DatasetDetailWithPartialMembersResponse,
+  DatasetQueryDetailResponse,
+  HitTestingRecord,
+  HitTestingResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { OperationKey } from '@orpc/tanstack-query'
 import type { ReactNode } from 'react'
-import type { DataSet, HitTesting, HitTestingRecord, HitTestingResponse } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
@@ -104,7 +109,7 @@ const mockDataset = {
   },
   is_multimodal: false,
   permission_keys: ['dataset.acl.retrieval_recall'],
-} as Partial<DataSet>
+} as Partial<DatasetDetailWithPartialMembersResponse>
 
 let mockConsoleState = {
   userProfile: { id: 'user-1' },
@@ -123,7 +128,7 @@ vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContext: vi.fn(() => ({ dataset: mockDataset })),
   useDatasetDetailContextWithSelector: vi.fn(
     (selector: (v: { dataset?: typeof mockDataset }) => unknown) =>
-      selector({ dataset: mockDataset as DataSet }),
+      selector({ dataset: mockDataset as DatasetDetailWithPartialMembersResponse }),
   ),
 }))
 
@@ -322,13 +327,13 @@ const createMockSegment = (overrides = {}) => ({
   ...overrides,
 })
 
-const createMockHitTesting = (overrides = {}): HitTesting => ({
+const createMockHitTesting = (overrides = {}): HitTestingRecord => ({
   ...createHitTestingRecordFixture(),
-  segment: createMockSegment() as HitTesting['segment'],
+  segment: createMockSegment() as HitTestingRecord['segment'],
   ...overrides,
 })
 
-const createMockRecord = (overrides = {}): HitTestingRecord => ({
+const createMockRecord = (overrides = {}): DatasetQueryDetailResponse => ({
   id: 'record-1',
   source: 'hit_testing',
   source_app_id: 'app-1',

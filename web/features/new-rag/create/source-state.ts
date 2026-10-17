@@ -1,11 +1,11 @@
+import type {
+  DatasourceCredentialResponse,
+  DatasourceProviderAuthResponse,
+} from '@dify/contracts/api/console/auth/types.gen'
 import type { KnowledgeFsSpaceCreatePayload } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { ConnectedSourceSelection } from '../sources/setup/connected-source-selection'
 import type { NewKnowledgeSourceDraft } from '../sources/setup/source-draft'
 import type { CrawlPreviewPage } from '../sources/source-models'
-import type {
-  DataSourceAuth,
-  DataSourceCredential,
-} from '@/app/components/header/account-setting/data-source-page-new/types'
 import { useQuery } from '@tanstack/react-query'
 import { atom, useAtomValue } from 'jotai'
 import { useMemo } from 'react'
@@ -38,7 +38,7 @@ export type CreateSourceSelection = { sessionKey: string } & (
 )
 export const createSourceSelectionAtom = atom<CreateSourceSelection | undefined>(undefined)
 function datasourceAuthForProvider(
-  authProviders: DataSourceAuth[],
+  authProviders: DatasourceProviderAuthResponse[],
   pluginId: string,
   provider: string,
 ) {
@@ -47,7 +47,9 @@ function datasourceAuthForProvider(
   )
 }
 
-function preferredCredential(auth?: DataSourceAuth): DataSourceCredential | undefined {
+function preferredCredential(
+  auth?: DatasourceProviderAuthResponse,
+): DatasourceCredentialResponse | undefined {
   return (
     auth?.credentials_list.find((credential) => credential.is_default) ?? auth?.credentials_list[0]
   )

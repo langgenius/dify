@@ -1,4 +1,4 @@
-import type { DataSourceCredential } from '@/types/pipeline'
+import type { DatasourceCredentialResponse } from '@dify/contracts/api/console/auth/types.gen'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import CredentialSelector from '../index'
 
@@ -21,7 +21,7 @@ const credentials = [
     type: 'oauth2',
     is_default: false,
   },
-] as DataSourceCredential[]
+] as DatasourceCredentialResponse[]
 
 describe('CredentialSelector', () => {
   it('renders the current credential as an accessible trigger', () => {

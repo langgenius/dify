@@ -56,7 +56,7 @@ const encodedSigninUrl =
 
 const setSearchParams = (params: Record<string, string>) => {
   mockUseSearchParams.mockReturnValue(
-    new URLSearchParams(params) as unknown as ReturnType<typeof useSearchParams>,
+    new URLSearchParams(params) as ReturnType<typeof useSearchParams>,
   )
 }
 

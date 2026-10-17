@@ -1,4 +1,4 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
@@ -58,7 +58,7 @@ it.each([true, false])(
       runtime_mode: 'general',
       embedding_available: embeddingAvailable,
       permission_keys: [DatasetACLPermission.Edit],
-    } as DataSet
+    } as DatasetDetailWithPartialMembersResponse
     const screen = await render(
       <QueryClientProvider client={queryClient}>
         <button type="button">Before dataset</button>

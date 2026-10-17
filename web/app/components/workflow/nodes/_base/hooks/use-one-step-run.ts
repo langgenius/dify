@@ -8,7 +8,7 @@ import type {
   Var,
   Variable,
 } from '@/app/components/workflow/types'
-import type { NodeRunResult, NodeTracing } from '@/types/workflow'
+import type { NodeTracing } from '@/types/workflow'
 import { useQuery } from '@tanstack/react-query'
 import { unionBy } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
@@ -304,7 +304,7 @@ const useOneStepRun = <T>({
     [workflowStore, store],
   )
   const invalidLastRun = useInvalidateLastRun(resource, id)
-  const [runResult, doSetRunResult] = useState<NodeRunResult | null>(null)
+  const [runResult, doSetRunResult] = useState<NodeTracing | null>(null)
   const { appendNodeInspectVars, invalidateSysVarValues, invalidateConversationVarValues } =
     useInspectVarsCrud()
   const runningStatus = data._singleRunningStatus || NodeRunningStatus.NotStart
@@ -330,7 +330,7 @@ const useOneStepRun = <T>({
   const isTriggerNode = isWebhookTriggerNode || isPluginTriggerNode || isScheduleTriggerNode
 
   const setRunResult = useCallback(
-    async (data: NodeRunResult | null) => {
+    async (data: NodeTracing | null) => {
       const isPaused = isPausedRef.current
 
       // The backend don't support pause the single run, so the frontend handle the pause state.
@@ -450,7 +450,7 @@ const useOneStepRun = <T>({
     setListeningTriggerIsAll,
   ])
 
-  const runScheduleSingleRun = useCallback(async (): Promise<NodeRunResult | null> => {
+  const runScheduleSingleRun = useCallback(async (): Promise<NodeTracing | null> => {
     if (resource.kind !== 'app') return null
 
     try {
@@ -481,7 +481,7 @@ const useOneStepRun = <T>({
         },
       })
 
-      return response as NodeRunResult
+      return response as NodeTracing
     } catch (error) {
       console.error('handleRun: schedule trigger single run error', error)
       handleNodeDataUpdate({

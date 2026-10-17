@@ -1,3 +1,4 @@
+import type { WorkflowNodesMap } from '@/app/components/base/prompt-editor/types'
 import type { Node } from '@/app/components/workflow/types'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
@@ -27,7 +28,7 @@ const ConditionInput = ({ value, onChange, disabled, availableNodes }: Condition
       workflowVariableBlock={{
         show: true,
         variables: [],
-        workflowNodesMap: availableNodes.reduce((acc, node) => {
+        workflowNodesMap: availableNodes.reduce<WorkflowNodesMap>((acc, node) => {
           acc[node.id] = {
             title: node.data.title,
             type: node.data.type,
@@ -39,7 +40,7 @@ const ConditionInput = ({ value, onChange, disabled, availableNodes }: Condition
             }
           }
           return acc
-        }, {} as any),
+        }, {}),
         showManageInputField: resourceKind === 'knowledge-pipeline',
         onManageInputField: () => setShowInputFieldPanel?.(true),
       }}

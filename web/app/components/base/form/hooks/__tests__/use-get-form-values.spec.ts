@@ -26,7 +26,7 @@ describe('useGetFormValues', () => {
       store: { state: { values: { name: 'Alice' } } },
     }
 
-    const { result } = renderHook(() => useGetFormValues(form as unknown as AnyFormApi, []))
+    const { result } = renderHook(() => useGetFormValues(form as AnyFormApi, []))
 
     expect(result.current.getFormValues({ needCheckValidatedValues: false })).toEqual({
       values: { name: 'Alice' },
@@ -49,7 +49,7 @@ describe('useGetFormValues', () => {
     mockCheckValidated.mockReturnValue(true)
     mockTransform.mockReturnValue({ password: '[__HIDDEN__]' })
 
-    const { result } = renderHook(() => useGetFormValues(form as unknown as AnyFormApi, schemas))
+    const { result } = renderHook(() => useGetFormValues(form as AnyFormApi, schemas))
 
     expect(
       result.current.getFormValues({
@@ -68,7 +68,7 @@ describe('useGetFormValues', () => {
     }
     mockCheckValidated.mockReturnValue(false)
 
-    const { result } = renderHook(() => useGetFormValues(form as unknown as AnyFormApi, []))
+    const { result } = renderHook(() => useGetFormValues(form as AnyFormApi, []))
 
     expect(result.current.getFormValues({ needCheckValidatedValues: true })).toEqual({
       values: {},
@@ -90,7 +90,7 @@ describe('useGetFormValues', () => {
     ]
     mockCheckValidated.mockReturnValue(true)
 
-    const { result } = renderHook(() => useGetFormValues(form as unknown as AnyFormApi, schemas))
+    const { result } = renderHook(() => useGetFormValues(form as AnyFormApi, schemas))
 
     expect(
       result.current.getFormValues({
@@ -118,7 +118,7 @@ describe('useGetFormValues', () => {
     ]
     mockCheckValidated.mockReturnValue(true)
 
-    const { result } = renderHook(() => useGetFormValues(form as unknown as AnyFormApi, schemas))
+    const { result } = renderHook(() => useGetFormValues(form as AnyFormApi, schemas))
 
     expect(
       result.current.getFormValues({
@@ -137,7 +137,7 @@ describe('useGetFormValues', () => {
       store: { state: { values: {} } },
     }
 
-    const { result } = renderHook(() => useGetFormValues(form as unknown as AnyFormApi, []))
+    const { result } = renderHook(() => useGetFormValues(form as AnyFormApi, []))
 
     expect(result.current.getFormValues({ needCheckValidatedValues: false })).toEqual({
       values: {},
@@ -151,7 +151,7 @@ describe('useGetFormValues', () => {
       store: { state: { values: null } },
     }
 
-    const { result } = renderHook(() => useGetFormValues(form as unknown as AnyFormApi, []))
+    const { result } = renderHook(() => useGetFormValues(form as AnyFormApi, []))
 
     expect(result.current.getFormValues({ needCheckValidatedValues: false })).toEqual({
       values: {},
@@ -174,7 +174,7 @@ describe('useGetFormValues', () => {
     mockCheckValidated.mockReturnValue(true)
     mockTransform.mockReturnValue({ password: 'encrypted' })
 
-    const { result } = renderHook(() => useGetFormValues(form as unknown as AnyFormApi, schemas))
+    const { result } = renderHook(() => useGetFormValues(form as AnyFormApi, schemas))
 
     result.current.getFormValues({
       needCheckValidatedValues: true,
@@ -198,7 +198,7 @@ describe('useGetFormValues', () => {
     ]
     mockCheckValidated.mockReturnValue(false)
 
-    const { result } = renderHook(() => useGetFormValues(form as unknown as AnyFormApi, schemas))
+    const { result } = renderHook(() => useGetFormValues(form as AnyFormApi, schemas))
 
     expect(
       result.current.getFormValues({
@@ -224,7 +224,7 @@ describe('useGetFormValues', () => {
       },
     }
 
-    const { result } = renderHook(() => useGetFormValues(form as unknown as AnyFormApi, []))
+    const { result } = renderHook(() => useGetFormValues(form as AnyFormApi, []))
 
     expect(result.current.getFormValues({ needCheckValidatedValues: false })).toEqual({
       values: {

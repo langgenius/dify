@@ -26,6 +26,7 @@
     "i18n:migrate-selectors": "node ./scripts/migrate-i18n-selectors.ts",
     "lint:a11y": "node ./scripts/lint-a11y.mjs",
     "lint:tss": "tsslint --project tsconfig.json",
+    "migrate:type-assertions": "TSSLINT_TYPE_ASSERTION_MIGRATION=true tsslint --project tsconfig.json --force --fix",
     "preinstall": "npx only-allow pnpm",
     "start": "node ./scripts/copy-and-start.mjs",
     "start:vinext": "vinext start",

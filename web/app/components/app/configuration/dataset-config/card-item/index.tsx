@@ -1,7 +1,7 @@
 'use client'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { DrawerActions } from '@langgenius/dify-ui/drawer'
 import type { FC } from 'react'
-import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
@@ -24,10 +24,10 @@ import SettingsModal from '../settings-modal'
 
 type ItemProps = {
   className?: string
-  config: DataSet
+  config: DatasetDetailWithPartialMembersResponse
   onRemove: (id: string) => void
   readonly?: boolean
-  onSave: (newDataset: DataSet) => void
+  onSave: (newDataset: DatasetDetailWithPartialMembersResponse) => void
   editable?: boolean
 }
 
@@ -38,7 +38,7 @@ const Item: FC<ItemProps> = ({ config, onSave, onRemove, readonly = false, edita
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
   const { t } = useTranslation(['common', 'dataset'])
 
-  const handleSave = (newDataset: DataSet) => {
+  const handleSave = (newDataset: DatasetDetailWithPartialMembersResponse) => {
     onSave(newDataset)
     settingsDrawerActionsRef.current?.close()
   }

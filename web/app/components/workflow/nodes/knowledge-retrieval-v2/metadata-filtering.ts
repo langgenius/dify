@@ -1,7 +1,7 @@
+import type { DatasetDocMetadataResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { KnowledgeRetrievalV2NodeType } from './types'
 import type { MetadataFilteringCondition } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { ValueSelector } from '@/app/components/workflow/types'
-import type { MetadataInDoc } from '@/models/datasets'
 import type { KnowledgeFsMetadataField } from '@/service/knowledge-fs/metadata'
 import {
   MetadataFilteringModeEnum,
@@ -21,7 +21,9 @@ export const normalizeKnowledgeFsMetadataFilterMode = (
     ? mode
     : MetadataFilteringModeEnum.disabled
 
-const metadataVariableType = (type: KnowledgeFsMetadataField['type']): MetadataInDoc['type'] => {
+const metadataVariableType = (
+  type: KnowledgeFsMetadataField['type'],
+): DatasetDocMetadataResponse['type'] => {
   if (type === 'number') return MetadataFilteringVariableType.number
   if (type === 'time') return MetadataFilteringVariableType.time
   return MetadataFilteringVariableType.string
@@ -29,7 +31,7 @@ const metadataVariableType = (type: KnowledgeFsMetadataField['type']): MetadataI
 
 export const intersectKnowledgeFsMetadataFields = (
   fieldGroups: readonly (readonly KnowledgeFsMetadataField[])[],
-): MetadataInDoc[] => {
+): DatasetDocMetadataResponse[] => {
   const [firstGroup, ...remainingGroups] = fieldGroups
   if (!firstGroup) return []
 

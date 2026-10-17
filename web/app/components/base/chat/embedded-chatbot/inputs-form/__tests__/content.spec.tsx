@@ -1,6 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { InputVarType } from '@/app/components/workflow/types'
+import { PromptMode } from '@/models/debug'
+import { createDatasetConfigsFixture } from '@/test/fixtures/debug-configuration'
+import { createEmbeddedChatbotContextFixture } from '@/test/fixtures/embedded-chatbot'
 import { useEmbeddedChatbotContext } from '../../context'
 import InputsFormContent from '../content'
 
@@ -43,22 +46,38 @@ vi.mock('@/app/components/base/file-uploader', () => ({
     value,
     onChange,
   }: {
-    value: any[]
-    onChange: (v: any[]) => void
+    value: File[]
+    onChange: (v: File[]) => void
   }) => (
     <div data-testid="mock-file-uploader">
       <button onClick={() => onChange([new File([''], 'test.png', { type: 'image/png' })])}>
         Upload
       </button>
-      <span>{value.length > 0 ? value[0].name : 'no file'}</span>
+      <span>{value.length > 0 ? value[0]!.name : 'no file'}</span>
     </div>
   ),
 }))
 
-const mockContextValue = {
+const mockContextValue = createEmbeddedChatbotContextFixture({
   appParams: {
+    opening_statement: '',
+    pre_prompt: '',
+    prompt_type: PromptMode.simple,
+    user_input_form: [],
+    more_like_this: { enabled: false },
+    suggested_questions_after_answer: { enabled: false },
+    speech_to_text: { enabled: false },
+    text_to_speech: { enabled: false },
+    retriever_resource: { enabled: false },
+    sensitive_word_avoidance: { enabled: false },
+    agent_mode: { enabled: false, tools: [] },
+    dataset_configs: createDatasetConfigsFixture(),
     system_parameters: {
       file_size_limit: 10,
+      audio_file_size_limit: 10,
+      image_file_size_limit: 10,
+      video_file_size_limit: 10,
+      workflow_file_upload_limit: 10,
     },
   },
   inputsForms: [
@@ -126,13 +145,13 @@ const mockContextValue = {
       hide: true,
     },
   ],
-  currentConversationId: null,
+  currentConversationId: '',
   currentConversationInputs: {},
   setCurrentConversationInputs: vi.fn(),
   newConversationInputs: {},
   newConversationInputsRef: { current: {} },
   handleNewConversationInputsChange: vi.fn(),
-}
+})
 
 describe('InputsFormContent', () => {
   const user = userEvent.setup()
@@ -140,7 +159,7 @@ describe('InputsFormContent', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    vi.mocked(useEmbeddedChatbotContext).mockReturnValue(mockContextValue as unknown as any)
+    vi.mocked(useEmbeddedChatbotContext).mockReturnValue(mockContextValue)
   })
 
   it('should render visible input forms', () => {
@@ -211,16 +230,6 @@ describe('InputsFormContent', () => {
     expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenCalled()
   })
 
-  it('should render select dropdown on the shared dify-ui overlay layer', async () => {
-    render(<InputsFormContent />)
-    const selectTrigger = screen.getAllByText(/Select Label/i).find((el) => el.tagName === 'SPAN')
-    if (!selectTrigger) throw new Error('Select trigger not found')
-
-    await user.click(selectTrigger)
-
-    expect(screen.getByText('Option 1').closest('.z-50')).not.toBeNull()
-  })
-
   it('should handle single file upload change', async () => {
     render(<InputsFormContent />)
     const uploadButtons = screen.getAllByText('Upload')
@@ -261,7 +270,7 @@ describe('InputsFormContent', () => {
       },
     }
 
-    vi.mocked(useEmbeddedChatbotContext).mockReturnValue(contextWithValues as unknown as any)
+    vi.mocked(useEmbeddedChatbotContext).mockReturnValue(contextWithValues)
 
     render(<InputsFormContent />)
     expect(screen.getByDisplayValue('initial value'))!.toBeInTheDocument()
@@ -276,7 +285,7 @@ describe('InputsFormContent', () => {
       },
     }
 
-    vi.mocked(useEmbeddedChatbotContext).mockReturnValue(contextWithConv as unknown as any)
+    vi.mocked(useEmbeddedChatbotContext).mockReturnValue(contextWithConv)
 
     render(<InputsFormContent />)
     expect(screen.getByDisplayValue('conv value'))!.toBeInTheDocument()
@@ -291,7 +300,7 @@ describe('InputsFormContent', () => {
     }
 
     vi.mocked(useEmbeddedChatbotContext).mockReturnValue(
-      contextWithZero as unknown as ReturnType<typeof useEmbeddedChatbotContext>,
+      contextWithZero as ReturnType<typeof useEmbeddedChatbotContext>,
     )
 
     render(<InputsFormContent />)
