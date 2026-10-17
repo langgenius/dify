@@ -16,6 +16,7 @@ from models.model import AppMode
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.entities.workflow_execution import WorkflowExecutionTiming
 from repositories.factory import DifyAPIRepositoryFactory
+from services.human_input_resume_coordinator import maybe_enqueue_resume_for_submitted_hitl_pause
 
 
 # Wrapper types for `WorkflowAppGenerateEntity` and
@@ -168,6 +169,11 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
             state_owner_user_id=self._state_owner_user_id,
             state=state.dumps(),
             pause_reasons=pause_reasons,
+        )
+        maybe_enqueue_resume_for_submitted_hitl_pause(
+            workflow_run_id=workflow_run_id,
+            pause_reasons=pause_reasons,
+            session_factory=self._session_maker,
         )
 
     @override
