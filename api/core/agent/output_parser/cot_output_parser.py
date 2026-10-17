@@ -218,3 +218,11 @@ class CotAgentOutputParser:
 
         if json_cache:
             yield parse_action(json_cache)
+
+        # Flush a trailing incomplete "action:"/"thought:" prefix so ordinary
+        # text at the end of the stream is not silently dropped (issue #43350).
+        if action_cache:
+            yield action_cache
+
+        if thought_cache:
+            yield thought_cache
