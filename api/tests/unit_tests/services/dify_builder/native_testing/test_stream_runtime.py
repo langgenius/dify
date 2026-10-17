@@ -55,6 +55,7 @@ class StreamCase:
         self.done, self.reading, self.source_release = Event(), Event(), Event()
         self.source_release.set()
         self.source_closed = []
+        self.source_finished = Event()
         self.checkpoint_error = self.cleanup_error = self.read_error = self.source_error = None
         self.saved: NativeCheckpointPayload | None = None
         if waiting:
@@ -181,6 +182,7 @@ class StreamCase:
             yield "data: private-raw-SSE-canary\n\n"
         finally:
             self.source_closed.append(current_thread())
+            self.source_finished.set()
 
     def owner(self):
         return stream_class()(
@@ -268,6 +270,12 @@ def test_blocked_reader_returns_unknown_at_first_deadline_and_retains_for_late_c
     assert fixture.case.lifetime.context is fixture.case.state.context
     fixture.source_release.set()
     worker.join(2)
+    # Native worker completion does not imply the separate stream reader has
+    # exited. Late cleanup needs actual reader completion, even though the
+    # original deadline and unknown outcome remain unchanged.
+    assert fixture.source_finished.wait(2)
+    fixture.source_closed[0].join(2)
+    assert not fixture.source_closed[0].is_alive()
     fixture.case.lifetime.settle()
     fixture.cleanup(ref=fixture.case.lifetime.ref, generation=0, dispatch_id="dispatch")
     fixture.case.host.retire()

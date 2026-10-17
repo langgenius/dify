@@ -185,7 +185,7 @@ class _StubDifyPort:
     def run_draft(self, _app_id, _actor, _inputs, _on_event):
         return Run()
 
-    def disclose_effects(self, _app_id, _actor):
+    def disclose_effects(self, _app_id, _actor, *, inputs=None):  # noqa: ARG002
         return EffectDisclosure()
 
     def publish(self, _app_id, _actor):

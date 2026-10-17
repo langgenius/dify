@@ -1,5 +1,7 @@
 import json
+from collections.abc import Callable
 from copy import deepcopy
+from operator import itemgetter
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -11,7 +13,7 @@ from core.dify_builder.state import PcState
 from graphon.variables import SecretVariable, StringVariable
 from models.workflow import Workflow
 from services.dify_builder.graph_ops import apply_connect, apply_create_node
-from services.dify_builder.revision import execution_revision, merge_canvas_presentation
+from services.dify_builder.revision import executable_graph_revision, execution_revision, merge_canvas_presentation
 from services.dify_builder.service import DifyBuilderService, SessionLock
 
 
@@ -134,6 +136,7 @@ def _save_canvas_layout(workflow: Workflow) -> None:
             },
         )
     graph["viewport"] = {"x": 50, "y": 70, "zoom": 2}
+    graph["nodes"].sort(key=itemgetter("id"))
     workflow.graph = json.dumps(graph)
 
 
@@ -198,7 +201,8 @@ def test_actions_accept_canvas_save_after_builder_writes_graph(
     # Even if the client fetches the latest revision, an actual code edit must
     # still conflict with the configuration that Builder planned against.
     graph = builder_workflow.graph_dict
-    graph["nodes"][1]["data"]["code"] = "def main(): return {'result': 'changed'}"
+    code_node = next(node for node in graph["nodes"] if node["id"] == "code")
+    code_node["data"]["code"] = "def main(): return {'result': 'changed'}"
     builder_workflow.graph = json.dumps(graph)
     with pytest.raises(ConflictError, match="stale app revision"):
         service.submit_action(session.id, actor, action)
@@ -318,3 +322,81 @@ def test_secret_reencryption_preserves_revision_but_a_changed_value_invalidates_
 
         decrypt.return_value = "changed-value"
         assert execution_revision(workflow) != revision
+
+
+@pytest.mark.parametrize(
+    "revision_fn", [execution_revision, lambda workflow: executable_graph_revision(workflow.graph_dict)]
+)
+def test_canvas_node_reordering_preserves_execution_revisions(
+    workflow: Workflow, revision_fn: Callable[[Workflow], str]
+) -> None:
+    graph = workflow.graph_dict
+    graph["nodes"] = [
+        {"id": "node1", "data": {"type": "start"}},
+        {"id": "node2", "data": {"type": "code", "code": "def main(): return {}"}},
+        {"id": "node10", "data": {"type": "end"}},
+    ]
+    graph["edges"] = [{"source": "node1", "target": "node2"}, {"source": "node2", "target": "node10"}]
+    workflow.graph = json.dumps(graph)
+    revision = revision_fn(workflow)
+    graph["nodes"] = [graph["nodes"][0], graph["nodes"][2], graph["nodes"][1]]
+    graph["nodes"][1].update(selected=True, position={"x": 100, "y": 200})
+    graph["nodes"][1]["data"].update(selected=True, _targetBranches=["source"])
+    workflow.graph = json.dumps(graph)
+
+    assert revision_fn(workflow) == revision
+
+
+@pytest.mark.parametrize("invalid_id", [None, "", 123, "llm"])
+def test_ambiguous_node_identity_reordering_remains_revision_sensitive(
+    workflow: Workflow, invalid_id: str | int | None
+) -> None:
+    graph = workflow.graph_dict
+    if invalid_id is None:
+        graph["nodes"][1].pop("id")
+    else:
+        graph["nodes"][1]["id"] = invalid_id
+    workflow.graph = json.dumps(graph)
+    revision = execution_revision(workflow)
+    graph["nodes"].reverse()
+    workflow.graph = json.dumps(graph)
+
+    assert execution_revision(workflow) != revision
+
+
+@pytest.mark.parametrize(
+    "other_root_type", ["start", "datasource", "trigger-webhook", "trigger-schedule", "trigger-plugin"]
+)
+def test_reordering_multiple_default_entry_nodes_invalidates_revision(workflow: Workflow, other_root_type: str) -> None:
+    graph = workflow.graph_dict
+    graph["nodes"][0]["data"]["type"] = "start"
+    graph["nodes"][1]["data"]["type"] = other_root_type
+    workflow.graph = json.dumps(graph)
+    revision = execution_revision(workflow)
+    graph["nodes"].reverse()
+    workflow.graph = json.dumps(graph)
+
+    assert execution_revision(workflow) != revision
+
+
+@pytest.mark.parametrize("field", ["prompt_template", "inputs", "value_selector", "cases"])
+def test_nested_configuration_array_reordering_invalidates_revision(workflow: Workflow, field: str) -> None:
+    graph = workflow.graph_dict
+    graph["nodes"][0]["data"][field] = ["first", "second"]
+    workflow.graph = json.dumps(graph)
+    revision = execution_revision(workflow)
+    graph["nodes"][0]["data"][field].reverse()
+    workflow.graph = json.dumps(graph)
+
+    assert execution_revision(workflow) != revision
+
+
+def test_edge_reordering_remains_revision_sensitive(workflow: Workflow) -> None:
+    graph = workflow.graph_dict
+    graph["edges"].append({"id": "other-edge", "source": "llm", "target": "end", "sourceHandle": "false"})
+    workflow.graph = json.dumps(graph)
+    revision = execution_revision(workflow)
+    graph["edges"].reverse()
+    workflow.graph = json.dumps(graph)
+
+    assert execution_revision(workflow) != revision

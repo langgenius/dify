@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 from services.dify_builder.effect_disclosure import (
     CONFIRM_FIELD_PREFIX,
     confirm_field_key,
@@ -80,7 +82,8 @@ def test_targets_and_objects_name_what_is_touched_without_secrets():
     assert items["hook"].target == "POST hooks.example.com"
     assert items["slack"].target == "slack / send_message"
     assert items["slack"].account == "Team bot"
-    assert items["slack"].object == "channel=#general"
+    assert "channel=#general" in items["slack"].object
+    assert "upstream outputs" in items["slack"].object
 
 
 def test_default_is_mock_for_every_side_effect_and_destructive_node():
@@ -126,3 +129,164 @@ def test_split_confirmations_keeps_inputs_and_true_checkboxes_only():
 def test_malformed_graph_has_nothing_to_disclose():
     assert disclose({}).items == ()
     assert disclose({"nodes": [None, {"id": "x"}, {"id": "", "data": {"type": "llm"}}]}).items == ()
+
+
+def test_changing_http_headers_invalidates_confirmation():
+    original = {"nodes": [_node("hook", type="http-request", method="post", url="https://x.io", headers="X-Tenant: a")]}
+    changed = {"nodes": [_node("hook", type="http-request", method="post", url="https://x.io", headers="X-Tenant: b")]}
+
+    assert disclose(changed).mocked_node_ids(disclose(original).confirmation(["hook"])) == {"hook"}
+
+
+def test_changing_tool_runtime_configuration_invalidates_confirmation():
+    original = {"nodes": [_tool("slack", "send_message", tool_configurations={"channel": "#ops"})]}
+    changed = {"nodes": [_tool("slack", "send_message", tool_configurations={"channel": "#general"})]}
+
+    assert disclose(changed).mocked_node_ids(disclose(original).confirmation(["slack"])) == {"slack"}
+
+
+def test_changing_resolved_account_invalidates_confirmation_even_if_display_names_match():
+    original = disclose(GRAPH, {"slack": "Team bot"}, account_bindings={"slack": "credential-a"})
+    changed = disclose(GRAPH, {"slack": "Team bot"}, account_bindings={"slack": "credential-b"})
+
+    assert "slack" in changed.mocked_node_ids(original.confirmation(["slack"]))
+
+
+def test_direct_start_target_inputs_are_bound_and_displayed():
+    graph = {
+        "nodes": [
+            _node("start", type="start"),
+            _node("hook", type="http-request", method="post", url="https://{{#start.host#}}/items"),
+            _tool(
+                "slack",
+                "send_message",
+                tool_parameters={"channel": {"type": "variable", "value": ["start", "channel"]}},
+            ),
+        ]
+    }
+    original = disclose(graph, inputs={"host": "a.example.com", "channel": "#ops", "query": "one"})
+    changed = disclose(graph, inputs={"host": "b.example.com", "channel": "#general", "query": "one"})
+    unrelated = disclose(graph, inputs={"host": "a.example.com", "channel": "#ops", "query": "two"})
+
+    assert original.items[1].target == "POST a.example.com"
+    assert original.items[2].object == "channel=#ops"
+    assert changed.mocked_node_ids(original.confirmation(["hook", "slack"])) == {"hook", "slack"}
+    assert unrelated.mocked_node_ids(original.confirmation(["hook", "slack"])) == set()
+
+
+def test_upstream_config_change_invalidates_dynamic_effect_but_keeps_fixed_target():
+    graph = {
+        "nodes": [
+            _node("start", type="start"),
+            _node("code", type="code", code="return {'host': 'a.example.com'}"),
+            _node("dynamic", type="http-request", method="post", url="https://{{#code.host#}}/items"),
+            _node("fixed", type="http-request", method="post", url="https://fixed.example.com/items"),
+        ]
+    }
+    confirmation = disclose(graph).confirmation(["dynamic", "fixed"])
+    changed = deepcopy(graph)
+    changed["nodes"][1]["data"]["code"] = "return {'host': 'b.example.com'}"
+
+    assert disclose(changed).mocked_node_ids(confirmation) == {"dynamic"}
+
+
+def test_dynamic_effect_binds_start_inputs_used_by_its_upstream_node():
+    graph = {
+        "nodes": [
+            _node("start", type="start"),
+            _node("code", type="code", variables=[{"variable": "host", "value_selector": ["start", "host"]}]),
+            _node("hook", type="http-request", method="post", url="https://{{#code.host#}}/items"),
+        ]
+    }
+    confirmation = disclose(graph, inputs={"host": "a.example.com"}).confirmation(["hook"])
+
+    assert disclose(graph, inputs={"host": "b.example.com"}).mocked_node_ids(confirmation) == {"hook"}
+
+
+def test_advanced_chat_system_query_is_bound_for_templates_and_variable_selectors():
+    graph = {
+        "nodes": [
+            _node("start", type="start"),
+            _node("hook", type="http-request", method="post", url="https://x.io/{{#sys.query#}}"),
+            _tool(
+                "slack", "send_message", tool_parameters={"channel": {"type": "variable", "value": ["sys", "query"]}}
+            ),
+        ]
+    }
+    original = disclose(graph, inputs={"sys.query": "ops"})
+    changed = disclose(graph, inputs={"sys.query": "general"})
+
+    assert original.items[1].object == "https://x.io/ops"
+    assert original.items[2].object == "channel=ops"
+    assert changed.mocked_node_ids(original.confirmation(["hook", "slack"])) == {"hook", "slack"}
+
+
+def test_changed_environment_or_conversation_binding_invalidates_confirmation_without_showing_values():
+    graph = {
+        "nodes": [
+            _node("hook", type="http-request", method="post", url="https://{{#env.host#}}/{{#conversation.path#}}")
+        ]
+    }
+    original = disclose(graph, scope_binding="digest-before")
+    changed = disclose(graph, scope_binding="digest-after")
+
+    assert changed.mocked_node_ids(original.confirmation(["hook"])) == {"hook"}
+    assert changed.items[0].config_signature != original.items[0].config_signature
+    assert "digest-before" not in str(original.items)
+    assert "digest-after" not in str(changed.items)
+
+
+def test_changing_a_referenced_start_default_invalidates_confirmation():
+    graph = {
+        "nodes": [
+            _node(
+                "start",
+                type="start",
+                variables=[{"variable": "host", "type": "text-input", "default": "a.example.com"}],
+            ),
+            _node("hook", type="http-request", method="post", url="https://{{#start.host#}}/items"),
+        ]
+    }
+    confirmation = disclose(graph, inputs={}).confirmation(["hook"])
+    changed = deepcopy(graph)
+    changed["nodes"][0]["data"]["variables"][0]["default"] = "b.example.com"
+
+    assert disclose(changed, inputs={}).mocked_node_ids(confirmation) == {"hook"}
+
+
+def test_nested_start_object_selectors_bind_the_root_input_and_show_nested_values():
+    graph = {
+        "nodes": [
+            _node("start", type="start"),
+            _node("hook", type="http-request", method="post", url="https://{{#start.payload.host#}}/items"),
+            _tool(
+                "slack",
+                "send_message",
+                tool_parameters={"channel": {"type": "variable", "value": ["start", "payload", "channel"]}},
+            ),
+        ]
+    }
+    original = disclose(graph, inputs={"payload": {"host": "a.example.com", "channel": "#ops"}})
+    changed = disclose(graph, inputs={"payload": {"host": "b.example.com", "channel": "#general"}})
+
+    assert original.items[1].target == "POST a.example.com"
+    assert original.items[2].object == "channel=#ops"
+    assert changed.mocked_node_ids(original.confirmation(["hook", "slack"])) == {"hook", "slack"}
+
+
+def test_nested_start_selector_binds_changed_optional_object_defaults():
+    graph = {
+        "nodes": [
+            _node(
+                "start",
+                type="start",
+                variables=[{"variable": "payload", "type": "json_object", "default": {"host": "a.example.com"}}],
+            ),
+            _node("hook", type="http-request", method="post", url="https://{{#start.payload.host#}}/items"),
+        ]
+    }
+    confirmation = disclose(graph, inputs={}).confirmation(["hook"])
+    changed = deepcopy(graph)
+    changed["nodes"][0]["data"]["variables"][0]["default"]["host"] = "b.example.com"
+
+    assert disclose(changed, inputs={}).mocked_node_ids(confirmation) == {"hook"}

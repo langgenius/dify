@@ -141,6 +141,14 @@ def resolve_ordinary_tool_credentials(
     ):
         raise ToolProviderCredentialValidationError("Tool credential does not belong to this provider and workspace.")
 
+    if draft_selection is not None and draft_selection.expected_credential_fingerprint is not None:
+        from services.tools.draft_tool_setup import tool_credential_fingerprint
+
+        if tool_credential_fingerprint(builtin_provider) != draft_selection.expected_credential_fingerprint:
+            raise ToolProviderCredentialValidationError(
+                "Tool credential changed after confirmation. Confirm the test again."
+            )
+
     from core.helper.credential_utils import runtime_check_credential_policy_compliance
 
     runtime_check_credential_policy_compliance(
@@ -197,7 +205,7 @@ def resolve_ordinary_tool_credentials(
         if draft_selection is not None:
             from services.tools.draft_tool_refresh import persist_draft_tool_refresh
 
-            persist_draft_tool_refresh(
+            refreshed_fingerprint = persist_draft_tool_refresh(
                 session_maker=sessionmaker(bind=db.engine),
                 selection=draft_selection,
                 original_encrypted_credentials=builtin_provider.encrypted_credentials,
@@ -206,6 +214,8 @@ def resolve_ordinary_tool_credentials(
                 refreshed_encrypted_credentials=refreshed_encrypted,
                 refreshed_expires_at=refreshed_credentials.expires_at,
             )
+            if draft_selection.on_credential_refreshed is not None:
+                draft_selection.on_credential_refreshed(refreshed_fingerprint)
         else:
             _persist_ordinary_refresh(
                 tenant_id=tenant_id,

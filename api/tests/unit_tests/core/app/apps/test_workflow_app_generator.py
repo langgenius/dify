@@ -1,6 +1,7 @@
 """SQLite-backed tests for workflow app generation and worker reload behavior."""
 
 import contextlib
+import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -508,3 +509,48 @@ def test_resume_path_runs_worker_with_runtime_state(
     assert worker_lifecycle["joined"] is True
     assert worker_lifecycle["join_timeout"] == 300
     runner_instance.run.assert_called_once()
+
+
+def test_builder_worker_refuses_draft_changed_after_confirmation_before_runner(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    from services.dify_builder.revision import execution_revision
+
+    app, workflow, end_user = _persist_generator_rows(sqlite_session)
+    graph = workflow.graph_dict
+    graph["nodes"].append({"id": "send", "data": {"type": "http-request", "url": "https://approved.example"}})
+    workflow.graph = json.dumps(graph)
+    sqlite_session.commit()
+    approved_revision = execution_revision(workflow)
+    entity = _generate_entity(app, workflow, end_user, invoke_from=InvokeFrom.DEBUGGER)
+    entity.builder_expected_revision = approved_revision
+    # Same node identity, changed executable data in the worker's independent read.
+    workflow.graph = workflow.graph.replace("https://approved.example", "https://changed.example")
+    sqlite_session.commit()
+    monkeypatch.setattr(
+        app_generator_module, "preserve_flask_contexts", lambda *args, **kwargs: contextlib.nullcontext()
+    )
+    monkeypatch.setattr(app_generator_module, "session_factory", SimpleNamespace(create_session=sqlite_session_factory))
+    reached = []
+
+    def first_node(**kwargs):
+        reached.append(kwargs)
+        return SimpleNamespace(run=lambda: None)
+
+    monkeypatch.setattr(app_generator_module, "WorkflowAppRunner", first_node)
+    queue = MagicMock()
+    repositories = _repositories(sqlite_session_factory, app, end_user)
+    WorkflowAppGenerator()._generate_worker(
+        flask_app=Flask(__name__),
+        application_generate_entity=entity,
+        queue_manager=queue,
+        context=SimpleNamespace(),
+        variable_loader=SimpleNamespace(),
+        workflow_execution_repository=repositories[0],
+        workflow_node_execution_repository=repositories[1],
+    )
+
+    assert reached == []
+    assert queue.publish_error.call_args.args[0].reason_code == "stale_execution_revision"

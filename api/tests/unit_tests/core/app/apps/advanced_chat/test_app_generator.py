@@ -1442,3 +1442,58 @@ class TestAdvancedChatAppGeneratorResume:
         assert result.ok is True
         assert captured_entity is not None
         assert captured_entity.trace_manager is existing_trace_manager
+
+
+def test_builder_worker_refuses_changed_chatflow_before_runner(monkeypatch, sqlite_session, sqlite_engine):
+    import contextvars
+    from contextlib import nullcontext
+
+    from services.dify_builder.revision import execution_revision
+
+    generator = AdvancedChatAppGenerator()
+    generator._dialogue_count = 1
+    app = _make_app()
+    workflow = _make_workflow()
+    workflow.graph = '{"nodes":[{"id":"same-node","data":{"type":"http-request","url":"https://approved.example"}}]}'
+    sqlite_session.add_all([app, workflow])
+    sqlite_session.commit()
+    entity = AdvancedChatAppGenerateEntity.model_construct(
+        app_config=WorkflowUIBasedAppConfig(
+            tenant_id=app.tenant_id, app_id=app.id, app_mode=app.mode, workflow_id=workflow.id
+        ),
+        task_id="task",
+        user_id="user",
+        invoke_from=InvokeFrom.DEBUGGER,
+    )
+    entity.builder_expected_revision = execution_revision(workflow)
+    workflow.graph = '{"nodes":[{"id":"same-node","data":{"type":"http-request","url":"https://changed.example"}}]}'
+    sqlite_session.commit()
+    monkeypatch.setattr(generator, "_get_conversation", lambda _: _make_conversation())
+    monkeypatch.setattr(generator, "_get_message", lambda _: _make_message())
+    monkeypatch.setattr(
+        "core.app.apps.advanced_chat.app_generator.preserve_flask_contexts", lambda *a, **k: nullcontext()
+    )
+    monkeypatch.setattr(
+        "core.app.apps.advanced_chat.app_generator.db", SimpleNamespace(engine=sqlite_engine, session=sqlite_session)
+    )
+    reached = []
+
+    def first_node(**kwargs):
+        reached.append(kwargs)
+        return SimpleNamespace(run=lambda: None)
+
+    monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.AdvancedChatAppRunner", first_node)
+    queue = MagicMock()
+    generator._generate_worker(
+        flask_app=SimpleNamespace(),
+        application_generate_entity=entity,
+        queue_manager=queue,
+        conversation_id="conversation",
+        message_id="message",
+        context=contextvars.copy_context(),
+        variable_loader=SimpleNamespace(),
+        workflow_execution_repository=SimpleNamespace(),
+        workflow_node_execution_repository=SimpleNamespace(),
+    )
+    assert reached == []
+    assert queue.publish_error.call_args.args[0].reason_code == "stale_execution_revision"

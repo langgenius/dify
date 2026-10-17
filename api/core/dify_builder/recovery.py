@@ -100,6 +100,8 @@ def _reset_working_fields(fc: DifyBuilderContext) -> None:
     fc.checkpoint_seq = 0
     fc.verify_run_id = ""
     fc.test_input_ref = ""
+    fc.effect_confirmation = {}
+    fc.effect_confirmation_form = {}
     fc.plan_items = []
     fc.plan_title = ""
     fc.plan_input_summary = ""

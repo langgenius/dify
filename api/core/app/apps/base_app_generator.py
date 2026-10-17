@@ -310,20 +310,29 @@ class BaseAppGenerator:
         return value
 
     @classmethod
-    def convert_to_event_stream(cls, generator: Mapping | Generator[Mapping | str]):
+    def convert_to_event_stream(cls, generator: Mapping | Generator[Mapping | str], *, close_source: bool = False):
         """
-        Convert messages into event stream
+        Convert messages into event stream.
+
+        Ordinary in-process dispatch opts into source closure. Native host-owned
+        streams keep their existing reader finalizer as the close authority.
         """
         if isinstance(generator, dict):
             return generator
         else:
 
             def gen():
-                for message in generator:
-                    if isinstance(message, Mapping | dict):
-                        yield f"data: {orjson_dumps(message)}\n\n"
-                    else:
-                        yield f"event: {message}\n\n"
+                try:
+                    for message in generator:
+                        if isinstance(message, Mapping | dict):
+                            yield f"data: {orjson_dumps(message)}\n\n"
+                        else:
+                            yield f"event: {message}\n\n"
+                finally:
+                    if close_source:
+                        close = getattr(generator, "close", None)
+                        if close is not None:
+                            close()
 
             return gen()
 

@@ -4,7 +4,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Callable, Generator, Mapping
-from typing import TYPE_CHECKING, Any, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, TypedDict, cast
 
 from configs import dify_config
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
@@ -64,6 +64,10 @@ if TYPE_CHECKING:
     from services.dify_builder.native_testing.host_execution import NativeHostLaunch
     from services.dify_builder.native_testing.native_execution import ClosableNativeEventStream
     from services.dify_builder.native_testing.runtime_bridge import NativeRuntimeBridge
+
+
+class _EventStreamConversionOptions(TypedDict, total=False):
+    close_source: bool
 
 
 class AppGenerateService:
@@ -129,6 +133,8 @@ class AppGenerateService:
         | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
         builder_mocked_node_ids: frozenset[str] = frozenset(),
+        builder_expected_revision: str | None = None,
+        builder_tool_credential_bindings: Mapping[str, str] | None = None,
     ):
         """
         App Content Generate
@@ -141,7 +147,11 @@ class AppGenerateService:
             inside a worker task, avoiding a synchronous wait for another Celery slot.
         :return:
         """
-        if builder_mocked_node_ids and (
+        if (
+            builder_mocked_node_ids
+            or builder_expected_revision is not None
+            or builder_tool_credential_bindings is not None
+        ) and (
             builder_execution is not None
             or app_model.mode not in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}
             or workflow_execution_mode != "in_process"
@@ -184,6 +194,8 @@ class AppGenerateService:
                 builder_execution=builder_execution,
                 builder_execution_admit=builder_execution_admit,
                 builder_mocked_node_ids=builder_mocked_node_ids,
+                builder_expected_revision=builder_expected_revision,
+                builder_tool_credential_bindings=builder_tool_credential_bindings,
             ),
         )
 
@@ -326,6 +338,8 @@ class AppGenerateService:
         | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
         builder_mocked_node_ids: frozenset[str] = frozenset(),
+        builder_expected_revision: str | None = None,
+        builder_tool_credential_bindings: Mapping[str, str] | None = None,
     ):
         effective_mode = (
             AppMode.AGENT_CHAT
@@ -337,6 +351,9 @@ class AppGenerateService:
             if builder_execution_admit is not None:
                 builder_execution_admit.on_refusal(error, preworker=True)
             raise error
+        conversion_options: _EventStreamConversionOptions = {}
+        if workflow_execution_mode == "in_process" and builder_execution is None:
+            conversion_options["close_source"] = True
         match effective_mode:
             case AppMode.COMPLETION:
                 return rate_limit.generate(
@@ -453,7 +470,10 @@ class AppGenerateService:
                             pause_state_config=pause_config,
                             session=session,
                             builder_mocked_node_ids=builder_mocked_node_ids,
-                        )
+                            builder_expected_revision=builder_expected_revision,
+                            builder_tool_credential_bindings=builder_tool_credential_bindings,
+                        ),
+                        **conversion_options,
                     ),
                     request_id=request_id,
                 )
@@ -521,7 +541,10 @@ class AppGenerateService:
                             builder_execution=builder_execution,
                             builder_execution_admit=builder_execution_admit,
                             builder_mocked_node_ids=builder_mocked_node_ids,
+                            builder_expected_revision=builder_expected_revision,
+                            builder_tool_credential_bindings=builder_tool_credential_bindings,
                         ),
+                        **conversion_options,
                     ),
                     request_id,
                 )

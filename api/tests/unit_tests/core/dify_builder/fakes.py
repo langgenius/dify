@@ -327,7 +327,10 @@ class FakeDifyPort:
     def get_app_mode(self, _app_id: str, _actor: Actor) -> str:
         return self.app_mode
 
-    def disclose_effects(self, _app_id: str, _actor: Actor) -> EffectDisclosure:
+    def disclose_effects(
+        self, _app_id: str, _actor: Actor, *, inputs: Mapping[str, object] | None = None
+    ) -> EffectDisclosure:
+        del inputs
         return self.effect_disclosure
 
     def stamp_http_fixtures(
@@ -568,7 +571,10 @@ class FakeBuildDifyPort:
     def get_app_mode(self, _app_id: str, _actor: Actor) -> str:
         return self.app_mode
 
-    def disclose_effects(self, _app_id: str, _actor: Actor) -> EffectDisclosure:
+    def disclose_effects(
+        self, _app_id: str, _actor: Actor, *, inputs: Mapping[str, object] | None = None
+    ) -> EffectDisclosure:
+        del inputs
         return self.effect_disclosure
 
     def stamp_http_fixtures(

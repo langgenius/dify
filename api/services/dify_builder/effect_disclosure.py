@@ -6,7 +6,7 @@ separately; a destructive operation is never executed by Builder. Model calls,
 sandboxed code and read-only calls are disclosed but need no separate
 confirmation (they are L2 cost and access, approved with the plan).
 
-Pure: reads one draft graph mapping and an optional account-name lookup. The
+Pure: reads one draft graph mapping, account metadata, and optional test inputs. The
 classification is deliberately conservative: an unknown node type or a Tool
 whose name does not read as a lookup is a side effect, so it is mocked unless
 confirmed. A confirmation is bound to the node's effect signature (type,
@@ -23,6 +23,7 @@ from typing import Any, Literal
 from urllib.parse import urlsplit
 
 from core.dify_builder.credentials import is_credential_param_key
+from services.dify_builder.revision import node_config_digest, normalize_execution_graph
 
 EffectTier = Literal["pure", "sandboxed", "read", "side_effect", "destructive"]
 
@@ -195,6 +196,8 @@ class EffectItem:
     # Constant parameters naming the object (recipient, channel, URL), truncated.
     object: str
     signature: str
+    # Same graph/account snapshot, before direct Start values are bound.
+    config_signature: str = ""
 
     @property
     def confirmable(self) -> bool:
@@ -228,11 +231,55 @@ class EffectDisclosure:
         )
 
 
-def disclose(graph: Mapping[str, Any], accounts: Mapping[str, str] | None = None) -> EffectDisclosure:
-    """Classify every node of ``graph``; ``accounts`` maps a node ID to its credential display name."""
+def disclose(
+    graph: Mapping[str, Any],
+    accounts: Mapping[str, str] | None = None,
+    *,
+    account_bindings: Mapping[str, str] | None = None,
+    inputs: Mapping[str, Any] | None = None,
+    scope_binding: str = "",
+) -> EffectDisclosure:
+    """Disclose configuration, resolved accounts, and direct invocation inputs.
+
+    ``account_bindings`` carries opaque resolved credential identities, never
+    credential values. Inputs bind Start references and the advanced-chat
+    ``sys.query`` input. Upstream outputs cannot be resolved before execution.
+    ``scope_binding`` is an adapter-owned digest of environment/conversation
+    variable state; its values are never returned as part of the disclosure.
+    """
     names = accounts or {}
+    bindings = account_bindings or {}
     items: list[EffectItem] = []
     nodes = graph.get("nodes")
+    start_ids = (
+        {
+            str(node["id"])
+            for node in nodes
+            if isinstance(node, Mapping)
+            and isinstance(node.get("id"), str)
+            and isinstance(node.get("data"), Mapping)
+            and node["data"].get("type") == "start"
+        }
+        if isinstance(nodes, list)
+        else set()
+    )
+    node_ids = (
+        {str(node["id"]) for node in nodes if isinstance(node, Mapping) and isinstance(node.get("id"), str)}
+        if isinstance(nodes, list)
+        else set()
+    )
+    start_config = (
+        {
+            str(node["id"]): node_config_digest(node["data"])
+            for node in nodes
+            if isinstance(node, Mapping)
+            and isinstance(node.get("id"), str)
+            and node["id"] in start_ids
+            and isinstance(node.get("data"), Mapping)
+        }
+        if isinstance(nodes, list)
+        else {}
+    )
     for node in nodes if isinstance(nodes, list) else []:
         if not isinstance(node, Mapping):
             continue
@@ -243,8 +290,29 @@ def disclose(graph: Mapping[str, Any], accounts: Mapping[str, str] | None = None
         node_type = data.get("type")
         if not isinstance(node_type, str) or not node_type:
             continue
-        tier, target, obj = _classify(node_type, data)
+        bound_inputs = _referenced_start_inputs(data, start_ids, inputs) if inputs is not None else {}
+        upstream = _has_upstream_reference(data, node_ids - start_ids)
+        # An upstream value is unknowable before execution. Conservatively bind
+        # dynamic effects to the graph configuration, while fixed targets keep
+        # their existing per-node binding through unrelated repairs.
+        # An omitted Start input may use its declared default at runtime, so
+        # bind the declaration as well as the submitted input values.
+        input_references = _referenced_start_inputs(data, start_ids, {})
+        graph_binding = (
+            normalize_execution_graph(dict(graph))
+            if upstream
+            else ({"start_config": start_config} if input_references else None)
+        )
+        if upstream and inputs is not None:
+            bound_inputs.update(_referenced_start_inputs(graph, start_ids, inputs))
+        display_data = _resolve_input_references(data, start_ids, inputs) if inputs is not None else data
+        tier, target, obj = _classify(node_type, display_data)
+        if upstream:
+            obj = "; ".join(
+                part for part in (obj, "Some values come from upstream outputs and resolve during Test Run.") if part
+            )
         account = names.get(node_id, "")
+        config_tier, config_target, _ = _classify(node_type, data)
         title = data.get("title") if isinstance(data.get("title"), str) else ""
         items.append(
             EffectItem(
@@ -255,10 +323,121 @@ def disclose(graph: Mapping[str, Any], accounts: Mapping[str, str] | None = None
                 target=target,
                 account=account,
                 object=obj,
-                signature=_signature(node_type, tier, target, data),
+                signature=_signature(
+                    node_type,
+                    tier,
+                    target,
+                    data,
+                    account,
+                    bindings.get(node_id, ""),
+                    bound_inputs,
+                    graph_binding,
+                    scope_binding,
+                ),
+                config_signature=_signature(
+                    node_type,
+                    config_tier,
+                    config_target,
+                    data,
+                    account,
+                    bindings.get(node_id, ""),
+                    {},
+                    graph_binding,
+                    scope_binding,
+                ),
             )
         )
     return EffectDisclosure(items=tuple(items))
+
+
+_VARIABLE_REF = re.compile(r"\{\{#([^#]+)#\}\}")
+
+
+def _has_upstream_reference(value: object, upstream_ids: set[str]) -> bool:
+    if isinstance(value, Mapping):
+        return any(_has_upstream_reference(child, upstream_ids) for child in value.values())
+    if isinstance(value, (list, tuple)):
+        if len(value) >= 2 and isinstance(value[0], str) and value[0] in upstream_ids:
+            return True
+        return any(_has_upstream_reference(child, upstream_ids) for child in value)
+    if isinstance(value, str):
+        return any(match.group(1).split(".", 1)[0] in upstream_ids for match in _VARIABLE_REF.finditer(value))
+    return False
+
+
+def _input_selector(value: object, start_ids: set[str]) -> str | None:
+    if isinstance(value, (tuple, list)) and list(value) == ["sys", "query"]:
+        return "sys.query"
+    if (
+        isinstance(value, (tuple, list))
+        and len(value) >= 2
+        and isinstance(value[0], str)
+        and value[0] in start_ids
+        and isinstance(value[1], str)
+    ):
+        return value[1]
+    return None
+
+
+def _input_reference_value(selector: object, start_ids: set[str], inputs: Mapping[str, Any]) -> tuple[bool, Any]:
+    """Read public mapping/list paths only; never evaluate code or object attributes."""
+    name = _input_selector(selector, start_ids)
+    if name is None or name not in inputs or not isinstance(selector, (list, tuple)):
+        return False, None
+    value = inputs[name]
+    for part in selector[2:]:
+        if isinstance(value, Mapping) and isinstance(part, str) and part in value:
+            value = value[part]
+        elif isinstance(value, list) and isinstance(part, str) and part.isdecimal() and int(part) < len(value):
+            value = value[int(part)]
+        else:
+            return False, None
+    return True, value
+
+
+def _referenced_start_inputs(value: object, start_ids: set[str], inputs: Mapping[str, Any]) -> dict[str, Any]:
+    referenced: dict[str, Any] = {}
+    if isinstance(value, Mapping):
+        selector = _input_selector(value.get("value"), start_ids) if value.get("type") == "variable" else None
+        if selector is not None:
+            referenced[selector] = inputs.get(selector)
+        for child in value.values():
+            referenced.update(_referenced_start_inputs(child, start_ids, inputs))
+    elif isinstance(value, (list, tuple)):
+        selector = _input_selector(value, start_ids)
+        if selector is not None:
+            referenced[selector] = inputs.get(selector)
+        for child in value:
+            referenced.update(_referenced_start_inputs(child, start_ids, inputs))
+    elif isinstance(value, str):
+        for match in _VARIABLE_REF.finditer(value):
+            selector = _input_selector(match.group(1).split("."), start_ids)
+            if selector is not None:
+                referenced[selector] = inputs.get(selector)
+    return referenced
+
+
+def _resolve_input_references(value: Any, start_ids: set[str], inputs: Mapping[str, Any]) -> Any:
+    """Resolve known Start/query references for display, without executing a graph."""
+    if isinstance(value, Mapping):
+        found, resolved = (
+            _input_reference_value(value.get("value"), start_ids, inputs)
+            if value.get("type") == "variable"
+            else (False, None)
+        )
+        if found:
+            return {**value, "type": "constant", "value": resolved}
+        return {key: _resolve_input_references(child, start_ids, inputs) for key, child in value.items()}
+    if isinstance(value, list):
+        return [_resolve_input_references(child, start_ids, inputs) for child in value]
+    if isinstance(value, str):
+
+        def replace(match: re.Match[str]) -> str:
+            found, resolved = _input_reference_value(match.group(1).split("."), start_ids, inputs)
+            return str(resolved) if found else match.group(0)
+
+        return _VARIABLE_REF.sub(replace, value)
+    return value
 
 
 def split_confirmations(inputs: Mapping[str, Any]) -> tuple[dict[str, Any], list[str]]:
@@ -374,15 +553,30 @@ def _truncate(text: str) -> str:
     return text if len(text) <= _MAX_OBJECT_CHARS else text[: _MAX_OBJECT_CHARS - 1] + "…"
 
 
-def _signature(node_type: str, tier: EffectTier, target: str, data: Mapping[str, Any]) -> str:
-    material: dict[str, Any] = {"type": node_type, "tier": tier, "target": target}
-    if node_type == "tool":
-        for key in ("provider_id", "provider_type", "tool_name", "credential_id", "tool_parameters"):
-            material[key] = data.get(key)
-    elif node_type == "http-request":
-        for key in ("method", "url", "params", "body", "authorization"):
-            material[key] = data.get(key)
-    else:
-        material["data"] = {key: value for key, value in data.items() if key not in {"title", "desc", "selected"}}
+def _signature(
+    node_type: str,
+    tier: EffectTier,
+    target: str,
+    data: Mapping[str, Any],
+    account: str,
+    account_binding: str,
+    bound_inputs: Mapping[str, Any],
+    graph_binding: Mapping[str, Any] | None,
+    scope_binding: str,
+) -> str:
+    material: dict[str, Any] = {
+        "type": node_type,
+        "tier": tier,
+        "target": target,
+        "account": account,
+        "account_binding": account_binding,
+        "inputs": bound_inputs,
+        "dynamic_graph": graph_binding,
+        "scope_binding": scope_binding,
+    }
+    # Bind all executable configuration, including HTTP headers and Tool form
+    # configurations. A field allowlist can silently miss a new target/account
+    # setting. Reuse the execution revision's canvas exclusions.
+    material["data"] = node_config_digest({key: value for key, value in data.items() if key not in {"title", "desc"}})
     encoded = json.dumps(material, sort_keys=True, ensure_ascii=False, default=str).encode()
     return hashlib.sha256(encoded).hexdigest()

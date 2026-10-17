@@ -228,14 +228,18 @@ def test_plan_approval_ignores_non_approve_action():
 
 def test_apply_changes_run_affected_tests_advances_to_test():
     from core.dify_builder.handlers_edit import handle_apply_changes
+    from core.dify_builder.models import TestInput
 
     events: list[dict] = []
     env, repo = _new_env(emit_canvas=events.append)
     # test_input_ref already prepared -- run_affected_tests must skip the testdata gate.
     s = _seed_edit_session(repo, PcState.EDIT_APPLY_CHANGES, edit_target_node_ids=["llm"], test_input_ref="ti-1")
+    repo.save_test_input(TestInput(id="ti-1", session_id=s.id, inputs={"topic": "hello"}))
     turn = Turn(action=Action(kind="run_affected_tests", base_version=1), actor=_actor())
     res = handle_apply_changes(env, turn, *repo.get_session(s.id))
     assert res.next == PcState.EDIT_TEST_AFFECTED_PATHS
+    assert res.context.test_input_ref != "ti-1"
+    assert repo.get_test_input(res.context.test_input_ref).inputs == {"topic": "hello"}
     assert events == []
 
 

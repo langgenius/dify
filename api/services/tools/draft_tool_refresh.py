@@ -16,7 +16,7 @@ from core.tools.errors import ToolProviderCredentialValidationError
 from models.credential_permission import CredentialType
 from models.tools import BuiltinToolProvider
 from repositories.credentials.query_repository import apply_credential_visibility_filter_for_actor
-from services.tools.draft_tool_setup import DraftToolRuntimeSelection
+from services.tools.draft_tool_setup import DraftToolRuntimeSelection, tool_credential_fingerprint
 
 
 def persist_draft_tool_refresh(
@@ -28,8 +28,8 @@ def persist_draft_tool_refresh(
     original_user_id: str | None,
     refreshed_encrypted_credentials: str,
     refreshed_expires_at: int,
-) -> None:
-    """Commit one authorized unchanged selection; no external I/O occurs here.
+) -> str:
+    """Commit one authorized unchanged selection and return its opaque version; no external I/O occurs here.
 
     The original opaque ciphertext/expiry/owner come from the native constrained
     read, before OAuth I/O. ``None`` represents the actual stored SQL NULL;
@@ -62,14 +62,16 @@ def persist_draft_tool_refresh(
     statement = statement.values(
         encrypted_credentials=refreshed_encrypted_credentials,
         expires_at=refreshed_expires_at,
-    ).returning(BuiltinToolProvider.id)
+    ).returning(BuiltinToolProvider)
     try:
         with session_maker.begin() as session:
-            updated_id = session.scalar(statement.execution_options(synchronize_session=False))
-            if updated_id != credential.id:
+            updated = session.scalar(statement.execution_options(synchronize_session=False))
+            if updated is None or updated.id != credential.id:
                 raise ToolProviderCredentialValidationError(
                     "Tool credential changed or access was revoked during refresh."
                 )
+            fingerprint = tool_credential_fingerprint(updated)
+        return fingerprint
     except ToolProviderCredentialValidationError:
         raise
     except Exception:

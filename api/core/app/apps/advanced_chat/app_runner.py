@@ -145,6 +145,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 app_type=get_credit_usage_app_type(app_config.app_mode),
                 trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
                 builder_mocked_node_ids=self.application_generate_entity.builder_mocked_node_ids,
+                builder_tool_credential_bindings=self.application_generate_entity.builder_tool_credential_bindings,
             )
         elif self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
             # Handle single iteration or single loop run
@@ -227,6 +228,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 app_type=get_credit_usage_app_type(app_config.app_mode),
                 trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
                 builder_mocked_node_ids=self.application_generate_entity.builder_mocked_node_ids,
+                builder_tool_credential_bindings=self.application_generate_entity.builder_tool_credential_bindings,
             )
 
         # RUN WORKFLOW

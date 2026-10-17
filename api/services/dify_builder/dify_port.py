@@ -45,15 +45,17 @@ the P2 plan's Global Constraints):
   matters for Agent-node workflows and is not part of this port's contract.
 """
 
+import hashlib
 import json
 import logging
 import threading
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
-from uuid import uuid4
+from uuid import NAMESPACE_URL, uuid5
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -89,6 +91,7 @@ from core.dify_builder.models import (
     NodeOutput,
     PublishResult,
     Run,
+    RunVerification,
 )
 from core.workflow import graph_normalizers
 from extensions.ext_database import db
@@ -96,7 +99,7 @@ from graphon.enums import BuiltinNodeTypes
 from libs.datetime_utils import naive_utc_now
 from libs.flask_utils import set_login_user
 from models.account import Account
-from models.dify_builder import DifyBuilderTestInput
+from models.dify_builder import DifyBuilderRun, DifyBuilderSession, DifyBuilderTestInput
 from models.model import App
 from models.tools import BuiltinToolProvider
 from models.workflow import Workflow
@@ -117,6 +120,7 @@ from services.dify_builder.node_policy import proposal_policy_rejections
 from services.dify_builder.output_evidence import collect_output_findings
 from services.dify_builder.preflight import new_preflight_problems
 from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService, ServiceConfirmedToolGuard
+from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.revision import executable_graph_revision, execution_revision, merge_canvas_presentation
 from services.dify_builder.run_mapping import (
     error_from_stream_chunk,
@@ -542,8 +546,10 @@ class _BuilderExecutionLaunch:
 _DUPLICATE_LAUNCH_REASONS = frozenset({"execution_already_launched", "execution_already_claimed"})
 
 
-def _tool_account_names(session: Session, tenant_id: str, graph: Mapping[str, Any]) -> dict[str, str]:
-    """Credential display name per Tool node: the selected credential, else the workspace default."""
+def _tool_account_metadata(
+    session: Session, tenant_id: str, graph: Mapping[str, Any]
+) -> tuple[dict[str, str], dict[str, str]]:
+    """Resolve display aliases and opaque identity/version bindings without decrypting credentials."""
     selections: dict[str, tuple[str, str]] = {}
     for node in graph.get("nodes") or []:
         data = node.get("data") if isinstance(node, Mapping) else None
@@ -553,25 +559,59 @@ def _tool_account_names(session: Session, tenant_id: str, graph: Mapping[str, An
             continue
         selections[str(node.get("id"))] = (data["provider_id"], str(data.get("credential_id") or ""))
     if not selections:
-        return {}
+        return {}, {}
+    from models.provider_ids import ToolProviderID
+
+    provider_aliases: dict[str, set[str]] = {}
+    for provider, _ in selections.values():
+        aliases = {provider}
+        try:
+            native_id = ToolProviderID(provider)
+            if str(ToolProviderID(native_id.provider_name)) == str(native_id):
+                aliases.add(native_id.provider_name)
+        except (ValueError, TypeError):
+            pass
+        provider_aliases[provider] = aliases
     rows = session.scalars(
         select(BuiltinToolProvider).where(
             BuiltinToolProvider.tenant_id == tenant_id,
-            BuiltinToolProvider.provider.in_({provider for provider, _ in selections.values()}),
+            BuiltinToolProvider.provider.in_(set().union(*provider_aliases.values())),
         )
     ).all()
     names: dict[str, str] = {}
+    bindings: dict[str, str] = {}
     for node_id, (provider, credential_id) in selections.items():
-        candidates = [row for row in rows if row.provider == provider]
+        candidates = [row for row in rows if row.provider in provider_aliases[provider]]
         if credential_id:
             chosen = next((row for row in candidates if row.id == credential_id), None)
         else:
             chosen = next((row for row in candidates if row.is_default), None) or min(
                 candidates, key=lambda row: row.created_at, default=None
             )
-        if chosen is not None and chosen.name:
-            names[node_id] = chosen.name
-    return names
+        if chosen is not None:
+            names[node_id] = chosen.name or ""
+            from services.tools.draft_tool_setup import tool_credential_fingerprint
+
+            bindings[node_id] = tool_credential_fingerprint(chosen)
+    return names, bindings
+
+
+def _effect_scope_binding(workflow: Workflow) -> str:
+    """Hash semantic namespace values, as execution_revision does; expose only the digest.
+
+    Secret re-encryption during an unchanged autosave must not invalidate a
+    disclosure. Resolved values exist only in this local hash input.
+    """
+    state = [
+        sorted(
+            (variable.model_dump(mode="json") for variable in variables),
+            key=lambda variable: str(variable.get("name") or variable.get("id") or ""),
+        )
+        for variables in (workflow.environment_variables, workflow.conversation_variables)
+    ]
+    if not any(state):
+        return ""
+    return hashlib.sha256(json.dumps(state, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
 def _unsupported_run(error: BuilderExecutionPolicyError) -> Run:
@@ -601,7 +641,9 @@ class WorkflowServiceDifyPort:
             workflow = _load_draft_workflow_or_raise(app, session=session)
             return dict(workflow.graph_dict), execution_revision(workflow)
 
-    def disclose_effects(self, app_id: str, actor: Actor) -> EffectDisclosure:
+    def disclose_effects(
+        self, app_id: str, actor: Actor, *, inputs: Mapping[str, Any] | None = None
+    ) -> EffectDisclosure:
         """What a Test Run of the current draft would touch, with each Tool's credential name.
 
         Empty unless the run takes the confirmed full run: the restricted
@@ -611,8 +653,12 @@ class WorkflowServiceDifyPort:
             return EffectDisclosure()
         with _session_factory()() as session:
             app = load_app(session, app_id, actor)
-            graph = dict(_load_draft_workflow_or_raise(app, session=session).graph_dict)
-            return disclose(graph, _tool_account_names(session, app.tenant_id, graph))
+            workflow = _load_draft_workflow_or_raise(app, session=session)
+            graph = dict(workflow.graph_dict)
+            names, bindings = _tool_account_metadata(session, app.tenant_id, graph)
+            return disclose(
+                graph, names, account_bindings=bindings, inputs=inputs, scope_binding=_effect_scope_binding(workflow)
+            )
 
     def node_outputs(self, app_id: str, actor: Actor, run_id: str) -> list[NodeOutput]:
         with _session_factory()() as session:
@@ -982,7 +1028,9 @@ class WorkflowServiceDifyPort:
                 consent_id=confirmed_consent_id,
                 command_id=command_id,
             )
-        if dify_config.DIFY_BUILDER_CONFIRMED_RUN_ENABLED and not self._restricted_admissible(app_id, actor):
+        if self._has_full_run_reservation(session_id, test_input_id) or (
+            dify_config.DIFY_BUILDER_CONFIRMED_RUN_ENABLED and not self._restricted_admissible(app_id, actor)
+        ):
             return self._run_confirmed_full_draft(
                 app_id,
                 actor,
@@ -1069,6 +1117,114 @@ class WorkflowServiceDifyPort:
                 return False
         return True
 
+    @staticmethod
+    def _has_full_run_reservation(session_id: str, test_input_id: str) -> bool:
+        # Runtime/configuration drift cannot reroute an interrupted full run
+        # into a fresh restricted launch with the same saved attempt identity.
+        reservation_id = str(uuid5(NAMESPACE_URL, f"dify-builder-full-run:{session_id}:{test_input_id}"))
+        with _session_factory()() as session:
+            row = session.get(DifyBuilderRun, reservation_id)
+            return isinstance(row, DifyBuilderRun) and row.kind == "native_test_launch"
+
+    def _reserve_full_run(
+        self,
+        session_id: str,
+        test_input_id: str,
+        before_revision: str,
+        before_graph_revision: str,
+        mocked: frozenset[str],
+    ) -> tuple[Run, bool]:
+        """Reserve one saved-input attempt using the existing Run primary key.
+
+        A new explicit test choice gets a fresh TestInput. Re-entering a working
+        handler keeps that input, so even a crash before native acknowledgement
+        cannot launch it twice. The durable reservation intentionally survives
+        an ambiguous launch; this is not provider-side exactly-once execution.
+        """
+        reservation_id = str(uuid5(NAMESPACE_URL, f"dify-builder-full-run:{session_id}:{test_input_id}"))
+        verification = RunVerification(
+            execution_revision=before_revision,
+            executed_graph_revision=before_graph_revision,
+            terminal_outputs=None,
+            output_findings=[],
+            executed_node_ids=[],
+            no_output_dead_branch=False,
+            execution_evidence=ExecutionEvidenceSummary(
+                request_id=reservation_id,
+                policy_version="builder-confirmed-run-v1",
+                mode="confirmed_run",
+                sealed=False,
+                safety_outcome="execution_evidence_unknown",
+                simulated_node_ids=tuple(sorted(mocked)),
+                sandbox_profile="native",
+            ),
+        )
+        assert verification.execution_evidence is not None
+        row = DifyBuilderRun(
+            id=reservation_id,
+            session_id=session_id,
+            kind="native_test_launch",
+            inputs_ref=test_input_id,
+            status="running",
+            immutable=False,
+            per_node=[],
+            verification={
+                **asdict(verification),
+                "execution_evidence": verification.execution_evidence.model_dump(mode="json"),
+            },
+        )
+        # The unique primary key, rather than a read-before-write or dispatch
+        # lease, elects the only invocation allowed to call the native generator.
+        try:
+            with _session_factory()() as session, session.begin():
+                session.add(row)
+                session.flush()
+            return SqlDifyBuilderRepository._to_domain_run(row), True
+        except IntegrityError:
+            with _session_factory()() as session:
+                existing = session.get(DifyBuilderRun, reservation_id)
+                if existing is None or (existing.session_id, existing.inputs_ref, existing.kind) != (
+                    session_id,
+                    test_input_id,
+                    "native_test_launch",
+                ):
+                    raise
+                return SqlDifyBuilderRepository._to_domain_run(existing), False
+
+    @staticmethod
+    def _bind_full_native_id(reservation_id: str, native_run_id: str) -> None:
+        """Keep the first native identity durable before exposing any event."""
+        if not native_run_id:
+            return
+        with _session_factory()() as session, session.begin():
+            row = session.get(DifyBuilderRun, reservation_id, with_for_update=True)
+            if row is None or row.dify_run_id not in (None, "", native_run_id):
+                raise BuilderExecutionPolicyError("execution_launch_mismatch")
+            row.dify_run_id = native_run_id
+
+    @staticmethod
+    def _save_full_run_result(reservation_id: str, run: Run) -> None:
+        with _session_factory()() as session, session.begin():
+            row = session.get(DifyBuilderRun, reservation_id, with_for_update=True)
+            assert row is not None
+            row.dify_run_id = run.dify_run_id or row.dify_run_id
+            row.status = run.status
+            row.error = run.error
+            row.per_node = [asdict(node) for node in run.per_node]
+            row.verification = (
+                {
+                    **asdict(run.verification),
+                    "execution_evidence": run.verification.execution_evidence.model_dump(mode="json")
+                    if run.verification.execution_evidence
+                    else None,
+                }
+                if run.verification is not None
+                else None
+            )
+            row.tokens = run.tokens
+            row.elapsed_ms = run.elapsed_ms
+            row.immutable = run.status in {"succeeded", "failed"} and bool(run.dify_run_id)
+
     def _run_confirmed_full_draft(
         self,
         app_id: str,
@@ -1081,26 +1237,35 @@ class WorkflowServiceDifyPort:
         on_workflow_event: Callable[[Mapping[str, object]], None] | None,
         effect_confirmation: Mapping[str, str],
     ) -> Run:
-        """Run the whole draft natively (PRD §5.8.2); unconfirmed side effects return mocked results (§9.1).
+        """Run one saved-input attempt through the ordinary native debugger.
 
-        Model, sandbox and read-only nodes run for real after the test-data
-        disclosure. A side-effect node runs only while its confirmed signature
-        still matches; a destructive node is always mocked. The native Run is
-        the evidence: its ID is sealed into the summary and mocked steps are
-        listed, which keeps the run from qualifying for publication.
+        Reserve before generation and record its native ID before callbacks.
+        Recovery reads that same Run, never dispatches a second native attempt.
+        A missing acknowledgement remains unknown and needs an explicit new
+        test choice; a previous confirmation cannot authorize that new attempt.
         """
         with _session_factory()() as session:
             account = resolve_account(session, actor)
             app = load_app(session, app_id, actor)
             tenant_id = app.tenant_id
+            owner = session.get(DifyBuilderSession, session_id)
+            if owner is None or (owner.app_id, owner.tenant_id, owner.owner_account_id) != (
+                app_id,
+                actor.tenant_id,
+                actor.account_id,
+            ):
+                return _unsupported_run(BuilderExecutionPolicyError("execution_owner_mismatch"))
             saved = session.get(DifyBuilderTestInput, test_input_id) if test_input_id else None
-            if saved is None or saved.session_id != session_id:
+            if saved is None or saved.session_id != session_id or saved.inputs != dict(inputs):
                 return _unsupported_run(BuilderExecutionPolicyError("test_input_binding_mismatch"))
             draft = _load_draft_workflow_or_raise(app, session=session)
             graph = dict(draft.graph_dict)
             before_revision = execution_revision(draft)
             before_graph_revision = executable_graph_revision(graph)
-            mocked = disclose(graph).mocked_node_ids(effect_confirmation)
+            names, bindings = _tool_account_metadata(session, tenant_id, graph)
+            mocked = disclose(
+                graph, names, account_bindings=bindings, inputs=inputs, scope_binding=_effect_scope_binding(draft)
+            ).mocked_node_ids(effect_confirmation)
             args: dict[str, Any] = {"inputs": dict(inputs)}
             if app.mode == "advanced-chat":
                 validate_query(inputs)
@@ -1108,54 +1273,95 @@ class WorkflowServiceDifyPort:
                     "query": inputs[SYSTEM_QUERY],
                     "inputs": {key: value for key, value in inputs.items() if key != SYSTEM_QUERY},
                 }
-            # Match the native task's user context before the runtime copies it.
-            set_login_user(account)
-            response = AppGenerateService.generate(
-                app_model=app,
-                user=account,
-                args=args,
-                invoke_from=InvokeFrom.DEBUGGER,
-                session=session,
-                streaming=True,
-                workflow_execution_mode="in_process",
-                builder_mocked_node_ids=mocked,
-            )
+
+        reservation, launch = self._reserve_full_run(
+            session_id, test_input_id, before_revision, before_graph_revision, mocked
+        )
+        if not launch:
+            if reservation.immutable or not reservation.dify_run_id:
+                if not reservation.dify_run_id and reservation.verification is not None:
+                    evidence = reservation.verification.execution_evidence
+                    if evidence is not None:
+                        # The reservation retains mock candidates for recovery;
+                        # no acknowledgement means none are observed steps yet.
+                        reservation.verification.execution_evidence = evidence.model_copy(
+                            update={"simulated_node_ids": ()}
+                        )
+                return reservation
+            assert reservation.verification is not None
+            before_revision = reservation.verification.execution_revision
+            before_graph_revision = reservation.verification.executed_graph_revision
+            evidence = reservation.verification.execution_evidence
+            mocked = frozenset(evidence.simulated_node_ids if evidence is not None else ())
 
         final: dict[str, Any] = {}
-        stream_run_id = ""
+        stream_run_id = reservation.dify_run_id
         error_frame: dict[str, str] | None = None
-        if isinstance(response, Mapping):
-            final = dict(response.get("data") or {})
-            if not final.get("id"):
-                final["id"] = str(response.get("workflow_run_id") or "")
-        else:
+        if launch:
+            response = None
             try:
-                for chunk in response:
-                    payload = stream_chunk_as_mapping(chunk)
-                    if payload is None:
-                        continue
-                    if on_workflow_event is not None:
-                        on_workflow_event(payload)
-                    stream_run_id = stream_run_id or run_id_from_stream_chunk(payload)
-                    node_event = node_event_from_stream_chunk(payload)
-                    if node_event is not None:
-                        on_event(node_event)
-                        continue
-                    terminal = run_result_data_from_terminal_chunk(payload)
-                    if terminal is not None:
-                        final = terminal
-                    error_frame = error_frame or error_from_stream_chunk(payload)
+                set_login_user(account)
+                # Only native generation owns this session; Builder reads and
+                # the durable reservation committed before any provider I/O.
+                with _session_factory()() as session:
+                    response = AppGenerateService.generate(
+                        app_model=app,
+                        user=account,
+                        args=args,
+                        invoke_from=InvokeFrom.DEBUGGER,
+                        session=session,
+                        streaming=True,
+                        workflow_execution_mode="in_process",
+                        builder_mocked_node_ids=mocked,
+                        builder_expected_revision=before_revision,
+                        builder_tool_credential_bindings={
+                            node_id: binding for node_id, binding in bindings.items() if node_id not in mocked
+                        },
+                    )
+                if isinstance(response, Mapping):
+                    final = dict(response.get("data") or {})
+                    if not final.get("id"):
+                        final["id"] = str(response.get("workflow_run_id") or "")
+                    stream_run_id = str(final.get("id") or "")
+                    self._bind_full_native_id(reservation.id, stream_run_id)
+                else:
+                    for chunk in response:
+                        payload = stream_chunk_as_mapping(chunk)
+                        if payload is None:
+                            continue
+                        native_id = run_id_from_stream_chunk(payload)
+                        if native_id:
+                            self._bind_full_native_id(reservation.id, native_id)
+                            stream_run_id = native_id
+                        if on_workflow_event is not None:
+                            on_workflow_event(payload)
+                        node_event = node_event_from_stream_chunk(payload)
+                        if node_event is not None:
+                            on_event(node_event)
+                            continue
+                        terminal = run_result_data_from_terminal_chunk(payload)
+                        if terminal is not None:
+                            final = terminal
+                        error_frame = error_frame or error_from_stream_chunk(payload)
+            except Exception:
+                # A dispatch/stream exception cannot prove that no effect ran.
+                # Retain the attempt and recover only the observed native ID.
+                logging.getLogger(__name__).warning("Builder native test acknowledgement was interrupted")
+                final = {}
+                error_frame = None
             finally:
-                # Only closing the stream releases the app's rate-limit slot.
                 close = getattr(response, "close", None)
                 if callable(close):
                     close()
 
-        result = self._finish_run(tenant_id, app_id, final, stream_run_id, error_frame=error_frame)
+        # Without a native ID, no terminal claim can establish what launched.
+        result = (
+            self._finish_run(tenant_id, app_id, final, stream_run_id, error_frame=error_frame)
+            if stream_run_id or (launch and error_frame is not None)
+            else (map_unknown_run_outcome({"id": ""}, []), None)
+        )
         run, _ = result
         if run.verification is None:
-            from core.dify_builder.models import RunVerification
-
             run.verification = RunVerification(
                 execution_revision="",
                 executed_graph_revision="",
@@ -1166,7 +1372,7 @@ class WorkflowServiceDifyPort:
             )
         determinate = bool(run.dify_run_id) and run.status in {"succeeded", "failed"}
         run.verification.execution_evidence = ExecutionEvidenceSummary(
-            request_id=str(uuid4()),
+            request_id=reservation.id,
             policy_version="builder-confirmed-run-v1",
             mode="confirmed_run",
             sealed=determinate,
@@ -1181,7 +1387,12 @@ class WorkflowServiceDifyPort:
             sandbox_profile="native",
             native_run_id=run.dify_run_id or None,
         )
-        return self._bind_run(result, app_id, actor, before_revision, before_graph_revision, restricted=False)
+        bound = self._bind_run(result, app_id, actor, before_revision, before_graph_revision, restricted=False)
+        # Pending attempts keep the original revision/mock facts for a later
+        # native-row recovery. A terminal snapshot survives a lost Builder CAS.
+        if determinate:
+            self._save_full_run_result(reservation.id, bound)
+        return bound
 
     def _run_confirmed_draft(
         self,

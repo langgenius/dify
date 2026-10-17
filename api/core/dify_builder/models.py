@@ -407,6 +407,10 @@ class DifyBuilderContext:
     # still matches; every other side effect, and every destructive node, is
     # mocked. Empty (all older rows) means nothing was confirmed.
     effect_confirmation: dict[str, str] = field(default_factory=dict)
+    # Configuration signatures actually shown in the latest server form.
+    # Separate from approval: submitting a checkbox cannot approve new config
+    # under the same node ID. Only hashes are persisted, never account secrets.
+    effect_confirmation_form: dict[str, str] = field(default_factory=dict)
 
     # -- Governance fields (C-2, additive) --
     skill_learning_policy: str = "ask"

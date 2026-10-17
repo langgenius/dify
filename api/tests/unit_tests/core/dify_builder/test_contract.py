@@ -406,6 +406,7 @@ def test_transport_json_schema_contains_request_and_sse_unions() -> None:
         "command_started",
         "conversation_item_appended",
         "error",
+        "native_execution",
         "progress",
         "progress_snapshot",
         "reasoning",

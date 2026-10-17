@@ -925,7 +925,13 @@ def testdata_form(
     """The test-data form plus its reply, carrying the Test Run effect
     disclosure (PRD §9.1): one unticked checkbox per side effect, so Mock stays
     the default, and the reply lists what else the run reaches."""
-    disclosure = env.dify.disclose_effects(s.app_id, actor)
+    # Use prepared values to show direct Start-based targets. Typing inputs in
+    # this form is intentional; submission binds those values after checking
+    # that the configuration itself still matches the shown disclosure.
+    disclosure = env.dify.disclose_effects(s.app_id, actor, inputs=values)
+    fc.effect_confirmation_form = {
+        item.node_id: item.config_signature or item.signature for item in disclosure.confirmable
+    }
     card = FormCard(
         variant="testdata",
         title=copy_text(BuilderCopyId.FORMS_TEST_DATA_TITLE),
@@ -939,17 +945,33 @@ def testdata_form(
 
 def record_effect_confirmation(
     env: Env, s: Session, fc: DifyBuilderContext, actor: Actor, inputs: dict[str, Any]
-) -> dict[str, Any]:
-    """Bind the ticked side effects to their current signatures; return the Start inputs alone."""
+) -> tuple[dict[str, Any], bool]:
+    """Record only checkboxes for configuration actually shown by the server.
+
+    Return Start inputs and whether a selected effect needs fresh disclosure.
+    Direct Start values are bound to the approval after the static comparison;
+    an intentional input edit does not require a second form submission.
+    """
     plain, confirmed = split_confirmations(inputs)
-    fc.effect_confirmation = env.dify.disclose_effects(s.app_id, actor).confirmation(confirmed)
-    return plain
+    current = env.dify.disclose_effects(s.app_id, actor, inputs=plain)
+    selected = {
+        item.node_id: item.config_signature or item.signature
+        for item in current.confirmable
+        if item.node_id in confirmed
+    }
+    accepted = [
+        node_id for node_id, signature in selected.items() if fc.effect_confirmation_form.get(node_id) == signature
+    ]
+    stale = len(accepted) != len(selected)
+    fc.effect_confirmation = current.confirmation(accepted)
+    fc.effect_confirmation_form = {}
+    return plain, stale
 
 
 def needs_effect_confirmation(env: Env, s: Session, fc: DifyBuilderContext, actor: Actor) -> bool:
     """True while a side effect has no confirmation for its current target, so
     Run test shows the form again instead of silently mocking it."""
-    disclosure = env.dify.disclose_effects(s.app_id, actor)
+    disclosure = env.dify.disclose_effects(s.app_id, actor, inputs=saved_test_inputs(env, fc))
     return any(fc.effect_confirmation.get(item.node_id) != item.signature for item in disclosure.confirmable)
 
 
@@ -1187,6 +1209,8 @@ def handle_await_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
     # run_verify: if we have prepared inputs and every side effect is
     # confirmed for its current target, go verify; else prepare test data.
     fc.verify_run_id = ""
+    fc.effect_confirmation = {}
+    fc.effect_confirmation_form = {}
     if fc.test_input_ref == "" or needs_effect_confirmation(env, s, fc, turn.actor):
         graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
         card, reply = testdata_form(
@@ -1205,6 +1229,9 @@ def handle_await_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
             context=fc,
             items=[*form_items, *turn_items],
         )
+    ti = replace(env.repo.get_test_input(fc.test_input_ref), id="")
+    env.repo.save_test_input(ti)
+    fc.test_input_ref = ti.id
     return StepResult(next=PcState.FIX_VERIFY, context=fc)
 
 
@@ -1234,7 +1261,18 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
             raw = turn.action.payload.get("inputs")
             if isinstance(raw, dict):
                 inputs = raw
-    inputs = record_effect_confirmation(env, s, fc, turn.actor, inputs)
+    inputs, stale_effects = record_effect_confirmation(env, s, fc, turn.actor, inputs)
+    if stale_effects:
+        return input_gate_result(
+            env,
+            s,
+            fc,
+            schema,
+            inputs,
+            PcState.FIX_AWAIT_TESTDATA,
+            "The test targets or accounts changed. Review the updated confirmation before running.",
+            actor=turn.actor,
+        )
 
     try:
         validate_runtime_inputs(schema, inputs)
@@ -1300,6 +1338,8 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
 
     try:
         validate_runtime_inputs(schema, inputs, ti)
+        confirmation = fc.effect_confirmation
+        fc.effect_confirmation = {}
         result = env.dify.run_draft(
             s.app_id,
             turn.actor,
@@ -1308,7 +1348,7 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
             session_id=s.id,
             test_input_id=fc.test_input_ref,
             on_workflow_event=env.emit_workflow,
-            effect_confirmation=fc.effect_confirmation,
+            effect_confirmation=confirmation,
         )
     except Exception as exc:
         # Same degrade as Build/Edit: never crash the advance; the launch error

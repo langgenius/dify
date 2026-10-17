@@ -86,3 +86,25 @@ def test_mocked_class_is_cached_and_never_replaces_the_native_registration():
     assert issubclass(mocked, HttpRequestNode)
     assert Node._registry[BuiltinNodeTypes.HTTP_REQUEST][HttpRequestNode.version()] is HttpRequestNode
     assert Node._registry[BuiltinNodeTypes.HTTP_REQUEST]["latest"] is not mocked
+
+
+def test_nested_factories_share_the_run_owned_credential_binding_map():
+    bindings = {"send": "approved-account-version"}
+    run_context = build_dify_run_context(
+        tenant_id="tenant",
+        app_id="app",
+        user_id="user",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
+        builder_tool_credential_bindings=bindings,
+    )
+    factory = DifyNodeFactory(
+        graph_init_params=SimpleNamespace(run_context=run_context, workflow_id="workflow"),
+        graph_runtime_state=SimpleNamespace(),
+    )
+    nested = factory.with_runtime_state(SimpleNamespace())
+    record = factory._tool_runtime._credential_refresh_recorder("send")
+    record("authorized-native-refresh-version")
+
+    assert nested._dify_context.builder_tool_credential_bindings["send"] == "authorized-native-refresh-version"
+    assert bindings["send"] == "authorized-native-refresh-version"

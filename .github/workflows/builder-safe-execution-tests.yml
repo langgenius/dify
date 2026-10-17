@@ -390,6 +390,15 @@ jobs:
           FILES += ['api/tests/unit_tests/services/tools/test_ordinary_plugin_credentials.py', 'api/tests/unit_tests/core/tools/test_tool_manager.py', 'api/tests/unit_tests/core/tools/plugin_tool/test_confirmed_plugin_tool.py', 'api/tests/unit_tests/core/workflow/nodes/agent_v2/test_dify_tools_builder.py']
           FILES += ['api/tests/unit_tests/services/test_agent_tool_inner_service.py']
           FILES += ['api/tests/unit_tests/services/dify_builder/test_effect_disclosure.py', 'api/tests/unit_tests/services/dify_builder/test_effect_mock.py', 'api/tests/unit_tests/services/dify_builder/test_confirmed_full_run.py', 'api/tests/unit_tests/core/dify_builder/test_effect_confirmation_gate.py']
+          FILES += ['api/tests/unit_tests/services/dify_builder/test_effect_account_bindings.py']
+          FILES += [
+              'api/tests/unit_tests/services/dify_builder/test_revision.py',
+              'api/tests/unit_tests/core/dify_builder/test_contract.py',
+              'api/tests/unit_tests/core/app/apps/test_workflow_app_generator.py',
+              'api/tests/unit_tests/core/app/apps/test_base_app_generator.py',
+              'api/tests/unit_tests/core/app/apps/advanced_chat/test_app_generator.py',
+              'api/tests/unit_tests/services/test_app_generate_service_in_process.py',
+          ]
           SELECTED_GUARDS = [
               "api/tests/unit_tests/controllers/console/app/test_workflow.py::test_sync_draft_workflow_rejects_empty_graph_without_confirmation",
           ]

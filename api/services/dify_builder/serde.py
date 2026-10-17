@@ -90,6 +90,9 @@ def context_from_dict(d: dict[str, Any]) -> DifyBuilderContext:
         effect_confirmation={
             str(node_id): str(signature) for node_id, signature in (d.get("effect_confirmation") or {}).items()
         },
+        effect_confirmation_form={
+            str(node_id): str(signature) for node_id, signature in (d.get("effect_confirmation_form") or {}).items()
+        },
         skill_learning_policy=d.get("skill_learning_policy", "ask"),
         model_config=dict(d.get("model_config") or {}),
         reply_language=d.get("reply_language", ""),

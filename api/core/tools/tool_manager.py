@@ -101,6 +101,18 @@ class WorkflowToolRuntimeSpec(Protocol):
     def credential_id(self) -> str | None: ...
 
 
+class WorkflowToolRuntimeKwargs(TypedDict, total=False):
+    """Internal optional native draft bindings; ordinary callers omit them."""
+
+    draft_tool_workflow_id: str
+    builder_expected_credential_fingerprint: str
+    builder_credential_refreshed: Callable[[str], None] | None
+
+
+class _DraftToolRuntimeKwargs(WorkflowToolRuntimeKwargs, total=False):
+    draft_tool_app_id: str
+
+
 class ToolManager:
     _builtin_provider_lock = Lock()
     _hardcoded_providers: dict[str, BuiltinToolProviderController] = {}
@@ -205,6 +217,8 @@ class ToolManager:
         *,
         confirmed_guard: ConfirmedToolGuard | None = None,
         draft_tool_workflow_id: str | None = None,
+        builder_expected_credential_fingerprint: str | None = None,
+        builder_credential_refreshed: Callable[[str], None] | None = None,
         draft_tool_app_id: str | None = None,
         json_provider_validator: Callable[[object, object], None] | None = None,
     ) -> BuiltinTool | PluginTool | ApiTool | WorkflowTool | MCPTool:
@@ -266,6 +280,8 @@ class ToolManager:
                 provider=provider_id,
                 action=tool_name,
                 credential_id=credential_id,
+                expected_credential_fingerprint=builder_expected_credential_fingerprint,
+                on_credential_refreshed=builder_credential_refreshed,
             )
         match provider_type:
             case ToolProviderType.BUILT_IN:
@@ -608,6 +624,8 @@ class ToolManager:
         *,
         confirmed_guard: ConfirmedToolGuard | None = None,
         draft_tool_workflow_id: str | None = None,
+        builder_expected_credential_fingerprint: str | None = None,
+        builder_credential_refreshed: Callable[[str], None] | None = None,
     ) -> Tool:
         """
         get the workflow tool runtime
@@ -632,6 +650,14 @@ class ToolManager:
                 confirmed_guard=confirmed_guard,
             )
 
+        draft_options: _DraftToolRuntimeKwargs = {}
+        if builder_expected_credential_fingerprint is not None:
+            draft_options["builder_expected_credential_fingerprint"] = builder_expected_credential_fingerprint
+            draft_options["builder_credential_refreshed"] = builder_credential_refreshed
+        if draft_tool_workflow_id is not None:
+            draft_options["draft_tool_workflow_id"] = draft_tool_workflow_id
+            draft_options["draft_tool_app_id"] = app_id
+
         tool_runtime = cls.get_tool_runtime(
             provider_type=workflow_tool.provider_type,
             provider_id=workflow_tool.provider_id,
@@ -641,11 +667,7 @@ class ToolManager:
             invoke_from=invoke_from,
             tool_invoke_from=ToolInvokeFrom.WORKFLOW,
             credential_id=workflow_tool.credential_id,
-            **(
-                {"draft_tool_workflow_id": draft_tool_workflow_id, "draft_tool_app_id": app_id}
-                if draft_tool_workflow_id is not None
-                else {}
-            ),
+            **draft_options,
         )
 
         parameters = tool_runtime.get_merged_runtime_parameters()

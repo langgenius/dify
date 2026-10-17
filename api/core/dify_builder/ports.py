@@ -224,10 +224,13 @@ class DifyPort(Protocol):
         """
         ...
 
-    def disclose_effects(self, app_id: str, actor: Actor) -> EffectDisclosure:
+    def disclose_effects(
+        self, app_id: str, actor: Actor, *, inputs: Mapping[str, Any] | None = None
+    ) -> EffectDisclosure:
         """What a Test Run of the current draft would reach outside Dify (PRD §9.1).
 
-        Empty when the run touches nothing that needs disclosing.
+        ``inputs`` binds direct Start references to submitted test values; omit
+        it to inspect configuration alone. Empty when nothing needs disclosure.
         """
         ...
 

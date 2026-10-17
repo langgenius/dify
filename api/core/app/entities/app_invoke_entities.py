@@ -117,6 +117,7 @@ class DifyRunContext(BaseModel):
     # Builder confirmed Test Run only: nodes whose side effect was not confirmed
     # return a mocked result instead of running. Never set for ordinary runs.
     builder_mocked_node_ids: frozenset[str] = frozenset()
+    builder_tool_credential_bindings: dict[str, str] | None = None
 
     @field_serializer("builder_mocked_node_ids")
     def _dump_builder_mocked_node_ids(self, value: frozenset[str]) -> list[str]:
@@ -166,6 +167,7 @@ def build_dify_run_context(
     native_test_required: bool = False,
     native_test_ref: NativeTestContextRef | None = None,
     builder_mocked_node_ids: frozenset[str] = frozenset(),
+    builder_tool_credential_bindings: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     """
     Build graph run_context with the reserved Dify runtime payload.
@@ -174,11 +176,12 @@ def build_dify_run_context(
     payload is always overwritten by this function to keep one canonical source.
     """
     run_context = dict(extra_context) if extra_context else {}
-    run_context[DIFY_RUN_CONTEXT_KEY] = DifyRunContext(
+    dify_context = DifyRunContext(
         builder_execution=builder_execution,
         native_test_required=native_test_required,
         native_test_ref=native_test_ref,
         builder_mocked_node_ids=builder_mocked_node_ids,
+        builder_tool_credential_bindings=builder_tool_credential_bindings,
         tenant_id=tenant_id,
         app_id=app_id,
         user_id=user_id,
@@ -188,6 +191,11 @@ def build_dify_run_context(
         created_by=normalize_credit_usage_created_by(created_by) if created_by is not None else None,
         trace_session_id=trace_session_id,
     )
+    if isinstance(builder_tool_credential_bindings, dict):
+        # This server-owned run map is also held by the generation entity.
+        # Native OAuth receipts must survive a graph rebuild after pause.
+        dify_context.builder_tool_credential_bindings = builder_tool_credential_bindings
+    run_context[DIFY_RUN_CONTEXT_KEY] = dify_context
     return run_context
 
 
@@ -223,7 +231,9 @@ class AppGenerateEntity(BaseModel):
     native_test_required: bool = False
     native_test_ref: NativeTestContextRef | None = None
     # Builder confirmed Test Run only; see ``DifyRunContext.builder_mocked_node_ids``.
+    builder_expected_revision: str | None = None
     builder_mocked_node_ids: frozenset[str] = frozenset()
+    builder_tool_credential_bindings: Mapping[str, str] | None = None
 
     @field_serializer("builder_mocked_node_ids")
     def _dump_builder_mocked_node_ids(self, value: frozenset[str]) -> list[str]:

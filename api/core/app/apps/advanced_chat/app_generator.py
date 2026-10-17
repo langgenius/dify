@@ -89,6 +89,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         *,
         session: Session,
         builder_mocked_node_ids: frozenset[str] = frozenset(),
+        builder_expected_revision: str | None = None,
+        builder_tool_credential_bindings: Mapping[str, str] | None = None,
     ) -> Mapping[str, Any]: ...
 
     @overload
@@ -105,6 +107,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         *,
         session: Session,
         builder_mocked_node_ids: frozenset[str] = frozenset(),
+        builder_expected_revision: str | None = None,
+        builder_tool_credential_bindings: Mapping[str, str] | None = None,
     ) -> Generator[Mapping | str]: ...
 
     @overload
@@ -121,6 +125,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         *,
         session: Session,
         builder_mocked_node_ids: frozenset[str] = frozenset(),
+        builder_expected_revision: str | None = None,
+        builder_tool_credential_bindings: Mapping[str, str] | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping]: ...
 
     def generate(
@@ -136,6 +142,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         *,
         session: Session,
         builder_mocked_node_ids: frozenset[str] = frozenset(),
+        builder_expected_revision: str | None = None,
+        builder_tool_credential_bindings: Mapping[str, str] | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping]:
         """
         Generate App response.
@@ -148,7 +156,11 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         :param streaming: is stream
         :param session: database session supplied by the caller
         """
-        if builder_mocked_node_ids and invoke_from != InvokeFrom.DEBUGGER:
+        if (
+            builder_mocked_node_ids
+            or builder_expected_revision is not None
+            or builder_tool_credential_bindings is not None
+        ) and invoke_from != InvokeFrom.DEBUGGER:
             raise ValueError("Mocked Builder nodes are only available in draft Test Runs.")
         if not args.get("query"):
             raise ValueError("query is required")
@@ -234,6 +246,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 trace_manager=trace_manager,
                 workflow_run_id=str(workflow_run_id),
                 builder_mocked_node_ids=builder_mocked_node_ids,
+                builder_expected_revision=builder_expected_revision,
+                builder_tool_credential_bindings=builder_tool_credential_bindings,
             )
             contexts.plugin_tool_providers.set({})
             contexts.plugin_tool_providers_lock.set(threading.Lock())
@@ -716,6 +730,16 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 app = session.scalar(select(App).where(App.id == application_generate_entity.app_config.app_id))
                 if app is None:
                     raise ValueError("App not found")
+
+            if application_generate_entity.builder_expected_revision is not None:
+                from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
+                from services.dify_builder.revision import execution_revision
+
+                if execution_revision(workflow) != application_generate_entity.builder_expected_revision:
+                    queue_manager.publish_error(
+                        BuilderExecutionPolicyError("stale_execution_revision"), PublishFrom.APPLICATION_MANAGER
+                    )
+                    return
 
             runner = AdvancedChatAppRunner(
                 application_generate_entity=application_generate_entity,

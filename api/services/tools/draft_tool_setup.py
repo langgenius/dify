@@ -14,8 +14,9 @@ The snapshot is internal, tenant/action-bound and never persisted in a graph.
 
 from __future__ import annotations
 
+import hashlib
 import json
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
@@ -311,6 +312,8 @@ class DraftToolRuntimeSelection:
     tenant_id: str
     actor_id: str
     credential: ToolCredentialMetadata | None
+    expected_credential_fingerprint: str | None = None
+    on_credential_refreshed: Callable[[str], None] | None = None
 
 
 def prepare_draft_tool_runtime_selection(
@@ -324,6 +327,8 @@ def prepare_draft_tool_runtime_selection(
     provider: str,
     action: str,
     credential_id: object,
+    expected_credential_fingerprint: str | None = None,
+    on_credential_refreshed: Callable[[str], None] | None = None,
 ) -> DraftToolRuntimeSelection | None:
     """Recheck at the actual Tool boundary; published/subworkflow delegation stays native.
 
@@ -388,7 +393,9 @@ def prepare_draft_tool_runtime_selection(
         raise ToolProviderCredentialValidationError("Tool credential setup could not be verified.") from None
     if metadata is None:
         raise ToolProviderCredentialValidationError("Configure or select an authorized Tool credential before testing.")
-    return DraftToolRuntimeSelection(tenant_id, actor_id, metadata)
+    return DraftToolRuntimeSelection(
+        tenant_id, actor_id, metadata, expected_credential_fingerprint, on_credential_refreshed
+    )
 
 
 def constrain_draft_tool_credential_read(
@@ -421,3 +428,14 @@ def constrain_draft_tool_credential_read(
         credential_type=CredentialType.BUILTIN_TOOL_PROVIDER,
         actor_id=selection.actor_id,
     )
+
+
+def tool_credential_fingerprint(credential: BuiltinToolProvider) -> str:
+    """Opaque confirmed account/version binding; encrypted values never leave this owner.
+
+    Include ciphertext because updates can share one database timestamp second.
+    This binds the detached native value read before decryption or OAuth refresh.
+    """
+    return hashlib.sha256(
+        f"{credential.id}:{credential.updated_at}:{credential.encrypted_credentials}".encode()
+    ).hexdigest()

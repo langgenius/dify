@@ -1,5 +1,6 @@
 """PRD §9.1 in the Build, Edit and Fix test gates: a side effect runs for real only once confirmed."""
 
+from copy import deepcopy
 from datetime import datetime
 from unittest.mock import Mock
 
@@ -23,6 +24,7 @@ from core.dify_builder.state import PcState
 from core.dify_builder.verification import publication_decision, result_card
 from services.dify_builder.effect_disclosure import confirm_field_key, disclose
 from services.dify_builder.execution_contracts import ExecutionEvidenceSummary
+from services.dify_builder.serde import context_from_dict, context_to_dict
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, saved_test_context
 from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
 
@@ -95,7 +97,7 @@ def _fixture(flow, *, disclosed: bool = True):
 
 
 def _signature(node_id: str) -> str:
-    return next(item.signature for item in disclose(GRAPH).items if item.node_id == node_id)
+    return next(item.signature for item in disclose(GRAPH, {"slack": "Ops bot"}).items if item.node_id == node_id)
 
 
 @pytest.mark.parametrize("flow", FLOWS)
@@ -120,14 +122,15 @@ def test_run_test_shows_the_form_again_while_a_side_effect_is_unconfirmed(flow):
 
 
 @pytest.mark.parametrize("flow", FLOWS)
-def test_run_test_skips_the_form_once_every_side_effect_is_confirmed(flow):
+def test_explicit_run_requires_a_fresh_confirmation_even_after_a_previous_approval(flow):
     module, _dify, repo, env, session, turn = _fixture(flow)
     fc = saved_test_context(repo, session.id, effect_confirmation={"slack": _signature("slack")})
 
     result = getattr(module, flow[4])(env, turn, session, fc)
 
-    assert result.next != flow[5]
-    assert not any(item.kind == "form" for item in result.items)
+    assert result.next == flow[5]
+    form = next(item.payload for item in result.items if item.kind == "form")
+    assert form["values"][confirm_field_key("slack")] is False
 
 
 @pytest.mark.parametrize("flow", FLOWS)
@@ -150,6 +153,7 @@ def test_ticked_box_is_recorded_and_kept_out_of_the_start_inputs(flow):
         ),
     )
     fc = DifyBuilderContext()
+    getattr(module, flow[4])(env, _turn, session, fc)
 
     result = module.handle_await_testdata(env, turn, session, fc)
 
@@ -159,6 +163,90 @@ def test_ticked_box_is_recorded_and_kept_out_of_the_start_inputs(flow):
     dify.run_draft = Mock(return_value=Run(status="succeeded"))
     getattr(module, RUN_HANDLERS[module])(env, turn, session, result.context)
     assert dify.run_draft.call_args.kwargs["effect_confirmation"] == {"slack": _signature("slack")}
+
+
+@pytest.mark.parametrize("flow", FLOWS)
+@pytest.mark.parametrize("change", ["endpoint", "headers", "account", "credential"])
+def test_old_checkbox_redisplays_changed_targets_instead_of_confirming_them(flow, change):
+    module, dify, _repo, env, session, turn = _fixture(flow)
+    graph = deepcopy(GRAPH)
+    graph["nodes"].append(
+        {
+            "id": "hook",
+            "data": {"type": "http-request", "method": "post", "url": "https://x.io/a", "headers": "X-Tenant: a"},
+        }
+    )
+    dify.effect_disclosure = disclose(graph, {"slack": "Ops bot"}, account_bindings={"slack": "credential-a"})
+    fc = DifyBuilderContext()
+    getattr(module, flow[4])(env, turn, session, fc)
+    fc = context_from_dict(context_to_dict(fc))
+    if change == "endpoint":
+        graph["nodes"][-1]["data"]["url"] = "https://x.io/b"
+    elif change == "headers":
+        graph["nodes"][-1]["data"]["headers"] = "X-Tenant: b"
+    dify.effect_disclosure = disclose(
+        graph,
+        {"slack": "Other bot" if change == "account" else "Ops bot"},
+        account_bindings={"slack": "credential-b" if change == "credential" else "credential-a"},
+    )
+    turn.action = Action(
+        kind="provide_testdata", payload={"inputs": {confirm_field_key("slack"): True, confirm_field_key("hook"): True}}
+    )
+
+    result = module.handle_await_testdata(env, turn, session, fc)
+
+    assert result.next == flow[5]
+    form = next(item.payload for item in result.items if item.kind == "form")
+    changed_node = "slack" if change in {"account", "credential"} else "hook"
+    assert form["values"][confirm_field_key(changed_node)] is False
+    assert changed_node not in result.context.effect_confirmation
+    assert not result.context.test_input_ref
+    unchanged_node = "hook" if changed_node == "slack" else "slack"
+    assert form["values"][confirm_field_key(unchanged_node)] is True
+
+    reviewed = module.handle_await_testdata(env, turn, session, result.context)
+
+    assert reviewed.next != flow[5]
+    assert set(reviewed.context.effect_confirmation) == {"slack", "hook"}
+
+
+@pytest.mark.parametrize("flow", FLOWS)
+def test_checkbox_without_a_server_shown_disclosure_cannot_confirm_an_effect(flow):
+    module, _dify, _repo, env, session, turn = _fixture(flow)
+    turn.action = Action(kind="provide_testdata", payload={"inputs": {confirm_field_key("slack"): True}})
+
+    result = module.handle_await_testdata(env, turn, session, DifyBuilderContext())
+
+    assert result.next == flow[5]
+    assert result.context.effect_confirmation == {}
+
+
+@pytest.mark.parametrize("flow", FLOWS)
+def test_user_entered_start_target_is_bound_without_rejecting_an_intentional_input_edit(flow, monkeypatch):
+    module, dify, repo, env, session, turn = _fixture(flow)
+    graph = {
+        "nodes": [
+            {"id": "start", "data": {"type": "start"}},
+            {"id": "hook", "data": {"type": "http-request", "method": "post", "url": "https://{{#start.host#}}/items"}},
+        ]
+    }
+
+    def disclosure(_app_id, _actor, *, inputs=None):
+        return disclose(graph, inputs=inputs)
+
+    monkeypatch.setattr(dify, "disclose_effects", disclosure)
+    fc = DifyBuilderContext()
+    getattr(module, flow[4])(env, turn, session, fc)
+    turn.action = Action(
+        kind="provide_testdata", payload={"inputs": {"host": "a.example.com", confirm_field_key("hook"): True}}
+    )
+
+    result = module.handle_await_testdata(env, turn, session, fc)
+
+    assert result.next != flow[5]
+    assert repo.get_test_input(result.context.test_input_ref).inputs == {"host": "a.example.com"}
+    assert disclose(graph, inputs={"host": "a.example.com"}).mocked_node_ids(fc.effect_confirmation) == set()
+    assert disclose(graph, inputs={"host": "b.example.com"}).mocked_node_ids(fc.effect_confirmation) == {"hook"}
 
 
 def _confirmed_run(simulated: tuple[str, ...]) -> Run:

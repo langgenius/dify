@@ -9,6 +9,13 @@ Dify is an open-source platform for building LLM applications, agentic workflows
 - Cross-repository builds, releases, and publication are not default prerequisites for this MVP. Existing Sandbox work remains frozen; use the official locked Graphon 0.7.0 dependency. Earlier plans requiring upstream changes do not override this user instruction of 2026-10-16.
 - Report unsupported capabilities honestly. Do not bypass authorization, claim remote process cleanup from an HTTP timeout, or call a partial/mock result full native acceptance. Frontend and ENG-1117 remain out of the current implementation scope.
 
+## Confirmed Test Run: product direction (2026-10-17)
+
+- Prefer the existing ordinary native Test Run and existing Code runtime. Code may access the network; networking alone is not a reason to block a test, require another sandbox, or add approval for every Code request. Avoid excessive Mock/Dry Run isolation and unnecessary engineering complexity.
+- Builder should assess possible risks from the user's task, generated code, node configuration, tool declarations, Agent capabilities, accounts and targets, then explain the concrete risks before running. Use Builder's reasoning capability; node-type and name/keyword heuristics alone are not the intended risk assessment.
+- Reuse the existing test interaction for risk disclosure and applicable confirmations. Use Mock selectively according to the test choice and actual risk; never fabricate credentials, permissions or real resource availability. The user has not removed existing Workspace permissions or the PRD's explicit side-effect and destructive-operation rules.
+- Reuse existing execution, authorization, Run and recovery facilities. Keep fixes for stale confirmations, duplicate effects after recovery, and autosave revision conflicts narrow. Do not introduce a new generic risk engine, isolation service or cross-repository prerequisite for these fixes. Frontend requirements are recorded, not implemented, unless the user changes that scope.
+
 ## Repository Gotchas
 
 - Run backend commands through `uv run --project api <command>`.

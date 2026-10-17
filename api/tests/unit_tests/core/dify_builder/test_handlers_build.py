@@ -627,6 +627,7 @@ def test_plan_approval_survives_generator_reusing_the_deleted_placeholder_start_
 
 def test_execution_run_test_advances_to_test_and_repair():
     from core.dify_builder.handlers_build import handle_execution
+    from core.dify_builder.models import TestInput
 
     events: list[dict] = []
     env, repo = _new_env(emit_canvas=events.append)
@@ -634,9 +635,12 @@ def test_execution_run_test_advances_to_test_and_repair():
     s = _seed_build_session(
         repo, PcState.BUILD_EXECUTION, built_node_ids=["start", "llm", "end"], test_input_ref="ti-1"
     )
+    repo.save_test_input(TestInput(id="ti-1", session_id=s.id, inputs={"topic": "hello"}))
     turn = Turn(action=Action(kind="run_test", base_version=1), actor=_actor())
     res = handle_execution(env, turn, *repo.get_session(s.id))
     assert res.next == PcState.BUILD_TEST_AND_REPAIR
+    assert res.context.test_input_ref != "ti-1"
+    assert repo.get_test_input(res.context.test_input_ref).inputs == {"topic": "hello"}
     assert events == []
 
 
@@ -1485,11 +1489,13 @@ def test_run_test_routes_to_testdata_gate_when_no_input():
 
 def test_run_test_skips_gate_when_input_prepared():
     from core.dify_builder.handlers_build import handle_execution
+    from core.dify_builder.models import TestInput
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
     env, _ = _new_env()
     env.dify = FakeBuildDifyPort()
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_EXECUTION)
+    env.repo.save_test_input(TestInput(id="ti-1", session_id=s.id, inputs={}))
     result = handle_execution(
         env, Turn(actor=_actor(), action=Action(kind="run_test")), s, DifyBuilderContext(test_input_ref="ti-1")
     )

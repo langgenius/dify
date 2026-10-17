@@ -565,6 +565,8 @@ def handle_apply_changes(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         return StepResult(next=PcState.EDIT_REVERTED, context=fc, items=items)
     if kind == "run_affected_tests":
         fc.verify_run_id = ""
+        fc.effect_confirmation = {}
+        fc.effect_confirmation_form = {}
         if fc.test_input_ref == "" or needs_effect_confirmation(env, s, fc, turn.actor):
             graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
             card, reply = testdata_form(
@@ -579,6 +581,9 @@ def handle_apply_changes(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
             form_items = append_card(fc, card)
             turn_items = append_assistant(env, s, fc, reply, cards=["form"])
             return StepResult(next=PcState.EDIT_AWAIT_TESTDATA, context=fc, items=[*form_items, *turn_items])
+        ti = replace(env.repo.get_test_input(fc.test_input_ref), id="")
+        env.repo.save_test_input(ti)
+        fc.test_input_ref = ti.id
         items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.ACTIONS_RUN_AFFECTED_PATH_TESTS)))
         return StepResult(next=PcState.EDIT_TEST_AFFECTED_PATHS, context=fc, items=items)
     return StepResult(next=PcState.EDIT_APPLY_CHANGES, context=fc)
@@ -610,7 +615,18 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
         inputs = {}
         if turn.action is not None and isinstance(turn.action.payload.get("inputs"), dict):
             inputs = turn.action.payload["inputs"]
-    inputs = record_effect_confirmation(env, s, fc, turn.actor, inputs)
+    inputs, stale_effects = record_effect_confirmation(env, s, fc, turn.actor, inputs)
+    if stale_effects:
+        return input_gate_result(
+            env,
+            s,
+            fc,
+            schema,
+            inputs,
+            PcState.EDIT_AWAIT_TESTDATA,
+            "The test targets or accounts changed. Review the updated confirmation before running.",
+            actor=turn.actor,
+        )
     try:
         validate_runtime_inputs(schema, inputs)
     except ValueError as exc:
@@ -665,6 +681,8 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
     raw = None
     try:
         validate_runtime_inputs(schema, inputs, ti)
+        confirmation = fc.effect_confirmation
+        fc.effect_confirmation = {}
         raw = env.dify.run_draft(
             s.app_id,
             turn.actor,
@@ -673,7 +691,7 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
             session_id=s.id,
             test_input_id=fc.test_input_ref,
             on_workflow_event=env.emit_workflow,
-            effect_confirmation=fc.effect_confirmation,
+            effect_confirmation=confirmation,
         )
         status, per_node, dify_run_id, run_error = raw.status, raw.per_node, raw.dify_run_id, raw.error
     except Exception as exc:
