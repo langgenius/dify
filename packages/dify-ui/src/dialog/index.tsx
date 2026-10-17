@@ -5,7 +5,13 @@ import { Dialog as BaseDialog } from '@base-ui/react/dialog'
 import { cn } from '../cn'
 import { IconButton } from '../icon-button'
 import { focusRingClassName } from '../internal/focus'
-import { modalBackdropClassName, modalPopupAnimationClassName } from '../internal/overlay'
+import {
+  modalBackdropClassName,
+  modalPopupAnimationClassName,
+  modalStackClassName,
+  modalSurfaceClassName,
+  modalTitleClassName,
+} from '../internal/overlay'
 import { resolveClassName } from '../internal/resolve-class-name'
 
 const Dialog = BaseDialog.Root
@@ -34,13 +40,7 @@ type DialogTitleProps = BaseDialog.Title.Props
 function DialogTitle({ className, ...props }: DialogTitleProps) {
   return (
     <BaseDialog.Title
-      className={(state) =>
-        cn(
-          // Same look as AlertDialogTitle; change both together.
-          'title-2xl-semi-bold wrap-break-word text-text-primary',
-          resolveClassName(className, state),
-        )
-      }
+      className={(state) => cn(modalTitleClassName, resolveClassName(className, state))}
       {...props}
     />
   )
@@ -92,12 +92,7 @@ function DialogPopup({ className, ...props }: DialogPopupProps) {
   return (
     <BaseDialog.Popup
       className={(state) =>
-        cn(
-          // Radius, border and surface match AlertDialogContent; change both together.
-          'rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl',
-          modalPopupAnimationClassName,
-          resolveClassName(className, state),
-        )
+        cn('relative', modalPopupAnimationClassName, resolveClassName(className, state))
       }
       {...props}
     />
@@ -116,7 +111,9 @@ function DialogContent({ children, className, backdropProps, ...props }: DialogC
       <DialogPopup
         className={(state) =>
           cn(
-            'fixed top-1/2 left-1/2 max-h-[80dvh] w-120 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain',
+            'fixed top-1/2 left-1/2 flex max-h-[calc(100dvh-2rem)] w-120 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-y-auto overscroll-contain',
+            modalSurfaceClassName,
+            modalStackClassName,
             resolveClassName(className, state),
           )
         }
@@ -134,7 +131,7 @@ function DialogHeader({ className, ...props }: DialogHeaderProps) {
   return (
     <div
       className={cn(
-        'sticky top-0 z-1 flex flex-col gap-1 bg-components-panel-bg ps-6 pe-14 pt-6 pb-3',
+        'flex shrink-0 flex-col gap-1 px-6 pt-6 pb-3 has-data-dialog-close:pe-14',
         className,
       )}
       {...props}
@@ -151,7 +148,12 @@ function DialogCloseButton({ 'aria-label': ariaLabel, ...props }: DialogCloseBut
     <BaseDialog.Close
       {...props}
       render={
-        <IconButton aria-label={ariaLabel} size="lg" className="absolute inset-e-5 top-5">
+        <IconButton
+          data-dialog-close=""
+          aria-label={ariaLabel}
+          size="lg"
+          className="absolute inset-e-5 top-5"
+        >
           <span aria-hidden className="i-ri-close-line size-4.5" />
         </IconButton>
       }
@@ -162,7 +164,15 @@ function DialogCloseButton({ 'aria-label': ariaLabel, ...props }: DialogCloseBut
 type DialogBodyProps = React.ComponentProps<'div'>
 
 function DialogBody({ className, ...props }: DialogBodyProps) {
-  return <div className={cn('px-6 py-3', className)} {...props} />
+  return (
+    <div
+      className={cn(
+        'relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-6 py-3',
+        className,
+      )}
+      {...props}
+    />
+  )
 }
 
 type DialogFooterProps = React.ComponentProps<'div'>
@@ -170,10 +180,7 @@ type DialogFooterProps = React.ComponentProps<'div'>
 function DialogFooter({ className, ...props }: DialogFooterProps) {
   return (
     <div
-      className={cn(
-        'sticky bottom-0 flex items-center justify-end gap-2 bg-components-panel-bg px-6 pt-5 pb-6',
-        className,
-      )}
+      className={cn('flex shrink-0 items-center justify-end gap-2 px-6 pt-5 pb-6', className)}
       {...props}
     />
   )

@@ -6,7 +6,13 @@ import { AlertDialog as BaseAlertDialog } from '@base-ui/react/alert-dialog'
 import { Button } from '../button'
 import { cn } from '../cn'
 import { focusRingClassName } from '../internal/focus'
-import { modalBackdropClassName, modalPopupAnimationClassName } from '../internal/overlay'
+import {
+  modalBackdropClassName,
+  modalPopupAnimationClassName,
+  modalStackClassName,
+  modalSurfaceClassName,
+  modalTitleClassName,
+} from '../internal/overlay'
 import { resolveClassName } from '../internal/resolve-class-name'
 
 const AlertDialog = BaseAlertDialog.Root
@@ -59,8 +65,9 @@ function AlertDialogContent({
       <BaseAlertDialog.Popup
         className={(state) =>
           cn(
-            // Radius, border and surface match DialogPopup; change both together.
-            'fixed top-1/2 left-1/2 max-h-[calc(100dvh-2rem)] w-120 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
+            'fixed top-1/2 left-1/2 flex max-h-[calc(100dvh-2rem)] w-120 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-y-auto overscroll-contain',
+            modalSurfaceClassName,
+            modalStackClassName,
             modalPopupAnimationClassName,
             resolveClassName(className, state),
           )
@@ -76,7 +83,7 @@ function AlertDialogContent({
 type AlertDialogHeaderProps = React.ComponentProps<'div'>
 
 function AlertDialogHeader({ className, ...props }: AlertDialogHeaderProps) {
-  return <div className={cn('flex flex-col gap-2 px-6 pt-6 pb-4', className)} {...props} />
+  return <div className={cn('flex shrink-0 flex-col gap-2 px-6 pt-6 pb-4', className)} {...props} />
 }
 
 type AlertDialogTitleProps = BaseAlertDialog.Title.Props
@@ -84,13 +91,7 @@ type AlertDialogTitleProps = BaseAlertDialog.Title.Props
 function AlertDialogTitle({ className, ...props }: AlertDialogTitleProps) {
   return (
     <BaseAlertDialog.Title
-      className={(state) =>
-        cn(
-          // Same look as DialogTitle; change both together.
-          'title-2xl-semi-bold wrap-break-word text-text-primary',
-          resolveClassName(className, state),
-        )
-      }
+      className={(state) => cn(modalTitleClassName, resolveClassName(className, state))}
       {...props}
     />
   )
@@ -112,14 +113,17 @@ function AlertDialogDescription({ className, ...props }: AlertDialogDescriptionP
   )
 }
 
+type AlertDialogBodyProps = React.ComponentProps<'div'>
+
+function AlertDialogBody({ className, ...props }: AlertDialogBodyProps) {
+  return <div className={cn('px-6', className)} {...props} />
+}
+
 type AlertDialogFooterProps = React.ComponentProps<'div'>
 
 function AlertDialogFooter({ className, ...props }: AlertDialogFooterProps) {
   return (
-    <div
-      className={cn('flex items-start justify-end gap-2 self-stretch p-6', className)}
-      {...props}
-    />
+    <div className={cn('flex shrink-0 items-center justify-end gap-2 p-6', className)} {...props} />
   )
 }
 
@@ -164,6 +168,7 @@ function AlertDialogConfirmButton({
 
 export {
   AlertDialog,
+  AlertDialogBody,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
@@ -177,6 +182,7 @@ export {
 
 export type {
   AlertDialogActions,
+  AlertDialogBodyProps,
   AlertDialogCancelButtonProps,
   AlertDialogChangeEventDetails,
   AlertDialogChangeEventReason,
