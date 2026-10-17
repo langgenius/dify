@@ -1,14 +1,14 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import type { DataSourceNodeCompletedResponse, DataSourceNodeErrorResponse } from '@/types/pipeline'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render as renderWithoutUrlState, screen, waitFor } from '@testing-library/react'
 import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import OnlineDrive from '../index'
 
 const mocks = vi.hoisted(() => ({
   pipelineId: 'pipeline-123' as string | undefined,
   docLink: vi.fn((path?: string) => `https://docs.example.com${path || ''}`),
-  setSettingsDestination: vi.fn(),
   ssePost: vi.fn(),
   toastError: vi.fn(),
   useGetDataSourceAuth: vi.fn(),
@@ -48,18 +48,25 @@ vi.mock('@/context/dataset-detail', () => ({
   ) => selector({ dataset: { pipeline_id: mocks.pipelineId } }),
 }))
 
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mocks.setSettingsDestination] }
-})
-
 vi.mock('@/service/base', () => ({
   ssePost: (...args: unknown[]) => mocks.ssePost(...args),
 }))
 
-vi.mock('@/service/use-datasource', () => ({
-  useGetDataSourceAuth: (...args: unknown[]) => mocks.useGetDataSourceAuth(...args),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    // The credential query is keyed by `${pluginId}/${provider}`; report it as the two ids.
+    'auth.plugin.datasource.byProviderId.get': (options: { queryKey: unknown[] }) => {
+      const { input } = options.queryKey[1] as { input: { params: { provider_id: string } } }
+      const providerId = input.params.provider_id
+      const separator = providerId.lastIndexOf('/')
+      return mocks.useGetDataSourceAuth({
+        pluginId: providerId.slice(0, separator),
+        provider: providerId.slice(separator + 1),
+      })
+    },
+  })
+})
 
 vi.mock('@/app/notifications', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/app/notifications')>()
@@ -227,6 +234,9 @@ const createOnlineDriveFile = (overrides: Partial<OnlineDriveFile> = {}): Online
   size: 100,
   ...overrides,
 })
+
+const onUrlUpdate = vi.fn()
+const render = createNuqsTestRenderer(renderWithoutUrlState, () => ({ onUrlUpdate }))
 
 const renderOnlineDrive = (props: Partial<React.ComponentProps<typeof OnlineDrive>> = {}) => {
   return render(
@@ -423,7 +433,7 @@ describe('OnlineDrive', () => {
     expect(mockStoreState.setBucket).toHaveBeenCalledTimes(1)
   })
 
-  it('should open integrations settings and forward credential changes', () => {
+  it('should open integrations settings and forward credential changes', async () => {
     const onCredentialChange = vi.fn()
     renderOnlineDrive({
       onCredentialChange,
@@ -432,7 +442,9 @@ describe('OnlineDrive', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Configure' }))
     fireEvent.click(screen.getByRole('button', { name: 'Change Credential' }))
 
-    expect(mocks.setSettingsDestination).toHaveBeenCalledWith('data-source')
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('data-source'),
+    )
     expect(onCredentialChange).toHaveBeenCalledWith('credential-2')
   })
 })

@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import type { PluginDetail } from '@/app/components/plugins/types'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
@@ -24,17 +24,23 @@ vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllToolProviders: () => ({
-    data: [
-      {
-        name: 'tool-plugin/provider-a',
-        type: 'builtin',
-        allow_delete: true,
-      },
-    ],
-  }),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { createToolProviderFixture } = await import('@/test/console/tool-provider-fixture')
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.toolProviders.get': async () => [
+        createToolProviderFixture({
+          name: 'tool-plugin/provider-a',
+          type: 'builtin',
+          allow_delete: true,
+        }),
+      ],
+    }),
+  }
+})
 
 vi.mock('@/service/use-plugins', () => ({
   useVersionListOfPlugin: () => ({ data: { data: { versions: [] } } }),
@@ -57,14 +63,6 @@ vi.mock('@/app/components/plugins/plugin-auth', () => ({
   PluginAuth: ({ pluginPayload }: { pluginPayload: { provider: string } }) => (
     <div data-testid="plugin-auth">{pluginPayload.provider}</div>
   ),
-}))
-
-vi.mock('@/app/components/base/badges/verified', () => ({
-  default: () => <div data-testid="verified" />,
-}))
-
-vi.mock('@/app/components/base/deprecation-notice', () => ({
-  default: () => <div data-testid="deprecation-notice" />,
 }))
 
 vi.mock('@/app/components/plugins/card/base/card-icon', () => ({
@@ -190,13 +188,15 @@ describe('DetailHeader', () => {
     vi.clearAllMocks()
   })
 
-  it('renders the plugin summary, source badge, auth section, and modal container', () => {
+  it('renders the plugin summary, source badge, auth section, and modal container', async () => {
     render(<DetailHeader detail={createDetail()} onHide={vi.fn()} onUpdate={vi.fn()} />)
 
     expect(screen.getByTestId('title')).toHaveTextContent('Tool Plugin')
     expect(screen.getByTestId('description')).toHaveTextContent('Tool plugin description')
     expect(screen.getByTestId('source-badge')).toHaveTextContent('marketplace')
-    expect(screen.getByTestId('plugin-auth')).toHaveTextContent('tool-plugin/provider-a')
+    await waitFor(() =>
+      expect(screen.getByTestId('plugin-auth')).toHaveTextContent('tool-plugin/provider-a'),
+    )
     fireEvent.click(
       screen.getByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }),
     )

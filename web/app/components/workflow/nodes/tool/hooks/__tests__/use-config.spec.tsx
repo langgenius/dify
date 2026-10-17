@@ -3,13 +3,16 @@ import { renderHook } from '@testing-library/react'
 import { CollectionType } from '@/app/components/tools/types'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { createTestQueryClient } from '@/test/query-client'
 import useConfig from '../use-config'
+
+const queryClient = createTestQueryClient()
+const queryClientWrapper = createQueryClientWrapper(queryClient)
 
 const mockSetInputs = vi.hoisted(() => vi.fn())
 const mockSetControlPromptEditorRerenderKey = vi.hoisted(() => vi.fn())
 const mockUseCurrentToolCollection = vi.hoisted(() => vi.fn())
-const mockGetConfiguredValue = vi.hoisted(() => vi.fn())
-const mockToolParametersToFormSchemas = vi.hoisted(() => vi.fn())
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useLanguage: () => 'en_US',
@@ -32,17 +35,8 @@ vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   }),
 }))
 
-vi.mock('@/app/components/tools/utils/to-form-schema', () => ({
-  getConfiguredValue: (...args: unknown[]) => mockGetConfiguredValue(...args),
-  toolParametersToFormSchemas: (...args: unknown[]) => mockToolParametersToFormSchemas(...args),
-}))
-
 vi.mock('@/service/tools', () => ({
   updateBuiltInToolCredential: vi.fn(),
-}))
-
-vi.mock('@/service/use-tools', () => ({
-  useInvalidToolsByType: () => vi.fn(),
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
@@ -76,7 +70,7 @@ const currentTool = {
   name: 'google_search',
   parameters: [
     {
-      variable: 'query',
+      name: 'query',
       form: 'llm',
       label: { en_US: 'Query' },
       type: 'string',
@@ -84,7 +78,7 @@ const currentTool = {
       default: 'default query',
     },
     {
-      variable: 'api_key',
+      name: 'api_key',
       form: 'credential',
       label: { en_US: 'API Key' },
       type: 'string',
@@ -98,14 +92,14 @@ const currentToolWithoutDefaults = {
   name: 'google_search',
   parameters: [
     {
-      variable: 'query',
+      name: 'query',
       form: 'llm',
       label: { en_US: 'Query' },
       type: 'string',
       required: true,
     },
     {
-      variable: 'api_key',
+      name: 'api_key',
       form: 'credential',
       label: { en_US: 'API Key' },
       type: 'string',
@@ -132,19 +126,6 @@ describe('useConfig', () => {
         tools: [currentTool],
       },
     })
-
-    mockToolParametersToFormSchemas.mockImplementation((parameters) => parameters)
-    mockGetConfiguredValue.mockImplementation(
-      (_value, schema: Array<{ variable: string; default?: string }>) => {
-        return schema.reduce<Record<string, ReturnType<typeof createToolVarInput>>>(
-          (acc, item) => {
-            acc[item.variable] = createToolVarInput(item.default || '')
-            return acc
-          },
-          {} as Record<string, ReturnType<typeof createToolVarInput>>,
-        )
-      },
-    )
   })
 
   afterEach(() => {
@@ -162,6 +143,7 @@ describe('useConfig', () => {
 
       const { rerender } = renderHook(({ payload }) => useConfig('tool-node-1', payload), {
         initialProps: { payload: emptyPayload },
+        wrapper: queryClientWrapper,
       })
 
       expect(mockSetInputs).toHaveBeenCalledTimes(1)
@@ -178,14 +160,16 @@ describe('useConfig', () => {
     })
 
     it('should not update inputs when tool values are already populated on first render', () => {
-      renderHook(() =>
-        useConfig(
-          'tool-node-1',
-          createNodeData({
-            tool_parameters: { query: createToolVarInput('existing query') },
-            tool_configurations: { api_key: createToolVarInput('existing secret') },
-          }),
-        ),
+      renderHook(
+        () =>
+          useConfig(
+            'tool-node-1',
+            createNodeData({
+              tool_parameters: { query: createToolVarInput('existing query') },
+              tool_configurations: { api_key: createToolVarInput('existing secret') },
+            }),
+          ),
+        { wrapper: queryClientWrapper },
       )
 
       expect(mockSetInputs).not.toHaveBeenCalled()
@@ -200,9 +184,8 @@ describe('useConfig', () => {
           tools: [currentToolWithoutDefaults],
         },
       })
-      mockGetConfiguredValue.mockReturnValue({})
 
-      renderHook(() => useConfig('tool-node-1', createNodeData()))
+      renderHook(() => useConfig('tool-node-1', createNodeData()), { wrapper: queryClientWrapper })
 
       expect(mockSetInputs).not.toHaveBeenCalled()
     })

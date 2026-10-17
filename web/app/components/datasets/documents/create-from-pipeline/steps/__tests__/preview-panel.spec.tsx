@@ -1,17 +1,23 @@
+import type { IndexingEstimateResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { NotionPage } from '@/models/common'
-import type {
-  CrawlResultItem,
-  CustomFile,
-  FileIndexingEstimateResponse,
-  FileItem,
-} from '@/models/datasets'
+import type { CrawlResultItem, CustomFile, FileItem } from '@/models/datasets'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DatasourceType } from '@/models/pipeline'
 import { StepOnePreview, StepTwoPreview } from '../preview-panel'
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'files.byFileId.preview.get': vi.fn(() => ({
+      data: { content: 'Mock file content for testing' },
+      isFetching: false,
+    })),
+  })
+})
 
 // Mock context hooks (底层依赖)
 vi.mock('@/context/dataset-detail', () => ({
@@ -28,19 +34,6 @@ vi.mock('@/context/dataset-detail', () => ({
 }))
 
 // Mock API hooks (底层依赖)
-vi.mock('@/service/use-common', () => ({
-  useFilePreview: vi.fn(() => ({
-    data: { content: 'Mock file content for testing' },
-    isFetching: false,
-  })),
-}))
-
-vi.mock('@/service/use-pipeline', () => ({
-  usePreviewOnlineDocument: vi.fn(() => ({
-    mutateAsync: vi.fn().mockResolvedValue({ content: 'Mock document content' }),
-    isPending: false,
-  })),
-}))
 
 // Mock data source store
 vi.mock('../../data-source/store', () => ({
@@ -192,11 +185,11 @@ describe('StepTwoPreview', () => {
     { id: 'drive-1', name: 'drive-file.txt' } as OnlineDriveFile,
   ]
 
-  const mockEstimateData: FileIndexingEstimateResponse = {
+  const mockEstimateData: IndexingEstimateResponse = {
     tokens: 1000,
     total_price: 0.01,
     total_segments: 10,
-  } as FileIndexingEstimateResponse
+  } as IndexingEstimateResponse
 
   const defaultProps = {
     datasourceType: DatasourceType.localFile,
@@ -276,4 +269,16 @@ describe('StepTwoPreview', () => {
       expect(container.querySelector('.h-full')).toBeInTheDocument()
     })
   })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.byPipelineId.workflows.published.datasource.nodes.byNodeId.preview.post': () =>
+        Promise.resolve({ content: 'Mock document content' }),
+    }),
+  }
 })

@@ -1,5 +1,6 @@
-import { act, renderHook } from '@testing-library/react'
-import { FlowType } from '@/types/common'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
+import { act } from '@testing-library/react'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { VarType } from '../../../types'
 import { useGetAvailableVars, useVariableAssigner } from '../hooks'
 
@@ -8,10 +9,10 @@ const mockUseNodes = vi.hoisted(() => vi.fn())
 const mockUseNodeDataUpdate = vi.hoisted(() => vi.fn())
 const mockUseWorkflow = vi.hoisted(() => vi.fn())
 const mockUseWorkflowVariables = vi.hoisted(() => vi.fn())
-const mockUseIsChatMode = vi.hoisted(() => vi.fn())
+let chatflowMode = false
 const mockUseWorkflowStore = vi.hoisted(() => vi.fn())
 const mockFlowType = vi.hoisted(() => ({
-  value: undefined as FlowType | undefined,
+  value: undefined as EditorResource['kind'] | undefined,
 }))
 
 vi.mock('reactflow', () => ({
@@ -34,7 +35,6 @@ vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
   return {
     ...actual,
     useWorkflow: () => mockUseWorkflow(),
-    useIsChatMode: () => mockUseIsChatMode(),
   }
 })
 
@@ -52,10 +52,12 @@ vi.mock('@/app/components/workflow/store', () => ({
 }))
 
 vi.mock('@/app/components/workflow/hooks-store/store', () => ({
-  useHooksStore: (selector: (state: { configsMap?: { flowType?: FlowType } }) => unknown) =>
+  useHooksStore: (
+    selector: (state: { configsMap?: { resourceKind?: EditorResource['kind'] } }) => unknown,
+  ) =>
     selector({
       configsMap: {
-        flowType: mockFlowType.value,
+        resourceKind: mockFlowType.value,
       },
     }),
 }))
@@ -111,11 +113,13 @@ describe('variable-assigner/hooks', () => {
     mockUseWorkflowVariables.mockReturnValue({
       getNodeAvailableVars: vi.fn(),
     })
-    mockUseIsChatMode.mockReturnValue(false)
+    chatflowMode = false
   })
 
   it('should append target variables, ignore duplicates, and update grouped variables', () => {
-    const { result } = renderHook(() => useVariableAssigner())
+    const { result } = renderHook(() => useVariableAssigner(), {
+      resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
+    })
 
     act(() => {
       result.current.handleAssignVariableValueChange('assigner-1', ['start', 'bar'], {
@@ -186,7 +190,9 @@ describe('variable-assigner/hooks', () => {
       },
     ])
 
-    const { result } = renderHook(() => useVariableAssigner())
+    const { result } = renderHook(() => useVariableAssigner(), {
+      resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
+    })
 
     act(() => {
       result.current.handleAddVariableInAddVariablePopupWithPosition(
@@ -232,7 +238,9 @@ describe('variable-assigner/hooks', () => {
   })
 
   it('should update the hovered group state on enter and leave', () => {
-    const { result } = renderHook(() => useVariableAssigner())
+    const { result } = renderHook(() => useVariableAssigner(), {
+      resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
+    })
 
     act(() => {
       result.current.handleGroupItemMouseEnter('group-1')
@@ -286,7 +294,9 @@ describe('variable-assigner/hooks', () => {
       getNodeAvailableVars,
     })
 
-    const { result } = renderHook(() => useGetAvailableVars())
+    const { result } = renderHook(() => useGetAvailableVars(), {
+      resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
+    })
 
     expect(result.current('current-node', 'target', () => true, true)).toEqual([
       {
@@ -304,7 +314,6 @@ describe('variable-assigner/hooks', () => {
   })
 
   it('should filter system variables when the current flow is a snippet', () => {
-    mockFlowType.value = FlowType.snippet
     mockUseNodes.mockReturnValue([
       {
         id: 'current-node',
@@ -328,7 +337,9 @@ describe('variable-assigner/hooks', () => {
       getNodeAvailableVars,
     })
 
-    const { result } = renderHook(() => useGetAvailableVars())
+    const { result } = renderHook(() => useGetAvailableVars(), {
+      resource: { kind: 'snippet', snippetId: 'snippet-1' },
+    })
 
     expect(result.current('current-node', 'target', () => true, false)).toEqual([
       {

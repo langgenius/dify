@@ -17,12 +17,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   useModelListAndDefaultModelAndCurrentProviderAndModel: () => mockHooksReturn,
 }))
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/declarations', () => ({
-  ModelTypeEnum: {
-    textEmbedding: 'text-embedding',
-  },
-}))
-
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
   ModelSelector: ({
     value,

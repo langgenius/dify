@@ -1,5 +1,5 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
-import type { VersionHistory } from '@/types/workflow'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { fireEvent, screen } from '@testing-library/react'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import {
@@ -8,7 +8,6 @@ import {
   seedFeatures,
   seedSystemFeatures,
 } from '@/test/console/query-data'
-import { FlowType } from '@/types/common'
 import { renderWorkflowComponent as renderWorkflow } from '../../__tests__/workflow-test-env'
 import { WorkflowVersion } from '../../types'
 import HeaderInRestoring from '../header-in-restoring'
@@ -40,7 +39,7 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
 }))
 
 vi.mock('@/service/use-workflow', () => ({
-  useInvalidAllLastRun: () => mockInvalidAllLastRun,
+  useInvalidateAllLastRun: () => mockInvalidAllLastRun,
   useResetWorkflowVersionHistory: () => mockResetWorkflowVersionHistory,
   useRestoreWorkflow: () => ({
     mutateAsync: mockRestoreWorkflow,
@@ -59,7 +58,9 @@ vi.mock('../../hooks/use-workflow-refresh-draft', () => ({
   }),
 }))
 
-const createVersion = (overrides: Partial<VersionHistory> = {}): VersionHistory => ({
+const createVersion = (
+  overrides: Partial<FetchWorkflowDraftResponse> = {},
+): FetchWorkflowDraftResponse => ({
   id: 'version-1',
   graph: {
     nodes: [],
@@ -92,31 +93,12 @@ describe('HeaderInRestoring', () => {
     deploymentEdition = 'CLOUD'
   })
 
-  it('should disable restore when the flow id is not ready yet', () => {
-    renderWorkflowComponent(<HeaderInRestoring />, {
-      initialStoreState: {
-        currentVersion: createVersion(),
-      },
-      hooksStoreProps: {
-        configsMap: undefined,
-      },
-    })
-
-    expect(screen.getByRole('button', { name: 'workflow.common.restore' })).toBeDisabled()
-  })
-
   it('should enable restore when version and flow id are both ready', () => {
     renderWorkflowComponent(<HeaderInRestoring />, {
       initialStoreState: {
         currentVersion: createVersion(),
       },
-      hooksStoreProps: {
-        configsMap: {
-          flowId: 'app-1',
-          flowType: undefined as never,
-          fileSettings: {} as never,
-        },
-      },
+      hooksStoreProps: {},
     })
 
     expect(screen.getByRole('button', { name: 'workflow.common.restore' })).toBeEnabled()
@@ -129,12 +111,9 @@ describe('HeaderInRestoring', () => {
           version: WorkflowVersion.Draft,
         }),
       },
+      resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
       hooksStoreProps: {
-        configsMap: {
-          flowId: 'app-1',
-          flowType: FlowType.appFlow,
-          fileSettings: {} as never,
-        },
+        fileSettings: {} as never,
       },
     })
 
@@ -147,12 +126,9 @@ describe('HeaderInRestoring', () => {
       initialStoreState: {
         currentVersion: createVersion(),
       },
+      resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
       hooksStoreProps: {
-        configsMap: {
-          flowId: 'app-1',
-          flowType: FlowType.appFlow,
-          fileSettings: {} as never,
-        },
+        fileSettings: {} as never,
       },
     })
 

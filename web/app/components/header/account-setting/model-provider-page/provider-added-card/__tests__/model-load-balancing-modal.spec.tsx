@@ -1,6 +1,7 @@
 import type { ModelItem, ModelProvider } from '../../declarations'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { ConfigurationMethodEnum } from '../../declarations'
 import ModelLoadBalancingModal from '../model-load-balancing-modal'
 
@@ -71,17 +72,6 @@ vi.mock('@/app/notifications', async (importOriginal) => {
     },
   }
 })
-
-vi.mock('@/service/use-models', () => ({
-  useGetModelCredential: () => ({
-    isLoading: false,
-    data: mockCredentialData,
-    refetch: mockRefetch,
-  }),
-  useUpdateModelLoadBalancingConfig: () => ({
-    mutateAsync: mockMutateAsync,
-  }),
-}))
 
 vi.mock('../../model-auth/hooks/use-auth', () => ({
   useAuth: () => ({
@@ -274,6 +264,9 @@ describe('ModelLoadBalancingModal', () => {
 
     await waitFor(() => {
       expect(mockRefetch).toHaveBeenCalled()
+      expect(mockMutateAsync).toHaveBeenCalledWith(expect.anything(), {
+        provider: 'test-provider',
+      })
       expect(mockMutateAsync).toHaveBeenCalled()
       const payload = mockMutateAsync.mock.calls[0]![0] as {
         load_balancing: { configs: Array<{ credentials: { api_key: string } }> }
@@ -839,4 +832,27 @@ describe('ModelLoadBalancingModal', () => {
       expect(mockMutateAsync).toHaveBeenCalled()
     })
   })
+})
+
+// Credential snapshots are inputs to the local editable form; saves use the real mutation.
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.modelProviders.byProvider.models.credentials.get': () => ({
+      isLoading: false,
+      data: mockCredentialData,
+      refetch: mockRefetch,
+    }),
+  })
+})
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.modelProviders.byProvider.models.post': ({ params, body }) =>
+        mockMutateAsync(body, params),
+    }),
+  }
 })

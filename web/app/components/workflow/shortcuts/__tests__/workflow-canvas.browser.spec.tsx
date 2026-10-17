@@ -94,7 +94,12 @@ vi.mock('../../hooks/use-nodes-meta-data', () => ({
     author: 'Dify',
   }),
 }))
-vi.mock('@/service/use-tools', () => ({ useAllWorkflowTools: () => ({ data: [] }) }))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.workflow.get': () => ({ data: [] }),
+  })
+})
 vi.mock('../../node-actions-menu/change-block-popup', () => ({ ChangeBlockPopup: () => null }))
 
 vi.mock('@/context/permission-state', async () => {

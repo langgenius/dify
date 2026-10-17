@@ -28,14 +28,14 @@ const mockFeaturesStore = {
   }),
 }
 
-let mockIsChatMode = true
+let chatflowMode = true
 let mockNodesReadOnly = false
 
 vi.mock('../hooks/use-workflow', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../hooks/use-workflow')>()
   return {
     ...actual,
-    useIsChatMode: () => mockIsChatMode,
+
     useNodesReadOnly: () => ({
       nodesReadOnly: mockNodesReadOnly,
     }),
@@ -151,6 +151,7 @@ const renderFeatures = (
   }
 
   return renderWorkflowFlowComponent(<DelayedFeatures />, {
+    resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
     nodes: [startNode],
     edges: [],
     ...options,
@@ -161,7 +162,7 @@ const renderFeatures = (
 describe('Features', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsChatMode = true
+    chatflowMode = true
     mockNodesReadOnly = false
     mockUpdateFeatures.mockResolvedValue(undefined)
   })

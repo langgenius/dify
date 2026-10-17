@@ -1,17 +1,24 @@
 import type { ReactNode } from 'react'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
 import { render } from '@/test/console/render'
+import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
+import { createDeferred } from '@/test/deferred'
 import MCPDetailContent from '../content'
 
 // Mutable mock functions
 const mockUpdateTools = vi.fn().mockResolvedValue({})
 const mockAuthorizeMcp = vi.fn().mockResolvedValue({ result: 'success' })
-const mockInvalidateMCPTools = vi.fn()
-const mockInvalidateAllMCPTools = vi.fn()
+const mockInvalidateQueries = vi.fn()
+const mcpToolsKey = consoleQuery.workspaces.current.tools.mcp.get.queryKey()
+const mcpProviderToolsKey =
+  consoleQuery.workspaces.current.toolProvider.mcp.tools.byProviderId.get.queryKey({
+    input: { params: { provider_id: 'mcp-1' } },
+  })
 const mockOpenOAuthPopup = vi.fn()
 
 // Mutable mock state
@@ -22,27 +29,22 @@ type MockTool = {
 }
 
 let mockToolsData: { tools: MockTool[] } = { tools: [] }
-let mockIsFetching = false
-let mockIsUpdating = false
-let mockIsAuthorizing = false
+let seedTools = true
+const getTools = vi.fn()
+const toolsResponse = () =>
+  createToolProviderFixture({
+    id: 'mcp-1',
+    type: 'mcp',
+    tools: mockToolsData.tools.map((tool) => ({
+      name: tool.name,
+      author: 'MCP',
+      label: { en_US: tool.name },
+      description: { en_US: tool.description ?? '' },
+      parameters: [],
+    })),
+  })
 
 // Mock the services
-vi.mock('@/service/use-tools', () => ({
-  useMCPTools: () => ({
-    data: mockToolsData,
-    isFetching: mockIsFetching,
-  }),
-  useInvalidateMCPTools: () => mockInvalidateMCPTools,
-  useInvalidateAllMCPTools: () => mockInvalidateAllMCPTools,
-  useUpdateMCPTools: () => ({
-    mutateAsync: mockUpdateTools,
-    isPending: mockIsUpdating,
-  }),
-  useAuthorizeMCP: () => ({
-    mutateAsync: mockAuthorizeMcp,
-    isPending: mockIsAuthorizing,
-  }),
-}))
 
 // Mock OAuth hook
 type OAuthArgs = readonly unknown[]
@@ -115,9 +117,16 @@ describe('MCPDetailContent', () => {
       defaultOptions: {
         queries: {
           retry: false,
+          staleTime: Infinity,
         },
       },
     })
+    if (seedTools)
+      queryClient.setQueryData<ReturnType<typeof toolsResponse>>(
+        mcpProviderToolsKey,
+        toolsResponse(),
+      )
+    vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(mockInvalidateQueries)
     return ({ children }: { children: ReactNode }) =>
       React.createElement(QueryClientProvider, { client: queryClient }, children)
   }
@@ -151,8 +160,7 @@ describe('MCPDetailContent', () => {
     // Reset mocks
     mockUpdateTools.mockClear()
     mockAuthorizeMcp.mockClear()
-    mockInvalidateMCPTools.mockClear()
-    mockInvalidateAllMCPTools.mockClear()
+    mockInvalidateQueries.mockReset().mockResolvedValue(undefined)
     mockOpenOAuthPopup.mockClear()
 
     // Reset mock return values
@@ -161,9 +169,8 @@ describe('MCPDetailContent', () => {
 
     // Reset state
     mockToolsData = { tools: [] }
-    mockIsFetching = false
-    mockIsUpdating = false
-    mockIsAuthorizing = false
+    seedTools = true
+    getTools.mockReturnValue(new Promise(() => {}))
     mockConsoleState.workspacePermissionKeys = ['mcp.manage']
   })
 
@@ -307,7 +314,7 @@ describe('MCPDetailContent', () => {
 
   describe('Loading States', () => {
     it('should show loading state when fetching tools', () => {
-      mockIsFetching = true
+      seedTools = false
       mockToolsData = {
         tools: [{ id: 'tool1', name: 'tool1', description: 'Tool 1' }],
       }
@@ -316,23 +323,35 @@ describe('MCPDetailContent', () => {
       expect(screen.getByText('tools.mcp.gettingTools'))!.toBeInTheDocument()
     })
 
-    it('should show updating state when updating tools', () => {
-      mockIsUpdating = true
-      mockToolsData = {
-        tools: [{ id: 'tool1', name: 'tool1', description: 'Tool 1' }],
-      }
+    it('shows updating state until the update request resolves', async () => {
+      const pending = createDeferred<object>()
+      mockUpdateTools.mockReturnValue(pending.promise)
+      mockToolsData = { tools: [{ id: 'tool1', name: 'tool1' }] }
       const detail = createMockDetail({ is_team_authorization: true })
-      render(<MCPDetailContent {...defaultProps} detail={detail} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.updateTools'))!.toBeInTheDocument()
+      const onUpdate = vi.fn()
+      render(<MCPDetailContent {...defaultProps} detail={detail} onUpdate={onUpdate} />, {
+        wrapper: createWrapper(),
+      })
+      fireEvent.click(screen.getByText('tools.mcp.update'))
+      fireEvent.click(getConfirmButton())
+      expect(await screen.findByText('tools.mcp.updateTools')).toBeInTheDocument()
+      expect(onUpdate).not.toHaveBeenCalled()
+      await act(async () => pending.resolve({}))
+      await waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(1))
+      expect(screen.queryByText('tools.mcp.updateTools')).not.toBeInTheDocument()
     })
 
-    it('should show authorizing button when authorizing', () => {
-      mockIsAuthorizing = true
+    it('shows authorizing state while authorization is pending', async () => {
+      const pending = createDeferred<{ result: string }>()
+      mockAuthorizeMcp.mockReturnValue(pending.promise)
       const detail = createMockDetail({ is_team_authorization: false })
       render(<MCPDetailContent {...defaultProps} detail={detail} />, { wrapper: createWrapper() })
-      // Multiple elements show authorizing text - use getAllByText
-      const authorizingElements = screen.getAllByText('tools.mcp.authorizing')
-      expect(authorizingElements.length).toBeGreaterThan(0)
+      fireEvent.click(screen.getByText('tools.mcp.authorize'))
+      expect((await screen.findAllByText('tools.mcp.authorizing')).length).toBeGreaterThan(0)
+      await act(async () => pending.resolve({ result: 'success' }))
+      await waitFor(() =>
+        expect(screen.queryByText('tools.mcp.authorizing')).not.toBeInTheDocument(),
+      )
     })
   })
 
@@ -349,7 +368,7 @@ describe('MCPDetailContent', () => {
 
       await waitFor(() => {
         expect(onFirstCreate).toHaveBeenCalled()
-        expect(mockAuthorizeMcp).toHaveBeenCalledWith({ provider_id: 'mcp-1' })
+        expect(mockAuthorizeMcp).toHaveBeenCalledWith({ body: { provider_id: 'mcp-1' } })
       })
     })
 
@@ -435,9 +454,9 @@ describe('MCPDetailContent', () => {
       fireEvent.click(getConfirmButton())
 
       await waitFor(() => {
-        expect(mockUpdateTools).toHaveBeenCalledWith('mcp-1')
-        expect(mockInvalidateMCPTools).toHaveBeenCalledWith('mcp-1')
-        expect(mockInvalidateAllMCPTools).toHaveBeenCalled()
+        expect(mockUpdateTools).toHaveBeenCalledWith({ params: { provider_id: 'mcp-1' } })
+        expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: mcpProviderToolsKey })
+        expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: mcpToolsKey })
         expect(onUpdate).toHaveBeenCalled()
       })
     })
@@ -453,8 +472,8 @@ describe('MCPDetailContent', () => {
       fireEvent.click(getToolsBtn)
 
       await waitFor(() => {
-        expect(mockUpdateTools).toHaveBeenCalledWith('mcp-1')
-        expect(mockInvalidateAllMCPTools).toHaveBeenCalled()
+        expect(mockUpdateTools).toHaveBeenCalledWith({ params: { provider_id: 'mcp-1' } })
+        expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: mcpToolsKey })
       })
     })
   })
@@ -533,7 +552,7 @@ describe('MCPDetailContent', () => {
       oauthCallback()
 
       await waitFor(() => {
-        expect(mockUpdateTools).toHaveBeenCalledWith('mcp-1')
+        expect(mockUpdateTools).toHaveBeenCalledWith({ params: { provider_id: 'mcp-1' } })
       })
     })
 
@@ -607,4 +626,18 @@ describe('MCPDetailContent', () => {
       })
     })
   })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.toolProvider.mcp.tools.byProviderId.get': (input) => getTools(input),
+      'workspaces.current.toolProvider.mcp.update.byProviderId.get': (input) =>
+        mockUpdateTools(input),
+      'workspaces.current.toolProvider.mcp.auth.post': (input) => mockAuthorizeMcp(input),
+    }),
+  }
 })

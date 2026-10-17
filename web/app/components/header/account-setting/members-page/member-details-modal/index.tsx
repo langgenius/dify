@@ -1,21 +1,31 @@
 'use client'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Role } from '@/models/access-control'
-import type { Member } from '@/models/common'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Dialog,
+  DialogBody,
+  DialogCloseButton,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
+import { useQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { getAccessControlTemplateLanguage } from '@/i18n/language'
-import { useRolesOfMember } from '@/service/access-control/use-member-roles'
+import { consoleQuery } from '@/service/console'
+import { getAvatarInitial } from '@/utils/avatar'
+import { toRole } from '../../workspace-role-list-query'
 import AssignRolesModal from '../assign-roles-modal'
 import PermissionRoleChip from './permission-role-chip'
 
 type MemberDetailsModalProps = {
-  member: Member
+  member: AccountWithRoleResponse
   canAssignRoles?: boolean
   allowMultipleRoles?: boolean
   onClose: () => void
@@ -34,9 +44,11 @@ const MemberDetailsModal = ({
   const [assignOpen, setAssignOpen] = useState(false)
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
 
-  const { data: rolesOfMember, isLoading: isLoadingRolesOfMember } = useRolesOfMember(
-    member.id,
-    language,
+  const { data: rolesOfMember, isLoading: isLoadingRolesOfMember } = useQuery(
+    consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.get.queryOptions({
+      input: { params: { member_id: member.id }, query: { language } },
+      select: (data) => ({ ...data, roles: (data.roles ?? []).map(toRole) }),
+    }),
   )
   const [pendingRoles, setPendingRoles] = useState<Role[]>()
 
@@ -107,36 +119,29 @@ const MemberDetailsModal = ({
           if (!next) onClose()
         }}
       >
-        <DialogContent className="w-110 overflow-visible p-0" backdropProps={{ forceRender: true }}>
-          <div className="relative px-6 pt-6 pb-5">
-            <DialogClose
-              render={
-                <IconButton
-                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                  size="lg"
-                  className="absolute inset-e-6 top-6"
-                >
-                  <span aria-hidden className="i-ri-close-line size-4" />
-                </IconButton>
-              }
-            />
-            <DialogTitle className="pr-8 system-xl-semibold text-text-primary">
+        <DialogContent className="w-110" backdropProps={{ forceRender: true }}>
+          <DialogHeader>
+            <DialogTitle>
               {t(($) => $['members.memberDetails.title'], {
                 ns: 'workspaceMembers',
                 defaultValue: 'Member Details',
               })}
             </DialogTitle>
+            <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          </DialogHeader>
 
-            <div className="mt-5 flex items-center gap-3">
-              <Avatar avatar={member.avatar_url} name={member.name} size="2xl" />
-              <div className="min-w-0 flex-1">
-                <div className="truncate system-md-semibold text-text-primary">{member.name}</div>
-                <div className="truncate system-xs-regular text-text-tertiary">{member.email}</div>
-              </div>
+          <DialogBody className="flex items-center gap-3">
+            <Avatar size="2xl" aria-hidden="true">
+              <AvatarFallback>{getAvatarInitial(member.name)}</AvatarFallback>
+              <AvatarImage src={member.avatar_url || undefined} alt="" />
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <div className="truncate system-md-semibold text-text-primary">{member.name}</div>
+              <div className="truncate system-xs-regular text-text-tertiary">{member.email}</div>
             </div>
-          </div>
 
-          <div className="border-t border-divider-subtle px-6 py-4">
+            <div className="-mx-6 my-3 border-t border-divider-subtle" />
+
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 system-sm-semibold text-text-secondary">
                 <span>{assignedRolesLabel}</span>
@@ -204,17 +209,17 @@ const MemberDetailsModal = ({
                 )}
               </>
             )}
-          </div>
+          </DialogBody>
 
           {canAssignRoles && (
-            <div className="flex items-center justify-end gap-2 px-6 pt-2 pb-4">
+            <DialogFooter>
               <Button variant="secondary" onClick={onClose}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </Button>
               <Button variant="primary" onClick={handleSave} disabled={!onAssignSubmit}>
                 {t(($) => $['operation.save'], { ns: 'common' })}
               </Button>
-            </div>
+            </DialogFooter>
           )}
         </DialogContent>
       </Dialog>

@@ -11,6 +11,7 @@ from core.db.session_factory import session_factory
 from core.workflow.file_reference import resolve_file_record_id
 from core.workflow.nodes.agent_v2.output_file_rebacker import reback_tool_file_output
 from graphon.file import FileTransferMethod, FileType
+from models.base import TypeBase
 from models.tools import ToolFile
 
 TENANT = "11111111-1111-1111-1111-111111111111"
@@ -19,7 +20,7 @@ TENANT = "11111111-1111-1111-1111-111111111111"
 @pytest.fixture(autouse=True)
 def _tables() -> Generator[None]:
     engine = session_factory.get_session_maker().kw["bind"]
-    ToolFile.__table__.create(bind=engine, checkfirst=True)
+    TypeBase.metadata.tables[ToolFile.__tablename__].create(bind=engine, checkfirst=True)
     yield
     with session_factory.create_session() as session:
         session.execute(delete(ToolFile))
@@ -42,7 +43,7 @@ def _seed(*, mimetype: str = "application/pdf", name: str = "report.pdf", size: 
         return tool_file.id
 
 
-def test_reback_resolves_tenant_tool_file_to_file():
+def test_reback_resolves_tenant_tool_file_to_file() -> None:
     tf = _seed(mimetype="image/png", name="chart.png", size=99)
     file = reback_tool_file_output(tenant_id=TENANT, tool_file_id=tf)
 
@@ -57,7 +58,7 @@ def test_reback_resolves_tenant_tool_file_to_file():
     assert file.extension == ".png"
 
 
-def test_reback_prefers_filename_extension_over_mimetype():
+def test_reback_prefers_filename_extension_over_mimetype() -> None:
     tf = _seed(mimetype="application/octet-stream", name="report.docx", size=99)
     file = reback_tool_file_output(tenant_id=TENANT, tool_file_id=tf)
 
@@ -68,17 +69,17 @@ def test_reback_prefers_filename_extension_over_mimetype():
     assert file.type == FileType.CUSTOM
 
 
-def test_reback_other_tenant_returns_none():
+def test_reback_other_tenant_returns_none() -> None:
     tf = _seed()
     assert reback_tool_file_output(tenant_id="33333333-3333-3333-3333-333333333333", tool_file_id=tf) is None
 
 
 @pytest.mark.parametrize("bad", ["", "not-a-uuid", "550e8400-e29b-41d4-a716-446655440000"])
-def test_reback_missing_or_malformed_returns_none(bad: str):
+def test_reback_missing_or_malformed_returns_none(bad: str) -> None:
     # empty / non-UUID / valid-but-absent all resolve to None (never raise)
     assert reback_tool_file_output(tenant_id=TENANT, tool_file_id=bad) is None
 
 
-def test_reback_empty_tenant_returns_none():
+def test_reback_empty_tenant_returns_none() -> None:
     tf = _seed()
     assert reback_tool_file_output(tenant_id="", tool_file_id=tf) is None

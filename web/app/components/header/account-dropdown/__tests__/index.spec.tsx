@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderToString } from 'react-dom/server'
 import AccountAvatar from '@/app/account/(commonLayout)/avatar'
@@ -6,25 +6,14 @@ import AccountSection from '@/app/components/main-nav/components/account-section
 import EducationUserInfo from '@/app/education/user-info'
 import { useLogout } from '@/service/use-common'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { renderWithConsoleQuery as renderWithConsoleQueryWithoutUrlState } from '@/test/console/query-data'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import AccountDropdown from '../index'
-
-const { mockSetSettingsDestination } = vi.hoisted(() => ({
-  mockSetSettingsDestination: vi.fn(),
-}))
 
 vi.mock('@/service/use-common', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/use-common')>()),
   useLogout: vi.fn(),
 }))
-
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return {
-    ...actual,
-    useQueryState: () => [null, mockSetSettingsDestination],
-  }
-})
 
 vi.mock('next-themes', () => ({
   useTheme: () => ({ theme: 'system', setTheme: vi.fn() }),
@@ -37,6 +26,12 @@ const userProfile = {
   avatar_url: 'current-avatar.png',
 }
 const accountMenuAccessibleName = `${userProfile.name} accountSettings.account.account`
+
+const onUrlUpdate = vi.fn()
+const renderWithConsoleQuery = createNuqsTestRenderer(
+  renderWithConsoleQueryWithoutUrlState,
+  () => ({ onUrlUpdate }),
+)
 
 const renderAccountDropdown = () => {
   const queryClient = createAccountProfileQueryClient(userProfile)
@@ -142,7 +137,9 @@ describe('AccountDropdown', () => {
     await user.click(screen.getByRole('button', { name: 'accountSettings.account.account' }))
     await user.click(await screen.findByText('navigation.settings.preferences'))
 
-    expect(mockSetSettingsDestination).toHaveBeenCalledWith('preferences')
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('preferences'),
+    )
   })
 
   it.each(['main navigation', 'account page', 'education'] as const)(

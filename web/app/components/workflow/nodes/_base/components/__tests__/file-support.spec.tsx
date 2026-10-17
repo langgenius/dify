@@ -2,22 +2,28 @@ import type { UploadFileSetting } from '@/app/components/workflow/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
+import { getFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { useFileUploadConfig } from '@/service/use-common'
 import { TransferMethod } from '@/types/app'
 import FileTypeItem from '../file-type-item'
 import FileUploadSetting from '../file-upload-setting'
 
-const mockUseFileUploadConfig = vi.mocked(useFileUploadConfig)
-const mockUseFileSizeLimit = vi.mocked(useFileSizeLimit)
-
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: vi.fn(),
+const { mockFileUploadConfigHook } = vi.hoisted(() => ({
+  mockFileUploadConfigHook: vi.fn(),
 }))
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'files.upload.get': (options: unknown) => mockFileUploadConfigHook(options),
+  })
+})
+
+const mockUseFileUploadConfig = mockFileUploadConfigHook
+const mockGetFileSizeLimit = vi.mocked(getFileSizeLimit)
+
 vi.mock('@/app/components/base/file-uploader/hooks', () => ({
-  useFileSizeLimit: vi.fn(),
+  getFileSizeLimit: vi.fn(),
 }))
 
 vi.mock('@/app/notifications', () => ({
@@ -40,14 +46,16 @@ const createPayload = (overrides: Partial<UploadFileSetting> = {}): UploadFileSe
 describe('File upload support components', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseFileUploadConfig.mockReturnValue({ data: {} } as ReturnType<typeof useFileUploadConfig>)
-    mockUseFileSizeLimit.mockReturnValue({
+    mockUseFileUploadConfig.mockReturnValue({ data: {} } as ReturnType<
+      typeof mockFileUploadConfigHook
+    >)
+    mockGetFileSizeLimit.mockReturnValue({
       imgSizeLimit: 10 * 1024 * 1024,
       docSizeLimit: 20 * 1024 * 1024,
       audioSizeLimit: 30 * 1024 * 1024,
       videoSizeLimit: 40 * 1024 * 1024,
       maxFileUploadLimit: 10,
-    } as ReturnType<typeof useFileSizeLimit>)
+    } as ReturnType<typeof getFileSizeLimit>)
   })
 
   describe('FileTypeItem', () => {

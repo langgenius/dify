@@ -13,7 +13,6 @@ import {
 } from '@/service/share'
 import { TransferMethod } from '@/types/app'
 import { useChat } from '../../chat/hooks'
-import { isValidGeneratedAnswer } from '../../utils'
 import ChatWrapper from '../chat-wrapper'
 import { useChatWithHistoryContext } from '../context'
 
@@ -42,11 +41,6 @@ vi.mock('@/next/navigation', () => ({
   useParams: vi.fn(() => ({ token: 'test-token' })),
 }))
 
-vi.mock('../../utils', () => ({
-  isValidGeneratedAnswer: vi.fn(),
-  getLastAnswer: vi.fn(),
-}))
-
 vi.mock('@/service/share', () => ({
   fetchChatList: vi.fn(),
   fetchSuggestedQuestions: vi.fn(),
@@ -65,10 +59,6 @@ vi.mock('@/service/workflow', () => ({
 
 vi.mock('@/app/components/base/markdown', () => ({
   Markdown: ({ content }: { content: string }) => <div>{content}</div>,
-}))
-
-vi.mock('@/utils/model-config', () => ({
-  formatBooleanInputs: vi.fn((forms, inputs) => inputs),
 }))
 
 vi.mock('@/hooks/use-timestamp', () => ({
@@ -159,6 +149,36 @@ describe('ChatWrapper', () => {
     vi.mocked(useChat).mockReturnValue(defaultChatHookReturn as ChatHookReturn)
   })
 
+  it.each([
+    { id: 'a0', isAnswer: true, expected: 'a0' },
+    { id: 'q0', isAnswer: false, expected: null },
+    { id: 'answer-placeholder-0', isAnswer: true, expected: null },
+  ])(
+    'regenerates with the actual valid parent rule for $id',
+    async ({ id, isAnswer, expected }) => {
+      const handleSend = vi.fn()
+      vi.mocked(useChat).mockReturnValue({
+        ...defaultChatHookReturn,
+        handleSend,
+        chatList: [
+          { id, isAnswer, content: 'Parent message' },
+          { id: 'q1', content: 'Question to regenerate', parentMessageId: id },
+          { id: 'a1', isAnswer: true, content: 'Answer to regenerate', parentMessageId: 'q1' },
+        ],
+      } as ChatHookReturn)
+      render(<ChatWrapper />)
+      fireEvent.click(
+        screen.getAllByRole('button', { name: 'common.operation.regenerate' }).at(-1)!,
+      )
+      await waitFor(() =>
+        expect(handleSend).toHaveBeenCalledWith(
+          expect.any(String),
+          expect.objectContaining({ query: 'Question to regenerate', parent_message_id: expected }),
+          expect.any(Object),
+        ),
+      )
+    },
+  )
   it('should render welcome screen and handle message sending', async () => {
     const handleSend = vi.fn()
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
@@ -262,71 +282,6 @@ describe('ChatWrapper', () => {
     expect(handleStop).toHaveBeenCalled()
   })
 
-  it('should handle regenerate and switch sibling', async () => {
-    const handleSend = vi.fn()
-    const handleSwitchSibling = vi.fn()
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      chatList: [
-        { id: 'q1', content: 'Q1' },
-        {
-          id: 'a1',
-          isAnswer: true,
-          content: 'A1',
-          parentMessageId: 'q1',
-          siblingCount: 2,
-          siblingIndex: 0,
-          nextSibling: 'a2',
-        },
-      ],
-      handleSend,
-      handleSwitchSibling,
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-
-    const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector(
-      'button .ri-reset-left-line',
-    )?.parentElement
-    if (regenerateBtn) {
-      fireEvent.click(regenerateBtn)
-      expect(handleSend).toHaveBeenCalled()
-    }
-
-    const switchText = await screen.findByText(/1\s*\/\s*2/)
-    const switchContainer = switchText.parentElement
-    const nextButton = switchContainer?.querySelectorAll('button')?.[1]
-    if (nextButton) {
-      fireEvent.click(nextButton)
-      expect(handleSwitchSibling).toHaveBeenCalledWith('a2', expect.any(Object))
-    }
-  })
-
-  it('should handle regenerate with parent answer', async () => {
-    const handleSend = vi.fn()
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      chatList: [
-        { id: 'a0', isAnswer: true, content: 'A0' },
-        { id: 'q1', content: 'Q1', parentMessageId: 'a0' },
-        { id: 'a1', isAnswer: true, content: 'A1', parentMessageId: 'q1' },
-      ],
-      handleSend,
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-
-    const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector(
-      'button .ri-reset-left-line',
-    )?.parentElement
-    if (regenerateBtn) {
-      fireEvent.click(regenerateBtn)
-      expect(handleSend).toHaveBeenCalled()
-    }
-  })
-
   it('should handle regenerate with edited question', async () => {
     const handleSend = vi.fn()
     vi.mocked(useChat).mockReturnValue({
@@ -381,6 +336,27 @@ describe('ChatWrapper', () => {
     const textboxes = screen.getAllByRole('textbox')
     const chatInput = textboxes[textboxes.length - 1]
     const container = getChatInputDisabledSurface(chatInput!)
+    expect(container).not.toBeInTheDocument()
+  })
+
+  it('should not disable input when a required number field is zero', () => {
+    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+      ...defaultContextValue,
+      inputsForms: [
+        { variable: 'count', label: 'Count', type: InputVarType.number, required: true },
+      ],
+      newConversationInputs: { count: 0 },
+      newConversationInputsRef: {
+        current: { count: 0 },
+      } as ChatWithHistoryContextValue['newConversationInputsRef'],
+      currentConversationId: '',
+    })
+
+    render(<ChatWrapper />)
+    const textboxes = screen.getAllByRole('textbox')
+    const chatInput = textboxes[textboxes.length - 1]
+    const container = getChatInputDisabledSurface(chatInput!)
+
     expect(container).not.toBeInTheDocument()
   })
 
@@ -848,69 +824,9 @@ describe('ChatWrapper', () => {
     }
   })
 
-  it('should handle doRegenerate logic correctly', async () => {
-    const handleSend = vi.fn()
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      handleSend,
-      chatList: [
-        { id: 'q1', content: 'Q1' },
-        { id: 'a1', isAnswer: true, content: 'A1', parentMessageId: 'q1' },
-      ],
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-
-    const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector(
-      'button .ri-reset-left-line',
-    )?.parentElement
-
-    if (regenerateBtn) {
-      fireEvent.click(regenerateBtn)
-      // doRegenerate calls doSend with isRegenerate=true and parentAnswer=null (since q1 has no parent answer)
-
-      expect(handleSend).toHaveBeenCalled()
-      const args = handleSend.mock.calls[0]
-      // args[1] is data
-      expect(args![1].query).toBe('Q1')
-      expect(args![1].parent_message_id).toBeNull()
-    }
-  })
-
-  it('should handle doRegenerate with valid parent answer', async () => {
-    const handleSend = vi.fn()
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      handleSend,
-      chatList: [
-        { id: 'a0', isAnswer: true, content: 'A0' },
-        { id: 'q1', content: 'Q1', parentMessageId: 'a0' },
-        { id: 'a1', isAnswer: true, content: 'A1', parentMessageId: 'q1' },
-      ],
-    } as unknown as ChatHookReturn)
-
-    // Mock isValidGeneratedAnswer to return true
-    vi.mocked(isValidGeneratedAnswer).mockReturnValue(true)
-
-    render(<ChatWrapper />)
-
-    const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector(
-      'button .ri-reset-left-line',
-    )?.parentElement
-
-    if (regenerateBtn) {
-      fireEvent.click(regenerateBtn)
-      expect(handleSend).toHaveBeenCalled()
-      const args = handleSend.mock.calls[0]
-      expect(args![1].parent_message_id).toBe('a0')
-    }
-  })
-
   it('should handle human input form submission for installed app', async () => {
     const { submitHumanInputForm: submitWorkflowForm } = await import('@/service/workflow')
-    vi.mocked(submitWorkflowForm).mockResolvedValue({} as unknown as void)
+    vi.mocked(submitWorkflowForm).mockResolvedValue({})
     let resolveWorkflowEventsReady: (isReady: boolean) => void = () => {}
     const prepareHumanInputSubmission = vi.fn(
       () =>
@@ -1315,15 +1231,17 @@ describe('ChatWrapper', () => {
     expect(container)!.toBeInTheDocument()
   })
 
-  it('should call formatBooleanInputs when sending message', async () => {
-    const { formatBooleanInputs } = await import('@/utils/model-config')
+  it('sends checkbox inputs as booleans while preserving text inputs', async () => {
     const handleSend = vi.fn()
 
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
       currentConversationId: '',
-      inputsForms: [{ variable: 'test', type: 'text' }],
-      newConversationInputs: { test: 'value' },
+      inputsForms: [
+        { key: 'test', name: 'Text', type: 'string' },
+        { key: 'agree', name: 'Agree', type: 'checkbox' },
+      ],
+      newConversationInputs: { test: 'value', agree: 1 },
     })
 
     vi.mocked(useChat).mockReturnValue({
@@ -1338,7 +1256,11 @@ describe('ChatWrapper', () => {
     fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter', keyCode: 13 })
 
     await waitFor(() => {
-      expect(formatBooleanInputs).toHaveBeenCalled()
+      expect(handleSend).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ inputs: { test: 'value', agree: true }, query: 'Hello' }),
+        expect.any(Object),
+      )
     })
   })
 
@@ -1575,30 +1497,6 @@ describe('ChatWrapper', () => {
     })
   })
 
-  it('should handle doRegenerate when parentAnswer is not a valid generated answer', async () => {
-    const handleSend = vi.fn()
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      chatList: [
-        { id: 'q1', content: 'Q1' },
-        { id: 'a1', isAnswer: true, content: 'A1', parentMessageId: 'q1' },
-      ],
-      handleSend,
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-
-    const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector(
-      'button .ri-reset-left-line',
-    )?.parentElement
-    if (regenerateBtn) {
-      fireEvent.click(regenerateBtn)
-      // This tests line 198-200 when parentAnswer is not valid
-      expect(handleSend).toHaveBeenCalled()
-    }
-  })
-
   it('should handle doSwitchSibling with all parameters', () => {
     const handleSwitchSibling = vi.fn()
 
@@ -1812,36 +1710,6 @@ describe('ChatWrapper', () => {
     expect(screen.getByText('Default opening statement'))!.toBeInTheDocument()
   })
 
-  it('should handle doSend when regenerating with null parentAnswer', async () => {
-    const handleSend = vi.fn()
-
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      currentConversationId: '',
-    })
-
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      chatList: [{ id: 'q1', content: 'Question' }],
-      handleSend,
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-
-    // Simulate regenerate with no parent - this tests line 190 with null
-    const regenerateBtn = screen
-      .getByText('Question')
-      .closest('.chat-answer-container')
-      ?.querySelector('button .ri-reset-left-line')?.parentElement
-    if (regenerateBtn) {
-      fireEvent.click(regenerateBtn)
-    }
-
-    // The key is that when isRegenerate is true and parentAnswer is null,
-    // and there's no lastAnswer, it should use || null
-    expect(handleSend).toBeDefined()
-  })
-
   it('should handle doRegenerate with editedQuestion containing files', async () => {
     const handleSend = vi.fn()
 
@@ -1885,46 +1753,6 @@ describe('ChatWrapper', () => {
     expect(screen.getByText('A1'))!.toBeInTheDocument()
   })
 
-  it('should handle doRegenerate when question has message_files', async () => {
-    const handleSend = vi.fn()
-
-    // Create proper FileEntity mock with all required fields
-    const mockFiles = [
-      {
-        id: 'file1',
-        name: 'test.txt',
-        type: 'text/plain',
-        size: 1024,
-        url: 'https://example.com/test.txt',
-        extension: 'txt',
-        mime_type: 'text/plain',
-      } as unknown as FileEntity,
-    ] as FileEntity[]
-
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      chatList: [
-        { id: 'q1', content: 'Q1', message_files: mockFiles },
-        { id: 'a1', isAnswer: true, content: 'A1', parentMessageId: 'q1' },
-      ],
-      handleSend,
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-
-    const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector(
-      'button .ri-reset-left-line',
-    )?.parentElement
-    if (regenerateBtn) {
-      fireEvent.click(regenerateBtn)
-      // This tests line 200 - question.message_files branch
-      await waitFor(() => {
-        expect(handleSend).toHaveBeenCalled()
-      })
-    }
-  })
-
   it('should test doSwitchSibling for new conversation', () => {
     const handleSwitchSibling = vi.fn()
 
@@ -1964,101 +1792,6 @@ describe('ChatWrapper', () => {
           }),
         )
       }
-    }
-  })
-
-  it('should handle parentAnswer that is not a valid generated answer', async () => {
-    const handleSend = vi.fn()
-
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      chatList: [
-        { id: 'a0', content: 'Not a valid answer' }, // Not marked as isAnswer
-        { id: 'q1', content: 'Q1', parentMessageId: 'a0' },
-        { id: 'a1', isAnswer: true, content: 'A1', parentMessageId: 'q1' },
-      ],
-      handleSend,
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-
-    const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector(
-      'button .ri-reset-left-line',
-    )?.parentElement
-    if (regenerateBtn) {
-      fireEvent.click(regenerateBtn)
-      // This tests line 200 when isValidGeneratedAnswer returns false
-      await waitFor(() => {
-        expect(handleSend).toHaveBeenCalled()
-      })
-    }
-  })
-
-  it('should use parent answer id when parentAnswer is valid', async () => {
-    const handleSend = vi.fn()
-
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      chatList: [
-        { id: 'a0', isAnswer: true, content: 'A0' }, // Valid answer
-        { id: 'q1', content: 'Q1', parentMessageId: 'a0' },
-        { id: 'a1', isAnswer: true, content: 'A1', parentMessageId: 'q1' },
-      ],
-      handleSend,
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-
-    const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector(
-      'button .ri-reset-left-line',
-    )?.parentElement
-    if (regenerateBtn) {
-      fireEvent.click(regenerateBtn)
-      // This tests line 200 when isValidGeneratedAnswer returns true
-      await waitFor(() => {
-        expect(handleSend).toHaveBeenCalled()
-      })
-    }
-  })
-
-  it('should handle regenerate when isRegenerate is true with parentAnswer.id', async () => {
-    const handleSend = vi.fn()
-
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      currentConversationId: '',
-    })
-
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      chatList: [
-        { id: 'a0', isAnswer: true, content: 'A0' },
-        { id: 'q1', content: 'Q1', parentMessageId: 'a0' },
-        { id: 'a1', isAnswer: true, content: 'A1', parentMessageId: 'q1' },
-      ],
-      handleSend,
-    } as unknown as ChatHookReturn)
-
-    render(<ChatWrapper />)
-
-    const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector(
-      'button .ri-reset-left-line',
-    )?.parentElement
-    if (regenerateBtn) {
-      fireEvent.click(regenerateBtn)
-      // This tests line 190 - the isRegenerate ? parentAnswer?.id branch
-      await waitFor(() => {
-        expect(handleSend).toHaveBeenCalledWith(
-          expect.any(String),
-          expect.objectContaining({
-            parent_message_id: 'a0',
-          }),
-          expect.any(Object),
-        )
-      })
     }
   })
 

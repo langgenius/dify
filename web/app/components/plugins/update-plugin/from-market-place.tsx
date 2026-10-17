@@ -2,8 +2,15 @@
 import type { UpdateFromMarketPlacePayload } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Dialog,
+  DialogBody,
+  DialogCloseButton,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -148,58 +155,55 @@ const UpdatePluginModal = ({
     <Dialog open onOpenChange={() => onCancel()}>
       <DialogContent
         backdropProps={{ forceRender: true }}
-        className={cn('min-w-140', doShowDowngradeWarningModal && 'min-w-160')}
+        className={cn('min-w-140', doShowDowngradeWarningModal && 'min-w-160 p-6')}
       >
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute inset-e-6 top-6"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
         {doShowDowngradeWarningModal && (
-          <DowngradeWarningModal
-            onCancel={onCancel}
-            onJustDowngrade={handleConfirm}
-            onExcludeAndDowngrade={handleExcludeAndDownload}
-          />
+          <>
+            <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+            <DowngradeWarningModal
+              onCancel={onCancel}
+              onJustDowngrade={handleConfirm}
+              onExcludeAndDowngrade={handleExcludeAndDownload}
+            />
+          </>
         )}
         {!doShowDowngradeWarningModal && (
           <>
-            <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t(
-                ($) =>
-                  $[
-                    `${i18nPrefix}.${uploadStep === UploadStep.installed ? 'successfulTitle' : 'title'}`
-                  ],
-                { ns: 'plugin' },
-              )}
-            </DialogTitle>
-            <div className="mt-3 mb-2 system-md-regular text-text-secondary">
-              {t(($) => $[`${i18nPrefix}.description`], { ns: 'plugin' })}
-            </div>
-            <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">
-              <Card
-                installed={uploadStep === UploadStep.installed}
-                payload={pluginManifestToCardPluginProps({
-                  ...originalPackageInfo.payload,
-                  icon: icon!,
-                })}
-                className="w-full"
-                titleLeft={
-                  <>
-                    <Badge className="mx-1" size="s" variant="warning">
-                      {`${originalPackageInfo.payload.version} -> ${targetPackageInfo.version}`}
-                    </Badge>
-                  </>
-                }
-              />
-            </div>
-            <div className="flex items-center justify-end gap-2 self-stretch pt-5">
+            <DialogHeader>
+              <DialogTitle>
+                {t(
+                  ($) =>
+                    $[
+                      `${i18nPrefix}.${uploadStep === UploadStep.installed ? 'successfulTitle' : 'title'}`
+                    ],
+                  { ns: 'plugin' },
+                )}
+              </DialogTitle>
+              <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+            </DialogHeader>
+            <DialogBody>
+              <div className="mb-2 system-md-regular text-text-secondary">
+                {t(($) => $[`${i18nPrefix}.description`], { ns: 'plugin' })}
+              </div>
+              <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">
+                <Card
+                  installed={uploadStep === UploadStep.installed}
+                  payload={pluginManifestToCardPluginProps({
+                    ...originalPackageInfo.payload,
+                    icon: icon!,
+                  })}
+                  className="w-full"
+                  titleLeft={
+                    <>
+                      <Badge className="mx-1" size="s" variant="warning">
+                        {`${originalPackageInfo.payload.version} -> ${targetPackageInfo.version}`}
+                      </Badge>
+                    </>
+                  }
+                />
+              </div>
+            </DialogBody>
+            <DialogFooter>
               {uploadStep === UploadStep.notStarted && (
                 <Button onClick={handleCancel}>
                   {t(($) => $['operation.cancel'], { ns: 'common' })}
@@ -213,7 +217,7 @@ const UpdatePluginModal = ({
               >
                 <span id={upgradeButtonLabelId}>{configBtnText}</span>
               </Button>
-            </div>
+            </DialogFooter>
           </>
         )}
       </DialogContent>

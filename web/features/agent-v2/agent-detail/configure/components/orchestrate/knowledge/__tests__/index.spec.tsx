@@ -1,6 +1,6 @@
+import type { DatasetDocMetadataResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { Node, Var } from '@/app/components/workflow/types'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
-import type { MetadataInDoc } from '@/models/datasets'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
@@ -127,7 +127,7 @@ vi.mock('@/app/components/workflow/nodes/knowledge-retrieval/components/add-data
           search_method: string
         }
         is_multimodal: boolean
-        doc_metadata: MetadataInDoc[]
+        doc_metadata: DatasetDocMetadataResponse[]
       }>,
     ) => void
   }) {
@@ -153,13 +153,11 @@ vi.mock('@/app/components/workflow/nodes/knowledge-retrieval/components/add-data
                   id: 'program-metadata',
                   name: 'guide_program_id',
                   type: MetadataFilteringVariableType.number,
-                  value: '',
                 },
                 {
                   id: 'item-metadata',
                   name: 'guide_item_id',
                   type: MetadataFilteringVariableType.string,
-                  value: '',
                 },
               ],
             },

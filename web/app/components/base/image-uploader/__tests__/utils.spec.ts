@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next'
 import { waitFor } from '@testing-library/react'
 import { upload } from '@/service/base'
+import { createHttpError } from '@/service/http-error'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { getImageUploadErrorMessage, imageUpload } from '../utils'
 
@@ -19,7 +20,10 @@ describe('image-uploader utils', () => {
       const t = withSelectorKey(translate) as unknown as TFunction<['common']>
 
       const result = getImageUploadErrorMessage(
-        { response: { code: 'forbidden', message: 'Forbidden by policy' } },
+        createHttpError(new Response(null, { status: 400 }), {
+          code: 'forbidden',
+          message: 'Forbidden by policy',
+        }),
         'Default error',
         t,
       )
@@ -33,7 +37,7 @@ describe('image-uploader utils', () => {
       const t = withSelectorKey(translate) as unknown as TFunction<['common']>
 
       const result = getImageUploadErrorMessage(
-        { response: { code: 'file_extension_blocked' } },
+        createHttpError(new Response(null, { status: 400 }), { code: 'file_extension_blocked' }),
         'Default error',
         t,
       )
@@ -47,7 +51,7 @@ describe('image-uploader utils', () => {
       const t = withSelectorKey(translate) as unknown as TFunction<['common']>
 
       const result = getImageUploadErrorMessage(
-        { response: { code: 'unexpected_error' } },
+        createHttpError(new Response(null, { status: 400 }), { code: 'unexpected_error' }),
         'Default error',
         t,
       )
@@ -83,7 +87,7 @@ describe('image-uploader utils', () => {
 
       expect(upload).toHaveBeenCalledTimes(1)
 
-      const [options, isPublic, url] = (vi.mocked(upload).mock.calls[0] ?? []) as [any, any, any]
+      const [options, isPublic, url] = vi.mocked(upload).mock.calls[0]!
       expect(isPublic).toBe(true)
       expect(url).toBe('/files/upload')
       expect(options.xhr).toBeInstanceOf(XMLHttpRequest)

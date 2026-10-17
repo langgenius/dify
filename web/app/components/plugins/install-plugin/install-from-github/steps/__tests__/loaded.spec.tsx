@@ -1,6 +1,7 @@
 import type { Plugin, PluginDeclaration, UpdateFromGitHubPayload } from '../../../../types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { PluginCategoryEnum, TaskStatus } from '../../../../types'
 import Loaded from '../loaded'
 
@@ -17,8 +18,8 @@ vi.mock('@/service/plugins', () => ({
 
 const mockInstallPackageFromGitHub = vi.fn()
 const mockHandleInstallTaskStart = vi.fn()
-vi.mock('@/service/use-plugins', () => ({
-  useInstallPackageFromGitHub: () => ({ mutateAsync: mockInstallPackageFromGitHub }),
+vi.mock('@/service/use-plugins', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-plugins')>()),
   usePluginTaskList: () => ({ handleInstallTaskStart: mockHandleInstallTaskStart }),
 }))
 
@@ -112,6 +113,18 @@ const createUpdatePayload = (): UpdateFromGitHubPayload => ({
     package: 'plugin.zip',
     releases: [],
   },
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.plugin.install.github.post': (...args: unknown[]) =>
+        mockInstallPackageFromGitHub(...args),
+    }),
+  }
 })
 
 describe('Loaded', () => {
@@ -254,10 +267,12 @@ describe('Loaded', () => {
 
       await waitFor(() => {
         expect(mockInstallPackageFromGitHub).toHaveBeenCalledWith({
-          repoUrl: 'owner/repo',
-          selectedVersion: 'v1.0.0',
-          selectedPackage: 'plugin.zip',
-          uniqueIdentifier: 'test-unique-id',
+          body: {
+            repo: 'owner/repo',
+            version: 'v1.0.0',
+            package: 'plugin.zip',
+            plugin_unique_identifier: 'test-unique-id',
+          },
         })
       })
     })

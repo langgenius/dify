@@ -1,17 +1,32 @@
 import type { ReactElement } from 'react'
-import type { Mock } from 'vite-plus/test'
 import type { IBatchModalProps } from '../index'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { annotationBatchImport, checkAnnotationBatchImportProgress } from '@/service/annotation'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import BatchModal, { ProcessStatus } from '../index'
 
 let annotationQuota = { size: 0, limit: 10 }
 
-vi.mock('@/service/annotation', () => ({
+const mocks = vi.hoisted(() => ({
   annotationBatchImport: vi.fn(),
   checkAnnotationBatchImportProgress: vi.fn(),
+}))
+
+vi.mock('@/service/annotation', () => ({
+  annotationBatchImport: mocks.annotationBatchImport,
+}))
+
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    apps: {
+      byAppId: {
+        annotations: {
+          batchImportStatus: { byJobId: { get: mocks.checkAnnotationBatchImportProgress } },
+        },
+      },
+    },
+  },
 }))
 
 vi.mock('../csv-downloader', () => ({
@@ -53,8 +68,8 @@ vi.mock('@/app/notifications', () => ({
     info: (message: string) => mockNotify({ type: 'info', message }),
   },
 }))
-const annotationBatchImportMock = annotationBatchImport as Mock
-const checkAnnotationBatchImportProgressMock = checkAnnotationBatchImportProgress as Mock
+const annotationBatchImportMock = mocks.annotationBatchImport
+const checkAnnotationBatchImportProgressMock = mocks.checkAnnotationBatchImportProgress
 
 const renderComponent = (props: Partial<IBatchModalProps> = {}) => {
   const mergedProps: IBatchModalProps = {
@@ -141,7 +156,7 @@ describe('BatchModal', () => {
       expect(annotationBatchImportMock).toHaveBeenCalledTimes(1)
     })
 
-    const formData = annotationBatchImportMock.mock.calls[0]![0].body as FormData
+    const formData = annotationBatchImportMock.mock.calls[0]![1] as FormData
     expect(formData.get('file')).toBe(lastUploadedFile)
 
     await waitFor(() => {

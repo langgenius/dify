@@ -1,3 +1,4 @@
+import type { SuggestedQuestionsResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/answer/human-input-content/type'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type { ChatItem, ChatItemInTree, Inputs } from '@/app/components/base/chat/types'
@@ -6,6 +7,7 @@ import type { IOtherOptions } from '@/service/base'
 import type { ReasoningChunkResponse } from '@/types/workflow'
 import { uniqBy } from 'es-toolkit/compat'
 import { produce, setAutoFreeze } from 'immer'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
@@ -17,9 +19,10 @@ import {
   getProcessedFilesFromResponse,
 } from '@/app/components/base/file-uploader/utils'
 import { CUSTOM_NODE } from '@/app/components/workflow/constants'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
 import { sseGet } from '@/service/base'
-import { useInvalidAllLastRun } from '@/service/use-workflow'
+import { useInvalidateAllLastRun } from '@/service/use-workflow'
 import { submitHumanInputForm } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
 import { DEFAULT_ITER_TIMES, DEFAULT_LOOP_TIMES } from '../../constants'
@@ -29,12 +32,11 @@ import { useWorkflowRun } from '../../hooks/use-workflow-run'
 import { useWorkflowStore } from '../../store'
 import { NodeRunningStatus, WorkflowRunningStatus } from '../../types'
 
-type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
   onGetSuggestedQuestions?: (
     responseItemId: string,
-    getAbortController: GetAbortController,
-  ) => Promise<any>
+    onCancel: (cancel: () => void) => void,
+  ) => Promise<SuggestedQuestionsResponse>
 }
 export const useChat = (
   config: any,
@@ -54,12 +56,12 @@ export const useChat = (
   const [isResponding, setIsResponding] = useState(false)
   const isRespondingRef = useRef(false)
   const workflowEventsAbortControllerRef = useRef<AbortController | null>(null)
-  const configsMap = useHooksStore((s) => s.configsMap)
+  const resource = useAtomValue(editorResourceAtom)
   const canRun = useHooksStore((s) => s.accessControl.canRun)
-  const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
+  const invalidAllLastRun = useInvalidateAllLastRun(resource)
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([])
-  const suggestedQuestionsAbortControllerRef = useRef<AbortController | null>(null)
+  const cancelSuggestedQuestionsRef = useRef<(() => void) | null>(null)
   const { setIterTimes, setLoopTimes } = workflowStore.getState()
   const store = useStoreApi()
 
@@ -185,8 +187,7 @@ export const useChat = (
     if (stopChat && taskIdRef.current) stopChat(taskIdRef.current)
     setIterTimes(DEFAULT_ITER_TIMES)
     setLoopTimes(DEFAULT_LOOP_TIMES)
-    if (suggestedQuestionsAbortControllerRef.current)
-      suggestedQuestionsAbortControllerRef.current.abort()
+    cancelSuggestedQuestionsRef.current?.()
     if (workflowEventsAbortControllerRef.current) workflowEventsAbortControllerRef.current.abort()
   }, [handleResponding, setIterTimes, setLoopTimes, stopChat])
 
@@ -394,10 +395,9 @@ export const useChat = (
               onGetSuggestedQuestions
             ) {
               try {
-                const { data }: any = await onGetSuggestedQuestions(
+                const { data } = await onGetSuggestedQuestions(
                   responseItem.id,
-                  (newAbortController) =>
-                    (suggestedQuestionsAbortControllerRef.current = newAbortController),
+                  (cancel) => (cancelSuggestedQuestionsRef.current = cancel),
                 )
                 setSuggestedQuestions(data)
               } catch {
@@ -741,7 +741,7 @@ export const useChat = (
         onData: (
           message: string,
           _isFirstMessage: boolean,
-          { conversationId: newConversationId, messageId: msgId, taskId }: any,
+          { conversationId: newConversationId, messageId: msgId, taskId },
         ) => {
           updateChatTreeNode(messageId, (responseItem) => {
             responseItem.content = responseItem.content + message
@@ -779,10 +779,9 @@ export const useChat = (
               onGetSuggestedQuestions
             ) {
               try {
-                const { data }: any = await onGetSuggestedQuestions(
+                const { data } = await onGetSuggestedQuestions(
                   messageId,
-                  (newAbortController) =>
-                    (suggestedQuestionsAbortControllerRef.current = newAbortController),
+                  (cancel) => (cancelSuggestedQuestionsRef.current = cancel),
                 )
                 setSuggestedQuestions(data)
               } catch {
@@ -909,7 +908,7 @@ export const useChat = (
               )
             })
             if (currentIndex > -1)
-              responseItem.workflowProcess.tracing[currentIndex] = nodeFinishedData as any
+              responseItem.workflowProcess.tracing[currentIndex] = nodeFinishedData
           })
         },
         onLoopStart: ({ data: loopStartedData }) => {

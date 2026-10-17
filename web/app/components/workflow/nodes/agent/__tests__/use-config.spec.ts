@@ -1,32 +1,19 @@
 import type { AgentNodeType } from '../types'
 import { QueryClient } from '@tanstack/react-query'
 import { act, waitFor } from '@testing-library/react'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
+import { renderNodeConfig } from '../../__tests__/render-node-config'
 import useConfig, { useStrategyInfo } from '../use-config'
 import { createProvider, createStrategy } from './strategy-fixture'
 
-const { request, setInputs, marketplaceRefetch, marketplaceQuery } = vi.hoisted(() => ({
+const { request, marketplaceRefetch, marketplaceQuery } = vi.hoisted(() => ({
   request: vi.fn(),
-  setInputs: vi.fn(),
   marketplaceRefetch: vi.fn(),
   marketplaceQuery: vi.fn(),
 }))
 vi.mock('@/service/base', () => ({ request }))
-vi.mock('../../../hooks/use-workflow', () => ({
-  useNodesReadOnly: () => ({ nodesReadOnly: false }),
-  useIsChatMode: () => true,
-}))
-vi.mock('../../_base/hooks/use-node-crud', () => ({
-  default: (_id: string, inputs: AgentNodeType) => ({ inputs, setInputs }),
-}))
-vi.mock('../../_base/hooks/use-var-list', () => ({
-  default: () => ({ handleVarListChange: vi.fn(), handleAddVariable: vi.fn() }),
-}))
-vi.mock('../../_base/hooks/use-available-var-list', () => ({
-  default: () => ({ availableVars: [], availableNodesWithParent: [] }),
-}))
 vi.mock('@/service/use-plugins', () => ({
   useFetchPluginsInMarketPlaceByIds: marketplaceQuery,
   useCheckInstalled: () => ({ data: { plugins: [] } }),
@@ -57,7 +44,9 @@ beforeEach(() => {
 
 describe('agent strategy query and configuration', () => {
   it('does not request or refetch a missing provider', () => {
-    const { result } = renderHook(() => useStrategyInfo())
+    const { result } = renderHook(() => useStrategyInfo(), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'advanced-chat' },
+    })
     expect(result.current.strategyStatus).toBeUndefined()
     act(() => result.current.refetch())
     expect(request).not.toHaveBeenCalled()
@@ -73,6 +62,7 @@ describe('agent strategy query and configuration', () => {
       defaultOptions: { queries: { retry: 2, retryDelay: 0 } },
     })
     const { result } = renderHook(() => useStrategyInfo('langgenius/agent/missing', 'react'), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'advanced-chat' },
       queryClient,
     })
     await waitFor(() => expect(result.current.strategyProvider.isError).toBe(true))
@@ -90,13 +80,16 @@ describe('agent strategy query and configuration', () => {
         unknown_parameter: { type: VarKindType.constant, value: { count: 0, enabled: false } },
       },
     })
-    const { result } = renderHook(() => useConfig('agent', inputs))
-    await waitFor(() => expect(result.current.currentStrategy?.identity.name).toBe('react'))
-    expect(result.current.formData).toEqual({ instruction: '' })
-    expect(result.current.outputSchema).toEqual([])
-    expect(result.current.currentStrategyStatus?.plugin.installed).toBe(true)
-    act(() => result.current.onFormChange({ instruction: 'Changed' }))
-    expect(setInputs).toHaveBeenLastCalledWith(
+    const { result } = renderNodeConfig(useConfig, inputs, {
+      nodeId: 'agent',
+      resource: { kind: 'app', appId: 'app-1', mode: 'advanced-chat' },
+    })
+    await waitFor(() => expect(result.current.config.currentStrategy?.identity.name).toBe('react'))
+    expect(result.current.config.formData).toEqual({ instruction: '' })
+    expect(result.current.config.outputSchema).toEqual([])
+    expect(result.current.config.currentStrategyStatus?.plugin.installed).toBe(true)
+    act(() => result.current.config.onFormChange({ instruction: 'Changed' }))
+    expect(result.current.flow.getNode('agent')?.data).toEqual(
       expect.objectContaining({
         agent_parameters: {
           instruction: { type: VarKindType.constant, value: 'Changed' },
@@ -137,9 +130,12 @@ describe('agent strategy query and configuration', () => {
         unrecognized: { type: VarKindType.constant, value: { untouched: true } },
       },
     })
-    renderHook(() => useConfig('agent', inputs))
+    const { result } = renderNodeConfig(useConfig, inputs, {
+      nodeId: 'agent',
+      resource: { kind: 'app', appId: 'app-1', mode: 'advanced-chat' },
+    })
     await waitFor(() =>
-      expect(setInputs).toHaveBeenCalledWith(
+      expect(result.current.flow.getNode('agent')?.data).toEqual(
         expect.objectContaining({
           tool_node_version: '2',
           agent_parameters: {
@@ -161,22 +157,21 @@ describe('agent strategy query and configuration', () => {
   })
 
   it('keeps JSON Schema boolean outputs and displays unknown or empty types', () => {
-    const { result } = renderHook(() =>
-      useConfig(
-        'agent',
-        createData({
-          output_schema: {
-            properties: {
-              allowed: true,
-              forbidden: false,
-              empty: { type: '' },
-              array: { type: 'array', items: { type: '' } },
-            },
+    const { result } = renderNodeConfig(
+      useConfig,
+      createData({
+        output_schema: {
+          properties: {
+            allowed: true,
+            forbidden: false,
+            empty: { type: '' },
+            array: { type: 'array', items: { type: '' } },
           },
-        }),
-      ),
+        },
+      }),
+      { nodeId: 'agent', resource: { kind: 'app', appId: 'app-1', mode: 'advanced-chat' } },
     )
-    expect(result.current.outputSchema).toEqual([
+    expect(result.current.config.outputSchema).toEqual([
       { name: 'allowed', type: 'Unknown', description: '' },
       { name: 'forbidden', type: 'Unknown', description: '' },
       { name: 'empty', type: 'Unknown', description: '' },
@@ -193,7 +188,11 @@ describe('agent strategy query and configuration', () => {
         },
       },
     })
-    renderHook(() => useConfig('agent', inputs))
-    await waitFor(() => expect(setInputs).toHaveBeenCalledWith(inputs))
+    const { result } = renderNodeConfig(useConfig, inputs, {
+      nodeId: 'agent',
+      resource: { kind: 'app', appId: 'app-1', mode: 'advanced-chat' },
+    })
+    await waitFor(() => expect(result.current.config.currentStrategy?.identity.name).toBe('react'))
+    expect(result.current.flow.getNode('agent')?.data).toMatchObject(inputs)
   })
 })

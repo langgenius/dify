@@ -42,41 +42,6 @@ vi.mock('../../hooks', () => ({
   }),
 }))
 
-vi.mock('@/utils/format', () => ({
-  formatNumber: (num: number) => num.toLocaleString(),
-}))
-
-vi.mock('@/utils/mcp', () => ({
-  shouldUseMcpIcon: (src: unknown) =>
-    typeof src === 'object' && src !== null && (src as { content?: string })?.content === '🔗',
-}))
-
-vi.mock('@/app/components/base/app-icon', () => ({
-  default: ({
-    icon,
-    background,
-    innerIcon,
-    size,
-    iconType,
-  }: {
-    icon?: string
-    background?: string
-    innerIcon?: React.ReactNode
-    size?: string
-    iconType?: string
-  }) => (
-    <div
-      data-testid="app-icon"
-      data-icon={icon}
-      data-background={background}
-      data-size={size}
-      data-icon-type={iconType}
-    >
-      {!!innerIcon && <div data-testid="inner-icon">{innerIcon}</div>}
-    </div>
-  ),
-}))
-
 vi.mock('../../base/badges/partner', () => ({
   default: ({ className, text }: { className?: string; text?: string }) => (
     <div data-testid="partner-badge" className={className} title={text}>

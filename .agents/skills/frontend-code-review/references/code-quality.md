@@ -38,7 +38,7 @@ Flag:
 - `!` important modifiers or important CSS overrides without a narrow, documented reason.
 - Manual class-list assembly through string concatenation, template strings, array `.join(' ')`, or a custom conditional combiner instead of `cn(...)`. Conditional values passed to `cn(...)` remain valid.
 - Incoming `className` placed before default classes in `cn(...)`, preventing call-site overrides.
-- Arbitrary z-index or one-off layering fixes on overlays.
+- Z-index, forced backdrops, or other one-off layering fixes on overlays and body-level portals.
 
 Use:
 

@@ -2,7 +2,7 @@
 
 import { ScrollArea as BaseScrollArea } from '@base-ui/react/scroll-area'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 type ScrollAreaProps = BaseScrollArea.Root.Props
 

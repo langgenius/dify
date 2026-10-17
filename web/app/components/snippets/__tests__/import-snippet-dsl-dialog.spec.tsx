@@ -1,6 +1,7 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { render } from '@/test/console/render'
+import { httpErrorFromResponse } from '@/service/http-error'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import ImportSnippetDSLDialog from '../import-snippet-dsl-dialog'
 
 const serviceMocks = vi.hoisted(() => ({
@@ -36,17 +37,6 @@ vi.mock('@/app/notifications', () => ({
   toast: toastMocks,
 }))
 
-vi.mock('@/service/use-snippets', () => ({
-  useImportSnippetDSLMutation: () => ({
-    isPending: false,
-    mutateAsync: serviceMocks.importMutateAsync,
-  }),
-  useConfirmSnippetImportMutation: () => ({
-    isPending: false,
-    mutateAsync: serviceMocks.confirmMutateAsync,
-  }),
-}))
-
 vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
   Uploader: ({ file, updateFile }: { file?: File; updateFile: (file?: File) => void }) => (
     <button type="button" onClick={() => updateFile(new File(['name: snippet'], 'snippet.yml'))}>
@@ -54,6 +44,19 @@ vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
     </button>
   ),
 }))
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.customizedSnippets.imports.post': serviceMocks.importMutateAsync,
+      'workspaces.current.customizedSnippets.imports.byImportId.confirm.post':
+        serviceMocks.confirmMutateAsync,
+    }),
+  }
+})
 
 describe('ImportSnippetDSLDialog', () => {
   beforeEach(() => {
@@ -93,9 +96,11 @@ describe('ImportSnippetDSLDialog', () => {
 
     await waitFor(() => {
       expect(serviceMocks.importMutateAsync).toHaveBeenCalledWith({
-        mode: 'yaml-url',
-        yamlContent: undefined,
-        yamlUrl: 'https://example.com/snippet.yml',
+        body: {
+          mode: 'yaml-url',
+          yaml_content: undefined,
+          yaml_url: 'https://example.com/snippet.yml',
+        },
       })
       expect(onClose).toHaveBeenCalledTimes(1)
       expect(routerMocks.push).toHaveBeenCalledWith('/snippets/snippet-1/orchestrate')
@@ -130,7 +135,9 @@ describe('ImportSnippetDSLDialog', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     await waitFor(() => {
-      expect(serviceMocks.confirmMutateAsync).toHaveBeenCalledWith({ importId: 'import-1' })
+      expect(serviceMocks.confirmMutateAsync).toHaveBeenCalledWith({
+        params: { import_id: 'import-1' },
+      })
       expect(routerMocks.push).toHaveBeenCalledWith('/snippets/snippet-2/orchestrate')
     })
   })
@@ -149,6 +156,32 @@ describe('ImportSnippetDSLDialog', () => {
       expect(toastMocks.error).toHaveBeenCalledWith('invalid yaml')
       expect(onClose).not.toHaveBeenCalled()
     })
+  })
+
+  it.each(['import', 'confirm'])('leaves HTTP %s failures to the request layer', async (step) => {
+    const user = userEvent.setup()
+    const onClose = vi.fn()
+    const error = await httpErrorFromResponse(
+      Response.json({ message: 'Invalid DSL' }, { status: 400 }),
+    )
+    if (step === 'import') serviceMocks.importMutateAsync.mockRejectedValue(error)
+    else {
+      serviceMocks.importMutateAsync.mockResolvedValue({ id: 'import-1', status: 'pending' })
+      serviceMocks.confirmMutateAsync.mockRejectedValue(error)
+    }
+
+    render(<ImportSnippetDSLDialog isOpen onClose={onClose} />)
+    await user.click(screen.getByRole('button', { name: 'select-dsl-file' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+    if (step === 'confirm') {
+      await user.click(await screen.findByRole('button', { name: 'common.operation.confirm' }))
+      expect(serviceMocks.confirmMutateAsync).toHaveBeenCalledWith({
+        params: { import_id: 'import-1' },
+      })
+    }
+    expect(serviceMocks.importMutateAsync).toHaveBeenCalledOnce()
+    expect(toastMocks.error).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
   })
 
   it('should disable import without snippet create permission', async () => {

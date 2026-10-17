@@ -109,7 +109,7 @@ function UnauthorizedCredentialStatus({
       renderTrigger={renderTrigger}
       isOpen={isOpen}
       onOpenChange={setIsOpen}
-      offset={4}
+      sideOffset={4}
       placement="bottom-end"
       triggerPopupSameWidth={false}
       popupClassName="w-[360px]"

@@ -1,13 +1,15 @@
+import type { DocumentStatusResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import type { PipelineDocument } from '@dify/contracts/api/console/rag/types.gen'
 import type { ReactElement } from 'react'
 import type { Mock } from 'vite-plus/test'
-import type { DocumentIndexingStatus, IndexingStatusResponse } from '@/models/datasets'
-import type { InitialDocumentDetail } from '@/models/pipeline'
+import { QueryClient } from '@tanstack/react-query'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import * as React from 'react'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { DatasourceType } from '@/models/pipeline'
+import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import { RETRIEVE_METHOD } from '@/types/app'
@@ -51,26 +53,20 @@ vi.mock('@/app/components/datasets/common/vector-space-admission-alert', () => (
   ),
 }))
 
-// Mock useIndexingStatusBatch hook
+// Mock the batch indexing status request
 let mockFetchIndexingStatus: Mock
-let mockIndexingStatusData: IndexingStatusResponse[] = []
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useIndexingStatusBatch: () => ({
-    mutateAsync: mockFetchIndexingStatus,
-  }),
-  useProcessRule: () => ({
-    data: {
-      mode: 'custom',
-      rules: { parent_mode: 'paragraph' },
-    },
-  }),
-}))
-
-// Mock useInvalidDocumentList hook
-const mockInvalidDocumentList = vi.fn()
-vi.mock('@/service/knowledge/use-document', () => ({
-  useInvalidDocumentList: () => mockInvalidDocumentList,
-}))
+let mockIndexingStatusData: DocumentStatusResponse[] = []
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.processRule.get': () => ({
+      data: {
+        mode: 'custom',
+        rules: { parent_mode: 'paragraph' },
+      },
+    }),
+  })
+})
 
 // Mock useDatasetApiAccessUrl hook
 vi.mock('@/hooks/use-api-access-url', () => ({
@@ -84,28 +80,26 @@ vi.mock('@/hooks/use-api-access-url', () => ({
  * Uses deterministic counter-based IDs to avoid flaky tests
  */
 let documentIdCounter = 0
-const createMockDocument = (
-  overrides: Partial<InitialDocumentDetail> = {},
-): InitialDocumentDetail => ({
+const createMockDocument = (overrides: Partial<PipelineDocument> = {}): PipelineDocument => ({
   id: overrides.id ?? `doc-${++documentIdCounter}`,
   name: 'test-document.txt',
   data_source_type: DatasourceType.localFile,
   data_source_info: {},
-  enable: true,
+  enabled: true,
   error: '',
-  indexing_status: 'waiting' as DocumentIndexingStatus,
+  indexing_status: 'waiting' as DocumentStatusResponse['indexing_status'],
   position: 0,
   ...overrides,
 })
 
 /**
- * Creates a mock IndexingStatusResponse for testing
+ * Creates a mock DocumentStatusResponse for testing
  */
 const createMockIndexingStatus = (
-  overrides: Partial<IndexingStatusResponse> = {},
-): IndexingStatusResponse => ({
-  id: `doc-${Math.random().toString(36).slice(2, 9)}`,
-  indexing_status: 'waiting' as DocumentIndexingStatus,
+  overrides: Partial<DocumentStatusResponse> = {},
+): DocumentStatusResponse => ({
+  id: `status-${++documentIdCounter}`,
+  indexing_status: 'waiting' as DocumentStatusResponse['indexing_status'],
   processing_started_at: Date.now(),
   parsing_completed_at: 0,
   cleaning_completed_at: 0,
@@ -126,7 +120,7 @@ const createDefaultProps = (
   overrides: Partial<{
     datasetId: string
     batchId: string
-    documents: InitialDocumentDetail[]
+    documents: PipelineDocument[]
     indexingType: IndexingType
     retrievalMethod: RETRIEVE_METHOD
   }> = {},
@@ -155,6 +149,7 @@ function render(ui: ReactElement) {
 
 describe('EmbeddingProcess', () => {
   beforeEach(() => {
+    vi.spyOn(QueryClient.prototype, 'invalidateQueries')
     vi.clearAllMocks()
     vi.useFakeTimers({ shouldAdvanceTime: true })
 
@@ -167,11 +162,9 @@ describe('EmbeddingProcess', () => {
     mockIndexingStatusData = []
 
     // Setup default mock for fetchIndexingStatus
-    mockFetchIndexingStatus = vi.fn().mockImplementation((_, options) => {
-      options?.onSuccess?.({ data: mockIndexingStatusData })
-      options?.onSettled?.()
-      return Promise.resolve({ data: mockIndexingStatusData })
-    })
+    mockFetchIndexingStatus = vi
+      .fn()
+      .mockImplementation(() => Promise.resolve({ data: mockIndexingStatusData }))
   })
 
   afterEach(() => {
@@ -662,7 +655,9 @@ describe('EmbeddingProcess', () => {
       expect(link).toHaveAttribute('href', '/datasets/my-dataset-123/documents')
       fireEvent.click(link)
 
-      expect(mockInvalidDocumentList).toHaveBeenCalled()
+      expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
+        queryKey: consoleQuery.datasets.byDatasetId.documents.get.key(),
+      })
     })
   })
 
@@ -847,23 +842,10 @@ describe('EmbeddingProcess', () => {
 
   describe('Edge Cases', () => {
     // Tests for boundary conditions
-    it('should throw error when documents array is empty', () => {
-      // The component accesses documents[0].id for useProcessRule (line 81-82),
-      // which throws TypeError when documents array is empty.
-      // This test documents this known limitation.
+    it('should render without documents', () => {
       const props = createDefaultProps({ documents: [] })
 
-      // Suppress console errors for expected error
-      const consoleError = vi
-        .spyOn(console, 'error')
-        .mockImplementation(Function.prototype as () => void)
-
-      // Act & Assert - explicitly assert the error behavior
-      expect(() => {
-        render(<EmbeddingProcess {...props} />)
-      }).toThrow(TypeError)
-
-      consoleError.mockRestore()
+      expect(() => render(<EmbeddingProcess {...props} />)).not.toThrow()
     })
 
     it('should handle empty indexing status response', async () => {
@@ -908,7 +890,7 @@ describe('EmbeddingProcess', () => {
       mockIndexingStatusData = [
         createMockIndexingStatus({
           id: 'doc-1',
-          indexing_status: undefined as unknown as DocumentIndexingStatus,
+          indexing_status: undefined as unknown as DocumentStatusResponse['indexing_status'],
         }),
       ]
       const props = createDefaultProps({ documents: [doc1] })
@@ -1100,4 +1082,16 @@ describe('EmbeddingProcess', () => {
       ).not.toBeInTheDocument()
     })
   })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.batch.byBatch.indexingStatus.get': (input) =>
+        mockFetchIndexingStatus(input),
+    }),
+  }
 })

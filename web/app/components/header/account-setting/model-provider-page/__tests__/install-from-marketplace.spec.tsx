@@ -145,7 +145,7 @@ describe('InstallFromMarketplace', () => {
   })
 
   it('should show loading state', () => {
-    ;(useMarketplaceAllPlugins as unknown as Mock).mockReturnValue({
+    ;(useMarketplaceAllPlugins as Mock).mockReturnValue({
       plugins: [],
       isLoading: true,
     })
@@ -156,7 +156,7 @@ describe('InstallFromMarketplace', () => {
   })
 
   it('should list plugins', () => {
-    ;(useMarketplaceAllPlugins as unknown as Mock).mockReturnValue({
+    ;(useMarketplaceAllPlugins as Mock).mockReturnValue({
       plugins: [{ plugin_id: '1', name: 'Plugin 1' }],
       isLoading: false,
     })
@@ -167,7 +167,7 @@ describe('InstallFromMarketplace', () => {
   })
 
   it('should anchor the tour target to the heading and first marketplace row', () => {
-    ;(useMarketplaceAllPlugins as unknown as Mock).mockReturnValue({
+    ;(useMarketplaceAllPlugins as Mock).mockReturnValue({
       plugins: [
         { plugin_id: '1', name: 'Plugin 1' },
         { plugin_id: '2', name: 'Plugin 2' },
@@ -198,7 +198,7 @@ describe('InstallFromMarketplace', () => {
   })
 
   it('should hide bundle plugins from the list', () => {
-    ;(useMarketplaceAllPlugins as unknown as Mock).mockReturnValue({
+    ;(useMarketplaceAllPlugins as Mock).mockReturnValue({
       plugins: [
         { plugin_id: '1', name: 'Plugin 1', type: 'plugin' },
         { plugin_id: '2', name: 'Bundle 1', type: 'bundle' },

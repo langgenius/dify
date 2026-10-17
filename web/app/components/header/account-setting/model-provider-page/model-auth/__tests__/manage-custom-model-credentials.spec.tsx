@@ -4,9 +4,9 @@ import userEvent from '@testing-library/user-event'
 import ManageCustomModelCredentials from '../manage-custom-model-credentials'
 
 // Mock hooks
-const mockUseCustomModels = vi.fn()
+const mockGetCustomModels = vi.fn()
 vi.mock('../hooks', () => ({
-  useCustomModels: () => mockUseCustomModels(),
+  getCustomModels: () => mockGetCustomModels(),
   useAuth: () => ({
     handleOpenModal: vi.fn(),
   }),
@@ -64,7 +64,7 @@ describe('ManageCustomModelCredentials', () => {
   })
 
   it('should return null when no custom models exist', () => {
-    mockUseCustomModels.mockReturnValue([])
+    mockGetCustomModels.mockReturnValue([])
     const { container } = render(<ManageCustomModelCredentials provider={mockProvider} />)
     expect(container.firstChild).toBeNull()
   })
@@ -82,7 +82,7 @@ describe('ManageCustomModelCredentials', () => {
         // testing undefined credentials branch
       },
     ]
-    mockUseCustomModels.mockReturnValue(mockModels)
+    mockGetCustomModels.mockReturnValue(mockModels)
 
     render(<ManageCustomModelCredentials provider={mockProvider} />)
 
@@ -103,7 +103,7 @@ describe('ManageCustomModelCredentials', () => {
         current_credential_name: 'Key 1',
       },
     ]
-    mockUseCustomModels.mockReturnValue(mockModels)
+    mockGetCustomModels.mockReturnValue(mockModels)
 
     render(<ManageCustomModelCredentials provider={mockProvider} />)
 
@@ -114,7 +114,7 @@ describe('ManageCustomModelCredentials', () => {
   it('should forward controlled open state', async () => {
     const user = userEvent.setup()
     const onOpenChange = vi.fn()
-    mockUseCustomModels.mockReturnValue([{ model: 'gpt-4' }])
+    mockGetCustomModels.mockReturnValue([{ model: 'gpt-4' }])
 
     render(
       <ManageCustomModelCredentials provider={mockProvider} isOpen onOpenChange={onOpenChange} />,
@@ -135,7 +135,7 @@ describe('ManageCustomModelCredentials', () => {
         current_credential_name: '',
       },
     ]
-    mockUseCustomModels.mockReturnValue(mockModels)
+    mockGetCustomModels.mockReturnValue(mockModels)
 
     render(<ManageCustomModelCredentials provider={mockProvider} />)
 

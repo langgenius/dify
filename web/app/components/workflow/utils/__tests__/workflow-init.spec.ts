@@ -5,7 +5,6 @@ import type { LLMNodeType } from '../../nodes/llm/types'
 import type { LoopNodeType } from '../../nodes/loop/types'
 import type { ParameterExtractorNodeType } from '../../nodes/parameter-extractor/types'
 import type { ToolNodeType } from '../../nodes/tool/types'
-import type { Edge, Node } from '@/app/components/workflow/types'
 import {
   CUSTOM_NODE,
   DEFAULT_RETRY_INTERVAL,
@@ -17,30 +16,6 @@ import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-sta
 import { BlockEnum, ErrorHandleMode } from '@/app/components/workflow/types'
 import { createEdge, createNode, resetFixtureCounters } from '../../__tests__/fixtures'
 import { initialEdges, initialNodes, preprocessNodesAndEdges } from '../workflow-init'
-
-vi.mock('reactflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('reactflow')>()
-  return {
-    ...actual,
-    getConnectedEdges: vi.fn((_nodes: Node[], edges: Edge[]) => {
-      const node = _nodes[0]
-      return edges.filter((e) => e.source === node!.id || e.target === node!.id)
-    }),
-  }
-})
-
-vi.mock('@/utils', () => ({
-  correctModelProvider: vi.fn((p: string) => (p ? `corrected/${p}` : '')),
-}))
-
-vi.mock('@/app/components/workflow/nodes/if-else/utils', () => ({
-  branchNameCorrect: vi.fn((branches: Array<Record<string, unknown>>) =>
-    branches.map((b: Record<string, unknown>, i: number) => ({
-      ...b,
-      name: b.id === 'false' ? 'ELSE' : branches.length === 2 ? 'IF' : `CASE ${i + 1}`,
-    })),
-  ),
-}))
 
 beforeEach(() => {
   resetFixtureCounters()
@@ -58,7 +33,7 @@ describe('preprocessNodesAndEdges', () => {
     const nodes = [
       createNode({ id: 'iter-1', data: { type: BlockEnum.Iteration, title: '', desc: '' } }),
     ]
-    const result = preprocessNodesAndEdges(nodes as Node[], [])
+    const result = preprocessNodesAndEdges(nodes, [])
     const startNodes = result.nodes.filter((n) => n.data.type === BlockEnum.IterationStart)
     expect(startNodes).toHaveLength(1)
     expect(startNodes[0]!.parentId).toBe('iter-1')
@@ -72,7 +47,7 @@ describe('preprocessNodesAndEdges', () => {
       }),
       createNode({ id: 'some-node', data: { type: BlockEnum.Code, title: '', desc: '' } }),
     ]
-    const result = preprocessNodesAndEdges(nodes as Node[], [])
+    const result = preprocessNodesAndEdges(nodes, [])
     const startNodes = result.nodes.filter((n) => n.data.type === BlockEnum.IterationStart)
     expect(startNodes).toHaveLength(1)
   })
@@ -89,7 +64,7 @@ describe('preprocessNodesAndEdges', () => {
         data: { type: BlockEnum.IterationStart, title: '', desc: '' },
       }),
     ]
-    const result = preprocessNodesAndEdges(nodes as Node[], [])
+    const result = preprocessNodesAndEdges(nodes, [])
     expect(result.nodes).toEqual(nodes)
   })
 
@@ -97,7 +72,7 @@ describe('preprocessNodesAndEdges', () => {
     const nodes = [
       createNode({ id: 'loop-1', data: { type: BlockEnum.Loop, title: '', desc: '' } }),
     ]
-    const result = preprocessNodesAndEdges(nodes as Node[], [])
+    const result = preprocessNodesAndEdges(nodes, [])
     const startNodes = result.nodes.filter((n) => n.data.type === BlockEnum.LoopStart)
     expect(startNodes).toHaveLength(1)
   })
@@ -110,7 +85,7 @@ describe('preprocessNodesAndEdges', () => {
       }),
       createNode({ id: 'some-node', data: { type: BlockEnum.Code, title: '', desc: '' } }),
     ]
-    const result = preprocessNodesAndEdges(nodes as Node[], [])
+    const result = preprocessNodesAndEdges(nodes, [])
     const startNodes = result.nodes.filter((n) => n.data.type === BlockEnum.LoopStart)
     expect(startNodes).toHaveLength(1)
   })
@@ -127,7 +102,7 @@ describe('preprocessNodesAndEdges', () => {
         data: { type: BlockEnum.LoopStart, title: '', desc: '' },
       }),
     ]
-    const result = preprocessNodesAndEdges(nodes as Node[], [])
+    const result = preprocessNodesAndEdges(nodes, [])
     expect(result.nodes).toEqual(nodes)
   })
 
@@ -143,7 +118,7 @@ describe('preprocessNodesAndEdges', () => {
         data: { type: BlockEnum.Code, title: '', desc: '' },
       }),
     ]
-    const result = preprocessNodesAndEdges(nodes as Node[], [])
+    const result = preprocessNodesAndEdges(nodes, [])
     const newEdges = result.edges
     expect(newEdges).toHaveLength(1)
     expect(newEdges[0]!.target).toBe('child-1')
@@ -163,7 +138,7 @@ describe('preprocessNodesAndEdges', () => {
         data: { type: BlockEnum.Code, title: '', desc: '' },
       }),
     ]
-    const result = preprocessNodesAndEdges(nodes as Node[], [])
+    const result = preprocessNodesAndEdges(nodes, [])
     const newEdges = result.edges
     expect(newEdges).toHaveLength(1)
     expect(newEdges[0]!.target).toBe('child-1')
@@ -181,7 +156,7 @@ describe('preprocessNodesAndEdges', () => {
         data: { type: BlockEnum.Loop, title: '', desc: '' },
       }),
     ]
-    const result = preprocessNodesAndEdges(nodes as Node[], [])
+    const result = preprocessNodesAndEdges(nodes, [])
     const iterNode = result.nodes.find((n) => n.id === 'iter-1')
     const loopNode = result.nodes.find((n) => n.id === 'loop-1')
     expect((iterNode!.data as IterationNodeType).start_node_id).toBeTruthy()
@@ -413,7 +388,7 @@ describe('initialNodes', () => {
     ]
 
     const result = initialNodes(nodes, [])
-    expect((result[0]!.data as LLMNodeType).model.provider).toBe('corrected/openai')
+    expect((result[0]!.data as LLMNodeType).model.provider).toBe('langgenius/openai/openai')
   })
 
   it('should correct model provider for KnowledgeRetrieval reranking_model', () => {
@@ -435,7 +410,7 @@ describe('initialNodes', () => {
     expect(
       (result[0]!.data as KnowledgeRetrievalNodeType).multiple_retrieval_config!.reranking_model!
         .provider,
-    ).toBe('corrected/cohere')
+    ).toBe('langgenius/cohere/cohere')
   })
 
   it('should correct model provider for ParameterExtractor nodes', () => {
@@ -453,7 +428,7 @@ describe('initialNodes', () => {
 
     const result = initialNodes(nodes, [])
     expect((result[0]!.data as ParameterExtractorNodeType).model.provider).toBe(
-      'corrected/anthropic',
+      'langgenius/anthropic/anthropic',
     )
   })
 

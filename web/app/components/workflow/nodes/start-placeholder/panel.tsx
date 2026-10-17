@@ -1,10 +1,9 @@
 import type { FC } from 'react'
-import type { StartPlaceholderNodeType } from './types'
 import type {
   PluginDefaultValue,
   TriggerDefaultValue,
 } from '@/app/components/workflow/block-selector/types'
-import type { NodePanelProps } from '@/app/components/workflow/types'
+import type { CommonNodeType, NodePanelProps } from '@/app/components/workflow/types'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -42,7 +41,7 @@ const getTriggerPluginNodeData = (
   }
 }
 
-const Panel: FC<NodePanelProps<StartPlaceholderNodeType>> = ({ id }) => {
+const Panel: FC<NodePanelProps<CommonNodeType>> = ({ id }) => {
   const { t } = useTranslation(['workflow'])
   const [searchText, setSearchText] = useState('')
   const [tags, setTags] = useState<string[]>([])

@@ -29,6 +29,11 @@ import path. Cross-module references live in Config, for example
 before I/O. Instruction ordering is unspecified. Native capability ordering
 preserves Runtime → Shell → Config resource scopes.
 
+An enabled Local runtime requires a nonblank deployment auth token matching
+shellctl. When shellctl path isolation is enabled, Landlock setup errors abort
+the job before its user script executes. Deployment settings may explicitly
+disable path isolation. See the [operations guide](guide/index.md) for setup.
+
 Model, output type, current user content and initial history use explicit runner
 assembly and native Agent arguments. Knowledge eager results stay in the user
 role through a native model-request hook. Tool dispatch, instructions and

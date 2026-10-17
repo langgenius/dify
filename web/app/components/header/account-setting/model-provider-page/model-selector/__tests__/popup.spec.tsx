@@ -46,11 +46,6 @@ vi.mock(
   }),
 )
 
-const mockSupportFunctionCall = vi.hoisted(() => vi.fn())
-vi.mock('@/utils/tool-call', () => ({
-  supportFunctionCall: mockSupportFunctionCall,
-}))
-
 type MockSummaryProvider = Pick<
   ModelProviderSummaryResponse,
   | 'provider'
@@ -194,9 +189,6 @@ vi.mock('next-themes', () => ({
 }))
 
 const mockInstallMutateAsync = vi.hoisted(() => vi.fn())
-vi.mock('@/service/use-plugins', () => ({
-  useInstallPackageFromMarketPlace: () => ({ mutateAsync: mockInstallMutateAsync }),
-}))
 
 const mockFetchPluginInfoFromMarketPlace = vi.hoisted(() => vi.fn())
 vi.mock('@/service/plugins', () => ({
@@ -280,11 +272,22 @@ const makeSummaryProvider = (
   ...overrides,
 })
 
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.plugin.install.marketplace.post': (...args: unknown[]) =>
+        mockInstallMutateAsync(...args),
+    }),
+  }
+})
+
 describe('Popup', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockLanguage = 'en_US'
-    mockSupportFunctionCall.mockReturnValue(true)
     mockFetchPluginInfoFromMarketPlace.mockResolvedValue({
       data: {
         plugin: {
@@ -674,8 +677,6 @@ describe('Popup', () => {
   })
 
   it('should still apply scope features when direct props match by provider label', () => {
-    mockSupportFunctionCall.mockReturnValue(false)
-
     renderPopup(
       <PopupHarness
         modelList={[
@@ -697,11 +698,8 @@ describe('Popup', () => {
       target: { value: 'openai' },
     })
 
-    expect(
-      screen.getByText(/modelProvider\.modelProvider\.selector\.noModelFoundForSearch.*openai/),
-    )!.toBeInTheDocument()
     expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
-    expect(screen.queryByText('gpt-4-tool')).not.toBeInTheDocument()
+    expect(screen.getByText('gpt-4-tool')).toBeInTheDocument()
   })
 
   it('should toggle incompatible models from the reveal action', async () => {
@@ -891,8 +889,6 @@ describe('Popup', () => {
   })
 
   it('should still apply scope features when matching by provider label', () => {
-    mockSupportFunctionCall.mockReturnValue(false)
-
     renderPopup(
       <PopupHarness
         modelList={[
@@ -914,11 +910,8 @@ describe('Popup', () => {
       target: { value: 'openai' },
     })
 
-    expect(
-      screen.getByText(/modelProvider\.modelProvider\.selector\.noModelFoundForSearch/),
-    )!.toBeInTheDocument()
     expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
-    expect(screen.queryByText('gpt-4-tool')).not.toBeInTheDocument()
+    expect(screen.getByText('gpt-4-tool')).toBeInTheDocument()
   })
 
   it('should not show compatible-only helper text when no scope features are applied', () => {
@@ -974,10 +967,11 @@ describe('Popup', () => {
       }),
     ]
 
-    mockSupportFunctionCall.mockReturnValue(false)
     const { unmount } = renderPopup(
       <PopupHarness
-        modelList={modelList}
+        modelList={[
+          makeModel({ models: [makeModelItem({ features: [ModelFeatureEnum.vision] })] }),
+        ]}
         onHide={vi.fn()}
         scopeFeatures={[ModelFeatureEnum.toolCall, ModelFeatureEnum.vision]}
       />,
@@ -987,7 +981,6 @@ describe('Popup', () => {
     )!.toBeInTheDocument()
 
     unmount()
-    mockSupportFunctionCall.mockReturnValue(true)
     const { unmount: unmount2 } = renderPopup(
       <PopupHarness
         modelList={modelList}
@@ -1361,7 +1354,9 @@ describe('Popup', () => {
     fireEvent.click(installButtons[0]!)
 
     await waitFor(() => {
-      expect(mockInstallMutateAsync).toHaveBeenCalledWith('langgenius/openai:1.0.0')
+      expect(mockInstallMutateAsync).toHaveBeenCalledWith({
+        body: { plugin_unique_identifiers: ['langgenius/openai:1.0.0'] },
+      })
     })
     expect(mockFetchPluginInfoFromMarketPlace).toHaveBeenCalledWith({
       org: 'langgenius',

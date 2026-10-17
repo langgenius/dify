@@ -7,18 +7,16 @@ const mockUseAllBuiltInTools = vi.hoisted(() => vi.fn())
 const mockUseAllCustomTools = vi.hoisted(() => vi.fn())
 const mockUseAllWorkflowTools = vi.hoisted(() => vi.fn())
 const mockUseAllMCPTools = vi.hoisted(() => vi.fn())
-const mockCanFindTool = vi.hoisted(() => vi.fn())
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => mockUseAllBuiltInTools(),
-  useAllCustomTools: () => mockUseAllCustomTools(),
-  useAllWorkflowTools: () => mockUseAllWorkflowTools(),
-  useAllMCPTools: () => mockUseAllMCPTools(),
-}))
-
-vi.mock('@/utils', () => ({
-  canFindTool: (...args: unknown[]) => mockCanFindTool(...args),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.builtin.get': () => mockUseAllBuiltInTools(),
+    'workspaces.current.tools.api.get': () => mockUseAllCustomTools(),
+    'workspaces.current.tools.workflow.get': () => mockUseAllWorkflowTools(),
+    'workspaces.current.tools.mcp.get': () => mockUseAllMCPTools(),
+  })
+})
 
 const createToolCollection = (overrides: Partial<ToolWithProvider> = {}): ToolWithProvider =>
   ({
@@ -41,9 +39,6 @@ const createToolCollection = (overrides: Partial<ToolWithProvider> = {}): ToolWi
 describe('useCurrentToolCollection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockCanFindTool.mockImplementation(
-      (collectionId: string, providerId: string) => collectionId === providerId,
-    )
     mockUseAllBuiltInTools.mockReturnValue({ data: [] })
     mockUseAllCustomTools.mockReturnValue({ data: [] })
     mockUseAllWorkflowTools.mockReturnValue({ data: [] })
@@ -60,7 +55,6 @@ describe('useCurrentToolCollection', () => {
 
     expect(result.current.currentTools).toEqual([builtInCollection])
     expect(result.current.currCollection).toBe(builtInCollection)
-    expect(mockCanFindTool).toHaveBeenCalledWith('builtin-search', 'builtin-search')
   })
 
   it('should select the custom tool collection when the provider type is custom', () => {

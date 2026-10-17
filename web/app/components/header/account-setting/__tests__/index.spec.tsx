@@ -9,6 +9,14 @@ import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { ACCOUNT_SETTING_TAB } from '../constants'
 import AccountSetting from '../index'
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.members.get': () => ({ data: { accounts: [] }, refetch: vi.fn() }),
+    'auth.plugin.datasource.list.get': () => ({ data: { result: [] } }),
+  })
+})
+
 let canReplaceLogo = true
 
 const mockFeatureFlags = vi.hoisted(() => ({ NEXT_PUBLIC_ENABLE_ACCESS_TOKEN: true }))
@@ -70,18 +78,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page', () => ({
     />
   ),
 }))
-
-vi.mock('@/service/use-datasource', () => ({
-  useGetDataSourceListAuth: vi.fn(() => ({ data: { result: [] } })),
-}))
-
-vi.mock('@/service/use-common', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/use-common')>()
-  return {
-    ...actual,
-    useMembers: vi.fn(() => ({ data: { accounts: [] }, refetch: vi.fn() })),
-  }
-})
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()

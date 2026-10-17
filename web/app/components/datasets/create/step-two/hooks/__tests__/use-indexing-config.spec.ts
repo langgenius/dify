@@ -23,10 +23,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   useDefaultModel: () => ({ data: mocks.defaultEmbeddingModel }),
 }))
 
-vi.mock('@/app/components/datasets/settings/utils', () => ({
-  checkShowMultiModalTip: vi.fn(() => false),
-}))
-
 const { IndexingType, useIndexingConfig } = await import('../use-indexing-config')
 
 describe('useIndexingConfig', () => {

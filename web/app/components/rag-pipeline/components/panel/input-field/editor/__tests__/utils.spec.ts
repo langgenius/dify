@@ -45,6 +45,28 @@ describe('input-field editor utils', () => {
     })
   })
 
+  it('keeps number and checkbox defaults typed for the submit schema', () => {
+    const numberField = convertToInputFieldFormData({
+      type: PipelineInputVarType.number,
+      label: 'Chunk size',
+      variable: 'chunk_size',
+      default_value: 5,
+      required: true,
+    })
+    const checkboxField = convertToInputFieldFormData({
+      type: PipelineInputVarType.checkbox,
+      label: 'Enabled',
+      variable: 'enabled',
+      default_value: false,
+      required: true,
+    })
+
+    expect(numberField.default).toBe(5)
+    expect(checkboxField.default).toBe(false)
+    expect(convertFormDataToINputField(numberField).default_value).toBe(5)
+    expect(convertFormDataToINputField(checkboxField).default_value).toBe(false)
+  })
+
   it('should fall back to the default input variable template', () => {
     const result = convertToInputFieldFormData()
 

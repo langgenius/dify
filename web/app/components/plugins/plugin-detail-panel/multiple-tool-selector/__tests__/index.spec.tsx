@@ -14,11 +14,16 @@ import MultipleToolSelector from '../index'
 
 // Mock useAllMCPTools hook
 const mockMCPToolsData = vi.fn<() => ToolWithProvider[] | undefined>(() => undefined)
-vi.mock('@/service/use-tools', () => ({
-  useAllMCPTools: () => ({
-    data: mockMCPToolsData(),
-  }),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.mcp.get': async () => mockMCPToolsData() ?? new Promise(() => {}),
+    }),
+  }
+})
 
 // Track edit tool index for unique test IDs
 let editToolIndex = 0
@@ -337,7 +342,7 @@ describe('MultipleToolSelector', () => {
       ).not.toBeInTheDocument()
     })
 
-    it('should render enabled count when tools are selected', () => {
+    it('should render enabled count when tools are selected', async () => {
       // Arrange
       const tools = [
         createToolValue({ tool_name: 'tool-1', enabled: true }),
@@ -348,7 +353,7 @@ describe('MultipleToolSelector', () => {
       renderComponent({ value: tools })
 
       // Assert
-      expect(screen.getByText('1/2')).toBeInTheDocument()
+      expect(await screen.findByText('1/2')).toBeInTheDocument()
       expect(screen.getByText('appDebug.agent.tools.enabled')).toBeInTheDocument()
     })
   })
@@ -446,7 +451,7 @@ describe('MultipleToolSelector', () => {
       expect(screen.getByText('2/2')).toBeInTheDocument()
     })
 
-    it('should not count MCP tools when version is unsupported', () => {
+    it('should not count MCP tools when version is unsupported', async () => {
       // Arrange
       const mcpTools = [createMCPTool({ id: 'mcp-provider' })]
       mockMCPToolsData.mockReturnValue(mcpTools)
@@ -460,7 +465,7 @@ describe('MultipleToolSelector', () => {
       renderComponent({ value: tools, versionSupported: false })
 
       // Assert
-      expect(screen.getByText('1/2')).toBeInTheDocument()
+      expect(await screen.findByText('1/2')).toBeInTheDocument()
     })
 
     it('should manage open state for add tool panel', () => {
@@ -765,7 +770,7 @@ describe('MultipleToolSelector', () => {
       expect(screen.getByText('2/2')).toBeInTheDocument()
     })
 
-    it('should exclude MCP tools from enabled count when strategy version is unsupported', () => {
+    it('should exclude MCP tools from enabled count when strategy version is unsupported', async () => {
       // Arrange
       const mcpTools = [createMCPTool({ id: 'mcp-provider' })]
       mockMCPToolsData.mockReturnValue(mcpTools)
@@ -779,7 +784,7 @@ describe('MultipleToolSelector', () => {
       renderComponent({ value: tools, versionSupported: false })
 
       // Assert - Only regular tool should be counted
-      expect(screen.getByText('1/2')).toBeInTheDocument()
+      expect(await screen.findByText('1/2')).toBeInTheDocument()
     })
   })
 

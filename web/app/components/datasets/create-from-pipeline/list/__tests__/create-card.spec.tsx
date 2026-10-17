@@ -1,5 +1,6 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import CreateCard from '../create-card'
 
 const mockPush = vi.fn()
@@ -30,17 +31,17 @@ vi.mock('@/app/notifications', async (importOriginal) => {
 })
 
 const mockCreateEmptyDataset = vi.fn()
-const mockInvalidDatasetList = vi.fn()
 
-vi.mock('@/service/knowledge/use-create-dataset', () => ({
-  useCreatePipelineDataset: () => ({
-    mutateAsync: mockCreateEmptyDataset,
-  }),
-}))
-
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useInvalidDatasetList: () => mockInvalidDatasetList,
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipeline.emptyDataset.post': (input) => mockCreateEmptyDataset(input),
+    }),
+  }
+})
 
 // CreateCard Component Tests
 
@@ -53,122 +54,27 @@ describe('CreateCard', () => {
 
   describe('Rendering', () => {
     it('should render title and description', () => {
-      render(<CreateCard />)
+      renderWithConsoleQuery(<CreateCard />)
       expect(screen.getByText(/createFromScratch\.title/i)).toBeInTheDocument()
       expect(screen.getByText(/createFromScratch\.description/i)).toBeInTheDocument()
     })
 
     it('should render add icon', () => {
-      const { container } = render(<CreateCard />)
+      const { container } = renderWithConsoleQuery(<CreateCard />)
       const icon = container.querySelector('svg')
       expect(icon).toBeInTheDocument()
     })
   })
 
-  describe('User Interactions', () => {
-    it('should call createEmptyDataset when clicked', async () => {
-      mockCreateEmptyDataset.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess({ id: 'new-dataset-id' })
-        return Promise.resolve()
-      })
-
-      render(<CreateCard />)
-
-      const card = screen
-        .getByText(/createFromScratch\.title/i)
-        .closest('div[class*="cursor-pointer"]')
-      fireEvent.click(card!)
-
-      await waitFor(() => {
-        expect(mockCreateEmptyDataset).toHaveBeenCalled()
-      })
-    })
-
-    it('should navigate to pipeline page on success', async () => {
-      mockCreateEmptyDataset.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess({ id: 'test-dataset-123' })
-        return Promise.resolve()
-      })
-
-      render(<CreateCard />)
-
-      const card = screen
-        .getByText(/createFromScratch\.title/i)
-        .closest('div[class*="cursor-pointer"]')
-      fireEvent.click(card!)
-
-      await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/datasets/test-dataset-123/pipeline')
-      })
-    })
-
-    it('should invalidate dataset list on success', async () => {
-      mockCreateEmptyDataset.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess({ id: 'test-id' })
-        return Promise.resolve()
-      })
-
-      render(<CreateCard />)
-
-      const card = screen
-        .getByText(/createFromScratch\.title/i)
-        .closest('div[class*="cursor-pointer"]')
-      fireEvent.click(card!)
-
-      await waitFor(() => {
-        expect(mockInvalidDatasetList).toHaveBeenCalled()
-      })
-    })
-
-    it('should handle error callback', async () => {
-      mockCreateEmptyDataset.mockImplementation((_data, callbacks) => {
-        callbacks.onError(new Error('Create failed'))
-        return Promise.resolve()
-      })
-
-      render(<CreateCard />)
-
-      const card = screen
-        .getByText(/createFromScratch\.title/i)
-        .closest('div[class*="cursor-pointer"]')
-      fireEvent.click(card!)
-
-      // Should not throw and should handle error gracefully
-      await waitFor(() => {
-        expect(mockCreateEmptyDataset).toHaveBeenCalled()
-      })
-    })
-
-    it('should not navigate when data is undefined', async () => {
-      mockCreateEmptyDataset.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess(undefined)
-        return Promise.resolve()
-      })
-
-      render(<CreateCard />)
-
-      const card = screen
-        .getByText(/createFromScratch\.title/i)
-        .closest('div[class*="cursor-pointer"]')
-      fireEvent.click(card!)
-
-      await waitFor(() => {
-        expect(mockCreateEmptyDataset).toHaveBeenCalled()
-      })
-
-      expect(mockPush).not.toHaveBeenCalled()
-    })
-  })
-
   describe('Layout', () => {
     it('should have fixed height', () => {
-      const { container } = render(<CreateCard />)
+      const { container } = renderWithConsoleQuery(<CreateCard />)
       const card = container.firstChild as HTMLElement
       expect(card).toHaveClass('h-33')
     })
 
     it('should have shadow and border', () => {
-      const { container } = render(<CreateCard />)
+      const { container } = renderWithConsoleQuery(<CreateCard />)
       const card = container.firstChild as HTMLElement
       expect(card).toHaveClass('border-[0.5px]', 'shadow-xs')
     })

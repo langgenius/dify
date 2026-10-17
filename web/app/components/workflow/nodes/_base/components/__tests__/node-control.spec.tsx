@@ -6,9 +6,8 @@ import { fullWorkflowAccessControl } from '../../../../hooks-store'
 import { BlockEnum, NodeRunningStatus } from '../../../../types'
 import NodeControl from '../node-control'
 
-const { mockHandleNodeSelect, mockCanRunBySingle, mockUseNodesReadOnly } = vi.hoisted(() => ({
+const { mockHandleNodeSelect, mockUseNodesReadOnly } = vi.hoisted(() => ({
   mockHandleNodeSelect: vi.fn(),
-  mockCanRunBySingle: vi.fn(() => true),
   mockUseNodesReadOnly: vi.fn(() => false),
 }))
 
@@ -29,14 +28,6 @@ vi.mock('../../../../hooks/use-workflow', async (importOriginal) => {
   return {
     ...actual,
     useNodesReadOnly: mockUseNodesReadOnly,
-  }
-})
-
-vi.mock('../../../../utils', async () => {
-  const actual = await vi.importActual<typeof import('../../../../utils')>('../../../../utils')
-  return {
-    ...actual,
-    canRunBySingle: mockCanRunBySingle,
   }
 })
 
@@ -87,7 +78,6 @@ describe('NodeControl', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPluginInstallLocked = false
-    mockCanRunBySingle.mockReturnValue(true)
     mockUseNodesReadOnly.mockReturnValue(false)
   })
 
@@ -141,9 +131,7 @@ describe('NodeControl', () => {
     })
 
     it('should hide the run control when single-node execution is not supported', () => {
-      mockCanRunBySingle.mockReturnValue(false)
-
-      renderNodeControl(<NodeControlHarness id="node-4" data={makeData()} />)
+      renderNodeControl(<NodeControlHarness id="node-4" data={makeData({ type: BlockEnum.End })} />)
 
       expect(
         screen.queryByRole('button', { name: 'workflow.panel.runThisStep' }),

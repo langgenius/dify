@@ -1,5 +1,7 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import ModelParameterModal from '../index'
 
 let parameterRules: Array<Record<string, unknown>> | undefined = [
@@ -13,8 +15,8 @@ let parameterRules: Array<Record<string, unknown>> | undefined = [
     help: { en_US: 'Control randomness' },
   },
 ]
-let isRulesLoading = false
-let isRulesPending = false
+let seedRules = true
+const getRules = vi.fn()
 let currentProvider: Record<string, unknown> | undefined = {
   provider: 'openai',
   label: { en_US: 'OpenAI' },
@@ -41,16 +43,6 @@ let activeTextGenerationModelList: Array<Record<string, unknown>> = [
     ],
   },
 ]
-
-vi.mock('@/service/use-common', () => ({
-  useModelParameterRules: () => ({
-    data: {
-      data: parameterRules,
-    },
-    isLoading: isRulesLoading,
-    isPending: isRulesPending,
-  }),
-}))
 
 vi.mock('../../hooks', () => ({
   useTextGenerationCurrentProviderAndModelAndModelList: () => ({
@@ -131,23 +123,33 @@ vi.mock('../presets-parameter', () => ({
   },
 }))
 
-vi.mock('../presets-parameter-utils', () => ({
-  getSupportedPresetConfig: (_toneId: number, supportedParameterNames?: string[]) => {
-    if (supportedParameterNames && !supportedParameterNames.includes('temperature')) return {}
-
-    return { temperature: 0.8 }
-  },
-}))
-
-vi.mock('../trigger', () => ({
-  default: () => <button type="button">Open Settings</button>,
-}))
-
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
     ...actual,
     PROVIDER_WITH_PRESET_TONE: ['openai'],
+  }
+})
+
+const render = (ui: React.ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  if (seedRules)
+    queryClient.setQueryDefaults(
+      consoleQuery.workspaces.current.modelProviders.byProvider.models.parameterRules.get.key(),
+      { initialData: { data: parameterRules ?? [] } },
+    )
+  return renderWithConsoleQuery(ui, { queryClient })
+}
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.modelProviders.byProvider.models.parameterRules.get': (input) =>
+        getRules(input),
+    }),
   }
 })
 
@@ -169,8 +171,8 @@ describe('ModelParameterModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    isRulesLoading = false
-    isRulesPending = false
+    seedRules = true
+    getRules.mockReturnValue(new Promise(() => {}))
     parameterRules = [
       {
         name: 'temperature',
@@ -335,21 +337,21 @@ describe('ModelParameterModal', () => {
   })
 
   it('should render loading state when parameter rules are loading', () => {
-    isRulesLoading = true
-    isRulesPending = true
+    seedRules = false
     render(<ModelParameterModal {...defaultProps} />)
     openSettings()
     expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 
   it('should not render parameter loading when model is not configured and parameter rules query is pending but disabled', () => {
-    isRulesPending = true
+    seedRules = false
     parameterRules = []
 
     render(<ModelParameterModal {...defaultProps} provider="" modelId="" />)
     openSettings()
 
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+    expect(getRules).not.toHaveBeenCalled()
     expect(screen.getByTestId('model-selector')).toBeInTheDocument()
   })
 
@@ -438,8 +440,7 @@ describe('ModelParameterModal', () => {
 
   it('should render the empty loading fallback when rules resolve to an empty list', () => {
     parameterRules = []
-    isRulesLoading = true
-    isRulesPending = true
+    seedRules = false
 
     render(<ModelParameterModal {...defaultProps} />)
     openSettings()

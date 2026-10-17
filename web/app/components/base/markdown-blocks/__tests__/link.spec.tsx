@@ -12,11 +12,6 @@ vi.mock('@/app/components/base/chat/chat/context', () => ({
   }),
 }))
 
-const mockIsValidUrl = vi.fn()
-vi.mock('../utils', () => ({
-  isValidUrl: (url: string) => mockIsValidUrl(url),
-}))
-
 describe('Link component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -134,8 +129,6 @@ describe('Link component', () => {
   // INVALID URL
   // --------------------------
   it('renders span when url is invalid', () => {
-    mockIsValidUrl.mockReturnValue(false)
-
     const node = {
       properties: {
         href: 'not-a-url',
@@ -152,8 +145,6 @@ describe('Link component', () => {
   // VALID EXTERNAL URL
   // --------------------------
   it('renders external link with target blank when url is valid', () => {
-    mockIsValidUrl.mockReturnValue(true)
-
     const node = {
       properties: {
         href: 'https://example.com',
@@ -171,8 +162,6 @@ describe('Link component', () => {
   })
 
   it('adds attachment mode to file-preview links by default', () => {
-    mockIsValidUrl.mockReturnValue(true)
-
     const node = {
       properties: {
         href: 'http://localhost:5001/files/123/file-preview?timestamp=1&nonce=2&sign=3',
@@ -188,8 +177,6 @@ describe('Link component', () => {
   })
 
   it('does not duplicate attachment mode for file-preview links', () => {
-    mockIsValidUrl.mockReturnValue(true)
-
     const node = {
       properties: {
         href: 'http://localhost:5001/files/123/file-preview?timestamp=1&nonce=2&sign=3&as_attachment=true',
@@ -205,8 +192,6 @@ describe('Link component', () => {
   })
 
   it('keeps protocol-relative file-preview links protocol-relative', () => {
-    mockIsValidUrl.mockReturnValue(true)
-
     const node = {
       properties: {
         href: '//localhost:5001/files/123/file-preview?timestamp=1#page',
@@ -239,8 +224,6 @@ describe('Link component', () => {
   // DEFAULT TEXT FALLBACK
   // --------------------------
   it('renders default text for external link if children not provided', () => {
-    mockIsValidUrl.mockReturnValue(true)
-
     const node = {
       properties: {
         href: 'https://example.com',

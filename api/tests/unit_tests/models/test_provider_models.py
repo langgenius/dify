@@ -18,7 +18,9 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
+from typing_extensions import TypedDict
 
+from graphon.model_runtime.entities.model_entities import ModelType
 from models.enums import CredentialSourceType, PaymentStatus
 from models.provider import (
     LoadBalancingModelConfig,
@@ -35,20 +37,42 @@ from models.provider import (
 )
 
 
+class _ProviderOrderParams(TypedDict, closed=True):
+    tenant_id: str
+    provider_name: str
+    account_id: str
+    payment_product_id: str
+    payment_id: str | None
+    transaction_id: str | None
+    quantity: int
+    currency: str | None
+    total_amount: int | None
+    paid_at: datetime | None
+    pay_failed_at: datetime | None
+    refunded_at: datetime | None
+
+
+class _LoadBalancingConfigParams(TypedDict, closed=True):
+    tenant_id: str
+    provider_name: str
+    model_name: str
+    model_type: ModelType
+
+
 class TestProviderTypeEnum:
     """Test suite for ProviderType enum validation."""
 
-    def test_provider_type_custom_value(self):
+    def test_provider_type_custom_value(self) -> None:
         """Test ProviderType CUSTOM enum value."""
         # Assert
         assert ProviderType.CUSTOM.value == "custom"
 
-    def test_provider_type_system_value(self):
+    def test_provider_type_system_value(self) -> None:
         """Test ProviderType SYSTEM enum value."""
         # Assert
         assert ProviderType.SYSTEM.value == "system"
 
-    def test_provider_type_value_of_custom(self):
+    def test_provider_type_value_of_custom(self) -> None:
         """Test ProviderType.value_of returns CUSTOM for 'custom' string."""
         # Act
         result = ProviderType.value_of("custom")
@@ -56,7 +80,7 @@ class TestProviderTypeEnum:
         # Assert
         assert result == ProviderType.CUSTOM
 
-    def test_provider_type_value_of_system(self):
+    def test_provider_type_value_of_system(self) -> None:
         """Test ProviderType.value_of returns SYSTEM for 'system' string."""
         # Act
         result = ProviderType.value_of("system")
@@ -64,13 +88,13 @@ class TestProviderTypeEnum:
         # Assert
         assert result == ProviderType.SYSTEM
 
-    def test_provider_type_value_of_invalid_raises_error(self):
+    def test_provider_type_value_of_invalid_raises_error(self) -> None:
         """Test ProviderType.value_of raises ValueError for invalid value."""
         # Act & Assert
         with pytest.raises(ValueError, match="No matching enum found"):
             ProviderType.value_of("invalid_type")
 
-    def test_provider_type_iteration(self):
+    def test_provider_type_iteration(self) -> None:
         """Test iterating over ProviderType enum members."""
         # Act
         members = list(ProviderType)
@@ -84,22 +108,22 @@ class TestProviderTypeEnum:
 class TestProviderQuotaTypeEnum:
     """Test suite for ProviderQuotaType enum validation."""
 
-    def test_provider_quota_type_paid_value(self):
+    def test_provider_quota_type_paid_value(self) -> None:
         """Test ProviderQuotaType PAID enum value."""
         # Assert
         assert ProviderQuotaType.PAID.value == "paid"
 
-    def test_provider_quota_type_free_value(self):
+    def test_provider_quota_type_free_value(self) -> None:
         """Test ProviderQuotaType FREE enum value."""
         # Assert
         assert ProviderQuotaType.FREE.value == "free"
 
-    def test_provider_quota_type_trial_value(self):
+    def test_provider_quota_type_trial_value(self) -> None:
         """Test ProviderQuotaType TRIAL enum value."""
         # Assert
         assert ProviderQuotaType.TRIAL.value == "trial"
 
-    def test_provider_quota_type_value_of_paid(self):
+    def test_provider_quota_type_value_of_paid(self) -> None:
         """Test ProviderQuotaType.value_of returns PAID for 'paid' string."""
         # Act
         result = ProviderQuotaType.value_of("paid")
@@ -107,7 +131,7 @@ class TestProviderQuotaTypeEnum:
         # Assert
         assert result == ProviderQuotaType.PAID
 
-    def test_provider_quota_type_value_of_free(self):
+    def test_provider_quota_type_value_of_free(self) -> None:
         """Test ProviderQuotaType.value_of returns FREE for 'free' string."""
         # Act
         result = ProviderQuotaType.value_of("free")
@@ -115,7 +139,7 @@ class TestProviderQuotaTypeEnum:
         # Assert
         assert result == ProviderQuotaType.FREE
 
-    def test_provider_quota_type_value_of_trial(self):
+    def test_provider_quota_type_value_of_trial(self) -> None:
         """Test ProviderQuotaType.value_of returns TRIAL for 'trial' string."""
         # Act
         result = ProviderQuotaType.value_of("trial")
@@ -123,13 +147,13 @@ class TestProviderQuotaTypeEnum:
         # Assert
         assert result == ProviderQuotaType.TRIAL
 
-    def test_provider_quota_type_value_of_invalid_raises_error(self):
+    def test_provider_quota_type_value_of_invalid_raises_error(self) -> None:
         """Test ProviderQuotaType.value_of raises ValueError for invalid value."""
         # Act & Assert
         with pytest.raises(ValueError, match="No matching enum found"):
             ProviderQuotaType.value_of("invalid_quota")
 
-    def test_provider_quota_type_iteration(self):
+    def test_provider_quota_type_iteration(self) -> None:
         """Test iterating over ProviderQuotaType enum members."""
         # Act
         members = list(ProviderQuotaType)
@@ -144,7 +168,7 @@ class TestProviderQuotaTypeEnum:
 class TestProviderModel:
     """Test suite for Provider model validation and operations."""
 
-    def test_provider_creation_with_required_fields(self):
+    def test_provider_creation_with_required_fields(self) -> None:
         """Test creating a provider with all required fields."""
         # Arrange
         tenant_id = str(uuid4())
@@ -163,7 +187,7 @@ class TestProviderModel:
         assert provider.is_valid is False
         assert provider.quota_used == 0
 
-    def test_provider_creation_with_all_fields(self):
+    def test_provider_creation_with_all_fields(self) -> None:
         """Test creating a provider with all optional fields."""
         # Arrange
         tenant_id = str(uuid4())
@@ -191,7 +215,7 @@ class TestProviderModel:
         assert provider.quota_limit == 10000
         assert provider.quota_used == 500
 
-    def test_provider_default_values(self):
+    def test_provider_default_values(self) -> None:
         """Test provider default values are set correctly."""
         # Arrange & Act
         provider = Provider(
@@ -207,7 +231,7 @@ class TestProviderModel:
         assert provider.quota_used == 0
         assert provider.credential_id is None
 
-    def test_provider_repr(self):
+    def test_provider_repr(self) -> None:
         """Test provider __repr__ method."""
         # Arrange
         tenant_id = str(uuid4())
@@ -225,7 +249,7 @@ class TestProviderModel:
         assert "openai" in repr_str
         assert "custom" in repr_str
 
-    def test_provider_token_is_set_false_when_no_credential(self):
+    def test_provider_token_is_set_false_when_no_credential(self) -> None:
         """Test token_is_set returns False when no credential."""
         # Arrange
         provider = Provider(
@@ -236,7 +260,7 @@ class TestProviderModel:
         # Act & Assert
         assert provider.token_is_set is False
 
-    def test_provider_is_enabled_false_when_not_valid(self):
+    def test_provider_is_enabled_false_when_not_valid(self) -> None:
         """Test is_enabled returns False when provider is not valid."""
         # Arrange
         provider = Provider(
@@ -248,7 +272,7 @@ class TestProviderModel:
         # Act & Assert
         assert provider.is_enabled is False
 
-    def test_provider_is_enabled_true_for_valid_system_provider(self):
+    def test_provider_is_enabled_true_for_valid_system_provider(self) -> None:
         """Test is_enabled returns True for valid system provider."""
         # Arrange
         provider = Provider(
@@ -261,7 +285,7 @@ class TestProviderModel:
         # Act & Assert
         assert provider.is_enabled is True
 
-    def test_provider_quota_tracking(self):
+    def test_provider_quota_tracking(self) -> None:
         """Test provider quota tracking fields."""
         # Arrange
         provider = Provider(
@@ -283,7 +307,7 @@ class TestProviderModel:
 class TestProviderModelEntity:
     """Test suite for ProviderModel entity validation."""
 
-    def test_provider_model_creation_with_required_fields(self):
+    def test_provider_model_creation_with_required_fields(self) -> None:
         """Test creating a provider model with required fields."""
         # Arrange
         tenant_id = str(uuid4())
@@ -293,7 +317,7 @@ class TestProviderModelEntity:
             tenant_id=tenant_id,
             provider_name="openai",
             model_name="gpt-4",
-            model_type="llm",
+            model_type=ModelType.LLM,
         )
 
         # Assert
@@ -303,7 +327,7 @@ class TestProviderModelEntity:
         assert provider_model.model_type == "llm"
         assert provider_model.is_valid is False
 
-    def test_provider_model_with_credential(self):
+    def test_provider_model_with_credential(self) -> None:
         """Test provider model with credential ID."""
         # Arrange
         credential_id = str(uuid4())
@@ -313,7 +337,7 @@ class TestProviderModelEntity:
             tenant_id=str(uuid4()),
             provider_name="anthropic",
             model_name="claude-3",
-            model_type="llm",
+            model_type=ModelType.LLM,
             credential_id=credential_id,
             is_valid=True,
         )
@@ -322,21 +346,21 @@ class TestProviderModelEntity:
         assert provider_model.credential_id == credential_id
         assert provider_model.is_valid is True
 
-    def test_provider_model_default_values(self):
+    def test_provider_model_default_values(self) -> None:
         """Test provider model default values."""
         # Arrange & Act
         provider_model = ProviderModel(
             tenant_id=str(uuid4()),
             provider_name="openai",
             model_name="gpt-3.5-turbo",
-            model_type="llm",
+            model_type=ModelType.LLM,
         )
 
         # Assert
         assert provider_model.is_valid is False
         assert provider_model.credential_id is None
 
-    def test_provider_model_different_types(self):
+    def test_provider_model_different_types(self) -> None:
         """Test provider model with different model types."""
         # Arrange
         tenant_id = str(uuid4())
@@ -346,7 +370,7 @@ class TestProviderModelEntity:
             tenant_id=tenant_id,
             provider_name="openai",
             model_name="gpt-4",
-            model_type="llm",
+            model_type=ModelType.LLM,
         )
 
         # Act - Embedding type
@@ -354,7 +378,7 @@ class TestProviderModelEntity:
             tenant_id=tenant_id,
             provider_name="openai",
             model_name="text-embedding-ada-002",
-            model_type="text-embedding",
+            model_type=ModelType.TEXT_EMBEDDING,
         )
 
         # Act - Speech2Text type
@@ -362,7 +386,7 @@ class TestProviderModelEntity:
             tenant_id=tenant_id,
             provider_name="openai",
             model_name="whisper-1",
-            model_type="speech2text",
+            model_type=ModelType.SPEECH2TEXT,
         )
 
         # Assert
@@ -374,7 +398,7 @@ class TestProviderModelEntity:
 class TestTenantDefaultModel:
     """Test suite for TenantDefaultModel configuration."""
 
-    def test_tenant_default_model_creation(self):
+    def test_tenant_default_model_creation(self) -> None:
         """Test creating a tenant default model."""
         # Arrange
         tenant_id = str(uuid4())
@@ -384,7 +408,7 @@ class TestTenantDefaultModel:
             tenant_id=tenant_id,
             provider_name="openai",
             model_name="gpt-4",
-            model_type="llm",
+            model_type=ModelType.LLM,
         )
 
         # Assert
@@ -393,7 +417,7 @@ class TestTenantDefaultModel:
         assert default_model.model_name == "gpt-4"
         assert default_model.model_type == "llm"
 
-    def test_tenant_default_model_for_different_types(self):
+    def test_tenant_default_model_for_different_types(self) -> None:
         """Test tenant default models for different model types."""
         # Arrange
         tenant_id = str(uuid4())
@@ -403,14 +427,14 @@ class TestTenantDefaultModel:
             tenant_id=tenant_id,
             provider_name="openai",
             model_name="gpt-4",
-            model_type="llm",
+            model_type=ModelType.LLM,
         )
 
         embedding_default = TenantDefaultModel(
             tenant_id=tenant_id,
             provider_name="openai",
             model_name="text-embedding-3-small",
-            model_type="text-embedding",
+            model_type=ModelType.TEXT_EMBEDDING,
         )
 
         # Assert
@@ -421,7 +445,7 @@ class TestTenantDefaultModel:
 class TestTenantPreferredModelProvider:
     """Test suite for TenantPreferredModelProvider settings."""
 
-    def test_tenant_preferred_provider_creation(self):
+    def test_tenant_preferred_provider_creation(self) -> None:
         """Test creating a tenant preferred model provider."""
         # Arrange
         tenant_id = str(uuid4())
@@ -438,7 +462,7 @@ class TestTenantPreferredModelProvider:
         assert preferred.provider_name == "openai"
         assert preferred.preferred_provider_type == ProviderType.CUSTOM
 
-    def test_tenant_preferred_provider_system_type(self):
+    def test_tenant_preferred_provider_system_type(self) -> None:
         """Test tenant preferred provider with system type."""
         # Arrange & Act
         preferred = TenantPreferredModelProvider(
@@ -454,7 +478,7 @@ class TestTenantPreferredModelProvider:
 class TestProviderOrder:
     """Test suite for ProviderOrder payment tracking."""
 
-    def test_provider_order_creation_with_required_fields(self):
+    def test_provider_order_creation_with_required_fields(self) -> None:
         """Test creating a provider order with required fields."""
         # Arrange
         tenant_id = str(uuid4())
@@ -485,7 +509,7 @@ class TestProviderOrder:
         assert order.payment_status == PaymentStatus.WAIT_PAY
         assert order.quantity == 1
 
-    def test_provider_order_with_payment_details(self):
+    def test_provider_order_with_payment_details(self) -> None:
         """Test provider order with full payment details."""
         # Arrange
         tenant_id = str(uuid4())
@@ -518,10 +542,10 @@ class TestProviderOrder:
         assert order.payment_status == PaymentStatus.PAID
         assert order.paid_at == paid_time
 
-    def test_provider_order_payment_statuses(self):
+    def test_provider_order_payment_statuses(self) -> None:
         """Test provider order with different payment statuses."""
         # Arrange
-        base_params = {
+        base_params: _ProviderOrderParams = {
             "tenant_id": str(uuid4()),
             "provider_name": "openai",
             "account_id": str(uuid4()),
@@ -545,13 +569,13 @@ class TestProviderOrder:
         assert paid_order.payment_status == PaymentStatus.PAID
 
         # Act & Assert - Failed status
-        failed_params = {**base_params, "pay_failed_at": datetime.now(UTC)}
+        failed_params: _ProviderOrderParams = {**base_params, "pay_failed_at": datetime.now(UTC)}
         failed_order = ProviderOrder(**failed_params, payment_status=PaymentStatus.FAILED)
         assert failed_order.payment_status == PaymentStatus.FAILED
         assert failed_order.pay_failed_at is not None
 
         # Act & Assert - Refunded status
-        refunded_params = {**base_params, "refunded_at": datetime.now(UTC)}
+        refunded_params: _ProviderOrderParams = {**base_params, "refunded_at": datetime.now(UTC)}
         refunded_order = ProviderOrder(**refunded_params, payment_status=PaymentStatus.REFUNDED)
         assert refunded_order.payment_status == PaymentStatus.REFUNDED
         assert refunded_order.refunded_at is not None
@@ -560,7 +584,7 @@ class TestProviderOrder:
 class TestProviderModelSetting:
     """Test suite for ProviderModelSetting load balancing configuration."""
 
-    def test_provider_model_setting_creation(self):
+    def test_provider_model_setting_creation(self) -> None:
         """Test creating a provider model setting."""
         # Arrange
         tenant_id = str(uuid4())
@@ -570,7 +594,7 @@ class TestProviderModelSetting:
             tenant_id=tenant_id,
             provider_name="openai",
             model_name="gpt-4",
-            model_type="llm",
+            model_type=ModelType.LLM,
         )
 
         # Assert
@@ -581,14 +605,14 @@ class TestProviderModelSetting:
         assert setting.enabled is True
         assert setting.load_balancing_enabled is False
 
-    def test_provider_model_setting_with_load_balancing(self):
+    def test_provider_model_setting_with_load_balancing(self) -> None:
         """Test provider model setting with load balancing enabled."""
         # Arrange & Act
         setting = ProviderModelSetting(
             tenant_id=str(uuid4()),
             provider_name="openai",
             model_name="gpt-4",
-            model_type="llm",
+            model_type=ModelType.LLM,
             enabled=True,
             load_balancing_enabled=True,
         )
@@ -597,14 +621,14 @@ class TestProviderModelSetting:
         assert setting.enabled is True
         assert setting.load_balancing_enabled is True
 
-    def test_provider_model_setting_disabled(self):
+    def test_provider_model_setting_disabled(self) -> None:
         """Test disabled provider model setting."""
         # Arrange & Act
         setting = ProviderModelSetting(
             tenant_id=str(uuid4()),
             provider_name="openai",
             model_name="gpt-4",
-            model_type="llm",
+            model_type=ModelType.LLM,
             enabled=False,
         )
 
@@ -615,7 +639,7 @@ class TestProviderModelSetting:
 class TestLoadBalancingModelConfig:
     """Test suite for LoadBalancingModelConfig management."""
 
-    def test_load_balancing_config_creation(self):
+    def test_load_balancing_config_creation(self) -> None:
         """Test creating a load balancing model config."""
         # Arrange
         tenant_id = str(uuid4())
@@ -625,7 +649,7 @@ class TestLoadBalancingModelConfig:
             tenant_id=tenant_id,
             provider_name="openai",
             model_name="gpt-4",
-            model_type="llm",
+            model_type=ModelType.LLM,
             name="Primary API Key",
         )
 
@@ -637,7 +661,7 @@ class TestLoadBalancingModelConfig:
         assert config.name == "Primary API Key"
         assert config.enabled is True
 
-    def test_load_balancing_config_with_credentials(self):
+    def test_load_balancing_config_with_credentials(self) -> None:
         """Test load balancing config with credential details."""
         # Arrange
         credential_id = str(uuid4())
@@ -647,7 +671,7 @@ class TestLoadBalancingModelConfig:
             tenant_id=str(uuid4()),
             provider_name="openai",
             model_name="gpt-4",
-            model_type="llm",
+            model_type=ModelType.LLM,
             name="Secondary API Key",
             encrypted_config='{"api_key": "encrypted_value"}',
             credential_id=credential_id,
@@ -659,14 +683,14 @@ class TestLoadBalancingModelConfig:
         assert config.credential_id == credential_id
         assert config.credential_source_type == CredentialSourceType.CUSTOM_MODEL
 
-    def test_load_balancing_config_disabled(self):
+    def test_load_balancing_config_disabled(self) -> None:
         """Test disabled load balancing config."""
         # Arrange & Act
         config = LoadBalancingModelConfig(
             tenant_id=str(uuid4()),
             provider_name="openai",
             model_name="gpt-4",
-            model_type="llm",
+            model_type=ModelType.LLM,
             name="Disabled Config",
             enabled=False,
         )
@@ -674,15 +698,15 @@ class TestLoadBalancingModelConfig:
         # Assert
         assert config.enabled is False
 
-    def test_load_balancing_config_multiple_entries(self):
+    def test_load_balancing_config_multiple_entries(self) -> None:
         """Test multiple load balancing configs for same model."""
         # Arrange
         tenant_id = str(uuid4())
-        base_params = {
+        base_params: _LoadBalancingConfigParams = {
             "tenant_id": tenant_id,
             "provider_name": "openai",
             "model_name": "gpt-4",
-            "model_type": "llm",
+            "model_type": ModelType.LLM,
         }
 
         # Act
@@ -702,7 +726,7 @@ class TestLoadBalancingModelConfig:
 class TestProviderCredential:
     """Test suite for ProviderCredential storage."""
 
-    def test_provider_credential_creation(self):
+    def test_provider_credential_creation(self) -> None:
         """Test creating a provider credential."""
         # Arrange
         tenant_id = str(uuid4())
@@ -721,7 +745,7 @@ class TestProviderCredential:
         assert credential.credential_name == "Production API Key"
         assert credential.encrypted_config == '{"api_key": "sk-encrypted..."}'
 
-    def test_provider_credential_multiple_for_same_provider(self):
+    def test_provider_credential_multiple_for_same_provider(self) -> None:
         """Test multiple credentials for the same provider."""
         # Arrange
         tenant_id = str(uuid4())
@@ -750,7 +774,7 @@ class TestProviderCredential:
 class TestProviderModelCredential:
     """Test suite for ProviderModelCredential storage."""
 
-    def test_provider_model_credential_creation(self):
+    def test_provider_model_credential_creation(self) -> None:
         """Test creating a provider model credential."""
         # Arrange
         tenant_id = str(uuid4())
@@ -760,7 +784,7 @@ class TestProviderModelCredential:
             tenant_id=tenant_id,
             provider_name="openai",
             model_name="gpt-4",
-            model_type="llm",
+            model_type=ModelType.LLM,
             credential_name="GPT-4 API Key",
             encrypted_config='{"api_key": "sk-model-specific..."}',
         )
@@ -772,7 +796,7 @@ class TestProviderModelCredential:
         assert credential.model_type == "llm"
         assert credential.credential_name == "GPT-4 API Key"
 
-    def test_provider_model_credential_different_models(self):
+    def test_provider_model_credential_different_models(self) -> None:
         """Test credentials for different models of same provider."""
         # Arrange
         tenant_id = str(uuid4())
@@ -782,7 +806,7 @@ class TestProviderModelCredential:
             tenant_id=tenant_id,
             provider_name="openai",
             model_name="gpt-4",
-            model_type="llm",
+            model_type=ModelType.LLM,
             credential_name="GPT-4 Key",
             encrypted_config='{"api_key": "gpt4_key"}',
         )
@@ -791,7 +815,7 @@ class TestProviderModelCredential:
             tenant_id=tenant_id,
             provider_name="openai",
             model_name="text-embedding-3-large",
-            model_type="text-embedding",
+            model_type=ModelType.TEXT_EMBEDDING,
             credential_name="Embedding Key",
             encrypted_config='{"api_key": "embedding_key"}',
         )
@@ -802,7 +826,7 @@ class TestProviderModelCredential:
         assert embedding_cred.model_name == "text-embedding-3-large"
         assert embedding_cred.model_type == "text-embedding"
 
-    def test_provider_model_credential_with_complex_config(self):
+    def test_provider_model_credential_with_complex_config(self) -> None:
         """Test provider model credential with complex encrypted config."""
         # Arrange
         complex_config = (
@@ -815,7 +839,7 @@ class TestProviderModelCredential:
             tenant_id=str(uuid4()),
             provider_name="openai",
             model_name="gpt-4-turbo",
-            model_type="llm",
+            model_type=ModelType.LLM,
             credential_name="Custom Config",
             encrypted_config=complex_config,
         )

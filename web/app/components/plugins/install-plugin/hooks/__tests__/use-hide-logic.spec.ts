@@ -6,7 +6,7 @@ const mockFoldAnimInto = vi.fn()
 const mockClearCountDown = vi.fn()
 const mockCountDownFoldIntoAnim = vi.fn()
 
-vi.mock('../use-fold-anim-into', () => ({
+vi.mock('../create-fold-anim-into', () => ({
   default: () => ({
     modalClassName: 'test-modal-class',
     foldIntoAnim: mockFoldAnimInto,

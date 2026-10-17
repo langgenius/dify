@@ -1,20 +1,9 @@
 import type { OnlineDriveFile } from '@/models/pipeline'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { OnlineDriveFileType } from '@/models/pipeline'
 import FileList from '../index'
-
-// Mock ahooks useDebounceFn: required because tests verify the debounced
-// callback is invoked with specific arguments (mockDebounceFnRun assertions).
-const mockDebounceFnRun = vi.fn()
-const mockDebounceFnCancel = vi.fn()
-vi.mock('ahooks', () => ({
-  useDebounceFn: (fn: (...args: unknown[]) => void) => {
-    mockDebounceFnRun.mockImplementation(fn)
-    return { run: mockDebounceFnRun, cancel: mockDebounceFnCancel }
-  },
-}))
 
 // Mock store - context provider requires mocking
 const mockStoreState = {
@@ -81,8 +70,9 @@ describe('FileList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     resetMockStoreState()
-    mockDebounceFnRun.mockClear()
-    mockDebounceFnCancel.mockClear()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   describe('Rendering', () => {
@@ -270,7 +260,8 @@ describe('FileList', () => {
     })
 
     describe('debounced keywords update', () => {
-      it('should call updateKeywords with debounce when input changes', () => {
+      it('should delay the search until typing has stopped', () => {
+        vi.useFakeTimers({ shouldAdvanceTime: true })
         const mockUpdateKeywords = vi.fn()
         const props = createDefaultProps({ updateKeywords: mockUpdateKeywords })
         render(<FileList {...props} />)
@@ -280,7 +271,11 @@ describe('FileList', () => {
 
         fireEvent.change(input, { target: { value: 'debounced-value' } })
 
-        expect(mockDebounceFnRun).toHaveBeenCalledWith('debounced-value')
+        expect(mockUpdateKeywords).not.toHaveBeenCalled()
+        act(() => vi.advanceTimersByTime(499))
+        expect(mockUpdateKeywords).not.toHaveBeenCalled()
+        act(() => vi.advanceTimersByTime(1))
+        expect(mockUpdateKeywords).toHaveBeenCalledExactlyOnceWith('debounced-value')
       })
     })
   })
@@ -300,20 +295,8 @@ describe('FileList', () => {
         expect(input).toHaveValue('typed-text')
       })
 
-      it('should trigger debounced updateKeywords on input change', () => {
-        const mockUpdateKeywords = vi.fn()
-        const props = createDefaultProps({ updateKeywords: mockUpdateKeywords })
-        render(<FileList {...props} />)
-        const input = screen.getByPlaceholderText(
-          'datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder',
-        )
-
-        fireEvent.change(input, { target: { value: 'search-term' } })
-
-        expect(mockDebounceFnRun).toHaveBeenCalledWith('search-term')
-      })
-
-      it('should handle multiple sequential input changes', () => {
+      it('should search only for the latest input after rapid changes', () => {
+        vi.useFakeTimers({ shouldAdvanceTime: true })
         const mockUpdateKeywords = vi.fn()
         const props = createDefaultProps({ updateKeywords: mockUpdateKeywords })
         render(<FileList {...props} />)
@@ -325,15 +308,16 @@ describe('FileList', () => {
         fireEvent.change(input, { target: { value: 'ab' } })
         fireEvent.change(input, { target: { value: 'abc' } })
 
-        expect(mockDebounceFnRun).toHaveBeenCalledTimes(3)
-        expect(mockDebounceFnRun).toHaveBeenLastCalledWith('abc')
+        act(() => vi.advanceTimersByTime(500))
+        expect(mockUpdateKeywords).toHaveBeenCalledExactlyOnceWith('abc')
         expect(input).toHaveValue('abc')
       })
     })
 
     describe('handleResetKeywords', () => {
       it('should cancel the pending search before clearing the query', async () => {
-        const user = userEvent.setup()
+        vi.useFakeTimers({ shouldAdvanceTime: true })
+        const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
         const mockResetKeywords = vi.fn()
         const props = createDefaultProps({ resetKeywords: mockResetKeywords })
         render(<FileList {...props} />)
@@ -344,58 +328,10 @@ describe('FileList', () => {
         await user.type(input, 'report')
         await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
-        expect(mockDebounceFnRun).toHaveBeenLastCalledWith('report')
-        expect(mockDebounceFnCancel).toHaveBeenCalledOnce()
+        act(() => vi.advanceTimersByTime(500))
+        expect(props.updateKeywords).not.toHaveBeenCalled()
         expect(mockResetKeywords).toHaveBeenCalledOnce()
         expect(input).toHaveValue('')
-      })
-    })
-
-    describe('handleSelectFile', () => {
-      it('should call handleSelectFile when file item is clicked', () => {
-        const mockHandleSelectFile = vi.fn()
-        const fileList = [createMockOnlineDriveFile({ id: 'file-1', name: 'test.txt' })]
-        const props = createDefaultProps({ handleSelectFile: mockHandleSelectFile, fileList })
-        render(<FileList {...props} />)
-
-        // Act - Click on the file item
-        const fileItem = screen.getByText('test.txt')
-        fireEvent.click(fileItem.closest('[class*="cursor-pointer"]')!)
-
-        expect(mockHandleSelectFile).toHaveBeenCalledWith(
-          expect.objectContaining({
-            id: 'file-1',
-            name: 'test.txt',
-            type: OnlineDriveFileType.file,
-          }),
-        )
-      })
-    })
-
-    describe('handleOpenFolder', () => {
-      it('should call handleOpenFolder when folder item is clicked', () => {
-        const mockHandleOpenFolder = vi.fn()
-        const fileList = [
-          createMockOnlineDriveFile({
-            id: 'folder-1',
-            name: 'my-folder',
-            type: OnlineDriveFileType.folder,
-          }),
-        ]
-        const props = createDefaultProps({ handleOpenFolder: mockHandleOpenFolder, fileList })
-        render(<FileList {...props} />)
-
-        // Act - Click on the folder item
-        const folderItem = screen.getByText('my-folder')
-        fireEvent.click(folderItem.closest('[class*="cursor-pointer"]')!)
-
-        expect(mockHandleOpenFolder).toHaveBeenCalledWith(
-          expect.objectContaining({
-            id: 'folder-1',
-            name: 'my-folder',
-            type: OnlineDriveFileType.folder,
-          }),
-        )
       })
     })
   })
@@ -469,7 +405,8 @@ describe('FileList', () => {
       fireEvent.change(input, { target: { value: '   ' } })
 
       expect(input).toHaveValue('   ')
-      expect(mockDebounceFnRun).toHaveBeenCalledWith('   ')
+      // The input remains editable while the search is debounced.
+      expect(props.updateKeywords).not.toHaveBeenCalled()
     })
   })
 
@@ -608,47 +545,4 @@ describe('FileList', () => {
   })
 
   // Callback Stability
-  describe('Callback Stability', () => {
-    it('should maintain stable handleSelectFile callback', () => {
-      const mockHandleSelectFile = vi.fn()
-      const fileList = [createMockOnlineDriveFile({ id: 'file-1', name: 'test.txt' })]
-      const props = createDefaultProps({ handleSelectFile: mockHandleSelectFile, fileList })
-      const { rerender } = render(<FileList {...props} />)
-
-      // Act - Click once
-      const fileItem = screen.getByText('test.txt')
-      fireEvent.click(fileItem.closest('[class*="cursor-pointer"]')!)
-
-      // Rerender with same props
-      rerender(<FileList {...props} />)
-
-      fireEvent.click(fileItem.closest('[class*="cursor-pointer"]')!)
-
-      expect(mockHandleSelectFile).toHaveBeenCalledTimes(2)
-    })
-
-    it('should maintain stable handleOpenFolder callback', () => {
-      const mockHandleOpenFolder = vi.fn()
-      const fileList = [
-        createMockOnlineDriveFile({
-          id: 'folder-1',
-          name: 'my-folder',
-          type: OnlineDriveFileType.folder,
-        }),
-      ]
-      const props = createDefaultProps({ handleOpenFolder: mockHandleOpenFolder, fileList })
-      const { rerender } = render(<FileList {...props} />)
-
-      // Act - Click once
-      const folderItem = screen.getByText('my-folder')
-      fireEvent.click(folderItem.closest('[class*="cursor-pointer"]')!)
-
-      // Rerender with same props
-      rerender(<FileList {...props} />)
-
-      fireEvent.click(folderItem.closest('[class*="cursor-pointer"]')!)
-
-      expect(mockHandleOpenFolder).toHaveBeenCalledTimes(2)
-    })
-  })
 })

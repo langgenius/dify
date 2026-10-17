@@ -1,11 +1,11 @@
-import { cleanup, fireEvent, screen } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { render } from '@/test/console/render'
+import { render as renderWithoutUrlState } from '@/test/console/render'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import PluginAuth from '../plugin-auth'
 import { AuthCategory } from '../types'
 
 const mockUsePluginAuth = vi.fn()
-const mockSetSettingsDestination = vi.fn()
 const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'] as string[],
 }))
@@ -30,15 +30,13 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
-})
-
 const defaultPayload = {
   category: AuthCategory.tool,
   provider: 'test-provider',
 }
+
+const onUrlUpdate = vi.fn()
+const render = createNuqsTestRenderer(renderWithoutUrlState, () => ({ onUrlUpdate }))
 
 describe('PluginAuth', () => {
   beforeEach(() => {
@@ -139,7 +137,7 @@ describe('PluginAuth', () => {
     ).toBeInTheDocument()
   })
 
-  it('opens members settings when permission hint action is clicked', () => {
+  it('opens members settings when permission hint action is clicked', async () => {
     mockConsoleState.workspacePermissionKeys = ['credential.use']
     mockUsePluginAuth.mockReturnValue({
       isAuthorized: false,
@@ -153,7 +151,9 @@ describe('PluginAuth', () => {
     render(<PluginAuth pluginPayload={defaultPayload} />)
     fireEvent.click(screen.getByRole('button', { name: 'plugin.auth.permissionHint.action' }))
 
-    expect(mockSetSettingsDestination).toHaveBeenCalledWith('members')
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('members'),
+    )
   })
 
   it('does not render permission hint for datasource authorization', () => {

@@ -1,22 +1,19 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { OperationKey } from '@orpc/tanstack-query'
 import type { TFunction } from 'i18next'
 import type { ReactElement } from 'react'
-import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import {
-  ChunkingMode,
-  DatasetPermission,
-  DataSourceType,
-  RerankingModeEnum,
-} from '@/models/datasets'
+import { ChunkingMode, DataSourceType, RerankingModeEnum } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { RetrievalChangeTip, RetrievalSection } from '../retrieval-section'
@@ -79,20 +76,20 @@ const createRetrievalConfig = (overrides: Partial<RetrievalConfig> = {}): Retrie
 })
 
 const createDataset = (
-  overrides: Partial<DataSet> = {},
+  overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
   retrievalOverrides: Partial<RetrievalConfig> = {},
-): DataSet => {
+): DatasetDetailWithPartialMembersResponse => {
   const retrievalConfig = createRetrievalConfig(retrievalOverrides)
   return {
+    ...createDatasetFixture(),
     id: 'dataset-id',
     name: 'Test Dataset',
-    indexing_status: 'completed',
     icon_info: {
       icon: 'icon',
       icon_type: 'emoji',
     },
     description: 'Description',
-    permission: DatasetPermission.allTeamMembers,
+    permission: PermissionLevel.allTeamMembers,
     data_source_type: DataSourceType.FILE,
     indexing_technique: IndexingType.QUALIFIED,
     author_name: 'Author',
@@ -102,7 +99,6 @@ const createDataset = (
     app_count: 0,
     doc_form: ChunkingMode.text,
     document_count: 0,
-    total_document_count: 0,
     total_available_documents: 0,
     word_count: 0,
     provider: 'internal',
@@ -134,10 +130,6 @@ const createDataset = (
     retrieval_model_dict: {
       ...retrievalConfig,
       ...overrides.retrieval_model_dict,
-    },
-    retrieval_model: {
-      ...retrievalConfig,
-      ...overrides.retrieval_model,
     },
   }
 }

@@ -21,7 +21,7 @@ Supported execution modes:
 import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Union, cast
+from typing import Any, cast
 
 from sqlalchemy.orm import Session, make_transient, sessionmaker
 
@@ -131,7 +131,7 @@ class SnippetGenerateService:
     def generate(
         cls,
         snippet: CustomizedSnippet,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,
@@ -183,7 +183,7 @@ class SnippetGenerateService:
     def run_published(
         cls,
         snippet: CustomizedSnippet,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         session_maker: sessionmaker[Session] | None = None,
@@ -372,7 +372,7 @@ class SnippetGenerateService:
     def generate_single_iteration(
         cls,
         snippet: CustomizedSnippet,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         node_id: str,
         args: Mapping[str, Any],
         streaming: bool = True,
@@ -419,7 +419,7 @@ class SnippetGenerateService:
     def generate_single_loop(
         cls,
         snippet: CustomizedSnippet,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         node_id: str,
         args: Any,
         streaming: bool = True,

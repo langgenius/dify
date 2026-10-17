@@ -4,7 +4,11 @@ import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import ConfigContext from '@/context/debug-configuration'
-import { AppModeEnum, ModelModeType, Resolution } from '@/types/app'
+import {
+  createDebugConfigurationFixture,
+  createModelConfigFixture,
+} from '@/test/fixtures/debug-configuration'
+import { ModelModeType, Resolution } from '@/types/app'
 import PromptValuePanel from '../index'
 
 const mockOnOpenFeatures = vi.fn()
@@ -65,30 +69,30 @@ const mockOnSend = vi.fn()
 const promptVariables = [
   { key: 'textVar', name: 'Text Var', type: 'string', required: true },
   { key: 'boolVar', name: 'Boolean Var', type: 'checkbox' },
-] as const
+]
 
-const baseContextValue: any = {
+const baseContextValue = createDebugConfigurationFixture({
   onOpenFeatures: mockOnOpenFeatures,
   modelModeType: ModelModeType.completion,
-  modelConfig: {
+  modelConfig: createModelConfigFixture({
     configs: {
       prompt_template: 'prompt template',
       prompt_variables: promptVariables,
     },
-  },
+  }),
   setInputs: mockSetInputs,
   canTestAndRun: true,
-  mode: AppModeEnum.COMPLETION,
+  mode: 'completion' as const,
   isAdvancedMode: false,
   completionPromptConfig: {
     prompt: { text: 'completion' },
     conversation_histories_role: { user_prefix: 'user', assistant_prefix: 'assistant' },
   },
   chatPromptConfig: { prompt: [] },
-} as any
+})
 
 const defaultProps: IPromptValuePanelProps = {
-  appType: AppModeEnum.COMPLETION,
+  appType: 'completion',
   onSend: mockOnSend,
   inputs: { textVar: 'initial', boolVar: false },
   visionConfig: { enabled: false, number_limits: 0, detail: Resolution.low, transfer_methods: [] },
@@ -142,10 +146,10 @@ describe('PromptValuePanel', () => {
   it('disables run when mode is not completion', () => {
     renderPanel({
       context: {
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
       },
       props: {
-        appType: AppModeEnum.CHAT,
+        appType: 'chat',
       },
     })
 
@@ -159,7 +163,7 @@ describe('PromptValuePanel', () => {
         isAdvancedMode: true,
         modelModeType: ModelModeType.chat,
         chatPromptConfig: { prompt: [{ text: '' }] },
-        modelConfig: {
+        modelConfig: createModelConfigFixture({
           configs: {
             prompt_template: '',
             prompt_variables: [
@@ -172,7 +176,7 @@ describe('PromptValuePanel', () => {
               },
             ],
           },
-        },
+        }),
       },
       props: {
         inputs: { textVar: '' },
@@ -195,12 +199,12 @@ describe('PromptValuePanel', () => {
           prompt: { text: '' },
           conversation_histories_role: { user_prefix: 'user', assistant_prefix: 'assistant' },
         },
-        modelConfig: {
+        modelConfig: createModelConfigFixture({
           configs: {
             prompt_template: '',
             prompt_variables: [],
           },
-        },
+        }),
       },
     })
 
@@ -212,7 +216,7 @@ describe('PromptValuePanel', () => {
     const onVisionFilesChange = vi.fn()
     renderPanel({
       context: {
-        modelConfig: {
+        modelConfig: createModelConfigFixture({
           configs: {
             prompt_template: 'prompt template',
             prompt_variables: [
@@ -228,7 +232,7 @@ describe('PromptValuePanel', () => {
               { key: 'boolVar', name: 'Boolean Var', type: 'checkbox', required: false },
             ],
           },
-        },
+        }),
       },
       props: {
         inputs: {
@@ -273,27 +277,21 @@ describe('PromptValuePanel', () => {
   })
 
   it('ignores updates when the rendered field is not tracked in the prompt variable lookup', () => {
-    const filteredPromptVariables = {
-      length: 1,
-      forEach: vi.fn(),
-      map: (
-        callback: (
-          value: { key: string; name: string; type: string; required: boolean },
-          index: number,
-        ) => unknown,
-      ) => [callback({ key: 'textVar', name: 'Text Var', type: 'string', required: true }, 0)],
-    }
+    const filteredPromptVariables = [
+      { key: 'textVar', name: 'Text Var', type: 'string', required: true },
+    ]
+    vi.spyOn(filteredPromptVariables, 'forEach').mockImplementation(() => {})
+    const promptVariables = [...filteredPromptVariables]
+    vi.spyOn(promptVariables, 'filter').mockReturnValue(filteredPromptVariables)
 
     renderPanel({
       context: {
-        modelConfig: {
+        modelConfig: createModelConfigFixture({
           configs: {
             prompt_template: 'prompt template',
-            prompt_variables: {
-              filter: () => filteredPromptVariables,
-            },
+            prompt_variables: promptVariables,
           },
-        },
+        }),
       },
       props: {
         inputs: { textVar: '' },
@@ -310,7 +308,7 @@ describe('PromptValuePanel', () => {
   it('renders empty select and number placeholders when no value is provided', () => {
     renderPanel({
       context: {
-        modelConfig: {
+        modelConfig: createModelConfigFixture({
           configs: {
             prompt_template: 'prompt template',
             prompt_variables: [
@@ -318,7 +316,7 @@ describe('PromptValuePanel', () => {
               { key: 'numberVar', name: 'Number Var', type: 'number', required: true },
             ],
           },
-        },
+        }),
       },
       props: {
         inputs: {
@@ -334,27 +332,21 @@ describe('PromptValuePanel', () => {
   })
 
   it('falls back to the checkbox key when the label is missing from the rendered collection', () => {
-    const filteredPromptVariables = {
-      length: 1,
-      forEach: vi.fn(),
-      map: (
-        callback: (
-          value: { key: string; name: string; type: string; required: boolean },
-          index: number,
-        ) => unknown,
-      ) => [callback({ key: 'boolVar', name: '', type: 'checkbox', required: false }, 0)],
-    }
+    const filteredPromptVariables = [
+      { key: 'boolVar', name: '', type: 'checkbox', required: false },
+    ]
+    vi.spyOn(filteredPromptVariables, 'forEach').mockImplementation(() => {})
+    const promptVariables = [...filteredPromptVariables]
+    vi.spyOn(promptVariables, 'filter').mockReturnValue(filteredPromptVariables)
 
     renderPanel({
       context: {
-        modelConfig: {
+        modelConfig: createModelConfigFixture({
           configs: {
             prompt_template: 'prompt template',
-            prompt_variables: {
-              filter: () => filteredPromptVariables,
-            },
+            prompt_variables: promptVariables,
           },
-        },
+        }),
       },
       props: {
         inputs: {

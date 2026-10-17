@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import useFoldAnimInto from './use-fold-anim-into'
+import createFoldAnimInto from './create-fold-anim-into'
 
 const useHideLogic = (onClose: () => void) => {
   const {
@@ -7,7 +7,7 @@ const useHideLogic = (onClose: () => void) => {
     foldIntoAnim: doFoldAnimInto,
     clearCountDown,
     countDownFoldIntoAnim,
-  } = useFoldAnimInto(onClose)
+  } = createFoldAnimInto(onClose)
 
   const [isInstalling, doSetIsInstalling] = useState(false)
   const setIsInstalling = useCallback(

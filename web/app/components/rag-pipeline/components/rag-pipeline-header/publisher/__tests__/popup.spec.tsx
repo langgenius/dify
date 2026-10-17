@@ -1,8 +1,8 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderEditor as renderWithConsoleState } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { render as renderWithConsoleState } from '@/test/console/render'
 import { Popup } from '../popup'
 
 const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
@@ -14,7 +14,10 @@ const renderWithoutPricing = (ui: React.ReactElement) => {
     systemFeatures: { deployment_edition: 'CLOUD' },
     features: { knowledge_pipeline: { publish_enabled: mockIsAllowPublishAsCustom } },
   })
-  return renderWithConsoleState(ui, { wrapper })
+  return renderWithConsoleState(ui, {
+    resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+    wrapper,
+  })
 }
 
 const mockPublishWorkflow = vi.fn().mockResolvedValue({ created_at: '2024-01-01T00:00:00Z' })
@@ -49,10 +52,6 @@ const mockHandleCheckBeforePublish = vi.fn().mockResolvedValue(true)
 const mockSetPublishedAt = vi.fn()
 const mockMutateDatasetRes = vi.fn()
 
-const mockInvalidPublishedPipelineInfo = vi.fn()
-const mockInvalidDatasetList = vi.fn()
-const mockInvalidCustomizedTemplateList = vi.fn()
-
 let mockPublishedAt: string | undefined = '2024-01-01T00:00:00Z'
 let mockDraftUpdatedAt: string | undefined = '2024-06-01T00:00:00Z'
 let mockPipelineId: string | undefined = 'pipeline-123'
@@ -61,7 +60,6 @@ let mockDatasetMaintainer: string | undefined
 let mockCurrentUserId = 'user-1'
 let mockIsLoadingWorkspacePermissionKeys = false
 let mockWorkspacePermissionKeys: string[] = []
-const mockUseBoolean = vi.hoisted(() => vi.fn())
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'ds-123' }),
 }))
@@ -69,18 +67,6 @@ vi.mock('@/next/navigation', () => ({
 vi.mock('@/next/link', () => ({
   default: ({ children, ...props }: React.ComponentProps<'a'>) => <a {...props}>{children}</a>,
 }))
-
-vi.mock('ahooks', () => ({
-  useBoolean: (initial: boolean) => mockUseBoolean(initial),
-}))
-
-vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
-  return {
-    ...actual,
-    useHotkey: vi.fn(),
-  }
-})
 
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) => {
@@ -155,32 +141,6 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
   }),
 }))
 
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useInvalidDatasetList: () => mockInvalidDatasetList,
-}))
-
-vi.mock('@/service/use-base', () => ({
-  useInvalid: () => mockInvalidPublishedPipelineInfo,
-}))
-
-vi.mock('@/service/use-pipeline', () => ({
-  publishedPipelineInfoQueryKeyPrefix: ['published-pipeline'],
-  useInvalidCustomizedTemplateList: () => mockInvalidCustomizedTemplateList,
-  usePublishAsCustomizedPipeline: () => ({
-    mutateAsync: mockPublishAsCustomizedPipeline,
-  }),
-}))
-
-vi.mock('@/service/use-workflow', () => ({
-  usePublishWorkflow: () => ({
-    mutateAsync: mockPublishWorkflow,
-  }),
-}))
-
-vi.mock('@langgenius/dify-ui/cn', () => ({
-  cn: (...args: string[]) => args.filter(Boolean).join(' '),
-}))
-
 vi.mock('../../../publish-as-knowledge-pipeline-modal', () => ({
   default: ({
     onConfirm,
@@ -215,6 +175,23 @@ function render(...args: Parameters<typeof renderWithoutPricing>) {
   return renderWithoutPricing(...args)
 }
 
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  post: (...args: unknown[]) => mockPublishWorkflow(...args),
+}))
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.byPipelineId.customized.publish.post': (input) =>
+        mockPublishAsCustomizedPipeline(input),
+    }),
+  }
+})
+
 describe('Popup', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -227,13 +204,6 @@ describe('Popup', () => {
     mockCurrentUserId = 'user-1'
     mockIsLoadingWorkspacePermissionKeys = false
     mockWorkspacePermissionKeys = []
-    mockUseBoolean.mockImplementation((initial: boolean) => [
-      initial,
-      {
-        setFalse: vi.fn(),
-        setTrue: vi.fn(),
-      },
-    ])
   })
 
   afterEach(() => {
@@ -364,28 +334,14 @@ describe('Popup', () => {
   })
 
   describe('Overlay cleanup', () => {
-    it('should close confirm dialog when alert dialog requests close', () => {
-      const hideConfirm = vi.fn()
-      mockUseBoolean
-        .mockImplementationOnce(() => [true, { setFalse: hideConfirm, setTrue: vi.fn() }])
-        .mockImplementationOnce((initial: boolean) => [
-          initial,
-          { setFalse: vi.fn(), setTrue: vi.fn() },
-        ])
-        .mockImplementationOnce((initial: boolean) => [
-          initial,
-          { setFalse: vi.fn(), setTrue: vi.fn() },
-        ])
-        .mockImplementationOnce((initial: boolean) => [
-          initial,
-          { setFalse: vi.fn(), setTrue: vi.fn() },
-        ])
-
+    it('closes the publish confirmation without publishing when cancelled', async () => {
+      mockPublishedAt = undefined
       render(<Popup />)
-
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
-
-      expect(hideConfirm).toHaveBeenCalledTimes(1)
+      fireEvent.click(screen.getByRole('button', { name: /^workflow\.common\.publishUpdate/ }))
+      const cancel = await screen.findByRole('button', { name: 'common.operation.cancel' })
+      fireEvent.click(cancel)
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+      expect(mockSetPublishedAt).not.toHaveBeenCalled()
     })
   })
 

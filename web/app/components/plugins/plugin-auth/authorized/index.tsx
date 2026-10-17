@@ -1,4 +1,3 @@
-import type { OffsetOptions } from '@floating-ui/react'
 import type { PopoverContentProps } from '@langgenius/dify-ui/popover'
 import type { Credential, PluginPayload } from '../types'
 import {
@@ -7,6 +6,7 @@ import {
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -27,7 +27,7 @@ import {
 import { CredentialTypeEnum } from '../types'
 import Item from './item'
 
-type AuthorizedProps = Pick<PopoverContentProps, 'placement'> & {
+type AuthorizedProps = Pick<PopoverContentProps, 'placement' | 'sideOffset'> & {
   pluginPayload: PluginPayload
   credentials: Credential[]
   canOAuth?: boolean
@@ -35,7 +35,6 @@ type AuthorizedProps = Pick<PopoverContentProps, 'placement'> & {
   renderTrigger?: (open?: boolean) => React.ReactNode
   isOpen?: boolean
   onOpenChange?: (open: boolean) => void
-  offset?: number | OffsetOptions
   triggerPopupSameWidth?: boolean
   popupClassName?: string
   disableSetDefault?: boolean
@@ -54,7 +53,7 @@ const Authorized = ({
   renderTrigger,
   isOpen,
   onOpenChange,
-  offset = 8,
+  sideOffset = 8,
   placement = 'bottom-start',
   triggerPopupSameWidth = true,
   popupClassName,
@@ -191,13 +190,6 @@ const Authorized = ({
   const unavailableCredential = credentials.find(
     (credential) => credential.not_allowed_to_use && credential.is_default,
   )
-  const resolvedOffset =
-    typeof offset === 'number' || typeof offset === 'function' ? undefined : offset
-  const sideOffset = typeof offset === 'number' ? offset : (resolvedOffset?.mainAxis ?? 0)
-  const alignOffset =
-    typeof offset === 'number'
-      ? 0
-      : (resolvedOffset?.crossAxis ?? resolvedOffset?.alignmentAxis ?? 0)
 
   return (
     <>
@@ -231,7 +223,6 @@ const Authorized = ({
         <PopoverContent
           placement={placement}
           sideOffset={sideOffset}
-          alignOffset={alignOffset}
           className={cn(
             'border-0 bg-transparent p-0 shadow-none backdrop-blur-none',
             triggerPopupSameWidth && 'w-(--anchor-width)',
@@ -336,11 +327,11 @@ const Authorized = ({
       </Popover>
       <AlertDialog open={!!deleteCredentialId} onOpenChange={(open) => !open && closeConfirm()}>
         <AlertDialogContent backdropProps={{ forceRender: true }}>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['list.delete.title'], { ns: 'datasetDocuments' })}
             </AlertDialogTitle>
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

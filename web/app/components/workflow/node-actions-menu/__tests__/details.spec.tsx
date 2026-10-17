@@ -3,15 +3,14 @@ import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { createHooksStore } from '@/app/components/workflow/hooks-store/store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
-import { useAllWorkflowTools } from '@/service/use-tools'
-import { FlowType } from '@/types/common'
 import { BlockClassification } from '../../block-selector/types'
 import { useAvailableBlocks } from '../../hooks/use-available-blocks'
 import { useNodesInteractions } from '../../hooks/use-nodes-interactions'
 import { useNodeMetaData } from '../../hooks/use-nodes-meta-data'
-import { useIsChatMode, useNodesReadOnly } from '../../hooks/use-workflow'
+import { useNodesReadOnly } from '../../hooks/use-workflow'
 import { NodeActionsDropdown } from '../index'
 
 vi.mock('../../hooks/use-available-blocks', async (importOriginal) => {
@@ -46,7 +45,7 @@ vi.mock('../../hooks/use-workflow', async (importOriginal) => {
 
   return {
     ...actual,
-    useIsChatMode: vi.fn(),
+
     useNodesReadOnly: vi.fn(),
   }
 })
@@ -59,13 +58,17 @@ vi.mock('@/app/components/workflow/store/workflow/use-nodes', () => ({
   default: vi.fn(),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllWorkflowTools: vi.fn(),
-  useAllBuiltInTools: () => ({ data: [] }),
-  useAllCustomTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: [] }),
-  useInvalidateAllBuiltInTools: () => vi.fn(),
-}))
+const { mockUseAllWorkflowTools } = vi.hoisted(() => ({ mockUseAllWorkflowTools: vi.fn() }))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.workflow.get': () => mockUseAllWorkflowTools(),
+    'workspaces.current.tools.builtin.get': () => ({ data: [] }),
+    'workspaces.current.tools.api.get': () => ({ data: [] }),
+    'workspaces.current.tools.mcp.get': () => ({ data: [] }),
+  })
+})
 
 vi.mock('@/service/use-plugins', () => ({
   useFeaturedToolsRecommendations: () => ({ plugins: [], isLoading: false }),
@@ -80,13 +83,12 @@ vi.mock('@/service/use-triggers', () => ({
 }))
 
 const mockUseAvailableBlocks = vi.mocked(useAvailableBlocks)
-const mockUseIsChatMode = vi.mocked(useIsChatMode)
+let chatflowMode = false
 const mockUseNodeMetaData = vi.mocked(useNodeMetaData)
 const mockUseNodesInteractions = vi.mocked(useNodesInteractions)
 const mockUseNodesReadOnly = vi.mocked(useNodesReadOnly)
 const mockUseHooksStore = vi.mocked(useHooksStore)
 const mockUseNodes = vi.mocked(useNodes)
-const mockUseAllWorkflowTools = vi.mocked(useAllWorkflowTools)
 
 async function renderDropdownContent({
   showHelpLink = true,
@@ -100,11 +102,12 @@ async function renderDropdownContent({
   const result = renderWorkflowFlowComponent(
     <NodeActionsDropdown
       id="node-1"
-      data={{ type: BlockEnum.Code, title: 'Code Node', desc: '', ...data } as any}
+      data={{ type: BlockEnum.Code, title: 'Code Node', desc: '', ...data }}
       onOpenChange={(open) => !open && onClose()}
       showHelpLink={showHelpLink}
     />,
     {
+      resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
       nodes: [],
       edges: [{ id: 'edge-1', source: 'node-0', target: 'node-1', sourceHandle: 'branch-a' }],
     },
@@ -130,7 +133,7 @@ describe('node actions menu details', () => {
       availablePrevBlocks: [BlockEnum.HttpRequest],
       availableNextBlocks: [BlockEnum.HttpRequest],
     } as ReturnType<typeof useAvailableBlocks>)
-    mockUseIsChatMode.mockReturnValue(false)
+    chatflowMode = false
     mockUseNodeMetaData.mockReturnValue({
       isTypeFixed: false,
       isSingleton: false,
@@ -149,32 +152,42 @@ describe('node actions menu details', () => {
     mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false } as ReturnType<
       typeof useNodesReadOnly
     >)
-    mockUseHooksStore.mockImplementation((selector: any) =>
-      selector({
-        configsMap: { flowType: FlowType.appFlow },
-        accessControl: { canRun: true },
-        availableNodesMetaData: {
-          nodes: [
-            {
-              metaData: {
-                type: BlockEnum.HttpRequest,
-                title: 'HTTP Request',
-                classification: BlockClassification.Default,
-                sort: 0,
-                author: 'Dify',
-                description: 'Send a request',
+    mockUseHooksStore.mockImplementation((selector) =>
+      selector(
+        createHooksStore({
+          accessControl: {
+            canEdit: true,
+            canRun: true,
+            canImportExportDSL: true,
+            canReleaseAndVersion: true,
+          },
+          availableNodesMetaData: {
+            nodes: [
+              {
+                metaData: {
+                  type: BlockEnum.HttpRequest,
+                  title: 'HTTP Request',
+                  classification: BlockClassification.Default,
+                  sort: 0,
+                  author: 'Dify',
+                  description: 'Send a request',
+                },
+                defaultValue: {},
+                checkValid: () => ({ isValid: true }),
               },
-              defaultValue: {},
-              checkValid: () => ({ isValid: true }),
-            },
-          ],
-        },
-      }),
+            ],
+          },
+        }).getState(),
+      ),
     )
     mockUseNodes.mockReturnValue([
-      { id: 'start', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start } as any },
-    ] as any)
-    mockUseAllWorkflowTools.mockReturnValue({ data: [] } as any)
+      {
+        id: 'start',
+        position: { x: 0, y: 0 },
+        data: { type: BlockEnum.Start, title: 'Start', desc: '' },
+      },
+    ])
+    mockUseAllWorkflowTools.mockReturnValue({ data: [] })
   })
 
   it('keeps the menu after Escape and closes both surfaces after changing a node', async () => {
@@ -185,6 +198,11 @@ describe('node actions menu details', () => {
         data={{ type: BlockEnum.Code, title: 'Code Node', desc: '' }}
       />,
       {
+        resource: {
+          kind: 'app',
+          appId: 'app-1',
+          mode: chatflowMode ? 'advanced-chat' : 'workflow',
+        },
         nodes: [],
         edges: [{ id: 'edge-1', source: 'node-0', target: 'node-1', sourceHandle: 'branch-a' }],
       },
@@ -289,23 +307,26 @@ describe('node actions menu details', () => {
   it('should render workflow-tool and readonly variants', async () => {
     mockUseAllWorkflowTools.mockReturnValueOnce({
       data: [{ id: 'workflow-tool', workflow_app_id: 'app-123' }],
-    } as any)
+    })
 
     const { rerender } = renderWorkflowFlowComponent(
       <NodeActionsDropdown
         id="node-2"
-        data={
-          {
-            type: BlockEnum.Tool,
-            title: 'Workflow Tool',
-            desc: '',
-            provider_type: 'workflow',
-            provider_id: 'workflow-tool',
-          } as any
-        }
+        data={{
+          type: BlockEnum.Tool,
+          title: 'Workflow Tool',
+          desc: '',
+          provider_type: 'workflow',
+          provider_id: 'workflow-tool',
+        }}
         showHelpLink={false}
       />,
       {
+        resource: {
+          kind: 'app',
+          appId: 'app-1',
+          mode: chatflowMode ? 'advanced-chat' : 'workflow',
+        },
         nodes: [],
         edges: [],
       },
@@ -331,7 +352,7 @@ describe('node actions menu details', () => {
     rerender(
       <NodeActionsDropdown
         id="node-3"
-        data={{ type: BlockEnum.End, title: 'Read only node', desc: '' } as any}
+        data={{ type: BlockEnum.End, title: 'Read only node', desc: '' }}
         showHelpLink={false}
       />,
     )

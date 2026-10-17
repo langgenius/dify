@@ -55,6 +55,8 @@
   "account.sendVerificationButton": "Doğrulama Kodu Gönder",
   "account.setPassword": "Şifre Ayarla",
   "account.showAppLength": "{{length}} uygulamayı göster",
+  "account.timezoneNoResults": "Eşleşen saat dilimi bulunamadı",
+  "account.timezoneSearchPlaceholder": "Şehir veya saat dilimi ara…",
   "account.verificationLabel": "Doğrulama Kodu",
   "account.verificationPlaceholder": "6 haneli kodu yapıştırın",
   "account.workspaceName": "Çalışma Alanı Adı",

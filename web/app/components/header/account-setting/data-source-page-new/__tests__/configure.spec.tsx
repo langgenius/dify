@@ -1,5 +1,8 @@
-import type { DataSourceAuth } from '../types'
-import type { FormSchema } from '@/app/components/base/form/types'
+import type {
+  DatasourceOAuthSchemaResponse,
+  DatasourceProviderAuthResponse,
+  ProviderConfig,
+} from '@dify/contracts/api/console/auth/types.gen'
 import type {
   AddApiKeyButtonProps,
   AddOAuthButtonProps,
@@ -62,7 +65,7 @@ describe('Configure Component', () => {
     provider: 'test-provider',
   }
 
-  const mockItemBase: DataSourceAuth = {
+  const mockItemBase: DatasourceProviderAuthResponse = {
     author: 'Test Author',
     provider: 'test-provider',
     plugin_id: 'test-plugin-id',
@@ -72,9 +75,23 @@ describe('Configure Component', () => {
     label: { en_US: 'Test Label', zh_Hans: 'zh_hans' },
     description: { en_US: 'Test Description', zh_Hans: 'zh_hans' },
     credentials_list: [],
+    credential_schema: [],
+    oauth_schema: null,
   }
 
-  const mockFormSchema: FormSchema = {
+  const createOAuthSchema = (
+    overrides: Partial<DatasourceOAuthSchemaResponse> = {},
+  ): DatasourceOAuthSchemaResponse => ({
+    client_schema: [],
+    credentials_schema: [],
+    is_oauth_custom_client_enabled: false,
+    is_system_oauth_params_exists: false,
+    oauth_custom_client_params: null,
+    redirect_uri: '',
+    ...overrides,
+  })
+
+  const mockFormSchema: ProviderConfig = {
     name: 'api_key',
     label: { en_US: 'API Key', zh_Hans: 'zh_hans' },
     type: FormTypeEnum.textInput,
@@ -89,7 +106,7 @@ describe('Configure Component', () => {
     it('should toggle and manage the open state correctly', () => {
       // Arrange
       // Add a schema so we can detect if it's open by checking for button presence
-      const itemWithApiKey: DataSourceAuth = {
+      const itemWithApiKey: DatasourceProviderAuthResponse = {
         ...mockItemBase,
         credential_schema: [mockFormSchema],
       }
@@ -115,7 +132,7 @@ describe('Configure Component', () => {
   describe('Conditional Rendering', () => {
     it('should render AddApiKeyButton when credential_schema is non-empty', () => {
       // Arrange
-      const itemWithApiKey: DataSourceAuth = {
+      const itemWithApiKey: DatasourceProviderAuthResponse = {
         ...mockItemBase,
         credential_schema: [mockFormSchema],
       }
@@ -131,11 +148,11 @@ describe('Configure Component', () => {
 
     it('should render AddOAuthButton when oauth_schema with client_schema is non-empty', () => {
       // Arrange
-      const itemWithOAuth: DataSourceAuth = {
+      const itemWithOAuth: DatasourceProviderAuthResponse = {
         ...mockItemBase,
-        oauth_schema: {
+        oauth_schema: createOAuthSchema({
           client_schema: [mockFormSchema],
-        },
+        }),
       }
 
       // Act
@@ -149,12 +166,12 @@ describe('Configure Component', () => {
 
     it('should render both buttons and the OR divider when both schemes are available', () => {
       // Arrange
-      const itemWithBoth: DataSourceAuth = {
+      const itemWithBoth: DatasourceProviderAuthResponse = {
         ...mockItemBase,
         credential_schema: [mockFormSchema],
-        oauth_schema: {
+        oauth_schema: createOAuthSchema({
           client_schema: [mockFormSchema],
-        },
+        }),
       }
 
       // Act
@@ -170,11 +187,11 @@ describe('Configure Component', () => {
 
   describe('Update Handling', () => {
     it('should keep the permission dialog mounted after the OAuth menu closes', () => {
-      const itemWithOAuth: DataSourceAuth = {
+      const itemWithOAuth: DatasourceProviderAuthResponse = {
         ...mockItemBase,
-        oauth_schema: {
+        oauth_schema: createOAuthSchema({
           client_schema: [mockFormSchema],
-        },
+        }),
       }
       render(
         <Configure
@@ -194,7 +211,7 @@ describe('Configure Component', () => {
 
     it('should call onUpdate and close the portal when an update is triggered', () => {
       // Arrange
-      const itemWithApiKey: DataSourceAuth = {
+      const itemWithApiKey: DatasourceProviderAuthResponse = {
         ...mockItemBase,
         credential_schema: [mockFormSchema],
       }
@@ -217,12 +234,12 @@ describe('Configure Component', () => {
 
     it('should handle missing onUpdate callback gracefully', () => {
       // Arrange
-      const itemWithBoth: DataSourceAuth = {
+      const itemWithBoth: DatasourceProviderAuthResponse = {
         ...mockItemBase,
         credential_schema: [mockFormSchema],
-        oauth_schema: {
+        oauth_schema: createOAuthSchema({
           client_schema: [mockFormSchema],
-        },
+        }),
       }
       render(<Configure item={itemWithBoth} pluginPayload={mockPluginPayload} />)
 
@@ -240,12 +257,12 @@ describe('Configure Component', () => {
   describe('Props and Edge Cases', () => {
     it('should pass the disabled prop to both configuration buttons', () => {
       // Arrange
-      const itemWithBoth: DataSourceAuth = {
+      const itemWithBoth: DatasourceProviderAuthResponse = {
         ...mockItemBase,
         credential_schema: [mockFormSchema],
-        oauth_schema: {
+        oauth_schema: createOAuthSchema({
           client_schema: [mockFormSchema],
-        },
+        }),
       }
 
       // Act: Open the configuration menu
@@ -267,10 +284,10 @@ describe('Configure Component', () => {
       expect(screen.queryByTestId('add-oauth')).not.toBeInTheDocument()
 
       // Arrange (Empty schemas)
-      const itemEmpty: DataSourceAuth = {
+      const itemEmpty: DatasourceProviderAuthResponse = {
         ...mockItemBase,
         credential_schema: [],
-        oauth_schema: { client_schema: [] },
+        oauth_schema: createOAuthSchema({ client_schema: [] }),
       }
       // Act
       rerender(<Configure item={itemEmpty} pluginPayload={mockPluginPayload} />)
@@ -280,11 +297,11 @@ describe('Configure Component', () => {
       expect(screen.queryByTestId('add-oauth')).not.toBeInTheDocument()
 
       // Arrange (Partial OAuth schema)
-      const itemPartialOAuth: DataSourceAuth = {
+      const itemPartialOAuth: DatasourceProviderAuthResponse = {
         ...mockItemBase,
-        oauth_schema: {
+        oauth_schema: createOAuthSchema({
           is_oauth_custom_client_enabled: true,
-        },
+        }),
       }
       // Act
       rerender(<Configure item={itemPartialOAuth} pluginPayload={mockPluginPayload} />)
@@ -297,7 +314,7 @@ describe('Configure Component', () => {
       let count = 0
       const itemWithGlitchedSchema = {
         ...mockItemBase,
-        oauth_schema: {
+        oauth_schema: createOAuthSchema({
           get client_schema() {
             count++
             if (count % 2 !== 0) return [mockFormSchema]
@@ -307,8 +324,8 @@ describe('Configure Component', () => {
           is_system_oauth_params_exists: false,
           oauth_custom_client_params: {},
           redirect_uri: '',
-        },
-      } as unknown as DataSourceAuth
+        }),
+      } as unknown as DatasourceProviderAuthResponse
 
       render(<Configure item={itemWithGlitchedSchema} pluginPayload={mockPluginPayload} />)
       fireEvent.click(screen.getByRole('button', { name: /dataSource.configure/i }))

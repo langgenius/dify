@@ -1,18 +1,32 @@
 import type { CardPayload } from '../index'
 import { render } from '@testing-library/react'
-import { useAtomValue } from 'jotai'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import { PluginCategoryEnum } from '../../types'
 import Card from '../index'
 
-vi.mock('jotai', () => ({
-  useAtomValue: vi.fn(),
-}))
+const readWorkspaceQuery = vi.hoisted(() =>
+  vi.fn(() => {
+    throw new Error('Independent Marketplace must not access the Dify workspace service')
+  }),
+)
 
-vi.mock('@/context/workspace-state', () => ({
-  currentWorkspaceIdAtom: Symbol('currentWorkspaceIdAtom'),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  return {
+    ...actual,
+    consoleQuery: {
+      ...actual.consoleQuery,
+      workspaces: {
+        ...actual.consoleQuery.workspaces,
+        current: {
+          ...actual.consoleQuery.workspaces.current,
+          summary: { get: { queryOptions: readWorkspaceQuery } },
+        },
+      },
+    },
+  }
+})
 
 vi.mock('#i18n', () => ({
   useTranslation: () => ({
@@ -82,10 +96,6 @@ const marketplacePlugin = {
 
 describe('Plugin card workspace boundary', () => {
   it('renders Marketplace variant icons without reading Dify workspace state', () => {
-    vi.mocked(useAtomValue).mockImplementation(() => {
-      throw new Error('Dify workspace state must not be read')
-    })
-
     const payloadWithoutSource = {
       ...marketplacePlugin,
       from: undefined,
@@ -96,7 +106,7 @@ describe('Plugin card workspace boundary', () => {
       'src',
       `${MARKETPLACE_API_PREFIX}/plugins/langgenius/demo-plugin/icon`,
     )
-    expect(useAtomValue).not.toHaveBeenCalled()
+    expect(readWorkspaceQuery).not.toHaveBeenCalled()
   })
 
   it('labels the marketplace author as by, not the tools.author key fallback', () => {
