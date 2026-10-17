@@ -53,10 +53,10 @@ def test_empty_graph_stays_empty() -> None:
         {"id": "start", "data": {"type": None}},
     ],
 )
-def test_sparse_stored_nodes_round_trip_without_inventing_data(node: dict) -> None:
+def test_sparse_stored_nodes_round_trip_without_inventing_data(node: dict[str, object]) -> None:
     # 1.9.0's workflow service integration test persisted a node with only id/type.
     # Reading stored JSON must not impose the executable graph's required fields.
-    graph = {"nodes": [node], "edges": []}
+    graph: dict[str, list[dict[str, object]]] = {"nodes": [node], "edges": []}
 
     assert WorkflowGraphResponse.model_validate(graph).model_dump(mode="json") == graph
 

@@ -768,7 +768,7 @@ def test_get_published_workflows_uses_the_request_session(
     ],
 )
 def test_draft_workflow_get_serializes_response_model(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, graph: dict
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, graph: dict[str, object]
 ) -> None:
     workflow = _make_workflow(graph_dict=graph)
     sqlite_session.add_all([_account(), workflow])
