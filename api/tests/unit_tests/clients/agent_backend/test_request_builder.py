@@ -3,7 +3,7 @@ from typing import Any, cast
 import pytest
 from dify_agent.layers.dify_core_tools import DifyCoreToolConfig, DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_plugin import DifyPluginLLMLayerConfig, DifyPluginToolConfig, DifyPluginToolsLayerConfig
-from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.layers.execution_context import ApplicationTracingContext, DifyExecutionContextLayerConfig
 from dify_agent.layers.knowledge import DifyKnowledgeBaseLayerConfig
 from dify_agent.layers.prompt import Config as PromptConfig
 from dify_agent.layers.shell import DifyShellEnvVarConfig, DifyShellLayerConfig
@@ -190,6 +190,38 @@ def test_request_builder_sets_model_and_output_layer_contract_ids() -> None:
     assert model_config.plugin_id == "langgenius/openai"
     assert "credentials" not in model_config.model_dump(mode="json")
     assert layers[DIFY_AGENT_MODEL_LAYER_ID].config["execution_context"] == DIFY_EXECUTION_CONTEXT_LAYER_ID
+
+
+@pytest.mark.parametrize("mode", ["agent_app", "workflow_node"])
+@pytest.mark.parametrize("traced", [False, True])
+def test_context_wire_contract_omits_tracing_for_legacy_runtime(mode: str, traced: bool) -> None:
+    run_input = _agent_app_input() if mode == "agent_app" else _run_input()
+    tracing = ApplicationTracingContext(
+        run_id="00000000-0000-0000-0000-000000000001",
+        invocation_id="00000000-0000-0000-0000-000000000002",
+        trace_id="a" * 32,
+        parent_span_id="b" * 16,
+        session_id="session",
+        capture_content=False,
+    )
+    if traced:
+        run_input = run_input.model_copy(
+            update={"execution_context": run_input.execution_context.model_copy(update={"tracing": tracing})}
+        )
+    builder = AgentBackendRunRequestBuilder()
+    request = (
+        builder.build_for_agent_app(run_input)
+        if isinstance(run_input, AgentBackendAgentAppRunInput)
+        else builder.build_for_workflow_node(run_input)
+    )
+    payload = next(
+        layer.config for layer in request.composition.layers if layer.name == DIFY_EXECUTION_CONTEXT_LAYER_ID
+    )
+    if traced:
+        assert payload["tracing"] == tracing.model_dump(mode="json")
+    else:
+        # Pre-tracing runtimes reject even a null unknown field (extra=forbid).
+        assert "tracing" not in payload
 
 
 def test_request_builder_adds_dify_plugin_tools_layer_when_configured() -> None:

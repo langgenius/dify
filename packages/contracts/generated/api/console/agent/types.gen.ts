@@ -572,6 +572,162 @@ export type ProviderNotSupportTextToSpeechError = ErrorResponse & {
 
 export type TextToSpeechVoiceListResponse = Array<TextToSpeechVoiceResponse>
 
+export type AppTraceResponse = {
+  capture_agent?: boolean
+  capture_content?: boolean
+  enabled?: boolean
+  tracing_provider?: string | null
+}
+
+export type AppTracePayload = {
+  capture_agent?: boolean
+  capture_content?: boolean
+  enabled: boolean
+  tracing_provider?: string | null
+}
+
+export type InvalidTracingConfigError = ErrorResponse & {
+  code: 'invalid_tracing_config'
+  status: 400
+}
+
+export type TracingProviderUnavailableError = ErrorResponse & {
+  code: 'tracing_provider_unavailable'
+  status: 400
+}
+
+export type UnsupportedTracingProviderError = ErrorResponse & {
+  code: 'unsupported_tracing_provider'
+  status: 400
+}
+
+export type TraceConfigNotFoundError = ErrorResponse & {
+  code: 'trace_config_not_found'
+  status: 404
+}
+
+export type TracingConfigConflictError = ErrorResponse & {
+  code: 'tracing_config_conflict'
+  status: 409
+}
+
+export type TracingConfigProcessingFailedError = ErrorResponse & {
+  code: 'tracing_config_processing_failed'
+  status: 500
+}
+
+export type TraceProviderCapabilitiesResponse = {
+  agent_spans: boolean
+  api_collection_enabled: boolean
+  export_ack: 'accepted'
+  native_cost: boolean
+  native_usage: boolean
+  provider: string
+  session: boolean
+  span_url: boolean
+  trace_url: boolean
+}
+
+export type AppNotFoundError = ErrorResponse & {
+  code: 'app_not_found'
+  status: 404
+}
+
+export type TraceAppConfigResponse = {
+  app_id?: string | null
+  created_at?: string | null
+  error?: string | null
+  has_not_configured?: boolean | null
+  id?: string | null
+  is_active?: boolean | null
+  result?: string | null
+  tracing_config?: {
+    [key: string]: string | null
+  } | null
+  tracing_provider?: string | null
+  updated_at?: string | null
+}
+
+export type TraceConfigPayload = {
+  activate?: boolean
+  tracing_config: {
+    [key: string]: string | null
+  }
+  tracing_provider: string
+}
+
+export type TracingConfigVerificationFailedError = ErrorResponse & {
+  code: 'tracing_config_verification_failed'
+  status: 400
+}
+
+export type TraceConfigAlreadyExistsError = ErrorResponse & {
+  code: 'trace_config_already_exists'
+  status: 409
+}
+
+export type TraceRunStatusResponse = {
+  accepted_at?: string | null
+  attempts?: number | null
+  capabilities?: TraceProviderSupportResponse | null
+  capture_agent?: boolean | null
+  capture_content?: boolean | null
+  config_revision?: string | null
+  error_code?: string | null
+  project_url?: string | null
+  provider?: string | null
+  queryable?: boolean | null
+  source_id: string
+  source_kind: TraceSourceKind
+  span_count?: number | null
+  span_url?: string | null
+  status:
+    | 'accepted'
+    | 'collecting'
+    | 'exporting'
+    | 'failed'
+    | 'not_collected'
+    | 'ready'
+    | 'retrying'
+    | 'uncertain'
+  trace_id?: string | null
+  trace_url?: string | null
+}
+
+export type TracingNodeNotFoundError = ErrorResponse & {
+  code: 'tracing_node_not_found'
+  status: 404
+}
+
+export type TracingSourceNotFoundError = ErrorResponse & {
+  code: 'tracing_source_not_found'
+  status: 404
+}
+
+export type TraceRunRetryPayload = {
+  acknowledge_possible_duplicates?: boolean
+}
+
+export type TracingRunNotFoundError = ErrorResponse & {
+  code: 'tracing_run_not_found'
+  status: 404
+}
+
+export type TracingAlreadyAcceptedError = ErrorResponse & {
+  code: 'tracing_already_accepted'
+  status: 409
+}
+
+export type TracingDuplicateAcknowledgementRequiredError = ErrorResponse & {
+  code: 'tracing_duplicate_acknowledgement_required'
+  status: 409
+}
+
+export type TracingRetryNotAllowedError = ErrorResponse & {
+  code: 'tracing_retry_not_allowed'
+  status: 409
+}
+
 export type AgentConfigSnapshotListResponse = {
   data: Array<AgentConfigSnapshotSummaryResponse>
 }
@@ -1143,6 +1299,19 @@ export type TextToSpeechVoiceResponse = {
   name: string
   value: string
 }
+
+export type TraceProviderSupportResponse = {
+  agent_spans: boolean
+  export_ack: 'accepted'
+  native_cost: boolean
+  native_usage: boolean
+  provider: string
+  session: boolean
+  span_url: boolean
+  trace_url: boolean
+}
+
+export type TraceSourceKind = 'message' | 'node' | 'workflow'
 
 export type AgentConfigRevisionResponse = {
   created_at?: number | null
@@ -3960,6 +4129,269 @@ export type GetAgentByAgentIdTextToAudioVoicesResponses = {
 
 export type GetAgentByAgentIdTextToAudioVoicesResponse =
   GetAgentByAgentIdTextToAudioVoicesResponses[keyof GetAgentByAgentIdTextToAudioVoicesResponses]
+
+export type GetAgentByAgentIdTraceData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/trace'
+}
+
+export type GetAgentByAgentIdTraceErrors = {
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdTraceError =
+  GetAgentByAgentIdTraceErrors[keyof GetAgentByAgentIdTraceErrors]
+
+export type GetAgentByAgentIdTraceResponses = {
+  200: AppTraceResponse
+}
+
+export type GetAgentByAgentIdTraceResponse =
+  GetAgentByAgentIdTraceResponses[keyof GetAgentByAgentIdTraceResponses]
+
+export type PostAgentByAgentIdTraceData = {
+  body: AppTracePayload
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/trace'
+}
+
+export type PostAgentByAgentIdTraceErrors = {
+  400:
+    | InvalidTracingConfigError
+    | TracingProviderUnavailableError
+    | UnsupportedTracingProviderError
+    | ErrorResponse
+  404: TraceConfigNotFoundError | ErrorResponse
+  409: TracingConfigConflictError | ErrorResponse
+  500: TracingConfigProcessingFailedError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAgentByAgentIdTraceError =
+  PostAgentByAgentIdTraceErrors[keyof PostAgentByAgentIdTraceErrors]
+
+export type PostAgentByAgentIdTraceResponses = {
+  200: AppTraceResponse
+}
+
+export type PostAgentByAgentIdTraceResponse =
+  PostAgentByAgentIdTraceResponses[keyof PostAgentByAgentIdTraceResponses]
+
+export type GetAgentByAgentIdTraceCapabilitiesData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query: {
+    tracing_provider: string
+  }
+  url: '/agent/{agent_id}/trace-capabilities'
+}
+
+export type GetAgentByAgentIdTraceCapabilitiesErrors = {
+  400: UnsupportedTracingProviderError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdTraceCapabilitiesError =
+  GetAgentByAgentIdTraceCapabilitiesErrors[keyof GetAgentByAgentIdTraceCapabilitiesErrors]
+
+export type GetAgentByAgentIdTraceCapabilitiesResponses = {
+  200: TraceProviderCapabilitiesResponse
+}
+
+export type GetAgentByAgentIdTraceCapabilitiesResponse =
+  GetAgentByAgentIdTraceCapabilitiesResponses[keyof GetAgentByAgentIdTraceCapabilitiesResponses]
+
+export type DeleteAgentByAgentIdTraceConfigData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query: {
+    tracing_provider: string
+  }
+  url: '/agent/{agent_id}/trace-config'
+}
+
+export type DeleteAgentByAgentIdTraceConfigErrors = {
+  400: UnsupportedTracingProviderError | ErrorResponse
+  404: AppNotFoundError | TraceConfigNotFoundError | ErrorResponse
+  500: TracingConfigProcessingFailedError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type DeleteAgentByAgentIdTraceConfigError =
+  DeleteAgentByAgentIdTraceConfigErrors[keyof DeleteAgentByAgentIdTraceConfigErrors]
+
+export type DeleteAgentByAgentIdTraceConfigResponses = {
+  204: void
+}
+
+export type DeleteAgentByAgentIdTraceConfigResponse =
+  DeleteAgentByAgentIdTraceConfigResponses[keyof DeleteAgentByAgentIdTraceConfigResponses]
+
+export type GetAgentByAgentIdTraceConfigData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query: {
+    tracing_provider: string
+  }
+  url: '/agent/{agent_id}/trace-config'
+}
+
+export type GetAgentByAgentIdTraceConfigErrors = {
+  400: TracingProviderUnavailableError | UnsupportedTracingProviderError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  500: TracingConfigProcessingFailedError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdTraceConfigError =
+  GetAgentByAgentIdTraceConfigErrors[keyof GetAgentByAgentIdTraceConfigErrors]
+
+export type GetAgentByAgentIdTraceConfigResponses = {
+  200: TraceAppConfigResponse
+}
+
+export type GetAgentByAgentIdTraceConfigResponse =
+  GetAgentByAgentIdTraceConfigResponses[keyof GetAgentByAgentIdTraceConfigResponses]
+
+export type PatchAgentByAgentIdTraceConfigData = {
+  body: TraceConfigPayload
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/trace-config'
+}
+
+export type PatchAgentByAgentIdTraceConfigErrors = {
+  400:
+    | InvalidTracingConfigError
+    | TracingConfigVerificationFailedError
+    | TracingProviderUnavailableError
+    | UnsupportedTracingProviderError
+    | ErrorResponse
+  404: AppNotFoundError | TraceConfigNotFoundError | ErrorResponse
+  409: TracingConfigConflictError | ErrorResponse
+  500: TracingConfigProcessingFailedError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PatchAgentByAgentIdTraceConfigError =
+  PatchAgentByAgentIdTraceConfigErrors[keyof PatchAgentByAgentIdTraceConfigErrors]
+
+export type PatchAgentByAgentIdTraceConfigResponses = {
+  200: TraceAppConfigResponse
+}
+
+export type PatchAgentByAgentIdTraceConfigResponse =
+  PatchAgentByAgentIdTraceConfigResponses[keyof PatchAgentByAgentIdTraceConfigResponses]
+
+export type PostAgentByAgentIdTraceConfigData = {
+  body: TraceConfigPayload
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/trace-config'
+}
+
+export type PostAgentByAgentIdTraceConfigErrors = {
+  400:
+    | InvalidTracingConfigError
+    | TracingConfigVerificationFailedError
+    | TracingProviderUnavailableError
+    | UnsupportedTracingProviderError
+    | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  409: TraceConfigAlreadyExistsError | ErrorResponse
+  500: TracingConfigProcessingFailedError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAgentByAgentIdTraceConfigError =
+  PostAgentByAgentIdTraceConfigErrors[keyof PostAgentByAgentIdTraceConfigErrors]
+
+export type PostAgentByAgentIdTraceConfigResponses = {
+  201: TraceAppConfigResponse
+}
+
+export type PostAgentByAgentIdTraceConfigResponse =
+  PostAgentByAgentIdTraceConfigResponses[keyof PostAgentByAgentIdTraceConfigResponses]
+
+export type GetAgentByAgentIdTraceRunsByMessageIdData = {
+  body?: never
+  path: {
+    agent_id: string
+    message_id: string
+  }
+  query?: {
+    node_execution_id?: string
+  }
+  url: '/agent/{agent_id}/trace-runs/{message_id}'
+}
+
+export type GetAgentByAgentIdTraceRunsByMessageIdErrors = {
+  404: TracingNodeNotFoundError | TracingSourceNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdTraceRunsByMessageIdError =
+  GetAgentByAgentIdTraceRunsByMessageIdErrors[keyof GetAgentByAgentIdTraceRunsByMessageIdErrors]
+
+export type GetAgentByAgentIdTraceRunsByMessageIdResponses = {
+  200: TraceRunStatusResponse
+}
+
+export type GetAgentByAgentIdTraceRunsByMessageIdResponse =
+  GetAgentByAgentIdTraceRunsByMessageIdResponses[keyof GetAgentByAgentIdTraceRunsByMessageIdResponses]
+
+export type PostAgentByAgentIdTraceRunsByMessageIdRetryData = {
+  body: TraceRunRetryPayload
+  path: {
+    agent_id: string
+    message_id: string
+  }
+  query?: {
+    node_execution_id?: string
+  }
+  url: '/agent/{agent_id}/trace-runs/{message_id}/retry'
+}
+
+export type PostAgentByAgentIdTraceRunsByMessageIdRetryErrors = {
+  404:
+    | TracingNodeNotFoundError
+    | TracingRunNotFoundError
+    | TracingSourceNotFoundError
+    | ErrorResponse
+  409:
+    | TracingAlreadyAcceptedError
+    | TracingDuplicateAcknowledgementRequiredError
+    | TracingRetryNotAllowedError
+    | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAgentByAgentIdTraceRunsByMessageIdRetryError =
+  PostAgentByAgentIdTraceRunsByMessageIdRetryErrors[keyof PostAgentByAgentIdTraceRunsByMessageIdRetryErrors]
+
+export type PostAgentByAgentIdTraceRunsByMessageIdRetryResponses = {
+  200: TraceRunStatusResponse
+}
+
+export type PostAgentByAgentIdTraceRunsByMessageIdRetryResponse =
+  PostAgentByAgentIdTraceRunsByMessageIdRetryResponses[keyof PostAgentByAgentIdTraceRunsByMessageIdRetryResponses]
 
 export type GetAgentByAgentIdVersionsData = {
   body?: never

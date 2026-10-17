@@ -311,8 +311,29 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                     ),
                 )
             except GenerateTaskStoppedError:
-                pass
+                from core.ops.base_trace_instance import application_tracing_hooks
+
+                tracing_hooks = application_tracing_hooks()
+                if tracing_hooks is not None:
+                    tracing_hooks.capture_agent_app_terminal(
+                        tenant_id=application_generate_entity.app_config.tenant_id,
+                        app_id=application_generate_entity.app_config.app_id,
+                        message_id=message_id,
+                        outcome="cancelled",
+                        output=None,
+                    )
             except Exception as e:
+                from core.ops.base_trace_instance import application_tracing_hooks
+
+                tracing_hooks = application_tracing_hooks()
+                if tracing_hooks is not None:
+                    tracing_hooks.capture_agent_app_terminal(
+                        tenant_id=application_generate_entity.app_config.tenant_id,
+                        app_id=application_generate_entity.app_config.app_id,
+                        message_id=message_id,
+                        outcome="failed",
+                        output=None,
+                    )
                 logger.exception("Unknown Error in Agent App generate worker")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             finally:
