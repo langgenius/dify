@@ -3,7 +3,6 @@ import type {
   ProviderModelWithStatusEntity,
   ProviderWithModelsResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { ConsoleOperationKey } from '@/test/console/operation-hooks'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -1347,35 +1346,33 @@ describe('ModelParameterModal', () => {
   })
 })
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useQuery: (options: {
-      queryKey: ConsoleOperationKey<{
-        params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path']
-      }>
-    }) => {
-      if (!options.queryKey[1].includes('modelTypes')) return actual.useQuery(options)
-
-      const type = options.queryKey[2].input?.params?.model_type
-      if (!type) throw new Error('Missing model type in query')
-      switch (type) {
-        case ModelTypeEnum.textGeneration:
-          return { data: mockTextGenerationList }
-        case ModelTypeEnum.textEmbedding:
-          return { data: mockTextEmbeddingList }
-        case ModelTypeEnum.rerank:
-          return { data: mockRerankList }
-        case ModelTypeEnum.moderation:
-          return { data: mockModerationList }
-        case ModelTypeEnum.speech2text:
-          return { data: mockSttList }
-        case ModelTypeEnum.tts:
-          return { data: mockTtsList }
-        default:
-          return { data: [] }
-      }
+vi.mock('@tanstack/react-query', async (importOriginal) =>
+  (await import('@/test/console/operation-hooks')).mockConsoleOperationHooks(
+    await importOriginal(),
+    {
+      'workspaces.current.models.modelTypes.byModelType.get': (
+        _options: unknown,
+        input: { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] } | undefined,
+      ) => {
+        const type = input?.params?.model_type
+        if (!type) throw new Error('Missing model type in query')
+        switch (type) {
+          case ModelTypeEnum.textGeneration:
+            return { data: mockTextGenerationList }
+          case ModelTypeEnum.textEmbedding:
+            return { data: mockTextEmbeddingList }
+          case ModelTypeEnum.rerank:
+            return { data: mockRerankList }
+          case ModelTypeEnum.moderation:
+            return { data: mockModerationList }
+          case ModelTypeEnum.speech2text:
+            return { data: mockSttList }
+          case ModelTypeEnum.tts:
+            return { data: mockTtsList }
+          default:
+            return { data: [] }
+        }
+      },
     },
-  }
-})
+  ),
+)

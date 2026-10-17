@@ -1,7 +1,5 @@
 import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactElement } from 'react'
-import type { ConsoleOperationKey } from '@/test/console/operation-hooks'
 import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
@@ -493,46 +491,43 @@ describe('Form', () => {
   })
 })
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useQuery: (options: {
-      queryKey: ConsoleOperationKey<{
-        params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path']
-      }>
-    }) => {
-      if (options.queryKey[1].join('.') === 'workspaces.current.members.get')
-        return (() => ({
-          data: {
-            accounts: [
-              {
-                id: 'user-1',
-                name: 'User 1',
-                email: 'user1@example.com',
-                role: 'owner',
-                avatar: '',
-                avatar_url: '',
-                last_login_at: '',
-                created_at: '',
-                status: 'active',
-              },
-              {
-                id: 'user-2',
-                name: 'User 2',
-                email: 'user2@example.com',
-                role: 'admin',
-                avatar: '',
-                avatar_url: '',
-                last_login_at: '',
-                created_at: '',
-                status: 'active',
-              },
-            ],
-          },
-        }))()
-      if (!options.queryKey[1].includes('modelTypes')) return actual.useQuery(options)
-      return { data: [], refetch: vi.fn(), isPending: false }
+vi.mock('@tanstack/react-query', async (importOriginal) =>
+  (await import('@/test/console/operation-hooks')).mockConsoleOperationHooks(
+    await importOriginal(),
+    {
+      'workspaces.current.members.get': () => ({
+        data: {
+          accounts: [
+            {
+              id: 'user-1',
+              name: 'User 1',
+              email: 'user1@example.com',
+              role: 'owner',
+              avatar: '',
+              avatar_url: '',
+              last_login_at: '',
+              created_at: '',
+              status: 'active',
+            },
+            {
+              id: 'user-2',
+              name: 'User 2',
+              email: 'user2@example.com',
+              role: 'admin',
+              avatar: '',
+              avatar_url: '',
+              last_login_at: '',
+              created_at: '',
+              status: 'active',
+            },
+          ],
+        },
+      }),
+      'workspaces.current.models.modelTypes.byModelType.get': () => ({
+        data: [],
+        refetch: vi.fn(),
+        isPending: false,
+      }),
     },
-  }
-})
+  ),
+)

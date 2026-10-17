@@ -3,6 +3,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
+import { consoleQueryKey } from '@/test/console/operation-hooks'
 import { render } from '@/test/console/render'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
@@ -96,11 +97,9 @@ function createTrigger(
   }
 }
 
-const triggersQueryKey = [
-  'console',
-  ['apps', 'byAppId', 'triggers', 'get'],
-  { type: 'query', input: { params: { app_id: 'app-1' } } },
-]
+const triggersQueryKey = consoleQueryKey('apps.byAppId.triggers.get', {
+  params: { app_id: 'app-1' },
+})
 
 function renderCard(availability: 'available' | 'loading' | 'unavailable') {
   const queryClient = createTestQueryClient()

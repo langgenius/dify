@@ -4,16 +4,13 @@ import type { RenderOptions } from '@testing-library/react'
 import type { ReactElement } from 'react'
 import type { UserProfileWithMeta } from '@/features/account-profile/client'
 import { render } from '@testing-library/react'
+import { consoleQueryKey } from '@/test/console/operation-hooks'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { createTestQueryClient } from '@/test/query-client'
 
 type AccountProfileMeta = UserProfileWithMeta['meta']
 
-const accountProfileQueryKey = [
-  'console',
-  ['account', 'profile', 'get'],
-  { type: 'query' },
-] as const
+const accountProfileQueryKey = consoleQueryKey('account.profile.get')
 
 const createAccountProfileFixture = (
   overrides: Partial<GetAccountProfileResponse> = {},

@@ -1,5 +1,3 @@
-import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { ConsoleOperationKey } from '@/test/console/operation-hooks'
 import type { RetrievalConfig } from '@/types/app'
 import { Drawer } from '@langgenius/dify-ui/drawer'
 import { fireEvent, screen } from '@testing-library/react'
@@ -119,17 +117,11 @@ describe('ModifyRetrievalModal', () => {
   })
 })
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useQuery: (options: {
-      queryKey: ConsoleOperationKey<{
-        params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path']
-      }>
-    }) => {
-      if (!options.queryKey[1].includes('modelTypes')) return actual.useQuery(options)
-      return { data: [] }
+vi.mock('@tanstack/react-query', async (importOriginal) =>
+  (await import('@/test/console/operation-hooks')).mockConsoleOperationHooks(
+    await importOriginal(),
+    {
+      'workspaces.current.models.modelTypes.byModelType.get': () => ({ data: [] }),
     },
-  }
-})
+  ),
+)

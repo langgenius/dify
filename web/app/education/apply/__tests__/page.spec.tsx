@@ -46,7 +46,7 @@ vi.mock('@/hooks/use-async-window-open', () => ({
   useAsyncWindowOpen: () => vi.fn(),
 }))
 
-vi.mock('@/service/console', () => ({
+vi.mock('@/service/console', async () => ({
   consoleClient: {
     billing: {
       invoices: {
@@ -63,9 +63,9 @@ vi.mock('@/service/console', () => ({
     },
     account: {
       profile: {
-        get: {
-          queryKey: () => ['console', ['account', 'profile', 'get'], { type: 'query' }],
-        },
+        get: (await import('@/test/console/operation-hooks')).consoleOperationStub(
+          'account.profile.get',
+        ),
       },
       education: {
         autocomplete: {

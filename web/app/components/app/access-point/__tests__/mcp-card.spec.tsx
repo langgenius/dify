@@ -5,6 +5,7 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
+import { consoleQueryKey } from '@/test/console/operation-hooks'
 import { render } from '@/test/console/render'
 import { createAppDetailFixture, createAppModelConfigFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
@@ -259,11 +260,7 @@ describe('MCPAccessPointCard', () => {
     await waitFor(() => {
       expect(invalidateQueries).toHaveBeenCalledTimes(2)
       expect(invalidateQueries).toHaveBeenLastCalledWith({
-        queryKey: [
-          'console',
-          ['apps', 'byAppId', 'server', 'get'],
-          { type: 'query', input: { params: { app_id: 'app-1' } } },
-        ],
+        queryKey: consoleQueryKey('apps.byAppId.server.get', { params: { app_id: 'app-1' } }),
       })
     })
     expect(accessSwitch).toHaveAttribute('aria-checked', 'true')

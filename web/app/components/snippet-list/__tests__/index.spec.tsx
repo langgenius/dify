@@ -66,7 +66,7 @@ vi.mock('../hooks/use-snippets-query-state', () => ({
   }),
 }))
 
-vi.mock('@/service/console', () => ({
+vi.mock('@/service/console', async () => ({
   consoleClient: {
     systemFeatures: vi.fn(),
   },
@@ -74,20 +74,17 @@ vi.mock('@/service/console', () => ({
     workspaces: {
       current: {
         members: {
-          get: {
-            queryOptions: (options: { input?: unknown }) => ({
-              ...options,
-              queryKey: ['console', ['workspaces', 'current', 'members', 'get'], options],
-            }),
-          },
+          get: (await import('@/test/console/operation-hooks')).consoleOperationStub(
+            'workspaces.current.members.get',
+          ),
         },
       },
     },
     account: {
       profile: {
-        get: {
-          queryKey: () => ['console', ['account', 'profile', 'get'], { type: 'query' }],
-        },
+        get: (await import('@/test/console/operation-hooks')).consoleOperationStub(
+          'account.profile.get',
+        ),
       },
     },
     tags: {

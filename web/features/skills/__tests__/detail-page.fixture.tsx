@@ -1,5 +1,4 @@
 import type {
-  GetWorkspacesCurrentModelsModelTypesByModelTypeData,
   SkillDetailResponse,
   SkillReferenceResponse,
   SkillVersionResponse,
@@ -7,7 +6,6 @@ import type {
 import type userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { ConsoleOperationKey } from '@/test/console/operation-hooks'
 import { detectPlatform } from '@tanstack/react-hotkeys'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, within } from '@testing-library/react'
@@ -879,15 +877,10 @@ afterEach(() => {
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useQuery: (options: {
-      queryKey: ConsoleOperationKey<{
-        params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path']
-      }>
-    }) =>
-      Array.isArray(options.queryKey[1]) && options.queryKey[1].includes('modelTypes')
-        ? actual.useQuery({ ...options, queryFn: mocks.textGenerationModelListGet })
-        : actual.useQuery(options),
-  }
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(actual, {
+    'workspaces.current.models.modelTypes.byModelType.get': (
+      options: Parameters<typeof actual.useQuery>[0],
+    ) => actual.useQuery({ ...options, queryFn: mocks.textGenerationModelListGet }),
+  })
 })

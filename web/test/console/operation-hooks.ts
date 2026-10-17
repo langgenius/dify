@@ -1,31 +1,66 @@
-import type { OperationKey } from '@orpc/tanstack-query'
+import type { OperationKeyOptions, OperationType } from '@orpc/tanstack-query'
 import type * as ReactQuery from '@tanstack/react-query'
+import { generateOperationKey } from '@orpc/tanstack-query'
 
-/** The `['console', path, options]` query key the console query utilities produce. */
-export type ConsoleOperationKey<TInput> = Extract<
-  OperationKey<'query', TInput>,
-  [string, string[], unknown]
->
+// Must match the `prefix` passed to createTanstackQueryUtils in service/console/query-policies.ts.
+const CONSOLE_KEY_PREFIX = 'console'
+
+/**
+ * Builds the key the console query utilities produce for a dotted operation path,
+ * using oRPC's own key generator so tests never spell out its key layout.
+ *
+ * consoleOperationKey('account.profile.get', { type: 'query' })
+ *   // equals consoleQuery.account.profile.get.queryKey()
+ */
+export const consoleOperationKey = <TType extends OperationType, TInput = unknown>(
+  path: string,
+  options: Omit<OperationKeyOptions<TType, TInput>, 'prefix'> = {},
+) => generateOperationKey(path.split('.'), { ...options, prefix: CONSOLE_KEY_PREFIX })
+
+/** Same as `consoleQuery.<path>.queryKey({ input })`. */
+export const consoleQueryKey = (path: string, input?: unknown) =>
+  consoleOperationKey<'query', unknown>(path, { type: 'query', input })
+
+// Locate the prefix, path and options slots from a key oRPC generates itself.
+const keyLayout: readonly unknown[] = generateOperationKey(['path'], { prefix: CONSOLE_KEY_PREFIX })
+const prefixIndex = keyLayout.indexOf(CONSOLE_KEY_PREFIX)
+const pathIndex = keyLayout.findIndex(Array.isArray)
+const optionsIndex = keyLayout.findIndex(
+  (part) => typeof part === 'object' && part !== null && !Array.isArray(part),
+)
+
+const isConsoleOperationKey = (key: unknown): key is readonly unknown[] =>
+  Array.isArray(key) &&
+  key.length === keyLayout.length &&
+  key[prefixIndex] === CONSOLE_KEY_PREFIX &&
+  Array.isArray(key[pathIndex])
+
+/** Dotted operation path of a console query or mutation key, e.g. `'account.profile.get'`. */
+export const getOperationPath = (key: unknown) =>
+  isConsoleOperationKey(key) ? (key[pathIndex] as string[]).join('.') : undefined
+
+/** The `input` a console operation key was generated with. */
+export const getOperationInput = <TInput>(key: unknown) =>
+  isConsoleOperationKey(key)
+    ? (key[optionsIndex] as { input?: TInput } | undefined)?.input
+    : undefined
 
 type OperationOptions = { queryKey?: unknown; mutationKey?: unknown }
-type OperationHandler = (options: never) => unknown
+type OperationHandler = (options: never, input: never) => unknown
 export type OperationRoutes = Partial<Record<string, OperationHandler>>
-
-// Console operation keys start with ['console', path]; routes use the dotted path.
-const getOperationPath = (key: unknown) => {
-  if (!Array.isArray(key) || key[0] !== 'console' || !Array.isArray(key[1])) return undefined
-  return (key[1] as string[]).join('.')
-}
 
 const route = (routes: OperationRoutes, key: unknown, options: OperationOptions) => {
   const path = getOperationPath(key)
   const handler = path ? routes[path] : undefined
-  return handler ? { handled: true, value: handler(options as never) } : { handled: false }
+  return handler
+    ? { handled: true, value: handler(options as never, getOperationInput(key) as never) }
+    : { handled: false }
 }
 
 /**
  * Builds a `@tanstack/react-query` module mock that answers console operations from
- * `routes` and leaves every other query to the real hooks.
+ * `routes` and leaves every other query to the real hooks. Each handler receives the
+ * hook options and the operation input.
  *
  * vi.mock('@tanstack/react-query', async (importOriginal) =>
  *   (await import('@/test/console/operation-hooks')).mockConsoleOperationHooks(
@@ -51,14 +86,12 @@ export const mockConsoleOperationHooks = (actual: typeof ReactQuery, routes: Ope
 
 /**
  * Stands in for one console operation inside a fully mocked `@/service/console`
- * module, producing the same key shape the real utilities use.
+ * module, producing the same keys the real utilities use.
  */
 export const consoleOperationStub = (path: string) => {
-  const segments = path.split('.')
-  const queryKey = (options?: { input?: unknown }) =>
-    ['console', segments, { type: 'query', input: options?.input }] as const
+  const queryKey = (options?: { input?: unknown }) => consoleQueryKey(path, options?.input)
   return {
-    key: () => ['console', segments, {}] as const,
+    key: () => consoleOperationKey(path),
     queryKey,
     queryOptions: (options: { input?: unknown } = {}) => ({
       ...options,
@@ -66,7 +99,7 @@ export const consoleOperationStub = (path: string) => {
     }),
     mutationOptions: (options: object = {}) => ({
       ...options,
-      mutationKey: ['console', segments, { type: 'mutation' }],
+      mutationKey: consoleOperationKey(path, { type: 'mutation' }),
     }),
   }
 }

@@ -1,6 +1,5 @@
 import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { ConsoleOperationKey } from '@/test/console/operation-hooks'
 import { render, screen } from '@testing-library/react'
 import { ModelBar } from '../model-bar'
 
@@ -62,22 +61,20 @@ describe('agent/model-bar', () => {
   })
 })
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useQuery: (options: {
-      queryKey: ConsoleOperationKey<{
-        params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path']
-      }>
-    }) => {
-      if (!options.queryKey[1].includes('modelTypes')) return actual.useQuery(options)
-
-      const modelType = options.queryKey[2].input?.params?.model_type
-      if (!modelType) throw new Error('Missing model type in query')
-      return {
-        data: mockModelLists.get(modelType) || [],
-      }
+vi.mock('@tanstack/react-query', async (importOriginal) =>
+  (await import('@/test/console/operation-hooks')).mockConsoleOperationHooks(
+    await importOriginal(),
+    {
+      'workspaces.current.models.modelTypes.byModelType.get': (
+        _options: unknown,
+        input: { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] } | undefined,
+      ) => {
+        const modelType = input?.params?.model_type
+        if (!modelType) throw new Error('Missing model type in query')
+        return {
+          data: mockModelLists.get(modelType) || [],
+        }
+      },
     },
-  }
-})
+  ),
+)

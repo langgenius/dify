@@ -56,8 +56,10 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
   return mockConsoleOperationHooks(await importOriginal(), {
     // The credential query is keyed by `${pluginId}/${provider}`; report it as the two ids.
-    'auth.plugin.datasource.byProviderId.get': (options: { queryKey: unknown[] }) => {
-      const { input } = options.queryKey[1] as { input: { params: { provider_id: string } } }
+    'auth.plugin.datasource.byProviderId.get': (
+      _options: unknown,
+      input: { params: { provider_id: string } },
+    ) => {
       const providerId = input.params.provider_id
       const separator = providerId.lastIndexOf('/')
       return mocks.useGetDataSourceAuth({
