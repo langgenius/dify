@@ -122,7 +122,7 @@ class TestDispatchTriggeredWorkflow:
 
     @pytest.fixture
     def dispatch_mocks(
-        self, subscription: TriggerSubscription, plugin_trigger: WorkflowPluginTrigger, provider_controller: MagicMock
+        self, plugin_trigger: WorkflowPluginTrigger, provider_controller: MagicMock
     ) -> Generator[_DispatchMocks]:
         """Patch all external dependencies reached by ``dispatch_triggered_workflow``.
 
