@@ -26,6 +26,7 @@ export type PostLogoutData = {
 }
 
 export type PostLogoutErrors = {
+  403: ErrorResponse
   default: ErrorResponse
 }
 
