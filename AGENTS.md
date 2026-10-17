@@ -12,5 +12,5 @@ Dify is an open-source platform for building LLM applications, agentic workflows
 ## Repository Gotchas
 
 - Run backend commands through `uv run --project api <command>`.
-- Backend integration tests are CI-only and are not expected to run locally.
+- Backend integration tests run locally. They provision ephemeral PostgreSQL and Redis through testcontainers, so they need a working Docker daemon; run them before relying on CI.
 - Keep `docker/.env.example` limited to variables required for a default Docker Compose deployment to start. Put optional and provider-specific settings in the matching `docker/envs/*.env.example` file; `docker/.env` overrides those service-specific env files.

@@ -38,19 +38,26 @@ class NativeCodePhysicalOperation(TypeBase):
         sa.CheckConstraint(
             "NOT job_reserved OR scope_create_acked", name="code_physical_reserve"
         ),
+        # The deployed schema enforces the full character classes through the regex
+        # CHECKs in migration 7d2b9c4e61a8. "~" is PostgreSQL-only and these model
+        # constraints are also emitted by create_all against the disposable SQLite
+        # database the ordinary unit suite uses, which cannot parse it. Keep the same
+        # constraint names and assert the portable length shape here; no other model
+        # in this package puts a regex in a model-level CHECK.
+        sa.CheckConstraint("length(scope_id) = 37", name="code_physical_scope"),
         sa.CheckConstraint(
-            "scope_id ~ '^code_[0-9a-f]{32}$'", name="code_physical_scope"
-        ),
-        sa.CheckConstraint(
-            "job_id IS NULL OR job_id ~ '^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$'",
+            "job_id IS NULL OR (length(job_id) >= 1 AND length(job_id) <= 128)",
             name="code_physical_job_shape",
         ),
         sa.CheckConstraint(
-            "base_snapshot_ref ~ '^[A-Za-z0-9][A-Za-z0-9_-]{0,95}$'",
+            "length(base_snapshot_ref) >= 1 AND length(base_snapshot_ref) <= 96",
             name="code_physical_snapshot",
         ),
         sa.CheckConstraint(
-            "operation_digest ~ '^[0-9a-f]{64}$' AND intent_digest ~ '^[0-9a-f]{64}$' AND scope_spec_digest ~ '^[0-9a-f]{64}$' AND environment_digest ~ '^[0-9a-f]{64}$' AND payload_digest ~ '^[0-9a-f]{64}$' AND profile_digest ~ '^[0-9a-f]{64}$' AND base_snapshot_digest ~ '^[0-9a-f]{64}$'",
+            "length(operation_digest) = 64 AND length(intent_digest) = 64"
+            " AND length(scope_spec_digest) = 64 AND length(environment_digest) = 64"
+            " AND length(payload_digest) = 64 AND length(profile_digest) = 64"
+            " AND length(base_snapshot_digest) = 64",
             name="code_physical_digests",
         ),
         sa.ForeignKeyConstraint(
