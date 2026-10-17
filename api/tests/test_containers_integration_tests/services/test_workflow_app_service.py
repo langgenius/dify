@@ -201,7 +201,6 @@ class TestWorkflowAppLogQueryService:
         Returns:
             tuple: (workflow, workflow_run, workflow_app_log) - Created workflow entities
         """
-        fake = Faker()
 
         # Create workflow
         workflow = Workflow(
@@ -266,7 +265,7 @@ class TestWorkflowAppLogQueryService:
         Test successful pagination of workflow app logs with basic parameters.
         """
         # Arrange: Create test data
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         workflow, workflow_run, workflow_app_log = self._create_test_workflow_data(
             db_session_with_containers, app, account
@@ -304,7 +303,7 @@ class TestWorkflowAppLogQueryService:
         Test workflow app logs pagination with keyword search functionality.
         """
         # Arrange: Create test data
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         workflow, workflow_run, workflow_app_log = self._create_test_workflow_data(
             db_session_with_containers, app, account
@@ -351,7 +350,7 @@ class TestWorkflowAppLogQueryService:
         - SQL injection via LIKE wildcards is prevented
         """
         # Arrange: Create test data
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         workflow, _, _ = self._create_test_workflow_data(db_session_with_containers, app, account)
 
@@ -494,7 +493,7 @@ class TestWorkflowAppLogQueryService:
         Test workflow app logs pagination with status filtering.
         """
         # Arrange: Create test data with different statuses
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create workflow
@@ -593,7 +592,7 @@ class TestWorkflowAppLogQueryService:
         Test workflow app logs pagination with time-based filtering.
         """
         # Arrange: Create test data with different timestamps
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create workflow
@@ -705,7 +704,7 @@ class TestWorkflowAppLogQueryService:
         Test workflow app logs pagination with different page sizes and limits.
         """
         # Arrange: Create test data with multiple logs
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create workflow
@@ -819,7 +818,7 @@ class TestWorkflowAppLogQueryService:
         Test workflow app logs pagination with user role and session filtering.
         """
         # Arrange: Create test data with different user roles
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create workflow
@@ -1013,7 +1012,7 @@ class TestWorkflowAppLogQueryService:
         Test workflow app logs pagination with UUID keyword search functionality.
         """
         # Arrange: Create test data
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create workflow
@@ -1102,7 +1101,7 @@ class TestWorkflowAppLogQueryService:
         Test workflow app logs pagination with edge cases and boundary conditions.
         """
         # Arrange: Create test data
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create workflow
@@ -1200,7 +1199,7 @@ class TestWorkflowAppLogQueryService:
         Test workflow app logs pagination with empty results and no data scenarios.
         """
         # Arrange: Create test data
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Act & Assert: Test empty results
@@ -1267,7 +1266,7 @@ class TestWorkflowAppLogQueryService:
         Test workflow app logs pagination with complex query combinations.
         """
         # Arrange: Create test data with various combinations
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         workflow, _, _ = self._create_test_workflow_data(db_session_with_containers, app, account)
 
@@ -1367,7 +1366,7 @@ class TestWorkflowAppLogQueryService:
         Test workflow app logs pagination with large dataset for performance validation.
         """
         # Arrange: Create a larger dataset
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         workflow, _, _ = self._create_test_workflow_data(db_session_with_containers, app, account)
 
@@ -1459,7 +1458,6 @@ class TestWorkflowAppLogQueryService:
         Test workflow app logs pagination with proper tenant isolation.
         """
         # Arrange: Create multiple tenants and apps
-        fake = Faker()
 
         # Create first tenant and app
         tenant1, account1 = self._create_test_tenant_and_account(

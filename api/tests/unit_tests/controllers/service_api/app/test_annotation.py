@@ -228,7 +228,6 @@ class TestAnnotationReplyActionStatusApi:
             handler(api, app_model=app_model, job_id="j1", action="enable")
 
     def test_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
-
         def _get(key):
             if "error" in key:
                 return b"oops"

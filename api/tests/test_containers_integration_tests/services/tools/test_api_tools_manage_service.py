@@ -457,14 +457,9 @@ class TestApiToolManageService:
             db_session_with_containers, mock_external_service_dependencies
         )
 
-        provider_name = fake.company()
-        icon = {"content": "🔧", "background": "#FFF"}
-        credentials = {"auth_type": "none"}
+        fake.company()
         schema_type = "invalid_type"
-        schema = self._create_test_openapi_schema()
-        privacy_policy = "https://example.com/privacy"
-        custom_disclaimer = "Custom disclaimer text"
-        labels = ["test"]
+        self._create_test_openapi_schema()
 
         # Act & Assert: Try to create provider with invalid schema type
         with pytest.raises(ValidationError) as exc_info:
@@ -630,7 +625,7 @@ class TestApiToolManageService:
         self, db_session_with_containers: Session, mock_external_service_dependencies: MockDependencies
     ) -> None:
         """Test deletion raises ValueError when provider not found."""
-        fake = Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
@@ -644,8 +639,6 @@ class TestApiToolManageService:
         db_session_with_containers: Session,
         mock_external_service_dependencies: MockDependencies,
     ) -> None:
-        fake = Faker()
-
         # Firmware fix for cache.delete() in update flow
         mock_encrypter = mock_external_service_dependencies["encrypter"]
         mock_cache = MagicMock()
@@ -884,7 +877,7 @@ class TestApiToolManageService:
         self, db_session_with_containers: Session, mock_external_service_dependencies: MockDependencies
     ) -> None:
         """Test listing tools raises ValueError when provider not found."""
-        fake = Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
@@ -896,7 +889,7 @@ class TestApiToolManageService:
         self, db_session_with_containers: Session, mock_external_service_dependencies: MockDependencies
     ) -> None:
         """Test preview raises ValueError for invalid schema type."""
-        fake = Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )

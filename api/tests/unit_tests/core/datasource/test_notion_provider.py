@@ -1119,7 +1119,7 @@ class TestNotionExtractorReadBlock:
         mock_request.return_value = httpx.Response(200, json=mock_data)
 
         # Act
-        result = extractor._read_block("block-parent")
+        extractor._read_block("block-parent")
 
         # Assert
         # Should only be called once (no recursion for child_page)

@@ -236,7 +236,7 @@ class BaiduVector(BaseVector):
 
     def _table_existed(self) -> bool:
         try:
-            table = self._db.table(self._collection_name)
+            self._db.table(self._collection_name)
         except ServerError as e:
             if e.code == ServerErrCode.TABLE_NOT_EXIST:
                 return False

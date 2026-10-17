@@ -323,10 +323,22 @@ class TestTextApi:
         assert calls["message_ref"] == MessageRef(AppRef("tenant-1", "a1"), "message-1", end_user_id="end-user-1")
         assert calls["session"] is sqlite_session
 
-    def test_error_mapping(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-        monkeypatch.setattr(
-            AudioService, "transcript_tts", lambda **_kwargs: (_ for _ in ()).throw(QuotaExceededError())
-        )
+    @pytest.mark.parametrize(
+        ("exc", "expected"),
+        [
+            (QuotaExceededError(), ProviderQuotaExceededError),
+            (RuntimeError("internal provider failure"), InternalServerError),
+        ],
+    )
+    def test_error_mapping(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        exc: Exception,
+        expected: type[Exception],
+    ) -> None:
+        monkeypatch.setattr(AudioService, "transcript_tts", Mock(side_effect=exc))
 
         api = TextApi()
         handler = unwrap(api.post)
@@ -335,5 +347,5 @@ class TestTextApi:
 
         with app.test_request_context("/text-to-audio", method="POST", json={"text": "hello"}):
             payload = TextToAudioPayload.model_validate(request.get_json() or {})
-            with pytest.raises(ProviderQuotaExceededError):
+            with pytest.raises(expected):
                 handler(api, payload, sqlite_session, app_model=app_model, end_user=end_user)

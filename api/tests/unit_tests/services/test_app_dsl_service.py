@@ -1235,7 +1235,7 @@ def test_import_creation_marker_tracks_persisted_app(
     sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, confirmed: bool, overwrite: bool
 ) -> None:
     account = _account(account_id=_CALLER_ID, tenant_id=_TENANT_ID)
-    target = _persist_overwrite_target(sqlite_session) if overwrite else None
+    _persist_overwrite_target(sqlite_session) if overwrite else None
     data = yaml.safe_dump(
         {
             "version": CURRENT_APP_DSL_VERSION,

@@ -493,13 +493,13 @@ class TestEdgeCases:
         """Test truncator behavior with zero or very small limits."""
         # Zero string limit
         with pytest.raises(ValueError):
-            truncator = VariableTruncator(string_length_limit=3)
+            VariableTruncator(string_length_limit=3)
 
         with pytest.raises(ValueError):
-            truncator = VariableTruncator(array_element_limit=0)
+            VariableTruncator(array_element_limit=0)
 
         with pytest.raises(ValueError):
-            truncator = VariableTruncator(max_size_bytes=0)
+            VariableTruncator(max_size_bytes=0)
 
     def test_unicode_and_special_characters(self):
         """Test truncator with unicode and special characters."""
