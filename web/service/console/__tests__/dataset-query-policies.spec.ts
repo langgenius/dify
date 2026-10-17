@@ -1,5 +1,5 @@
-import { ORPCError } from '@orpc/client'
 import { consoleQuery } from '@/service/console'
+import { HttpError } from '@/service/http-error'
 
 const detailOptions = () =>
   consoleQuery.datasets.byDatasetId.get.queryOptions({
@@ -16,11 +16,11 @@ const retryDetail = (failureCount: number, error: Error) => {
 
 describe('dataset query policies', () => {
   it.each([403, 404])('does not retry a dataset detail answered with %i', (status) => {
-    expect(retryDetail(0, new ORPCError('ERROR', { status }))).toBe(false)
+    expect(retryDetail(0, new HttpError('ERROR', { status }))).toBe(false)
   })
 
   it('retries other dataset detail failures up to three times', () => {
-    const error = new ORPCError('INTERNAL_SERVER_ERROR', { status: 500 })
+    const error = new HttpError('INTERNAL_SERVER_ERROR', { status: 500 })
 
     expect(retryDetail(2, error)).toBe(true)
     expect(retryDetail(3, error)).toBe(false)

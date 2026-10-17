@@ -2,7 +2,8 @@ import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/co
 import type { QueryClient, QueryKey } from '@tanstack/react-query'
 
 export const currentWorkspaceQueryKey = [
-  ['console', 'workspaces', 'current', 'summary', 'get'],
+  'console',
+  ['workspaces', 'current', 'summary', 'get'],
   { type: 'query' },
 ] as const
 

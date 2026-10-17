@@ -28,7 +28,6 @@ import type {
   WorkflowPausedResponse,
   WorkflowStartedResponse,
 } from '@/types/workflow'
-import { ORPCError } from '@orpc/client'
 import Cookies from 'js-cookie'
 import { discardRegistrationSessionState } from '@/app/components/base/amplitude/registration-session-state'
 import { toast } from '@/app/notifications'
@@ -45,7 +44,12 @@ import { isClient } from '@/utils/client'
 import { resolveLoginRedirectTarget } from '@/utils/login-redirect'
 import { basePath } from '@/utils/var'
 import { base, ContentType, getBaseOptions } from './fetch'
-import { httpErrorFromXhr, isHttpErrorStatus, isTransientHttpError } from './http-error'
+import {
+  httpErrorFromXhr,
+  isHttpError,
+  isHttpErrorStatus,
+  isTransientHttpError,
+} from './http-error'
 import { refreshAccessTokenOrReLogin } from './refresh-token'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 import {
@@ -1084,7 +1088,7 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
         completeWebAppAuthorizationRecovery(address)
       return resp
     }
-    if (err instanceof ORPCError && (err.status === 401 || (err.status === 403 && isPublicAPI))) {
+    if (isHttpError(err) && (err.status === 401 || (err.status === 403 && isPublicAPI))) {
       if (!isClient) return Promise.reject(err)
 
       const errRespData = { code: err.code, message: err.message, reason: err.data?.reason }

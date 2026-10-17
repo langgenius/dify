@@ -10,12 +10,12 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
-import { ORPCError } from '@orpc/client'
 import { useDebounceFn } from 'ahooks'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleClient } from '@/service/console'
+import { isHttpError } from '@/service/http-error'
 import { useLogout } from '@/service/use-common'
 import { getErrorMessage } from '@/utils/error-message'
 
@@ -130,7 +130,7 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
       setUnAvailableEmail(false)
     } catch (e: unknown) {
       if (latestEmailRef.current !== email) return
-      if (e instanceof ORPCError && e.status === 400) {
+      if (isHttpError(e) && e.status === 400) {
         const { code } = e
         if (code === 'email_already_in_use') setNewEmailExited(true)
         if (code === 'account_in_freeze') setUnAvailableEmail(true)

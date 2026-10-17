@@ -1,6 +1,6 @@
 import type { AgentConfigApiContext } from '../../config-context'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
-import { QueryClient } from '@tanstack/react-query'
+import { QueryClient, skipToken } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
@@ -20,12 +20,17 @@ import {
 import { AgentFiles, AgentTemplateFiles } from '../index'
 
 type ConfigFileQueryOptionsInput = {
-  input: {
-    params: {
-      name: string
-    }
-  }
+  input:
+    | {
+        params: {
+          name: string
+        }
+      }
+    | typeof skipToken
 }
+
+// oRPC disables a query whose input is `skipToken`, as the trial-only queries use outside trials.
+const skippedConfigFileQuery = { queryKey: ['skipped-config-file'], queryFn: skipToken }
 
 const mocks = vi.hoisted(() => ({
   uploadFileMutationFn: vi.fn(async (_input: unknown) => ({ id: 'upload-1' })),
@@ -255,21 +260,29 @@ describe('AgentFiles', () => {
       video_file_size_limit: 100,
       workflow_file_upload_limit: 10,
     })
-    mocks.previewQueryOptions.mockImplementation(({ input }) => ({
-      queryKey: ['preview-config-file', input],
-      queryFn: async () => ({
-        name: input.params.name,
-        binary: false,
-        truncated: false,
-        text: `Preview for ${input.params.name}`,
-      }),
-    }))
-    mocks.downloadQueryOptions.mockImplementation(({ input }) => ({
-      queryKey: ['download-config-file', input],
-      queryFn: async () => ({
-        url: `https://example.com/${input.params.name}`,
-      }),
-    }))
+    mocks.previewQueryOptions.mockImplementation(({ input }) =>
+      input === skipToken
+        ? skippedConfigFileQuery
+        : {
+            queryKey: ['preview-config-file', input],
+            queryFn: async () => ({
+              name: input.params.name,
+              binary: false,
+              truncated: false,
+              text: `Preview for ${input.params.name}`,
+            }),
+          },
+    )
+    mocks.downloadQueryOptions.mockImplementation(({ input }) =>
+      input === skipToken
+        ? skippedConfigFileQuery
+        : {
+            queryKey: ['download-config-file', input],
+            queryFn: async () => ({
+              url: `https://example.com/${input.params.name}`,
+            }),
+          },
+    )
   })
 
   it('should prevent missing files from being previewed or downloaded', async () => {
@@ -528,10 +541,14 @@ describe('AgentFiles', () => {
       resolveDownload = resolve
     })
     const downloadQueryFn = vi.fn(() => downloadResponse)
-    mocks.downloadQueryOptions.mockImplementation(({ input }) => ({
-      queryKey: ['download-config-file', input],
-      queryFn: downloadQueryFn,
-    }))
+    mocks.downloadQueryOptions.mockImplementation(({ input }) =>
+      input === skipToken
+        ? skippedConfigFileQuery
+        : {
+            queryKey: ['download-config-file', input],
+            queryFn: downloadQueryFn,
+          },
+    )
     const { queryClient } = renderAgentFiles()
     queryClient.setQueryData(
       [

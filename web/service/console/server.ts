@@ -1,8 +1,8 @@
 import type { ClientLink } from '@orpc/client'
-import type { AnyContractRouter } from '@orpc/contract'
+import type { RouterContract } from '@orpc/contract'
 import type { ConsoleClientContext } from './index'
 import { onError } from '@orpc/client'
-import { OpenAPILink } from '@orpc/openapi-client/fetch'
+import { OpenAPILink } from '@orpc/openapi/fetch'
 import { cache } from 'react'
 import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/config'
 import { SERVER_CONSOLE_API_PREFIX } from '@/config/server'
@@ -10,7 +10,7 @@ import { cookies, headers } from '@/next/headers'
 import { httpErrorFromResponse, isHttpErrorStatus } from '@/service/http-error'
 import { createConsoleContractLink } from './contract-loader'
 import { validateDefinedErrors } from './defined-errors'
-import { normalizeConsoleOpenAPIURL } from './openapi-url'
+import { toOpenAPILinkBase } from './openapi-url'
 import 'server-only'
 
 export const resolveServerConsoleApiPrefix = (
@@ -62,22 +62,18 @@ export const getServerConsoleRequestHeaders = async () => {
 }
 
 function createServerConsoleOpenAPILink(
-  contract: AnyContractRouter,
+  contract: RouterContract,
 ): ClientLink<ConsoleClientContext> {
   return new OpenAPILink<ConsoleClientContext>(contract, {
-    url: getServerConsoleApiPrefix,
+    origin: () => toOpenAPILinkBase(getServerConsoleApiPrefix()).origin,
+    url: () => toOpenAPILinkBase(getServerConsoleApiPrefix()).url,
     headers: getServerConsoleRequestHeaders,
-    fetch: async (request, init) => {
+    fetch: async (url, init) => {
+      const request = new Request(url, init)
       if (request.body && !request.headers.has('content-type'))
         request.headers.set('Content-Type', 'application/json')
 
-      const normalizedURL = normalizeConsoleOpenAPIURL(request.url)
-      const normalizedRequest =
-        normalizedURL === request.url ? request : new Request(normalizedURL, request)
-      const response = await globalThis.fetch(normalizedRequest, {
-        ...init,
-        cache: 'no-store',
-      })
+      const response = await globalThis.fetch(request, { cache: 'no-store' })
       if (isHttpErrorStatus(response.status)) throw await httpErrorFromResponse(response)
       return response
     },

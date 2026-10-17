@@ -14,8 +14,8 @@ import { getHttpErrorStatus, isNotFoundError } from '@/service/http-error'
 
 export function createConsoleQuery(consoleClient: ConsoleClient) {
   const consoleQuery: RouterUtils<ConsoleClient> = createTanstackQueryUtils(consoleClient, {
-    path: ['console'],
-    experimental_defaults: {
+    prefix: 'console',
+    scoped: {
       workflowRunArchives: {
         byYear: {
           byMonth: {

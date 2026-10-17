@@ -527,7 +527,7 @@ describe('TemplateCard', () => {
 
       await waitFor(() => {
         expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
-          queryKey: expect.arrayContaining([['console', 'rag', 'pipeline', 'templates', 'get']]),
+          queryKey: expect.arrayContaining(['console', ['rag', 'pipeline', 'templates', 'get']]),
         })
       })
     })

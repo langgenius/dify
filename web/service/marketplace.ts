@@ -1,51 +1,40 @@
-import type { ContractRouterClient } from '@orpc/contract'
-import type { JsonifiedClient } from '@orpc/openapi-client'
+import type { RouterContractClient } from '@orpc/contract'
+import type { JsonifiedClient } from '@orpc/openapi'
 import { marketplaceRouterContract } from '@dify/contracts/marketplace'
 import { createORPCClient, onError } from '@orpc/client'
-import { OpenAPILink } from '@orpc/openapi-client/fetch'
+import { TimeoutLinkPlugin } from '@orpc/client/plugins'
+import { OpenAPILink } from '@orpc/openapi/fetch'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
 import { APP_VERSION, IS_MARKETPLACE, MARKETPLACE_API_PREFIX } from '@/config'
+import { toOpenAPILinkBase } from './console/openapi-url'
+import { httpErrorFromStandardResponse } from './http-error'
 
-// 15s deadline so a stalled Marketplace fetch can error/retry.
+// 15s deadline so a stalled Marketplace fetch can error/retry; package downloads may run longer.
 const MARKETPLACE_REQUEST_TIMEOUT_MS = 15_000
 
-// Preserve caller cancellation alongside the Marketplace deadline.
-function withRequestDeadline(callerSignal: AbortSignal): AbortSignal {
-  const deadline = AbortSignal.timeout(MARKETPLACE_REQUEST_TIMEOUT_MS)
-  if (callerSignal.aborted) return callerSignal
-
-  const controller = new AbortController()
-  callerSignal.addEventListener('abort', () => controller.abort(callerSignal.reason), {
-    once: true,
-  })
-  deadline.addEventListener('abort', () => controller.abort(deadline.reason), { once: true })
-  return controller.signal
-}
-
 const marketplaceLink = new OpenAPILink(marketplaceRouterContract, {
-  url: MARKETPLACE_API_PREFIX,
+  ...toOpenAPILinkBase(MARKETPLACE_API_PREFIX),
   headers: () => ({
     'X-Dify-Version': !IS_MARKETPLACE ? APP_VERSION : '999.0.0',
   }),
-  fetch: (request, init) => {
-    return globalThis.fetch(request, {
-      ...init,
-      cache: 'no-store',
-      signal: new URL(request.url).pathname.endsWith('/download')
-        ? request.signal
-        : withRequestDeadline(request.signal),
-    })
-  },
+  fetch: (url, init) => globalThis.fetch(url, { ...init, cache: 'no-store' }),
+  customErrorResponseBodyDecoder: httpErrorFromStandardResponse,
   interceptors: [
     onError((error) => {
       console.error(error)
     }),
   ],
+  plugins: [
+    new TimeoutLinkPlugin({
+      timeout: ({ path }) =>
+        path.at(-1) === 'downloadPlugin' ? undefined : MARKETPLACE_REQUEST_TIMEOUT_MS,
+    }),
+  ],
 })
 
 export const marketplaceClient: JsonifiedClient<
-  ContractRouterClient<typeof marketplaceRouterContract>
+  RouterContractClient<typeof marketplaceRouterContract>
 > = createORPCClient(marketplaceLink)
 export const marketplaceQuery = createTanstackQueryUtils(marketplaceClient, {
-  path: ['marketplace'],
+  prefix: 'marketplace',
 })

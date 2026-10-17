@@ -1,4 +1,4 @@
-import type { OpenAPILinkOptions } from '@orpc/openapi-client/fetch'
+import type { OpenAPILinkOptions } from '@orpc/openapi/fetch'
 import type { APIRequestContext } from '@playwright/test'
 import { Buffer } from 'node:buffer'
 
@@ -13,7 +13,8 @@ const defaultRequestTimeoutMs = 30_000
 const bodylessResponseStatuses = new Set([204, 205, 304])
 
 export function createPlaywrightFetch(requestContext: PlaywrightRequestContext): OpenAPIFetch {
-  return async (request, _init, options, path) => {
+  return async (url, init, options, path) => {
+    const request = new Request(url, init)
     request.signal.throwIfAborted()
 
     const headers = Object.fromEntries(request.headers.entries())

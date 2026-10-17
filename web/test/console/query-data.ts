@@ -58,8 +58,12 @@ type CurrentWorkspaceQueryProvider = {
   }
 }
 
-const fallbackTrialModelsQueryKey = ['console', 'trialModels', 'get'] as const
-const fallbackAppDslVersionQueryKey = ['console', 'appDslVersion', 'get'] as const
+const fallbackTrialModelsQueryKey = ['console', ['trialModels', 'get'], { type: 'query' }] as const
+const fallbackAppDslVersionQueryKey = [
+  'console',
+  ['appDslVersion', 'get'],
+  { type: 'query' },
+] as const
 
 const getTrialModelsQueryKey = () => {
   const trialModelsQuery = (consoleQuery as { trialModels?: TrialModelsQueryProvider }).trialModels

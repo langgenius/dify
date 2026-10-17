@@ -26,7 +26,7 @@ vi.mock('@/service/console', () => ({
     account: {
       profile: {
         get: {
-          queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
+          queryKey: () => ['console', ['account', 'profile', 'get'], { type: 'query' }],
         },
       },
     },

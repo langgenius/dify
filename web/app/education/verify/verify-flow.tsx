@@ -28,7 +28,7 @@ const selectEducationStatus = ({ allow_refresh, is_student }: EducationStatusRes
 const selectEducationPlanEnabled = ({ education }: GetFeaturesResponse) => education.enabled
 
 const requestEducationVerification: EducationVerificationRequest = () =>
-  consoleClient.account.education.verify.get({}, { context: { silent: true } })
+  consoleClient.account.education.verify.get(undefined, { context: { silent: true } })
 
 async function requestEducationVerificationToken(
   requestVerification: EducationVerificationRequest,

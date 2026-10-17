@@ -97,7 +97,8 @@ function createTrigger(
 }
 
 const triggersQueryKey = [
-  ['console', 'apps', 'byAppId', 'triggers', 'get'],
+  'console',
+  ['apps', 'byAppId', 'triggers', 'get'],
   { type: 'query', input: { params: { app_id: 'app-1' } } },
 ]
 

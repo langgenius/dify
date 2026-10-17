@@ -3,7 +3,7 @@ import type {
   ProviderModelWithStatusEntity,
   ProviderWithModelsResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { OperationKey } from '@orpc/tanstack-query'
+import type { ConsoleOperationKey } from '@/test/console/operation-hooks'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -1352,14 +1352,13 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   return {
     ...actual,
     useQuery: (options: {
-      queryKey: OperationKey<
-        'query',
-        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
-      >
+      queryKey: ConsoleOperationKey<{
+        params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path']
+      }>
     }) => {
-      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
+      if (!options.queryKey[1].includes('modelTypes')) return actual.useQuery(options)
 
-      const type = options.queryKey[1].input?.params?.model_type
+      const type = options.queryKey[2].input?.params?.model_type
       if (!type) throw new Error('Missing model type in query')
       switch (type) {
         case ModelTypeEnum.textGeneration:

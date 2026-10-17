@@ -4151,47 +4151,37 @@ export const zAppInputFieldPayload = z
 /**
  * AppTextInputPayload
  */
-export const zAppTextInputPayload = z
-  .object({
-    'text-input': zAppInputFieldPayload,
-  })
-  .strict()
+export const zAppTextInputPayload = z.strictObject({
+  'text-input': zAppInputFieldPayload,
+})
 
 /**
  * AppParagraphInputPayload
  */
-export const zAppParagraphInputPayload = z
-  .object({
-    paragraph: zAppInputFieldPayload,
-  })
-  .strict()
+export const zAppParagraphInputPayload = z.strictObject({
+  paragraph: zAppInputFieldPayload,
+})
 
 /**
  * AppNumberInputPayload
  */
-export const zAppNumberInputPayload = z
-  .object({
-    number: zAppInputFieldPayload,
-  })
-  .strict()
+export const zAppNumberInputPayload = z.strictObject({
+  number: zAppInputFieldPayload,
+})
 
 /**
  * AppCheckboxInputPayload
  */
-export const zAppCheckboxInputPayload = z
-  .object({
-    checkbox: zAppInputFieldPayload,
-  })
-  .strict()
+export const zAppCheckboxInputPayload = z.strictObject({
+  checkbox: zAppInputFieldPayload,
+})
 
 /**
  * AppExternalDataInputPayload
  */
-export const zAppExternalDataInputPayload = z
-  .object({
-    external_data_tool: zAppInputFieldPayload,
-  })
-  .strict()
+export const zAppExternalDataInputPayload = z.strictObject({
+  external_data_tool: zAppInputFieldPayload,
+})
 
 /**
  * AppSelectFieldPayload
@@ -4218,11 +4208,9 @@ export const zAppSelectFieldPayload = z
 /**
  * AppSelectInputPayload
  */
-export const zAppSelectInputPayload = z
-  .object({
-    select: zAppSelectFieldPayload,
-  })
-  .strict()
+export const zAppSelectInputPayload = z.strictObject({
+  select: zAppSelectFieldPayload,
+})
 
 export const zAppUserInputFormPayload = z.union([
   zAppTextInputPayload,
@@ -6052,7 +6040,7 @@ export const zPostAppsImportsBody = z.union([
   z.object({
     app_id: z.string().optional(),
     description: z.string().optional(),
-    file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+    file: z.instanceof(Blob),
     icon: z.string().optional(),
     icon_background: z.string().optional(),
     icon_type: z.string().optional(),
@@ -6372,7 +6360,7 @@ export const zGetAppsByAppIdAgentConfigSkillsQuery = z.object({
 export const zGetAppsByAppIdAgentConfigSkillsResponse = zAgentConfigSkillListResponse
 
 export const zPostAppsByAppIdAgentConfigSkillsUploadBody = z.object({
-  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+  file: z.instanceof(Blob),
 })
 
 export const zPostAppsByAppIdAgentConfigSkillsUploadPath = z.object({
@@ -6673,7 +6661,7 @@ export const zPostAppsByAppIdApiEnablePath = z.object({
 export const zPostAppsByAppIdApiEnableResponse = zAppDetail
 
 export const zPostAppsByAppIdAudioToTextBody = z.object({
-  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+  file: z.instanceof(Blob),
 })
 
 export const zPostAppsByAppIdAudioToTextPath = z.object({
@@ -6869,10 +6857,7 @@ export const zGetAppsByAppIdExportQuery = z.object({
 /**
  * App exported successfully
  */
-export const zGetAppsByAppIdExportResponse = z.union([
-  zAppExportResponse,
-  z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
-])
+export const zGetAppsByAppIdExportResponse = z.union([zAppExportResponse, z.instanceof(Blob)])
 
 export const zPostAppsByAppIdFeedbacksBody = zAppMessageFeedbackPayload
 

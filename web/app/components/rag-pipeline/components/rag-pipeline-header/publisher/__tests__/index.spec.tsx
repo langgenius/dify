@@ -149,7 +149,7 @@ const mockPublishAsCustomizedPipeline = vi.fn()
 
 const expectInvalidated = (...path: string[]) =>
   expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
-    queryKey: expect.arrayContaining([['console', ...path]]),
+    queryKey: expect.arrayContaining(['console', [...path]]),
   })
 
 vi.mock('../../../publish-as-knowledge-pipeline-modal', () => ({

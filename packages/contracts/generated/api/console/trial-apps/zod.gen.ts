@@ -606,9 +606,7 @@ export const zTextToSpeechRequest = z.object({
 /**
  * AudioBinaryResponse
  */
-export const zAudioBinaryResponse = z.custom<Blob | File>(
-  (value) => value instanceof Blob || value instanceof File,
-)
+export const zAudioBinaryResponse = z.instanceof(Blob)
 
 /**
  * ProviderNotSupportTextToSpeechError
@@ -919,294 +917,276 @@ export const zParameters = z.object({
   }),
   user_input_form: z.array(
     z.union([
-      z
-        .object({
-          'text-input': z.object({
-            allowed_file_extensions: z.array(z.string()).nullish(),
-            allowed_file_types: z.array(z.string()).nullish(),
-            allowed_file_upload_methods: z.array(z.string()).nullish(),
-            config: z.record(z.string(), z.unknown()).optional(),
-            default: z.unknown().optional(),
-            description: z.string().optional(),
-            hide: z.boolean().optional(),
-            json_schema: z.record(z.string(), z.unknown()).nullish(),
-            label: z.string(),
-            max_length: z.int().nullish(),
-            options: z.array(z.string()).optional(),
-            required: z.boolean().optional(),
-            type: z
-              .enum([
-                'checkbox',
-                'external_data_tool',
-                'file',
-                'file-list',
-                'json_object',
-                'number',
-                'paragraph',
-                'select',
-                'text-input',
-              ])
-              .optional(),
-            variable: z.string(),
-          }),
-        })
-        .strict(),
-      z
-        .object({
-          select: z.object({
-            allowed_file_extensions: z.array(z.string()).nullish(),
-            allowed_file_types: z.array(z.string()).nullish(),
-            allowed_file_upload_methods: z.array(z.string()).nullish(),
-            config: z.record(z.string(), z.unknown()).optional(),
-            default: z.unknown().optional(),
-            description: z.string().optional(),
-            hide: z.boolean().optional(),
-            json_schema: z.record(z.string(), z.unknown()).nullish(),
-            label: z.string(),
-            max_length: z.int().nullish(),
-            options: z.array(z.string()).optional(),
-            required: z.boolean().optional(),
-            type: z
-              .enum([
-                'checkbox',
-                'external_data_tool',
-                'file',
-                'file-list',
-                'json_object',
-                'number',
-                'paragraph',
-                'select',
-                'text-input',
-              ])
-              .optional(),
-            variable: z.string(),
-          }),
-        })
-        .strict(),
-      z
-        .object({
-          paragraph: z.object({
-            allowed_file_extensions: z.array(z.string()).nullish(),
-            allowed_file_types: z.array(z.string()).nullish(),
-            allowed_file_upload_methods: z.array(z.string()).nullish(),
-            config: z.record(z.string(), z.unknown()).optional(),
-            default: z.unknown().optional(),
-            description: z.string().optional(),
-            hide: z.boolean().optional(),
-            json_schema: z.record(z.string(), z.unknown()).nullish(),
-            label: z.string(),
-            max_length: z.int().nullish(),
-            options: z.array(z.string()).optional(),
-            required: z.boolean().optional(),
-            type: z
-              .enum([
-                'checkbox',
-                'external_data_tool',
-                'file',
-                'file-list',
-                'json_object',
-                'number',
-                'paragraph',
-                'select',
-                'text-input',
-              ])
-              .optional(),
-            variable: z.string(),
-          }),
-        })
-        .strict(),
-      z
-        .object({
-          number: z.object({
-            allowed_file_extensions: z.array(z.string()).nullish(),
-            allowed_file_types: z.array(z.string()).nullish(),
-            allowed_file_upload_methods: z.array(z.string()).nullish(),
-            config: z.record(z.string(), z.unknown()).optional(),
-            default: z.unknown().optional(),
-            description: z.string().optional(),
-            hide: z.boolean().optional(),
-            json_schema: z.record(z.string(), z.unknown()).nullish(),
-            label: z.string(),
-            max_length: z.int().nullish(),
-            options: z.array(z.string()).optional(),
-            required: z.boolean().optional(),
-            type: z
-              .enum([
-                'checkbox',
-                'external_data_tool',
-                'file',
-                'file-list',
-                'json_object',
-                'number',
-                'paragraph',
-                'select',
-                'text-input',
-              ])
-              .optional(),
-            variable: z.string(),
-          }),
-        })
-        .strict(),
-      z
-        .object({
-          external_data_tool: z.object({
-            allowed_file_extensions: z.array(z.string()).nullish(),
-            allowed_file_types: z.array(z.string()).nullish(),
-            allowed_file_upload_methods: z.array(z.string()).nullish(),
-            config: z.record(z.string(), z.unknown()).optional(),
-            default: z.unknown().optional(),
-            description: z.string().optional(),
-            hide: z.boolean().optional(),
-            json_schema: z.record(z.string(), z.unknown()).nullish(),
-            label: z.string(),
-            max_length: z.int().nullish(),
-            options: z.array(z.string()).optional(),
-            required: z.boolean().optional(),
-            type: z
-              .enum([
-                'checkbox',
-                'external_data_tool',
-                'file',
-                'file-list',
-                'json_object',
-                'number',
-                'paragraph',
-                'select',
-                'text-input',
-              ])
-              .optional(),
-            variable: z.string(),
-          }),
-        })
-        .strict(),
-      z
-        .object({
-          file: z.object({
-            allowed_file_extensions: z.array(z.string()).nullish(),
-            allowed_file_types: z.array(z.string()).nullish(),
-            allowed_file_upload_methods: z.array(z.string()).nullish(),
-            config: z.record(z.string(), z.unknown()).optional(),
-            default: z.unknown().optional(),
-            description: z.string().optional(),
-            hide: z.boolean().optional(),
-            json_schema: z.record(z.string(), z.unknown()).nullish(),
-            label: z.string(),
-            max_length: z.int().nullish(),
-            options: z.array(z.string()).optional(),
-            required: z.boolean().optional(),
-            type: z
-              .enum([
-                'checkbox',
-                'external_data_tool',
-                'file',
-                'file-list',
-                'json_object',
-                'number',
-                'paragraph',
-                'select',
-                'text-input',
-              ])
-              .optional(),
-            variable: z.string(),
-          }),
-        })
-        .strict(),
-      z
-        .object({
-          'file-list': z.object({
-            allowed_file_extensions: z.array(z.string()).nullish(),
-            allowed_file_types: z.array(z.string()).nullish(),
-            allowed_file_upload_methods: z.array(z.string()).nullish(),
-            config: z.record(z.string(), z.unknown()).optional(),
-            default: z.unknown().optional(),
-            description: z.string().optional(),
-            hide: z.boolean().optional(),
-            json_schema: z.record(z.string(), z.unknown()).nullish(),
-            label: z.string(),
-            max_length: z.int().nullish(),
-            options: z.array(z.string()).optional(),
-            required: z.boolean().optional(),
-            type: z
-              .enum([
-                'checkbox',
-                'external_data_tool',
-                'file',
-                'file-list',
-                'json_object',
-                'number',
-                'paragraph',
-                'select',
-                'text-input',
-              ])
-              .optional(),
-            variable: z.string(),
-          }),
-        })
-        .strict(),
-      z
-        .object({
-          checkbox: z.object({
-            allowed_file_extensions: z.array(z.string()).nullish(),
-            allowed_file_types: z.array(z.string()).nullish(),
-            allowed_file_upload_methods: z.array(z.string()).nullish(),
-            config: z.record(z.string(), z.unknown()).optional(),
-            default: z.unknown().optional(),
-            description: z.string().optional(),
-            hide: z.boolean().optional(),
-            json_schema: z.record(z.string(), z.unknown()).nullish(),
-            label: z.string(),
-            max_length: z.int().nullish(),
-            options: z.array(z.string()).optional(),
-            required: z.boolean().optional(),
-            type: z
-              .enum([
-                'checkbox',
-                'external_data_tool',
-                'file',
-                'file-list',
-                'json_object',
-                'number',
-                'paragraph',
-                'select',
-                'text-input',
-              ])
-              .optional(),
-            variable: z.string(),
-          }),
-        })
-        .strict(),
-      z
-        .object({
-          json_object: z.object({
-            allowed_file_extensions: z.array(z.string()).nullish(),
-            allowed_file_types: z.array(z.string()).nullish(),
-            allowed_file_upload_methods: z.array(z.string()).nullish(),
-            config: z.record(z.string(), z.unknown()).optional(),
-            default: z.unknown().optional(),
-            description: z.string().optional(),
-            hide: z.boolean().optional(),
-            json_schema: z.record(z.string(), z.unknown()).nullish(),
-            label: z.string(),
-            max_length: z.int().nullish(),
-            options: z.array(z.string()).optional(),
-            required: z.boolean().optional(),
-            type: z
-              .enum([
-                'checkbox',
-                'external_data_tool',
-                'file',
-                'file-list',
-                'json_object',
-                'number',
-                'paragraph',
-                'select',
-                'text-input',
-              ])
-              .optional(),
-            variable: z.string(),
-          }),
-        })
-        .strict(),
+      z.strictObject({
+        'text-input': z.object({
+          allowed_file_extensions: z.array(z.string()).nullish(),
+          allowed_file_types: z.array(z.string()).nullish(),
+          allowed_file_upload_methods: z.array(z.string()).nullish(),
+          config: z.record(z.string(), z.unknown()).optional(),
+          default: z.unknown().optional(),
+          description: z.string().optional(),
+          hide: z.boolean().optional(),
+          json_schema: z.record(z.string(), z.unknown()).nullish(),
+          label: z.string(),
+          max_length: z.int().nullish(),
+          options: z.array(z.string()).optional(),
+          required: z.boolean().optional(),
+          type: z
+            .enum([
+              'checkbox',
+              'external_data_tool',
+              'file',
+              'file-list',
+              'json_object',
+              'number',
+              'paragraph',
+              'select',
+              'text-input',
+            ])
+            .optional(),
+          variable: z.string(),
+        }),
+      }),
+      z.strictObject({
+        select: z.object({
+          allowed_file_extensions: z.array(z.string()).nullish(),
+          allowed_file_types: z.array(z.string()).nullish(),
+          allowed_file_upload_methods: z.array(z.string()).nullish(),
+          config: z.record(z.string(), z.unknown()).optional(),
+          default: z.unknown().optional(),
+          description: z.string().optional(),
+          hide: z.boolean().optional(),
+          json_schema: z.record(z.string(), z.unknown()).nullish(),
+          label: z.string(),
+          max_length: z.int().nullish(),
+          options: z.array(z.string()).optional(),
+          required: z.boolean().optional(),
+          type: z
+            .enum([
+              'checkbox',
+              'external_data_tool',
+              'file',
+              'file-list',
+              'json_object',
+              'number',
+              'paragraph',
+              'select',
+              'text-input',
+            ])
+            .optional(),
+          variable: z.string(),
+        }),
+      }),
+      z.strictObject({
+        paragraph: z.object({
+          allowed_file_extensions: z.array(z.string()).nullish(),
+          allowed_file_types: z.array(z.string()).nullish(),
+          allowed_file_upload_methods: z.array(z.string()).nullish(),
+          config: z.record(z.string(), z.unknown()).optional(),
+          default: z.unknown().optional(),
+          description: z.string().optional(),
+          hide: z.boolean().optional(),
+          json_schema: z.record(z.string(), z.unknown()).nullish(),
+          label: z.string(),
+          max_length: z.int().nullish(),
+          options: z.array(z.string()).optional(),
+          required: z.boolean().optional(),
+          type: z
+            .enum([
+              'checkbox',
+              'external_data_tool',
+              'file',
+              'file-list',
+              'json_object',
+              'number',
+              'paragraph',
+              'select',
+              'text-input',
+            ])
+            .optional(),
+          variable: z.string(),
+        }),
+      }),
+      z.strictObject({
+        number: z.object({
+          allowed_file_extensions: z.array(z.string()).nullish(),
+          allowed_file_types: z.array(z.string()).nullish(),
+          allowed_file_upload_methods: z.array(z.string()).nullish(),
+          config: z.record(z.string(), z.unknown()).optional(),
+          default: z.unknown().optional(),
+          description: z.string().optional(),
+          hide: z.boolean().optional(),
+          json_schema: z.record(z.string(), z.unknown()).nullish(),
+          label: z.string(),
+          max_length: z.int().nullish(),
+          options: z.array(z.string()).optional(),
+          required: z.boolean().optional(),
+          type: z
+            .enum([
+              'checkbox',
+              'external_data_tool',
+              'file',
+              'file-list',
+              'json_object',
+              'number',
+              'paragraph',
+              'select',
+              'text-input',
+            ])
+            .optional(),
+          variable: z.string(),
+        }),
+      }),
+      z.strictObject({
+        external_data_tool: z.object({
+          allowed_file_extensions: z.array(z.string()).nullish(),
+          allowed_file_types: z.array(z.string()).nullish(),
+          allowed_file_upload_methods: z.array(z.string()).nullish(),
+          config: z.record(z.string(), z.unknown()).optional(),
+          default: z.unknown().optional(),
+          description: z.string().optional(),
+          hide: z.boolean().optional(),
+          json_schema: z.record(z.string(), z.unknown()).nullish(),
+          label: z.string(),
+          max_length: z.int().nullish(),
+          options: z.array(z.string()).optional(),
+          required: z.boolean().optional(),
+          type: z
+            .enum([
+              'checkbox',
+              'external_data_tool',
+              'file',
+              'file-list',
+              'json_object',
+              'number',
+              'paragraph',
+              'select',
+              'text-input',
+            ])
+            .optional(),
+          variable: z.string(),
+        }),
+      }),
+      z.strictObject({
+        file: z.object({
+          allowed_file_extensions: z.array(z.string()).nullish(),
+          allowed_file_types: z.array(z.string()).nullish(),
+          allowed_file_upload_methods: z.array(z.string()).nullish(),
+          config: z.record(z.string(), z.unknown()).optional(),
+          default: z.unknown().optional(),
+          description: z.string().optional(),
+          hide: z.boolean().optional(),
+          json_schema: z.record(z.string(), z.unknown()).nullish(),
+          label: z.string(),
+          max_length: z.int().nullish(),
+          options: z.array(z.string()).optional(),
+          required: z.boolean().optional(),
+          type: z
+            .enum([
+              'checkbox',
+              'external_data_tool',
+              'file',
+              'file-list',
+              'json_object',
+              'number',
+              'paragraph',
+              'select',
+              'text-input',
+            ])
+            .optional(),
+          variable: z.string(),
+        }),
+      }),
+      z.strictObject({
+        'file-list': z.object({
+          allowed_file_extensions: z.array(z.string()).nullish(),
+          allowed_file_types: z.array(z.string()).nullish(),
+          allowed_file_upload_methods: z.array(z.string()).nullish(),
+          config: z.record(z.string(), z.unknown()).optional(),
+          default: z.unknown().optional(),
+          description: z.string().optional(),
+          hide: z.boolean().optional(),
+          json_schema: z.record(z.string(), z.unknown()).nullish(),
+          label: z.string(),
+          max_length: z.int().nullish(),
+          options: z.array(z.string()).optional(),
+          required: z.boolean().optional(),
+          type: z
+            .enum([
+              'checkbox',
+              'external_data_tool',
+              'file',
+              'file-list',
+              'json_object',
+              'number',
+              'paragraph',
+              'select',
+              'text-input',
+            ])
+            .optional(),
+          variable: z.string(),
+        }),
+      }),
+      z.strictObject({
+        checkbox: z.object({
+          allowed_file_extensions: z.array(z.string()).nullish(),
+          allowed_file_types: z.array(z.string()).nullish(),
+          allowed_file_upload_methods: z.array(z.string()).nullish(),
+          config: z.record(z.string(), z.unknown()).optional(),
+          default: z.unknown().optional(),
+          description: z.string().optional(),
+          hide: z.boolean().optional(),
+          json_schema: z.record(z.string(), z.unknown()).nullish(),
+          label: z.string(),
+          max_length: z.int().nullish(),
+          options: z.array(z.string()).optional(),
+          required: z.boolean().optional(),
+          type: z
+            .enum([
+              'checkbox',
+              'external_data_tool',
+              'file',
+              'file-list',
+              'json_object',
+              'number',
+              'paragraph',
+              'select',
+              'text-input',
+            ])
+            .optional(),
+          variable: z.string(),
+        }),
+      }),
+      z.strictObject({
+        json_object: z.object({
+          allowed_file_extensions: z.array(z.string()).nullish(),
+          allowed_file_types: z.array(z.string()).nullish(),
+          allowed_file_upload_methods: z.array(z.string()).nullish(),
+          config: z.record(z.string(), z.unknown()).optional(),
+          default: z.unknown().optional(),
+          description: z.string().optional(),
+          hide: z.boolean().optional(),
+          json_schema: z.record(z.string(), z.unknown()).nullish(),
+          label: z.string(),
+          max_length: z.int().nullish(),
+          options: z.array(z.string()).optional(),
+          required: z.boolean().optional(),
+          type: z
+            .enum([
+              'checkbox',
+              'external_data_tool',
+              'file',
+              'file-list',
+              'json_object',
+              'number',
+              'paragraph',
+              'select',
+              'text-input',
+            ])
+            .optional(),
+          variable: z.string(),
+        }),
+      }),
     ]),
   ),
 })
@@ -2260,9 +2240,7 @@ export const zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentQuery = z.ob
 /**
  * Published template resource
  */
-export const zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentResponse = z.custom<
-  Blob | File
->((value) => value instanceof Blob || value instanceof File)
+export const zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentResponse = z.instanceof(Blob)
 
 export const zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadPath = z.object({
   app_id: z.uuid(),
@@ -2379,13 +2357,10 @@ export const zGetTrialAppsByAppIdExportQuery = z.object({
 /**
  * Published Agent template export
  */
-export const zGetTrialAppsByAppIdExportResponse = z.union([
-  zAppExportResponse,
-  z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
-])
+export const zGetTrialAppsByAppIdExportResponse = z.union([zAppExportResponse, z.instanceof(Blob)])
 
 export const zPostTrialAppsByAppIdFilesUploadBody = z.object({
-  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+  file: z.instanceof(Blob),
   source: z.enum(['datasets']).optional(),
 })
 

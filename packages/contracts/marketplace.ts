@@ -1,9 +1,10 @@
-import type { InferContractRouterInputs } from '@orpc/contract'
+import type { InferRouterContractInputs } from '@orpc/contract'
 import { oc, type } from '@orpc/contract'
+import { openapi } from '@orpc/openapi'
 
 // This Marketplace contract is manually maintained because these APIs are not generated from Dify OpenAPI specs.
 
-const base = oc.$route({ inputStructure: 'detailed' })
+const base = oc.meta(openapi({ inputStructure: 'detailed' }))
 
 export type SearchParamsFromCollection = {
   query?: string
@@ -350,10 +351,12 @@ export type BannerAd = BannerBase & {
 export type PluginBanner = BannerRecommend | BannerBlog | BannerEvent | BannerAd
 
 const bannerListContract = base
-  .route({
-    path: '/banners',
-    method: 'GET',
-  })
+  .meta(
+    openapi({
+      path: '/banners',
+      method: 'GET',
+    }),
+  )
   .input(
     type<{
       query: {
@@ -365,10 +368,12 @@ const bannerListContract = base
   .output(type<unknown>())
 
 const collectionsContract = base
-  .route({
-    path: '/collections',
-    method: 'GET',
-  })
+  .meta(
+    openapi({
+      path: '/collections',
+      method: 'GET',
+    }),
+  )
   .input(
     type<{
       query?: CollectionsAndPluginsSearchParams & { page?: number; page_size?: number }
@@ -377,10 +382,12 @@ const collectionsContract = base
   .output(type<CollectionsResponse>())
 
 const collectionPluginsContract = base
-  .route({
-    path: '/collections/{collectionId}/plugins',
-    method: 'POST',
-  })
+  .meta(
+    openapi({
+      path: '/collections/{collectionId}/plugins',
+      method: 'POST',
+    }),
+  )
   .input(
     type<{
       params: {
@@ -392,10 +399,12 @@ const collectionPluginsContract = base
   .output(type<CollectionPluginsResponse>())
 
 const searchAdvancedContract = base
-  .route({
-    path: '/{kind}/search/advanced',
-    method: 'POST',
-  })
+  .meta(
+    openapi({
+      path: '/{kind}/search/advanced',
+      method: 'POST',
+    }),
+  )
   .input(
     type<{
       params: {
@@ -407,10 +416,12 @@ const searchAdvancedContract = base
   .output(type<SearchAdvancedResponse>())
 
 const templateDetailContract = base
-  .route({
-    path: '/templates/{templateId}',
-    method: 'GET',
-  })
+  .meta(
+    openapi({
+      path: '/templates/{templateId}',
+      method: 'GET',
+    }),
+  )
   .input(
     type<{
       params: {
@@ -421,10 +432,12 @@ const templateDetailContract = base
   .output(type<TemplateDetailResponse>())
 
 const templateCollectionsContract = base
-  .route({
-    path: '/template-collections',
-    method: 'GET',
-  })
+  .meta(
+    openapi({
+      path: '/template-collections',
+      method: 'GET',
+    }),
+  )
   .input(
     type<{
       query?: {
@@ -436,10 +449,12 @@ const templateCollectionsContract = base
   .output(type<TemplateCollectionsResponse>())
 
 const templateCollectionTemplatesContract = base
-  .route({
-    path: '/template-collections/{collectionName}/templates',
-    method: 'POST',
-  })
+  .meta(
+    openapi({
+      path: '/template-collections/{collectionName}/templates',
+      method: 'POST',
+    }),
+  )
   .input(
     type<{
       params: {
@@ -453,10 +468,12 @@ const templateCollectionTemplatesContract = base
   .output(type<TemplateCollectionTemplatesResponse>())
 
 const templateSearchContract = base
-  .route({
-    path: '/templates/search/advanced',
-    method: 'POST',
-  })
+  .meta(
+    openapi({
+      path: '/templates/search/advanced',
+      method: 'POST',
+    }),
+  )
   .input(
     type<{
       body: {
@@ -473,10 +490,13 @@ const templateSearchContract = base
   .output(type<TemplateSearchResponse>())
 
 const downloadPluginContract = base
-  .route({
-    path: '/plugins/{organization}/{pluginName}/{version}/download',
-    method: 'GET',
-  })
+  .meta(
+    openapi({
+      path: '/plugins/{organization}/{pluginName}/{version}/download',
+      method: 'GET',
+      responseBodyHint: 'file',
+    }),
+  )
   .input(
     type<{
       params: {
@@ -489,10 +509,12 @@ const downloadPluginContract = base
   .output(type<DownloadPluginResponse>())
 
 const creatorDetailContract = base
-  .route({
-    path: '/creators/{uniqueHandle}',
-    method: 'GET',
-  })
+  .meta(
+    openapi({
+      path: '/creators/{uniqueHandle}',
+      method: 'GET',
+    }),
+  )
   .input(
     type<{
       params: {
@@ -503,10 +525,12 @@ const creatorDetailContract = base
   .output(type<CreatorDetailResponse>())
 
 const organizationDetailContract = base
-  .route({
-    path: '/organizations/{id}',
-    method: 'GET',
-  })
+  .meta(
+    openapi({
+      path: '/organizations/{id}',
+      method: 'GET',
+    }),
+  )
   .input(
     type<{
       params: {
@@ -517,10 +541,12 @@ const organizationDetailContract = base
   .output(type<OrganizationDetailResponse>())
 
 const publisherPluginsContract = base
-  .route({
-    path: '/plugins/publisher/{uniqueHandle}',
-    method: 'GET',
-  })
+  .meta(
+    openapi({
+      path: '/plugins/publisher/{uniqueHandle}',
+      method: 'GET',
+    }),
+  )
   .input(
     type<{
       params: {
@@ -537,10 +563,12 @@ const publisherPluginsContract = base
   .output(type<PublisherPluginsResponse>())
 
 const publisherTemplatesContract = base
-  .route({
-    path: '/templates/publisher/{uniqueHandle}',
-    method: 'GET',
-  })
+  .meta(
+    openapi({
+      path: '/templates/publisher/{uniqueHandle}',
+      method: 'GET',
+    }),
+  )
   .input(
     type<{
       params: {
@@ -574,4 +602,4 @@ export const marketplaceRouterContract = {
   publisherTemplates: publisherTemplatesContract,
 }
 
-export type MarketPlaceInputs = InferContractRouterInputs<typeof marketplaceRouterContract>
+export type MarketPlaceInputs = InferRouterContractInputs<typeof marketplaceRouterContract>

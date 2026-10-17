@@ -10,7 +10,8 @@ import { createTestQueryClient } from '@/test/query-client'
 type AccountProfileMeta = UserProfileWithMeta['meta']
 
 const accountProfileQueryKey = [
-  ['console', 'account', 'profile', 'get'],
+  'console',
+  ['account', 'profile', 'get'],
   { type: 'query' },
 ] as const
 

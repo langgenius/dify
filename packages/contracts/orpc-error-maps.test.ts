@@ -4,7 +4,7 @@ import { contract as openapiContract } from './generated/api/openapi/orpc.gen.ts
 import { contract as serviceContract } from './generated/api/service/orpc.gen.ts'
 import { contract as webContract } from './generated/api/web/orpc.gen.ts'
 
-type ErrorMapEntry = { status?: number; data?: unknown }
+type ErrorMapEntry = { data?: unknown }
 
 const errorEntries = (contract: unknown, trail: string[] = []): [string, ErrorMapEntry][] => {
   if (typeof contract !== 'object' || contract === null) return []
@@ -25,9 +25,9 @@ describe('generated oRPC error maps', () => {
     ['openapi', openapiContract],
     ['service', serviceContract],
     ['web', webContract],
-  ])('gives every documented %s error a status and a body schema', (_name, contract) => {
+  ])('gives every documented %s error a body schema', (_name, contract) => {
     const incomplete = errorEntries(contract)
-      .filter(([, entry]) => typeof entry.status !== 'number' || entry.data === undefined)
+      .filter(([, entry]) => entry.data === undefined)
       .map(([name]) => name)
 
     expect(incomplete).toEqual([])

@@ -2,7 +2,8 @@ import type { MyPermissionsResponse } from '@dify/contracts/api/console/workspac
 import type { QueryClient } from '@tanstack/react-query'
 
 const currentWorkspacePermissionsQueryKey = [
-  ['console', 'workspaces', 'current', 'rbac', 'myPermissions', 'get'],
+  'console',
+  ['workspaces', 'current', 'rbac', 'myPermissions', 'get'],
   { type: 'query' },
 ] as const
 

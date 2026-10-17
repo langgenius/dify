@@ -92,7 +92,7 @@ vi.mock('@/service/console', () => ({
           get: {
             queryOptions: (options: { input?: unknown }) => ({
               ...options,
-              queryKey: [['console', 'workspaces', 'current', 'members', 'get'], options],
+              queryKey: ['console', ['workspaces', 'current', 'members', 'get'], options],
             }),
           },
         },

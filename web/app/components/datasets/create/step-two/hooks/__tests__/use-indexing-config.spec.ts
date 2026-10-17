@@ -1,5 +1,5 @@
 import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { OperationKey } from '@orpc/tanstack-query'
+import type { ConsoleOperationKey } from '@/test/console/operation-hooks'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { RETRIEVE_METHOD } from '@/types/app'
@@ -163,12 +163,11 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   return {
     ...actual,
     useQuery: (options: {
-      queryKey: OperationKey<
-        'query',
-        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
-      >
+      queryKey: ConsoleOperationKey<{
+        params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path']
+      }>
     }) => {
-      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
+      if (!options.queryKey[1].includes('modelTypes')) return actual.useQuery(options)
       return { data: mocks.embeddingModelList }
     },
   }

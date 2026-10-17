@@ -7,6 +7,7 @@ import { headers } from '@/next/headers'
 import { redirect } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { resolveServerConsoleApiUrl } from '@/service/console/server'
+import { isUnauthorizedError } from '@/service/http-error'
 
 const CURRENT_PATHNAME_HEADER = 'x-dify-pathname'
 const CURRENT_SEARCH_HEADER = 'x-dify-search'
@@ -30,7 +31,7 @@ const handleProfileError = async (error: unknown) => {
 
   if (error.code === 'not_setup') redirect('/install')
   if (error.code === 'not_init_validated') redirect('/init')
-  if (error.status === 401) await redirectToAuthRefresh()
+  if (isUnauthorizedError(error)) await redirectToAuthRefresh()
 
   throw error
 }

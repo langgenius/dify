@@ -1,7 +1,7 @@
 import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { OperationKey } from '@orpc/tanstack-query'
 import type { ReactElement } from 'react'
+import type { ConsoleOperationKey } from '@/test/console/operation-hooks'
 import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
@@ -498,12 +498,11 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   return {
     ...actual,
     useQuery: (options: {
-      queryKey: OperationKey<
-        'query',
-        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
-      >
+      queryKey: ConsoleOperationKey<{
+        params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path']
+      }>
     }) => {
-      if (options.queryKey[0].join('.') === 'console.workspaces.current.members.get')
+      if (options.queryKey[1].join('.') === 'workspaces.current.members.get')
         return (() => ({
           data: {
             accounts: [
@@ -532,7 +531,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
             ],
           },
         }))()
-      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
+      if (!options.queryKey[1].includes('modelTypes')) return actual.useQuery(options)
       return { data: [], refetch: vi.fn(), isPending: false }
     },
   }

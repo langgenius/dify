@@ -33,8 +33,7 @@ vi.mock('@tanstack/react-query', async () => {
     ...actual,
     // The invitation check is answered separately from the account profile query.
     useQuery: (options: { queryKey: unknown[] }) =>
-      Array.isArray(options.queryKey[0]) &&
-      options.queryKey[0].join('.') === 'console.activate.check.get'
+      Array.isArray(options.queryKey[1]) && options.queryKey[1].join('.') === 'activate.check.get'
         ? mockInvitationCheckHook(options)
         : mockProfileQuery(options),
     useQueryClient: vi.fn(() => ({

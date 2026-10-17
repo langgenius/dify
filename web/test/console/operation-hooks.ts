@@ -1,14 +1,20 @@
+import type { OperationKey } from '@orpc/tanstack-query'
 import type * as ReactQuery from '@tanstack/react-query'
+
+/** The `['console', path, options]` query key the console query utilities produce. */
+export type ConsoleOperationKey<TInput> = Extract<
+  OperationKey<'query', TInput>,
+  [string, string[], unknown]
+>
 
 type OperationOptions = { queryKey?: unknown; mutationKey?: unknown }
 type OperationHandler = (options: never) => unknown
 export type OperationRoutes = Partial<Record<string, OperationHandler>>
 
-// Console operation keys start with ['console', ...path]; routes use the dotted path.
+// Console operation keys start with ['console', path]; routes use the dotted path.
 const getOperationPath = (key: unknown) => {
-  if (!Array.isArray(key) || !Array.isArray(key[0])) return undefined
-  const [prefix, ...path] = key[0] as string[]
-  return prefix === 'console' ? path.join('.') : undefined
+  if (!Array.isArray(key) || key[0] !== 'console' || !Array.isArray(key[1])) return undefined
+  return (key[1] as string[]).join('.')
 }
 
 const route = (routes: OperationRoutes, key: unknown, options: OperationOptions) => {
@@ -48,10 +54,11 @@ export const mockConsoleOperationHooks = (actual: typeof ReactQuery, routes: Ope
  * module, producing the same key shape the real utilities use.
  */
 export const consoleOperationStub = (path: string) => {
+  const segments = path.split('.')
   const queryKey = (options?: { input?: unknown }) =>
-    [['console', ...path.split('.')], { type: 'query', input: options?.input }] as const
+    ['console', segments, { type: 'query', input: options?.input }] as const
   return {
-    key: () => [['console', ...path.split('.')]] as const,
+    key: () => ['console', segments, {}] as const,
     queryKey,
     queryOptions: (options: { input?: unknown } = {}) => ({
       ...options,
@@ -59,7 +66,7 @@ export const consoleOperationStub = (path: string) => {
     }),
     mutationOptions: (options: object = {}) => ({
       ...options,
-      mutationKey: [['console', ...path.split('.')], { type: 'mutation' }],
+      mutationKey: ['console', segments, { type: 'mutation' }],
     }),
   }
 }

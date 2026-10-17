@@ -1805,12 +1805,12 @@ export const zToggleTraceProviderRequest = z.object({
 
 /**
  * TraceProvider is one configured trace-export destination. Trace data
- * collected by the enterprise collector is fanned out to every enabled
- * destination. Credentials carries per-provider secret values (e.g. Langfuse
- * public/secret keys); Settings carries non-secret options (e.g. host,
- * project). Secret credential values are redacted on read and preserved on
- * write when the client echoes the redaction sentinel back (same round-trip
- * contract as endpoint headers / TLS keys).
+ *  collected by the enterprise collector is fanned out to every enabled
+ *  destination. Credentials carries per-provider secret values (e.g. Langfuse
+ *  public/secret keys); Settings carries non-secret options (e.g. host,
+ *  project). Secret credential values are redacted on read and preserved on
+ *  write when the client echoes the redaction sentinel back (same round-trip
+ *  contract as endpoint headers / TLS keys).
  */
 export const zTraceProvider = z.object({
   id: z.string().optional(),
@@ -1825,8 +1825,8 @@ export const zTraceProvider = z.object({
 
 /**
  * TestTraceProviderRequest tests connectivity/auth for a destination config
- * before (or without) persisting it. When credentials carry the redaction
- * sentinel, the stored secret for the destination with the same id is used.
+ *  before (or without) persisting it. When credentials carry the redaction
+ *  sentinel, the stored secret for the destination with the same id is used.
  */
 export const zTestTraceProviderRequest = z.object({
   provider: zTraceProvider.optional(),
@@ -1834,9 +1834,9 @@ export const zTestTraceProviderRequest = z.object({
 
 /**
  * TraceProviderField describes one credential or setting field of a provider in
- * the static catalog: the key the dashboard sends back, its display label,
- * whether it is required, and (for credentials) whether it is a secret that
- * gets redacted.
+ *  the static catalog: the key the dashboard sends back, its display label,
+ *  whether it is required, and (for credentials) whether it is a secret that
+ *  gets redacted.
  */
 export const zTraceProviderField = z.object({
   key: z.string().optional(),
@@ -1847,8 +1847,8 @@ export const zTraceProviderField = z.object({
 
 /**
  * TraceProviderDescriptor is one entry in the static provider catalog: the
- * field definitions and transport defaults for a provider type. The dashboard
- * uses it to render the add/edit form and to know which fields are secret.
+ *  field definitions and transport defaults for a provider type. The dashboard
+ *  uses it to render the add/edit form and to know which fields are secret.
  */
 export const zTraceProviderDescriptor = z.object({
   provider: z.string().optional(),
@@ -2045,7 +2045,7 @@ export const zUpsertTraceProviderReply = z.object({
 
 /**
  * UpsertTraceProviderRequest creates a destination when id is empty (a new id
- * is allocated) or updates the destination with the given id otherwise.
+ *  is allocated) or updates the destination with the given id otherwise.
  */
 export const zUpsertTraceProviderRequest = z.object({
   provider: zTraceProvider.optional(),

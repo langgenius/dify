@@ -4,10 +4,10 @@ import type {
   SkillReferenceResponse,
   SkillVersionResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { OperationKey } from '@orpc/tanstack-query'
 import type userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { ConsoleOperationKey } from '@/test/console/operation-hooks'
 import { detectPlatform } from '@tanstack/react-hotkeys'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, within } from '@testing-library/react'
@@ -884,12 +884,11 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   return {
     ...actual,
     useQuery: (options: {
-      queryKey: OperationKey<
-        'query',
-        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
-      >
+      queryKey: ConsoleOperationKey<{
+        params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path']
+      }>
     }) =>
-      options.queryKey[0].includes('modelTypes')
+      Array.isArray(options.queryKey[1]) && options.queryKey[1].includes('modelTypes')
         ? actual.useQuery({ ...options, queryFn: mocks.textGenerationModelListGet })
         : actual.useQuery(options),
   }

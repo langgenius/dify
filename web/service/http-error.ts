@@ -1,7 +1,38 @@
+import type { ORPCErrorOptions } from '@orpc/client'
 import { ORPCError } from '@orpc/client'
 
+/**
+ * A non-2xx backend response as an oRPC error. oRPC v2 errors carry no HTTP status, so the
+ * status lives on this subclass; contract reconciliation clones errors with their own props.
+ */
+export class HttpError<TCode extends string = string> extends ORPCError<
+  TCode,
+  Record<string, unknown> | undefined
+> {
+  readonly status: number
+
+  constructor(
+    code: TCode,
+    {
+      status,
+      ...options
+    }: ORPCErrorOptions<Record<string, unknown> | undefined> & { status: number },
+  ) {
+    super(code, options)
+    this.status = status
+  }
+}
+
+/**
+ * Checks the `status` field instead of `instanceof HttpError`: RSC and SSR module graphs load
+ * separate copies of this class, while `ORPCError` matches across them.
+ */
+export function isHttpError(error: unknown): error is HttpError {
+  return error instanceof ORPCError && 'status' in error && typeof error.status === 'number'
+}
+
 export function getHttpErrorStatus(error: unknown): number | undefined {
-  return error instanceof ORPCError ? error.status : undefined
+  return isHttpError(error) ? error.status : undefined
 }
 
 export function isUnauthorizedError(error: unknown): boolean {
@@ -37,7 +68,7 @@ export function createHttpError(
   body?: unknown,
 ) {
   const data = asRecord(body)
-  return new ORPCError(nonEmptyString(data?.code) ?? 'HTTP_ERROR', {
+  return new HttpError(nonEmptyString(data?.code) ?? 'HTTP_ERROR', {
     // The HTTP status is authoritative even when the response body disagrees.
     status: response.status,
     message:
@@ -48,6 +79,19 @@ export function createHttpError(
     data,
     cause: { headers: new Headers(response.headers) },
   })
+}
+
+/** `customErrorResponseBodyDecoder` for OpenAPI links whose backend answers with its own error body. */
+export function httpErrorFromStandardResponse(
+  body: unknown,
+  response: { status: number; headers: Record<string, string | string[] | undefined> },
+) {
+  const headers = new Headers()
+  for (const [key, value] of Object.entries(response.headers)) {
+    for (const item of Array.isArray(value) ? value : value === undefined ? [] : [value])
+      headers.append(key, item)
+  }
+  return createHttpError({ status: response.status, statusText: '', headers }, body)
 }
 
 export function httpErrorFromXhr(xhr: XMLHttpRequest) {

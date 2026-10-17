@@ -50,7 +50,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       account: {
         profile: {
           get: {
-            queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
+            queryKey: () => ['console', ['account', 'profile', 'get'], { type: 'query' }],
           },
         },
       },

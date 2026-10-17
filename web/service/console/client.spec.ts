@@ -7,7 +7,6 @@ import { MutationObserver, QueryClient, QueryObserver } from '@tanstack/react-qu
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
-import { normalizeConsoleOpenAPIURL } from './openapi-url'
 
 const loadConsoleQuery = async () => {
   vi.resetModules()
@@ -264,7 +263,7 @@ describe('consoleQuery transport context', () => {
     })
     const result = await options.queryFn({
       signal: new AbortController().signal,
-    } as QueryFunctionContext)
+    } as QueryFunctionContext<typeof options.queryKey>)
 
     expect(result).toBeInstanceOf(File)
     if (!(result instanceof File)) throw new TypeError('Expected an archive download')
@@ -319,7 +318,9 @@ describe('consoleQuery transport context', () => {
     })
 
     await Promise.resolve(
-      queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext),
+      queryOptions.queryFn({
+        signal: new AbortController().signal,
+      } as QueryFunctionContext<typeof queryOptions.queryKey>),
     ).catch(() => undefined)
 
     expect(request).toHaveBeenCalledWith(
@@ -354,7 +355,9 @@ describe('consoleQuery transport context', () => {
     })
 
     await Promise.resolve(
-      queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext),
+      queryOptions.queryFn({
+        signal: new AbortController().signal,
+      } as QueryFunctionContext<typeof queryOptions.queryKey>),
     ).catch(() => undefined)
 
     expect(request).toHaveBeenCalledWith(
@@ -398,7 +401,9 @@ describe('consoleQuery transport context', () => {
       },
     })
 
-    await queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext)
+    await queryOptions.queryFn({
+      signal: new AbortController().signal,
+    } as QueryFunctionContext<typeof queryOptions.queryKey>)
 
     expect(fetchSpy).toHaveBeenCalledTimes(1)
     const resource = fetchSpy.mock.calls[0]![0]
@@ -407,66 +412,24 @@ describe('consoleQuery transport context', () => {
     expect(requestURL.searchParams.has('ids[0]')).toBe(false)
     expect(requestURL.searchParams.has('ids[1]')).toBe(false)
   })
-})
-
-// Scenario: console OpenAPI query arrays follow backend parser expectations.
-describe('normalizeConsoleOpenAPIURL', () => {
-  it('should serialize repeated-only query arrays as repeated params', () => {
-    const url = normalizeConsoleOpenAPIURL(
-      'https://example.com/console/api/agent/agent-1/logs?sources%5B1%5D=debug&sources%5B0%5D=api&statuses%5B0%5D=success&keyword=test',
-    )
-    const searchParams = new URL(url).searchParams
-
-    expect(searchParams.getAll('sources')).toEqual(['api', 'debug'])
-    expect(searchParams.getAll('statuses')).toEqual(['success'])
-    expect(searchParams.get('keyword')).toBe('test')
-    expect(searchParams.has('sources[0]')).toBe(false)
-    expect(searchParams.has('statuses[0]')).toBe(false)
-  })
-
-  it('should serialize app list query arrays as repeated params', () => {
-    const url = normalizeConsoleOpenAPIURL(
-      'https://example.com/console/api/apps?tag_ids%5B0%5D=tag-1&creator_ids%5B0%5D=user-1',
-    )
-    const searchParams = new URL(url).searchParams
-
-    expect(searchParams.getAll('tag_ids')).toEqual(['tag-1'])
-    expect(searchParams.getAll('creator_ids')).toEqual(['user-1'])
-    expect(searchParams.has('tag_ids[0]')).toBe(false)
-    expect(searchParams.has('creator_ids[0]')).toBe(false)
-  })
-
-  it('should serialize snippet list query arrays as repeated params', () => {
-    const url = normalizeConsoleOpenAPIURL(
-      'https://example.com/console/api/workspaces/current/customized-snippets?tag_ids%5B0%5D=tag-1&creators%5B0%5D=user-1',
-    )
-    const searchParams = new URL(url).searchParams
-
-    expect(searchParams.getAll('tag_ids')).toEqual(['tag-1'])
-    expect(searchParams.getAll('creators')).toEqual(['user-1'])
-    expect(searchParams.has('tag_ids[0]')).toBe(false)
-    expect(searchParams.has('creators[0]')).toBe(false)
-  })
-
-  it('should serialize plugin category tags as repeated params', () => {
-    const url = normalizeConsoleOpenAPIURL(
-      'https://example.com/console/api/workspaces/current/plugin/tool/list?tags%5B1%5D=rag&tags%5B0%5D=search',
-    )
-    const searchParams = new URL(url).searchParams
-
-    expect(searchParams.getAll('tags')).toEqual(['search', 'rag'])
-    expect(searchParams.has('tags[0]')).toBe(false)
-  })
 
   // Without repeated keys the API sees no IDs and clears every annotation of the app.
-  it('should serialize annotation batch delete IDs as repeated params', () => {
-    const url = normalizeConsoleOpenAPIURL(
-      'https://example.com/console/api/apps/app-1/annotations?annotation_id%5B0%5D=a-1&annotation_id%5B1%5D=a-2',
-    )
-    const searchParams = new URL(url).searchParams
+  it('should serialize annotation batch delete ids as repeated query params', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(null, { status: 204 }))
+    const consoleQuery = await loadConsoleQueryWithFetch()
+    const mutationOptions = consoleQuery.apps.byAppId.annotations.delete.mutationOptions()
 
-    expect(searchParams.getAll('annotation_id')).toEqual(['a-1', 'a-2'])
-    expect(searchParams.has('annotation_id[0]')).toBe(false)
+    await mutationOptions.mutationFn?.(
+      { params: { app_id: 'app-1' }, query: { annotation_id: ['a-1', 'a-2'] } },
+      createMutationContext(new QueryClient()),
+    )
+
+    const resource = fetchSpy.mock.calls[0]![0]
+    const requestURL = new URL(resource instanceof Request ? resource.url : resource.toString())
+    expect(requestURL.pathname).toBe('/console/api/apps/app-1/annotations')
+    expect(requestURL.searchParams.getAll('annotation_id')).toEqual(['a-1', 'a-2'])
   })
 })
 

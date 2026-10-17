@@ -45,9 +45,7 @@ function setup({ canManage = true, builtin = false } = {}) {
       },
     )
     queryClient.setQueryData(
-      consoleQuery.workspaces.current.rbac.rolePermissions.catalog[resourceType].get.queryKey({
-        input: {},
-      }),
+      consoleQuery.workspaces.current.rbac.rolePermissions.catalog[resourceType].get.queryKey(),
       {
         groups: [
           {

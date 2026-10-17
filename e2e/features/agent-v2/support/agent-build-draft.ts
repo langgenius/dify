@@ -3,7 +3,7 @@ import type {
   AgentSoulConfig,
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { ConsoleClient } from '../../../support/api/console-client.ts'
-import { ORPCError } from '@orpc/client'
+import { ConsoleHttpError } from '../../../support/api/console-error.ts'
 
 export async function saveAgentBuildDraft(
   client: ConsoleClient,
@@ -28,7 +28,7 @@ export async function agentBuildDraftExists(
     await client.agent.byAgentId.buildDraft.get({ params: { agent_id: agentId } })
     return true
   } catch (error) {
-    if (error instanceof ORPCError && error.status === 404) return false
+    if (error instanceof ConsoleHttpError && error.status === 404) return false
     throw error
   }
 }

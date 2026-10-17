@@ -7,9 +7,7 @@ import { consoleQuery } from '@/service/console'
 export const useWorkspacePermissionGroups = () => {
   const { t } = useTranslation(['permission', 'permissionKeys'])
   const { data: workspacePermissionCatalog } = useQuery(
-    consoleQuery.workspaces.current.rbac.rolePermissions.catalog.get.queryOptions({
-      input: {},
-    }),
+    consoleQuery.workspaces.current.rbac.rolePermissions.catalog.get.queryOptions(),
   )
 
   const groups = useMemo(() => {

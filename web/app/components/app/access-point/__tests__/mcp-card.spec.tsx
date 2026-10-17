@@ -260,7 +260,8 @@ describe('MCPAccessPointCard', () => {
       expect(invalidateQueries).toHaveBeenCalledTimes(2)
       expect(invalidateQueries).toHaveBeenLastCalledWith({
         queryKey: [
-          ['console', 'apps', 'byAppId', 'server', 'get'],
+          'console',
+          ['apps', 'byAppId', 'server', 'get'],
           { type: 'query', input: { params: { app_id: 'app-1' } } },
         ],
       })

@@ -1,4 +1,4 @@
-import type { InferContractRouterInputs } from '@orpc/contract'
+import type { InferRouterContractInputs } from '@orpc/contract'
 import type { z } from 'zod'
 import type { apps } from './generated/api/console/apps/orpc.gen.ts'
 import type { AppModelConfigPayload } from './generated/api/console/apps/types.gen.ts'
@@ -84,7 +84,7 @@ describe('generated app model-config write contract', () => {
       // @ts-expect-error A chat message requires its role, unlike a completion prompt.
       chat_prompt_config: { prompt: [{ text: 'Missing role' }] },
     }
-    const invalidClientVoice: InferContractRouterInputs<
+    const invalidClientVoice: InferRouterContractInputs<
       typeof apps
     >['byAppId']['modelConfig']['post'] = {
       params: { app_id: 'app-1' },
@@ -144,7 +144,7 @@ describe('generated app model-config write contract', () => {
         completion_params: { callback: () => 'not JSON' },
       },
     }
-    const invalidClientParameters: InferContractRouterInputs<
+    const invalidClientParameters: InferRouterContractInputs<
       typeof apps
     >['byAppId']['modelConfig']['post'] = {
       params: { app_id: 'app-1' },

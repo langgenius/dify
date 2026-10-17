@@ -75,7 +75,7 @@ describe('server console oRPC client', () => {
     await import('./server')
     const { consoleClient } = await import('@/service/console')
     const pending = consoleClient.systemFeatures
-      .get({}, { signal: controller.signal })
+      .get(undefined, { signal: controller.signal })
       .catch((error: unknown) => error)
     await bodyRead
     controller.abort(abortError)
@@ -151,10 +151,10 @@ describe('server console oRPC client', () => {
       expect.any(Request),
       expect.objectContaining({
         cache: 'no-store',
-        redirect: 'manual',
       }),
     )
     const request = fetchMock.mock.calls[0]?.[0] as Request
+    expect(request.redirect).toBe('manual')
     expect(request.url).toBe('http://localhost:5001/console/api/system-features')
     expect(request.method).toBe('GET')
     expect(request.headers.get('accept')).toBe('application/json')

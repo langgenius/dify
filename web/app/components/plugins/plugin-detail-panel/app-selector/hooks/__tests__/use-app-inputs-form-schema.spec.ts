@@ -15,8 +15,7 @@ const mockWorkflowRefetch = vi.fn()
 vi.mock('@tanstack/react-query', () => ({
   // The file upload limits come from their own query; every other query is the app detail.
   useQuery: (options: { queryKey?: unknown[] }) =>
-    Array.isArray(options.queryKey?.[0]) &&
-    options.queryKey[0].join('.') === 'console.files.upload.get'
+    Array.isArray(options.queryKey?.[1]) && options.queryKey[1].join('.') === 'files.upload.get'
       ? {
           data: { file_size_limit: 15, image_file_size_limit: 10 },
           isError: mockFileUploadConfigIsError,
