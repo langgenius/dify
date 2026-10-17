@@ -13,6 +13,17 @@ const SAMPLE_CODES = {
       return {"output": result}`,
     withDefaults: `def main(param1: str = "default", param2: int = 0):
       return {"data": param1}`,
+    multiLineParams: `def main(
+      param1: str,
+      param2: int,
+    ) -> dict:
+      return {"result": param1}`,
+    commentedOutSignature: `# Previous interface:
+# def main(
+#     old_arg: str,
+# ):
+def main(arg1: str, arg2: str) -> dict:
+    return {"result": arg1 + arg2}`,
   },
   javascript: {
     noParams: 'function main() {',
@@ -26,6 +37,30 @@ const SAMPLE_CODES = {
       return { output: process(param1, param2) }
     }`,
     withSpaces: 'function main(  param1  ,   param2  ) {',
+    destructuredParams: `function main({ param1, param2 }) {
+      return { result: param1 }
+    }`,
+    multiLineParams: `function main(
+      param1,
+      param2,
+    ) {
+      return { result: param1 }
+    }`,
+    commentedOutSignature: `// Previous interface:
+// function main(
+//   oldArg,
+// ) {
+function main(arg1, arg2) {
+  return { result: arg1 }
+}`,
+    blockCommentedSignature: `/*
+function main(
+  oldArg,
+) {
+*/
+function main(arg1, arg2) {
+  return { result: arg1 }
+}`,
   },
 }
 
@@ -57,6 +92,22 @@ describe('extractFunctionParams', () => {
     it('handles default values', () => {
       const result = extractFunctionParams(SAMPLE_CODES.python3.withDefaults, CodeLanguage.python3)
       expect(result).toEqual(['param1', 'param2'])
+    })
+
+    it('handles a multi-line parameter list', () => {
+      const result = extractFunctionParams(
+        SAMPLE_CODES.python3.multiLineParams,
+        CodeLanguage.python3,
+      )
+      expect(result).toEqual(['param1', 'param2'])
+    })
+
+    it('ignores a commented-out signature', () => {
+      const result = extractFunctionParams(
+        SAMPLE_CODES.python3.commentedOutSignature,
+        CodeLanguage.python3,
+      )
+      expect(result).toEqual(['arg1', 'arg2'])
     })
   })
 
@@ -100,6 +151,38 @@ describe('extractFunctionParams', () => {
         CodeLanguage.javascript,
       )
       expect(result).toEqual(['param1', 'param2'])
+    })
+
+    it('handles destructured parameters', () => {
+      const result = extractFunctionParams(
+        SAMPLE_CODES.javascript.destructuredParams,
+        CodeLanguage.javascript,
+      )
+      expect(result).toEqual(['param1', 'param2'])
+    })
+
+    it('handles a multi-line parameter list', () => {
+      const result = extractFunctionParams(
+        SAMPLE_CODES.javascript.multiLineParams,
+        CodeLanguage.javascript,
+      )
+      expect(result).toEqual(['param1', 'param2'])
+    })
+
+    it('ignores a commented-out signature', () => {
+      const result = extractFunctionParams(
+        SAMPLE_CODES.javascript.commentedOutSignature,
+        CodeLanguage.javascript,
+      )
+      expect(result).toEqual(['arg1', 'arg2'])
+    })
+
+    it('ignores a block-commented signature', () => {
+      const result = extractFunctionParams(
+        SAMPLE_CODES.javascript.blockCommentedSignature,
+        CodeLanguage.javascript,
+      )
+      expect(result).toEqual(['arg1', 'arg2'])
     })
   })
 })
