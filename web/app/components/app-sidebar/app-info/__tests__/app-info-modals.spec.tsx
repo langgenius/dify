@@ -26,8 +26,9 @@ vi.mock('@/app/components/app/use-export-app-dsl', () => ({
   useExportWorkflowAppDsl: () => ({
     exportWorkflowAppDsl: service.exportWorkflow,
     isExporting: false,
+    reset: vi.fn(),
   }),
-  useExportAppDsl: () => ({ exportAppDsl: service.exportApp, isExporting: false }),
+  useExportAppDsl: () => ({ exportAppDsl: service.exportApp, isExporting: false, reset: vi.fn() }),
 }))
 vi.mock('@/service/base', () => ({ request: (...args: unknown[]) => service.request(...args) }))
 vi.mock('@/app/components/workflow/collaboration/core/websocket-manager', () => ({
@@ -180,6 +181,7 @@ it('submits the secret choice and keeps the export confirmation open after a fai
       appId: app.id,
       appName: app.name,
       includeSecret: true,
+      feedback: 'dialog',
     }),
   )
   expect(dialog).toBeInTheDocument()

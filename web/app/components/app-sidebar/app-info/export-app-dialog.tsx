@@ -30,12 +30,26 @@ export function ExportAppDialog({ appDetail, open, onOpenChange }: ExportAppDial
   const confirmLabelId = useId()
   const { t } = useTranslation(['workflow', 'common'])
   const [secrets, setSecrets] = useState<EnvironmentVariableItemResponse[]>([])
-  const { exportWorkflowAppDsl, isExporting: isChecking } = useExportWorkflowAppDsl()
-  const { exportAppDsl, isExporting } = useExportAppDsl()
+  const {
+    exportWorkflowAppDsl,
+    isExporting: isChecking,
+    errorMessage: checkError,
+    reset: resetCheck,
+  } = useExportWorkflowAppDsl()
+  const {
+    exportAppDsl,
+    isExporting,
+    errorMessage: exportError,
+    reset: resetExport,
+  } = useExportAppDsl()
   const isPending = isChecking || isExporting
   const check = async () => {
     if (isPending) return
-    const result = await exportWorkflowAppDsl({ appId: appDetail.id, appName: appDetail.name })
+    const result = await exportWorkflowAppDsl({
+      appId: appDetail.id,
+      appName: appDetail.name,
+      feedback: 'dialog',
+    })
     if (result.status === 'confirmation-required') setSecrets(result.secretEnvList)
     else if (result.status === 'downloaded') actionsRef.current?.close()
   }
@@ -45,6 +59,7 @@ export function ExportAppDialog({ appDetail, open, onOpenChange }: ExportAppDial
       appId: appDetail.id,
       appName: appDetail.name,
       includeSecret,
+      feedback: 'dialog',
     })
     if (result.status === 'downloaded') actionsRef.current?.close()
   }
@@ -57,13 +72,18 @@ export function ExportAppDialog({ appDetail, open, onOpenChange }: ExportAppDial
         else onOpenChange?.(nextOpen, details)
       }}
       onOpenChangeComplete={(nextOpen) => {
-        if (!nextOpen) setSecrets([])
+        if (!nextOpen) {
+          setSecrets([])
+          resetCheck()
+          resetExport()
+        }
       }}
     >
       <AlertDialogContent backdropProps={{ forceRender: true }}>
         {secrets.length > 0 ? (
           <ExportSecretsForm
             secrets={secrets}
+            errorMessage={exportError}
             isPending={isPending}
             onSubmit={(includeSecret) => {
               void download(includeSecret)
@@ -79,6 +99,13 @@ export function ExportAppDialog({ appDetail, open, onOpenChange }: ExportAppDial
                 {t(($) => $['sidebar.exportWarningDesc'], { ns: 'workflow' })}
               </AlertDialogDescription>
             </AlertDialogHeader>
+            {checkError && (
+              <AlertDialogBody>
+                <p role="alert" className="system-sm-regular text-text-destructive">
+                  {checkError}
+                </p>
+              </AlertDialogBody>
+            )}
             <AlertDialogFooter>
               <AlertDialogCancelButton disabled={isPending}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
@@ -107,10 +134,12 @@ export function ExportAppDialog({ appDetail, open, onOpenChange }: ExportAppDial
 
 function ExportSecretsForm({
   secrets,
+  errorMessage,
   isPending,
   onSubmit,
 }: {
   secrets: EnvironmentVariableItemResponse[]
+  errorMessage?: string
   isPending: boolean
   onSubmit: (includeSecret: boolean) => void
 }) {
@@ -165,6 +194,11 @@ function ExportSecretsForm({
             {t(($) => $['env.export.checkbox'], { ns: 'workflow' })}
           </FieldLabel>
         </Field>
+        {errorMessage && (
+          <p role="alert" className="mt-3 system-sm-regular text-text-destructive">
+            {errorMessage}
+          </p>
+        )}
       </AlertDialogBody>
       <AlertDialogFooter>
         <AlertDialogCancelButton type="button" disabled={isPending}>
