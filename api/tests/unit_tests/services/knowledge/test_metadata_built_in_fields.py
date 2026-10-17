@@ -1,6 +1,5 @@
 import time
 from datetime import datetime
-from types import SimpleNamespace
 
 import pytest
 
@@ -9,6 +8,7 @@ from models.dataset import build_built_in_field_values
 from models.enums import DataSourceType
 from services.knowledge import dataset_service
 from services.knowledge.dataset_service import DocumentService
+from tests.unit_tests.model_factories import make_account, make_dataset
 
 CREATED_AT = datetime(2026, 10, 16, 8, 0, 0)
 CREATED_AT_EPOCH = 1792137600
@@ -71,9 +71,7 @@ def test_build_built_in_field_values_maps_source_to_metadata_label(data_source_t
 )
 def test_build_document_writes_built_in_fields_in_shared_format(monkeypatch, data_source_type):
     monkeypatch.setattr(dataset_service, "naive_utc_now", lambda: CREATED_AT)
-    dataset = SimpleNamespace(
-        id="dataset-1", tenant_id="tenant-1", summary_index_setting=None, built_in_field_enabled=True
-    )
+    dataset = make_dataset(built_in_field_enabled=True)
 
     document = DocumentService.build_document(
         dataset=dataset,
@@ -84,7 +82,7 @@ def test_build_document_writes_built_in_fields_in_shared_format(monkeypatch, dat
         data_source_info={},
         created_from="web",
         position=1,
-        account=SimpleNamespace(id="account-1", name="Alice"),
+        account=make_account(name="Alice"),
         name="doc.txt",
         batch="batch-1",
     )
@@ -99,9 +97,7 @@ def test_build_document_writes_built_in_fields_in_shared_format(monkeypatch, dat
 
 
 def test_build_document_skips_built_in_fields_when_disabled():
-    dataset = SimpleNamespace(
-        id="dataset-1", tenant_id="tenant-1", summary_index_setting=None, built_in_field_enabled=False
-    )
+    dataset = make_dataset(built_in_field_enabled=False)
 
     document = DocumentService.build_document(
         dataset=dataset,
@@ -112,7 +108,7 @@ def test_build_document_skips_built_in_fields_when_disabled():
         data_source_info={},
         created_from="web",
         position=1,
-        account=SimpleNamespace(id="account-1", name="Alice"),
+        account=make_account(name="Alice"),
         name="doc.txt",
         batch="batch-1",
     )
