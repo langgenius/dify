@@ -197,6 +197,7 @@
   "newApp.foundResult": "{{count}} Rezultat",
   "newApp.foundResults": "{{count}} Rezultati",
   "newApp.import": "Uvoz",
+  "newApp.name": "Ime aplikacije",
   "newApp.nameNotEmpty": "Ime ne sme biti prazno",
   "newApp.noIdeaTip": "Nimate idej? Oglejte si naše predloge",
   "newApp.noTemplateFound": "Predloge niso bile najdene",

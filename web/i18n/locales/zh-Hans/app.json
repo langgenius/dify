@@ -197,6 +197,7 @@
   "newApp.foundResult": "{{count}} 个结果",
   "newApp.foundResults": "{{count}} 个结果",
   "newApp.import": "导入",
+  "newApp.name": "应用名称",
   "newApp.nameNotEmpty": "名称不能为空",
   "newApp.noIdeaTip": "没有想法？试试我们的模板",
   "newApp.noTemplateFound": "未找到模板",

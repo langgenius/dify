@@ -197,6 +197,7 @@
   "newApp.foundResult": "{{count}}件の結果",
   "newApp.foundResults": "{{count}}件の結果",
   "newApp.import": "輸入",
+  "newApp.name": "アプリ名",
   "newApp.nameNotEmpty": "名前を入力してください",
   "newApp.noIdeaTip": "アイデアがありませんか？テンプレートをご覧ください",
   "newApp.noTemplateFound": "テンプレートが見つかりません",

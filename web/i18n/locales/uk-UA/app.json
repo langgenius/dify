@@ -197,6 +197,7 @@
   "newApp.foundResult": "{{count}} Результат",
   "newApp.foundResults": "{{count}} Результатів",
   "newApp.import": "Імпорт",
+  "newApp.name": "Назва застосунку",
   "newApp.nameNotEmpty": "Назва не може бути порожньою",
   "newApp.noIdeaTip": "Немає ідей? Перегляньте наші шаблони",
   "newApp.noTemplateFound": "Не знайдено шаблонів",

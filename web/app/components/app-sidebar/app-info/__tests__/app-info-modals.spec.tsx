@@ -74,6 +74,16 @@ beforeEach(() => {
   service.exportWorkflow.mockReset()
 })
 
+it.each(['edit', 'duplicate'] as const)(
+  'separates the %s app name and icon within their named group',
+  async (operation) => {
+    render(<MetadataEntry operation={operation} />)
+    const group = await screen.findByRole('group', { name: 'app.newApp.captionName' })
+    expect(within(group).getByRole('textbox', { name: 'app.newApp.name' })).toBeRequired()
+    expect(within(group).getByRole('button', { name: 'app.iconPicker.title' })).toBeEnabled()
+  },
+)
+
 it('keeps the edit draft on failure, guards pending dismissal and closes only after a successful save', async () => {
   const user = userEvent.setup()
   let reject: (error: Error) => void = () => {}
@@ -84,7 +94,7 @@ it('keeps the edit draft on failure, guards pending dismissal and closes only af
       }),
   )
   render(<MetadataEntry />)
-  const name = await screen.findByRole('textbox', { name: 'app.newApp.captionName' })
+  const name = await screen.findByRole('textbox', { name: 'app.newApp.name' })
   await user.clear(name)
   await user.type(name, 'Retried name')
   await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
@@ -103,7 +113,7 @@ it('keeps the edit draft on failure, guards pending dismissal and closes only af
 it('keeps the edit draft after an outside press and still allows explicit cancellation', async () => {
   const user = userEvent.setup()
   render(<MetadataEntry />)
-  const name = await screen.findByRole('textbox', { name: 'app.newApp.captionName' })
+  const name = await screen.findByRole('textbox', { name: 'app.newApp.name' })
   await user.clear(name)
   await user.type(name, 'Unsaved draft')
   await user.click(document.body)
@@ -117,22 +127,20 @@ it('keeps the edit draft after an outside press and still allows explicit cancel
 it('discards a cancelled draft and initializes the next edit session from saved data', async () => {
   const user = userEvent.setup()
   render(<MetadataEntry />)
-  const name = await screen.findByRole('textbox', { name: 'app.newApp.captionName' })
+  const name = await screen.findByRole('textbox', { name: 'app.newApp.name' })
   await user.clear(name)
   await user.type(name, 'Discarded')
   await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   await user.click(screen.getByRole('button', { name: 'Reopen' }))
-  expect(await screen.findByRole('textbox', { name: 'app.newApp.captionName' })).toHaveValue(
-    app.name,
-  )
+  expect(await screen.findByRole('textbox', { name: 'app.newApp.name' })).toHaveValue(app.name)
 })
 
 it('keeps the duplicate name after a failed copy', async () => {
   const user = userEvent.setup()
   service.request.mockRejectedValueOnce(new Error('Unavailable'))
   render(<MetadataEntry operation="duplicate" />)
-  const name = await screen.findByRole('textbox', { name: 'app.newApp.captionName' })
+  const name = await screen.findByRole('textbox', { name: 'app.newApp.name' })
   await user.clear(name)
   await user.type(name, 'Copy draft{Enter}')
   await waitFor(() => expect(service.request).toHaveBeenCalledTimes(1))
@@ -217,9 +225,7 @@ it.each(['edit', 'duplicate', 'switch', 'delete', 'importDSL'] as const)(
         ? within(dialog).getByRole('button', { name: 'app.dslUploader.browse' })
         : within(dialog).getByRole(
             'textbox',
-            operation === 'delete'
-              ? {}
-              : { name: operation === 'switch' ? 'app.switchLabel' : 'app.newApp.captionName' },
+            operation === 'delete' ? {} : { name: 'app.newApp.name' },
           )
     await waitFor(() => expect(target).toHaveFocus())
   },
@@ -248,7 +254,7 @@ it('validates the edit form and submits current values after choosing an icon', 
   const user = userEvent.setup()
   service.request.mockResolvedValueOnce(Response.json(app))
   render(<MetadataEntry />)
-  const name = await screen.findByRole('textbox', { name: 'app.newApp.captionName' })
+  const name = await screen.findByRole('textbox', { name: 'app.newApp.name' })
   await user.clear(name)
   await user.keyboard('{Enter}')
   expect(service.request).not.toHaveBeenCalled()

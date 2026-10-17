@@ -726,6 +726,7 @@ export default interface Resources {
     'newApp.foundResult': '{{count}} Result'
     'newApp.foundResults': '{{count}} Results'
     'newApp.import': 'Import'
+    'newApp.name': 'App name'
     'newApp.nameNotEmpty': 'Name cannot be empty'
     'newApp.noIdeaTip': 'No ideas? Check out our templates'
     'newApp.noTemplateFound': 'No templates found'

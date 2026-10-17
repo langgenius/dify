@@ -29,7 +29,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldError } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
@@ -213,39 +214,41 @@ function SwitchAppSession({
           />
         </DialogHeader>
         <DialogBody>
-          <IconPicker value={appIcon} onValueChange={setAppIcon}>
+          <Fieldset className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 gap-y-1">
+            <FieldsetLegend className="col-span-2 mb-0 block py-2 text-sm leading-5 font-medium text-text-primary">
+              {t(($) => $.switchLabel, { ns: 'app' })}
+            </FieldsetLegend>
+            <IconPicker value={appIcon} onValueChange={setAppIcon}>
+              <IconPickerTrigger
+                disabled={isPending}
+                aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
+                className="shrink-0 cursor-pointer rounded-[10px]"
+              >
+                <IconPickerIcon size="large" />
+              </IconPickerTrigger>
+              <IconPickerContent />
+            </IconPicker>
             <Field
               name="name"
+              className="contents"
               validate={(value) =>
                 typeof value === 'string' && !value.trim()
                   ? t(($) => $['appCustomize.nameRequired'], { ns: 'explore' })
                   : null
               }
             >
-              <FieldLabel className="block py-2 text-sm leading-5 font-medium text-text-primary">
-                {t(($) => $.switchLabel, { ns: 'app' })}
-              </FieldLabel>
-              <div className="flex items-center justify-between space-x-2">
-                <IconPickerTrigger
-                  disabled={isPending}
-                  aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
-                  className="shrink-0 cursor-pointer rounded-[10px]"
-                >
-                  <IconPickerIcon size="large" />
-                </IconPickerTrigger>
-                <Input
-                  ref={nameInputRef}
-                  required
-                  readOnly={isPending}
-                  defaultValue={`${sourceApp.name}(copy)`}
-                  placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' }) || ''}
-                  className="h-10 grow"
-                />
-              </div>
-              <FieldError />
+              <Input
+                aria-label={t(($) => $['newApp.name'], { ns: 'app' })}
+                ref={nameInputRef}
+                required
+                readOnly={isPending}
+                defaultValue={`${sourceApp.name}(copy)`}
+                placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' }) || ''}
+                className="h-10 grow"
+              />
+              <FieldError className="col-span-2" />
             </Field>
-            <IconPickerContent />
-          </IconPicker>
+          </Fieldset>
           {isAppsFull && <AppsFull className="mt-4" loc="app-switch" />}
         </DialogBody>
         <DialogFooter>

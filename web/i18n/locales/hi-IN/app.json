@@ -197,6 +197,7 @@
   "newApp.foundResult": "{{count}} परिणाम",
   "newApp.foundResults": "{{count}} परिणाम",
   "newApp.import": "आयात",
+  "newApp.name": "ऐप का नाम",
   "newApp.nameNotEmpty": "नाम खाली नहीं हो सकता",
   "newApp.noIdeaTip": "कोई विचार नहीं? हमारे टेम्प्लेट देखें",
   "newApp.noTemplateFound": "कोई टेम्पलेट नहीं मिला",

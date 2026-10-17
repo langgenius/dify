@@ -11,7 +11,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Input } from '@langgenius/dify-ui/input'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -125,29 +126,32 @@ const DuplicateAppModal = ({
             }}
           >
             <DialogBody>
-              <IconPicker value={pickerValue} onValueChange={setSelectedIcon}>
-                <Field name="name">
-                  <FieldLabel className="system-md-medium">
-                    {t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}
-                  </FieldLabel>
-                  <div className="flex items-center justify-between space-x-2">
+              <Fieldset>
+                <FieldsetLegend className="system-md-medium">
+                  {t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}
+                </FieldsetLegend>
+                <div className="flex items-center justify-between space-x-2">
+                  <IconPicker value={pickerValue} onValueChange={setSelectedIcon}>
                     <IconPickerTrigger
-                      aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}`}
+                      aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
                       className="shrink-0 cursor-pointer rounded-[10px]"
                     >
                       <IconPickerIcon size="large" />
                     </IconPickerTrigger>
+                    <IconPickerContent />
+                  </IconPicker>
+                  <Field name="name" className="grow">
                     <Input
+                      aria-label={t(($) => $['newApp.name'], { ns: 'app' })}
                       autoComplete="off"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       className="h-10"
                       placeholder={t(($) => $['placeholder.input'], { ns: 'common' }) || ''}
                     />
-                  </div>
-                </Field>
-                <IconPickerContent />
-              </IconPicker>
+                  </Field>
+                </div>
+              </Fieldset>
               {isAppsFull && <AppsFull className="mt-4" loc="app-duplicate-create" />}
             </DialogBody>
             <DialogFooter>
