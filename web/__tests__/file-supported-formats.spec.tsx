@@ -7,16 +7,16 @@ import useConfig from '@/app/components/workflow/nodes/document-extractor/use-co
 import { BlockEnum } from '@/app/components/workflow/types'
 import { LanguagesSupported } from '@/i18n/language'
 import { consoleQuery } from '@/service/console'
+import { routeFetchTo } from '@/test/console/fetch'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 
 let mockLocale = 'en-US'
-const request = vi.hoisted(() => vi.fn<(url: string) => Promise<Response>>())
+const request = vi.hoisted(() =>
+  vi.fn<(url: string, init: RequestInit, options: { request: Request }) => Promise<Response>>(),
+)
 
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  request,
-}))
+routeFetchTo(request)
 
 vi.mock('#i18n', async (importOriginal) => ({
   ...(await importOriginal<typeof import('#i18n')>()),
@@ -106,15 +106,7 @@ describe('file supported formats across upload and document extraction', () => {
     expect(screen.getByText(/"supportTypes":"PDF, MARKDOWN, DOCX"/)).toBeInTheDocument()
     expect(request).toHaveBeenCalledTimes(1)
     expect(new URL(request.mock.calls[0]![0]).pathname).toBe('/console/api/files/support-type')
-    expect(request).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.any(Object),
-      expect.objectContaining({
-        fetchCompat: true,
-        request: expect.objectContaining({ method: 'GET' }),
-        silent: undefined,
-      }),
-    )
+    expect(request.mock.calls[0]![2].request.method).toBe('GET')
 
     mockLocale = LanguagesSupported[1]!
     rerender(consumers())

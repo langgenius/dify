@@ -1,9 +1,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render } from 'vitest-browser-react'
+import { routeFetchTo } from '@/test/console/fetch'
 import { PluginImg } from '../plugin-img'
 
 const { request } = vi.hoisted(() => ({ request: vi.fn<() => Promise<Response>>() }))
-vi.mock('@/service/base', () => ({ request }))
+routeFetchTo(request)
 // Keep the unrelated marketplace image fallback local; all asset bytes still go
 // through the generated Console client and the browser's real image decoder.
 vi.mock('@/config', async (importOriginal) => ({

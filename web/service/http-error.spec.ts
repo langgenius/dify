@@ -4,6 +4,7 @@ import { toast } from '@/app/notifications'
 // oxlint-disable-next-line no-restricted-imports -- Exercise the HTTP transport and auth recovery together.
 import { get, post, request, upload } from './base'
 import { consoleClient } from './console'
+import { HttpError } from './http-error'
 
 const refresh = vi.hoisted(() => vi.fn())
 vi.mock('./refresh-token', () => ({ refreshAccessTokenOrReLogin: refresh }))
@@ -119,7 +120,7 @@ describe('HTTP failure contract', () => {
           'X-Request-Id': 'request-123',
         }),
       })
-      expect(String(error)).toBe('Error: Could not save')
+      expect(String(error)).toBe('ORPCError: Could not save')
       expect(error.data).toEqual(body)
     },
   )
@@ -190,7 +191,7 @@ describe('HTTP failure contract', () => {
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(
         Response.json({ code: 'unauthorized' }, { status: 401 }),
       )
-      const refreshError = new ORPCError('HTTP_ERROR', { status })
+      const refreshError = new HttpError('HTTP_ERROR', { status })
       refresh.mockRejectedValue(refreshError)
       const initialUrl = window.location.href
 
@@ -268,7 +269,7 @@ describe('HTTP failure contract', () => {
       Response.json({ code: 'forbidden', message: 'Profile is read-only' }, { status: 403 }),
     )
     const error = await consoleClient.account.profile
-      .get({}, { context: { silent: true } })
+      .get(undefined, { context: { silent: true } })
       .catch((error: unknown) => error)
     expect(error).toBeInstanceOf(ORPCError)
     expect(error).toMatchObject({ message: 'Profile is read-only', status: 403, code: 'forbidden' })

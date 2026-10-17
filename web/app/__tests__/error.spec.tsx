@@ -1,4 +1,3 @@
-import { ORPCError } from '@orpc/client'
 import { QueryClient, QueryErrorResetBoundary } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -6,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import CommonLayoutError from '@/app/(commonLayout)/error'
 import AppError from '@/app/error'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { HttpError } from '@/service/http-error'
 
 const refresh = vi.hoisted(() => vi.fn())
 vi.mock('@/service/refresh-token', () => ({ refreshAccessTokenOrReLogin: refresh }))
@@ -67,7 +67,7 @@ describe('route error recovery', () => {
       vi.spyOn(globalThis, 'fetch').mockImplementation(async () =>
         Response.json({ code: 'unauthorized', message: 'Expired access token' }, { status: 401 }),
       )
-      const refreshError = new ORPCError('HTTP_ERROR', { status: 503 })
+      const refreshError = new HttpError('HTTP_ERROR', { status: 503 })
       refresh.mockRejectedValue(refreshError)
       const queryClient = new QueryClient()
 

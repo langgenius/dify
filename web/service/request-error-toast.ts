@@ -1,4 +1,6 @@
+import type { HttpError } from './http-error'
 import { toast } from '@/app/notifications'
+import { shouldSuppressAppDeletionErrorToast } from './app-deletion'
 
 const DEDUPE_WINDOW_MS = 10000
 
@@ -41,4 +43,30 @@ export function notifyRequestError(request: RequestIdentity, message: string) {
   }, DEDUPE_WINDOW_MS)
   messages.set(message, { expiresAt: now + DEDUPE_WINDOW_MS, timer })
   toast.error(message)
+}
+
+/**
+ * Shows the backend error toast for a failed request and handles the `already_setup` redirect.
+ * Shared by the legacy fetch helpers and the console oRPC link so both report errors alike.
+ */
+export function reportHttpError(
+  request: Pick<Request, 'method' | 'url'>,
+  error: HttpError,
+  silent?: boolean,
+) {
+  const errorData = error.data
+  const shouldNotifyError =
+    error.status >= 400 &&
+    error.status !== 401 &&
+    errorData &&
+    !silent &&
+    !shouldSuppressAppDeletionErrorToast(request.url, error.status)
+
+  const errorMessage = [errorData?.message, errorData?.error].find(
+    (value): value is string => typeof value === 'string' && !!value.trim(),
+  )
+  if (shouldNotifyError && errorMessage) notifyRequestError(request, errorMessage)
+
+  if (error.status === 403 && errorData?.code === 'already_setup')
+    globalThis.location.href = `${globalThis.location.origin}/signin`
 }

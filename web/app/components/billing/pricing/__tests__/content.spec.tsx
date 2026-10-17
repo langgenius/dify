@@ -185,7 +185,7 @@ it.each(['year', 'month'] as const)(
 
     await waitFor(() => expect(navigate).toHaveBeenCalledWith(checkoutUrl))
     expect(checkout).toHaveBeenCalledTimes(1)
-    const requestUrl = new URL((checkout.mock.calls[0]?.[0] as Request).url)
+    const requestUrl = new URL(String(checkout.mock.calls[0]?.[0]))
     expect(requestUrl.pathname).toBe('/console/api/billing/subscription')
     expect(requestUrl.searchParams.get('plan')).toBe('team')
     expect(requestUrl.searchParams.get('interval')).toBe(interval)

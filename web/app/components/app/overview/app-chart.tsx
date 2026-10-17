@@ -1,6 +1,6 @@
 'use client'
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
-import type { QueryKey, UseQueryOptions } from '@tanstack/react-query'
+import type { QueryFunction, QueryKey, UseQueryOptions } from '@tanstack/react-query'
 import type { Dayjs } from 'dayjs'
 import type { SelectorParam } from 'i18next'
 import type { ReactNode } from 'react'
@@ -175,6 +175,15 @@ type ChartQueryOptions<TData extends ChartResponse> = (
   query?: PeriodParams['query'],
 ) => UseQueryOptions<TData, Error, TData, QueryKey>
 
+// oRPC tags each query key with its endpoint's response; chart cards share one untagged shape.
+const toChartQueryOptions = <TQueryKey extends QueryKey>(options: {
+  queryKey: TQueryKey
+  queryFn: QueryFunction<ChartResponse, TQueryKey>
+}): UseQueryOptions<ChartResponse, Error, ChartResponse, QueryKey> => ({
+  queryKey: options.queryKey,
+  queryFn: (context) => options.queryFn({ ...context, queryKey: options.queryKey }),
+})
+
 const CHART_TRANSLATION_SELECTOR_MAP = {
   'analysis.activeUsers.explanation': ($) => $['analysis.activeUsers.explanation'],
   'analysis.activeUsers.title': ($) => $['analysis.activeUsers.title'],
@@ -312,9 +321,11 @@ const MessagesChart: BizChartConfig<ChartResponse> = {
   titleKey: 'analysis.totalMessages.title',
   explanationKey: 'analysis.totalMessages.explanation',
   queryOptions: (id, query) =>
-    consoleQuery.apps.byAppId.statistics.dailyMessages.get.queryOptions({
-      input: { params: { app_id: id }, query },
-    }),
+    toChartQueryOptions(
+      consoleQuery.apps.byAppId.statistics.dailyMessages.get.queryOptions({
+        input: { params: { app_id: id }, query },
+      }),
+    ),
   valueKey: 'message_count',
   emptyValueKey: 'message_count',
   yMaxWhenEmpty: 500,
@@ -325,9 +336,11 @@ const ConversationsChart: BizChartConfig<ChartResponse> = {
   titleKey: 'analysis.totalConversations.title',
   explanationKey: 'analysis.totalConversations.explanation',
   queryOptions: (id, query) =>
-    consoleQuery.apps.byAppId.statistics.dailyConversations.get.queryOptions({
-      input: { params: { app_id: id }, query },
-    }),
+    toChartQueryOptions(
+      consoleQuery.apps.byAppId.statistics.dailyConversations.get.queryOptions({
+        input: { params: { app_id: id }, query },
+      }),
+    ),
   valueKey: 'conversation_count',
   emptyValueKey: 'conversation_count',
   yMaxWhenEmpty: 500,
@@ -338,9 +351,11 @@ const EndUsersChart: BizChartConfig<ChartResponse> = {
   titleKey: 'analysis.activeUsers.title',
   explanationKey: 'analysis.activeUsers.explanation',
   queryOptions: (id, query) =>
-    consoleQuery.apps.byAppId.statistics.dailyEndUsers.get.queryOptions({
-      input: { params: { app_id: id }, query },
-    }),
+    toChartQueryOptions(
+      consoleQuery.apps.byAppId.statistics.dailyEndUsers.get.queryOptions({
+        input: { params: { app_id: id }, query },
+      }),
+    ),
   valueKey: 'terminal_count',
   emptyValueKey: 'terminal_count',
   yMaxWhenEmpty: 500,
@@ -351,9 +366,11 @@ const AvgSessionInteractions: BizChartConfig<ChartResponse> = {
   titleKey: 'analysis.avgSessionInteractions.title',
   explanationKey: 'analysis.avgSessionInteractions.explanation',
   queryOptions: (id, query) =>
-    consoleQuery.apps.byAppId.statistics.averageSessionInteractions.get.queryOptions({
-      input: { params: { app_id: id }, query },
-    }),
+    toChartQueryOptions(
+      consoleQuery.apps.byAppId.statistics.averageSessionInteractions.get.queryOptions({
+        input: { params: { app_id: id }, query },
+      }),
+    ),
   valueKey: 'interactions',
   emptyValueKey: 'interactions',
   yMaxWhenEmpty: 500,
@@ -365,9 +382,11 @@ const AvgResponseTime: BizChartConfig<ChartResponse> = {
   titleKey: 'analysis.avgResponseTime.title',
   explanationKey: 'analysis.avgResponseTime.explanation',
   queryOptions: (id, query) =>
-    consoleQuery.apps.byAppId.statistics.averageResponseTime.get.queryOptions({
-      input: { params: { app_id: id }, query },
-    }),
+    toChartQueryOptions(
+      consoleQuery.apps.byAppId.statistics.averageResponseTime.get.queryOptions({
+        input: { params: { app_id: id }, query },
+      }),
+    ),
   valueKey: 'latency',
   emptyValueKey: 'latency',
   yMaxWhenEmpty: 500,
@@ -380,9 +399,11 @@ const TokenPerSecond: BizChartConfig<ChartResponse> = {
   titleKey: 'analysis.tps.title',
   explanationKey: 'analysis.tps.explanation',
   queryOptions: (id, query) =>
-    consoleQuery.apps.byAppId.statistics.tokensPerSecond.get.queryOptions({
-      input: { params: { app_id: id }, query },
-    }),
+    toChartQueryOptions(
+      consoleQuery.apps.byAppId.statistics.tokensPerSecond.get.queryOptions({
+        input: { params: { app_id: id }, query },
+      }),
+    ),
   valueKey: 'tps',
   emptyValueKey: 'tps',
   yMaxWhenEmpty: 100,
@@ -396,9 +417,11 @@ const UserSatisfactionRate: BizChartConfig<ChartResponse> = {
   titleKey: 'analysis.userSatisfactionRate.title',
   explanationKey: 'analysis.userSatisfactionRate.explanation',
   queryOptions: (id, query) =>
-    consoleQuery.apps.byAppId.statistics.userSatisfactionRate.get.queryOptions({
-      input: { params: { app_id: id }, query },
-    }),
+    toChartQueryOptions(
+      consoleQuery.apps.byAppId.statistics.userSatisfactionRate.get.queryOptions({
+        input: { params: { app_id: id }, query },
+      }),
+    ),
   valueKey: 'rate',
   emptyValueKey: 'rate',
   yMaxWhenEmpty: 1000,
@@ -411,9 +434,11 @@ const CostChart: BizChartConfig<ChartResponse> = {
   titleKey: 'analysis.tokenUsage.title',
   explanationKey: 'analysis.tokenUsage.explanation',
   queryOptions: (id, query) =>
-    consoleQuery.apps.byAppId.statistics.tokenCosts.get.queryOptions({
-      input: { params: { app_id: id }, query },
-    }),
+    toChartQueryOptions(
+      consoleQuery.apps.byAppId.statistics.tokenCosts.get.queryOptions({
+        input: { params: { app_id: id }, query },
+      }),
+    ),
   valueKey: 'token_count',
   emptyValueKey: 'token_count',
   yMaxWhenEmpty: 100,
@@ -424,9 +449,11 @@ const WorkflowMessagesChart: BizChartConfig<ChartResponse> = {
   titleKey: 'analysis.totalMessages.title',
   explanationKey: 'analysis.totalMessages.explanation',
   queryOptions: (id, query) =>
-    consoleQuery.apps.byAppId.workflow.statistics.dailyConversations.get.queryOptions({
-      input: { params: { app_id: id }, query },
-    }),
+    toChartQueryOptions(
+      consoleQuery.apps.byAppId.workflow.statistics.dailyConversations.get.queryOptions({
+        input: { params: { app_id: id }, query },
+      }),
+    ),
   valueKey: 'runs',
   emptyValueKey: 'runs',
   yMaxWhenEmpty: 500,
@@ -437,9 +464,11 @@ const WorkflowDailyTerminalsChart: BizChartConfig<ChartResponse> = {
   titleKey: 'analysis.activeUsers.title',
   explanationKey: 'analysis.activeUsers.explanation',
   queryOptions: (id, query) =>
-    consoleQuery.apps.byAppId.workflow.statistics.dailyTerminals.get.queryOptions({
-      input: { params: { app_id: id }, query },
-    }),
+    toChartQueryOptions(
+      consoleQuery.apps.byAppId.workflow.statistics.dailyTerminals.get.queryOptions({
+        input: { params: { app_id: id }, query },
+      }),
+    ),
   valueKey: 'terminal_count',
   emptyValueKey: 'terminal_count',
   yMaxWhenEmpty: 500,
@@ -450,9 +479,11 @@ const WorkflowCostChart: BizChartConfig<ChartResponse> = {
   titleKey: 'analysis.tokenUsage.title',
   explanationKey: 'analysis.tokenUsage.explanation',
   queryOptions: (id, query) =>
-    consoleQuery.apps.byAppId.workflow.statistics.tokenCosts.get.queryOptions({
-      input: { params: { app_id: id }, query },
-    }),
+    toChartQueryOptions(
+      consoleQuery.apps.byAppId.workflow.statistics.tokenCosts.get.queryOptions({
+        input: { params: { app_id: id }, query },
+      }),
+    ),
   valueKey: 'token_count',
   emptyValueKey: 'token_count',
   yMaxWhenEmpty: 100,
@@ -463,9 +494,11 @@ const AvgUserInteractions: BizChartConfig<ChartResponse> = {
   titleKey: 'analysis.avgUserInteractions.title',
   explanationKey: 'analysis.avgUserInteractions.explanation',
   queryOptions: (id, query) =>
-    consoleQuery.apps.byAppId.workflow.statistics.averageAppInteractions.get.queryOptions({
-      input: { params: { app_id: id }, query },
-    }),
+    toChartQueryOptions(
+      consoleQuery.apps.byAppId.workflow.statistics.averageAppInteractions.get.queryOptions({
+        input: { params: { app_id: id }, query },
+      }),
+    ),
   valueKey: 'interactions',
   emptyValueKey: 'interactions',
   yMaxWhenEmpty: 500,

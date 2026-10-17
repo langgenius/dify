@@ -3,7 +3,6 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { $, defineConfig, definePluginConfig } from '@hey-api/openapi-ts'
-import ts from 'typescript'
 
 type JsonObject = Record<string, unknown>
 
@@ -127,10 +126,21 @@ const operationId = (method: string, routePath: string) => {
   ])
 }
 
+// oRPC v2 client and query-utils proxies pass these keys through to the function itself.
+const orpcReservedRouterKeys = new Set([
+  'apply',
+  'bind',
+  'call',
+  'then',
+  'toJSON',
+  'toString',
+  'valueOf',
+])
+
 const contractPathSegments = (operation: ApiContractOperation) => {
-  const segments = routeNamingSegments(operation.path).map((segment) =>
-    toCamelCase(segmentWords(segment)),
-  )
+  const segments = routeNamingSegments(operation.path)
+    .map((segment) => toCamelCase(segmentWords(segment)))
+    .map((segment) => (orpcReservedRouterKeys.has(segment) ? `${segment}Action` : segment))
 
   return [...(segments.length > 0 ? segments : ['root']), operation.method.toLowerCase()]
 }
@@ -701,6 +711,38 @@ export const orpcErrorMaps = (document: SwaggerDocument): Map<string, OrpcErrorE
   return errorMaps
 }
 
+const isBinarySchema = (
+  schema: SwaggerSchema | undefined,
+  schemas: Record<string, SwaggerSchema>,
+): boolean => {
+  const name = typeof schema?.$ref === 'string' ? schemaNameFromRef(schema.$ref) : undefined
+  const resolved = name ? schemas[name] : schema
+  return resolved?.type === 'string' && resolved.format === 'binary'
+}
+
+/**
+ * Operations whose every success response is a binary body. oRPC v2 reads a body without
+ * `Content-Length` or a filename as a stream, so these contracts hint `responseBodyHint: 'file'`.
+ * Operations that may also answer with JSON keep content-type based decoding.
+ */
+export const orpcFileResponseOperations = (document: SwaggerDocument): Set<string> => {
+  const schemas = getDocumentSchemas(document)
+  const operationIds = new Set<string>()
+  for (const pathItem of Object.values(document.paths ?? {})) {
+    for (const [method, operation] of Object.entries(pathItem)) {
+      if (!operationMethods.has(method) || !isObject(operation)) continue
+      const { operationId, responses } = operation as SwaggerOperation
+      if (!operationId) continue
+      const bodies = Object.entries(responses ?? {})
+        .filter(([status]) => /^2\d\d$/.test(status))
+        .flatMap(([, response]) => Object.values(response.content ?? {}))
+      if (bodies.length > 0 && bodies.every((media) => isBinarySchema(media.schema, schemas)))
+        operationIds.add(operationId)
+    }
+  }
+  return operationIds
+}
+
 const createApiConfig = (job: ApiJob): UserConfig => ({
   input: job.document,
   logs: {
@@ -738,7 +780,6 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
           return ctx.nodes.base(ctx)
         },
         object: (ctx) => {
-          const objectSchema = ctx.nodes.base(ctx)
           const additionalProperties = ctx.schema.additionalProperties
           // Shaped objects otherwise discard the backend's typed JSON extensions.
           if (
@@ -747,35 +788,25 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
             additionalProperties.$ref === '#/components/schemas/AppConfigJsonValue' &&
             ctx.schema.properties
           )
-            return objectSchema.attr('catchall').call($(ctx.symbols.z).attr('json').call())
+            return ctx.nodes.base(ctx).attr('catchall').call($(ctx.symbols.z).attr('json').call())
 
-          // openapi-ts normalizes `additionalProperties: false` to `never`, but
-          // does not make shaped Zod objects strict.
+          // openapi-ts emits `z.strictObject` for every shaped `additionalProperties: false`
+          // object. Keep strictness opt-in so `.parse` keeps stripping unknown keys elsewhere.
+          const forbidsAdditionalProperties =
+            (additionalProperties === false || additionalProperties?.type === 'never') &&
+            Object.keys(ctx.schema.properties ?? {}).length > 0
           const isStrictSchema = ctx.path['~ref'].some(
             (segment) => typeof segment === 'string' && strictZodSchemaNames.has(segment),
           )
-          if (
-            isStrictSchema &&
-            (additionalProperties === false || additionalProperties?.type === 'never')
-          )
-            return objectSchema.attr('strict').call()
+          if (forbidsAdditionalProperties && !isStrictSchema)
+            return $(ctx.symbols.z).attr('object').call(ctx.nodes.shape(ctx))
 
-          return objectSchema
+          return ctx.nodes.base(ctx)
         },
         string: (ctx) => {
           if (ctx.schema.format === 'binary')
-            return $(ctx.symbols.z)
-              .attr('custom')
-              .call(
-                $.func((predicate) => {
-                  const value = $.id('value')
-                  const isBlob = $.binary(value, ts.SyntaxKind.InstanceOfKeyword, $.id('Blob'))
-                  const isFile = $.binary(value, ts.SyntaxKind.InstanceOfKeyword, $.id('File'))
-                  predicate.param('value')
-                  predicate.do($.return($.binary(isBlob, '||', isFile)))
-                }),
-              )
-              .generic($.type.or($.type('Blob'), $.type('File')))
+            // `File` extends `Blob`, so one `instanceof` check accepts both.
+            return $(ctx.symbols.z).attr('instanceof').call($.id('Blob'))
 
           if (ctx.schema.pattern === pydanticDecimalStringPattern) {
             // the pydantic generated regex will emit error like
@@ -804,6 +835,7 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
         },
         strategy: 'single',
       },
+      compatibilityVersion: '2',
       name: 'orpc',
       validator: 'zod',
     },

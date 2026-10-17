@@ -73,7 +73,7 @@ vi.mock('@/features/account-profile/client', () => ({
   }),
 }))
 
-vi.mock('@/service/console', () => ({
+vi.mock('@/service/console', async () => ({
   consoleClient: {
     snippets: {
       bySnippetId: {
@@ -89,12 +89,9 @@ vi.mock('@/service/console', () => ({
     workspaces: {
       current: {
         members: {
-          get: {
-            queryOptions: (options: { input?: unknown }) => ({
-              ...options,
-              queryKey: [['console', 'workspaces', 'current', 'members', 'get'], options],
-            }),
-          },
+          get: (await import('@/test/console/operation-hooks')).consoleOperationStub(
+            'workspaces.current.members.get',
+          ),
         },
       },
     },

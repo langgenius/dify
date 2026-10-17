@@ -13,9 +13,8 @@ import {
   PUBLIC_API_PREFIX,
   WEB_APP_SHARE_CODE_HEADER_NAME,
 } from '@/config'
-import { shouldSuppressAppDeletionErrorToast } from './app-deletion'
 import { httpErrorFromResponse, isHttpErrorStatus } from './http-error'
-import { clearRequestErrorToasts, notifyRequestError } from './request-error-toast'
+import { clearRequestErrorToasts, reportHttpError } from './request-error-toast'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
 
@@ -49,21 +48,7 @@ const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook 
   return async ({ request, response }) => {
     if (isHttpErrorStatus(response.status)) {
       const error = await httpErrorFromResponse(response)
-      const errorData = error.data
-      const shouldNotifyError =
-        response.status >= 400 &&
-        response.status !== 401 &&
-        errorData &&
-        !otherOptions.silent &&
-        !shouldSuppressAppDeletionErrorToast(request.url, response.status)
-
-      const errorMessage = [errorData?.message, errorData?.error].find(
-        (value): value is string => typeof value === 'string' && !!value.trim(),
-      )
-      if (shouldNotifyError && errorMessage) notifyRequestError(request, errorMessage)
-
-      if (response.status === 403 && errorData?.code === 'already_setup')
-        globalThis.location.href = `${globalThis.location.origin}/signin`
+      reportHttpError(request, error, otherOptions.silent)
       throw error
     } else {
       clearRequestErrorToasts(request)
@@ -108,22 +93,15 @@ async function base<T>(
   options: FetchOptionType = {},
   otherOptions: IOtherOptions = {},
 ): Promise<T> {
-  // In fetchCompat mode, skip baseOptions to avoid overriding Request object's method, headers,
-  const baseOptions = otherOptions.fetchCompat
-    ? ({
-        mode: 'cors',
-        credentials: 'include', // always send cookies、HTTP Basic authentication.
-        redirect: 'follow',
-      } as const)
-    : ({
-        mode: 'cors',
-        credentials: 'include', // always send cookies、HTTP Basic authentication.
-        headers: new Headers({
-          'Content-Type': ContentType.json,
-        }),
-        method: 'GET',
-        redirect: 'follow',
-      } as const)
+  const baseOptions = {
+    mode: 'cors',
+    credentials: 'include', // always send cookies、HTTP Basic authentication.
+    headers: new Headers({
+      'Content-Type': ContentType.json,
+    }),
+    method: 'GET',
+    redirect: 'follow',
+  } as const
   const { params, body, headers: headersFromProps, ...init } = { ...baseOptions, ...options }
 
   const {
@@ -133,8 +111,6 @@ async function base<T>(
     needAllResponseContent,
     deleteContentType,
     getAbortController,
-    fetchCompat = false,
-    request,
   } = otherOptions
 
   const headers = new Headers(headersFromProps || {})
@@ -171,15 +147,15 @@ async function base<T>(
     },
   })
 
-  const res = await client(request || fetchPathname, {
+  const res = await client(fetchPathname, {
     ...init,
     headers,
     credentials: isMarketplaceAPI ? 'omit' : options.credentials || 'include',
     retry: {
       methods: [],
     },
-    ...(bodyStringify && !fetchCompat ? { json: body } : { body: body as BodyInit }),
-    searchParams: !fetchCompat ? params : undefined,
+    ...(bodyStringify ? { json: body } : { body: body as BodyInit }),
+    searchParams: params,
     fetch(resource: RequestInfo | URL, options?: RequestInit) {
       if (resource instanceof Request && options) {
         const mergedHeaders = new Headers(options.headers || {})
@@ -192,7 +168,7 @@ async function base<T>(
     },
   })
 
-  if (needAllResponseContent || fetchCompat) return res as T
+  if (needAllResponseContent) return res as T
   const contentType = res.headers.get('content-type')
   if (
     contentType &&

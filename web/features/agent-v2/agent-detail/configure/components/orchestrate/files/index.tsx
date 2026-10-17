@@ -134,17 +134,15 @@ function AgentFileItem({
     enabled: isPreviewOpen && !!previewFileId && !isVirtualPreviewFile && !!apiContext.workflow,
   })
   const trialPreviewQuery = useQuery(
-    apiContext.trialAppId
-      ? {
-          ...consoleQuery.trialApps.byAppId.agent.config.files.byName.preview.get.queryOptions({
-            input: {
-              params: { app_id: apiContext.trialAppId, name: previewFileId ?? '' },
-              query: { version_id: apiContext.versionId },
-            },
-          }),
-          enabled: isPreviewOpen && !!previewFileId && !isVirtualPreviewFile,
-        }
-      : { queryKey: ['agent-v2', 'trial-file-preview-disabled'], queryFn: skipToken },
+    consoleQuery.trialApps.byAppId.agent.config.files.byName.preview.get.queryOptions({
+      input: apiContext.trialAppId
+        ? {
+            params: { app_id: apiContext.trialAppId, name: previewFileId ?? '' },
+            query: { version_id: apiContext.versionId },
+          }
+        : skipToken,
+      enabled: isPreviewOpen && !!previewFileId && !isVirtualPreviewFile,
+    }),
   )
   const previewQuery = apiContext.trialAppId
     ? trialPreviewQuery
@@ -191,18 +189,16 @@ function AgentFileItem({
     enabled: shouldDownloadPreviewFile && !!apiContext.workflow,
   })
   const trialDownloadQuery = useQuery(
-    apiContext.trialAppId
-      ? {
-          ...consoleQuery.trialApps.byAppId.agent.config.files.byName.download.get.queryOptions({
-            input: {
-              params: { app_id: apiContext.trialAppId, name: previewFileId ?? '' },
-              query: { version_id: apiContext.versionId },
-            },
-          }),
-          staleTime: 0,
-          enabled: shouldDownloadPreviewFile,
-        }
-      : { queryKey: ['agent-v2', 'trial-file-download-disabled'], queryFn: skipToken },
+    consoleQuery.trialApps.byAppId.agent.config.files.byName.download.get.queryOptions({
+      input: apiContext.trialAppId
+        ? {
+            params: { app_id: apiContext.trialAppId, name: previewFileId ?? '' },
+            query: { version_id: apiContext.versionId },
+          }
+        : skipToken,
+      staleTime: 0,
+      enabled: shouldDownloadPreviewFile,
+    }),
   )
   const downloadQuery = apiContext.trialAppId
     ? trialDownloadQuery

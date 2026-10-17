@@ -1,7 +1,7 @@
 import type { consoleRouterContract } from '@dify/contracts/console'
 import type { ClientLink } from '@orpc/client'
-import type { ContractRouterClient } from '@orpc/contract'
-import type { JsonifiedClient } from '@orpc/openapi-client'
+import type { RouterContractClient } from '@orpc/contract'
+import type { JsonifiedClient } from '@orpc/openapi'
 import type { TanstackQueryOperationContext } from '@orpc/tanstack-query'
 import { createORPCClient, DynamicLink } from '@orpc/client'
 import { consoleBrowserLink } from './browser'
@@ -13,7 +13,7 @@ export type ConsoleClientContext = TanstackQueryOperationContext & {
 }
 
 export type ConsoleClient = JsonifiedClient<
-  ContractRouterClient<typeof consoleRouterContract, ConsoleClientContext>
+  RouterContractClient<typeof consoleRouterContract, ConsoleClientContext>
 >
 
 declare global {

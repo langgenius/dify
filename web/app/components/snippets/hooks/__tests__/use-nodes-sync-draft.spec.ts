@@ -1,7 +1,7 @@
 import type { InputVar } from '@/models/pipeline'
-import { ORPCError } from '@orpc/client'
 import { act, renderHook } from '@testing-library/react'
 import { PipelineInputVarType } from '@/models/pipeline'
+import { HttpError } from '@/service/http-error'
 import { useSnippetDraftStore } from '../../draft-store'
 import { useNodesSyncDraft } from '../use-nodes-sync-draft'
 
@@ -132,7 +132,7 @@ describe('snippet/use-nodes-sync-draft', () => {
     'recovers from $code with skipRefresh=$skipRefresh and allows retry',
     async ({ code, skipRefresh, refreshes }) => {
       mockSyncDraftWorkflow.mockRejectedValueOnce(
-        new ORPCError(code, {
+        new HttpError(code, {
           status: code === 'forbidden' ? 403 : 409,
           message: 'Draft could not be saved',
           data: {

@@ -5,11 +5,12 @@ import { useState } from 'react'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { createWorkflowStore } from '@/app/components/workflow/store'
+import { routeFetchTo } from '@/test/console/fetch'
 import { createProvider, createStrategy } from '../../../agent/__tests__/strategy-fixture'
 import { AgentStrategy } from '../agent-strategy'
 
 const { request } = vi.hoisted(() => ({ request: vi.fn() }))
-vi.mock('@/service/base', () => ({ request }))
+routeFetchTo(request)
 vi.mock(
   '@/app/components/header/account-setting/model-provider-page/hooks',
   async (importOriginal) => ({

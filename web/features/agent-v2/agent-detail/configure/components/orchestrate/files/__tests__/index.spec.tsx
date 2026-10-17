@@ -1,6 +1,6 @@
 import type { AgentConfigApiContext } from '../../config-context'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
-import { QueryClient } from '@tanstack/react-query'
+import { QueryClient, skipToken } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
@@ -10,6 +10,7 @@ import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/c
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
+import { consoleOperationKey } from '@/test/console/operation-hooks'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { AgentConfigApiContextProvider } from '../../config-context'
@@ -20,12 +21,17 @@ import {
 import { AgentFiles, AgentTemplateFiles } from '../index'
 
 type ConfigFileQueryOptionsInput = {
-  input: {
-    params: {
-      name: string
-    }
-  }
+  input:
+    | {
+        params: {
+          name: string
+        }
+      }
+    | typeof skipToken
 }
+
+// oRPC disables a query whose input is `skipToken`, as the trial-only queries use outside trials.
+const skippedConfigFileQuery = { queryKey: ['skipped-config-file'], queryFn: skipToken }
 
 const mocks = vi.hoisted(() => ({
   uploadFileMutationFn: vi.fn(async (_input: unknown) => ({ id: 'upload-1' })),
@@ -69,8 +75,10 @@ vi.mock('@/utils/download', () => ({
   downloadUrl: mocks.downloadUrl,
 }))
 
-vi.mock('@/service/console', async () => {
+vi.mock('@/service/console', async (importOriginal) => {
   const { consoleOperationStub } = await import('@/test/console/operation-hooks')
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const trial = actual.consoleQuery.trialApps.byAppId.agent.config.files.byName
   return {
     consoleQuery: {
       systemFeatures: {
@@ -143,8 +151,26 @@ vi.mock('@/service/console', async () => {
             config: {
               files: {
                 byName: {
-                  preview: { get: { queryOptions: mocks.previewQueryOptions } },
-                  download: { get: { queryOptions: mocks.downloadQueryOptions } },
+                  preview: {
+                    get: {
+                      queryOptions: (
+                        options: Parameters<typeof trial.preview.get.queryOptions>[0],
+                      ) =>
+                        options.input === skipToken
+                          ? trial.preview.get.queryOptions(options)
+                          : { ...options, ...mocks.previewQueryOptions(options) },
+                    },
+                  },
+                  download: {
+                    get: {
+                      queryOptions: (
+                        options: Parameters<typeof trial.download.get.queryOptions>[0],
+                      ) =>
+                        options.input === skipToken
+                          ? trial.download.get.queryOptions(options)
+                          : { ...options, ...mocks.downloadQueryOptions(options) },
+                    },
+                  },
                 },
               },
             },
@@ -255,21 +281,29 @@ describe('AgentFiles', () => {
       video_file_size_limit: 100,
       workflow_file_upload_limit: 10,
     })
-    mocks.previewQueryOptions.mockImplementation(({ input }) => ({
-      queryKey: ['preview-config-file', input],
-      queryFn: async () => ({
-        name: input.params.name,
-        binary: false,
-        truncated: false,
-        text: `Preview for ${input.params.name}`,
-      }),
-    }))
-    mocks.downloadQueryOptions.mockImplementation(({ input }) => ({
-      queryKey: ['download-config-file', input],
-      queryFn: async () => ({
-        url: `https://example.com/${input.params.name}`,
-      }),
-    }))
+    mocks.previewQueryOptions.mockImplementation(({ input }) =>
+      input === skipToken
+        ? skippedConfigFileQuery
+        : {
+            queryKey: ['preview-config-file', input],
+            queryFn: async () => ({
+              name: input.params.name,
+              binary: false,
+              truncated: false,
+              text: `Preview for ${input.params.name}`,
+            }),
+          },
+    )
+    mocks.downloadQueryOptions.mockImplementation(({ input }) =>
+      input === skipToken
+        ? skippedConfigFileQuery
+        : {
+            queryKey: ['download-config-file', input],
+            queryFn: async () => ({
+              url: `https://example.com/${input.params.name}`,
+            }),
+          },
+    )
   })
 
   it('should prevent missing files from being previewed or downloaded', async () => {
@@ -528,10 +562,14 @@ describe('AgentFiles', () => {
       resolveDownload = resolve
     })
     const downloadQueryFn = vi.fn(() => downloadResponse)
-    mocks.downloadQueryOptions.mockImplementation(({ input }) => ({
-      queryKey: ['download-config-file', input],
-      queryFn: downloadQueryFn,
-    }))
+    mocks.downloadQueryOptions.mockImplementation(({ input }) =>
+      input === skipToken
+        ? skippedConfigFileQuery
+        : {
+            queryKey: ['download-config-file', input],
+            queryFn: downloadQueryFn,
+          },
+    )
     const { queryClient } = renderAgentFiles()
     queryClient.setQueryData(
       [
@@ -557,6 +595,13 @@ describe('AgentFiles', () => {
       'src',
       'https://example.com/current-diagram.png',
     )
+
+    const trialQueries = queryClient.getQueryCache().findAll({
+      queryKey: consoleOperationKey('trialApps'),
+    })
+    expect(trialQueries).toHaveLength(2)
+    for (const query of trialQueries)
+      expect(query.state).toMatchObject({ status: 'pending', fetchStatus: 'idle', error: null })
   })
 
   it('should download configured files from the row action by config name', async () => {

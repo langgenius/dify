@@ -1,18 +1,19 @@
-import type { ContractRouterClient } from '@orpc/contract'
-import type { JsonifiedClient } from '@orpc/openapi-client'
+import type { RouterContractClient } from '@orpc/contract'
+import type { JsonifiedClient } from '@orpc/openapi'
 import type { APIRequestContext } from '@playwright/test'
 import type { ConsoleClientContext } from './playwright-fetch.ts'
 import { consoleRouterContract } from '@dify/contracts/api/console/router.gen'
 import { createORPCClient } from '@orpc/client'
-import { RequestValidationPlugin, ResponseValidationPlugin } from '@orpc/contract/plugins'
-import { OpenAPILink } from '@orpc/openapi-client/fetch'
+import { RequestValidationLinkPlugin, ResponseValidationLinkPlugin } from '@orpc/contract/plugins'
+import { OpenAPILink } from '@orpc/openapi/fetch'
 import { apiURL } from '../../test-env.ts'
+import { ConsoleHttpError } from './console-error.ts'
 import { createPlaywrightFetch } from './playwright-fetch.ts'
 
 type ConsoleRequestContext = Pick<APIRequestContext, 'fetch' | 'storageState'>
 
 export type ConsoleClient = JsonifiedClient<
-  ContractRouterClient<typeof consoleRouterContract, ConsoleClientContext>
+  RouterContractClient<typeof consoleRouterContract, ConsoleClientContext>
 >
 
 export type CreateConsoleClientOptions = {
@@ -32,6 +33,7 @@ export function createConsoleClient({
   requireCsrfToken = true,
 }: CreateConsoleClientOptions): ConsoleClient {
   const link = new OpenAPILink<ConsoleClientContext>(consoleRouterContract, {
+    customErrorResponseBodyDecoder: (body, response) => new ConsoleHttpError(response.status, body),
     fetch: createPlaywrightFetch(requestContext),
     headers: async () => {
       const headers = new Headers({ Accept: 'application/json' })
@@ -42,10 +44,11 @@ export function createConsoleClient({
       return headers
     },
     plugins: [
-      new RequestValidationPlugin<ConsoleClientContext>(consoleRouterContract),
-      new ResponseValidationPlugin<ConsoleClientContext>(consoleRouterContract),
+      new RequestValidationLinkPlugin<ConsoleClientContext>(consoleRouterContract),
+      new ResponseValidationLinkPlugin<ConsoleClientContext>(consoleRouterContract),
     ],
-    url: new URL('/console/api/', apiBaseURL).toString(),
+    origin: new URL(apiBaseURL).origin,
+    url: '/console/api',
   })
 
   return createORPCClient<ConsoleClient>(link)

@@ -1,7 +1,44 @@
+import type {
+  ClientContext,
+  ORPCErrorOptions,
+  StandardBody,
+  StandardLazyResponse,
+} from '@orpc/client'
+import type { StandardLinkTransportInterceptorOptions } from '@orpc/client/standard'
 import { ORPCError } from '@orpc/client'
 
+/**
+ * A non-2xx backend response as an oRPC error. oRPC v2 errors carry no HTTP status, so the
+ * status lives on this subclass; contract reconciliation clones errors with their own props.
+ */
+export class HttpError<TCode extends string = string> extends ORPCError<
+  TCode,
+  Record<string, unknown> | undefined
+> {
+  readonly status: number
+
+  constructor(
+    code: TCode,
+    {
+      status,
+      ...options
+    }: ORPCErrorOptions<Record<string, unknown> | undefined> & { status: number },
+  ) {
+    super(code, options)
+    this.status = status
+  }
+}
+
+/**
+ * Checks the `status` field instead of `instanceof HttpError`: RSC and SSR module graphs load
+ * separate copies of this class, while `ORPCError` matches across them.
+ */
+export function isHttpError(error: unknown): error is HttpError {
+  return error instanceof ORPCError && 'status' in error && typeof error.status === 'number'
+}
+
 export function getHttpErrorStatus(error: unknown): number | undefined {
-  return error instanceof ORPCError ? error.status : undefined
+  return isHttpError(error) ? error.status : undefined
 }
 
 export function isUnauthorizedError(error: unknown): boolean {
@@ -37,7 +74,7 @@ export function createHttpError(
   body?: unknown,
 ) {
   const data = asRecord(body)
-  return new ORPCError(nonEmptyString(data?.code) ?? 'HTTP_ERROR', {
+  return new HttpError(nonEmptyString(data?.code) ?? 'HTTP_ERROR', {
     // The HTTP status is authoritative even when the response body disagrees.
     status: response.status,
     message:
@@ -50,6 +87,19 @@ export function createHttpError(
   })
 }
 
+/** `customErrorResponseBodyDecoder` for OpenAPI links whose backend answers with its own error body. */
+export function httpErrorFromStandardResponse(
+  body: unknown,
+  response: { status: number; headers: Record<string, string | string[] | undefined> },
+) {
+  const headers = new Headers()
+  for (const [key, value] of Object.entries(response.headers)) {
+    for (const item of Array.isArray(value) ? value : value === undefined ? [] : [value])
+      headers.append(key, item)
+  }
+  return createHttpError({ status: response.status, statusText: '', headers }, body)
+}
+
 export function httpErrorFromXhr(xhr: XMLHttpRequest) {
   const headers = new Headers()
   for (const line of xhr
@@ -60,6 +110,34 @@ export function httpErrorFromXhr(xhr: XMLHttpRequest) {
     if (separator > 0) headers.append(line.slice(0, separator), line.slice(separator + 1).trim())
   }
   return createHttpError({ status: xhr.status, statusText: xhr.statusText, headers }, xhr.response)
+}
+
+/**
+ * Link transport interceptor that reads non-2xx bodies as JSON whatever their content type, like
+ * `httpErrorFromResponse`, so `httpErrorFromStandardResponse` decodes the backend envelope.
+ * Empty, malformed JSON and proxy HTML errors decode to no body and still carry an HTTP status.
+ */
+export async function resolveHttpErrorBody<TContext extends ClientContext>({
+  next,
+}: StandardLinkTransportInterceptorOptions<TContext> & {
+  next: () => Promise<StandardLazyResponse>
+}): Promise<StandardLazyResponse> {
+  const response = await next()
+  if (!isHttpErrorStatus(response.status)) return response
+
+  let body: Promise<StandardBody> | undefined
+  return {
+    status: response.status,
+    headers: response.headers,
+    resolveBody: () => {
+      body ??= response.resolveBody('json').catch((error: unknown) => {
+        // Body read failures, including cancellation, must keep their original identity.
+        if (!(error instanceof SyntaxError)) throw error
+        return undefined
+      })
+      return body
+    },
+  }
 }
 
 export async function httpErrorFromResponse(response: Response) {

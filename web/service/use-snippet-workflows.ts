@@ -1,3 +1,4 @@
+import type { QueryKey } from '@tanstack/react-query'
 import type { PublishSnippetWorkflowResponse, SnippetWorkflow } from '@/types/snippet'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '@/service/console'
@@ -62,14 +63,18 @@ export const useSnippetPublishedWorkflow = (
     input: {
       params: { snippet_id: snippetId },
     },
-    enabled: !!snippetId,
   })
 
-  return useQuery({
-    ...queryOptions,
+  // A missing published workflow resolves to `undefined`, widening the generated query data.
+  return useQuery<SnippetWorkflow | undefined, Error, SnippetWorkflow | undefined, QueryKey>({
+    queryKey: queryOptions.queryKey,
+    enabled: !!snippetId,
     queryFn: async (context) => {
       try {
-        const publishedWorkflow = await queryOptions.queryFn(context)
+        const publishedWorkflow = await queryOptions.queryFn({
+          ...context,
+          queryKey: queryOptions.queryKey,
+        })
         if (publishedWorkflow) onSuccess?.(publishedWorkflow)
         return publishedWorkflow
       } catch (error) {

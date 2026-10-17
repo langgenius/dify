@@ -5,6 +5,7 @@ import type {
 import { act, screen, waitFor } from '@testing-library/react'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { consoleQuery } from '@/service/console'
+import { routeFetchTo } from '@/test/console/fetch'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import LearnDify from '../index'
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '../storage'
@@ -13,7 +14,7 @@ const { request, locale } = vi.hoisted(() => ({
   request: vi.fn(),
   locale: { value: 'en-US' },
 }))
-vi.mock('@/service/base', () => ({ request }))
+routeFetchTo(request)
 vi.mock('#i18n', async (importOriginal) => ({
   ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => locale.value,

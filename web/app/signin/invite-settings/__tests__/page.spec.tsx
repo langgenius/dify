@@ -29,12 +29,12 @@ vi.mock('react-i18next', async () => {
 vi.mock('@tanstack/react-query', async () => {
   const actual =
     await vi.importActual<typeof import('@tanstack/react-query')>('@tanstack/react-query')
+  const { getOperationPath } = await import('@/test/console/operation-hooks')
   return {
     ...actual,
     // The invitation check is answered separately from the account profile query.
-    useQuery: (options: { queryKey: unknown[] }) =>
-      Array.isArray(options.queryKey[0]) &&
-      options.queryKey[0].join('.') === 'console.activate.check.get'
+    useQuery: (options: { queryKey: unknown }) =>
+      getOperationPath(options.queryKey) === 'activate.check.get'
         ? mockInvitationCheckHook(options)
         : mockProfileQuery(options),
     useQueryClient: vi.fn(() => ({

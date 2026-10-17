@@ -1,12 +1,12 @@
 import type { ClientContext, ClientLink } from '@orpc/client'
-import type { AnyContractRouter } from '@orpc/contract'
+import type { RouterContract } from '@orpc/contract'
 import { contractLoaders } from '@dify/contracts/api/console/orpc.gen'
 import { DynamicLink } from '@orpc/client'
 
-const generatedConsoleContractLoaders: Partial<Record<string, () => Promise<AnyContractRouter>>> =
+const generatedConsoleContractLoaders: Partial<Record<string, () => Promise<RouterContract>>> =
   contractLoaders
 
-async function loadConsoleContractForSegment(segment: string): Promise<AnyContractRouter> {
+async function loadConsoleContractForSegment(segment: string): Promise<RouterContract> {
   if (segment === 'enterprise') {
     const [{ contract: enterpriseContract }, { contract: appDeployContract }] = await Promise.all([
       import('@dify/contracts/enterprise/orpc.gen'),
@@ -20,7 +20,7 @@ async function loadConsoleContractForSegment(segment: string): Promise<AnyContra
 }
 
 export function createConsoleContractLink<TContext extends ClientContext>(
-  createLink: (contract: AnyContractRouter) => ClientLink<TContext>,
+  createLink: (contract: RouterContract) => ClientLink<TContext>,
 ) {
   const routerLinkPromises = new Map<string, Promise<ClientLink<TContext>>>()
 

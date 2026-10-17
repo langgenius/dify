@@ -73,8 +73,11 @@ const createRequestContext = (response: APIResponse, csrfToken = 'csrf-token') =
   return { context, fetch }
 }
 
-const callPlaywrightFetch = (requestContext: Pick<APIRequestContext, 'fetch'>, request: Request) =>
-  createPlaywrightFetch(requestContext)(request, {}, { context: {} }, ['test'], undefined)
+const callPlaywrightFetch = (
+  requestContext: Pick<APIRequestContext, 'fetch'>,
+  url: string,
+  init: RequestInit = {},
+) => createPlaywrightFetch(requestContext)(url, init, { context: {} }, ['test'])
 
 describe('createPlaywrightFetch', () => {
   it('forwards the Fetch request without following redirects and returns a standard Response', async () => {
@@ -84,14 +87,11 @@ describe('createPlaywrightFetch', () => {
       statusText: 'Created',
     })
     const { context, fetch } = createRequestContext(apiResponse)
-    const response = await callPlaywrightFetch(
-      context,
-      new Request('http://api.test/console/api/apps', {
-        body: '{"name":"E2E App"}',
-        headers: { 'content-type': 'application/json', 'x-test': 'value' },
-        method: 'POST',
-      }),
-    )
+    const response = await callPlaywrightFetch(context, 'http://api.test/console/api/apps', {
+      body: '{"name":"E2E App"}',
+      headers: { 'content-type': 'application/json', 'x-test': 'value' },
+      method: 'POST',
+    })
 
     expect(fetch).toHaveBeenCalledWith(
       'http://api.test/console/api/apps',
@@ -110,10 +110,9 @@ describe('createPlaywrightFetch', () => {
   it('represents a 204 response without an invalid response body', async () => {
     const { context } = createRequestContext(createApiResponse({ body: '', status: 204 }))
 
-    const response = await callPlaywrightFetch(
-      context,
-      new Request('http://api.test/console/api/apps/app-1', { method: 'DELETE' }),
-    )
+    const response = await callPlaywrightFetch(context, 'http://api.test/console/api/apps/app-1', {
+      method: 'DELETE',
+    })
 
     expect(response.status).toBe(204)
     await expect(response.text()).resolves.toBe('')
@@ -126,10 +125,11 @@ describe('createPlaywrightFetch', () => {
 
     await callPlaywrightFetch(
       context,
-      new Request('http://api.test/console/api/workspaces/current/plugin/upload/pkg', {
+      'http://api.test/console/api/workspaces/current/plugin/upload/pkg',
+      {
         body: formData,
         method: 'POST',
-      }),
+      },
     )
 
     const options = fetch.mock.calls[0]?.[1]
@@ -153,9 +153,9 @@ describe('createPlaywrightFetch', () => {
       dispose,
     })
 
-    await expect(
-      callPlaywrightFetch(context, new Request('http://api.test/console/api/apps')),
-    ).rejects.toThrow('redirected with 302')
+    await expect(callPlaywrightFetch(context, 'http://api.test/console/api/apps')).rejects.toThrow(
+      'redirected with 302',
+    )
     expect(dispose).toHaveBeenCalledOnce()
   })
 })

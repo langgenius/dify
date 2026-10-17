@@ -1,6 +1,7 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
+import { routeFetchTo } from '@/test/console/fetch'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { createTestQueryClient } from '@/test/query-client'
 import Panel from '../panel'
@@ -9,7 +10,7 @@ const { request } = vi.hoisted(() => ({
   request:
     vi.fn<(url: string, init: RequestInit, options: { request: Request }) => Promise<Response>>(),
 }))
-vi.mock('@/service/base', () => ({ request }))
+routeFetchTo(request)
 vi.mock('@/app/notifications', () => ({ toast: vi.fn() }))
 
 const langfuseConfig = {

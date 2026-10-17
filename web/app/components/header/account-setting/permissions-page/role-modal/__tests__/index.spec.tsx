@@ -36,7 +36,7 @@ const workspacePermissionCatalog = {
 const renderModal = (modal: ReactNode) => {
   const queryClient = createTestQueryClient()
   queryClient.setQueryData(
-    consoleQuery.workspaces.current.rbac.rolePermissions.catalog.get.queryKey({ input: {} }),
+    consoleQuery.workspaces.current.rbac.rolePermissions.catalog.get.queryKey(),
     workspacePermissionCatalog,
   )
 

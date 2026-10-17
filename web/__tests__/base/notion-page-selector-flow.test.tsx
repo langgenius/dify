@@ -27,12 +27,13 @@ vi.mock('@tanstack/react-virtual', () => ({
 // invalidates that query when the credential changes.
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  const { getOperationInput } = await import('@/test/console/operation-hooks')
   return {
     ...actual,
-    useQuery: (options: {
-      queryKey: [unknown, { input: { query: { dataset_id: string; credential_id: string } } }]
-    }) => {
-      const { query } = options.queryKey[1].input
+    useQuery: (options: { queryKey: unknown }) => {
+      const { query } = getOperationInput<{
+        query: { dataset_id: string; credential_id: string }
+      }>(options.queryKey)!
       const result = mockUsePreImportNotionPages({
         datasetId: query.dataset_id,
         credentialId: query.credential_id,

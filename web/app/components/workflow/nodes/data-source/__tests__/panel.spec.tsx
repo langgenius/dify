@@ -5,6 +5,7 @@ import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests_
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { routeFetchTo } from '@/test/console/fetch'
 import Panel from '../panel'
 
 const { update, get } = vi.hoisted(() => ({
@@ -14,12 +15,12 @@ const { update, get } = vi.hoisted(() => ({
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
   get,
-  // Console contract requests; only the schema type definitions are expected.
-  request: async (_url: string, _init: RequestInit, { request }: { request: Request }) => {
-    if (new URL(request.url).pathname.endsWith('/spec/schema-definitions')) return Response.json([])
-    throw new Error(`Unexpected request: ${request.url}`)
-  },
 }))
+// Console contract requests; only the schema type definitions are expected.
+routeFetchTo(async (_url: string, _init: RequestInit, { request }: { request: Request }) => {
+  if (new URL(request.url).pathname.endsWith('/spec/schema-definitions')) return Response.json([])
+  throw new Error(`Unexpected request: ${request.url}`)
+})
 vi.mock('../../../hooks/use-node-data-update', () => ({
   useNodeDataUpdate: () => ({ handleNodeDataUpdateWithSyncDraft: update }),
 }))

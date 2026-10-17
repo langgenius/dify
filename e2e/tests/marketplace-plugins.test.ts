@@ -1,6 +1,6 @@
 import type { ConsoleClient } from '../support/api/console-client.ts'
-import { ORPCError } from '@orpc/client'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { ConsoleHttpError } from '../support/api/console-error.ts'
 import { bootstrapMarketplacePlugins } from '../support/marketplace-plugins.ts'
 
 const createMarketplaceConsoleClient = (installError: unknown) => {
@@ -63,14 +63,9 @@ describe('bootstrapMarketplacePlugins', () => {
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(new Response('plugin-package'))
     const { consoleClient, installPackage, uploadPackage } = createMarketplaceConsoleClient(
-      new ORPCError('INTERNAL_SERVER_ERROR', {
-        data: {
-          body: {
-            message:
-              'Reached maximum retries (3) for URL https://marketplace.test/api/v1/plugins/download-url',
-          },
-        },
-        status: 500,
+      new ConsoleHttpError(500, {
+        message:
+          'Reached maximum retries (3) for URL https://marketplace.test/api/v1/plugins/download-url',
       }),
     )
     const result = await bootstrapTestPlugin(consoleClient)
@@ -94,10 +89,7 @@ describe('bootstrapMarketplacePlugins', () => {
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(new Response('plugin-package'))
     const { consoleClient, installPackage, uploadPackage } = createMarketplaceConsoleClient(
-      new ORPCError('INTERNAL_SERVER_ERROR', {
-        data: { body: { message: 'Database unavailable' } },
-        status: 500,
-      }),
+      new ConsoleHttpError(500, { message: 'Database unavailable' }),
     )
 
     const result = await bootstrapTestPlugin(consoleClient)

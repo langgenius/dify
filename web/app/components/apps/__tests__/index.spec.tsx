@@ -9,6 +9,7 @@ import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { consoleQuery } from '@/service/console'
+import { routeFetchTo } from '@/test/console/fetch'
 import {
   createConsoleQueryClient,
   renderWithConsoleQuery as render,
@@ -26,7 +27,7 @@ const { request, toast, checkDependencies, redirect, trackCreateApp, push, repla
     replace: vi.fn(),
     search: { params: new URLSearchParams() },
   }))
-vi.mock('@/service/base', () => ({ request }))
+routeFetchTo(request)
 vi.mock('@/app/notifications', () => ({ toast }))
 vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
   usePluginDependencies: () => ({ handleCheckPluginDependencies: checkDependencies }),
@@ -235,7 +236,11 @@ it('handles detail rejection once without import, navigation, or reopening the s
   const paths = request.mock.calls.map(([url]) => new URL(url).pathname.replace('/console/api', ''))
   expect(paths.filter((path) => path === '/explore/apps/canonical-template')).toHaveLength(1)
   expect(paths.some((path) => path.startsWith('/apps/imports'))).toBe(false)
-  expect(toast.error).toHaveBeenCalledOnce()
+  // The Console transport reports the backend message; the create flow adds its own failure.
+  expect(vi.mocked(toast.error).mock.calls).toEqual([
+    ['Unavailable'],
+    ['app.newApp.appCreateFailed'],
+  ])
   expect(redirect).not.toHaveBeenCalled()
   expect(trackCreateApp).not.toHaveBeenCalled()
 })

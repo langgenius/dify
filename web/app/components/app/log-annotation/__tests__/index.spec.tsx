@@ -4,6 +4,7 @@ import { Suspense } from 'react'
 import ErrorBoundary from '@/app/components/base/error-boundary'
 import { PageType } from '@/app/components/base/features/new-feature-panel/annotation-reply/type'
 import { consoleQuery } from '@/service/console'
+import { routeFetchTo } from '@/test/console/fetch'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
 import LogAnnotation from '../index'
@@ -48,10 +49,7 @@ const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
   })
 }
 
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  request: vi.fn(() => new Promise(() => {})),
-}))
+routeFetchTo(() => new Promise<Response>(() => {}))
 
 describe('LogAnnotation', () => {
   beforeEach(() => {

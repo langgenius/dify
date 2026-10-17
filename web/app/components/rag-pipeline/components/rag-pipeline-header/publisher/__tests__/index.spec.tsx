@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderEditor as renderWithoutPricing } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { consoleQueryKey } from '@/test/console/operation-hooks'
 import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
 import Publisher from '../index'
 import { Popup } from '../popup'
@@ -147,9 +148,9 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
 const mockPublishWorkflow = vi.fn()
 const mockPublishAsCustomizedPipeline = vi.fn()
 
-const expectInvalidated = (...path: string[]) =>
+const expectInvalidated = (path: string, input: unknown) =>
   expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
-    queryKey: expect.arrayContaining([['console', ...path]]),
+    queryKey: consoleQueryKey(path, input),
   })
 
 vi.mock('../../../publish-as-knowledge-pipeline-modal', () => ({
@@ -623,7 +624,9 @@ describe('publisher', () => {
 
         await waitFor(() => {
           expect(mockMutateDatasetRes).toHaveBeenCalled()
-          expectInvalidated('rag', 'pipelines', 'byPipelineId', 'workflows', 'publish', 'get')
+          expectInvalidated('rag.pipelines.byPipelineId.workflows.publish.get', {
+            params: { pipeline_id: 'test-pipeline-id' },
+          })
           expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: datasetListKey })
         })
       })
@@ -675,7 +678,7 @@ describe('publisher', () => {
         fireEvent.click(screen.getByTestId('modal-confirm'))
 
         await waitFor(() => {
-          expectInvalidated('rag', 'pipeline', 'templates', 'get')
+          expectInvalidated('rag.pipeline.templates.get', { query: { type: 'customized' } })
         })
       })
     })

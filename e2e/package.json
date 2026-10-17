@@ -35,7 +35,7 @@
     "@dify/tsconfig": "workspace:*",
     "@orpc/client": "catalog:",
     "@orpc/contract": "catalog:",
-    "@orpc/openapi-client": "catalog:",
+    "@orpc/openapi": "catalog:",
     "@playwright/test": "catalog:",
     "@t3-oss/env-core": "catalog:",
     "@types/node": "catalog:",

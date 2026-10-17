@@ -15,15 +15,7 @@ export const zAccountPayload = z.object({
  * AdvancedChatNodeRunPayload
  */
 export const zAdvancedChatNodeRunPayload = z.object({
-  files: z
-    .record(
-      z.string(),
-      z.union([
-        z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
-        z.array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File)),
-      ]),
-    )
-    .nullish(),
+  files: z.record(z.string(), z.union([z.instanceof(Blob), z.array(z.instanceof(Blob))])).nullish(),
   inputs: z.record(z.string(), z.unknown()).optional(),
   query: z.string().optional().default(''),
 })
@@ -34,20 +26,10 @@ export const zAdvancedChatNodeRunPayload = z.object({
  * A chat run against an advanced-chat (chatflow) app, which can also pin a workflow version.
  */
 export const zAdvancedChatRunPayload = z.object({
-  attachments: z
-    .array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File))
-    .nullish(),
+  attachments: z.array(z.instanceof(Blob)).nullish(),
   auto_generate_name: z.boolean().optional().default(true),
   conversation_id: z.string().nullish(),
-  files: z
-    .record(
-      z.string(),
-      z.union([
-        z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
-        z.array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File)),
-      ]),
-    )
-    .nullish(),
+  files: z.record(z.string(), z.union([z.instanceof(Blob), z.array(z.instanceof(Blob))])).nullish(),
   inputs: z.record(z.string(), z.unknown()).optional(),
   query: z.string(),
   workflow_id: z.string().nullish(),
@@ -315,20 +297,10 @@ export const zChatAppInfoPatch = z.object({
  * ChatRunPayload
  */
 export const zChatRunPayload = z.object({
-  attachments: z
-    .array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File))
-    .nullish(),
+  attachments: z.array(z.instanceof(Blob)).nullish(),
   auto_generate_name: z.boolean().optional().default(true),
   conversation_id: z.string().nullish(),
-  files: z
-    .record(
-      z.string(),
-      z.union([
-        z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
-        z.array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File)),
-      ]),
-    )
-    .nullish(),
+  files: z.record(z.string(), z.union([z.instanceof(Blob), z.array(z.instanceof(Blob))])).nullish(),
   inputs: z.record(z.string(), z.unknown()).optional(),
   query: z.string(),
   workspace_id: z.string().nullish(),
@@ -381,18 +353,8 @@ export const zChatWebAppPatch = z.object({
  * CompletionRunPayload
  */
 export const zCompletionRunPayload = z.object({
-  attachments: z
-    .array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File))
-    .nullish(),
-  files: z
-    .record(
-      z.string(),
-      z.union([
-        z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
-        z.array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File)),
-      ]),
-    )
-    .nullish(),
+  attachments: z.array(z.instanceof(Blob)).nullish(),
+  files: z.record(z.string(), z.union([z.instanceof(Blob), z.array(z.instanceof(Blob))])).nullish(),
   inputs: z.record(z.string(), z.unknown()).optional(),
   query: z.string().optional().default(''),
   workspace_id: z.string().nullish(),
@@ -537,18 +499,8 @@ export const zDevicePollRequest = z.object({
  * DraftWorkflowRunPayload
  */
 export const zDraftWorkflowRunPayload = z.object({
-  attachments: z
-    .array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File))
-    .nullish(),
-  files: z
-    .record(
-      z.string(),
-      z.union([
-        z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
-        z.array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File)),
-      ]),
-    )
-    .nullish(),
+  attachments: z.array(z.instanceof(Blob)).nullish(),
+  files: z.record(z.string(), z.union([z.instanceof(Blob), z.array(z.instanceof(Blob))])).nullish(),
   inputs: z.record(z.string(), z.unknown()).optional(),
   workspace_id: z.string().nullish(),
 })
@@ -665,7 +617,7 @@ export const zFileResponse = z.object({
  * FileUploadPayload
  */
 export const zFileUploadPayload = z.object({
-  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+  file: z.instanceof(Blob),
 })
 
 /**
@@ -1086,15 +1038,7 @@ export const zNodeChange = z.object({
  * NodeRunPayload
  */
 export const zNodeRunPayload = z.object({
-  files: z
-    .record(
-      z.string(),
-      z.union([
-        z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
-        z.array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File)),
-      ]),
-    )
-    .nullish(),
+  files: z.record(z.string(), z.union([z.instanceof(Blob), z.array(z.instanceof(Blob))])).nullish(),
   inputs: z.record(z.string(), z.unknown()).optional(),
 })
 
@@ -1196,15 +1140,7 @@ export const zOpenApiErrorCode = z.enum([
  */
 export const zOpenApiFormSubmitPayload = z.object({
   action: z.string(),
-  files: z
-    .record(
-      z.string(),
-      z.union([
-        z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
-        z.array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File)),
-      ]),
-    )
-    .nullish(),
+  files: z.record(z.string(), z.union([z.instanceof(Blob), z.array(z.instanceof(Blob))])).nullish(),
   inputs: z.record(z.string(), zJsonValue),
 })
 
@@ -1997,18 +1933,8 @@ export const zWorkflowRunNodeExecutionListResponse = z.object({
  * WorkflowRunPayload
  */
 export const zWorkflowRunPayload = z.object({
-  attachments: z
-    .array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File))
-    .nullish(),
-  files: z
-    .record(
-      z.string(),
-      z.union([
-        z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
-        z.array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File)),
-      ]),
-    )
-    .nullish(),
+  attachments: z.array(z.instanceof(Blob)).nullish(),
+  files: z.record(z.string(), z.union([z.instanceof(Blob), z.array(z.instanceof(Blob))])).nullish(),
   inputs: z.record(z.string(), z.unknown()).optional(),
   workflow_id: z.string().nullish(),
   workspace_id: z.string().nullish(),

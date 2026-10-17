@@ -4,16 +4,14 @@ import userEvent from '@testing-library/user-event'
 import { AgentPermission } from '@/features/agent-v2/acl'
 import { RESOURCE_ACCESS_SETTINGS_PAGE_SIZE } from '@/service/access-control/constants'
 import { consoleQuery } from '@/service/console'
+import { routeFetchTo } from '@/test/console/fetch'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createAccessPolicyFixture } from '@/test/fixtures/access-policy'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { AgentAccessConfigPage } from '../page'
 
 const request = vi.hoisted(() => vi.fn())
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  request,
-}))
+routeFetchTo(request)
 
 const resource = consoleQuery.workspaces.current.rbac.agents.byAgentId
 const params = { agent_id: 'agent-1' }

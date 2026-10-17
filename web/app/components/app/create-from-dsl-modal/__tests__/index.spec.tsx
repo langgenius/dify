@@ -49,9 +49,9 @@ vi.mock('@/service/console', async (importOriginal) => {
       features: actual.consoleQuery.features,
       account: {
         profile: {
-          get: {
-            queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
-          },
+          get: (await import('@/test/console/operation-hooks')).consoleOperationStub(
+            'account.profile.get',
+          ),
         },
       },
       systemFeatures: actual.consoleQuery.systemFeatures,

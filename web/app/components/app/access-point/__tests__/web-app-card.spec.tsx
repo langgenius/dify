@@ -13,6 +13,7 @@ import { toast } from '@/app/notifications'
 import { AccessMode } from '@/models/access-control'
 import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { routeFetchTo } from '@/test/console/fetch'
 import { render } from '@/test/console/render'
 import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
@@ -34,28 +35,22 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-vi.mock('@/service/base', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/base')>()
-  return {
-    ...actual,
-    request: async (url: string, _init: RequestInit, options: { request: Request }) => {
-      if (options.request.method === 'GET') return Response.json(await mocks.getAppDetail())
-      if (url.endsWith('/site/access-token-reset')) {
-        const site = await mocks.resetSiteAccessToken({ params: { app_id: 'app-1' } })
-        if (mocks.appInfo?.site) {
-          mocks.appInfo = {
-            ...mocks.appInfo,
-            site: { ...mocks.appInfo.site, code: site.code, access_token: site.code },
-          }
-        }
-        return Response.json(site)
+routeFetchTo(async (url: string, _init: RequestInit, options: { request: Request }) => {
+  if (options.request.method === 'GET') return Response.json(await mocks.getAppDetail())
+  if (url.endsWith('/site/access-token-reset')) {
+    const site = await mocks.resetSiteAccessToken({ params: { app_id: 'app-1' } })
+    if (mocks.appInfo?.site) {
+      mocks.appInfo = {
+        ...mocks.appInfo,
+        site: { ...mocks.appInfo.site, code: site.code, access_token: site.code },
       }
-      const body = await options.request.json()
-      const updatedApp = await mocks.siteEnable({ params: { app_id: 'app-1' }, body })
-      mocks.appInfo = { ...mocks.appInfo, ...updatedApp }
-      return Response.json(mocks.appInfo)
-    },
+    }
+    return Response.json(site)
   }
+  const body = await options.request.json()
+  const updatedApp = await mocks.siteEnable({ params: { app_id: 'app-1' }, body })
+  mocks.appInfo = { ...mocks.appInfo, ...updatedApp }
+  return Response.json(mocks.appInfo)
 })
 
 vi.mock('@/service/access-control/use-app-access-control', async (importOriginal) => {

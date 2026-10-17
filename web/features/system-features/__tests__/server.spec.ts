@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   connection: vi.fn(async () => undefined),
   getQueryClient: vi.fn(),
   getSystemFeatures: vi.fn(),
-  queryKey: [['console', 'systemFeatures', 'get'], { type: 'query' }] as const,
+  queryKey: ['system-features'] as const,
 }))
 
 vi.mock('server-only', () => ({}))

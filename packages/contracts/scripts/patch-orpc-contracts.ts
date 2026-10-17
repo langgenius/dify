@@ -1,27 +1,38 @@
 import type { OrpcErrorEntry } from '../openapi-ts.api.config.ts'
 /**
- * Declare each generated oRPC contract's documented errors with `.errors({...})`.
+ * Patch the generated oRPC contracts with what `@hey-api/openapi-ts` has no option or hook for,
+ * so this runs after generation (and before formatting):
  *
- * `@hey-api/openapi-ts` emits `oc.route(...).input(...).output(...)` but has no option or
- * hook for error maps, so this runs after generation (and before formatting). For every
- * per-code `{Code}Error` component an operation's error responses reference it declares
- * `{ status, data: z{Code}Error }`, so clients can narrow errors with `isDefinedError`
- * once the link validates them against the contract. Generic errors are not declared:
- * the open `default` error covers them and they stay undefined errors.
+ * - Documented errors, as `.errors({...})`. For every per-code `{Code}Error` component an
+ *   operation's error responses reference it declares `{ data: z{Code}Error }`, so clients can
+ *   narrow errors with `isDefinedError` once the link reconciles them against the contract.
+ *   oRPC v2 error maps carry no HTTP status; the backend body still documents it. Generic
+ *   errors are not declared: the open `default` error covers them and they stay undefined.
+ * - `responseBodyHint: 'file'` on the `openapi(...)` meta of binary-only operations.
  */
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
-import { apiJobs, orpcErrorMaps } from '../openapi-ts.api.config.ts'
+import { apiJobs, orpcErrorMaps, orpcFileResponseOperations } from '../openapi-ts.api.config.ts'
 
 const contractsDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
-const routeOperationId = (expression: ts.Expression): string | undefined => {
+type ContractRoute = { operationId: string; options: ts.ObjectLiteralExpression }
+
+/** The `openapi({ operationId, ... })` meta of a `oc.meta(openapi(...))...` contract chain. */
+const contractRoute = (expression: ts.Expression): ContractRoute | undefined => {
   let current: ts.Node = expression
   while (ts.isCallExpression(current) && ts.isPropertyAccessExpression(current.expression)) {
-    if (current.expression.name.text === 'route') {
-      const options = current.arguments[0]
+    const meta = current.arguments[0]
+    if (
+      current.expression.name.text === 'meta' &&
+      meta &&
+      ts.isCallExpression(meta) &&
+      ts.isIdentifier(meta.expression) &&
+      meta.expression.text === 'openapi'
+    ) {
+      const options = meta.arguments[0]
       if (!options || !ts.isObjectLiteralExpression(options)) return undefined
       for (const property of options.properties) {
         if (
@@ -30,7 +41,7 @@ const routeOperationId = (expression: ts.Expression): string | undefined => {
           property.name.text === 'operationId' &&
           ts.isStringLiteral(property.initializer)
         )
-          return property.initializer.text
+          return { operationId: property.initializer.text, options }
       }
       return undefined
     }
@@ -74,15 +85,19 @@ const renderErrors = (
   resolveZodName: (schemaName: string) => string,
   used: Set<string>,
 ): string => {
-  const props = entries.map(({ code, schemaName, status }) => {
+  const props = entries.map(({ code, schemaName }) => {
     const zodName = resolveZodName(schemaName)
     used.add(zodName)
-    return `${JSON.stringify(code)}: { status: ${status}, data: ${zodName} }`
+    return `${JSON.stringify(code)}: { data: ${zodName} }`
   })
   return `.errors({ ${props.join(', ')} })`
 }
 
-const patchContractFile = (directory: string, errorMaps: Map<string, OrpcErrorEntry[]>): number => {
+const patchContractFile = (
+  directory: string,
+  errorMaps: Map<string, OrpcErrorEntry[]>,
+  fileResponseOperations: Set<string>,
+): number => {
   const orpcPath = path.join(directory, 'orpc.gen.ts')
   const zodPath = path.join(directory, 'zod.gen.ts')
   if (!fs.existsSync(orpcPath) || !fs.existsSync(zodPath)) return 0
@@ -97,8 +112,11 @@ const patchContractFile = (directory: string, errorMaps: Map<string, OrpcErrorEn
     if (!ts.isVariableStatement(statement)) continue
     for (const declaration of statement.declarationList.declarations) {
       if (!declaration.initializer) continue
-      const operationId = routeOperationId(declaration.initializer)
-      const entries = operationId ? errorMaps.get(operationId) : undefined
+      const route = contractRoute(declaration.initializer)
+      if (!route) continue
+      if (fileResponseOperations.has(route.operationId))
+        insertions.push({ at: route.options.getStart() + 1, text: " responseBodyHint: 'file'," })
+      const entries = errorMaps.get(route.operationId)
       if (entries)
         insertions.push({
           at: declaration.initializer.end,
@@ -121,6 +139,10 @@ const patchContractFile = (directory: string, errorMaps: Map<string, OrpcErrorEn
 let patched = 0
 for (const job of apiJobs) {
   if (job.plugins) continue // the console entry job writes loaders, not contracts
-  patched += patchContractFile(path.join(contractsDir, job.outputPath), orpcErrorMaps(job.document))
+  patched += patchContractFile(
+    path.join(contractsDir, job.outputPath),
+    orpcErrorMaps(job.document),
+    orpcFileResponseOperations(job.document),
+  )
 }
-process.stdout.write(`declared error maps on ${patched} contracts\n`)
+process.stdout.write(`patched ${patched} contracts\n`)

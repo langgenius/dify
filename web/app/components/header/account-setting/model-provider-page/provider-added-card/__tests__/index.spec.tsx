@@ -52,10 +52,10 @@ vi.mock('@/service/console', () => ({
       current: {
         modelProviders: {
           get: {
-            key: () => [['console', 'workspaces', 'current', 'modelProviders', 'get']],
+            key: () => ['model-providers'],
             queryOptions: (options: Record<string, unknown> = {}) => ({
               ...options,
-              queryKey: [['console', 'workspaces', 'current', 'modelProviders', 'get']],
+              queryKey: ['model-providers'],
               queryFn: async () => ({ data: [] }),
             }),
           },

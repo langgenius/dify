@@ -436,15 +436,13 @@ export const zInvalidAccountPasswordError = zErrorResponse.and(
 /**
  * AccountProfilePatchPayload
  */
-export const zAccountProfilePatchPayload = z
-  .object({
-    avatar: z.string().optional(),
-    interface_language: z.string().optional(),
-    interface_theme: z.enum(['dark', 'light']).optional(),
-    name: z.string().min(3).max(30).optional(),
-    timezone: z.string().optional(),
-  })
-  .strict()
+export const zAccountProfilePatchPayload = z.strictObject({
+  avatar: z.string().optional(),
+  interface_language: z.string().optional(),
+  interface_theme: z.enum(['dark', 'light']).optional(),
+  name: z.string().min(3).max(30).optional(),
+  timezone: z.string().optional(),
+})
 
 /**
  * AccountTimezonePayload

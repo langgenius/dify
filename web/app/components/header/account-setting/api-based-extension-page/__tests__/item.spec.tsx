@@ -2,12 +2,13 @@ import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-
 import type { TFunction } from 'i18next'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import * as reactI18next from 'react-i18next'
+import { routeFetchTo } from '@/test/console/fetch'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { Item } from '../item'
 
 const { request } = vi.hoisted(() => ({ request: vi.fn() }))
-vi.mock('@/service/base', () => ({ request }))
+routeFetchTo(request)
 
 describe('Item Component', () => {
   const mockData: ApiBasedExtensionResponse = {

@@ -1,8 +1,8 @@
 import type { WebAppAddress } from './webapp-address'
 import type { FormData as HumanInputFormData } from '@/app/(humanInputLayout)/form/[token]/form'
 import type { AppConversationData, ConversationItem } from '@/models/share'
-import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { isHttpError } from './http-error'
 import {
   AppSourceType,
   fetchAppInfo,
@@ -150,7 +150,7 @@ export const useShareChatList = (params: ShareChatListParams, options: ShareQuer
       try {
         return await fetchChatList(params.conversationId, params.appSourceType, params.appId)
       } catch (error) {
-        if (address?.kind === 'environment' && error instanceof ORPCError && error.status === 404) {
+        if (address?.kind === 'environment' && isHttpError(error) && error.status === 404) {
           if (error.data?.reason === 'APPDEPLOY_CONVERSATION_NOT_FOUND')
             throw new EnvironmentConversationNotFoundError()
         }

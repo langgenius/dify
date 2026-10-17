@@ -1,9 +1,9 @@
-import { ORPCError } from '@orpc/client'
 import { act } from '@testing-library/react'
 import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { consoleClient } from '@/service/console'
+import { HttpError } from '@/service/http-error'
 import useOneStepRun from '../use-one-step-run'
 
 const mockWorkflowState = {
@@ -255,7 +255,7 @@ describe('useOneStepRun single-run input vars', () => {
   )
 
   it('preserves the plugin request error and metadata when reporting a failed run', async () => {
-    const error = new ORPCError('forbidden', {
+    const error = new HttpError('forbidden', {
       status: 403,
       message: 'Plugin access denied',
       data: { reason: 'PLUGIN_ACCESS_DENIED' },

@@ -8,6 +8,7 @@ import { screen, waitFor } from '@testing-library/react'
 import { createElement, Fragment } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
 import { consoleQuery } from '@/service/console'
+import { routeFetchTo } from '@/test/console/fetch'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createEdge, createNode, resetFixtureCounters } from '../../__tests__/fixtures'
 import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
@@ -20,14 +21,13 @@ import { useChecklist, useChecklistBeforePublish, useWorkflowRunValidation } fro
 // Mocks
 // ---------------------------------------------------------------------------
 
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  request: vi.fn((url: string) => {
+routeFetchTo(
+  vi.fn((url: string) => {
     if (url.endsWith('/workspaces/current/agent-providers'))
       return Promise.resolve(Response.json([]))
     throw new Error(`Unexpected request: ${url}`)
   }),
-}))
+)
 
 const toolServiceState = vi.hoisted(() => ({
   buildInTools: [] as ToolWithProvider[] | undefined,

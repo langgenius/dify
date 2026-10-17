@@ -7,6 +7,7 @@ import { WorkflowContext } from '@/app/components/workflow/context'
 import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
 import { createWorkflowStore } from '@/app/components/workflow/store'
 import { consoleQuery } from '@/service/console'
+import { routeFetchTo } from '@/test/console/fetch'
 import { createDatasourceProvider } from '../../__tests__/datasource-fixtures'
 import { createRagPipelineSliceSlice } from '../../store'
 import { usePipelineConfig } from '../use-pipeline-config'
@@ -15,7 +16,7 @@ const mocks = vi.hoisted(() => ({
   request: vi.fn<(url: string) => Promise<Response>>(),
   workflowConfig: vi.fn<(url: string, callback: (data: unknown) => void) => void>(),
 }))
-vi.mock('@/service/base', () => ({ request: mocks.request }))
+routeFetchTo(mocks.request)
 vi.mock('@/service/use-workflow', () => ({ useWorkflowConfig: mocks.workflowConfig }))
 
 const catalog = consoleQuery.rag.pipelines.datasourcePlugins.get

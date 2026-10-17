@@ -4,6 +4,7 @@ import { act, waitFor } from '@testing-library/react'
 import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { routeFetchTo } from '@/test/console/fetch'
 import { renderNodeConfig } from '../../__tests__/render-node-config'
 import useConfig, { useStrategyInfo } from '../use-config'
 import { createProvider, createStrategy } from './strategy-fixture'
@@ -13,7 +14,7 @@ const { request, marketplaceRefetch, marketplaceQuery } = vi.hoisted(() => ({
   marketplaceRefetch: vi.fn(),
   marketplaceQuery: vi.fn(),
 }))
-vi.mock('@/service/base', () => ({ request }))
+routeFetchTo(request)
 vi.mock('@/service/use-plugins', () => ({
   useFetchPluginsInMarketPlaceByIds: marketplaceQuery,
   useCheckInstalled: () => ({ data: { plugins: [] } }),

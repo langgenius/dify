@@ -2,6 +2,7 @@ import type { Annotation } from '@dify/contracts/api/console/apps/types.gen'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import { routeFetchTo } from '@/test/console/fetch'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { List } from '../list'
 
@@ -18,10 +19,7 @@ const { mockedRequest } = vi.hoisted(() => ({
     vi.fn<(url: string, init: RequestInit, options: { request: Request }) => Promise<Response>>(),
 }))
 
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  request: mockedRequest,
-}))
+routeFetchTo(mockedRequest)
 
 const createAnnotation = (overrides: Partial<Annotation> = {}): Annotation => ({
   id: overrides.id ?? 'annotation-id',

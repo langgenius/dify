@@ -1,6 +1,5 @@
 import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { OperationKey } from '@orpc/tanstack-query'
 import type { MockedFunction } from 'vite-plus/test'
 import type { RetrievalConfig } from '@/types/app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -669,23 +668,19 @@ describe('SettingsModal', () => {
   })
 })
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useQuery: (options: {
-      queryKey: OperationKey<
-        'query',
-        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
-      >
-    }) => {
-      if (options.queryKey[0].join('.') === 'console.workspaces.current.members.get')
-        return mockMembersQuery()
-      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
-
-      const args = options.queryKey[1].input?.params?.model_type
-      if (!args) throw new Error('Missing model type in query')
-      return mockModelListQuery(args)
+vi.mock('@tanstack/react-query', async (importOriginal) =>
+  (await import('@/test/console/operation-hooks')).mockConsoleOperationHooks(
+    await importOriginal(),
+    {
+      'workspaces.current.members.get': () => mockMembersQuery(),
+      'workspaces.current.models.modelTypes.byModelType.get': (
+        _options: unknown,
+        input: { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] } | undefined,
+      ) => {
+        const args = input?.params?.model_type
+        if (!args) throw new Error('Missing model type in query')
+        return mockModelListQuery(args)
+      },
     },
-  }
-})
+  ),
+)

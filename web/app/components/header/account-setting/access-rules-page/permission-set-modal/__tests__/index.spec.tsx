@@ -68,18 +68,16 @@ const datasetPermissionCatalog = {
 const renderModal = (modal: ReactNode) => {
   const queryClient = createTestQueryClient()
   queryClient.setQueryData(
-    consoleQuery.workspaces.current.rbac.rolePermissions.catalog.app.get.queryKey({ input: {} }),
+    consoleQuery.workspaces.current.rbac.rolePermissions.catalog.app.get.queryKey(),
     appPermissionCatalog,
   )
   queryClient.setQueryData(
-    consoleQuery.workspaces.current.rbac.rolePermissions.catalog.dataset.get.queryKey({
-      input: {},
-    }),
+    consoleQuery.workspaces.current.rbac.rolePermissions.catalog.dataset.get.queryKey(),
     datasetPermissionCatalog,
   )
 
   queryClient.setQueryData(
-    consoleQuery.workspaces.current.rbac.rolePermissions.catalog.agent.get.queryKey({ input: {} }),
+    consoleQuery.workspaces.current.rbac.rolePermissions.catalog.agent.get.queryKey(),
     {
       groups: [
         {

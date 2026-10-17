@@ -3,6 +3,7 @@ import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import AppDetailSection from '@/app/components/app-sidebar/app-detail-section'
 import { consoleQuery } from '@/service/console'
+import { routeFetchTo } from '@/test/console/fetch'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppACLPermission } from '@/utils/permission'
@@ -20,10 +21,7 @@ function deferredResponse() {
 let pathname = '/app/app-1/overview'
 const request = vi.fn<(url: string) => Promise<Response>>()
 vi.mock('@/next/navigation', () => ({ usePathname: () => pathname }))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  request: (url: string) => request(url),
-}))
+routeFetchTo((url: string) => request(url))
 vi.mock('@/app/components/app-sidebar/app-info', () => ({
   AppInfoView: ({ appDetail }: { appDetail: AppDetailWithSite }) => <span>{appDetail.name}</span>,
 }))

@@ -247,10 +247,8 @@ vi.mock('react-i18next', async () => {
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const currentWorkspaceQueryKey = ['console', 'workspaces', 'current', 'summary', 'get'] as const
-  const currentPermissionsQueryKey = [
-    ['console', 'workspaces', 'current', 'rbac', 'myPermissions', 'get'],
-    { type: 'query' },
-  ] as const
+  const { consoleQueryKey } = await import('@/test/console/operation-hooks')
+  const currentPermissionsQueryKey = consoleQueryKey('workspaces.current.rbac.myPermissions.get')
   const workspacesQueryKey = ['console', 'workspaces', 'get'] as const
   const consoleQuery = new Proxy(actual.consoleQuery, {
     get(target, prop, receiver) {

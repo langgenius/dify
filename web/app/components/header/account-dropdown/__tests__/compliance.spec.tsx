@@ -8,6 +8,7 @@ import { fireEvent, render as renderWithoutPricing, screen, waitFor } from '@tes
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { toast } from '@/app/notifications'
 import { consoleClient } from '@/service/console'
+import { routeFetchTo } from '@/test/console/fetch'
 import { seedFeatures } from '@/test/console/query-data'
 import { downloadUrl } from '@/utils/download'
 import Compliance from '../compliance'
@@ -25,9 +26,9 @@ vi.mock('@/service/console', async (importOriginal) => ({
   },
 }))
 vi.mock('@/service/base', () => ({
-  request: vi.fn(() => new Promise(() => {})),
   sseGeneratorPost: vi.fn(),
 }))
+routeFetchTo(() => new Promise<Response>(() => {}))
 
 vi.mock('@/utils/download', () => ({
   downloadUrl: vi.fn(),

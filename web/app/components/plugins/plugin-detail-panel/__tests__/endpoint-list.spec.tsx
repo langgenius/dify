@@ -2,12 +2,13 @@ import type { EndpointListItemResponse } from '@dify/contracts/api/console/works
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { routeFetchTo } from '@/test/console/fetch'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import EndpointList from '../endpoint-list'
 import { createPluginDetail } from './endpoint-fixture'
 
 const { request, showError } = vi.hoisted(() => ({ request: vi.fn(), showError: vi.fn() }))
-vi.mock('@/service/base', () => ({ request }))
+routeFetchTo(request)
 vi.mock('@/app/notifications', () => ({ toast: { error: showError } }))
 vi.mock('../../readme-panel/entrance', () => ({ ReadmeEntrance: () => null }))
 

@@ -21,13 +21,13 @@ const mocks = vi.hoisted(() => ({
   updateResourceAccessToken: vi.fn(),
 }))
 
-vi.mock('@/service/console', () => ({
+vi.mock('@/service/console', async () => ({
   consoleQuery: {
     account: {
       profile: {
-        get: {
-          queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
-        },
+        get: (await import('@/test/console/operation-hooks')).consoleOperationStub(
+          'account.profile.get',
+        ),
       },
     },
     apps: {

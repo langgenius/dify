@@ -1,6 +1,7 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
+import { routeFetchTo } from '@/test/console/fetch'
 import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import Billing from '../index'
@@ -10,13 +11,13 @@ let isManager = true
 let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'CLOUD'
 
 const mocks = vi.hoisted(() => ({
-  request: vi.fn(() => new Promise(() => {})),
+  request: vi.fn(() => new Promise<Response>(() => {})),
 }))
 
 vi.mock('@/service/base', () => ({
-  request: mocks.request,
   sseGeneratorPost: vi.fn(),
 }))
+routeFetchTo(mocks.request)
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')

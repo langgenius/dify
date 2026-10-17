@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { createRef } from 'react'
 import { toast } from '@/app/notifications'
 import { httpErrorFromResponse } from '@/service/http-error'
+import { routeFetchTo } from '@/test/console/fetch'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { createTestQueryClient } from '@/test/query-client'
 import ConfigBtn from '../config-button'
@@ -15,7 +16,7 @@ const { request } = vi.hoisted(() => ({
   request:
     vi.fn<(url: string, init: RequestInit, options: { request: Request }) => Promise<Response>>(),
 }))
-vi.mock('@/service/base', () => ({ request }))
+routeFetchTo(request)
 
 const expectRequest = async (method: string, body?: unknown) => {
   expect(request).toHaveBeenCalledOnce()
@@ -490,7 +491,6 @@ describe('ProviderConfigModal', () => {
         for (const input of screen.getAllByRole('textbox')) expect(input).toBeEnabled()
         expect(host).toHaveValue('https://draft.langfuse.com')
         expect(screen.getByRole('alert')).toHaveTextContent('Config rejected')
-        expect(request.mock.calls[0]![2]).toMatchObject({ silent: true })
         expect(toast).not.toHaveBeenCalled()
         expect(callbacks.onSaved).not.toHaveBeenCalled()
         expect(callbacks.onChosen).not.toHaveBeenCalled()

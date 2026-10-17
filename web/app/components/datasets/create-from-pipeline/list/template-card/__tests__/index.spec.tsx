@@ -5,6 +5,7 @@ import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
 import { consoleQuery } from '@/service/console'
+import { consoleQueryKey } from '@/test/console/operation-hooks'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import TemplateCard from '../index'
@@ -527,7 +528,9 @@ describe('TemplateCard', () => {
 
       await waitFor(() => {
         expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
-          queryKey: expect.arrayContaining([['console', 'rag', 'pipeline', 'templates', 'get']]),
+          queryKey: consoleQueryKey('rag.pipeline.templates.get', {
+            query: { type: 'customized' },
+          }),
         })
       })
     })

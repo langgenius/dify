@@ -5,9 +5,9 @@ import type { MutationFunctionContext, QueryFunctionContext } from '@tanstack/re
 import type { consoleQuery as ConsoleQuery } from '@/service/console'
 import { MutationObserver, QueryClient, QueryObserver } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { getSentRequest } from '@/test/console/fetch'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
-import { normalizeConsoleOpenAPIURL } from './openapi-url'
 
 const loadConsoleQuery = async () => {
   vi.resetModules()
@@ -16,20 +16,16 @@ const loadConsoleQuery = async () => {
   return module.consoleQuery
 }
 
-const loadConsoleQueryWithRequest = async (request: ReturnType<typeof vi.fn>) => {
+const loadConsoleQueryWithFetch = async () => {
   vi.resetModules()
   vi.doMock('@/utils/client', () => ({ isClient: true, isServer: false }))
-  vi.doMock('../base', () => ({ request }))
   const module = await import('@/service/console')
   return module.consoleQuery
 }
 
-const loadConsoleQueryWithFetch = async () => {
-  vi.resetModules()
-  vi.doUnmock('../base')
-  vi.doMock('@/utils/client', () => ({ isClient: true, isServer: false }))
-  const module = await import('@/service/console')
-  return module.consoleQuery
+const loadConsoleQueryWithRequest = async (request: ReturnType<typeof vi.fn<typeof fetch>>) => {
+  vi.spyOn(globalThis, 'fetch').mockImplementation(request)
+  return loadConsoleQueryWithFetch()
 }
 
 const createMutationContext = (queryClient: QueryClient): MutationFunctionContext => ({
@@ -186,7 +182,7 @@ describe('consoleQuery transport context', () => {
   it('uploads icon files as multipart data through the Console transport', async () => {
     const file = new File(['GIF89a'], 'icon.gif', { type: 'image/gif' })
     const response = { id: 'uploaded-icon', name: file.name, size: file.size }
-    const request = vi.fn().mockResolvedValue(
+    const request = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(JSON.stringify(response), {
         status: 201,
         headers: { 'content-type': 'application/json' },
@@ -198,7 +194,7 @@ describe('consoleQuery transport context', () => {
       consoleQuery.files.upload.post.mutationOptions(),
     )
     await expect(mutation.mutate({ body: { file } })).resolves.toEqual(response)
-    const outgoing = request.mock.calls[0]?.[2]?.request as Request
+    const outgoing = getSentRequest(request)
     expect(outgoing.url).toContain('/files/upload')
     expect(outgoing.headers.get('content-type')).toContain('multipart/form-data; boundary=')
     const form = await outgoing.formData()
@@ -219,7 +215,7 @@ describe('consoleQuery transport context', () => {
     async (appId) => {
       const bytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x00, 0xff])
       const file = new File([bytes], 'agent.ifpkg', { type: 'application/zip' })
-      const request = vi.fn().mockResolvedValue(
+      const request = vi.fn<typeof fetch>().mockResolvedValue(
         new Response(JSON.stringify({ id: 'import-1', status: 'completed' }), {
           status: 200,
           headers: { 'content-type': 'application/json' },
@@ -232,7 +228,7 @@ describe('consoleQuery transport context', () => {
       )
       await mutation.mutate({ body: { file, ...(appId ? { app_id: appId } : {}) } })
 
-      const outgoing = request.mock.calls[0]?.[2]?.request as Request
+      const outgoing = getSentRequest(request)
       expect(outgoing.url).toContain('/apps/imports')
       expect(outgoing.headers.get('content-type')).toContain('multipart/form-data; boundary=')
       const form = await outgoing.formData()
@@ -248,7 +244,7 @@ describe('consoleQuery transport context', () => {
 
   it('preserves archive bytes and the download filename for App exports', async () => {
     const bytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x00, 0xff])
-    const request = vi.fn().mockResolvedValue(
+    const request = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(bytes, {
         status: 200,
         headers: {
@@ -264,7 +260,7 @@ describe('consoleQuery transport context', () => {
     })
     const result = await options.queryFn({
       signal: new AbortController().signal,
-    } as QueryFunctionContext)
+    } as QueryFunctionContext<typeof options.queryKey>)
 
     expect(result).toBeInstanceOf(File)
     if (!(result instanceof File)) throw new TypeError('Expected an archive download')
@@ -276,7 +272,7 @@ describe('consoleQuery transport context', () => {
   it('preserves agent audition audio bytes and the provider content type', async () => {
     const bytes = new Uint8Array([0x52, 0x49, 0x46, 0x46, 0x00, 0xff])
     const request = vi
-      .fn()
+      .fn<typeof fetch>()
       .mockResolvedValue(new Response(bytes, { headers: { 'content-type': 'audio/wav' } }))
     const consoleQuery = await loadConsoleQueryWithRequest(request)
     const mutation = new MutationObserver(
@@ -288,7 +284,7 @@ describe('consoleQuery transport context', () => {
       body: { text: 'Preview this voice', voice: 'echo' },
     })
 
-    const outgoing = request.mock.calls[0]?.[2]?.request as Request
+    const outgoing = getSentRequest(request)
     expect(outgoing.url).toContain('/agent/agent-1/text-to-audio')
     expect(outgoing.method).toBe('POST')
     expect(await outgoing.json()).toEqual({ text: 'Preview this voice', voice: 'echo' })
@@ -297,43 +293,8 @@ describe('consoleQuery transport context', () => {
     expect(new Uint8Array(await audio.arrayBuffer())).toEqual(bytes)
   })
 
-  it('should forward silent context to the base request transport', async () => {
-    const request = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({}), {
-        status: 200,
-        headers: {
-          'content-type': 'application/json',
-        },
-      }),
-    )
-    const consoleQuery = await loadConsoleQueryWithRequest(request)
-    const queryOptions = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
-      input: {
-        params: {
-          agent_id: 'agent-1',
-        },
-      },
-      context: {
-        silent: true,
-      },
-    })
-
-    await Promise.resolve(
-      queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext),
-    ).catch(() => undefined)
-
-    expect(request).toHaveBeenCalledWith(
-      expect.stringContaining('/agent/agent-1/build-draft'),
-      expect.any(Object),
-      expect.objectContaining({
-        fetchCompat: true,
-        silent: true,
-      }),
-    )
-  })
-
-  it('should forward keepalive context to the base request transport', async () => {
-    const request = vi.fn().mockResolvedValue(
+  it('should forward keepalive context to fetch', async () => {
+    const request = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(JSON.stringify({}), {
         status: 200,
         headers: {
@@ -354,16 +315,15 @@ describe('consoleQuery transport context', () => {
     })
 
     await Promise.resolve(
-      queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext),
+      queryOptions.queryFn({
+        signal: new AbortController().signal,
+      } as QueryFunctionContext<typeof queryOptions.queryKey>),
     ).catch(() => undefined)
 
     expect(request).toHaveBeenCalledWith(
       expect.stringContaining('/agent/agent-1/build-draft'),
       expect.objectContaining({
         keepalive: true,
-      }),
-      expect.objectContaining({
-        fetchCompat: true,
       }),
     )
   })
@@ -398,7 +358,9 @@ describe('consoleQuery transport context', () => {
       },
     })
 
-    await queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext)
+    await queryOptions.queryFn({
+      signal: new AbortController().signal,
+    } as QueryFunctionContext<typeof queryOptions.queryKey>)
 
     expect(fetchSpy).toHaveBeenCalledTimes(1)
     const resource = fetchSpy.mock.calls[0]![0]
@@ -407,66 +369,24 @@ describe('consoleQuery transport context', () => {
     expect(requestURL.searchParams.has('ids[0]')).toBe(false)
     expect(requestURL.searchParams.has('ids[1]')).toBe(false)
   })
-})
-
-// Scenario: console OpenAPI query arrays follow backend parser expectations.
-describe('normalizeConsoleOpenAPIURL', () => {
-  it('should serialize repeated-only query arrays as repeated params', () => {
-    const url = normalizeConsoleOpenAPIURL(
-      'https://example.com/console/api/agent/agent-1/logs?sources%5B1%5D=debug&sources%5B0%5D=api&statuses%5B0%5D=success&keyword=test',
-    )
-    const searchParams = new URL(url).searchParams
-
-    expect(searchParams.getAll('sources')).toEqual(['api', 'debug'])
-    expect(searchParams.getAll('statuses')).toEqual(['success'])
-    expect(searchParams.get('keyword')).toBe('test')
-    expect(searchParams.has('sources[0]')).toBe(false)
-    expect(searchParams.has('statuses[0]')).toBe(false)
-  })
-
-  it('should serialize app list query arrays as repeated params', () => {
-    const url = normalizeConsoleOpenAPIURL(
-      'https://example.com/console/api/apps?tag_ids%5B0%5D=tag-1&creator_ids%5B0%5D=user-1',
-    )
-    const searchParams = new URL(url).searchParams
-
-    expect(searchParams.getAll('tag_ids')).toEqual(['tag-1'])
-    expect(searchParams.getAll('creator_ids')).toEqual(['user-1'])
-    expect(searchParams.has('tag_ids[0]')).toBe(false)
-    expect(searchParams.has('creator_ids[0]')).toBe(false)
-  })
-
-  it('should serialize snippet list query arrays as repeated params', () => {
-    const url = normalizeConsoleOpenAPIURL(
-      'https://example.com/console/api/workspaces/current/customized-snippets?tag_ids%5B0%5D=tag-1&creators%5B0%5D=user-1',
-    )
-    const searchParams = new URL(url).searchParams
-
-    expect(searchParams.getAll('tag_ids')).toEqual(['tag-1'])
-    expect(searchParams.getAll('creators')).toEqual(['user-1'])
-    expect(searchParams.has('tag_ids[0]')).toBe(false)
-    expect(searchParams.has('creators[0]')).toBe(false)
-  })
-
-  it('should serialize plugin category tags as repeated params', () => {
-    const url = normalizeConsoleOpenAPIURL(
-      'https://example.com/console/api/workspaces/current/plugin/tool/list?tags%5B1%5D=rag&tags%5B0%5D=search',
-    )
-    const searchParams = new URL(url).searchParams
-
-    expect(searchParams.getAll('tags')).toEqual(['search', 'rag'])
-    expect(searchParams.has('tags[0]')).toBe(false)
-  })
 
   // Without repeated keys the API sees no IDs and clears every annotation of the app.
-  it('should serialize annotation batch delete IDs as repeated params', () => {
-    const url = normalizeConsoleOpenAPIURL(
-      'https://example.com/console/api/apps/app-1/annotations?annotation_id%5B0%5D=a-1&annotation_id%5B1%5D=a-2',
-    )
-    const searchParams = new URL(url).searchParams
+  it('should serialize annotation batch delete ids as repeated query params', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(null, { status: 204 }))
+    const consoleQuery = await loadConsoleQueryWithFetch()
+    const mutationOptions = consoleQuery.apps.byAppId.annotations.delete.mutationOptions()
 
-    expect(searchParams.getAll('annotation_id')).toEqual(['a-1', 'a-2'])
-    expect(searchParams.has('annotation_id[0]')).toBe(false)
+    await mutationOptions.mutationFn?.(
+      { params: { app_id: 'app-1' }, query: { annotation_id: ['a-1', 'a-2'] } },
+      createMutationContext(new QueryClient()),
+    )
+
+    const resource = fetchSpy.mock.calls[0]![0]
+    const requestURL = new URL(resource instanceof Request ? resource.url : resource.toString())
+    expect(requestURL.pathname).toBe('/console/api/apps/app-1/annotations')
+    expect(requestURL.searchParams.getAll('annotation_id')).toEqual(['a-1', 'a-2'])
   })
 })
 
@@ -509,7 +429,7 @@ describe('consoleQuery agent query defaults', () => {
 
 describe('consoleQuery education defaults', () => {
   it('should not retry education status failures', async () => {
-    const request = vi.fn().mockRejectedValue(new Error('education status failed'))
+    const request = vi.fn<typeof fetch>().mockRejectedValue(new Error('education status failed'))
     const consoleQuery = await loadConsoleQueryWithRequest(request)
     const queryClient = new QueryClient({
       defaultOptions: {

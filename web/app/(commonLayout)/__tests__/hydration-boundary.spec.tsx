@@ -126,10 +126,7 @@ describe('CommonLayoutHydrationBoundary', () => {
       retry: false,
     })
     mocks.permissionQueryOptions.mockReturnValue({
-      queryKey: [
-        ['console', 'workspaces', 'current', 'rbac', 'myPermissions', 'get'],
-        { type: 'query' },
-      ],
+      queryKey: ['console', 'workspaces', 'current', 'rbac', 'myPermissions', 'get'],
       queryFn: mocks.permissionQueryFn,
       retry: false,
     })
@@ -222,7 +219,7 @@ describe('CommonLayoutHydrationBoundary', () => {
       expect.arrayContaining([
         ['common', 'user-profile'],
         ['console', 'workspaces', 'current', 'summary', 'get'],
-        [['console', 'workspaces', 'current', 'rbac', 'myPermissions', 'get'], { type: 'query' }],
+        ['console', 'workspaces', 'current', 'rbac', 'myPermissions', 'get'],
         ['console', 'features', 'get'],
       ]),
     )
@@ -234,10 +231,7 @@ describe('CommonLayoutHydrationBoundary', () => {
       target: 'workspace' as const,
     },
     {
-      queryKey: [
-        ['console', 'workspaces', 'current', 'rbac', 'myPermissions', 'get'],
-        { type: 'query' },
-      ],
+      queryKey: ['console', 'workspaces', 'current', 'rbac', 'myPermissions', 'get'],
       target: 'permissions' as const,
     },
     {

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
+import { routeFetchTo } from '@/test/console/fetch'
 import useMatchSchemaType, { getMatchedSchemaType } from '../use-match-schema-type'
 
 // Built-in definitions as served by /spec/schema-definitions (api/core/schemas/builtin).
@@ -33,10 +34,7 @@ const schemaDefinitions = [
   },
 ]
 
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  request: async () => Response.json(schemaDefinitions),
-}))
+routeFetchTo(async () => Response.json(schemaDefinitions))
 
 const wrapper = ({ children }: { children: ReactNode }) => (
   <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>

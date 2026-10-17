@@ -2,6 +2,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ModalContextProvider } from '@/context/modal-context-provider'
 import { consoleQuery } from '@/service/console'
+import { routeFetchTo } from '@/test/console/fetch'
 import {
   createConsoleQueryClient,
   createConsoleQueryWrapper,
@@ -12,9 +13,9 @@ import AnnotationUsage from '../annotation-full/usage'
 import Billing from '../billing-page'
 
 vi.mock('@/service/base', () => ({
-  request: vi.fn(() => new Promise(() => {})),
   sseGeneratorPost: vi.fn(),
 }))
+routeFetchTo(() => new Promise<Response>(() => {}))
 vi.mock('../upgrade-btn', () => ({ default: () => null }))
 vi.mock('../hooks/use-education-discount', () => ({
   useEducationDiscount: () => ({

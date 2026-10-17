@@ -4,11 +4,11 @@ import type { SsoProtocol } from '@dify/contracts/api/console/system-features/ty
 import type { FC } from 'react'
 import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
-import { ORPCError } from '@orpc/client'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { useRouter, useSearchParams } from '@/next/navigation'
+import { isHttpError } from '@/service/http-error'
 import { getUserOAuth2SSOUrl, getUserOIDCSSOUrl, getUserSAMLSSOUrl } from '@/service/sso'
 
 type SSOAuthProps = {
@@ -17,7 +17,7 @@ type SSOAuthProps = {
 
 // The request layer already toasts HTTP errors whose JSON body carries a message.
 const hasNotifiedRequestError = (error: unknown) =>
-  error instanceof ORPCError &&
+  isHttpError(error) &&
   error.status !== 401 &&
   ((typeof error.data?.message === 'string' && !!error.data.message) ||
     (typeof error.data?.error === 'string' && !!error.data.error))

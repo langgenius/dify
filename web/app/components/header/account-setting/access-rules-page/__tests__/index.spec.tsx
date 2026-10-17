@@ -1,16 +1,14 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
+import { routeFetchTo } from '@/test/console/fetch'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { seedWorkspacePermissionsQuery } from '@/test/console/workspace-permissions'
 import { createAccessPolicyFixture } from '@/test/fixtures/access-policy'
 import AccessRulesPage from '../index'
 
 const request = vi.hoisted(() => vi.fn())
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  request,
-}))
+routeFetchTo(request)
 
 const pagination = { total_count: 1, per_page: 20, current_page: 1, total_pages: 1 }
 const providers = {
@@ -45,9 +43,7 @@ function setup({ canManage = true, builtin = false } = {}) {
       },
     )
     queryClient.setQueryData(
-      consoleQuery.workspaces.current.rbac.rolePermissions.catalog[resourceType].get.queryKey({
-        input: {},
-      }),
+      consoleQuery.workspaces.current.rbac.rolePermissions.catalog[resourceType].get.queryKey(),
       {
         groups: [
           {

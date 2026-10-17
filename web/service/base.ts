@@ -1,4 +1,5 @@
 import type { FetchOptionType } from './fetch'
+import type { HttpError } from './http-error'
 import type { MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { VisionFile } from '@/types/app'
 import type {
@@ -28,7 +29,6 @@ import type {
   WorkflowPausedResponse,
   WorkflowStartedResponse,
 } from '@/types/workflow'
-import { ORPCError } from '@orpc/client'
 import Cookies from 'js-cookie'
 import { discardRegistrationSessionState } from '@/app/components/base/amplitude/registration-session-state'
 import { toast } from '@/app/notifications'
@@ -45,7 +45,12 @@ import { isClient } from '@/utils/client'
 import { resolveLoginRedirectTarget } from '@/utils/login-redirect'
 import { basePath } from '@/utils/var'
 import { base, ContentType, getBaseOptions } from './fetch'
-import { httpErrorFromXhr, isHttpErrorStatus, isTransientHttpError } from './http-error'
+import {
+  httpErrorFromXhr,
+  isHttpError,
+  isHttpErrorStatus,
+  isTransientHttpError,
+} from './http-error'
 import { refreshAccessTokenOrReLogin } from './refresh-token'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 import {
@@ -222,10 +227,6 @@ export type IOtherOptions = {
   needAllResponseContent?: boolean
   deleteContentType?: boolean
   silent?: boolean
-
-  /** If true, behaves like standard fetch: no URL prefix, returns raw Response */
-  fetchCompat?: boolean
-  request?: Request
 
   onData?: IOnData // for stream
   onReasoning?: IOnReasoning
@@ -1072,11 +1073,89 @@ export const sseGeneratorPost = (
     .catch(fail)
 }
 
+type AuthErrorRecovery = { retry: true } | { retry: false; error: unknown }
+
+/**
+ * Handles a 401 (or a public API 403): redirects to sign-in or web SSO, or refreshes the access
+ * token. `retry` means the token was refreshed and the request should be sent once more;
+ * otherwise reject with `error`, which keeps a transient refresh failure retryable.
+ */
+export const recoverFromAuthError = async (
+  err: HttpError,
+  url: string,
+  otherOptions: IOtherOptions = {},
+): Promise<AuthErrorRecovery> => {
+  const { isPublicAPI = false, silent } = otherOptions
+  const reject = (error: unknown = err): AuthErrorRecovery => ({ retry: false, error })
+  if (!isClient) return reject()
+
+  const errRespData = { code: err.code, message: err.message, reason: err.data?.reason }
+  if (!err.data) {
+    if (err.status === 401) {
+      discardRegistrationStateForConsoleAuthBoundary(otherOptions)
+      window.location.href = buildSigninUrlWithRedirect()
+    }
+    return reject()
+  }
+  if (/\/login/.test(url)) return reject()
+  if (handleWebAppAuthorizationError(errRespData, url)) return reject()
+  // special code
+  const { code, message } = errRespData
+  if (code === 'web_sso_auth_required') {
+    requiredWebSSOLogin()
+    return reject()
+  }
+  if (err.status === 403) return reject()
+  if (code === 'unauthorized_and_force_logout') {
+    // Cookies will be cleared by the backend
+    discardRegistrationStateForConsoleAuthBoundary(otherOptions)
+    window.location.reload()
+    return reject()
+  }
+  if (isPublicAPI && code === 'unauthorized') {
+    requiredWebSSOLogin()
+    return reject()
+  }
+  if (code === 'init_validate_failed' && !silent) {
+    toast.error(message, { timeout: 4000 })
+    return reject()
+  }
+  if (code === 'not_init_validated') {
+    jumpTo(`${window.location.origin}${basePath}/init`)
+    return reject()
+  }
+  if (code === 'not_setup') {
+    jumpTo(`${window.location.origin}${basePath}/install`)
+    return reject()
+  }
+
+  // refresh token
+  const [refreshErr] = await asyncRunSafe(refreshAccessTokenOrReLogin(TIME_OUT))
+  if (refreshErr === null) return { retry: true }
+  // Preserve the transient failure so callers can retry instead of treating the session as ended.
+  if (isTransientHttpError(refreshErr)) return reject(refreshErr)
+  // /device is the device-flow chooser; logged-out is a valid state
+  // there. Redirecting to /signin loses the user_code context and
+  // the post-login flow lands on /apps instead of returning here.
+  if (window.location.pathname === `${basePath}/device`) return reject()
+  discardRegistrationStateForConsoleAuthBoundary(otherOptions)
+  if (window.location.pathname !== `${basePath}/signin`) {
+    jumpTo(buildSigninUrlWithRedirect())
+    return reject()
+  }
+  if (!silent) {
+    toast.error(message)
+    return reject()
+  }
+  jumpTo(buildSigninUrlWithRedirect())
+  return reject()
+}
+
 // base request
 export const request = async <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   try {
     const otherOptionsForBaseFetch = otherOptions || {}
-    const { isPublicAPI = false, silent } = otherOptionsForBaseFetch
+    const { isPublicAPI = false } = otherOptionsForBaseFetch
     const [err, resp] = await asyncRunSafe<T>(baseFetch(url, options, otherOptionsForBaseFetch))
     if (err === null) {
       const address = resolveWebAppAddress()
@@ -1084,69 +1163,10 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
         completeWebAppAuthorizationRecovery(address)
       return resp
     }
-    if (err instanceof ORPCError && (err.status === 401 || (err.status === 403 && isPublicAPI))) {
-      if (!isClient) return Promise.reject(err)
-
-      const errRespData = { code: err.code, message: err.message, reason: err.data?.reason }
-      if (!err.data) {
-        if (err.status === 401) {
-          discardRegistrationStateForConsoleAuthBoundary(otherOptionsForBaseFetch)
-          window.location.href = buildSigninUrlWithRedirect()
-        }
-        return Promise.reject(err)
-      }
-      if (/\/login/.test(url)) return Promise.reject(err)
-      if (handleWebAppAuthorizationError(errRespData, url)) return Promise.reject(err)
-      // special code
-      const { code, message } = errRespData
-      if (code === 'web_sso_auth_required') {
-        requiredWebSSOLogin()
-        return Promise.reject(err)
-      }
-      if (err.status === 403) return Promise.reject(err)
-      if (code === 'unauthorized_and_force_logout') {
-        // Cookies will be cleared by the backend
-        discardRegistrationStateForConsoleAuthBoundary(otherOptionsForBaseFetch)
-        window.location.reload()
-        return Promise.reject(err)
-      }
-      if (isPublicAPI && code === 'unauthorized') {
-        requiredWebSSOLogin()
-        return Promise.reject(err)
-      }
-      if (code === 'init_validate_failed' && !silent) {
-        toast.error(message, { timeout: 4000 })
-        return Promise.reject(err)
-      }
-      if (code === 'not_init_validated') {
-        jumpTo(`${window.location.origin}${basePath}/init`)
-        return Promise.reject(err)
-      }
-      if (code === 'not_setup') {
-        jumpTo(`${window.location.origin}${basePath}/install`)
-        return Promise.reject(err)
-      }
-
-      // refresh token
-      const [refreshErr] = await asyncRunSafe(refreshAccessTokenOrReLogin(TIME_OUT))
-      if (refreshErr === null) return baseFetch<T>(url, options, otherOptionsForBaseFetch)
-      // Preserve the transient failure so callers can retry instead of treating the session as ended.
-      if (isTransientHttpError(refreshErr)) return Promise.reject(refreshErr)
-      // /device is the device-flow chooser; logged-out is a valid state
-      // there. Redirecting to /signin loses the user_code context and
-      // the post-login flow lands on /apps instead of returning here.
-      if (window.location.pathname === `${basePath}/device`) return Promise.reject(err)
-      discardRegistrationStateForConsoleAuthBoundary(otherOptionsForBaseFetch)
-      if (window.location.pathname !== `${basePath}/signin`) {
-        jumpTo(buildSigninUrlWithRedirect())
-        return Promise.reject(err)
-      }
-      if (!silent) {
-        toast.error(message)
-        return Promise.reject(err)
-      }
-      jumpTo(buildSigninUrlWithRedirect())
-      return Promise.reject(err)
+    if (isHttpError(err) && (err.status === 401 || (err.status === 403 && isPublicAPI))) {
+      const recovery = await recoverFromAuthError(err, url, otherOptionsForBaseFetch)
+      if (recovery.retry) return baseFetch<T>(url, options, otherOptionsForBaseFetch)
+      return Promise.reject(recovery.error)
     } else {
       return Promise.reject(err)
     }

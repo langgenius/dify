@@ -3633,7 +3633,7 @@ export const zDeleteAgentByAgentIdApiKeysByApiKeyIdResponse = z.void()
 
 export const zPostAgentByAgentIdAudioToTextBody = z.object({
   draft_type: z.enum(['debug_build', 'draft']).optional().default('draft'),
-  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+  file: z.instanceof(Blob),
 })
 
 export const zPostAgentByAgentIdAudioToTextPath = z.object({
@@ -3883,7 +3883,7 @@ export const zGetAgentByAgentIdConfigSkillsQuery = z.object({
 export const zGetAgentByAgentIdConfigSkillsResponse = zAgentConfigSkillListResponse
 
 export const zPostAgentByAgentIdConfigSkillsUploadBody = z.object({
-  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+  file: z.instanceof(Blob),
 })
 
 export const zPostAgentByAgentIdConfigSkillsUploadPath = z.object({
@@ -4200,9 +4200,7 @@ export const zPostAgentByAgentIdTextToAudioPath = z.object({
 /**
  * Generated audio bytes in the provider audio format
  */
-export const zPostAgentByAgentIdTextToAudioResponse = z.custom<Blob | File>(
-  (value) => value instanceof Blob || value instanceof File,
-)
+export const zPostAgentByAgentIdTextToAudioResponse = z.instanceof(Blob)
 
 export const zGetAgentByAgentIdTextToAudioVoicesPath = z.object({
   agent_id: z.uuid(),

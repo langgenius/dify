@@ -25,10 +25,10 @@ import { render, renderHook } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
 import { ensureAccountProfileQuery, seedAccountProfileQuery } from '@/test/console/account-profile'
 import {
-  currentWorkspaceQueryKey,
   ensureCurrentWorkspaceQuery,
   seedCurrentWorkspaceQuery,
 } from '@/test/console/current-workspace'
+import { consoleQueryKey } from '@/test/console/operation-hooks'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import {
   createSystemFeaturesFixture,
@@ -40,49 +40,8 @@ import {
 } from '@/test/console/workspace-permissions'
 import { createTestQueryClient } from '@/test/query-client'
 
-type QueryKeyProvider = {
-  queryKey: () => readonly unknown[]
-}
-
-type TrialModelsQueryProvider = {
-  get?: QueryKeyProvider
-}
-
-type AppDslVersionQueryProvider = {
-  get?: QueryKeyProvider
-}
-
-type CurrentWorkspaceQueryProvider = {
-  summary?: {
-    get?: QueryKeyProvider
-  }
-}
-
-const fallbackTrialModelsQueryKey = ['console', 'trialModels', 'get'] as const
-const fallbackAppDslVersionQueryKey = ['console', 'appDslVersion', 'get'] as const
-
-const getTrialModelsQueryKey = () => {
-  const trialModelsQuery = (consoleQuery as { trialModels?: TrialModelsQueryProvider }).trialModels
-
-  return trialModelsQuery?.get?.queryKey() ?? fallbackTrialModelsQueryKey
-}
-
-const getAppDslVersionQueryKey = () => {
-  const appDslVersionQuery = (consoleQuery as { appDslVersion?: AppDslVersionQueryProvider })
-    .appDslVersion
-
-  return appDslVersionQuery?.get?.queryKey() ?? fallbackAppDslVersionQueryKey
-}
-
-const getCurrentWorkspaceQueryKey = () => {
-  const currentWorkspaceQuery = (
-    consoleQuery as {
-      workspaces?: { current?: CurrentWorkspaceQueryProvider }
-    }
-  ).workspaces?.current
-
-  return currentWorkspaceQuery?.summary?.get?.queryKey() ?? currentWorkspaceQueryKey
-}
+const trialModelsQueryKey = consoleQueryKey('trialModels.get')
+const appDslVersionQueryKey = consoleQueryKey('appDslVersion.get')
 
 /**
  * Build a QueryClient suitable for tests. Any unseeded query stays in the
@@ -154,16 +113,15 @@ const seedPendingSystemFeatures = (queryClient: QueryClient) => {
 }
 
 const seedTrialModels = (queryClient: QueryClient, trialModels: readonly string[] = []) => {
-  queryClient.setQueryData(getTrialModelsQueryKey(), { trial_models: [...trialModels] })
+  queryClient.setQueryData(trialModelsQueryKey, { trial_models: [...trialModels] })
 }
 
 const ensureTrialModels = (queryClient: QueryClient) => {
-  const queryKey = getTrialModelsQueryKey()
-  if (queryClient.getQueryData(queryKey) === undefined) seedTrialModels(queryClient)
+  if (queryClient.getQueryData(trialModelsQueryKey) === undefined) seedTrialModels(queryClient)
 }
 
 export const seedAppDslVersion = (queryClient: QueryClient, appDslVersion = '0.6.0') => {
-  queryClient.setQueryData(getAppDslVersionQueryKey(), { app_dsl_version: appDslVersion })
+  queryClient.setQueryData(appDslVersionQueryKey, { app_dsl_version: appDslVersion })
 }
 
 export const seedAppDetail = (queryClient: QueryClient, appDetail: AppDetailWithSite) => {
@@ -215,10 +173,8 @@ export const createConsoleQueryWrapper = (
   if (options.features) seedFeatures(queryClient, options.features)
   if (options.educationStatus) seedEducationStatus(queryClient, options.educationStatus)
   if (options.currentWorkspace !== null) {
-    const queryKey = getCurrentWorkspaceQueryKey()
-    if (options.currentWorkspace)
-      seedCurrentWorkspaceQuery(queryClient, options.currentWorkspace, queryKey)
-    else ensureCurrentWorkspaceQuery(queryClient, {}, queryKey)
+    if (options.currentWorkspace) seedCurrentWorkspaceQuery(queryClient, options.currentWorkspace)
+    else ensureCurrentWorkspaceQuery(queryClient)
   }
   if (options.workspacePermissionKeys !== null) {
     if (options.workspacePermissionKeys)
