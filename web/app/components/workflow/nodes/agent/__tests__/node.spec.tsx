@@ -164,7 +164,7 @@ const createConfigResult = (
   availableNodesWithParent: [],
   outputSchema: [],
   handleMemoryChange: vi.fn(),
-  isChatMode: true,
+  isChatflow: true,
   ...overrides,
 })
 

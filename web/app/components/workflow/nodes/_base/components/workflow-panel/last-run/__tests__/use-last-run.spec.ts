@@ -1,7 +1,6 @@
 import { act } from '@testing-library/react'
 import { renderWorkflowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { FlowType } from '@/types/common'
 import useLastRun from '../use-last-run'
 
 const mockHandleSyncWorkflowDraft = vi.fn()
@@ -54,7 +53,7 @@ vi.mock('@/app/components/workflow/nodes/_base/hooks/use-one-step-run', () => ({
 }))
 
 vi.mock('@/service/use-workflow', () => ({
-  useInvalidLastRun: () => vi.fn(),
+  useInvalidateLastRun: () => vi.fn(),
 }))
 
 describe('useLastRun', () => {
@@ -66,8 +65,8 @@ describe('useLastRun', () => {
     const { result } = renderWorkflowHook(() =>
       useLastRun({
         id: 'data-source-node',
-        flowId: 'flow-id',
-        flowType: FlowType.appFlow,
+        resource: { kind: 'app', appId: 'flow-id', mode: 'workflow' },
+
         data: {
           type: BlockEnum.DataSource,
           title: 'Data Source',

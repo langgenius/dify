@@ -50,7 +50,6 @@ from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import ProviderNotInitializeError
 from controllers.service_api.dataset.error import (
     ArchivedDocumentImmutableError,
-    DocumentIndexingError,
     InvalidMetadataError,
 )
 from controllers.service_api.schema import binary_response
@@ -71,6 +70,7 @@ from fields.document_fields import (
     DocumentStatusListResponse,
     normalize_enum,
 )
+from libs.external_api import error_responses
 from libs.helper import dump_response, escape_like_pattern
 from libs.login import current_user
 from libs.pagination import clamp_pagination, paginate_query
@@ -537,6 +537,7 @@ def _update_document_by_text(
 class DocumentAddByTextApi(DatasetApiResource):
     """Resource for the canonical text document creation route."""
 
+    @error_responses(ProviderNotInitializeError)
     @service_api_ns.doc(
         summary="Create Document by Text",
         description=(
@@ -584,6 +585,7 @@ class DocumentAddByTextApi(DatasetApiResource):
 class DeprecatedDocumentAddByTextApi(DatasetApiResource):
     """Deprecated resource alias for text document creation."""
 
+    @error_responses(ProviderNotInitializeError)
     @service_api_ns.expect(service_api_ns.models[DocumentTextCreatePayload.__name__])
     @service_api_ns.doc("create_document_by_text_deprecated")
     @service_api_ns.doc(deprecated=True)
@@ -619,6 +621,7 @@ class DeprecatedDocumentAddByTextApi(DatasetApiResource):
 class DocumentUpdateByTextApi(DatasetApiResource):
     """Resource for the canonical text document update route."""
 
+    @error_responses(ProviderNotInitializeError)
     @service_api_ns.doc(
         summary="Update Document by Text",
         description=(
@@ -667,6 +670,7 @@ class DocumentUpdateByTextApi(DatasetApiResource):
 class DeprecatedDocumentUpdateByTextApi(DatasetApiResource):
     """Deprecated resource alias for text document updates."""
 
+    @error_responses(ProviderNotInitializeError)
     @service_api_ns.expect(service_api_ns.models[DocumentTextUpdate.__name__])
     @service_api_ns.doc("update_document_by_text_deprecated")
     @service_api_ns.doc(deprecated=True)
@@ -714,6 +718,9 @@ class DeprecatedDocumentUpdateByTextApi(DatasetApiResource):
 class DocumentAddByFileApi(DatasetApiResource):
     """Resource for documents."""
 
+    @error_responses(
+        FilenameNotExistsError, FileTooLargeError, NoFileUploadedError, ProviderNotInitializeError, TooManyFilesError
+    )
     @service_api_ns.doc(
         summary="Create Document by File",
         description=(
@@ -942,6 +949,13 @@ def _update_document_by_file(
 class DeprecatedDocumentUpdateByFileApi(DatasetApiResource):
     """Deprecated resource aliases for file document updates."""
 
+    @error_responses(
+        FilenameNotExistsError,
+        FileTooLargeError,
+        ProviderNotInitializeError,
+        TooManyFilesError,
+        UnsupportedFileTypeError,
+    )
     @service_api_ns.doc(
         summary="Update Document by File",
         description=(
@@ -1244,6 +1258,7 @@ class DocumentDownloadApi(DatasetApiResource):
 class DocumentApi(DatasetApiResource):
     METADATA_CHOICES = {"all", "only", "without"}
 
+    @error_responses(InvalidMetadataError)
     @service_api_ns.doc(
         summary="Get Document",
         description=(
@@ -1412,6 +1427,13 @@ class DocumentApi(DatasetApiResource):
             exclude=response_exclude,
         )
 
+    @error_responses(
+        FilenameNotExistsError,
+        FileTooLargeError,
+        ProviderNotInitializeError,
+        TooManyFilesError,
+        UnsupportedFileTypeError,
+    )
     @service_api_ns.doc(
         summary="Update Document by File",
         description=(
@@ -1459,6 +1481,7 @@ class DocumentApi(DatasetApiResource):
         )
         return _document_and_batch_response(document, batch, session=session), 200
 
+    @error_responses(ArchivedDocumentImmutableError)
     @service_api_ns.doc(
         summary="Delete Document",
         description="Permanently delete a document and all its chunks from the knowledge base.",
@@ -1506,10 +1529,6 @@ class DocumentApi(DatasetApiResource):
         if DocumentService.check_archived(document):
             raise ArchivedDocumentImmutableError()
 
-        try:
-            # delete document
-            DocumentService.delete_document(document, session)
-        except services.errors.document.DocumentIndexingError:
-            raise DocumentIndexingError("Cannot delete document during indexing.")
+        DocumentService.delete_document(document, session)
 
         return "", 204

@@ -4,12 +4,13 @@ import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogClose,
+  DialogCloseButton,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -36,7 +37,9 @@ type CloudPlanItemProps = {
   billing:
     | {
         currentPlan: CloudPlan
+        currentBillingInterval: string
         isEducationDiscountEligible: boolean | undefined
+        isEducationDiscountActivated: boolean
       }
     | undefined
 }
@@ -54,11 +57,12 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
   const planInfo = ALL_PLANS[plan]
   const isCurrent = plan === currentPlan
   const isCurrentPaidPlan = isCurrent && !isFreePlan
+  const isCurrentSubscription =
+    isCurrentPaidPlan && billingInterval === billing?.currentBillingInterval
   const isPlanDisabled =
     !billing ||
-    (!isCurrentPaidPlan &&
-      (billing.isEducationDiscountEligible === undefined ||
-        planInfo.level <= ALL_PLANS[billing.currentPlan].level))
+    (!isCurrentSubscription && billing.isEducationDiscountEligible === undefined) ||
+    (!isCurrentPaidPlan && planInfo.level <= ALL_PLANS[billing.currentPlan].level)
   const isEducationDiscountSupportedPlan = plan === 'professional' && isYearly
   const educationDiscountWarningText =
     canManageBilling &&
@@ -92,7 +96,7 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
 
     setIsPlanActionPending(true)
     try {
-      if (isCurrentPaidPlan) {
+      if (isCurrentSubscription) {
         if (!canManageBilling) {
           toast.error(t(($) => $.buyPermissionDeniedTip, { ns: 'billing' }))
           return
@@ -135,7 +139,7 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
     }
   }
   const handlePlanButtonClick = async () => {
-    if (educationDiscountWarningText && !isPlanDisabled) {
+    if (educationDiscountWarningText && !billing?.isEducationDiscountActivated && !isPlanDisabled) {
       setShowEducationPricingConfirm(true)
       return
     }
@@ -228,26 +232,16 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
       <CloudPlanFeatures plan={plan} />
       <Dialog open={showEducationPricingConfirm} onOpenChange={setShowEducationPricingConfirm}>
         <DialogContent backdropProps={{ forceRender: true }} className="w-130">
-          <DialogClose
-            render={
-              <IconButton
-                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                size="lg"
-                className="absolute top-6 right-6"
-              >
-                <span aria-hidden className="i-ri-close-line size-4" />
-              </IconButton>
-            }
-          />
-          <div className="flex flex-col gap-2 pr-10">
-            <DialogTitle className="w-full title-2xl-semi-bold text-text-primary">
+          <DialogHeader>
+            <DialogTitle>
               {t(($) => $['educationPricingConfirm.title'], { ns: 'education' })}
             </DialogTitle>
-            <DialogDescription className="w-full system-md-regular text-text-tertiary">
+            <DialogDescription>
               {t(($) => $['educationPricingConfirm.description'], { ns: 'education' })}
             </DialogDescription>
-          </div>
-          <div className="mt-10 flex items-start justify-end gap-3">
+            <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          </DialogHeader>
+          <DialogFooter>
             <Button
               size="large"
               onClick={handleContinueWithoutEducationDiscount}
@@ -266,7 +260,7 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
             >
               {t(($) => $['educationPricingConfirm.continue'], { ns: 'education' })}
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 import type { LLMNodeType, StructuredOutput } from '../../types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { AppModeEnum } from '@/types/app'
 import { Type } from '../../types'
 import PanelOutputSection from '../panel-output-section'
 
@@ -35,6 +34,7 @@ vi.mock('../structure-output', () => ({
   __esModule: true,
   StructureOutput: (props: {
     className?: string
+    readOnly: boolean
     value?: StructuredOutput
     onChange: (value: StructuredOutput) => void
   }) => {
@@ -50,7 +50,7 @@ const createInputs = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
   model: {
     provider: 'openai',
     name: 'gpt-4o',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     completion_params: {},
   } as LLMNodeType['model'],
   prompt_template: [],
@@ -90,10 +90,10 @@ describe('llm/panel-output-section', () => {
     expect(screen.queryByTestId('structure-output')).not.toBeInTheDocument()
   })
 
-  it('renders the structured output editor when structured output is enabled', () => {
+  it('passes the read-only permission to configured output', () => {
     render(
       <PanelOutputSection
-        readOnly={false}
+        readOnly={true}
         inputs={createInputs({
           structured_output_enabled: true,
           structured_output: {
@@ -113,7 +113,7 @@ describe('llm/panel-output-section', () => {
     )
 
     expect(screen.getByTestId('structure-output')).toBeInTheDocument()
-    expect(mockStructureOutput).toHaveBeenCalled()
+    expect(mockStructureOutput).toHaveBeenCalledWith(expect.objectContaining({ readOnly: true }))
   })
   it('opens the model warning with the keyboard without changing structured output', async () => {
     const user = userEvent.setup()

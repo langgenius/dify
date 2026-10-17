@@ -19,12 +19,6 @@ const inspectState = vi.hoisted(() => ({
   }>,
 }))
 
-vi.mock('ahooks', () => ({
-  useDebounceFn: (fn: (...args: unknown[]) => void) => ({
-    run: fn,
-  }),
-}))
-
 vi.mock('@/app/components/workflow/hooks/use-workflow', async (importOriginal) => {
   const actual =
     await importOriginal<typeof import('@/app/components/workflow/hooks/use-workflow')>()

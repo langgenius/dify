@@ -1,5 +1,6 @@
 import type { ChatItemInTree } from '@/app/components/base/chat/types'
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { useChat } from '../../hooks'
 
 const mockHandleRun = vi.fn()
@@ -10,20 +11,20 @@ const mockSetIterTimes = vi.fn()
 const mockSetLoopTimes = vi.fn()
 const mockSubmitHumanInputForm = vi.fn()
 const mockSseGet = vi.fn()
-const mockGetNodes = vi.fn((): any[] => [])
+const mockGetNodes = vi.fn((): { id: string; type: string; data: Record<string, unknown> }[] => [])
 
-let mockWorkflowRunningData: any = null
+let mockWorkflowRunningData: { result: { status: string } } | null = null
 
 vi.mock('@/service/base', () => ({
-  sseGet: (...args: any[]) => mockSseGet(...args),
+  sseGet: (...args: unknown[]) => mockSseGet(...args),
 }))
 
 vi.mock('@/service/use-workflow', () => ({
-  useInvalidAllLastRun: () => mockInvalidAllLastRun,
+  useInvalidateAllLastRun: () => mockInvalidAllLastRun,
 }))
 
 vi.mock('@/service/workflow', () => ({
-  submitHumanInputForm: (...args: any[]) => mockSubmitHumanInputForm(...args),
+  submitHumanInputForm: (...args: unknown[]) => mockSubmitHumanInputForm(...args),
 }))
 
 vi.mock('@/app/notifications', () => ({
@@ -31,7 +32,7 @@ vi.mock('@/app/notifications', () => ({
     success: vi.fn(),
     error: vi.fn(),
     warning: vi.fn(),
-    info: (...args: any[]) => mockNotify(...args),
+    info: (...args: unknown[]) => mockNotify(...args),
   },
 }))
 
@@ -83,14 +84,16 @@ describe('useChat – handleResume', () => {
 
   async function setupResumeWithTree() {
     let sendCallbacks: any
-    mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
+    mockHandleRun.mockImplementation((_params: unknown, callbacks: any) => {
       sendCallbacks = callbacks
     })
-    mockSseGet.mockImplementation((_url: any, _opts: any, options: any) => {
+    mockSseGet.mockImplementation((_url: unknown, _opts: unknown, options: any) => {
       capturedResumeOptions = options
     })
 
-    const hook = renderHook(() => useChat({}))
+    const hook = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       hook.result.current.handleSend({ query: 'test' }, {})
@@ -117,7 +120,9 @@ describe('useChat – handleResume', () => {
   }
 
   it('should call sseGet with the correct URL', () => {
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       result.current.handleResume('msg-1', 'wfr-1', {})
@@ -132,18 +137,20 @@ describe('useChat – handleResume', () => {
 
   it('should abort previous SSE connection when handleResume is called again', () => {
     const mockAbortCtrl = new AbortController()
-    mockSseGet.mockImplementation((_url: any, _opts: any, options: any) => {
+    mockSseGet.mockImplementation((_url: unknown, _opts: unknown, options: any) => {
       options.getAbortController(mockAbortCtrl)
     })
 
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       result.current.handleResume('msg-1', 'wfr-1', {})
     })
 
     const mockAbort2 = vi.fn()
-    mockSseGet.mockImplementation((_url: any, _opts: any, options: any) => {
+    mockSseGet.mockImplementation((_url: unknown, _opts: unknown, options: any) => {
       options.getAbortController({ abort: mockAbort2 })
     })
 
@@ -157,18 +164,20 @@ describe('useChat – handleResume', () => {
   it('should abort previous workflowEventsAbortController before sseGet', () => {
     const mockAbort = vi.fn()
     let sendCallbacks: any
-    mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
+    mockHandleRun.mockImplementation((_params: unknown, callbacks: any) => {
       sendCallbacks = callbacks
     })
 
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       result.current.handleSend({ query: 'test' }, {})
     })
 
     act(() => {
-      sendCallbacks.getAbortController({ abort: mockAbort } as any)
+      sendCallbacks.getAbortController({ abort: mockAbort })
     })
 
     mockSseGet.mockImplementation(() => {})
@@ -196,14 +205,16 @@ describe('useChat – handleResume', () => {
 
     it('should resume existing workflow when tracing exists', async () => {
       let sendCallbacks: any
-      mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
+      mockHandleRun.mockImplementation((_params: unknown, callbacks: any) => {
         sendCallbacks = callbacks
       })
-      mockSseGet.mockImplementation((_url: any, _opts: any, options: any) => {
+      mockSseGet.mockImplementation((_url: unknown, _opts: unknown, options: any) => {
         capturedResumeOptions = options
       })
 
-      const hook = renderHook(() => useChat({}))
+      const hook = renderHook(() => useChat({}), {
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      })
 
       act(() => {
         hook.result.current.handleSend({ query: 'test' }, {})
@@ -373,15 +384,16 @@ describe('useChat – handleResume', () => {
     it('should still call fetchInspectVars on error but skip suggested questions', async () => {
       const mockGetSuggested = vi.fn().mockResolvedValue({ data: ['s1'] })
       let sendCallbacks: any
-      mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
+      mockHandleRun.mockImplementation((_params: unknown, callbacks: any) => {
         sendCallbacks = callbacks
       })
-      mockSseGet.mockImplementation((_url: any, _opts: any, options: any) => {
+      mockSseGet.mockImplementation((_url: unknown, _opts: unknown, options: any) => {
         capturedResumeOptions = options
       })
 
-      const hook = renderHook(() =>
-        useChat({ suggested_questions_after_answer: { enabled: true } }),
+      const hook = renderHook(
+        () => useChat({ suggested_questions_after_answer: { enabled: true } }),
+        { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
       )
 
       act(() => {
@@ -416,20 +428,23 @@ describe('useChat – handleResume', () => {
     })
 
     it('should fetch suggested questions when enabled', async () => {
-      const mockGetSuggested = vi.fn().mockImplementation((_id: string, getAbortCtrl: any) => {
-        getAbortCtrl(new AbortController())
-        return Promise.resolve({ data: ['s1'] })
-      })
+      const mockGetSuggested = vi
+        .fn()
+        .mockImplementation((_id: string, onCancel: (cancel: () => void) => void) => {
+          onCancel(vi.fn())
+          return Promise.resolve({ data: ['s1'] })
+        })
       let sendCallbacks: any
-      mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
+      mockHandleRun.mockImplementation((_params: unknown, callbacks: any) => {
         sendCallbacks = callbacks
       })
-      mockSseGet.mockImplementation((_url: any, _opts: any, options: any) => {
+      mockSseGet.mockImplementation((_url: unknown, _opts: unknown, options: any) => {
         capturedResumeOptions = options
       })
 
-      const hook = renderHook(() =>
-        useChat({ suggested_questions_after_answer: { enabled: true } }),
+      const hook = renderHook(
+        () => useChat({ suggested_questions_after_answer: { enabled: true } }),
+        { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
       )
 
       act(() => {
@@ -465,15 +480,16 @@ describe('useChat – handleResume', () => {
     it('should set suggestedQuestions to empty on fetch error', async () => {
       const mockGetSuggested = vi.fn().mockRejectedValue(new Error('fail'))
       let sendCallbacks: any
-      mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
+      mockHandleRun.mockImplementation((_params: unknown, callbacks: any) => {
         sendCallbacks = callbacks
       })
-      mockSseGet.mockImplementation((_url: any, _opts: any, options: any) => {
+      mockSseGet.mockImplementation((_url: unknown, _opts: unknown, options: any) => {
         capturedResumeOptions = options
       })
 
-      const hook = renderHook(() =>
-        useChat({ suggested_questions_after_answer: { enabled: true } }),
+      const hook = renderHook(
+        () => useChat({ suggested_questions_after_answer: { enabled: true } }),
+        { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
       )
 
       act(() => {
@@ -638,7 +654,7 @@ describe('useChat – handleResume', () => {
       })
 
       let answer = result.current.chatList.find((item) => item.id === 'msg-resume')
-      const startedTrace = answer!.workflowProcess!.tracing.find((t: any) => t.node_id === 'rn-1')
+      const startedTrace = answer!.workflowProcess!.tracing.find((t) => t.node_id === 'rn-1')
       expect(startedTrace).toBeDefined()
       expect(startedTrace!.id).toBe('rtrace-1')
       expect(startedTrace!.status).toBe('running')
@@ -650,9 +666,9 @@ describe('useChat – handleResume', () => {
       })
 
       answer = result.current.chatList.find((item) => item.id === 'msg-resume')
-      const finishedTrace = answer!.workflowProcess!.tracing.find((t: any) => t.node_id === 'rn-1')
+      const finishedTrace = answer!.workflowProcess!.tracing.find((t) => t.node_id === 'rn-1')
       expect(finishedTrace).toBeDefined()
-      expect((finishedTrace as any).status).toBe('succeeded')
+      expect(finishedTrace!.status).toBe('succeeded')
     })
 
     it('should skip onNodeStarted when iteration_id is present', async () => {
@@ -672,9 +688,7 @@ describe('useChat – handleResume', () => {
       })
 
       const answer = result.current.chatList.find((item) => item.id === 'msg-resume')
-      expect(answer!.workflowProcess!.tracing.some((t: any) => t.node_id === 'rn-child')).toBe(
-        false,
-      )
+      expect(answer!.workflowProcess!.tracing.some((t) => t.node_id === 'rn-child')).toBe(false)
     })
 
     it('should skip onNodeFinished when iteration_id is present', async () => {
@@ -717,9 +731,7 @@ describe('useChat – handleResume', () => {
       })
 
       const answer = result.current.chatList.find((item) => item.id === 'msg-resume')
-      const matchingTraces = answer!.workflowProcess!.tracing.filter(
-        (t: any) => t.node_id === 'rn-1',
-      )
+      const matchingTraces = answer!.workflowProcess!.tracing.filter((t) => t.node_id === 'rn-1')
       expect(matchingTraces).toHaveLength(1)
       expect(matchingTraces[0]!.id).toBe('rtrace-1-v2')
       expect(matchingTraces[0]!.status).toBe('running')
@@ -753,10 +765,10 @@ describe('useChat – handleResume', () => {
       })
 
       const answer = result.current.chatList.find((item) => item.id === 'msg-resume')
-      const trace = answer!.workflowProcess!.tracing.find((t: any) => t.id === 'rtrace-1')
+      const trace = answer!.workflowProcess!.tracing.find((t) => t.id === 'rtrace-1')
       expect(trace).toBeDefined()
-      expect((trace as any).status).toBe('succeeded')
-      expect((trace as any).execution_metadata.parallel_id).toBe('p1')
+      expect(trace!.status).toBe('succeeded')
+      expect(trace!.execution_metadata!.parallel_id).toBe('p1')
     })
   })
 
@@ -825,7 +837,7 @@ describe('useChat – handleResume', () => {
       })
 
       const answer = result.current.chatList.find((item) => item.id === 'msg-resume')
-      const trace = answer!.workflowProcess!.tracing.find((t: any) => t.node_id === 'rn-human')
+      const trace = answer!.workflowProcess!.tracing.find((t) => t.node_id === 'rn-human')
       expect(trace!.status).toBe('paused')
     })
   })
@@ -882,7 +894,7 @@ describe('useChat – handleResume', () => {
       })
 
       const answer = result.current.chatList.find((item) => item.id === 'msg-resume')
-      const form = answer!.humanInputFormDataList!.find((f: any) => f.node_id === 'rn-human')
+      const form = answer!.humanInputFormDataList!.find((f) => f.node_id === 'rn-human')
       expect(form!.expiration_time).toBe('2025-06-01')
     })
   })
@@ -912,7 +924,7 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
     resetMocksAndWorkflowState()
     mockHandleRun.mockReset()
     mockSseGet.mockReset()
-    mockSseGet.mockImplementation((_url: any, _opts: any, options: any) => {
+    mockSseGet.mockImplementation((_url: unknown, _opts: unknown, options: any) => {
       capturedResumeOptions = options
     })
   })
@@ -930,7 +942,7 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
             isAnswer: true,
             workflow_run_id: 'wfr-bare',
             workflowProcess: {
-              status: 'running' as any,
+              status: 'running',
               tracing: [],
             },
             children: [],
@@ -939,7 +951,9 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
       },
     ]
 
-    const hook = renderHook(() => useChat({}, undefined, prevChatTree))
+    const hook = renderHook(() => useChat({}, undefined, prevChatTree), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       hook.result.current.handleResume('bare-msg', 'wfr-bare', {})
@@ -961,7 +975,7 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
             isAnswer: true,
             workflow_run_id: 'wfr-bare-nt',
             workflowProcess: {
-              status: 'running' as any,
+              status: 'running',
               tracing: undefined as any,
             },
             children: [],
@@ -970,7 +984,9 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
       },
     ]
 
-    const hook = renderHook(() => useChat({}, undefined, prevChatTree))
+    const hook = renderHook(() => useChat({}, undefined, prevChatTree), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       hook.result.current.handleResume('bare-msg-nt', 'wfr-bare-nt', {})
@@ -1100,9 +1116,11 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
       },
     ]
 
-    const hook = renderHook(() => useChat({}, undefined, prevChatTreeNoWP))
+    const hook = renderHook(() => useChat({}, undefined, prevChatTreeNoWP), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
     let opts: any
-    mockSseGet.mockImplementation((_url: any, _opts: any, options: any) => {
+    mockSseGet.mockImplementation((_url: unknown, _opts: unknown, options: any) => {
       opts = options
     })
 
@@ -1149,7 +1167,7 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
     })
 
     const answer = result.current.chatList.find((item) => item.id === 'bare-msg')
-    const trace = answer!.workflowProcess!.tracing.find((t: any) => t.node_id === 'hn-with-trace')
+    const trace = answer!.workflowProcess!.tracing.find((t) => t.node_id === 'hn-with-trace')
     expect(trace!.status).toBe('paused')
   })
 })

@@ -14,12 +14,15 @@ vi.mock('@/context/dataset-detail', () => ({
 
 // Mock API call for pipeline processing params
 const mockParamsConfig = vi.fn()
-vi.mock('@/service/use-pipeline', () => ({
-  usePublishedPipelineProcessingParams: () => ({
-    data: mockParamsConfig(),
-    isFetching: false,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipelines.byPipelineId.workflows.published.processing.parameters.get': () => ({
+      data: mockParamsConfig(),
+      isFetching: false,
+    }),
+  })
+})
 
 // Mock Form component - internal dependencies (useAppForm, BaseField) are too complex
 // Keep the mock minimal and focused on testing the integration

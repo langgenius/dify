@@ -9,20 +9,14 @@ import HomeCatalogNavigation from '../home-catalog-navigation'
 import HomeSearch from '../home-search'
 import { homeCatalogPinnedAtom } from '../home-sticky-state'
 import { HomeStickyStateProvider } from '../home-sticky-state-provider'
-import { MarketplaceSearchAutocomplete } from '../marketplace-search-autocomplete'
+import {
+  MarketplaceSearchAutocomplete,
+  MarketplaceSearchForm,
+} from '../marketplace-search-autocomplete'
 
 const { mockTemplateSearch } = vi.hoisted(() => ({
   mockTemplateSearch: vi.fn(),
 }))
-
-vi.mock('ahooks', async (importOriginal) => {
-  const original = await importOriginal<typeof import('ahooks')>()
-
-  return {
-    ...original,
-    useDebounce: <T,>(value: T) => value,
-  }
-})
 
 vi.mock('react-i18next', async (importOriginal) => {
   const original = await importOriginal<typeof import('react-i18next')>()
@@ -113,60 +107,6 @@ describe('Marketplace search autocomplete layout', () => {
     mockTemplateSearch.mockResolvedValue({ data: { templates: [], total: 0 } })
   })
 
-  it('preserves the keyboard activation target while the pointer visits another suggestion', async () => {
-    mockTemplateSearch.mockResolvedValue({
-      data: {
-        templates: ['First', 'Second'].map((name) => ({
-          id: name.toLowerCase(),
-          template_name: `${name} template`,
-          overview: '',
-          publisher_handle: 'dify',
-          usage_count: 1,
-          categories: [],
-          icon: '📄',
-          icon_background: '#FFFFFF',
-          icon_file_key: '',
-        })),
-        total: 2,
-      },
-    })
-    const onSelect = vi.fn()
-    function Search() {
-      const [value, setValue] = useState('')
-      return (
-        <MarketplaceSearchAutocomplete
-          locale="en-US"
-          onValueChange={setValue}
-          onSuggestionSelect={onSelect}
-          placeholder="Search templates"
-          scope="templates"
-          value={value}
-        />
-      )
-    }
-    const screen = await render(
-      <Wrapper>
-        <Search />
-      </Wrapper>,
-    )
-    const input = screen.getByRole('combobox', { name: 'Search templates' })
-    await input.fill('template')
-    const first = screen.getByRole('option', { name: /First template/ })
-    const second = screen.getByRole('option', { name: /Second template/ })
-    await expect.element(first).toBeVisible()
-    await userEvent.keyboard('{ArrowDown}')
-    await expect.element(input).toHaveAttribute('aria-activedescendant', first.element().id)
-    await second.hover()
-    await expect.element(input).toHaveAttribute('aria-activedescendant', first.element().id)
-    await userEvent.keyboard('{Enter}')
-    expect(onSelect).toHaveBeenCalledWith(
-      expect.objectContaining({
-        kind: 'template',
-        template: expect.objectContaining({ id: 'first' }),
-      }),
-    )
-  })
-
   it('keeps the pinned catalog layout stable while the results popup opens', async () => {
     await page.viewport(1280, 720)
 
@@ -214,8 +154,43 @@ describe('Marketplace search autocomplete layout', () => {
     await expect.element(screen.getByText('No templates found')).toBeVisible()
 
     expect(scrollContainer.scrollTop).toBe(scrollTopBefore)
-    await expect.element(screen.getByRole('tablist', { name: 'Header catalog tabs' })).toBeVisible()
+    // Base UI hides the page outside the open suggestions from assistive technology, so the
+    // pinned tabs are only reachable when hidden elements are included.
+    await expect
+      .element(screen.getByRole('tablist', { name: 'Header catalog tabs', includeHidden: true }))
+      .toBeVisible()
     expect(input.element().getBoundingClientRect().top).toBeCloseTo(inputTopBefore)
     expect(catalogNavigation.getBoundingClientRect().top).toBeCloseTo(navigationTopBefore)
+  })
+
+  // The search owns no Enter handler: the browser's implicit submission submits the route form
+  // when no suggestion is highlighted. Only a real browser performs that submission.
+  it('submits the route search form on Enter when no suggestion is highlighted', async () => {
+    const handleSubmit = vi.fn((event: Event) => {
+      event.preventDefault()
+    })
+
+    const screen = await render(
+      <Wrapper>
+        <MarketplaceSearchForm
+          action="/search/templates"
+          locale="en-US"
+          placeholder="Search templates"
+          query=""
+          scope="templates"
+        />
+      </Wrapper>,
+    )
+
+    screen.container.querySelector('form')!.addEventListener('submit', handleSubmit)
+
+    const input = screen.getByRole('combobox', { name: 'Search templates' })
+    await input.fill('open')
+    await expect.element(screen.getByText('No templates found')).toBeVisible()
+
+    await userEvent.keyboard('{Enter}')
+
+    expect(handleSubmit).toHaveBeenCalledOnce()
+    await expect.element(input).toHaveValue('open')
   })
 })

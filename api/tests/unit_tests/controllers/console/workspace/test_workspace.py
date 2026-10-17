@@ -6,7 +6,7 @@ from datetime import datetime
 from http import HTTPStatus
 from inspect import unwrap
 from io import BytesIO
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 
 import pytest
 from flask import Flask
@@ -58,9 +58,9 @@ class Services:
 @pytest.fixture
 def workspaces(monkeypatch: pytest.MonkeyPatch) -> WorkspaceMocks:
     services = WorkspaceMocks(
-        management=Mock(spec=WorkspaceService),
-        queries=Mock(spec=WorkspaceQueryService),
-        provisioning=Mock(spec=WorkspaceProvisioningService),
+        management=create_autospec(WorkspaceService, instance=True),
+        queries=create_autospec(WorkspaceQueryService, instance=True),
+        provisioning=create_autospec(WorkspaceProvisioningService, instance=True),
     )
     monkeypatch.setattr(controller, "application_services", lambda: Services(services))
     return services

@@ -4,7 +4,6 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { useOneMoreStep } from '@/service/use-common'
 import OneMoreStep from '../one-more-step'
 
 vi.mock('@/next/navigation', () => ({
@@ -12,16 +11,11 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: vi.fn(),
 }))
 
-vi.mock('@/service/use-common', () => ({
-  useOneMoreStep: vi.fn(),
-}))
-
 const mockReplace = vi.fn()
 const mockSubmitOneMoreStep = vi.fn()
 
-const mockUseRouter = useRouter as unknown as MockedFunction<typeof useRouter>
-const mockUseSearchParams = useSearchParams as unknown as MockedFunction<typeof useSearchParams>
-const mockUseOneMoreStep = useOneMoreStep as unknown as MockedFunction<typeof useOneMoreStep>
+const mockUseRouter = useRouter as MockedFunction<typeof useRouter>
+const mockUseSearchParams = useSearchParams as MockedFunction<typeof useSearchParams>
 
 describe('OneMoreStep', () => {
   beforeEach(() => {
@@ -32,12 +26,8 @@ describe('OneMoreStep', () => {
     mockUseSearchParams.mockReturnValue(
       new URLSearchParams(
         'invitation_code=invite-code&redirect_url=%2Fapps%3Ftag%3Dworkflow',
-      ) as unknown as ReturnType<typeof useSearchParams>,
+      ) as ReturnType<typeof useSearchParams>,
     )
-    mockUseOneMoreStep.mockReturnValue({
-      mutateAsync: mockSubmitOneMoreStep,
-      isPending: false,
-    } as unknown as ReturnType<typeof useOneMoreStep>)
     mockSubmitOneMoreStep.mockResolvedValue({ result: 'success' })
   })
 
@@ -71,4 +61,15 @@ describe('OneMoreStep', () => {
       })
     })
   })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'account.init.post': (input) => mockSubmitOneMoreStep(input),
+    }),
+  }
 })

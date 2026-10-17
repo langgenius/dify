@@ -1,6 +1,6 @@
 import type { LLMNodeType } from '../types'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
-import { renderHook } from '@testing-library/react'
+import { renderWorkflowFlowHook as renderHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import {
   BlockEnum,
   EditionType,
@@ -8,11 +8,8 @@ import {
   PromptRole,
   VarType,
 } from '@/app/components/workflow/types'
-import { AppModeEnum } from '@/types/app'
-import { FlowType } from '@/types/common'
 import useConfigVision from '../../../hooks/use-config-vision'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
-import useNodeCrud from '../../_base/hooks/use-node-crud'
 import useSingleRunFormParams from '../use-single-run-form-params'
 
 vi.mock('../../../hooks/use-config-vision', () => ({
@@ -25,36 +22,8 @@ vi.mock('../../_base/hooks/use-available-var-list', () => ({
   default: vi.fn(),
 }))
 
-vi.mock('../../_base/hooks/use-node-crud', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}))
-
-vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
-
-  return {
-    ...actual,
-    useIsChatMode: () => true,
-  }
-})
-
-const mockFlowType = vi.hoisted(() => ({
-  value: undefined as FlowType | undefined,
-}))
-
-vi.mock('@/app/components/workflow/hooks-store/store', () => ({
-  useHooksStore: (selector: (state: { configsMap?: { flowType?: FlowType } }) => unknown) =>
-    selector({
-      configsMap: {
-        flowType: mockFlowType.value,
-      },
-    }),
-}))
-
 const mockUseConfigVision = vi.mocked(useConfigVision)
 const mockUseAvailableVarList = vi.mocked(useAvailableVarList)
-const mockUseNodeCrud = vi.mocked(useNodeCrud)
 
 const createData = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
   title: 'LLM',
@@ -63,7 +32,7 @@ const createData = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
   model: {
     provider: 'openai',
     name: 'gpt-4o',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     completion_params: {},
   } as LLMNodeType['model'],
   prompt_template: [
@@ -100,14 +69,7 @@ const createInputVar = (variable: string): InputVar => ({
 describe('llm/use-single-run-form-params', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockFlowType.value = undefined
-    mockUseNodeCrud.mockImplementation(
-      (_id, payload) =>
-        ({
-          inputs: payload,
-          setInputs: vi.fn(),
-        }) as unknown as ReturnType<typeof useNodeCrud>,
-    )
+
     mockUseConfigVision.mockReturnValue({
       isVisionModel: false,
     } as ReturnType<typeof useConfigVision>)
@@ -117,7 +79,6 @@ describe('llm/use-single-run-form-params', () => {
   })
 
   it('filters system variables from single-run inputs in snippet flows', () => {
-    mockFlowType.value = FlowType.snippet
     const getInputVars = vi.fn(() => [
       createInputVar('#start.query#'),
       createInputVar('#sys.query#'),
@@ -128,33 +89,35 @@ describe('llm/use-single-run-form-params', () => {
       createInputVar('#start.extra#'),
     ])
 
-    const { result } = renderHook(() =>
-      useSingleRunFormParams({
-        id: 'llm-node',
-        payload: createData({
-          prompt_template: [
-            {
-              edition_type: EditionType.jinja2,
-              role: PromptRole.user,
-              text: '{{ query }}',
-            },
-          ],
-          prompt_config: {
-            jinja2_variables: [
+    const { result } = renderHook(
+      () =>
+        useSingleRunFormParams({
+          id: 'llm-node',
+          payload: createData({
+            prompt_template: [
               {
-                variable: 'extra',
-                value_selector: ['start', 'extra'],
-                value_type: VarType.string,
+                edition_type: EditionType.jinja2,
+                role: PromptRole.user,
+                text: '{{ query }}',
               },
             ],
-          },
+            prompt_config: {
+              jinja2_variables: [
+                {
+                  variable: 'extra',
+                  value_selector: ['start', 'extra'],
+                  value_type: VarType.string,
+                },
+              ],
+            },
+          }),
+          runInputData: {},
+          runInputDataRef: { current: {} },
+          getInputVars,
+          setRunInputData: vi.fn(),
+          toVarInputs,
         }),
-        runInputData: {},
-        runInputDataRef: { current: {} },
-        getInputVars,
-        setRunInputData: vi.fn(),
-        toVarInputs,
-      }),
+      { resource: { kind: 'snippet', snippetId: 'snippet-1' } },
     )
 
     expect(result.current.forms[0]!.inputs).toEqual([

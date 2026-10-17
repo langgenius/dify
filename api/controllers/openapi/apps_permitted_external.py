@@ -10,19 +10,18 @@ from __future__ import annotations
 from http import HTTPStatus
 
 from flask_restx import Resource
+from werkzeug.exceptions import NotFound, ServiceUnavailable
 
 from constants.oauth_bearer import Scope
 from controllers.openapi import openapi_ns
+from controllers.openapi._app_response import app_list_row, build_app_describe_response
 from controllers.openapi._contract import Example, Kind, endpoint
 from controllers.openapi._models import (
     AppDescribeQuery,
     AppDescribeResponse,
-    AppListRow,
     PermittedExternalAppsListQuery,
     PermittedExternalAppsListResponse,
 )
-from controllers.openapi.apps import build_app_describe_response
-from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
     CheckAppApiEnabled,
@@ -32,9 +31,9 @@ from controllers.openapi.auth.requirements import (
 from controllers.openapi.auth.subjects import ExternalSsoSubject
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
-from models.enums import AppStatus
-from services.enterprise.app_permitted_service import list_permitted_apps
-from services.entities.app_entities import AppSummary
+from machinery.context import AppRequestContext
+from services.app.query_service import AppDiscoveryQuery
+from services.errors.app import AppDiscoveryNotFoundError, PermittedAppsUnavailableError
 
 _ENTERPRISE_ONLY = frozenset({DeploymentEdition.ENTERPRISE})
 
@@ -42,6 +41,7 @@ _ENTERPRISE_ONLY = frozenset({DeploymentEdition.ENTERPRISE})
 @openapi_ns.route("/permitted-external-apps")
 class PermittedExternalAppsListApi(Resource):
     @endpoint(
+        context=None,
         op="get.console_app.external",
         kind=Kind.LIST,
         summary="List apps an external SSO subject may run",
@@ -54,52 +54,25 @@ class PermittedExternalAppsListApi(Resource):
         returns=(HTTPStatus.OK, PermittedExternalAppsListResponse, "Permitted external apps list"),
         edition=_ENTERPRISE_ONLY,
     )
-    def get(self, ctx: Context, *, query: PermittedExternalAppsListQuery):
-        page_result = list_permitted_apps(
-            page=query.page,
-            limit=query.limit,
-            mode=query.mode.value if query.mode else None,
-            name=query.name,
-        )
-
-        if not page_result.app_ids:
-            env = PermittedExternalAppsListResponse.build(
-                page=query.page, limit=query.limit, total=page_result.total, items=[]
+    def get(self, *, query: PermittedExternalAppsListQuery):
+        try:
+            result = application_services().apps.discovery.list_permitted_apps(
+                AppDiscoveryQuery(query.page, query.limit, query.mode.value if query.mode else None, query.name)
             )
-            return env
-
-        apps_by_id: dict[str, AppSummary] = {
-            str(a.id): a for a in application_services().apps.queries.find_visible_apps_by_ids(page_result.app_ids)
-        }
-        tenant_ids = list({str(a.tenant_id) for a in apps_by_id.values()})
-        tenants_by_id = {str(t.id): t for t in application_services().workspaces.management.get_many(tenant_ids)}
-
-        items: list[AppListRow] = []
-        for app_id in page_result.app_ids:
-            app = apps_by_id.get(app_id)
-            if not app or app.status != AppStatus.NORMAL:
-                continue
-            tenant = tenants_by_id.get(str(app.tenant_id))
-            items.append(
-                AppListRow(
-                    id=str(app.id),
-                    name=app.name,
-                    description=app.description,
-                    mode=app.mode,
-                    updated_at=app.updated_at.isoformat() if app.updated_at else None,
-                    workspace_id=str(app.tenant_id),
-                    workspace_name=tenant.name if tenant else None,
-                )
-            )
-        env = PermittedExternalAppsListResponse.build(
-            page=query.page, limit=query.limit, total=page_result.total, items=items
+        except PermittedAppsUnavailableError as exc:
+            raise ServiceUnavailable(str(exc)) from exc
+        return PermittedExternalAppsListResponse.build(
+            page=result.page,
+            limit=result.per_page,
+            total=result.total,
+            items=[app_list_row(entry) for entry in result.items],
         )
-        return env
 
 
 @openapi_ns.route("/permitted-external-apps/<string:app_id>")
 class PermittedExternalAppDescribeApi(Resource):
     @endpoint(
+        context="app",
         op="describe.console_app.external",
         kind=Kind.OBJECT,
         summary="External-subject app detail",
@@ -114,6 +87,9 @@ class PermittedExternalAppDescribeApi(Resource):
         returns=(200, AppDescribeResponse, "Permitted external app description"),
         edition=_ENTERPRISE_ONLY,
     )
-    def get(self, ctx: Context, app_id: str, *, query: AppDescribeQuery):
-        # The pipeline has already loaded and ACL-checked the app; project it.
-        return build_app_describe_response(ctx.app, query.fields, session=ctx.session)
+    def get(self, ctx: AppRequestContext, app_id: str, *, query: AppDescribeQuery):
+        try:
+            result = application_services().apps.discovery.describe(ctx, query.fields)
+        except AppDiscoveryNotFoundError as exc:
+            raise NotFound(str(exc)) from exc
+        return build_app_describe_response(result, query.fields)

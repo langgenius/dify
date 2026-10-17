@@ -1,25 +1,21 @@
-import type { SimpleDocumentDetail } from '@/models/datasets'
+import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
 import { DocumentPicker } from '../index'
 
-let mockDocumentListData: { data: SimpleDocumentDetail[] } | undefined
+let mockDocumentListData: { data: DocumentWithSegmentsResponse[] } | undefined
 
 const { mockUseDocumentList } = vi.hoisted(() => ({
   mockUseDocumentList: vi.fn(),
 }))
 
-vi.mock('@/service/knowledge/use-document', () => ({
-  useDocumentList: mockUseDocumentList,
-}))
-
-const createDocument = (overrides: Partial<SimpleDocumentDetail> = {}): SimpleDocumentDetail => ({
+const createDocument = (
+  overrides: Partial<DocumentWithSegmentsResponse> = {},
+): DocumentWithSegmentsResponse => ({
   id: 'doc-1',
-  batch: 'batch-1',
   position: 1,
-  dataset_id: 'dataset-1',
   data_source_type: DataSourceType.FILE,
   data_source_info: {
     upload_file: {
@@ -42,16 +38,19 @@ const createDocument = (overrides: Partial<SimpleDocumentDetail> = {}): SimpleDo
   indexing_status: 'completed',
   display_status: 'enabled',
   doc_form: ChunkingMode.text,
-  doc_language: 'en',
   enabled: true,
   word_count: 1000,
   archived: false,
-  updated_at: Date.now(),
   hit_count: 0,
   data_source_detail_dict: {
     upload_file: {
+      id: 'file-1',
       name: 'document.pdf',
+      size: 1024,
       extension: 'pdf',
+      mime_type: 'application/pdf',
+      created_by: 'user-1',
+      created_at: 1700000000,
     },
   },
   ...overrides,
@@ -93,9 +92,15 @@ describe('DocumentPicker', () => {
         createDocument({ id: 'doc-2', name: 'Document 2' }),
       ],
     }
-    mockUseDocumentList.mockImplementation(() => ({
-      data: mockDocumentListData,
-    }))
+    mockUseDocumentList.mockImplementation(() =>
+      Promise.resolve({
+        ...mockDocumentListData,
+        total: mockDocumentListData?.data.length ?? 0,
+        page: 1,
+        limit: 20,
+        has_more: false,
+      }),
+    )
   })
 
   it('should render the current document and chunking mode', () => {
@@ -122,7 +127,7 @@ describe('DocumentPicker', () => {
 
     await waitFor(() => {
       expect(mockUseDocumentList).toHaveBeenLastCalledWith({
-        datasetId: 'dataset-custom',
+        params: { dataset_id: 'dataset-custom' },
         query: {
           keyword: 'report',
           page: 1,
@@ -150,9 +155,16 @@ describe('DocumentPicker', () => {
 
   it('should keep focus in the search input when deleting from an empty result', async () => {
     const user = userEvent.setup()
-    mockUseDocumentList.mockImplementation(({ query }) => ({
-      data: query.keyword === 'missing' ? { data: [] } : mockDocumentListData,
-    }))
+    mockUseDocumentList.mockImplementation(({ query }) =>
+      Promise.resolve({
+        ...mockDocumentListData,
+        data: query.keyword === 'missing' ? [] : mockDocumentListData?.data,
+        total: query.keyword === 'missing' ? 0 : mockDocumentListData?.data.length,
+        page: 1,
+        limit: 20,
+        has_more: false,
+      }),
+    )
 
     renderDocumentPicker()
 
@@ -215,4 +227,15 @@ describe('DocumentPicker', () => {
       (await screen.findByText('common.noData')).closest('[role="status"]'),
     ).toBeInTheDocument()
   })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.documents.get': mockUseDocumentList,
+    }),
+  }
 })

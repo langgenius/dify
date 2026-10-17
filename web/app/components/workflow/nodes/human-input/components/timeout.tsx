@@ -13,7 +13,7 @@ type Props = Readonly<{
 }>
 
 const unitOptionClassName =
-  'cursor-pointer border-0 text-text-tertiary transition-none data-checked:border-0 data-checked:shadow-sm data-checked:shadow-black/10 data-checked:hover:bg-components-segmented-control-item-active-bg data-checked:hover:text-text-accent-light-mode-only data-disabled:cursor-default data-disabled:text-text-tertiary data-disabled:data-checked:bg-components-segmented-control-item-active-bg data-disabled:data-checked:text-text-accent-light-mode-only data-disabled:data-checked:shadow-sm data-disabled:data-checked:shadow-black/10'
+  'cursor-pointer border-0 text-text-tertiary data-checked:border-0 data-checked:shadow-sm data-checked:shadow-black/10 data-checked:hover:bg-components-segmented-control-item-active-bg data-checked:hover:text-text-accent-light-mode-only data-disabled:cursor-default data-disabled:text-text-tertiary data-disabled:data-checked:bg-components-segmented-control-item-active-bg data-disabled:data-checked:text-text-accent-light-mode-only data-disabled:data-checked:shadow-sm data-disabled:data-checked:shadow-black/10'
 
 const TimeoutInput: FC<Props> = ({ timeout, unit, onChange, readonly }) => {
   const { t } = useTranslation(['workflow', 'workflowHumanInput'])

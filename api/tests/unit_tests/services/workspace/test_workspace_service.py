@@ -2,7 +2,7 @@
 
 from dataclasses import replace
 from datetime import datetime
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 
 import pytest
 
@@ -32,9 +32,9 @@ WORKSPACE = WorkspaceSnapshot(
 
 @pytest.fixture
 def dependencies() -> tuple[WorkspaceService, Mock, Mock, Mock]:
-    store = Mock(spec=WorkspaceStore)
-    features = Mock(spec=WorkspaceFeatureGateway)
-    logos = Mock(spec=WorkspaceLogoGateway)
+    store = create_autospec(WorkspaceStore, instance=True)
+    features = create_autospec(WorkspaceFeatureGateway, instance=True)
+    logos = create_autospec(WorkspaceLogoGateway, instance=True)
     store.get_for_account.return_value = WORKSPACE
     features.logo_url.return_value = "https://files/workspaces/workspace/webapp-logo"
     features.get_features.return_value = WorkspaceFeatures(True, EffectiveCreditPool())

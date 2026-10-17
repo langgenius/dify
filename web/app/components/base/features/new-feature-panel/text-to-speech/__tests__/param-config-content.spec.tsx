@@ -1,9 +1,13 @@
 import type { Features } from '../../../types'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
-import { skipToken } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import i18next from 'i18next'
+import { consoleQuery } from '@/service/console'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery as render,
+} from '@/test/console/query-data'
 import { TtsAutoPlay } from '@/types/app'
 import { FeaturesProvider } from '../../../context'
 import ParamConfigContent from '../param-config-content'
@@ -20,19 +24,20 @@ let mockVoiceItems: { value: string; name: string }[] | undefined = [
   { value: 'echo', name: 'Echo' },
 ]
 
-type VoicesQueryOptions = {
-  enabled?: boolean
-  input:
-    | typeof skipToken
-    | {
-        params: { app_id: string } | { agent_id: string }
-        query: { language: string }
-      }
-}
-
-const mockVoicesQuery = vi.fn((_options: VoicesQueryOptions) => ({
-  data: mockVoiceItems,
-}))
+let seedVoices = true
+const getAppVoices = vi.fn()
+const getAgentVoices = vi.fn()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.textToAudio.voices.get': (input) => getAppVoices(input),
+      'agent.byAgentId.textToAudio.voices.get': (input) => getAgentVoices(input),
+    }),
+  }
+})
 
 const mockGetAudioPlayer = vi.fn(() => ({ playAudio: vi.fn(), pauseAudio: vi.fn() }))
 
@@ -40,11 +45,6 @@ vi.mock('@/app/components/base/audio-btn/audio.player.manager', () => ({
   AudioPlayerManager: {
     getInstance: () => ({ getAudioPlayer: mockGetAudioPlayer }),
   },
-}))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
-  useQuery: (options: VoicesQueryOptions) => mockVoicesQuery(options),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -80,10 +80,29 @@ const renderWithProvider = (
   featureOverrides?: Partial<Features>,
 ) => {
   const features = { ...defaultFeatures, ...featureOverrides }
+  const queryClient = createConsoleQueryClient()
+  if (seedVoices && mockVoiceItems) {
+    const language = features.text2speech?.language || 'en-US'
+    if (mockParams.agentId)
+      queryClient.setQueryData(
+        consoleQuery.agent.byAgentId.textToAudio.voices.get.queryKey({
+          input: { params: { agent_id: mockParams.agentId }, query: { language } },
+        }),
+        mockVoiceItems,
+      )
+    else if (mockParams.appId)
+      queryClient.setQueryData(
+        consoleQuery.apps.byAppId.textToAudio.voices.get.queryKey({
+          input: { params: { app_id: mockParams.appId }, query: { language } },
+        }),
+        mockVoiceItems,
+      )
+  }
   return render(
     <FeaturesProvider features={features}>
       <ParamConfigContent onClose={props.onClose ?? vi.fn()} onChange={props.onChange} />
     </FeaturesProvider>,
+    { queryClient },
   )
 }
 
@@ -98,6 +117,9 @@ describe('ParamConfigContent', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    seedVoices = true
+    getAppVoices.mockImplementation(() => Promise.resolve(mockVoiceItems ?? []))
+    getAgentVoices.mockImplementation(() => Promise.resolve(mockVoiceItems ?? []))
     mockParams = { appId: 'test-app-id' }
     mockLanguages = [
       { value: 'en-US', name: 'English', example: 'Hello world' },
@@ -233,30 +255,28 @@ describe('ParamConfigContent', () => {
         route: 'Chatflow',
         params: { appId: 'test-app-id' },
         requestParams: { app_id: 'test-app-id' },
-        operation: ['console', 'apps', 'byAppId', 'textToAudio', 'voices', 'get'],
+        request: getAppVoices,
       },
       {
         route: 'Agent',
         params: { agentId: 'test-agent-id' },
         requestParams: { agent_id: 'test-agent-id' },
-        operation: ['console', 'agent', 'byAgentId', 'textToAudio', 'voices', 'get'],
+        request: getAgentVoices,
       },
     ])(
       'should load and select voices using the $route route ID',
-      async ({ params, requestParams, operation }) => {
+      async ({ params, requestParams, request }) => {
         const user = userEvent.setup()
         const onChange = vi.fn()
         mockParams = params
+        seedVoices = false
 
         renderWithProvider({ onChange })
 
-        expect(mockVoicesQuery).toHaveBeenCalledWith(
-          expect.objectContaining({
-            queryKey: expect.arrayContaining([operation]),
-            input: {
-              params: requestParams,
-              query: { language: 'en-US' },
-            },
+        await waitFor(() =>
+          expect(request).toHaveBeenCalledWith({
+            params: requestParams,
+            query: { language: 'en-US' },
           }),
         )
 
@@ -269,13 +289,10 @@ describe('ParamConfigContent', () => {
         await user.click(getLanguageSelect())
         await user.click(await screen.findByRole('option', { name: /voice\.language\.zhHans/ }))
 
-        expect(mockVoicesQuery).toHaveBeenLastCalledWith(
-          expect.objectContaining({
-            queryKey: expect.arrayContaining([operation]),
-            input: {
-              params: requestParams,
-              query: { language: 'zh-Hans' },
-            },
+        await waitFor(() =>
+          expect(request).toHaveBeenCalledWith({
+            params: requestParams,
+            query: { language: 'zh-Hans' },
           }),
         )
       },
@@ -440,12 +457,8 @@ describe('ParamConfigContent', () => {
 
       renderWithProvider()
 
-      expect(mockVoicesQuery).toHaveBeenCalledWith(
-        expect.objectContaining({
-          enabled: false,
-          input: skipToken,
-        }),
-      )
+      expect(getAppVoices).not.toHaveBeenCalled()
+      expect(getAgentVoices).not.toHaveBeenCalled()
     })
 
     it('should render language text when selected language value is empty string', () => {

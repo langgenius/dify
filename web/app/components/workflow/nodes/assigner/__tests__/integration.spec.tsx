@@ -1,8 +1,10 @@
+import type { ComponentProps } from 'react'
 import type { AssignerNodeOperation, AssignerNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import OperationSelector from '../components/operation-selector'
 import VarList from '../components/var-list'
@@ -13,18 +15,12 @@ import useConfig from '../use-config'
 
 const mockHandleAddOperationItem = vi.fn()
 
-vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
-  default: ({ title, operations, children }: any) => (
-    <div>
-      <div>{title}</div>
-      <div>{operations}</div>
-      {children}
-    </div>
-  ),
-}))
-
 vi.mock('@/app/components/workflow/nodes/_base/components/list-no-data-placeholder', () => ({
-  default: ({ children }: any) => <div>{children}</div>,
+  default: ({
+    children,
+  }: ComponentProps<
+    typeof import('@/app/components/workflow/nodes/_base/components/list-no-data-placeholder').default
+  >) => <div>{children}</div>,
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
@@ -36,18 +32,23 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference
     popupFor,
     valueTypePlaceHolder,
     filterVar,
-  }: any) => (
+  }: ComponentProps<
+    typeof import('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker').default
+  >) => (
     <div>
       <div>{Array.isArray(value) ? value.join('.') : String(value ?? '')}</div>
       {valueTypePlaceHolder && <div>{`type:${valueTypePlaceHolder}`}</div>}
       {popupFor === 'toAssigned' && (
-        <div>{`filter:${String(filterVar?.({ nodeId: 'node-1', variable: 'count', type: VarType.string }))}:${String(filterVar?.({ nodeId: 'node-2', variable: 'other', type: VarType.string }))}`}</div>
+        <div>{`filter:${String(filterVar?.({ nodeId: 'node-1', variable: 'count', type: VarType.string }, ['node-1', 'count']))}:${String(filterVar?.({ nodeId: 'node-2', variable: 'other', type: VarType.string }, ['node-2', 'other']))}`}</div>
       )}
       <button
         type="button"
         onClick={() => {
           onOpen?.()
-          onChange(popupFor === 'assigned' ? ['node-1', 'count'] : ['node-2', 'result'])
+          onChange(
+            popupFor === 'assigned' ? ['node-1', 'count'] : ['node-2', 'result'],
+            VarKindType.variable,
+          )
         }}
       >
         {placeholder || popupFor || 'pick-var'}
@@ -57,17 +58,27 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ value, onChange }: any) => (
+  default: ({
+    value,
+    onChange,
+  }: ComponentProps<
+    typeof import('@/app/components/workflow/nodes/_base/components/editor/code-editor').default
+  >) => (
     <textarea
       aria-label="code-editor"
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
+      value={typeof value === 'object' ? JSON.stringify(value) : value}
+      onChange={(event) => onChange?.(event.target.value)}
     />
   ),
 }))
 
 vi.mock('@/app/components/workflow/panel/chat-variable-panel/components/bool-value', () => ({
-  default: ({ value, onChange }: any) => (
+  default: ({
+    value,
+    onChange,
+  }: ComponentProps<
+    typeof import('@/app/components/workflow/panel/chat-variable-panel/components/bool-value').default
+  >) => (
     <button type="button" onClick={() => onChange(!value)}>
       {`bool:${String(value)}`}
     </button>
@@ -75,7 +86,13 @@ vi.mock('@/app/components/workflow/panel/chat-variable-panel/components/bool-val
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/variable-label', () => ({
-  VariableLabelInNode: ({ variables, nodeTitle, rightSlot }: any) => (
+  VariableLabelInNode: ({
+    variables,
+    nodeTitle,
+    rightSlot,
+  }: ComponentProps<
+    typeof import('@/app/components/workflow/nodes/_base/components/variable/variable-label').VariableLabelInNode
+  >) => (
     <div>
       <span>{nodeTitle}</span>
       <span>{variables.join('.')}</span>
@@ -414,12 +431,12 @@ describe('assigner path', () => {
             {
               id: 'node-1',
               position: { x: 0, y: 0 },
-              data: { title: 'Answer', type: BlockEnum.Answer } as any,
+              data: { title: 'Answer', desc: '', type: BlockEnum.Answer },
             },
             {
               id: 'start',
               position: { x: 0, y: 0 },
-              data: { title: 'Start', type: BlockEnum.Start } as any,
+              data: { title: 'Start', desc: '', type: BlockEnum.Start },
             },
           ],
           edges: [],
@@ -484,12 +501,12 @@ describe('assigner path', () => {
             {
               id: 'node-1',
               position: { x: 0, y: 0 },
-              data: { title: 'Answer', type: BlockEnum.Answer } as any,
+              data: { title: 'Answer', desc: '', type: BlockEnum.Answer },
             },
             {
               id: 'start',
               position: { x: 0, y: 0 },
-              data: { title: 'Start', type: BlockEnum.Start } as any,
+              data: { title: 'Start', desc: '', type: BlockEnum.Start },
             },
           ],
           edges: [],
@@ -522,12 +539,12 @@ describe('assigner path', () => {
             {
               id: 'node-1',
               position: { x: 0, y: 0 },
-              data: { title: 'Answer', type: BlockEnum.Answer } as any,
+              data: { title: 'Answer', desc: '', type: BlockEnum.Answer },
             },
             {
               id: 'start',
               position: { x: 0, y: 0 },
-              data: { title: 'Start', type: BlockEnum.Start } as any,
+              data: { title: 'Start', desc: '', type: BlockEnum.Start },
             },
           ],
           edges: [],

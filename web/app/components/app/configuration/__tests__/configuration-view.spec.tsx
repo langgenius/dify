@@ -9,7 +9,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
-import { AppModeEnum, ModelModeType } from '@/types/app'
+import { ModelModeType } from '@/types/app'
 import ConfigurationView from '../configuration-view'
 
 const mockIsAgentV2Enabled = vi.hoisted(() => vi.fn(() => false))
@@ -28,10 +28,6 @@ vi.mock('@/app/components/app/configuration/config', () => ({
 
 vi.mock('@/app/components/app/configuration/debug', () => ({
   default: () => <div data-testid="debug-panel" />,
-}))
-
-vi.mock('@/app/components/app/configuration/config/agent-setting-button', () => ({
-  default: () => <div data-testid="agent-setting-button" />,
 }))
 
 vi.mock(
@@ -100,7 +96,7 @@ const createContextValue = (): ComponentProps<typeof ConfigContext.Provider>['va
   appId: 'app-1',
   onOpenFeatures: vi.fn(),
   isTrailFinished: false,
-  mode: AppModeEnum.CHAT,
+  mode: 'chat' as const,
   modelModeType: ModelModeType.chat,
   promptMode: 'simple' as never,
   setPromptMode: vi.fn(),
@@ -355,7 +351,7 @@ describe('ConfigurationView', () => {
   it('should show the legacy Agent badge for legacy Agent apps when Agent v2 is enabled', async () => {
     mockIsAgentV2Enabled.mockReturnValue(true)
     const contextValue = createContextValue()
-    contextValue.mode = AppModeEnum.AGENT_CHAT
+    contextValue.mode = 'agent-chat'
 
     render(<ConfigurationView {...createViewModel({ contextValue })} />)
 
@@ -379,7 +375,7 @@ describe('ConfigurationView', () => {
 
   it('should not show the legacy Agent badge when Agent v2 is disabled', () => {
     const contextValue = createContextValue()
-    contextValue.mode = AppModeEnum.AGENT_CHAT
+    contextValue.mode = 'agent-chat'
 
     render(<ConfigurationView {...createViewModel({ contextValue })} />)
 

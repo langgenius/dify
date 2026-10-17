@@ -1,8 +1,12 @@
 import type { Var } from '../../../types'
 import type { IfElseNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import {
+  renderEditor as render,
+  renderEditor as renderWithConsoleQuery,
+} from '@/app/components/workflow/editor-resource/__tests__/render'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum, VarType } from '../../../types'
 import ConditionAdd from '../components/condition-add'
@@ -100,12 +104,19 @@ vi.mock('../../variable-assigner/hooks', () => ({
   ],
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: [] }),
-  useAllCustomTools: () => ({ data: [] }),
-  useAllWorkflowTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: [] }),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.builtin.get': async () => [],
+      'workspaces.current.tools.api.get': async () => [],
+      'workspaces.current.tools.workflow.get': async () => [],
+      'workspaces.current.tools.mcp.get': async () => [],
+    }),
+  }
+})
 
 vi.mock('../use-config', () => ({
   default: vi.fn(),
@@ -218,7 +229,9 @@ describe('if-else path', () => {
       const user = userEvent.setup()
       const onSelectVariable = vi.fn()
 
-      render(<ConditionAdd caseId="case-1" variables={[]} onSelectVariable={onSelectVariable} />)
+      render(<ConditionAdd caseId="case-1" variables={[]} onSelectVariable={onSelectVariable} />, {
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      })
 
       await user.click(
         screen.getByRole('button', { name: /workflowLogic.nodes.ifElse.addCondition/i }),
@@ -252,6 +265,7 @@ describe('if-else path', () => {
             unit="%"
           />
         </div>,
+        { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
       )
 
       await user.click(screen.getByRole('button', { name: /contains/i }))
@@ -269,7 +283,7 @@ describe('if-else path', () => {
       const user = userEvent.setup()
       const onToggleConditionLogicalOperator = vi.fn()
 
-      render(
+      renderWithConsoleQuery(
         <ConditionList
           caseId="case-1"
           caseItem={{
@@ -340,6 +354,7 @@ describe('if-else path', () => {
             }}
           />
         </div>,
+        { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
       )
 
       expect(screen.getByText('node-1.answer')).toBeInTheDocument()
@@ -385,6 +400,7 @@ describe('if-else path', () => {
             ],
           })}
         />,
+        { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
       )
 
       expect(screen.getByText('IF')).toBeInTheDocument()
@@ -411,7 +427,9 @@ describe('if-else path', () => {
         }),
       )
 
-      render(<Panel id="if-else-node" data={inputs} panelProps={panelProps} />)
+      render(<Panel id="if-else-node" data={inputs} panelProps={panelProps} />, {
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      })
 
       await user.click(screen.getByRole('button', { name: /elif/i }))
 

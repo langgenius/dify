@@ -5,18 +5,18 @@ import type { AgentFormValues, AgentIconSelection } from './agent-form'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogClose,
+  DialogCloseButton,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
 import { Form } from '@langgenius/dify-ui/form'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import { AgentScope } from '@/features/agent-v2/analytics'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
@@ -52,20 +52,18 @@ function CreateAgentFormSession({
   const { t } = useTranslation(['agentRoster'])
   const { t: tCommon } = useTranslation(['common'])
   const [agentIcon, setAgentIcon] = useState<AgentIconSelection>(defaultAgentIcon)
-  const [iconPickerOpen, setIconPickerOpen] = useState(false)
 
   return (
     <>
-      <div className="shrink-0 ps-6 pe-14 pt-6 pb-3">
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $['roster.createDialog.title'], { ns: 'agentRoster' })}
-        </DialogTitle>
+      <DialogHeader>
+        <DialogTitle>{t(($) => $['roster.createDialog.title'], { ns: 'agentRoster' })}</DialogTitle>
         <DialogDescription className="sr-only">
           {t(($) => $['roster.createDialog.description'], { ns: 'agentRoster' })}
         </DialogDescription>
-      </div>
+        <DialogCloseButton aria-label={tCommon(($) => $['operation.close'])} disabled={pending} />
+      </DialogHeader>
       <Form<AgentFormValues>
-        className="flex min-h-0 flex-1 flex-col"
+        className="contents"
         onFormSubmit={(formValues) => onSubmit(formValues, agentIcon)}
       >
         <AgentFormFields
@@ -73,23 +71,17 @@ function CreateAgentFormSession({
           defaultValues={createAgentDefaultValues}
           icon={agentIcon}
           iconAriaLabel={t(($) => $['roster.createForm.changeIcon'], { ns: 'agentRoster' })}
-          onIconClick={() => setIconPickerOpen(true)}
+          onIconChange={setAgentIcon}
         />
-        <div className="flex shrink-0 justify-end gap-2 px-6 pt-5 pb-6">
+        <DialogFooter>
           <Button type="button" className="min-w-18" onClick={onCancel} disabled={pending}>
             {tCommon(($) => $['operation.cancel'])}
           </Button>
           <Button type="submit" variant="primary" className="min-w-18" loading={pending}>
             {tCommon(($) => $['operation.create'])}
           </Button>
-        </div>
+        </DialogFooter>
       </Form>
-      <IconPickerDialog
-        open={iconPickerOpen}
-        defaultValue={agentIcon.type === 'link' ? undefined : agentIcon}
-        onOpenChange={setIconPickerOpen}
-        onConfirm={setAgentIcon}
-      />
     </>
   )
 }
@@ -156,22 +148,7 @@ export function CreateAgentDialog({ open, onOpenChange }: CreateAgentDialogProps
             </span>
           </DialogTrigger>
         )}
-        <DialogContent
-          initialFocus={nameInputRef}
-          className="flex max-h-[calc(100dvh-2rem)] w-130 flex-col overflow-hidden! p-0!"
-        >
-          <DialogClose
-            disabled={createAgentMutation.isPending}
-            render={
-              <IconButton
-                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                size="lg"
-                className="absolute inset-e-5 top-5"
-              >
-                <span aria-hidden className="i-ri-close-line size-4" />
-              </IconButton>
-            }
-          />
+        <DialogContent initialFocus={nameInputRef} className="w-130">
           <CreateAgentFormSession
             nameInputRef={nameInputRef}
             pending={createAgentMutation.isPending}

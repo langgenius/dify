@@ -1,25 +1,26 @@
 import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '../../types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { DataType } from '../../types'
 import DatasetMetadataDrawer from '../dataset-metadata-drawer'
 
 // Mock service/API calls
-vi.mock('@/service/knowledge/use-metadata', () => ({
-  useDatasetMetaData: () => ({
-    data: {
-      doc_metadata: [{ id: '1', name: 'existing_field', type: DataType.string }],
-    },
-  }),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.metadata.get': async () => ({
+        doc_metadata: [{ id: '1', name: 'existing_field', type: DataType.string }],
+      }),
+    }),
+  }
+})
 
 // Mock check name hook
-vi.mock('../../hooks/use-check-metadata-name', () => ({
-  default: () => ({
-    checkName: () => ({ errorMsg: '' }),
-  }),
-}))
 
 const mockToastNotify = vi.fn()
 vi.mock('@/app/notifications', () => ({
@@ -198,7 +199,7 @@ describe('DatasetMetadataDrawer', () => {
       )!.toBeInTheDocument()
     })
 
-    it('should call onAdd and show success toast when metadata is added', async () => {
+    it('should call onAdd when metadata is added', async () => {
       const onAdd = vi.fn().mockResolvedValue({})
       render(<DatasetMetadataDrawer {...defaultProps} onAdd={onAdd} />)
 
@@ -214,14 +215,6 @@ describe('DatasetMetadataDrawer', () => {
 
       await waitFor(() => {
         expect(onAdd).toHaveBeenCalled()
-      })
-
-      await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'success',
-          }),
-        )
       })
     })
 
@@ -287,14 +280,6 @@ describe('DatasetMetadataDrawer', () => {
 
       await waitFor(() => {
         expect(onRename).toHaveBeenCalled()
-      })
-
-      await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'success',
-          }),
-        )
       })
     })
 

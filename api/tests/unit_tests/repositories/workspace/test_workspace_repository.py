@@ -2,7 +2,7 @@
 
 from collections.abc import Sequence
 from datetime import datetime, timedelta
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 
 import pytest
 from sqlalchemy import Engine, event, select
@@ -47,6 +47,16 @@ def seeded(sqlite_session_factory: sessionmaker[Session]) -> WorkspaceRepository
         )
         session.commit()
     return WorkspaceRepository(sqlite_session_factory)
+
+
+def test_names_by_ids_returns_only_existing_requested_workspaces(seeded: WorkspaceRepository) -> None:
+    assert seeded.names_by_ids(["w1", "w3", "missing", "w1"]) == {"w1": "First", "w3": "Archived"}
+    assert seeded.names_by_ids(["missing"]) == {}
+
+
+def test_names_by_ids_short_circuits_empty_input(unbound_session_factory: sessionmaker[Session]) -> None:
+    repository = WorkspaceRepository(unbound_session_factory)
+    assert repository.names_by_ids([]) == {}
 
 
 def test_lists_preserve_visibility_order_and_archived_memberships(seeded: WorkspaceRepository) -> None:
@@ -152,7 +162,7 @@ def test_sessions_are_closed_before_feature_and_plan_io(
 
     event.listen(sqlite_engine, "checkout", checkout)
     event.listen(sqlite_engine, "checkin", checkin)
-    features = Mock(spec=WorkspaceFeatureGateway)
+    features = create_autospec(WorkspaceFeatureGateway, instance=True)
 
     def get_features(workspace_id: str) -> WorkspaceFeatures:
         assert not checked_out
@@ -163,7 +173,9 @@ def test_sessions_are_closed_before_feature_and_plan_io(
         return WorkspaceFeatures(False, EffectiveCreditPool())
 
     features.get_features.side_effect = get_features
-    service = WorkspaceService(workspaces=seeded, features=features, logos=Mock(spec=WorkspaceLogoGateway))
+    service = WorkspaceService(
+        workspaces=seeded, features=features, logos=create_autospec(WorkspaceLogoGateway, instance=True)
+    )
     context = RequestContext("request", None, "a1", "w1")
     try:
         service.rename(context, "Committed")

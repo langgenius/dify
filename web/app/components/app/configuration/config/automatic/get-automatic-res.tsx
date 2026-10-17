@@ -1,18 +1,10 @@
 'use client'
+
 import type { FC } from 'react'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 // type
 import type { GenRes } from '@/service/debug'
-import type { AppModeEnum, CompletionParams, Model, ModelModeType } from '@/types/app'
-import {
-  AlertDialog,
-  AlertDialogActions,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from '@langgenius/dify-ui/alert-dialog'
+import type { CompletionParams, Model, ModelModeType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { useQuery } from '@tanstack/react-query'
@@ -40,7 +32,7 @@ import useGenData from './use-gen-data'
 const i18nPrefix = 'generate'
 
 type IGetAutomaticResProps = {
-  mode: AppModeEnum
+  modelMode: ModelModeType
   isShow: boolean
   onClose: () => void
   onFinished: (res: GenRes) => void
@@ -69,7 +61,7 @@ const TryLabel: FC<{
 }
 
 const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
-  mode,
+  modelMode,
   isShow,
   onClose,
   flowId,
@@ -93,10 +85,10 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     return {
       name: defaultModel?.model ?? '',
       provider: defaultModel?.provider.provider ?? '',
-      mode: mode as unknown as ModelModeType,
+      mode: modelMode,
       completion_params: {} as CompletionParams,
     }
-  }, [defaultModel, mode, selectedModel, storedModel])
+  }, [defaultModel, modelMode, selectedModel, storedModel])
   const tryList = [
     {
       iconClassName: 'i-ri-terminal-box-line',
@@ -265,11 +257,6 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     }
   }
 
-  const [
-    isShowConfirmOverwrite,
-    { setTrue: showConfirmOverwrite, setFalse: hideShowConfirmOverwrite },
-  ] = useBoolean(false)
-
   const isShowAutoPromptResPlaceholder = () => {
     return !isLoading && !current
   }
@@ -281,11 +268,14 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
         if (!open) onClose()
       }}
     >
-      <DialogContent className="max-h-[calc(100dvh-2rem)] w-285 overflow-y-auto border-none p-0! text-left align-middle xl:h-[min(680px,calc(100dvh-2rem))] xl:overflow-hidden">
+      <DialogContent className="w-285 xl:h-[min(680px,calc(100dvh-2rem))] xl:overflow-hidden">
         <div className="flex min-h-0 flex-col xl:h-full xl:flex-row">
           <div className="min-w-0 border-divider-regular p-6 xl:h-full xl:flex-1 xl:overflow-y-auto xl:border-r">
             <div className="mb-5">
-              <DialogTitle className={`text-lg leading-7 font-bold ${s.textGradient}`}>
+              <DialogTitle
+                // oxlint-disable-next-line shadcn/no-restyle -- Gradient generator title keeps its own type; the module class paints the gradient.
+                className={`text-lg leading-7 font-bold ${s.textGradient}`}
+              >
                 {t(($) => $['generate.title'], { ns: 'appGeneration' })}
               </DialogTitle>
               <div className="mt-1 text-[13px] font-normal text-text-tertiary">
@@ -396,41 +386,13 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                 currentVersionIndex={currentVersionIndex || 0}
                 setCurrentVersionIndex={setCurrentVersionIndex}
                 versions={versions || []}
-                onApply={showConfirmOverwrite}
+                onApply={() => onFinished(current!)}
                 generatorType={GeneratorType.prompt}
               />
             </div>
           )}
           {isLoading && renderLoading}
           {isShowAutoPromptResPlaceholder() && <ResPlaceholder />}
-          <AlertDialog
-            open={isShowConfirmOverwrite}
-            onOpenChange={(open) => !open && hideShowConfirmOverwrite()}
-          >
-            <AlertDialogContent>
-              <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                  {t(($) => $['generate.overwriteTitle'], { ns: 'appGeneration' })}
-                </AlertDialogTitle>
-                <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                  {t(($) => $['generate.overwriteMessage'], { ns: 'appGeneration' })}
-                </AlertDialogDescription>
-              </div>
-              <AlertDialogActions>
-                <AlertDialogCancelButton>
-                  {t(($) => $['operation.cancel'], { ns: 'common' })}
-                </AlertDialogCancelButton>
-                <AlertDialogConfirmButton
-                  onClick={() => {
-                    hideShowConfirmOverwrite()
-                    onFinished(current!)
-                  }}
-                >
-                  {t(($) => $['operation.confirm'], { ns: 'common' })}
-                </AlertDialogConfirmButton>
-              </AlertDialogActions>
-            </AlertDialogContent>
-          </AlertDialog>
         </div>
       </DialogContent>
     </Dialog>

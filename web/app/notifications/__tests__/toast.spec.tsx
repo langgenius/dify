@@ -55,11 +55,15 @@ it('updates copy content and removes generated actions when the tone changes', a
   act(() => {
     id = toast('First error', { type: 'error' })
   })
+  await user.click(screen.getByRole('button', { name: 'common.operation.copyErrorDetails' }))
   act(() => {
     toast.update(id, { title: 'Updated error' })
   })
-  await user.click(screen.getByRole('button', { name: 'common.operation.copyErrorDetails' }))
-  expect(copy).toHaveBeenCalledWith('Updated error')
+  // Updating the card must not remount the focused copy action.
+  const action = screen.getByRole('button', { name: 'common.operation.copyErrorDetails' })
+  expect(action).toHaveFocus()
+  await user.click(action)
+  expect(copy).toHaveBeenLastCalledWith('Updated error')
   act(() => {
     toast.update(id, { type: 'success', title: 'Recovered' })
   })
@@ -177,16 +181,16 @@ it('retains a caller action across upserts and promise failure', async () => {
       })
       .catch(() => {})
   })
-  const failedToast = screen.getByRole('dialog', { name: 'Loading' })
+  const failedToast = screen.getByRole('dialog', { name: 'Failed' })
   await user.click(
     within(failedToast).getByRole('button', { name: 'common.operation.copyErrorDetails' }),
   )
-  expect(copy).toHaveBeenCalledWith('Loading\nFailed')
+  expect(copy).toHaveBeenCalledWith('Failed')
   await user.click(screen.getByRole('button', { name: 'Details' }))
   expect(retry).toHaveBeenCalledTimes(2)
 })
 
-it('copies the resolved string description without retaining loading text', async () => {
+it('copies the resolved string title without retaining loading text', async () => {
   const { toast, user } = setup()
   await act(async () => {
     await toast
@@ -198,7 +202,7 @@ it('copies the resolved string description without retaining loading text', asyn
       .catch(() => {})
   })
   expect(screen.queryByText('Loading')).not.toBeInTheDocument()
-  expect(screen.queryByRole('heading')).not.toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Failed' })).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'common.operation.copyErrorDetails' }))
   expect(copy).toHaveBeenCalledWith('Failed')
 })

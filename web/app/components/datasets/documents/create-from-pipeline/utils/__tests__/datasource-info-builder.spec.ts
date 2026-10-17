@@ -56,9 +56,9 @@ describe('datasource-info-builder', () => {
       const result = buildOnlineDocumentDatasourceInfo(page, 'cred-2')
       expect(result.workspace_id).toBe('ws-1')
       expect(result.credential_id).toBe('cred-2')
-      expect((result.page as unknown as Record<string, unknown>).page_id).toBe('page-1')
+      expect((result.page as Record<string, unknown>).page_id).toBe('page-1')
       // workspace_id should not be in the page object
-      expect((result.page as unknown as Record<string, unknown>).workspace_id).toBeUndefined()
+      expect((result.page as Record<string, unknown>).workspace_id).toBeUndefined()
     })
   })
 

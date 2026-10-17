@@ -78,10 +78,6 @@ vi.mock('../hooks/use-embedding-model-status', () => ({
   useEmbeddingModelStatus: mockUseEmbeddingModelStatus,
 }))
 
-vi.mock('@/app/components/datasets/settings/utils', () => ({
-  checkShowMultiModalTip: () => false,
-}))
-
 vi.mock('@/app/components/workflow/nodes/_base/components/layout', () => ({
   Group: ({ children }: { children: ReactNode }) => <div data-testid="group">{children}</div>,
   BoxGroup: ({ children }: { children: ReactNode }) => (
@@ -105,10 +101,6 @@ vi.mock('@/app/components/workflow/nodes/_base/components/layout', () => ({
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
   default: () => <div data-testid="var-reference-picker" />,
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/split', () => ({
-  default: () => <div data-testid="split" />,
 }))
 
 vi.mock('@/app/components/datasets/settings/summary-index-setting', () => ({

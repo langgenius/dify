@@ -5,6 +5,7 @@ from pytest_mock import MockerFixture
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
+    PromptMessage,
     SystemPromptMessage,
     ToolPromptMessage,
     UserPromptMessage,
@@ -12,12 +13,12 @@ from graphon.model_runtime.entities.message_entities import (
 from tests.unit_tests.core.model_fixtures import make_model_config, make_token_buffer_memory
 
 
-def test_get_prompt(mocker: MockerFixture):
-    prompt_messages = [
+def test_get_prompt(mocker: MockerFixture) -> None:
+    prompt_messages: list[PromptMessage] = [
         SystemPromptMessage(content="System Template"),
         UserPromptMessage(content="User Query"),
     ]
-    history_messages = [
+    history_messages: list[PromptMessage] = [
         SystemPromptMessage(content="System Prompt 1"),
         UserPromptMessage(content="User Prompt 1"),
         AssistantPromptMessage(content="Assistant Thought 1"),
@@ -33,8 +34,10 @@ def test_get_prompt(mocker: MockerFixture):
     ]
 
     # use message number instead of token for testing
-    def side_effect_get_num_tokens(*args):
-        return len(args[2])
+    def side_effect_get_num_tokens(*args: object) -> int:
+        prompt_messages = args[2]
+        assert isinstance(prompt_messages, list)
+        return len(prompt_messages)
 
     model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
     mocker.patch.object(

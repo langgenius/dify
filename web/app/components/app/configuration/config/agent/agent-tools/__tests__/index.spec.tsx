@@ -18,6 +18,7 @@ import {
   DEFAULT_COMPLETION_PROMPT_CONFIG,
 } from '@/config'
 import ConfigContext from '@/context/debug-configuration'
+import { createDebugConfigurationFixture } from '@/test/fixtures/debug-configuration'
 import { ModelModeType } from '@/types/app'
 import { writeTextToClipboard } from '@/utils/clipboard'
 import AgentTools from '../index'
@@ -31,12 +32,15 @@ let builtInTools: ToolWithProvider[] = []
 let customTools: ToolWithProvider[] = []
 let workflowTools: ToolWithProvider[] = []
 let mcpTools: ToolWithProvider[] = []
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: builtInTools }),
-  useAllCustomTools: () => ({ data: customTools }),
-  useAllWorkflowTools: () => ({ data: workflowTools }),
-  useAllMCPTools: () => ({ data: mcpTools }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.builtin.get': () => ({ data: builtInTools }),
+    'workspaces.current.tools.api.get': () => ({ data: customTools }),
+    'workspaces.current.tools.workflow.get': () => ({ data: workflowTools }),
+    'workspaces.current.tools.mcp.get': () => ({ data: mcpTools }),
+  })
+})
 
 type ToolPickerProps = React.ComponentProps<typeof ToolPickerType>
 let singleToolSelection: ToolDefaultValue | null = null
@@ -61,7 +65,7 @@ vi.mock('@/app/components/workflow/block-selector/tool-picker', () => ({
 
 type SettingBuiltInToolProps = React.ComponentProps<typeof SettingBuiltInToolType>
 let latestSettingPanelProps: SettingBuiltInToolProps | null = null
-let settingPanelSavePayload: Record<string, any> = {}
+let settingPanelSavePayload: Record<string, unknown> = {}
 let settingPanelCredentialId = 'credential-from-panel'
 const SettingBuiltInToolMock = (props: SettingBuiltInToolProps) => {
   latestSettingPanelProps = props
@@ -202,13 +206,14 @@ const renderAgentTools = (initialTools?: AgentTool[]) => {
       modelConfigRef.current = modelConfig
     }, [modelConfig])
     const value = useMemo(
-      () => ({
-        modelConfig,
-        setModelConfig,
-      }),
+      () =>
+        createDebugConfigurationFixture({
+          modelConfig,
+          setModelConfig,
+        }),
       [modelConfig],
     )
-    return <ConfigContext.Provider value={value as any}>{children}</ConfigContext.Provider>
+    return <ConfigContext.Provider value={value}>{children}</ConfigContext.Provider>
   }
   const renderResult = render(
     <Wrapper>
@@ -421,7 +426,7 @@ describe('AgentTools', () => {
 
     await waitFor(() => {
       expect(
-        (getModelConfig().agentConfig.tools[0] as { tool_parameters: Record<string, any> })
+        (getModelConfig().agentConfig.tools[0] as { tool_parameters: Record<string, unknown> })
           .tool_parameters,
       ).toEqual({ api_key: 'updated' })
     })

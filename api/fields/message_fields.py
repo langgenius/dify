@@ -9,11 +9,11 @@ from pydantic import Field, WithJsonSchema, computed_field, field_validator
 
 from core.entities.execution_extra_content import ExecutionExtraContentDomainModel
 from fields.base import ResponseModel
-from fields.conversation_fields import AgentThought, JSONValue, MessageFile
+from fields.conversation_fields import AgentThought, AnyJSONValue, MessageFile
 from graphon.file import File
 from libs.helper import to_timestamp
 
-type JSONValueType = JSONValue
+type JSONValueType = AnyJSONValue
 UUIDString = Annotated[str, WithJsonSchema({"format": "uuid", "type": "string"})]
 Int64 = Annotated[int, WithJsonSchema({"format": "int64", "type": "integer"})]
 FloatNumber = Annotated[float, WithJsonSchema({"format": "float", "type": "number"})]
@@ -41,6 +41,11 @@ class RetrieverResource(ResponseModel):
     content: str | None = None
     summary: str | None = None
     created_at: Int64 | None = None
+    retriever_from: str | None = None
+    page: int | None = None
+    doc_metadata: dict[str, JSONValueType] | None = None
+    title: str | None = None
+    files: list[dict[str, JSONValueType]] | None = None
 
     @field_validator("created_at", mode="before")
     @classmethod

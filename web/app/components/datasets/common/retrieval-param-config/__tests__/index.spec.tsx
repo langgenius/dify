@@ -1,5 +1,6 @@
 import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 import RetrievalParamConfig from '../index'
@@ -47,67 +48,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
       >
         Select Model
       </button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/app/configuration/dataset-config/params-config/weighted-score', () => ({
-  default: ({
-    value,
-    onChange,
-  }: {
-    value: { value: number[] }
-    onChange: (v: { value: number[] }) => void
-  }) => (
-    <div data-testid="weighted-score" data-value={JSON.stringify(value)}>
-      <button data-testid="change-weights-btn" onClick={() => onChange({ value: [0.6, 0.4] })}>
-        Change Weights
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/base/param-item/top-k-item', () => ({
-  default: ({ value, onChange }: { value: number; onChange: (key: string, v: number) => void }) => (
-    <div data-testid="top-k-item" data-value={value}>
-      <button data-testid="change-top-k-btn" onClick={() => onChange('top_k', 10)}>
-        Change TopK
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/base/param-item/score-threshold-item', () => ({
-  default: ({
-    value,
-    onChange,
-    enable,
-    hasSwitch,
-    onSwitchChange,
-  }: {
-    value: number
-    onChange: (key: string, v: number) => void
-    enable: boolean
-    hasSwitch: boolean
-    onSwitchChange?: (key: string, v: boolean) => void
-  }) => (
-    <div
-      data-testid="score-threshold-item"
-      data-value={value}
-      data-enabled={enable}
-      data-has-switch={hasSwitch}
-    >
-      <button data-testid="change-score-btn" onClick={() => onChange('score_threshold', 0.8)}>
-        Change Score
-      </button>
-      {hasSwitch && onSwitchChange && (
-        <button
-          data-testid="toggle-score-switch-btn"
-          onClick={() => onSwitchChange('score_threshold_enabled', !enable)}
-        >
-          Toggle Score Switch
-        </button>
-      )}
     </div>
   ),
 }))
@@ -186,8 +126,12 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByTestId('top-k-item'))!.toBeInTheDocument()
-      expect(screen.getByTestId('top-k-item'))!.toHaveAttribute('data-value', '5')
+      expect(
+        screen.getByRole('textbox', { name: 'appDebug.datasetConfig.top_k' }),
+      )!.toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: 'appDebug.datasetConfig.top_k' }))!.toHaveValue(
+        '5',
+      )
     })
 
     it('should render score threshold item when reranking is enabled', () => {
@@ -200,7 +144,9 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByTestId('score-threshold-item'))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('textbox', { name: 'appDebug.datasetConfig.score_threshold' }),
+      )!.toBeInTheDocument()
     })
 
     it('should toggle reranking enable', () => {
@@ -262,7 +208,8 @@ describe('RetrievalParamConfig', () => {
       })
     })
 
-    it('should update top_k value', () => {
+    it('should update top_k value', async () => {
+      const user = userEvent.setup()
       const config = createDefaultConfig()
       render(
         <RetrievalParamConfig
@@ -272,7 +219,8 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      fireEvent.click(screen.getByTestId('change-top-k-btn'))
+      await user.clear(screen.getByRole('textbox', { name: 'appDebug.datasetConfig.top_k' }))
+      await user.type(screen.getByRole('textbox', { name: 'appDebug.datasetConfig.top_k' }), '10')
 
       expect(mockOnChange).toHaveBeenCalledWith({
         ...config,
@@ -280,7 +228,8 @@ describe('RetrievalParamConfig', () => {
       })
     })
 
-    it('should update score threshold value', () => {
+    it('should update score threshold value', async () => {
+      const user = userEvent.setup()
       const config = createDefaultConfig({ reranking_enable: true })
       render(
         <RetrievalParamConfig
@@ -290,7 +239,13 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      fireEvent.click(screen.getByTestId('change-score-btn'))
+      await user.clear(
+        screen.getByRole('textbox', { name: 'appDebug.datasetConfig.score_threshold' }),
+      )
+      await user.type(
+        screen.getByRole('textbox', { name: 'appDebug.datasetConfig.score_threshold' }),
+        '0.8',
+      )
 
       expect(mockOnChange).toHaveBeenCalledWith({
         ...config,
@@ -308,7 +263,9 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      fireEvent.click(screen.getByTestId('toggle-score-switch-btn'))
+      fireEvent.click(
+        screen.getByRole('switch', { name: 'appDebug.datasetConfig.score_threshold' }),
+      )
 
       expect(mockOnChange).toHaveBeenCalledWith({
         ...config,
@@ -378,7 +335,9 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.queryByTestId('score-threshold-item')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('textbox', { name: 'appDebug.datasetConfig.score_threshold' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should show score threshold when reranking is enabled for full text search', () => {
@@ -394,7 +353,9 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByTestId('score-threshold-item'))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('textbox', { name: 'appDebug.datasetConfig.score_threshold' }),
+      )!.toBeInTheDocument()
     })
   })
 
@@ -409,7 +370,9 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('switch', { name: 'modelProvider.modelProvider.rerankModel.key' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should not render model selector for keyword search', () => {
@@ -435,7 +398,9 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByTestId('top-k-item'))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('textbox', { name: 'appDebug.datasetConfig.top_k' }),
+      )!.toBeInTheDocument()
     })
 
     it('should not render score threshold for keyword search', () => {
@@ -448,7 +413,9 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.queryByTestId('score-threshold-item')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('textbox', { name: 'appDebug.datasetConfig.score_threshold' }),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -530,7 +497,9 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByTestId('weighted-score'))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('slider', { name: 'dataset.weightedScore.semantic' }),
+      )!.toBeInTheDocument()
       expect(screen.queryByTestId('model-selector')).not.toBeInTheDocument()
     })
 
@@ -599,7 +568,8 @@ describe('RetrievalParamConfig', () => {
       expect(mockNotify).toHaveBeenCalledWith('workflow.errorMsg.rerankModelRequired')
     })
 
-    it('should update weights when WeightedScore changes', () => {
+    it('should update weights when WeightedScore changes', async () => {
+      const user = userEvent.setup()
       const weightedConfig = createDefaultConfig({
         search_method: RETRIEVE_METHOD.hybrid,
         reranking_mode: RerankingModeEnum.WeightedScore,
@@ -623,7 +593,8 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      fireEvent.click(screen.getByTestId('change-weights-btn'))
+      screen.getByRole('slider', { name: 'dataset.weightedScore.semantic' }).focus()
+      await user.keyboard('{ArrowLeft}')
 
       expect(mockOnChange).toHaveBeenCalled()
       const calledWith = mockOnChange.mock.calls[0]![0]
@@ -640,11 +611,16 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByTestId('top-k-item'))!.toBeInTheDocument()
-      expect(screen.getByTestId('score-threshold-item'))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('textbox', { name: 'appDebug.datasetConfig.top_k' }),
+      )!.toBeInTheDocument()
+      expect(
+        screen.getByRole('textbox', { name: 'appDebug.datasetConfig.score_threshold' }),
+      )!.toBeInTheDocument()
     })
 
-    it('should update top_k for hybrid search', () => {
+    it('should update top_k for hybrid search', async () => {
+      const user = userEvent.setup()
       render(
         <RetrievalParamConfig
           type={RETRIEVE_METHOD.hybrid}
@@ -653,7 +629,8 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      fireEvent.click(screen.getByTestId('change-top-k-btn'))
+      await user.clear(screen.getByRole('textbox', { name: 'appDebug.datasetConfig.top_k' }))
+      await user.type(screen.getByRole('textbox', { name: 'appDebug.datasetConfig.top_k' }), '10')
 
       expect(mockOnChange).toHaveBeenCalledWith({
         ...hybridConfig,
@@ -661,7 +638,8 @@ describe('RetrievalParamConfig', () => {
       })
     })
 
-    it('should update score threshold for hybrid search', () => {
+    it('should update score threshold for hybrid search', async () => {
+      const user = userEvent.setup()
       render(
         <RetrievalParamConfig
           type={RETRIEVE_METHOD.hybrid}
@@ -670,7 +648,13 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      fireEvent.click(screen.getByTestId('change-score-btn'))
+      await user.clear(
+        screen.getByRole('textbox', { name: 'appDebug.datasetConfig.score_threshold' }),
+      )
+      await user.type(
+        screen.getByRole('textbox', { name: 'appDebug.datasetConfig.score_threshold' }),
+        '0.8',
+      )
 
       expect(mockOnChange).toHaveBeenCalledWith({
         ...hybridConfig,
@@ -687,7 +671,9 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      fireEvent.click(screen.getByTestId('toggle-score-switch-btn'))
+      fireEvent.click(
+        screen.getByRole('switch', { name: 'appDebug.datasetConfig.score_threshold' }),
+      )
 
       expect(mockOnChange).toHaveBeenCalledWith({
         ...hybridConfig,
@@ -749,7 +735,9 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('switch', { name: 'modelProvider.modelProvider.rerankModel.key' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should update model selection for hybrid search', () => {

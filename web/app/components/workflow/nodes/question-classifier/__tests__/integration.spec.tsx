@@ -1,6 +1,6 @@
+import type { ComponentProps } from 'react'
 import type { QuestionClassifierNodeType } from '../types'
 import type { Topic } from '@/app/components/workflow/nodes/_base/components/branch-list/types'
-import type { PanelProps } from '@/types/workflow'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -11,11 +11,18 @@ import ClassItem from '../../_base/components/branch-list/class-item'
 import ClassList from '../../_base/components/branch-list/class-list'
 import AdvancedSetting from '../components/advanced-setting'
 import Node from '../node'
-import Panel from '../panel'
-import useConfig from '../use-config'
 
 vi.mock('@/app/components/workflow/nodes/_base/components/prompt/editor', () => ({
-  default: ({ title, value, onChange, onRemove, showRemove, headerClassName }: any) => (
+  default: ({
+    title,
+    value,
+    onChange,
+    onRemove,
+    showRemove,
+    headerClassName,
+  }: ComponentProps<
+    typeof import('@/app/components/workflow/nodes/_base/components/prompt/editor').default
+  >) => (
     <div className={headerClassName}>
       <div>{typeof title === 'string' ? title : 'editor-title'}</div>
       <input value={value} onChange={(event) => onChange(event.target.value)} />
@@ -29,8 +36,15 @@ vi.mock('@/app/components/workflow/nodes/_base/components/prompt/editor', () => 
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/memory-config', () => ({
-  default: ({ onChange }: any) => (
-    <button type="button" onClick={() => onChange({ enabled: true })}>
+  default: ({
+    onChange,
+  }: ComponentProps<
+    typeof import('@/app/components/workflow/nodes/_base/components/memory-config').default
+  >) => (
+    <button
+      type="button"
+      onClick={() => onChange({ window: { enabled: true, size: 10 }, query_prompt_template: '' })}
+    >
       memory-config
     </button>
   ),
@@ -39,7 +53,9 @@ vi.mock('@/app/components/workflow/nodes/_base/components/memory-config', () => 
 vi.mock('../../_base/hooks/use-available-var-list', () => ({
   default: vi.fn(() => ({
     availableVars: [{ variable: ['node-1', 'answer'], type: VarType.string }],
-    availableNodesWithParent: [{ id: 'node-1', data: { title: 'Answer', type: BlockEnum.Answer } }],
+    availableNodesWithParent: [
+      { id: 'node-1', data: { title: 'Answer', desc: '', type: BlockEnum.Answer } },
+    ],
   })),
 }))
 
@@ -52,7 +68,12 @@ vi.mock('../../../hooks/use-edges-interactions', async (importOriginal) => {
 })
 
 vi.mock('@/app/components/workflow/nodes/_base/components/add-button', () => ({
-  default: ({ text, onClick }: any) => (
+  default: ({
+    text,
+    onClick,
+  }: ComponentProps<
+    typeof import('@/app/components/workflow/nodes/_base/components/add-button').default
+  >) => (
     <button type="button" onClick={onClick}>
       {text}
     </button>
@@ -64,88 +85,35 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  ModelSelector: ({ value }: any) => (
+  ModelSelector: ({
+    value,
+  }: ComponentProps<
+    typeof import('@/app/components/header/account-setting/model-provider-page/model-selector').ModelSelector
+  >) => (
     <div>
-      {value.provider}:{value.model}
+      {value?.provider}:{value?.model}
     </div>
   ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/readonly-input-with-select-var', () => ({
-  default: ({ value }: any) => <div>{value}</div>,
+  default: ({
+    value,
+  }: ComponentProps<
+    typeof import('@/app/components/workflow/nodes/_base/components/readonly-input-with-select-var').default
+  >) => <div>{value}</div>,
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/node-handle', () => ({
-  NodeSourceHandle: ({ handleId }: any) => <div>handle-{handleId}</div>,
-}))
-
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
-  () => ({
-    default: ({ setModel, onCompletionParamsChange }: any) => (
-      <div>
-        <button type="button" onClick={() => setModel({ provider: 'openai', name: 'gpt-4o' })}>
-          set-model
-        </button>
-        <button type="button" onClick={() => onCompletionParamsChange({ temperature: 0.2 })}>
-          set-params
-        </button>
-      </div>
-    ),
-  }),
-)
-
-vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
-  default: ({ title, operations, children }: any) => (
-    <div>
-      <div>{title}</div>
-      <div>{operations}</div>
-      {children}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
-  default: ({ children }: any) => <div>{children}</div>,
-  VarItem: ({ name, type }: any) => (
-    <div>
-      {name}:{type}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/split', () => ({
-  default: () => <div>split</div>,
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/config-vision', () => ({
-  default: ({ onEnabledChange, onConfigChange }: any) => (
-    <div>
-      <button type="button" onClick={() => onEnabledChange(true)}>
-        vision-toggle
-      </button>
-      <button type="button" onClick={() => onConfigChange({ resolution: 'high' })}>
-        vision-config
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
-  default: ({ onChange }: any) => (
-    <button type="button" onClick={() => onChange(['node-1', 'query'])}>
-      var-picker
-    </button>
-  ),
-}))
-
-vi.mock('../use-config', () => ({
-  default: vi.fn(),
+  NodeSourceHandle: ({
+    handleId,
+  }: ComponentProps<
+    typeof import('@/app/components/workflow/nodes/_base/components/node-handle').NodeSourceHandle
+  >) => <div>handle-{handleId}</div>,
 }))
 
 const mockUseEdgesInteractions = vi.mocked(useEdgesInteractions)
 const mockUseTextGeneration = vi.mocked(useTextGenerationCurrentProviderAndModelAndModelList)
-const mockUseConfig = vi.mocked(useConfig)
 
 const createTopic = (overrides: Partial<Topic> = {}): Topic => ({
   id: 'topic-1',
@@ -175,43 +143,6 @@ const createData = (
   ...overrides,
 })
 
-const createConfigResult = (
-  overrides: Partial<ReturnType<typeof useConfig>> = {},
-): ReturnType<typeof useConfig> => ({
-  readOnly: false,
-  inputs: createData(),
-  handleModelChanged: vi.fn(),
-  isChatMode: true,
-  isChatModel: true,
-  handleCompletionParamsChange: vi.fn(),
-  handleQueryVarChange: vi.fn(),
-  filterVar: vi.fn(() => true),
-  handleTopicsChange: vi.fn(),
-  hasSetBlockStatus: { context: false, history: false, query: false },
-  availableVars: [],
-  availableNodesWithParent: [],
-  availableVisionVars: [],
-  handleInstructionChange: vi.fn(),
-  handleMemoryChange: vi.fn(),
-  isVisionModel: true,
-  handleVisionResolutionEnabledChange: vi.fn(),
-  handleVisionResolutionChange: vi.fn(),
-  handleSortTopic: vi.fn(),
-  ...overrides,
-})
-
-const panelProps: PanelProps = {
-  getInputVars: vi.fn(() => []),
-  toVarInputs: vi.fn(() => []),
-  runInputData: {},
-  runInputDataRef: { current: {} },
-  setRunInputData: vi.fn(),
-  runResult: null,
-}
-
-const renderPanel = (data: QuestionClassifierNodeType = createData()) =>
-  render(<Panel id="node-1" data={data} panelProps={panelProps} />)
-
 describe('question-classifier path', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -221,12 +152,25 @@ describe('question-classifier path', () => {
     mockUseTextGeneration.mockReturnValue({
       currentProvider: undefined,
       currentModel: undefined,
-      textGenerationModelList: [{ provider: 'openai', model: 'gpt-4o', status: 'active' } as any],
+      textGenerationModelList: [
+        {
+          provider: 'openai',
+          label: { en_US: 'OpenAI' },
+          tenant_id: 'tenant-1',
+          models: [],
+          status: 'active',
+        },
+      ],
       activeTextGenerationModelList: [
-        { provider: 'openai', model: 'gpt-4o', status: 'active' } as any,
+        {
+          provider: 'openai',
+          label: { en_US: 'OpenAI' },
+          tenant_id: 'tenant-1',
+          models: [],
+          status: 'active',
+        },
       ],
     })
-    mockUseConfig.mockReturnValue(createConfigResult())
   })
 
   // The question classifier path should wire editor-based classes, model display, and panel controls together.
@@ -253,7 +197,10 @@ describe('question-classifier path', () => {
       await user.click(screen.getByText('memory-config'))
 
       expect(onInstructionChange).toHaveBeenCalled()
-      expect(onMemoryChange).toHaveBeenCalledWith({ enabled: true })
+      expect(onMemoryChange).toHaveBeenCalledWith({
+        window: { enabled: true, size: 10 },
+        query_prompt_template: '',
+      })
     })
 
     it('should edit and remove a single class item', async () => {
@@ -418,20 +365,6 @@ describe('question-classifier path', () => {
 
       expect(screen.queryByText('openai:gpt-4o')).not.toBeInTheDocument()
       expect(screen.queryByText(`${longName.slice(0, 50)}...`)).not.toBeInTheDocument()
-    })
-
-    it('should render the panel controls and output variables', async () => {
-      const user = userEvent.setup()
-      renderPanel()
-
-      await user.click(screen.getByText('set-model'))
-      await user.click(screen.getByText('set-params'))
-      await user.click(screen.getAllByText('var-picker')[0]!)
-      await user.click(screen.getByText('vision-toggle'))
-      await user.click(screen.getByText('vision-config'))
-
-      expect(screen.getByText('class_name:string')).toBeInTheDocument()
-      expect(screen.getByText('usage:object')).toBeInTheDocument()
     })
   })
 })

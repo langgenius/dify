@@ -6,10 +6,19 @@ import type {
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ComponentProps, ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import {
+  createEvent,
+  fireEvent,
+  render as renderWithoutUrlState,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
+import { createHttpError, httpErrorFromResponse } from '@/service/http-error'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import SkillsPage from '../page'
 
 type SkillsInfiniteOptions = {
@@ -73,49 +82,6 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-vi.mock('ahooks', () => ({
-  useDebounce: (value: unknown) => value,
-}))
-
-vi.mock('nuqs', async () => {
-  const React = await import('react')
-  const listeners = new Map<'keyword' | 'tag', Set<() => void>>()
-  const createParser = () => ({
-    withDefault: () => ({
-      withOptions: () => ({}),
-    }),
-  })
-
-  return {
-    debounce: () => undefined,
-    parseAsArrayOf: () => ({
-      withDefault: () => ({}),
-    }),
-    parseAsString: createParser(),
-    useQueryState: (name: 'keyword' | 'tag') => {
-      const [value, setValue] = React.useState(mocks.queryState[name])
-      React.useEffect(() => {
-        const nameListeners = listeners.get(name) ?? new Set<() => void>()
-        listeners.set(name, nameListeners)
-        const listener = () => setValue(mocks.queryState[name])
-        nameListeners.add(listener)
-
-        return () => {
-          nameListeners.delete(listener)
-        }
-      }, [name])
-      const setQueryValue = (nextValue: string | string[]) => {
-        mocks.queryState[name] = nextValue as never
-        setValue(nextValue as never)
-        listeners.get(name)?.forEach((listener) => listener())
-        return Promise.resolve(new URLSearchParams())
-      }
-
-      return [value, setQueryValue] as const
-    },
-  }
-})
-
 vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
 }))
@@ -130,10 +96,6 @@ vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({
     formatTime: () => '2026-07-22 10:00',
   }),
-}))
-
-vi.mock('@/app/components/base/app-icon', () => ({
-  default: ({ icon }: { icon?: string }) => <span>{icon}</span>,
 }))
 
 vi.mock('@/features/tag-management/components/skill-card-tags', () => ({
@@ -263,6 +225,12 @@ function createTestQueryClient() {
     defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
   })
 }
+
+const onUrlUpdate = vi.fn()
+const render = createNuqsTestRenderer(renderWithoutUrlState, () => ({
+  onUrlUpdate,
+  searchParams: { keyword: mocks.queryState.keyword, tag: mocks.queryState.tag.join(';') },
+}))
 
 function renderSkillsPage(queryClient = createTestQueryClient()) {
   return render(
@@ -513,7 +481,7 @@ describe('SkillsPage', () => {
     renderSkillsPage()
 
     await waitFor(() => {
-      expect(mocks.queryState.tag).toEqual([])
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.has('tag')).toBe(false)
     })
     await waitFor(() => {
       const queryOptions = mocks.skillsQueryOptions.mock.lastCall?.[0]
@@ -774,7 +742,6 @@ describe('SkillsPage', () => {
         expect.anything(),
       )
     })
-    expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.createSuccess')
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['skills', { type: 'query' }] })
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['skills', { type: 'infinite' }] })
     expect(invalidateQueries).toHaveBeenCalledWith({
@@ -786,7 +753,9 @@ describe('SkillsPage', () => {
 
   it('explains when the workspace skill limit blocks draft creation', async () => {
     const user = userEvent.setup()
-    mocks.createSkillMutationFn.mockRejectedValueOnce({ code: 'skill_limit_exceeded' })
+    mocks.createSkillMutationFn.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 400 }), { code: 'skill_limit_exceeded' }),
+    )
     renderSkillsPage()
 
     await user.click(await screen.findByRole('button', { name: 'skill.skillManagement.create' }))
@@ -851,7 +820,6 @@ describe('SkillsPage', () => {
           expect.anything(),
         )
       })
-      expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.importSuccess')
       expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['skills', { type: 'query' }] })
       expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['skills', { type: 'infinite' }] })
       expect(invalidateQueries).toHaveBeenCalledWith({
@@ -1097,30 +1065,26 @@ describe('SkillsPage', () => {
 
   it.each([
     {
-      error: {
-        data: {
-          body: {
-            code: 'skill_name_conflict',
-            details: { name: 'refund-approval' },
-          },
-        },
-      },
+      error: createHttpError(new Response(null, { status: 409 }), {
+        code: 'skill_name_conflict',
+        details: { name: 'refund-approval' },
+      }),
       message: 'skill.skillManagement.errors.nameConflict:{"name":"refund-approval"}',
     },
     {
-      error: { code: 'skill_limit_exceeded' },
+      error: createHttpError(new Response(null, { status: 400 }), { code: 'skill_limit_exceeded' }),
       message: 'skill.skillManagement.errors.workspaceLimit',
     },
     {
-      error: { code: 'missing_skill_md' },
+      error: createHttpError(new Response(null, { status: 400 }), { code: 'missing_skill_md' }),
       message: 'skill.skillManagement.errors.missingSkillMd',
     },
     {
-      error: { message: 'Skill package must contain SKILL.md' },
+      error: new Error('Skill package must contain SKILL.md'),
       message: 'skill.skillManagement.errors.missingSkillMd',
     },
     {
-      error: { message: 'Skill name "refund-approval" already exists' },
+      error: new Error('Skill name "refund-approval" already exists'),
       message: 'skill.skillManagement.errors.nameConflict:{"name":"refund-approval"}',
     },
   ])('explains import errors for $error.code', async ({ error, message }) => {
@@ -1144,9 +1108,11 @@ describe('SkillsPage', () => {
   it('keeps the package available for retry after explaining an error returned as a Response body', async () => {
     const user = userEvent.setup()
     mocks.importSkillMutationFn.mockRejectedValueOnce(
-      new Response(JSON.stringify({ message: 'Skill package must contain SKILL.md' }), {
-        status: 400,
-      }),
+      await httpErrorFromResponse(
+        new Response(JSON.stringify({ message: 'Skill package must contain SKILL.md' }), {
+          status: 400,
+        }),
+      ),
     )
     renderSkillsPage()
     const dialog = await openImportDialog(user)
@@ -1194,7 +1160,6 @@ describe('SkillsPage', () => {
         expect.anything(),
       )
     })
-    expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.duplicateSuccess')
     expect(mocks.push).toHaveBeenCalledWith('/skills/duplicated-skill?rename=true')
   })
 
@@ -1301,7 +1266,6 @@ describe('SkillsPage', () => {
         expect.anything(),
       )
     })
-    expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.deleteSuccess')
   })
 
   it('loads references in the delete confirmation when the list reference count is stale', async () => {

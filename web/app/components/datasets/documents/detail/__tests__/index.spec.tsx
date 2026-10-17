@@ -1,5 +1,7 @@
+import { QueryClient } from '@tanstack/react-query'
 import { act, fireEvent, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { DatasetACLPermission } from '@/utils/permission'
 
@@ -22,9 +24,6 @@ const mocks = vi.hoisted(() => {
     detailRefetch: vi.fn(),
     checkProgress: vi.fn(),
     batchImport: vi.fn(),
-    invalidDocumentList: vi.fn(),
-    invalidSegmentList: vi.fn(),
-    invalidChildSegmentList: vi.fn(),
     useDocumentTitle: vi.fn(),
     toastNotify: vi.fn(),
   }
@@ -57,37 +56,21 @@ vi.mock('@/context/dataset-detail', () => ({
     selector({ dataset: mocks.state.dataset }),
 }))
 
-vi.mock('@/service/knowledge/use-document', () => ({
-  useDocumentDetail: () => ({
-    data: mocks.state.documentDetail,
-    error: mocks.state.documentError,
-    refetch: mocks.detailRefetch,
-  }),
-  useDocumentMetadata: () => ({
-    data: mocks.state.documentMetadata,
-  }),
-  useInvalidDocumentList: () => mocks.invalidDocumentList,
-}))
-
-vi.mock('@/service/knowledge/use-segment', () => ({
-  useCheckSegmentBatchImportProgress: () => ({
-    mutateAsync: mocks.checkProgress,
-  }),
-  useSegmentBatchImport: () => ({
-    mutateAsync: mocks.batchImport,
-  }),
-  useSegmentListKey: ['segment-list'],
-  useChildSegmentListKey: ['child-segment-list'],
-}))
-
-vi.mock('@/service/use-base', () => ({
-  useInvalid: (key: unknown) => {
-    const keyStr = JSON.stringify(key)
-    if (keyStr === JSON.stringify(['segment-list'])) return mocks.invalidSegmentList
-    if (keyStr === JSON.stringify(['child-segment-list'])) return mocks.invalidChildSegmentList
-    return vi.fn()
-  },
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.documents.byDocumentId.get': (options: {
+      input: { query: { metadata: string } }
+    }) =>
+      options.input.query.metadata === 'only'
+        ? { data: mocks.state.documentMetadata }
+        : {
+            data: mocks.state.documentDetail,
+            error: mocks.state.documentError,
+            refetch: mocks.detailRefetch,
+          },
+  })
+})
 
 vi.mock('@/app/notifications', () => ({
   default: { notify: mocks.toastNotify },
@@ -255,6 +238,23 @@ vi.mock('@/app/components/base/float-right-container', () => ({
     ) : null,
 }))
 
+const expectDocumentListInvalidated = () =>
+  expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
+    queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+      input: { params: { dataset_id: 'ds-1' } },
+    }),
+  })
+
+const segmentListKey = consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.get.key({
+  input: { params: { dataset_id: 'ds-1', document_id: 'doc-1' } },
+})
+const childChunkListKey =
+  consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.childChunks.get.key(
+    {
+      input: { params: { dataset_id: 'ds-1', document_id: 'doc-1' } },
+    },
+  )
+
 // --- Lazy import (after all vi.mock calls) ---
 const { default: DocumentDetail } = await import('../index')
 
@@ -284,6 +284,8 @@ vi.mock('@/context/permission-state', async () => {
 describe('DocumentDetail', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.checkProgress.mockResolvedValue({ job_id: 'job-1', job_status: 'completed' })
+    vi.spyOn(QueryClient.prototype, 'invalidateQueries')
     vi.useFakeTimers()
     mocks.state.dataset = {
       embedding_available: true,
@@ -468,13 +470,13 @@ describe('DocumentDetail', () => {
     it('should invalidate document list on any operation', () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
       fireEvent.click(screen.getByTestId('op-rename'))
-      expect(mocks.invalidDocumentList).toHaveBeenCalled()
+      expectDocumentListInvalidated()
     })
 
     it('should navigate back on delete operation', () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
       fireEvent.click(screen.getByTestId('op-delete'))
-      expect(mocks.invalidDocumentList).toHaveBeenCalled()
+      expectDocumentListInvalidated()
       expect(mocks.push).toHaveBeenCalled()
     })
 
@@ -488,12 +490,18 @@ describe('DocumentDetail', () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
       fireEvent.click(screen.getByTestId('op-rename'))
 
-      expect(mocks.invalidSegmentList).not.toHaveBeenCalled()
+      expect(QueryClient.prototype.invalidateQueries).not.toHaveBeenCalledWith({
+        queryKey: segmentListKey,
+      })
       act(() => {
         vi.advanceTimersByTime(5000)
       })
-      expect(mocks.invalidSegmentList).toHaveBeenCalled()
-      expect(mocks.invalidChildSegmentList).toHaveBeenCalled()
+      expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
+        queryKey: segmentListKey,
+      })
+      expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
+        queryKey: childChunkListKey,
+      })
     })
 
     it('should not invalidate chunk lists on operation with no name', () => {
@@ -504,7 +512,9 @@ describe('DocumentDetail', () => {
       act(() => {
         vi.advanceTimersByTime(5000)
       })
-      expect(mocks.invalidSegmentList).not.toHaveBeenCalled()
+      expect(QueryClient.prototype.invalidateQueries).not.toHaveBeenCalledWith({
+        queryKey: segmentListKey,
+      })
     })
   })
 
@@ -533,16 +543,48 @@ describe('DocumentDetail', () => {
         fireEvent.click(screen.getByTestId('batch-confirm'))
       })
 
-      expect(mocks.batchImport).toHaveBeenCalledWith(
-        {
-          url: '/datasets/ds-1/documents/doc-1/segments/batch_import',
-          body: { upload_file_id: 'file-1' },
-        },
-        expect.objectContaining({
-          onSuccess: expect.any(Function),
-          onError: expect.any(Function),
-        }),
-      )
+      expect(mocks.batchImport).toHaveBeenCalledWith({
+        params: { dataset_id: 'ds-1', document_id: 'doc-1' },
+        body: { upload_file_id: 'file-1' },
+      })
+    })
+
+    it('should poll the import job until it finishes', async () => {
+      mocks.batchImport.mockResolvedValue({ job_id: 'job-1', job_status: 'waiting' })
+      mocks.checkProgress
+        .mockResolvedValueOnce({ job_id: 'job-1', job_status: 'processing' })
+        .mockResolvedValueOnce({ job_id: 'job-1', job_status: 'completed' })
+      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+      fireEvent.click(screen.getByTestId('batch-btn'))
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('batch-confirm'))
+      })
+      await act(async () => {
+        vi.advanceTimersByTime(2500)
+      })
+      await act(async () => {
+        vi.advanceTimersByTime(2500)
+      })
+
+      expect(mocks.checkProgress).toHaveBeenCalledTimes(2)
+      expect(mocks.checkProgress).toHaveBeenCalledWith({ params: { job_id: 'job-1' } })
+    })
+
+    it('should stop polling when the job reports an unknown status', async () => {
+      mocks.batchImport.mockResolvedValue({ job_id: 'job-1', job_status: 'waiting' })
+      mocks.checkProgress.mockResolvedValue({ job_id: 'job-1', job_status: 'queued' })
+      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+      fireEvent.click(screen.getByTestId('batch-btn'))
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('batch-confirm'))
+      })
+      await act(async () => {
+        vi.advanceTimersByTime(5000)
+      })
+
+      expect(mocks.checkProgress).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -593,4 +635,17 @@ describe('DocumentDetail', () => {
       expect(screen.getByTestId('document-title')).toBeInTheDocument()
     })
   })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.batchImportStatus.byJobId.get': (input) => mocks.checkProgress(input),
+      'datasets.byDatasetId.documents.byDocumentId.segments.batchImport.post': (input) =>
+        mocks.batchImport(input),
+    }),
+  }
 })

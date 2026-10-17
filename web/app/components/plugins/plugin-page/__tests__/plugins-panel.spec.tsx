@@ -47,8 +47,8 @@ vi.mock('@/i18n/metadata', async (importOriginal) => ({
   renderI18nObject: (value: Record<string, string>, locale: string) => value[locale] || '',
 }))
 
-vi.mock('@/service/use-plugins', () => ({
-  normalizePluginCategoryListLanguage: (locale: string) => locale,
+vi.mock('@/service/use-plugins', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-plugins')>()),
   useInstalledPluginList: (...args: unknown[]) => mockUseInstalledPluginList(...args),
   useInvalidateInstalledPluginList: () => mockInvalidateInstalledPluginList,
   useRemoveFilteredInstalledPluginPageOnUnmount: (...args: unknown[]) =>
@@ -544,10 +544,7 @@ describe('PluginsPanel', () => {
     expect(builtinToolCard).toHaveTextContent('builtin-tool')
     expect(builtinToolCard).toHaveAttribute('data-show-built-in-badge', 'true')
     expect(pluginList).toContainElement(builtinToolCard)
-    expect(screen.getByRole('button', { name: 'builtin-tool' })).toHaveAttribute(
-      'aria-pressed',
-      'false',
-    )
+    expect(screen.getByRole('button', { name: 'builtin-tool' })).not.toHaveAttribute('aria-current')
     expect(
       pluginItem.compareDocumentPosition(builtinToolCard) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
@@ -600,7 +597,7 @@ describe('PluginsPanel', () => {
 
     await user.click(builtinToolCard)
 
-    expect(builtinToolCard).toHaveAttribute('aria-pressed', 'true')
+    expect(builtinToolCard).toHaveAttribute('aria-current', 'true')
     expect(pluginCard).toHaveAttribute('aria-pressed', 'false')
     expect(screen.getByTestId('builtin-tool-detail')).toHaveTextContent('builtin-tool')
     expect(screen.queryByTestId('plugin-detail-panel')).not.toBeInTheDocument()
@@ -608,7 +605,7 @@ describe('PluginsPanel', () => {
     await user.click(pluginCard)
 
     expect(pluginCard).toHaveAttribute('aria-pressed', 'true')
-    expect(builtinToolCard).toHaveAttribute('aria-pressed', 'false')
+    expect(builtinToolCard).not.toHaveAttribute('aria-current')
     expect(screen.getByTestId('plugin-detail-panel')).toHaveTextContent('tool-plugin')
     expect(screen.queryByTestId('builtin-tool-detail')).not.toBeInTheDocument()
   })

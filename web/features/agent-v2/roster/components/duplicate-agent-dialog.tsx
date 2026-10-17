@@ -5,18 +5,17 @@ import type { AgentFormSource, AgentFormValues, AgentIconSelection } from './age
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogClose,
+  DialogCloseButton,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Form } from '@langgenius/dify-ui/form'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconPickerDialog } from '@/app/components/base/icon-picker'
-import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { createAgentIconSelection } from './agent-form'
 import { AgentFormFields } from './agent-form-fields'
@@ -59,12 +58,11 @@ function DuplicateAgentFormSession({
     sourceName: agent.name,
   }))
   const [agentIcon, setAgentIcon] = useState(initialValues.icon)
-  const [iconPickerOpen, setIconPickerOpen] = useState(false)
 
   return (
     <>
-      <div className="shrink-0 ps-6 pe-14 pt-6 pb-3">
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
+      <DialogHeader>
+        <DialogTitle>
           {t(($) => $['roster.duplicateDialog.title'], { ns: 'agentRoster' })}
         </DialogTitle>
         <DialogDescription className="sr-only">
@@ -73,9 +71,10 @@ function DuplicateAgentFormSession({
             name: initialValues.sourceName,
           })}
         </DialogDescription>
-      </div>
+        <DialogCloseButton aria-label={tCommon(($) => $['operation.close'])} disabled={pending} />
+      </DialogHeader>
       <Form<AgentFormValues>
-        className="flex min-h-0 flex-1 flex-col"
+        className="contents"
         onFormSubmit={(formValues) => onSubmit(formValues, agentIcon)}
       >
         <AgentFormFields
@@ -86,29 +85,22 @@ function DuplicateAgentFormSession({
             ns: 'agentRoster',
             name: initialValues.sourceName,
           })}
-          onIconClick={() => setIconPickerOpen(true)}
+          onIconChange={setAgentIcon}
         />
-        <div className="flex shrink-0 justify-end gap-2 px-6 pt-5 pb-6">
+        <DialogFooter>
           <Button type="button" className="min-w-18" onClick={onCancel} disabled={pending}>
             {tCommon(($) => $['operation.cancel'])}
           </Button>
           <Button type="submit" variant="primary" className="min-w-18" loading={pending}>
             {tCommon(($) => $['operation.duplicate'])}
           </Button>
-        </div>
+        </DialogFooter>
       </Form>
-      <IconPickerDialog
-        open={iconPickerOpen}
-        defaultValue={agentIcon.type === 'link' ? undefined : agentIcon}
-        onOpenChange={setIconPickerOpen}
-        onConfirm={setAgentIcon}
-      />
     </>
   )
 }
 
 export function DuplicateAgentDialog({ agent, open, onOpenChange }: DuplicateAgentDialogProps) {
-  const { t } = useTranslation(['common', 'agentRoster'])
   const queryClient = useQueryClient()
   const latestAgent =
     queryClient.getQueryData<AgentFormSource>(
@@ -150,7 +142,6 @@ export function DuplicateAgentDialog({ agent, open, onOpenChange }: DuplicateAge
       },
       {
         onSuccess: () => {
-          toast.success(t(($) => $['roster.duplicateSuccess'], { ns: 'agentRoster' }))
           onOpenChange(false)
         },
       },
@@ -160,22 +151,7 @@ export function DuplicateAgentDialog({ agent, open, onOpenChange }: DuplicateAge
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
-        <DialogContent
-          initialFocus={nameInputRef}
-          className="flex max-h-[calc(100dvh-2rem)] w-130 flex-col overflow-hidden! p-0!"
-        >
-          <DialogClose
-            disabled={duplicateAgentMutation.isPending}
-            render={
-              <IconButton
-                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                size="lg"
-                className="absolute inset-e-5 top-5"
-              >
-                <span aria-hidden className="i-ri-close-line size-4" />
-              </IconButton>
-            }
-          />
+        <DialogContent initialFocus={nameInputRef} className="w-130">
           <DuplicateAgentFormSession
             key={latestAgent.id}
             agent={latestAgent}

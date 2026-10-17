@@ -3,11 +3,12 @@ import type { ModelProviderPluginSummary } from '../index'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -31,7 +32,6 @@ import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-v
 import useTheme from '@/hooks/use-theme'
 import { consoleQuery } from '@/service/console'
 import { uninstallPlugin } from '@/service/plugins'
-import { commonQueryKeys } from '@/service/use-common'
 import { normalizeInstalledPluginDetail } from '@/service/use-plugins'
 import { getMarketplaceUrl } from '@/utils/var'
 
@@ -75,7 +75,9 @@ const ProviderCardActions: FC<Props> = (props) => {
       queryClient.invalidateQueries({
         queryKey: consoleQuery.workspaces.current.plugin.list.latestVersions.post.key(),
       }),
-      queryClient.invalidateQueries({ queryKey: commonQueryKeys.modelProviderDetails }),
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.modelProviders.get.key(),
+      }),
       queryClient.invalidateQueries({ queryKey: ['marketplacePlugins'] }),
       queryClient.invalidateQueries({ queryKey: ['marketplaceCollectionPlugins'] }),
     ])
@@ -255,24 +257,22 @@ function SummaryProviderCardActions({ summary, providerLabel, onUpdate }: Summar
         }}
       >
         <AlertDialogContent backdropProps={{ forceRender: true }}>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t(($) => $['action.delete'], { ns: 'plugin' })}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t(($) => $['action.delete'], { ns: 'plugin' })}</AlertDialogTitle>
+            <AlertDialogDescription>
               {t(($) => $['action.deleteContentLeft'], { ns: 'plugin' })}
               <span className="system-md-semibold text-text-secondary">{providerLabel}</span>
               {t(($) => $['action.deleteContentRight'], { ns: 'plugin' })}
             </AlertDialogDescription>
-          </div>
-          <AlertDialogActions>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
             <AlertDialogCancelButton disabled={deleting}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton loading={deleting} onClick={handleDelete}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

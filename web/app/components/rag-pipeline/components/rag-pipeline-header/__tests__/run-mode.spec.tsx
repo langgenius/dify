@@ -42,22 +42,10 @@ vi.mock('@/app/components/workflow/hooks-store', () => ({
     }),
 }))
 
-vi.mock('@/app/components/workflow/types', () => ({
-  WorkflowRunningStatus: { Running: 'running' },
-}))
-
-vi.mock('@/app/components/workflow/variable-inspect/types', () => ({
-  EVENT_WORKFLOW_STOP: 'EVENT_WORKFLOW_STOP',
-}))
-
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({
     eventEmitter: { useSubscription: vi.fn() },
   }),
-}))
-
-vi.mock('@langgenius/dify-ui/cn', () => ({
-  cn: (...args: unknown[]) => args.filter((a) => typeof a === 'string').join(' '),
 }))
 
 vi.mock('@remixicon/react', () => ({

@@ -1,58 +1,41 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import type { QueryClient } from '@tanstack/react-query'
+import type { ReactElement } from 'react'
+import { act, render as RTLRender, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { createTestQueryClient } from '@/test/query-client'
 import InstitutionField from '../institution-field'
 
-const educationAutocompleteQueryMock = vi.hoisted(() => ({
-  options: vi.fn(),
-  fetchNextPage: vi.fn(),
-  hasNextPage: false,
-  isError: false,
-  isFetching: false,
-  data: {
-    pages: [
-      {
-        curr_page: 0,
-        data: ['Alpha University', 'Beta College'],
-        has_next: false,
-      },
-    ],
-  },
-}))
+const mockAutocomplete = vi.hoisted(() => vi.fn())
 
-const debouncedValueMock = vi.hoisted(() => ({
-  hold: false,
-  value: '',
-}))
-
-const keepPreviousDataMock = vi.hoisted(() => vi.fn((previousData: unknown) => previousData))
-
-vi.mock('@tanstack/react-query', () => ({
-  keepPreviousData: keepPreviousDataMock,
-  useInfiniteQuery: (options: unknown) => {
-    educationAutocompleteQueryMock.options(options)
-    return educationAutocompleteQueryMock
-  },
-}))
-
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    account: {
-      education: {
-        autocomplete: {
-          get: {
-            infiniteOptions: (options: unknown) => options,
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const operation = actual.consoleQuery.account.education.autocomplete.get
+  return {
+    consoleQuery: {
+      account: {
+        education: {
+          autocomplete: {
+            get: {
+              infiniteOptions: (...args: Parameters<typeof operation.infiniteOptions>) => ({
+                ...operation.infiniteOptions(...args),
+                queryFn: ({ pageParam }: { pageParam: unknown }) => {
+                  const input = args[0].input
+                  return mockAutocomplete(typeof input === 'function' ? input(pageParam) : input)
+                },
+              }),
+            },
           },
         },
       },
     },
-  },
-}))
+  }
+})
 
-vi.mock('foxact/use-debounced-value', () => ({
-  useDebouncedValue: <T,>(value: T) =>
-    debouncedValueMock.hold ? (debouncedValueMock.value as T) : value,
-}))
+let queryClient: QueryClient
+const render = (ui: ReactElement) =>
+  RTLRender(ui, { wrapper: createQueryClientWrapper(queryClient) })
 
 const ControlledInstitutionField = () => {
   const [value, setValue] = useState('')
@@ -91,15 +74,16 @@ function stubIntersectionObserver() {
 describe('InstitutionField', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    educationAutocompleteQueryMock.hasNextPage = false
-    educationAutocompleteQueryMock.isError = false
-    educationAutocompleteQueryMock.isFetching = false
-    educationAutocompleteQueryMock.data.pages[0]!.data = ['Alpha University', 'Beta College']
-    debouncedValueMock.hold = false
-    debouncedValueMock.value = ''
+    queryClient = createTestQueryClient()
+    mockAutocomplete.mockReset().mockResolvedValue({
+      curr_page: 0,
+      data: ['Alpha University', 'Beta College'],
+      has_next: false,
+    })
   })
 
   afterEach(() => {
+    queryClient.clear()
     vi.unstubAllGlobals()
   })
 
@@ -117,12 +101,7 @@ describe('InstitutionField', () => {
 
     expect(input).toHaveValue('Alpha')
     await waitFor(() => {
-      const options = educationAutocompleteQueryMock.options.mock.lastCall?.[0] as {
-        enabled: boolean
-        input: (page: number) => unknown
-      }
-      expect(options.enabled).toBe(true)
-      expect(options.input(0)).toEqual({
+      expect(mockAutocomplete).toHaveBeenCalledWith({
         query: { keywords: 'Alpha', limit: 40, page: 0 },
       })
     })
@@ -146,7 +125,7 @@ describe('InstitutionField', () => {
 
   it('keeps an unmatched institution name as free-form input', async () => {
     const user = userEvent.setup()
-    educationAutocompleteQueryMock.data.pages[0]!.data = []
+    mockAutocomplete.mockResolvedValue({ curr_page: 0, data: [], has_next: false })
 
     render(<ControlledInstitutionField />)
 
@@ -159,32 +138,37 @@ describe('InstitutionField', () => {
 
   it('keeps previous suggestions open while a new search settles', async () => {
     const user = userEvent.setup()
-    const view = render(<ControlledInstitutionField />)
+    render(<ControlledInstitutionField />)
     const input = screen.getByPlaceholderText(/(?:^|\.)form\.schoolName\.placeholder(?=$|:)/)
 
     await user.type(input, 'A')
     expect(await screen.findByText('Alpha University')).toBeInTheDocument()
 
-    debouncedValueMock.hold = true
-    debouncedValueMock.value = 'A'
+    let resolveSearch!: (value: { curr_page: number; data: string[]; has_next: boolean }) => void
+    mockAutocomplete.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveSearch = resolve
+        }),
+    )
     await user.type(input, 'l')
 
     expect(input).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText('Alpha University')).toBeInTheDocument()
 
-    debouncedValueMock.hold = false
-    educationAutocompleteQueryMock.isFetching = true
-    view.rerender(<ControlledInstitutionField />)
-
+    await waitFor(() =>
+      expect(mockAutocomplete).toHaveBeenLastCalledWith({
+        query: { keywords: 'Al', limit: 40, page: 0 },
+      }),
+    )
     expect(input).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText('Alpha University')).toBeInTheDocument()
-    expect(educationAutocompleteQueryMock.options.mock.lastCall?.[0]).toMatchObject({
-      placeholderData: keepPreviousDataMock,
-    })
+    expect(screen.queryByText('education.form.schoolName.noResults')).not.toBeInTheDocument()
 
-    educationAutocompleteQueryMock.data.pages[0]!.data = ['Alpine University']
-    educationAutocompleteQueryMock.isFetching = false
-    view.rerender(<ControlledInstitutionField />)
+    await act(async () => {
+      resolveSearch({ curr_page: 0, data: ['Alpine University'], has_next: false })
+    })
+    await screen.findByText('Alpine University')
 
     expect(screen.getByText('Alpine University')).toBeInTheDocument()
     expect(screen.queryByText('Alpha University')).not.toBeInTheDocument()
@@ -193,7 +177,11 @@ describe('InstitutionField', () => {
   it('requests the next page when the suggestions sentinel enters the preload area', async () => {
     const user = userEvent.setup()
     const triggerIntersection = stubIntersectionObserver()
-    educationAutocompleteQueryMock.hasNextPage = true
+    mockAutocomplete.mockResolvedValueOnce({
+      curr_page: 0,
+      data: ['Alpha University', 'Beta College'],
+      has_next: true,
+    })
 
     render(<ControlledInstitutionField />)
 
@@ -202,18 +190,28 @@ describe('InstitutionField', () => {
       'A',
     )
 
-    await screen.findByRole('listbox')
+    await screen.findByText('Alpha University')
+    mockAutocomplete.mockResolvedValueOnce({
+      curr_page: 1,
+      data: ['Gamma College'],
+      has_next: false,
+    })
     await triggerIntersection()
 
-    expect(educationAutocompleteQueryMock.fetchNextPage).toHaveBeenCalledOnce()
-    expect(educationAutocompleteQueryMock.fetchNextPage).toHaveBeenCalledWith({
-      cancelRefetch: false,
+    expect(await screen.findByText('Gamma College')).toBeInTheDocument()
+    expect(screen.getByText('Alpha University')).toBeInTheDocument()
+    expect(mockAutocomplete).toHaveBeenLastCalledWith({
+      query: { keywords: 'A', limit: 40, page: 1 },
     })
   })
 
   it('keeps keyboard navigation at the loaded list boundary', async () => {
     const user = userEvent.setup()
-    educationAutocompleteQueryMock.hasNextPage = true
+    mockAutocomplete.mockResolvedValueOnce({
+      curr_page: 0,
+      data: ['Alpha University', 'Beta College'],
+      has_next: true,
+    })
 
     render(<ControlledInstitutionField />)
 
@@ -231,8 +229,13 @@ describe('InstitutionField', () => {
 
   it('keeps loaded suggestions visible when the next page fails', async () => {
     const user = userEvent.setup()
-    educationAutocompleteQueryMock.hasNextPage = true
-    educationAutocompleteQueryMock.isError = true
+    mockAutocomplete.mockResolvedValueOnce({
+      curr_page: 0,
+      data: ['Alpha University', 'Beta College'],
+      has_next: true,
+    })
+    const triggerIntersection = stubIntersectionObserver()
+    mockAutocomplete.mockRejectedValueOnce(new Error('Pagination failed'))
 
     render(<ControlledInstitutionField />)
 
@@ -242,6 +245,9 @@ describe('InstitutionField', () => {
     )
 
     expect(await screen.findByText('Alpha University')).toBeInTheDocument()
+    await triggerIntersection()
+    await screen.findAllByText('common.dynamicSelect.error')
+    expect(screen.getByText('Alpha University')).toBeInTheDocument()
     expect(
       screen
         .getAllByText('common.dynamicSelect.error')

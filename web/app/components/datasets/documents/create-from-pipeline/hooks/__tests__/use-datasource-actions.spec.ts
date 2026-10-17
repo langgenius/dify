@@ -9,13 +9,16 @@ import { createDataSourceStore } from '../../data-source/store'
 import { useDatasourceActions } from '../use-datasource-actions'
 
 const mockRunPublishedPipeline = vi.fn()
-vi.mock('@/service/use-pipeline', () => ({
-  useRunPublishedPipeline: () => ({
-    mutateAsync: mockRunPublishedPipeline,
-    isIdle: true,
-    isPending: false,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipelines.byPipelineId.workflows.published.run.post': () => ({
+      mutateAsync: mockRunPublishedPipeline,
+      isIdle: true,
+      isPending: false,
+    }),
+  })
+})
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
 }))
@@ -206,11 +209,10 @@ describe('useDatasourceActions', () => {
     })
 
     expect(mockRunPublishedPipeline).toHaveBeenCalledWith(
-      expect.objectContaining({
-        pipeline_id: 'pipeline-1',
-        is_preview: true,
-        start_node_id: 'node-1',
-      }),
+      {
+        params: { pipeline_id: 'pipeline-1' },
+        body: expect.objectContaining({ is_preview: true, start_node_id: 'node-1' }),
+      },
       expect.anything(),
     )
   })

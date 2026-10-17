@@ -1,8 +1,8 @@
 import type { Edge, Node } from '../types'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { BaseEdge, internalsSymbol, Position, ReactFlowProvider, useStoreApi } from 'reactflow'
-import { FlowType } from '@/types/common'
 import { WORKFLOW_DATA_UPDATE } from '../constants'
 import { Workflow } from '../index'
 import { ControlMode } from '../types'
@@ -181,12 +181,19 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: [] }),
-  useAllCustomTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: [] }),
-  useAllWorkflowTools: () => ({ data: [] }),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.builtin.get': async () => [],
+      'workspaces.current.tools.api.get': async () => [],
+      'workspaces.current.tools.mcp.get': async () => [],
+      'workspaces.current.tools.workflow.get': async () => [],
+    }),
+  }
+})
 
 vi.mock('@/service/workflow', () => ({
   fetchAllInspectVars: vi.fn().mockResolvedValue([]),
@@ -290,34 +297,6 @@ vi.mock('../hooks/use-workflow-comment', () => ({
   useWorkflowComment: () => workflowCommentState,
 }))
 
-vi.mock('../base/confirm', () => ({
-  default: ({
-    isShow,
-    title,
-    desc,
-    onConfirm,
-    onCancel,
-  }: {
-    isShow: boolean
-    title?: string
-    desc?: string
-    onConfirm: () => void
-    onCancel: () => void
-  }) =>
-    isShow ? (
-      <div role="alertdialog" data-testid="confirm-dialog">
-        {title && <div>{title}</div>}
-        {desc && <div>{desc}</div>}
-        <button type="button" onClick={onConfirm}>
-          common.operation.confirm
-        </button>
-        <button type="button" onClick={onCancel}>
-          common.operation.cancel
-        </button>
-      </div>
-    ) : null,
-}))
-
 vi.mock('../candidate-node', () => ({
   default: () => null,
 }))
@@ -414,7 +393,7 @@ vi.mock('../hooks/use-workflow', () => ({
     nodesReadOnly: false,
     getNodesReadOnly: () => false,
   }),
-  useIsChatMode: () => false,
+
   useWorkflow: () => ({
     isValidConnection: workflowHookMocks.isValidConnection,
   }),
@@ -511,12 +490,9 @@ function renderSubject(options?: {
     </ReactFlowProvider>,
     {
       initialStoreState,
+      resource: { kind: 'app' as const, appId: 'flow-1', mode: 'workflow' as const },
       hooksStoreProps: {
-        configsMap: {
-          flowId: 'flow-1',
-          flowType: FlowType.appFlow,
-          fileSettings: {},
-        },
+        fileSettings: {},
       },
     },
   )
@@ -772,13 +748,16 @@ describe('Workflow edge event wiring', () => {
   })
 
   it('should render confirm description and clear showConfirm when cancelled', async () => {
+    const user = userEvent.setup()
     const onConfirm = vi.fn()
+    const onCancel = vi.fn()
     const { store } = renderSubject({
       initialStoreState: {
         showConfirm: {
           title: 'Confirm title',
           desc: 'Confirm description',
           onConfirm,
+          onCancel,
         },
       },
     })
@@ -787,13 +766,14 @@ describe('Workflow edge event wiring', () => {
     expect(screen.getByText('Confirm title')).toBeInTheDocument()
     expect(screen.getByText('Confirm description')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
     await waitFor(() => {
       expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     })
     expect(store.getState().showConfirm).toBeUndefined()
     expect(onConfirm).not.toHaveBeenCalled()
+    expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
   it('should call showConfirm.onConfirm when confirm is clicked', () => {

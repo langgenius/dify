@@ -2,10 +2,6 @@ import type { AgentLogResponse } from '@/types/workflow'
 import { baseRunningData, renderWorkflowHook } from '../../../__tests__/workflow-test-env'
 import { useWorkflowAgentLog } from '../use-workflow-agent-log'
 
-vi.mock('@/app/components/base/file-uploader/utils', () => ({
-  getFilesInLogs: vi.fn(() => []),
-}))
-
 describe('useWorkflowAgentLog', () => {
   it('creates agent_log when execution_metadata has none', () => {
     const { result, store } = renderWorkflowHook(() => useWorkflowAgentLog(), {

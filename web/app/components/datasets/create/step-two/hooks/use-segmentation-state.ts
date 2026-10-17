@@ -1,6 +1,6 @@
+import type { PreProcessingRule } from '@dify/contracts/api/console/datasets/types.gen'
 import type {
   ParentMode,
-  PreProcessingRule,
   ProcessRule,
   Rules,
   SummaryIndexSetting as SummaryIndexSettingType,

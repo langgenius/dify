@@ -3,7 +3,7 @@ import { screen } from '@testing-library/react'
 import { createNode, createStartNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderNodeComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useIsChatMode, useWorkflow } from '../../../hooks/use-workflow'
+import { useWorkflow } from '../../../hooks/use-workflow'
 import { useWorkflowVariables } from '../../../hooks/use-workflow-variables'
 import Node from '../node'
 
@@ -13,7 +13,6 @@ vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
   return {
     ...actual,
     useWorkflow: vi.fn(),
-    useIsChatMode: vi.fn(),
   }
 })
 
@@ -28,7 +27,7 @@ vi.mock('../../../hooks/use-workflow-variables', async (importOriginal) => {
 
 const mockUseWorkflow = vi.mocked(useWorkflow)
 const mockUseWorkflowVariables = vi.mocked(useWorkflowVariables)
-const mockUseIsChatMode = vi.mocked(useIsChatMode)
+let chatflowMode = false
 
 const createNodeData = (overrides: Partial<EndNodeType> = {}): EndNodeType => ({
   title: 'End',
@@ -62,13 +61,19 @@ describe('EndNode', () => {
       getNodeAvailableVars: () => [],
       getCurrentVariableType: () => 'string',
     } as unknown as ReturnType<typeof useWorkflowVariables>)
-    mockUseIsChatMode.mockReturnValue(false)
+    chatflowMode = false
   })
 
   // The node should surface only resolved outputs and ignore empty selectors.
   describe('Rendering', () => {
     it('should render resolved output labels for referenced nodes', () => {
-      renderNodeComponent(Node, createNodeData())
+      renderNodeComponent(Node, createNodeData(), {
+        resource: {
+          kind: 'app',
+          appId: 'app-1',
+          mode: chatflowMode ? 'advanced-chat' : 'workflow',
+        },
+      })
 
       expect(screen.getByText('Source Node')).toBeInTheDocument()
       expect(screen.getByText('answer')).toBeInTheDocument()
@@ -86,6 +91,13 @@ describe('EndNode', () => {
             },
           ],
         }),
+        {
+          resource: {
+            kind: 'app',
+            appId: 'app-1',
+            mode: chatflowMode ? 'advanced-chat' : 'workflow',
+          },
+        },
       )
 
       expect(screen.getByText('Start')).toBeInTheDocument()
@@ -103,6 +115,13 @@ describe('EndNode', () => {
             },
           ],
         }),
+        {
+          resource: {
+            kind: 'app',
+            appId: 'app-1',
+            mode: chatflowMode ? 'advanced-chat' : 'workflow',
+          },
+        },
       )
 
       expect(container).toBeEmptyDOMElement()

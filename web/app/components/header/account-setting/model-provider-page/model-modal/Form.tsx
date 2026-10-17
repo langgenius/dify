@@ -133,7 +133,7 @@ function Form<
     if (isEditMode && (key === '__model_type' || key === '__model_name')) return
 
     setChangeKey(key)
-    const shouldClearVariable: Record<string, string | undefined> = {}
+    const shouldClearVariable: FormValue = {}
     if (showOnVariableMap[key]?.length) {
       showOnVariableMap[key].forEach((clearVariable) => {
         const schema = formSchemas.find((it) => it.variable === clearVariable)
@@ -426,13 +426,13 @@ function Form<
               </FieldsetLegend>
               <div className="flex items-center gap-3">
                 <FieldItem>
-                  <FieldLabel className="flex items-center gap-1.5 system-sm-regular text-text-secondary">
+                  <FieldLabel className="flex cursor-pointer items-center gap-1.5 system-sm-regular text-text-secondary">
                     <Radio<boolean> value={true} />
                     True
                   </FieldLabel>
                 </FieldItem>
                 <FieldItem>
-                  <FieldLabel className="flex items-center gap-1.5 system-sm-regular text-text-secondary">
+                  <FieldLabel className="flex cursor-pointer items-center gap-1.5 system-sm-regular text-text-secondary">
                     <Radio<boolean> value={false} />
                     False
                   </FieldLabel>

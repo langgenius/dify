@@ -1,15 +1,16 @@
 import type {
-  UserProfile,
+  WorkflowCommentBasic,
   WorkflowCommentDetail,
-  WorkflowCommentList,
-} from '@/app/components/workflow/comment/types'
+} from '@dify/contracts/api/console/apps/types.gen'
+import type { UserProfile } from '@/app/components/workflow/comment/types'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useReactFlow } from 'reactflow'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { useParams } from '@/next/navigation'
 import { consoleClient } from '@/service/console'
 import { useStore } from '../store'
 import { ControlMode } from '../types'
@@ -27,15 +28,14 @@ const normalizeTimestamp = (value: number | string | null | undefined): number =
   return Math.floor(Date.parse(value) / 1000)
 }
 
-const toCommentDetailPreview = (comment: WorkflowCommentList): WorkflowCommentDetail => ({
+const toCommentDetailPreview = (comment: WorkflowCommentBasic): WorkflowCommentDetail => ({
   ...comment,
   replies: [],
   mentions: [],
 })
 
 export const useWorkflowComment = () => {
-  const params = useParams()
-  const appId = params.appId as string
+  const appId = useAtomValue(editorAppIdAtom)
   const reactflow = useReactFlow()
   const controlMode = useStore((s) => s.controlMode)
   const pendingComment = useStore((s) => s.pendingComment)
@@ -200,7 +200,7 @@ export const useWorkflowComment = () => {
         }
         const participants = Array.from(uniqueParticipantsMap.values())
 
-        const composedComment: WorkflowCommentList = {
+        const composedComment: WorkflowCommentBasic = {
           id: newComment.id,
           position_x: flowPosition.x,
           position_y: flowPosition.y,
@@ -278,7 +278,7 @@ export const useWorkflowComment = () => {
   }, [isCommentPlacing, isCommentQuickAdd, pendingComment, setCommentQuickAdd])
 
   const handleCommentIconClick = useCallback(
-    async (comment: WorkflowCommentList) => {
+    async (comment: WorkflowCommentBasic) => {
       commentFocusToRestoreRef.current = null
       setPendingComment(null)
 

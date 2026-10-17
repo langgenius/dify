@@ -1,8 +1,16 @@
 import type { EmailConfig } from '../../types'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Dialog,
+  DialogBody,
+  DialogCloseButton,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { RiBugLine } from '@remixicon/react'
@@ -97,31 +105,21 @@ const EmailConfigureModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100dvh-64px)]! w-180!">
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute inset-e-6 top-6"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-        <div className="space-y-1 pr-8">
-          <DialogTitle className="title-2xl-semi-bold text-text-primary">
+      <DialogContent className="max-h-[calc(100dvh-64px)] w-180">
+        <DialogHeader>
+          <DialogTitle>
             {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.title`], {
               ns: 'workflowHumanInput',
             })}
           </DialogTitle>
-          <div className="system-xs-regular text-text-tertiary">
+          <DialogDescription>
             {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.description`], {
               ns: 'workflowHumanInput',
             })}
-          </div>
-        </div>
-        <div className="mt-6 space-y-5">
+          </DialogDescription>
+          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody className="space-y-5">
           <div>
             <label
               htmlFor={subjectId}
@@ -168,7 +166,10 @@ const EmailConfigureModal = ({
               <RiBugLine className="size-3.5 text-text-primary-on-surface" />
             </div>
             <div className="grow space-y-1">
-              <label htmlFor={debugModeId} className="system-sm-medium text-text-secondary">
+              <label
+                htmlFor={debugModeId}
+                className="cursor-pointer system-sm-medium text-text-secondary"
+              >
                 {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.debugMode`], {
                   ns: 'workflowHumanInput',
                 })}
@@ -196,15 +197,15 @@ const EmailConfigureModal = ({
               onCheckedChange={(checked) => setDebugMode(checked)}
             />
           </div>
-        </div>
-        <div className="mt-6 flex flex-row-reverse gap-2">
-          <Button variant="primary" className="w-18" onClick={handleConfirm}>
-            {t(($) => $['operation.save'], { ns: 'common' })}
-          </Button>
+        </DialogBody>
+        <DialogFooter>
           <Button className="w-18" onClick={() => onOpenChange(false)}>
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </Button>
-        </div>
+          <Button variant="primary" className="w-18" onClick={handleConfirm}>
+            {t(($) => $['operation.save'], { ns: 'common' })}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

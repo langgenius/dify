@@ -1,19 +1,14 @@
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { AccessPolicyWithBindings, ResourceUserAccessSetting } from '@/models/access-control'
-import type { Member } from '@/models/common'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import AccessRulesEditor from '../index'
 
 const mockMembers = vi.hoisted(() => ({
-  accounts: [] as Member[] | null,
-  isLoading: false,
+  accounts: [] as AccountWithRoleResponse[] | null,
 }))
 const mockMembersQuery = vi.hoisted(() => vi.fn())
-
-vi.mock('@tanstack/react-query', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
-  useQuery: mockMembersQuery,
-}))
 
 const createRule = (resourceType: 'app' | 'dataset'): AccessPolicyWithBindings => ({
   policy: {
@@ -72,7 +67,7 @@ const createDefaultUserAccessSetting = (): ResourceUserAccessSetting => ({
   access_policies: [],
 })
 
-const createMember = (overrides: Partial<Member> = {}): Member =>
+const createMember = (overrides: Partial<AccountWithRoleResponse> = {}): AccountWithRoleResponse =>
   ({
     id: 'account-2',
     name: 'Mia',
@@ -83,17 +78,13 @@ const createMember = (overrides: Partial<Member> = {}): Member =>
     role: 'normal',
     roles: [],
     ...overrides,
-  }) as Member
+  }) as AccountWithRoleResponse
 
 describe('AccessRulesEditor', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockMembers.accounts = []
-    mockMembers.isLoading = false
-    mockMembersQuery.mockImplementation(() => ({
-      data: { accounts: mockMembers.accounts },
-      isPending: mockMembers.isLoading,
-    }))
+    mockMembersQuery.mockImplementation(() => Promise.resolve({ accounts: mockMembers.accounts }))
   })
 
   it('should render loading state before empty or row content', () => {
@@ -366,14 +357,10 @@ describe('AccessRulesEditor', () => {
         name: 'permission.accessRule.addMembersTitle',
       })
       expect(within(addDialog).getByText('Workspace Owner')).toBeInTheDocument()
-      expect(
-        within(addDialog).getByRole('button', { name: 'common.operation.added' }),
-      ).toBeDisabled()
-      expect(
-        within(addDialog).queryByRole('button', {
-          name: 'permission.accessRule.addMemberAria:{"name":"Workspace Owner"}',
-        }),
-      ).not.toBeInTheDocument()
+      const ownerItem = within(addDialog).getByRole('menuitem', { name: /Workspace Owner/ })
+      expect(ownerItem).toHaveAttribute('aria-disabled', 'true')
+      expect(ownerItem).toHaveTextContent('common.operation.added')
+      expect(ownerItem).not.toHaveTextContent('+ common.operation.add')
       expect(onAddAccessSubject).not.toHaveBeenCalled()
     },
   )
@@ -525,23 +512,89 @@ describe('AccessRulesEditor', () => {
     const dialog = await screen.findByRole('dialog', {
       name: 'permission.accessRule.addMembersTitle',
     })
-    expect(within(dialog).getByText('Evan')).toBeInTheDocument()
-    expect(within(dialog).getByRole('button', { name: 'common.operation.added' })).toBeDisabled()
-    expect(
-      within(dialog).queryByRole('button', {
-        name: 'permission.accessRule.addMemberAria:{"name":"Evan"}',
-      }),
-    ).not.toBeInTheDocument()
+    expect(await within(dialog).findByText('Evan')).toBeInTheDocument()
+    const evanItem = within(dialog).getByRole('menuitem', { name: /Evan/ })
+    expect(evanItem).toHaveAttribute('aria-disabled', 'true')
+    expect(evanItem).toHaveTextContent('common.operation.added')
+    expect(evanItem).not.toHaveTextContent('+ common.operation.add')
     expect(within(dialog).getByText('Mia')).toBeInTheDocument()
     expect(within(dialog).queryByRole('tablist')).not.toBeInTheDocument()
 
-    await user.click(
-      within(dialog).getByRole('button', {
-        name: 'permission.accessRule.addMemberAria:{"name":"Mia"}',
-      }),
-    )
+    const miaItem = within(dialog).getByRole('menuitem', { name: /Mia/ })
+    expect(miaItem).toHaveTextContent('+ common.operation.add')
+    await user.click(miaItem)
 
     expect(onAddAccessSubject).toHaveBeenCalledWith('account-2', ['default'])
+  })
+
+  it('should filter add-member candidates by name and email, not by the row action text', async () => {
+    const user = userEvent.setup()
+    mockMembers.accounts = [
+      createMember({ id: 'account-3', name: 'Evan', email: 'evan@example.com' }),
+      createMember(),
+    ]
+
+    render(
+      <AccessRulesEditor
+        rules={[]}
+        userAccessSettings={[]}
+        isLoadingRules={false}
+        isLoadingUserAccessSettings={false}
+        automaticIncludeWorkspaceMembers={false}
+        isUpdatingAutomaticIncludeWorkspaceMembers={false}
+        existingAccountIds={[]}
+        updatingAccountId={null}
+        onAddAccessSubject={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
+    const dialog = await screen.findByRole('dialog', {
+      name: 'permission.accessRule.addMembersTitle',
+    })
+    const search = within(dialog).getByRole('searchbox', { name: 'common.operation.search' })
+
+    await user.type(search, 'mia@')
+    expect(within(dialog).getByRole('menuitem', { name: /Mia/ })).toBeInTheDocument()
+    expect(within(dialog).queryByRole('menuitem', { name: /Evan/ })).not.toBeInTheDocument()
+
+    // Every row shows the add action, so a query for its text must not match them all.
+    await user.clear(search)
+    await user.type(search, 'operation.add')
+    expect(within(dialog).queryByRole('menuitem')).not.toBeInTheDocument()
+    expect(
+      await within(dialog).findByText('permission.accessRule.noAvailableMembers'),
+    ).toHaveAttribute('role', 'status')
+  })
+
+  it('should announce a failed member load without offering candidates', async () => {
+    const user = userEvent.setup()
+    mockMembersQuery.mockRejectedValue(new Error('Request failed'))
+
+    render(
+      <AccessRulesEditor
+        rules={[]}
+        userAccessSettings={[]}
+        isLoadingRules={false}
+        isLoadingUserAccessSettings={false}
+        automaticIncludeWorkspaceMembers={false}
+        isUpdatingAutomaticIncludeWorkspaceMembers={false}
+        existingAccountIds={[]}
+        updatingAccountId={null}
+        onAddAccessSubject={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
+    const dialog = await screen.findByRole('dialog', {
+      name: 'permission.accessRule.addMembersTitle',
+    })
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+    expect(within(dialog).queryByRole('menuitem')).not.toBeInTheDocument()
+    expect(
+      within(dialog).queryByText('permission.accessRule.noAvailableMembers'),
+    ).not.toBeInTheDocument()
   })
 
   it('should select individual rows and all selectable rows on the current page', async () => {
@@ -632,4 +685,15 @@ describe('AccessRulesEditor', () => {
     ])
     expect(screen.queryByText('permission.accessRule.selected')).not.toBeInTheDocument()
   })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.members.get': (input) => mockMembersQuery(input),
+    }),
+  }
 })

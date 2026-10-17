@@ -1,17 +1,16 @@
 import type { LangGeniusVersionInfo } from '@/context/app-context-types'
 // Import mocks for assertions
 import type { ConsoleStateFixture as BaseConsoleStateFixture } from '@/test/console/state-fixture'
-import { waitFor } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
 import {
   useInvalidateReferenceSettings,
-  useMutationPluginPermissionSettings,
-  useMutationReferenceSettings,
   usePluginAutoUpgradeSettings,
   usePluginPermissionSettings,
 } from '@/service/use-plugins'
 import { renderHookWithConsoleQuery } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { PermissionType, PluginCategoryEnum } from '../../types'
 import useReferenceSetting, { useCanInstallPluginFromMarketplace } from '../use-reference-setting'
 
@@ -59,13 +58,31 @@ vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/service/use-plugins', () => ({
+vi.mock('@/service/use-plugins', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-plugins')>()),
   usePluginAutoUpgradeSettings: vi.fn(),
   usePluginPermissionSettings: vi.fn(),
-  useMutationPluginPermissionSettings: vi.fn(),
-  useMutationReferenceSettings: vi.fn(),
   useInvalidateReferenceSettings: vi.fn(),
 }))
+
+const requests = vi.hoisted(() => ({ autoUpgrade: vi.fn(), permission: vi.fn() }))
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.plugin.autoUpgrade.change.post': requests.autoUpgrade,
+      'workspaces.current.plugin.permission.change.post': requests.permission,
+    }),
+  }
+})
+
+beforeEach(() => {
+  requests.autoUpgrade.mockResolvedValue({})
+  requests.permission.mockResolvedValue({})
+})
 
 const toastSuccessSpy = vi.spyOn(toast, 'success').mockReturnValue('toast-success')
 
@@ -101,16 +118,6 @@ describe('useReferenceSetting Hook', () => {
         debug_permission: PermissionType.everyone,
       },
     } as ReturnType<typeof usePluginPermissionSettings>)
-
-    vi.mocked(useMutationReferenceSettings).mockReturnValue({
-      mutate: vi.fn(),
-      isPending: false,
-    } as unknown as ReturnType<typeof useMutationReferenceSettings>)
-
-    vi.mocked(useMutationPluginPermissionSettings).mockReturnValue({
-      mutate: vi.fn(),
-      isPending: false,
-    } as unknown as ReturnType<typeof useMutationPluginPermissionSettings>)
 
     vi.mocked(useInvalidateReferenceSettings).mockReturnValue(vi.fn())
   })
@@ -334,20 +341,16 @@ describe('useReferenceSetting Hook', () => {
       const mockInvalidate = vi.fn()
       vi.mocked(useInvalidateReferenceSettings).mockReturnValue(mockInvalidate)
 
-      let onSuccessCallback: (() => void) | undefined
-      vi.mocked(useMutationReferenceSettings).mockImplementation((options) => {
-        onSuccessCallback = options?.onSuccess as () => void
-        return {
-          mutate: vi.fn(),
-          isPending: false,
-        } as unknown as ReturnType<typeof useMutationReferenceSettings>
-      })
-
-      renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
-
-      // Trigger the onSuccess callback
-      if (onSuccessCallback) onSuccessCallback()
-
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
+      act(() =>
+        result.current.setReferenceSettings({
+          ...result.current.referenceSetting!,
+          auto_upgrade: {
+            ...result.current.referenceSetting!.auto_upgrade,
+            strategy_setting: 'latest',
+          },
+        }),
+      )
       await waitFor(() => {
         expect(mockInvalidate).toHaveBeenCalled()
         expect(toastSuccessSpy).toHaveBeenCalledWith('common.api.actionSuccess')
@@ -382,15 +385,33 @@ describe('useReferenceSetting Hook', () => {
       expect(result.current.referenceSetting).toEqual(mockData)
     })
 
-    it('should return isUpdatePending from mutation', () => {
-      vi.mocked(useMutationReferenceSettings).mockReturnValue({
-        mutate: vi.fn(),
-        isPending: true,
-      } as unknown as ReturnType<typeof useMutationReferenceSettings>)
-
+    it('tracks a pending settings request until the server responds', async () => {
+      const request = createDeferred<object>()
+      requests.autoUpgrade.mockReturnValue(request.promise)
       const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
-
-      expect(result.current.isUpdatePending).toBe(true)
+      act(() =>
+        result.current.setReferenceSettings({
+          ...result.current.referenceSetting!,
+          auto_upgrade: {
+            ...result.current.referenceSetting!.auto_upgrade,
+            strategy_setting: 'latest',
+          },
+        }),
+      )
+      await waitFor(() => expect(result.current.isUpdatePending).toBe(true))
+      expect(requests.autoUpgrade).toHaveBeenCalledWith({
+        body: {
+          category: 'tool',
+          auto_upgrade: {
+            ...result.current.referenceSetting!.auto_upgrade,
+            strategy_setting: 'latest',
+          },
+        },
+      })
+      expect(toastSuccessSpy).not.toHaveBeenCalled()
+      request.resolve({})
+      await waitFor(() => expect(result.current.isUpdatePending).toBe(false))
+      expect(toastSuccessSpy).toHaveBeenCalledWith('common.api.actionSuccess')
     })
 
     it('should keep permission key access available when reference setting data is still loading', () => {
@@ -516,11 +537,6 @@ describe('useCanInstallPluginFromMarketplace Hook', () => {
         debug_permission: PermissionType.everyone,
       },
     } as ReturnType<typeof usePluginPermissionSettings>)
-
-    vi.mocked(useMutationReferenceSettings).mockReturnValue({
-      mutate: vi.fn(),
-      isPending: false,
-    } as unknown as ReturnType<typeof useMutationReferenceSettings>)
 
     vi.mocked(useInvalidateReferenceSettings).mockReturnValue(vi.fn())
   })

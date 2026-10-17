@@ -9,17 +9,6 @@ vi.mock('@/config', () => ({
   ENABLE_WEBSITE_WATERCRAWL: false,
 }))
 
-vi.mock('../../../index.module.css', () => ({
-  default: {
-    dataSourceItem: 'ds-item',
-    active: 'active',
-    disabled: 'disabled',
-    datasetIcon: 'icon',
-    notion: 'notion-icon',
-    web: 'web-icon',
-  },
-}))
-
 const { default: DataSourceTypeSelector } = await import('../data-source-type-selector')
 
 const defaultProps = {

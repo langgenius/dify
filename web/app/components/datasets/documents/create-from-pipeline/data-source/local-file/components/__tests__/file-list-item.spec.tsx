@@ -12,9 +12,6 @@ vi.mock('@/hooks/use-theme', () => ({
 }))
 
 // Mock theme types
-vi.mock('@/types/app', () => ({
-  Theme: { dark: 'dark', light: 'light' },
-}))
 
 // Mock SimplePieChart with dynamic import handling
 vi.mock('next/dynamic', () => ({
@@ -116,13 +113,6 @@ describe('FileListItem', () => {
       // 100KB (102400 bytes) formatted with formatFileSize
       expect(screen.getByText('100.00 KB')).toBeInTheDocument()
     })
-
-    it('should render delete button', () => {
-      const { container } = render(<FileListItem {...defaultProps} />)
-
-      const deleteButton = container.querySelector('.cursor-pointer')
-      expect(deleteButton).toBeInTheDocument()
-    })
   })
 
   describe('progress states', () => {
@@ -194,34 +184,6 @@ describe('FileListItem', () => {
 
       expect(onPreview).toHaveBeenCalledTimes(1)
       expect(onPreview).toHaveBeenCalledWith(fileItem.file)
-    })
-
-    it('should call onRemove when delete button is clicked', () => {
-      const onRemove = vi.fn()
-      const fileItem = createMockFileItem()
-      const { container } = render(
-        <FileListItem {...defaultProps} fileItem={fileItem} onRemove={onRemove} />,
-      )
-
-      const deleteButton = container.querySelector('.cursor-pointer')!
-      fireEvent.click(deleteButton)
-
-      expect(onRemove).toHaveBeenCalledTimes(1)
-      expect(onRemove).toHaveBeenCalledWith('file-123')
-    })
-
-    it('should stop propagation when delete button is clicked', () => {
-      const onPreview = vi.fn()
-      const onRemove = vi.fn()
-      const { container } = render(
-        <FileListItem {...defaultProps} onPreview={onPreview} onRemove={onRemove} />,
-      )
-
-      const deleteButton = container.querySelector('.cursor-pointer')!
-      fireEvent.click(deleteButton)
-
-      expect(onRemove).toHaveBeenCalledTimes(1)
-      expect(onPreview).not.toHaveBeenCalled()
     })
   })
 

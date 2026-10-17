@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from unittest.mock import Mock
+from unittest.mock import create_autospec
 
 import pytest
 from redis import RedisError
@@ -66,7 +66,7 @@ def test_activity_refresh_is_gated_but_fails_open(
     )
     sqlite_session.commit()
     account_id, old_active = account.id, account.last_active_at
-    redis = Mock(spec=RedisClientWrapper)
+    redis = create_autospec(RedisClientWrapper, instance=True)
     if isinstance(redis_claim, RedisError):
         redis.set.side_effect = redis_claim
     else:
@@ -83,7 +83,9 @@ def test_identity_rejects_banned_and_missing_accounts(account_domain: AccountDom
     account = Account(name="Banned", email="b@example.com", status=AccountStatus.BANNED)
     sqlite_session.add(account)
     sqlite_session.commit()
-    gateway = AccountIdentityGateway(accounts=account_domain.repository, redis=Mock(spec=RedisClientWrapper))
+    gateway = AccountIdentityGateway(
+        accounts=account_domain.repository, redis=create_autospec(RedisClientWrapper, instance=True)
+    )
     with pytest.raises(Unauthorized, match="banned"):
         gateway.load_user(account.id)
     assert gateway.load_user("missing") is None
