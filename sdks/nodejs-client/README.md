@@ -97,6 +97,7 @@ Notes:
 
 - App endpoints use an app API token; knowledge base and workspace endpoints use a dataset API token.
 - Chat/completion require a stable `user` identifier in the request payload.
+- For attachment-only retrieval testing, use `kbClient.hitTesting(datasetId, { query: '', attachment_ids: [fileId] })`.
 - For streaming responses, iterate the returned AsyncIterable. Use `stream.toText()` to collect text.
 
 ## Maintainers
