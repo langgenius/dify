@@ -588,11 +588,12 @@ export class KnowledgeBaseClient extends DifyClient {
     request: HitTestingRequest,
   ): Promise<DifyResponse<KnowledgeBaseResponse>> {
     ensureNonEmptyString(datasetId, 'datasetId')
-    if (request.query !== undefined && request.query !== null) {
-      ensureOptionalString(request.query, 'query')
-    }
-    if (request.attachment_ids && request.attachment_ids.length > 0) {
+    const hasAttachments = Boolean(request.attachment_ids?.length)
+    if (hasAttachments) {
       ensureStringArray(request.attachment_ids, 'attachment_ids')
+    }
+    if (request.query !== '' || !hasAttachments) {
+      ensureOptionalString(request.query, 'query')
     }
     return this.http.request({
       method: 'POST',
