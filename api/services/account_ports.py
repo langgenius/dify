@@ -19,6 +19,7 @@ from services.entities.account_entities import (
     AccountIntegrationSnapshot,
     AccountPasswordDigest,
     AccountProfileChanges,
+    AccountSessionTokens,
     AccountSnapshot,
 )
 
@@ -93,6 +94,16 @@ class AccountSessionRepository(Protocol):
         token_id: str,
         revoked_at: datetime,
     ) -> AccountSessionRevocation: ...
+
+
+class AccountSessionRevoker(Protocol):
+    def revoke_all(self, account_id: str) -> None: ...
+
+
+class AccountSessionReissuer(AccountSessionRevoker, Protocol):
+    def resolve_refresh_token(self, refresh_token: str) -> str | None: ...
+
+    def issue(self, account_id: str) -> AccountSessionTokens: ...
 
 
 class AccountTokenCacheInvalidator(Protocol):

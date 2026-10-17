@@ -4,11 +4,11 @@ import logging
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from datetime import timedelta
 from typing import override
 from unittest.mock import MagicMock, call
 
 import pytest
+from redis.crc import key_slot
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -27,6 +27,7 @@ from services.account.adapters import (
     RBACWorkspaceMemberAccessSync,
     RedisInvitationTokenStore,
 )
+from services.account.console_tokens import verify_console_access_token
 from services.account_activation_service import AccountActivationService
 from services.email_code_login_challenge import (
     EmailCodeLoginChallengeResult,
@@ -249,68 +250,110 @@ def test_security_gateway_owns_email_send_ip_limit(
     ]
 
 
-def test_session_gateway_owns_refresh_token_storage(
-    redis_transport: tuple[RedisClientWrapper, MagicMock], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    redis, commands = redis_transport
-    issued_payloads: list[dict[str, object]] = []
-
-    class FakePassportService:
-        def issue(self, payload: dict[str, object]) -> str:
-            issued_payloads.append(payload)
-            return "access"
-
-    monkeypatch.setattr(adapters, "PassportService", FakePassportService)
-    monkeypatch.setattr(adapters.secrets, "token_hex", lambda _length: "refresh")
-    monkeypatch.setattr(adapters, "generate_csrf_token", lambda _account_id: "csrf")
-    gateway = adapters.RedisAccountSessionGateway(redis=redis)
-
-    result = gateway.issue("account-1")
-
-    assert result == AccountSessionTokens(access_token="access", refresh_token="refresh", csrf_token="csrf")
-    assert issued_payloads[0]["user_id"] == "account-1"
-    expires_in = int(timedelta(days=adapters.dify_config.REFRESH_TOKEN_EXPIRE_DAYS).total_seconds())
-    assert commands.call_args_list == [
-        call("SETEX", "refresh_token:refresh", expires_in, "account-1"),
-        call("SETEX", "account_refresh_token:account-1", expires_in, "refresh"),
-    ]
+SESSION_ACCOUNT_ID = "11111111-1111-4111-8111-111111111111"
 
 
-def test_session_gateway_resolves_rotates_and_revokes_refresh_tokens(
-    redis_transport: tuple[RedisClientWrapper, MagicMock], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    redis, commands = redis_transport
-    commands.side_effect = [b"account-1", 1, 1, b"stored-refresh", 1, 1]
-    gateway = adapters.RedisAccountSessionGateway(redis=redis)
-    monkeypatch.setattr(
-        gateway,
-        "_issue",
-        lambda _account_id: AccountSessionTokens(
-            access_token="new-access", refresh_token="new-refresh", csrf_token="csrf"
-        ),
-    )
-
-    assert gateway.resolve_refresh_token("refresh") == "account-1"
-    assert gateway.rotate(refresh_token="refresh", account_id="account-1").refresh_token == "new-refresh"
-    gateway.revoke("account-1")
-
-    deleted_keys = [call.args[1] for call in commands.call_args_list if call.args[0] == "DEL"]
-    assert deleted_keys == [
-        "refresh_token:refresh",
-        "account_refresh_token:account-1",
-        "refresh_token:stored-refresh",
-        "account_refresh_token:account-1",
-    ]
-    assert commands.call_count == 6
+@pytest.fixture
+def session_gateway(
+    redis_transport: tuple[RedisClientWrapper, MagicMock], config_overrides: Callable[..., None]
+) -> adapters.RedisAccountSessionGateway:
+    config_overrides(SECRET_KEY="session-test-signing-key-at-least-32-bytes")
+    return adapters.RedisAccountSessionGateway(redis=redis_transport[0])
 
 
-def test_session_gateway_returns_none_for_unknown_refresh_token(
+def test_session_gateway_issues_independent_credentials_with_only_hashes_in_storage(
+    session_gateway: adapters.RedisAccountSessionGateway,
     redis_transport: tuple[RedisClientWrapper, MagicMock],
 ) -> None:
-    redis, commands = redis_transport
-    commands.return_value = None
+    _, commands = redis_transport
+    commands.return_value = 1
+    first = session_gateway.issue(SESSION_ACCOUNT_ID)
+    second = session_gateway.issue(SESSION_ACCOUNT_ID)
 
-    assert adapters.RedisAccountSessionGateway(redis=redis).resolve_refresh_token("bad-token") is None
+    assert first.refresh_token != second.refresh_token
+    assert first.refresh_token.split(".")[2] != second.refresh_token.split(".")[2]
+    assert verify_console_access_token(first.access_token) == SESSION_ACCOUNT_ID
+    assert verify_console_access_token(second.access_token) == SESSION_ACCOUNT_ID
+    assert first.refresh_token not in repr(commands.call_args_list)
+    assert second.refresh_token not in repr(commands.call_args_list)
+    assert session_gateway._digest(first.refresh_token) in repr(commands.call_args_list)
+
+
+@pytest.mark.parametrize("token", ["", "legacy-token", "a" * 128, "v2.{injected}.sid.secret", "v2." + "a" * 4096])
+def test_session_gateway_rejects_malformed_and_legacy_credentials_without_redis(
+    session_gateway: adapters.RedisAccountSessionGateway,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    token: str,
+) -> None:
+    _, commands = redis_transport
+    assert session_gateway.resolve_refresh_token(token) is None
+    session_gateway.revoke(token)
+    with pytest.raises(account_errors.InvalidRefreshTokenError):
+        session_gateway.rotate(refresh_token=token, account_id=SESSION_ACCOUNT_ID)
+    commands.assert_not_called()
+
+
+def test_session_gateway_binds_rotation_to_the_resolved_account(
+    session_gateway: adapters.RedisAccountSessionGateway,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    _, commands = redis_transport
+    token = f"v2.{SESSION_ACCOUNT_ID}.{'a' * 32}.{'b' * 64}"
+    with pytest.raises(account_errors.InvalidRefreshTokenError):
+        session_gateway.rotate(refresh_token=token, account_id="22222222-2222-4222-8222-222222222222")
+    commands.assert_not_called()
+
+
+def test_session_gateway_encrypts_and_reads_rotation_responses(
+    session_gateway: adapters.RedisAccountSessionGateway,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    _, commands = redis_transport
+
+    def accept_rotation(*args: object) -> bytes:
+        encrypted = args[-1]
+        assert isinstance(encrypted, str)
+        return encrypted.encode()
+
+    commands.side_effect = accept_rotation
+    token = f"v2.{SESSION_ACCOUNT_ID}.{'a' * 32}.{'b' * 64}"
+    rotated = session_gateway.rotate(refresh_token=token, account_id=SESSION_ACCOUNT_ID, request_id="retry-id")
+
+    assert rotated.refresh_token != token
+    assert rotated.refresh_token.split(".")[:3] == token.split(".")[:3]
+    assert verify_console_access_token(rotated.access_token) == SESSION_ACCOUNT_ID
+    assert token not in repr(commands.call_args_list)
+    assert rotated.refresh_token not in repr(commands.call_args_list)
+
+
+@pytest.mark.parametrize("reply", [None, b"corrupt-encrypted-response"])
+def test_session_gateway_fails_closed_when_rotation_is_rejected_or_reply_is_invalid(
+    session_gateway: adapters.RedisAccountSessionGateway,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    reply: bytes | None,
+) -> None:
+    _, commands = redis_transport
+    commands.return_value = reply
+    token = f"v2.{SESSION_ACCOUNT_ID}.{'a' * 32}.{'b' * 64}"
+    with pytest.raises(account_errors.InvalidRefreshTokenError):
+        session_gateway.rotate(refresh_token=token, account_id=SESSION_ACCOUNT_ID)
+
+
+def test_session_gateway_keeps_script_keys_in_one_namespaced_cluster_slot(
+    session_gateway: adapters.RedisAccountSessionGateway,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    config_overrides: Callable[..., None],
+) -> None:
+    _, commands = redis_transport
+    config_overrides(REDIS_KEY_PREFIX="test-prefix:")
+    commands.return_value = 1
+    token = f"v2.{SESSION_ACCOUNT_ID}.{'a' * 32}.{'b' * 64}"
+    assert session_gateway.resolve_refresh_token(token) == SESSION_ACCOUNT_ID
+    args = commands.call_args.args
+    keys = args[3:6]
+    assert len(keys) == 3
+    assert all(key.startswith("test-prefix:") for key in keys)
+    assert len({key_slot(key.encode()) for key in keys}) == 1
 
 
 def test_workspace_provisioning_persists_owner_workspace(

@@ -30,10 +30,22 @@ logger = logging.getLogger(__name__)
 
 type LoginUser = Account | EndUser
 type AccountLoader = Callable[[str], Account | None]
+type ConsoleTokenVerifier = Callable[[str], str]
 
 
 def bind_account_loader(app: Flask, loader: AccountLoader) -> None:
     app.extensions["account_identity_loader"] = loader
+
+
+def bind_console_token_verifier(app: Flask, verifier: ConsoleTokenVerifier) -> None:
+    app.extensions["console_token_verifier"] = verifier
+
+
+def verify_console_access_token(token: str) -> str:
+    try:
+        return cast(ConsoleTokenVerifier, current_app.extensions["console_token_verifier"])(token)
+    except ValueError as error:
+        raise Unauthorized(str(error)) from error
 
 
 def load_account(account_id: str) -> Account | None:
@@ -100,14 +112,7 @@ def _load_user_from_request(request_from_flask_login: Request, session: Session)
     if request.blueprint in {"console", "inner_api"}:
         if not auth_token:
             raise Unauthorized("Invalid Authorization token.")
-        decoded = PassportService().verify(auth_token)
-        user_id = decoded.get("user_id")
-        source = decoded.get("token_source")
-        if source:
-            raise Unauthorized("Invalid Authorization token.")
-        if not user_id:
-            raise Unauthorized("Invalid Authorization token.")
-
+        user_id = verify_console_access_token(auth_token)
         logged_in_account = load_account(user_id)
         return logged_in_account
     elif request.blueprint == "openapi":
@@ -120,12 +125,8 @@ def _load_user_from_request(request_from_flask_login: Request, session: Session)
         if not cookie_token:
             return None
         try:
-            decoded = PassportService().verify(cookie_token)
+            user_id = verify_console_access_token(cookie_token)
         except Exception:
-            return None
-        user_id = decoded.get("user_id")
-        source = decoded.get("token_source")
-        if source or not user_id:
             return None
         return load_account(user_id)
     elif request.blueprint == "web":

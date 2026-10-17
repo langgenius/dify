@@ -1,7 +1,7 @@
 import hmac
 import logging
 import re
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 from flask import Request
 from werkzeug.exceptions import Unauthorized
@@ -142,7 +142,8 @@ def set_csrf_token_to_cookie(request: Request, response: Response, token: str):
         domain=_cookie_domain(),
         secure=is_secure(),
         samesite="Lax",
-        max_age=int(60 * dify_config.ACCESS_TOKEN_EXPIRE_MINUTES),
+        # Keep the signed generation available to coordinate refresh after its JWT expires.
+        max_age=int(60 * 60 * 24 * dify_config.REFRESH_TOKEN_EXPIRE_DAYS),
         path="/",
     )
 
@@ -227,12 +228,3 @@ def check_csrf_token(request: Request, user_id: str):
     exp: int | None = verified.get("exp")
     if not exp or exp < int(datetime.now(UTC).timestamp()):
         _unauthorized()
-
-
-def generate_csrf_token(user_id: str) -> str:
-    exp_dt = datetime.now(UTC) + timedelta(minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES)
-    payload = {
-        "exp": int(exp_dt.timestamp()),
-        "sub": user_id,
-    }
-    return PassportService().issue(payload)

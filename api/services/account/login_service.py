@@ -6,7 +6,7 @@ from typing import Never, Protocol
 
 from constants.languages import get_valid_language, language_timezone_mapping
 from services import account_errors
-from services.account_ports import AccountPasswordHasher
+from services.account_ports import AccountPasswordHasher, AccountSessionRevoker
 from services.entities.account_entities import AccountSessionTokens
 from services.entities.account_login_entities import (
     AccountSessionPreparation,
@@ -70,14 +70,14 @@ class HumanVerificationGateway(Protocol):
     def verify(self, *, token: str | None, remote_ip: str, action: str) -> None: ...
 
 
-class AccountSessionGateway(Protocol):
+class AccountSessionGateway(AccountSessionRevoker, Protocol):
     def issue(self, account_id: str) -> AccountSessionTokens: ...
 
-    def revoke(self, account_id: str) -> None: ...
+    def revoke(self, refresh_token: str) -> None: ...
 
     def resolve_refresh_token(self, refresh_token: str) -> str | None: ...
 
-    def rotate(self, *, refresh_token: str, account_id: str) -> AccountSessionTokens: ...
+    def rotate(self, *, refresh_token: str, account_id: str, request_id: str | None = None) -> AccountSessionTokens: ...
 
 
 class AccountRefreshPreparationGateway(Protocol):
@@ -217,8 +217,9 @@ class ConsoleAuthenticationService:
         self._security.reset_login_failures(normalized_email)
         return PasswordLoginResult(tokens=tokens, workspace_found=True)
 
-    def logout(self, account_id: str) -> None:
-        self._sessions.revoke(account_id)
+    def logout(self, refresh_token: str | None) -> None:
+        if refresh_token:
+            self._sessions.revoke(refresh_token)
 
     def send_reset_password_email(self, *, email: str, language: str | None, ip_address: str) -> str:
         normalized_email = email.lower()
@@ -311,7 +312,7 @@ class ConsoleAuthenticationService:
         self._security.reset_login_failures(normalized_email)
         return tokens
 
-    def refresh(self, refresh_token: str) -> AccountSessionTokens:
+    def refresh(self, refresh_token: str, *, request_id: str | None = None) -> AccountSessionTokens:
         account_id = self._sessions.resolve_refresh_token(refresh_token)
         if account_id is None:
             raise account_errors.InvalidRefreshTokenError("Invalid refresh token")
@@ -320,7 +321,7 @@ class ConsoleAuthenticationService:
             raise account_errors.InvalidRefreshTokenError("Account is banned.")
         if refresh_status == RefreshAccountStatus.NOT_FOUND:
             raise account_errors.InvalidRefreshTokenError("Invalid account")
-        return self._sessions.rotate(refresh_token=refresh_token, account_id=account_id)
+        return self._sessions.rotate(refresh_token=refresh_token, account_id=account_id, request_id=request_id)
 
     def _password_login_completion(
         self,

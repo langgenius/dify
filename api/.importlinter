@@ -1165,3 +1165,65 @@ forbidden_modules =
     services.account.adapters
     sqlalchemy
     werkzeug
+
+[importlinter:contract:console-session-controller-boundary]
+name = Console session controllers reach domain policy and persistence only through services
+type = forbidden
+source_modules =
+    controllers.console.auth.login
+    controllers.console.socketio.workflow
+forbidden_modules =
+    configs
+    core
+    extensions.ext_database
+    models
+    repositories
+    services.account.console_session
+    services.account.refresh_origin
+    sqlalchemy
+    jwt
+    cryptography
+allow_indirect_imports = True
+
+[importlinter:contract:console-session-service-boundary]
+name = Console token and request security services do not depend on HTTP or persistence
+type = forbidden
+source_modules =
+    services.account.console_tokens
+    services.account.session_security
+forbidden_modules =
+    controllers
+    extensions
+    flask
+    werkzeug
+    models
+    repositories
+    redis
+    sqlalchemy
+
+[importlinter:contract:console-session-domain-boundary]
+name = Console session domain policy is independent of application services and infrastructure
+type = forbidden
+source_modules =
+    services.account.console_session
+    services.account.refresh_origin
+# Forbidding the ancestor `services` package would not be checked, so name the application owners.
+forbidden_modules =
+    configs
+    controllers
+    core
+    extensions
+    libs
+    models
+    repositories
+    services.account.console_tokens
+    services.account.login_adapters
+    services.account.login_service
+    services.account.session_security
+    services.account_errors
+    flask
+    werkzeug
+    redis
+    sqlalchemy
+    jwt
+    cryptography

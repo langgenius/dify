@@ -44,6 +44,7 @@ from extensions.application_services.workspace import (
     build_workspace_services,
 )
 from extensions.ext_redis import RedisClientWrapper, redis_client
+from extensions.ext_socketio import sio
 from extensions.ext_storage import storage
 from libs.helper import RateLimiter
 from libs.passport import PassportService
@@ -82,19 +83,21 @@ from repositories.upload_file_delivery_repository import UploadFileDeliveryQuery
 from repositories.web_passport_repository import WebPassportRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
+from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.account.adapters import (
     InstallationTelemetryGateway,
     RedisInvitationTokenStore,
 )
+from services.account.console_tokens import verify_console_access_token
 from services.account.forgot_password_adapters import RedisForgotPasswordSecurityGateway
 from services.account.forgot_password_service import (
     FORGOT_PASSWORD_SEND_RATE_LIMIT_MAX_ATTEMPTS,
     FORGOT_PASSWORD_SEND_RATE_LIMIT_PREFIX,
     FORGOT_PASSWORD_SEND_RATE_LIMIT_WINDOW_SECONDS,
 )
-from services.account.login_adapters import RedisConsoleAuthSecurityGateway
+from services.account.login_adapters import RedisAccountSessionGateway, RedisConsoleAuthSecurityGateway
 from services.account.service import AccountSetupProvisioner
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
@@ -198,6 +201,7 @@ from services.web_passport_service import WebPassportService
 from services.webapp_access_adapters import EnterpriseWebAppAccessPolicyGateway
 from services.webapp_access_query_service import WebAppAccessQueryService, WebAppAccessUnavailableError
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
+from services.workflow_collaboration_service import WorkflowCollaborationService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 from tasks.mail_inner_task import enqueue_inner_mail
@@ -305,6 +309,7 @@ class ApplicationServices:
     workflow_runs: WorkflowRunService
     workspaces: WorkspaceServices
     workflow_app_logs: WorkflowAppLogQueryService
+    workflow_collaboration: WorkflowCollaborationService
     workflow_comments: WorkflowCommentService
     inner_mail: InnerMailService
     web_passport: WebPassportService
@@ -569,6 +574,7 @@ def build_application_services(
         webapp_access=webapp_access,
         web_authentication=WebAuthenticationService(
             accounts=accounts,
+            account_sessions=RedisAccountSessionGateway(redis=redis),
             passwords=passwords,
             tokens=web_authentication_tokens,
             security=AccountWebAuthenticationSecurityGateway(
@@ -689,6 +695,12 @@ def build_application_services(
         workflow_app_logs=WorkflowAppLogQueryService(
             logs=WorkflowAppLogQueryRepository(session_factory=database_client),
         ),
+        workflow_collaboration=WorkflowCollaborationService(
+            repository=WorkflowCollaborationRepository(),
+            socketio=sio,
+            session_factory=database_client,
+            load_account=account_services.identity.load_user,
+        ),
         workflow_comments=WorkflowCommentService(
             comments=WorkflowCommentRepository(session_factory=database_client),
             notifier=CeleryWorkflowCommentMentionNotifier(),
@@ -723,7 +735,7 @@ def build_application_services(
 
 
 def init_app(app: Flask) -> None:
-    from extensions.ext_login import bind_account_loader
+    from extensions.ext_login import bind_account_loader, bind_console_token_verifier
 
     services = build_application_services(
         database_client=get_session_maker(),
@@ -733,6 +745,7 @@ def init_app(app: Flask) -> None:
     )
     app.extensions[_EXTENSION_KEY] = services
     bind_account_loader(app, services.accounts.identity.load_user)
+    bind_console_token_verifier(app, verify_console_access_token)
 
 
 def application_services() -> ApplicationServices:

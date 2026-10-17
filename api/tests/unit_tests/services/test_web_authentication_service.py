@@ -22,6 +22,7 @@ from services.web_authentication_service import (
     WebPasswordResetVerificationLimitedError,
 )
 from services.webapp_access_query_service import WebAppAccessAppNotFoundError
+from tests.unit_tests.account_domain import FakeAccountSessions
 
 
 @dataclass
@@ -171,6 +172,7 @@ class ServiceFixture:
     security: SecurityGatewayFake
     app_access: AppAccessGatewayFake
     app_sessions: AppSessionGatewayFake
+    account_sessions: FakeAccountSessions
     audit: AuditGatewayFake
 
 
@@ -188,10 +190,12 @@ def service_fixture() -> ServiceFixture:
     security = SecurityGatewayFake()
     app_access = AppAccessGatewayFake()
     app_sessions = AppSessionGatewayFake()
+    account_sessions = FakeAccountSessions()
     audit = AuditGatewayFake()
     service = WebAuthenticationService(
         accounts=accounts,
         passwords=PasswordHasherFake(),
+        account_sessions=account_sessions,
         tokens=tokens,
         security=security,
         app_access=app_access,
@@ -199,7 +203,7 @@ def service_fixture() -> ServiceFixture:
         audit=audit,
         private_app_access_enabled=True,
     )
-    return ServiceFixture(service, accounts, tokens, security, app_access, app_sessions, audit)
+    return ServiceFixture(service, accounts, tokens, security, app_access, app_sessions, account_sessions, audit)
 
 
 def request_context() -> RequestContext:
@@ -327,6 +331,7 @@ def test_password_reset_updates_through_repository(service_fixture: ServiceFixtu
     )
 
     assert service_fixture.tokens.revoked == [("reset", "reset-token")]
+    assert service_fixture.account_sessions.account_ids == ["account-1", "account-1"]
     assert service_fixture.accounts.updated == (
         "account-1",
         AccountPasswordDigest(password_hash="hashed:NewValid123!", password_salt="new-salt"),
@@ -439,6 +444,7 @@ def test_login_status_applies_public_access_policy(
     service = WebAuthenticationService(
         accounts=service_fixture.accounts,
         passwords=PasswordHasherFake(),
+        account_sessions=service_fixture.account_sessions,
         tokens=service_fixture.tokens,
         security=service_fixture.security,
         app_access=service_fixture.app_access,
@@ -728,3 +734,19 @@ def test_password_reset_rejects_failed_repository_update(service_fixture: Servic
         "account-1",
         AccountPasswordDigest(password_hash="hashed:NewValid123!", password_salt="new-salt"),
     )
+
+
+@pytest.mark.parametrize("fail_on_call", [1, 2])
+def test_password_reset_revokes_console_sessions_before_and_after_commit(
+    service_fixture: ServiceFixture, fail_on_call: int
+) -> None:
+    service_fixture.tokens.reset_token = StoredAuthenticationToken(email="user@example.com", code="1234", phase="reset")
+    service_fixture.account_sessions.fail_on_call = fail_on_call
+
+    with pytest.raises(RuntimeError, match="Session storage unavailable"):
+        service_fixture.service.reset_password(
+            token="reset-token", new_password="NewValid123!", password_confirmation="NewValid123!"
+        )
+
+    assert service_fixture.account_sessions.account_ids == ["account-1"] * fail_on_call
+    assert (service_fixture.accounts.updated is None) is (fail_on_call == 1)

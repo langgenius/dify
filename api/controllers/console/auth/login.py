@@ -2,10 +2,10 @@ from http import HTTPStatus
 from typing import Never
 from uuid import UUID
 
-import flask_login
 from flask import make_response, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
+from werkzeug.exceptions import BadRequest, Forbidden
 
 from controllers.common.fields import (
     SimpleResultDataResponse,
@@ -50,20 +50,27 @@ from extensions.ext_application_services import application_services
 from libs.external_api import error_responses
 from libs.helper import EmailStr, dump_response, extract_remote_ip
 from libs.helper import timezone as validate_timezone_string
-from libs.login import current_account_with_tenant_optional
 from libs.token import (
     clear_access_token_from_cookie,
     clear_csrf_token_from_cookie,
     clear_refresh_token_from_cookie,
+    extract_csrf_token,
+    extract_csrf_token_from_cookie,
     extract_refresh_token,
     set_access_token_to_cookie,
     set_csrf_token_to_cookie,
     set_refresh_token_to_cookie,
 )
 from services import account_errors
+from services.account.session_security import validate_session_request_origin
 from services.entities.account_entities import AccountSessionTokens
 from services.entities.account_login_entities import EmailCodeLoginCommand, EmailCodeSendCommand, PasswordLoginCommand
 from services.entities.auth_entities import LoginPayloadBase
+
+_REFRESH_ORIGIN_DESCRIPTION = (
+    "Requires an Origin matching the Console web URL or API origin. "
+    "Same-host proxy scheme/port changes additionally require a signed X-CSRF-Token matching the CSRF cookie."
+)
 
 
 class LoginPayload(LoginPayloadBase):
@@ -164,12 +171,12 @@ class LoginApi(Resource):
 class LogoutApi(Resource):
     @setup_required
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.doc(description=_REFRESH_ORIGIN_DESCRIPTION)
+    @console_ns.response(403, "Missing or untrusted Origin")
     def post(self):
-        account, _ = current_account_with_tenant_optional()
-        if account is not None:
-            application_services().accounts.authentication.logout(account.id)
-            flask_login.logout_user()
-
+        _check_refresh_origin()
+        application_services().accounts.authentication.logout(extract_refresh_token(request))
+        # response-contract:ignore cookie-bearing Flask response
         response = make_response(dump_response(SimpleResultResponse, {"result": "success"}))
         clear_access_token_from_cookie(response)
         clear_refresh_token_from_cookie(response)
@@ -275,7 +282,27 @@ class EmailCodeLoginApi(Resource):
 class RefreshTokenApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_ns.response(401, "Unauthorized", console_ns.models[SimpleResultMessageResponse.__name__])
+    @console_ns.response(400, "Invalid refresh request UUID")
+    @console_ns.doc(description=_REFRESH_ORIGIN_DESCRIPTION)
+    @console_ns.response(403, "Missing or untrusted Origin")
+    @console_ns.doc(
+        params={
+            "X-Refresh-Request-ID": {
+                "in": "header",
+                "type": "string",
+                "format": "uuid",
+                "description": "Reuse this UUID when retrying one refresh request after a lost response.",
+            },
+        }
+    )
     def post(self):
+        _check_refresh_origin()
+        request_id = request.headers.get("X-Refresh-Request-ID")
+        if request_id is not None:
+            try:
+                request_id = str(UUID(request_id))
+            except ValueError as error:
+                raise BadRequest("X-Refresh-Request-ID must be a UUID.") from error
         refresh_token = extract_refresh_token(request)
         if not refresh_token:
             return dump_response(
@@ -284,13 +311,26 @@ class RefreshTokenApi(Resource):
             ), HTTPStatus.UNAUTHORIZED
 
         try:
-            tokens = application_services().accounts.authentication.refresh(refresh_token)
+            tokens = application_services().accounts.authentication.refresh(refresh_token, request_id=request_id)
         except account_errors.InvalidRefreshTokenError as error:
             return dump_response(
                 SimpleResultMessageResponse,
                 {"result": "fail", "message": str(error)},
             ), HTTPStatus.UNAUTHORIZED
         return _token_response(tokens, SimpleResultResponse, {"result": "success"})
+
+
+def _check_refresh_origin() -> None:
+    try:
+        validate_session_request_origin(
+            origin_header=request.headers.get("Origin", ""),
+            api_url=request.host_url,
+            csrf_header=extract_csrf_token(request),
+            csrf_cookie=extract_csrf_token_from_cookie(request),
+            refresh_token=extract_refresh_token(request),
+        )
+    except account_errors.UntrustedSessionOriginError as error:
+        raise Forbidden(str(error)) from error
 
 
 def _token_response(tokens: AccountSessionTokens, response_model: type[BaseModel], data: object):

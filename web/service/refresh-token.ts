@@ -1,96 +1,59 @@
-import { API_PREFIX } from '@/config'
-import { fetchWithRetry } from '@/utils'
+import Cookies from 'js-cookie'
+import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/config'
 import { isClient } from '@/utils/client'
 import { httpErrorFromResponse, isHttpErrorStatus } from './http-error'
+import {
+  getRefreshRequestId,
+  REFRESH_REQUEST_ID_HEADER,
+  sendRefreshTokenRequest,
+} from './refresh-token-request'
 
-const LOCAL_STORAGE_KEY = 'is_other_tab_refreshing'
+let refreshPromise: Promise<void> | undefined
 
-let isRefreshing = false
-function waitUntilTokenRefreshed() {
-  return new Promise<void>((resolve) => {
-    function _check() {
-      const isRefreshingSign = globalThis.localStorage.getItem(LOCAL_STORAGE_KEY)
-      if ((isRefreshingSign && isRefreshingSign === '1') || isRefreshing) {
-        setTimeout(() => {
-          _check()
-        }, 1000)
-      } else {
-        resolve()
-      }
-    }
-    _check()
-  })
-}
+async function getNewAccessToken(): Promise<void> {
+  const csrfToken = Cookies.get(CSRF_COOKIE_NAME())
+  const refresh = async () => {
+    // The cookie store updates before fetch resolves; localStorage can lag across tabs.
+    if (Cookies.get(CSRF_COOKIE_NAME()) !== csrfToken) return
 
-const isRefreshingSignAvailable = function (delta: number) {
-  const nowTime = new Date().getTime()
-  const lastTime = globalThis.localStorage.getItem('last_refresh_time') || '0'
-  return nowTime - Number.parseInt(lastTime) <= delta
-}
-
-// only one request can send
-async function getNewAccessToken(timeout: number): Promise<void> {
-  try {
-    const isRefreshingSign = globalThis.localStorage.getItem(LOCAL_STORAGE_KEY)
-    if (
-      (isRefreshingSign && isRefreshingSign === '1' && isRefreshingSignAvailable(timeout)) ||
-      isRefreshing
-    ) {
-      await waitUntilTokenRefreshed()
-    } else {
-      isRefreshing = true
-      globalThis.localStorage.setItem(LOCAL_STORAGE_KEY, '1')
-      globalThis.localStorage.setItem('last_refresh_time', new Date().getTime().toString())
-      globalThis.addEventListener('beforeunload', releaseRefreshLock)
-
-      // Do not use baseFetch to refresh tokens.
-      // If a 401 response occurs and baseFetch itself attempts to refresh the token,
-      // it can lead to an infinite loop if the refresh attempt also returns 401.
-      // To avoid this, handle token refresh separately in a dedicated function
-      // that does not call baseFetch and uses a single retry mechanism.
-      const [error, ret] = await fetchWithRetry(
-        globalThis.fetch(`${API_PREFIX}/refresh-token`, {
-          method: 'POST',
-          credentials: 'include', // Important: include cookies in the request
-          headers: {
-            'Content-Type': 'application/json;utf-8',
-          },
-          // No body needed - refresh token is in cookie
-        }),
-      )
-      if (error) {
-        return Promise.reject(error)
-      } else {
-        if (isHttpErrorStatus(ret.status)) throw await httpErrorFromResponse(ret)
-      }
-    }
-  } catch (error) {
-    console.error(error)
-    return Promise.reject(error)
-  } finally {
-    releaseRefreshLock()
+    // Tabs without Web Locks must identify the same cookie generation as one refresh.
+    const requestId = getRefreshRequestId(csrfToken)
+    const response = await sendRefreshTokenRequest((signal) =>
+      // The normal request helper would recursively refresh on an unauthorized response.
+      globalThis.fetch(`${API_PREFIX}/refresh-token`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          [REFRESH_REQUEST_ID_HEADER]: requestId,
+          // A lost response may still have rotated the cookie; send the current generation.
+          [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
+        },
+        signal,
+      }),
+    )
+    if (isHttpErrorStatus(response.status)) throw await httpErrorFromResponse(response)
   }
+
+  if (navigator.locks) await navigator.locks.request(`refresh-token:${API_PREFIX}`, refresh)
+  else await refresh()
 }
 
-function releaseRefreshLock() {
-  // Always clear the refresh lock to avoid cross-tab deadlocks.
-  // This is safe to call multiple times and from tabs that were only waiting.
-  isRefreshing = false
-  globalThis.localStorage.removeItem(LOCAL_STORAGE_KEY)
-  globalThis.localStorage.removeItem('last_refresh_time')
-  globalThis.removeEventListener('beforeunload', releaseRefreshLock)
-}
+export async function refreshAccessTokenOrReLogin(timeout: number): Promise<void> {
+  if (!isClient) throw new Error('refresh token is client-only')
 
-export async function refreshAccessTokenOrReLogin(timeout: number) {
-  if (!isClient) return Promise.reject(new Error('refresh token is client-only'))
+  refreshPromise ??= getNewAccessToken().finally(() => {
+    refreshPromise = undefined
+  })
 
-  return Promise.race([
-    new Promise<void>((resolve, reject) =>
-      setTimeout(() => {
-        releaseRefreshLock()
-        reject(new Error('request timeout'))
-      }, timeout),
-    ),
-    getNewAccessToken(timeout),
-  ])
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    await Promise.race([
+      refreshPromise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('request timeout')), timeout)
+      }),
+    ])
+  } finally {
+    clearTimeout(timer)
+  }
 }

@@ -1,5 +1,14 @@
 import type { LoginRedirectTarget } from '@/utils/login-redirect'
-import { resolveServerConsoleApiUrl } from '@/service/console/server'
+import { CSRF_HEADER_NAME } from '@/config'
+import {
+  getServerConsoleRequestHeaders,
+  resolveServerConsoleApiUrl,
+} from '@/service/console/server'
+import {
+  getRefreshRequestId,
+  REFRESH_REQUEST_ID_HEADER,
+  sendRefreshTokenRequest,
+} from '@/service/refresh-token-request'
 import { getServerLoginFallback, resolveLoginRedirectTarget } from '@/utils/login-redirect'
 import { basePath } from '@/utils/var'
 
@@ -95,14 +104,18 @@ export async function GET(request: Request) {
   if (!refreshUrl || !cookie) return createSigninRedirectResponse(redirectTarget)
 
   try {
-    const response = await fetch(refreshUrl, {
-      method: 'POST',
-      headers: new Headers({
-        'Content-Type': 'application/json',
-        cookie,
+    const headers = await getServerConsoleRequestHeaders()
+    // Match browser refreshes so an SSR request cannot invalidate their session.
+    headers.set(REFRESH_REQUEST_ID_HEADER, getRefreshRequestId(headers.get(CSRF_HEADER_NAME)))
+    headers.set('Origin', new URL(refreshUrl).origin)
+    const response = await sendRefreshTokenRequest((signal) =>
+      fetch(refreshUrl, {
+        method: 'POST',
+        headers,
+        cache: 'no-store',
+        signal,
       }),
-      cache: 'no-store',
-    })
+    )
 
     if (!response.ok) return createSigninRedirectResponse(redirectTarget)
 

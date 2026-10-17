@@ -8,11 +8,6 @@ export type SimpleResultResponse = {
   result: string
 }
 
-export type SimpleResultMessageResponse = {
-  message: string
-  result: string
-}
-
 export type ErrorResponse = {
   code: string
   details?: {
@@ -23,15 +18,25 @@ export type ErrorResponse = {
   status: number
 }
 
+export type SimpleResultMessageResponse = {
+  message: string
+  result: string
+}
+
 export type PostRefreshTokenData = {
   body?: never
+  headers?: {
+    'X-Refresh-Request-ID'?: string
+  }
   path?: never
   query?: never
   url: '/refresh-token'
 }
 
 export type PostRefreshTokenErrors = {
+  400: ErrorResponse
   401: SimpleResultMessageResponse | ErrorResponse
+  403: ErrorResponse
   default: ErrorResponse
 }
 

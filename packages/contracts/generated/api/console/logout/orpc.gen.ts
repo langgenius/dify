@@ -3,8 +3,13 @@
 import { oc } from '@orpc/contract'
 import { zPostLogoutResponse } from './zod.gen.ts'
 
+/**
+ * Requires an Origin matching the Console web URL or API origin. Same-host proxy scheme/port changes additionally require a signed X-CSRF-Token matching the CSRF cookie.
+ */
 export const post = oc
   .route({
+    description:
+      'Requires an Origin matching the Console web URL or API origin. Same-host proxy scheme/port changes additionally require a signed X-CSRF-Token matching the CSRF cookie.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postLogout',

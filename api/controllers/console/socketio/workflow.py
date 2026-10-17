@@ -4,16 +4,9 @@ from typing import cast
 
 from flask import Request as FlaskRequest
 
-from core.db.session_factory import session_factory
 from extensions.ext_application_services import application_services
 from extensions.ext_socketio import sio
-from libs.passport import PassportService
 from libs.token import extract_access_token
-from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
-from services.workflow_collaboration_service import WorkflowCollaborationService
-
-repository = WorkflowCollaborationRepository()
-collaboration_service = WorkflowCollaborationService(repository, sio)
 
 
 def _sio_on(event: str) -> Callable[[Callable[..., object]], Callable[..., object]]:
@@ -37,23 +30,8 @@ def socket_connect(sid, environ, auth):
         return False
 
     try:
-        decoded = PassportService().verify(token)
-        user_id = decoded.get("user_id")
-        if not user_id:
-            logging.warning("Socket connect rejected: missing user_id (sid=%s)", sid)
-            return False
-
         with sio.app.app_context():
-            user = application_services().accounts.identity.load_user(user_id)
-            if not user:
-                logging.warning("Socket connect rejected: user not found (user_id=%s, sid=%s)", user_id, sid)
-                return False
-            if not user.has_edit_permission:
-                logging.warning("Socket connect rejected: no edit permission (user_id=%s, sid=%s)", user_id, sid)
-                return False
-
-            collaboration_service.save_socket_identity(sid, user)
-            return True
+            return application_services().workflow_collaboration.authenticate_socket(token, sid)
 
     except Exception:
         logging.exception("Socket authentication failed")
@@ -69,8 +47,8 @@ def handle_user_connect(sid, data):
     if not workflow_id:
         return {"msg": "workflow_id is required"}, 400
 
-    with sio.app.app_context(), session_factory.create_session() as session:
-        result = collaboration_service.authorize_and_join_workflow_room(workflow_id, sid, session=session)
+    with sio.app.app_context():
+        result = application_services().workflow_collaboration.authorize_and_join_workflow_room(workflow_id, sid)
     if not result:
         return {"msg": "unauthorized"}, 401
 
@@ -83,7 +61,8 @@ def handle_disconnect(sid):
     """
     Handle session disconnect event. Remove the specific session from online users.
     """
-    collaboration_service.disconnect_session(sid)
+    with sio.app.app_context():
+        application_services().workflow_collaboration.disconnect_session(sid)
 
 
 @_sio_on("collaboration_event")
@@ -98,7 +77,8 @@ def handle_collaboration_event(sid, data):
     6. node_panel_presence
     7. graph_view_state (session reports tab visibility; drives leader election)
     """
-    return collaboration_service.relay_collaboration_event(sid, data)
+    with sio.app.app_context():
+        return application_services().workflow_collaboration.relay_collaboration_event(sid, data)
 
 
 @_sio_on("graph_event")
@@ -106,4 +86,5 @@ def handle_graph_event(sid, data):
     """
     Handle graph events - simple broadcast relay.
     """
-    return collaboration_service.relay_graph_event(sid, data)
+    with sio.app.app_context():
+        return application_services().workflow_collaboration.relay_graph_event(sid, data)

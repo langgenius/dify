@@ -13,7 +13,7 @@ from services.account_errors import (
     InvalidForgotPasswordEmailError,
     InvalidForgotPasswordTokenError,
 )
-from services.account_ports import AccountPasswordHasher, AccountRepository
+from services.account_ports import AccountPasswordHasher, AccountRepository, AccountSessionRevoker
 from services.entities.account_entities import (
     ForgotPasswordResetToken,
     ForgotPasswordToken,
@@ -81,6 +81,7 @@ class AccountForgotPasswordService:
         *,
         accounts: AccountRepository,
         passwords: AccountPasswordHasher,
+        sessions: AccountSessionRevoker,
         tokens: ForgotPasswordTokenGateway,
         codes: ForgotPasswordCodeGenerator,
         notifications: ForgotPasswordNotificationGateway,
@@ -90,6 +91,7 @@ class AccountForgotPasswordService:
     ) -> None:
         self._accounts = accounts
         self._passwords = passwords
+        self._sessions = sessions
         self._tokens = tokens
         self._codes = codes
         self._notifications = notifications
@@ -184,5 +186,8 @@ class AccountForgotPasswordService:
             raise AccountNotFoundError
 
         password = self._passwords.hash(new_password)
+        # Revoke before persistence for outages and afterward for sessions issued during the write.
+        self._sessions.revoke_all(account.id)
         if self._accounts.update_password(account.id, password) is None:
             raise AccountNotFoundError
+        self._sessions.revoke_all(account.id)

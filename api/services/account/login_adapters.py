@@ -1,21 +1,28 @@
 """Infrastructure adapters for the Console authentication application service."""
 
+import base64
+import hashlib
+import hmac
 import logging
 import secrets
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from typing import override
+from uuid import UUID
+
+from cryptography.fernet import Fernet, InvalidToken
+from pydantic import TypeAdapter, ValidationError
 
 from configs import dify_config
 from extensions.ext_redis import RedisClientWrapper
 from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter, TokenManager
-from libs.passport import PassportService
-from libs.token import generate_csrf_token
 from models.account import (
     AccountStatus,
 )
 from repositories.account.repository import SQLAlchemyAccountRepository
 from services import account_errors
+from services.account.console_session import build_refresh_token, parse_refresh_token
+from services.account.console_tokens import issue_console_access_token, issue_console_csrf_token
 from services.account.login_service import (
     AccountRefreshPreparationGateway,
     AccountSessionGateway,
@@ -56,11 +63,9 @@ from tasks.mail_reset_password_task import (
 logger = logging.getLogger(__name__)
 
 _ACCOUNT_LAST_ACTIVE_REFRESH_INTERVAL = timedelta(minutes=10)
-_ACCOUNT_REFRESH_TOKEN_PREFIX = "account_refresh_token:"
 _EMAIL_CODE_LOGIN_RATE_LIMIT_ATTEMPTS = 3
 _EMAIL_CODE_LOGIN_RATE_LIMIT_SECONDS = 5 * 60
 _LOGIN_FAILURE_LIMIT = 5
-_REFRESH_TOKEN_PREFIX = "refresh_token:"
 _RESET_PASSWORD_RATE_LIMIT_ATTEMPTS = 1
 _RESET_PASSWORD_RATE_LIMIT_SECONDS = 60
 
@@ -171,63 +176,175 @@ class TurnstileHumanVerificationGateway(HumanVerificationGateway):
 
 
 class RedisAccountSessionGateway(AccountSessionGateway):
+    """Independent login families with atomic rotation and bounded retry recovery.
+
+    Each family has one fixed expiry. Only token digests persist for that lifetime;
+    an encrypted response lives for ten seconds to recover a lost refresh reply.
+    The account hash tag keeps every script within one Redis Cluster slot.
+    """
+
+    _TOKENS = TypeAdapter(AccountSessionTokens)
+    _ISSUE_SCRIPT = """
+        local epoch = redis.call('GET', KEYS[2])
+        if redis.call('EXISTS', KEYS[1]) == 1 then
+            if epoch and redis.call('HGET', KEYS[1], 'current') == ARGV[1]
+                and redis.call('HGET', KEYS[1], 'epoch') == epoch
+                and redis.call('HGET', KEYS[1], 'revoked') == '0' then return 1 end
+            return 0
+        end
+        if not epoch then
+            -- A delayed transport retry after eviction must not recreate an earlier epoch.
+            epoch = ARGV[3] .. ':' .. table.concat(redis.call('TIME'), ':')
+            redis.call('SET', KEYS[2], epoch)
+        end
+        redis.call('HSET', KEYS[1], 'current', ARGV[1], 'epoch', epoch, 'revoked', '0')
+        redis.call('EXPIRE', KEYS[1], ARGV[2])
+        return 1
+    """
+    _SESSION_SCRIPT = """
+        if redis.call('HGET', KEYS[1], 'revoked') ~= '0' then return nil end
+        local epoch = redis.call('GET', KEYS[2])
+        if not epoch or redis.call('HGET', KEYS[1], 'epoch') ~= epoch then
+            return nil
+        end
+        local current = redis.call('HGET', KEYS[1], 'current')
+        local used = redis.call('HEXISTS', KEYS[1], 'used:' .. ARGV[2]) == 1
+        if ARGV[1] == 'resolve' then
+            if current == ARGV[2] or used then return 1 end
+            return nil
+        end
+        if ARGV[1] == 'revoke' then
+            if current == ARGV[2] or used then
+                redis.call('HSET', KEYS[1], 'revoked', '1')
+                redis.call('DEL', KEYS[3])
+            end
+            return nil
+        end
+        -- A Redis transport retry carries the identical generated successor.
+        if current == ARGV[3] and used then return ARGV[5] end
+        local cached = redis.call('GET', KEYS[3])
+        if ARGV[4] ~= '' and cached then
+            local reply = cjson.decode(cached)
+            if reply.request_id == ARGV[4] and reply.successor == current
+                and (reply.predecessor == ARGV[2] or current == ARGV[2]) then
+                return reply.tokens
+            end
+        end
+        if current ~= ARGV[2] then
+            if used then
+                redis.call('HSET', KEYS[1], 'revoked', '1')
+                redis.call('DEL', KEYS[3])
+            end
+            return nil
+        end
+        local remaining = redis.call('PTTL', KEYS[1])
+        if remaining <= 0 then return nil end
+        redis.call('HSET', KEYS[1], 'used:' .. ARGV[2], '1', 'current', ARGV[3])
+        local reply = cjson.encode({request_id = ARGV[4], predecessor = ARGV[2],
+            successor = ARGV[3], tokens = ARGV[5]})
+        redis.call('SET', KEYS[3], reply, 'PX', math.min(10000, remaining))
+        return ARGV[5]
+    """
+    _REVOKE_ALL_SCRIPT = """
+        -- Never restore an earlier epoch when a delayed command is retried.
+        if (redis.call('GET', KEYS[1]) or '') == ARGV[1] then
+            redis.call('SET', KEYS[1], ARGV[2] .. ':' .. table.concat(redis.call('TIME'), ':'))
+        end
+    """
+
     def __init__(self, *, redis: RedisClientWrapper) -> None:
         self._redis = redis
+        key = hmac.digest(dify_config.SECRET_KEY.encode(), b"dify:console:refresh-retry:v2", "sha256")
+        self._retry_cipher = Fernet(base64.urlsafe_b64encode(key))
 
     @override
     def issue(self, account_id: str) -> AccountSessionTokens:
-        return self._issue(account_id)
+        account_id = str(UUID(account_id))
+        session_id = secrets.token_hex(16)
+        tokens = self._new_tokens(account_id, session_id)
+        issued = self._redis.register_script(self._ISSUE_SCRIPT)(
+            keys=self._session_keys(account_id, session_id)[:2],
+            args=[self._digest(tokens.refresh_token), self._expires_in(), secrets.token_hex(32)],
+        )
+        if not issued:
+            raise account_errors.InvalidRefreshTokenError("Session is no longer active")
+        return tokens
 
     @override
-    def revoke(self, account_id: str) -> None:
-        refresh_token = self._redis.get(self._account_refresh_token_key(account_id))
-        if refresh_token:
-            self._delete_refresh_token(refresh_token.decode("utf-8"), account_id)
+    def revoke(self, refresh_token: str) -> None:
+        identity = parse_refresh_token(refresh_token)
+        if identity is not None:
+            self._redis.register_script(self._SESSION_SCRIPT)(
+                keys=self._session_keys(*identity), args=["revoke", self._digest(refresh_token)]
+            )
+
+    @override
+    def revoke_all(self, account_id: str) -> None:
+        key = self._epoch_key(str(UUID(account_id)))
+        previous = self._redis.get(key) or b""
+        self._redis.register_script(self._REVOKE_ALL_SCRIPT)(keys=[key], args=[previous, secrets.token_hex(32)])
 
     @override
     def resolve_refresh_token(self, refresh_token: str) -> str | None:
-        account_id = self._redis.get(self._refresh_token_key(refresh_token))
-        return account_id.decode("utf-8") if account_id else None
+        identity = parse_refresh_token(refresh_token)
+        if identity is None:
+            return None
+        known = self._redis.register_script(self._SESSION_SCRIPT)(
+            keys=self._session_keys(*identity), args=["resolve", self._digest(refresh_token)]
+        )
+        return identity[0] if known else None
 
     @override
-    def rotate(self, *, refresh_token: str, account_id: str) -> AccountSessionTokens:
-        self._delete_refresh_token(refresh_token, account_id)
-        return self._issue(account_id)
-
-    def _issue(self, account_id: str) -> AccountSessionTokens:
-        expires_at = datetime.now(UTC) + timedelta(minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES)
-        access_token = PassportService().issue(
-            {
-                "user_id": account_id,
-                "exp": int(expires_at.timestamp()),
-                "iss": dify_config.DEPLOYMENT_EDITION.value,
-                "sub": "Console API Passport",
-            }
+    def rotate(self, *, refresh_token: str, account_id: str, request_id: str | None = None) -> AccountSessionTokens:
+        identity = parse_refresh_token(refresh_token)
+        if identity is None or identity[0] != account_id:
+            raise account_errors.InvalidRefreshTokenError("Invalid refresh token")
+        tokens = self._new_tokens(*identity)
+        encrypted = self._retry_cipher.encrypt(self._TOKENS.dump_json(tokens)).decode("ascii")
+        reply = self._redis.register_script(self._SESSION_SCRIPT)(
+            keys=self._session_keys(*identity),
+            args=[
+                "rotate",
+                self._digest(refresh_token),
+                self._digest(tokens.refresh_token),
+                request_id or "",
+                encrypted,
+            ],
         )
-        refresh_token = secrets.token_hex(64)
-        self._store_refresh_token(refresh_token, account_id)
+        if not reply:
+            raise account_errors.InvalidRefreshTokenError("Invalid refresh token")
+        try:
+            return self._TOKENS.validate_json(self._retry_cipher.decrypt(reply))
+        except (InvalidToken, ValidationError) as error:
+            raise account_errors.InvalidRefreshTokenError("Invalid refresh response") from error
+
+    @staticmethod
+    def _new_tokens(account_id: str, session_id: str) -> AccountSessionTokens:
         return AccountSessionTokens(
-            access_token=access_token,
-            refresh_token=refresh_token,
-            csrf_token=generate_csrf_token(account_id),
+            access_token=issue_console_access_token(account_id, session_id),
+            refresh_token=build_refresh_token(account_id, session_id, secrets.token_hex(32)),
+            csrf_token=issue_console_csrf_token(account_id),
         )
 
-    def _store_refresh_token(self, refresh_token: str, account_id: str) -> None:
-        expires_in = timedelta(days=dify_config.REFRESH_TOKEN_EXPIRE_DAYS)
-        self._redis.setex(self._refresh_token_key(refresh_token), expires_in, account_id)
-        self._redis.setex(self._account_refresh_token_key(account_id), expires_in, refresh_token)
-
-    def _delete_refresh_token(self, refresh_token: str, account_id: str) -> None:
-        self._redis.delete(self._refresh_token_key(refresh_token))
-        self._redis.delete(self._account_refresh_token_key(account_id))
+    @staticmethod
+    def _digest(refresh_token: str) -> str:
+        return hashlib.sha256(refresh_token.encode()).hexdigest()
 
     @staticmethod
-    def _refresh_token_key(refresh_token: str) -> str:
-        return f"{_REFRESH_TOKEN_PREFIX}{refresh_token}"
+    def _expires_in() -> int:
+        return max(1, int(timedelta(days=dify_config.REFRESH_TOKEN_EXPIRE_DAYS).total_seconds()))
 
     @staticmethod
-    def _account_refresh_token_key(account_id: str) -> str:
-        return f"{_ACCOUNT_REFRESH_TOKEN_PREFIX}{account_id}"
+    def _epoch_key(account_id: str) -> str:
+        return f"auth:{{{account_id}}}:epoch"
+
+    @classmethod
+    def _session_keys(cls, account_id: str, session_id: str) -> list[str]:
+        return [
+            f"auth:{{{account_id}}}:session:{session_id}",
+            cls._epoch_key(account_id),
+            f"auth:{{{account_id}}}:reply:{session_id}",
+        ]
 
 
 class SQLAlchemyAccountRefreshPreparationGateway(AccountRefreshPreparationGateway):
