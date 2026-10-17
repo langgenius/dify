@@ -13542,6 +13542,12 @@ Update a plugin endpoint
 ### [POST] /workspaces/current/skills/import
 Import a Skill zip package from multipart form field `file`.
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
+
 #### Responses
 
 | Code | Description | Schema |
