@@ -130,6 +130,26 @@ it('does not start a download when the service returns no URL', async () => {
   expect(mockDownloadUrl).not.toHaveBeenCalled()
 })
 
+it('completes a requested download after the citation is removed', async () => {
+  const response = createDeferred<{ url: string }>()
+  mockDownloadDocument.mockReturnValueOnce(response.promise)
+  const user = userEvent.setup()
+  const { rerender } = render(<Popup data={makeData()} />)
+  const popup = await openPopup(user)
+  await user.click(within(popup).getByRole('button', { name: 'report.pdf' }))
+  await waitFor(() => expect(mockDownloadDocument).toHaveBeenCalledTimes(1))
+
+  rerender(<></>)
+  await act(async () => response.resolve({ url: 'https://example.com/file.pdf' }))
+
+  await waitFor(() =>
+    expect(mockDownloadUrl).toHaveBeenCalledExactlyOnceWith({
+      url: 'https://example.com/file.pdf',
+      fileName: 'report.pdf',
+    }),
+  )
+})
+
 it('shows each citation alongside its segment position and document provenance', async () => {
   const user = userEvent.setup()
   render(

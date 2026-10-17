@@ -21,11 +21,11 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
   const fileType =
     data.dataSourceType !== 'notion' ? /\.([^.]*)$/.exec(data.documentName)?.[1] || '' : 'notion'
 
-  const { mutate: downloadDocument, isPending: isDownloading } = useMutation(
+  const { mutateAsync: downloadDocument, isPending: isDownloading } = useMutation(
     consoleQuery.datasets.byDatasetId.documents.byDocumentId.download.get.mutationOptions(),
   )
 
-  const handleDownloadUploadFile = (e: MouseEvent<HTMLElement>) => {
+  const handleDownloadUploadFile = async (e: MouseEvent<HTMLElement>) => {
     e.preventDefault()
     e.stopPropagation()
 
@@ -34,16 +34,15 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
     const documentId = data.documentId || data.sources?.[0]?.document_id
     if (!isUploadFile || !datasetId || !documentId || isDownloading) return
 
-    downloadDocument(
-      {
+    try {
+      // Finish the requested download even if the citation unmounts while fetching its URL.
+      const res = await downloadDocument({
         params: { dataset_id: datasetId, document_id: documentId },
-      },
-      {
-        onSuccess: (res) => {
-          if (res?.url) downloadUrl({ url: res.url, fileName: data.documentName })
-        },
-      },
-    )
+      })
+      if (res?.url) downloadUrl({ url: res.url, fileName: data.documentName })
+    } catch {
+      // The request layer reports the error; allow retry without an unhandled rejection.
+    }
   }
 
   return (
