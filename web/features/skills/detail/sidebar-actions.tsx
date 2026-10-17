@@ -3,6 +3,7 @@
 import type { SkillDetailResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import {
   AlertDialog,
+  AlertDialogBody,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
@@ -118,6 +119,7 @@ function SkillDetailDeleteDialog({
     >
       <AlertDialogContent>
         <form
+          className="contents"
           onSubmit={(event) => {
             event.preventDefault()
             handleDelete()
@@ -128,8 +130,10 @@ function SkillDetailDeleteDialog({
               {t(($) => $['skillManagement.deleteDialog.title'], { name: detail.display_name })}
             </AlertDialogTitle>
             <AlertDialogDescription>{description}</AlertDialogDescription>
-            {referenceCount > 0 &&
-              (referencesQuery.isPending ? (
+          </AlertDialogHeader>
+          {referenceCount > 0 && (
+            <AlertDialogBody className="flex flex-col gap-2">
+              {referencesQuery.isPending ? (
                 <SkillReferencesListSkeleton compact />
               ) : (
                 <SkillReferencesList
@@ -139,8 +143,7 @@ function SkillDetailDeleteDialog({
                   testId="skill-delete-reference-list"
                   visibleLimit={5}
                 />
-              ))}
-            {referenceCount > 0 && (
+              )}
               <Field name="confirm-skill-name">
                 <FieldLabel>
                   <Trans
@@ -176,8 +179,8 @@ function SkillDetailDeleteDialog({
                   </InputGroupAddon>
                 </InputGroup>
               </Field>
-            )}
-          </AlertDialogHeader>
+            </AlertDialogBody>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancelButton disabled={deleteMutation.isPending}>
               {tCommon(($) => $['operation.cancel'])}

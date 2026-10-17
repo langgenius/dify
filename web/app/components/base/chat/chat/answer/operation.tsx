@@ -92,6 +92,7 @@ function FeedbackForm({ isSubmitting, onSubmit }: FeedbackFormProps) {
   const feedbackTextareaId = useId()
   return (
     <form
+      className="contents"
       onSubmit={(event) => {
         event.preventDefault()
         const content = new FormData(event.currentTarget).get('feedback-content')

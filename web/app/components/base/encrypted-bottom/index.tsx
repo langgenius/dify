@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 
@@ -26,12 +25,3 @@ export const EncryptedBottom = ({ front, back }: EncryptedBottomProps) => {
     </p>
   )
 }
-
-type EncryptedFooterProps = Readonly<{
-  children: ReactNode
-}>
-
-// Keeps the notice pinned under the actions while the dialog body scrolls.
-export const EncryptedFooter = ({ children }: EncryptedFooterProps) => (
-  <div className="sticky bottom-0 bg-components-panel-bg">{children}</div>
-)

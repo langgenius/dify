@@ -80,7 +80,7 @@ export function ParameterDialog(props: Props) {
           </IconButton>
         }
       />
-      <DialogContent className="w-100 max-w-100">
+      <DialogContent className="w-100">
         <DialogHeader>
           <DialogTitle>{triggerLabel}</DialogTitle>
         </DialogHeader>
@@ -161,6 +161,7 @@ function ParameterForm({ type, payload, onSave, onSaved }: Props & { onSaved: ()
 
   return (
     <form
+      className="contents"
       onSubmit={(event) => {
         event.preventDefault()
         event.stopPropagation()
@@ -250,10 +251,10 @@ function ParameterForm({ type, payload, onSave, onSaved }: Props & { onSaved: ()
         </Field>
       </DialogBody>
       <DialogFooter>
-        <DialogClose render={<Button className="w-23.75!" />}>
+        <DialogClose render={<Button className="min-w-24" />}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </DialogClose>
-        <Button type="submit" className="w-23.75!" variant="primary">
+        <Button type="submit" className="min-w-24" variant="primary">
           {isAdd
             ? t(($) => $['operation.add'], { ns: 'common' })
             : t(($) => $['operation.save'], { ns: 'common' })}

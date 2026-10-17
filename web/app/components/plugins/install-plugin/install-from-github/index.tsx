@@ -220,7 +220,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({
             onCancel={onClose}
           />
         ) : state.step === InstallStepFromGitHub.setUrl ? (
-          <Form onFormSubmit={handleUrlSubmit}>
+          <Form className="contents" onFormSubmit={handleUrlSubmit}>
             <DialogBody>
               <Field name="repoUrl" className="gap-4">
                 <FieldLabel className="flex w-full flex-col items-start justify-center p-0 text-text-secondary">

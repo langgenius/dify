@@ -317,8 +317,9 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
 
   return (
     <Dialog open onOpenChange={(open) => !open && onCancel()} disablePointerDismissal>
-      <DialogContent className="w-150 max-w-none">
+      <DialogContent className="w-150">
         <form
+          className="contents"
           onSubmit={(event) => {
             // Portalled child forms still bubble submit events through the React tree.
             if (event.target !== event.currentTarget) return

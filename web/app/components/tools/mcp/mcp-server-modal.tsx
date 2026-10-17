@@ -108,7 +108,7 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
         if (!open) onHide()
       }}
     >
-      <DialogContent className="max-h-[calc(100dvh-2rem)] w-130">
+      <DialogContent className="w-130">
         <DialogHeader>
           <DialogTitle>
             {!data

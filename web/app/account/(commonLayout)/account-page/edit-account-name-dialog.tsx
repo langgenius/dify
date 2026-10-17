@@ -33,6 +33,7 @@ function EditAccountNameForm({ name, isPending, onSave }: EditAccountNameFormPro
 
   return (
     <form
+      className="contents"
       onSubmit={(event) => {
         event.preventDefault()
         if (!isPending && draftName) void onSave(draftName)

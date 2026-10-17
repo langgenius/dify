@@ -7,6 +7,7 @@ import type {
 } from '@dify/contracts/api/console/workflow-run-archives/types.gen'
 import {
   AlertDialog,
+  AlertDialogBody,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
@@ -531,12 +532,14 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
                     <AlertDialogDescription>
                       {t(($) => $['archives.delete.description'], { ns: 'appLog' })}
                     </AlertDialogDescription>
-                    {deleteArchiveMutation.isError && (
+                  </AlertDialogHeader>
+                  {deleteArchiveMutation.isError && (
+                    <AlertDialogBody>
                       <div role="alert" className="system-sm-regular text-text-destructive">
                         {t(($) => $['archives.delete.requestFailed'], { ns: 'appLog' })}
                       </div>
-                    )}
-                  </AlertDialogHeader>
+                    </AlertDialogBody>
+                  )}
                   <AlertDialogFooter>
                     <AlertDialogCancelButton disabled={deleteArchiveMutation.isPending}>
                       {t(($) => $['operation.cancel'], { ns: 'common' })}

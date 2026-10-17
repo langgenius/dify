@@ -64,7 +64,7 @@ const RenameModal: FC<Props> = ({ documentId, datasetId, name, onClose, onSaved 
         <DialogHeader>
           <DialogTitle>{t(($) => $['list.table.rename'], { ns: 'datasetDocuments' })}</DialogTitle>
         </DialogHeader>
-        <Form onFormSubmit={() => void handleSave()}>
+        <Form className="contents" onFormSubmit={() => void handleSave()}>
           <DialogBody>
             <Field name="documentName">
               <FieldLabel className="text-sm leading-5.25 font-medium text-text-primary">

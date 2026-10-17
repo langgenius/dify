@@ -430,10 +430,7 @@ export function GotoAnything() {
         handle={gotoAnythingDialogHandle}
         onOpenChangeComplete={handleDialogOpenChangeComplete}
       >
-        <DialogContent
-          initialFocus={inputRef}
-          className="flex max-h-[calc(100dvh-2rem)] w-160 flex-col overflow-hidden"
-        >
+        <DialogContent initialFocus={inputRef} className="w-160">
           <div
             aria-hidden
             className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[url('/marketplace/hero-gradient-noise.svg')] bg-cover bg-center opacity-18 dark:opacity-28"

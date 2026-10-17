@@ -311,19 +311,19 @@ vi.mock('next/dynamic', () => ({
     }
     if (fnString.includes('switch-app-modal')) {
       return function MockSwitchAppModal({
-        show,
-        onClose,
+        open,
+        onOpenChange,
       }: {
-        show: boolean
-        onClose: () => void
+        open: boolean
+        onOpenChange: (open: boolean) => void
       }) {
-        if (!show) return null
+        if (!open) return null
         return React.createElement(
           'div',
           { 'data-testid': 'switch-modal' },
           React.createElement(
             'button',
-            { onClick: onClose, 'data-testid': 'close-switch-modal' },
+            { onClick: () => onOpenChange(false), 'data-testid': 'close-switch-modal' },
             'Close',
           ),
         )
