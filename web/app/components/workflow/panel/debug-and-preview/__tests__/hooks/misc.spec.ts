@@ -85,7 +85,7 @@ describe('useChat – handleSwitchSibling', () => {
 
     act(() => {
       sendCallbacks.onHumanInputRequired({
-        data: { node_id: 'human-n', form_token: 'ft-1' },
+        data: { form_id: 'form-human-n', node_id: 'human-n', form_token: 'ft-1' },
       })
     })
 
@@ -187,7 +187,7 @@ describe('useChat – handleSwitchSibling', () => {
 
     act(() => {
       sendCallbacks.onHumanInputRequired({
-        data: { node_id: 'h-child', form_token: 'ft-c' },
+        data: { form_id: 'form-h-child', node_id: 'h-child', form_token: 'ft-c' },
       })
     })
 
