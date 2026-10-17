@@ -122,7 +122,9 @@ export class ChatClient extends DifyClient {
     sortBy?: ConversationSortBy | null,
   ): Promise<DifyResponse<JsonObject>> {
     ensureNonEmptyString(user, 'user')
-    ensureOptionalString(lastId, 'lastId')
+    if (lastId !== '') {
+      ensureOptionalString(lastId, 'lastId')
+    }
     ensureOptionalInt(limit, 'limit')
 
     const params: QueryParams = { user }
@@ -151,7 +153,9 @@ export class ChatClient extends DifyClient {
   ): Promise<DifyResponse<JsonObject>> {
     ensureNonEmptyString(user, 'user')
     ensureNonEmptyString(conversationId, 'conversationId')
-    ensureOptionalString(firstId, 'firstId')
+    if (firstId !== '') {
+      ensureOptionalString(firstId, 'firstId')
+    }
     ensureOptionalInt(limit, 'limit')
 
     const params: QueryParams = { user }
@@ -242,7 +246,9 @@ export class ChatClient extends DifyClient {
   ): Promise<DifyResponse<JsonObject>> {
     ensureNonEmptyString(conversationId, 'conversationId')
     ensureNonEmptyString(user, 'user')
-    ensureOptionalString(lastId, 'lastId')
+    if (lastId !== '') {
+      ensureOptionalString(lastId, 'lastId')
+    }
     ensureOptionalInt(limit, 'limit')
     ensureOptionalString(variableName, 'variableName')
 
@@ -251,7 +257,7 @@ export class ChatClient extends DifyClient {
       path: `/conversations/${conversationId}/variables`,
       query: {
         user,
-        last_id: lastId ?? undefined,
+        last_id: lastId || undefined,
         limit: limit ?? undefined,
         variable_name: variableName ?? undefined,
       },
