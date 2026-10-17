@@ -281,6 +281,60 @@ class TestFileService:
         assert FileService.file_size_limit(extension="jpg", default_file_size_limit=0) == 10 * 1024 * 1024
         assert FileService.file_size_limit(extension="txt", default_file_size_limit=7) == 7 * 1024 * 1024
 
+    @pytest.mark.parametrize(
+        ("extension", "expected_limit_mb"),
+        [
+            # dotless (local upload form)
+            ("png", 10),
+            ("mp4", 20),
+            ("mp3", 30),
+            # dotted (remote upload form)
+            (".png", 10),
+            (".mp4", 20),
+            (".mp3", 30),
+            # mixed case
+            (".Png", 10),
+            (".Mp4", 20),
+            (".Mp3", 30),
+        ],
+    )
+    def test_file_size_limit_normalizes_extension(
+        self, config_overrides: Callable[..., None], extension: str, expected_limit_mb: int
+    ):
+        config_overrides(
+            UPLOAD_IMAGE_FILE_SIZE_LIMIT=10,
+            UPLOAD_VIDEO_FILE_SIZE_LIMIT=20,
+            UPLOAD_AUDIO_FILE_SIZE_LIMIT=30,
+            UPLOAD_FILE_SIZE_LIMIT=5,
+        )
+        assert FileService.file_size_limit(extension=extension) == expected_limit_mb * 1024 * 1024
+
+    @pytest.mark.parametrize("extension", ["pdf", ".pdf", ".Pdf"])
+    def test_file_size_limit_unknown_extension_uses_generic_limit(
+        self, config_overrides: Callable[..., None], extension: str
+    ):
+        config_overrides(
+            UPLOAD_IMAGE_FILE_SIZE_LIMIT=10,
+            UPLOAD_VIDEO_FILE_SIZE_LIMIT=20,
+            UPLOAD_AUDIO_FILE_SIZE_LIMIT=30,
+            UPLOAD_FILE_SIZE_LIMIT=5,
+        )
+        assert FileService.file_size_limit(extension=extension) == 5 * 1024 * 1024
+
+    @pytest.mark.parametrize("extension", ["png", ".png", "mp4", ".mp4", ".Mp4", "mp3", ".mp3"])
+    def test_is_file_size_within_limit_accepts_dotted_extension(
+        self, config_overrides: Callable[..., None], extension: str
+    ):
+        config_overrides(
+            UPLOAD_IMAGE_FILE_SIZE_LIMIT=10,
+            UPLOAD_VIDEO_FILE_SIZE_LIMIT=20,
+            UPLOAD_AUDIO_FILE_SIZE_LIMIT=30,
+            UPLOAD_FILE_SIZE_LIMIT=5,
+        )
+        # 6 MiB sits above the generic 5 MiB limit but below every media limit,
+        # so only the media-specific branch can accept it.
+        assert FileService.is_file_size_within_limit(extension=extension, file_size=6 * 1024 * 1024) is True
+
     def test_get_file_base64_success(self, file_service: FileService, db_session: Session):
         self._persist_upload_file(db_session, key="test_key")
 
