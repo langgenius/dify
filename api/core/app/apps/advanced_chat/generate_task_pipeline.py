@@ -764,6 +764,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         """Handle stop events."""
         _ = trace_manager
         resolved_state = None
+        workflow_finish_resp: StreamResponse | None = None
         if self._workflow_run_id:
             resolved_state = self._resolve_graph_runtime_state(graph_runtime_state)
 
@@ -780,8 +781,6 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 # Save message
                 self._save_message(session=session, graph_runtime_state=resolved_state)
             self._emit_message_trace()
-
-            yield workflow_finish_resp
         elif event.stopped_by in (
             QueueStopEvent.StopBy.INPUT_MODERATION,
             QueueStopEvent.StopBy.ANNOTATION_REPLY,
@@ -792,7 +791,11 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 self._save_message(session=session)
             self._emit_message_trace()
 
+        # Emit message_end before workflow_finished, as the success paths do: streaming
+        # subscribers stop reading at workflow_finished.
         yield self._message_end_to_stream_response()
+        if workflow_finish_resp is not None:
+            yield workflow_finish_resp
 
     def _handle_advanced_chat_message_end_event(
         self,
