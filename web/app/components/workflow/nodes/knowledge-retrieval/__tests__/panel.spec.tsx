@@ -1,11 +1,16 @@
+import type {
+  DatasetDetailWithPartialMembersResponse,
+  DatasetDocMetadataResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type { ReactNode } from 'react'
 import type { KnowledgeRetrievalNodeType } from '../types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import type { DataSet, MetadataInDoc } from '@/models/datasets'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
 import Panel from '../panel'
 import {
@@ -22,10 +27,12 @@ const mockDatasetList = vi.hoisted(() => vi.fn())
 const mockAddKnowledge = vi.hoisted(() => vi.fn())
 const mockMetadataFilter = vi.hoisted(() => vi.fn())
 
-const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
+const createDataset = (
+  overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
+): DatasetDetailWithPartialMembersResponse => ({
+  ...createDatasetFixture(),
   id: 'dataset-1',
   name: 'Dataset Name',
-  indexing_status: 'completed',
   icon_info: {
     icon: '📙',
     icon_background: '#FFF4ED',
@@ -33,33 +40,22 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
     icon_url: '',
   },
   description: 'Dataset description',
-  permission: DatasetPermission.onlyMe,
+  permission: PermissionLevel.onlyMe,
   data_source_type: DataSourceType.FILE,
-  indexing_technique: 'high_quality' as DataSet['indexing_technique'],
+  indexing_technique:
+    'high_quality' as DatasetDetailWithPartialMembersResponse['indexing_technique'],
   created_by: 'user-1',
   updated_by: 'user-1',
   updated_at: 1690000000,
   app_count: 0,
   doc_form: ChunkingMode.text,
   document_count: 1,
-  total_document_count: 1,
   word_count: 1000,
   provider: 'internal',
   embedding_model: 'text-embedding-3',
   embedding_model_provider: 'openai',
   embedding_available: true,
   retrieval_model_dict: {
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_model: {
-      reranking_provider_name: '',
-      reranking_model_name: '',
-    },
-    top_k: 5,
-    score_threshold_enabled: false,
-    score_threshold: 0,
-  },
-  retrieval_model: {
     search_method: RETRIEVE_METHOD.semantic,
     reranking_enable: false,
     reranking_model: {
@@ -89,11 +85,12 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   ...overrides,
 })
 
-const createMetadata = (overrides: Partial<MetadataInDoc> = {}): MetadataInDoc => ({
+const createMetadata = (
+  overrides: Partial<DatasetDocMetadataResponse> = {},
+): DatasetDocMetadataResponse => ({
   id: 'meta-1',
   name: 'topic',
   type: MetadataFilteringVariableType.string,
-  value: 'topic',
   ...overrides,
 })
 
@@ -164,7 +161,10 @@ vi.mock('../components/retrieval-config', () => ({
 
 vi.mock('../components/dataset-list', () => ({
   __esModule: true,
-  default: (props: { list: DataSet[]; onChange: (datasets: DataSet[]) => void }) => {
+  default: (props: {
+    list: DatasetDetailWithPartialMembersResponse[]
+    onChange: (datasets: DatasetDetailWithPartialMembersResponse[]) => void
+  }) => {
     mockDatasetList(props)
     return (
       <button
@@ -181,7 +181,10 @@ vi.mock('../components/dataset-list', () => ({
 
 vi.mock('../components/add-dataset', () => ({
   __esModule: true,
-  default: (props: { selectedIds: string[]; onChange: (datasets: DataSet[]) => void }) => {
+  default: (props: {
+    selectedIds: string[]
+    onChange: (datasets: DatasetDetailWithPartialMembersResponse[]) => void
+  }) => {
     mockAddKnowledge(props)
     return (
       <button
@@ -197,8 +200,8 @@ vi.mock('../components/add-dataset', () => ({
 vi.mock('../components/metadata/metadata-filter', () => ({
   __esModule: true,
   default: (props: {
-    metadataList: MetadataInDoc[]
-    handleAddCondition: ({ id, name, type }: MetadataInDoc) => void
+    metadataList: DatasetDocMetadataResponse[]
+    handleAddCondition: ({ id, name, type }: DatasetDocMetadataResponse) => void
     handleMetadataFilterModeChange: (mode: MetadataFilteringModeEnum) => void
     handleRemoveCondition: (id: string) => void
     handleToggleConditionLogicalOperator: () => void
@@ -379,7 +382,7 @@ describe('knowledge-retrieval/panel', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseConfig.mockReturnValue(createConfigResult() as ReturnType<typeof useConfig>)
+    mockUseConfig.mockReturnValue(createConfigResult())
   })
 
   it('wires panel actions and passes the intersected metadata list to metadata filters', async () => {
@@ -451,7 +454,7 @@ describe('knowledge-retrieval/panel', () => {
       createConfigResult({
         readOnly: true,
         showImageQueryVarSelector: false,
-      }) as ReturnType<typeof useConfig>,
+      }),
     )
 
     render(<Panel id="knowledge-node" data={createData()} panelProps={panelProps} />)

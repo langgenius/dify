@@ -20,16 +20,11 @@ const renderActionMenu = (ui: React.ReactElement, pipelineId?: string) => {
   seedSystemFeatures(queryClient, { deployment_edition: deploymentEdition })
   return renderWorkflowComponent(<NuqsTestingAdapter>{ui}</NuqsTestingAdapter>, {
     queryClient,
-    initialStoreState: { pipelineId },
+    resource: pipelineId
+      ? { kind: 'knowledge-pipeline', pipelineId }
+      : { kind: 'app', appId: 'app-1', mode: 'workflow' },
   })
 }
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-  }
-})
 
 describe('ActionMenu', () => {
   beforeEach(() => {

@@ -12,7 +12,12 @@ from configs import dify_config
 from controllers.common.errors import ForbiddenError
 from controllers.common.fields import SimpleResultDataResponse, SimpleResultResponse, VerificationTokenResponse
 from controllers.common.rbac import rbac_language
-from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
+from controllers.common.schema import (
+    query_params_from_model,
+    register_enum_models,
+    register_response_schema_models,
+    register_schema_models,
+)
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     CannotTransferOwnerToSelfError,
@@ -32,6 +37,7 @@ from controllers.console.workspace.error import (
     MemberNotFoundError,
     MemberRoleAlreadyAssignedError,
 )
+from controllers.console.workspace.rbac.schemas import _AccessControlLanguageQuery
 from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
@@ -147,6 +153,7 @@ register_response_schema_models(
 class MemberListApi(Resource):
     """List all members of current tenant."""
 
+    @console_ns.doc(params=query_params_from_model(_AccessControlLanguageQuery))
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountWithRoleListResponse.__name__])
     @console_account_admission()
     def get(self, request_context: RequestContext):

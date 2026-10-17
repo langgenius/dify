@@ -14,13 +14,12 @@ vi.mock('@/next/navigation', () => ({
   useParams: () => ({ token: undefined }),
 }))
 
-const { mockImageUpload, mockGetImageUploadErrorMessage } = vi.hoisted(() => ({
+const { mockImageUpload } = vi.hoisted(() => ({
   mockImageUpload: vi.fn(),
-  mockGetImageUploadErrorMessage: vi.fn(() => 'Upload error'),
 }))
-vi.mock('../utils', () => ({
+vi.mock('../utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../utils')>()),
   imageUpload: mockImageUpload,
-  getImageUploadErrorMessage: mockGetImageUploadErrorMessage,
 }))
 
 let fileCounter = 0
@@ -283,7 +282,10 @@ describe('useImageFiles', () => {
       })
 
       expect(result.current.files[0]!.progress).toBe(-1)
-      expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'Upload error' })
+      expect(mockNotify).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'common.imageUploader.uploadFromComputerUploadError',
+      })
     })
   })
 

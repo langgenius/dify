@@ -12,8 +12,8 @@ import { useTranslation } from 'react-i18next'
 import { ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import ModelIcon from '../model-icon'
+import { getCanAddedModels } from './hooks/get-custom-models'
 import { useAuth } from './hooks/use-auth'
-import { useCanAddedModels } from './hooks/use-custom-models'
 
 type AddCustomModelProps = {
   provider: ModelProvider
@@ -36,7 +36,7 @@ const AddCustomModel = ({
     setLocalOpen(nextOpen)
     onOpenChange?.(nextOpen)
   }
-  const canAddedModels = useCanAddedModels(provider)
+  const canAddedModels = getCanAddedModels(provider)
   const noModels = !canAddedModels.length
   const { canUseCredential, canCreateCredential } = useCredentialPermissions()
   const { handleOpenModal: handleOpenModalForAddNewCustomModel } = useAuth(

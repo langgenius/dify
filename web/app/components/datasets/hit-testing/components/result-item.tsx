@@ -1,5 +1,5 @@
 'use client'
-import type { HitTesting } from '@/models/datasets'
+import type { HitTestingRecord } from '@dify/contracts/api/console/datasets/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
@@ -17,7 +17,7 @@ const i18nPrefix = ''
 const INTERACTIVE_SELECTOR =
   'a, button, input, select, textarea, summary, audio, video, [role="button"]'
 type ResultItemProps = {
-  payload: HitTesting
+  payload: HitTestingRecord
 }
 
 export const ResultItem = memo(({ payload }: ResultItemProps) => {

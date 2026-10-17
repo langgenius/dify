@@ -47,8 +47,8 @@ vi.mock('@/i18n/metadata', async (importOriginal) => ({
   renderI18nObject: (value: Record<string, string>, locale: string) => value[locale] || '',
 }))
 
-vi.mock('@/service/use-plugins', () => ({
-  normalizePluginCategoryListLanguage: (locale: string) => locale,
+vi.mock('@/service/use-plugins', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-plugins')>()),
   useInstalledPluginList: (...args: unknown[]) => mockUseInstalledPluginList(...args),
   useInvalidateInstalledPluginList: () => mockInvalidateInstalledPluginList,
   useRemoveFilteredInstalledPluginPageOnUnmount: (...args: unknown[]) =>

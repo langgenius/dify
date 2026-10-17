@@ -33,7 +33,6 @@ import {
   seedAppDetail,
 } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import AppDeploy from '..'
 import { EnvironmentTable } from '../environment-table'
@@ -745,7 +744,7 @@ function render(
     queryClient,
     createAppDetailFixture({
       ...mockBuiltInEnvironment.appDetail,
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow',
       permission_keys: appPermissionKeys,
     }),
   )
@@ -823,24 +822,27 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: [] }),
-  useAllCustomTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({
-    data: [
-      {
-        icon: '/notion-mcp.svg',
-        id: 'notion',
-        name: 'Notion',
-        plugin_id: 'langgenius/notion',
-      },
-    ],
-  }),
-  useAllWorkflowTools: () => ({ data: [] }),
-  useMCPServerDetail: () => ({
-    data: mockBuiltInEnvironment.mcpServerDetail,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.builtin.get': () => ({ data: [] }),
+    'workspaces.current.tools.api.get': () => ({ data: [] }),
+    'workspaces.current.tools.mcp.get': () => ({
+      data: [
+        {
+          icon: '/notion-mcp.svg',
+          id: 'notion',
+          name: 'Notion',
+          plugin_id: 'langgenius/notion',
+        },
+      ],
+    }),
+    'workspaces.current.tools.workflow.get': () => ({ data: [] }),
+    'apps.byAppId.server.get': () => ({
+      data: mockBuiltInEnvironment.mcpServerDetail,
+    }),
+  })
+})
 
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),

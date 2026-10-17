@@ -16,7 +16,6 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AppCardTags } from '@/features/tag-management/components/app-card-tags'
 import Link from '@/next/link'
-import { AppModeEnum } from '@/types/app'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import {
   getAppACLCapabilities,
@@ -86,15 +85,15 @@ export const AppCard = memo(
 
     const appModeLabel = useMemo(() => {
       switch (app.mode) {
-        case AppModeEnum.CHAT:
+        case 'chat':
           return t(($) => $['types.chatbot'], { ns: 'app' })
-        case AppModeEnum.ADVANCED_CHAT:
+        case 'advanced-chat':
           return t(($) => $['types.advanced'], { ns: 'app' })
-        case AppModeEnum.AGENT_CHAT:
+        case 'agent-chat':
           return t(($) => $['types.agent'], { ns: 'app' })
-        case AppModeEnum.COMPLETION:
+        case 'completion':
           return t(($) => $['types.completion'], { ns: 'app' })
-        case AppModeEnum.WORKFLOW:
+        case 'workflow':
           return t(($) => $['types.workflow'], { ns: 'app' })
         default:
           return app.mode

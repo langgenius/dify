@@ -37,7 +37,6 @@ import {
   renderWithConsoleQuery as renderWithoutPricing,
 } from '@/test/console/query-data'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
-import { AppModeEnum } from '@/types/app'
 import { MainNav } from '../index'
 
 const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
@@ -393,15 +392,6 @@ vi.mock('@/config', async (importOriginal) => {
 
 const mockPush = vi.fn()
 
-const mockSetSettingsDestination = vi.fn()
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return {
-    ...actual,
-    useQueryState: (...args: Parameters<typeof actual.useQueryState>) =>
-      args[0] === 'pricing' ? actual.useQueryState(...args) : [null, mockSetSettingsDestination],
-  }
-})
 let mockPathname = '/apps'
 let mockInstalledApps: InstalledAppResponse[] = []
 let mockInstalledAppsPending = false
@@ -471,7 +461,7 @@ const createInstalledApp = (
   is_pinned: overrides.is_pinned ?? false,
   app: {
     id: overrides.app?.id ?? 'app-1',
-    mode: overrides.app?.mode ?? AppModeEnum.CHAT,
+    mode: overrides.app?.mode ?? 'chat',
     icon_type: overrides.app?.icon_type ?? 'emoji',
     icon: overrides.app?.icon ?? '🤖',
     icon_background: overrides.app?.icon_background ?? '#fff',
@@ -1306,7 +1296,11 @@ describe('MainNav', () => {
     expect(
       screen.getByRole('link', { name: /navigation\.mainNav\.workspace\.credits|7,500 credits/ }),
     ).toHaveAttribute('href', '/integrations/model-provider')
-    expect(mockSetSettingsDestination).not.toHaveBeenCalledWith('provider')
+    expect(
+      onPricingUrlUpdate.mock.calls.some(
+        ([event]) => event.searchParams.get('settings') === 'provider',
+      ),
+    ).toBe(false)
 
     fireEvent.click(screen.getByText('billing.upgradeBtn.plain'))
     await waitFor(() =>
@@ -1315,11 +1309,19 @@ describe('MainNav', () => {
 
     fireEvent.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
     fireEvent.click(await screen.findByText('navigation.mainNav.workspace.settings'))
-    expect(mockSetSettingsDestination).toHaveBeenCalledWith(ACCOUNT_SETTING_TAB.BILLING)
+    await waitFor(() =>
+      expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe(
+        ACCOUNT_SETTING_TAB.BILLING,
+      ),
+    )
 
     fireEvent.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
     fireEvent.click(await screen.findByText('navigation.mainNav.workspace.inviteMembers'))
-    expect(mockSetSettingsDestination).toHaveBeenCalledWith(ACCOUNT_SETTING_TAB.MEMBERS)
+    await waitFor(() =>
+      expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe(
+        ACCOUNT_SETTING_TAB.MEMBERS,
+      ),
+    )
 
     fireEvent.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
     fireEvent.click(await screen.findByText('Evan Workspace'))
@@ -1359,7 +1361,11 @@ describe('MainNav', () => {
     await waitFor(() =>
       expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
     )
-    expect(mockSetSettingsDestination).not.toHaveBeenCalledWith(ACCOUNT_SETTING_TAB.BILLING)
+    expect(
+      onPricingUrlUpdate.mock.calls.some(
+        ([event]) => event.searchParams.get('settings') === ACCOUNT_SETTING_TAB.BILLING,
+      ),
+    ).toBe(false)
   })
 
   it('limits invite members by member management permission', async () => {

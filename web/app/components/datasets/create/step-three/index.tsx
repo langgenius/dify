@@ -1,5 +1,5 @@
 'use client'
-import type { createDocumentResponse, FullDocumentDetail } from '@/models/datasets'
+import type { DatasetAndDocumentResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { RiBookOpenLine } from '@remixicon/react'
@@ -14,7 +14,7 @@ type StepThreeProps = {
   datasetName?: string
   indexingType?: string
   retrievalMethod?: RETRIEVE_METHOD
-  creationCache?: createDocumentResponse
+  creationCache?: DatasetAndDocumentResponse
 }
 
 const StepThree = ({
@@ -27,7 +27,8 @@ const StepThree = ({
   const { t } = useTranslation(['datasetCreation', 'datasetPipeline'])
   const docLink = useDocLink()
 
-  const iconInfo = creationCache?.dataset?.icon_info || {
+  // The creation response carries no icon; new knowledge bases start with the default one.
+  const iconInfo = {
     icon: '📙',
     icon_type: 'emoji',
     icon_background: '#FFF4ED',
@@ -73,11 +74,9 @@ const StepThree = ({
           <EmbeddingProcess
             datasetId={datasetId || creationCache?.dataset?.id || ''}
             batchId={creationCache?.batch || ''}
-            documents={creationCache?.documents as FullDocumentDetail[]}
+            documents={creationCache?.documents}
             indexingType={creationCache?.dataset?.indexing_technique || indexingType}
-            retrievalMethod={
-              creationCache?.dataset?.retrieval_model_dict?.search_method || retrievalMethod
-            }
+            retrievalMethod={retrievalMethod}
           />
         </div>
       </div>

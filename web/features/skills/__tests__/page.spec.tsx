@@ -6,11 +6,19 @@ import type {
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ComponentProps, ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import {
+  createEvent,
+  fireEvent,
+  render as renderWithoutUrlState,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
 import { createHttpError, httpErrorFromResponse } from '@/service/http-error'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import SkillsPage from '../page'
 
 type SkillsInfiniteOptions = {
@@ -73,49 +81,6 @@ vi.mock('@/app/notifications', () => ({
     success: vi.fn(),
   },
 }))
-
-vi.mock('ahooks', () => ({
-  useDebounce: (value: unknown) => value,
-}))
-
-vi.mock('nuqs', async () => {
-  const React = await import('react')
-  const listeners = new Map<'keyword' | 'tag', Set<() => void>>()
-  const createParser = () => ({
-    withDefault: () => ({
-      withOptions: () => ({}),
-    }),
-  })
-
-  return {
-    debounce: () => undefined,
-    parseAsArrayOf: () => ({
-      withDefault: () => ({}),
-    }),
-    parseAsString: createParser(),
-    useQueryState: (name: 'keyword' | 'tag') => {
-      const [value, setValue] = React.useState(mocks.queryState[name])
-      React.useEffect(() => {
-        const nameListeners = listeners.get(name) ?? new Set<() => void>()
-        listeners.set(name, nameListeners)
-        const listener = () => setValue(mocks.queryState[name])
-        nameListeners.add(listener)
-
-        return () => {
-          nameListeners.delete(listener)
-        }
-      }, [name])
-      const setQueryValue = (nextValue: string | string[]) => {
-        mocks.queryState[name] = nextValue as never
-        setValue(nextValue as never)
-        listeners.get(name)?.forEach((listener) => listener())
-        return Promise.resolve(new URLSearchParams())
-      }
-
-      return [value, setQueryValue] as const
-    },
-  }
-})
 
 vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
@@ -260,6 +225,12 @@ function createTestQueryClient() {
     defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
   })
 }
+
+const onUrlUpdate = vi.fn()
+const render = createNuqsTestRenderer(renderWithoutUrlState, () => ({
+  onUrlUpdate,
+  searchParams: { keyword: mocks.queryState.keyword, tag: mocks.queryState.tag.join(';') },
+}))
 
 function renderSkillsPage(queryClient = createTestQueryClient()) {
   return render(
@@ -510,7 +481,7 @@ describe('SkillsPage', () => {
     renderSkillsPage()
 
     await waitFor(() => {
-      expect(mocks.queryState.tag).toEqual([])
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.has('tag')).toBe(false)
     })
     await waitFor(() => {
       const queryOptions = mocks.skillsQueryOptions.mock.lastCall?.[0]

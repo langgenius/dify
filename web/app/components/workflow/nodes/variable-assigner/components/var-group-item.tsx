@@ -65,12 +65,7 @@ const VarGroupItem: FC<Props> = ({
     (newList: ValueSelector[], changedItem?: ValueSelector) => {
       if (changedItem) {
         const chosenVariables = payload.variables
-        if (
-          chosenVariables.some(
-            (item) => item.join('.') === (changedItem as ValueSelector).join('.'),
-          )
-        )
-          return
+        if (chosenVariables.some((item) => item.join('.') === changedItem.join('.'))) return
       }
 
       const newPayload = produce(payload, (draft) => {

@@ -3,7 +3,6 @@ import { detectPlatform } from '@tanstack/react-hotkeys'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { withSelectorKey } from '@/test/i18n-mock'
-import { FlowType } from '@/types/common'
 import { fullWorkflowAccessControl } from '../hooks-store'
 import { PanelContextmenu } from '../panel-contextmenu'
 import { BlockEnum } from '../types'
@@ -20,7 +19,7 @@ const mockUseDSL = vi.hoisted(() => vi.fn())
 const mockUseNodesReadOnly = vi.hoisted(() => vi.fn())
 const mockUseAvailableBlocks = vi.hoisted(() => vi.fn())
 const mockUseNodesMetaData = vi.hoisted(() => vi.fn())
-const mockUseIsChatMode = vi.hoisted(() => vi.fn())
+let chatflowMode = false
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => mockUseTranslation(),
@@ -76,7 +75,7 @@ vi.mock('../hooks/use-workflow', async (importOriginal) => {
 
   return {
     ...actual,
-    useIsChatMode: () => mockUseIsChatMode(),
+
     useNodesReadOnly: () => mockUseNodesReadOnly(),
   }
 })
@@ -151,7 +150,7 @@ describe('PanelContextmenu', () => {
     mockUseNodesMetaData.mockReturnValue({
       nodesMap: defaultNodesMetaDataMap,
     })
-    mockUseIsChatMode.mockReturnValue(false)
+    chatflowMode = false
   })
 
   const renderPanelContextmenu = (options?: Parameters<typeof renderWorkflowFlowComponent>[1]) => {
@@ -159,7 +158,14 @@ describe('PanelContextmenu', () => {
       <ContextMenu open>
         <PanelContextmenu onClose={mockClose} />
       </ContextMenu>,
-      options,
+      {
+        resource: {
+          kind: 'app',
+          appId: 'app-1',
+          mode: chatflowMode ? 'advanced-chat' : 'workflow',
+        },
+        ...options,
+      },
     )
   }
 
@@ -237,12 +243,9 @@ describe('PanelContextmenu', () => {
       initialStoreState: {
         contextMenuTarget: { type: 'panel' },
       },
+      resource: { kind: 'snippet' as const, snippetId: 'snippet-1' },
       hooksStoreProps: {
-        configsMap: {
-          flowId: 'snippet-1',
-          flowType: FlowType.snippet,
-          fileSettings: {},
-        },
+        fileSettings: {},
       },
     })
 
@@ -251,7 +254,7 @@ describe('PanelContextmenu', () => {
   })
 
   it('should render preview action in chat mode', async () => {
-    mockUseIsChatMode.mockReturnValue(true)
+    chatflowMode = true
 
     renderPanelContextmenu({
       initialStoreState: {

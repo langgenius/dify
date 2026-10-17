@@ -1,18 +1,22 @@
 import type { useNodesSyncDraft } from './use-nodes-sync-draft'
 import type { IOtherOptions } from '@/service/base'
-import type { VersionHistory } from '@/types/workflow'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { useCallback, useRef } from 'react'
 import { useReactFlow, useStoreApi } from 'reactflow'
+import {
+  editorResourceAtom,
+  knowledgePipelineIdentityAtom,
+} from '@/app/components/workflow/editor-resource/state'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
-import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { ssePost } from '@/service/base'
-import { useInvalidAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'
+import { useInvalidateAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'
 import { stopWorkflowRun } from '@/service/workflow'
-import { FlowType } from '@/types/common'
 import { useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 
 type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
@@ -74,13 +78,11 @@ const usePipelineRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
     }
   }, [handleUpdateWorkflowCanvas, workflowStore])
 
-  const pipelineId = useStore((s) => s.pipelineId)
-  const invalidAllLastRun = useInvalidAllLastRun(FlowType.ragPipeline, pipelineId)
+  const pipelineId = useAtomValue(knowledgePipelineIdentityAtom).pipelineId
+  const resource = useAtomValue(editorResourceAtom)
+  const invalidAllLastRun = useInvalidateAllLastRun(resource)
   const invalidateRunHistory = useInvalidateWorkflowRunHistory()
-  const { fetchInspectVars } = useSetWorkflowVarsWithValue({
-    flowType: FlowType.ragPipeline,
-    flowId: pipelineId!,
-  })
+  const { fetchInspectVars } = useSetWorkflowVarsWithValue()
 
   const handleRun = useCallback(
     async (params: any, callback?: IOtherOptions) => {
@@ -110,7 +112,7 @@ const usePipelineRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         onError,
         ...restCallback
       } = callback || {}
-      const { pipelineId } = workflowStore.getState()
+
       const runHistoryUrl = `/rag/pipelines/${pipelineId}/workflow-runs`
       workflowStore.setState({ historyWorkflowData: undefined })
       const workflowContainer = document.getElementById('workflow-container')
@@ -259,8 +261,6 @@ const usePipelineRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
 
   const handleStopRun = useCallback(
     (taskId: string) => {
-      const { pipelineId } = workflowStore.getState()
-
       stopWorkflowRun(`/rag/pipelines/${pipelineId}/workflow-runs/tasks/${taskId}/stop`)
 
       if (abortControllerRef.current) abortControllerRef.current.abort()
@@ -271,7 +271,7 @@ const usePipelineRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   )
 
   const handleRestoreFromPublishedWorkflow = useCallback(
-    (publishedWorkflow: VersionHistory) => {
+    (publishedWorkflow: FetchWorkflowDraftResponse) => {
       const nodes = publishedWorkflow.graph.nodes.map((node) => ({
         ...node,
         selected: false,

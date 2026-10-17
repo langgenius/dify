@@ -1,6 +1,6 @@
 import type { EmojiIcon, ImageIcon } from '@/app/components/base/icon-picker'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
-import { act, renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { MCPAuthMethod } from '@/app/components/tools/types'
 import { toast } from '@/app/notifications'
@@ -10,16 +10,6 @@ import { isValidServerID, isValidUrl, useMCPModalForm } from '../use-mcp-modal-f
 // Mock the API service
 vi.mock('@/service/common', () => ({
   uploadRemoteFileInfo: vi.fn(),
-}))
-
-vi.mock('tldts', () => ({
-  getDomain: vi.fn((url: string) => {
-    try {
-      return new URL(url).hostname
-    } catch {
-      return null
-    }
-  }),
 }))
 
 afterEach(() => {
@@ -404,9 +394,14 @@ describe('useMCPModalForm', () => {
       const { result } = renderHook(() => useMCPModalForm())
 
       await act(async () => {
-        await result.current.actions.handleUrlBlur('https://example.com/mcp')
+        await result.current.actions.handleUrlBlur('https://api.example.co.uk/mcp')
       })
 
+      expect(uploadRemoteFileInfo).toHaveBeenCalledWith(
+        'https://www.google.com/s2/favicons?domain=example.co.uk&sz=128',
+        undefined,
+        true,
+      )
       expect(result.current.state.appIcon).toEqual({
         type: 'image',
         fileId: 'uploaded-icon-id',
@@ -462,7 +457,7 @@ describe('useMCPModalForm', () => {
       })
 
       vi.mocked(uploadRemoteFileInfo).mockImplementation((remoteIcon) => {
-        if (String(remoteIcon).includes('first.example.com')) return firstUpload
+        if (String(remoteIcon).includes('domain=example.com')) return firstUpload
         return Promise.resolve({
           id: 'file456',
           name: 'icon2.png',
@@ -474,10 +469,20 @@ describe('useMCPModalForm', () => {
 
       const { result } = renderHook(() => useMCPModalForm())
 
-      const firstBlur = result.current.actions.handleUrlBlur('https://first.example.com/mcp')
+      let firstBlur: Promise<void>
+      act(() => {
+        firstBlur = result.current.actions.handleUrlBlur('https://first.example.com/mcp')
+      })
+      await waitFor(() =>
+        expect(uploadRemoteFileInfo).toHaveBeenCalledWith(
+          'https://www.google.com/s2/favicons?domain=example.com&sz=128',
+          undefined,
+          true,
+        ),
+      )
 
       await act(async () => {
-        await result.current.actions.handleUrlBlur('https://second.example.com/mcp')
+        await result.current.actions.handleUrlBlur('https://second.example.org/mcp')
       })
 
       resolveFirstUpload!({

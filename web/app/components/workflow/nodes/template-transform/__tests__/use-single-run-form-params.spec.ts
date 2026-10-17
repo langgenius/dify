@@ -1,16 +1,8 @@
 import type { TemplateTransformNodeType } from '../types'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
-import { renderHook } from '@testing-library/react'
+import { renderWorkflowFlowHook as renderHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
-import useNodeCrud from '../../_base/hooks/use-node-crud'
 import useSingleRunFormParams from '../use-single-run-form-params'
-
-vi.mock('../../_base/hooks/use-node-crud', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}))
-
-const mockUseNodeCrud = vi.mocked(useNodeCrud)
 
 const createVariable = (overrides: Partial<Variable> = {}): Variable => ({
   variable: 'input_text',
@@ -33,10 +25,6 @@ const createData = (
 describe('template-transform/use-single-run-form-params', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseNodeCrud.mockReturnValue({
-      inputs: createData(),
-      setInputs: vi.fn(),
-    } as unknown as ReturnType<typeof useNodeCrud>)
   })
 
   it('exposes variable inputs and forwards single-run changes', () => {

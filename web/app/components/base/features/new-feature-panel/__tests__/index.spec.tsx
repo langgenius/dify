@@ -5,6 +5,17 @@ import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { FeaturesProvider } from '../../context'
 import NewFeaturePanel from '../index'
 
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'codeBasedExtension.get': async () => undefined,
+    }),
+  }
+})
+
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/app/test-app-id/configuration',
@@ -25,45 +36,8 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   }),
 }))
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/declarations', () => ({
-  ConfigurationMethodEnum: {
-    predefinedModel: 'predefined-model',
-    customizableModel: 'customizable-model',
-    fetchFromRemote: 'fetch-from-remote',
-  },
-  ModelFeatureEnum: {
-    toolCall: 'tool-call',
-    multiToolCall: 'multi-tool-call',
-    agentThought: 'agent-thought',
-    streamToolCall: 'stream-tool-call',
-    vision: 'vision',
-    video: 'video',
-    document: 'document',
-    audio: 'audio',
-    polling: 'polling',
-    StructuredOutput: 'structured-output',
-  },
-  ModelStatusEnum: {
-    active: 'active',
-    noConfigure: 'no-configure',
-    quotaExceeded: 'quota-exceeded',
-    noPermission: 'no-permission',
-    disabled: 'disabled',
-    credentialRemoved: 'credential-removed',
-  },
-  ModelTypeEnum: {
-    speech2text: 'speech2text',
-    tts: 'tts',
-    textEmbedding: 'text-embedding',
-  },
-}))
-
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
   ModelSelector: () => <div data-testid="model-selector">Model Selector</div>,
-}))
-
-vi.mock('@/service/use-common', () => ({
-  useCodeBasedExtensions: () => ({ data: undefined }),
 }))
 
 const defaultFeatures: Features = {

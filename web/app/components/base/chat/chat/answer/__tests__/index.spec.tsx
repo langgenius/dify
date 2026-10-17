@@ -4,11 +4,6 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import Answer from '../index'
 
 // Mock the chat context
-vi.mock('../context', () => ({
-  useChatContext: vi.fn(() => ({
-    getHumanInputNodeData: vi.fn(),
-  })),
-}))
 
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({

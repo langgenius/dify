@@ -2,10 +2,15 @@ import type { DefaultModelResponse } from '../../declarations'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
-import { consoleQuery } from '@/service/console'
-import { renderWithNuqs as render } from '@/test/nuqs-testing'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { renderWithNuqs } from '@/test/nuqs-testing'
 import { ModelTypeEnum } from '../../declarations'
 import SystemModel from '../index'
+
+const render = (ui: React.ReactElement, options?: Parameters<typeof renderWithNuqs>[1]) => {
+  const { wrapper: QueryWrapper } = createConsoleQueryWrapper()
+  return renderWithNuqs(<QueryWrapper>{ui}</QueryWrapper>, options)
+}
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
@@ -35,7 +40,7 @@ const mockToastSuccess = vi.hoisted(() => vi.fn())
 const mockUpdateModelList = vi.hoisted(() => vi.fn())
 const mockInvalidateDefaultModel = vi.hoisted(() => vi.fn())
 const mockUpdateDefaultModel = vi.hoisted(() => vi.fn(() => Promise.resolve({ result: 'success' })))
-const mockModelListQuery = vi.hoisted(() => vi.fn())
+const getModelList = vi.hoisted(() => vi.fn())
 const mockModelSelectorProps = vi.hoisted(
   () =>
     [] as Array<{
@@ -76,8 +81,12 @@ vi.mock('../../hooks', async (importOriginal) => {
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.models.modelTypes.byModelType.get': getModelList,
+    }),
     consoleClient: {
       workspaces: {
         current: {
@@ -135,6 +144,9 @@ const mockModel: DefaultModelResponse = {
   provider: {
     provider: 'openai',
     icon_small: { en_US: '', zh_Hans: '' },
+    label: { en_US: 'Provider', zh_Hans: 'Provider' },
+    supported_model_types: [],
+    tenant_id: 'tenant-1',
   },
 }
 
@@ -151,7 +163,7 @@ const defaultProps = {
 describe('SystemModel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockModelListQuery.mockReturnValue({ data: [], isPending: false })
+    getModelList.mockResolvedValue({ data: [] })
     mockModelSelectorProps.length = 0
     mockWorkspacePermissionKeys = ['plugin.model_config']
   })
@@ -186,14 +198,9 @@ describe('SystemModel', () => {
     expect(
       screen.getByRole('button', { name: /system model settings/i, hidden: true }),
     ).toHaveAttribute('aria-expanded', 'true')
-    expect(mockModelListQuery).toHaveBeenCalledWith(
-      expect.objectContaining({
-        queryKey: consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
-          input: { params: { model_type: ModelTypeEnum.textEmbedding } },
-        }),
-        enabled: true,
-      }),
-    )
+    expect(getModelList).toHaveBeenCalledWith({
+      params: { model_type: ModelTypeEnum.textEmbedding },
+    })
   })
 
   it('clears only the dialog URL state when closed', async () => {
@@ -213,80 +220,32 @@ describe('SystemModel', () => {
     const user = userEvent.setup()
     render(<SystemModel {...defaultProps} />)
 
-    expect(mockModelListQuery).toHaveBeenCalledWith(
-      expect.objectContaining({
-        queryKey: consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
-          input: { params: { model_type: ModelTypeEnum.textEmbedding } },
-        }),
-        enabled: false,
-      }),
-    )
-    expect(mockModelListQuery).toHaveBeenCalledWith(
-      expect.objectContaining({
-        queryKey: consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
-          input: { params: { model_type: ModelTypeEnum.rerank } },
-        }),
-        enabled: false,
-      }),
-    )
-    expect(mockModelListQuery).toHaveBeenCalledWith(
-      expect.objectContaining({
-        queryKey: consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
-          input: { params: { model_type: ModelTypeEnum.speech2text } },
-        }),
-        enabled: false,
-      }),
-    )
-    expect(mockModelListQuery).toHaveBeenCalledWith(
-      expect.objectContaining({
-        queryKey: consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
-          input: { params: { model_type: ModelTypeEnum.tts } },
-        }),
-        enabled: false,
-      }),
-    )
+    expect(getModelList).not.toHaveBeenCalledWith({
+      params: { model_type: ModelTypeEnum.textEmbedding },
+    })
+    expect(getModelList).not.toHaveBeenCalledWith({ params: { model_type: ModelTypeEnum.rerank } })
+    expect(getModelList).not.toHaveBeenCalledWith({
+      params: { model_type: ModelTypeEnum.speech2text },
+    })
+    expect(getModelList).not.toHaveBeenCalledWith({ params: { model_type: ModelTypeEnum.tts } })
 
     await user.click(screen.getByRole('button', { name: /system model settings/i }))
 
     await waitFor(() => {
-      expect(mockModelListQuery).toHaveBeenCalledWith(
-        expect.objectContaining({
-          queryKey: consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
-            input: { params: { model_type: ModelTypeEnum.textEmbedding } },
-          }),
-          enabled: true,
-        }),
-      )
-      expect(mockModelListQuery).toHaveBeenCalledWith(
-        expect.objectContaining({
-          queryKey: consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
-            input: { params: { model_type: ModelTypeEnum.rerank } },
-          }),
-          enabled: true,
-        }),
-      )
-      expect(mockModelListQuery).toHaveBeenCalledWith(
-        expect.objectContaining({
-          queryKey: consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
-            input: { params: { model_type: ModelTypeEnum.speech2text } },
-          }),
-          enabled: true,
-        }),
-      )
-      expect(mockModelListQuery).toHaveBeenCalledWith(
-        expect.objectContaining({
-          queryKey: consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
-            input: { params: { model_type: ModelTypeEnum.tts } },
-          }),
-          enabled: true,
-        }),
-      )
+      expect(getModelList).toHaveBeenCalledWith({
+        params: { model_type: ModelTypeEnum.textEmbedding },
+      })
+      expect(getModelList).toHaveBeenCalledWith({ params: { model_type: ModelTypeEnum.rerank } })
+      expect(getModelList).toHaveBeenCalledWith({
+        params: { model_type: ModelTypeEnum.speech2text },
+      })
+      expect(getModelList).toHaveBeenCalledWith({ params: { model_type: ModelTypeEnum.tts } })
     })
   })
 
   it('shows loading instead of empty model selectors while model lists load', async () => {
     const user = userEvent.setup()
-    mockModelListQuery.mockReturnValue({ data: [], isPending: true })
+    getModelList.mockReturnValue(new Promise(() => {}))
     render(<SystemModel {...defaultProps} />)
 
     await user.click(screen.getByRole('button', { name: /system model settings/i }))
@@ -325,9 +284,10 @@ describe('SystemModel', () => {
       expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument()
     })
 
-    const selectorButtons = screen.getAllByRole('button', { name: 'Mock Model Selector' })
+    const selectorButtons = await screen.findAllByRole('button', { name: 'Mock Model Selector' })
     selectorButtons.forEach((button) => fireEvent.click(button))
 
+    await waitFor(() => expect(screen.getByRole('button', { name: /save/i })).toBeEnabled())
     fireEvent.click(screen.getByRole('button', { name: /save/i }))
 
     await waitFor(() => {
@@ -348,6 +308,7 @@ describe('SystemModel', () => {
       expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument()
     })
 
+    await waitFor(() => expect(screen.getByRole('button', { name: /save/i })).toBeEnabled())
     fireEvent.click(screen.getByRole('button', { name: /save/i }))
 
     await waitFor(() => {
@@ -406,7 +367,7 @@ describe('SystemModel', () => {
 
     await user.click(screen.getByRole('button', { name: /system model settings/i }))
     await user.click(screen.getByRole('button', { name: 'Reset System Reasoning Model' }))
-    await user.click(screen.getAllByRole('button', { name: 'Mock Model Selector' })[0]!)
+    await user.click((await screen.findAllByRole('button', { name: 'Mock Model Selector' }))[0]!)
     expect(screen.getByRole('button', { name: 'Reset System Reasoning Model' })).toBeEnabled()
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
@@ -521,9 +482,4 @@ describe('SystemModel', () => {
       })
     }
   })
-})
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return { ...actual, useQuery: mockModelListQuery }
 })

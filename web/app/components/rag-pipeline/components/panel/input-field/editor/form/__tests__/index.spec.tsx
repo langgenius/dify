@@ -21,14 +21,6 @@ const mockFileUploadConfig = {
   workflow_file_upload_limit: 10,
 }
 
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: () => ({
-    data: mockFileUploadConfig,
-    isLoading: false,
-    error: null,
-  }),
-}))
-
 const createFormData = (overrides?: Partial<FormData>): FormData => ({
   type: PipelineInputVarType.textInput,
   label: 'Test Label',
@@ -88,6 +80,17 @@ const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
 beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
   toastErrorSpy.mockClear()
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'files.upload.get': async () => mockFileUploadConfig,
+    }),
+  }
 })
 
 describe('InputFieldForm', () => {

@@ -5,11 +5,13 @@ import * as React from 'react'
 import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import {
-  renderWorkflowComponent,
-  renderWorkflowFlowComponent,
+  renderWorkflowComponent as renderWorkflowComponentWithoutUrlState,
+  renderWorkflowFlowComponent as renderWorkflowFlowComponentWithoutUrlState,
 } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { useNodeKeyboardInteractions } from '@/app/components/workflow/hooks/use-node-keyboard-interactions'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
+import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import BasePanel from '../index'
 
 const mockHandleNodeSelect = vi.fn()
@@ -17,19 +19,18 @@ const mockHandleNodeDataUpdate = vi.fn()
 const mockHandleNodeDataUpdateWithSyncDraft = vi.fn()
 const mockSaveStateToHistory = vi.fn()
 const mockSetDetail = vi.fn()
-const mockSetSettingsDestination = vi.fn()
 const mockHandleSingleRun = vi.fn()
 const mockHandleStop = vi.fn()
 const mockHandleRunWithParams = vi.fn()
 let mockNodesReadOnly = false
 let mockCanRun = true
 let mockBuiltInTools = [
-  {
+  createToolProviderFixture({
     id: 'provider/tool',
     name: 'Tool',
     type: 'builtin',
     allow_delete: true,
-  },
+  }),
 ]
 let mockTriggerPlugins: Array<Record<string, unknown>> = []
 
@@ -182,14 +183,14 @@ vi.mock('../../../../../hooks/use-workflow-history', async (importOriginal) => {
 vi.mock('@/app/components/workflow/hooks-store', () => ({
   useHooksStore: (
     selector: (state: {
-      configsMap: { flowId: string; flowType: string }
+      configsMap: { flowId: string; resourceKind: string }
       accessControl: { canRun: boolean }
     }) => unknown,
   ) =>
     selector({
       configsMap: {
         flowId: 'flow-1',
-        flowType: 'app',
+        resourceKind: 'app',
       },
       accessControl: {
         canRun: mockCanRun,
@@ -207,38 +208,20 @@ vi.mock('@/app/components/workflow/run/hooks', () => ({
   useLogs: () => mockLogsState,
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({
-    data: mockBuiltInTools,
-  }),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.builtin.get': async () => mockBuiltInTools,
+    }),
+  }
+})
 
 vi.mock('@/service/use-triggers', () => ({
   useAllTriggerPlugins: () => ({
     data: mockTriggerPlugins,
-  }),
-}))
-
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
-})
-
-vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/workflow/utils')>()
-  return {
-    ...actual,
-    canRunBySingle: () => true,
-    hasErrorHandleNode: () => false,
-    hasRetryNode: () => false,
-    isSupportCustomRunForm: (type: string) => type === BlockEnum.DataSource,
-  }
-})
-
-vi.mock('../hooks/use-resize-panel', () => ({
-  useResizePanel: () => ({
-    triggerRef: { current: null },
-    containerRef: { current: null },
   }),
 }))
 
@@ -280,10 +263,6 @@ vi.mock('@/app/components/workflow/block-icon', () => ({
   default: () => <div>block-icon</div>,
 }))
 
-vi.mock('@/app/components/workflow/nodes/_base/components/split', () => ({
-  default: () => <div>split</div>,
-}))
-
 vi.mock('@/app/components/workflow/nodes/data-source/before-run-form', () => ({
   default: () => <div>data-source-before-run-form</div>,
 }))
@@ -292,51 +271,8 @@ vi.mock('@/app/components/workflow/run/special-result-panel', () => ({
   default: () => <div>special-result-panel</div>,
 }))
 
-vi.mock('../before-run-form', () => ({
-  default: () => <div>before-run-form</div>,
-}))
-
-vi.mock('../before-run-form/panel-wrap', () => ({
-  default: ({ children }: PropsWithChildren<{ nodeName: string; onHide: () => void }>) => (
-    <div>{children}</div>
-  ),
-}))
-
-vi.mock('../error-handle/error-handle-on-panel', () => ({
-  default: () => <div>error-handle-panel</div>,
-}))
-
-vi.mock('../help-link', () => ({
-  default: () => <div>help-link</div>,
-}))
-
-vi.mock('../next-step', () => ({
-  default: () => <div>next-step</div>,
-}))
-
 vi.mock('@/app/components/workflow/node-actions-menu', () => ({
   NodeActionsDropdown: () => <div>node-actions-menu</div>,
-}))
-
-vi.mock('../retry/retry-on-panel', () => ({
-  default: () => <div>retry-panel</div>,
-}))
-
-vi.mock('../title-description-input', () => ({
-  TitleInput: ({ value, onBlur }: { value: string; onBlur: (value: string) => void }) => (
-    <input
-      aria-label="title-input"
-      defaultValue={value}
-      onBlur={(event) => onBlur(event.target.value)}
-    />
-  ),
-  DescriptionInput: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => (
-    <textarea
-      aria-label="description-input"
-      defaultValue={value}
-      onChange={(event) => onChange(event.target.value)}
-    />
-  ),
 }))
 
 vi.mock('../last-run', () => ({
@@ -408,6 +344,16 @@ function KeyboardOpenedPanel({ type }: { type: BlockEnum }) {
   )
 }
 
+const onUrlUpdate = vi.fn()
+const renderWorkflowComponent = createNuqsTestRenderer(
+  renderWorkflowComponentWithoutUrlState,
+  () => ({ onUrlUpdate }),
+)
+const renderWorkflowFlowComponent = createNuqsTestRenderer(
+  renderWorkflowFlowComponentWithoutUrlState,
+  () => ({ onUrlUpdate }),
+)
+
 describe('workflow-panel index', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -415,12 +361,12 @@ describe('workflow-panel index', () => {
     mockNodesReadOnly = false
     mockCanRun = true
     mockBuiltInTools = [
-      {
+      createToolProviderFixture({
         id: 'provider/tool',
         name: 'Tool',
         type: 'builtin',
         allow_delete: true,
-      },
+      }),
     ]
     mockTriggerPlugins = []
     mockLogsState.showSpecialResultPanel = false
@@ -525,7 +471,7 @@ describe('workflow-panel index', () => {
     )
 
     expect(screen.getByText('panel-child')).toBeInTheDocument()
-    expect(screen.getByText('authorized-in-node')).toBeInTheDocument()
+    expect(await screen.findByText('authorized-in-node')).toBeInTheDocument()
 
     fireEvent.blur(screen.getByDisplayValue('Tool Node'), { target: { value: 'Updated title' } })
     fireEvent.change(screen.getByDisplayValue('Node description'), {
@@ -536,7 +482,7 @@ describe('workflow-panel index', () => {
       expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalled()
     })
     expect(mockSaveStateToHistory).toHaveBeenCalled()
-    fireEvent.click(screen.getByText('authorized-in-node'))
+    fireEvent.click(await screen.findByText('authorized-in-node'))
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.panel.runThisStep' }))
 
@@ -731,7 +677,7 @@ describe('workflow-panel index', () => {
     expect(screen.getByText('panel-child')).toBeInTheDocument()
   })
 
-  it('should render data source authorization controls and jump to the settings modal', () => {
+  it('should render data source authorization controls and jump to the settings modal', async () => {
     renderWorkflowComponent(
       <BasePanel
         id="node-1"
@@ -758,7 +704,9 @@ describe('workflow-panel index', () => {
 
     fireEvent.click(screen.getByText('authorized-in-datasource-node'))
 
-    expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('data-source'),
+    )
   })
 
   it('should react to pending single run actions', () => {

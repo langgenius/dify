@@ -1,9 +1,4 @@
-import type {
-  AgentSoulDifyToolConfig,
-  AppDetailWithSite,
-} from '@dify/contracts/api/console/apps/types.gen'
-import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { OperationKey } from '@orpc/tanstack-query'
+import type { AgentSoulDifyToolConfig } from '@dify/contracts/api/console/apps/types.gen'
 import type { CommonNodeType, Node } from '../../types'
 import type { ChecklistItem } from '../use-checklist'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
@@ -14,8 +9,6 @@ import { createElement, Fragment } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
 import { consoleQuery } from '@/service/console'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
-import { FlowType } from '@/types/common'
 import { createEdge, createNode, resetFixtureCounters } from '../../__tests__/fixtures'
 import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
 import { renderWorkflowComponent, renderWorkflowHook } from '../../__tests__/workflow-test-env'
@@ -47,25 +40,9 @@ const marketplacePluginState = vi.hoisted(() => ({
   label: undefined as Record<string, string> | undefined,
 }))
 
-vi.mock('reactflow', async () => {
-  const base = (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock()
-  return {
-    ...base,
-    getOutgoers: vi.fn((node: Node, nodes: Node[], edges: { source: string; target: string }[]) => {
-      return edges
-        .filter((e) => e.source === node.id)
-        .map((e) => nodes.find((n) => n.id === e.target))
-        .filter(Boolean)
-    }),
-  }
-})
-
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: toolServiceState.buildInTools }),
-  useAllCustomTools: () => ({ data: toolServiceState.customTools }),
-  useAllMCPTools: () => ({ data: toolServiceState.mcpTools }),
-  useAllWorkflowTools: () => ({ data: toolServiceState.workflowTools }),
-}))
+vi.mock('reactflow', async () =>
+  (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock(),
+)
 
 vi.mock('@/service/use-plugins', () => ({
   useFetchPluginsInMarketPlaceByInfo: (infos: Array<{ organization: string; plugin: string }>) => ({
@@ -97,7 +74,6 @@ const mockNodesMap: Record<
   { checkValid: CheckValidFn; metaData: { isStart: boolean; isRequired: boolean } }
 > = {}
 let mockModelProviders: Array<{ provider: string }> = []
-let mockUsedVars: string[][] = []
 const mockAvailableVarMap: Record<
   string,
   { availableVars: Array<{ nodeId: string; vars: Array<{ variable: string }> }> }
@@ -128,11 +104,6 @@ vi.mock('../use-nodes-available-var-list', () => ({
   }),
 }))
 
-vi.mock('../../nodes/_base/components/variable/utils', () => ({
-  getNodeUsedVars: () => mockUsedVars,
-  isSpecialVar: () => false,
-}))
-
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
   useParams: () => ({ appId: 'app-1' }),
@@ -140,11 +111,6 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
 
 vi.mock('../../datasets-detail-store/store', () => ({
   useDatasetsDetailStore: () => ({}),
-}))
-
-vi.mock('../index', () => ({
-  useGetToolIcon: () => () => undefined,
-  useNodesMetaData: () => ({ nodes: [], nodesMap: mockNodesMap }),
 }))
 
 vi.mock('@/app/notifications', () => ({
@@ -200,7 +166,6 @@ beforeEach(() => {
   Object.keys(mockNodesMap).forEach((k) => delete mockNodesMap[k])
   Object.keys(mockAvailableVarMap).forEach((k) => delete mockAvailableVarMap[k])
   mockModelProviders = []
-  mockUsedVars = []
   toolServiceState.buildInTools = []
   toolServiceState.customTools = []
   toolServiceState.mcpTools = []
@@ -323,12 +288,9 @@ function buildInlineAgentGraph({
     nodes: [startNode, agentNode],
     options: {
       queryClient,
+      resource: { kind: 'app' as const, appId, mode: 'workflow' as const },
       hooksStoreProps: {
-        configsMap: {
-          flowId: appId,
-          flowType: FlowType.appFlow,
-          fileSettings: {} as never,
-        },
+        fileSettings: {} as never,
       },
     },
   }
@@ -389,7 +351,10 @@ describe('useChecklist', () => {
   it('should detect disconnected nodes', () => {
     const startNode = createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start' } })
     const codeNode = createNode({ id: 'code', data: { type: BlockEnum.Code, title: 'Code' } })
-    const isolatedLlm = createNode({ id: 'llm', data: { type: BlockEnum.LLM, title: 'LLM' } })
+    const isolatedLlm = createNode({
+      id: 'llm',
+      data: { type: BlockEnum.LLM, prompt_template: { role: 'user', text: '' }, title: 'LLM' },
+    })
 
     const edges = [createEdge({ source: 'start', target: 'code' })]
 
@@ -409,7 +374,10 @@ describe('useChecklist', () => {
     }
 
     const startNode = createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start' } })
-    const llmNode = createNode({ id: 'llm', data: { type: BlockEnum.LLM, title: 'LLM' } })
+    const llmNode = createNode({
+      id: 'llm',
+      data: { type: BlockEnum.LLM, prompt_template: { role: 'user', text: '' }, title: 'LLM' },
+    })
 
     const edges = [createEdge({ source: 'start', target: 'llm' })]
 
@@ -551,18 +519,21 @@ describe('useChecklist', () => {
     }
 
     const startNode = createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start' } })
-    const llmNode = createNode({ id: 'llm', data: { type: BlockEnum.LLM, title: 'LLM' } })
+    const llmNode = createNode({
+      id: 'llm',
+      data: { type: BlockEnum.LLM, prompt_template: { role: 'user', text: '' }, title: 'LLM' },
+    })
 
     const edges = [createEdge({ source: 'start', target: 'llm' })]
 
-    renderWorkflowHook(() =>
-      useChecklist([startNode, llmNode], edges, { flowType: FlowType.snippet }),
-    )
+    renderWorkflowHook(() => useChecklist([startNode, llmNode], edges), {
+      resource: { kind: 'snippet', snippetId: 'snippet-1' },
+    })
 
     expect(checkValid).toHaveBeenCalledWith(
       expect.objectContaining({ type: BlockEnum.LLM }),
       expect.any(Function),
-      expect.objectContaining({ flowType: FlowType.snippet }),
+      expect.objectContaining({ resourceKind: 'snippet' }),
     )
   })
 
@@ -603,12 +574,13 @@ describe('useChecklist', () => {
     ])
   })
 
-  it('should detect plugin not installed', () => {
+  it('should detect plugin not installed', async () => {
     const startNode = createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start' } })
     const toolNode = createNode({
       id: 'tool',
       data: {
         type: BlockEnum.Tool,
+        tool_parameters: {},
         title: 'My Tool',
         provider_type: CollectionType.builtIn,
         provider_id: 'missing-provider',
@@ -620,6 +592,9 @@ describe('useChecklist', () => {
 
     const { result } = renderWorkflowHook(() => useChecklist([startNode, toolNode], edges))
 
+    await waitFor(() =>
+      expect(result.current.find((item: ChecklistItem) => item.id === 'tool')).toBeDefined(),
+    )
     const warning = result.current.find((item: ChecklistItem) => item.id === 'tool')
     expect(warning).toBeDefined()
     expect(warning!.canNavigate).toBe(false)
@@ -676,6 +651,7 @@ describe('useChecklist', () => {
       id: 'llm',
       data: {
         type: BlockEnum.LLM,
+        prompt_template: { role: 'user', text: '' },
         title: 'LLM',
         model: {
           provider: 'langgenius/openai/openai',
@@ -698,7 +674,6 @@ describe('useChecklist', () => {
       checkValid: () => ({ errorMessage: 'Model not configured' }),
       metaData: { isStart: false, isRequired: false },
     }
-    mockUsedVars = [['start', 'missingVar']]
     mockAvailableVarMap.llm = {
       availableVars: [
         {
@@ -714,6 +689,7 @@ describe('useChecklist', () => {
       data: {
         type: BlockEnum.LLM,
         title: 'LLM',
+        prompt_template: { role: 'user', text: '{{#start.missingVar#}}' },
       },
     })
 
@@ -811,7 +787,7 @@ describe('useChecklist', () => {
 describe('useChecklistBeforePublish', () => {
   it('should reject an invalid legacy Agent instead of throwing when its metadata is hidden', async () => {
     const { nodes, edges } = buildLegacyAgentGraph()
-    rfState.nodes = nodes as unknown as typeof rfState.nodes
+    rfState.nodes = nodes
     rfState.edges = edges as unknown as typeof rfState.edges
 
     const { result } = renderWorkflowHook(() => useChecklistBeforePublish())
@@ -829,7 +805,7 @@ describe('useWorkflowRunValidation', () => {
     rfState.edges = edges as unknown as typeof rfState.edges
 
     const { result } = renderWorkflowHook(() => useWorkflowRunValidation(), {
-      initialStoreState: { nodes: nodes as Node[] },
+      initialStoreState: { nodes },
       hooksStoreProps: {},
     })
 
@@ -842,7 +818,7 @@ describe('useWorkflowRunValidation', () => {
     rfState.edges = edges as unknown as typeof rfState.edges
 
     const { result } = renderWorkflowHook(() => useWorkflowRunValidation(), {
-      initialStoreState: { nodes: nodes as Node[] },
+      initialStoreState: { nodes },
       hooksStoreProps: {},
     })
 
@@ -851,25 +827,19 @@ describe('useWorkflowRunValidation', () => {
   })
 })
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    useQuery: (options: {
-      queryKey: OperationKey<
-        'query',
-        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
-      >
-      select?: (data: AppDetailWithSite) => unknown
-    }) => {
-      if (options.queryKey[0].join('.') === 'console.apps.byAppId.get') {
-        const appDetail = createAppDetailFixture({ mode: AppModeEnum.WORKFLOW })
-        return { data: options.select ? options.select(appDetail) : appDetail }
-      }
-      if (options.queryKey[0].includes('modelProviders') && options.queryKey[0].includes('summary'))
-        return { data: mockModelProviders }
-      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
-      return { data: [] }
-    },
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.get': async () => createAppDetailFixture({ mode: 'workflow' as const }),
+      'workspaces.current.modelProviders.summary.get': async () => ({ data: mockModelProviders }),
+      'workspaces.current.models.modelTypes.byModelType.get': async () => ({ data: [] }),
+      'workspaces.current.tools.builtin.get': async () => toolServiceState.buildInTools,
+      'workspaces.current.tools.api.get': async () => toolServiceState.customTools,
+      'workspaces.current.tools.mcp.get': async () => toolServiceState.mcpTools,
+      'workspaces.current.tools.workflow.get': async () => toolServiceState.workflowTools,
+    }),
   }
 })

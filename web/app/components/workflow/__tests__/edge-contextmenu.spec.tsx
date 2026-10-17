@@ -25,15 +25,6 @@ vi.mock('../hooks/use-workflow', () => ({
   }),
 }))
 
-vi.mock('../utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../utils')>()
-
-  return {
-    ...actual,
-    getNodesConnectedSourceOrTargetHandleIdsMap: vi.fn(() => ({})),
-  }
-})
-
 type EdgeRuntimeState = {
   _hovering?: boolean
   _isBundled?: boolean

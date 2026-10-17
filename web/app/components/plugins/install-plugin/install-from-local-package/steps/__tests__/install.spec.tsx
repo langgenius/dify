@@ -1,34 +1,11 @@
 import type { ReactElement } from 'react'
-import type { PluginDeclaration } from '../../../../types'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
-import { PluginCategoryEnum, TaskStatus } from '../../../../types'
+import { createPluginDeclarationFixture } from '@/test/fixtures/plugin'
+import { TaskStatus } from '../../../../types'
 import Install from '../install'
-
-// Factory function for test data
-const createMockManifest = (overrides: Partial<PluginDeclaration> = {}): PluginDeclaration => ({
-  plugin_unique_identifier: 'test-plugin-uid',
-  version: '1.0.0',
-  author: 'test-author',
-  icon: 'test-icon.png',
-  name: 'Test Plugin',
-  category: PluginCategoryEnum.tool,
-  label: { 'en-US': 'Test Plugin' } as PluginDeclaration['label'],
-  description: { 'en-US': 'A test plugin' } as PluginDeclaration['description'],
-  created_at: '2024-01-01T00:00:00Z',
-  resource: {},
-  plugins: [],
-  verified: true,
-  endpoint: { settings: [], endpoints: [] },
-  model: null,
-  tags: [],
-  agent_strategy: null,
-  meta: { version: '1.0.0', minimum_dify_version: '0.8.0' },
-  trigger: {} as PluginDeclaration['trigger'],
-  ...overrides,
-})
 
 // Mock external dependencies
 const mockUseCheckInstalled = vi.fn()
@@ -37,10 +14,8 @@ vi.mock('@/app/components/plugins/install-plugin/hooks/use-check-installed', () 
 }))
 
 const mockInstallPackageFromLocal = vi.fn()
-vi.mock('@/service/use-plugins', () => ({
-  useInstallPackageFromLocal: () => ({
-    mutateAsync: mockInstallPackageFromLocal,
-  }),
+vi.mock('@/service/use-plugins', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-plugins')>()),
   usePluginTaskList: () => ({
     handleInstallTaskStart: vi.fn(),
   }),
@@ -106,18 +81,22 @@ vi.mock('../../../base/version', () => ({
   ),
 }))
 
-vi.mock('../../../utils', () => ({
-  pluginManifestToCardPluginProps: (manifest: PluginDeclaration) => ({
-    name: manifest.name,
-    author: manifest.author,
-    version: manifest.version,
-  }),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.plugin.install.pkg.post': (...args: unknown[]) =>
+        mockInstallPackageFromLocal(...args),
+    }),
+  }
+})
 
 describe('Install', () => {
   const defaultProps = {
     uniqueIdentifier: 'test-unique-identifier',
-    payload: createMockManifest(),
+    payload: createPluginDeclarationFixture(),
     onCancel: vi.fn(),
     onStartToInstall: vi.fn(),
     onInstalled: vi.fn(),
@@ -201,7 +180,7 @@ describe('Install', () => {
   // ================================
   describe('Version Display', () => {
     it('should display toInstallVersion from payload', () => {
-      const payload = createMockManifest({ version: '2.0.0' })
+      const payload = createPluginDeclarationFixture({ version: '2.0.0' })
       mockUseCheckInstalled.mockReturnValue({
         installedInfo: null,
         isLoading: false,
@@ -489,7 +468,7 @@ describe('Install', () => {
   describe('Dify Version Compatibility', () => {
     it('should not show warning when dify version is compatible', () => {
       mockConsoleState.langGeniusVersionInfo.current_version = '1.0.0'
-      const payload = createMockManifest({
+      const payload = createPluginDeclarationFixture({
         meta: { version: '1.0.0', minimum_dify_version: '0.8.0' },
       })
 
@@ -500,7 +479,7 @@ describe('Install', () => {
 
     it('should show warning when dify version is incompatible', () => {
       mockConsoleState.langGeniusVersionInfo.current_version = '1.0.0'
-      const payload = createMockManifest({
+      const payload = createPluginDeclarationFixture({
         meta: { version: '1.0.0', minimum_dify_version: '2.0.0' },
       })
 
@@ -511,7 +490,7 @@ describe('Install', () => {
 
     it('should be compatible when minimum_dify_version is undefined', () => {
       mockConsoleState.langGeniusVersionInfo.current_version = '1.0.0'
-      const payload = createMockManifest({ meta: { version: '1.0.0' } })
+      const payload = createPluginDeclarationFixture({ meta: { version: '1.0.0' } })
 
       render(<Install {...defaultProps} payload={payload} />)
 
@@ -520,7 +499,7 @@ describe('Install', () => {
 
     it('should be compatible when current_version is empty', () => {
       mockConsoleState.langGeniusVersionInfo.current_version = ''
-      const payload = createMockManifest({
+      const payload = createPluginDeclarationFixture({
         meta: { version: '1.0.0', minimum_dify_version: '2.0.0' },
       })
 
@@ -532,7 +511,7 @@ describe('Install', () => {
 
     it('should be compatible when current_version is undefined', () => {
       mockConsoleState.langGeniusVersionInfo.current_version = undefined as unknown as string
-      const payload = createMockManifest({
+      const payload = createPluginDeclarationFixture({
         meta: { version: '1.0.0', minimum_dify_version: '2.0.0' },
       })
 

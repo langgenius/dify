@@ -1,4 +1,4 @@
-import type { SimpleDocumentDetail } from '@/models/datasets'
+import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -61,7 +61,7 @@ vi.mock('@/context/dataset-detail', () => ({
 // Mock child components that are complex
 vi.mock('../document-list/components', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../document-list/components')>()),
-  DocumentTableRow: ({ doc, index }: { doc: SimpleDocumentDetail; index: number }) => (
+  DocumentTableRow: ({ doc, index }: { doc: DocumentWithSegmentsResponse; index: number }) => (
     <tr data-testid={`doc-row-${doc.id}`}>
       <td>{index + 1}</td>
       <td>{doc.name}</td>
@@ -80,15 +80,6 @@ vi.mock('../../detail/completed/common/batch-action', () => ({
   ),
 }))
 
-vi.mock('../../rename-modal', () => ({
-  default: ({ name, onClose }: { name: string; onClose: () => void }) => (
-    <div data-testid="rename-modal">
-      <span>{name}</span>
-      <button onClick={onClose}>Close</button>
-    </div>
-  ),
-}))
-
 vi.mock('@/app/components/datasets/metadata/edit-metadata-batch/modal', () => ({
   default: ({ onHide }: { onHide: () => void }) => (
     <div data-testid="edit-metadata-modal">
@@ -97,7 +88,9 @@ vi.mock('@/app/components/datasets/metadata/edit-metadata-batch/modal', () => ({
   ),
 }))
 
-function createDoc(overrides: Partial<SimpleDocumentDetail> = {}): SimpleDocumentDetail {
+function createDoc(
+  overrides: Partial<DocumentWithSegmentsResponse> = {},
+): DocumentWithSegmentsResponse {
   return {
     id: `doc-${Math.random().toString(36).slice(2, 8)}`,
     name: 'Test Doc',
@@ -114,12 +107,12 @@ function createDoc(overrides: Partial<SimpleDocumentDetail> = {}): SimpleDocumen
     created_from: 'web',
     created_at: 1234567890,
     ...overrides,
-  } as SimpleDocumentDetail
+  } as DocumentWithSegmentsResponse
 }
 
 const defaultProps = {
   embeddingAvailable: true,
-  documents: [] as SimpleDocumentDetail[],
+  documents: [] as DocumentWithSegmentsResponse[],
   selectedIds: [] as string[],
   onSelectedIdChange: vi.fn(),
   datasetId: 'ds-1',

@@ -210,7 +210,7 @@ function ImagePreviewContent({ url, title, onCancel, onPrev, onNext }: ImagePrev
       <DialogPopup
         ref={previewRef}
         aria-label={title.trim() || t(($) => $['common.preview'], { ns: 'workflow' })}
-        className="image-preview-container fixed inset-0! top-0! left-0! flex h-dvh! max-h-none! w-screen! max-w-none! translate-0! items-center justify-center overflow-hidden! rounded-none! border-none! bg-black/80 p-8! shadow-none!"
+        className="image-preview-container fixed inset-0 flex h-dvh w-screen items-center justify-center overflow-hidden bg-black/80 p-8"
       >
         <div
           data-testid="image-preview-container"

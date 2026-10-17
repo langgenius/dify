@@ -3,8 +3,11 @@
  *
  * Usage:
  * ```ts
- * vi.mock('@/service/use-tools', async () =>
- *   (await import('../../__tests__/service-mock-factory')).createToolServiceMock(),
+ * vi.mock('@tanstack/react-query', async (importOriginal) =>
+ *   (await import('@/test/console/operation-hooks')).mockConsoleOperationHooks(
+ *     await importOriginal(),
+ *     (await import('../../__tests__/service-mock-factory')).createToolOperationRoutes(),
+ *   ),
  * )
  * ```
  */
@@ -24,12 +27,12 @@ type TriggerMockData = {
   triggerPlugins?: unknown[]
 }
 
-export function createToolServiceMock(data?: ToolMockData) {
+export function createToolOperationRoutes(data?: ToolMockData) {
   return {
-    useAllBuiltInTools: vi.fn(() => ({ data: data?.buildInTools ?? [] })),
-    useAllCustomTools: vi.fn(() => ({ data: data?.customTools ?? [] })),
-    useAllWorkflowTools: vi.fn(() => ({ data: data?.workflowTools ?? [] })),
-    useAllMCPTools: vi.fn(() => ({ data: data?.mcpTools ?? [] })),
+    'workspaces.current.tools.builtin.get': () => ({ data: data?.buildInTools ?? [] }),
+    'workspaces.current.tools.api.get': () => ({ data: data?.customTools ?? [] }),
+    'workspaces.current.tools.workflow.get': () => ({ data: data?.workflowTools ?? [] }),
+    'workspaces.current.tools.mcp.get': () => ({ data: data?.mcpTools ?? [] }),
   }
 }
 

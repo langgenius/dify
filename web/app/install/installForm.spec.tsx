@@ -1,8 +1,7 @@
 import type { ReactElement } from 'react'
-import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { fetchInitValidateStatus, fetchSetupStatus, login, setup } from '@/service/common'
+import { consoleClient } from '@/service/console'
 import { expectLoadingButton } from '@/test/button'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { encryptPassword } from '@/utils/encryption'
@@ -21,23 +20,32 @@ vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
 }))
 
-vi.mock('@/service/common', () => ({
-  fetchSetupStatus: vi.fn(),
-  fetchInitValidateStatus: vi.fn(),
-  setup: vi.fn(),
-  login: vi.fn(),
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    setup: {
+      get: vi.fn(),
+      post: vi.fn(),
+    },
+    init: {
+      get: vi.fn(),
+    },
+    login: {
+      post: vi.fn(),
+    },
+  },
 }))
 
-const mockFetchSetupStatus = vi.mocked(fetchSetupStatus)
-const mockFetchInitValidateStatus = vi.mocked(fetchInitValidateStatus)
-const mockSetup = vi.mocked(setup)
-const mockLogin = vi.mocked(login)
+const mockFetchSetupStatus = vi.mocked(consoleClient.setup.get)
+const mockFetchInitValidateStatus = vi.mocked(consoleClient.init.get)
+const mockSetup = vi.mocked(consoleClient.setup.post)
+const mockLogin = vi.mocked(consoleClient.login.post)
 
 const prepareLoadedState = () => {
-  mockFetchSetupStatus.mockResolvedValue({ step: 'not_started' } as SetupStatusResponse)
+  mockFetchSetupStatus.mockResolvedValue({ step: 'not_started' })
   mockFetchInitValidateStatus.mockResolvedValue({
     status: 'finished',
-  } as InitValidateStatusResponse)
+  })
 }
 
 describe('InstallForm', () => {
@@ -132,8 +140,8 @@ describe('InstallForm', () => {
   })
 
   it('should submit and redirect to the console root on successful login', async () => {
-    mockSetup.mockResolvedValue({ result: 'success' } as any)
-    mockLogin.mockResolvedValue({ result: 'success', data: { access_token: 'token' } } as any)
+    mockSetup.mockResolvedValue({ result: 'success' })
+    mockLogin.mockResolvedValue({ result: 'success', data: 'token' })
 
     render(<InstallForm />)
 
@@ -161,7 +169,6 @@ describe('InstallForm', () => {
 
     await waitFor(() => {
       expect(mockLogin).toHaveBeenCalledWith({
-        url: '/login',
         body: {
           email: 'admin@example.com',
           password: encryptPassword('Password123'),
@@ -175,13 +182,11 @@ describe('InstallForm', () => {
   })
 
   it('should redirect to sign in when login fails', async () => {
-    mockSetup.mockResolvedValue({ result: 'success' } as any)
+    mockSetup.mockResolvedValue({ result: 'success' })
     mockLogin.mockResolvedValue({
       result: 'fail',
       data: 'error',
-      code: 'login_failed',
-      message: 'login failed',
-    } as any)
+    })
 
     render(<InstallForm />)
 
@@ -199,12 +204,16 @@ describe('InstallForm', () => {
   })
 
   it('should disable submit while request is in flight', async () => {
-    let resolveSetup: ((value: any) => void) | undefined
-    const setupPromise = new Promise((resolve) => {
-      resolveSetup = resolve
-    })
-    mockSetup.mockReturnValue(setupPromise as any)
-    mockLogin.mockResolvedValue({ result: 'success', data: { access_token: 'token' } } as any)
+    let resolveSetup:
+      | ((value: Awaited<ReturnType<typeof consoleClient.setup.post>>) => void)
+      | undefined
+    const setupPromise = new Promise<Awaited<ReturnType<typeof consoleClient.setup.post>>>(
+      (resolve) => {
+        resolveSetup = resolve
+      },
+    )
+    mockSetup.mockReturnValue(setupPromise)
+    mockLogin.mockResolvedValue({ result: 'success', data: 'token' })
 
     render(<InstallForm />)
 
@@ -232,7 +241,7 @@ describe('InstallForm', () => {
   })
 
   it('should redirect to sign in when setup is finished', async () => {
-    mockFetchSetupStatus.mockResolvedValue({ step: 'finished' } as SetupStatusResponse)
+    mockFetchSetupStatus.mockResolvedValue({ step: 'finished' })
 
     render(<InstallForm />)
 

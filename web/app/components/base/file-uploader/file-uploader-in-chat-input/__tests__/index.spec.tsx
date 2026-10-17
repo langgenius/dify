@@ -3,17 +3,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { FileContextProvider } from '../../store'
 import FileUploaderInChatInput from '../index'
 
-vi.mock('@/types/app', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/types/app')>()
-  return {
-    ...actual,
-    TransferMethod: {
-      local_file: 'local_file',
-      remote_url: 'remote_url',
-    },
-  }
-})
-
 vi.mock('../../hooks', () => ({
   useFile: () => ({
     handleLoadFileFromLink: vi.fn(),

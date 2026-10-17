@@ -21,6 +21,10 @@ Decide whether a regression needs lasting automated coverage before choosing its
 
 Coverage is a diagnostic signal, not a quality target. This guide defines no required percentage and reviewers should not request tests solely to increase coverage. Use a report to find suspicious gaps, then decide whether each gap represents a product risk worth protecting.
 
+The unit coverage report includes authored JavaScript and TypeScript throughout `web/`, including runtime entry points, scripts, plugins, and files that no test imports. It excludes test infrastructure, stories, declarations, generated sources, tool configuration, build output, and vendored static code. TypeScript modules containing only erased types have no executable statements and are not meaningful zero-coverage findings. Local coverage runs also produce an HTML report at `coverage/index.html`.
+
+Run the full `unit` project before using coverage to identify untested modules. A focused run measures only the selected tests. Zero unit coverage does not imply that Browser Mode or E2E never exercises the file; those suites do not contribute to this report. Anonymous VM scripts and subprocesses can also execute code without attributing coverage to its source file. Check existing tests and separate product modules from development tooling when prioritizing the findings.
+
 ## Choose the Right Boundary
 
 Use the smallest boundary that includes the behavior owner and proves the product contract without coupling the test to implementation:

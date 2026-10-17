@@ -230,8 +230,9 @@ const remapSnippetGraph = (
   const offsetY = (insertAnchor?.y ?? (currentNodes.length ? currentMinY : 80)) - minRootY
 
   snippetNodes.forEach((node, index) => {
-    let nextId = `${node.id}-${Date.now()}-${index}`
-    while (existingIds.has(nextId)) nextId = `${nextId}-1`
+    // Keep IDs compatible with runtime variable templates, including on collisions.
+    let nextId = `${Date.now() + index}`
+    while (existingIds.has(nextId)) nextId = `${Number(nextId) + 1}`
     existingIds.add(nextId)
     idMapping.set(node.id, nextId)
   })

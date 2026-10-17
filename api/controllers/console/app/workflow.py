@@ -102,10 +102,7 @@ from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError,
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
-from services.workflow_variable_reference_validator import (
-    format_variable_reference_errors,
-    validate_variable_references,
-)
+from services.workflow_variable_reference_validator import advisory_variable_reference_warning
 
 logger = logging.getLogger(__name__)
 
@@ -970,7 +967,7 @@ class HumanInputFormPreviewPayload(BaseModel):
     )
 
 
-class HumanInputFormSubmitPayload(BaseModel):
+class HumanInputFormPreviewSubmitPayload(BaseModel):
     form_inputs: dict[str, Any] = Field(
         ...,
         description="Values the user provides for the form's own fields",
@@ -993,7 +990,7 @@ class HumanInputDeliveryTestPayload(BaseModel):
 register_schema_models(
     console_ns,
     HumanInputFormPreviewPayload,
-    HumanInputFormSubmitPayload,
+    HumanInputFormPreviewSubmitPayload,
     HumanInputDeliveryTestPayload,
 )
 
@@ -1035,7 +1032,7 @@ class AdvancedChatDraftHumanInputFormRunApi(Resource):
     @console_ns.doc("submit_advanced_chat_draft_human_input_form")
     @console_ns.doc(description="Submit human input form preview for advanced chat workflow")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.expect(console_ns.models[HumanInputFormSubmitPayload.__name__])
+    @console_ns.expect(console_ns.models[HumanInputFormPreviewSubmitPayload.__name__])
     @console_ns.response(
         200,
         "Human input form submission result",
@@ -1048,8 +1045,8 @@ class AdvancedChatDraftHumanInputFormRunApi(Resource):
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     @with_current_user
     @edit_permission_required
-    @model_validate(HumanInputFormSubmitPayload)
-    def post(self, args: HumanInputFormSubmitPayload, current_user: Account, app_model: App, node_id: str):
+    @model_validate(HumanInputFormPreviewSubmitPayload)
+    def post(self, args: HumanInputFormPreviewSubmitPayload, current_user: Account, app_model: App, node_id: str):
         """
         Submit human input form preview
         """
@@ -1103,7 +1100,7 @@ class WorkflowDraftHumanInputFormRunApi(Resource):
     @console_ns.doc("submit_workflow_draft_human_input_form")
     @console_ns.doc(description="Submit human input form preview for workflow")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.expect(console_ns.models[HumanInputFormSubmitPayload.__name__])
+    @console_ns.expect(console_ns.models[HumanInputFormPreviewSubmitPayload.__name__])
     @console_ns.response(
         200,
         "Human input form submission result",
@@ -1116,8 +1113,8 @@ class WorkflowDraftHumanInputFormRunApi(Resource):
     @get_app_model(mode=[AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
-    @model_validate(HumanInputFormSubmitPayload)
-    def post(self, args: HumanInputFormSubmitPayload, current_user: Account, app_model: App, node_id: str):
+    @model_validate(HumanInputFormPreviewSubmitPayload)
+    def post(self, args: HumanInputFormPreviewSubmitPayload, current_user: Account, app_model: App, node_id: str):
         """
         Submit human input form preview
         """
@@ -1294,21 +1291,6 @@ class DraftWorkflowNodeRunApi(Resource):
         ).model_dump(mode="json")
 
 
-def _advisory_variable_reference_warning(graph_text: str | None) -> str | None:
-    """Return a non-blocking publish warning. A checker failure must not fail publish."""
-    if not graph_text:
-        return None
-    try:
-        graph = json.loads(graph_text)
-        if not isinstance(graph, dict):
-            return None
-        issues = validate_variable_references(graph)
-        return format_variable_reference_errors(issues) if issues else None
-    except Exception:
-        logger.warning("Skipped advisory variable reference check", exc_info=True)
-        return None
-
-
 @console_ns.route("/apps/<uuid:app_id>/workflows/publish")
 class PublishedWorkflowApi(Resource):
     @console_ns.doc("get_published_workflow")
@@ -1375,7 +1357,7 @@ class PublishedWorkflowApi(Resource):
             workflow_created_at = TimestampField().format(workflow.created_at)
             graph_text = workflow.graph
 
-        warning = _advisory_variable_reference_warning(graph_text)
+        warning = advisory_variable_reference_warning(graph_text)
         payload: dict[str, object] = {
             "result": "success",
             "created_at": workflow_created_at,

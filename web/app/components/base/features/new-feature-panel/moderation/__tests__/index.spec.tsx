@@ -1,5 +1,6 @@
 import type { Features, OnFeaturesChange } from '../../../types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { FeaturesProvider } from '../../../context'
 import Moderation from '../index'
 
@@ -12,9 +13,6 @@ vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowModerationSettingModal: mockSetShowModerationSettingModal,
   }),
-}))
-vi.mock('@/service/use-common', () => ({
-  useCodeBasedExtensions: () => ({ data: { data: mockCodeBasedExtensionData } }),
 }))
 
 const defaultFeatures: Features = {
@@ -40,6 +38,17 @@ const renderWithProvider = (
     </FeaturesProvider>,
   )
 }
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'codeBasedExtension.get': async () => ({ data: mockCodeBasedExtensionData }),
+    }),
+  }
+})
 
 describe('Moderation', () => {
   beforeEach(() => {
@@ -404,7 +413,7 @@ describe('Moderation', () => {
     expect(screen.getByText('-'))!.toBeInTheDocument()
   })
 
-  it('should show code-based extension label when custom type is configured', () => {
+  it('should show code-based extension label when custom type is configured', async () => {
     mockCodeBasedExtensionData.push({
       name: 'custom-ext',
       label: { 'en-US': 'Custom Moderation', 'zh-Hans': '自定义审核' },
@@ -424,7 +433,7 @@ describe('Moderation', () => {
       },
     )
 
-    expect(screen.getByText('Custom Moderation'))!.toBeInTheDocument()
+    expect(await screen.findByText('Custom Moderation'))!.toBeInTheDocument()
   })
 
   it('should not show enable content text when both input and output moderation are disabled', () => {

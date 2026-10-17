@@ -8,6 +8,7 @@ import { ApiSecretKeyButton } from '@/app/components/app/access-point/built-in-a
 import { EnvironmentApiKeyButton } from '@/app/components/app/access-point/deployed-environment-access-points/environment-api-key-button'
 import { ServiceApi } from '@/app/components/datasets/extra-info/service-api'
 import { render } from '@/test/console/render'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { createTestQueryClient } from '@/test/query-client'
 
 vi.mock('@/context/permission-state', async () => {
@@ -46,6 +47,14 @@ vi.mock('@/service/console/browser', () => ({
           return apiMocks.createApp(input)
         case 'apps.byResourceId.apiKeys.byApiKeyId.delete':
           return apiMocks.deleteApp(input)
+        case 'datasets.get': {
+          const keyword = (input as { query?: { keyword?: string } }).query?.keyword ?? ''
+          const data = [
+            createDatasetFixture({ id: 'engineering', name: 'Engineering' }),
+            createDatasetFixture({ id: 'support', name: 'Support' }),
+          ].filter((dataset) => dataset.name.toLowerCase().includes(keyword.toLowerCase()))
+          return { data, has_more: false, limit: 20, page: 1, total: data.length }
+        }
         case 'datasets.apiKeys.get':
           await apiMocks.listDataset()
           return { data: apiMocks.datasetKeys }
@@ -65,21 +74,6 @@ vi.mock('@/service/console/browser', () => ({
       }
     },
   },
-}))
-
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useInfiniteDatasets: ({ keyword = '' }: { keyword?: string }) => ({
-    data: {
-      pages: [
-        {
-          data: [
-            { id: 'engineering', name: 'Engineering' },
-            { id: 'support', name: 'Support' },
-          ].filter((dataset) => dataset.name.toLowerCase().includes(keyword.toLowerCase())),
-        },
-      ],
-    },
-  }),
 }))
 
 const mockCurrentWorkspace = vi.fn().mockReturnValue({
@@ -228,7 +222,7 @@ describe('API key management', () => {
       await screen.findByRole('textbox', { name: 'appApi.apiKeyModal.secretKey' }),
     ).toHaveValue('new-app-token-123')
     expect(
-      screen.getByRole('alertdialog', { name: 'appApi.apiKeyModal.createdTitle' }),
+      screen.getByRole('dialog', { name: 'appApi.apiKeyModal.createdTitle' }),
     ).toHaveAccessibleDescription('appApi.apiKeyModal.generateTips')
   })
 
@@ -238,7 +232,7 @@ describe('API key management', () => {
     const create = screen.getByRole('button', { name: 'appApi.apiKeyModal.createNewSecretKey' })
     await user.click(create)
     await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
-    const result = await screen.findByRole('alertdialog', {
+    const result = await screen.findByRole('dialog', {
       name: 'appApi.apiKeyModal.createdTitle',
     })
     expect(apiMocks.createDataset).toHaveBeenCalledWith({ body: { dataset_ids: [] } })

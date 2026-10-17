@@ -28,29 +28,10 @@ vi.mock('@/app/components/datasets/formatted-text/flavours/preview-slice', () =>
   ),
 }))
 
-vi.mock('@/models/datasets', () => ({
-  ChunkingMode: {
-    text: 'text',
-    parentChild: 'parent-child',
-    qa: 'qa',
-  },
-}))
-
-vi.mock('@/utils/format', () => ({
-  formatNumber: (n: number) => String(n),
-}))
-
 vi.mock('../q-a-item', () => ({
   default: ({ type, text }: { type: string; text: string }) => (
     <span data-testid={`qa-${type}`}>{text}</span>
   ),
-}))
-
-vi.mock('../types', () => ({
-  QAItemType: {
-    Question: 'question',
-    Answer: 'answer',
-  },
 }))
 
 const makeParentChildContent = (overrides: Partial<ParentChildChunk> = {}): ParentChildChunk => ({

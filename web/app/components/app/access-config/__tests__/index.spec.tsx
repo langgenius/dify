@@ -10,7 +10,6 @@ import {
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import AppAccessConfigPage from '../index'
 
@@ -83,8 +82,6 @@ const mockMutations = vi.hoisted(() => ({
   updateAutomaticIncludeWorkspaceMembers: vi.fn(),
   updateUserAccessSettings: vi.fn(),
   removeMemberBindings: vi.fn(),
-  removeMemberBindingsAsync: vi.fn(),
-  isUpdatingAutomaticIncludeWorkspaceMembers: false,
 }))
 
 vi.mock('@/context/permission-state', async () => {
@@ -92,7 +89,8 @@ vi.mock('@/context/permission-state', async () => {
   return createPermissionStateModuleMock(() => mockConsoleState)
 })
 
-vi.mock('@/service/access-control/use-app-access-config', () => ({
+vi.mock('@/service/access-control/use-app-access-config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/access-control/use-app-access-config')>()),
   useAppAccessRules: vi.fn(() => ({
     data: { items: mockAppAccessRules.items },
     isLoading: mockAppAccessRules.isLoading,
@@ -107,17 +105,6 @@ vi.mock('@/service/access-control/use-app-access-config', () => ({
   })),
   useAppResourceWhitelist: vi.fn(() => ({ data: mockAppResourceWhitelist.data })),
   useAppResourceWhitelistConfig: vi.fn(() => ({ data: mockAppResourceWhitelistConfig.data })),
-  useUpdateAppAutomaticIncludeWorkspaceMembers: vi.fn(() => ({
-    mutate: mockMutations.updateAutomaticIncludeWorkspaceMembers,
-    isPending: mockMutations.isUpdatingAutomaticIncludeWorkspaceMembers,
-  })),
-  useUpdateAppUserAccessSettings: vi.fn(() => ({
-    mutate: mockMutations.updateUserAccessSettings,
-  })),
-  useRemoveAppAccessPolicyMemberBindings: vi.fn(() => ({
-    mutate: mockMutations.removeMemberBindings,
-    mutateAsync: mockMutations.removeMemberBindingsAsync,
-  })),
 }))
 
 vi.mock('@/app/components/access-rules-editor', () => ({
@@ -126,6 +113,22 @@ vi.mock('@/app/components/access-rules-editor', () => ({
     return <div data-testid="access-rules-editor" />
   },
 }))
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.rbac.apps.byAppId.whitelist.put':
+        mockMutations.updateAutomaticIncludeWorkspaceMembers,
+      'workspaces.current.rbac.apps.byAppId.users.byTargetAccountId.accessPolicies.put':
+        mockMutations.updateUserAccessSettings,
+      'workspaces.current.rbac.apps.byAppId.accessPolicies.byPolicyId.memberBindings.delete':
+        mockMutations.removeMemberBindings,
+    }),
+  }
+})
 
 describe('AppAccessConfigPage', () => {
   beforeEach(() => {
@@ -150,8 +153,9 @@ describe('AppAccessConfigPage', () => {
     mockAppResourceWhitelistConfig.data = {
       automatic_include_workspace_members: false,
     }
-    mockMutations.isUpdatingAutomaticIncludeWorkspaceMembers = false
-    mockMutations.removeMemberBindingsAsync.mockResolvedValue(undefined)
+    mockMutations.removeMemberBindings.mockResolvedValue({})
+    mockMutations.updateUserAccessSettings.mockResolvedValue({})
+    mockMutations.updateAutomaticIncludeWorkspaceMembers.mockResolvedValue({})
     mockAccessRulesEditor.props = null
     appDetail = createAppDetailFixture({
       id: 'app-1',
@@ -222,19 +226,21 @@ describe('AppAccessConfigPage', () => {
     expect(mockAccessRulesEditor.props?.pageSize).toBe(50)
   })
 
-  it('should return to the first page when automatic member inclusion is disabled', () => {
+  it('should return to the first page when automatic member inclusion is disabled', async () => {
     mockAppResourceWhitelistConfig.data = {
       automatic_include_workspace_members: true,
     }
     render(<AppAccessConfigPage appId="app-1" />)
     act(() => mockAccessRulesEditor.props?.onPageChange?.(2))
 
-    act(() => mockAccessRulesEditor.props?.onAutomaticIncludeWorkspaceMembersChange?.(false))
+    await act(async () => {
+      mockAccessRulesEditor.props?.onAutomaticIncludeWorkspaceMembersChange?.(false)
+    })
 
     expect(useAppUserAccessSettings).toHaveBeenLastCalledWith('app-1', expect.any(String), 1, 10)
   })
 
-  it('should jump to the new last page after adding a member', () => {
+  it('should jump to the new last page after adding a member', async () => {
     mockAppUserAccessSettings.pagination = {
       current_page: 2,
       per_page: 10,
@@ -247,20 +253,21 @@ describe('AppAccessConfigPage', () => {
     }
     render(<AppAccessConfigPage appId="app-1" />)
 
-    act(() => mockAccessRulesEditor.props?.onAddAccessSubject?.('account-21', ['default']))
+    await act(async () => {
+      mockAccessRulesEditor.props?.onAddAccessSubject?.('account-21', ['default'])
+    })
 
-    expect(mockMutations.updateUserAccessSettings).toHaveBeenCalledWith(
-      { accountId: 'account-21', accessPolicyIds: ['default'] },
-      expect.objectContaining({ onSuccess: expect.any(Function), onSettled: expect.any(Function) }),
+    await waitFor(() =>
+      expect(mockMutations.updateUserAccessSettings).toHaveBeenCalledWith({
+        params: { app_id: 'app-1', target_account_id: 'account-21' },
+        body: { access_policy_ids: ['default'] },
+      }),
     )
-    const callbacks = mockMutations.updateUserAccessSettings.mock.calls.at(-1)?.[1] as {
-      onSuccess: () => void
-    }
-    act(() => callbacks.onSuccess())
+    await act(async () => {})
     expect(useAppUserAccessSettings).toHaveBeenLastCalledWith('app-1', expect.any(String), 3, 10)
   })
 
-  it('should load the previous page after removing the only member on the last page', () => {
+  it('should load the previous page after removing the only member on the last page', async () => {
     mockAppUserAccessSettings.data = [createUserAccessSetting('account-11')]
     mockAppUserAccessSettings.pagination = {
       current_page: 2,
@@ -274,9 +281,6 @@ describe('AppAccessConfigPage', () => {
     act(() =>
       mockAccessRulesEditor.props?.onRemoveAccessPolicyMemberBinding?.('account-11', 'default'),
     )
-    const callbacks = mockMutations.removeMemberBindings.mock.calls.at(-1)?.[1] as {
-      onSuccess: () => void
-    }
     mockAppUserAccessSettings.data = []
     mockAppUserAccessSettings.pagination = {
       current_page: 2,
@@ -285,7 +289,7 @@ describe('AppAccessConfigPage', () => {
       total_pages: 1,
     }
     mockAppUserAccessSettings.isPlaceholderData = true
-    act(() => callbacks.onSuccess())
+    await act(async () => {})
 
     expect(useAppUserAccessSettings).toHaveBeenLastCalledWith('app-1', expect.any(String), 1, 10)
     expect(mockAccessRulesEditor.props?.isLoadingUserAccessSettings).toBe(true)
@@ -295,21 +299,27 @@ describe('AppAccessConfigPage', () => {
     render(<AppAccessConfigPage appId="app-1" />)
 
     mockAccessRulesEditor.props?.onAutomaticIncludeWorkspaceMembersChange?.(true)
-    expect(mockMutations.updateAutomaticIncludeWorkspaceMembers).toHaveBeenCalledWith(
-      true,
-      expect.objectContaining({ onError: expect.any(Function), onSuccess: expect.any(Function) }),
+    await waitFor(() =>
+      expect(mockMutations.updateAutomaticIncludeWorkspaceMembers).toHaveBeenCalledWith({
+        params: { app_id: 'app-1' },
+        body: { automatic_include_workspace_members: true },
+      }),
     )
 
     mockAccessRulesEditor.props?.onUserAccessPoliciesChange?.('account-1', ['policy-1'])
-    expect(mockMutations.updateUserAccessSettings).toHaveBeenCalledWith(
-      { accountId: 'account-1', accessPolicyIds: ['policy-1'] },
-      expect.objectContaining({ onSettled: expect.any(Function) }),
+    await waitFor(() =>
+      expect(mockMutations.updateUserAccessSettings).toHaveBeenCalledWith({
+        params: { app_id: 'app-1', target_account_id: 'account-1' },
+        body: { access_policy_ids: ['policy-1'] },
+      }),
     )
 
     mockAccessRulesEditor.props?.onRemoveAccessPolicyMemberBinding?.('account-3', 'policy-3')
-    expect(mockMutations.removeMemberBindings).toHaveBeenCalledWith(
-      [{ accessPolicyId: 'policy-3', accountIds: ['account-3'] }],
-      expect.objectContaining({ onSettled: expect.any(Function) }),
+    await waitFor(() =>
+      expect(mockMutations.removeMemberBindings).toHaveBeenCalledWith({
+        params: { app_id: 'app-1', policy_id: 'policy-3' },
+        body: { account_ids: ['account-3'] },
+      }),
     )
 
     const removals = [
@@ -319,8 +329,14 @@ describe('AppAccessConfigPage', () => {
     await act(async () => {
       await mockAccessRulesEditor.props?.onBatchRemoveAccessPolicyMemberBindings?.(removals)
     })
-    expect(mockMutations.removeMemberBindingsAsync).toHaveBeenCalledOnce()
-    expect(mockMutations.removeMemberBindingsAsync).toHaveBeenCalledWith(removals)
+    expect(mockMutations.removeMemberBindings).toHaveBeenCalledWith({
+      params: { app_id: 'app-1', policy_id: 'policy-1' },
+      body: { account_ids: ['account-1', 'account-2'] },
+    })
+    expect(mockMutations.removeMemberBindings).toHaveBeenCalledWith({
+      params: { app_id: 'app-1', policy_id: 'default' },
+      body: { account_ids: ['account-4'] },
+    })
   })
 
   it('should block member changes but allow permission updates during automatic inclusion', async () => {
@@ -339,12 +355,13 @@ describe('AppAccessConfigPage', () => {
 
     expect(mockMutations.updateUserAccessSettings).not.toHaveBeenCalled()
     expect(mockMutations.removeMemberBindings).not.toHaveBeenCalled()
-    expect(mockMutations.removeMemberBindingsAsync).not.toHaveBeenCalled()
 
     mockAccessRulesEditor.props?.onUserAccessPoliciesChange?.('account-2', ['policy-2'])
-    expect(mockMutations.updateUserAccessSettings).toHaveBeenCalledWith(
-      { accountId: 'account-2', accessPolicyIds: ['policy-2'] },
-      expect.objectContaining({ onSettled: expect.any(Function) }),
+    await waitFor(() =>
+      expect(mockMutations.updateUserAccessSettings).toHaveBeenCalledWith({
+        params: { app_id: 'app-1', target_account_id: 'account-2' },
+        body: { access_policy_ids: ['policy-2'] },
+      }),
     )
   })
 
@@ -375,7 +392,7 @@ describe('AppAccessConfigPage', () => {
   it('should not mount access config data hooks for Agent apps', () => {
     appDetail = createAppDetailFixture({
       id: 'app-1',
-      mode: AppModeEnum.AGENT,
+      mode: 'agent' as const,
       maintainer: 'account-1',
       permission_keys: [AppACLPermission.AccessConfig],
     })

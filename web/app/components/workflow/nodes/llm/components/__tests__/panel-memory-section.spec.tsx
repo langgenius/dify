@@ -1,8 +1,6 @@
 import type { LLMNodeType } from '../../types'
 import type { Memory, Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { render, screen } from '@testing-library/react'
-import { AppModeEnum } from '@/types/app'
-import { FlowType } from '@/types/common'
 import PanelMemorySection from '../panel-memory-section'
 
 const mockEditor = vi.hoisted(() => vi.fn())
@@ -46,7 +44,7 @@ const createInputs = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
   model: {
     provider: 'openai',
     name: 'gpt-4o',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     completion_params: {},
   } as LLMNodeType['model'],
   prompt_template: [],
@@ -69,7 +67,7 @@ const createInputs = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
 
 const baseProps = {
   readOnly: false,
-  isChatMode: true,
+  isChatflow: true,
   isChatModel: true,
   isCompletionModel: false,
   inputs: createInputs(),
@@ -128,7 +126,7 @@ describe('llm/panel-memory-section', () => {
     render(
       <PanelMemorySection
         {...baseProps}
-        flowType={FlowType.snippet}
+        resourceKind={'snippet'}
         inputs={createInputs({
           memory: {
             window: {
@@ -146,7 +144,7 @@ describe('llm/panel-memory-section', () => {
   })
 
   it('does not default snippet memory prompts to system variables', () => {
-    render(<PanelMemorySection {...baseProps} flowType={FlowType.snippet} />)
+    render(<PanelMemorySection {...baseProps} resourceKind={'snippet'} />)
 
     expect(screen.getByTestId('editor')).toHaveTextContent('')
     expect(mockEditor).toHaveBeenCalledWith(
@@ -167,7 +165,7 @@ describe('llm/panel-memory-section', () => {
     render(
       <PanelMemorySection
         {...baseProps}
-        isChatMode={false}
+        isChatflow={false}
         isChatModel={false}
         isCompletionModel={true}
       />,

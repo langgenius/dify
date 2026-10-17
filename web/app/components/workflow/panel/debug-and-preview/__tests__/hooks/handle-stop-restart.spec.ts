@@ -1,5 +1,11 @@
-import { act, renderHook } from '@testing-library/react'
+import type { useWorkflowRun } from '@/app/components/workflow/hooks/use-workflow-run'
+import { act } from '@testing-library/react'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { useChat } from '../../hooks'
+
+type WorkflowRunCallbacks = NonNullable<
+  Parameters<ReturnType<typeof useWorkflowRun>['handleRun']>[1]
+>
 
 const mockHandleRun = vi.fn()
 const mockNotify = vi.fn()
@@ -10,20 +16,20 @@ const mockSetLoopTimes = vi.fn()
 const mockSubmitHumanInputForm = vi.fn()
 const mockSseGet = vi.fn()
 const mockStopChat = vi.fn()
-const mockGetNodes = vi.fn((): any[] => [])
+const mockGetNodes = vi.fn((): { id: string; type: string; data: Record<string, unknown> }[] => [])
 
-let mockWorkflowRunningData: any = null
+let mockWorkflowRunningData: { result: { status: string } } | null = null
 
 vi.mock('@/service/base', () => ({
-  sseGet: (...args: any[]) => mockSseGet(...args),
+  sseGet: (...args: unknown[]) => mockSseGet(...args),
 }))
 
 vi.mock('@/service/use-workflow', () => ({
-  useInvalidAllLastRun: () => mockInvalidAllLastRun,
+  useInvalidateAllLastRun: () => mockInvalidAllLastRun,
 }))
 
 vi.mock('@/service/workflow', () => ({
-  submitHumanInputForm: (...args: any[]) => mockSubmitHumanInputForm(...args),
+  submitHumanInputForm: (...args: unknown[]) => mockSubmitHumanInputForm(...args),
 }))
 
 vi.mock('@/app/notifications', () => ({
@@ -31,7 +37,7 @@ vi.mock('@/app/notifications', () => ({
     success: vi.fn(),
     error: vi.fn(),
     warning: vi.fn(),
-    info: (...args: any[]) => mockNotify(...args),
+    info: (...args: unknown[]) => mockNotify(...args),
   },
 }))
 
@@ -78,7 +84,9 @@ describe('useChat – handleStop', () => {
   })
 
   it('should set isResponding to false', () => {
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
     act(() => {
       result.current.handleStop()
     })
@@ -86,7 +94,9 @@ describe('useChat – handleStop', () => {
   })
 
   it('should not call stopChat when taskId is empty even if stopChat is provided', () => {
-    const { result } = renderHook(() => useChat({}, undefined, undefined, mockStopChat))
+    const { result } = renderHook(() => useChat({}, undefined, undefined, mockStopChat), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
     act(() => {
       result.current.handleStop()
     })
@@ -94,7 +104,9 @@ describe('useChat – handleStop', () => {
   })
 
   it('should reset iter/loop times to defaults', () => {
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
     act(() => {
       result.current.handleStop()
     })
@@ -103,12 +115,15 @@ describe('useChat – handleStop', () => {
   })
 
   it('should abort workflowEventsAbortController when set', () => {
-    const mockWfAbort = vi.fn()
-    mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
-      callbacks.getAbortController({ abort: mockWfAbort } as any)
+    const controller = new AbortController()
+    const mockWfAbort = vi.spyOn(controller, 'abort')
+    mockHandleRun.mockImplementation((_params: unknown, callbacks: WorkflowRunCallbacks) => {
+      callbacks.getAbortController!(controller)
     })
 
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       result.current.handleSend({ query: 'test' }, {})
@@ -123,9 +138,9 @@ describe('useChat – handleStop', () => {
 
   it('should cancel the suggested questions request when stopped', async () => {
     const mockSqAbort = vi.fn()
-    let capturedCb: any
+    let capturedCb: WorkflowRunCallbacks
 
-    mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
+    mockHandleRun.mockImplementation((_params: unknown, callbacks: WorkflowRunCallbacks) => {
       capturedCb = callbacks
     })
 
@@ -136,8 +151,9 @@ describe('useChat – handleStop', () => {
         return Promise.resolve({ data: ['s'] })
       })
 
-    const { result } = renderHook(() =>
-      useChat({ suggested_questions_after_answer: { enabled: true } }),
+    const { result } = renderHook(
+      () => useChat({ suggested_questions_after_answer: { enabled: true } }),
+      { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
     )
 
     act(() => {
@@ -150,7 +166,7 @@ describe('useChat – handleStop', () => {
     })
 
     await act(async () => {
-      await capturedCb.onCompleted(false)
+      await capturedCb.onCompleted!(false)
     })
 
     act(() => {
@@ -161,15 +177,17 @@ describe('useChat – handleStop', () => {
   })
 
   it('should call stopChat with taskId when both are available', () => {
-    mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
-      callbacks.onData('msg', true, {
+    mockHandleRun.mockImplementation((_params: unknown, callbacks: WorkflowRunCallbacks) => {
+      callbacks.onData!('msg', true, {
         conversationId: 'c1',
         messageId: 'msg-1',
         taskId: 'task-stop',
       })
     })
 
-    const { result } = renderHook(() => useChat({}, undefined, undefined, mockStopChat))
+    const { result } = renderHook(() => useChat({}, undefined, undefined, mockStopChat), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       result.current.handleSend({ query: 'test' }, {})
@@ -190,7 +208,9 @@ describe('useChat – handleRestart', () => {
 
   it('should clear suggestedQuestions and set isResponding to false', () => {
     const config = { opening_statement: 'Hello' }
-    const { result } = renderHook(() => useChat(config))
+    const { result } = renderHook(() => useChat(config), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       result.current.handleRestart()
@@ -201,7 +221,9 @@ describe('useChat – handleRestart', () => {
   })
 
   it('should reset iter/loop times to defaults', () => {
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
     act(() => {
       result.current.handleRestart()
     })

@@ -2,11 +2,12 @@ import type {
   AgentInviteOptionResponse,
   AgentInviteOptionsResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
+import type { ReactElement } from 'react'
 import type { NodeDefault } from '../../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render as baseRender, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { FlowType } from '@/types/common'
+import { EditorResourceScope } from '../../editor-resource/provider'
 import { HooksStoreContext } from '../../hooks-store/provider'
 import { createHooksStore } from '../../hooks-store/store'
 import { BlockEnum } from '../../types'
@@ -173,11 +174,7 @@ describe('Blocks', () => {
       },
     })
     const hooksStore = createHooksStore({
-      configsMap: {
-        flowId: 'app-1',
-        flowType: FlowType.appFlow,
-        fileSettings: {} as never,
-      },
+      fileSettings: {} as never,
     })
 
     render(
@@ -221,11 +218,7 @@ describe('Blocks', () => {
       },
     })
     const hooksStore = createHooksStore({
-      configsMap: {
-        flowId: 'app-1',
-        flowType: FlowType.appFlow,
-        fileSettings: {} as never,
-      },
+      fileSettings: {} as never,
     })
 
     render(
@@ -313,11 +306,7 @@ describe('Blocks', () => {
       },
     })
     const hooksStore = createHooksStore({
-      configsMap: {
-        flowId: 'app-1',
-        flowType: FlowType.appFlow,
-        fileSettings: {} as never,
-      },
+      fileSettings: {} as never,
     })
 
     render(
@@ -371,11 +360,7 @@ describe('Blocks', () => {
       },
     })
     const hooksStore = createHooksStore({
-      configsMap: {
-        flowId: 'app-1',
-        flowType: FlowType.appFlow,
-        fileSettings: {} as never,
-      },
+      fileSettings: {} as never,
     })
 
     render(
@@ -414,11 +399,7 @@ describe('Blocks', () => {
       },
     })
     const hooksStore = createHooksStore({
-      configsMap: {
-        flowId: 'app-1',
-        flowType: FlowType.appFlow,
-        fileSettings: {} as never,
-      },
+      fileSettings: {} as never,
     })
 
     render(
@@ -467,11 +448,7 @@ describe('Blocks', () => {
       },
     })
     const hooksStore = createHooksStore({
-      configsMap: {
-        flowId: 'app-1',
-        flowType: FlowType.appFlow,
-        fileSettings: {} as never,
-      },
+      fileSettings: {} as never,
     })
 
     render(
@@ -503,3 +480,11 @@ describe('Blocks', () => {
     })
   })
 })
+
+function render(ui: ReactElement) {
+  return baseRender(
+    <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
+      {ui}
+    </EditorResourceScope>,
+  )
+}

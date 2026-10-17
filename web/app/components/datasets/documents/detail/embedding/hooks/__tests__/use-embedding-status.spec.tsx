@@ -1,5 +1,5 @@
+import type { DocumentStatusResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ReactNode } from 'react'
-import type { IndexingStatusResponse } from '@/models/datasets'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -35,8 +35,8 @@ const createWrapper = () => {
 }
 
 const mockIndexingStatus = (
-  overrides: Partial<IndexingStatusResponse> = {},
-): IndexingStatusResponse => ({
+  overrides: Partial<DocumentStatusResponse> = {},
+): DocumentStatusResponse => ({
   id: 'doc1',
   indexing_status: 'indexing',
   completed_segments: 50,

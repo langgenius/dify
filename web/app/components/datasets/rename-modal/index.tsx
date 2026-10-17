@@ -1,10 +1,20 @@
 'use client'
+import type {
+  DatasetDetailWithPartialMembersResponse,
+  DatasetUpdatePayload,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type { IconPickerValue } from '@/app/components/base/icon-picker'
-import type { DataSet } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogCloseButton,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useCallback, useState } from 'react'
@@ -20,7 +30,7 @@ import { updateDatasetSetting } from '@/service/datasets'
 
 type RenameDatasetModalProps = {
   show: boolean
-  dataset: DataSet
+  dataset: DatasetDetailWithPartialMembersResponse
   onSuccess?: () => void
   onClose: () => void
 }
@@ -28,9 +38,9 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
   const { t } = useTranslation(['common', 'datasetSettings'])
   const [loading, setLoading] = useState(false)
   const [name, setName] = useState<string>(dataset.name)
-  const [description, setDescription] = useState<string>(dataset.description)
-  const externalKnowledgeId = dataset.external_knowledge_info.external_knowledge_id
-  const externalKnowledgeApiId = dataset.external_knowledge_info.external_knowledge_api_id
+  const [description, setDescription] = useState<string>(dataset.description ?? '')
+  const externalKnowledgeId = dataset.external_knowledge_info?.external_knowledge_id
+  const externalKnowledgeApiId = dataset.external_knowledge_info?.external_knowledge_api_id
   const [appIcon, setAppIcon] = useState<IconPickerValue>(
     dataset.icon_info?.icon_type === 'image'
       ? {
@@ -54,10 +64,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
     }
     try {
       setLoading(true)
-      const body: Partial<DataSet> & {
-        external_knowledge_id?: string
-        external_knowledge_api_id?: string
-      } = {
+      const body: DatasetUpdatePayload = {
         name,
         description,
         icon_info: {
@@ -100,72 +107,69 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
         if (!open) onClose()
       }}
     >
-      <DialogContent className="w-full max-w-130 overflow-hidden! rounded-xl border-none px-8 py-6 text-left align-middle">
+      <DialogContent className="w-130">
         <form
+          className="contents"
           onSubmit={(event) => {
             event.preventDefault()
             onConfirm()
           }}
         >
-          <div className="flex items-center justify-between pb-2">
-            <DialogTitle className="text-xl leading-7.5 font-medium text-text-primary">
-              {t(($) => $.title, { ns: 'datasetSettings' })}
-            </DialogTitle>
-            <IconButton
-              size="lg"
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              onClick={onClose}
-            >
-              <span aria-hidden="true" className="i-ri-close-line size-4" />
-            </IconButton>
-          </div>
-          <IconPicker value={appIcon} onValueChange={handleSelectAppIcon}>
-            <Field name="name" className="gap-0 py-4">
-              <FieldLabel className="w-full shrink-0 py-2 text-sm leading-5 font-medium text-text-primary">
-                {t(($) => $['form.name'], { ns: 'datasetSettings' })}
-              </FieldLabel>
-              <div className="flex items-center gap-x-2">
-                <IconPickerTrigger
-                  aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['form.nameAndIcon'], { ns: 'datasetSettings' })}`}
-                  className="group/edit-icon relative shrink-0 cursor-pointer rounded-[10px] border-0 bg-transparent p-0"
-                >
-                  <IconPickerIcon size="medium" />
-                  <span
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-0 hidden items-center justify-center rounded-[inherit] bg-background-overlay-alt group-hover/edit-icon:flex group-focus-visible/edit-icon:flex"
+          <DialogHeader>
+            <DialogTitle>{t(($) => $.title, { ns: 'datasetSettings' })}</DialogTitle>
+            <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          </DialogHeader>
+          <DialogBody>
+            <IconPicker value={appIcon} onValueChange={handleSelectAppIcon}>
+              <Field name="name" className="gap-0 py-4">
+                <FieldLabel className="w-full shrink-0 py-2 text-sm leading-5 font-medium text-text-primary">
+                  {t(($) => $['form.name'], { ns: 'datasetSettings' })}
+                </FieldLabel>
+                <div className="flex items-center gap-x-2">
+                  <IconPickerTrigger
+                    aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['form.nameAndIcon'], { ns: 'datasetSettings' })}`}
+                    className="group/edit-icon relative shrink-0 cursor-pointer rounded-[10px] border-0 bg-transparent p-0"
                   >
-                    <span className="i-ri-edit-line size-5.5 text-text-primary-on-surface" />
-                  </span>
-                </IconPickerTrigger>
-                <Input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="h-9 grow"
-                  placeholder={t(($) => $['form.namePlaceholder'], { ns: 'datasetSettings' }) || ''}
-                />
-              </div>
+                    <IconPickerIcon size="medium" />
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0 hidden items-center justify-center rounded-[inherit] bg-background-overlay-alt group-hover/edit-icon:flex group-focus-visible/edit-icon:flex"
+                    >
+                      <span className="i-ri-edit-line size-5.5 text-text-primary-on-surface" />
+                    </span>
+                  </IconPickerTrigger>
+                  <Input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="h-9 grow"
+                    placeholder={
+                      t(($) => $['form.namePlaceholder'], { ns: 'datasetSettings' }) || ''
+                    }
+                  />
+                </div>
+              </Field>
+              <IconPickerContent />
+            </IconPicker>
+            <Field name="description" className="gap-0 py-4">
+              <FieldLabel className="w-full shrink-0 py-2 text-sm leading-5 font-medium text-text-primary">
+                {t(($) => $['form.desc'], { ns: 'datasetSettings' })}
+              </FieldLabel>
+              <Textarea
+                value={description}
+                onValueChange={(value) => setDescription(value)}
+                className="resize-none"
+                placeholder={t(($) => $['form.descPlaceholder'], { ns: 'datasetSettings' }) || ''}
+              />
             </Field>
-            <IconPickerContent />
-          </IconPicker>
-          <Field name="description" className="gap-0 py-4">
-            <FieldLabel className="w-full shrink-0 py-2 text-sm leading-5 font-medium text-text-primary">
-              {t(($) => $['form.desc'], { ns: 'datasetSettings' })}
-            </FieldLabel>
-            <Textarea
-              value={description}
-              onValueChange={(value) => setDescription(value)}
-              className="resize-none"
-              placeholder={t(($) => $['form.descPlaceholder'], { ns: 'datasetSettings' }) || ''}
-            />
-          </Field>
-          <div className="flex justify-end gap-2 pt-6">
+          </DialogBody>
+          <DialogFooter>
             <Button type="button" onClick={onClose}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </Button>
             <Button type="submit" loading={loading} variant="primary">
               {t(($) => $['operation.save'], { ns: 'common' })}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

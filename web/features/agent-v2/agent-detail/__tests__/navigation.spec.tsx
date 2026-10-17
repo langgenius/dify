@@ -203,7 +203,7 @@ describe('AgentDetailSection', () => {
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
       'agentRoster.roster.editInfo',
       'common.operation.duplicate',
-      'app.exportApp',
+      'agentV2.exportAgent',
       'common.operation.delete',
     ])
   })
@@ -213,7 +213,7 @@ describe('AgentDetailSection', () => {
     renderAgentDetailSection()
 
     await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.moreActions/ }))
-    await user.click(screen.getByRole('menuitem', { name: 'app.exportApp' }))
+    await user.click(screen.getByRole('menuitem', { name: 'agentV2.exportAgent' }))
 
     expect(mocks.exportAppDsl).toHaveBeenCalledWith({
       format: 'ifpkg',

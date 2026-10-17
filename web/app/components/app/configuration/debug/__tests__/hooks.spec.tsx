@@ -1,4 +1,8 @@
 import { act, renderHook } from '@testing-library/react'
+import {
+  createDatasetConfigsFixture,
+  createModelConfigFixture,
+} from '@/test/fixtures/debug-configuration'
 import { AgentStrategy } from '@/types/app'
 import {
   useConfigFromDebugContext,
@@ -112,7 +116,7 @@ describe('configuration debug hooks', () => {
   it('should derive chat config data from the debug context', () => {
     mockUseDebugConfigurationContext.mockReturnValue({
       isAdvancedMode: false,
-      modelConfig: {
+      modelConfig: createModelConfigFixture({
         agentConfig: {
           enabled: true,
           max_iteration: 3,
@@ -124,7 +128,7 @@ describe('configuration debug hooks', () => {
           prompt_variables: [{ key: 'name', name: 'Name', type: 'string', required: true }],
         },
         more_like_this: { enabled: true },
-      },
+      }),
       appId: 'app-1',
       promptMode: 'simple',
       speechToTextConfig: { enabled: false },
@@ -136,7 +140,7 @@ describe('configuration debug hooks', () => {
       chatPromptConfig: { prompt: [] },
       completionPromptConfig: { prompt: { text: 'completion' } },
       dataSets: [{ id: 'dataset-1' }],
-      datasetConfigs: { retrieval_model: 'multiple' },
+      datasetConfigs: createDatasetConfigsFixture({ retrieval_model: 'multiple' }),
       visionConfig: { transfer_methods: ['local_file'], number_limits: 2 },
       annotationConfig: { enabled: false },
       textToSpeechConfig: { enabled: false, voice: '', language: '' },
@@ -177,7 +181,9 @@ describe('configuration debug hooks', () => {
     })
 
     const { result } = renderHook(() => useFormattingChangedDispatcher())
-    renderHook(() => useFormattingChangedSubscription([{ isAnswer: true }] as any))
+    renderHook(() =>
+      useFormattingChangedSubscription([{ id: 'answer-1', content: '', isAnswer: true }]),
+    )
 
     act(() => {
       result.current()

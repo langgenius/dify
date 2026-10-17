@@ -2,7 +2,11 @@ import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
 import ConfigContext from '@/context/debug-configuration'
-import { AppModeEnum } from '@/types/app'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
+import {
+  createDebugConfigurationFixture,
+  createModelConfigFixture,
+} from '@/test/fixtures/debug-configuration'
 import Prompt from '../simple-prompt-input'
 
 const mockEmit = vi.fn()
@@ -110,17 +114,19 @@ vi.mock('../prompt-editor-height-resize-wrap', () => ({
   ),
 }))
 
-const createContextValue = (overrides: Record<string, unknown> = {}) =>
-  ({
+const createContextValue = (
+  overrides: Partial<ReturnType<typeof createDebugConfigurationFixture>> = {},
+) =>
+  createDebugConfigurationFixture({
     appId: 'app-1',
-    modelConfig: {
+    modelConfig: createModelConfigFixture({
       configs: {
         prompt_template: 'Hello {{new_var}}',
         prompt_variables: [
           { key: 'existing_var', name: 'Existing', type: 'string', required: true },
         ],
       },
-    },
+    }),
     dataSets: [],
     setModelConfig: mockSetModelConfig,
     setPrevPromptConfig: mockSetPrevPromptConfig,
@@ -133,7 +139,7 @@ const createContextValue = (overrides: Record<string, unknown> = {}) =>
     showSelectDataSet: vi.fn(),
     externalDataToolsConfig: [],
     ...overrides,
-  }) as any
+  })
 
 describe('SimplePromptInput', () => {
   beforeEach(() => {
@@ -144,7 +150,7 @@ describe('SimplePromptInput', () => {
     render(
       <ConfigContext.Provider value={createContextValue()}>
         <Prompt
-          mode={AppModeEnum.CHAT}
+          mode={'chat'}
           promptTemplate="Hello {{new_var}}"
           promptVariables={[]}
           onChange={mockOnChange}
@@ -170,7 +176,7 @@ describe('SimplePromptInput', () => {
     render(
       <ConfigContext.Provider value={createContextValue()}>
         <Prompt
-          mode={AppModeEnum.CHAT}
+          mode={'chat'}
           promptTemplate="Hello"
           promptVariables={[
             { key: 'existing_var', name: 'Existing', type: 'string', required: true },
@@ -215,12 +221,7 @@ describe('SimplePromptInput', () => {
   it('should apply automatic generation results to prompt and opening statement', () => {
     render(
       <ConfigContext.Provider value={createContextValue()}>
-        <Prompt
-          mode={AppModeEnum.CHAT}
-          promptTemplate="Hello"
-          promptVariables={[]}
-          onChange={mockOnChange}
-        />
+        <Prompt mode={'chat'} promptTemplate="Hello" promptVariables={[]} onChange={mockOnChange} />
       </ConfigContext.Provider>,
     )
 
@@ -250,13 +251,19 @@ describe('SimplePromptInput', () => {
     render(
       <ConfigContext.Provider
         value={createContextValue({
-          dataSets: [{ id: 'dataset-1', name: 'Knowledge Base', data_source_type: 'file' }],
+          dataSets: [
+            createDatasetFixture({
+              id: 'dataset-1',
+              name: 'Knowledge Base',
+              data_source_type: 'upload_file',
+            }),
+          ],
           hasSetBlockStatus: {
             context: false,
             history: false,
             query: true,
           },
-          modelConfig: {
+          modelConfig: createModelConfigFixture({
             configs: {
               prompt_template: 'Hello {{existing_var}}',
               prompt_variables: [
@@ -271,11 +278,11 @@ describe('SimplePromptInput', () => {
                 },
               ],
             },
-          },
+          }),
         })}
       >
         <Prompt
-          mode={AppModeEnum.CHAT}
+          mode={'chat'}
           promptTemplate="Hello {{existing_var}}"
           promptVariables={[
             { key: 'existing_var', name: 'Existing', type: 'string', required: true },
@@ -300,7 +307,7 @@ describe('SimplePromptInput', () => {
         })}
       >
         <Prompt
-          mode={AppModeEnum.CHAT}
+          mode={'chat'}
           promptTemplate="Hello {{search_api}} {{existing_var}}"
           promptVariables={[
             { key: 'existing_var', name: 'Existing', type: 'string', required: true },
@@ -321,7 +328,7 @@ describe('SimplePromptInput', () => {
     render(
       <ConfigContext.Provider value={createContextValue()}>
         <Prompt
-          mode={AppModeEnum.CHAT}
+          mode={'chat'}
           promptTemplate="Hello {{existing_var}}"
           promptVariables={[{ key: 'existing_var', name: '', type: 'string', required: true }]}
           onChange={mockOnChange}

@@ -1,3 +1,4 @@
+import type { LineSeriesOption, XAXisComponentOption } from 'echarts'
 import {
   buildChartOptions,
   getChartValueField,
@@ -148,18 +149,16 @@ describe('app-chart-utils', () => {
         yField: 'total_cost',
       })
 
-      const xAxis = options.xAxis as Array<Record<string, any>>
-      const formatter = xAxis[0]!.axisLabel.formatter as (value: string) => string
-      const outerInterval = xAxis[0]!.splitLine.interval as (index: number) => boolean
-      const innerInterval = xAxis[1]!.splitLine.interval as (
+      const xAxis = options.xAxis as XAXisComponentOption[]
+      const formatter = xAxis[0]!.axisLabel!.formatter as (value: string) => string
+      const outerInterval = xAxis[0]!.splitLine!.interval as (index: number) => boolean
+      const innerInterval = xAxis[1]!.splitLine!.interval as (
         _index: number,
         value: string,
       ) => boolean
-      const series = options.series as Array<Record<string, any>>
-      const tooltipFormatter = series[0]!.tooltip.formatter as (params: {
-        name: string
-        data: { total_cost: number; total_price: string }
-      }) => string
+      const series = options.series as LineSeriesOption[]
+      const tooltipFormatter = series[0]!.tooltip!.formatter
+      if (typeof tooltipFormatter !== 'function') throw new Error('Expected a tooltip formatter')
 
       expect(formatter('Jan 2, 2024')).toBe('Jan 2, 2024')
       expect(outerInterval(0)).toBe(true)
@@ -167,10 +166,22 @@ describe('app-chart-utils', () => {
       expect(innerInterval(0, '')).toBe(false)
       expect(innerInterval(1, '1')).toBe(true)
       expect(
-        tooltipFormatter({
-          name: 'Jan 2, 2024',
-          data: { total_cost: 10, total_price: '2.50' },
-        }),
+        tooltipFormatter(
+          {
+            componentType: 'series',
+            componentSubType: 'line',
+            componentIndex: 0,
+            value: 10,
+            seriesType: 'line',
+            seriesIndex: 0,
+            seriesName: 'costs',
+            dataIndex: 1,
+            $vars: [],
+            name: 'Jan 2, 2024',
+            data: { total_cost: 10, total_price: '2.50' },
+          },
+          'tooltip-ticket',
+        ),
       ).toContain('~$2.50')
     })
   })

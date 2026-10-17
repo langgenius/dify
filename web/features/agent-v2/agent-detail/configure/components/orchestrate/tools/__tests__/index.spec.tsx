@@ -1,5 +1,5 @@
+import type { ToolProviderApiEntityResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { AddOAuthButtonProps, Credential } from '@/app/components/plugins/plugin-auth/types'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
@@ -15,7 +15,9 @@ import {
   agentComposerSavedDraftAtom,
   isAgentComposerDirtyAtom,
 } from '@/features/agent-v2/agent-composer/store'
+import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import {
   AgentOrchestrateReadOnlyContext,
   AgentOrchestrateViewingVersionContext,
@@ -23,8 +25,8 @@ import {
 import { AgentTemplateTools, AgentTools } from '../index'
 
 const toolProviderState = vi.hoisted(() => ({
-  builtInTools: [] as ToolWithProvider[] | undefined,
-  customTools: [] as ToolWithProvider[] | undefined,
+  builtInTools: [] as ToolProviderApiEntityResponse[] | undefined,
+  customTools: [] as ToolProviderApiEntityResponse[] | undefined,
 }))
 const pluginAuthState = vi.hoisted(() => ({
   canOAuth: true as boolean | undefined,
@@ -45,7 +47,6 @@ const pluginInstallState = vi.hoisted(() => ({
         latest_package_identifier: string
       }
     | undefined,
-  invalidateBuiltInTools: vi.fn(),
   invalidateInstalledPluginList: vi.fn(),
 }))
 
@@ -158,14 +159,19 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-modal
   ),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: toolProviderState.builtInTools }),
-  useAllCustomTools: () => ({ data: toolProviderState.customTools }),
-  useAllWorkflowTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: [] }),
-  useInvalidateAllBuiltInTools: () => pluginInstallState.invalidateBuiltInTools,
-  useInvalidToolsByType: () => vi.fn(),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.builtin.get': async () => toolProviderState.builtInTools,
+      'workspaces.current.tools.api.get': async () => toolProviderState.customTools,
+      'workspaces.current.tools.workflow.get': async () => [],
+      'workspaces.current.tools.mcp.get': async () => [],
+    }),
+  }
+})
 
 const agentToolsDraft = {
   ...defaultAgentSoulConfigFormState,
@@ -335,9 +341,6 @@ const googleProvider = {
   is_team_authorization: true,
   allow_delete: true,
   labels: [],
-  meta: {
-    version: '0.0.1',
-  },
   tools: [
     {
       name: 'search',
@@ -355,7 +358,7 @@ const googleProvider = {
       output_schema: {},
     },
   ],
-} satisfies ToolWithProvider
+} satisfies ToolProviderApiEntityResponse
 
 const duckDuckGoProvider = {
   ...googleProvider,
@@ -406,7 +409,7 @@ const duckDuckGoProvider = {
       output_schema: {},
     },
   ],
-} satisfies ToolWithProvider
+} satisfies ToolProviderApiEntityResponse
 
 const authorizedSwaggerProvider = {
   ...googleProvider,
@@ -440,7 +443,7 @@ const authorizedSwaggerProvider = {
       output_schema: {},
     },
   ],
-} satisfies ToolWithProvider
+} satisfies ToolProviderApiEntityResponse
 
 function renderAgentTools(initialDraft: AgentSoulConfigFormState = agentToolsDraft) {
   const queryClient = new QueryClient({
@@ -451,14 +454,16 @@ function renderAgentTools(initialDraft: AgentSoulConfigFormState = agentToolsDra
     },
   })
   seedAccountProfileQuery(queryClient, { id: 'user-1' })
+  seedToolProviders(queryClient, toolProviderState)
 
-  return render(
+  const view = render(
     <QueryClientProvider client={queryClient}>
       <AgentComposerProvider initialDraft={initialDraft}>
         <AgentTools />
       </AgentComposerProvider>
     </QueryClientProvider>,
   )
+  return { ...view, queryClient }
 }
 
 function renderAgentToolsWithStore(initialDraft: AgentSoulConfigFormState = agentToolsDraft) {
@@ -470,6 +475,7 @@ function renderAgentToolsWithStore(initialDraft: AgentSoulConfigFormState = agen
     },
   })
   seedAccountProfileQuery(queryClient, { id: 'user-1' })
+  seedToolProviders(queryClient, toolProviderState)
   const store = createStore()
   store.set(agentComposerDraftAtom, initialDraft)
   store.set(agentComposerSavedDraftAtom, initialDraft)
@@ -505,6 +511,7 @@ function renderReadonlyAgentTools({
     },
   })
   seedAccountProfileQuery(queryClient, { id: 'user-1' })
+  seedToolProviders(queryClient, toolProviderState)
 
   return render(
     <QueryClientProvider client={queryClient}>
@@ -531,7 +538,6 @@ describe('AgentTools', () => {
     pluginAuthState.notAllowCustomCredential = false
     pluginInstallState.manifest = undefined
     pluginInstallState.fallbackManifest = undefined
-    pluginInstallState.invalidateBuiltInTools.mockResolvedValue(undefined)
     pluginInstallState.invalidateInstalledPluginList.mockResolvedValue(undefined)
   })
 
@@ -727,7 +733,9 @@ describe('AgentTools', () => {
         },
         latest_package_identifier: 'langgenius/google:1.0.0@checksum',
       }
-      renderAgentTools(reflectedUninstalledPluginDraft)
+      const { queryClient } = renderAgentTools(reflectedUninstalledPluginDraft)
+      const builtInToolsKey = consoleQuery.workspaces.current.tools.builtin.get.queryKey()
+      queryClient.setQueryData(builtInToolsKey, [])
 
       expect(screen.getByRole('button', { name: 'Google Tools' })).toBeInTheDocument()
       expect(
@@ -747,10 +755,13 @@ describe('AgentTools', () => {
         'langgenius/google:1.0.0@checksum',
       )
 
+      const installedProvider = { ...googleProvider, id: 'langgenius/google/google' }
+      toolProviderState.builtInTools = [installedProvider]
       await user.click(installButton)
 
+      expect(await screen.findByText('https://example.com/google.svg')).toBeInTheDocument()
       await waitFor(() => {
-        expect(pluginInstallState.invalidateBuiltInTools).toHaveBeenCalledTimes(1)
+        expect(queryClient.getQueryData(builtInToolsKey)).toEqual([installedProvider])
         expect(pluginInstallState.invalidateInstalledPluginList).toHaveBeenCalledTimes(1)
       })
     })

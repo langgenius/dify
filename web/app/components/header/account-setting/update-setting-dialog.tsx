@@ -5,12 +5,13 @@ import type { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogClose,
+  DialogBody,
+  DialogCloseButton,
   DialogContent,
+  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AUTO_UPDATE_STRATEGY } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
@@ -79,39 +80,33 @@ export function UpdateSettingDialog({ category }: Props) {
           </Button>
         }
       />
-      <DialogContent className="flex w-120 max-w-[calc(100vw-32px)] flex-col overflow-hidden! rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0! text-left align-middle shadow-xl">
-        <div className="relative flex w-full items-start gap-2 px-6 pt-6 pr-14 pb-3">
-          <DialogTitle className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
+      <DialogContent className="max-w-[calc(100vw-32px)]">
+        <DialogHeader>
+          <DialogTitle>
             {t(($) => $['autoUpdate.autoUpdateSettings'], { ns: 'plugin' })}
           </DialogTitle>
-          <DialogClose
-            render={
-              <IconButton
-                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                size="lg"
-                className="absolute top-5 right-5"
-              >
-                <span aria-hidden className="i-ri-close-line size-4" />
-              </IconButton>
-            }
-          />
-        </div>
+          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
         {isSettingsLoading && (
-          <div
-            role="status"
-            className="flex min-h-65 items-center justify-center gap-2 px-6 py-6 system-sm-regular text-text-tertiary"
-          >
-            <span
-              aria-hidden
-              className="i-ri-loader-2-line size-4 animate-spin motion-reduce:animate-none"
-            />
-            <span>{t(($) => $.loading, { ns: 'common' })}</span>
-          </div>
+          <DialogBody>
+            <div
+              role="status"
+              className="flex min-h-65 items-center justify-center gap-2 system-sm-regular text-text-tertiary"
+            >
+              <span
+                aria-hidden
+                className="i-ri-loader-2-line size-4 animate-spin motion-reduce:animate-none"
+              />
+              <span>{t(($) => $.loading, { ns: 'common' })}</span>
+            </div>
+          </DialogBody>
         )}
         {!isSettingsLoading && !savedAutoUpgrade && (
-          <div className="flex min-h-65 items-center justify-center px-6 py-6 text-center system-sm-regular text-text-tertiary">
-            {t(($) => $['api.actionFailed'], { ns: 'common' })}
-          </div>
+          <DialogBody>
+            <div className="flex min-h-65 items-center justify-center text-center system-sm-regular text-text-tertiary">
+              {t(($) => $['api.actionFailed'], { ns: 'common' })}
+            </div>
+          </DialogBody>
         )}
         {savedAutoUpgrade && (
           <UpdateSettingDialogForm

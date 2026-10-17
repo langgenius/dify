@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import type { PipelineTemplate } from '@/models/pipeline'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { QueryClient } from '@tanstack/react-query'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -8,22 +9,25 @@ import { ChunkingMode } from '@/models/datasets'
 import { mockEmojiData, renderWithEmoji as testingLibraryRender } from '@/test/emoji-picker'
 import EditPipelineInfo from '../edit-pipeline-info'
 
-const render = (ui: ReactElement) =>
+const render = (ui: ReactElement<{ onClose: () => void }>) =>
   testingLibraryRender(
-    <Dialog open>
+    <Dialog open onOpenChange={(open) => !open && ui.props.onClose()}>
       <DialogContent>{ui}</DialogContent>
     </Dialog>,
   )
 
 const mockUpdatePipeline = vi.fn()
-const mockInvalidCustomizedTemplateList = vi.fn()
 
-vi.mock('@/service/use-pipeline', () => ({
-  useUpdateTemplateInfo: () => ({
-    mutateAsync: mockUpdatePipeline,
-  }),
-  useInvalidCustomizedTemplateList: () => mockInvalidCustomizedTemplateList,
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipeline.customized.templates.byTemplateId.patch': (input) => mockUpdatePipeline(input),
+    }),
+  }
+})
 
 const { mockToastError } = vi.hoisted(() => ({
   mockToastError: vi.fn(),
@@ -82,6 +86,7 @@ describe('EditPipelineInfo', () => {
     })
 
   beforeEach(() => {
+    vi.spyOn(QueryClient.prototype, 'invalidateQueries')
     vi.clearAllMocks()
     mockToastError.mockReset()
   })
@@ -165,10 +170,7 @@ describe('EditPipelineInfo', () => {
 
     it('should submit with Enter from the name input', async () => {
       const user = userEvent.setup()
-      mockUpdatePipeline.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockUpdatePipeline.mockResolvedValue(undefined)
 
       render(<EditPipelineInfo {...defaultProps} />)
 
@@ -181,10 +183,7 @@ describe('EditPipelineInfo', () => {
     })
 
     it('should invalidate template list on successful save', async () => {
-      mockUpdatePipeline.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockUpdatePipeline.mockResolvedValue(undefined)
 
       render(<EditPipelineInfo {...defaultProps} />)
 
@@ -192,15 +191,14 @@ describe('EditPipelineInfo', () => {
       fireEvent.click(saveButton)
 
       await waitFor(() => {
-        expect(mockInvalidCustomizedTemplateList).toHaveBeenCalled()
+        expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
+          queryKey: expect.arrayContaining([['console', 'rag', 'pipeline', 'templates', 'get']]),
+        })
       })
     })
 
     it('should call onClose on successful save', async () => {
-      mockUpdatePipeline.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockUpdatePipeline.mockResolvedValue(undefined)
 
       render(<EditPipelineInfo {...defaultProps} />)
 
@@ -287,10 +285,7 @@ describe('EditPipelineInfo', () => {
     })
 
     it('should save correct icon_info when starting with image icon type', async () => {
-      mockUpdatePipeline.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockUpdatePipeline.mockResolvedValue(undefined)
 
       const props = {
         ...defaultProps,
@@ -304,21 +299,19 @@ describe('EditPipelineInfo', () => {
       await waitFor(() => {
         expect(mockUpdatePipeline).toHaveBeenCalledWith(
           expect.objectContaining({
-            icon_info: expect.objectContaining({
-              icon_type: 'image',
-              icon: 'file-id-123',
+            body: expect.objectContaining({
+              icon_info: expect.objectContaining({
+                icon_type: 'image',
+                icon: 'file-id-123',
+              }),
             }),
           }),
-          expect.any(Object),
         )
       })
     })
 
     it('should save correct icon_info when starting with emoji icon type', async () => {
-      mockUpdatePipeline.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockUpdatePipeline.mockResolvedValue(undefined)
 
       render(<EditPipelineInfo {...defaultProps} />)
 
@@ -328,12 +321,13 @@ describe('EditPipelineInfo', () => {
       await waitFor(() => {
         expect(mockUpdatePipeline).toHaveBeenCalledWith(
           expect.objectContaining({
-            icon_info: expect.objectContaining({
-              icon_type: 'emoji',
-              icon: '📊',
+            body: expect.objectContaining({
+              icon_info: expect.objectContaining({
+                icon_type: 'emoji',
+                icon: '📊',
+              }),
             }),
           }),
-          expect.any(Object),
         )
       })
     })
@@ -358,10 +352,7 @@ describe('EditPipelineInfo', () => {
     })
 
     it('should switch from image icon to emoji icon when selected', async () => {
-      mockUpdatePipeline.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockUpdatePipeline.mockResolvedValue(undefined)
 
       const props = {
         ...defaultProps,
@@ -384,13 +375,14 @@ describe('EditPipelineInfo', () => {
       await waitFor(() => {
         expect(mockUpdatePipeline).toHaveBeenCalledWith(
           expect.objectContaining({
-            icon_info: expect.objectContaining({
-              icon_type: 'emoji',
-              icon: expect.any(String),
-              icon_background: '#F3FEE7',
+            body: expect.objectContaining({
+              icon_info: expect.objectContaining({
+                icon_type: 'emoji',
+                icon: expect.any(String),
+                icon_background: '#F3FEE7',
+              }),
             }),
           }),
-          expect.any(Object),
         )
       })
     })
@@ -460,10 +452,7 @@ describe('EditPipelineInfo', () => {
     })
 
     it('should save with new emoji icon selection', async () => {
-      mockUpdatePipeline.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockUpdatePipeline.mockResolvedValue(undefined)
 
       render(<EditPipelineInfo {...defaultProps} />)
 
@@ -478,22 +467,20 @@ describe('EditPipelineInfo', () => {
       await waitFor(() => {
         expect(mockUpdatePipeline).toHaveBeenCalledWith(
           expect.objectContaining({
-            icon_info: expect.objectContaining({
-              icon_type: 'emoji',
-              icon: '📊',
-              icon_background: '#F3FEE7',
+            body: expect.objectContaining({
+              icon_info: expect.objectContaining({
+                icon_type: 'emoji',
+                icon: '📊',
+                icon_background: '#F3FEE7',
+              }),
             }),
           }),
-          expect.any(Object),
         )
       })
     })
 
     it('should save after confirming a real emoji selection from an image icon', async () => {
-      mockUpdatePipeline.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockUpdatePipeline.mockResolvedValue(undefined)
 
       render(<EditPipelineInfo {...defaultProps} pipeline={createImagePipelineTemplate()} />)
 
@@ -511,13 +498,14 @@ describe('EditPipelineInfo', () => {
       await waitFor(() => {
         expect(mockUpdatePipeline).toHaveBeenCalledWith(
           expect.objectContaining({
-            icon_info: expect.objectContaining({
-              icon_type: 'emoji',
-              icon: expect.any(String),
-              icon_background: '#F3FEE7',
+            body: expect.objectContaining({
+              icon_info: expect.objectContaining({
+                icon_type: 'emoji',
+                icon: expect.any(String),
+                icon_background: '#F3FEE7',
+              }),
             }),
           }),
-          expect.any(Object),
         )
       })
     })
@@ -526,10 +514,7 @@ describe('EditPipelineInfo', () => {
   // Save Request Tests
   describe('Save Request', () => {
     it('should send correct request with emoji icon', async () => {
-      mockUpdatePipeline.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockUpdatePipeline.mockResolvedValue(undefined)
 
       render(<EditPipelineInfo {...defaultProps} />)
 
@@ -539,23 +524,21 @@ describe('EditPipelineInfo', () => {
       await waitFor(() => {
         expect(mockUpdatePipeline).toHaveBeenCalledWith(
           expect.objectContaining({
-            template_id: 'pipeline-1',
-            name: 'Test Pipeline',
-            description: 'Test pipeline description',
-            icon_info: expect.objectContaining({
-              icon_type: 'emoji',
+            params: { template_id: 'pipeline-1' },
+            body: expect.objectContaining({
+              name: 'Test Pipeline',
+              description: 'Test pipeline description',
+              icon_info: expect.objectContaining({
+                icon_type: 'emoji',
+              }),
             }),
           }),
-          expect.any(Object),
         )
       })
     })
 
     it('should send correct request with image icon', async () => {
-      mockUpdatePipeline.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockUpdatePipeline.mockResolvedValue(undefined)
 
       const props = {
         ...defaultProps,
@@ -569,12 +552,13 @@ describe('EditPipelineInfo', () => {
       await waitFor(() => {
         expect(mockUpdatePipeline).toHaveBeenCalledWith(
           expect.objectContaining({
-            template_id: 'pipeline-2',
-            icon_info: expect.objectContaining({
-              icon_type: 'image',
+            params: { template_id: 'pipeline-2' },
+            body: expect.objectContaining({
+              icon_info: expect.objectContaining({
+                icon_type: 'image',
+              }),
             }),
           }),
-          expect.any(Object),
         )
       })
     })
@@ -584,7 +568,7 @@ describe('EditPipelineInfo', () => {
     it('should have close button in header', () => {
       render(<EditPipelineInfo {...defaultProps} />)
       const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
-      expect(closeButton).toHaveClass('right-5', 'top-5')
+      expect(closeButton.parentElement).toContainElement(screen.getByText(/editPipelineInfo/i))
     })
   })
 })

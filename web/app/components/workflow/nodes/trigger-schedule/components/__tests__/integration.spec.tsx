@@ -125,15 +125,13 @@ describe('trigger-schedule components', () => {
 
     it('should hide upcoming execution times when frequency is missing or cron is invalid', () => {
       const { rerender, container } = render(
-        <NextExecutionTimes data={createData({ frequency: undefined }) as any} />,
+        <NextExecutionTimes data={createData({ frequency: undefined })} />,
       )
 
       expect(container).toBeEmptyDOMElement()
 
       rerender(
-        <NextExecutionTimes
-          data={createData({ mode: 'cron', cron_expression: 'bad cron' }) as any}
-        />,
+        <NextExecutionTimes data={createData({ mode: 'cron', cron_expression: 'bad cron' })} />,
       )
       expect(container).toBeEmptyDOMElement()
     })

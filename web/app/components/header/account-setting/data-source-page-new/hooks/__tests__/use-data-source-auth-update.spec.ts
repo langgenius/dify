@@ -6,17 +6,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
 import { useDataSourceAuthUpdate } from '../use-data-source-auth-update'
 
-const mocks = vi.hoisted(() => ({ auth: vi.fn(), list: vi.fn(), defaults: vi.fn() }))
-vi.mock('@/service/use-datasource', () => ({
-  useInvalidDataSourceAuth: () => mocks.auth,
-  useInvalidDataSourceListAuth: () => mocks.list,
-  useInvalidDefaultDataSourceListAuth: () => mocks.defaults,
-}))
-
 describe('datasource authentication reconciliation', () => {
   let client: QueryClient
   const catalogKey = consoleQuery.rag.pipelines.datasourcePlugins.get.queryKey()
   const unrelatedKey = consoleQuery.account.profile.get.key()
+  const datasource = consoleQuery.auth.plugin.datasource
+  const authKeys = [
+    datasource.list.get.queryKey(),
+    datasource.defaultList.get.queryKey(),
+    datasource.byProviderId.get.queryKey({
+      input: { params: { provider_id: 'langgenius/notion/notion' } },
+    }),
+  ]
+  const otherProviderKey = datasource.byProviderId.get.queryKey({
+    input: { params: { provider_id: 'langgenius/firecrawl/firecrawl' } },
+  })
   const wrapper = ({ children }: PropsWithChildren) =>
     createElement(QueryClientProvider, { client }, children)
   beforeEach(() => {
@@ -24,6 +28,7 @@ describe('datasource authentication reconciliation', () => {
     client = new QueryClient()
     client.setQueryData(catalogKey, [])
     client.setQueryData(unrelatedKey, { cached: true })
+    for (const key of [...authKeys, otherProviderKey]) client.setQueryData(key, { result: [] })
   })
   afterEach(() => client.clear())
 
@@ -41,8 +46,7 @@ describe('datasource authentication reconciliation', () => {
 
     expect(client.getQueryState(catalogKey)?.isInvalidated).toBe(true)
     expect(client.getQueryState(unrelatedKey)?.isInvalidated).toBe(false)
-    expect(mocks.auth).toHaveBeenCalledOnce()
-    expect(mocks.list).toHaveBeenCalledOnce()
-    expect(mocks.defaults).toHaveBeenCalledOnce()
+    for (const key of authKeys) expect(client.getQueryState(key)?.isInvalidated).toBe(true)
+    expect(client.getQueryState(otherProviderKey)?.isInvalidated).toBe(false)
   })
 })

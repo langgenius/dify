@@ -19,11 +19,12 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import { createContext, use, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
-import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
@@ -83,7 +84,7 @@ function AgentSelectorList({
   onStartFromScratch,
 }: Pick<AgentSelectorMenuContentProps, 'onSelect' | 'onStartFromScratch'>) {
   const { t } = useTranslation(['workflow', 'common', 'agentRoster'])
-  const appId = useHooksStore((s) => s.configsMap?.flowId)
+  const appId = useAtomValue(editorAppIdAtom)
   const searchText = use(SearchTextContext)
   const keyword = useDebounce(searchText.trim(), { wait: 300 })
   const agentsQuery = useQuery({

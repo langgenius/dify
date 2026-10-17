@@ -24,7 +24,7 @@ vi.mock('@/service/use-share', () => ({
 const mockGetProcessedSystemVariablesFromUrlParams = vi.fn()
 
 vi.mock('@/app/components/base/chat/utils', () => ({
-  getProcessedSystemVariablesFromUrlParams: (...args: any[]) =>
+  getProcessedSystemVariablesFromUrlParams: (...args: unknown[]) =>
     mockGetProcessedSystemVariablesFromUrlParams(...args),
 }))
 

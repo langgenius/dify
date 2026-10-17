@@ -1,17 +1,25 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import MetadataDocument from '../index'
 
 vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContext: () => ({ dataset: { embedding_available: true } }),
 }))
 
-vi.mock('@/service/knowledge/use-metadata', () => ({
-  useBatchUpdateDocMetadata: () => ({ mutateAsync: vi.fn() }),
-  useCreateMetaData: () => ({ mutateAsync: vi.fn() }),
-  useDocumentMetaData: () => ({ data: { doc_metadata: [] } }),
-  useDatasetMetaData: () => ({ data: { built_in_field_enabled: false } }),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.documents.metadata.post': (input) => vi.fn()(input),
+      'datasets.byDatasetId.metadata.post': (input) => vi.fn()(input),
+      'datasets.byDatasetId.documents.byDocumentId.get': async () => ({ doc_metadata: [] }),
+      'datasets.byDatasetId.metadata.get': async () => ({ built_in_field_enabled: false }),
+    }),
+  }
+})
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -33,7 +41,15 @@ vi.mock('react-i18next', async () => {
 
 type DocumentDetail = Parameters<typeof MetadataDocument>[0]['docDetail']
 
-const uploadFile = { name: 'handbook.txt', extension: 'txt', size: 497 }
+const uploadFile = {
+  id: 'upload-1',
+  name: 'handbook.txt',
+  extension: 'txt',
+  size: 497,
+  mime_type: 'text/plain',
+  created_by: 'user-1',
+  created_at: Date.parse('2026-09-23T10:30:00Z') / 1000,
+}
 
 // The Console detail endpoint separates the upload reference from its details.
 const documentDetail: Partial<DocumentDetail> = {

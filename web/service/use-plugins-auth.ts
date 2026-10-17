@@ -37,7 +37,7 @@ export const useSetPluginDefaultCredential = (url: string) => {
 export const useAddPluginCredential = (url: string) => {
   return useMutation({
     mutationFn: (params: {
-      credentials: Record<string, any>
+      credentials: Record<string, unknown>
       type: CredentialTypeEnum
       name?: string
       visibility?: string
@@ -52,7 +52,7 @@ export const useUpdatePluginCredential = (url: string) => {
   return useMutation({
     mutationFn: (params: {
       credential_id: string
-      credentials?: Record<string, any>
+      credentials?: Record<string, unknown>
       name?: string
       visibility?: string
       partial_member_list?: Array<{ user_id: string }>
@@ -101,7 +101,7 @@ export const useGetPluginOAuthClientSchema = (url: string) => {
         schema: FormSchema[]
         is_oauth_custom_client_enabled: boolean
         is_system_oauth_params_exists?: boolean
-        client_params?: Record<string, any>
+        client_params?: Record<string, unknown>
         redirect_uri?: string
       }>(url),
     staleTime: 0,
@@ -115,7 +115,7 @@ export const useInvalidPluginOAuthClientSchema = (url: string) => {
 export const useSetPluginOAuthCustomClient = (url: string) => {
   return useMutation({
     mutationFn: (params: {
-      client_params: Record<string, any>
+      client_params: Record<string, unknown>
       enable_oauth_custom_client: boolean
     }) => {
       return post<{ result: string }>(url, { body: params })

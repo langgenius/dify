@@ -1,6 +1,7 @@
 import type { MetadataItemWithValue } from '../../types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { DataType } from '../../types'
 import InfoGroup from '../info-group'
 
@@ -21,13 +22,18 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-vi.mock('@/service/knowledge/use-metadata', () => ({
-  useDatasetMetaData: () => ({
-    data: {
-      doc_metadata: [{ id: '1', name: 'test', type: DataType.string }],
-    },
-  }),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.metadata.get': async () => ({
+        doc_metadata: [{ id: '1', name: 'test', type: DataType.string }],
+      }),
+    }),
+  }
+})
 
 // Mock useTimestamp
 vi.mock('@/hooks/use-timestamp', () => ({

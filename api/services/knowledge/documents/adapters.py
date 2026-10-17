@@ -259,7 +259,7 @@ class SQLAlchemyDocumentOperations:
                 data_source_info=document.data_source_info_dict,
                 data_source_detail_dict=get_document_source_detail(document, session=session),
                 dataset_process_rule=DatasetService.get_process_rules(ref.dataset.dataset_id, session),
-                document_process_rule=dict(rule.to_dict()) if rule else {},
+                document_process_rule=dict(rule.to_dict()) if rule else None,
                 segment_count=segment_count,
                 average_segment_length=(document.word_count or 0) // segment_count if segment_count else 0,
                 hit_count=get_document_hit_count(document, session=session),

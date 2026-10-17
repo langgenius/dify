@@ -1,12 +1,15 @@
-import type { DataSet, RelatedAppResponse } from '@/models/datasets'
+import type {
+  DatasetDetailWithPartialMembersResponse,
+  RelatedAppListResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import { screen } from '@testing-library/react'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { DatasetACLPermission } from '@/utils/permission'
 import DatasetDetailSection from '../dataset-detail-section'
 
 let mockPathname = '/datasets/dataset-1/documents'
-let mockDataset: DataSet | undefined
-let mockRelatedApps: RelatedAppResponse | undefined
+let mockDataset: DatasetDetailWithPartialMembersResponse | undefined
+let mockRelatedApps: RelatedAppListResponse | undefined
 let mockIsRbacEnabled = true
 const mockConsoleState = vi.hoisted(() => ({
   current: {
@@ -31,10 +34,13 @@ vi.mock('@/context/permission-state', async () => {
   return createPermissionStateModuleMock(() => mockConsoleState.current)
 })
 
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useDatasetDetail: () => ({ data: mockDataset, refetch: vi.fn() }),
-  useDatasetRelatedApps: () => ({ data: mockRelatedApps }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.get': () => ({ data: mockDataset, refetch: vi.fn() }),
+    'datasets.byDatasetId.relatedApps.get': () => ({ data: mockRelatedApps }),
+  })
+})
 
 vi.mock('../dataset-info', () => ({
   default: () => <div>dataset info</div>,
@@ -52,7 +58,9 @@ vi.mock('../../datasets/extra-info', () => ({
   default: () => <div>dataset extra info</div>,
 }))
 
-const createDataset = (overrides: Partial<DataSet> = {}): DataSet =>
+const createDataset = (
+  overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
+): DatasetDetailWithPartialMembersResponse =>
   ({
     id: 'dataset-1',
     name: 'Camera Technical Spec',
@@ -82,7 +90,7 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet =>
     enable_api: true,
     permission_keys: [DatasetACLPermission.Edit],
     ...overrides,
-  }) as DataSet
+  }) as DatasetDetailWithPartialMembersResponse
 
 describe('DatasetDetailSection', () => {
   beforeEach(() => {

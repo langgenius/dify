@@ -3,7 +3,6 @@ import { screen } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import AppDetailSection from '../app-detail-section'
 
@@ -221,18 +220,18 @@ describe('AppDetailSection', () => {
     it.each([
       {
         label: 'the app is not a workflow app',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
         permissionKeys: [AppACLPermission.Deploy],
       },
       {
         label: 'app deploy ACL permission is missing',
-        mode: AppModeEnum.WORKFLOW,
+        mode: 'workflow' as const,
         permissionKeys: [AppACLPermission.Monitor],
       },
-    ])('should hide deploy navigation when $label', ({ mode, permissionKeys }) => {
+    ] as const)('should hide deploy navigation when $label', ({ mode, permissionKeys }) => {
       // Arrange
       mockAppMode = mode
-      mockAppPermissionKeys = permissionKeys
+      mockAppPermissionKeys = [...permissionKeys]
 
       // Act
       render(<AppDetailSection />)
@@ -241,7 +240,7 @@ describe('AppDetailSection', () => {
       expect(screen.queryByRole('link', { name: 'common.appMenus.deploy' })).not.toBeInTheDocument()
     })
 
-    it.each([AppModeEnum.CHAT, AppModeEnum.AGENT_CHAT])(
+    it.each(['chat', 'agent-chat'] as const)(
       'should render resource access navigation for %s apps when app access config permission is granted',
       (mode) => {
         // Arrange
@@ -263,7 +262,7 @@ describe('AppDetailSection', () => {
 
     it('should hide resource access navigation for Agent apps', () => {
       // Arrange
-      mockAppMode = AppModeEnum.AGENT
+      mockAppMode = 'agent'
       mockAppPermissionKeys = [AppACLPermission.AccessConfig]
 
       // Act

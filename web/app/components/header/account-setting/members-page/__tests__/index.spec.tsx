@@ -1,16 +1,27 @@
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Role } from '@/models/access-control'
-import type { Member } from '@/models/common'
 import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
-import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
-import { useMembers } from '@/service/use-common'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import MembersPage from '../index'
+
+const { mockMembersHook, mockWorkspaceRoleListHook, mockUpdateRolesOfMember } = vi.hoisted(() => ({
+  mockMembersHook: vi.fn(),
+  mockWorkspaceRoleListHook: vi.fn(),
+  mockUpdateRolesOfMember: vi.fn(),
+}))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.members.get': () => mockMembersHook(),
+    'workspaces.current.rbac.roles.get': () => mockWorkspaceRoleListHook(),
+  })
+})
 
 let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'COMMUNITY'
 let memberFeatures: ConsoleQueryTestOptions['features'] = {}
@@ -30,34 +41,15 @@ vi.mock('@/context/permission-state', async () => {
 })
 
 vi.mock('@/hooks/use-format-time-from-now')
-vi.mock('@/service/access-control/use-member-roles')
-vi.mock('@/service/use-common')
-vi.mock('@/service/access-control/use-workspace-roles')
 const { inviteMember } = vi.hoisted(() => ({ inviteMember: vi.fn() }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleQuery: new Proxy(actual.consoleQuery, {
-      get(target, key) {
-        if (key !== 'workspaces') return Reflect.get(target, key)
-        return {
-          current: {
-            summary: target.workspaces.current.summary,
-            members: {
-              inviteEmail: {
-                post: {
-                  mutationOptions: (
-                    options: Parameters<
-                      typeof actual.consoleQuery.workspaces.current.members.inviteEmail.post.mutationOptions
-                    >[0],
-                  ) => ({ ...options, mutationFn: inviteMember }),
-                },
-              },
-            },
-          },
-        }
-      },
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.members.inviteEmail.post': inviteMember,
+      'workspaces.current.rbac.members.byMemberId.rbacRoles.put': mockUpdateRolesOfMember,
     }),
   }
 })
@@ -112,7 +104,7 @@ vi.mock('../member-menu', () => ({
     onTransferOwnership,
     canTransferOwnership,
   }: {
-    member: Member
+    member: AccountWithRoleResponse
     isCurrentUser?: boolean
     onTransferOwnership?: () => void
     canTransferOwnership?: boolean
@@ -147,7 +139,7 @@ vi.mock('../member-details-modal', () => ({
     canAssignRoles,
     onAssignSubmit,
   }: {
-    member: Member
+    member: AccountWithRoleResponse
     onClose: () => void
     canAssignRoles?: boolean
     onAssignSubmit?: (roles: Role[]) => void
@@ -177,9 +169,8 @@ vi.mock('@/app/components/billing/upgrade-btn', () => ({
 describe('MembersPage', () => {
   const mockRefetch = vi.fn()
   const mockFormatTimeFromNow = vi.fn(() => 'just now')
-  const mockUpdateRolesOfMember = vi.fn()
 
-  const mockAccounts: Member[] = [
+  const mockAccounts: AccountWithRoleResponse[] = [
     {
       id: '1',
       name: 'Owner User',
@@ -187,9 +178,9 @@ describe('MembersPage', () => {
       avatar: '',
       avatar_url: '',
       role: 'owner',
-      last_active_at: '1731000000',
-      last_login_at: '1731000000',
-      created_at: '1731000000',
+      last_active_at: 1731000000,
+      last_login_at: 1731000000,
+      created_at: 1731000000,
       status: 'active',
       roles: [createRole({ id: 'owner-role', name: 'Owner', is_builtin: true, role_tag: 'owner' })],
     },
@@ -200,9 +191,9 @@ describe('MembersPage', () => {
       avatar: '',
       avatar_url: '',
       role: 'admin',
-      last_active_at: '1731000000',
-      last_login_at: '1731000000',
-      created_at: '1731000000',
+      last_active_at: 1731000000,
+      last_login_at: 1731000000,
+      created_at: 1731000000,
       status: 'active',
       roles: [createRole({ id: 'admin-role', name: 'Admin', is_builtin: true })],
     },
@@ -219,17 +210,11 @@ describe('MembersPage', () => {
       workspacePermissionKeys: ['workspace.member.manage'],
     } as unknown as ConsoleStateFixture)
 
-    vi.mocked(useMembers).mockReturnValue({
+    vi.mocked(mockMembersHook).mockReturnValue({
       data: { accounts: mockAccounts },
       refetch: mockRefetch,
-    } as unknown as ReturnType<typeof useMembers>)
-    mockUpdateRolesOfMember.mockImplementation((_payload, options) => {
-      options?.onSuccess?.()
-      return Promise.resolve()
     })
-    vi.mocked(useUpdateRolesOfMember).mockReturnValue({
-      mutateAsync: mockUpdateRolesOfMember,
-    } as unknown as ReturnType<typeof useUpdateRolesOfMember>)
+    mockUpdateRolesOfMember.mockResolvedValue({ result: 'success' })
 
     inviteMember.mockResolvedValue({
       result: 'success',
@@ -238,14 +223,14 @@ describe('MembersPage', () => {
         { email: 'sent@example.com', status: 'success', url: 'http://invite/link' },
       ],
     })
-    vi.mocked(useWorkspaceRoleList).mockReturnValue({
+    vi.mocked(mockWorkspaceRoleListHook).mockReturnValue({
       data: { pages: [{ data: [createRole({ id: 'admin', name: 'Admin' })] }] },
       isLoading: false,
       error: null,
       hasNextPage: false,
       isFetchingNextPage: false,
       fetchNextPage: vi.fn(),
-    } as unknown as ReturnType<typeof useWorkspaceRoleList>)
+    })
     deploymentEdition = 'COMMUNITY'
     memberFeatures = { ...memberFeatures, is_allow_transfer_workspace: true }
 
@@ -396,14 +381,14 @@ describe('MembersPage', () => {
   })
 
   it('should show pending status and you indicator', () => {
-    const pendingAccount: Member = {
+    const pendingAccount: AccountWithRoleResponse = {
       ...mockAccounts[1]!,
       status: 'pending',
     }
-    vi.mocked(useMembers).mockReturnValue({
+    vi.mocked(mockMembersHook).mockReturnValue({
       data: { accounts: [mockAccounts[0], pendingAccount] },
       refetch: mockRefetch,
-    } as unknown as ReturnType<typeof useMembers>)
+    })
 
     renderMembersPage()
 
@@ -475,7 +460,7 @@ describe('MembersPage', () => {
       isCurrentWorkspaceManager: true,
       workspacePermissionKeys: ['workspace.member.manage'],
     } as unknown as ConsoleStateFixture)
-    vi.mocked(useMembers).mockReturnValue({
+    vi.mocked(mockMembersHook).mockReturnValue({
       data: {
         accounts: [
           mockAccounts[0],
@@ -511,7 +496,7 @@ describe('MembersPage', () => {
         ],
       },
       refetch: mockRefetch,
-    } as unknown as ReturnType<typeof useMembers>)
+    })
 
     renderMembersPage()
 
@@ -523,15 +508,15 @@ describe('MembersPage', () => {
   })
 
   it('should use created_at as fallback when last_active_at is empty', () => {
-    const memberNoLastActive: Member = {
+    const memberNoLastActive: AccountWithRoleResponse = {
       ...mockAccounts[1]!,
-      last_active_at: '',
-      created_at: '1700000000',
+      last_active_at: null,
+      created_at: 1700000000,
     }
-    vi.mocked(useMembers).mockReturnValue({
+    vi.mocked(mockMembersHook).mockReturnValue({
       data: { accounts: [memberNoLastActive] },
       refetch: mockRefetch,
-    } as unknown as ReturnType<typeof useMembers>)
+    })
 
     renderMembersPage()
 
@@ -539,10 +524,10 @@ describe('MembersPage', () => {
   })
 
   it('should not show plural s when only one account in billing layout', () => {
-    vi.mocked(useMembers).mockReturnValue({
+    vi.mocked(mockMembersHook).mockReturnValue({
       data: { accounts: [mockAccounts[0]] },
       refetch: mockRefetch,
-    } as unknown as ReturnType<typeof useMembers>)
+    })
     deploymentEdition = 'CLOUD'
     memberFeatures = {
       billing: { subscription: { plan: 'sandbox' } },
@@ -556,10 +541,10 @@ describe('MembersPage', () => {
   })
 
   it('should not show plural s when only one account in non-billing layout', () => {
-    vi.mocked(useMembers).mockReturnValue({
+    vi.mocked(mockMembersHook).mockReturnValue({
       data: { accounts: [mockAccounts[0]] },
       refetch: mockRefetch,
-    } as unknown as ReturnType<typeof useMembers>)
+    })
 
     renderMembersPage()
 
@@ -574,10 +559,12 @@ describe('MembersPage', () => {
       isCurrentWorkspaceOwner: false,
       isCurrentWorkspaceManager: false,
     } as unknown as ConsoleStateFixture)
-    vi.mocked(useMembers).mockReturnValue({
-      data: { accounts: [{ ...mockAccounts[1], role: 'unknown_role' as Member['role'] }] },
+    vi.mocked(mockMembersHook).mockReturnValue({
+      data: {
+        accounts: [{ ...mockAccounts[1], role: 'unknown_role' as AccountWithRoleResponse['role'] }],
+      },
       refetch: mockRefetch,
-    } as unknown as ReturnType<typeof useMembers>)
+    })
 
     renderMembersPage()
 
@@ -657,14 +644,11 @@ describe('MembersPage', () => {
     await user.click(getMemberDetailsButton('2'))
     await user.click(screen.getByRole('button', { name: 'Submit Member Roles' }))
 
-    expect(mockUpdateRolesOfMember).toHaveBeenCalledWith(
-      {
-        memberId: '2',
-        roleIds: ['role-next'],
-      },
-      expect.any(Object),
-    )
-    expect(mockRefetch).toHaveBeenCalled()
+    expect(mockUpdateRolesOfMember).toHaveBeenCalledWith({
+      params: { member_id: '2' },
+      body: { role_ids: ['role-next'] },
+    })
+    await waitFor(() => expect(mockRefetch).toHaveBeenCalled())
     expect(screen.getByText('Member Details Modal')).toBeInTheDocument()
     expect(screen.getByTestId('details-member-name')).toHaveTextContent('Admin User')
   })
@@ -684,13 +668,10 @@ describe('MembersPage', () => {
     await user.click(getMemberDetailsButton('2'))
     await user.click(screen.getByRole('button', { name: 'Submit Member Roles' }))
 
-    expect(mockUpdateRolesOfMember).toHaveBeenCalledWith(
-      {
-        memberId: '2',
-        roleIds: ['role-next', 'role-extra'],
-      },
-      expect.any(Object),
-    )
+    expect(mockUpdateRolesOfMember).toHaveBeenCalledWith({
+      params: { member_id: '2' },
+      body: { role_ids: ['role-next', 'role-extra'] },
+    })
   })
 
   it('should not open member details when clicking the member menu area', async () => {

@@ -2,19 +2,8 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { changePasswordWithToken } from '@/service/common'
+import { consoleClient } from '@/service/console'
 import ChangePasswordForm from '../page'
-
-const countdownState = vi.hoisted(() => ({
-  onEnd: undefined as (() => void) | undefined,
-}))
-
-vi.mock('ahooks', () => ({
-  useCountDown: ({ leftTime, onEnd }: { leftTime?: number; onEnd?: () => void }) => {
-    countdownState.onEnd = onEnd
-    return [leftTime ?? 0]
-  },
-}))
 
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(),
@@ -29,8 +18,15 @@ vi.mock('@/next/link', () => ({
   ),
 }))
 
-vi.mock('@/service/common', () => ({
-  changePasswordWithToken: vi.fn(),
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    forgotPassword: {
+      resets: {
+        post: vi.fn(),
+      },
+    },
+  },
 }))
 
 vi.mock('@/hooks/use-document-title', () => ({
@@ -40,7 +36,7 @@ vi.mock('@/hooks/use-document-title', () => ({
 const mockReplace = vi.fn()
 const mockUseRouter = vi.mocked(useRouter)
 const mockUseSearchParams = vi.mocked(useSearchParams)
-const mockChangePasswordWithToken = vi.mocked(changePasswordWithToken)
+const mockChangePasswordWithToken = vi.mocked(consoleClient.forgotPassword.resets.post)
 const mockUseDocumentTitle = vi.mocked(useDocumentTitle)
 
 const redirectUrl = '/apps?template-id=template-1&utm_source=dify_blog'
@@ -49,12 +45,12 @@ const encodedSigninUrl =
 
 const setSearchParams = (params: Record<string, string>) => {
   mockUseSearchParams.mockReturnValue(
-    new URLSearchParams(params) as unknown as ReturnType<typeof useSearchParams>,
+    new URLSearchParams(params) as ReturnType<typeof useSearchParams>,
   )
 }
 
 const completePasswordChange = async () => {
-  const user = userEvent.setup()
+  const user = userEvent.setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
   render(<ChangePasswordForm />)
 
   expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.changePassword')
@@ -73,7 +69,6 @@ const completePasswordChange = async () => {
 describe('Reset Password Set Password Page', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    countdownState.onEnd = undefined
     mockUseRouter.mockReturnValue({ replace: mockReplace } as unknown as ReturnType<
       typeof useRouter
     >)
@@ -108,7 +103,6 @@ describe('Reset Password Set Password Page', () => {
 
     await waitFor(() => {
       expect(mockChangePasswordWithToken).toHaveBeenCalledWith({
-        url: '/forgot-password/resets',
         body: {
           token: 'reset-token',
           new_password: 'ValidPass123!',
@@ -155,10 +149,15 @@ describe('Reset Password Set Password Page', () => {
 
     it('should preserve redirect_url when the countdown returns to sign in automatically', async () => {
       setSearchParams({ token: 'reset-token', redirect_url: redirectUrl })
-      await completePasswordChange()
-
-      expect(countdownState.onEnd).toBeTypeOf('function')
-      act(() => countdownState.onEnd?.())
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      try {
+        await completePasswordChange()
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(5000)
+        })
+      } finally {
+        vi.useRealTimers()
+      }
 
       expect(mockReplace).toHaveBeenCalledWith(encodedSigninUrl)
     })

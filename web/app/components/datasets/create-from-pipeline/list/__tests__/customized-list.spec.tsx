@@ -13,9 +13,15 @@ vi.mock('../template-card', () => ({
 
 // Mock usePipelineTemplateList hook
 const mockUsePipelineTemplateList = vi.fn()
-vi.mock('@/service/use-pipeline', () => ({
-  usePipelineTemplateList: (...args: unknown[]) => mockUsePipelineTemplateList(...args),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipeline.templates.get': (o: {
+      input: { query: { type: string; language?: string } }
+      enabled?: boolean
+    }) => mockUsePipelineTemplateList(o.input.query),
+  })
+})
 
 // CustomizedList Component Tests
 

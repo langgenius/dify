@@ -8,11 +8,9 @@ import { toast } from '@/app/notifications'
 import { render } from '@/test/console/render'
 import { createAppDetailFixture, createAppModelConfigFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
-import { AppModeEnum } from '@/types/app'
 import { MCPAccessPointCard } from '../built-in-access-points/mcp-card'
 
 const mocks = vi.hoisted(() => ({
-  invalidateServerDetail: vi.fn(),
   serverDetail: {
     data: undefined as undefined | { id: string; server_code: string; status: string },
     isPending: false,
@@ -29,31 +27,38 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    apps: {
-      byAppId: {
-        server: {
-          put: {
-            mutationOptions: (options = {}) => ({
-              mutationFn: mocks.updateServer,
-              ...options,
-            }),
+vi.mock('@/service/console', async () => {
+  const { consoleOperationStub } = await import('@/test/console/operation-hooks')
+  return {
+    consoleQuery: {
+      apps: {
+        byAppId: {
+          server: {
+            get: consoleOperationStub('apps.byAppId.server.get'),
+            refresh: { post: consoleOperationStub('apps.byAppId.server.refresh.post') },
+            put: {
+              mutationOptions: (options = {}) => ({
+                mutationFn: mocks.updateServer,
+                ...options,
+              }),
+            },
           },
         },
       },
     },
-  },
-}))
+  }
+})
 
-vi.mock('@/service/use-tools', () => ({
-  useInvalidateMCPServerDetail: () => mocks.invalidateServerDetail,
-  useMCPServerDetail: () => mocks.serverDetail,
-  useRefreshMCPServerCode: () => ({
-    isPending: false,
-    mutateAsync: mocks.refreshServerCode,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'apps.byAppId.server.get': () => mocks.serverDetail,
+    'apps.byAppId.server.refresh.post': () => ({
+      isPending: false,
+      mutateAsync: mocks.refreshServerCode,
+    }),
+  })
+})
 
 vi.mock('@/app/components/tools/mcp/mcp-server-modal', () => ({
   default: (props: Record<string, unknown>) => {
@@ -65,7 +70,7 @@ vi.mock('@/app/components/tools/mcp/mcp-server-modal', () => ({
 const appInfo = createAppDetailFixture({
   api_base_url: 'https://api.example.test/v1',
   id: 'app-1',
-  mode: AppModeEnum.CHAT,
+  mode: 'chat' as const,
   model_config: createAppModelConfigFixture({
     updated_at: 1_710_000_000,
     user_input_form: [
@@ -82,7 +87,7 @@ const appInfo = createAppDetailFixture({
 
 const workflowAppInfo = createAppDetailFixture({
   ...appInfo,
-  mode: AppModeEnum.WORKFLOW,
+  mode: 'workflow' as const,
   model_config: null,
 })
 
@@ -112,8 +117,9 @@ function createDeferredPromise<T>() {
 
 function renderCard(cardAppInfo: AppDetailWithSite = appInfo, workflow?: PublishedWorkflow) {
   const queryClient = createTestQueryClient()
+  const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
 
-  return render(
+  const view = render(
     <QueryClientProvider client={queryClient}>
       <MCPAccessPointCard
         appInfo={cardAppInfo}
@@ -124,6 +130,7 @@ function renderCard(cardAppInfo: AppDetailWithSite = appInfo, workflow?: Publish
       />
     </QueryClientProvider>,
   )
+  return { ...view, invalidateQueries }
 }
 
 describe('MCPAccessPointCard', () => {
@@ -228,7 +235,7 @@ describe('MCPAccessPointCard', () => {
     mocks.updateServer
       .mockReturnValueOnce(firstToggle.promise)
       .mockReturnValueOnce(secondToggle.promise)
-    renderCard()
+    const { invalidateQueries } = renderCard()
 
     const accessSwitch = screen.getByRole('switch')
     await user.click(accessSwitch)
@@ -250,7 +257,13 @@ describe('MCPAccessPointCard', () => {
     secondToggle.resolve()
 
     await waitFor(() => {
-      expect(mocks.invalidateServerDetail).toHaveBeenCalledTimes(2)
+      expect(invalidateQueries).toHaveBeenCalledTimes(2)
+      expect(invalidateQueries).toHaveBeenLastCalledWith({
+        queryKey: [
+          ['console', 'apps', 'byAppId', 'server', 'get'],
+          { type: 'query', input: { params: { app_id: 'app-1' } } },
+        ],
+      })
     })
     expect(accessSwitch).toHaveAttribute('aria-checked', 'true')
   })
