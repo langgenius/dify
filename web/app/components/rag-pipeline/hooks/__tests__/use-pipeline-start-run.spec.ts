@@ -2,6 +2,7 @@ import { renderHook } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { createDeferred } from '@/test/deferred'
 import { usePipelineStartRunByCanEdit } from '../use-pipeline-start-run'
 
 const mockWorkflowStoreGetState = vi.fn()
@@ -57,22 +58,6 @@ describe('usePipelineStartRunByCanEdit', () => {
     vi.clearAllMocks()
   })
 
-  describe('hook initialization', () => {
-    it('should return handleStartWorkflowRun function', () => {
-      const { result } = renderHook(() => usePipelineStartRunByCanEdit(true))
-
-      expect(result.current.handleStartWorkflowRun).toBeDefined()
-      expect(typeof result.current.handleStartWorkflowRun).toBe('function')
-    })
-
-    it('should return handleWorkflowStartRunInWorkflow function', () => {
-      const { result } = renderHook(() => usePipelineStartRunByCanEdit(true))
-
-      expect(result.current.handleWorkflowStartRunInWorkflow).toBeDefined()
-      expect(typeof result.current.handleWorkflowStartRunInWorkflow).toBe('function')
-    })
-  })
-
   describe('handleWorkflowStartRunInWorkflow', () => {
     it('should not proceed when workflow is already running', async () => {
       mockWorkflowStoreGetState.mockReturnValue({
@@ -93,6 +78,8 @@ describe('usePipelineStartRunByCanEdit', () => {
       })
 
       expect(mockSetShowEnvPanel).not.toHaveBeenCalled()
+      expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
+      expect(mockWorkflowStoreSetState).not.toHaveBeenCalled()
     })
 
     it('should set preparing data source when not preparing and has running data', async () => {
@@ -139,7 +126,9 @@ describe('usePipelineStartRunByCanEdit', () => {
       expect(mockHandleCancelDebugAndPreviewPanel).toHaveBeenCalled()
     })
 
-    it('should sync draft and show debug panel when conditions are met', async () => {
+    it('should wait for draft synchronization before showing datasource preparation', async () => {
+      const pending = createDeferred<void>()
+      mockDoSyncWorkflowDraft.mockReturnValue(pending.promise)
       mockWorkflowStoreGetState.mockReturnValue({
         workflowRunningData: undefined,
         isPreparingDataSource: false,
@@ -151,32 +140,21 @@ describe('usePipelineStartRunByCanEdit', () => {
 
       const { result } = renderHook(() => usePipelineStartRunByCanEdit(true))
 
+      let running: Promise<void>
+      act(() => {
+        running = result.current.handleWorkflowStartRunInWorkflow()
+      })
+      expect(mockSetShowEnvPanel).toHaveBeenCalledWith(false)
+      expect(mockSetIsPreparingDataSource).not.toHaveBeenCalled()
+      expect(mockSetShowDebugAndPreviewPanel).not.toHaveBeenCalled()
       await act(async () => {
-        await result.current.handleWorkflowStartRunInWorkflow()
+        pending.resolve()
+        await running
       })
 
-      expect(mockDoSyncWorkflowDraft).toHaveBeenCalled()
+      expect(mockDoSyncWorkflowDraft).toHaveBeenCalledOnce()
       expect(mockSetIsPreparingDataSource).toHaveBeenCalledWith(true)
       expect(mockSetShowDebugAndPreviewPanel).toHaveBeenCalledWith(true)
-    })
-
-    it('should hide env panel at start', async () => {
-      mockWorkflowStoreGetState.mockReturnValue({
-        workflowRunningData: undefined,
-        isPreparingDataSource: false,
-        showDebugAndPreviewPanel: false,
-        setIsPreparingDataSource: mockSetIsPreparingDataSource,
-        setShowEnvPanel: mockSetShowEnvPanel,
-        setShowDebugAndPreviewPanel: mockSetShowDebugAndPreviewPanel,
-      })
-
-      const { result } = renderHook(() => usePipelineStartRunByCanEdit(true))
-
-      await act(async () => {
-        await result.current.handleWorkflowStartRunInWorkflow()
-      })
-
-      expect(mockSetShowEnvPanel).toHaveBeenCalledWith(false)
     })
   })
 

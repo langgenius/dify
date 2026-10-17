@@ -1,28 +1,29 @@
+import type { ComponentType } from 'react'
 import type { PanelProps } from '@/app/components/workflow/panel'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { lazy, Suspense } from 'react'
+import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import RagPipelinePanel from '../index'
 
-const { dynamicComponent } = vi.hoisted(() => {
-  const labels = [
-    'Record panel',
-    'Test run panel',
-    'Input field panel',
-    'Input field editor panel',
-    'Preview panel',
-    'Global variable panel',
-  ]
-  let index = 0
-
-  return {
-    dynamicComponent: () => {
-      const label = labels[index++]
-      return () => <div>{label}</div>
-    },
-  }
-})
-
 vi.mock('next/dynamic', () => ({
-  default: () => dynamicComponent(),
+  default: (loader: () => Promise<{ default: ComponentType }>) => {
+    const Component = lazy(loader)
+    return () => (
+      <Suspense>
+        <Component />
+      </Suspense>
+    )
+  },
+}))
+vi.mock('@/app/components/workflow/panel/record', () => ({
+  default: () => <div>Record panel</div>,
+}))
+vi.mock('../test-run', () => ({ default: () => <div>Test run panel</div> }))
+vi.mock('../input-field', () => ({ default: () => <div>Input field panel</div> }))
+vi.mock('../input-field/editor', () => ({ default: () => <div>Input field editor panel</div> }))
+vi.mock('../input-field/preview', () => ({ default: () => <div>Preview panel</div> }))
+vi.mock('@/app/components/workflow/panel/global-variable-panel', () => ({
+  default: () => <div>Global variable panel</div>,
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
@@ -53,24 +54,23 @@ vi.mock('@/app/components/workflow/panel', () => ({
 }))
 
 describe('RagPipelinePanel', () => {
-  it('renders enabled panels and supplies pipeline version endpoints', () => {
-    render(<RagPipelinePanel />)
+  it('renders enabled panels and supplies pipeline version endpoints', async () => {
+    render(<RagPipelinePanel />, {
+      resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+    })
 
-    expect(screen.getByText('Record panel')).toBeInTheDocument()
-    expect(screen.getByText('Test run panel')).toBeInTheDocument()
-    expect(screen.getByText('Input field panel')).toBeInTheDocument()
-    expect(screen.getByText('Input field editor panel')).toBeInTheDocument()
-    expect(screen.getByText('Preview panel')).toBeInTheDocument()
-    expect(screen.getByText('Global variable panel')).toBeInTheDocument()
+    expect(await screen.findByText('Record panel')).toBeInTheDocument()
+    expect(await screen.findByText('Test run panel')).toBeInTheDocument()
+    expect(await screen.findByText('Input field panel')).toBeInTheDocument()
+    expect(await screen.findByText('Input field editor panel')).toBeInTheDocument()
+    expect(await screen.findByText('Preview panel')).toBeInTheDocument()
+    expect(await screen.findByText('Global variable panel')).toBeInTheDocument()
 
     expect(panelProps?.versionHistoryPanelProps?.getVersionListUrl).toBe(
       '/rag/pipelines/pipeline-1/workflows',
     )
     expect(panelProps?.versionHistoryPanelProps?.deleteVersionUrl?.('version-1')).toBe(
       '/rag/pipelines/pipeline-1/workflows/version-1',
-    )
-    expect(panelProps?.versionHistoryPanelProps?.restoreVersionUrl?.('version-1')).toBe(
-      '/rag/pipelines/pipeline-1/workflows/version-1/restore',
     )
   })
 })

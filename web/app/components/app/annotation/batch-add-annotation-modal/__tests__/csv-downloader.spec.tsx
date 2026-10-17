@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react'
 import type { Mock } from 'vite-plus/test'
 import type { Locale } from '@/i18n'
 import { render, screen } from '@testing-library/react'
@@ -11,11 +12,18 @@ vi.mock('#i18n', async (importOriginal) => ({
   useLocale: vi.fn(() => 'en-US'),
 }))
 
-const downloaderProps: any[] = []
+const downloaderProps: ComponentProps<
+  ReturnType<typeof import('react-papaparse').useCSVDownloader>['CSVDownloader']
+>[] = []
 
 vi.mock('react-papaparse', () => ({
   useCSVDownloader: vi.fn(() => ({
-    CSVDownloader: ({ children, ...props }: any) => {
+    CSVDownloader: ({
+      children,
+      ...props
+    }: ComponentProps<
+      ReturnType<typeof import('react-papaparse').useCSVDownloader>['CSVDownloader']
+    >) => {
       downloaderProps.push(props)
       return <div data-testid="mock-csv-downloader">{children}</div>
     },

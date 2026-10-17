@@ -2,7 +2,7 @@ import type {
   DatasetListItemResponse,
   DatasetListResponse,
 } from '@dify/contracts/api/console/datasets/types.gen'
-import { knowledgeAction, knowledgeSearchQueryOptions } from '../knowledge'
+import { knowledgeSearchQueryOptions } from '../knowledge'
 
 const serviceMocks = vi.hoisted(() => ({ queryOptions: vi.fn((options) => options) }))
 
@@ -26,16 +26,6 @@ function response(data: DatasetListItemResponse[]): DatasetListResponse {
 }
 
 describe('knowledge search query', () => {
-  beforeEach(() => vi.clearAllMocks())
-
-  it('exposes remote action metadata', () => {
-    expect(knowledgeAction).toMatchObject({
-      key: '@knowledge',
-      shortcut: '@kb',
-      source: 'remote',
-    })
-  })
-
   it('builds generated query options from the search term', () => {
     knowledgeSearchQueryOptions('vector')
 

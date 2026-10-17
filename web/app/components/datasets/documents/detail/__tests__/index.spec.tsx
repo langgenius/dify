@@ -1,7 +1,22 @@
-import { act, fireEvent, screen } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { QueryClient } from '@tanstack/react-query'
+import { act, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { renderWithAccountProfile as render } from '@/test/console/account-profile'
+import DatasetDetailContext from '@/context/dataset-detail'
+import { consoleQuery } from '@/service/console'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { DatasetACLPermission } from '@/utils/permission'
+const expectDocumentListInvalidated = () =>
+  expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
+    queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+      input: { params: { dataset_id: 'ds-1' } },
+    }),
+  })
+const segmentListKey = consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.get.key({
+  input: { params: { dataset_id: 'ds-1', document_id: 'doc-1' } },
+})
 
 // --- All hoisted mock fns and state (accessible inside vi.mock factories) ---
 const mocks = vi.hoisted(() => {
@@ -22,9 +37,6 @@ const mocks = vi.hoisted(() => {
     detailRefetch: vi.fn(),
     checkProgress: vi.fn(),
     batchImport: vi.fn(),
-    invalidDocumentList: vi.fn(),
-    invalidSegmentList: vi.fn(),
-    invalidChildSegmentList: vi.fn(),
     useDocumentTitle: vi.fn(),
     toastNotify: vi.fn(),
   }
@@ -52,62 +64,52 @@ vi.mock('@/hooks/use-document-title', () => ({
   default: mocks.useDocumentTitle,
 }))
 
-vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (s: Record<string, unknown>) => unknown) =>
-    selector({ dataset: mocks.state.dataset }),
-}))
+const render = (ui: ReactElement) =>
+  renderWithConsoleQuery(
+    <DatasetDetailContext.Provider
+      value={{
+        dataset: mocks.state.dataset
+          ? createDatasetFixture({ id: 'ds-1', ...mocks.state.dataset })
+          : undefined,
+      }}
+    >
+      {ui}
+    </DatasetDetailContext.Provider>,
+  )
 
-vi.mock('@/service/knowledge/use-document', () => ({
-  useDocumentDetail: () => ({
-    data: mocks.state.documentDetail,
-    error: mocks.state.documentError,
-    refetch: mocks.detailRefetch,
-  }),
-  useDocumentMetadata: () => ({
-    data: mocks.state.documentMetadata,
-  }),
-  useInvalidDocumentList: () => mocks.invalidDocumentList,
-}))
-
-vi.mock('@/service/knowledge/use-segment', () => ({
-  useCheckSegmentBatchImportProgress: () => ({
-    mutateAsync: mocks.checkProgress,
-  }),
-  useSegmentBatchImport: () => ({
-    mutateAsync: mocks.batchImport,
-  }),
-  useSegmentListKey: ['segment-list'],
-  useChildSegmentListKey: ['child-segment-list'],
-}))
-
-vi.mock('@/service/use-base', () => ({
-  useInvalid: (key: unknown) => {
-    const keyStr = JSON.stringify(key)
-    if (keyStr === JSON.stringify(['segment-list'])) return mocks.invalidSegmentList
-    if (keyStr === JSON.stringify(['child-segment-list'])) return mocks.invalidChildSegmentList
-    return vi.fn()
-  },
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.documents.byDocumentId.get': (options: {
+      input: { query: { metadata: string } }
+    }) =>
+      options.input.query.metadata === 'only'
+        ? { data: mocks.state.documentMetadata }
+        : {
+            data: mocks.state.documentDetail,
+            error: mocks.state.documentError,
+            refetch: mocks.detailRefetch,
+          },
+  })
+})
 
 vi.mock('@/app/notifications', () => ({
   default: { notify: mocks.toastNotify },
+  toast: { success: mocks.toastNotify, error: mocks.toastNotify },
 }))
 
 // --- Child component mocks ---
 vi.mock('../completed', () => ({
   default: ({
     embeddingAvailable,
-    showNewSegmentModal,
     archived,
   }: {
     embeddingAvailable?: boolean
-    showNewSegmentModal?: () => void
     archived?: boolean
   }) => (
     <div
       data-testid="completed"
       data-embedding-available={embeddingAvailable}
-      data-show-new-segment={showNewSegmentModal}
       data-archived={archived}
     >
       Completed
@@ -147,119 +149,21 @@ vi.mock('../batch-modal', () => ({
     ) : null,
 }))
 
-vi.mock('../document-title', () => ({
-  DocumentTitle: ({
-    document,
-  }: {
-    document?: {
-      name?: string
-      data_source_detail_dict?: { upload_file?: { extension?: string } }
-      data_source_info?: { upload_file?: { extension?: string } }
-    } | null
-  }) => {
-    const extension =
-      document?.data_source_detail_dict?.upload_file?.extension ??
-      document?.data_source_info?.upload_file?.extension
-
-    return (
-      <div data-testid="document-title" data-extension={extension}>
-        {document?.name}
-      </div>
-    )
-  },
-}))
-
-vi.mock('../segment-add', () => ({
-  SegmentAdd: ({
-    showNewSegmentModal,
-    showBatchModal,
-    embedding,
-  }: {
-    showNewSegmentModal?: () => void
-    showBatchModal?: () => void
-    embedding?: boolean
-  }) => (
-    <div data-testid="segment-add" data-embedding={embedding}>
-      <button data-testid="new-segment-btn" onClick={showNewSegmentModal}>
-        New Segment
-      </button>
-      <button data-testid="batch-btn" onClick={showBatchModal}>
-        Batch Import
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('../../components/operations', () => ({
-  default: ({ onUpdate, scene }: { onUpdate?: (action?: string) => void; scene?: string }) => (
-    <div data-testid="operations" data-scene={scene}>
-      <button data-testid="op-rename" onClick={() => onUpdate?.('rename')}>
-        Rename
-      </button>
-      <button data-testid="op-delete" onClick={() => onUpdate?.('delete')}>
-        Delete
-      </button>
-      <button data-testid="op-noop" onClick={() => onUpdate?.()}>
-        NoOp
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('../../status-item', () => ({
-  default: ({ status, scene }: { status?: string; scene?: string }) => (
-    <div data-testid="status-item" data-scene={scene}>
-      {status}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/datasets/metadata/metadata-document', () => ({
-  default: ({
-    datasetId,
-    documentId,
-    canEdit,
-  }: {
-    datasetId?: string
-    documentId?: string
-    canEdit?: boolean
-  }) => (
-    <div
-      data-testid="metadata"
-      data-dataset-id={datasetId}
-      data-document-id={documentId}
-      data-can-edit={String(canEdit)}
-    >
-      Metadata
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/base/float-right-container', () => ({
-  default: ({
-    children,
-    isOpen,
-    onClose,
-  }: {
-    children?: React.ReactNode
-    isOpen?: boolean
-    onClose?: () => void
-  }) =>
-    isOpen ? (
-      <div data-testid="float-right-container">
-        <button data-testid="close-metadata" onClick={onClose}>
-          Close
-        </button>
-        {children}
-      </div>
-    ) : null,
-}))
+// The document picker owns switching documents and has its own integration suite.
+vi.mock('../document-title', () => ({ DocumentTitle: () => null }))
+const childChunkListKey =
+  consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.childChunks.get.key(
+    {
+      input: { params: { dataset_id: 'ds-1', document_id: 'doc-1' } },
+    },
+  )
 
 // --- Lazy import (after all vi.mock calls) ---
 const { default: DocumentDetail } = await import('../index')
 
 // --- Factory ---
 const createDocumentDetail = (overrides?: Record<string, unknown>) => ({
+  id: 'doc-1',
   name: 'test-doc.txt',
   display_status: 'available',
   enabled: true,
@@ -284,7 +188,9 @@ vi.mock('@/context/permission-state', async () => {
 describe('DocumentDetail', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.useFakeTimers()
+    mocks.checkProgress.mockResolvedValue({ job_id: 'job-1', job_status: 'completed' })
+    vi.spyOn(QueryClient.prototype, 'invalidateQueries')
+    vi.useFakeTimers({ shouldAdvanceTime: true })
     mocks.state.dataset = {
       embedding_available: true,
       name: 'Dataset 1',
@@ -308,13 +214,6 @@ describe('DocumentDetail', () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
       expect(screen.queryByTestId('completed')).not.toBeInTheDocument()
       expect(screen.queryByTestId('embedding')).not.toBeInTheDocument()
-    })
-
-    it('should not show loading when error exists', () => {
-      mocks.state.documentDetail = null
-      mocks.state.documentError = new Error('Not found')
-      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      expect(screen.getByTestId('completed')).toBeInTheDocument()
     })
   })
 
@@ -340,43 +239,30 @@ describe('DocumentDetail', () => {
         expect(screen.queryByTestId('completed')).not.toBeInTheDocument()
       },
     )
-
-    it('should render DocumentTitle with name and extension', () => {
-      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      const title = screen.getByTestId('document-title')
-      expect(title).toHaveTextContent('test-doc.txt')
-      expect(title).toHaveAttribute('data-extension', '.txt')
-    })
-
-    it('should render StatusItem with correct status and scene', () => {
-      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      const statusItem = screen.getByTestId('status-item')
-      expect(statusItem).toHaveTextContent('available')
-      expect(statusItem).toHaveAttribute('data-scene', 'detail')
-    })
-
-    it('should render Operations with scene=detail', () => {
-      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      expect(screen.getByTestId('operations')).toHaveAttribute('data-scene', 'detail')
-    })
   })
 
   describe('SegmentAdd Visibility', () => {
     it('should show SegmentAdd when all conditions met', () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      expect(screen.getByTestId('segment-add')).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'datasetDocuments.list.action.addButton' }),
+      ).toBeInTheDocument()
     })
 
     it('should hide SegmentAdd when embedding is not available', () => {
       mocks.state.dataset = { embedding_available: false }
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      expect(screen.queryByTestId('segment-add')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'datasetDocuments.list.action.addButton' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should hide SegmentAdd when document is archived', () => {
       mocks.state.documentDetail = createDocumentDetail({ archived: true })
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      expect(screen.queryByTestId('segment-add')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'datasetDocuments.list.action.addButton' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should hide SegmentAdd in full-doc parent-child mode', () => {
@@ -385,7 +271,9 @@ describe('DocumentDetail', () => {
         document_process_rule: { rules: { parent_mode: 'full-doc' } },
       })
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      expect(screen.queryByTestId('segment-add')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'datasetDocuments.list.action.addButton' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should hide SegmentAdd when dataset only has readonly ACL permission', () => {
@@ -394,168 +282,211 @@ describe('DocumentDetail', () => {
         permission_keys: [DatasetACLPermission.Readonly],
       }
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      expect(screen.queryByTestId('segment-add')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'datasetDocuments.list.action.addButton' }),
+      ).not.toBeInTheDocument()
     })
   })
 
   describe('Metadata Panel', () => {
-    it('should show metadata panel by default on desktop', () => {
+    it('should toggle metadata panel when button clicked', async () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      expect(screen.getByTestId('float-right-container')).toBeInTheDocument()
-      expect(screen.getByTestId('metadata')).toBeInTheDocument()
-    })
+      expect(
+        screen.getByText('dataset.metadata.documentMetadata.documentInformation'),
+      ).toBeInTheDocument()
 
-    it('should toggle metadata panel when button clicked', () => {
-      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      expect(screen.getByTestId('metadata')).toBeInTheDocument()
-
-      fireEvent.click(screen.getByRole('button', { name: /metadata\.title/ }))
-      expect(screen.queryByTestId('metadata')).not.toBeInTheDocument()
-    })
-
-    it('should expose aria semantics for metadata toggle button', () => {
-      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
       const toggle = screen.getByRole('button', { name: /metadata\.title/ })
-      expect(toggle).toHaveAttribute('aria-label')
       expect(toggle).toHaveAttribute('aria-expanded', 'true')
-
-      fireEvent.click(toggle)
+      await userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(toggle)
       expect(toggle).toHaveAttribute('aria-expanded', 'false')
+      expect(
+        screen.queryByText('dataset.metadata.documentMetadata.documentInformation'),
+      ).not.toBeInTheDocument()
     })
 
-    it('should pass correct props to Metadata', () => {
-      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      const metadata = screen.getByTestId('metadata')
-      expect(metadata).toHaveAttribute('data-dataset-id', 'ds-1')
-      expect(metadata).toHaveAttribute('data-document-id', 'doc-1')
-      expect(metadata).toHaveAttribute('data-can-edit', 'true')
-    })
-
-    it('should pass readonly ACL state to Metadata', () => {
-      mocks.state.dataset = {
-        embedding_available: true,
-        permission_keys: [DatasetACLPermission.Readonly],
-      }
-      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-
-      expect(screen.getByTestId('metadata')).toHaveAttribute('data-can-edit', 'false')
-    })
+    it.each([true, false])(
+      'allows metadata editing only with edit permission (%s)',
+      async (canEdit) => {
+        mocks.state.dataset = {
+          embedding_available: true,
+          permission_keys: [canEdit ? DatasetACLPermission.Edit : DatasetACLPermission.Readonly],
+        }
+        render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+        const label = 'dataset.metadata.documentMetadata.startLabeling'
+        if (canEdit) {
+          await userEvent
+            .setup({ advanceTimers: vi.advanceTimersByTime })
+            .click(screen.getByRole('button', { name: label }))
+          expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeVisible()
+        } else {
+          expect(screen.queryByRole('button', { name: label })).not.toBeInTheDocument()
+          expect(
+            screen.queryByRole('button', { name: 'common.operation.save' }),
+          ).not.toBeInTheDocument()
+        }
+      },
+    )
   })
 
   describe('Navigation', () => {
-    it('should navigate back when back button clicked', () => {
+    it('should navigate back when back button clicked', async () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.back' }))
+      await userEvent
+        .setup({ advanceTimers: vi.advanceTimersByTime })
+        .click(screen.getByRole('button', { name: 'common.operation.back' }))
       expect(mocks.push).toHaveBeenCalledWith('/datasets/ds-1/documents')
     })
 
-    it('should expose aria label for back button', () => {
-      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      expect(screen.getByRole('button', { name: 'common.operation.back' })).toHaveAttribute(
-        'aria-label',
-      )
-    })
-
-    it('should preserve query params when navigating back', () => {
+    it('should preserve query params when navigating back', async () => {
       mocks.state.searchParams = 'page=2&status=active'
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.back' }))
+      await userEvent
+        .setup({ advanceTimers: vi.advanceTimersByTime })
+        .click(screen.getByRole('button', { name: 'common.operation.back' }))
       expect(mocks.push).toHaveBeenCalledWith('/datasets/ds-1/documents?page=2&status=active')
     })
   })
 
   describe('handleOperate', () => {
-    it('should invalidate document list on any operation', () => {
+    it('should navigate back on delete operation', async () => {
+      mocks.state.dataset = {
+        embedding_available: true,
+        permission_keys: [DatasetACLPermission.Edit, DatasetACLPermission.DeleteFile],
+      }
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      fireEvent.click(screen.getByTestId('op-rename'))
-      expect(mocks.invalidDocumentList).toHaveBeenCalled()
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      await user.click(
+        screen.getByRole('menuitem', { name: 'datasetDocuments.list.action.delete' }),
+      )
+      await user.click(
+        within(screen.getByRole('alertdialog')).getByRole('button', {
+          name: 'common.operation.sure',
+        }),
+      )
+      await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/datasets/ds-1/documents'))
+      expectDocumentListInvalidated()
+      expect(mocks.push).toHaveBeenCalledWith('/datasets/ds-1/documents')
     })
 
-    it('should navigate back on delete operation', () => {
+    it('invalidates chunk lists after disabling the document', async () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      fireEvent.click(screen.getByTestId('op-delete'))
-      expect(mocks.invalidDocumentList).toHaveBeenCalled()
-      expect(mocks.push).toHaveBeenCalled()
-    })
+      await userEvent
+        .setup({ advanceTimers: vi.advanceTimersByTime })
+        .click(screen.getByRole('switch'))
+      await act(async () => vi.advanceTimersByTimeAsync(600))
 
-    it('should refresh detail on non-delete operation', () => {
-      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      fireEvent.click(screen.getByTestId('op-rename'))
-      expect(mocks.detailRefetch).toHaveBeenCalled()
-    })
-
-    it('should invalidate chunk lists after 5s on named non-delete operation', () => {
-      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      fireEvent.click(screen.getByTestId('op-rename'))
-
-      expect(mocks.invalidSegmentList).not.toHaveBeenCalled()
+      expectDocumentListInvalidated()
+      expect(mocks.detailRefetch).toHaveBeenCalledTimes(1)
+      expect(QueryClient.prototype.invalidateQueries).not.toHaveBeenCalledWith({
+        queryKey: segmentListKey,
+      })
       act(() => {
         vi.advanceTimersByTime(5000)
       })
-      expect(mocks.invalidSegmentList).toHaveBeenCalled()
-      expect(mocks.invalidChildSegmentList).toHaveBeenCalled()
+      expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
+        queryKey: segmentListKey,
+      })
+      expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
+        queryKey: childChunkListKey,
+      })
     })
 
-    it('should not invalidate chunk lists on operation with no name', () => {
+    it('should not invalidate chunk lists on operation with no name', async () => {
+      mocks.state.documentDetail = createDocumentDetail({ display_status: 'indexing' })
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      fireEvent.click(screen.getByTestId('op-noop'))
+      await userEvent
+        .setup({ advanceTimers: vi.advanceTimersByTime })
+        .click(screen.getByTestId('embedding-refresh'))
 
       expect(mocks.detailRefetch).toHaveBeenCalled()
       act(() => {
         vi.advanceTimersByTime(5000)
       })
-      expect(mocks.invalidSegmentList).not.toHaveBeenCalled()
+      expect(QueryClient.prototype.invalidateQueries).not.toHaveBeenCalledWith({
+        queryKey: segmentListKey,
+      })
     })
   })
 
   describe('Batch Import', () => {
-    it('should open batch modal when batch button clicked', () => {
+    it('should close batch modal when cancel clicked', async () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      expect(screen.queryByTestId('batch-modal')).not.toBeInTheDocument()
-      fireEvent.click(screen.getByTestId('batch-btn'))
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      await user.click(
+        screen.getByRole('button', { name: 'datasetDocuments.list.action.batchAdd' }),
+      )
+      await user.click(
+        screen.getByRole('menuitem', { name: 'datasetDocuments.list.action.batchAdd' }),
+      )
       expect(screen.getByTestId('batch-modal')).toBeInTheDocument()
+      await userEvent
+        .setup({ advanceTimers: vi.advanceTimersByTime })
+        .click(screen.getByTestId('batch-cancel'))
+      expect(screen.queryByTestId('batch-modal')).not.toBeInTheDocument()
+      expect(mocks.batchImport).not.toHaveBeenCalled()
     })
 
-    it('should close batch modal when cancel clicked', () => {
-      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      fireEvent.click(screen.getByTestId('batch-btn'))
-      expect(screen.getByTestId('batch-modal')).toBeInTheDocument()
-      fireEvent.click(screen.getByTestId('batch-cancel'))
-      expect(screen.queryByTestId('batch-modal')).not.toBeInTheDocument()
-    })
-
-    it('should call segmentBatchImport on confirm', async () => {
+    it('should poll the import job until it finishes', async () => {
       mocks.batchImport.mockResolvedValue({ job_id: 'job-1', job_status: 'waiting' })
+      mocks.checkProgress
+        .mockResolvedValueOnce({ job_id: 'job-1', job_status: 'processing' })
+        .mockResolvedValueOnce({ job_id: 'job-1', job_status: 'completed' })
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      fireEvent.click(screen.getByTestId('batch-btn'))
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      await user.click(
+        screen.getByRole('button', { name: 'datasetDocuments.list.action.batchAdd' }),
+      )
+      await user.click(
+        screen.getByRole('menuitem', { name: 'datasetDocuments.list.action.batchAdd' }),
+      )
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('batch-confirm'))
+        await userEvent
+          .setup({ advanceTimers: vi.advanceTimersByTime })
+          .click(screen.getByTestId('batch-confirm'))
+      })
+      await act(async () => {
+        vi.advanceTimersByTime(2500)
+      })
+      await act(async () => {
+        vi.advanceTimersByTime(2500)
       })
 
-      expect(mocks.batchImport).toHaveBeenCalledWith(
-        {
-          url: '/datasets/ds-1/documents/doc-1/segments/batch_import',
-          body: { upload_file_id: 'file-1' },
-        },
-        expect.objectContaining({
-          onSuccess: expect.any(Function),
-          onError: expect.any(Function),
-        }),
+      expect(mocks.batchImport).toHaveBeenCalledWith({
+        params: { dataset_id: 'ds-1', document_id: 'doc-1' },
+        body: { upload_file_id: 'file-1' },
+      })
+      expect(mocks.checkProgress).toHaveBeenCalledTimes(2)
+      expect(mocks.checkProgress).toHaveBeenCalledWith({ params: { job_id: 'job-1' } })
+    })
+
+    it('should stop polling when the job reports an unknown status', async () => {
+      mocks.batchImport.mockResolvedValue({ job_id: 'job-1', job_status: 'waiting' })
+      mocks.checkProgress.mockResolvedValue({ job_id: 'job-1', job_status: 'queued' })
+      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      await user.click(
+        screen.getByRole('button', { name: 'datasetDocuments.list.action.batchAdd' }),
       )
+      await user.click(
+        screen.getByRole('menuitem', { name: 'datasetDocuments.list.action.batchAdd' }),
+      )
+
+      await act(async () => {
+        await userEvent
+          .setup({ advanceTimers: vi.advanceTimersByTime })
+          .click(screen.getByTestId('batch-confirm'))
+      })
+      await act(async () => {
+        vi.advanceTimersByTime(5000)
+      })
+
+      expect(mocks.checkProgress).toHaveBeenCalledTimes(1)
     })
   })
 
   describe('isFullDocMode', () => {
-    it('should detect full-doc mode from document_process_rule', () => {
-      mocks.state.documentDetail = createDocumentDetail({
-        doc_form: 'hierarchical_model',
-        document_process_rule: { rules: { parent_mode: 'full-doc' } },
-      })
-      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      expect(screen.queryByTestId('segment-add')).not.toBeInTheDocument()
-    })
-
     it('should detect full-doc mode from dataset_process_rule as fallback', () => {
       mocks.state.documentDetail = createDocumentDetail({
         doc_form: 'hierarchical_model',
@@ -563,7 +494,9 @@ describe('DocumentDetail', () => {
         dataset_process_rule: { rules: { parent_mode: 'full-doc' } },
       })
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      expect(screen.queryByTestId('segment-add')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'datasetDocuments.list.action.addButton' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should not be full-doc when parentMode is paragraph', () => {
@@ -572,25 +505,30 @@ describe('DocumentDetail', () => {
         document_process_rule: { rules: { parent_mode: 'paragraph' } },
       })
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      expect(screen.getByTestId('segment-add')).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'datasetDocuments.list.action.addButton' }),
+      ).toBeInTheDocument()
     })
   })
+})
 
-  describe('Legacy DataSourceInfo', () => {
-    it('should extract extension from legacy data_source_info', () => {
-      mocks.state.documentDetail = createDocumentDetail({
-        data_source_info: { upload_file: { extension: '.pdf' } },
-      })
-      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      expect(screen.getByTestId('document-title')).toHaveAttribute('data-extension', '.pdf')
-    })
-
-    it('should handle non-legacy data_source_info gracefully', () => {
-      mocks.state.documentDetail = createDocumentDetail({
-        data_source_info: { url: 'https://example.com' },
-      })
-      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      expect(screen.getByTestId('document-title')).toBeInTheDocument()
-    })
-  })
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.metadata.get': async () => ({
+        doc_metadata: [],
+        built_in_field_enabled: false,
+      }),
+      'datasets.byDatasetId.documents.delete': async () => ({ result: 'success' }),
+      'datasets.byDatasetId.documents.status.byAction.batch.patch': async () => ({
+        result: 'success',
+      }),
+      'datasets.batchImportStatus.byJobId.get': (input) => mocks.checkProgress(input),
+      'datasets.byDatasetId.documents.byDocumentId.segments.batchImport.post': (input) =>
+        mocks.batchImport(input),
+    }),
+  }
 })

@@ -1,4 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useWebAppStore } from '@/context/web-app-context'
+import { AccessMode } from '@/models/access-control'
+import { createHttpError } from '@/service/http-error'
 import Splash from '../splash'
 
 const navigationMocks = vi.hoisted(() => ({
@@ -16,19 +20,11 @@ const webAppAuthMocks = vi.hoisted(() => ({
 
 const fetchAccessTokenMock = vi.hoisted(() => vi.fn())
 
-const webAppState: {
-  shareCode: string | null
-  webAppAccessMode: string
-  embeddedUserId: string
-} = {
-  shareCode: 'share-app',
-  webAppAccessMode: 'public',
-  embeddedUserId: 'embedded-user',
-}
-
-vi.mock('@/context/web-app-context', () => ({
-  useWebAppStore: (selector: (state: typeof webAppState) => unknown) => selector(webAppState),
-}))
+const originalUrl = window.location.href
+afterEach(() => {
+  useWebAppStore.setState(useWebAppStore.getInitialState(), true)
+  window.history.replaceState({}, '', originalUrl)
+})
 
 vi.mock('@/next/navigation', () => ({
   usePathname: () => navigationMocks.pathname,
@@ -44,10 +40,10 @@ vi.mock('@/service/webapp-auth', () => webAppAuthMocks)
 
 describe('Splash', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    webAppState.shareCode = 'share-app'
-    webAppState.webAppAccessMode = 'public'
-    webAppState.embeddedUserId = 'embedded-user'
+    vi.resetAllMocks()
+    useWebAppStore.setState({ shareCode: 'share-app' })
+    useWebAppStore.setState({ webAppAccessMode: AccessMode.PUBLIC })
+    useWebAppStore.setState({ embeddedUserId: 'embedded-user' })
     navigationMocks.pathname = '/chatbot/share-app'
     window.history.replaceState({}, '', navigationMocks.pathname)
     navigationMocks.searchParams = new URLSearchParams({
@@ -92,7 +88,7 @@ describe('Splash', () => {
   it('should use the fallback without checking auth when the sign-in page has no target', async () => {
     navigationMocks.searchParams = new URLSearchParams()
     navigationMocks.pathname = '/webapp-signin'
-    webAppState.shareCode = null
+    useWebAppStore.setState({ shareCode: null })
 
     render(
       <Splash>
@@ -110,7 +106,7 @@ describe('Splash', () => {
   it('should fall back before checking auth when a nested sign-in route has stale share state', async () => {
     navigationMocks.searchParams = new URLSearchParams()
     navigationMocks.pathname = '/webapp-signin/check-code'
-    webAppState.shareCode = 'previous-share-app'
+    useWebAppStore.setState({ shareCode: 'previous-share-app' })
 
     render(
       <Splash>
@@ -131,7 +127,7 @@ describe('Splash', () => {
       userLoggedIn: true,
       appLoggedIn: false,
     })
-    fetchAccessTokenMock.mockRejectedValue(new Response(null, { status: 404 }))
+    fetchAccessTokenMock.mockRejectedValue(createHttpError(new Response(null, { status: 404 })))
 
     render(
       <Splash>
@@ -146,8 +142,8 @@ describe('Splash', () => {
     navigationMocks.searchParams = new URLSearchParams()
     navigationMocks.pathname = '/environment/chat/environment-app'
     window.history.replaceState({}, '', navigationMocks.pathname)
-    webAppState.shareCode = 'environment-app'
-    webAppState.webAppAccessMode = 'sso_verified'
+    useWebAppStore.setState({ shareCode: 'environment-app' })
+    useWebAppStore.setState({ webAppAccessMode: AccessMode.EXTERNAL_MEMBERS })
 
     render(
       <Splash>
@@ -171,13 +167,13 @@ describe('Splash', () => {
     })
     navigationMocks.pathname = '/environment/chat/environment-app'
     window.history.replaceState({}, '', navigationMocks.pathname)
-    webAppState.shareCode = 'environment-app'
-    webAppState.webAppAccessMode = 'sso_verified'
+    useWebAppStore.setState({ shareCode: 'environment-app' })
+    useWebAppStore.setState({ webAppAccessMode: AccessMode.EXTERNAL_MEMBERS })
     webAppAuthMocks.webAppLoginStatus.mockResolvedValue({
       userLoggedIn: true,
       appLoggedIn: false,
     })
-    fetchAccessTokenMock.mockRejectedValue(new Response(null, { status: 401 }))
+    fetchAccessTokenMock.mockRejectedValue(createHttpError(new Response(null, { status: 401 })))
 
     render(
       <Splash>
@@ -210,7 +206,7 @@ describe('Splash', () => {
     expect(navigationMocks.replace).not.toHaveBeenCalled()
   })
 
-  it('should expose the unavailable-state action as a button', () => {
+  it('logs out and returns from the unavailable state through its keyboard action', async () => {
     navigationMocks.searchParams = new URLSearchParams({
       code: '404',
       message: 'The Web App is unavailable.',
@@ -222,6 +218,12 @@ describe('Splash', () => {
       </Splash>,
     )
 
-    expect(screen.getByRole('button', { name: 'share.login.backToHome' })).toBeInTheDocument()
+    screen.getByRole('button', { name: 'share.login.backToHome' }).focus()
+    await userEvent.setup().keyboard('{Enter}')
+    expect(webAppAuthMocks.webAppLogout).toHaveBeenCalledWith({
+      kind: 'default',
+      code: 'share-app',
+    })
+    expect(navigationMocks.replace).toHaveBeenCalledWith('/webapp-signin?')
   })
 })

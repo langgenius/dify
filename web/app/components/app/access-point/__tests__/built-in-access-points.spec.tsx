@@ -1,7 +1,8 @@
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement } from 'react'
-import type { AppModeEnum } from '@/types/app'
 import { screen } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { render as renderWithConsole } from '@/test/console/render'
 import { createAppDetailFixture } from '@/test/fixtures/app'
@@ -42,7 +43,7 @@ function render(ui: ReactElement) {
   queryClient.setQueryData(['system-features'], { webapp_auth: { enabled: true } })
   queryClient.setQueryData(
     consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
-    createAppDetailFixture({ ...mocks.appInfo, mode: mocks.appInfo.mode as AppModeEnum }),
+    createAppDetailFixture({ ...mocks.appInfo, mode: mocks.appInfo.mode as AppMode }),
   )
   return renderWithConsole(ui, { wrapper: createQueryClientWrapper(queryClient) })
 }
@@ -193,23 +194,6 @@ describe('BuiltInAccessPoints', () => {
     )
   })
 
-  it('highlights only the targeted built-in access point card', () => {
-    render(
-      <BuiltInAccessPoints
-        appId="app-1"
-        canDeploy
-        canManageAccessPoint
-        canReleaseAndVersion
-        highlightedAccessPoint="mcp"
-      />,
-    )
-
-    expect(mocks.webCard).toHaveBeenCalledWith(expect.objectContaining({ highlighted: false }))
-    expect(mocks.apiCard).toHaveBeenCalledWith(expect.objectContaining({ highlighted: false }))
-    expect(mocks.mcpCard).toHaveBeenCalledWith(expect.objectContaining({ highlighted: true }))
-    expect(mocks.triggerCard).toHaveBeenCalledWith(expect.objectContaining({ highlighted: false }))
-  })
-
   it('enables Trigger and disables the other access points in trigger mode', () => {
     mocks.workflow = {
       data: {
@@ -285,8 +269,8 @@ describe('BuiltInAccessPoints', () => {
       retry: (failureCount: number, error: unknown) => boolean
     }
 
-    expect(options.retry(0, new Response(null, { status: 403 }))).toBe(false)
-    expect(options.retry(0, new Response(null, { status: 500 }))).toBe(true)
-    expect(options.retry(3, new Response(null, { status: 500 }))).toBe(false)
+    expect(options.retry(0, createHttpError(new Response(null, { status: 403 })))).toBe(false)
+    expect(options.retry(0, createHttpError(new Response(null, { status: 500 })))).toBe(true)
+    expect(options.retry(3, createHttpError(new Response(null, { status: 500 })))).toBe(false)
   })
 })

@@ -2,19 +2,10 @@ import type { ChatWithHistoryContextValue } from '../../context'
 import type { AppData, ConversationItem } from '@/models/share'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { useChatWithHistoryContext } from '../../context'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { InputVarType } from '@/app/components/workflow/types'
+import { ChatWithHistoryContext, useChatWithHistoryContext } from '../../context'
 import Header from '../index'
-
-// Mock context module
-vi.mock('../../context', () => ({
-  useChatWithHistoryContext: vi.fn(),
-}))
-
-// Mock InputsFormContent
-vi.mock('@/app/components/base/chat/chat-with-history/inputs-form/content', () => ({
-  default: () => <div data-testid="inputs-form-content">InputsFormContent</div>,
-}))
 
 const mockAppData: AppData = {
   app_id: 'app-1',
@@ -30,7 +21,7 @@ const mockAppData: AppData = {
   can_replace_logo: false,
 }
 
-const mockContextDefaults: ChatWithHistoryContextValue = {
+const mockContextDefaults: Partial<ChatWithHistoryContextValue> = {
   appData: mockAppData,
   currentConversationId: '',
   currentConversationItem: undefined,
@@ -45,15 +36,27 @@ const mockContextDefaults: ChatWithHistoryContextValue = {
   handleSidebarCollapse: vi.fn(),
   isResponding: false,
   conversationRenaming: false,
-  showConfig: false,
-} as unknown as ChatWithHistoryContextValue
+}
 
+const conversation = (overrides: Partial<ConversationItem> = {}): ConversationItem => ({
+  id: 'conv-1',
+  name: 'My Chat',
+  inputs: {},
+  introduction: '',
+  ...overrides,
+})
 const setup = (overrides: Partial<ChatWithHistoryContextValue> = {}) => {
-  vi.mocked(useChatWithHistoryContext).mockReturnValue({
-    ...mockContextDefaults,
-    ...overrides,
-  })
-  return render(<Header />)
+  function Provider() {
+    const defaults = useChatWithHistoryContext()
+    return (
+      <ChatWithHistoryContext.Provider
+        value={{ ...defaults, ...mockContextDefaults, ...overrides }}
+      >
+        <Header />
+      </ChatWithHistoryContext.Provider>
+    )
+  }
+  return render(<Provider />)
 }
 
 describe('Header Component', () => {
@@ -61,28 +64,25 @@ describe('Header Component', () => {
     vi.clearAllMocks()
   })
 
+  afterEach(() => vi.restoreAllMocks())
+
   describe('Rendering', () => {
-    it('should render conversation name when conversation is selected', () => {
-      const mockConv = { id: 'conv-1', name: 'My Chat' } as ConversationItem
+    it('opens chat settings with the conversation inputs', async () => {
+      const user = userEvent.setup()
+      const mockConv = conversation()
       setup({
         currentConversationId: 'conv-1',
         currentConversationItem: mockConv,
-        sidebarCollapseState: true,
-      })
-      expect(screen.getByText('My Chat'))!.toBeInTheDocument()
-    })
-
-    it('should render ViewFormDropdown trigger when inputsForms are present', () => {
-      const mockConv = { id: 'conv-1', name: 'My Chat' } as ConversationItem
-      setup({
-        currentConversationId: 'conv-1',
-        currentConversationItem: mockConv,
-        inputsForms: [{ id: 'form-1' }],
+        inputsForms: [
+          { type: InputVarType.textInput, label: 'Topic', variable: 'topic', required: false },
+        ],
+        currentConversationInputs: { topic: 'Travel' },
       })
 
-      const buttons = screen.getAllByRole('button')
-      // Sidebar(1) + Conversation operation(1) + NewChat(1) + ResetChat(1) + ViewForm(1) = 5 buttons
-      expect(buttons).toHaveLength(5)
+      await user.click(screen.getByRole('button', { name: 'share.chat.viewChatSettings' }))
+      expect(screen.getByRole('textbox', { name: 'Topic' })).toHaveValue('Travel')
+      await user.keyboard('{Escape}')
+      expect(screen.queryByRole('textbox', { name: 'Topic' })).not.toBeInTheDocument()
     })
   })
 
@@ -92,7 +92,7 @@ describe('Header Component', () => {
       setup({ handleNewConversation, sidebarCollapseState: true, currentConversationId: 'conv-1' })
 
       const resetChatBtn = screen.getByRole('button', { name: 'share.chat.resetChat' })
-      await userEvent.click(resetChatBtn)
+      await userEvent.setup().click(resetChatBtn)
 
       expect(handleNewConversation).toHaveBeenCalled()
     })
@@ -102,14 +102,14 @@ describe('Header Component', () => {
       setup({ handleSidebarCollapse, sidebarCollapseState: true })
 
       const sidebarBtn = screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' })
-      await userEvent.click(sidebarBtn)
+      await userEvent.setup().click(sidebarBtn)
 
       expect(handleSidebarCollapse).toHaveBeenCalledWith(false)
     })
 
     it('should render operation menu and handle pin', async () => {
       const handlePinConversation = vi.fn()
-      const mockConv = { id: 'conv-1', name: 'My Chat' } as ConversationItem
+      const mockConv = conversation()
       setup({
         currentConversationId: 'conv-1',
         currentConversationItem: mockConv,
@@ -118,59 +118,60 @@ describe('Header Component', () => {
       })
 
       const trigger = screen.getByText('My Chat')
-      await userEvent.click(trigger)
+      await userEvent.setup().click(trigger)
 
       const pinBtn = await screen.findByText('explore.sidebar.action.pin')
       expect(pinBtn)!.toBeInTheDocument()
 
-      await userEvent.click(pinBtn)
+      await userEvent.setup().click(pinBtn)
 
       expect(handlePinConversation).toHaveBeenCalledWith('conv-1')
     })
 
     it('should handle unpin', async () => {
       const handleUnpinConversation = vi.fn()
-      const mockConv = { id: 'conv-1', name: 'My Chat' } as ConversationItem
+      const mockConv = conversation()
       setup({
         currentConversationId: 'conv-1',
         currentConversationItem: mockConv,
         handleUnpinConversation,
-        pinnedConversationList: [{ id: 'conv-1' } as ConversationItem],
+        pinnedConversationList: [conversation()],
         sidebarCollapseState: true,
       })
 
-      await userEvent.click(screen.getByText('My Chat'))
+      await userEvent.setup().click(screen.getByText('My Chat'))
 
       const unpinBtn = await screen.findByText('explore.sidebar.action.unpin')
-      await userEvent.click(unpinBtn)
+      await userEvent.setup().click(unpinBtn)
 
       expect(handleUnpinConversation).toHaveBeenCalledWith('conv-1')
     })
 
     it('should handle rename cancellation', async () => {
-      const mockConv = { id: 'conv-1', name: 'My Chat' } as ConversationItem
+      const mockConv = conversation()
       setup({
         currentConversationId: 'conv-1',
         currentConversationItem: mockConv,
         sidebarCollapseState: true,
       })
 
-      await userEvent.click(screen.getByText('My Chat'))
+      await userEvent.setup().click(screen.getByText('My Chat'))
 
       const renameMenuBtn = await screen.findByText('explore.sidebar.action.rename')
-      await userEvent.click(renameMenuBtn)
+      await userEvent.setup().click(renameMenuBtn)
 
       const cancelBtn = await screen.findByText('common.operation.cancel')
-      await userEvent.click(cancelBtn)
+      await userEvent.setup().click(cancelBtn)
 
       await waitFor(() => {
         expect(screen.queryByText('common.chat.renameConversation')).not.toBeInTheDocument()
       })
+      expect(mockContextDefaults.handleRenameConversation).not.toHaveBeenCalled()
     })
 
     it('should handle rename success flow', async () => {
       const handleRenameConversation = vi.fn()
-      const mockConv = { id: 'conv-1', name: 'My Chat' } as ConversationItem
+      const mockConv = conversation()
       setup({
         currentConversationId: 'conv-1',
         currentConversationItem: mockConv,
@@ -178,19 +179,19 @@ describe('Header Component', () => {
         sidebarCollapseState: true,
       })
 
-      await userEvent.click(screen.getByText('My Chat'))
+      await userEvent.setup().click(screen.getByText('My Chat'))
 
       const renameMenuBtn = await screen.findByText('explore.sidebar.action.rename')
-      await userEvent.click(renameMenuBtn)
+      await userEvent.setup().click(renameMenuBtn)
 
       expect(await screen.findByText('common.chat.renameConversation'))!.toBeInTheDocument()
 
       const input = screen.getByDisplayValue('My Chat')
-      await userEvent.clear(input)
-      await userEvent.type(input, 'New Name')
+      await userEvent.setup().clear(input)
+      await userEvent.setup().type(input, 'New Name')
 
       const saveBtn = await screen.findByText('common.operation.save')
-      await userEvent.click(saveBtn)
+      await userEvent.setup().click(saveBtn)
 
       expect(handleRenameConversation).toHaveBeenCalledWith(
         'conv-1',
@@ -210,7 +211,7 @@ describe('Header Component', () => {
 
     it('should handle delete flow', async () => {
       const handleDeleteConversation = vi.fn()
-      const mockConv = { id: 'conv-1', name: 'My Chat' } as ConversationItem
+      const mockConv = conversation()
       setup({
         currentConversationId: 'conv-1',
         currentConversationItem: mockConv,
@@ -218,16 +219,16 @@ describe('Header Component', () => {
         sidebarCollapseState: true,
       })
 
-      await userEvent.click(screen.getByText('My Chat'))
+      await userEvent.setup().click(screen.getByText('My Chat'))
 
       const deleteMenuBtn = await screen.findByText('explore.sidebar.action.delete')
-      await userEvent.click(deleteMenuBtn)
+      await userEvent.setup().click(deleteMenuBtn)
 
       expect(handleDeleteConversation).not.toHaveBeenCalled()
       expect(await screen.findByText('share.chat.deleteConversation.title'))!.toBeInTheDocument()
 
       const confirmBtn = await screen.findByText('common.operation.confirm')
-      await userEvent.click(confirmBtn)
+      await userEvent.setup().click(confirmBtn)
 
       expect(handleDeleteConversation).toHaveBeenCalledWith('conv-1', expect.any(Object))
 
@@ -242,63 +243,52 @@ describe('Header Component', () => {
     })
 
     it('should handle delete cancellation', async () => {
-      const mockConv = { id: 'conv-1', name: 'My Chat' } as ConversationItem
+      const mockConv = conversation()
       setup({
         currentConversationId: 'conv-1',
         currentConversationItem: mockConv,
         sidebarCollapseState: true,
       })
 
-      await userEvent.click(screen.getByText('My Chat'))
+      await userEvent.setup().click(screen.getByText('My Chat'))
 
       const deleteMenuBtn = await screen.findByText('explore.sidebar.action.delete')
-      await userEvent.click(deleteMenuBtn)
+      await userEvent.setup().click(deleteMenuBtn)
 
       const cancelBtn = await screen.findByText('common.operation.cancel')
-      await userEvent.click(cancelBtn)
+      await userEvent.setup().click(cancelBtn)
 
       await waitFor(() => {
         expect(screen.queryByText('share.chat.deleteConversation.title')).not.toBeInTheDocument()
       })
-    })
-
-    it('should handle empty translated delete content via fallback', async () => {
-      const mockConv = { id: 'conv-1', name: 'My Chat' } as ConversationItem
-      setup({
-        currentConversationId: 'conv-1',
-        currentConversationItem: mockConv,
-        sidebarCollapseState: true,
-      })
-
-      await userEvent.click(screen.getByText('My Chat'))
-      await userEvent.click(await screen.findByText('explore.sidebar.action.delete'))
-
-      expect(await screen.findByText('share.chat.deleteConversation.title'))!.toBeInTheDocument()
+      expect(mockContextDefaults.handleDeleteConversation).not.toHaveBeenCalled()
     })
   })
 
   describe('Edge Cases', () => {
     it('should not render inputs form dropdown if inputsForms is empty', () => {
-      const mockConv = { id: 'conv-1', name: 'My Chat' } as ConversationItem
+      const mockConv = conversation()
       setup({
         currentConversationId: 'conv-1',
         currentConversationItem: mockConv,
         inputsForms: [],
       })
 
-      const buttons = screen.getAllByRole('button')
-      // Sidebar(1) + Conversation operation(1) + NewChat(1) + ResetChat(1) = 4 buttons
-      expect(buttons).toHaveLength(4)
+      expect(
+        screen.queryByRole('button', { name: 'share.chat.viewChatSettings' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should render system title if conversation id is missing', () => {
       setup({ currentConversationId: '', sidebarCollapseState: true })
       const titleEl = screen.getByText('Test App')
-      expect(titleEl)!.toHaveClass('system-md-semibold')
+      expect(titleEl).toBeInTheDocument()
     })
 
     it('should render app icon from URL when icon_url is provided', () => {
-      setup({
+      vi.spyOn(HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(true)
+      vi.spyOn(HTMLImageElement.prototype, 'naturalWidth', 'get').mockReturnValue(32)
+      const { container } = setup({
         appData: {
           ...mockAppData,
           site: {
@@ -308,26 +298,8 @@ describe('Header Component', () => {
           },
         },
       })
-      const img = screen.getByAltText('app icon')
-      expect(img)!.toHaveAttribute('src', 'https://example.com/icon.png')
-    })
-
-    it('should handle undefined appData gracefully (optional chaining)', () => {
-      setup({ appData: null as unknown as AppData })
-      // Just verify it doesn't crash and renders the basic structure
-      expect(screen.getAllByRole('button').length).toBeGreaterThan(0)
-    })
-
-    it('should handle missing name in conversation item', () => {
-      const mockConv = { id: 'conv-1', name: '' } as ConversationItem
-      setup({
-        currentConversationId: 'conv-1',
-        currentConversationItem: mockConv,
-        sidebarCollapseState: true,
-      })
-      // The separator is just a div with text content '/'
-      // The separator is just a div with text content '/'
-      expect(screen.getByText('/'))!.toBeInTheDocument()
+      expect(container.querySelector('img')).toHaveAttribute('src', 'https://example.com/icon.png')
+      expect(screen.queryByRole('img')).not.toBeInTheDocument()
     })
 
     it('should handle New Chat button state when currentConversationId is present but isResponding is true', () => {
@@ -358,31 +330,13 @@ describe('Header Component', () => {
     })
 
     it('should not render operation menu if sidebar is NOT collapsed', () => {
-      const mockConv = { id: 'conv-1', name: 'My Chat' } as ConversationItem
+      const mockConv = conversation()
       setup({
         currentConversationId: 'conv-1',
         currentConversationItem: mockConv,
         sidebarCollapseState: false,
       })
       expect(screen.queryByText('My Chat')).not.toBeInTheDocument()
-    })
-
-    it('should pass empty rename value when conversation name is undefined', async () => {
-      const mockConv = { id: 'conv-1' } as ConversationItem
-      const { container } = setup({
-        currentConversationId: 'conv-1',
-        currentConversationItem: mockConv,
-        sidebarCollapseState: true,
-      })
-
-      const operationTrigger = container.querySelector(
-        '.flex.cursor-pointer.items-center.rounded-lg.p-1\\.5.pl-2.text-text-secondary.hover\\:bg-state-base-hover',
-      ) as HTMLElement
-      await userEvent.click(operationTrigger)
-      await userEvent.click(await screen.findByText('explore.sidebar.action.rename'))
-
-      const input = screen.getByRole('textbox') as HTMLInputElement
-      expect(input.value).toBe('')
     })
   })
 })

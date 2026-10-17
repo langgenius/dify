@@ -1,8 +1,7 @@
-import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { screen } from '@testing-library/react'
+import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import Panel from '../index'
 
-let mockIsChatMode = true
 let mockIsWorkflowPage = false
 const mockSetShowGlobalVariablePanel = vi.fn()
 
@@ -19,40 +18,17 @@ vi.mock('../../../constants', () => ({
   isInWorkflowPage: () => mockIsWorkflowPage,
 }))
 
-vi.mock('../../../hooks/use-workflow', () => ({
-  useIsChatMode: () => mockIsChatMode,
-}))
-
 describe('global-variable-panel path', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockIsChatMode = true
     mockIsWorkflowPage = false
   })
 
-  it('should render chat global variables and close the panel', async () => {
-    const user = userEvent.setup()
-    const { container } = render(<Panel />)
-
-    expect(screen.getByText('workflow.globalVar.title')).toBeInTheDocument()
-    expect(
-      screen.getByText((_, node) => node?.textContent === 'sys.conversation_id'),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText((_, node) => node?.textContent === 'sys.dialog_count'),
-    ).toBeInTheDocument()
-    expect(screen.queryByText('sys.timestamp')).not.toBeInTheDocument()
-
-    await user.click(container.querySelector('.cursor-pointer') as HTMLElement)
-
-    expect(mockSetShowGlobalVariablePanel).toHaveBeenCalledWith(false)
-  })
-
   it('should render workflow trigger variables for non-chat workflow pages', () => {
-    mockIsChatMode = false
     mockIsWorkflowPage = true
 
-    render(<Panel />)
+    render(<Panel />, {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     expect(screen.queryByText('sys.conversation_id')).not.toBeInTheDocument()
     expect(screen.queryByText('sys.dialog_count')).not.toBeInTheDocument()

@@ -29,6 +29,7 @@ describe('HumanInputFilledFormList', () => {
             node_id: 'node-2',
             node_title: 'Review',
             rendered_content: 'Reviewed by Bob',
+            submitted_data: { summary: 'Reviewed by Bob' },
             action_id: 'review',
             action_text: 'Review',
           }),
@@ -36,14 +37,8 @@ describe('HumanInputFilledFormList', () => {
       />,
     )
 
-    expect(screen.getByText('Approval'))!.toBeInTheDocument()
-    expect(screen.getByText('Review'))!.toBeInTheDocument()
-    expect(screen.getAllByTestId('submitted-field-values')).toHaveLength(2)
-    expect(screen.getAllByTestId('executed-action')).toHaveLength(2)
-    expect(screen.getAllByTestId('submitted-field-summary')).toHaveLength(2)
-    expect(screen.getAllByTestId('submitted-field-summary')[0]).toHaveTextContent(
-      'Approved by Alice',
-    )
+    expect(screen.getByText('Approved by Alice')).toBeInTheDocument()
+    expect(screen.getByText('Reviewed by Bob')).toBeInTheDocument()
 
     const collapseApproval = screen.getByRole('button', {
       name: 'share.chat.collapse Approval',
@@ -51,6 +46,7 @@ describe('HumanInputFilledFormList', () => {
     await user.click(collapseApproval)
 
     expect(collapseApproval).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.getAllByTestId('submitted-field-values')).toHaveLength(1)
+    expect(screen.queryByText('Approved by Alice')).not.toBeInTheDocument()
+    expect(screen.getByText('Reviewed by Bob')).toBeInTheDocument()
   })
 })

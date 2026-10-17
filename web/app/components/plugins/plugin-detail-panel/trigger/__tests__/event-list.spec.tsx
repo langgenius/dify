@@ -1,15 +1,11 @@
 import type { TriggerEvent } from '@/app/components/plugins/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { TriggerEventsList } from '../event-list'
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useLanguage: () => 'en_US',
-}))
-
-vi.mock('@langgenius/dify-ui/cn', () => ({
-  cn: (...args: (string | undefined | false | null)[]) => args.filter(Boolean).join(' '),
 }))
 
 const mockTriggerEvents = [
@@ -27,7 +23,9 @@ const mockTriggerEvents = [
 ] as unknown as TriggerEvent[]
 
 let mockDetail: { plugin_id: string; provider: string } | undefined
-let mockProviderInfo: { events: TriggerEvent[] } | undefined
+let mockProviderInfo:
+  | { events: TriggerEvent[]; name: string; author: string; icon: string }
+  | undefined
 
 vi.mock('../../store', () => ({
   usePluginStore: (selector: (state: { detail: typeof mockDetail }) => typeof mockDetail) =>
@@ -38,124 +36,62 @@ vi.mock('@/service/use-triggers', () => ({
   useTriggerProviderInfo: () => ({ data: mockProviderInfo }),
 }))
 
-vi.mock('../event-detail-drawer', () => ({
-  EventDetailDrawer: ({ onClose }: { onClose: () => void }) => (
-    <div data-testid="event-detail-drawer">
-      <button data-testid="close-drawer" onClick={onClose}>
-        Close
-      </button>
-    </div>
-  ),
-}))
-
 describe('TriggerEventsList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockDetail = { plugin_id: 'test-plugin', provider: 'test-provider' }
-    mockProviderInfo = { events: mockTriggerEvents }
+    mockProviderInfo = {
+      events: mockTriggerEvents,
+      name: 'Test provider',
+      author: 'Dify',
+      icon: 'icon.png',
+    }
   })
 
-  describe('Rendering', () => {
-    it('should render event count', () => {
-      render(<TriggerEventsList />)
-
-      expect(
-        screen.getByText(
-          'pluginTrigger.events.actionNum:{"num":1,"event":"pluginTrigger.events.event"}',
-        ),
-      ).toBeInTheDocument()
-    })
-
-    it('should render event cards', () => {
-      render(<TriggerEventsList />)
-
-      expect(screen.getByText('Event One')).toBeInTheDocument()
-      expect(screen.getByText('Event one description')).toBeInTheDocument()
-    })
-
-    it('should return null when no provider info', () => {
-      mockProviderInfo = undefined
-      const { container } = render(<TriggerEventsList />)
-
-      expect(container).toBeEmptyDOMElement()
-    })
-
-    it('should return null when no events', () => {
-      mockProviderInfo = { events: [] }
-      const { container } = render(<TriggerEventsList />)
-
-      expect(container).toBeEmptyDOMElement()
-    })
-
-    it('should return null when no detail', () => {
-      mockDetail = undefined
-      mockProviderInfo = undefined
-      const { container } = render(<TriggerEventsList />)
-
-      expect(container).toBeEmptyDOMElement()
-    })
+  it.each([undefined, []])('hides the list when provider events are unavailable (%s)', (events) => {
+    mockProviderInfo = events ? { ...mockProviderInfo!, events } : undefined
+    const { container } = render(<TriggerEventsList />)
+    expect(container).toBeEmptyDOMElement()
   })
 
-  describe('User Interactions', () => {
-    it('should show detail drawer when event card clicked', () => {
-      render(<TriggerEventsList />)
-
-      fireEvent.click(screen.getByText('Event One'))
-
-      expect(screen.getByTestId('event-detail-drawer')).toBeInTheDocument()
-    })
-
-    it('opens an event through its named keyboard-focusable button', async () => {
-      const user = userEvent.setup()
-      render(<TriggerEventsList />)
-
-      const eventButton = screen.getByRole('button', { name: 'Event One' })
-      expect(eventButton).toHaveAccessibleDescription('Event one description')
-
-      await user.tab()
-      expect(eventButton).toHaveFocus()
-      await user.keyboard('{Enter}')
-
-      expect(screen.getByTestId('event-detail-drawer')).toBeInTheDocument()
-    })
-
-    it('should hide detail drawer when close clicked', () => {
-      render(<TriggerEventsList />)
-
-      fireEvent.click(screen.getByText('Event One'))
-      expect(screen.getByTestId('event-detail-drawer')).toBeInTheDocument()
-
-      fireEvent.click(screen.getByTestId('close-drawer'))
-      expect(screen.queryByTestId('event-detail-drawer')).not.toBeInTheDocument()
-    })
+  it('opens the selected event from the keyboard and closes its real drawer', async () => {
+    const user = userEvent.setup()
+    render(<TriggerEventsList />)
+    expect(
+      screen.getByText(
+        'pluginTrigger.events.actionNum:{"num":1,"event":"pluginTrigger.events.event"}',
+      ),
+    ).toBeInTheDocument()
+    const eventButton = screen.getByRole('button', { name: 'Event One' })
+    expect(eventButton).toHaveAccessibleDescription('Event one description')
+    await user.tab()
+    expect(eventButton).toHaveFocus()
+    await user.keyboard('{Enter}')
+    const drawer = await screen.findByRole('dialog')
+    expect(within(drawer).getByText('Event One')).toBeInTheDocument()
+    expect(within(drawer).getByText('Test provider')).toBeInTheDocument()
+    await user.click(within(drawer).getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
-  describe('Multiple Events', () => {
-    it('should render multiple event cards', () => {
-      const secondEvent = {
+  it('lists multiple events with the plural count', () => {
+    const secondEvent = {
+      ...mockTriggerEvents[0]!,
+      name: 'event-2',
+      identity: {
+        ...mockTriggerEvents[0]!.identity,
         name: 'event-2',
-        identity: {
-          author: 'author-2',
-          name: 'event-2',
-          label: { en_US: 'Event Two' },
-        },
-        description: { en_US: 'Event two description' },
-        parameters: [],
-        output_schema: {},
-      } as unknown as TriggerEvent
-
-      mockProviderInfo = {
-        events: [...mockTriggerEvents, secondEvent],
-      }
-      render(<TriggerEventsList />)
-
-      expect(screen.getByText('Event One')).toBeInTheDocument()
-      expect(screen.getByText('Event Two')).toBeInTheDocument()
-      expect(
-        screen.getByText(
-          'pluginTrigger.events.actionNum:{"num":2,"event":"pluginTrigger.events.events"}',
-        ),
-      ).toBeInTheDocument()
-    })
+        label: { en_US: 'Event Two' },
+      },
+    } as TriggerEvent
+    mockProviderInfo = { ...mockProviderInfo!, events: [...mockTriggerEvents, secondEvent] }
+    render(<TriggerEventsList />)
+    expect(screen.getByRole('button', { name: 'Event One' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Event Two' })).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'pluginTrigger.events.actionNum:{"num":2,"event":"pluginTrigger.events.events"}',
+      ),
+    ).toBeInTheDocument()
   })
 })

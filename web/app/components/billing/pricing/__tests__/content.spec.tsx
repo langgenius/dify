@@ -12,8 +12,15 @@ import {
 import { render } from '@/test/console/render'
 import { PricingContent } from '../content'
 
-const openBillingWindow = vi.hoisted(() => vi.fn())
-vi.mock('@/hooks/use-async-window-open', () => ({ useAsyncWindowOpen: () => openBillingWindow }))
+let billingPopup: {
+  location: { href: string }
+  opener: Window | null
+  close: ReturnType<typeof vi.fn>
+}
+beforeEach(() => {
+  billingPopup = { location: { href: '' }, opener: window, close: vi.fn() }
+  vi.spyOn(window, 'open').mockImplementation(() => billingPopup as unknown as Window)
+})
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en-US',
@@ -244,7 +251,6 @@ it('keeps plan information visible after a request failure and restores billing 
 
 afterEach(() => {
   vi.restoreAllMocks()
-  openBillingWindow.mockReset()
 })
 
 it('keeps the current paid plan billing action available while education loads or fails', async () => {
@@ -273,12 +279,11 @@ it('keeps the current paid plan billing action available while education loads o
         headers: { 'Content-Type': 'application/json' },
       }),
   )
-  openBillingWindow.mockImplementation((getUrl: () => Promise<string>) => getUrl())
   show()
   expect(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' })).toBeEnabled()
   expect(screen.getByRole('button', { name: 'billing.plansCommon.getStarted' })).toBeDisabled()
   await user.click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
-  await waitFor(() => expect(openBillingWindow).toHaveResolvedWith('https://billing.example.com'))
+  await waitFor(() => expect(billingPopup.location.href).toBe('https://billing.example.com'))
   await act(async () => {
     rejectEducation(new Error('Unavailable'))
     await request
@@ -334,7 +339,7 @@ it.each([
     expect(requestUrl).toContain('/billing/subscription')
     expect(requestUrl).toContain(`plan=${plan}`)
     expect(requestUrl).toContain(`interval=${selectedInterval}`)
-    expect(openBillingWindow).not.toHaveBeenCalled()
+    expect(window.open).not.toHaveBeenCalled()
   },
 )
 
@@ -351,11 +356,10 @@ it.each(['month', 'year'] as const)(
         headers: { 'Content-Type': 'application/json' },
       }),
     )
-    openBillingWindow.mockImplementation((getUrl: () => Promise<string>) => getUrl())
     show()
     if (interval === 'year') await user.click(screen.getByRole('switch'))
     await user.click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
-    await waitFor(() => expect(openBillingWindow).toHaveResolvedWith('https://billing.example.com'))
+    await waitFor(() => expect(billingPopup.location.href).toBe('https://billing.example.com'))
   },
 )
 it('includes the marketplace in the Premium purchase link name', async () => {

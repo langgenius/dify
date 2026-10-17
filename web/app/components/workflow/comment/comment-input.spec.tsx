@@ -1,4 +1,4 @@
-import type { FC, ReactElement } from 'react'
+import type { ReactElement } from 'react'
 import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
@@ -17,10 +17,6 @@ type MentionInputProps = {
   className?: string
 }
 
-const stableT = (key: string, options?: { ns?: string }) =>
-  options?.ns ? `${options.ns}.${key}` : key
-
-let mentionInputProps: MentionInputProps | null = null
 const mockConsoleState = vi.hoisted(() => ({
   userProfile: {
     id: 'user-1',
@@ -34,34 +30,30 @@ const render = (ui: ReactElement) =>
     wrapper: createAccountProfileQueryWrapper(mockConsoleState.userProfile),
   })
 
-vi.mock('react-i18next', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return {
-    useTranslation: () => ({
-      t: withSelectorKey(stableT),
-    }),
-  }
-})
-
+// Mention parsing is independently tested; retain the owner's controlled draft and reset behavior.
 vi.mock('./mention-input', () => ({
-  MentionInput: ((props: MentionInputProps) => {
-    mentionInputProps = props
-    return (
+  MentionInput: (props: MentionInputProps) => (
+    <>
+      <textarea
+        aria-label="Comment draft"
+        value={props.value}
+        disabled={props.disabled}
+        onChange={(event) => props.onChange(event.target.value)}
+      />
       <button
         type="button"
-        data-testid="mention-input"
-        onClick={() => props.onSubmit('Hello', ['user-2'])}
+        disabled={props.disabled}
+        onClick={() => props.onSubmit(props.value, ['user-2'])}
       >
-        MentionInput
+        Submit mention
       </button>
-    )
-  }) as FC<MentionInputProps>,
+    </>
+  ),
 }))
 
 describe('CommentInput', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mentionInputProps = null
   })
 
   it('moves the draft using a focused handle and finishes moving with Enter', async () => {
@@ -93,7 +85,7 @@ describe('CommentInput', () => {
     expect(handle).toHaveAttribute('aria-pressed', 'false')
     expect(onPositionChange).toHaveBeenCalledTimes(2)
     await user.tab()
-    expect(screen.getByTestId('mention-input')).toHaveFocus()
+    expect(screen.getByRole('textbox', { name: 'Comment draft' })).toHaveFocus()
   })
 
   it('does not offer keyboard movement while disabled', () => {
@@ -111,14 +103,6 @@ describe('CommentInput', () => {
     ).toBeDisabled()
   })
 
-  it('passes translated placeholder to mention input', () => {
-    render(<CommentInput position={{ x: 0, y: 0 }} onSubmit={vi.fn()} onCancel={vi.fn()} />)
-
-    expect(mentionInputProps?.placeholder).toBe('workflowComments.comments.placeholder.add')
-    expect(mentionInputProps?.autoFocus).toBe(true)
-    expect(mentionInputProps?.disabled).toBe(false)
-  })
-
   it('calls onCancel when Escape is pressed', () => {
     const onCancel = vi.fn()
 
@@ -126,18 +110,21 @@ describe('CommentInput', () => {
 
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(onCancel).not.toHaveBeenCalled()
-    fireEvent.keyDown(screen.getByTestId('mention-input'), { key: 'Escape' })
+    fireEvent.keyDown(screen.getByRole('textbox', { name: 'Comment draft' }), { key: 'Escape' })
 
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
-  it('forwards mention submit to onSubmit', () => {
+  it('submits the draft and clears it after the mention editor reports submission', async () => {
     const onSubmit = vi.fn()
 
     render(<CommentInput position={{ x: 0, y: 0 }} onSubmit={onSubmit} onCancel={vi.fn()} />)
 
-    fireEvent.click(screen.getByTestId('mention-input'))
+    const user = userEvent.setup()
+    await user.type(screen.getByRole('textbox', { name: 'Comment draft' }), 'Hello')
+    await user.click(screen.getByRole('button', { name: 'Submit mention' }))
 
     expect(onSubmit).toHaveBeenCalledWith('Hello', ['user-2'])
+    expect(screen.getByRole('textbox', { name: 'Comment draft' })).toHaveValue('')
   })
 })

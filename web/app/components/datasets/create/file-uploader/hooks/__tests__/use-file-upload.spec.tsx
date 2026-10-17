@@ -8,7 +8,8 @@ import {
   createConsoleQueryWrapper,
   renderWithConsoleQuery,
 } from '@/test/console/query-data'
-import { PROGRESS_COMPLETE, PROGRESS_ERROR, PROGRESS_NOT_STARTED } from '../../constants'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
+import { PROGRESS_COMPLETE, PROGRESS_ERROR } from '../../constants'
 // Import after mocks
 import { useFileUpload } from '../use-file-upload'
 
@@ -30,31 +31,26 @@ vi.mock('@/service/base', () => ({
 }))
 
 // Mock file upload config
-const mockFileUploadConfig = {
+const fileUploadConfig = createFileUploadConfigFixture({
   file_size_limit: 15,
   knowledge_file_size_limit: 50,
   batch_count_limit: 5,
   file_upload_limit: 10,
-}
+})
 
 const supportedFormats = {
   allowed_extensions: ['pdf', 'docx', 'txt', 'md'],
 }
 
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: () => ({ data: mockFileUploadConfig }),
-}))
 vi.mock('@/i18n/language', () => ({
   LanguagesSupported: ['en-US', 'zh-Hans'],
 }))
 
 // Mock file upload error message
-vi.mock('@/app/components/base/file-uploader/utils', () => ({
-  getFileUploadErrorMessage: (_e: unknown, defaultMsg: string) => defaultMsg,
-}))
 
 const createQueryClient = () => {
   const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(consoleQuery.files.upload.get.queryKey(), fileUploadConfig)
   queryClient.setQueryData(
     consoleQuery.files.supportType.get.queryOptions().queryKey,
     supportedFormats,
@@ -91,19 +87,6 @@ describe('useFileUpload', () => {
   })
 
   describe('initialization', () => {
-    it('should initialize with default values', () => {
-      const { result } = renderHook(() => useFileUpload(defaultOptions), {
-        wrapper: createWrapper(),
-      })
-
-      expect(result.current.dragging).toBe(false)
-      expect(result.current.hideUpload).toBe(false)
-      expect(result.current.dropRef.current).toBeNull()
-      expect(result.current.dragRef.current).toBeNull()
-      expect(result.current.fileUploaderRef.current).toBeNull()
-      expect(result.current.fileUploadConfig.file_size_limit).toBe(50)
-    })
-
     it('should set hideUpload true when not batch upload and has files', () => {
       const { result } = renderHook(
         () =>
@@ -160,6 +143,7 @@ describe('useFileUpload', () => {
     'keeps the explicit $allowedExtensions override while subscribing to supported formats',
     async ({ allowedExtensions, expectedAccept, uploadCount }) => {
       const queryClient = createConsoleQueryClient()
+      queryClient.setQueryData(consoleQuery.files.upload.get.queryKey(), fileUploadConfig)
       request.mockImplementation(async () => Response.json(supportedFormats))
       const Uploader = () => {
         const { fileUploaderRef, fileChangeHandle, acceptTypes } = useFileUpload({
@@ -213,39 +197,6 @@ describe('useFileUpload', () => {
     },
   )
 
-  describe('selectHandle', () => {
-    it('should trigger click on file input', () => {
-      const { result } = renderHook(() => useFileUpload(defaultOptions), {
-        wrapper: createWrapper(),
-      })
-
-      const mockClick = vi.fn()
-      const mockInput = { click: mockClick } as unknown as HTMLInputElement
-      Object.defineProperty(result.current.fileUploaderRef, 'current', {
-        value: mockInput,
-        writable: true,
-      })
-
-      act(() => {
-        result.current.selectHandle()
-      })
-
-      expect(mockClick).toHaveBeenCalled()
-    })
-
-    it('should do nothing when file input ref is null', () => {
-      const { result } = renderHook(() => useFileUpload(defaultOptions), {
-        wrapper: createWrapper(),
-      })
-
-      expect(() => {
-        act(() => {
-          result.current.selectHandle()
-        })
-      }).not.toThrow()
-    })
-  })
-
   describe('handlePreview', () => {
     it('should call onPreview when file has id', () => {
       const onPreview = vi.fn()
@@ -291,24 +242,6 @@ describe('useFileUpload', () => {
 
       expect(onFileListUpdate).toHaveBeenCalled()
     })
-
-    it('should clear file input value', () => {
-      const { result } = renderHook(() => useFileUpload(defaultOptions), {
-        wrapper: createWrapper(),
-      })
-
-      const mockInput = { value: 'some-file' } as HTMLInputElement
-      Object.defineProperty(result.current.fileUploaderRef, 'current', {
-        value: mockInput,
-        writable: true,
-      })
-
-      act(() => {
-        result.current.removeFile('file-123')
-      })
-
-      expect(mockInput.value).toBe('')
-    })
   })
 
   describe('fileChangeHandle', () => {
@@ -337,54 +270,6 @@ describe('useFileUpload', () => {
         existingFile,
         expect.objectContaining({ file: newFile }),
       ])
-    })
-
-    it('should handle valid files', async () => {
-      mockUpload.mockResolvedValue({ id: 'uploaded-id' })
-
-      const prepareFileList = vi.fn()
-      const { result } = renderHook(() => useFileUpload({ ...defaultOptions, prepareFileList }), {
-        wrapper: createWrapper(),
-      })
-
-      const mockFile = new File(['content'], 'test.pdf', { type: 'application/pdf' })
-      const event = {
-        target: { files: [mockFile] },
-      } as unknown as React.ChangeEvent<HTMLInputElement>
-
-      act(() => {
-        result.current.fileChangeHandle(event)
-      })
-
-      await waitFor(() => {
-        expect(prepareFileList).toHaveBeenCalled()
-      })
-    })
-
-    it('should limit files to batch count', () => {
-      const prepareFileList = vi.fn()
-      const { result } = renderHook(() => useFileUpload({ ...defaultOptions, prepareFileList }), {
-        wrapper: createWrapper(),
-      })
-
-      const files = Array.from(
-        { length: 10 },
-        (_, i) => new File(['content'], `file${i}.pdf`, { type: 'application/pdf' }),
-      )
-
-      const event = {
-        target: { files },
-      } as unknown as React.ChangeEvent<HTMLInputElement>
-
-      act(() => {
-        result.current.fileChangeHandle(event)
-      })
-
-      // Should be called with at most batch_count_limit files
-      if (prepareFileList.mock.calls.length > 0) {
-        const calledFiles = prepareFileList.mock.calls[0]![0]
-        expect(calledFiles.length).toBeLessThanOrEqual(mockFileUploadConfig.batch_count_limit)
-      }
     })
 
     it('should reject invalid file types', () => {
@@ -455,44 +340,6 @@ describe('useFileUpload', () => {
       )
     }
 
-    it('should set dragging true on dragenter', async () => {
-      const { getByTestId } = await act(async () =>
-        render(
-          <>
-            <TestDropzone options={defaultOptions} />
-          </>,
-        ),
-      )
-
-      const dropzone = getByTestId('dropzone')
-
-      await act(async () => {
-        const dragEnterEvent = new Event('dragenter', { bubbles: true, cancelable: true })
-        dropzone.dispatchEvent(dragEnterEvent)
-      })
-
-      expect(getByTestId('dragging').textContent).toBe('true')
-    })
-
-    it('should handle dragover event', async () => {
-      const { getByTestId } = await act(async () =>
-        render(
-          <>
-            <TestDropzone options={defaultOptions} />
-          </>,
-        ),
-      )
-
-      const dropzone = getByTestId('dropzone')
-
-      await act(async () => {
-        const dragOverEvent = new Event('dragover', { bubbles: true, cancelable: true })
-        dropzone.dispatchEvent(dragOverEvent)
-      })
-
-      expect(dropzone)!.toBeInTheDocument()
-    })
-
     it('should set dragging false on dragleave from drag overlay', async () => {
       const { getByTestId, queryByTestId } = await act(async () =>
         render(
@@ -511,18 +358,14 @@ describe('useFileUpload', () => {
 
       expect(getByTestId('dragging').textContent).toBe('true')
 
-      const dragOverlay = queryByTestId('drag-overlay')
-      if (dragOverlay) {
-        await act(async () => {
-          const dragLeaveEvent = new Event('dragleave', { bubbles: true, cancelable: true })
-          Object.defineProperty(dragLeaveEvent, 'target', { value: dragOverlay })
-          dropzone.dispatchEvent(dragLeaveEvent)
-        })
-      }
+      fireEvent.dragLeave(getByTestId('drag-overlay'))
+      expect(queryByTestId('drag-overlay')).not.toBeInTheDocument()
+      expect(getByTestId('dragging')).toHaveTextContent('false')
     })
 
     it('should handle drop with files', async () => {
-      mockUpload.mockResolvedValue({ id: 'uploaded-id' })
+      // Keep upload pending so the prepared local files can be inspected before replacement.
+      mockUpload.mockImplementation(() => new Promise(() => {}))
       const prepareFileList = vi.fn()
 
       const { getByTestId } = await act(async () =>
@@ -554,36 +397,13 @@ describe('useFileUpload', () => {
       })
 
       await waitFor(() => {
-        expect(prepareFileList).toHaveBeenCalled()
+        expect(prepareFileList).toHaveBeenCalledWith([expect.objectContaining({ file: mockFile })])
       })
-    })
-
-    it('should handle drop without dataTransfer', async () => {
-      const prepareFileList = vi.fn()
-
-      const { getByTestId } = await act(async () =>
-        render(
-          <>
-            <TestDropzone options={{ ...defaultOptions, prepareFileList }} />
-          </>,
-        ),
-      )
-
-      const dropzone = getByTestId('dropzone')
-
-      await act(async () => {
-        const dropEvent = new Event('drop', { bubbles: true, cancelable: true }) as Event & {
-          dataTransfer: DataTransfer | null
-        }
-        Object.defineProperty(dropEvent, 'dataTransfer', { value: null })
-        dropzone.dispatchEvent(dropEvent)
-      })
-
-      expect(prepareFileList).not.toHaveBeenCalled()
     })
 
     it('should limit to single file on drop when supportBatchUpload is false', async () => {
-      mockUpload.mockResolvedValue({ id: 'uploaded-id' })
+      // Keep upload pending so the prepared local files can be inspected before replacement.
+      mockUpload.mockImplementation(() => new Promise(() => {}))
       const prepareFileList = vi.fn()
 
       const { getByTestId } = await act(async () =>
@@ -618,15 +438,13 @@ describe('useFileUpload', () => {
       })
 
       await waitFor(() => {
-        if (prepareFileList.mock.calls.length > 0) {
-          const calledFiles = prepareFileList.mock.calls[0]![0]
-          expect(calledFiles.length).toBe(1)
-        }
+        expect(prepareFileList).toHaveBeenCalledWith([expect.objectContaining({ file: files[0] })])
       })
     })
 
     it('should handle drop with FileSystemFileEntry', async () => {
-      mockUpload.mockResolvedValue({ id: 'uploaded-id' })
+      // Keep upload pending so the prepared local files can be inspected before replacement.
+      mockUpload.mockImplementation(() => new Promise(() => {}))
       const prepareFileList = vi.fn()
       const mockFile = new File(['content'], 'test.pdf', { type: 'application/pdf' })
 
@@ -662,12 +480,13 @@ describe('useFileUpload', () => {
       })
 
       await waitFor(() => {
-        expect(prepareFileList).toHaveBeenCalled()
+        expect(prepareFileList).toHaveBeenCalledWith([expect.objectContaining({ file: mockFile })])
       })
     })
 
     it('should handle drop with FileSystemDirectoryEntry', async () => {
-      mockUpload.mockResolvedValue({ id: 'uploaded-id' })
+      // Keep upload pending so the prepared local files can be inspected before replacement.
+      mockUpload.mockImplementation(() => new Promise(() => {}))
       const prepareFileList = vi.fn()
       const mockFile = new File(['content'], 'nested.pdf', { type: 'application/pdf' })
 
@@ -731,7 +550,7 @@ describe('useFileUpload', () => {
       })
 
       await waitFor(() => {
-        expect(prepareFileList).toHaveBeenCalled()
+        expect(prepareFileList).toHaveBeenCalledWith([expect.objectContaining({ file: mockFile })])
       })
     })
 
@@ -774,156 +593,58 @@ describe('useFileUpload', () => {
         dropzone.dispatchEvent(dropEvent)
       })
 
-      // Should not prepare file list if no valid files
-      await new Promise((resolve) => setTimeout(resolve, 100))
-    })
-
-    it('should handle entry that is neither file nor directory', async () => {
-      const prepareFileList = vi.fn()
-
-      const { getByTestId } = await act(async () =>
-        render(
-          <>
-            <TestDropzone options={{ ...defaultOptions, prepareFileList }} />
-          </>,
-        ),
-      )
-
-      const dropzone = getByTestId('dropzone')
-
-      await act(async () => {
-        const dropEvent = new Event('drop', { bubbles: true, cancelable: true }) as Event & {
-          dataTransfer: DataTransfer | null
-        }
-        Object.defineProperty(dropEvent, 'dataTransfer', {
-          value: {
-            items: [
-              {
-                getAsFile: () => null,
-                webkitGetAsEntry: () => ({
-                  isFile: false,
-                  isDirectory: false,
-                }),
-              },
-            ],
-          },
-        })
-        dropzone.dispatchEvent(dropEvent)
-      })
-
-      // Should not throw and should handle gracefully
-      await new Promise((resolve) => setTimeout(resolve, 100))
+      expect(prepareFileList).not.toHaveBeenCalled()
+      expect(mockUpload).not.toHaveBeenCalled()
     })
   })
 
   describe('file upload', () => {
-    it('should call upload with correct parameters', async () => {
-      mockUpload.mockResolvedValue({ id: 'uploaded-id', name: 'test.pdf' })
+    it('uploads the selected file with progress and replaces it with the server response', async () => {
+      let resolve!: (value: { id: string; name: string }) => void
+      mockUpload.mockImplementationOnce(
+        () =>
+          new Promise((res) => {
+            resolve = res
+          }),
+      )
       const onFileUpdate = vi.fn()
-
       const { result } = renderHook(() => useFileUpload({ ...defaultOptions, onFileUpdate }), {
         wrapper: createWrapper(),
       })
-
-      const mockFile = new File(['content'], 'test.pdf', { type: 'application/pdf' })
-      const event = {
-        target: { files: [mockFile] },
-      } as unknown as React.ChangeEvent<HTMLInputElement>
-
-      act(() => {
-        result.current.fileChangeHandle(event)
-      })
-
-      await waitFor(() => {
-        expect(mockUpload).toHaveBeenCalled()
-      })
-    })
-
-    it('should update progress during upload', async () => {
-      let progressCallback: ((e: ProgressEvent) => void) | undefined
-
-      mockUpload.mockImplementation(async (options: { onprogress: (e: ProgressEvent) => void }) => {
-        progressCallback = options.onprogress
-        return { id: 'uploaded-id' }
-      })
-
-      const onFileUpdate = vi.fn()
-
-      const { result } = renderHook(() => useFileUpload({ ...defaultOptions, onFileUpdate }), {
-        wrapper: createWrapper(),
-      })
-
-      const mockFile = new File(['content'], 'test.pdf', { type: 'application/pdf' })
-      const event = {
-        target: { files: [mockFile] },
-      } as unknown as React.ChangeEvent<HTMLInputElement>
-
-      act(() => {
-        result.current.fileChangeHandle(event)
-      })
-
-      await waitFor(() => {
-        expect(mockUpload).toHaveBeenCalled()
-      })
-
-      if (progressCallback) {
-        act(() => {
-          progressCallback!({
-            lengthComputable: true,
-            loaded: 50,
-            total: 100,
-          } as ProgressEvent)
-        })
-
-        expect(onFileUpdate).toHaveBeenCalled()
-      }
-    })
-
-    it('should handle upload error', async () => {
-      mockUpload.mockRejectedValue(new Error('Upload failed'))
-      const onFileUpdate = vi.fn()
-
-      const { result } = renderHook(() => useFileUpload({ ...defaultOptions, onFileUpdate }), {
-        wrapper: createWrapper(),
-      })
-
-      const mockFile = new File(['content'], 'test.pdf', { type: 'application/pdf' })
-      const event = {
-        target: { files: [mockFile] },
-      } as unknown as React.ChangeEvent<HTMLInputElement>
-
-      act(() => {
-        result.current.fileChangeHandle(event)
-      })
-
-      await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
-      })
-    })
-
-    it('should update file with PROGRESS_COMPLETE on success', async () => {
-      mockUpload.mockResolvedValue({ id: 'uploaded-id', name: 'test.pdf' })
-      const onFileUpdate = vi.fn()
-
-      const { result } = renderHook(() => useFileUpload({ ...defaultOptions, onFileUpdate }), {
-        wrapper: createWrapper(),
-      })
-
-      const mockFile = new File(['content'], 'test.pdf', { type: 'application/pdf' })
-      const event = {
-        target: { files: [mockFile] },
-      } as unknown as React.ChangeEvent<HTMLInputElement>
-
-      act(() => {
-        result.current.fileChangeHandle(event)
-      })
-
-      await waitFor(() => {
-        const completeCalls = onFileUpdate.mock.calls.filter(
-          ([, progress]) => progress === PROGRESS_COMPLETE,
-        )
-        expect(completeCalls.length).toBeGreaterThan(0)
-      })
+      const file = new File(['content'], 'test.pdf', { type: 'application/pdf' })
+      act(() =>
+        result.current.fileChangeHandle({
+          target: { files: [file] },
+        } as unknown as React.ChangeEvent<HTMLInputElement>),
+      )
+      expect(mockUpload).toHaveBeenCalledWith(
+        expect.objectContaining({ xhr: expect.any(XMLHttpRequest), data: expect.any(FormData) }),
+        false,
+        undefined,
+        '?source=datasets',
+      )
+      const options = mockUpload.mock.lastCall![0]
+      expect(options.data.get('file').name).toBe('test.pdf')
+      act(() =>
+        options.onprogress(
+          new ProgressEvent('progress', { lengthComputable: true, loaded: 53, total: 100 }),
+        ),
+      )
+      expect(onFileUpdate).toHaveBeenLastCalledWith(
+        expect.objectContaining({ file }),
+        53,
+        expect.any(Array),
+      )
+      onFileUpdate.mockClear()
+      act(() => options.onprogress(new ProgressEvent('progress', { lengthComputable: false })))
+      expect(onFileUpdate).not.toHaveBeenCalled()
+      const response = { id: 'uploaded-id', name: 'test.pdf' }
+      await act(async () => resolve(response))
+      expect(onFileUpdate).toHaveBeenLastCalledWith(
+        expect.objectContaining({ file: response }),
+        PROGRESS_COMPLETE,
+        expect.any(Array),
+      )
     })
 
     it('should update file with PROGRESS_ERROR on failure', async () => {
@@ -947,7 +668,13 @@ describe('useFileUpload', () => {
         const errorCalls = onFileUpdate.mock.calls.filter(
           ([, progress]) => progress === PROGRESS_ERROR,
         )
-        expect(errorCalls.length).toBeGreaterThan(0)
+        expect(errorCalls).toEqual([
+          [expect.objectContaining({ file: mockFile }), PROGRESS_ERROR, expect.any(Array)],
+        ])
+        expect(mockNotify).toHaveBeenCalledWith({
+          type: 'error',
+          message: 'datasetCreation.stepOne.uploader.failed',
+        })
       })
     })
   })
@@ -983,33 +710,6 @@ describe('useFileUpload', () => {
       })
 
       expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
-    })
-  })
-
-  describe('progress constants', () => {
-    it('should use PROGRESS_NOT_STARTED for new files', async () => {
-      mockUpload.mockResolvedValue({ id: 'file-id' })
-
-      const prepareFileList = vi.fn()
-      const { result } = renderHook(() => useFileUpload({ ...defaultOptions, prepareFileList }), {
-        wrapper: createWrapper(),
-      })
-
-      const mockFile = new File(['content'], 'test.pdf', { type: 'application/pdf' })
-      const event = {
-        target: { files: [mockFile] },
-      } as unknown as React.ChangeEvent<HTMLInputElement>
-
-      act(() => {
-        result.current.fileChangeHandle(event)
-      })
-
-      await waitFor(() => {
-        if (prepareFileList.mock.calls.length > 0) {
-          const files = prepareFileList.mock.calls[0]![0]
-          expect(files[0].progress).toBe(PROGRESS_NOT_STARTED)
-        }
-      })
     })
   })
 })

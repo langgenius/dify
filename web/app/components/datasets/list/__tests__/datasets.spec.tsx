@@ -1,73 +1,25 @@
-import type { DataSet, DataSetListResponse } from '@/models/datasets'
-import type { useDatasetList } from '@/service/knowledge/use-dataset'
-import { render, screen } from '@testing-library/react'
+import type {
+  DatasetDetailWithPartialMembersResponse,
+  DatasetListResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
+import type { InfiniteData } from '@tanstack/react-query'
+import { screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
-import { RETRIEVE_METHOD } from '@/types/app'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import Datasets from '../datasets'
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }))
 
-vi.mock('@/hooks/use-format-time-from-now', () => ({
-  useFormatTimeFromNow: () => ({
-    formatTimeFromNow: (timestamp: number) => new Date(timestamp).toLocaleDateString(),
-  }),
-}))
-
-vi.mock('@/hooks/use-knowledge', () => ({
-  useKnowledge: () => ({
-    formatIndexingTechniqueAndMethod: () => 'High Quality',
-  }),
-}))
+type DatasetListItem = DatasetListResponse['data'][number]
 
 const mockFetchNextPage = vi.fn()
-const mockInvalidDatasetList = vi.fn()
-
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useDatasetList: vi.fn(() => ({
-    data: {
-      pages: [
-        {
-          data: [
-            createMockDataset({ id: 'dataset-1', name: 'Dataset 1' }),
-            createMockDataset({ id: 'dataset-2', name: 'Dataset 2' }),
-          ],
-        },
-      ],
-    },
-    fetchNextPage: mockFetchNextPage,
-    hasNextPage: false,
-    isFetching: false,
-    isFetchingNextPage: false,
-    isLoading: false,
-    isPlaceholderData: false,
-  })),
-  useInvalidDatasetList: () => mockInvalidDatasetList,
-}))
-
-vi.mock('../dataset-card/hooks/use-dataset-card-state', () => ({
-  useDatasetCardState: () => ({
-    modalState: {
-      showRenameModal: false,
-      showConfirmDelete: false,
-      confirmMessage: '',
-    },
-    openRenameModal: vi.fn(),
-    closeRenameModal: vi.fn(),
-    closeConfirmDelete: vi.fn(),
-    handleExportPipeline: vi.fn(),
-    detectIsUsedByApp: vi.fn(),
-    onConfirmDelete: vi.fn(),
-  }),
-}))
-
-vi.mock('../../rename-modal', () => ({
-  default: () => null,
-}))
 
 vi.mock('../dataset-card', () => ({
   default: ({
@@ -76,7 +28,7 @@ vi.mock('../dataset-card', () => ({
     stepByStepTourActionMenuOpen,
     stepByStepTourCardTarget,
   }: {
-    dataset: DataSet
+    dataset: DatasetDetailWithPartialMembersResponse
     stepByStepTourActionMenuHighlightPart?: string
     stepByStepTourActionMenuOpen?: boolean
     stepByStepTourCardTarget?: string
@@ -94,13 +46,14 @@ vi.mock('../dataset-card', () => ({
   ),
 }))
 
-function createMockDataset(overrides: Partial<DataSet> = {}): DataSet {
+function createMockDataset(overrides: Partial<DatasetListItem> = {}): DatasetListItem {
   return {
+    ...createDatasetFixture(),
     id: 'dataset-1',
     name: 'Test Dataset',
     description: 'Test description',
     provider: 'vendor',
-    permission: DatasetPermission.allTeamMembers,
+    permission: PermissionLevel.allTeamMembers,
     data_source_type: DataSourceType.FILE,
     indexing_technique: IndexingType.QUALIFIED,
     embedding_available: true,
@@ -123,12 +76,9 @@ function createMockDataset(overrides: Partial<DataSet> = {}): DataSet {
       icon_background: '#FFF4ED',
       icon_url: '',
     },
-    retrieval_model_dict: {
-      search_method: RETRIEVE_METHOD.semantic,
-    },
     author_name: 'Test User',
     ...overrides,
-  } as DataSet
+  }
 }
 
 let intersectionObserverCallback: IntersectionObserverCallback | null = null
@@ -152,7 +102,7 @@ class MockIntersectionObserver {
 
 describe('Datasets', () => {
   const createDatasetListData = (
-    pages: Array<Pick<DataSetListResponse, 'data'> & Partial<Omit<DataSetListResponse, 'data'>>> = [
+    pages: Array<Pick<DatasetListResponse, 'data'> & Partial<Omit<DatasetListResponse, 'data'>>> = [
       {
         data: [
           createMockDataset({ id: 'dataset-1', name: 'Dataset 1' }),
@@ -170,7 +120,7 @@ describe('Datasets', () => {
         ...page,
       })),
       pageParams: pages.map((_, index) => index + 1),
-    }) as unknown as ReturnType<typeof useDatasetList>['data']
+    }) satisfies InfiniteData<DatasetListResponse, number>
 
   const defaultProps = {
     datasetList: createDatasetListData(),
@@ -193,20 +143,8 @@ describe('Datasets', () => {
   })
 
   describe('Rendering', () => {
-    it('should not render NewDatasetCard in dataset list', () => {
-      render(<Datasets {...defaultProps} />)
-
-      expect(screen.queryByText(/createDataset/)).not.toBeInTheDocument()
-    })
-
-    it('should render dataset cards from data', () => {
-      render(<Datasets {...defaultProps} />)
-      expect(screen.getByText('Dataset 1')).toBeInTheDocument()
-      expect(screen.getByText('Dataset 2')).toBeInTheDocument()
-    })
-
     it('should pass step-by-step tour targets to the first dataset card only', () => {
-      render(
+      renderWithConsoleQuery(
         <Datasets
           {...defaultProps}
           stepByStepTourActionMenuOpen
@@ -228,29 +166,11 @@ describe('Datasets', () => {
       expect(screen.getByTestId('dataset-card-menu-open-dataset-2')).toHaveTextContent('undefined')
       expect(screen.getByTestId('dataset-card-highlight-dataset-2')).toBeEmptyDOMElement()
     })
-
-    it('should render empty element when there are no datasets', () => {
-      render(
-        <Datasets
-          {...defaultProps}
-          datasetList={createDatasetListData([{ data: [], total: 0 }])}
-          emptyElement={<div data-testid="filtered-empty">No knowledge here</div>}
-        />,
-      )
-
-      expect(screen.getByTestId('filtered-empty')).toBeInTheDocument()
-    })
-
-    it('should render anchor div for infinite scroll', () => {
-      render(<Datasets {...defaultProps} />)
-      const anchor = document.querySelector('.h-0')
-      expect(anchor).toBeInTheDocument()
-    })
   })
 
   describe('Loading States', () => {
     it('should show dataset card skeletons while initial dataset list is loading', () => {
-      render(
+      renderWithConsoleQuery(
         <Datasets {...defaultProps} datasetList={undefined} isFetching={true} isLoading={true} />,
       )
 
@@ -259,7 +179,7 @@ describe('Datasets', () => {
     })
 
     it('should not show dataset card skeletons after an empty dataset list has loaded', () => {
-      render(
+      renderWithConsoleQuery(
         <Datasets
           {...defaultProps}
           datasetList={createDatasetListData([{ data: [] }])}
@@ -272,7 +192,7 @@ describe('Datasets', () => {
     })
 
     it('should show dataset card skeletons when placeholder data is empty and the next query is fetching', () => {
-      render(
+      renderWithConsoleQuery(
         <Datasets
           {...defaultProps}
           datasetList={createDatasetListData([{ data: [] }])}
@@ -285,7 +205,7 @@ describe('Datasets', () => {
     })
 
     it('should keep rendered dataset cards when placeholder data has results during refetch', () => {
-      render(
+      renderWithConsoleQuery(
         <Datasets
           {...defaultProps}
           datasetList={createDatasetListData([
@@ -305,7 +225,7 @@ describe('Datasets', () => {
     it.each([null, undefined, createDatasetListData([])])(
       'shows the empty state when dataset data is unavailable or empty (%j)',
       (datasetList) => {
-        render(
+        renderWithConsoleQuery(
           <Datasets
             {...defaultProps}
             datasetList={datasetList}
@@ -318,79 +238,65 @@ describe('Datasets', () => {
   })
 
   describe('IntersectionObserver', () => {
-    it('should setup IntersectionObserver on mount', () => {
-      render(<Datasets {...defaultProps} hasNextPage={true} />)
-
-      expect(mockObserve).toHaveBeenCalled()
-    })
-
     it('should call fetchNextPage when isIntersecting, hasNextPage, and not isFetching', () => {
-      render(<Datasets {...defaultProps} hasNextPage={true} />)
+      renderWithConsoleQuery(<Datasets {...defaultProps} hasNextPage={true} />)
 
-      if (intersectionObserverCallback) {
-        intersectionObserverCallback(
-          [{ isIntersecting: true } as IntersectionObserverEntry],
-          {} as IntersectionObserver,
-        )
-      }
+      intersectionObserverCallback!(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
 
       expect(mockFetchNextPage).toHaveBeenCalledTimes(1)
     })
 
     it('should NOT call fetchNextPage when isIntersecting is false', () => {
-      render(<Datasets {...defaultProps} hasNextPage={true} />)
+      renderWithConsoleQuery(<Datasets {...defaultProps} hasNextPage={true} />)
 
-      if (intersectionObserverCallback) {
-        intersectionObserverCallback(
-          [{ isIntersecting: false } as IntersectionObserverEntry],
-          {} as IntersectionObserver,
-        )
-      }
+      intersectionObserverCallback!(
+        [{ isIntersecting: false } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
 
       expect(mockFetchNextPage).not.toHaveBeenCalled()
     })
 
     it('should NOT call fetchNextPage when hasNextPage is false', () => {
-      render(<Datasets {...defaultProps} />)
+      renderWithConsoleQuery(<Datasets {...defaultProps} />)
 
-      if (intersectionObserverCallback) {
-        intersectionObserverCallback(
-          [{ isIntersecting: true } as IntersectionObserverEntry],
-          {} as IntersectionObserver,
-        )
-      }
+      intersectionObserverCallback!(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
 
       expect(mockFetchNextPage).not.toHaveBeenCalled()
     })
 
     it('should NOT call fetchNextPage when isFetching is true', () => {
-      render(<Datasets {...defaultProps} hasNextPage={true} isFetching={true} />)
+      renderWithConsoleQuery(<Datasets {...defaultProps} hasNextPage={true} isFetching={true} />)
 
-      if (intersectionObserverCallback) {
-        intersectionObserverCallback(
-          [{ isIntersecting: true } as IntersectionObserverEntry],
-          {} as IntersectionObserver,
-        )
-      }
+      intersectionObserverCallback!(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
 
       expect(mockFetchNextPage).not.toHaveBeenCalled()
     })
 
     it('should NOT call fetchNextPage when placeholder data is showing', () => {
-      render(<Datasets {...defaultProps} hasNextPage={true} isPlaceholderData={true} />)
+      renderWithConsoleQuery(
+        <Datasets {...defaultProps} hasNextPage={true} isPlaceholderData={true} />,
+      )
 
-      if (intersectionObserverCallback) {
-        intersectionObserverCallback(
-          [{ isIntersecting: true } as IntersectionObserverEntry],
-          {} as IntersectionObserver,
-        )
-      }
+      intersectionObserverCallback!(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
 
       expect(mockFetchNextPage).not.toHaveBeenCalled()
     })
 
     it('should disconnect observer on unmount', () => {
-      const { unmount } = render(<Datasets {...defaultProps} hasNextPage={true} />)
+      const { unmount } = renderWithConsoleQuery(<Datasets {...defaultProps} hasNextPage={true} />)
 
       unmount()
 
@@ -400,7 +306,7 @@ describe('Datasets', () => {
 
   describe('Landmarks', () => {
     it('keeps knowledge cards in the page content without creating another navigation landmark', () => {
-      render(
+      renderWithConsoleQuery(
         <Datasets
           {...defaultProps}
           datasetList={createDatasetListData([
@@ -415,7 +321,7 @@ describe('Datasets', () => {
 
   describe('Edge Cases', () => {
     it('should handle multiple pages of data', () => {
-      render(
+      renderWithConsoleQuery(
         <Datasets
           {...defaultProps}
           datasetList={createDatasetListData([

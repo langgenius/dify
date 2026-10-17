@@ -1,7 +1,8 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
+import { httpErrorFromResponse } from '@/service/http-error'
 import { renderHookWithConsoleQuery } from '@/test/console/query-data'
-import { AppModeEnum } from '@/types/app'
+import { createDeferred } from '@/test/deferred'
 import { useImportDSL } from './use-import-dsl'
 
 const mockPush = vi.hoisted(() => vi.fn())
@@ -40,41 +41,13 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleQuery: {
-      ...actual.consoleQuery,
-      account: {
-        profile: {
-          get: {
-            queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
-          },
-        },
-      },
-      systemFeatures: actual.consoleQuery.systemFeatures,
-      apps: {
-        ...actual.consoleQuery.apps,
-        imports: {
-          ...actual.consoleQuery.apps.imports,
-          post: {
-            mutationOptions: () => ({
-              mutationFn: ({ body }: { body: Record<string, unknown> }) => mockImportDSL(body),
-            }),
-          },
-          byImportId: {
-            confirm: {
-              post: {
-                mutationOptions: () => ({
-                  mutationFn: ({ params }: { params: { import_id: string } }) =>
-                    mockImportDSLConfirm({ import_id: params.import_id }),
-                }),
-              },
-            },
-          },
-        },
-      },
-    },
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.imports.post': mockImportDSL,
+      'apps.imports.byImportId.confirm.post': mockImportDSLConfirm,
+    }),
   }
 })
 
@@ -111,7 +84,7 @@ describe('useImportDSL', () => {
       await result.current.handleImportDSL(payload, { onPending })
     })
 
-    expect(mockImportDSL).toHaveBeenCalledWith(payload)
+    expect(mockImportDSL).toHaveBeenCalledWith({ body: payload })
     expect(onPending).toHaveBeenCalledWith({ id: 'import-1', status: DSLImportStatus.PENDING })
   })
 
@@ -120,7 +93,7 @@ describe('useImportDSL', () => {
       id: 'import-1',
       status: DSLImportStatus.COMPLETED_WITH_WARNINGS,
       app_id: 'app-1',
-      app_mode: AppModeEnum.WORKFLOW,
+      app_mode: 'workflow',
       permission_keys: [],
       warnings: [
         {
@@ -156,11 +129,11 @@ describe('useImportDSL', () => {
   })
 
   it('should complete a confirmed import that returns warnings', async () => {
-    let resolvePluginCheck: (() => void) | undefined
+    const pluginCheck = createDeferred()
     const pendingResponse = {
       id: 'import-1',
       status: DSLImportStatus.PENDING,
-      app_mode: AppModeEnum.AGENT,
+      app_mode: 'agent',
       imported_dsl_version: '0.2.0',
       current_dsl_version: '0.1.0',
       permission_keys: [],
@@ -169,7 +142,7 @@ describe('useImportDSL', () => {
       id: 'import-1',
       status: DSLImportStatus.COMPLETED_WITH_WARNINGS,
       app_id: 'app-1',
-      app_mode: AppModeEnum.AGENT,
+      app_mode: 'agent',
       permission_keys: ['app.acl.view_layout'],
       warnings: [
         {
@@ -185,11 +158,7 @@ describe('useImportDSL', () => {
     const onFailed = vi.fn()
     mockImportDSL.mockResolvedValue(pendingResponse)
     mockImportDSLConfirm.mockResolvedValue(completedResponse)
-    mockHandleCheckPluginDependencies.mockReturnValue(
-      new Promise<void>((resolve) => {
-        resolvePluginCheck = resolve
-      }),
-    )
+    mockHandleCheckPluginDependencies.mockReturnValue(pluginCheck.promise)
 
     const { result } = renderHookWithConsoleQuery(() => useImportDSL())
 
@@ -216,12 +185,12 @@ describe('useImportDSL', () => {
     })
     expect(mockImportDSLConfirm).toHaveBeenCalledTimes(1)
 
-    resolvePluginCheck?.()
     await act(async () => {
+      pluginCheck.resolve()
       await confirmPromise
     })
 
-    expect(mockImportDSLConfirm).toHaveBeenCalledWith({ import_id: 'import-1' })
+    expect(mockImportDSLConfirm).toHaveBeenCalledWith({ params: { import_id: 'import-1' } })
     expect(onSuccess).toHaveBeenCalledWith(completedResponse)
     expect(onFailed).not.toHaveBeenCalled()
     expect(toastMocks.warning).toHaveBeenCalledWith('app.newApp.caution', {
@@ -234,7 +203,7 @@ describe('useImportDSL', () => {
     expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('app-1')
     expect(mockResolveImportedAppRedirectionTarget).toHaveBeenCalledWith({
       id: 'app-1',
-      mode: AppModeEnum.AGENT,
+      mode: 'agent' as const,
       permission_keys: ['app.acl.view_layout'],
     })
     expect(mockGetRedirection).toHaveBeenCalledTimes(1)
@@ -275,12 +244,12 @@ describe('useImportDSL', () => {
       () => Response.json({ message: 'Missing app section' }, { status: 400 }),
       'Missing app section',
     ],
-    ['empty', () => new Response(null, { status: 500 }), undefined],
-    ['HTML', () => new Response('<html>Bad gateway</html>', { status: 502 }), undefined],
+    ['empty', () => new Response(null, { status: 500 }), 'HTTP 500'],
+    ['HTML', () => new Response('<html>Bad gateway</html>', { status: 502 }), 'HTTP 502'],
   ] as const)(
     'shows one failure toast for a %s import response',
     async (_, response, description) => {
-      mockImportDSL.mockRejectedValue(response())
+      mockImportDSL.mockRejectedValue(await httpErrorFromResponse(response()))
       const onFailed = vi.fn()
       const { result } = renderHookWithConsoleQuery(() => useImportDSL())
 
@@ -360,7 +329,9 @@ describe('useImportDSL', () => {
   it('shows the backend error when confirmation rejects with an HTTP response', async () => {
     mockImportDSL.mockResolvedValue({ id: 'import-1', status: DSLImportStatus.PENDING })
     mockImportDSLConfirm.mockRejectedValue(
-      Response.json({ error: 'Import confirmation expired' }, { status: 400 }),
+      await httpErrorFromResponse(
+        Response.json({ error: 'Import confirmation expired' }, { status: 400 }),
+      ),
     )
     const onFailed = vi.fn()
     const { result } = renderHookWithConsoleQuery(() => useImportDSL())

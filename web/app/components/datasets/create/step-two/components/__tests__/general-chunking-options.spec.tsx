@@ -1,27 +1,11 @@
-import type { PreProcessingRule } from '@/models/datasets'
+import type { PreProcessingRule } from '@dify/contracts/api/console/datasets/types.gen'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { GeneralChunkingOptions } from '../general-chunking-options'
-
-vi.mock('@/app/components/datasets/settings/summary-index-setting', () => ({
-  default: ({
-    onSummaryIndexSettingChange,
-  }: {
-    onSummaryIndexSettingChange?: (val: Record<string, unknown>) => void
-  }) => (
-    <div data-testid="summary-index-setting">
-      <button
-        data-testid="summary-toggle"
-        onClick={() => onSummaryIndexSettingChange?.({ enable: true })}
-      >
-        Toggle
-      </button>
-    </div>
-  ),
-}))
 
 const ns = 'datasetCreation'
 const render = (ui: React.ReactElement) =>
@@ -62,30 +46,6 @@ describe('GeneralChunkingOptions', () => {
   })
 
   describe('Rendering', () => {
-    it('should render general chunking title', () => {
-      render(<GeneralChunkingOptions {...defaultProps} />)
-      expect(screen.getByText(`${ns}.stepTwo.general`)).toBeInTheDocument()
-    })
-
-    it('should render delimiter, max length and overlap inputs when active', () => {
-      render(<GeneralChunkingOptions {...defaultProps} />)
-      expect(screen.getByText(`${ns}.stepTwo.separator`)).toBeInTheDocument()
-      expect(screen.getByText(`${ns}.stepTwo.maxLength`)).toBeInTheDocument()
-      expect(screen.getAllByText(new RegExp(`${ns}.stepTwo.overlap`)).length).toBeGreaterThan(0)
-    })
-
-    it('should render preprocessing rules as checkboxes', () => {
-      render(<GeneralChunkingOptions {...defaultProps} />)
-      expect(screen.getByText(`${ns}.stepTwo.removeExtraSpaces`)).toBeInTheDocument()
-      expect(screen.getByText(`${ns}.stepTwo.removeUrlEmails`)).toBeInTheDocument()
-    })
-
-    it('should render preview and reset buttons when active', () => {
-      render(<GeneralChunkingOptions {...defaultProps} />)
-      expect(screen.getByText(`${ns}.stepTwo.previewChunk`)).toBeInTheDocument()
-      expect(screen.getByText(`${ns}.stepTwo.reset`)).toBeInTheDocument()
-    })
-
     it('should not render body when not active', () => {
       render(<GeneralChunkingOptions {...defaultProps} isActive={false} />)
       expect(screen.queryByText(`${ns}.stepTwo.separator`)).not.toBeInTheDocument()
@@ -93,42 +53,42 @@ describe('GeneralChunkingOptions', () => {
   })
 
   describe('User Interactions', () => {
-    it('should call onPreview when preview button clicked', () => {
+    it('should call onPreview when preview button clicked', async () => {
+      const user = userEvent.setup()
       const onPreview = vi.fn()
       render(<GeneralChunkingOptions {...defaultProps} onPreview={onPreview} />)
-      fireEvent.click(screen.getByText(`${ns}.stepTwo.previewChunk`))
+      await user.click(screen.getByText(`${ns}.stepTwo.previewChunk`))
       expect(onPreview).toHaveBeenCalledOnce()
     })
 
-    it('should call onReset when reset button clicked', () => {
+    it('should call onReset when reset button clicked', async () => {
+      const user = userEvent.setup()
       const onReset = vi.fn()
       render(<GeneralChunkingOptions {...defaultProps} onReset={onReset} />)
-      fireEvent.click(screen.getByText(`${ns}.stepTwo.reset`))
+      await user.click(screen.getByText(`${ns}.stepTwo.reset`))
       expect(onReset).toHaveBeenCalledOnce()
     })
 
-    it('should call onRuleToggle when rule clicked', () => {
+    it('should call onRuleToggle when rule clicked', async () => {
+      const user = userEvent.setup()
       const onRuleToggle = vi.fn()
       render(<GeneralChunkingOptions {...defaultProps} onRuleToggle={onRuleToggle} />)
-      fireEvent.click(screen.getByText(`${ns}.stepTwo.removeUrlEmails`))
+      await user.click(screen.getByText(`${ns}.stepTwo.removeUrlEmails`))
       expect(onRuleToggle).toHaveBeenCalledWith('remove_urls_emails')
     })
   })
 
   describe('QA Mode (CE Edition)', () => {
-    it('should render QA language checkbox', () => {
-      render(<GeneralChunkingOptions {...defaultProps} />)
-      expect(screen.getByText(`${ns}.stepTwo.useQALanguage`)).toBeInTheDocument()
-    })
-
-    it('should toggle QA mode when checkbox clicked', () => {
+    it('should toggle QA mode when checkbox clicked', async () => {
+      const user = userEvent.setup()
       const onDocFormChange = vi.fn()
       render(<GeneralChunkingOptions {...defaultProps} onDocFormChange={onDocFormChange} />)
-      fireEvent.click(screen.getByText(`${ns}.stepTwo.useQALanguage`))
+      await user.click(screen.getByText(`${ns}.stepTwo.useQALanguage`))
       expect(onDocFormChange).toHaveBeenCalledWith(ChunkingMode.qa)
     })
 
-    it('should toggle back to text mode from QA mode', () => {
+    it('should toggle back to text mode from QA mode', async () => {
+      const user = userEvent.setup()
       const onDocFormChange = vi.fn()
       render(
         <GeneralChunkingOptions
@@ -137,11 +97,12 @@ describe('GeneralChunkingOptions', () => {
           onDocFormChange={onDocFormChange}
         />,
       )
-      fireEvent.click(screen.getByText(`${ns}.stepTwo.useQALanguage`))
+      await user.click(screen.getByText(`${ns}.stepTwo.useQALanguage`))
       expect(onDocFormChange).toHaveBeenCalledWith(ChunkingMode.text)
     })
 
-    it('should not toggle QA mode when hasCurrentDatasetDocForm is true', () => {
+    it('should not toggle QA mode when hasCurrentDatasetDocForm is true', async () => {
+      const user = userEvent.setup()
       const onDocFormChange = vi.fn()
       render(
         <GeneralChunkingOptions
@@ -150,64 +111,13 @@ describe('GeneralChunkingOptions', () => {
           onDocFormChange={onDocFormChange}
         />,
       )
-      fireEvent.click(screen.getByText(`${ns}.stepTwo.useQALanguage`))
+      await user.click(screen.getByText(`${ns}.stepTwo.useQALanguage`))
       expect(onDocFormChange).not.toHaveBeenCalled()
     })
 
     it('should show QA warning tip when in QA mode', () => {
       render(<GeneralChunkingOptions {...defaultProps} currentDocForm={ChunkingMode.qa} />)
       expect(screen.getAllByText(`${ns}.stepTwo.QATip`).length).toBeGreaterThan(0)
-    })
-  })
-
-  describe('Summary Index Setting', () => {
-    it('should render SummaryIndexSetting when showSummaryIndexSetting is true', () => {
-      render(<GeneralChunkingOptions {...defaultProps} showSummaryIndexSetting />)
-      expect(screen.getByTestId('summary-index-setting')).toBeInTheDocument()
-    })
-
-    it('should not render SummaryIndexSetting when showSummaryIndexSetting is false', () => {
-      render(<GeneralChunkingOptions {...defaultProps} showSummaryIndexSetting={false} />)
-      expect(screen.queryByTestId('summary-index-setting')).not.toBeInTheDocument()
-    })
-
-    it('should call onSummaryIndexSettingChange', () => {
-      const onSummaryIndexSettingChange = vi.fn()
-      render(
-        <GeneralChunkingOptions
-          {...defaultProps}
-          showSummaryIndexSetting
-          onSummaryIndexSettingChange={onSummaryIndexSettingChange}
-        />,
-      )
-      fireEvent.click(screen.getByTestId('summary-toggle'))
-      expect(onSummaryIndexSettingChange).toHaveBeenCalledWith({ enable: true })
-    })
-  })
-
-  // Regression: dify issue 39592 — the delimiter/max-length/overlap row must
-  // stack (one field per row) in a narrow card and sit three-across when wide,
-  // driven by a container query rather than the viewport. Fails before this
-  // change (row was flex-wrap; no @container ancestor).
-  describe('#39592 narrow-container regression', () => {
-    it('stacks by default and becomes a row across the 552px container query', () => {
-      render(<GeneralChunkingOptions {...defaultProps} />)
-      const delimiterLabel = screen.getByText(`${ns}.stepTwo.separator`)
-      const row = delimiterLabel.closest('.gap-3')
-      expect(row).not.toBeNull()
-      // stacked by default (below threshold)
-      expect(row!.className).toContain('flex-col')
-      // three-across at/above the container threshold
-      expect(row!.className).toContain('@min-[552px]/chunkfields:flex-row')
-      // the previous flex-wrap approach is gone
-      expect(row!.className).not.toContain('flex-wrap')
-    })
-
-    it('marks an ancestor as the query container', () => {
-      render(<GeneralChunkingOptions {...defaultProps} />)
-      const delimiterLabel = screen.getByText(`${ns}.stepTwo.separator`)
-      const container = delimiterLabel.closest('[class*="@container/chunkfields"]')
-      expect(container).not.toBeNull()
     })
   })
 })

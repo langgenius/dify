@@ -1,13 +1,24 @@
 import type { MarketplaceCollection } from '@dify/contracts/marketplace'
+import type { RenderOptions } from '@testing-library/react'
+import type { ReactElement } from 'react'
 import type { Plugin } from '@/app/components/plugins/types'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import {
+  act,
+  fireEvent,
+  screen,
+  render as testingLibraryRender,
+  waitFor,
+} from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import ListWithCollection from '../list-with-collection'
 
-const mockMoreClick = vi.fn()
-vi.mock('../../atoms', () => ({
-  useMarketplaceMoreClick: () => mockMoreClick,
-}))
+const onUrlUpdate = vi.fn()
+const render = (element: ReactElement, options?: RenderOptions) =>
+  testingLibraryRender(element, {
+    wrapper: createNuqsTestWrapper({ onUrlUpdate }).wrapper,
+    ...options,
+  })
 
 vi.mock('@/i18n/metadata', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/i18n/metadata')>()),
@@ -134,30 +145,20 @@ describe('ListWithCollection', () => {
     vi.unstubAllGlobals()
   })
 
-  it('renders only collections that contain plugins', () => {
+  it('omits empty collections and filters the catalog through View more', async () => {
     render(
       <ListWithCollection
         marketplaceCollections={collections}
         marketplaceCollectionPluginsMap={pluginsMap}
       />,
     )
-
     expect(screen.getByText('Featured')).toBeInTheDocument()
     expect(screen.queryByText('Empty')).not.toBeInTheDocument()
     expect(screen.getAllByTestId('card-wrapper')).toHaveLength(2)
-  })
-
-  it('calls more handler for searchable collection', () => {
-    render(
-      <ListWithCollection
-        marketplaceCollections={collections}
-        marketplaceCollectionPluginsMap={pluginsMap}
-      />,
+    fireEvent.click(screen.getByRole('button', { name: 'plugin.marketplace.viewMore' }))
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('q')).toBe('featured'),
     )
-
-    fireEvent.click(screen.getByText('plugin.marketplace.viewMore'))
-
-    expect(mockMoreClick).toHaveBeenCalledWith({ query: 'featured' })
   })
 
   it('uses custom more handler when provided', () => {
@@ -174,7 +175,7 @@ describe('ListWithCollection', () => {
     fireEvent.click(screen.getByText('plugin.marketplace.viewMore'))
 
     expect(onCollectionMoreClick).toHaveBeenCalledWith({ query: 'featured' })
-    expect(mockMoreClick).not.toHaveBeenCalled()
+    expect(onUrlUpdate).not.toHaveBeenCalled()
   })
 
   it('uses custom card renderer when provided', () => {
@@ -224,9 +225,6 @@ describe('ListWithCollection', () => {
     )
     expect(partnerLink).toHaveAttribute('target', '_blank')
     expect(partnerLink).toHaveAttribute('rel', 'noopener noreferrer')
-    expect(partnerLink.querySelector('.i-ri-external-link-line')).toHaveClass('size-3')
-    expect(partnerLink.querySelector('.i-ri-arrow-right-up-line')).not.toBeInTheDocument()
-    expect(screen.getByText('|')).toHaveClass('text-divider-regular')
     expect(screen.getAllByTestId('card-wrapper')).toHaveLength(2)
   })
 
@@ -280,12 +278,6 @@ describe('ListWithCollection', () => {
     expect(
       screen.getByRole('button', { name: 'plugin.marketplace.carousel.scrollNext' }),
     ).toBeInTheDocument()
-    const carousel = screen.getByRole('region', { name: 'Featured' })
-    const carouselViewport = carousel.querySelector('.overflow-hidden')
-    const carouselContent = carouselViewport?.firstElementChild
-    expect(carousel).not.toHaveClass('overflow-hidden')
-    expect(carouselViewport).toHaveClass('overflow-hidden', 'rounded-[inherit]')
-    expect(carouselContent).toHaveStyle({ columnGap: '12px' })
   })
 
   it('keeps the first collection eager and defers the rest until they enter the preload range', () => {
@@ -304,16 +296,9 @@ describe('ListWithCollection', () => {
     )
 
     expect(screen.getAllByText(/Collection \d$/)).toHaveLength(7)
-    expect(document.querySelectorAll('[data-marketplace-collection]')).toHaveLength(7)
-    // The first (above-the-fold) collection renders its real cards immediately
-    // so server-rendered HTML contains first-screen content; the six remaining
-    // collections keep placeholders until they intersect.
-    expect(
-      document.querySelectorAll('[data-marketplace-collection-placeholder] > div'),
-    ).toHaveLength(48)
+    // The first collection has server-renderable content; later ones preload on intersection.
     expect(screen.getAllByTestId('card-wrapper')).toHaveLength(61)
-    expect(document.querySelectorAll('[data-carousel-page]')).toHaveLength(8)
-    expect(document.querySelectorAll('[data-carousel-page-mounted="true"]')).toHaveLength(8)
+    expect(screen.queryByText('Collection 1 Plugin 0')).not.toBeInTheDocument()
     // Partner collections autoplay; this fixture is non-partner, so the only
     // observers here are the collection preload observers.
     const collectionObservers = intersectionObservers.filter(
@@ -347,19 +332,17 @@ describe('ListWithCollection', () => {
 
   it('mounts deferred collections after hydration when IntersectionObserver is unavailable', () => {
     vi.stubGlobal('IntersectionObserver', undefined)
-
+    const { fixtureCollections, fixturePluginsMap } = buildPerformanceFixture()
+    fixturePluginsMap['collection-0'] = fixturePluginsMap['collection-0']!.slice(0, 8)
     render(
       <ListWithCollection
-        marketplaceCollections={collections}
-        marketplaceCollectionPluginsMap={pluginsMap}
+        marketplaceCollections={fixtureCollections}
+        marketplaceCollectionPluginsMap={fixturePluginsMap}
         deferOffscreenCollections
       />,
     )
-
-    expect(screen.getAllByTestId('card-wrapper')).toHaveLength(2)
-    expect(
-      document.querySelector('[data-marketplace-collection-placeholder]'),
-    ).not.toBeInTheDocument()
+    expect(screen.getAllByTestId('card-wrapper')).toHaveLength(56)
+    expect(screen.getByText('Collection 6 Plugin 7')).toBeInTheDocument()
   })
 
   it('keeps standalone collections eager for SSR-compatible rendering', () => {

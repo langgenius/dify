@@ -92,71 +92,39 @@ export function processSvgForTheme(
   },
 ): string {
   let processedSvg = svg
-
+  const theme = isDark ? themes.dark : themes.light
   if (isDark) {
     processedSvg = processedSvg
       .replace(/style="fill: ?#000000"/g, 'style="fill: #e2e8f0"')
       .replace(/style="stroke: ?#000000"/g, 'style="stroke: #94a3b8"')
-      .replace(/<rect [^>]*fill="#ffffff"/g, '<rect $& fill="#1e293b"')
-
-    if (isHandDrawn) {
-      processedSvg = processedSvg
-        .replace(/fill="#[a-fA-F0-9]{6}"/g, `fill="${themes.dark.nodeColors[0].bg}"`)
-        .replace(/stroke="#[a-fA-F0-9]{6}"/g, `stroke="${themes.dark.connectionColor}"`)
-        .replace(/stroke-width="1"/g, 'stroke-width="1.5"')
-    } else {
-      let i = 0
-      const nodeColorRegex = /fill="#[a-fA-F0-9]{6}"[^>]*class="node-[^"]*"/g
-      processedSvg = processedSvg.replace(nodeColorRegex, (match: string) => {
-        const colorIndex = i % themes.dark.nodeColors.length
-        i++
-        return match.replace(
-          /fill="#[a-fA-F0-9]{6}"/,
-          `fill="${themes.dark.nodeColors[colorIndex].bg}"`,
-        )
-      })
-
-      processedSvg = processedSvg
-        .replace(
-          /<path [^>]*stroke="#[a-fA-F0-9]{6}"/g,
-          `<path stroke="${themes.dark.connectionColor}" stroke-width="1.5"`,
-        )
-        .replace(
-          /<(line|polyline) [^>]*stroke="#[a-fA-F0-9]{6}"/g,
-          `<$1 stroke="${themes.dark.connectionColor}" stroke-width="1.5"`,
-        )
-    }
-  } else {
-    if (isHandDrawn) {
-      processedSvg = processedSvg
-        .replace(/fill="#[a-fA-F0-9]{6}"/g, `fill="${themes.light.nodeColors[0].bg}"`)
-        .replace(/stroke="#[a-fA-F0-9]{6}"/g, `stroke="${themes.light.connectionColor}"`)
-        .replace(/stroke-width="1"/g, 'stroke-width="1.5"')
-    } else {
-      let i = 0
-      const nodeColorRegex = /fill="#[a-fA-F0-9]{6}"[^>]*class="node-[^"]*"/g
-      processedSvg = processedSvg.replace(nodeColorRegex, (match: string) => {
-        const colorIndex = i % themes.light.nodeColors.length
-        i++
-        return match.replace(
-          /fill="#[a-fA-F0-9]{6}"/,
-          `fill="${themes.light.nodeColors[colorIndex].bg}"`,
-        )
-      })
-
-      processedSvg = processedSvg
-        .replace(
-          /<path [^>]*stroke="#[a-fA-F0-9]{6}"/g,
-          `<path stroke="${themes.light.connectionColor}"`,
-        )
-        .replace(
-          /<(line|polyline) [^>]*stroke="#[a-fA-F0-9]{6}"/g,
-          `<$1 stroke="${themes.light.connectionColor}"`,
-        )
-    }
+      .replace(/<rect\b[^>]*>/g, (element) => element.replace('fill="#ffffff"', 'fill="#1e293b"'))
   }
-
-  return processedSvg
+  if (isHandDrawn) {
+    return processedSvg
+      .replace(/fill="#[a-fA-F0-9]{6}"/g, `fill="${theme.nodeColors[0].bg}"`)
+      .replace(/stroke="#[a-fA-F0-9]{6}"/g, `stroke="${theme.connectionColor}"`)
+      .replace(/stroke-width="1"/g, 'stroke-width="1.5"')
+  }
+  let nodeIndex = 0
+  processedSvg = processedSvg.replace(
+    /fill="#[a-fA-F0-9]{6}"[^>]*class="node-[^"]*"/g,
+    (element) => {
+      const color = theme.nodeColors[nodeIndex % theme.nodeColors.length].bg
+      nodeIndex++
+      return element.replace(/fill="#[a-fA-F0-9]{6}"/, `fill="${color}"`)
+    },
+  )
+  return processedSvg.replace(/<(?:path|line|polyline)\b[^>]*>/g, (element) => {
+    if (!/stroke="#[a-fA-F0-9]{6}"/.test(element)) return element
+    const recolored = element.replace(
+      /stroke="#[a-fA-F0-9]{6}"/,
+      `stroke="${theme.connectionColor}"`,
+    )
+    if (!isDark) return recolored
+    return /stroke-width="[^"]*"/.test(recolored)
+      ? recolored.replace(/stroke-width="[^"]*"/, 'stroke-width="1.5"')
+      : recolored.replace(/(\s*\/?>)$/, ' stroke-width="1.5"$1')
+  })
 }
 
 /**
@@ -211,11 +179,11 @@ export function isMermaidCodeComplete(code: string): boolean {
 /**
  * Helper to wait for DOM element with retry mechanism
  */
-export function waitForDOMElement(
-  callback: () => Promise<any>,
+export function waitForDOMElement<T>(
+  callback: () => Promise<T>,
   maxAttempts = 3,
   delay = 100,
-): Promise<any> {
+): Promise<T> {
   return new Promise((resolve, reject) => {
     let attempts = 0
     const tryRender = async () => {

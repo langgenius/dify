@@ -1,6 +1,10 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import { AppModeEnum } from '@/types/app'
+import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import GetCodeGeneratorResModal from '../get-code-generator-res'
 
 const mockGenerateRule = vi.fn()
@@ -26,10 +30,29 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   }),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
-  useQuery: () => ({ data: mockInstructionTemplate }),
+vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', () => ({
+  default: () => ({ availableVars: [], availableNodes: [] }),
 }))
+vi.mock('@/app/components/workflow/hooks/use-workflow-variables', () => ({
+  useWorkflowVariableType: () => () => 'string',
+}))
+vi.mock('@/app/components/workflow/store', () => ({
+  useWorkflowStore: () => ({ getState: () => ({ nodesWithInspectVars: [] }) }),
+}))
+
+const render = (ui: ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.instructionGenerate.template.post.queryOptions({
+      input: { body: { type: 'code' } },
+    }).queryKey,
+    mockInstructionTemplate ?? { data: '' },
+  )
+  return renderWithConsoleQuery(<EventEmitterContextProvider>{ui}</EventEmitterContextProvider>, {
+    queryClient,
+  })
+}
+const instruction = () => screen.getByRole('textbox', { name: /instruction/ })
 
 vi.mock('@/service/debug', () => ({
   generateRule: (...args: unknown[]) => mockGenerateRule(...args),
@@ -52,7 +75,9 @@ vi.mock(
     }) => (
       <div>
         <button
-          onClick={() => setModel({ modelId: 'gpt-4o-mini', provider: 'openai', mode: 'chat' })}
+          onClick={() =>
+            setModel({ modelId: 'gpt-4o-mini', provider: 'openai', mode: 'chat' as const })
+          }
         >
           change-model
         </button>
@@ -64,50 +89,19 @@ vi.mock(
   }),
 )
 
-vi.mock('../../automatic/instruction-editor-in-workflow', () => ({
-  default: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => (
-    <div>
-      <div data-testid="workflow-editor">{value}</div>
-      <button onClick={() => onChange('code instruction')}>set-code-instruction</button>
-      <button onClick={() => onChange('')}>clear-code-instruction</button>
-    </div>
-  ),
-}))
-
-vi.mock('../../automatic/idea-output', () => ({
-  default: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => (
-    <div>
-      <div data-testid="idea-output">{value}</div>
-      <button onClick={() => onChange('code output')}>set-code-output</button>
-    </div>
-  ),
-}))
-
-vi.mock('../../automatic/res-placeholder', () => ({
-  default: () => <div>code-result-placeholder</div>,
-}))
-
-vi.mock('../../automatic/result', () => ({
-  default: ({
-    current,
-    onApply,
-  }: {
-    current: { modified?: string; code?: string }
-    onApply: () => void
-  }) => (
-    <div data-testid="code-result-panel">
-      <div>{current.modified || current.code}</div>
-      <button onClick={onApply}>apply-code-result</button>
-    </div>
-  ),
-}))
+vi.mock(
+  '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/code-editor',
+  () => ({
+    default: ({ value }: { value: string }) => <div data-testid="code-result-panel">{value}</div>,
+  }),
+)
 
 describe('GetCodeGeneratorResModal', () => {
   const mockOnClose = vi.fn()
   const mockOnFinished = vi.fn()
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     localStorage.clear()
     sessionStorage.clear()
     mockDefaultModel = {
@@ -120,6 +114,7 @@ describe('GetCodeGeneratorResModal', () => {
   })
 
   it('should initialize from template suggestions and persist model updates', async () => {
+    const user = userEvent.setup()
     mockInstructionTemplate = { data: 'code template' }
 
     render(
@@ -127,7 +122,7 @@ describe('GetCodeGeneratorResModal', () => {
         flowId="flow-1"
         nodeId="node-1"
         currentCode="print(1)"
-        mode={AppModeEnum.CHAT}
+        modelMode="chat"
         isShow
         codeLanguages={CodeLanguage.python3}
         onClose={mockOnClose}
@@ -136,17 +131,18 @@ describe('GetCodeGeneratorResModal', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByTestId('workflow-editor')).toHaveTextContent('code template')
+      expect(instruction()).toHaveValue('code template')
     })
 
-    fireEvent.click(screen.getByText('change-model'))
+    await user.click(screen.getByText('change-model'))
     expect(localStorage.getItem('auto-gen-model')).toContain('"name":"gpt-4o-mini"')
 
-    fireEvent.click(screen.getByText('change-params'))
+    await user.click(screen.getByText('change-params'))
     expect(localStorage.getItem('auto-gen-model')).toContain('"temperature":0.2')
   })
 
   it('should preserve an intentionally cleared template instruction', async () => {
+    const user = userEvent.setup()
     mockInstructionTemplate = { data: 'code template' }
 
     render(
@@ -154,7 +150,7 @@ describe('GetCodeGeneratorResModal', () => {
         flowId="flow-1"
         nodeId="node-1"
         currentCode="print(1)"
-        mode={AppModeEnum.CHAT}
+        modelMode="chat"
         isShow
         codeLanguages={CodeLanguage.python3}
         onClose={mockOnClose}
@@ -163,42 +159,20 @@ describe('GetCodeGeneratorResModal', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByTestId('workflow-editor')).toHaveTextContent('code template')
+      expect(instruction()).toHaveValue('code template')
     })
-    fireEvent.click(screen.getByText('clear-code-instruction'))
-    fireEvent.click(screen.getByText(/(?:^|\.)codegen\.generate(?=$|:)/))
+    await user.clear(instruction())
+    await user.click(screen.getByText(/(?:^|\.)codegen\.generate(?=$|:)/))
 
-    expect(screen.getByTestId('workflow-editor')).toBeEmptyDOMElement()
+    expect(instruction()).toHaveValue('')
     expect(mockToastError).toHaveBeenCalledWith(
       expect.stringMatching(/(?:^|\.)errorMsg\.fieldRequired(?=$|:)/),
     )
     expect(mockGenerateRule).not.toHaveBeenCalled()
-  })
-
-  it('should block generation when instruction is empty', () => {
-    render(
-      <GetCodeGeneratorResModal
-        flowId="flow-1"
-        nodeId="node-1"
-        currentCode="print(1)"
-        mode={AppModeEnum.CHAT}
-        isShow
-        codeLanguages={CodeLanguage.python3}
-        onClose={mockOnClose}
-        onFinished={mockOnFinished}
-      />,
-    )
-
-    fireEvent.click(screen.getByText(/(?:^|\.)codegen\.generate(?=$|:)/))
-
-    expect(mockToastError).toHaveBeenCalledWith(
-      expect.stringMatching(/(?:^|\.)errorMsg\.fieldRequired(?=$|:)/),
-    )
-    expect(mockGenerateRule).not.toHaveBeenCalled()
-    expect(screen.getByText('code-result-placeholder')).toBeInTheDocument()
   })
 
   it('should generate code, normalize code payloads, and apply the confirmed result', async () => {
+    const user = userEvent.setup()
     mockGenerateRule.mockResolvedValue({
       code: 'print("hello")',
     })
@@ -208,7 +182,7 @@ describe('GetCodeGeneratorResModal', () => {
         flowId="flow-1"
         nodeId="node-1"
         currentCode="print(1)"
-        mode={AppModeEnum.CHAT}
+        modelMode="completion"
         isShow
         codeLanguages={CodeLanguage.python3}
         onClose={mockOnClose}
@@ -216,9 +190,10 @@ describe('GetCodeGeneratorResModal', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('set-code-instruction'))
-    fireEvent.click(screen.getByText('set-code-output'))
-    fireEvent.click(screen.getByText(/(?:^|\.)codegen\.generate(?=$|:)/))
+    await user.type(instruction(), 'code instruction')
+    await user.click(screen.getByRole('button', { name: /generate.idealOutput/ }))
+    await user.type(screen.getByRole('textbox', { name: /generate.idealOutput/ }), 'code output')
+    await user.click(screen.getByText(/(?:^|\.)codegen\.generate(?=$|:)/))
 
     await waitFor(() => {
       expect(mockGenerateRule).toHaveBeenCalledWith(
@@ -229,6 +204,7 @@ describe('GetCodeGeneratorResModal', () => {
           instruction: 'code instruction',
           ideal_output: 'code output',
           language: 'python',
+          model_config: expect.objectContaining({ mode: 'completion' }),
         }),
       )
     })
@@ -237,13 +213,23 @@ describe('GetCodeGeneratorResModal', () => {
       expect(screen.getByTestId('code-result-panel')).toHaveTextContent('print("hello")')
     })
 
-    fireEvent.click(screen.getByText('apply-code-result'))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)generate\.apply(?=$|:)/ }))
 
     await waitFor(() => {
       expect(screen.getByText(/(?:^|\.)codegen\.overwriteConfirmTitle(?=$|:)/)).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.confirm(?=$|:)/ }))
+    const confirmation = screen.getByRole('alertdialog')
+    expect(mockOnFinished).not.toHaveBeenCalled()
+    await user.click(within(confirmation).getByRole('button', { name: /operation\.cancel/ }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(mockOnFinished).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: /generate\.apply/ }))
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: /operation\.confirm/,
+      }),
+    )
 
     expect(mockOnFinished).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -253,46 +239,8 @@ describe('GetCodeGeneratorResModal', () => {
     )
   })
 
-  it('should close overwrite confirmation without applying the generated code when cancelled', async () => {
-    mockGenerateRule.mockResolvedValue({
-      code: 'print("hello")',
-    })
-
-    render(
-      <GetCodeGeneratorResModal
-        flowId="flow-1"
-        nodeId="node-1"
-        currentCode="print(1)"
-        mode={AppModeEnum.CHAT}
-        isShow
-        codeLanguages={CodeLanguage.python3}
-        onClose={mockOnClose}
-        onFinished={mockOnFinished}
-      />,
-    )
-
-    fireEvent.click(screen.getByText('set-code-instruction'))
-    fireEvent.click(screen.getByText('set-code-output'))
-    fireEvent.click(screen.getByText(/(?:^|\.)codegen\.generate(?=$|:)/))
-
-    await waitFor(() => {
-      expect(screen.getByTestId('code-result-panel')).toHaveTextContent('print("hello")')
-    })
-
-    fireEvent.click(screen.getByText('apply-code-result'))
-    const dialog = await screen.findByRole('alertdialog')
-
-    fireEvent.click(
-      within(dialog).getByRole('button', { name: /(?:^|\.)operation\.cancel(?=$|:)/ }),
-    )
-
-    await waitFor(() => {
-      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-    })
-    expect(mockOnFinished).not.toHaveBeenCalled()
-  })
-
   it('should surface service errors without creating a result version', async () => {
+    const user = userEvent.setup()
     mockGenerateRule.mockResolvedValue({
       error: 'generation failed',
       modified: 'unused',
@@ -303,7 +251,7 @@ describe('GetCodeGeneratorResModal', () => {
         flowId="flow-1"
         nodeId="node-1"
         currentCode="print(1)"
-        mode={AppModeEnum.CHAT}
+        modelMode="chat"
         isShow
         codeLanguages={CodeLanguage.javascript}
         onClose={mockOnClose}
@@ -311,8 +259,8 @@ describe('GetCodeGeneratorResModal', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('set-code-instruction'))
-    fireEvent.click(screen.getByText(/(?:^|\.)codegen\.generate(?=$|:)/))
+    await user.type(instruction(), 'code instruction')
+    await user.click(screen.getByText(/(?:^|\.)codegen\.generate(?=$|:)/))
 
     await waitFor(() => {
       expect(mockToastError).toHaveBeenCalledWith('generation failed')
@@ -321,3 +269,20 @@ describe('GetCodeGeneratorResModal', () => {
     expect(screen.queryByTestId('code-result-panel')).not.toBeInTheDocument()
   })
 })
+
+// PromptEditor owns rich text behavior; this feature owns instruction persistence and generation.
+vi.mock('@/app/components/base/prompt-editor', () => ({
+  default: ({
+    value,
+    onChange,
+    'aria-label': label,
+    'aria-labelledby': labelledBy,
+  }: import('@/app/components/base/prompt-editor').PromptEditorProps) => (
+    <textarea
+      aria-label={label}
+      aria-labelledby={labelledBy}
+      value={value}
+      onChange={(event) => onChange?.(event.target.value)}
+    />
+  ),
+}))

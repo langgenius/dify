@@ -10,6 +10,7 @@ import { useDocLink } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { useAccessPointActions } from '../shared/use-access-point-actions'
 import { getPublishedWorkflowState, isAdvancedApp } from '../shared/utils'
@@ -46,7 +47,7 @@ export function BuiltInAccessPoints({
     isPending: workflowLoading,
   } = useAppWorkflow(shouldFetchWorkflow ? appId : '', {
     retry: (failureCount, error) => {
-      if (error instanceof Response && error.status === 403) return false
+      if (getHttpErrorStatus(error) === 403) return false
 
       return failureCount < 3
     },

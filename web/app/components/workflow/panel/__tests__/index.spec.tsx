@@ -1,5 +1,10 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import type { Shape } from '../../store/workflow'
+import { act, screen, waitFor } from '@testing-library/react'
+import { useLayoutEffect } from 'react'
 import * as React from 'react'
+import { ReactFlowProvider, useStoreApi } from 'reactflow'
+import { createNode } from '../../__tests__/fixtures'
+import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import Panel from '../index'
 
 type MockNodeData = {
@@ -13,16 +18,7 @@ type MockNode = {
   data: MockNodeData
 }
 
-type MockPanelStoreState = {
-  showEnvPanel: boolean
-  isRestoring: boolean
-  showWorkflowVersionHistoryPanel: boolean
-  workflowCanvasWidth: number
-  previewPanelWidth: number
-  setPreviewPanelWidth: (value: number) => void
-  setRightPanelWidth: (value: number) => void
-  setOtherPanelWidth: (value: number) => void
-}
+type MockPanelStoreState = Partial<Shape>
 
 type MockResizeMode = 'borderBox' | 'contentRect' | 'fallback'
 
@@ -55,7 +51,7 @@ class MockResizeObserver {
   observe = vi.fn(() => {
     if (!mockResizeModes.length) return
 
-    this.callback(mockResizeModes.map(createResizeEntry), this as unknown as ResizeObserver)
+    this.callback(mockResizeModes.map(createResizeEntry), this)
   })
 
   disconnect = vi.fn()
@@ -70,22 +66,27 @@ class MockResizeObserver {
 let mockNodes: MockNode[] = []
 let mockPanelStoreState: MockPanelStoreState
 
-vi.mock('reactflow', () => ({
-  useStore: (selector: (state: { getNodes: () => MockNode[] }) => unknown) =>
-    selector({
-      getNodes: () => mockNodes,
-    }),
-  useStoreApi: () => ({
-    getState: () => ({
-      getNodes: () => mockNodes,
-      setNodes: vi.fn(),
-    }),
-  }),
-}))
+function FlowFixture({ children }: { children: React.ReactNode }) {
+  const flow = useStoreApi()
+  useLayoutEffect(() => {
+    flow
+      .getState()
+      .setNodes(
+        mockNodes.map((node) =>
+          createNode({ ...node, data: { ...createNode().data, ...node.data } }),
+        ),
+      )
+  }, [flow])
+  return children
+}
 
-vi.mock('../../store', () => ({
-  useStore: <T,>(selector: (state: MockPanelStoreState) => T) => selector(mockPanelStoreState),
-}))
+const render = (ui: React.ReactElement) =>
+  renderWorkflowComponent(
+    <ReactFlowProvider>
+      <FlowFixture>{ui}</FlowFixture>
+    </ReactFlowProvider>,
+    { initialStoreState: mockPanelStoreState },
+  )
 
 vi.mock('../../nodes/panel', () => ({
   default: ({ id, data }: { id: string; data: MockNodeData }) => (
@@ -147,9 +148,6 @@ describe('Panel', () => {
       showWorkflowVersionHistoryPanel: false,
       workflowCanvasWidth: 0,
       previewPanelWidth: 420,
-      setPreviewPanelWidth: vi.fn(),
-      setRightPanelWidth: vi.fn(),
-      setOtherPanelWidth: vi.fn(),
     }
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => ({
       width: 640,
@@ -191,7 +189,7 @@ describe('Panel', () => {
       previewPanelWidth: 520,
     }
 
-    render(
+    const { store } = render(
       <Panel
         components={{
           left: <div>left-slot</div>,
@@ -199,7 +197,6 @@ describe('Panel', () => {
         }}
         versionHistoryPanelProps={{
           latestVersionId: 'version-1',
-          restoreVersionUrl: (versionId) => `/apps/app-1/workflows/${versionId}/restore`,
         }}
       />,
     )
@@ -209,13 +206,15 @@ describe('Panel', () => {
     expect(screen.getByTestId('node-panel')).toHaveTextContent('node-1:Selected Node')
     expect(screen.getByTestId('env-panel')).toBeInTheDocument()
     expect(await screen.findByTestId('version-history-panel')).toHaveTextContent('version-1')
-    expect(mockPanelStoreState.setPreviewPanelWidth).toHaveBeenCalledWith(400)
-    expect(mockPanelStoreState.setRightPanelWidth).toHaveBeenCalledWith(640)
-    expect(mockPanelStoreState.setOtherPanelWidth).toHaveBeenCalledWith(640)
+    expect(store.getState().previewPanelWidth).toBe(400)
+    await waitFor(() => {
+      expect(store.getState().rightPanelWidth).toBe(640)
+      expect(store.getState().otherPanelWidth).toBe(640)
+    })
   })
 
   it('should skip node and auxiliary panels when there is no selected node or open side panel state', () => {
-    render(
+    const { store } = render(
       <Panel
         components={{
           left: <div>left-only</div>,
@@ -227,57 +226,48 @@ describe('Panel', () => {
     expect(screen.queryByTestId('node-panel')).not.toBeInTheDocument()
     expect(screen.queryByTestId('env-panel')).not.toBeInTheDocument()
     expect(screen.queryByTestId('version-history-panel')).not.toBeInTheDocument()
-    expect(mockPanelStoreState.setPreviewPanelWidth).not.toHaveBeenCalled()
+    expect(store.getState().previewPanelWidth).toBe(420)
   })
 
   it('should derive observer widths from border-box, content-rect, and fallback values and disconnect on unmount', async () => {
-    const { unmount } = render(<Panel />)
+    const { unmount, store } = render(<Panel />)
 
     await waitFor(() => {
-      expect(mockPanelStoreState.setRightPanelWidth).toHaveBeenCalledWith(640)
-      expect(mockPanelStoreState.setOtherPanelWidth).toHaveBeenCalledWith(640)
+      expect(store.getState().rightPanelWidth).toBe(640)
+      expect(store.getState().otherPanelWidth).toBe(640)
     })
-
-    vi.mocked(mockPanelStoreState.setRightPanelWidth).mockClear()
-    vi.mocked(mockPanelStoreState.setOtherPanelWidth).mockClear()
 
     act(() => {
       mockResizeObservers.forEach((observer) => {
-        observer.callback([createResizeEntry('borderBox')], observer as unknown as ResizeObserver)
+        observer.callback([createResizeEntry('borderBox')], observer)
       })
     })
 
     await waitFor(() => {
-      expect(mockPanelStoreState.setRightPanelWidth).toHaveBeenCalledWith(720)
-      expect(mockPanelStoreState.setOtherPanelWidth).toHaveBeenCalledWith(720)
+      expect(store.getState().rightPanelWidth).toBe(720)
+      expect(store.getState().otherPanelWidth).toBe(720)
     })
-
-    vi.mocked(mockPanelStoreState.setRightPanelWidth).mockClear()
-    vi.mocked(mockPanelStoreState.setOtherPanelWidth).mockClear()
 
     act(() => {
       mockResizeObservers.forEach((observer) => {
-        observer.callback([createResizeEntry('contentRect')], observer as unknown as ResizeObserver)
+        observer.callback([createResizeEntry('contentRect')], observer)
       })
     })
 
     await waitFor(() => {
-      expect(mockPanelStoreState.setRightPanelWidth).toHaveBeenCalledWith(530)
-      expect(mockPanelStoreState.setOtherPanelWidth).toHaveBeenCalledWith(530)
+      expect(store.getState().rightPanelWidth).toBe(530)
+      expect(store.getState().otherPanelWidth).toBe(530)
     })
-
-    vi.mocked(mockPanelStoreState.setRightPanelWidth).mockClear()
-    vi.mocked(mockPanelStoreState.setOtherPanelWidth).mockClear()
 
     act(() => {
       mockResizeObservers.forEach((observer) => {
-        observer.callback([createResizeEntry('fallback')], observer as unknown as ResizeObserver)
+        observer.callback([createResizeEntry('fallback')], observer)
       })
     })
 
     await waitFor(() => {
-      expect(mockPanelStoreState.setRightPanelWidth).toHaveBeenCalledWith(640)
-      expect(mockPanelStoreState.setOtherPanelWidth).toHaveBeenCalledWith(640)
+      expect(store.getState().rightPanelWidth).toBe(640)
+      expect(store.getState().otherPanelWidth).toBe(640)
     })
 
     unmount()

@@ -1,11 +1,15 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { RetrievalConfig } from '@/types/app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import datasetSettings from '@/i18n/locales/en-US/dataset-settings.json'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
+import { consoleQuery } from '@/service/console'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '../../../../create/step-two'
 import ExternalKnowledgeSection from '../external-knowledge-section'
@@ -18,12 +22,6 @@ vi.mock('react-i18next', async () => {
   return createReactI18nextMock({ ...settings, ...creation })
 })
 vi.mock('@/context/i18n', () => ({ useDocLink: () => (path: string) => path }))
-vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => ({
-    queryKey: ['settings-reflow-system-features'],
-    queryFn: async () => ({ deployment_edition: 'CLOUD' }),
-  }),
-}))
 // These independently tested controls do not own the warning or external field layout.
 vi.mock('@/app/components/datasets/settings/chunk-structure', () => ({ default: () => null }))
 vi.mock('@/app/components/datasets/settings/summary-index-setting', () => ({ default: () => null }))
@@ -54,11 +52,12 @@ const mockRetrievalConfig: RetrievalConfig = {
   score_threshold: 0.5,
 }
 
-const mockDataset: DataSet = {
+const mockDataset: DatasetDetailWithPartialMembersResponse = {
+  ...createDatasetFixture(),
   id: 'dataset-1',
   name: 'Test Dataset',
   description: 'Test description',
-  permission: DatasetPermission.onlyMe,
+  permission: PermissionLevel.onlyMe,
   icon_info: {
     icon_type: 'emoji',
     icon: '📚',
@@ -66,7 +65,6 @@ const mockDataset: DataSet = {
     icon_url: '',
   },
   indexing_technique: IndexingType.ECONOMICAL,
-  indexing_status: 'completed',
   data_source_type: DataSourceType.FILE,
   doc_form: ChunkingMode.text,
   embedding_model: 'text-embedding-ada-002',
@@ -74,7 +72,6 @@ const mockDataset: DataSet = {
   embedding_available: true,
   app_count: 0,
   document_count: 5,
-  total_document_count: 5,
   word_count: 1000,
   provider: 'vendor',
   tags: [],
@@ -91,7 +88,6 @@ const mockDataset: DataSet = {
     score_threshold_enabled: true,
   },
   retrieval_model_dict: mockRetrievalConfig,
-  retrieval_model: mockRetrievalConfig,
   built_in_field_enabled: false,
   keyword_number: 10,
   created_by: 'user-1',
@@ -141,14 +137,17 @@ describe('Knowledge settings narrow-screen readability', () => {
   beforeEach(async () => {
     await page.viewport(320, 900)
   })
-  afterEach(async () => {
-    await page.viewport(1280, 720)
-  })
 
   // DOM presence checks miss text painted outside fixed-height warnings and long URL fields.
   // Keep the production sections and assert every rendered text line fits its visible field.
   it('keeps the full upgrade warning inside its panel after selecting High Quality', async () => {
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+    })
+    queryClient.setQueryData(
+      consoleQuery.systemFeatures.get.queryKey(),
+      createSystemFeaturesFixture({ deployment_edition: 'CLOUD' }),
+    )
     const screen = await render(
       <QueryClientProvider client={queryClient}>
         <div className="@container/settings" style={{ width: 220 }}>

@@ -1,12 +1,34 @@
-import type { ReactNode } from 'react'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { ReactElement, ReactNode } from 'react'
 import type { WorkflowProps } from '@/app/components/workflow'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderEditor as renderWithQueryClient } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { renderWithAccountProfile as render } from '@/test/console/account-profile'
+import { createAccountProfileQueryClient } from '@/test/console/account-profile'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { seedAppDetail } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppACLPermission } from '@/utils/permission'
 import WorkflowMain from '../workflow-main'
+
+let appDetail: AppDetailWithSite
+
+const render = (ui: ReactElement) => {
+  const queryClient = createAccountProfileQueryClient()
+  seedAppDetail(queryClient, appDetail)
+  return renderWithQueryClient(ui, {
+    resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    wrapper: createQueryClientWrapper(queryClient),
+  })
+}
+
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({ appId: 'app-1' }),
+}))
 
 const mockSetFeatures = vi.fn()
 const mockSetConversationVariables = vi.fn()
@@ -106,6 +128,8 @@ vi.mock('@/context/workspace-state', async () => {
 })
 
 vi.mock('@/app/components/base/features/hooks', () => ({
+  useFeatures: (selector: (state: { features: { file: { enabled: boolean } } }) => unknown) =>
+    selector({ features: { file: { enabled: true } } }),
   useFeaturesStore: () => ({
     getState: () => ({
       setFeatures: mockSetFeatures,
@@ -129,7 +153,8 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
-vi.mock('reactflow', () => ({
+vi.mock('reactflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('reactflow')>()),
   useReactFlow: () => ({
     getNodes: () => [],
     setNodes: vi.fn(),
@@ -279,15 +304,11 @@ vi.mock('@/app/components/workflow', () => ({
   },
 }))
 
-vi.mock('../../hooks/use-available-nodes-meta-data', () => ({
-  useAvailableNodesMetaData: () => ({
+vi.mock('@/app/components/workflow/node-catalog', () => ({
+  useWorkflowNodeCatalog: () => ({
     nodes: [{ id: 'start' }],
     nodesMap: { start: { id: 'start' } },
   }),
-}))
-
-vi.mock('../../hooks/use-configs-map', () => ({
-  useConfigsMap: () => ({ flowId: 'app-1', flowType: 'app-flow', fileSettings: { enabled: true } }),
 }))
 
 vi.mock('../../hooks/use-DSL', () => ({
@@ -302,8 +323,8 @@ vi.mock('../../hooks/use-get-run-and-trace-url', () => ({
   useGetRunAndTraceUrl: () => ({ getWorkflowRunAndTraceUrl: hookFns.getWorkflowRunAndTraceUrl }),
 }))
 
-vi.mock('../../hooks/use-inspect-vars-crud', () => ({
-  useInspectVarsCrud: () => ({
+vi.mock('@/app/components/workflow/hooks/use-inspect-vars-crud-common', () => ({
+  useInspectVarsCrudCommon: () => ({
     hasNodeInspectVars: hookFns.hasNodeInspectVars,
     hasSetInspectVar: hookFns.hasSetInspectVar,
     fetchInspectVarValue: hookFns.fetchInspectVarValue,
@@ -382,38 +403,6 @@ vi.mock('@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars', () =>
   }),
 }))
 
-vi.mock('../../hooks/use-workflow-draft-graph-for-canvas', () => ({
-  useWorkflowDraftGraphForCanvas: () => ({
-    getWorkflowDraftGraphForCanvas: (graph?: {
-      nodes?: unknown[]
-      edges?: unknown[]
-      viewport?: unknown
-    }) => ({
-      nodes: graph?.nodes?.length
-        ? graph.nodes
-        : [{ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }],
-      edges: graph?.edges || [],
-      viewport: graph?.viewport || { x: 0, y: 0, zoom: 1 },
-    }),
-  }),
-}))
-
-vi.mock('../../hooks/use-workflow-draft-graph-for-canvas', () => ({
-  useWorkflowDraftGraphForCanvas: () => ({
-    getWorkflowDraftGraphForCanvas: (graph?: {
-      nodes?: unknown[]
-      edges?: unknown[]
-      viewport?: unknown
-    }) => ({
-      nodes: graph?.nodes?.length
-        ? graph.nodes
-        : [{ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }],
-      edges: graph?.edges || [],
-      viewport: graph?.viewport || { x: 0, y: 0, zoom: 1 },
-    }),
-  }),
-}))
-
 vi.mock('../workflow-children', () => ({
   default: () => <div data-testid="workflow-children">workflow-children</div>,
 }))
@@ -449,29 +438,14 @@ describe('WorkflowMain', () => {
     mockReplaceGraphFromReactFlow.mockReturnValue(true)
     hookFns.doSyncWorkflowDraft.mockResolvedValue({ hash: 'saved-hash', updatedAt: 2 })
     hookFns.handleRefreshWorkflowDraft.mockResolvedValue(true)
-    useAppStore.setState({ appDetail: undefined })
+    appDetail = createAppDetailFixture({ id: 'app-1', mode: 'workflow' as const })
   })
 
-  it('should render the inner workflow context with children and forwarded graph props', () => {
-    const nodes = [{ id: 'node-1' }]
-    const edges = [{ id: 'edge-1' }]
-    const viewport = { x: 1, y: 2, zoom: 1.5 }
-
-    render(<WorkflowMain nodes={nodes as never} edges={edges as never} viewport={viewport} />)
-
-    expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    expect(screen.getByTestId('workflow-children')).toBeInTheDocument()
-    expect(capturedContextProps).toMatchObject({
-      nodes,
-      edges,
-      viewport,
-    })
-  })
-
-  it('should update features and workflow variables when workflow data changes', () => {
+  it('updates features and variables while normalizing secret masks', async () => {
+    const user = userEvent.setup()
     render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /update-workflow-data/i }))
+    await user.click(screen.getByRole('button', { name: /update-workflow-data/i }))
 
     expect(mockSetFeatures).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -482,70 +456,24 @@ describe('WorkflowMain', () => {
       expect.objectContaining({ id: 'conversation-1' }),
     ])
     expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([
-      expect.objectContaining({ id: 'env-1' }),
+      expect.objectContaining({ id: 'env-1', value: '[__HIDDEN__]' }),
     ])
+    expect(mockSetEnvSecrets).toHaveBeenCalledWith({ 'env-1': '********************' })
   })
 
-  it('should only update the workflow store slices present in the payload', () => {
+  it('updates only payload slices and ignores empty updates', async () => {
+    const user = userEvent.setup()
     render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /update-conversation-only/i }))
+    await user.click(screen.getByRole('button', { name: /update-conversation-only/i }))
 
     expect(mockSetConversationVariables).toHaveBeenCalledWith([
       expect.objectContaining({ id: 'conversation-only' }),
     ])
+    await user.click(screen.getByRole('button', { name: 'update-empty-payload' }))
+    expect(mockSetConversationVariables).toHaveBeenCalledOnce()
     expect(mockSetFeatures).not.toHaveBeenCalled()
     expect(mockSetEnvironmentVariables).not.toHaveBeenCalled()
-  })
-
-  it('normalizes secret masks from collaboration refreshes', () => {
-    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-
-    fireEvent.click(screen.getByRole('button', { name: /update-workflow-data/i }))
-
-    expect(mockSetEnvSecrets).toHaveBeenCalledWith({ 'env-1': '********************' })
-    expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([
-      expect.objectContaining({ id: 'env-1', value: '[__HIDDEN__]' }),
-    ])
-  })
-
-  it('should ignore empty workflow data updates', () => {
-    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-
-    fireEvent.click(screen.getByRole('button', { name: /update-empty-payload/i }))
-
-    expect(mockSetFeatures).not.toHaveBeenCalled()
-    expect(mockSetConversationVariables).not.toHaveBeenCalled()
-    expect(mockSetEnvironmentVariables).not.toHaveBeenCalled()
-  })
-
-  it('should expose the composed workflow action hooks through hooksStore', () => {
-    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-
-    expect(capturedContextProps?.hooksStore).toMatchObject({
-      syncWorkflowDraftWhenPageClose: hookFns.syncWorkflowDraftWhenPageClose,
-      doSyncWorkflowDraft: hookFns.doSyncWorkflowDraft,
-      handleRefreshWorkflowDraft: hookFns.handleRefreshWorkflowDraft,
-      handleBackupDraft: hookFns.handleBackupDraft,
-      handleLoadBackupDraft: hookFns.handleLoadBackupDraft,
-      handleRestoreFromPublishedWorkflow: hookFns.handleRestoreFromPublishedWorkflow,
-      handleRun: hookFns.handleRun,
-      handleStopRun: hookFns.handleStopRun,
-      handleStartWorkflowRun: hookFns.handleStartWorkflowRun,
-      handleWorkflowStartRunInChatflow: hookFns.handleWorkflowStartRunInChatflow,
-      handleWorkflowStartRunInWorkflow: hookFns.handleWorkflowStartRunInWorkflow,
-      handleWorkflowTriggerScheduleRunInWorkflow:
-        hookFns.handleWorkflowTriggerScheduleRunInWorkflow,
-      handleWorkflowTriggerWebhookRunInWorkflow: hookFns.handleWorkflowTriggerWebhookRunInWorkflow,
-      handleWorkflowTriggerPluginRunInWorkflow: hookFns.handleWorkflowTriggerPluginRunInWorkflow,
-      handleWorkflowRunAllTriggersInWorkflow: hookFns.handleWorkflowRunAllTriggersInWorkflow,
-      availableNodesMetaData: { nodes: [{ id: 'start' }], nodesMap: { start: { id: 'start' } } },
-      getWorkflowRunAndTraceUrl: hookFns.getWorkflowRunAndTraceUrl,
-      exportCheck: hookFns.exportCheck,
-      handleExportDSL: hookFns.handleExportDSL,
-      fetchInspectVars: hookFns.fetchInspectVars,
-      configsMap: { flowId: 'app-1', flowType: 'app-flow', fileSettings: { enabled: true } },
-    })
   })
 
   it('passes collaboration props and tracks cursors when collaboration is enabled', () => {
@@ -581,7 +509,7 @@ describe('WorkflowMain', () => {
 
     render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
 
-    expect(screen.queryByTestId('collaboration-graph-loading')).not.toBeInTheDocument()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
 
     act(() => collaborationListeners.graphReadyChange?.(false))
     expect(screen.getByRole('status')).toHaveTextContent('workflow.common.syncingData')
@@ -591,8 +519,10 @@ describe('WorkflowMain', () => {
   })
 
   it('disables collaboration for view-only apps', () => {
-    useAppStore.setState({
-      appDetail: { permission_keys: [AppACLPermission.ViewLayout] } as never,
+    appDetail = createAppDetailFixture({
+      id: 'app-1',
+      mode: 'workflow' as const,
+      permission_keys: [AppACLPermission.ViewLayout],
     })
 
     render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
@@ -611,17 +541,13 @@ describe('WorkflowMain', () => {
       conversation_variables: [],
       environment_variables: [],
       graph: {
-        nodes: [{ id: 'n-1' }],
+        nodes: [createNode({ id: 'n-1', data: { type: BlockEnum.Start } })],
         edges: [{ id: 'e-1' }],
         viewport: { x: 3, y: 4, zoom: 1.2 },
       },
     })
 
     render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-
-    expect(mockOnVarsAndFeaturesUpdate).toHaveBeenCalled()
-    expect(mockOnWorkflowUpdate).toHaveBeenCalled()
-    expect(mockOnSyncRequest).toHaveBeenCalled()
 
     const acknowledge = vi.fn()
     collaborationListeners.syncRequest?.({ requestId: 'request-1', acknowledge })
@@ -642,10 +568,15 @@ describe('WorkflowMain', () => {
 
     await waitFor(() => {
       expect(mockFetchWorkflowDraft).toHaveBeenCalledWith('/apps/app-1/workflows/draft')
-      expect(mockSetFeatures).toHaveBeenCalled()
+      expect(mockSetFeatures).toHaveBeenCalledWith(
+        expect.objectContaining({
+          file: expect.objectContaining({ enabled: true }),
+          opening: expect.objectContaining({ opening_statement: 'hello' }),
+        }),
+      )
       expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('imported-hash')
       expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith({
-        nodes: [{ id: 'n-1' }],
+        nodes: [createNode({ id: 'n-1', data: { type: BlockEnum.Start } })],
         edges: [{ id: 'e-1' }],
         viewport: { x: 3, y: 4, zoom: 1.2 },
       })
@@ -986,7 +917,11 @@ describe('WorkflowMain', () => {
 
     await waitFor(() => {
       expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith({
-        nodes: [{ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }],
+        nodes: [
+          expect.objectContaining({
+            data: expect.objectContaining({ type: BlockEnum.StartPlaceholder }),
+          }),
+        ],
         edges: [],
         viewport: { x: 0, y: 0, zoom: 1 },
       })

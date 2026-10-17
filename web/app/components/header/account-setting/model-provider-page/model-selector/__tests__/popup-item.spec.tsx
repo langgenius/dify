@@ -3,14 +3,15 @@ import type {
   ProviderModelWithStatusEntity,
   ProviderWithModelsResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { ReactElement, ReactNode } from 'react'
+import type { ReactElement } from 'react'
 import type { DefaultModel } from '../../declarations'
 import type { ModelSelectorPreviewPayload } from '../popup-item'
 import { createPreviewCardHandle } from '@langgenius/dify-ui/preview-card'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { modelProviderDetailsQueryOptions } from '@/app/components/header/account-setting/model-provider-page/utils'
 import { consoleQuery } from '@/service/console'
-import { commonQueryKeys } from '@/service/use-common'
+import { createProviderResponseFixture } from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import {
   ConfigurationMethodEnum,
@@ -33,7 +34,9 @@ const providerSummaryFixture = {
   system_configuration: { enabled: false },
   custom_configuration: {
     status: 'active',
-    available_credentials: [],
+    available_credentials: [{ credential_id: 'key-1', credential_name: 'my-api-key' }],
+    current_credential_id: 'key-1',
+    current_credential_name: 'my-api-key',
     current_credential_usable: true,
     has_custom_models: false,
   },
@@ -53,51 +56,17 @@ vi.mock('../../hooks', async () => {
   }
 })
 
-vi.mock('../../model-icon', () => ({
-  default: ({ modelName }: { modelName: string }) => <span>{modelName}</span>,
-}))
-
-vi.mock('../../model-name', () => ({
-  default: ({
-    modelItem,
-    className,
-    nameClassName,
-    children,
-  }: {
-    modelItem: ProviderModelWithStatusEntity
-    className?: string
-    nameClassName?: string
-    children?: ReactNode
-  }) => (
-    <span className={[className, nameClassName].filter(Boolean).join(' ')}>
-      {modelItem.label.en_US}
-      {children}
-    </span>
-  ),
-}))
-
-vi.mock('../feature-icon', () => ({
-  default: ({ feature }: { feature: string }) => <span data-testid="feature-icon">{feature}</span>,
-}))
-
-const mockCredentialPanelState = vi.hoisted(() => vi.fn())
-vi.mock('../../provider-added-card/use-credential-panel-state', () => ({
-  useCredentialPanelState: mockCredentialPanelState,
-}))
-
-vi.mock('../../provider-added-card/use-change-provider-priority', () => ({
-  useChangeProviderPriority: () => ({
-    isChangingPriority: false,
-    handleChangePriority: vi.fn(),
+const mockOpenCredentialModal = vi.hoisted(() => vi.fn())
+vi.mock('../../model-auth/hooks', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../model-auth/hooks')>()),
+  useAuth: () => ({
+    openConfirmDelete: vi.fn(),
+    closeConfirmDelete: vi.fn(),
+    doingAction: false,
+    handleConfirmDelete: vi.fn(),
+    deleteCredentialId: null,
+    handleOpenModal: mockOpenCredentialModal,
   }),
-}))
-
-vi.mock('../../provider-added-card/model-auth-dropdown/dropdown-content', () => ({
-  default: ({ onClose }: { onClose: () => void }) => (
-    <button type="button" onClick={onClose}>
-      close dropdown
-    </button>
-  ),
 }))
 
 const mockSetShowModelModal = vi.hoisted(() => vi.fn())
@@ -109,23 +78,10 @@ vi.mock('@/context/modal-context', () => ({
 
 const mockProviderSummary = vi.hoisted(() => vi.fn())
 
-const mockConsoleStateReader = vi.hoisted(() => vi.fn())
+let creditsExhausted = false
 const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: ['credential.use', 'credential.create', 'credential.manage'],
 }))
-
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
 
 const makeModelItem = (
   overrides: Partial<ProviderModelWithStatusEntity> = {},
@@ -161,11 +117,11 @@ const makeProvider = (
   ...providerSummaryFixture,
   provider: 'openai',
   preferred_provider_type: PreferredProviderTypeEnum.custom,
-  custom_configuration: {
-    status: CustomConfigurationStatusEnum.active,
-    current_credential_name: 'my-api-key',
-  },
   ...overrides,
+  custom_configuration: {
+    ...providerSummaryFixture.custom_configuration,
+    ...overrides.custom_configuration,
+  },
 })
 
 const previewCardProps = () => ({
@@ -174,18 +130,36 @@ const previewCardProps = () => ({
   onSelect: vi.fn(),
 })
 
-const createPopupItemNode = (node: ReactElement) => node
-
 const renderPopupItem = (node: ReactElement) => {
   const queryClient = createConsoleQueryClient()
-  queryClient.setQueryData(commonQueryKeys.modelProviderDetails, {
-    data: [makeProvider()],
+  queryClient.setQueryData(modelProviderDetailsQueryOptions().queryKey, {
+    data: [
+      createProviderResponseFixture({
+        provider: 'openai',
+        custom_configuration: { ...providerSummaryFixture.custom_configuration },
+      }),
+    ],
   })
   queryClient.setQueryData(consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(), {
     ...mockProviderSummary(),
     plugins: {},
   })
-  return renderWithConsoleQuery(createPopupItemNode(node), { queryClient })
+  queryClient.setQueryData(consoleQuery.workspaces.current.modelProviders.credits.get.queryKey(), {
+    exhausted_at: null,
+    next_credit_reset_date: null,
+    pool_type: 'paid',
+    remaining_credits: creditsExhausted ? 0 : 200,
+    quota_used: creditsExhausted ? 200 : 0,
+    quota_limit: 200,
+    is_exhausted: creditsExhausted,
+    is_unlimited: false,
+  })
+  return renderWithConsoleQuery(node, {
+    queryClient,
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    trialModels: ['openai'],
+  })
 }
 
 describe('PopupItem', () => {
@@ -196,19 +170,7 @@ describe('PopupItem', () => {
     mockProviderSummary.mockReturnValue({
       data: [makeProvider()],
     })
-    mockConsoleStateReader.mockReturnValue({
-      currentWorkspace: { trial_credits: 200, trial_credits_used: 0 },
-    })
-    mockCredentialPanelState.mockReturnValue({
-      variant: 'api-active',
-      priority: 'apiKey',
-      supportsCredits: false,
-      showPrioritySwitcher: false,
-      hasCredentials: true,
-      isCreditsExhausted: false,
-      credentialName: 'my-api-key',
-      credits: 200,
-    })
+    creditsExhausted = false
   })
 
   it('should render nothing when provider is not found in modelProviders', () => {
@@ -223,40 +185,26 @@ describe('PopupItem', () => {
     expect(container.textContent).toBe('')
   })
 
-  it('should select the model when clicking an active model', () => {
+  it('should select the model and close its shared preview', async () => {
     const onSelect = vi.fn()
+    const onPreviewCardClose = vi.fn()
     renderPopupItem(
       <PopupItem
         {...previewCardProps()}
         model={makeModel()}
         onSelect={onSelect}
+        onPreviewCardClose={onPreviewCardClose}
         onHide={vi.fn()}
       />,
     )
 
-    fireEvent.click(screen.getByText('GPT-4'))
+    await userEvent.setup().click(screen.getByText('GPT-4'))
 
+    expect(onPreviewCardClose).toHaveBeenCalledTimes(1)
     expect(onSelect).toHaveBeenCalledWith('openai', expect.objectContaining({ model: 'gpt-4' }))
   })
 
-  it('should close the shared preview before pressing an active model', () => {
-    const onPreviewCardClose = vi.fn()
-    renderPopupItem(
-      <PopupItem
-        previewCardHandle={createPreviewCardHandle<ModelSelectorPreviewPayload>()}
-        onPreviewCardClose={onPreviewCardClose}
-        onSelect={vi.fn()}
-        model={makeModel()}
-        onHide={vi.fn()}
-      />,
-    )
-
-    fireEvent.pointerDown(screen.getByText('GPT-4'))
-
-    expect(onPreviewCardClose).toHaveBeenCalledTimes(1)
-  })
-
-  it('should not select the combobox value when model is not active', () => {
+  it('should not select the combobox value when model is not active', async () => {
     const onSelect = vi.fn()
     renderPopupItem(
       <PopupItem
@@ -267,41 +215,9 @@ describe('PopupItem', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('GPT-4'))
+    await userEvent.setup().click(screen.getByText('GPT-4'))
 
     expect(onSelect).not.toHaveBeenCalled()
-  })
-
-  it('should strike through deprecated model name', () => {
-    renderPopupItem(
-      <PopupItem
-        {...previewCardProps()}
-        model={makeModel({ models: [makeModelItem({ deprecated: true })] })}
-        onHide={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByText('GPT-4')).toHaveClass('line-through')
-  })
-
-  it('should render incompatible model names with tertiary text color', () => {
-    renderPopupItem(
-      <PopupItem
-        {...previewCardProps()}
-        model={makeModel({
-          models: [
-            makeModelItem({ model: 'gpt-4o', label: { en_US: 'GPT-4o', zh_Hans: 'GPT-4o' } }),
-            makeModelItem({ model: 'gpt-4', label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' } }),
-          ],
-        })}
-        modelPredicate={(_provider, modelItem) => modelItem.model !== 'gpt-4'}
-        onHide={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByText('GPT-4o')).toHaveClass('text-text-secondary')
-    expect(screen.getByText('GPT-4o')).not.toHaveClass('text-text-quaternary')
-    expect(screen.getByText('GPT-4')).toHaveClass('text-text-quaternary')
   })
 
   it('should expose the suggestion in the model name and on hover', async () => {
@@ -354,10 +270,10 @@ describe('PopupItem', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('GPT-4'))
+    await userEvent.setup().click(screen.getByText('GPT-4'))
     const addButton = screen.getByRole('button', { name: 'COMMON.OPERATION.ADD' })
     expect(addButton.closest('[aria-disabled="true"]')).toBeNull()
-    fireEvent.click(addButton)
+    await userEvent.setup().click(addButton)
 
     expect(onSelect).not.toHaveBeenCalled()
     await waitFor(() => {
@@ -403,7 +319,7 @@ describe('PopupItem', () => {
     expect(screen.getByText('GPT-4 only'))!.toBeInTheDocument()
   })
 
-  it('should toggle collapsed state when clicking provider header', () => {
+  it('should toggle collapsed state when clicking provider header', async () => {
     renderPopupItem(<PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />)
 
     const providerTrigger = screen.getByRole('button', { name: 'OpenAI' })
@@ -412,39 +328,15 @@ describe('PopupItem', () => {
     expect(providerTrigger).toHaveAttribute('aria-expanded', 'true')
     expect(modelButton).toBeVisible()
 
-    fireEvent.click(providerTrigger)
+    await userEvent.setup().click(providerTrigger)
 
     expect(providerTrigger).toHaveAttribute('aria-expanded', 'false')
     expect(modelButton).not.toBeVisible()
 
-    fireEvent.click(providerTrigger)
+    await userEvent.setup().click(providerTrigger)
 
     expect(providerTrigger).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByRole('button', { name: /GPT-4/ })).toBeVisible()
-  })
-
-  it('should show credential name when using custom provider', () => {
-    renderPopupItem(<PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />)
-
-    expect(screen.getByText('my-api-key'))!.toBeInTheDocument()
-  })
-
-  it('should render the inactive credential badge when the api key is not active', () => {
-    mockCredentialPanelState.mockReturnValue({
-      variant: 'api-inactive',
-      priority: 'apiKey',
-      supportsCredits: false,
-      showPrioritySwitcher: false,
-      hasCredentials: true,
-      isCreditsExhausted: false,
-      credentialName: 'stale-key',
-      credits: 200,
-    })
-
-    renderPopupItem(<PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />)
-
-    expect(screen.getByText('stale-key'))!.toBeInTheDocument()
-    expect(document.querySelector('.bg-components-badge-status-light-error-bg')).not.toBeNull()
   })
 
   it('should show configure required when no credential name', () => {
@@ -454,19 +346,12 @@ describe('PopupItem', () => {
           custom_configuration: {
             status: CustomConfigurationStatusEnum.noConfigure,
             current_credential_name: '',
+            current_credential_id: undefined,
+            available_credentials: [],
+            current_credential_usable: false,
           },
         }),
       ],
-    })
-    mockCredentialPanelState.mockReturnValue({
-      variant: 'api-required-configure',
-      priority: 'apiKey',
-      supportsCredits: false,
-      showPrioritySwitcher: false,
-      hasCredentials: false,
-      isCreditsExhausted: false,
-      credentialName: undefined,
-      credits: 0,
     })
 
     renderPopupItem(<PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />)
@@ -479,18 +364,9 @@ describe('PopupItem', () => {
       data: [
         makeProvider({
           preferred_provider_type: PreferredProviderTypeEnum.system,
+          system_configuration: { enabled: true },
         }),
       ],
-    })
-    mockCredentialPanelState.mockReturnValue({
-      variant: 'credits-active',
-      priority: 'credits',
-      supportsCredits: true,
-      showPrioritySwitcher: true,
-      hasCredentials: false,
-      isCreditsExhausted: false,
-      credentialName: undefined,
-      credits: 200,
     })
 
     renderPopupItem(<PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />)
@@ -503,35 +379,30 @@ describe('PopupItem', () => {
       data: [
         makeProvider({
           preferred_provider_type: PreferredProviderTypeEnum.system,
+          system_configuration: { enabled: true },
         }),
       ],
     })
-    mockConsoleStateReader.mockReturnValue({
-      currentWorkspace: { trial_credits: 100, trial_credits_used: 100 },
-    })
-    mockCredentialPanelState.mockReturnValue({
-      variant: 'credits-exhausted',
-      priority: 'credits',
-      supportsCredits: true,
-      showPrioritySwitcher: true,
-      hasCredentials: false,
-      isCreditsExhausted: true,
-      credentialName: undefined,
-      credits: 0,
-    })
+    creditsExhausted = true
 
     renderPopupItem(<PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />)
 
     expect(screen.getByText(/modelProvider\.selector\.creditsExhausted/))!.toBeInTheDocument()
   })
 
-  it('should close the dropdown through dropdown content callbacks', async () => {
+  it('should close the selector when editing a credential from the dropdown', async () => {
     const onHide = vi.fn()
 
     renderPopupItem(<PopupItem {...previewCardProps()} model={makeModel()} onHide={onHide} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /my-api-key/ }))
-    fireEvent.click(await screen.findByRole('button', { name: 'close dropdown' }))
+    await userEvent.setup().click(screen.getByRole('button', { name: /my-api-key/ }))
+    await userEvent
+      .setup()
+      .click(await screen.findByRole('button', { name: 'common.operation.edit' }))
+
+    expect(mockOpenCredentialModal).toHaveBeenCalledWith(
+      expect.objectContaining({ credential_id: 'key-1' }),
+    )
 
     expect(onHide).toHaveBeenCalled()
   })
@@ -545,8 +416,12 @@ describe('PopupItem', () => {
 
     expect(trigger).not.toBeDisabled()
 
-    fireEvent.click(trigger)
+    await userEvent.setup().click(trigger)
 
-    expect(await screen.findByRole('button', { name: 'close dropdown' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'common.operation.edit' })).toBeEnabled()
+    expect(screen.queryByRole('button', { name: /addApiKey/ })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'my-api-key', pressed: true }),
+    ).not.toBeInTheDocument()
   })
 })

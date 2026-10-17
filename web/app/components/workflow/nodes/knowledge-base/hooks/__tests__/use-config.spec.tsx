@@ -1,7 +1,9 @@
 import type { KnowledgeBaseNodeType } from '../../types'
 import { act } from '@testing-library/react'
+import { useStoreApi } from 'reactflow'
 import { createNode, createNodeDataFactory } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { fullWorkflowAccessControl } from '@/app/components/workflow/hooks-store/store'
 import { RerankingModeEnum } from '@/models/datasets'
 import {
   ChunkStructureEnum,
@@ -11,19 +13,6 @@ import {
   WeightedScoreEnum,
 } from '../../types'
 import { useConfig } from '../use-config'
-
-const mockHandleNodeDataUpdateWithSyncDraft = vi.hoisted(() => vi.fn())
-
-vi.mock('../../../../hooks/use-node-data-update', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../../hooks/use-node-data-update')>()
-
-  return {
-    ...actual,
-    useNodeDataUpdate: () => ({
-      handleNodeDataUpdateWithSyncDraft: mockHandleNodeDataUpdateWithSyncDraft,
-    }),
-  }
-})
 
 const createNodeData = createNodeDataFactory<KnowledgeBaseNodeType>({
   title: 'Knowledge Base',
@@ -54,21 +43,34 @@ const createNodeData = createNodeDataFactory<KnowledgeBaseNodeType>({
 })
 
 const renderConfigHook = (nodeData: KnowledgeBaseNodeType) =>
-  renderWorkflowFlowHook(() => useConfig('knowledge-base-node'), {
-    nodes: [
-      createNode({
-        id: 'knowledge-base-node',
-        data: nodeData,
-      }),
-    ],
-    edges: [],
-  })
+  renderWorkflowFlowHook(
+    () => {
+      const flowStore = useStoreApi()
+      return {
+        ...useConfig('knowledge-base-node'),
+        getData: () =>
+          flowStore
+            .getState()
+            .getNodes()
+            .find((node) => node.id === 'knowledge-base-node')!.data as KnowledgeBaseNodeType,
+      }
+    },
+    {
+      hooksStoreProps: {
+        accessControl: fullWorkflowAccessControl,
+        doSyncWorkflowDraft: vi.fn().mockResolvedValue(undefined),
+      },
+      nodes: [
+        createNode({
+          id: 'knowledge-base-node',
+          data: nodeData,
+        }),
+      ],
+      edges: [],
+    },
+  )
 
 describe('useConfig', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should preserve the current chunk variable selector when the chunk structure does not change', () => {
     const { result } = renderConfigHook(createNodeData())
 
@@ -76,7 +78,7 @@ describe('useConfig', () => {
       result.current.handleChunkStructureChange(ChunkStructureEnum.general)
     })
 
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith({
+    expect({ id: 'knowledge-base-node', data: result.current.getData() }).toMatchObject({
       id: 'knowledge-base-node',
       data: expect.objectContaining({
         chunk_structure: ChunkStructureEnum.general,
@@ -102,7 +104,7 @@ describe('useConfig', () => {
       result.current.handleChunkStructureChange(ChunkStructureEnum.parent_child)
     })
 
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith({
+    expect({ id: 'knowledge-base-node', data: result.current.getData() }).toMatchObject({
       id: 'knowledge-base-node',
       data: expect.objectContaining({
         chunk_structure: ChunkStructureEnum.parent_child,
@@ -132,7 +134,7 @@ describe('useConfig', () => {
       result.current.handleChunkStructureChange(ChunkStructureEnum.question_answer)
     })
 
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith({
+    expect({ id: 'knowledge-base-node', data: result.current.getData() }).toMatchObject({
       id: 'knowledge-base-node',
       data: expect.objectContaining({
         chunk_structure: ChunkStructureEnum.question_answer,
@@ -150,7 +152,7 @@ describe('useConfig', () => {
       result.current.handleIndexMethodChange(IndexMethodEnum.ECONOMICAL)
     })
 
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenLastCalledWith({
+    expect({ id: 'knowledge-base-node', data: result.current.getData() }).toMatchObject({
       id: 'knowledge-base-node',
       data: expect.objectContaining({
         indexing_technique: IndexMethodEnum.ECONOMICAL,
@@ -164,7 +166,7 @@ describe('useConfig', () => {
       result.current.handleIndexMethodChange(IndexMethodEnum.QUALIFIED)
     })
 
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenLastCalledWith({
+    expect({ id: 'knowledge-base-node', data: result.current.getData() }).toMatchObject({
       id: 'knowledge-base-node',
       data: expect.objectContaining({
         indexing_technique: IndexMethodEnum.QUALIFIED,
@@ -178,7 +180,7 @@ describe('useConfig', () => {
       result.current.handleKeywordNumberChange(9)
     })
 
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenLastCalledWith({
+    expect({ id: 'knowledge-base-node', data: result.current.getData() }).toMatchObject({
       id: 'knowledge-base-node',
       data: {
         keyword_number: 9,
@@ -206,7 +208,7 @@ describe('useConfig', () => {
       })
     })
 
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenLastCalledWith({
+    expect({ id: 'knowledge-base-node', data: result.current.getData() }).toMatchObject({
       id: 'knowledge-base-node',
       data: expect.objectContaining({
         retrieval_model: expect.objectContaining({
@@ -227,7 +229,7 @@ describe('useConfig', () => {
       result.current.handleRetrievalSearchMethodChange(RetrievalSearchMethodEnum.fullText)
     })
 
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenLastCalledWith({
+    expect({ id: 'knowledge-base-node', data: result.current.getData() }).toMatchObject({
       id: 'knowledge-base-node',
       data: expect.objectContaining({
         retrieval_model: expect.objectContaining({
@@ -274,7 +276,7 @@ describe('useConfig', () => {
       })
     })
 
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenLastCalledWith({
+    expect({ id: 'knowledge-base-node', data: result.current.getData() }).toMatchObject({
       id: 'knowledge-base-node',
       data: expect.objectContaining({
         embedding_model: 'text-embedding-3-small',
@@ -294,7 +296,7 @@ describe('useConfig', () => {
       result.current.handleRetrievalSearchMethodChange(RetrievalSearchMethodEnum.hybrid)
     })
 
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenLastCalledWith({
+    expect({ id: 'knowledge-base-node', data: result.current.getData() }).toMatchObject({
       id: 'knowledge-base-node',
       data: expect.objectContaining({
         retrieval_model: expect.objectContaining({
@@ -323,7 +325,7 @@ describe('useConfig', () => {
       result.current.handleHybridSearchModeChange(HybridSearchModeEnum.WeightedScore)
     })
 
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenLastCalledWith({
+    expect({ id: 'knowledge-base-node', data: result.current.getData() }).toMatchObject({
       id: 'knowledge-base-node',
       data: expect.objectContaining({
         retrieval_model: expect.objectContaining({
@@ -351,7 +353,7 @@ describe('useConfig', () => {
       result.current.handleScoreThresholdEnabledChange(true)
     })
 
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenNthCalledWith(2, {
+    expect({ id: 'knowledge-base-node', data: result.current.getData() }).toMatchObject({
       id: 'knowledge-base-node',
       data: expect.objectContaining({
         retrieval_model: expect.objectContaining({
@@ -359,7 +361,7 @@ describe('useConfig', () => {
         }),
       }),
     })
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenNthCalledWith(3, {
+    expect({ id: 'knowledge-base-node', data: result.current.getData() }).toMatchObject({
       id: 'knowledge-base-node',
       data: expect.objectContaining({
         retrieval_model: expect.objectContaining({
@@ -375,7 +377,7 @@ describe('useConfig', () => {
         }),
       }),
     })
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenNthCalledWith(4, {
+    expect({ id: 'knowledge-base-node', data: result.current.getData() }).toMatchObject({
       id: 'knowledge-base-node',
       data: expect.objectContaining({
         retrieval_model: expect.objectContaining({
@@ -386,7 +388,7 @@ describe('useConfig', () => {
         }),
       }),
     })
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenNthCalledWith(5, {
+    expect({ id: 'knowledge-base-node', data: result.current.getData() }).toMatchObject({
       id: 'knowledge-base-node',
       data: expect.objectContaining({
         retrieval_model: expect.objectContaining({
@@ -394,7 +396,7 @@ describe('useConfig', () => {
         }),
       }),
     })
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenNthCalledWith(6, {
+    expect({ id: 'knowledge-base-node', data: result.current.getData() }).toMatchObject({
       id: 'knowledge-base-node',
       data: expect.objectContaining({
         retrieval_model: expect.objectContaining({
@@ -402,7 +404,7 @@ describe('useConfig', () => {
         }),
       }),
     })
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenNthCalledWith(7, {
+    expect({ id: 'knowledge-base-node', data: result.current.getData() }).toMatchObject({
       id: 'knowledge-base-node',
       data: expect.objectContaining({
         retrieval_model: expect.objectContaining({
@@ -443,7 +445,7 @@ describe('useConfig', () => {
       result.current.handleHybridSearchModeChange(HybridSearchModeEnum.RerankingModel)
     })
 
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenLastCalledWith({
+    expect({ id: 'knowledge-base-node', data: result.current.getData() }).toMatchObject({
       id: 'knowledge-base-node',
       data: expect.objectContaining({
         retrieval_model: expect.objectContaining({
@@ -466,7 +468,7 @@ describe('useConfig', () => {
       })
     })
 
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenLastCalledWith({
+    expect({ id: 'knowledge-base-node', data: result.current.getData() }).toMatchObject({
       id: 'knowledge-base-node',
       data: expect.objectContaining({
         embedding_model: 'fallback-model',
@@ -490,7 +492,7 @@ describe('useConfig', () => {
       result.current.handleInputVariableChange('chunks')
     })
 
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenLastCalledWith({
+    expect({ id: 'knowledge-base-node', data: result.current.getData() }).toMatchObject({
       id: 'knowledge-base-node',
       data: {
         index_chunk_variable_selector: [],
@@ -501,7 +503,7 @@ describe('useConfig', () => {
       result.current.handleInputVariableChange(['payload', 'chunks'])
     })
 
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenLastCalledWith({
+    expect({ id: 'knowledge-base-node', data: result.current.getData() }).toMatchObject({
       id: 'knowledge-base-node',
       data: {
         index_chunk_variable_selector: ['payload', 'chunks'],
@@ -514,7 +516,7 @@ describe('useConfig', () => {
       })
     })
 
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenLastCalledWith({
+    expect({ id: 'knowledge-base-node', data: result.current.getData() }).toMatchObject({
       id: 'knowledge-base-node',
       data: {
         summary_index_setting: {

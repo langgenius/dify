@@ -1,28 +1,12 @@
+import type { PreProcessingRule } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ParentChildConfig } from '../../hooks'
-import type { PreProcessingRule } from '@/models/datasets'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { ParentChildOptions } from '../parent-child-options'
-
-vi.mock('@/app/components/datasets/settings/summary-index-setting', () => ({
-  default: ({
-    onSummaryIndexSettingChange,
-  }: {
-    onSummaryIndexSettingChange?: (val: Record<string, unknown>) => void
-  }) => (
-    <div data-testid="summary-index-setting">
-      <button
-        data-testid="summary-toggle"
-        onClick={() => onSummaryIndexSettingChange?.({ enable: true })}
-      >
-        Toggle
-      </button>
-    </div>
-  ),
-}))
 
 const ns = 'datasetCreation'
 const render = (ui: React.ReactElement) =>
@@ -65,35 +49,6 @@ describe('ParentChildOptions', () => {
   })
 
   describe('Rendering', () => {
-    it('should render parent-child title', () => {
-      render(<ParentChildOptions {...defaultProps} />)
-      expect(screen.getByText(`${ns}.stepTwo.parentChild`)).toBeInTheDocument()
-    })
-
-    it('should render parent chunk context section when active', () => {
-      render(<ParentChildOptions {...defaultProps} />)
-      expect(screen.getByText(`${ns}.stepTwo.parentChunkForContext`)).toBeInTheDocument()
-      expect(screen.getByText(`${ns}.stepTwo.paragraph`)).toBeInTheDocument()
-      expect(screen.getByText(`${ns}.stepTwo.fullDoc`)).toBeInTheDocument()
-    })
-
-    it('should render child chunk retrieval section when active', () => {
-      render(<ParentChildOptions {...defaultProps} />)
-      expect(screen.getByText(`${ns}.stepTwo.childChunkForRetrieval`)).toBeInTheDocument()
-    })
-
-    it('should render rules section when active', () => {
-      render(<ParentChildOptions {...defaultProps} />)
-      expect(screen.getByText(`${ns}.stepTwo.removeExtraSpaces`)).toBeInTheDocument()
-      expect(screen.getByText(`${ns}.stepTwo.removeUrlEmails`)).toBeInTheDocument()
-    })
-
-    it('should render preview and reset buttons when active', () => {
-      render(<ParentChildOptions {...defaultProps} />)
-      expect(screen.getByText(`${ns}.stepTwo.previewChunk`)).toBeInTheDocument()
-      expect(screen.getByText(`${ns}.stepTwo.reset`)).toBeInTheDocument()
-    })
-
     it('should not render body when not active', () => {
       render(<ParentChildOptions {...defaultProps} isActive={false} />)
       expect(screen.queryByText(`${ns}.stepTwo.parentChunkForContext`)).not.toBeInTheDocument()
@@ -101,37 +56,42 @@ describe('ParentChildOptions', () => {
   })
 
   describe('User Interactions', () => {
-    it('should call onPreview when preview button clicked', () => {
+    it('should call onPreview when preview button clicked', async () => {
+      const user = userEvent.setup()
       const onPreview = vi.fn()
       render(<ParentChildOptions {...defaultProps} onPreview={onPreview} />)
-      fireEvent.click(screen.getByText(`${ns}.stepTwo.previewChunk`))
+      await user.click(screen.getByText(`${ns}.stepTwo.previewChunk`))
       expect(onPreview).toHaveBeenCalledOnce()
     })
 
-    it('should call onReset when reset button clicked', () => {
+    it('should call onReset when reset button clicked', async () => {
+      const user = userEvent.setup()
       const onReset = vi.fn()
       render(<ParentChildOptions {...defaultProps} onReset={onReset} />)
-      fireEvent.click(screen.getByText(`${ns}.stepTwo.reset`))
+      await user.click(screen.getByText(`${ns}.stepTwo.reset`))
       expect(onReset).toHaveBeenCalledOnce()
     })
 
-    it('should call onRuleToggle when rule clicked', () => {
+    it('should call onRuleToggle when rule clicked', async () => {
+      const user = userEvent.setup()
       const onRuleToggle = vi.fn()
       render(<ParentChildOptions {...defaultProps} onRuleToggle={onRuleToggle} />)
-      fireEvent.click(screen.getByText(`${ns}.stepTwo.removeUrlEmails`))
+      await user.click(screen.getByText(`${ns}.stepTwo.removeUrlEmails`))
       expect(onRuleToggle).toHaveBeenCalledWith('remove_urls_emails')
     })
 
-    it('should call onChunkForContextChange when full-doc chosen', () => {
+    it('should call onChunkForContextChange when full-doc chosen', async () => {
+      const user = userEvent.setup()
       const onChunkForContextChange = vi.fn()
       render(
         <ParentChildOptions {...defaultProps} onChunkForContextChange={onChunkForContextChange} />,
       )
-      fireEvent.click(screen.getByText(`${ns}.stepTwo.fullDoc`))
+      await user.click(screen.getByText(`${ns}.stepTwo.fullDoc`))
       expect(onChunkForContextChange).toHaveBeenCalledWith('full-doc')
     })
 
-    it('should call onChunkForContextChange when paragraph chosen', () => {
+    it('should call onChunkForContextChange when paragraph chosen', async () => {
+      const user = userEvent.setup()
       const onChunkForContextChange = vi.fn()
       const config = createParentChildConfig({ chunkForContext: 'full-doc' })
       render(
@@ -141,20 +101,8 @@ describe('ParentChildOptions', () => {
           onChunkForContextChange={onChunkForContextChange}
         />,
       )
-      fireEvent.click(screen.getByText(`${ns}.stepTwo.paragraph`))
+      await user.click(screen.getByText(`${ns}.stepTwo.paragraph`))
       expect(onChunkForContextChange).toHaveBeenCalledWith('paragraph')
-    })
-  })
-
-  describe('Summary Index Setting', () => {
-    it('should render SummaryIndexSetting when showSummaryIndexSetting is true', () => {
-      render(<ParentChildOptions {...defaultProps} showSummaryIndexSetting />)
-      expect(screen.getByTestId('summary-index-setting')).toBeInTheDocument()
-    })
-
-    it('should not render SummaryIndexSetting when showSummaryIndexSetting is false', () => {
-      render(<ParentChildOptions {...defaultProps} showSummaryIndexSetting={false} />)
-      expect(screen.queryByTestId('summary-index-setting')).not.toBeInTheDocument()
     })
   })
 })

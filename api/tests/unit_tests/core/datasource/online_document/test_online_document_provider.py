@@ -9,7 +9,7 @@ from tests.unit_tests.core.datasource.factories import datasource_entity, provid
 
 
 class TestOnlineDocumentDatasourcePluginProviderController:
-    def test_init(self):
+    def test_init(self) -> None:
         # Arrange
         entity = provider_entity(DatasourceProviderType.ONLINE_DOCUMENT)
         plugin_id = "test_plugin_id"
@@ -30,7 +30,7 @@ class TestOnlineDocumentDatasourcePluginProviderController:
         assert controller.plugin_unique_identifier == plugin_unique_identifier
         assert controller.tenant_id == tenant_id
 
-    def test_provider_type(self):
+    def test_provider_type(self) -> None:
         # Arrange
         entity = provider_entity(DatasourceProviderType.ONLINE_DOCUMENT)
         controller = OnlineDocumentDatasourcePluginProviderController(
@@ -40,7 +40,7 @@ class TestOnlineDocumentDatasourcePluginProviderController:
         # Assert
         assert controller.provider_type == DatasourceProviderType.ONLINE_DOCUMENT
 
-    def test_get_datasource_success(self):
+    def test_get_datasource_success(self) -> None:
         # Arrange
         source = datasource_entity("target_datasource")
 
@@ -69,7 +69,7 @@ class TestOnlineDocumentDatasourcePluginProviderController:
         assert result.plugin_unique_identifier == plugin_unique_identifier
         assert result.runtime.tenant_id == tenant_id
 
-    def test_get_datasource_not_found(self):
+    def test_get_datasource_not_found(self) -> None:
         # Arrange
         source = datasource_entity("other_datasource")
 

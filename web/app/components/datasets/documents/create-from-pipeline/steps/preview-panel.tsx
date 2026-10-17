@@ -1,13 +1,8 @@
 'use client'
+import type { IndexingEstimateResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
 import type { NotionPage } from '@/models/common'
-import type {
-  CrawlResultItem,
-  CustomFile,
-  DocumentItem,
-  FileIndexingEstimateResponse,
-  FileItem,
-} from '@/models/datasets'
+import type { CrawlResultItem, CustomFile, DocumentItem, FileItem } from '@/models/datasets'
 import type { DatasourceType, OnlineDriveFile } from '@/models/pipeline'
 import { memo } from 'react'
 import ChunkPreview from '../preview/chunk-preview'
@@ -66,7 +61,7 @@ type StepTwoPreviewProps = {
   selectedOnlineDriveFileList: OnlineDriveFile[]
   isIdle: boolean
   isPendingPreview: boolean
-  estimateData: FileIndexingEstimateResponse | undefined
+  estimateData: IndexingEstimateResponse | undefined
   onPreview: () => void
   handlePreviewFileChange: (file: DocumentItem) => void
   handlePreviewOnlineDocumentChange: (page: NotionPage) => void

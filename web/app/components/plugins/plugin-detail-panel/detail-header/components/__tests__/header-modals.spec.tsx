@@ -1,57 +1,16 @@
 import type { PluginDetail } from '../../../../types'
 import type { ModalStates, VersionTarget } from '../../hooks'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { expectLoadingButton } from '@/test/button'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createPluginDeclarationFixture } from '@/test/fixtures/plugin'
 import { PluginSource } from '../../../../types'
 import HeaderModals from '../header-modals'
 
-vi.mock('@/app/components/plugins/plugin-page/plugin-info', () => ({
-  default: ({
-    repository,
-    release,
-    packageName,
-    onHide,
-  }: {
-    repository: string
-    release: string
-    packageName: string
-    onHide: () => void
-  }) => (
-    <div data-testid="plugin-info">
-      <div data-testid="plugin-info-repo">{repository}</div>
-      <div data-testid="plugin-info-release">{release}</div>
-      <div data-testid="plugin-info-package">{packageName}</div>
-      <button data-testid="plugin-info-close" onClick={onHide}>
-        Close
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/plugins/update-plugin/from-market-place', () => ({
-  default: ({
-    pluginId,
-    onSave,
-    onCancel,
-    isShowDowngradeWarningModal,
-  }: {
-    pluginId: string
-    onSave: () => void
-    onCancel: () => void
-    isShowDowngradeWarningModal: boolean
-  }) => (
-    <div data-testid="update-modal">
-      <div data-testid="update-plugin-id">{pluginId}</div>
-      <div data-testid="update-downgrade-warning">{String(isShowDowngradeWarningModal)}</div>
-      <button data-testid="update-modal-save" onClick={onSave}>
-        Save
-      </button>
-      <button data-testid="update-modal-cancel" onClick={onCancel}>
-        Cancel
-      </button>
-    </div>
-  ),
+vi.mock('@/service/use-plugins', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-plugins')>()),
+  usePluginTaskList: () => ({ handleInstallTaskStart: vi.fn() }),
 }))
 
 const createPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail => ({
@@ -61,15 +20,7 @@ const createPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail
   name: 'Test Plugin',
   plugin_id: 'test-plugin',
   plugin_unique_identifier: 'test-uid',
-  declaration: {
-    author: 'test-author',
-    name: 'test-plugin-name',
-    category: 'tool',
-    label: { en_US: 'Test Plugin Label' },
-    description: { en_US: 'Test description' },
-    icon: 'icon.png',
-    verified: true,
-  } as unknown as PluginDetail['declaration'],
+  declaration: createPluginDeclarationFixture(),
   installation_id: 'install-1',
   tenant_id: 'tenant-1',
   endpoints_setups: 0,
@@ -108,421 +59,107 @@ const createTargetVersion = (overrides: Partial<VersionTarget> = {}): VersionTar
 })
 
 describe('HeaderModals', () => {
-  let mockOnUpdatedFromMarketplace: () => void
-  let mockOnDelete: () => void
+  const renderModals = ({
+    detail = createPluginDetail(),
+    modalStates = createModalStatesMock(),
+    isDowngrade = false,
+    isAutoUpgradeEnabled = false,
+  } = {}) => {
+    const onDelete = vi.fn()
+    const onUpdatedFromMarketplace = vi.fn()
+    render(
+      <HeaderModals
+        detail={detail}
+        modalStates={modalStates}
+        targetVersion={createTargetVersion()}
+        isDowngrade={isDowngrade}
+        isAutoUpgradeEnabled={isAutoUpgradeEnabled}
+        onUpdatedFromMarketplace={onUpdatedFromMarketplace}
+        onDelete={onDelete}
+      />,
+    )
+    return { onDelete }
+  }
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockOnUpdatedFromMarketplace = vi.fn<() => void>()
-    mockOnDelete = vi.fn<() => void>()
-  })
-
-  describe('Plugin Info Modal', () => {
-    it('should not render plugin info modal when isShowPluginInfo is false', () => {
-      const modalStates = createModalStatesMock({ isShowPluginInfo: false })
-      render(
-        <HeaderModals
-          detail={createPluginDetail()}
-          modalStates={modalStates}
-          targetVersion={createTargetVersion()}
-          isDowngrade={false}
-          isAutoUpgradeEnabled={false}
-          onUpdatedFromMarketplace={mockOnUpdatedFromMarketplace}
-          onDelete={mockOnDelete}
-        />,
-      )
-
-      expect(screen.queryByTestId('plugin-info')).not.toBeInTheDocument()
-    })
-
-    it('should render plugin info modal when isShowPluginInfo is true', () => {
-      const modalStates = createModalStatesMock({ isShowPluginInfo: true })
-      render(
-        <HeaderModals
-          detail={createPluginDetail()}
-          modalStates={modalStates}
-          targetVersion={createTargetVersion()}
-          isDowngrade={false}
-          isAutoUpgradeEnabled={false}
-          onUpdatedFromMarketplace={mockOnUpdatedFromMarketplace}
-          onDelete={mockOnDelete}
-        />,
-      )
-
-      expect(screen.getByTestId('plugin-info')).toBeInTheDocument()
-    })
-
-    it('should pass GitHub repo to plugin info for GitHub source', () => {
-      const modalStates = createModalStatesMock({ isShowPluginInfo: true })
-      const detail = createPluginDetail({
+  it('shows GitHub repository, release and package in the real information dialog', async () => {
+    const user = userEvent.setup()
+    const modalStates = createModalStatesMock({ isShowPluginInfo: true })
+    renderModals({
+      modalStates,
+      detail: createPluginDetail({
         source: PluginSource.github,
         meta: { repo: 'owner/repo', version: 'v1.0.0', package: 'test-pkg' },
+      }),
+    })
+    expect(screen.getByRole('dialog', { name: 'plugin.pluginInfoModal.title' })).toBeInTheDocument()
+    expect(screen.getByText('https://github.com/owner/repo')).toBeInTheDocument()
+    expect(screen.getByText('1.0.0')).toBeInTheDocument()
+    expect(screen.getByText('test-pkg')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    expect(modalStates.hidePluginInfo).toHaveBeenCalledOnce()
+  })
+
+  it.each([PluginSource.marketplace, PluginSource.github])(
+    'omits missing repository and package information for %s',
+    (source) => {
+      renderModals({
+        detail: createPluginDetail({ source }),
+        modalStates: createModalStatesMock({ isShowPluginInfo: true }),
       })
-      render(
-        <HeaderModals
-          detail={detail}
-          modalStates={modalStates}
-          targetVersion={createTargetVersion()}
-          isDowngrade={false}
-          isAutoUpgradeEnabled={false}
-          onUpdatedFromMarketplace={mockOnUpdatedFromMarketplace}
-          onDelete={mockOnDelete}
-        />,
-      )
+      expect(screen.queryByText('plugin.pluginInfoModal.repository')).not.toBeInTheDocument()
+      expect(screen.queryByText('plugin.pluginInfoModal.packageName')).not.toBeInTheDocument()
+      expect(screen.getByText('1.0.0')).toBeInTheDocument()
+    },
+  )
 
-      expect(screen.getByTestId('plugin-info-repo')).toHaveTextContent('owner/repo')
-    })
-
-    it('should pass empty string for repo for non-GitHub source', () => {
-      const modalStates = createModalStatesMock({ isShowPluginInfo: true })
-      render(
-        <HeaderModals
-          detail={createPluginDetail({ source: PluginSource.marketplace })}
-          modalStates={modalStates}
-          targetVersion={createTargetVersion()}
-          isDowngrade={false}
-          isAutoUpgradeEnabled={false}
-          onUpdatedFromMarketplace={mockOnUpdatedFromMarketplace}
-          onDelete={mockOnDelete}
-        />,
-      )
-
-      expect(screen.getByTestId('plugin-info-repo')).toHaveTextContent('')
-    })
-
-    it('should call hidePluginInfo when close button is clicked', () => {
-      const modalStates = createModalStatesMock({ isShowPluginInfo: true })
-      render(
-        <HeaderModals
-          detail={createPluginDetail()}
-          modalStates={modalStates}
-          targetVersion={createTargetVersion()}
-          isDowngrade={false}
-          isAutoUpgradeEnabled={false}
-          onUpdatedFromMarketplace={mockOnUpdatedFromMarketplace}
-          onDelete={mockOnDelete}
-        />,
-      )
-
-      fireEvent.click(screen.getByTestId('plugin-info-close'))
-
-      expect(modalStates.hidePluginInfo).toHaveBeenCalled()
-    })
+  it('lets the user cancel deletion without deleting the plugin', async () => {
+    const user = userEvent.setup()
+    const modalStates = createModalStatesMock({ isShowDeleteConfirm: true })
+    const { onDelete } = renderModals({ modalStates })
+    expect(screen.getByRole('alertdialog', { name: 'plugin.action.delete' })).toHaveTextContent(
+      'Test Plugin',
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    expect(modalStates.hideDeleteConfirm).toHaveBeenCalledOnce()
+    expect(onDelete).not.toHaveBeenCalled()
   })
 
-  describe('Delete Confirm Modal', () => {
-    it('should not render delete confirm when isShowDeleteConfirm is false', () => {
-      const modalStates = createModalStatesMock({ isShowDeleteConfirm: false })
-      render(
-        <HeaderModals
-          detail={createPluginDetail()}
-          modalStates={modalStates}
-          targetVersion={createTargetVersion()}
-          isDowngrade={false}
-          isAutoUpgradeEnabled={false}
-          onUpdatedFromMarketplace={mockOnUpdatedFromMarketplace}
-          onDelete={mockOnDelete}
-        />,
-      )
-
-      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-    })
-
-    it('should render delete confirm when isShowDeleteConfirm is true', () => {
-      const modalStates = createModalStatesMock({ isShowDeleteConfirm: true })
-      render(
-        <HeaderModals
-          detail={createPluginDetail()}
-          modalStates={modalStates}
-          targetVersion={createTargetVersion()}
-          isDowngrade={false}
-          isAutoUpgradeEnabled={false}
-          onUpdatedFromMarketplace={mockOnUpdatedFromMarketplace}
-          onDelete={mockOnDelete}
-        />,
-      )
-
-      expect(screen.getByRole('alertdialog')).toBeInTheDocument()
-    })
-
-    it('should show correct delete title', () => {
-      const modalStates = createModalStatesMock({ isShowDeleteConfirm: true })
-      render(
-        <HeaderModals
-          detail={createPluginDetail()}
-          modalStates={modalStates}
-          targetVersion={createTargetVersion()}
-          isDowngrade={false}
-          isAutoUpgradeEnabled={false}
-          onUpdatedFromMarketplace={mockOnUpdatedFromMarketplace}
-          onDelete={mockOnDelete}
-        />,
-      )
-
-      expect(screen.getByRole('alertdialog')).toHaveTextContent('plugin.action.delete')
-    })
-
-    it('should call hideDeleteConfirm when cancel is clicked', () => {
-      const modalStates = createModalStatesMock({ isShowDeleteConfirm: true })
-      render(
-        <HeaderModals
-          detail={createPluginDetail()}
-          modalStates={modalStates}
-          targetVersion={createTargetVersion()}
-          isDowngrade={false}
-          isAutoUpgradeEnabled={false}
-          onUpdatedFromMarketplace={mockOnUpdatedFromMarketplace}
-          onDelete={mockOnDelete}
-        />,
-      )
-
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
-
-      expect(modalStates.hideDeleteConfirm).toHaveBeenCalled()
-    })
-
-    it('should call onDelete when confirm is clicked', () => {
-      const modalStates = createModalStatesMock({ isShowDeleteConfirm: true })
-      render(
-        <HeaderModals
-          detail={createPluginDetail()}
-          modalStates={modalStates}
-          targetVersion={createTargetVersion()}
-          isDowngrade={false}
-          isAutoUpgradeEnabled={false}
-          onUpdatedFromMarketplace={mockOnUpdatedFromMarketplace}
-          onDelete={mockOnDelete}
-        />,
-      )
-
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
-
-      expect(mockOnDelete).toHaveBeenCalled()
-    })
-
-    it('should disable confirm button when deleting', () => {
-      const modalStates = createModalStatesMock({ isShowDeleteConfirm: true, deleting: true })
-      render(
-        <HeaderModals
-          detail={createPluginDetail()}
-          modalStates={modalStates}
-          targetVersion={createTargetVersion()}
-          isDowngrade={false}
-          isAutoUpgradeEnabled={false}
-          onUpdatedFromMarketplace={mockOnUpdatedFromMarketplace}
-          onDelete={mockOnDelete}
-        />,
-      )
-
-      expectLoadingButton(screen.getByRole('button', { name: /common\.operation\.confirm/ }))
-    })
+  it('prevents cancelling or resubmitting a deletion already in progress', async () => {
+    const user = userEvent.setup()
+    const modalStates = createModalStatesMock({ isShowDeleteConfirm: true, deleting: true })
+    const { onDelete } = renderModals({ modalStates })
+    const confirm = screen.getByRole('button', { name: 'common.operation.confirm' })
+    const cancel = screen.getByRole('button', { name: 'common.operation.cancel' })
+    expect(confirm).toHaveAttribute('aria-disabled', 'true')
+    expect(cancel).toBeDisabled()
+    await user.click(confirm)
+    await user.click(cancel)
+    expect(onDelete).not.toHaveBeenCalled()
+    expect(modalStates.hideDeleteConfirm).not.toHaveBeenCalled()
   })
 
-  describe('Update Modal', () => {
-    it('should not render update modal when isShowUpdateModal is false', () => {
-      const modalStates = createModalStatesMock({ isShowUpdateModal: false })
-      render(
-        <HeaderModals
-          detail={createPluginDetail()}
-          modalStates={modalStates}
-          targetVersion={createTargetVersion()}
-          isDowngrade={false}
-          isAutoUpgradeEnabled={false}
-          onUpdatedFromMarketplace={mockOnUpdatedFromMarketplace}
-          onDelete={mockOnDelete}
-        />,
-      )
-
-      expect(screen.queryByTestId('update-modal')).not.toBeInTheDocument()
-    })
-
-    it('should render update modal when isShowUpdateModal is true', () => {
+  it.each([
+    [true, true, true],
+    [true, false, false],
+    [false, true, false],
+  ])(
+    'gates downgrade warning on downgrade=%s and auto-upgrade=%s',
+    async (isDowngrade, isAutoUpgradeEnabled, warning) => {
+      const user = userEvent.setup()
       const modalStates = createModalStatesMock({ isShowUpdateModal: true })
-      render(
-        <HeaderModals
-          detail={createPluginDetail()}
-          modalStates={modalStates}
-          targetVersion={createTargetVersion()}
-          isDowngrade={false}
-          isAutoUpgradeEnabled={false}
-          onUpdatedFromMarketplace={mockOnUpdatedFromMarketplace}
-          onDelete={mockOnDelete}
-        />,
+      renderModals({ modalStates, isDowngrade, isAutoUpgradeEnabled })
+      if (warning)
+        expect(
+          screen.getByRole('button', { name: 'plugin.autoUpdate.pluginDowngradeWarning.exclude' }),
+        ).toBeInTheDocument()
+      else
+        expect(screen.getByRole('button', { name: 'plugin.upgrade.upgrade' })).toBeInTheDocument()
+      await user.click(
+        screen.getByRole('button', {
+          name: warning ? 'app.newApp.Cancel' : 'common.operation.cancel',
+        }),
       )
-
-      expect(screen.getByTestId('update-modal')).toBeInTheDocument()
-    })
-
-    it('should pass plugin id to update modal', () => {
-      const modalStates = createModalStatesMock({ isShowUpdateModal: true })
-      render(
-        <HeaderModals
-          detail={createPluginDetail({ plugin_id: 'my-plugin-id' })}
-          modalStates={modalStates}
-          targetVersion={createTargetVersion()}
-          isDowngrade={false}
-          isAutoUpgradeEnabled={false}
-          onUpdatedFromMarketplace={mockOnUpdatedFromMarketplace}
-          onDelete={mockOnDelete}
-        />,
-      )
-
-      expect(screen.getByTestId('update-plugin-id')).toHaveTextContent('my-plugin-id')
-    })
-
-    it('should call onUpdatedFromMarketplace when save is clicked', () => {
-      const modalStates = createModalStatesMock({ isShowUpdateModal: true })
-      render(
-        <HeaderModals
-          detail={createPluginDetail()}
-          modalStates={modalStates}
-          targetVersion={createTargetVersion()}
-          isDowngrade={false}
-          isAutoUpgradeEnabled={false}
-          onUpdatedFromMarketplace={mockOnUpdatedFromMarketplace}
-          onDelete={mockOnDelete}
-        />,
-      )
-
-      fireEvent.click(screen.getByTestId('update-modal-save'))
-
-      expect(mockOnUpdatedFromMarketplace).toHaveBeenCalled()
-    })
-
-    it('should call hideUpdateModal when cancel is clicked', () => {
-      const modalStates = createModalStatesMock({ isShowUpdateModal: true })
-      render(
-        <HeaderModals
-          detail={createPluginDetail()}
-          modalStates={modalStates}
-          targetVersion={createTargetVersion()}
-          isDowngrade={false}
-          isAutoUpgradeEnabled={false}
-          onUpdatedFromMarketplace={mockOnUpdatedFromMarketplace}
-          onDelete={mockOnDelete}
-        />,
-      )
-
-      fireEvent.click(screen.getByTestId('update-modal-cancel'))
-
-      expect(modalStates.hideUpdateModal).toHaveBeenCalled()
-    })
-
-    it('should show downgrade warning when isDowngrade and isAutoUpgradeEnabled are true', () => {
-      const modalStates = createModalStatesMock({ isShowUpdateModal: true })
-      render(
-        <HeaderModals
-          detail={createPluginDetail()}
-          modalStates={modalStates}
-          targetVersion={createTargetVersion()}
-          isDowngrade={true}
-          isAutoUpgradeEnabled={true}
-          onUpdatedFromMarketplace={mockOnUpdatedFromMarketplace}
-          onDelete={mockOnDelete}
-        />,
-      )
-
-      expect(screen.getByTestId('update-downgrade-warning')).toHaveTextContent('true')
-    })
-
-    it('should not show downgrade warning when only isDowngrade is true', () => {
-      const modalStates = createModalStatesMock({ isShowUpdateModal: true })
-      render(
-        <HeaderModals
-          detail={createPluginDetail()}
-          modalStates={modalStates}
-          targetVersion={createTargetVersion()}
-          isDowngrade={true}
-          isAutoUpgradeEnabled={false}
-          onUpdatedFromMarketplace={mockOnUpdatedFromMarketplace}
-          onDelete={mockOnDelete}
-        />,
-      )
-
-      expect(screen.getByTestId('update-downgrade-warning')).toHaveTextContent('false')
-    })
-
-    it('should not show downgrade warning when only isAutoUpgradeEnabled is true', () => {
-      const modalStates = createModalStatesMock({ isShowUpdateModal: true })
-      render(
-        <HeaderModals
-          detail={createPluginDetail()}
-          modalStates={modalStates}
-          targetVersion={createTargetVersion()}
-          isDowngrade={false}
-          isAutoUpgradeEnabled={true}
-          onUpdatedFromMarketplace={mockOnUpdatedFromMarketplace}
-          onDelete={mockOnDelete}
-        />,
-      )
-
-      expect(screen.getByTestId('update-downgrade-warning')).toHaveTextContent('false')
-    })
-  })
-
-  describe('Multiple Modals', () => {
-    it('should render multiple modals when multiple are open', () => {
-      const modalStates = createModalStatesMock({
-        isShowPluginInfo: true,
-        isShowDeleteConfirm: true,
-        isShowUpdateModal: true,
-      })
-      render(
-        <HeaderModals
-          detail={createPluginDetail()}
-          modalStates={modalStates}
-          targetVersion={createTargetVersion()}
-          isDowngrade={false}
-          isAutoUpgradeEnabled={false}
-          onUpdatedFromMarketplace={mockOnUpdatedFromMarketplace}
-          onDelete={mockOnDelete}
-        />,
-      )
-
-      expect(screen.getByTestId('plugin-info')).toBeInTheDocument()
-      expect(screen.getByRole('alertdialog')).toBeInTheDocument()
-      expect(screen.getByTestId('update-modal')).toBeInTheDocument()
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle undefined target version values', () => {
-      const modalStates = createModalStatesMock({ isShowUpdateModal: true })
-      render(
-        <HeaderModals
-          detail={createPluginDetail()}
-          modalStates={modalStates}
-          targetVersion={{ version: undefined, unique_identifier: undefined }}
-          isDowngrade={false}
-          isAutoUpgradeEnabled={false}
-          onUpdatedFromMarketplace={mockOnUpdatedFromMarketplace}
-          onDelete={mockOnDelete}
-        />,
-      )
-
-      expect(screen.getByTestId('update-modal')).toBeInTheDocument()
-    })
-
-    it('should handle empty meta for GitHub source', () => {
-      const modalStates = createModalStatesMock({ isShowPluginInfo: true })
-      const detail = createPluginDetail({
-        source: PluginSource.github,
-        meta: undefined,
-      })
-      render(
-        <HeaderModals
-          detail={detail}
-          modalStates={modalStates}
-          targetVersion={createTargetVersion()}
-          isDowngrade={false}
-          isAutoUpgradeEnabled={false}
-          onUpdatedFromMarketplace={mockOnUpdatedFromMarketplace}
-          onDelete={mockOnDelete}
-        />,
-      )
-
-      expect(screen.getByTestId('plugin-info-repo')).toHaveTextContent('')
-      expect(screen.getByTestId('plugin-info-package')).toHaveTextContent('')
-    })
-  })
+      expect(modalStates.hideUpdateModal).toHaveBeenCalledOnce()
+    },
+  )
 })

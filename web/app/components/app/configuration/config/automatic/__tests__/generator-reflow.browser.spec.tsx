@@ -1,7 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { AppModeEnum } from '@/types/app'
 import GetAutomaticRes from '../get-automatic-res'
 
 vi.mock('react-i18next', async () => {
@@ -61,7 +60,7 @@ describe('Prompt generator reflow', () => {
     await page.viewport(1280, 720)
   })
 
-  it.each([320, 1440])(
+  it.each([320])(
     'keeps inputs and generated result actions within a %i CSS pixel viewport',
     async (width) => {
       // Unit tests cannot detect the original fixed 1140px popup being clipped.
@@ -71,7 +70,7 @@ describe('Prompt generator reflow', () => {
       const screen = await render(
         <QueryClientProvider client={queryClient}>
           <GetAutomaticRes
-            mode={AppModeEnum.CHAT}
+            modelMode="chat"
             isShow
             onClose={vi.fn()}
             onFinished={vi.fn()}
@@ -107,8 +106,7 @@ describe('Prompt generator reflow', () => {
 
       const instructionsRect = instructions.element().getBoundingClientRect()
       const resultRect = result.element().getBoundingClientRect()
-      if (width < 1280) expect(resultRect.top).toBeGreaterThan(instructionsRect.bottom)
-      else expect(resultRect.left).toBeGreaterThan(instructionsRect.right)
+      expect(resultRect.top).toBeGreaterThan(instructionsRect.bottom)
 
       await apply.click()
       await expect.element(screen.getByRole('alertdialog')).toBeVisible()

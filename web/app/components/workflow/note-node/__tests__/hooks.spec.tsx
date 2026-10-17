@@ -1,4 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
+import { $createParagraphNode, $createTextNode, $getRoot, createEditor } from 'lexical'
 import { NOTE_SHOW_AUTHOR_STORAGE_KEY } from '../constants'
 import { useNote } from '../hooks'
 
@@ -22,15 +23,14 @@ vi.mock('../../hooks/use-workflow-history', () => ({
 
 describe('useNote', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    localStorage.clear()
+    localStorage.removeItem(NOTE_SHOW_AUTHOR_STORAGE_KEY)
   })
 
   it('updates theme and author visibility while saving note history entries', () => {
     const { result } = renderHook(() => useNote('note-1'))
 
     act(() => {
-      result.current.handleThemeChange('blue' as never)
+      result.current.handleThemeChange('blue')
       result.current.handleShowAuthorChange(true)
     })
 
@@ -49,22 +49,29 @@ describe('useNote', () => {
 
   it('serializes non-empty editor state and clears empty editor state', () => {
     const { result } = renderHook(() => useNote('note-2'))
-    const nonEmptyEditorState = {
-      isEmpty: () => false,
-    } as never
-    const emptyEditorState = {
-      isEmpty: () => true,
-    } as never
+    const editor = createEditor({
+      onError: (error) => {
+        throw error
+      },
+    })
+    const emptyEditorState = editor.getEditorState()
+    editor.update(
+      () => {
+        $getRoot().append($createParagraphNode().append($createTextNode('Remember this decision')))
+      },
+      { discrete: true },
+    )
+    const nonEmptyEditorState = editor.getEditorState()
 
     act(() => {
       result.current.handleEditorChange(nonEmptyEditorState)
       result.current.handleEditorChange(emptyEditorState)
     })
 
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenNthCalledWith(1, {
-      id: 'note-2',
-      data: { text: '{}' },
-    })
+    const saved = mockHandleNodeDataUpdateWithSyncDraft.mock.calls[0]![0]
+    expect(saved.id).toBe('note-2')
+    const restored = editor.parseEditorState(saved.data.text)
+    expect(restored.read(() => $getRoot().getTextContent())).toBe('Remember this decision')
     expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenNthCalledWith(2, {
       id: 'note-2',
       data: { text: '' },

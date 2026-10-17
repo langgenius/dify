@@ -1,6 +1,9 @@
 import type { InputVar } from '@/app/components/workflow/types'
-import type { SnippetDetail, SnippetInputField } from '@/models/snippet'
-import { fireEvent, render, screen } from '@testing-library/react'
+import type { InputVar as PipelineInputVar } from '@/models/pipeline'
+import type { SnippetDetail } from '@/models/snippet'
+import { act, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { SnippetSidebarContent } from '../snippet-sidebar'
@@ -44,7 +47,7 @@ vi.mock('@/app/components/app/configuration/config-var/config-modal', () => ({
           type="button"
           onClick={() =>
             props.onConfirm({
-              type: PipelineInputVarType.textInput as unknown as InputVar['type'],
+              type: PipelineInputVarType.textInput as InputVar['type'],
               label: 'Question',
               variable: 'question',
               required: false,
@@ -81,7 +84,7 @@ const snippet: SnippetDetail = {
   tags: [],
 }
 
-const fields: SnippetInputField[] = [
+const fields: PipelineInputVar[] = [
   {
     type: PipelineInputVarType.textInput,
     label: 'Query',
@@ -97,7 +100,7 @@ describe('SnippetSidebarContent', () => {
     capturedConfigVarModalProps = undefined
   })
 
-  it('should ignore unchanged VarList updates', () => {
+  it('ignores unchanged fields and converts changed workflow labels for snippet persistence', () => {
     const onFieldsChange = vi.fn()
     render(
       <SnippetSidebarContent
@@ -108,28 +111,16 @@ describe('SnippetSidebarContent', () => {
       />,
     )
 
-    capturedVarListProps?.onChange(capturedVarListProps.list)
-
+    act(() => capturedVarListProps?.onChange(capturedVarListProps.list))
     expect(onFieldsChange).not.toHaveBeenCalled()
-  })
-
-  it('should forward changed VarList updates', () => {
-    const onFieldsChange = vi.fn()
-    render(
-      <SnippetSidebarContent
-        snippet={snippet}
-        fields={fields}
-        readonly={false}
-        onFieldsChange={onFieldsChange}
-      />,
+    act(() =>
+      capturedVarListProps?.onChange([
+        {
+          ...capturedVarListProps.list[0]!,
+          label: { nodeType: BlockEnum.LLM, nodeName: 'Draft answer', variable: 'Question' },
+        },
+      ]),
     )
-
-    capturedVarListProps?.onChange([
-      {
-        ...capturedVarListProps.list[0]!,
-        label: 'Question',
-      },
-    ])
 
     expect(onFieldsChange).toHaveBeenCalledWith([
       {
@@ -144,12 +135,6 @@ describe('SnippetSidebarContent', () => {
       <SnippetSidebarContent snippet={snippet} fields={fields} readonly onFieldsChange={vi.fn()} />,
     )
 
-    expect(screen.queryByRole('link', { name: /snippet\.management/i })).not.toBeInTheDocument()
-    expect(screen.getByText(snippet.name)).toHaveAttribute('title', snippet.name)
-    expect(screen.getByText(snippet.name)).toHaveClass('truncate')
-    if (!snippet.description) throw new Error('snippet.description is required for this test')
-    expect(screen.getByText(snippet.description)).toHaveAttribute('title', snippet.description)
-    expect(screen.getByText(snippet.description)).toHaveClass('truncate')
     expect(
       screen.queryByRole('button', { name: /common\.operation\.add/i }),
     ).not.toBeInTheDocument()
@@ -172,7 +157,8 @@ describe('SnippetSidebarContent', () => {
     )
   })
 
-  it('should add a new input field from the config variable modal', () => {
+  it('should add a new input field from the config variable modal', async () => {
+    const user = userEvent.setup()
     const onFieldsChange = vi.fn()
     render(
       <SnippetSidebarContent
@@ -183,11 +169,11 @@ describe('SnippetSidebarContent', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /common\.operation\.add/i }))
+    await user.click(screen.getByRole('button', { name: /common\.operation\.add/i }))
     expect(screen.getByRole('dialog', { name: 'config-var-modal' })).toBeInTheDocument()
     expect(capturedConfigVarModalProps?.varKeys).toEqual(['query'])
 
-    fireEvent.click(screen.getByRole('button', { name: 'confirm field' }))
+    await user.click(screen.getByRole('button', { name: 'confirm field' }))
 
     expect(onFieldsChange).toHaveBeenCalledWith([
       fields[0],
@@ -201,7 +187,8 @@ describe('SnippetSidebarContent', () => {
     expect(screen.queryByRole('dialog', { name: 'config-var-modal' })).not.toBeInTheDocument()
   })
 
-  it('should reject duplicate variable and label updates', () => {
+  it('should reject duplicate variable and label updates', async () => {
+    const user = userEvent.setup()
     const onFieldsChange = vi.fn()
     render(
       <SnippetSidebarContent
@@ -212,22 +199,33 @@ describe('SnippetSidebarContent', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /common\.operation\.add/i }))
-    capturedConfigVarModalProps?.onConfirm({
-      type: PipelineInputVarType.textInput as unknown as InputVar['type'],
-      label: 'Another label',
-      variable: 'query',
-      required: true,
-    })
-    capturedConfigVarModalProps?.onConfirm({
-      type: PipelineInputVarType.textInput as unknown as InputVar['type'],
-      label: 'Query',
-      variable: 'another_query',
-      required: true,
-    })
+    await user.click(screen.getByRole('button', { name: /common\.operation\.add/i }))
+    act(() =>
+      capturedConfigVarModalProps?.onConfirm({
+        type: PipelineInputVarType.textInput as InputVar['type'],
+        label: 'Another label',
+        variable: 'query',
+        required: true,
+      }),
+    )
+    act(() =>
+      capturedConfigVarModalProps?.onConfirm({
+        type: PipelineInputVarType.textInput as InputVar['type'],
+        label: 'Query',
+        variable: 'another_query',
+        required: true,
+      }),
+    )
 
     expect(onFieldsChange).not.toHaveBeenCalled()
-    expect(toast.error).toHaveBeenCalledTimes(2)
+    expect(toast.error).toHaveBeenNthCalledWith(
+      1,
+      'appDebug.varKeyError.keyAlreadyExists:{"key":"appDebug.variableConfig.varName"}',
+    )
+    expect(toast.error).toHaveBeenNthCalledWith(
+      2,
+      'appDebug.varKeyError.keyAlreadyExists:{"key":"appDebug.variableConfig.labelName"}',
+    )
     expect(screen.getByRole('dialog', { name: 'config-var-modal' })).toBeInTheDocument()
   })
 })

@@ -1,6 +1,5 @@
 import type { ReactElement, ReactNode, RefObject } from 'react'
 import type { AgentRosterNodeData } from '@/app/components/workflow/block-selector/types'
-import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -54,12 +53,6 @@ type AgentRosterDisplayData = {
   role?: string | null
 }
 
-const getAppIconType = (iconType?: string | null): AppIconType | null => {
-  if (iconType === 'emoji' || iconType === 'image' || iconType === 'link') return iconType
-
-  return null
-}
-
 function AgentRosterAvatar({
   agent,
   size = 'lg',
@@ -71,16 +64,7 @@ function AgentRosterAvatar({
 }) {
   const iconSize = size === 'md' ? 'medium' : size === 'xs' ? 'tiny' : 'small'
 
-  return (
-    <AppIcon
-      size={iconSize}
-      iconType={getAppIconType(agent.icon_type)}
-      icon={agent.icon ?? undefined}
-      background={agent.icon_background}
-      imageUrl={agent.icon ?? undefined}
-      className={className}
-    />
-  )
+  return <AppIcon size={iconSize} className={className} icon={{ ...agent, icon_url: agent.icon }} />
 }
 
 function InlineSetupAvatar({ className }: { className?: string }) {
@@ -151,7 +135,8 @@ function AgentRosterDrawer({
       }}
     >
       <DrawerPortal container={portalContainerRef}>
-        <DrawerViewport className="pointer-events-none">
+        {/* Portaled into the panel, not body: keep a layer above the panel's positioned content. */}
+        <DrawerViewport className="pointer-events-none z-50">
           <DrawerPopup
             className="pointer-events-auto p-0 data-[swipe-direction=right]:top-14 data-[swipe-direction=right]:bottom-1 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-r-[0.5px] data-[swipe-direction=right]:border-divider-subtle data-[swipe-direction=right]:shadow-2xl data-[swipe-direction=right]:shadow-shadow-shadow-5"
             style={{
@@ -321,7 +306,7 @@ function AgentRosterInlineConfigureDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange} disablePointerDismissal>
       <DialogTrigger render={trigger} />
-      <DialogContent className="h-[min(760px,calc(100dvh-32px))] w-[min(1120px,calc(100vw-32px))] max-w-none overflow-hidden p-0">
+      <DialogContent className="h-[min(760px,calc(100dvh-32px))] w-[min(1120px,calc(100vw-32px))] overflow-hidden">
         <DialogTitle className="sr-only">{agent.name}</DialogTitle>
         <DialogDescription className="sr-only">
           {t(($) => $[`${i18nPrefix}.roster.inlineSetup.description`], { ns: 'workflowAgent' })}

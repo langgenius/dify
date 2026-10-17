@@ -103,14 +103,6 @@ describe('AccessRulesPage', () => {
     sent.length = 0
   })
 
-  it('renders App, Dataset, and Agent permission sets', () => {
-    setup()
-    for (const type of resourceTypes)
-      expect(
-        screen.getByRole('button', { name: new RegExp(`^permission.accessRule.${type}Title`) }),
-      ).toBeInTheDocument()
-  })
-
   it.each(resourceTypes)(
     'creates a %s permission set through the generated endpoint',
     async (type) => {

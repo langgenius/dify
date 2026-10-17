@@ -3,8 +3,15 @@ import type { FormRefObject, FormSchema } from '@/app/components/base/form/types
 import type { ParametersSchema, PluginDetail } from '@/app/components/plugins/types'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Dialog,
+  DialogBody,
+  DialogCloseButton,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { isEqual } from 'es-toolkit/predicate'
 import { useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -13,6 +20,7 @@ import { FormTypeEnum } from '@/app/components/base/form/types'
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import { toast } from '@/app/notifications'
 import { useUpdateTriggerSubscription } from '@/service/use-triggers'
+import { getErrorMessage } from '@/utils/error-message'
 import { usePluginStore } from '../../store'
 import { useSubscriptionList } from '../use-subscription-list'
 
@@ -49,15 +57,6 @@ export const ManualEditModal = ({ onClose, subscription, pluginDetail }: Props) 
   const { refetch } = useSubscriptionList()
 
   const { mutate: updateSubscription, isPending: isUpdating } = useUpdateTriggerSubscription()
-
-  const getErrorMessage = (error: unknown, fallback: string) => {
-    if (error instanceof Error && error.message) return error.message
-    if (typeof error === 'object' && error && 'message' in error) {
-      const message = (error as { message?: string }).message
-      if (typeof message === 'string' && message) return message
-    }
-    return fallback
-  }
 
   const propertiesSchema = useMemo<ParametersSchema[]>(
     () => detail?.declaration?.trigger?.subscription_schema || [],
@@ -96,10 +95,8 @@ export const ManualEditModal = ({ onClose, subscription, pluginDetail }: Props) 
         },
         onError: (error: unknown) => {
           toast.error(
-            getErrorMessage(
-              error,
+            getErrorMessage(error) ??
               t(($) => $['subscription.list.item.actions.edit.error'], { ns: 'pluginTrigger' }),
-            ),
           )
         },
       },
@@ -131,7 +128,7 @@ export const ManualEditModal = ({ onClose, subscription, pluginDetail }: Props) 
       },
       ...propertiesSchema.map((schema: ParametersSchema) => ({
         ...schema,
-        type: normalizeFormType(schema.type as string),
+        type: normalizeFormType(schema.type),
         tooltip: schema.description,
         default: subscription.properties?.[schema.name] || schema.default,
       })),
@@ -152,53 +149,28 @@ export const ManualEditModal = ({ onClose, subscription, pluginDetail }: Props) 
         if (!open) onClose()
       }}
     >
-      <DialogContent backdropProps={{ forceRender: true }} className="p-0">
-        <div
-          data-testid="modal"
-          data-title={title}
-          data-disabled={isUpdating}
-          className="flex max-h-[80dvh] flex-col"
-        >
-          <div className="relative shrink-0 p-6 pr-14 pb-3">
-            <DialogTitle className="title-2xl-semi-bold text-text-primary">{title}</DialogTitle>
-            <DialogClose
-              render={
-                <IconButton
-                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                  size="lg"
-                  className="absolute top-5 right-5"
-                >
-                  <span aria-hidden className="i-ri-close-line size-4" />
-                </IconButton>
-              }
-            />
-          </div>
-          <div data-testid="modal-content" className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
-            {pluginDetail && <ReadmeEntrance pluginDetail={pluginDetail} presentation="dialog" />}
-            <BaseForm
-              formSchemas={formSchemas}
-              ref={formRef}
-              labelClassName="system-sm-medium mb-2 flex items-center gap-1 text-text-primary"
-              formClassName="space-y-4"
-            />
-          </div>
-          <div className="flex shrink-0 justify-between p-6 pt-5">
-            <div />
-            <div className="flex items-center">
-              <Button onClick={onClose} disabled={isUpdating}>
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </Button>
-              <Button
-                className="ml-2"
-                variant="primary"
-                onClick={handleConfirm}
-                disabled={isUpdating}
-              >
-                {confirmButtonText}
-              </Button>
-            </div>
-          </div>
-        </div>
+      <DialogContent backdropProps={{ forceRender: true }}>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody>
+          {pluginDetail && <ReadmeEntrance pluginDetail={pluginDetail} presentation="dialog" />}
+          <BaseForm
+            formSchemas={formSchemas}
+            ref={formRef}
+            labelClassName="system-sm-medium mb-2 flex items-center gap-1 text-text-primary"
+            formClassName="space-y-4"
+          />
+        </DialogBody>
+        <DialogFooter>
+          <Button onClick={onClose} disabled={isUpdating}>
+            {t(($) => $['operation.cancel'], { ns: 'common' })}
+          </Button>
+          <Button variant="primary" onClick={handleConfirm} disabled={isUpdating}>
+            {confirmButtonText}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

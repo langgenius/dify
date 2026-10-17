@@ -1,7 +1,9 @@
 import type { PropsWithChildren } from 'react'
 import type { Edge, Node, Viewport } from 'reactflow'
 import { cleanup, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { DatasetACLPermission } from '@/utils/permission'
 import RagPipelineMain from '../rag-pipeline-main'
@@ -68,16 +70,10 @@ vi.mock('../../hooks/use-pipeline-start-run', () => ({
   }),
 }))
 
-vi.mock('../../hooks/use-configs-map', () => ({
-  useConfigsMap: () => ({
-    flowId: 'test-flow-id',
-    flowType: 'ragPipeline',
-    fileSettings: {},
-  }),
-}))
+vi.mock('../../hooks/use-file-settings', () => ({ useFileSettings: () => ({ enabled: true }) }))
 
-vi.mock('../../hooks/use-inspect-vars-crud', () => ({
-  useInspectVarsCrud: () => ({
+vi.mock('@/app/components/workflow/hooks/use-inspect-vars-crud-common', () => ({
+  useInspectVarsCrudCommon: () => ({
     hasNodeInspectVars: vi.fn(),
     hasSetInspectVar: vi.fn(),
     fetchInspectVarValue: vi.fn(),
@@ -118,41 +114,49 @@ vi.mock('@/context/dataset-detail', () => ({
   ) => selector({ dataset: { permission_keys: mockPermissionState.permissionKeys } }),
 }))
 
+let workflowProps: Record<string, unknown>
 vi.mock('@/app/components/workflow', () => ({
   WorkflowWithInnerContext: ({
     children,
     onWorkflowDataUpdate,
     hooksStore,
+    ...graphProps
   }: PropsWithChildren<{
     onWorkflowDataUpdate?: (payload: unknown) => void
     hooksStore?: { accessControl?: { canEdit?: boolean } }
-  }>) => (
-    <div data-testid="workflow-inner-context">
-      <div data-testid="can-edit">{String(hooksStore?.accessControl?.canEdit)}</div>
-      {children}
-      <button
-        data-testid="trigger-update"
-        onClick={() =>
-          onWorkflowDataUpdate?.({
-            rag_pipeline_variables: [{ id: '1', name: 'var1' }],
-            environment_variables: [{ id: '2', name: 'env1' }],
-          })
-        }
-      >
-        Trigger Update
-      </button>
-      <button
-        data-testid="trigger-update-partial"
-        onClick={() =>
-          onWorkflowDataUpdate?.({
-            rag_pipeline_variables: [{ id: '3', name: 'var2' }],
-          })
-        }
-      >
-        Trigger Partial Update
-      </button>
-    </div>
-  ),
+    nodes?: Node[]
+    edges?: Edge[]
+    viewport?: Viewport
+  }>) => {
+    workflowProps = { ...graphProps, hooksStore }
+    return (
+      <div data-testid="workflow-inner-context">
+        <div data-testid="can-edit">{String(hooksStore?.accessControl?.canEdit)}</div>
+        {children}
+        <button
+          data-testid="trigger-update"
+          onClick={() =>
+            onWorkflowDataUpdate?.({
+              rag_pipeline_variables: [{ id: '1', name: 'var1' }],
+              environment_variables: [{ id: '2', name: 'env1' }],
+            })
+          }
+        >
+          Trigger Update
+        </button>
+        <button
+          data-testid="trigger-update-partial"
+          onClick={() =>
+            onWorkflowDataUpdate?.({
+              rag_pipeline_variables: [{ id: '3', name: 'var2' }],
+            })
+          }
+        >
+          Trigger Partial Update
+        </button>
+      </div>
+    )
+  },
 }))
 
 vi.mock('../rag-pipeline-children', () => ({
@@ -184,141 +188,42 @@ describe('RagPipelineMain', () => {
     mockPermissionState.permissionKeys = [DatasetACLPermission.Edit]
   })
 
-  describe('rendering', () => {
-    it('should render RagPipelineChildren', () => {
-      render(<RagPipelineMain {...defaultProps} />)
-
-      expect(screen.getByTestId('rag-pipeline-children')).toBeInTheDocument()
-    })
-
-    it('should pass nodes to WorkflowWithInnerContext', () => {
-      const nodes = [{ id: 'node-1', type: 'custom', position: { x: 0, y: 0 }, data: {} }] as Node[]
-
-      render(<RagPipelineMain {...defaultProps} nodes={nodes} />)
-
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    })
-
-    it('should pass edges to WorkflowWithInnerContext', () => {
-      const edges = [{ id: 'edge-1', source: 'node-1', target: 'node-2' }] as Edge[]
-
-      render(<RagPipelineMain {...defaultProps} edges={edges} />)
-
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    })
-
-    it('should pass viewport to WorkflowWithInnerContext', () => {
+  it.each([DatasetACLPermission.Edit, DatasetACLPermission.Readonly])(
+    'passes the graph and edit capability for %s',
+    (permission) => {
+      mockPermissionState.permissionKeys = [permission]
+      const nodes = [createNode({ id: 'node-1' })]
+      const edges = [{ id: 'edge-1', source: 'node-1', target: 'node-2' }]
       const viewport = { x: 100, y: 200, zoom: 1.5 }
-
-      render(<RagPipelineMain {...defaultProps} viewport={viewport} />)
-
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    })
-  })
+      render(<RagPipelineMain nodes={nodes} edges={edges} viewport={viewport} />)
+      expect(workflowProps).toMatchObject({
+        nodes,
+        edges,
+        viewport,
+        hooksStore: { accessControl: { canEdit: permission === DatasetACLPermission.Edit } },
+      })
+    },
+  )
 
   describe('handleWorkflowDataUpdate callback', () => {
-    it('should update rag_pipeline_variables when provided', () => {
+    it('should update rag_pipeline_variables when provided', async () => {
       render(<RagPipelineMain {...defaultProps} />)
 
       const button = screen.getByTestId('trigger-update')
-      button.click()
+      await userEvent.setup().click(button)
 
       expect(mockSetRagPipelineVariables).toHaveBeenCalledWith([{ id: '1', name: 'var1' }])
-    })
-
-    it('should update environment_variables when provided', () => {
-      render(<RagPipelineMain {...defaultProps} />)
-
-      const button = screen.getByTestId('trigger-update')
-      button.click()
-
       expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([{ id: '2', name: 'env1' }])
     })
 
-    it('should only update rag_pipeline_variables when environment_variables is not provided', () => {
+    it('should only update rag_pipeline_variables when environment_variables is not provided', async () => {
       render(<RagPipelineMain {...defaultProps} />)
 
       const button = screen.getByTestId('trigger-update-partial')
-      button.click()
+      await userEvent.setup().click(button)
 
       expect(mockSetRagPipelineVariables).toHaveBeenCalledWith([{ id: '3', name: 'var2' }])
       expect(mockSetEnvironmentVariables).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('hooks integration', () => {
-    it('should use useNodesSyncDraft hook', () => {
-      render(<RagPipelineMain {...defaultProps} />)
-
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    })
-
-    it('should use usePipelineRefreshDraft hook', () => {
-      render(<RagPipelineMain {...defaultProps} />)
-
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    })
-
-    it('should use usePipelineRun hook', () => {
-      render(<RagPipelineMain {...defaultProps} />)
-
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    })
-
-    it('should use usePipelineStartRun hook', () => {
-      render(<RagPipelineMain {...defaultProps} />)
-
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    })
-
-    it('should use useAvailableNodesMetaData hook', () => {
-      render(<RagPipelineMain {...defaultProps} />)
-
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    })
-
-    it('should use useGetRunAndTraceUrl hook', () => {
-      render(<RagPipelineMain {...defaultProps} />)
-
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    })
-
-    it('should use useDSL hook', () => {
-      render(<RagPipelineMain {...defaultProps} />)
-
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    })
-
-    it('should use useConfigsMap hook', () => {
-      render(<RagPipelineMain {...defaultProps} />)
-
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    })
-
-    it('should use useInspectVarsCrud hook', () => {
-      render(<RagPipelineMain {...defaultProps} />)
-
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    })
-  })
-
-  describe('edge cases', () => {
-    it('should handle empty nodes array', () => {
-      render(<RagPipelineMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    })
-
-    it('should handle empty edges array', () => {
-      render(<RagPipelineMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    })
-
-    it('should handle default viewport', () => {
-      render(<RagPipelineMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
     })
   })
 })

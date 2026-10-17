@@ -94,7 +94,6 @@ export function ProviderToolSettingsDialog({
       toolName={currentTarget.action.toolName}
       setting={toolSettings[currentTarget.action.id]}
       collection={toolCollection}
-      isModel={false}
       credentialId={currentTarget.tool.credentialId}
       onSave={handleSave}
       onHide={onClose}

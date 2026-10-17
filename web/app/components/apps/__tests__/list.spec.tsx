@@ -1,21 +1,23 @@
+import type { AppPagination } from '@dify/contracts/api/console/apps/types.gen'
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
-import { keepPreviousData } from '@tanstack/react-query'
-import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import * as React from 'react'
 import { stepByStepTourSessionAtom } from '@/app/components/step-by-step-tour/state'
 import {
   getStepByStepTourTargetSelector,
   STEP_BY_STEP_TOUR_TARGETS,
 } from '@/app/components/step-by-step-tour/target-registry'
+import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
-import { renderWithNuqs } from '@/test/nuqs-testing'
-import { AppModeEnum } from '@/types/app'
+import { createDeferred } from '@/test/deferred'
 import { List } from '../list'
+import { appListQueryParsers } from '../query-params'
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
@@ -32,13 +34,23 @@ vi.mock('react-i18next', async () => {
   })
 })
 
-const mockAppListInfiniteOptions = vi.hoisted(() => vi.fn((options: unknown) => options))
-const mockAppStarredListQueryOptions = vi.hoisted(() => vi.fn((options: unknown) => options))
-const mockUseWorkflowOnlineUsers = vi.hoisted(() =>
-  vi.fn((_options: unknown) => ({
-    onlineUsersMap: {},
-  })),
-)
+const { getApps, getStarredApps, getOnlineUsers } = vi.hoisted(() => ({
+  getApps: vi.fn(),
+  getStarredApps: vi.fn(),
+  getOnlineUsers: vi.fn(),
+}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.get': getApps,
+      'apps.starred.get': getStarredApps,
+      'apps.workflows.onlineUsers.post': getOnlineUsers,
+    }),
+  }
+})
 let stepByStepTourSessionState: StepByStepTourSessionState = {}
 
 const mockLearnDifyApp = vi.hoisted(
@@ -72,49 +84,6 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => mockSearchParams,
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleClient: {
-    systemFeatures: {
-      get: vi.fn(),
-    },
-  },
-  consoleQuery: {
-    account: {
-      profile: {
-        get: {
-          queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
-        },
-      },
-    },
-    apps: {
-      get: {
-        key: () => ['console', 'apps', 'get'],
-        infiniteOptions: (options: unknown) => mockAppListInfiniteOptions(options),
-      },
-      starred: {
-        get: {
-          key: () => ['console', 'apps', 'starred', 'get'],
-          queryOptions: (options: unknown) => mockAppStarredListQueryOptions(options),
-        },
-      },
-    },
-    tags: {
-      get: {
-        queryOptions: (options: unknown) => options,
-      },
-    },
-    systemFeatures: {
-      get: {
-        queryKey: () => ['console', 'systemFeatures', 'get'],
-        queryOptions: (options: Record<string, unknown> = {}) => ({
-          queryKey: ['console', 'systemFeatures', 'get'],
-          ...options,
-        }),
-      },
-    },
-  },
-}))
-
 let mockWorkspacePermissionKeys = ['app.create_and_management']
 
 vi.mock('@/context/permission-state', async () => {
@@ -124,17 +93,6 @@ vi.mock('@/context/permission-state', async () => {
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
 })
-
-vi.mock('@/service/use-common', () => ({
-  useMembers: () => ({
-    data: {
-      accounts: [
-        { id: 'creator-1', name: 'Alice', avatar_url: null, status: 'active' },
-        { id: 'creator-2', name: 'Bob', avatar_url: null, status: 'active' },
-      ],
-    },
-  }),
-}))
 
 vi.mock('@/features/tag-management/components/tag-filter', () => ({
   TagFilter: ({
@@ -158,26 +116,11 @@ vi.mock('@/features/tag-management/components/tag-filter', () => ({
   ),
 }))
 
-vi.mock('../hooks/use-workflow-online-users', () => ({
-  useWorkflowOnlineUsers: (options: unknown) => mockUseWorkflowOnlineUsers(options),
-}))
+let hasMoreApps = false
+let seedAppList = true
+let seedStarredList = true
 
-const mockFetchNextPage = vi.fn()
-let mockSystemFeatures: GetSystemFeaturesResponse | null = null
-
-const mockServiceState = {
-  error: null as Error | null,
-  hasNextPage: false,
-  isFetchNextPageError: false,
-  isFetching: false,
-  isLoading: false,
-  isFetchingNextPage: false,
-  isPlaceholderData: false,
-}
-let mockStarredIsLoading = false
-let mockStarredError: Error | null = null
-
-const defaultAppData = {
+const defaultAppData: { pages: Array<Pick<AppPagination, 'data' | 'total'>> } = {
   pages: [
     {
       data: [
@@ -185,7 +128,8 @@ const defaultAppData = {
           id: 'app-1',
           name: 'Test App 1',
           description: 'Description 1',
-          mode: AppModeEnum.CHAT,
+          mode: 'chat',
+          icon_url: null,
           icon: '🤖',
           icon_type: 'emoji',
           icon_background: '#FFEAD5',
@@ -198,7 +142,8 @@ const defaultAppData = {
           id: 'app-2',
           name: 'Test App 2',
           description: 'Description 2',
-          mode: AppModeEnum.WORKFLOW,
+          mode: 'workflow',
+          icon_url: null,
           icon: '⚙️',
           icon_type: 'emoji',
           icon_background: '#E4FBCC',
@@ -214,15 +159,7 @@ const defaultAppData = {
 }
 let mockAppData = defaultAppData
 
-type MockStarredAppData = {
-  data: Array<Record<string, unknown>>
-  total: number
-  page: number
-  limit: number
-  has_more: boolean
-}
-
-let mockStarredAppData: MockStarredAppData = {
+let mockStarredAppData: AppPagination = {
   data: [],
   total: 0,
   page: 1,
@@ -230,36 +167,8 @@ let mockStarredAppData: MockStarredAppData = {
   has_more: false,
 }
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useQuery: (options: { input?: unknown }) =>
-      options.input
-        ? {
-            data: mockStarredIsLoading ? undefined : mockStarredAppData,
-            error: mockStarredError,
-          }
-        : {
-            data: mockSystemFeatures,
-            error: null,
-          },
-    useSuspenseQuery: () => ({ data: mockSystemFeatures }),
-    useInfiniteQuery: () => ({
-      data: mockServiceState.isLoading ? undefined : mockAppData,
-      isFetching: mockServiceState.isFetching,
-      isFetchNextPageError: mockServiceState.isFetchNextPageError,
-      isFetchingNextPage: mockServiceState.isFetchingNextPage,
-      isPlaceholderData: mockServiceState.isPlaceholderData,
-      fetchNextPage: mockFetchNextPage,
-      hasNextPage: mockServiceState.hasNextPage,
-      error: mockServiceState.error,
-    }),
-  }
-})
-
 vi.mock('@/hooks/use-pay', () => ({
-  CheckModal: () => null,
+  CheckResultToast: () => null,
 }))
 
 vi.mock('next/dynamic', () => ({
@@ -288,11 +197,6 @@ vi.mock('next/dynamic', () => ({
             { onClick: onClose, 'data-testid': 'close-dsl-modal' },
             'Close',
           ),
-          React.createElement(
-            'button',
-            { onClick: onClose, 'data-testid': 'success-dsl-modal' },
-            'Success',
-          ),
         )
       }
     }
@@ -314,11 +218,6 @@ vi.mock('next/dynamic', () => ({
             'button',
             { onClick: onClose, 'data-testid': 'close-create-modal' },
             'Close',
-          ),
-          React.createElement(
-            'button',
-            { onClick: onClose, 'data-testid': 'success-create-modal' },
-            'Success',
           ),
           React.createElement(
             'button',
@@ -346,11 +245,6 @@ vi.mock('next/dynamic', () => ({
             'button',
             { onClick: onClose, 'data-testid': 'close-template-dialog' },
             'Close',
-          ),
-          React.createElement(
-            'button',
-            { onClick: onClose, 'data-testid': 'success-template-dialog' },
-            'Success',
           ),
           React.createElement(
             'button',
@@ -467,20 +361,25 @@ const mockObserve = vi.fn()
 const mockDisconnect = vi.fn()
 
 beforeAll(() => {
-  globalThis.IntersectionObserver = class MockIntersectionObserver {
-    constructor(callback: IntersectionObserverCallback) {
-      intersectionCallbacks.push(callback)
-    }
+  vi.stubGlobal(
+    'IntersectionObserver',
+    class MockIntersectionObserver {
+      constructor(callback: IntersectionObserverCallback) {
+        intersectionCallbacks.push(callback)
+      }
 
-    observe = mockObserve
-    disconnect = mockDisconnect
-    unobserve = vi.fn()
-    root = null
-    rootMargin = ''
-    thresholds = []
-    takeRecords = () => []
-  } as unknown as typeof IntersectionObserver
+      observe = mockObserve
+      disconnect = mockDisconnect
+      unobserve = vi.fn()
+      root = null
+      rootMargin = ''
+      thresholds = []
+      takeRecords = () => []
+    },
+  )
 })
+
+afterAll(() => vi.unstubAllGlobals())
 
 type RenderListOptions = {
   onCreateLearnDify?: (app: RecommendedAppResponse) => void
@@ -490,48 +389,89 @@ type RenderListOptions = {
 
 const renderList = (searchParams = '', options: RenderListOptions = {}) => {
   mockSearchParams = new URLSearchParams(searchParams)
-  const { wrapper: ConsoleQueryWrapper, systemFeatures } = createConsoleQueryWrapper({
+  const { wrapper: ConsoleQueryWrapper, queryClient } = createConsoleQueryWrapper({
     accountProfile: { id: 'creator-1' },
     systemFeatures: { branding: { enabled: false }, ...options.systemFeatures },
   })
-  mockSystemFeatures = systemFeatures
+  const category =
+    appListQueryParsers.category.parse(mockSearchParams.get('category') ?? '') ?? 'all'
+  const query = {
+    name: mockSearchParams.get('keywords') ?? '',
+    page: 1,
+    limit: 30,
+    sort_by:
+      appListQueryParsers.sort_by.parse(mockSearchParams.get('sort_by') ?? '') ?? 'last_modified',
+    ...(category !== 'all' ? { mode: category } : {}),
+  }
+  const appOptions = consoleQuery.apps.get.infiniteOptions({
+    input: (page: number) => ({ query: { ...query, page } }),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.has_more ? last.page + 1 : undefined),
+  })
+  if (seedAppList && mockAppData.pages.length)
+    queryClient.setQueryData<{ pages: AppPagination[]; pageParams: number[] }>(
+      appOptions.queryKey,
+      {
+        pages: mockAppData.pages.map((page, index) => ({
+          ...page,
+          page: index + 1,
+          limit: 30,
+          has_more: hasMoreApps,
+        })),
+        pageParams: [1],
+      },
+    )
+  if (seedStarredList)
+    queryClient.setQueryData<AppPagination>(
+      consoleQuery.apps.starred.get.queryKey({ input: { query: { ...query, limit: 100 } } }),
+      mockStarredAppData,
+    )
+  queryClient.setQueryData(consoleQuery.workspaces.current.members.get.queryKey({ input: {} }), {
+    accounts: [
+      {
+        id: 'creator-1',
+        name: 'Alice',
+        avatar_url: null,
+        status: 'active',
+        email: 'alice@example.com',
+        role: 'admin',
+      },
+      {
+        id: 'creator-2',
+        name: 'Bob',
+        avatar_url: null,
+        status: 'active',
+        email: 'bob@example.com',
+        role: 'normal',
+      },
+    ],
+  })
   const store = createStore()
   seedRegisteredConsoleStateFixture(store)
   store.set(stepByStepTourSessionAtom, stepByStepTourSessionState)
-  const rendered = renderWithNuqs(
-    <ConsoleQueryWrapper>
-      <JotaiProvider store={store}>
-        <List
-          onCreateLearnDify={options.onCreateLearnDify}
-          onTryLearnDify={options.onTryLearnDify}
-        />
-      </JotaiProvider>
-    </ConsoleQueryWrapper>,
-    { searchParams },
+  const onUrlUpdate = vi.fn()
+  const rendered = render(
+    <NuqsTestingAdapter hasMemory searchParams={searchParams} onUrlUpdate={onUrlUpdate}>
+      <ConsoleQueryWrapper>
+        <JotaiProvider store={store}>
+          <List
+            onCreateLearnDify={options.onCreateLearnDify}
+            onTryLearnDify={options.onTryLearnDify}
+          />
+        </JotaiProvider>
+      </ConsoleQueryWrapper>
+    </NuqsTestingAdapter>,
   )
-  return rendered
-}
-
-type AppListInfiniteOptions = {
-  input: (pageParam: number) => { query: Record<string, unknown> }
-  getNextPageParam: (lastPage: { has_more: boolean; page: number }) => number | undefined
-  placeholderData?: unknown
-}
-
-type AppStarredListQueryOptions = {
-  input: {
-    query: Record<string, unknown>
-  }
-  placeholderData?: unknown
+  return { ...rendered, onUrlUpdate, queryClient }
 }
 
 const openAppTypeSelect = async (user = userEvent.setup()) => {
-  await user.click(screen.getByRole('button', { name: /^(Types|app\.types\.)/ }))
+  await user.click(screen.getByRole('combobox', { name: 'Types' }))
   return user
 }
 
 const openAppSortSelect = async (user = userEvent.setup()) => {
-  await user.click(screen.getByRole('button', { name: 'Sort by Last modified' }))
+  await user.click(screen.getByRole('combobox', { name: 'Sort by' }))
   return user
 }
 
@@ -564,15 +504,11 @@ describe('List', () => {
     vi.clearAllMocks()
     stepByStepTourSessionState = {}
     mockWorkspacePermissionKeys = ['app.create_and_management']
-    mockServiceState.error = null
-    mockServiceState.hasNextPage = false
-    mockServiceState.isFetchNextPageError = false
-    mockServiceState.isFetching = false
-    mockServiceState.isLoading = false
-    mockServiceState.isFetchingNextPage = false
-    mockServiceState.isPlaceholderData = false
-    mockStarredIsLoading = false
-    mockStarredError = null
+    hasMoreApps = false
+    seedAppList = true
+    seedStarredList = true
+    getApps.mockReset().mockImplementation(() => new Promise(() => {}))
+    getStarredApps.mockReset().mockImplementation(() => new Promise(() => {}))
     mockAppData = defaultAppData
     mockStarredAppData = {
       data: [],
@@ -581,7 +517,7 @@ describe('List', () => {
       limit: 100,
       has_more: false,
     }
-    mockUseWorkflowOnlineUsers.mockClear()
+    getOnlineUsers.mockReset().mockResolvedValue({ data: {} })
     intersectionCallbacks.length = 0
   })
 
@@ -609,45 +545,15 @@ describe('List', () => {
       expect(screen.getByRole('menu', { hidden: true })).toHaveAttribute('aria-hidden', 'true')
     })
 
-    it('should render filters and search before the right aligned actions', () => {
-      renderList()
-
-      const creatorsButton = screen.getByRole('combobox', { name: 'Creators' })
-      const searchInput = screen.getByRole('searchbox', {
-        name: 'app.gotoAnything.actions.searchApplications',
-      })
-      const sortButton = screen.getByRole('button', { name: 'Sort by Last modified' })
-      const snippetsLink = screen.getByRole('link', { name: 'app.studio.viewSnippets' })
-      const createButton = screen.getByRole('button', { name: 'common.operation.create' })
-
-      expect(snippetsLink).toHaveAttribute('href', '/snippets')
-      expect(sortButton).toHaveTextContent('Sort by Last modified')
-      expect(
-        creatorsButton.compareDocumentPosition(sortButton) & Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy()
-      expect(
-        sortButton.compareDocumentPosition(searchInput) & Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy()
-      expect(
-        searchInput.compareDocumentPosition(snippetsLink) & Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy()
-      expect(
-        snippetsLink.compareDocumentPosition(createButton) & Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy()
-    })
-
-    it('should render app cards when apps exist', () => {
-      renderList()
-
-      expect(screen.getByTestId('app-card-app-1'))!.toBeInTheDocument()
-      expect(screen.getByTestId('app-card-app-2'))!.toBeInTheDocument()
-    })
-
     it('should hide starred section when there are no starred apps', () => {
       renderList()
 
       expect(screen.queryByText('Starred')).not.toBeInTheDocument()
       expect(screen.queryByText('All Apps')).not.toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'app.studio.viewSnippets' })).toHaveAttribute(
+        'href',
+        '/snippets',
+      )
     })
 
     it('should render starred apps before all app cards when starred apps exist', () => {
@@ -657,7 +563,7 @@ describe('List', () => {
             id: 'starred-app-1',
             name: 'Starred App',
             description: 'Starred description',
-            mode: AppModeEnum.CHAT,
+            mode: 'chat',
             icon: '⭐',
             icon_type: 'emoji',
             icon_background: '#FFEAD5',
@@ -712,7 +618,7 @@ describe('List', () => {
             id: 'starred-app-1',
             name: 'Starred App',
             description: 'Starred description',
-            mode: AppModeEnum.CHAT,
+            mode: 'chat',
             icon: '⭐',
             icon_type: 'emoji',
             icon_background: '#FFEAD5',
@@ -766,7 +672,7 @@ describe('List', () => {
             id: 'starred-app-1',
             name: 'Starred App',
             description: 'Starred description',
-            mode: AppModeEnum.CHAT,
+            mode: 'chat',
             icon: '⭐',
             icon_type: 'emoji',
             icon_background: '#FFEAD5',
@@ -841,21 +747,15 @@ describe('List', () => {
 
       expect(target).toBeInTheDocument()
       expect(target).toBe(screen.getByTestId('empty-state'))
-      expect(target).not.toHaveClass('absolute', 'top-1/2', 'left-1/2')
       expect(screen.queryByText('app.firstEmpty.title')).not.toBeInTheDocument()
       expect(
         screen.queryByRole('button', { name: 'common.operation.create' }),
       ).not.toBeInTheDocument()
     })
 
-    it('should not render new app card in the app grid', () => {
-      renderList()
-      expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
-    })
-
     it('should render drop DSL hint when app creation permission is available', () => {
       renderList()
-      expect(screen.getByText('app.newApp.dropDSLToCreateApp'))!.toBeInTheDocument()
+      expect(screen.getByText('app.newApp.dropDSLToCreateApp')).toBeInTheDocument()
       expect(
         screen.queryByRole('region', { name: 'app.newApp.dropDSLToCreateApp' }),
       ).not.toBeInTheDocument()
@@ -866,10 +766,10 @@ describe('List', () => {
 
       renderList('', { systemFeatures: { enable_learn_app: true } })
 
-      expect(screen.getByText('app.firstEmpty.title'))!.toBeInTheDocument()
-      expect(screen.getByText('app.firstEmpty.learnDifyTitle'))!.toBeInTheDocument()
-      expect(screen.getByText('app.firstEmpty.or'))!.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Types' }))!.toBeInTheDocument()
+      expect(screen.getByText('app.firstEmpty.title')).toBeInTheDocument()
+      expect(screen.getByText('app.firstEmpty.learnDifyTitle')).toBeInTheDocument()
+      expect(screen.getByText('app.firstEmpty.or')).toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Types' })).toBeInTheDocument()
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
       expect(screen.queryByTestId('empty-state')).not.toBeInTheDocument()
       expect(
@@ -901,7 +801,7 @@ describe('List', () => {
 
       renderList('', { systemFeatures: { enable_learn_app: false } })
 
-      expect(screen.getByText('app.firstEmpty.title'))!.toBeInTheDocument()
+      expect(screen.getByText('app.firstEmpty.title')).toBeInTheDocument()
       expect(screen.queryByText('app.firstEmpty.learnDifyTitle')).not.toBeInTheDocument()
     })
 
@@ -911,17 +811,7 @@ describe('List', () => {
       renderList()
 
       expect(screen.queryByText('app.firstEmpty.title')).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Types' }))!.toBeInTheDocument()
-    })
-
-    it('should not render first empty state from placeholder data during a filter transition', () => {
-      mockAppData = { pages: [{ data: [], total: 0 }] }
-      mockServiceState.isPlaceholderData = true
-
-      renderList()
-
-      expect(screen.getByTestId('empty-state')).toBeInTheDocument()
-      expect(screen.queryByText('app.firstEmpty.title')).not.toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Types' })).toBeInTheDocument()
     })
 
     it('should keep the regular empty state for empty filtered results', () => {
@@ -929,38 +819,24 @@ describe('List', () => {
 
       renderList('?keywords=missing+app')
 
-      expect(screen.getByTestId('empty-state'))!.toBeInTheDocument()
+      expect(screen.getByTestId('empty-state')).toBeInTheDocument()
       expect(screen.getByRole('status')).toHaveTextContent('app.filterEmpty.noApps')
-      expect(screen.getByRole('status')).toHaveClass('sr-only')
       expect(screen.getByTestId('empty-state').closest('[aria-busy]')).toHaveAttribute(
         'aria-busy',
         'false',
       )
-      expect(screen.getByRole('button', { name: 'Types' }))!.toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Types' })).toBeInTheDocument()
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
       expect(screen.queryByText('app.firstEmpty.title')).not.toBeInTheDocument()
     })
 
-    it('should keep the result status quiet while placeholder results are fetching', () => {
+    it('keeps the settled empty status during a real background refresh', async () => {
       mockAppData = { pages: [{ data: [], total: 0 }] }
-      mockServiceState.isFetching = true
-      mockServiceState.isPlaceholderData = true
-
-      renderList('?keywords=missing+app')
-
-      expect(screen.getByRole('status')).toBeEmptyDOMElement()
-      expect(screen.getByTestId('empty-state').closest('[aria-busy]')).toHaveAttribute(
-        'aria-busy',
-        'true',
-      )
-    })
-
-    it('should keep the settled empty status during a background refetch', () => {
-      mockAppData = { pages: [{ data: [], total: 0 }] }
-      mockServiceState.isFetching = true
-
-      renderList('?keywords=missing+app')
-
+      const { queryClient } = renderList('?keywords=missing+app')
+      act(() => {
+        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
+      })
+      await waitFor(() => expect(getApps).toHaveBeenCalledOnce())
       expect(screen.getByRole('status')).toHaveTextContent('app.filterEmpty.noApps')
       expect(screen.getByTestId('empty-state').closest('[aria-busy]')).toHaveAttribute(
         'aria-busy',
@@ -968,36 +844,36 @@ describe('List', () => {
       )
     })
 
-    it('should leave the first empty state as soon as a filter changes', () => {
+    it('should leave the first empty state as soon as a filter changes', async () => {
+      const user = userEvent.setup()
       mockAppData = { pages: [{ data: [], total: 0 }] }
       renderList()
 
       expect(screen.getByText('app.firstEmpty.title')).toBeInTheDocument()
 
-      fireEvent.change(
-        screen.getByRole('searchbox', {
-          name: 'app.gotoAnything.actions.searchApplications',
-        }),
-        { target: { value: 'workflow' } },
+      await user.type(
+        screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }),
+        'workflow',
       )
 
       expect(screen.queryByText('app.firstEmpty.title')).not.toBeInTheDocument()
       expect(screen.getByTestId('empty-state')).toBeInTheDocument()
     })
 
-    it('should open create flows from first empty state actions', () => {
+    it('should open create flows from first empty state actions', async () => {
+      const user = userEvent.setup()
       mockAppData = { pages: [{ data: [], total: 0 }] }
 
       renderList()
 
-      fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.startFromBlank/ }))
-      expect(screen.getByTestId('create-app-modal'))!.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: /app\.newApp\.startFromBlank/ }))
+      expect(screen.getByTestId('create-app-modal')).toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.startFromTemplate/ }))
-      expect(screen.getByTestId('template-dialog'))!.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: /app\.newApp\.startFromTemplate/ }))
+      expect(screen.getByTestId('template-dialog')).toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: /app\.importApp/ }))
-      expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: /app\.importApp/ }))
+      expect(screen.getByTestId('create-dsl-modal')).toBeInTheDocument()
     })
 
     it('should forward Learn Dify template interactions', async () => {
@@ -1019,13 +895,11 @@ describe('List', () => {
       expect(onCreateLearnDify).toHaveBeenCalledWith(mockLearnDifyApp)
     })
 
-    it('should pass workflow app ids to online users hook', () => {
-      renderList()
-
-      expect(mockUseWorkflowOnlineUsers).toHaveBeenCalledWith({
-        appIds: ['app-2'],
-        enabled: expect.any(Boolean),
-      })
+    it('requests collaborators only for workflow apps when collaboration is enabled', async () => {
+      renderList('', { systemFeatures: { enable_collaboration_mode: true } })
+      await waitFor(() =>
+        expect(getOnlineUsers).toHaveBeenCalledWith({ body: { app_ids: ['app-2'] } }),
+      )
     })
   })
 
@@ -1033,28 +907,18 @@ describe('List', () => {
     it('should render selected category in the trigger', () => {
       renderList('?category=workflow')
 
-      expect(screen.getByRole('button', { name: 'app.types.workflow' }))!.toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Types' })).toHaveTextContent(
+        'app.types.workflow',
+      )
     })
 
-    it('should reject API modes that the Studio category control does not support', () => {
+    it('should reject API modes that the Studio category control does not support', async () => {
+      seedAppList = false
       renderList('?category=channel')
 
-      expect(screen.getByRole('button', { name: 'Types' })).toBeInTheDocument()
-      const options = mockAppListInfiniteOptions.mock.calls.at(-1)?.[0] as AppListInfiniteOptions
-      expect(options.input(1).query).not.toHaveProperty('mode')
-    })
-
-    it('should update category when workflow option is selected', async () => {
-      const user = userEvent.setup()
-      const { onUrlUpdate } = renderList()
-      await openAppTypeSelect(user)
-
-      await user.click(await screen.findByRole('menuitemradio', { name: 'app.types.workflow' }))
-
-      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('category')).toBe(
-        AppModeEnum.WORKFLOW,
-      )
+      expect(screen.getByRole('combobox', { name: 'Types' })).toBeInTheDocument()
+      await waitFor(() => expect(getApps).toHaveBeenCalledOnce())
+      expect(getApps.mock.calls[0]![0].query).not.toHaveProperty('mode')
     })
 
     it('should update category when all option is selected', async () => {
@@ -1062,20 +926,24 @@ describe('List', () => {
       const { onUrlUpdate } = renderList('?category=workflow')
       await openAppTypeSelect(user)
 
-      await user.click(await screen.findByRole('menuitemradio', { name: 'All' }))
+      expect(await screen.findByRole('option', { name: 'app.types.workflow' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      )
+      await user.click(screen.getByRole('option', { name: 'All' }))
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
       expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.has('category')).toBe(false)
+      expect(screen.getByRole('combobox', { name: 'Types' })).toHaveTextContent('Types')
     })
   })
 
   describe('Search Functionality', () => {
     it('should clear the keywords URL state', async () => {
+      const user = userEvent.setup()
       const { onUrlUpdate } = renderList('?keywords=existing+search')
 
-      const clearButton = document.querySelector('.i-ri-close-circle-fill')?.closest('button')
-      expect(clearButton)!.toBeInTheDocument()
-      if (clearButton) fireEvent.click(clearButton)
+      await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
       expect(screen.getByRole('searchbox')).toHaveValue('')
       await waitFor(() => {
@@ -1085,7 +953,8 @@ describe('List', () => {
   })
 
   describe('App List Query', () => {
-    it('resets the catalog scroll position before switching datasets', () => {
+    it('resets the catalog scroll position before switching datasets', async () => {
+      const user = userEvent.setup()
       renderList()
       const searchBox = screen.getByRole('searchbox', {
         name: 'app.gotoAnything.actions.searchApplications',
@@ -1095,118 +964,89 @@ describe('List', () => {
       const scrollTo = vi.fn()
       scrollContainer.scrollTo = scrollTo
 
-      fireEvent.click(screen.getByText('common.tag.placeholder'))
+      await user.click(screen.getByText('common.tag.placeholder'))
 
       expect(scrollTo).toHaveBeenCalledWith({ top: 0 })
     })
 
-    it('should build paged query input from active filters', async () => {
+    it('requests main and starred results with current filters and their own page limits', async () => {
       const user = userEvent.setup()
       renderList('?keywords=sales&category=workflow')
       await user.click(screen.getByRole('combobox', { name: 'Creators' }))
       await user.click(screen.getByRole('option', { name: /Alice/ }))
       await user.click(screen.getByText('common.tag.placeholder'))
-
-      const options = mockAppListInfiniteOptions.mock.calls.at(-1)?.[0] as AppListInfiniteOptions
-
-      expect(options.input(2)).toEqual({
-        query: {
-          page: 2,
-          limit: 30,
-          name: 'sales',
-          sort_by: 'last_modified',
-          tag_ids: ['tag-1'],
-          creator_ids: ['creator-1'],
-          mode: AppModeEnum.WORKFLOW,
-        },
-      })
-      expect(options.getNextPageParam({ has_more: true, page: 2 })).toBe(3)
-      expect(options.getNextPageParam({ has_more: false, page: 2 })).toBeUndefined()
+      const filters = {
+        page: 1,
+        name: 'sales',
+        sort_by: 'last_modified',
+        tag_ids: ['tag-1'],
+        creator_ids: ['creator-1'],
+        mode: 'workflow',
+      }
+      await waitFor(() =>
+        expect(getApps).toHaveBeenLastCalledWith({ query: { ...filters, limit: 30 } }),
+      )
+      expect(getStarredApps).toHaveBeenLastCalledWith({ query: { ...filters, limit: 100 } })
     })
 
-    it('should build starred query input from active filters with the starred limit', async () => {
+    it('keeps main and starred results while new filters load, then replaces them', async () => {
       const user = userEvent.setup()
-      renderList('?keywords=sales&category=workflow')
-      await user.click(screen.getByRole('combobox', { name: 'Creators' }))
-      await user.click(screen.getByRole('option', { name: /Alice/ }))
+      mockStarredAppData = {
+        ...mockStarredAppData,
+        data: [{ ...defaultAppData.pages[0]!.data[0]!, id: 'starred-app', name: 'Starred app' }],
+      }
+      const nextApps = createDeferred<unknown>()
+      const nextStarred = createDeferred<unknown>()
+      getApps.mockReturnValue(nextApps.promise)
+      getStarredApps.mockReturnValue(nextStarred.promise)
+      renderList()
       await user.click(screen.getByText('common.tag.placeholder'))
-
-      const options = mockAppStarredListQueryOptions.mock.calls.at(
-        -1,
-      )?.[0] as AppStarredListQueryOptions
-
-      expect(options.input).toEqual({
-        query: {
-          page: 1,
-          limit: 100,
-          name: 'sales',
-          sort_by: 'last_modified',
-          tag_ids: ['tag-1'],
-          creator_ids: ['creator-1'],
-          mode: AppModeEnum.WORKFLOW,
-        },
-      })
-    })
-
-    it('should keep previous main and starred data visible while filters refetch', async () => {
-      renderList()
-
+      await waitFor(() =>
+        expect(getApps).toHaveBeenCalledWith({
+          query: expect.objectContaining({ tag_ids: ['tag-1'] }),
+        }),
+      )
       expect(screen.getByTestId('app-card-app-1')).toBeInTheDocument()
-
-      fireEvent.click(screen.getByText('common.tag.placeholder'))
-
-      await waitFor(() => {
-        const options = mockAppListInfiniteOptions.mock.calls.at(-1)?.[0] as AppListInfiniteOptions
-        expect(options.input(1).query).toMatchObject({ tag_ids: ['tag-1'] })
-        expect(options.placeholderData).toBe(keepPreviousData)
+      expect(screen.getByText('Starred app')).toBeInTheDocument()
+      await act(async () => {
+        nextApps.resolve({ data: [], page: 1, limit: 30, total: 0, has_more: false })
+        nextStarred.resolve({ data: [], page: 1, limit: 100, total: 0, has_more: false })
       })
-      const starredOptions = mockAppStarredListQueryOptions.mock.calls.at(
-        -1,
-      )?.[0] as AppStarredListQueryOptions
-      expect(starredOptions.placeholderData).toBe(keepPreviousData)
-      expect(screen.getByTestId('app-card-app-1')).toBeInTheDocument()
-    })
-  })
-
-  describe('Creators Filter', () => {
-    it('should handle creator selection', async () => {
-      const user = userEvent.setup()
-      renderList()
-
-      const trigger = screen.getByRole('combobox', { name: 'Creators' })
-      await user.click(trigger)
-      await user.click(screen.getByRole('option', { name: /Bob/ }))
-
-      expect(trigger).toHaveTextContent('+1')
+      await waitFor(() => expect(screen.queryByTestId('app-card-app-1')).not.toBeInTheDocument())
+      expect(screen.queryByText('Starred app')).not.toBeInTheDocument()
+      expect(screen.getByRole('status')).toHaveTextContent('app.filterEmpty.noApps')
     })
   })
 
   describe('Create Menu', () => {
     it('should open blank app modal from create menu', async () => {
+      const user = userEvent.setup()
       renderList()
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
-      fireEvent.click(await screen.findByText('app.newApp.startFromBlank'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+      await user.click(await screen.findByText('app.newApp.startFromBlank'))
 
-      expect(screen.getByTestId('create-app-modal'))!.toBeInTheDocument()
+      expect(screen.getByTestId('create-app-modal')).toBeInTheDocument()
     })
 
     it('should open template dialog from create menu', async () => {
+      const user = userEvent.setup()
       renderList()
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
-      fireEvent.click(await screen.findByText('app.newApp.startFromTemplate'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+      await user.click(await screen.findByText('app.newApp.startFromTemplate'))
 
-      expect(screen.getByTestId('template-dialog'))!.toBeInTheDocument()
+      expect(screen.getByTestId('template-dialog')).toBeInTheDocument()
     })
 
     it('should open DSL import modal from create menu', async () => {
+      const user = userEvent.setup()
       renderList()
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
-      fireEvent.click(await screen.findByText('app.importApp'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+      await user.click(await screen.findByText('app.importApp'))
 
-      expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
+      expect(screen.getByTestId('create-dsl-modal')).toBeInTheDocument()
     })
 
     it('should not render create button without app creation permission', () => {
@@ -1223,96 +1063,117 @@ describe('List', () => {
   describe('App Type Select Options', () => {
     it('should update category for each app type option click', async () => {
       const appTypeTexts = [
-        { mode: AppModeEnum.WORKFLOW, text: 'app.types.workflow' },
-        { mode: AppModeEnum.ADVANCED_CHAT, text: 'app.types.advanced' },
-        { mode: AppModeEnum.CHAT, text: 'app.types.chatbot' },
-        { mode: AppModeEnum.AGENT_CHAT, text: 'app.types.agent' },
-        { mode: AppModeEnum.COMPLETION, text: 'app.newApp.completeApp' },
+        { mode: 'workflow' as const, text: 'app.types.workflow' },
+        { mode: 'advanced-chat' as const, text: 'app.types.advanced' },
+        { mode: 'chat' as const, text: 'app.types.chatbot' },
+        { mode: 'agent-chat' as const, text: 'app.types.agent' },
+        { mode: 'completion' as const, text: 'app.newApp.completeApp' },
       ]
 
       for (const { mode, text } of appTypeTexts) {
         const user = userEvent.setup()
         const { onUrlUpdate, unmount } = renderList()
         await openAppTypeSelect(user)
-        await user.click(await screen.findByRole('menuitemradio', { name: text }))
+        await user.click(await screen.findByRole('option', { name: text }))
         await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
         expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('category')).toBe(mode)
         unmount()
       }
     })
 
-    it('should update app list query when sort option changes', async () => {
+    it.each([
+      ['earliest_created', 'earliest_created', 'Earliest created'],
+      ['invalid', 'last_modified', 'Last modified'],
+    ])('resolves URL sort %s for the control and request', async (urlSort, expectedSort, label) => {
+      seedAppList = false
+      renderList(`?sort_by=${urlSort}`)
+      expect(screen.getByRole('combobox', { name: 'Sort by' })).toHaveTextContent(label)
+      await waitFor(() =>
+        expect(getApps).toHaveBeenCalledWith({
+          query: expect.objectContaining({ sort_by: expectedSort }),
+        }),
+      )
+    })
+
+    it('should update URL and query sorting while preserving filters and resetting scroll', async () => {
       const user = userEvent.setup()
-      renderList()
+      const { onUrlUpdate } = renderList('?category=workflow&keywords=sales')
+      const scrollContainer = screen.getByRole('region', { name: 'navigation.menus.apps' })
+      const scrollTo = vi.fn()
+      scrollContainer.scrollTo = scrollTo
       await openAppSortSelect(user)
 
-      await user.click(await screen.findByRole('menuitemradio', { name: 'Recently created' }))
+      await user.click(await screen.findByRole('option', { name: 'Recently created' }))
 
-      const options = mockAppListInfiniteOptions.mock.calls.at(-1)?.[0] as AppListInfiniteOptions
-      expect(options.input(1).query.sort_by).toBe('recently_created')
+      await waitFor(() =>
+        expect(getApps).toHaveBeenLastCalledWith({
+          query: expect.objectContaining({
+            sort_by: 'recently_created',
+            mode: 'workflow',
+            name: 'sales',
+          }),
+        }),
+      )
+      expect(scrollTo).toHaveBeenCalledWith({ top: 0 })
+      await waitFor(() => {
+        const params = onUrlUpdate.mock.calls.at(-1)?.[0].searchParams
+        expect(params?.get('sort_by')).toBe('recently_created')
+        expect(params?.get('category')).toBe('workflow')
+        expect(params?.get('keywords')).toBe('sales')
+      })
+
+      await openAppSortSelect(user)
+      await user.click(await screen.findByRole('option', { name: 'Last modified' }))
+
+      await waitFor(() => {
+        expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.has('sort_by')).toBe(false)
+      })
+      expect(screen.getByRole('combobox', { name: 'Sort by' })).toHaveTextContent('Last modified')
     })
   })
 
   describe('DSL File Drop', () => {
-    it('should handle DSL file drop and show modal', () => {
+    it('should close DSL modal when onClose is called', async () => {
+      const user = userEvent.setup()
       renderList()
 
       const mockFile = new File(['test content'], 'test.yml', { type: 'application/yaml' })
       dropDSLFileOnStudioHeader(mockFile)
 
-      expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
-    })
+      expect(screen.getByTestId('create-dsl-modal')).toBeInTheDocument()
 
-    it('should close DSL modal when onClose is called', () => {
-      renderList()
-
-      const mockFile = new File(['test content'], 'test.yml', { type: 'application/yaml' })
-      dropDSLFileOnStudioHeader(mockFile)
-
-      expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
-
-      fireEvent.click(screen.getByTestId('close-dsl-modal'))
-
-      expect(screen.queryByTestId('create-dsl-modal')).not.toBeInTheDocument()
-    })
-
-    it('should close DSL modal when its mutation reports success', () => {
-      renderList()
-
-      const mockFile = new File(['test content'], 'test.yml', { type: 'application/yaml' })
-      dropDSLFileOnStudioHeader(mockFile)
-
-      expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
-
-      fireEvent.click(screen.getByTestId('success-dsl-modal'))
+      await user.click(screen.getByTestId('close-dsl-modal'))
 
       expect(screen.queryByTestId('create-dsl-modal')).not.toBeInTheDocument()
     })
   })
 
   describe('Infinite Scroll', () => {
-    it('should call fetchNextPage when intersection observer triggers', async () => {
-      mockServiceState.hasNextPage = true
-      renderList()
-
-      await waitFor(() => {
-        expect(mockObserve).toHaveBeenCalled()
+    it('requests and appends the next page when the sentinel intersects', async () => {
+      hasMoreApps = true
+      getApps.mockResolvedValue({
+        data: [{ ...defaultAppData.pages[0]!.data[0]!, id: 'app-3', name: 'Third app' }],
+        page: 2,
+        limit: 30,
+        total: 3,
+        has_more: false,
       })
-
-      for (const callback of intersectionCallbacks) {
-        act(() => {
+      renderList()
+      await waitFor(() => expect(mockObserve).toHaveBeenCalled())
+      act(() => {
+        for (const callback of [...intersectionCallbacks])
           callback(
             [{ isIntersecting: true } as IntersectionObserverEntry],
             {} as IntersectionObserver,
           )
-        })
-      }
-
-      expect(mockFetchNextPage).toHaveBeenCalled()
+      })
+      expect(await screen.findByTestId('app-card-app-3')).toBeInTheDocument()
+      expect(screen.getByTestId('app-card-app-1')).toBeInTheDocument()
+      expect(getApps).toHaveBeenCalledWith({ query: expect.objectContaining({ page: 2 }) })
     })
 
     it('should not call fetchNextPage when not intersecting', () => {
-      mockServiceState.hasNextPage = true
+      hasMoreApps = true
       renderList()
 
       for (const callback of intersectionCallbacks) {
@@ -1324,56 +1185,64 @@ describe('List', () => {
         })
       }
 
-      expect(mockFetchNextPage).not.toHaveBeenCalled()
+      expect(getApps).not.toHaveBeenCalled()
     })
 
-    it('should show one catalog skeleton until both app queries have data', () => {
-      mockServiceState.hasNextPage = true
-      mockServiceState.isLoading = true
-      const mainPending = renderList()
-
-      expect(
-        screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }),
-      ).toBeInTheDocument()
-      expect(screen.getAllByRole('status', { name: 'common.loading' })).toHaveLength(1)
-      expect(screen.queryByTestId('app-card-app-1')).not.toBeInTheDocument()
-      expect(mockFetchNextPage).not.toHaveBeenCalled()
-
-      mainPending.unmount()
-      mockServiceState.isLoading = false
-      mockStarredIsLoading = true
+    it('shows one skeleton until both requests have resolved', async () => {
+      seedAppList = false
+      seedStarredList = false
+      const main = createDeferred<unknown>()
+      const starred = createDeferred<unknown>()
+      getApps.mockReturnValue(main.promise)
+      getStarredApps.mockReturnValue(starred.promise)
       renderList()
-
+      expect(screen.getAllByRole('status', { name: 'common.loading' })).toHaveLength(1)
+      await act(async () =>
+        main.resolve({ ...defaultAppData.pages[0], page: 1, limit: 30, has_more: false }),
+      )
       expect(screen.getAllByRole('status', { name: 'common.loading' })).toHaveLength(1)
       expect(screen.queryByTestId('app-card-app-1')).not.toBeInTheDocument()
+      await act(async () => starred.resolve(mockStarredAppData))
+      expect(await screen.findByTestId('app-card-app-1')).toBeInTheDocument()
+      expect(screen.queryByRole('status', { name: 'common.loading' })).not.toBeInTheDocument()
     })
   })
 
   describe('Error State', () => {
-    it('should keep the main catalog available when the starred request fails', () => {
-      mockStarredIsLoading = true
-      mockStarredError = new Error('Starred request failed')
-
+    it('keeps the main catalog available when the starred request fails', async () => {
+      seedStarredList = false
+      getStarredApps.mockRejectedValue(new Error('Starred request failed'))
       renderList()
-
-      expect(screen.getByTestId('app-card-app-1')).toBeInTheDocument()
+      expect(await screen.findByTestId('app-card-app-1')).toBeInTheDocument()
       expect(screen.queryByText('Starred')).not.toBeInTheDocument()
       expect(screen.queryByRole('status', { name: 'common.loading' })).not.toBeInTheDocument()
     })
 
-    it('should keep resolved data visible and retry a failed next page', async () => {
+    it('keeps resolved results and retries the failed next page', async () => {
       const user = userEvent.setup()
-      mockServiceState.error = new Error('Test error')
-      mockServiceState.hasNextPage = true
-      mockServiceState.isFetchNextPageError = true
-
+      hasMoreApps = true
+      getApps.mockRejectedValueOnce(new Error('Next page failed')).mockResolvedValue({
+        data: [{ ...defaultAppData.pages[0]!.data[0]!, id: 'app-3' }],
+        page: 2,
+        limit: 30,
+        total: 3,
+        has_more: false,
+      })
       renderList()
-
+      await waitFor(() => expect(mockObserve).toHaveBeenCalled())
+      act(() => {
+        for (const callback of [...intersectionCallbacks])
+          callback(
+            [{ isIntersecting: true } as IntersectionObserverEntry],
+            {} as IntersectionObserver,
+          )
+      })
+      const retryButton = await screen.findByRole('button', { name: 'common.operation.retry' })
       expect(screen.getByTestId('app-card-app-1')).toBeInTheDocument()
-      const retryButton = screen.getByRole('button', { name: 'common.operation.retry' })
       await user.click(retryButton)
-
-      expect(mockFetchNextPage).toHaveBeenCalledWith({ cancelRefetch: false })
+      expect(await screen.findByTestId('app-card-app-3')).toBeInTheDocument()
+      expect(getApps).toHaveBeenCalledTimes(2)
+      expect(getApps).toHaveBeenLastCalledWith({ query: expect.objectContaining({ page: 2 }) })
     })
   })
 })

@@ -64,26 +64,19 @@ describe('README code highlighting', () => {
     expect(mockGetSingletonHighlighter).not.toHaveBeenCalled()
   })
 
-  it('renders an empty language fence as escaped plain text without loading the WASM engine', async () => {
-    const code = 'plain line one\nplain line two'
-    const result = renderToStaticMarkup(
-      await highlightCode({ code, language: '', theme: 'github-light' }),
-    )
+  it.each(['', '   '])(
+    'renders a blank language %j without loading the WASM engine',
+    async (language) => {
+      const code = 'plain line one\nplain line two'
+      const result = renderToStaticMarkup(
+        await highlightCode({ code, language, theme: 'github-light' }),
+      )
 
-    expect(result).toContain('plain line one')
-    expect(result).toContain('plain line two')
-    expect(mockGetSingletonHighlighter).not.toHaveBeenCalled()
-  })
-
-  it('renders a whitespace-only language fence as escaped plain text without loading the WASM engine', async () => {
-    const code = 'no language here'
-    const result = renderToStaticMarkup(
-      await highlightCode({ code, language: '   ', theme: 'github-light' }),
-    )
-
-    expect(result).toContain('no language here')
-    expect(mockGetSingletonHighlighter).not.toHaveBeenCalled()
-  })
+      expect(result).toContain('plain line one')
+      expect(result).toContain('plain line two')
+      expect(mockGetSingletonHighlighter).not.toHaveBeenCalled()
+    },
+  )
 
   it.each(['\n', '\r\n'])(
     'preserves indentation and blank lines with %j line endings',
@@ -103,16 +96,6 @@ describe('README code highlighting', () => {
       expect(mockGetSingletonHighlighter).not.toHaveBeenCalled()
     },
   )
-
-  it('renders an unsupported language as escaped plain text without loading the WASM engine', async () => {
-    const code = 'function hello() { return 42 }'
-    const result = renderToStaticMarkup(
-      await highlightCode({ code, language: 'made-up-language', theme: 'github-light' }),
-    )
-
-    expect(result).toContain('function hello() { return 42 }')
-    expect(mockGetSingletonHighlighter).not.toHaveBeenCalled()
-  })
 
   it('escapes HTML-sensitive characters in plain-text fences', async () => {
     const code = 'a < b && b > c & "x"'

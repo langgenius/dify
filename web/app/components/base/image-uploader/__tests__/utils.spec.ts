@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next'
 import { waitFor } from '@testing-library/react'
 import { upload } from '@/service/base'
+import { createHttpError } from '@/service/http-error'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { getImageUploadErrorMessage, imageUpload } from '../utils'
 
@@ -19,7 +20,10 @@ describe('image-uploader utils', () => {
       const t = withSelectorKey(translate) as unknown as TFunction<['common']>
 
       const result = getImageUploadErrorMessage(
-        { response: { code: 'forbidden', message: 'Forbidden by policy' } },
+        createHttpError(new Response(null, { status: 400 }), {
+          code: 'forbidden',
+          message: 'Forbidden by policy',
+        }),
         'Default error',
         t,
       )
@@ -33,7 +37,7 @@ describe('image-uploader utils', () => {
       const t = withSelectorKey(translate) as unknown as TFunction<['common']>
 
       const result = getImageUploadErrorMessage(
-        { response: { code: 'file_extension_blocked' } },
+        createHttpError(new Response(null, { status: 400 }), { code: 'file_extension_blocked' }),
         'Default error',
         t,
       )
@@ -47,7 +51,7 @@ describe('image-uploader utils', () => {
       const t = withSelectorKey(translate) as unknown as TFunction<['common']>
 
       const result = getImageUploadErrorMessage(
-        { response: { code: 'unexpected_error' } },
+        createHttpError(new Response(null, { status: 400 }), { code: 'unexpected_error' }),
         'Default error',
         t,
       )
@@ -83,7 +87,7 @@ describe('image-uploader utils', () => {
 
       expect(upload).toHaveBeenCalledTimes(1)
 
-      const [options, isPublic, url] = (vi.mocked(upload).mock.calls[0] ?? []) as [any, any, any]
+      const [options, isPublic, url] = vi.mocked(upload).mock.calls[0]!
       expect(isPublic).toBe(true)
       expect(url).toBe('/files/upload')
       expect(options.xhr).toBeInstanceOf(XMLHttpRequest)
@@ -110,12 +114,14 @@ describe('image-uploader utils', () => {
       expect(callbacks.onSuccessCallback).not.toHaveBeenCalled()
     })
 
-    it('should report progress percentage when progress is computable', () => {
+    it('should report progress percentage when progress is computable', async () => {
       const file = new File(['hello'], 'image.png', { type: 'image/png' })
       const callbacks = createCallbacks()
       vi.mocked(upload).mockImplementation(
         (options: { onprogress?: (e: ProgressEvent) => void }) => {
-          options.onprogress?.({ lengthComputable: true, loaded: 5, total: 8 } as ProgressEvent)
+          options.onprogress?.(
+            new ProgressEvent('progress', { lengthComputable: true, loaded: 5, total: 8 }),
+          )
           return Promise.resolve({ id: 'uploaded-id' })
         },
       )
@@ -123,14 +129,19 @@ describe('image-uploader utils', () => {
       imageUpload({ file, ...callbacks })
 
       expect(callbacks.onProgressCallback).toHaveBeenCalledWith(62)
+      await waitFor(() =>
+        expect(callbacks.onSuccessCallback).toHaveBeenCalledWith({ id: 'uploaded-id' }),
+      )
     })
 
-    it('should not report progress when length is not computable', () => {
+    it('should not report progress when length is not computable', async () => {
       const file = new File(['hello'], 'image.png', { type: 'image/png' })
       const callbacks = createCallbacks()
       vi.mocked(upload).mockImplementation(
         (options: { onprogress?: (e: ProgressEvent) => void }) => {
-          options.onprogress?.({ lengthComputable: false, loaded: 5, total: 8 } as ProgressEvent)
+          options.onprogress?.(
+            new ProgressEvent('progress', { lengthComputable: false, loaded: 5, total: 8 }),
+          )
           return Promise.resolve({ id: 'uploaded-id' })
         },
       )
@@ -138,6 +149,9 @@ describe('image-uploader utils', () => {
       imageUpload({ file, ...callbacks })
 
       expect(callbacks.onProgressCallback).not.toHaveBeenCalled()
+      await waitFor(() =>
+        expect(callbacks.onSuccessCallback).toHaveBeenCalledWith({ id: 'uploaded-id' }),
+      )
     })
   })
 })

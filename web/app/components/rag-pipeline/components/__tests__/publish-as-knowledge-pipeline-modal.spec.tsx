@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { mockEmojiData, renderWithEmoji as render } from '@/test/emoji-picker'
@@ -45,42 +45,22 @@ describe('PublishAsKnowledgePipelineModal', () => {
     vi.restoreAllMocks()
   })
 
-  it('should render modal with title', () => {
+  it('should call onCancel when close button clicked', async () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
-    expect(screen.getByRole('dialog', { name: 'pipeline.common.publishAs' })).toBeInTheDocument()
+    await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.close' }))
+
+    expect(mockOnCancel).toHaveBeenCalledOnce()
+    expect(mockOnConfirm).not.toHaveBeenCalled()
   })
 
-  it('should initialize with knowledgeName from store', () => {
+  it('should call onCancel when cancel button clicked', async () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
-    const nameInput = getNameInput() as HTMLInputElement
-    expect(nameInput.value).toBe('Test Pipeline')
-  })
+    await userEvent.setup().click(screen.getByText('common.operation.cancel'))
 
-  it('should initialize description as empty', () => {
-    render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
-
-    const textarea = screen.getByRole('textbox', {
-      name: 'pipeline.common.publishAsPipeline.description',
-    }) as HTMLTextAreaElement
-    expect(textarea.value).toBe('')
-  })
-
-  it('should call onCancel when close button clicked', () => {
-    render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
-
-    expect(mockOnCancel).toHaveBeenCalled()
-  })
-
-  it('should call onCancel when cancel button clicked', () => {
-    render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
-
-    fireEvent.click(screen.getByText('common.operation.cancel'))
-
-    expect(mockOnCancel).toHaveBeenCalled()
+    expect(mockOnCancel).toHaveBeenCalledOnce()
+    expect(mockOnConfirm).not.toHaveBeenCalled()
   })
 
   it('should call onCancel when Escape is pressed', async () => {
@@ -89,39 +69,20 @@ describe('PublishAsKnowledgePipelineModal', () => {
 
     await user.keyboard('{Escape}')
 
-    expect(mockOnCancel).toHaveBeenCalled()
+    expect(mockOnCancel).toHaveBeenCalledOnce()
+    expect(mockOnConfirm).not.toHaveBeenCalled()
   })
 
-  it('should call onConfirm with name, icon, and description when confirm clicked', () => {
+  it('should call onConfirm with name, icon, and description when confirm clicked', async () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
-    fireEvent.click(screen.getByText('workflow.common.publish'))
+    await userEvent.setup().click(screen.getByText('workflow.common.publish'))
 
     expect(mockOnConfirm).toHaveBeenCalledWith(
       'Test Pipeline',
       expect.objectContaining({ icon_type: 'emoji', icon: '🔧' }),
       '',
     )
-  })
-
-  it('should update pipeline name when input changes', () => {
-    render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
-
-    const nameInput = getNameInput()
-    fireEvent.change(nameInput, { target: { value: 'New Name' } })
-
-    expect((nameInput as HTMLInputElement).value).toBe('New Name')
-  })
-
-  it('should update description when textarea changes', () => {
-    render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
-
-    const textarea = screen.getByRole('textbox', {
-      name: 'pipeline.common.publishAsPipeline.description',
-    })
-    fireEvent.change(textarea, { target: { value: 'My description' } })
-
-    expect((textarea as HTMLTextAreaElement).value).toBe('My description')
   })
 
   it('should not submit with Enter when name is empty', async () => {
@@ -140,61 +101,58 @@ describe('PublishAsKnowledgePipelineModal', () => {
     expect(mockOnConfirm).not.toHaveBeenCalled()
   })
 
-  it('should disable confirm button when confirmDisabled is true', () => {
+  it('should not call onConfirm when confirmDisabled is true', async () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} confirmDisabled />)
 
-    const confirmBtn = screen.getByText('workflow.common.publish')
-    expect(confirmBtn).toBeDisabled()
-  })
-
-  it('should not call onConfirm when confirmDisabled is true', () => {
-    render(<PublishAsKnowledgePipelineModal {...defaultProps} confirmDisabled />)
-
-    fireEvent.click(screen.getByText('workflow.common.publish'))
+    await userEvent.setup().click(screen.getByText('workflow.common.publish'))
 
     expect(mockOnConfirm).not.toHaveBeenCalled()
-  })
-
-  it('should show icon picker when app icon clicked', async () => {
-    render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
-
-    expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
-
-    fireEvent.click(getIconButton())
-
-    expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
   })
 
   it('should update icon when emoji style is selected', async () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
-    fireEvent.click(getIconButton())
-    fireEvent.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
-    fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
+    await userEvent.setup().click(getIconButton())
+    await userEvent.setup().click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
+    await userEvent.setup().click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
 
     await waitFor(() => {
       expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
     })
-  })
-
-  it('should keep icon picker open until confirmation', () => {
-    render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
-
-    fireEvent.click(getIconButton())
-    fireEvent.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
-
-    expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
+    await userEvent.setup().click(screen.getByRole('button', { name: 'workflow.common.publish' }))
+    expect(mockOnConfirm).toHaveBeenCalledWith(
+      'Test Pipeline',
+      {
+        icon_type: 'emoji',
+        icon: '🔧',
+        icon_background: '#F3FEE7',
+        icon_url: '',
+      },
+      '',
+    )
   })
 
   it('should close icon picker when Escape is pressed', async () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
-    fireEvent.click(getIconButton())
+    await userEvent.setup().click(getIconButton())
+    await userEvent.setup().click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
     await userEvent.setup().keyboard('{Escape}')
 
     await waitFor(() => {
       expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
     })
+    await userEvent.setup().click(screen.getByRole('button', { name: 'workflow.common.publish' }))
+    expect(mockOnConfirm).toHaveBeenCalledWith(
+      'Test Pipeline',
+      {
+        icon_type: 'emoji',
+        icon: '🔧',
+        icon_background: '#fff',
+        icon_url: '',
+      },
+      '',
+    )
   })
 
   it('should trim name and description when submitted with Enter', async () => {

@@ -1,16 +1,17 @@
 'use client'
+import type { HitTestingRecord } from '@dify/contracts/api/console/datasets/types.gen'
 import type { DialogProps } from '@langgenius/dify-ui/dialog'
 import type { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
-import type { HitTesting } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
-  DialogClose,
+  DialogBody,
+  DialogCloseButton,
   DialogContent,
+  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import FileIcon from '@/app/components/base/file-uploader/file-type-icon'
@@ -28,10 +29,8 @@ import { Score } from './score'
 
 const i18nPrefix = ''
 
-type ChunkDetailDialogProps = {
-  payload: HitTesting
-  open: boolean
-  onOpenChange: DialogProps['onOpenChange']
+type ChunkDetailDialogProps = Required<Pick<DialogProps, 'open' | 'onOpenChange'>> & {
+  payload: HitTestingRecord
 }
 
 export function ChunkDetailDialog({ payload, open, onOpenChange }: ChunkDetailDialogProps) {
@@ -75,26 +74,18 @@ export function ChunkDetailDialog({ payload, open, onOpenChange }: ChunkDetailDi
       <DialogContent
         finalFocus={triggerRef}
         className={cn(
-          'max-h-[calc(100dvh-2rem)] min-w-0 overflow-y-auto! border-none p-6 text-left align-middle',
+          'max-h-[calc(100dvh-2rem)] min-w-0',
           isParentChildRetrieval ? 'w-300' : 'w-200',
         )}
       >
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute inset-e-6 top-6"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-        <DialogTitle className="pr-10 title-2xl-semi-bold text-text-primary">
-          {t(($) => $[`${i18nPrefix}chunkDetail`], { ns: 'datasetHitTesting' })}
-        </DialogTitle>
+        <DialogHeader>
+          <DialogTitle>
+            {t(($) => $[`${i18nPrefix}chunkDetail`], { ns: 'datasetHitTesting' })}
+          </DialogTitle>
+          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
 
-        <div className="mt-4 flex flex-col gap-6 lg:flex-row">
+        <DialogBody className="flex flex-col gap-6 lg:flex-row">
           <div className="min-w-0 flex-1">
             {/* Meta info */}
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -181,7 +172,7 @@ export function ChunkDetailDialog({ payload, open, onOpenChange }: ChunkDetailDi
               </div>
             </div>
           )}
-        </div>
+        </DialogBody>
       </DialogContent>
     </Dialog>
   )

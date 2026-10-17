@@ -19,7 +19,7 @@ describe('Preview', () => {
     expect(screen.getByRole('region', { name: 'Basic app preview' })).toBeInTheDocument()
   })
 
-  it.each(['workflow', 'advanced-chat'])('uses the flow preview for %s apps', (mode) => {
+  it.each(['workflow', 'advanced-chat'] as const)('uses the flow preview for %s apps', (mode) => {
     render(<Preview appId="app-id" appDetail={createApp(mode)} />)
 
     expect(screen.getByRole('region', { name: 'Flow app preview' })).toBeInTheDocument()

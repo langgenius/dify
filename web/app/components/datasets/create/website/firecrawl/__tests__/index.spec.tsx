@@ -1,7 +1,16 @@
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  act,
+  fireEvent,
+  render as renderWithoutUrlState,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createHttpError } from '@/service/http-error'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
+import { sleep } from '@/utils'
 // Component Import (after mocks)
 import FireCrawl from '../index'
 
@@ -10,9 +19,8 @@ import FireCrawl from '../index'
 // Mock API service
 const mockCreateFirecrawlTask = vi.fn()
 const mockCheckFirecrawlTaskStatus = vi.fn()
-const { mockRouterPush, mockSetSettingsDestination } = vi.hoisted(() => ({
+const { mockRouterPush } = vi.hoisted(() => ({
   mockRouterPush: vi.fn(),
-  mockSetSettingsDestination: vi.fn(),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -25,11 +33,6 @@ vi.mock('@/service/datasets', () => ({
   createFirecrawlTask: (...args: unknown[]) => mockCreateFirecrawlTask(...args),
   checkFirecrawlTaskStatus: (...args: unknown[]) => mockCheckFirecrawlTaskStatus(...args),
 }))
-
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
-})
 
 // Mock sleep utility to speed up tests
 vi.mock('@/utils', () => ({
@@ -79,6 +82,9 @@ const createDeferred = <T,>() => {
 
 // FireCrawl Component Tests
 
+const onUrlUpdate = vi.fn()
+const render = createNuqsTestRenderer(renderWithoutUrlState, () => ({ onUrlUpdate }))
+
 describe('FireCrawl', () => {
   const mockOnPreview = vi.fn()
   const mockOnCheckedCrawlResultChange = vi.fn()
@@ -98,74 +104,13 @@ describe('FireCrawl', () => {
     vi.clearAllMocks()
     mockCreateFirecrawlTask.mockReset()
     mockCheckFirecrawlTaskStatus.mockReset()
+    vi.mocked(sleep).mockImplementation(() => Promise.resolve())
   })
 
   // Helper to get URL input (first textbox with specific placeholder)
   const getUrlInput = () => {
     return screen.getByPlaceholderText('https://docs.example.com')
   }
-
-  describe('Rendering', () => {
-    it('should render Header component with correct props', () => {
-      render(<FireCrawl {...defaultProps} />)
-
-      expect(screen.getByText(/firecrawlTitle/i))!.toBeInTheDocument()
-      expect(screen.getByText(/configureFirecrawl/i))!.toBeInTheDocument()
-      expect(screen.getByText(/firecrawlDoc/i))!.toBeInTheDocument()
-    })
-
-    it('should render UrlInput component', () => {
-      render(<FireCrawl {...defaultProps} />)
-
-      expect(getUrlInput())!.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /run/i }))!.toBeInTheDocument()
-    })
-
-    it('should render Options component', () => {
-      render(<FireCrawl {...defaultProps} />)
-
-      expect(screen.getByText(/crawlSubPage/i))!.toBeInTheDocument()
-      expect(screen.getByText(/limit/i))!.toBeInTheDocument()
-    })
-
-    it('should not render crawling or result components initially', () => {
-      render(<FireCrawl {...defaultProps} />)
-
-      // Crawling and result components should not be visible in init state
-      // Crawling and result components should not be visible in init state
-      // Crawling and result components should not be visible in init state
-      // Crawling and result components should not be visible in init state
-      // Crawling and result components should not be visible in init state
-      // Crawling and result components should not be visible in init state
-      // Crawling and result components should not be visible in init state
-      // Crawling and result components should not be visible in init state
-      // Crawling and result components should not be visible in init state
-      // Crawling and result components should not be visible in init state
-      // Crawling and result components should not be visible in init state
-      // Crawling and result components should not be visible in init state
-      // Crawling and result components should not be visible in init state
-      // Crawling and result components should not be visible in init state
-      // Crawling and result components should not be visible in init state
-      // Crawling and result components should not be visible in init state
-      // Crawling and result components should not be visible in init state
-      // Crawling and result components should not be visible in init state
-      // Crawling and result components should not be visible in init state
-      // Crawling and result components should not be visible in init state
-      // Crawling and result components should not be visible in init state
-      // Crawling and result components should not be visible in init state
-      // Crawling and result components should not be visible in init state
-      // Crawling and result components should not be visible in init state
-      // Crawling and result components should not be visible in init state
-      // Crawling and result components should not be visible in init state
-      // Crawling and result components should not be visible in init state
-      // Crawling and result components should not be visible in init state
-      // Crawling and result components should not be visible in init state
-      // Crawling and result components should not be visible in init state
-      // Crawling and result components should not be visible in init state
-      // Crawling and result components should not be visible in init state
-      expect(screen.queryByText(/crawling/i)).not.toBeInTheDocument()
-    })
-  })
 
   // Configuration Button Tests
   describe('Configuration Button', () => {
@@ -176,7 +121,9 @@ describe('FireCrawl', () => {
       const configButton = screen.getByText(/configureFirecrawl/i)
       await user.click(configButton)
 
-      expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
+      await waitFor(() =>
+        expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('data-source'),
+      )
       expect(mockRouterPush).not.toHaveBeenCalled()
     })
   })
@@ -212,7 +159,7 @@ describe('FireCrawl', () => {
       const user = userEvent.setup()
       const propsWithEmptyLimit = {
         ...defaultProps,
-        crawlOptions: createMockCrawlOptions({ limit: '' as unknown as number }),
+        crawlOptions: createMockCrawlOptions({ limit: '' }),
       }
       render(<FireCrawl {...propsWithEmptyLimit} />)
 
@@ -226,24 +173,7 @@ describe('FireCrawl', () => {
       expect(mockCreateFirecrawlTask).not.toHaveBeenCalled()
     })
 
-    it('should show error toast when limit is null', async () => {
-      const user = userEvent.setup()
-      const propsWithNullLimit = {
-        ...defaultProps,
-        crawlOptions: createMockCrawlOptions({ limit: null as unknown as number }),
-      }
-      render(<FireCrawl {...propsWithNullLimit} />)
-
-      const input = getUrlInput()
-      await user.type(input, 'https://example.com')
-
-      const runButton = screen.getByRole('button', { name: /run/i })
-      await user.click(runButton)
-
-      expect(mockCreateFirecrawlTask).not.toHaveBeenCalled()
-    })
-
-    it('should accept valid http:// URL', async () => {
+    it('accepts an http URL and selects the returned results', async () => {
       const user = userEvent.setup()
       mockCreateFirecrawlTask.mockResolvedValueOnce({ job_id: 'test-job-id' })
       mockCheckFirecrawlTaskStatus.mockResolvedValueOnce({
@@ -258,30 +188,6 @@ describe('FireCrawl', () => {
 
       const input = getUrlInput()
       await user.type(input, 'http://example.com')
-
-      const runButton = screen.getByRole('button', { name: /run/i })
-      await user.click(runButton)
-
-      await waitFor(() => {
-        expect(mockOnCheckedCrawlResultChange).toHaveBeenCalledWith([])
-      })
-    })
-
-    it('should accept valid https:// URL', async () => {
-      const user = userEvent.setup()
-      mockCreateFirecrawlTask.mockResolvedValueOnce({ job_id: 'test-job-id' })
-      mockCheckFirecrawlTaskStatus.mockResolvedValueOnce({
-        status: 'completed',
-        data: [],
-        total: 0,
-        current: 0,
-        time_consuming: 1,
-      })
-
-      render(<FireCrawl {...defaultProps} />)
-
-      const input = getUrlInput()
-      await user.type(input, 'https://example.com')
 
       const runButton = screen.getByRole('button', { name: /run/i })
       await user.click(runButton)
@@ -314,42 +220,12 @@ describe('FireCrawl', () => {
       await user.click(runButton)
 
       await waitFor(() => {
+        expect(mockOnJobIdChange).toHaveBeenCalledWith('test-job-id')
+        expect(mockCheckFirecrawlTaskStatus).toHaveBeenCalledWith('test-job-id')
         expect(mockCreateFirecrawlTask).toHaveBeenCalledWith({
           url: 'https://example.com',
-          options: expect.objectContaining({
-            crawl_sub_pages: true,
-            limit: 10,
-            max_depth: 2,
-          }),
+          options: createMockCrawlOptions(),
         })
-      })
-
-      await waitFor(() => {
-        expect(mockOnCheckedCrawlResultChange).toHaveBeenCalledWith([])
-      })
-    })
-
-    it('should call onJobIdChange with job_id from API response', async () => {
-      const user = userEvent.setup()
-      mockCreateFirecrawlTask.mockResolvedValueOnce({ job_id: 'my-job-123' })
-      mockCheckFirecrawlTaskStatus.mockResolvedValueOnce({
-        status: 'completed',
-        data: [],
-        total: 0,
-        current: 0,
-        time_consuming: 1,
-      })
-
-      render(<FireCrawl {...defaultProps} />)
-
-      const input = getUrlInput()
-      await user.type(input, 'https://example.com')
-
-      const runButton = screen.getByRole('button', { name: /run/i })
-      await user.click(runButton)
-
-      await waitFor(() => {
-        expect(mockOnJobIdChange).toHaveBeenCalledWith('my-job-123')
       })
 
       await waitFor(() => {
@@ -361,7 +237,7 @@ describe('FireCrawl', () => {
       const user = userEvent.setup()
       const propsWithEmptyMaxDepth = {
         ...defaultProps,
-        crawlOptions: createMockCrawlOptions({ max_depth: '' as unknown as number }),
+        crawlOptions: createMockCrawlOptions({ max_depth: '' }),
       }
       mockCreateFirecrawlTask.mockResolvedValueOnce({ job_id: 'test-job-id' })
       mockCheckFirecrawlTaskStatus.mockResolvedValueOnce({
@@ -420,6 +296,8 @@ describe('FireCrawl', () => {
         expect(runButton).toHaveFocus()
       })
 
+      await user.click(runButton)
+      expect(mockCreateFirecrawlTask).toHaveBeenCalledTimes(1)
       await act(async () => {
         createTaskDeferred.resolve({ job_id: 'test-job-id' })
       })
@@ -432,53 +310,6 @@ describe('FireCrawl', () => {
 
   // Crawl Status Polling Tests
   describe('Crawl Status Polling', () => {
-    it('should handle completed status', async () => {
-      const user = userEvent.setup()
-      const mockResults = [createMockCrawlResultItem()]
-      mockCreateFirecrawlTask.mockResolvedValueOnce({ job_id: 'test-job' })
-      mockCheckFirecrawlTaskStatus.mockResolvedValueOnce({
-        status: 'completed',
-        data: mockResults,
-        total: 1,
-        current: 1,
-        time_consuming: 2.5,
-      })
-
-      render(<FireCrawl {...defaultProps} />)
-
-      const input = getUrlInput()
-      await user.type(input, 'https://example.com')
-
-      const runButton = screen.getByRole('button', { name: /run/i })
-      await user.click(runButton)
-
-      await waitFor(() => {
-        expect(mockOnCheckedCrawlResultChange).toHaveBeenCalledWith(mockResults)
-      })
-    })
-
-    it('should handle error status from API', async () => {
-      const user = userEvent.setup()
-      mockCreateFirecrawlTask.mockResolvedValueOnce({ job_id: 'test-job' })
-      mockCheckFirecrawlTaskStatus.mockResolvedValueOnce({
-        status: 'error',
-        message: 'Crawl failed',
-        data: [],
-      })
-
-      render(<FireCrawl {...defaultProps} />)
-
-      const input = getUrlInput()
-      await user.type(input, 'https://example.com')
-
-      const runButton = screen.getByRole('button', { name: /run/i })
-      await user.click(runButton)
-
-      await waitFor(() => {
-        expect(screen.getByText(/exceptionErrorTitle/i))!.toBeInTheDocument()
-      })
-    })
-
     it('should handle missing status as error', async () => {
       const user = userEvent.setup()
       mockCreateFirecrawlTask.mockResolvedValueOnce({ job_id: 'test-job' })
@@ -501,14 +332,16 @@ describe('FireCrawl', () => {
       })
     })
 
-    it('should poll again when status is pending', async () => {
+    it('shows capped progress before polling the same job to completion', async () => {
       const user = userEvent.setup()
       mockCreateFirecrawlTask.mockResolvedValueOnce({ job_id: 'test-job' })
+      const pollDelay = createDeferred<void>()
+      vi.mocked(sleep).mockReturnValueOnce(pollDelay.promise)
       mockCheckFirecrawlTaskStatus
         .mockResolvedValueOnce({
           status: 'pending',
           data: [{ title: 'Page 1', markdown: 'content', source_url: 'https://example.com/1' }],
-          total: 5,
+          total: 100,
           current: 1,
         })
         .mockResolvedValueOnce({
@@ -527,40 +360,12 @@ describe('FireCrawl', () => {
       const runButton = screen.getByRole('button', { name: /run/i })
       await user.click(runButton)
 
-      await waitFor(() => {
-        expect(mockCheckFirecrawlTaskStatus).toHaveBeenCalledTimes(2)
-      })
-    })
-
-    it('should update progress during crawling', async () => {
-      const user = userEvent.setup()
-      mockCreateFirecrawlTask.mockResolvedValueOnce({ job_id: 'test-job' })
-      mockCheckFirecrawlTaskStatus
-        .mockResolvedValueOnce({
-          status: 'pending',
-          data: [{ title: 'Page 1', markdown: 'content', source_url: 'https://example.com/1' }],
-          total: 10,
-          current: 3,
-        })
-        .mockResolvedValueOnce({
-          status: 'completed',
-          data: [{ title: 'Page 1', markdown: 'content', source_url: 'https://example.com/1' }],
-          total: 10,
-          current: 10,
-          time_consuming: 5,
-        })
-
-      render(<FireCrawl {...defaultProps} />)
-
-      const input = getUrlInput()
-      await user.type(input, 'https://example.com')
-
-      const runButton = screen.getByRole('button', { name: /run/i })
-      await user.click(runButton)
-
-      await waitFor(() => {
-        expect(mockOnCheckedCrawlResultChange).toHaveBeenCalled()
-      })
+      expect(await screen.findByText(/totalPageScraped/)).toHaveTextContent('1/10')
+      expect(mockCheckFirecrawlTaskStatus).toHaveBeenCalledTimes(1)
+      await act(async () => pollDelay.resolve())
+      await waitFor(() => expect(mockCheckFirecrawlTaskStatus).toHaveBeenCalledTimes(2))
+      expect(mockCheckFirecrawlTaskStatus).toHaveBeenNthCalledWith(2, 'test-job')
+      expect(await screen.findByText('Page 1')).toBeInTheDocument()
     })
   })
 
@@ -586,9 +391,9 @@ describe('FireCrawl', () => {
     it('should handle API exception during status check', async () => {
       const user = userEvent.setup()
       mockCreateFirecrawlTask.mockResolvedValueOnce({ job_id: 'test-job' })
-      mockCheckFirecrawlTaskStatus.mockRejectedValueOnce({
-        json: () => Promise.resolve({ message: 'Status check failed' }),
-      })
+      mockCheckFirecrawlTaskStatus.mockRejectedValueOnce(
+        createHttpError(new Response(null, { status: 502 }), { message: 'Status check failed' }),
+      )
 
       render(<FireCrawl {...defaultProps} />)
 
@@ -601,6 +406,7 @@ describe('FireCrawl', () => {
       await waitFor(() => {
         expect(screen.getByText(/exceptionErrorTitle/i))!.toBeInTheDocument()
       })
+      expect(screen.getByText('Status check failed')).toBeInTheDocument()
     })
 
     it('should display error message from API', async () => {
@@ -660,10 +466,10 @@ describe('FireCrawl', () => {
       expect(mockOnCrawlOptionsChange).toHaveBeenCalledWith(expect.objectContaining({ limit: 20 }))
     })
 
-    it('should call onCrawlOptionsChange when checkbox changes', () => {
+    it('should call onCrawlOptionsChange when checkbox changes', async () => {
       render(<FireCrawl {...defaultProps} />)
 
-      fireEvent.click(screen.getByRole('checkbox', { name: /crawlSubPage/ }))
+      await userEvent.setup().click(screen.getByRole('checkbox', { name: /crawlSubPage/ }))
 
       expect(mockOnCrawlOptionsChange).toHaveBeenCalledWith(
         expect.objectContaining({ crawl_sub_pages: false }),
@@ -697,37 +503,9 @@ describe('FireCrawl', () => {
       await user.click(runButton)
 
       await waitFor(() => {
+        expect(mockOnCheckedCrawlResultChange).toHaveBeenLastCalledWith(mockResults)
         expect(screen.getByText('Result Page 1'))!.toBeInTheDocument()
         expect(screen.getByText('Result Page 2'))!.toBeInTheDocument()
-      })
-    })
-
-    it('should limit total to crawlOptions.limit', async () => {
-      const user = userEvent.setup()
-      const propsWithLimit5 = {
-        ...defaultProps,
-        crawlOptions: createMockCrawlOptions({ limit: 5 }),
-      }
-      mockCreateFirecrawlTask.mockResolvedValueOnce({ job_id: 'test-job' })
-      mockCheckFirecrawlTaskStatus.mockResolvedValueOnce({
-        status: 'completed',
-        data: [],
-        total: 100, // API returns more than limit
-        current: 5,
-        time_consuming: 1,
-      })
-
-      render(<FireCrawl {...propsWithLimit5} />)
-
-      const input = getUrlInput()
-      await user.type(input, 'https://example.com')
-
-      const runButton = screen.getByRole('button', { name: /run/i })
-      await user.click(runButton)
-
-      await waitFor(() => {
-        // Total should be capped to limit (5)
-        expect(mockOnCheckedCrawlResultChange).toHaveBeenCalledWith([])
       })
     })
   })

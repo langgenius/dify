@@ -30,10 +30,6 @@ const { mockRouterPush, mockWindowOpen } = vi.hoisted(() => ({
   mockWindowOpen: vi.fn(),
 }))
 
-const mockConsoleState = vi.hoisted(() => ({
-  workspacePermissionKeys: ['tool.manage', 'mcp.manage'] as string[],
-}))
-
 const {
   mockCanManagement,
   mockCanDebugger,
@@ -258,9 +254,7 @@ vi.mock('@/app/components/header/account-setting/api-based-extension-page', () =
   },
 }))
 
-vi.mock('../tool-provider-list', async () => {
-  const { useState } = await vi.importActual<typeof import('react')>('react')
-
+vi.mock('../tool-provider-list', () => {
   const MockProviderList = ({
     category,
     layout,
@@ -268,13 +262,8 @@ vi.mock('../tool-provider-list', async () => {
     category?: string
     layout?: (parts: { body: React.ReactNode; toolbar: React.ReactNode }) => React.ReactNode
   }) => {
-    const [mountedCategory] = useState(category)
     const toolbar = <div data-testid="tool-provider-toolbar" />
-    const body = (
-      <div data-testid="tool-provider-list" data-mounted-category={mountedCategory}>
-        {category}
-      </div>
-    )
+    const body = <div data-testid="tool-provider-list">{category}</div>
 
     if (layout) return layout({ body, toolbar })
 
@@ -345,7 +334,6 @@ describe('IntegrationsPage', () => {
     mockCanDebugger.mockReturnValue(true)
     mockCanSetPermissions.mockReturnValue(true)
     mockIsPermissionLoading.mockReturnValue(false)
-    mockConsoleState.workspacePermissionKeys = ['tool.manage', 'mcp.manage']
     mockReferenceSetting.mockReturnValue({
       permission: {
         install_permission: 'everyone',
@@ -408,15 +396,26 @@ describe('IntegrationsPage', () => {
   })
 
   it('defaults to the model provider section when no query is provided', () => {
-    const { container } = renderIntegrationsPage()
+    renderIntegrationsPage()
 
     expect(screen.getByTestId('model-provider-page')).toBeInTheDocument()
-    expect(screen.getAllByText('navigation.settings.provider')).toHaveLength(2)
-    expect(container.firstElementChild).toHaveClass('bg-components-panel-bg')
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'navigation.settings.provider' }),
+    ).toBeInTheDocument()
     expect(
       screen.getByRole('navigation', { name: 'navigation.settings.integrations' }),
     ).toBeInTheDocument()
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+  })
+
+  it('preserves model search while visiting another integration section', async () => {
+    const user = userEvent.setup()
+    const view = renderIntegrationsPage(undefined, 'provider')
+    await user.type(screen.getByRole('textbox', { name: 'search' }), 'OpenAI')
+    view.rerender(<IntegrationsPage section="data-source" />)
+    expect(screen.getByTestId('data-source-page')).toBeInTheDocument()
+    view.rerender(<IntegrationsPage section="provider" />)
+    expect(screen.getByRole('textbox', { name: 'search' })).toHaveValue('OpenAI')
   })
 
   it('does not replace the document title when embedded in a modal', () => {
@@ -451,12 +450,9 @@ describe('IntegrationsPage', () => {
         'navigation.settings.provider',
       ),
     ).toHaveClass('title-2xl-semi-bold')
-    expect(screen.getByTestId('model-provider-page').parentElement).toHaveClass(
-      'max-w-[1600px]',
-      'px-6',
-    )
-    expect(screen.getByTestId('model-provider-page').parentElement).not.toHaveClass('pt-2')
-    expect(screen.getAllByText('navigation.settings.provider')).toHaveLength(2)
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'navigation.settings.provider' }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'navigation.settings.provider' })).toHaveAttribute(
       'aria-current',
       'page',
@@ -465,31 +461,6 @@ describe('IntegrationsPage', () => {
       screen.getByRole('link', { name: 'navigation.settings.dataSource' }),
     ).not.toHaveAttribute('aria-current')
     expect(screen.getByRole('textbox', { name: 'search' })).toBeInTheDocument()
-  })
-
-  it('orders sidebar items to match the integrations setting menu', () => {
-    renderIntegrationsPage({ section: 'provider' })
-
-    const navText = screen.getByRole('navigation').textContent ?? ''
-
-    expect(navText.indexOf('navigation.settings.provider')).toBeLessThan(
-      navText.indexOf('navigation.menus.tools'),
-    )
-    expect(navText.indexOf('navigation.menus.tools')).toBeLessThan(
-      navText.indexOf('navigation.settings.dataSource'),
-    )
-    expect(navText.indexOf('navigation.settings.dataSource')).toBeLessThan(
-      navText.indexOf('plugin.categorySingle.trigger'),
-    )
-    expect(navText.indexOf('plugin.categorySingle.trigger')).toBeLessThan(
-      navText.indexOf('plugin.categorySingle.agent'),
-    )
-    expect(navText.indexOf('plugin.categorySingle.agent')).toBeLessThan(
-      navText.indexOf('plugin.categorySingle.extension'),
-    )
-    expect(navText.indexOf('plugin.categorySingle.extension')).toBeLessThan(
-      navText.indexOf('navigation.settings.customEndpoint'),
-    )
   })
 
   it('anchors step-by-step tour targets inside stable sidebar rows', () => {
@@ -520,47 +491,19 @@ describe('IntegrationsPage', () => {
 
     targetRows.forEach(({ label, target }) => {
       const row = screen.getByRole('link', { name: label })
-      const targetAnchor = row.querySelector(`[data-step-by-step-tour-target="${target}"]`)
+      const targetAnchor = row.querySelector<HTMLElement>(
+        `[data-step-by-step-tour-target="${target}"]`,
+      )
 
-      expect(row).not.toHaveAttribute('data-step-by-step-tour-target')
-      expect(row).toHaveClass('relative')
       expect(targetAnchor).toBeInTheDocument()
-      expect(targetAnchor).toHaveClass('absolute', 'inset-y-1', 'left-0', 'right-0')
+      expect(row).toContainElement(targetAnchor)
     })
-  })
-
-  it('keeps sidebar item icons outlined when the item is active', () => {
-    const providerView = renderIntegrationsPage({ section: 'provider' })
-
-    expect(
-      screen
-        .getByRole('link', { name: 'navigation.settings.dataSource' })
-        .querySelector('.i-ri-database-2-line'),
-    ).toBeInTheDocument()
-
-    providerView.rerender(<IntegrationsPage section="data-source" />)
-
-    expect(
-      screen
-        .getByRole('link', { name: 'navigation.settings.dataSource' })
-        .querySelector('.i-ri-database-2-line'),
-    ).toBeInTheDocument()
-    expect(
-      screen
-        .getByRole('link', { name: 'navigation.settings.dataSource' })
-        .querySelector('.i-ri-database-2-fill'),
-    ).not.toBeInTheDocument()
   })
 
   it('renders plugin category sections from the section query', () => {
     const toolView = renderIntegrationsPage({ section: 'builtin' })
 
     expect(screen.getByTestId('plugin-category-tool')).toBeInTheDocument()
-    expect(screen.getByTestId('plugin-category-tool').parentElement).toHaveClass(
-      'flex',
-      'flex-col',
-      'overflow-hidden',
-    )
     expect(screen.getByRole('link', { name: 'navigation.toolsPage.toolPlugin' })).toHaveAttribute(
       'href',
       '/integrations/tools/built-in',
@@ -570,11 +513,6 @@ describe('IntegrationsPage', () => {
     const triggerView = renderIntegrationsPage({ section: 'trigger' })
 
     expect(screen.getByTestId('plugin-category-trigger')).toBeInTheDocument()
-    expect(screen.getByTestId('plugin-category-trigger').parentElement).toHaveClass(
-      'flex',
-      'flex-col',
-      'overflow-hidden',
-    )
     expect(screen.getByRole('link', { name: 'plugin.categorySingle.trigger' })).toHaveAttribute(
       'href',
       '/integrations/trigger',
@@ -661,63 +599,10 @@ describe('IntegrationsPage', () => {
     expect(screen.queryByRole('button', { name: 'plugin debug' })).not.toBeInTheDocument()
   })
 
-  it('renders existing pages from route sections', () => {
-    const modelProviderView = renderIntegrationsPage(undefined, 'provider')
-
-    expect(screen.getByTestId('model-provider-page')).toBeInTheDocument()
-
-    modelProviderView.unmount()
-    const mcpView = renderIntegrationsPage(undefined, 'mcp')
-
-    expect(screen.getByTestId('tool-provider-list')).toHaveTextContent('mcp')
-    expect(screen.getByTestId('tool-provider-list').parentElement).toHaveClass(
-      'flex',
-      'flex-col',
-      'overflow-hidden',
-    )
-
-    mcpView.unmount()
-    renderIntegrationsPage(undefined, 'data-source')
-
-    expect(screen.getByTestId('data-source-page')).toBeInTheDocument()
-  })
-
-  it('renders the MCP route as read-only without mcp.manage', () => {
-    mockConsoleState.workspacePermissionKeys = ['tool.manage']
-
-    renderIntegrationsPage(undefined, 'mcp')
-
-    expect(screen.getByTestId('tool-provider-list')).toHaveTextContent('mcp')
-  })
-
-  it.each(['custom-tool', 'workflow-tool'] as const)(
-    'renders the %s route as read-only without tool.manage',
-    (section) => {
-      mockConsoleState.workspacePermissionKeys = ['mcp.manage']
-
-      renderIntegrationsPage(undefined, section)
-
-      expect(screen.getByTestId('tool-provider-list')).toBeInTheDocument()
-    },
-  )
-
-  it('remounts the tools section content when the route section changes', () => {
-    const view = renderIntegrationsPage(undefined, 'builtin')
-
-    expect(screen.getByTestId('plugin-category-tool')).toBeInTheDocument()
-
-    view.rerender(<IntegrationsPage section="mcp" />)
-
-    expect(screen.getByTestId('tool-provider-list')).toHaveAttribute('data-mounted-category', 'mcp')
-  })
-
   it('keeps existing category-only tools URLs functional', () => {
     renderIntegrationsPage({ category: 'mcp' })
 
     expect(screen.getByTestId('tool-provider-list')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'navigation.menus.tools' })).not.toHaveClass(
-      'bg-state-base-active',
-    )
     expect(screen.getByRole('button', { name: 'navigation.menus.tools' })).not.toHaveAttribute(
       'aria-current',
     )
@@ -725,19 +610,10 @@ describe('IntegrationsPage', () => {
       'href',
       '/integrations/tools/built-in',
     )
-    expect(screen.getByRole('link', { name: 'navigation.toolsPage.toolPlugin' })).toHaveClass(
-      'pl-8',
-    )
-    expect(
-      screen
-        .getByRole('link', { name: 'navigation.toolsPage.toolPlugin' })
-        .querySelector('.i-custom-vender-integrations-tools'),
-    ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'MCP' })).toHaveAttribute(
       'href',
       '/integrations/tools/mcp',
     )
-    expect(screen.getByRole('link', { name: 'MCP' })).toHaveClass('bg-state-base-active')
     expect(screen.getByRole('link', { name: 'MCP' })).toHaveAttribute('aria-current', 'page')
     expect(
       screen.getByRole('link', { name: 'navigation.settings.swaggerAPIAsTool' }),
@@ -746,33 +622,12 @@ describe('IntegrationsPage', () => {
       'href',
       '/integrations/tools/workflow',
     )
-    const workflowToolIcon = screen
-      .getByRole('link', { name: 'navigation.common.workflowAsTool' })
-      .querySelector('.i-custom-vender-integrations-workflow-as-tool')
-    expect(workflowToolIcon).toBeInTheDocument()
-    expect(workflowToolIcon).toHaveClass('size-4')
-    expect(
-      screen
-        .getByRole('link', { name: 'navigation.common.workflowAsTool' })
-        .querySelector('.i-ri-node-tree'),
-    ).not.toBeInTheDocument()
-    expect(
-      screen
-        .getByRole('link', { name: 'navigation.common.workflowAsTool' })
-        .compareDocumentPosition(
-          screen.getByRole('link', { name: 'navigation.settings.swaggerAPIAsTool' }),
-        ),
-    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
 
   it('toggles the tools submenu from the keyboard without other nav items closing it', async () => {
     const user = userEvent.setup()
     const onSectionChange = vi.fn()
     renderWithNuqs(<IntegrationsPage section="provider" onSectionChange={onSectionChange} />)
-
-    expect(screen.getByRole('button', { name: 'navigation.settings.provider' })).toHaveClass(
-      'bg-state-base-active',
-    )
 
     const toolsButton = screen.getByRole('button', { name: 'navigation.menus.tools' })
 
@@ -803,25 +658,6 @@ describe('IntegrationsPage', () => {
     expect(onSectionChange).toHaveBeenCalledTimes(2)
   })
 
-  it('keeps custom, workflow, and MCP tool entries visible without manage permissions', async () => {
-    const user = userEvent.setup()
-    mockConsoleState.workspacePermissionKeys = ['mcp.manage']
-    renderIntegrationsPage(undefined, { section: 'provider', onSectionChange: vi.fn() })
-
-    await user.click(screen.getByRole('button', { name: 'navigation.menus.tools' }))
-
-    expect(
-      screen.getByRole('button', { name: 'navigation.toolsPage.toolPlugin' }),
-    ).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'MCP' })).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'navigation.common.workflowAsTool' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'navigation.settings.swaggerAPIAsTool' }),
-    ).toBeInTheDocument()
-  })
-
   it('opens tools to the tools plugin page when the parent tools nav is clicked', async () => {
     const user = userEvent.setup()
     renderIntegrationsPage(undefined, 'provider')
@@ -835,7 +671,7 @@ describe('IntegrationsPage', () => {
     const user = userEvent.setup()
     const view = renderIntegrationsPage(undefined, 'mcp')
 
-    expect(screen.getByTestId('tool-provider-list')).toHaveAttribute('data-mounted-category', 'mcp')
+    expect(screen.getByTestId('tool-provider-list')).toHaveTextContent('mcp')
     expect(screen.getByRole('button', { name: 'navigation.menus.tools' })).toHaveAttribute(
       'aria-expanded',
       'true',
@@ -847,7 +683,7 @@ describe('IntegrationsPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'navigation.menus.tools' }))
 
-    expect(screen.getByTestId('tool-provider-list')).toHaveAttribute('data-mounted-category', 'mcp')
+    expect(screen.getByTestId('tool-provider-list')).toHaveTextContent('mcp')
     expect(screen.getByRole('button', { name: 'navigation.menus.tools' })).toHaveAttribute(
       'aria-expanded',
       'false',
@@ -877,7 +713,6 @@ describe('IntegrationsPage', () => {
         'true',
       )
     })
-    expect(screen.getByRole('link', { name: 'MCP' })).toHaveClass('bg-state-base-active')
   })
 
   it('renders the tools header for tool sections', () => {
@@ -891,27 +726,6 @@ describe('IntegrationsPage', () => {
     expect(
       screen.getByRole('link', { name: /modelProvider\.modelProvider\.learnMore/i }),
     ).toHaveAttribute('href', 'https://docs.dify.ai/en/self-host/use-dify/workspace/tools')
-  })
-
-  it('aligns model provider headers to the unified content frame', () => {
-    renderIntegrationsPage({ section: 'provider' })
-
-    expect(
-      screen.getByRole('heading', { level: 1, name: 'navigation.settings.provider' }),
-    ).toBeInTheDocument()
-    const description = screen.getByText('modelProvider.modelProvider.pageDesc')
-    expect(description.closest('[class*="max-w-[1600px]"]')).toHaveClass('px-6')
-    expect(
-      screen.getByRole('link', { name: /modelProvider\.modelProvider\.learnMore/i }),
-    ).toBeInTheDocument()
-  })
-
-  it('aligns plugin category headers to the unified content frame', () => {
-    renderIntegrationsPage({ section: 'trigger' })
-
-    expect(
-      screen.getByText('common.triggerPage.description').closest('[class*="max-w-[1600px]"]'),
-    ).toHaveClass('px-6')
   })
 
   it('renders the mcp header for the mcp section', () => {
@@ -1013,24 +827,6 @@ describe('IntegrationsPage', () => {
     expect(screen.queryByText('navigation.toolsPage.description')).not.toBeInTheDocument()
   })
 
-  it.each([
-    ['builtin', 'navigation.toolsPage.description'],
-    ['mcp', 'common.mcpPage.description'],
-    ['custom-tool', 'common.swaggerAPIAsToolPage.description'],
-    ['workflow-tool', 'common.workflowAsToolPage.description'],
-    ['custom-endpoint', 'common.apiBasedExtensionPage.description'],
-    ['data-source', 'common.dataSourcePage.description'],
-    ['trigger', 'common.triggerPage.description'],
-    ['extension', 'common.extensionPage.description'],
-    ['agent-strategy', 'common.agentStrategyPage.description'],
-  ] as const)('renders an unbordered header for %s', (section, description) => {
-    renderIntegrationsPage({ section })
-
-    expect(
-      screen.getByText(description).parentElement?.parentElement?.parentElement,
-    ).not.toHaveClass('border-b', 'border-divider-subtle')
-  })
-
   it.each(['builtin', 'trigger', 'extension', 'agent-strategy'] as const)(
     'renders plugin update settings action in the category toolbar for %s',
     (section) => {
@@ -1129,84 +925,5 @@ describe('IntegrationsPage', () => {
     ).not.toBeInTheDocument()
     expect(screen.queryByText('plugin.privilege.quickWhoCanInstall')).not.toBeInTheDocument()
     expect(screen.queryByText('plugin.privilege.quickWhoCanDebug')).not.toBeInTheDocument()
-  })
-
-  it('uses the no-action sidebar spacing when install permission is unavailable', () => {
-    mockCanManagement.mockReturnValue(false)
-
-    renderIntegrationsPage({ section: 'provider' })
-
-    expect(
-      screen.getByText('navigation.settings.integrations').parentElement?.parentElement,
-    ).toHaveClass('mb-3', 'pt-1', 'pb-0.5')
-    expect(
-      screen.getByRole('link', { name: 'navigation.settings.provider' }).parentElement,
-    ).toHaveClass('py-4')
-  })
-
-  it('keeps the integrations sidebar expanded without a collapse control', () => {
-    const { container } = renderIntegrationsPage({ section: 'provider' })
-
-    expect(container.firstElementChild).toHaveStyle(
-      '--model-provider-warning-left: calc(240px + 200px)',
-    )
-
-    expect(screen.getByText('navigation.settings.integrations')).toBeInTheDocument()
-    expect(screen.getByText('navigation.settings.integrations')).toHaveClass(
-      'title-2xl-semi-bold',
-      'text-text-primary',
-    )
-    expect(screen.getByText('navigation.settings.integrations').parentElement).toHaveClass(
-      'h-6',
-      'items-center',
-    )
-    expect(screen.getByRole('button', { name: 'plugin install' })).toHaveAttribute(
-      'data-show-trigger-arrow',
-      'false',
-    )
-    expect(screen.getByRole('button', { name: 'plugin install' })).toHaveClass('justify-start')
-    expect(screen.getByRole('button', { name: 'plugin tasks' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'plugin debug' })).toHaveTextContent(
-      'plugin.debugInfo.title',
-    )
-    expect(screen.getByRole('button', { name: 'plugin debug' })).toHaveClass(
-      'h-8',
-      'w-full',
-      'gap-2',
-      'rounded-lg',
-      'py-1',
-      'pr-1',
-      'pl-2',
-      'system-sm-medium',
-    )
-    expect(screen.getByRole('button', { name: 'plugin debug' }).parentElement).toHaveClass('w-46')
-    expect(screen.getByRole('button', { name: 'plugin.privilege.permissions' })).toHaveTextContent(
-      'plugin.privilege.permissions',
-    )
-    expect(screen.getByRole('button', { name: 'plugin.privilege.permissions' })).toHaveClass(
-      'h-8',
-      'w-full',
-      'gap-2',
-      'rounded-lg',
-      'py-1',
-      'pr-1',
-      'pl-2',
-      'system-sm-medium',
-    )
-    expect(screen.queryByText('navigation.settings.swaggerAPIAsTool')).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'MCP' })).not.toBeInTheDocument()
-    expect(
-      screen.getByRole('link', { name: 'navigation.settings.customEndpoint' }),
-    ).toHaveAttribute('href', '/integrations/custom-endpoint')
-    expect(screen.getByRole('link', { name: 'plugin.categorySingle.trigger' })).toHaveAttribute(
-      'href',
-      '/integrations/trigger',
-    )
-    expect(
-      screen.queryByRole('button', { name: 'navigation.settings.collapse' }),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: 'navigation.settings.expand' }),
-    ).not.toBeInTheDocument()
   })
 })

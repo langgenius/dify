@@ -1,5 +1,5 @@
+import type { SegmentResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
-import type { SegmentDetailModel } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { RiCloseLine, RiCollapseDiagonalLine, RiExpandDiagonalLine } from '@remixicon/react'
@@ -23,7 +23,7 @@ import SummaryText from './common/summary-text'
 import { useSegmentListContext } from './index'
 
 type ISegmentDetailProps = {
-  segInfo?: Partial<SegmentDetailModel> & { id: string }
+  segInfo?: Partial<SegmentResponse> & { id: string }
   onUpdate: (
     segmentId: string,
     q: string,
@@ -58,7 +58,8 @@ export function SegmentDetail({
         id: uuid4(),
         name: item.name,
         size: item.size,
-        mimeType: item.mime_type,
+        // An unknown MIME type is empty, as in File.type.
+        mimeType: item.mime_type ?? '',
         extension: item.extension,
         sourceUrl: item.source_url,
         uploadedId: item.id,

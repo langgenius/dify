@@ -144,34 +144,34 @@ def test_workflow_trace_with_message_id(
     trace_instance, monkeypatch: pytest.MonkeyPatch, sqlite3_session: Session
 ) -> None:
     # Define constants for better readability
-    WORKFLOW_ID = "fb05c7cd-6cec-4add-8a84-df03a408b4ce"
-    WORKFLOW_RUN_ID = "33c67568-7a8a-450e-8916-a5f135baeaef"
-    MESSAGE_ID = "04ec3956-85f3-488a-8539-1017251dc8c6"
-    CONVERSATION_ID = "d3d01066-23ae-4830-9ce4-eb5640b42a7e"
-    TRACE_ID = "bf26d929-6f15-4c2f-9abc-761c217056f3"
-    WORKFLOW_APP_LOG_ID = "ca0e018e-edd4-43fb-a05a-ea001ca8ef4b"
-    LLM_NODE_ID = "80d7dfa8-08f4-4ab7-aa37-0ca7d27207e3"
-    CODE_NODE_ID = "b9cd9a7b-c534-4aa9-b5da-efd454140900"
+    workflow_id = "fb05c7cd-6cec-4add-8a84-df03a408b4ce"
+    workflow_run_id = "33c67568-7a8a-450e-8916-a5f135baeaef"
+    message_id = "04ec3956-85f3-488a-8539-1017251dc8c6"
+    conversation_id = "d3d01066-23ae-4830-9ce4-eb5640b42a7e"
+    trace_id = "bf26d929-6f15-4c2f-9abc-761c217056f3"
+    workflow_app_log_id = "ca0e018e-edd4-43fb-a05a-ea001ca8ef4b"
+    llm_node_id = "80d7dfa8-08f4-4ab7-aa37-0ca7d27207e3"
+    code_node_id = "b9cd9a7b-c534-4aa9-b5da-efd454140900"
 
     trace_info = WorkflowTraceInfo(
-        workflow_id=WORKFLOW_ID,
+        workflow_id=workflow_id,
         tenant_id="tenant-1",
-        workflow_run_id=WORKFLOW_RUN_ID,
+        workflow_run_id=workflow_run_id,
         workflow_run_elapsed_time=1.0,
         workflow_run_status="succeeded",
         workflow_run_inputs={"input": "hi"},
         workflow_run_outputs={"output": "hello"},
         workflow_run_version="1.0",
-        message_id=MESSAGE_ID,
-        conversation_id=CONVERSATION_ID,
+        message_id=message_id,
+        conversation_id=conversation_id,
         total_tokens=100,
         file_list=[],
         query="hi",
         start_time=_dt(),
         end_time=_dt() + timedelta(seconds=1),
-        trace_id=TRACE_ID,
+        trace_id=trace_id,
         metadata={"app_id": "app-1", "user_id": "user-1"},
-        workflow_app_log_id=WORKFLOW_APP_LOG_ID,
+        workflow_app_log_id=workflow_app_log_id,
         error="",
     )
 
@@ -181,7 +181,7 @@ def test_workflow_trace_with_message_id(
     )
 
     node_llm = MagicMock()
-    node_llm.id = LLM_NODE_ID
+    node_llm.id = llm_node_id
     node_llm.title = "LLM Node"
     node_llm.node_type = BuiltinNodeTypes.LLM
     node_llm.status = "succeeded"
@@ -198,7 +198,7 @@ def test_workflow_trace_with_message_id(
     node_llm.metadata = {"foo": "bar"}
 
     node_other = MagicMock()
-    node_other.id = CODE_NODE_ID
+    node_other.id = code_node_id
     node_other.title = "Other Node"
     node_other.node_type = BuiltinNodeTypes.CODE
     node_other.status = "failed"
@@ -237,15 +237,15 @@ def test_workflow_trace_no_message_id(
     trace_instance, monkeypatch: pytest.MonkeyPatch, sqlite3_session: Session
 ) -> None:
     # Define constants for better readability
-    WORKFLOW_ID = "f0708b36-b1d7-42b3-a876-1d01b7d8f1a3"
-    WORKFLOW_RUN_ID = "d42ec285-c2fd-4248-8866-5c9386b101ac"
-    CONVERSATION_ID = "88a17f2e-9436-4472-bab9-4b1601d5af3c"
-    WORKFLOW_APP_LOG_ID = "41780d0d-ffba-4220-bc0c-401e4c89cdfb"
+    workflow_id = "f0708b36-b1d7-42b3-a876-1d01b7d8f1a3"
+    workflow_run_id = "d42ec285-c2fd-4248-8866-5c9386b101ac"
+    conversation_id = "88a17f2e-9436-4472-bab9-4b1601d5af3c"
+    workflow_app_log_id = "41780d0d-ffba-4220-bc0c-401e4c89cdfb"
 
     trace_info = WorkflowTraceInfo(
-        workflow_id=WORKFLOW_ID,
+        workflow_id=workflow_id,
         tenant_id="tenant-1",
-        workflow_run_id=WORKFLOW_RUN_ID,
+        workflow_run_id=workflow_run_id,
         workflow_run_elapsed_time=1.0,
         workflow_run_status="succeeded",
         workflow_run_inputs={},
@@ -255,12 +255,12 @@ def test_workflow_trace_no_message_id(
         file_list=[],
         query="",
         message_id=None,
-        conversation_id=CONVERSATION_ID,
+        conversation_id=conversation_id,
         start_time=_dt(),
         end_time=_dt(),
         trace_id=None,
         metadata={"app_id": "app-1"},
-        workflow_app_log_id=WORKFLOW_APP_LOG_ID,
+        workflow_app_log_id=workflow_app_log_id,
         error="",
     )
 
@@ -316,17 +316,17 @@ def test_workflow_trace_missing_app_id(
 
 def test_message_trace_basic(trace_instance, monkeypatch: pytest.MonkeyPatch):
     # Define constants for better readability
-    MESSAGE_DATA_ID = "e3a26712-8cac-4a25-94a4-a3bff21ee3ab"
-    CONVERSATION_ID = "9d3f3751-7521-4c19-9307-20e3cf6789a3"
-    MESSAGE_TRACE_ID = "710ace2f-bca8-41be-858c-54da42742a77"
-    OPIT_TRACE_ID = "f7dfd978-0d10-4549-8abf-00f2cbc49d2c"
+    message_data_id = "e3a26712-8cac-4a25-94a4-a3bff21ee3ab"
+    conversation_id = "9d3f3751-7521-4c19-9307-20e3cf6789a3"
+    message_trace_id = "710ace2f-bca8-41be-858c-54da42742a77"
+    opit_trace_id = "f7dfd978-0d10-4549-8abf-00f2cbc49d2c"
 
     message_data = MagicMock()
-    message_data.id = MESSAGE_DATA_ID
+    message_data.id = message_data_id
     message_data.from_account_id = "acc-1"
     message_data.from_end_user_id = None
     message_data.provider_response_latency = 0.5
-    message_data.conversation_id = CONVERSATION_ID
+    message_data.conversation_id = conversation_id
     message_data.total_price = 0.01
     message_data.model_id = "gpt-4"
     message_data.answer = "hello"
@@ -334,7 +334,7 @@ def test_message_trace_basic(trace_instance, monkeypatch: pytest.MonkeyPatch):
     message_data.error = None
 
     trace_info = MessageTraceInfo(
-        message_id=MESSAGE_TRACE_ID,
+        message_id=message_trace_id,
         message_data=message_data,
         inputs={"query": "hi"},
         outputs={"answer": "hello"},
@@ -343,7 +343,7 @@ def test_message_trace_basic(trace_instance, monkeypatch: pytest.MonkeyPatch):
         total_tokens=30,
         start_time=_dt(),
         end_time=_dt() + timedelta(seconds=1),
-        trace_id=OPIT_TRACE_ID,
+        trace_id=opit_trace_id,
         metadata={"foo": "bar"},
         conversation_mode="chat",
         conversation_model="gpt-4",

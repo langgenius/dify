@@ -1,3 +1,4 @@
+from collections.abc import Iterator
 from unittest import mock
 
 import pytest
@@ -16,7 +17,7 @@ def _user() -> Account:
 
 
 @pytest.fixture(autouse=True)
-def _reset_logging_context():
+def _reset_logging_context() -> Iterator[None]:
     clear_request_context()
     yield
     clear_request_context()
@@ -64,7 +65,7 @@ def test_on_user_loaded_sets_attributes_on_recording_span() -> None:
     )
 
 
-def test_on_user_loaded_ignores_ended_sdk_span(caplog) -> None:
+def test_on_user_loaded_ignores_ended_sdk_span(caplog: pytest.LogCaptureFixture) -> None:
     from extensions.otel import runtime
 
     tracer_provider = TracerProvider()

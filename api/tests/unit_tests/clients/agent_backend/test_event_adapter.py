@@ -27,7 +27,7 @@ from clients.agent_backend import (
 )
 
 
-def test_event_adapter_maps_run_started():
+def test_event_adapter_maps_run_started() -> None:
     adapted = AgentBackendRunEventAdapter().adapt(RunStartedEvent(id="1-0", run_id="run-1"))
 
     assert adapted == [
@@ -38,7 +38,7 @@ def test_event_adapter_maps_run_started():
     ]
 
 
-def test_event_adapter_maps_pydantic_ai_stream_event():
+def test_event_adapter_maps_pydantic_ai_stream_event() -> None:
     adapted = AgentBackendRunEventAdapter().adapt(
         PydanticAIStreamRunEvent(
             id="2-0",
@@ -52,10 +52,11 @@ def test_event_adapter_maps_pydantic_ai_stream_event():
     assert isinstance(event, AgentBackendStreamInternalEvent)
     assert event.type == AgentBackendInternalEventType.STREAM_EVENT
     assert event.event_kind == "final_result"
+    assert isinstance(event.data, dict)
     assert event.data["event_kind"] == "final_result"
 
 
-def test_event_adapter_maps_pydantic_ai_stream_event_agent_message_delta_annotation():
+def test_event_adapter_maps_pydantic_ai_stream_event_agent_message_delta_annotation() -> None:
     adapted = AgentBackendRunEventAdapter().adapt(
         PydanticAIStreamRunEvent(
             id="2-0",
@@ -74,7 +75,7 @@ def test_event_adapter_maps_pydantic_ai_stream_event_agent_message_delta_annotat
     ]
 
 
-def test_event_adapter_maps_run_succeeded_to_final_output():
+def test_event_adapter_maps_run_succeeded_to_final_output() -> None:
     snapshot = SessionSnapshot(layers={})
     adapted = AgentBackendRunEventAdapter().adapt(
         RunSucceededEvent(
@@ -126,7 +127,7 @@ def test_event_adapter_maps_run_succeeded_to_final_output():
     ]
 
 
-def test_event_adapter_maps_run_failed_to_failed_result():
+def test_event_adapter_maps_run_failed_to_failed_result() -> None:
     adapted = AgentBackendRunEventAdapter().adapt(
         RunFailedEvent(
             id="4-0",
@@ -167,7 +168,7 @@ def test_event_adapter_maps_run_failed_to_failed_result():
     ]
 
 
-def test_event_adapter_maps_run_cancelled_to_terminal_cancelled():
+def test_event_adapter_maps_run_cancelled_to_terminal_cancelled() -> None:
     adapted = AgentBackendRunEventAdapter().adapt(
         RunCancelledEvent(
             id="6-0",

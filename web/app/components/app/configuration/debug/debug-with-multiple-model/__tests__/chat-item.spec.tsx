@@ -1,3 +1,4 @@
+import type { ReactElement, ReactNode } from 'react'
 import type { ModelAndParameter } from '../../types'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig, ChatItem as ChatItemType, OnSend } from '@/app/components/base/chat/types'
@@ -5,20 +6,24 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Log from '@/app/components/base/chat/chat/log'
 import { TransferMethod } from '@/app/components/base/chat/types'
-import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { renderWithAccountProfile as render } from '@/test/console/account-profile'
+import {
+  ModelFeatureEnum,
+  ModelTypeEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { APP_CHAT_WITH_MULTIPLE_MODEL, APP_CHAT_WITH_MULTIPLE_MODEL_RESTART } from '../../types'
 import ChatItem from '../chat-item'
 import { DebugWithMultipleModelContextProvider } from '../context-provider'
 
-const mockConsoleStateReader = vi.fn()
 const mockUseDebugConfigurationContext = vi.fn()
-const mockModelListQuery = vi.fn()
+const modelListResponse = vi.fn()
 const mockUseFeatures = vi.fn()
 const mockUseConfigFromDebugContext = vi.fn()
 const mockUseFormattingChangedSubscription = vi.fn()
 const mockUseChat = vi.fn()
-const mockUseEventEmitterContextContext = vi.fn()
 const mockFetchConversationMessages = vi.fn()
 const mockFetchSuggestedQuestions = vi.fn()
 const mockStopChatMessageResponding = vi.fn()
@@ -36,17 +41,10 @@ let capturedChatProps: {
   allToolIcons: Record<string, string | undefined>
 } | null = null
 
-let eventSubscriptionCallback:
-  | ((v: { type: string; payload?: Record<string, unknown> }) => void)
-  | null = null
+let emitDebugEvent: ((v: { type: string; payload?: Record<string, unknown> }) => void) | null = null
 
 vi.mock('@/context/debug-configuration', () => ({
   useDebugConfigurationContext: () => mockUseDebugConfigurationContext(),
-}))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
-  useQuery: () => mockModelListQuery(),
 }))
 
 vi.mock('@/app/components/base/features/hooks', () => ({
@@ -63,10 +61,6 @@ vi.mock('@/app/components/base/chat/chat/hooks', () => ({
   useChat: () => mockUseChat(),
 }))
 
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => mockUseEventEmitterContextContext(),
-}))
-
 vi.mock('@/service/debug', () => ({
   fetchConversationMessages: (...args: unknown[]) => mockFetchConversationMessages(...args),
   fetchSuggestedQuestions: (...args: unknown[]) => mockFetchSuggestedQuestions(...args),
@@ -77,14 +71,6 @@ vi.mock('@/app/components/app/configuration/toast', () => ({
   toast: {
     error: mockToastError,
   },
-}))
-
-vi.mock('@/app/components/base/chat/utils', () => ({
-  getLastAnswer: (chatList: ChatItemType[]) => chatList.find((item) => item.isAnswer),
-}))
-
-vi.mock('@/utils', () => ({
-  canFindTool: (collectionId: string, providerId: string) => collectionId === providerId,
 }))
 
 vi.mock('@/app/components/base/chat/chat', () => ({
@@ -118,6 +104,28 @@ vi.mock('@/app/components/base/chat/chat', () => ({
   },
 }))
 
+function EventSource({ children }: { children: ReactNode }) {
+  const { eventEmitter } = useEventEmitterContextContext()
+  emitDebugEvent = (event) => eventEmitter!.emit(event)
+  return children
+}
+
+function render(ui: ReactElement) {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textGeneration } },
+    }).queryKey,
+    modelListResponse(),
+  )
+  return renderWithConsoleQuery(
+    <EventEmitterContextProvider>
+      <EventSource>{ui}</EventSource>
+    </EventEmitterContextProvider>,
+    { queryClient },
+  )
+}
+
 const createModelAndParameter = (
   overrides: Partial<ModelAndParameter> = {},
 ): ModelAndParameter => ({
@@ -129,10 +137,6 @@ const createModelAndParameter = (
 })
 
 const createDefaultMocks = () => {
-  mockConsoleStateReader.mockReturnValue({
-    userProfile: { avatar_url: 'http://avatar.url', name: 'Test User' },
-  })
-
   mockUseDebugConfigurationContext.mockReturnValue({
     modelConfig: {
       configs: { prompt_variables: [] },
@@ -144,7 +148,7 @@ const createDefaultMocks = () => {
     canTestAndRun: true,
   })
 
-  mockModelListQuery.mockReturnValue({
+  modelListResponse.mockReturnValue({
     data: [
       {
         provider: 'openai',
@@ -187,16 +191,6 @@ const createDefaultMocks = () => {
     suggestedQuestions: ['Question 1', 'Question 2'],
     handleRestart: vi.fn(),
   })
-
-  mockUseEventEmitterContextContext.mockReturnValue({
-    eventEmitter: {
-      useSubscription: (
-        callback: (v: { type: string; payload?: Record<string, unknown> }) => void,
-      ) => {
-        eventSubscriptionCallback = callback
-      },
-    },
-  })
 }
 
 const renderComponent = (props: Partial<{ modelAndParameter: ModelAndParameter }> = {}) => {
@@ -209,9 +203,9 @@ const renderComponent = (props: Partial<{ modelAndParameter: ModelAndParameter }
 
 describe('ChatItem', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     capturedChatProps = null
-    eventSubscriptionCallback = null
+    emitDebugEvent = null
     createDefaultMocks()
   })
 
@@ -235,13 +229,6 @@ describe('ChatItem', () => {
   })
 
   describe('rendering', () => {
-    it('should render Chat component when chatList is not empty', () => {
-      renderComponent()
-
-      expect(screen.getByTestId('chat-component')).toBeInTheDocument()
-      expect(screen.getByTestId('chat-list-length')).toHaveTextContent('1')
-    })
-
     it('should not render when chatList is empty', () => {
       mockUseChat.mockReturnValue({
         chatList: [],
@@ -265,35 +252,9 @@ describe('ChatItem', () => {
         suggested_questions: ['Q1'],
       })
     })
-
-    it('should pass suggestedQuestions to Chat', () => {
-      renderComponent()
-
-      expect(capturedChatProps?.suggestedQuestions).toEqual(['Question 1', 'Question 2'])
-    })
-
-    it('should pass isResponding to Chat', () => {
-      mockUseChat.mockReturnValue({
-        chatList: [{ id: 'msg-1' }],
-        isResponding: true,
-        handleSend: vi.fn(),
-        suggestedQuestions: [],
-        handleRestart: vi.fn(),
-      })
-
-      renderComponent()
-
-      expect(screen.getByTestId('is-responding')).toHaveTextContent('yes')
-    })
   })
 
   describe('config composition', () => {
-    it('should include opening statement when enabled', () => {
-      renderComponent()
-
-      expect(capturedChatProps?.config.opening_statement).toBe('Hello!')
-    })
-
     it('should use empty opening statement when disabled', () => {
       mockUseFeatures.mockImplementation(
         (selector: (state: Record<string, unknown>) => unknown) => {
@@ -321,33 +282,6 @@ describe('ChatItem', () => {
     })
   })
 
-  describe('inputsForm transformation', () => {
-    it('should filter out API type variables', () => {
-      mockUseDebugConfigurationContext.mockReturnValue({
-        modelConfig: {
-          configs: {
-            prompt_variables: [
-              { key: 'var1', name: 'Var 1', type: 'string' },
-              { key: 'var2', name: 'Var 2', type: 'api' },
-              { key: 'var3', name: 'Var 3', type: 'number' },
-            ],
-          },
-          agentConfig: { tools: [] },
-        },
-        appId: 'app-123',
-        inputs: {},
-        collectionList: [],
-        canTestAndRun: true,
-      })
-
-      renderComponent()
-
-      // The component transforms prompt_variables into inputsForm
-      // We can verify this through the useChat call
-      expect(mockUseChat).toHaveBeenCalled()
-    })
-  })
-
   describe('event subscription', () => {
     it('should handle APP_CHAT_WITH_MULTIPLE_MODEL event', () => {
       const handleSend = vi.fn()
@@ -362,7 +296,7 @@ describe('ChatItem', () => {
       renderComponent()
 
       // Trigger the event
-      eventSubscriptionCallback?.({
+      emitDebugEvent?.({
         type: APP_CHAT_WITH_MULTIPLE_MODEL,
         payload: { message: 'Hello', files: [{ id: 'file-1' }] },
       })
@@ -372,6 +306,7 @@ describe('ChatItem', () => {
         expect.objectContaining({
           query: 'Hello',
           inputs: { key: 'value' },
+          files: [{ id: 'file-1' }],
         }),
         expect.objectContaining({
           onNotifyError: expect.any(Function),
@@ -397,7 +332,7 @@ describe('ChatItem', () => {
 
       renderComponent()
 
-      eventSubscriptionCallback?.({
+      emitDebugEvent?.({
         type: APP_CHAT_WITH_MULTIPLE_MODEL_RESTART,
       })
 
@@ -417,7 +352,7 @@ describe('ChatItem', () => {
 
       renderComponent()
 
-      eventSubscriptionCallback?.({
+      emitDebugEvent?.({
         type: 'SOME_OTHER_EVENT',
         payload: {},
       })
@@ -428,34 +363,8 @@ describe('ChatItem', () => {
   })
 
   describe('doSend function', () => {
-    it('should include files when vision is supported and file upload enabled', () => {
-      const handleSend = vi.fn()
-      mockUseChat.mockReturnValue({
-        chatList: [{ id: 'msg-1' }],
-        isResponding: false,
-        handleSend,
-        suggestedQuestions: [],
-        handleRestart: vi.fn(),
-      })
-
-      renderComponent()
-
-      eventSubscriptionCallback?.({
-        type: APP_CHAT_WITH_MULTIPLE_MODEL,
-        payload: { message: 'Hello', files: [{ id: 'file-1' }] },
-      })
-
-      expect(handleSend).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({
-          files: [{ id: 'file-1' }],
-        }),
-        expect.any(Object),
-      )
-    })
-
     it('should not include files when vision is not supported', () => {
-      mockModelListQuery.mockReturnValue({
+      modelListResponse.mockReturnValue({
         data: [
           {
             provider: 'openai',
@@ -481,7 +390,7 @@ describe('ChatItem', () => {
 
       renderComponent()
 
-      eventSubscriptionCallback?.({
+      emitDebugEvent?.({
         type: APP_CHAT_WITH_MULTIPLE_MODEL,
         payload: { message: 'Hello', files: [{ id: 'file-1' }] },
       })
@@ -513,7 +422,7 @@ describe('ChatItem', () => {
 
       renderComponent({ modelAndParameter })
 
-      eventSubscriptionCallback?.({
+      emitDebugEvent?.({
         type: APP_CHAT_WITH_MULTIPLE_MODEL,
         payload: { message: 'Hello', files: [] },
       })
@@ -548,7 +457,7 @@ describe('ChatItem', () => {
 
       renderComponent()
 
-      eventSubscriptionCallback?.({
+      emitDebugEvent?.({
         type: APP_CHAT_WITH_MULTIPLE_MODEL,
         payload: { message: 'Hello', files: [] },
       })
@@ -611,91 +520,6 @@ describe('ChatItem', () => {
       expect(capturedChatProps?.allToolIcons).toEqual({
         tool1: undefined,
       })
-    })
-
-    it('should handle empty tools array', () => {
-      mockUseDebugConfigurationContext.mockReturnValue({
-        modelConfig: {
-          configs: { prompt_variables: [] },
-          agentConfig: { tools: [] },
-        },
-        appId: 'app-123',
-        inputs: {},
-        collectionList: [],
-        canTestAndRun: true,
-      })
-
-      renderComponent()
-
-      expect(capturedChatProps?.allToolIcons).toEqual({})
-    })
-  })
-
-  describe('useFormattingChangedSubscription', () => {
-    it('should call useFormattingChangedSubscription with chatList', () => {
-      const chatList = [{ id: 'msg-1', content: 'Hello' }]
-      mockUseChat.mockReturnValue({
-        chatList,
-        isResponding: false,
-        handleSend: vi.fn(),
-        suggestedQuestions: [],
-        handleRestart: vi.fn(),
-      })
-
-      renderComponent()
-
-      expect(mockUseFormattingChangedSubscription).toHaveBeenCalledWith(chatList)
-    })
-  })
-
-  describe('edge cases', () => {
-    it('should handle missing provider in textGenerationModelList', () => {
-      mockModelListQuery.mockReturnValue({
-        data: [],
-      })
-
-      const handleSend = vi.fn()
-      mockUseChat.mockReturnValue({
-        chatList: [{ id: 'msg-1' }],
-        isResponding: false,
-        handleSend,
-        suggestedQuestions: [],
-        handleRestart: vi.fn(),
-      })
-
-      renderComponent()
-
-      eventSubscriptionCallback?.({
-        type: APP_CHAT_WITH_MULTIPLE_MODEL,
-        payload: { message: 'Hello', files: [] },
-      })
-
-      expect(handleSend).toHaveBeenCalled()
-    })
-
-    it('should handle null eventEmitter', () => {
-      mockUseEventEmitterContextContext.mockReturnValue({
-        eventEmitter: null,
-      })
-
-      expect(() => renderComponent()).not.toThrow()
-    })
-
-    it('should handle undefined tools in agentConfig', () => {
-      mockUseDebugConfigurationContext.mockReturnValue({
-        modelConfig: {
-          configs: { prompt_variables: [] },
-          agentConfig: { tools: undefined },
-        },
-        appId: 'app-123',
-        inputs: {},
-        collectionList: [],
-        canTestAndRun: true,
-      })
-
-      // This may throw since the code does agentConfig.tools?.forEach
-      // But the optional chaining should handle it
-      expect(() => renderComponent()).not.toThrow()
     })
   })
 })

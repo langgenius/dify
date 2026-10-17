@@ -1,9 +1,12 @@
 import type { Edge, Node } from '../types'
+import type { EventEmitterValue } from '@/context/event-emitter'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useEventEmitter } from 'ahooks'
 import * as React from 'react'
 import { BaseEdge, internalsSymbol, Position, ReactFlowProvider, useStoreApi } from 'reactflow'
-import { FlowType } from '@/types/common'
+import { EventEmitterContext } from '@/context/event-emitter'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { WORKFLOW_DATA_UPDATE } from '../constants'
 import { Workflow } from '../index'
 import { ControlMode } from '../types'
@@ -18,7 +21,7 @@ type WorkflowUpdateEvent = {
 }
 
 const eventEmitterState = vi.hoisted(() => ({
-  subscription: null as null | ((payload: WorkflowUpdateEvent) => void),
+  emit: null as null | ((payload: WorkflowUpdateEvent) => void),
 }))
 
 const reactFlowBridge = vi.hoisted(() => ({
@@ -151,13 +154,6 @@ const baseEdges = [
   },
 ] as unknown as Edge[]
 
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => ({
-    currentWorkspace: { id: 'workspace-1' },
-  }))
-})
-
 vi.mock('next/dynamic', () => ({
   default: () => () => null,
 }))
@@ -172,22 +168,19 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => ({
-    eventEmitter: {
-      useSubscription: (handler: (payload: WorkflowUpdateEvent) => void) => {
-        eventEmitterState.subscription = handler
-      },
-    },
-  }),
-}))
-
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: [] }),
-  useAllCustomTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: [] }),
-  useAllWorkflowTools: () => ({ data: [] }),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.builtin.get': async () => [],
+      'workspaces.current.tools.api.get': async () => [],
+      'workspaces.current.tools.mcp.get': async () => [],
+      'workspaces.current.tools.workflow.get': async () => [],
+    }),
+  }
+})
 
 vi.mock('@/service/workflow', () => ({
   fetchAllInspectVars: vi.fn().mockResolvedValue([]),
@@ -291,34 +284,6 @@ vi.mock('../hooks/use-workflow-comment', () => ({
   useWorkflowComment: () => workflowCommentState,
 }))
 
-vi.mock('../base/confirm', () => ({
-  default: ({
-    isShow,
-    title,
-    desc,
-    onConfirm,
-    onCancel,
-  }: {
-    isShow: boolean
-    title?: string
-    desc?: string
-    onConfirm: () => void
-    onCancel: () => void
-  }) =>
-    isShow ? (
-      <div role="alertdialog" data-testid="confirm-dialog">
-        {title && <div>{title}</div>}
-        {desc && <div>{desc}</div>}
-        <button type="button" onClick={onConfirm}>
-          common.operation.confirm
-        </button>
-        <button type="button" onClick={onCancel}>
-          common.operation.cancel
-        </button>
-      </div>
-    ) : null,
-}))
-
 vi.mock('../candidate-node', () => ({
   default: () => null,
 }))
@@ -415,7 +380,7 @@ vi.mock('../hooks/use-workflow', () => ({
     nodesReadOnly: false,
     getNodesReadOnly: () => false,
   }),
-  useIsChatMode: () => false,
+
   useWorkflow: () => ({
     isValidConnection: workflowHookMocks.isValidConnection,
   }),
@@ -504,22 +469,31 @@ function renderSubject(options?: {
     isCollaborationEnabled,
   } = options ?? {}
 
+  const { queryClient } = createConsoleQueryWrapper()
   return renderWorkflowComponent(
-    <ReactFlowProvider>
-      <Workflow nodes={nodes} edges={edges} isCollaborationEnabled={isCollaborationEnabled}>
-        <ReactFlowEdgeBootstrap nodes={nodes} edges={edges} />
-      </Workflow>
-    </ReactFlowProvider>,
+    <EventHarness>
+      <ReactFlowProvider>
+        <Workflow nodes={nodes} edges={edges} isCollaborationEnabled={isCollaborationEnabled}>
+          <ReactFlowEdgeBootstrap nodes={nodes} edges={edges} />
+        </Workflow>
+      </ReactFlowProvider>
+    </EventHarness>,
     {
+      queryClient,
       initialStoreState,
+      resource: { kind: 'app' as const, appId: 'flow-1', mode: 'workflow' as const },
       hooksStoreProps: {
-        configsMap: {
-          flowId: 'flow-1',
-          flowType: FlowType.appFlow,
-          fileSettings: {},
-        },
+        fileSettings: {},
       },
     },
+  )
+}
+
+function EventHarness({ children }: { children: React.ReactNode }) {
+  const eventEmitter = useEventEmitter<EventEmitterValue>()
+  eventEmitterState.emit = eventEmitter.emit
+  return (
+    <EventEmitterContext.Provider value={{ eventEmitter }}>{children}</EventEmitterContext.Provider>
   )
 }
 
@@ -551,21 +525,13 @@ function getPane(container: HTMLElement) {
   return pane
 }
 
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: [],
-  }))
-})
-
 describe('Workflow edge event wiring', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     collaborationBridge.canFlushGraphOnPageClose.mockReturnValue(true)
     collaborationBridge.canUseLocalDraftFallback.mockReturnValue(false)
     collaborationBridge.isConnected.mockReturnValue(true)
-    eventEmitterState.subscription = null
+    eventEmitterState.emit = null
     reactFlowBridge.store = null
     collaborationBridge.graphImportHandler = null
     collaborationBridge.historyActionHandler = null
@@ -580,6 +546,12 @@ describe('Workflow edge event wiring', () => {
 
   it('should forward pane, node and edge-change events to workflow handlers when emitted by the canvas', async () => {
     const { container } = renderSubject()
+    // Happy DOM has no layout; initialize handle geometry after React Flow's mount effects.
+    act(() =>
+      reactFlowBridge.store!.setState({
+        nodeInternals: new Map(baseNodes.map((node) => [node.id, node])),
+      }),
+    )
     const pane = getPane(container)
 
     act(() => {
@@ -587,15 +559,9 @@ describe('Workflow edge event wiring', () => {
       fireEvent.contextMenu(pane, { clientX: 24, clientY: 48 })
     })
 
-    await waitFor(() => {
-      expect(reactFlowBridge.store?.getState().onEdgesChange).toBeTypeOf('function')
-    })
-
-    act(() => {
-      reactFlowBridge.store
-        ?.getState()
-        .onEdgesChange?.([{ id: 'edge-1', type: 'select', selected: true }])
-    })
+    await waitFor(() => expect(container.querySelector('.react-flow__edge')).not.toBeNull())
+    const edge = container.querySelector('.react-flow__edge')
+    fireEvent.click(edge!)
 
     await waitFor(() => {
       expect(workflowHookMocks.handleEdgesChange).toHaveBeenCalledWith(
@@ -647,7 +613,7 @@ describe('Workflow edge event wiring', () => {
     })
 
     act(() => {
-      eventEmitterState.subscription?.({
+      eventEmitterState.emit?.({
         type: WORKFLOW_DATA_UPDATE,
         payload: {
           nodes: baseNodes,
@@ -657,6 +623,7 @@ describe('Workflow edge event wiring', () => {
     })
 
     expect(store.getState().contextMenuTarget).toBeUndefined()
+    expect(reactFlowBridge.store!.getState().edges).toEqual([])
   })
 
   it('should show a persistent error toast when saving the draft on unmount fails', () => {
@@ -713,11 +680,13 @@ describe('Workflow edge event wiring', () => {
     })
 
     rerender(
-      <ReactFlowProvider>
-        <Workflow nodes={baseNodes} edges={baseEdges} isCollaborationEnabled>
-          <ReactFlowEdgeBootstrap nodes={baseNodes} edges={baseEdges} />
-        </Workflow>
-      </ReactFlowProvider>,
+      <EventHarness>
+        <ReactFlowProvider>
+          <Workflow nodes={baseNodes} edges={baseEdges} isCollaborationEnabled>
+            <ReactFlowEdgeBootstrap nodes={baseNodes} edges={baseEdges} />
+          </Workflow>
+        </ReactFlowProvider>
+      </EventHarness>,
     )
 
     expect(workflowHookMocks.handleSyncWorkflowDraft).not.toHaveBeenCalled()
@@ -801,7 +770,8 @@ describe('Workflow edge event wiring', () => {
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
-  it('should call showConfirm.onConfirm when confirm is clicked', () => {
+  it('should call showConfirm.onConfirm when confirm is clicked', async () => {
+    const user = userEvent.setup()
     const onConfirm = vi.fn()
 
     renderSubject({
@@ -813,7 +783,7 @@ describe('Workflow edge event wiring', () => {
       },
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     expect(onConfirm).toHaveBeenCalledTimes(1)
   })
@@ -835,7 +805,11 @@ describe('Workflow edge event wiring', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Workflow node node-3')).toBeInTheDocument()
-      expect(toastInfoMock).toHaveBeenCalledTimes(1)
+      expect(screen.queryByText('Workflow node node-1')).not.toBeInTheDocument()
+      expect(reactFlowBridge.store!.getState().edges).toEqual([])
+      expect(toastInfoMock).toHaveBeenCalledExactlyOnceWith(
+        'workflow.collaboration.historyAction.generic',
+      )
     })
   })
 
@@ -858,9 +832,11 @@ describe('Workflow edge event wiring', () => {
     })
   })
 
-  it('should render comment overlays and execute comment actions in comment mode', async () => {
+  it('should navigate visible comments and require confirmation before deletion', async () => {
+    const user = userEvent.setup()
     workflowCommentState.comments = [
       { id: 'comment-1', resolved: false },
+      { id: 'resolved-comment', resolved: true },
       { id: 'comment-2', resolved: false },
     ]
     workflowCommentState.activeComment = { id: 'comment-1', resolved: false }
@@ -894,6 +870,7 @@ describe('Workflow edge event wiring', () => {
     expect(screen.getByTestId('comment-icon-comment-1')).toBeInTheDocument()
     expect(screen.getByTestId('comment-icon-comment-2')).toBeInTheDocument()
     expect(screen.getByTestId('comment-thread')).toBeInTheDocument()
+    expect(screen.queryByTestId('comment-icon-resolved-comment')).not.toBeInTheDocument()
 
     act(() => {
       fireEvent.click(screen.getByRole('button', { name: 'next-comment' }))
@@ -908,34 +885,17 @@ describe('Workflow edge event wiring', () => {
     })
     expect(store.getState().showConfirm).toBeDefined()
 
-    await act(async () => {
-      await store.getState().showConfirm?.onConfirm()
-    })
+    await user.click(await screen.findByRole('button', { name: 'common.operation.confirm' }))
     expect(workflowCommentState.handleCommentDelete).toHaveBeenCalledWith('comment-1')
 
     act(() => {
       fireEvent.click(screen.getByRole('button', { name: 'delete-reply' }))
     })
     expect(store.getState().showConfirm).toBeDefined()
-    await act(async () => {
-      await store.getState().showConfirm?.onConfirm()
-    })
+    await user.click(await screen.findByRole('button', { name: 'common.operation.confirm' }))
     expect(workflowCommentState.handleCommentReplyDelete).toHaveBeenCalledWith(
       'comment-1',
       'reply-1',
     )
-
-    const wheelEvent = new WheelEvent('wheel', {
-      cancelable: true,
-      ctrlKey: true,
-    })
-    act(() => {
-      window.dispatchEvent(wheelEvent)
-    })
-
-    const gestureEvent = new Event('gesturestart', { cancelable: true })
-    act(() => {
-      window.dispatchEvent(gestureEvent)
-    })
   })
 })

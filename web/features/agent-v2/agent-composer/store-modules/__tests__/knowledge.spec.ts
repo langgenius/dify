@@ -13,6 +13,7 @@ describe('agent composer knowledge store', () => {
     const store = createStore()
     store.set(agentComposerDraftAtom, {
       ...defaultAgentSoulConfigFormState,
+      prompt: 'Use [§knowledge:retrieval-1:Docs Search§].',
       knowledgeRetrievals: [
         {
           id: 'retrieval-1',
@@ -29,6 +30,13 @@ describe('agent composer knowledge store', () => {
       id: 'retrieval-1',
       name: 'Updated Docs Search',
     })
+    expect(store.get(agentComposerDraftAtom).knowledgeRetrievals).toEqual([
+      { id: 'retrieval-1', name: 'Updated Docs Search' },
+      { id: 'retrieval-2', name: 'Release Search' },
+    ])
+    expect(store.get(agentComposerDraftAtom).prompt).toBe(
+      'Use [§knowledge:retrieval-1:Updated Docs Search§].',
+    )
     store.set(removeKnowledgeRetrievalAtom, 'retrieval-2')
 
     expect(store.get(agentComposerDraftAtom).knowledgeRetrievals).toEqual([

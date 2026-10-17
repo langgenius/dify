@@ -120,7 +120,8 @@ def extensions_service() -> Iterator[MagicMock]:
 
 
 def test_code_based_extension_get_returns_service_data(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    service_result = [{"entrypoint": "main:agent"}]
+    form_schema: list[dict[str, object]] = []
+    service_result = [{"name": "custom_tool", "label": {"en-US": "Custom tool"}, "form_schema": form_schema}]
     service_mock = MagicMock(return_value=service_result)
     monkeypatch.setattr(
         "controllers.console.extension.CodeBasedExtensionService.get_code_based_extension",
@@ -176,7 +177,7 @@ class TestAPIBasedExtensionAPI:
         )
 
         with app.test_request_context("/console/api/api-based-extension", method="POST"):
-            response, status = unwrap(APIBasedExtensionAPI().post)(APIBasedExtensionAPI(), payload, request_context)
+            result = unwrap(APIBasedExtensionAPI().post)(APIBasedExtensionAPI(), payload, request_context)
 
         extensions_service.create_extension.assert_called_once_with(
             request_context,
@@ -184,7 +185,10 @@ class TestAPIBasedExtensionAPI:
                 name="Docs API", api_endpoint="https://docs.example.com/hook", api_key="plain-secret"
             ),
         )
+        assert isinstance(result, tuple)
+        response, status = result
         assert status == 201
+        assert isinstance(response, dict)
         assert response["id"] == created.id
         assert response["name"] == "Docs API"
         assert response["api_key"] == _masked_api_key("plain-secret")
@@ -214,6 +218,7 @@ class TestAPIBasedExtensionDetailAPI:
             )
 
         extensions_service.get_extension.assert_called_once_with(request_context, str(extension_id))
+        assert isinstance(response, dict)
         assert response["id"] == extension.id
         assert response["name"] == "Docs API"
         assert response["api_key"] == _masked_api_key("abcdefg12345")
@@ -248,6 +253,7 @@ class TestAPIBasedExtensionDetailAPI:
             str(extension_id),
             APIBasedExtensionUpdate(name="Docs API Updated", api_endpoint="https://docs.example.com/v2", api_key=None),
         )
+        assert isinstance(response, dict)
         assert response["name"] == "Docs API Updated"
         assert response["api_key"] == _masked_api_key("keep-me")
 
@@ -268,6 +274,7 @@ class TestAPIBasedExtensionDetailAPI:
 
         update = extensions_service.update_extension.call_args.args[2]
         assert update.api_key == "new-secret"
+        assert isinstance(response, dict)
         assert response["api_key"] == _masked_api_key("new-secret")
 
     def test_delete_removes_extension(
@@ -276,11 +283,13 @@ class TestAPIBasedExtensionDetailAPI:
         extension_id = uuid.uuid4()
 
         with app.test_request_context(f"/console/api/api-based-extension/{extension_id}", method="DELETE"):
-            response, status = unwrap(APIBasedExtensionDetailAPI().delete)(
+            result = unwrap(APIBasedExtensionDetailAPI().delete)(
                 APIBasedExtensionDetailAPI(), request_context, extension_id
             )
 
         extensions_service.delete_extension.assert_called_once_with(request_context, str(extension_id))
+        assert isinstance(result, tuple)
+        response, status = result
         assert status == 204
         assert response == ""
 

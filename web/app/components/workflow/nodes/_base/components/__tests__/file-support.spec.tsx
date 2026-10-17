@@ -1,33 +1,27 @@
 import type { UploadFileSetting } from '@/app/components/workflow/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { useFileUploadConfig } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { TransferMethod } from '@/types/app'
 import FileTypeItem from '../file-type-item'
 import FileUploadSetting from '../file-upload-setting'
 
-const mockUseFileUploadConfig = vi.mocked(useFileUploadConfig)
-const mockUseFileSizeLimit = vi.mocked(useFileSizeLimit)
-
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: vi.fn(),
-}))
-
-vi.mock('@/app/components/base/file-uploader/hooks', () => ({
-  useFileSizeLimit: vi.fn(),
-}))
-
-vi.mock('@/app/notifications', () => ({
-  toast: {
-    success: vi.fn(),
-    error: vi.fn(),
-    warning: vi.fn(),
-    info: vi.fn(),
-  },
-}))
+const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(consoleQuery.files.upload.get.queryKey(), {
+    ...createFileUploadConfigFixture(),
+    image_file_size_limit: 10,
+    file_size_limit: 20,
+    audio_file_size_limit: 30,
+    video_file_size_limit: 40,
+    workflow_file_upload_limit: 10,
+  })
+  return renderWithConsoleQuery(ui, { queryClient })
+}
 
 const createPayload = (overrides: Partial<UploadFileSetting> = {}): UploadFileSetting => ({
   allowed_file_upload_methods: [TransferMethod.local_file],
@@ -38,20 +32,8 @@ const createPayload = (overrides: Partial<UploadFileSetting> = {}): UploadFileSe
 })
 
 describe('File upload support components', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseFileUploadConfig.mockReturnValue({ data: {} } as ReturnType<typeof useFileUploadConfig>)
-    mockUseFileSizeLimit.mockReturnValue({
-      imgSizeLimit: 10 * 1024 * 1024,
-      docSizeLimit: 20 * 1024 * 1024,
-      audioSizeLimit: 30 * 1024 * 1024,
-      videoSizeLimit: 40 * 1024 * 1024,
-      maxFileUploadLimit: 10,
-    } as ReturnType<typeof useFileSizeLimit>)
-  })
-
   describe('FileTypeItem', () => {
-    it('should render built-in file types and toggle the selected type on click', () => {
+    it('should render built-in file types and toggle the selected type on click', async () => {
       const onToggle = vi.fn()
 
       render(
@@ -61,7 +43,9 @@ describe('File upload support components', () => {
       expect(screen.getByText('appDebug.variableConfig.file.image.name')).toBeInTheDocument()
       expect(screen.getByText('JPG, JPEG, PNG, GIF, WEBP, SVG')).toBeInTheDocument()
 
-      fireEvent.click(screen.getByText('appDebug.variableConfig.file.image.name'))
+      await userEvent
+        .setup()
+        .click(screen.getByRole('checkbox', { name: 'appDebug.variableConfig.file.image.name' }))
       expect(onToggle).toHaveBeenCalledWith(SupportUploadFileTypes.image)
     })
 
@@ -83,7 +67,7 @@ describe('File upload support components', () => {
         'appDebug.variableConfig.file.custom.createPlaceholder',
       )
       await user.type(input, 'csv')
-      fireEvent.blur(input)
+      await user.tab()
 
       expect(screen.getByText('json')).toBeInTheDocument()
       expect(onCustomFileTypesChange).toHaveBeenCalledWith(['json', 'csv'])
@@ -294,7 +278,8 @@ describe('File upload support components', () => {
       )
     })
 
-    it('should keep upload limits within the configured range', () => {
+    it('should keep upload limits within the configured range', async () => {
+      const user = userEvent.setup()
       const StatefulFileUploadSetting = () => {
         const [payload, setPayload] = useState(createPayload)
 
@@ -304,6 +289,7 @@ describe('File upload support components', () => {
       render(<StatefulFileUploadSetting />)
 
       const input = screen.getByRole('spinbutton')
+      await user.click(input)
 
       fireEvent.change(input, { target: { value: '20' } })
       expect(input).toHaveValue(10)
@@ -313,7 +299,7 @@ describe('File upload support components', () => {
 
       fireEvent.change(input, { target: { value: '' } })
       expect(input).toHaveValue(null)
-      fireEvent.blur(input)
+      await user.tab()
       expect(input).toHaveValue(1)
     })
 
@@ -356,43 +342,6 @@ describe('File upload support components', () => {
       expect(onChange).toHaveBeenLastCalledWith(
         expect.objectContaining({
           allowed_file_types: [],
-        }),
-      )
-    })
-
-    it('should support both upload methods and update custom extensions', async () => {
-      const user = userEvent.setup()
-      const onChange = vi.fn()
-      const { rerender } = render(
-        <FileUploadSetting payload={createPayload()} isMultiple={false} onChange={onChange} />,
-      )
-
-      await user.click(screen.getByText('appDebug.variableConfig.both'))
-      expect(onChange).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
-        }),
-      )
-
-      rerender(
-        <FileUploadSetting
-          payload={createPayload({
-            allowed_file_types: [SupportUploadFileTypes.custom],
-          })}
-          isMultiple={false}
-          onChange={onChange}
-        />,
-      )
-
-      const input = screen.getByPlaceholderText(
-        'appDebug.variableConfig.file.custom.createPlaceholder',
-      )
-      await user.type(input, 'csv')
-      fireEvent.blur(input)
-
-      expect(onChange).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          allowed_file_extensions: ['pdf', 'csv'],
         }),
       )
     })

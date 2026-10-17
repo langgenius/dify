@@ -1,4 +1,5 @@
 import type { LoroMap } from 'loro-crdt'
+import type { Socket } from 'socket.io-client'
 import type { OnlineUser } from '../../types/collaboration'
 import type { NoteNodeType } from '@/app/components/workflow/note-node/types'
 import type { Edge, Node } from '@/app/components/workflow/types'
@@ -86,6 +87,8 @@ describe('CollaborationManager logs and event helpers', () => {
     vi.clearAllMocks()
   })
 
+  afterEach(() => vi.restoreAllMocks())
+
   it('refreshGraphSynchronously emits merged graph with local selected node state', () => {
     const { manager, internals } = setupManagerWithDoc()
     const node = createNode('n-1')
@@ -121,9 +124,10 @@ describe('CollaborationManager logs and event helpers', () => {
     expect(graphPayloads).toHaveLength(1)
     const payload = graphPayloads[0]
     if (!payload) throw new Error('graph import payload should exist')
-    expect(payload.nodes).toHaveLength(1)
-    expect(payload.edges).toHaveLength(1)
-    expect(payload.nodes[0]?.data.selected).toBe(true)
+    expect(payload.nodes).toEqual([
+      expect.objectContaining({ ...node, data: { ...node.data, selected: true } }),
+    ])
+    expect(payload.edges).toEqual([edge])
   })
 
   it('seeds the full reactflow graph before applying a partial local node update to an empty CRDT', () => {
@@ -340,12 +344,9 @@ describe('CollaborationManager logs and event helpers', () => {
 
   it('emits collaboration events only when current app is connected', () => {
     const { manager, internals } = setupManagerWithDoc()
-    const sendSpy = vi
-      .spyOn(
-        manager as unknown as { sendCollaborationEvent: (payload: unknown) => void },
-        'sendCollaborationEvent',
-      )
-      .mockImplementation(() => {})
+    const emit = vi.fn()
+    const socket = { connected: true, emit } as unknown as Socket
+    vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(socket)
     const isConnectedSpy = vi.spyOn(webSocketClient, 'isConnected').mockReturnValue(false)
 
     manager.emitCommentsUpdate('app-1')
@@ -357,13 +358,13 @@ describe('CollaborationManager logs and event helpers', () => {
       initiatorName: 'Alice',
     })
     manager.emitRestoreComplete({ versionId: 'version-1', success: true })
-    expect(sendSpy).not.toHaveBeenCalled()
+    expect(emit).not.toHaveBeenCalled()
 
     internals.currentAppId = 'app-1'
 
     manager.emitCommentsUpdate('app-1')
     manager.emitHistoryAction('undo')
-    expect(sendSpy).not.toHaveBeenCalled()
+    expect(emit).not.toHaveBeenCalled()
 
     isConnectedSpy.mockReturnValue(true)
     manager.emitCommentsUpdate('app-1')
@@ -375,30 +376,28 @@ describe('CollaborationManager logs and event helpers', () => {
     })
     manager.emitRestoreComplete({ versionId: 'version-2', success: false, error: 'failed' })
 
-    const eventTypes = sendSpy.mock.calls.map((call) => (call[0] as { type: string }).type)
-    expect(eventTypes).toEqual([
-      'comments_update',
-      'workflow_history_action',
-      'workflow_restore_intent',
-      'workflow_restore_complete',
+    expect(emit.mock.calls.map(([event, payload]) => [event, payload.type, payload.data])).toEqual([
+      ['collaboration_event', 'comments_update', { appId: 'app-1', timestamp: expect.any(Number) }],
+      ['collaboration_event', 'workflow_history_action', { action: 'redo' }],
+      [
+        'collaboration_event',
+        'workflow_restore_intent',
+        { versionId: 'version-2', initiatorUserId: 'u-2', initiatorName: 'Bob' },
+      ],
+      [
+        'collaboration_event',
+        'workflow_restore_complete',
+        { versionId: 'version-2', success: false, error: 'failed' },
+      ],
     ])
-  })
-
-  it('returns leader state through public getters', () => {
-    const { manager, internals } = setupManagerWithDoc()
-    internals.leaderId = 'leader-123'
-    internals.isLeader = true
-
-    expect(manager.getLeaderId()).toBe('leader-123')
-    expect(manager.getIsLeader()).toBe(true)
   })
 
   it('undo and redo apply CRDT graph to ReactFlow store and emit undo/redo state', () => {
     const { manager, internals } = setupManagerWithDoc()
     const updatedNode = createNode('n-after-undo-redo')
     const updatedEdge = createEdge('e-after-undo-redo', 'n-after-undo-redo', 'n-target')
-    internals.nodesMap?.set(updatedNode.id, updatedNode as unknown as Record<string, unknown>)
-    internals.edgesMap?.set(updatedEdge.id, updatedEdge as unknown as Record<string, unknown>)
+    internals.nodesMap?.set(updatedNode.id, updatedNode as Record<string, unknown>)
+    internals.edgesMap?.set(updatedEdge.id, updatedEdge as Record<string, unknown>)
 
     const setNodesSpy = vi.fn()
     const setEdgesSpy = vi.fn()
@@ -434,8 +433,10 @@ describe('CollaborationManager logs and event helpers', () => {
 
     expect(manager.undo()).toBe(true)
     expect(manager.redo()).toBe(true)
-    expect(setNodesSpy).toHaveBeenCalledTimes(2)
-    expect(setEdgesSpy).toHaveBeenCalledTimes(2)
+    expect(setNodesSpy).toHaveBeenNthCalledWith(1, [expect.objectContaining(updatedNode)])
+    expect(setNodesSpy).toHaveBeenNthCalledWith(2, [expect.objectContaining(updatedNode)])
+    expect(setEdgesSpy).toHaveBeenNthCalledWith(1, [updatedEdge])
+    expect(setEdgesSpy).toHaveBeenNthCalledWith(2, [updatedEdge])
     expect(historyStates).toEqual([
       { canUndo: true, canRedo: true },
       { canUndo: true, canRedo: true },

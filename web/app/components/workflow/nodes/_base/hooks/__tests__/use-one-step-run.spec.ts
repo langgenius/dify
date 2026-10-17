@@ -1,21 +1,11 @@
-import { renderHook } from '@testing-library/react'
+import { ORPCError } from '@orpc/client'
+import { act } from '@testing-library/react'
+import { renderWorkflowFlowHook as renderHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
-import { FlowType } from '@/types/common'
+import { toast } from '@/app/notifications'
+import { consoleClient } from '@/service/console'
 import useOneStepRun from '../use-one-step-run'
 
-const mockWorkflowState = {
-  conversationVariables: [],
-  dataSourceList: [],
-  nodesWithInspectVars: [],
-  setNodesWithInspectVars: vi.fn(),
-  setShowSingleRunPanel: vi.fn(),
-  setIsListening: vi.fn(),
-  setListeningTriggerType: vi.fn(),
-  setListeningTriggerNodeId: vi.fn(),
-  setListeningTriggerNodeIds: vi.fn(),
-  setListeningTriggerIsAll: vi.fn(),
-  setShowVariableInspectPanel: vi.fn(),
-}
 vi.mock('@/app/notifications', () => ({
   toast: {
     error: vi.fn(),
@@ -42,7 +32,7 @@ vi.mock('../../../../hooks/use-workflow', async (importOriginal) => {
 
   return {
     ...actual,
-    useIsChatMode: () => false,
+
     useWorkflow: () => ({
       getBeforeNodesInSameBranch: () => [
         {
@@ -76,56 +66,37 @@ vi.mock('../../../../hooks/use-inspect-vars-crud', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: typeof mockWorkflowState) => unknown) => selector(mockWorkflowState),
-  useWorkflowStore: () => ({
-    getState: () => mockWorkflowState,
-  }),
-}))
-
-vi.mock('reactflow', () => ({
-  useStoreApi: () => ({
-    getState: () => ({
-      getNodes: () => [],
-    }),
-  }),
-}))
-
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: [] }),
-  useAllCustomTools: () => ({ data: [] }),
-  useAllWorkflowTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: [] }),
-}))
-
 vi.mock('@/service/use-workflow', () => ({
-  useInvalidLastRun: () => vi.fn(),
+  useInvalidateLastRun: () => vi.fn(),
 }))
 
 vi.mock('@/service/workflow', () => ({
   fetchNodeInspectVars: vi.fn(),
-  getIterationSingleNodeRunUrl: vi.fn(),
-  getLoopSingleNodeRunUrl: vi.fn(),
   singleNodeRun: vi.fn(),
 }))
 
-vi.mock('@/service/base', () => ({
-  post: vi.fn(),
+const { runTrigger } = vi.hoisted(() => ({ runTrigger: vi.fn() }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post': runTrigger,
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.builtin.get': async () => [],
+      'workspaces.current.tools.api.get': async () => [],
+      'workspaces.current.tools.workflow.get': async () => [],
+      'workspaces.current.tools.mcp.get': async () => [],
+    }),
+  }
+})
+
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
   ssePost: vi.fn(),
-}))
-
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => ({
-    eventEmitter: {
-      useSubscription: vi.fn(),
-    },
-  }),
-}))
-
-vi.mock('../components/variable/use-match-schema-type', () => ({
-  default: () => ({
-    schemaTypeDefinitions: [],
-  }),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/use-match-schema-type', () => ({
@@ -134,78 +105,34 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable/use-match-sch
   }),
 }))
 
-vi.mock('@/app/components/workflow/nodes/assigner/default', () => ({
-  default: {},
-}))
-vi.mock('@/app/components/workflow/nodes/code/default', () => ({
-  default: {},
-}))
-vi.mock('@/app/components/workflow/nodes/document-extractor/default', () => ({
-  default: {},
-}))
-vi.mock('@/app/components/workflow/nodes/http/default', () => ({
-  default: {},
-}))
-vi.mock('@/app/components/workflow/nodes/human-input/default', () => ({
-  default: {},
-}))
-vi.mock('@/app/components/workflow/nodes/if-else/default', () => ({
-  default: {},
-}))
-vi.mock('@/app/components/workflow/nodes/iteration/default', () => ({
-  default: {},
-}))
-vi.mock('@/app/components/workflow/nodes/knowledge-retrieval/default', () => ({
-  default: {},
-}))
-vi.mock('@/app/components/workflow/nodes/llm/default', () => ({
-  default: {},
-}))
-vi.mock('@/app/components/workflow/nodes/loop/default', () => ({
-  default: {},
-}))
-vi.mock('@/app/components/workflow/nodes/parameter-extractor/default', () => ({
-  default: {},
-}))
-vi.mock('@/app/components/workflow/nodes/question-classifier/default', () => ({
-  default: {},
-}))
-vi.mock('@/app/components/workflow/nodes/template-transform/default', () => ({
-  default: {},
-}))
-vi.mock('@/app/components/workflow/nodes/tool/default', () => ({
-  default: {},
-}))
-vi.mock('@/app/components/workflow/nodes/variable-assigner/default', () => ({
-  default: {},
-}))
+const renderUseOneStepRun = (type: BlockEnum = BlockEnum.IfElse) =>
+  renderHook(
+    () =>
+      useOneStepRun({
+        id: 'if-else-node',
+        resource: { kind: 'app', appId: 'app-id', mode: 'workflow' },
 
-const renderUseOneStepRun = () =>
-  renderHook(() =>
-    useOneStepRun({
-      id: 'if-else-node',
-      flowId: 'app-id',
-      flowType: FlowType.appFlow,
-      data: {
-        type: BlockEnum.IfElse,
-        title: 'IF/ELSE',
-        desc: '',
-      },
-      defaultRunInputData: {},
-      isRunAfterSingleRun: false,
-      isPaused: false,
-    }),
+        data: {
+          type,
+          title: 'IF/ELSE',
+          desc: '',
+        },
+        defaultRunInputData: {},
+        isRunAfterSingleRun: false,
+        isPaused: false,
+      }),
+    { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
   )
 
 describe('useOneStepRun single-run input vars', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    Object.defineProperty(globalThis, 'location', {
-      value: {
-        pathname: '/app/test-app/workflow',
-      },
-      configurable: true,
-    })
+    runTrigger.mockReset()
+    window.history.replaceState(null, '', '/app/test-app/workflow')
+  })
+  afterEach(() => {
+    window.history.replaceState(null, '', '/')
+    vi.restoreAllMocks()
   })
 
   it('uses value_type when the variable cannot be resolved from output vars', () => {
@@ -238,5 +165,79 @@ describe('useOneStepRun single-run input vars', () => {
         type: InputVarType.number,
       },
     ])
+  })
+
+  it.each([BlockEnum.TriggerSchedule, BlockEnum.TriggerWebhook, BlockEnum.TriggerPlugin])(
+    'runs %s with the app identity and supports aborting polling requests',
+    async (type) => {
+      const run = vi.mocked(
+        consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post,
+      )
+      run.mockResolvedValueOnce({ id: 'execution-1', status: 'succeeded' })
+      const { result } = renderUseOneStepRun(type)
+      await act(async () => {
+        await result.current.handleRun({})
+      })
+      expect(run.mock.calls[0]?.[0]).toEqual({
+        params: { app_id: 'app-id', node_id: 'if-else-node' },
+      })
+      if (type !== BlockEnum.TriggerSchedule)
+        expect(run.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal)
+      expect(toast.error).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([BlockEnum.TriggerWebhook, BlockEnum.TriggerPlugin])(
+    'aborts the pending %s request when listening stops',
+    async (type) => {
+      const run = vi.mocked(
+        consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post,
+      )
+      run.mockImplementationOnce(
+        (_input, options) =>
+          new Promise((_resolve, reject) => {
+            options?.signal?.addEventListener(
+              'abort',
+              () => reject(new DOMException('Aborted', 'AbortError')),
+              { once: true },
+            )
+          }),
+      )
+      const { result, store } = renderUseOneStepRun(type)
+      await act(async () => {
+        const pendingRun = result.current.handleRun({})
+        result.current.handleStop()
+        expect(await pendingRun).toBe(false)
+      })
+      expect(run.mock.calls[0]?.[1]?.signal?.aborted).toBe(true)
+      expect(store.getState()).toMatchObject({
+        isListening: false,
+        listeningTriggerNodeId: null,
+        listeningTriggerNodeIds: [],
+      })
+      expect(toast.error).not.toHaveBeenCalled()
+    },
+  )
+
+  it('preserves the plugin request error and metadata when reporting a failed run', async () => {
+    const error = new ORPCError('forbidden', {
+      status: 403,
+      message: 'Plugin access denied',
+      data: { reason: 'PLUGIN_ACCESS_DENIED' },
+      cause: { headers: new Headers({ 'X-Request-Id': 'plugin-run-1' }) },
+    })
+    vi.mocked(
+      consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post,
+    ).mockRejectedValueOnce(error)
+    const reportError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { result } = renderUseOneStepRun(BlockEnum.TriggerPlugin)
+
+    await act(async () => {
+      expect(await result.current.handleRun({})).toBe(false)
+    })
+
+    expect(toast.error).toHaveBeenCalledWith('Plugin access denied')
+    expect(reportError).toHaveBeenCalledWith(error)
+    expect(reportError.mock.calls[0]?.[0]).toBe(error)
   })
 })

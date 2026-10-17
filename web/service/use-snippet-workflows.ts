@@ -1,10 +1,7 @@
 import type { PublishSnippetWorkflowResponse, SnippetWorkflow } from '@/types/snippet'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '@/service/console'
-
-const isNotFoundError = (error: unknown) => {
-  return !!error && typeof error === 'object' && 'status' in error && error.status === 404
-}
+import { isNotFoundError } from '@/service/http-error'
 
 export const fetchSnippetDraftWorkflow = async (snippetId: string) => {
   try {

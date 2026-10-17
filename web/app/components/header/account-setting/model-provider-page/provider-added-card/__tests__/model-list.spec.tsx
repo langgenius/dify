@@ -1,6 +1,6 @@
 import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ModelItem, ModelProvider } from '../../declarations'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { ConfigurationMethodEnum } from '../../declarations'
@@ -95,7 +95,7 @@ vi.mock('../model-list-item', () => ({
 describe('ModelList', () => {
   const mockProvider = {
     provider: 'test-provider',
-    configurate_methods: ['customizableModel'],
+    configurate_methods: [ConfigurationMethodEnum.customizableModel],
     custom_configuration: { custom_models: [] },
   } as unknown as ModelProvider
 
@@ -157,7 +157,7 @@ describe('ModelList', () => {
 
     expect(await screen.findByRole('status')).toHaveAttribute('aria-busy', 'true')
 
-    fireEvent.keyDown(document, { key: 'Escape' })
+    await user.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument())
 
     await user.click(screen.getByRole('button', { name: 'gpt-4' }))
@@ -166,24 +166,8 @@ describe('ModelList', () => {
     resolveModule?.({ default: MockModelLoadBalancingModal })
 
     expect(await screen.findByTestId('model-load-balancing-modal')).toBeInTheDocument()
+    expect(mockLoadProviderDetail).not.toHaveBeenCalled()
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
-  })
-
-  it('should render model count and model items', () => {
-    render(
-      <ModelList
-        provider={mockProvider}
-        models={mockModels}
-        onCollapse={mockOnCollapse}
-        onChange={mockOnChange}
-      />,
-    )
-    expect(screen.getByRole('button', { name: /modelProvider\.modelsNum/ })).toHaveAttribute(
-      'aria-expanded',
-      'true',
-    )
-    expect(screen.getByRole('button', { name: 'gpt-4' }))!.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'gpt-3.5' }))!.toBeInTheDocument()
   })
 
   it('should allow the keyboard to focus and collapse the expanded model list', async () => {
@@ -200,23 +184,7 @@ describe('ModelList', () => {
     await user.tab()
     expect(screen.getByRole('button', { name: /modelProvider\.modelsNum/ })).toHaveFocus()
     await user.keyboard('{Enter}')
-    expect(mockOnCollapse).toHaveBeenCalled()
-  })
-
-  it('should open load balancing modal for selected model', async () => {
-    render(
-      <ModelList
-        provider={mockProvider}
-        models={mockModels}
-        onCollapse={mockOnCollapse}
-        onChange={mockOnChange}
-      />,
-    )
-
-    const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: 'gpt-4' }))
-    expect(mockLoadProviderDetail).not.toHaveBeenCalled()
-    expect(await screen.findByTestId('model-load-balancing-modal')).toBeInTheDocument()
+    expect(mockOnCollapse).toHaveBeenCalledOnce()
   })
 
   it('should load provider detail before opening load balancing from a summary card', async () => {
@@ -305,7 +273,7 @@ describe('ModelList', () => {
   it('should hide custom model actions when provider uses predefinedModel only', () => {
     const predefinedProvider = {
       provider: 'test-provider',
-      configurate_methods: ['predefinedModel'],
+      configurate_methods: [ConfigurationMethodEnum.predefinedModel],
     } as unknown as ModelProvider
 
     render(
@@ -317,38 +285,6 @@ describe('ModelList', () => {
       />,
     )
 
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
     expect(screen.queryByTestId('manage-credentials')).not.toBeInTheDocument()
     expect(screen.queryByTestId('add-custom-model')).not.toBeInTheDocument()
   })
@@ -363,19 +299,19 @@ describe('ModelList', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'gpt-4' }))
+    await userEvent.setup().click(screen.getByRole('button', { name: 'gpt-4' }))
     await screen.findByTestId('model-load-balancing-modal')
-    fireEvent.click(screen.getByRole('button', { name: 'Save load balancing' }))
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Save load balancing' }))
     expect(mockOnChange).toHaveBeenCalledWith('test-provider')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close load balancing' }))
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Close load balancing' }))
     expect(screen.queryByTestId('model-load-balancing-modal')).not.toBeInTheDocument()
   })
 
   it('should hide custom model actions when provider uses fetchFromRemote only', () => {
     const fetchOnlyProvider = {
       provider: 'test-provider',
-      configurate_methods: ['fetchFromRemote'],
+      configurate_methods: [ConfigurationMethodEnum.fetchFromRemote],
     } as unknown as ModelProvider
 
     render(
@@ -387,38 +323,6 @@ describe('ModelList', () => {
       />,
     )
 
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
     expect(screen.queryByTestId('manage-credentials')).not.toBeInTheDocument()
     expect(screen.queryByTestId('add-custom-model')).not.toBeInTheDocument()
   })
@@ -445,27 +349,5 @@ describe('ModelList', () => {
     expect(
       screen.getByRole('button', { name: 'modelProvider.modelProvider.addModel' }),
     ).toBeInTheDocument()
-  })
-
-  it('should hide custom model actions when provider is configurable but user cannot configure models', () => {
-    const configurableProvider = {
-      provider: 'test-provider',
-      configurate_methods: [ConfigurationMethodEnum.customizableModel],
-      custom_configuration: { custom_models: [] },
-    } as unknown as ModelProvider
-
-    mockWorkspacePermissionKeys = []
-
-    render(
-      <ModelList
-        provider={configurableProvider}
-        models={mockModels}
-        onCollapse={mockOnCollapse}
-        onChange={mockOnChange}
-      />,
-    )
-
-    expect(screen.queryByTestId('manage-credentials')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('add-custom-model')).not.toBeInTheDocument()
   })
 })

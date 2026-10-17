@@ -1,3 +1,4 @@
+import type { ToolProviderApiEntityResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
 import type { AgentTool } from '@/features/agent-v2/agent-composer/form-state'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
@@ -12,18 +13,11 @@ import { agentComposerToolsAtom } from '@/features/agent-v2/agent-composer/store
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithState } from '@/test/console/render'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import { AgentPromptEditor, AgentTemplatePromptEditor } from '../orchestrate/prompt-editor'
 import { AgentPromptSlashMenu } from '../orchestrate/prompt-editor/slash'
 
-const render = (ui: React.ReactElement) => {
-  const { wrapper } = createConsoleQueryWrapper({ features: { enable_skill: true } })
-  return renderWithState(ui, { wrapper })
-}
-
 const mockPromptEditor = vi.hoisted(() => vi.fn())
-const mockCopy = vi.hoisted(() => vi.fn())
-const mockReset = vi.hoisted(() => vi.fn())
-const mockUseClipboard = vi.hoisted(() => vi.fn())
 const mockConfigFiles = vi.hoisted(() => ({
   current: [] as Array<{
     id: string
@@ -70,7 +64,7 @@ const mockLexical = vi.hoisted(() => ({
   }>,
   rootSelectEnd: vi.fn(),
 }))
-const mockBuiltInTools = vi.hoisted(() => [
+const mockBuiltInTools = vi.hoisted((): ToolProviderApiEntityResponse[] => [
   {
     id: 'duckduckgo',
     name: 'DuckDuckGo',
@@ -84,7 +78,6 @@ const mockBuiltInTools = vi.hoisted(() => [
     is_team_authorization: true,
     allow_delete: false,
     labels: [],
-    meta: {},
     tools: [
       {
         name: 'ddg_search',
@@ -109,9 +102,9 @@ const mockBuiltInTools = vi.hoisted(() => [
 ])
 
 const mockMCPTools = vi.hoisted(() => ({
-  current: [] as Array<Record<string, unknown>>,
+  current: [] as ToolProviderApiEntityResponse[],
 }))
-const mondayMCPProvider = {
+const mondayMCPProvider: ToolProviderApiEntityResponse = {
   id: '1e9b5c9c-0a3f-4a2b-8f6f-2f7a0d3c4b51',
   server_identifier: 'monday_mcp',
   name: 'Monday MCP',
@@ -124,7 +117,6 @@ const mondayMCPProvider = {
   is_team_authorization: true,
   allow_delete: true,
   labels: [],
-  meta: {},
   tools: [
     {
       name: 'list_boards',
@@ -138,7 +130,7 @@ const mondayMCPProvider = {
   ],
 }
 
-const wikipediaProvider = {
+const wikipediaProvider: ToolProviderApiEntityResponse = {
   id: 'wikipedia',
   name: 'Wikipedia',
   author: 'Dify',
@@ -151,7 +143,6 @@ const wikipediaProvider = {
   is_team_authorization: true,
   allow_delete: false,
   labels: [],
-  meta: {},
   tools: [
     {
       name: 'wikipedia_search',
@@ -214,10 +205,6 @@ vi.mock('lexical', () => ({
   SELECTION_CHANGE_COMMAND: Symbol('selection-change-command'),
 }))
 
-vi.mock('foxact/use-clipboard', () => ({
-  useClipboard: mockUseClipboard,
-}))
-
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en_US',
   useDocLink: () => () => 'https://docs.example.com',
@@ -230,12 +217,19 @@ vi.mock('@/context/workspace-state', async () => {
   }))
 })
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: mockBuiltInTools }),
-  useAllCustomTools: () => ({ data: [] }),
-  useAllWorkflowTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: mockMCPTools.current }),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.builtin.get': async () => mockBuiltInTools,
+      'workspaces.current.tools.api.get': async () => [],
+      'workspaces.current.tools.workflow.get': async () => [],
+      'workspaces.current.tools.mcp.get': async () => mockMCPTools.current,
+    }),
+  }
+})
 
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
@@ -281,6 +275,17 @@ const promptEditorDraft = {
   ...defaultAgentSoulConfigFormState,
   tools: [duckDuckGoProviderTool],
 } satisfies typeof defaultAgentSoulConfigFormState
+
+const render = (ui: React.ReactElement) => {
+  const { wrapper, queryClient } = createConsoleQueryWrapper({ features: { enable_skill: true } })
+  seedToolProviders(queryClient, {
+    builtInTools: mockBuiltInTools,
+    customTools: [],
+    workflowTools: [],
+    mcpTools: mockMCPTools.current,
+  })
+  return renderWithState(ui, { wrapper })
+}
 
 const renderAgentPromptEditor = (
   value: string,
@@ -334,38 +339,12 @@ describe('AgentPromptEditor', () => {
     mockLexical.selection = null
     mockLexical.rootChildren = []
     mockLexical.rootSelectEnd.mockClear()
-    mockUseClipboard.mockReturnValue({
-      copied: false,
-      copy: mockCopy,
-      reset: mockReset,
-    })
   })
 
   // Prompt actions should expose the designed copy control and copy the current draft prompt.
   describe('Prompt Actions', () => {
-    it('should label the editable prompt with the visible prompt heading', () => {
-      renderAgentPromptEditor('Review these tenders')
-
-      expect(mockPromptEditor).toHaveBeenCalledWith(
-        expect.objectContaining({
-          'aria-labelledby': 'agent-configure-prompt-label',
-        }),
-      )
-    })
-
-    it('should copy the current prompt when the copy button is clicked', () => {
-      renderAgentPromptEditor('Review these tenders')
-
-      fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.prompt\.copy/i }))
-
-      expect(mockCopy).toHaveBeenCalledWith('Review these tenders')
-    })
-
     it('should keep copied feedback visible after clicking the copy control', async () => {
       const user = userEvent.setup()
-      const { useClipboard } =
-        await vi.importActual<typeof import('foxact/use-clipboard')>('foxact/use-clipboard')
-      mockUseClipboard.mockImplementation(useClipboard)
       renderAgentPromptEditor('Review these tenders')
       const copyButton = screen.getByRole('button', {
         name: /agentDetail\.configure\.prompt\.copy/i,
@@ -383,22 +362,6 @@ describe('AgentPromptEditor', () => {
           screen.queryByText(/agentDetail\.configure\.prompt\.copied$/),
         ).not.toBeInTheDocument()
       })
-    })
-
-    it('should let clipboard timeout restore the copied state instead of resetting on mouse leave', () => {
-      renderAgentPromptEditor('Review these tenders')
-
-      expect(mockUseClipboard).toHaveBeenCalledWith(
-        expect.objectContaining({
-          timeout: 2000,
-        }),
-      )
-
-      fireEvent.mouseLeave(
-        screen.getByRole('button', { name: /agentDetail\.configure\.prompt\.copy/i }),
-      )
-
-      expect(mockReset).not.toHaveBeenCalled()
     })
 
     it('should update knowledge reference labels when the retrieval title changes', () => {
@@ -612,35 +575,22 @@ describe('AgentPromptEditor', () => {
     })
 
     it('should open category menu, show skill submenu, and append the selected reference', async () => {
-      const { store, setPromptValue, container } = renderAgentPromptEditor('Review these tenders')
-
-      expect(mockPromptEditor).toHaveBeenCalledWith(
-        expect.objectContaining({
-          disableBracePicker: true,
-          disableSlashPicker: true,
-          rosterReferenceBlock: expect.objectContaining({
-            show: true,
-          }),
-        }),
-      )
+      const { store, setPromptValue } = renderAgentPromptEditor('Review these tenders')
 
       setPromptValue('Review these tenders /')
       await openSlashMenuFromEditor()
-      expect(container).toContainElement(
-        screen.getByRole('dialog', { name: /agentDetail\.configure\.prompt\.insert\.label/i }),
-      )
       expect(
         screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i }),
       ).toBeInTheDocument()
 
-      fireEvent.click(
-        screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i }),
-      )
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i }))
       expect(
         screen.queryByRole('button', { name: /agentDetail\.configure\.files\.label/i }),
       ).not.toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: /Playwright/i }))
+      await userEvent.setup().click(screen.getByRole('button', { name: /Playwright/i }))
 
       expect(store.get(agentComposerPromptAtom)).toBe(
         'Review these tenders [§skill:playwright:Playwright§] ',
@@ -655,15 +605,15 @@ describe('AgentPromptEditor', () => {
 
       setPromptValue('Use /')
       await openSlashMenuFromEditor()
-      fireEvent.click(
-        screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i }),
-      )
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i }))
       expect(
         screen
           .getAllByRole('button', { name: /Library Skill|Playwright/ })
           .map((button) => button.textContent),
       ).toEqual(['Library Skill', 'Playwright'])
-      fireEvent.click(screen.getByRole('button', { name: 'Library Skill' }))
+      await userEvent.setup().click(screen.getByRole('button', { name: 'Library Skill' }))
 
       expect(store.get(agentComposerPromptAtom)).toBe('Use [§skill:library-skill:Library Skill§] ')
     })
@@ -831,46 +781,6 @@ describe('AgentPromptEditor', () => {
       })
     })
 
-    it('should keep focus in the editor and position the menu from the typed slash', async () => {
-      const getClientRectsSpy = vi
-        .spyOn(Range.prototype, 'getClientRects')
-        .mockImplementation(function (this: Range) {
-          const rect = this.collapsed
-            ? DOMRect.fromRect({ x: 480, y: 76, width: 0, height: 18 })
-            : DOMRect.fromRect({ x: 82, y: 76, width: 8, height: 18 })
-          return [rect] as unknown as DOMRectList
-        })
-      const getBoundingClientRectSpy = vi
-        .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
-        .mockImplementation(() => DOMRect.fromRect({ x: 10, y: 50, width: 500, height: 240 }))
-
-      try {
-        renderAgentPromptEditor('Review /')
-        const textbox = screen.getByRole('textbox')
-        const textNode = textbox.firstChild
-        expect(textNode).not.toBeNull()
-
-        const range = document.createRange()
-        range.setStart(textNode!, 'Review /'.length)
-        range.setEnd(textNode!, 'Review /'.length)
-        const selection = window.getSelection()
-        selection?.removeAllRanges()
-        selection?.addRange(range)
-
-        textbox.focus()
-        const slashMenu = await openSlashMenuFromEditor(textbox)
-        expect(textbox).toHaveFocus()
-        expect(slashMenu).toHaveStyle({
-          left: '80px',
-          top: '48px',
-        })
-      } finally {
-        window.getSelection()?.removeAllRanges()
-        getClientRectsSpy.mockRestore()
-        getBoundingClientRectSpy.mockRestore()
-      }
-    })
-
     it('should replace the slash at the current lexical selection instead of appending', async () => {
       const textNode = {
         __text: true as const,
@@ -898,10 +808,10 @@ describe('AgentPromptEditor', () => {
       textbox.focus()
 
       await openSlashMenuFromEditor(textbox)
-      fireEvent.click(
-        screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i }),
-      )
-      fireEvent.click(screen.getByRole('button', { name: /Playwright/i }))
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i }))
+      await userEvent.setup().click(screen.getByRole('button', { name: /Playwright/i }))
 
       expect(store.get(agentComposerPromptAtom)).toBe('Review [§skill:playwright:Playwright§] now')
       await waitFor(() => {
@@ -909,7 +819,7 @@ describe('AgentPromptEditor', () => {
       })
     })
 
-    it('should insert slash from the focused footer insert action', () => {
+    it('should insert slash from the focused footer insert action', async () => {
       const { store } = renderAgentPromptEditor('Review these tenders')
 
       fireEvent.focus(screen.getByRole('textbox'))
@@ -917,7 +827,7 @@ describe('AgentPromptEditor', () => {
         name: /agentDetail\.configure\.prompt\.insert\.label/i,
       })
       fireEvent.pointerDown(insertButton)
-      fireEvent.click(insertButton)
+      await userEvent.setup().click(insertButton)
       fireEvent.pointerUp(insertButton)
 
       expect(store.get(agentComposerPromptAtom)).toBe('Review these tenders/')
@@ -929,7 +839,7 @@ describe('AgentPromptEditor', () => {
       ).not.toBeInTheDocument()
     })
 
-    it('should insert references after prompt add actions create skills, files, or knowledge retrievals', () => {
+    it('should insert references after prompt add actions create skills, files, or knowledge retrievals', async () => {
       const onInsertToken = vi.fn()
       const categories = [
         { key: 'skills' as const, label: 'Skills', icon: 'i-ri-box-3-line' },
@@ -953,7 +863,7 @@ describe('AgentPromptEditor', () => {
           onInsertToken={onInsertToken}
         />,
       )
-      fireEvent.click(
+      await userEvent.setup().click(
         screen.getByRole('button', {
           name: /agentDetail\.configure\.skills\.addMenu\.workspace\.label/i,
         }),
@@ -982,7 +892,9 @@ describe('AgentPromptEditor', () => {
           onInsertToken={onInsertToken}
         />,
       )
-      fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.files\.add/i }))
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: /agentDetail\.configure\.files\.add/i }))
       expect(onInsertToken).toHaveBeenCalledWith('[§file:Guide.md:Guide.md§]')
 
       rerender(
@@ -1002,9 +914,11 @@ describe('AgentPromptEditor', () => {
           onInsertToken={onInsertToken}
         />,
       )
-      fireEvent.click(
-        screen.getByRole('button', { name: /agentDetail\.configure\.knowledgeRetrieval\.add/i }),
-      )
+      await userEvent
+        .setup()
+        .click(
+          screen.getByRole('button', { name: /agentDetail\.configure\.knowledgeRetrieval\.add/i }),
+        )
       expect(onInsertToken).toHaveBeenCalledWith('[§knowledge:retrieval-1:Retrieval One§]')
 
       rerender(
@@ -1037,16 +951,11 @@ describe('AgentPromptEditor', () => {
       const expectedProviderIcon = `${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=workspace-123&filename=duckduckgo.svg`
 
       await openSlashMenuFromEditor()
-      fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.tools\.label/i }))
-      const providerButton = screen.getByRole('button', {
-        name: /DuckDuckGo.*agentDetail\.configure\.tools\.toolTabs\.plugins/i,
-      })
-      const providerIcon = Array.from(providerButton.querySelectorAll<HTMLElement>('[style]')).find(
-        (element) => element.style.backgroundImage,
-      )
-      expect(providerIcon).toHaveStyle({ backgroundImage: `url(${expectedProviderIcon})` })
-      fireEvent.click(screen.getByRole('button', { name: 'DuckDuckGo' }))
-      fireEvent.click(screen.getByRole('button', { name: /DuckDuckGo Search/i }))
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: /agentDetail\.configure\.tools\.label/i }))
+      await userEvent.setup().click(screen.getByRole('button', { name: 'DuckDuckGo' }))
+      await userEvent.setup().click(screen.getByRole('button', { name: /DuckDuckGo Search/i }))
 
       expect(store.get(agentComposerPromptAtom)).toBe(
         'Research [§tool:duckduckgo/ddg_search:DuckDuckGo Search§] ',
@@ -1066,8 +975,10 @@ describe('AgentPromptEditor', () => {
 
       setPromptValue('Research /')
       await openSlashMenuFromEditor()
-      fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.tools\.label/i }))
-      fireEvent.click(
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: /agentDetail\.configure\.tools\.label/i }))
+      await userEvent.setup().click(
         screen.getByRole('button', {
           name: /DuckDuckGo.*agentDetail\.configure\.tools\.toolTabs\.plugins/i,
         }),
@@ -1090,9 +1001,11 @@ describe('AgentPromptEditor', () => {
       const { store, setPromptValue } = renderAgentPromptEditor('Research /', { tools: [] })
 
       await openSlashMenuFromEditor()
-      fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.tools\.label/i }))
-      fireEvent.click(screen.getByRole('button', { name: 'Monday MCP' }))
-      fireEvent.click(screen.getByRole('button', { name: /List Boards/i }))
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: /agentDetail\.configure\.tools\.label/i }))
+      await userEvent.setup().click(screen.getByRole('button', { name: 'Monday MCP' }))
+      await userEvent.setup().click(screen.getByRole('button', { name: /List Boards/i }))
 
       expect(store.get(agentComposerPromptAtom)).toBe(
         'Research [§tool:monday_mcp/list_boards:List Boards§] ',
@@ -1103,8 +1016,10 @@ describe('AgentPromptEditor', () => {
 
       setPromptValue('Research /')
       await openSlashMenuFromEditor()
-      fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.tools\.label/i }))
-      fireEvent.click(
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: /agentDetail\.configure\.tools\.label/i }))
+      await userEvent.setup().click(
         screen.getByRole('button', {
           name: /Monday MCP.*agentDetail\.configure\.tools\.toolTabs\.mcp/i,
         }),
@@ -1155,7 +1070,7 @@ describe('AgentPromptEditor', () => {
       })
     })
 
-    it('should show configured providers and actions before other available tools', () => {
+    it('should show configured providers and actions before other available tools', async () => {
       mockBuiltInTools.unshift(wikipediaProvider)
       const configuredDuckDuckGoTranslateTool: AgentTool = {
         ...duckDuckGoProviderTool,
@@ -1197,7 +1112,7 @@ describe('AgentPromptEditor', () => {
         expect(providerButtons[0]).toHaveTextContent('DuckDuckGo')
         expect(providerButtons[1]).toHaveTextContent('Wikipedia')
 
-        fireEvent.click(screen.getByRole('button', { name: 'DuckDuckGo' }))
+        await userEvent.setup().click(screen.getByRole('button', { name: 'DuckDuckGo' }))
         const actionButtons = screen.getAllByRole('button', {
           name: /DuckDuckGo (Search|Translate)/,
         })

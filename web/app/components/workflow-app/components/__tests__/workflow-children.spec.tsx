@@ -1,20 +1,24 @@
-import { act, render, screen } from '@testing-library/react'
+import type { InjectWorkflowStoreSliceFn, Shape } from '@/app/components/workflow/store'
+import type { EventEmitterValue } from '@/context/event-emitter'
+import { act, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import { createTestWorkflowStore } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
+import { WorkflowContext } from '@/app/components/workflow/context'
+import { renderEditor } from '@/app/components/workflow/editor-resource/__tests__/render'
+import {
+  createHooksStore,
+  fullWorkflowAccessControl,
+  HooksStoreContext,
+} from '@/app/components/workflow/hooks-store'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
+import { createWorkflowSlice } from '../../store/workflow/workflow-slice'
 import WorkflowChildren from '../workflow-children'
 
-type WorkflowStoreState = {
-  appId?: string
-  showFeaturesPanel: boolean
-  showImportDSLModal: boolean
-  setShowImportDSLModal: (show: boolean) => void
-  showOnboarding: boolean
-  setShowOnboarding: (show: boolean) => void
-  setHasSelectedStartNode: (selected: boolean) => void
-  setShouldAutoOpenStartNodeSelector: (open: boolean) => void
-}
+type WorkflowStoreState = Partial<Shape>
 
 type TriggerPluginConfig = {
   plugin_id: string
@@ -32,10 +36,6 @@ type TriggerPluginConfig = {
   meta?: Record<string, unknown>
 }
 
-const mockSetShowImportDSLModal = vi.fn()
-const mockSetShowOnboarding = vi.fn()
-const mockSetHasSelectedStartNode = vi.fn()
-const mockSetShouldAutoOpenStartNodeSelector = vi.fn()
 const mockSetNodes = vi.fn()
 const mockSetEdges = vi.fn()
 const mockHandleSyncWorkflowDraft = vi.fn()
@@ -47,12 +47,37 @@ const mockAutoGenerateWebhookUrl = vi.fn()
 
 let workflowStoreState: WorkflowStoreState
 let mockCanEdit = true
-let eventSubscription:
-  | ((value: { type: string; payload: { data: Array<Record<string, unknown>> } }) => void)
-  | null = null
-let lastGenerateNodeInput: Record<string, unknown> | null = null
+let workflowStore: ReturnType<typeof createTestWorkflowStore>
+let emitWorkflowEvent: (event: EventEmitterValue) => void
+function EventSource({ children }: { children: React.ReactNode }) {
+  const { eventEmitter } = useEventEmitterContextContext()
+  emitWorkflowEvent = (event) => eventEmitter?.emit(event)
+  return children
+}
+const render: typeof renderEditor = (ui, options = {}) => {
+  workflowStore = createTestWorkflowStore(
+    workflowStoreState,
+    createWorkflowSlice as InjectWorkflowStoreSliceFn,
+  )
+  const hooksStore = createHooksStore({
+    accessControl: { ...fullWorkflowAccessControl, canEdit: mockCanEdit },
+  })
+  return renderEditor(ui, {
+    ...options,
+    wrapper: ({ children }) => (
+      <WorkflowContext value={workflowStore}>
+        <HooksStoreContext value={hooksStore}>
+          <EventEmitterContextProvider>
+            <EventSource>{children}</EventSource>
+          </EventEmitterContextProvider>
+        </HooksStoreContext>
+      </WorkflowContext>
+    ),
+  })
+}
 
-vi.mock('reactflow', () => ({
+vi.mock('reactflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('reactflow')>()),
   useStoreApi: () => ({
     getState: () => ({
       setNodes: mockSetNodes,
@@ -61,43 +86,11 @@ vi.mock('reactflow', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: <T,>(selector: (state: WorkflowStoreState) => T) => selector(workflowStoreState),
-}))
-
-vi.mock('@/app/components/workflow/hooks-store', () => ({
-  useHooksStore: <T,>(
-    selector: (state: { accessControl: { canImportExportDSL: boolean; canEdit: boolean } }) => T,
-  ): T =>
-    selector({
-      accessControl: {
-        canImportExportDSL: true,
-        canEdit: mockCanEdit,
-      },
-    }),
-}))
-
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => ({
-    eventEmitter: {
-      useSubscription: (callback: typeof eventSubscription) => {
-        eventSubscription = callback
-      },
-    },
-  }),
-}))
-
 vi.mock('@/app/components/workflow/hooks/use-DSL', () => ({
   useAutoGenerateWebhookUrl: () => mockAutoGenerateWebhookUrl,
   useDSL: () => ({
     exportCheck: mockExportCheck,
     handleExportDSL: mockHandleExportDSL,
-  }),
-}))
-
-vi.mock('@/app/components/workflow/hooks/use-workflow-panel-interactions', () => ({
-  usePanelInteractions: () => ({
-    handlePaneContextmenuCancel: mockHandlePaneContextmenuCancel,
   }),
 }))
 
@@ -118,25 +111,8 @@ vi.mock('@/app/components/workflow/hooks/use-auto-generate-webhook-url', () => (
   useAutoGenerateWebhookUrl: () => mockAutoGenerateWebhookUrl,
 }))
 
-vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/workflow/utils')>()
-  return {
-    ...actual,
-    generateNewNode: (args: Record<string, unknown>) => {
-      lastGenerateNodeInput = args
-      return {
-        newNode: {
-          id: 'new-node-id',
-          position: args.position,
-          data: args.data,
-        },
-      }
-    },
-  }
-})
-
-vi.mock('../../hooks/use-available-nodes-meta-data', () => ({
-  useAvailableNodesMetaData: () => ({
+vi.mock('@/app/components/workflow/node-catalog', () => ({
+  useWorkflowNodeCatalog: () => ({
     nodesMap: {
       [BlockEnum.Start]: {
         defaultValue: {
@@ -212,16 +188,16 @@ vi.mock('@/app/components/workflow/features', () => ({
 
 vi.mock('@/app/components/workflow/update-dsl-modal', () => ({
   default: ({
-    onCancel,
+    onOpenChange,
     onBackup,
     onImport,
   }: {
-    onCancel: () => void
+    onOpenChange: (open: boolean) => void
     onBackup: () => void
     onImport: () => void
   }) => (
     <div data-testid="update-dsl-modal">
-      <button type="button" onClick={onCancel}>
+      <button type="button" onClick={() => onOpenChange(false)}>
         cancel-import-dsl
       </button>
       <button type="button" onClick={onBackup}>
@@ -241,11 +217,11 @@ vi.mock('@/app/components/app/export-confirm-modal', () => ({
     onClose,
   }: {
     envList: Array<Record<string, unknown>>
-    onConfirm: () => void
+    onConfirm: (includeSecret: boolean) => void
     onClose: () => void
   }) => (
     <div data-testid="dsl-export-confirm-modal" data-env-count={String(envList.length)}>
-      <button type="button" onClick={onConfirm}>
+      <button type="button" onClick={() => onConfirm(true)}>
         confirm-export-dsl
       </button>
       <button type="button" onClick={onClose}>
@@ -333,19 +309,13 @@ vi.mock('@/app/components/workflow-app/components/workflow-onboarding-modal', ()
 
 describe('WorkflowChildren', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     workflowStoreState = {
-      appId: 'app-1',
       showFeaturesPanel: false,
       showImportDSLModal: false,
-      setShowImportDSLModal: mockSetShowImportDSLModal,
       showOnboarding: false,
-      setShowOnboarding: mockSetShowOnboarding,
-      setHasSelectedStartNode: mockSetHasSelectedStartNode,
-      setShouldAutoOpenStartNodeSelector: mockSetShouldAutoOpenStartNodeSelector,
     }
-    eventSubscription = null
-    lastGenerateNodeInput = null
+
     mockCanEdit = true
     mockHandleSyncWorkflowDraft.mockImplementation(
       (_force?: boolean, _notRefresh?: boolean, callback?: { onSuccess?: () => void }) => {
@@ -354,7 +324,7 @@ describe('WorkflowChildren', () => {
     )
   })
 
-  it('should render feature panel, import modal actions, and default workflow chrome', async () => {
+  it('backs up and imports DSL, then closes the import dialog', async () => {
     const user = userEvent.setup()
     workflowStoreState = {
       ...workflowStoreState,
@@ -362,19 +332,17 @@ describe('WorkflowChildren', () => {
       showImportDSLModal: true,
     }
 
-    render(<WorkflowChildren />)
+    render(<WorkflowChildren />, { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } })
 
-    expect(screen.getByTestId('plugin-dependency')).toBeInTheDocument()
-    expect(screen.getByTestId('workflow-header')).toBeInTheDocument()
-    expect(screen.getByTestId('workflow-panel')).toBeInTheDocument()
     expect(await screen.findByTestId('workflow-features')).toBeInTheDocument()
     expect(screen.getByTestId('update-dsl-modal')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: /cancel-import-dsl/i }))
     await user.click(screen.getByRole('button', { name: /backup-dsl/i }))
     await user.click(screen.getByRole('button', { name: /^import-dsl$/i }))
+    await user.click(screen.getByRole('button', { name: /cancel-import-dsl/i }))
+    expect(screen.queryByTestId('update-dsl-modal')).not.toBeInTheDocument()
 
-    expect(mockSetShowImportDSLModal).toHaveBeenCalledWith(false)
+    expect(workflowStore.getState().showImportDSLModal).toEqual(false)
     expect(mockExportCheck).toHaveBeenCalled()
     expect(mockHandlePaneContextmenuCancel).toHaveBeenCalled()
   })
@@ -382,13 +350,24 @@ describe('WorkflowChildren', () => {
   it('should react to DSL export check events by showing the confirm modal and closing it', async () => {
     const user = userEvent.setup()
 
-    render(<WorkflowChildren />)
+    render(<WorkflowChildren />, { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } })
+
+    act(() =>
+      emitWorkflowEvent({
+        type: 'UNRELATED_EVENT',
+        payload: { data: [{ name: 'IGNORED', value: 'secret' }] },
+      }),
+    )
+    expect(screen.queryByTestId('dsl-export-confirm-modal')).not.toBeInTheDocument()
 
     await act(async () => {
-      eventSubscription?.({
+      emitWorkflowEvent({
         type: DSL_EXPORT_CHECK,
         payload: {
-          data: [{ id: 'env-1' }, { id: 'env-2' }],
+          data: [
+            { name: 'API_KEY', value: 'secret' },
+            { name: 'TOKEN', value: 'other-secret' },
+          ],
         },
       })
     })
@@ -401,22 +380,7 @@ describe('WorkflowChildren', () => {
     await user.click(screen.getByRole('button', { name: /confirm-export-dsl/i }))
     await user.click(screen.getByRole('button', { name: /close-export-dsl/i }))
 
-    expect(mockHandleExportDSL).toHaveBeenCalled()
-    expect(screen.queryByTestId('dsl-export-confirm-modal')).not.toBeInTheDocument()
-  })
-
-  it('should ignore unrelated workflow events when listening for DSL export checks', async () => {
-    render(<WorkflowChildren />)
-
-    await act(async () => {
-      eventSubscription?.({
-        type: 'UNRELATED_EVENT',
-        payload: {
-          data: [{ id: 'env-1' }],
-        },
-      })
-    })
-
+    expect(mockHandleExportDSL).toHaveBeenCalledWith(true)
     expect(screen.queryByTestId('dsl-export-confirm-modal')).not.toBeInTheDocument()
   })
 
@@ -427,7 +391,7 @@ describe('WorkflowChildren', () => {
       showOnboarding: true,
     }
 
-    render(<WorkflowChildren />)
+    render(<WorkflowChildren />, { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } })
 
     expect(await screen.findByTestId('workflow-onboarding-modal')).toBeInTheDocument()
 
@@ -443,7 +407,7 @@ describe('WorkflowChildren', () => {
       showOnboarding: true,
     }
 
-    render(<WorkflowChildren />)
+    render(<WorkflowChildren />, { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } })
 
     expect(screen.queryByTestId('workflow-onboarding-modal')).not.toBeInTheDocument()
     expect(mockSetNodes).not.toHaveBeenCalled()
@@ -457,11 +421,11 @@ describe('WorkflowChildren', () => {
       showOnboarding: true,
     }
 
-    render(<WorkflowChildren />)
+    render(<WorkflowChildren />, { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } })
 
     await user.click(await screen.findByRole('button', { name: /^select-start-node$/i }))
 
-    expect(lastGenerateNodeInput).toMatchObject({
+    expect(mockSetNodes.mock.lastCall?.[0][0]).toMatchObject({
       data: {
         title: 'Start Title',
         desc: 'Start description',
@@ -470,13 +434,13 @@ describe('WorkflowChildren', () => {
         },
       },
     })
-    expect(mockSetNodes).toHaveBeenCalledWith([expect.objectContaining({ id: 'new-node-id' })])
+    expect(mockSetNodes).toHaveBeenCalledWith([expect.objectContaining({ id: expect.any(String) })])
     expect(mockSetEdges).toHaveBeenCalledWith([])
-    expect(mockSetShowOnboarding).toHaveBeenCalledWith(false)
-    expect(mockSetHasSelectedStartNode).toHaveBeenCalledWith(true)
-    expect(mockSetShouldAutoOpenStartNodeSelector).toHaveBeenCalledWith(true)
+    expect(workflowStore.getState().showOnboarding).toEqual(false)
+    expect(workflowStore.getState().hasSelectedStartNode).toEqual(true)
+    expect(workflowStore.getState().shouldAutoOpenStartNodeSelector).toEqual(true)
     expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true, false, expect.any(Object))
-    expect(mockAutoGenerateWebhookUrl).toHaveBeenCalledWith('new-node-id')
+    expect(mockAutoGenerateWebhookUrl).toHaveBeenCalledWith(mockSetNodes.mock.lastCall?.[0][0].id)
   })
 
   it('should merge non-trigger start node config directly into the default node data', async () => {
@@ -486,11 +450,11 @@ describe('WorkflowChildren', () => {
       showOnboarding: true,
     }
 
-    render(<WorkflowChildren />)
+    render(<WorkflowChildren />, { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } })
 
     await user.click(await screen.findByRole('button', { name: /select-start-node-with-config/i }))
 
-    expect(lastGenerateNodeInput).toMatchObject({
+    expect(mockSetNodes.mock.lastCall?.[0][0]).toMatchObject({
       data: {
         title: 'Configured Start Title',
         desc: 'Configured Start Description',
@@ -510,11 +474,11 @@ describe('WorkflowChildren', () => {
       showOnboarding: true,
     }
 
-    render(<WorkflowChildren />)
+    render(<WorkflowChildren />, { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } })
 
     await user.click(await screen.findByRole('button', { name: /^select-trigger-plugin$/i }))
 
-    expect(lastGenerateNodeInput).toMatchObject({
+    expect(mockSetNodes.mock.lastCall?.[0][0]).toMatchObject({
       data: {
         plugin_id: 'plugin-id',
         provider_id: 'provider-name',
@@ -546,11 +510,11 @@ describe('WorkflowChildren', () => {
       showOnboarding: true,
     }
 
-    render(<WorkflowChildren />)
+    render(<WorkflowChildren />, { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } })
 
     await user.click(await screen.findByRole('button', { name: /select-trigger-plugin-fallback/i }))
 
-    expect(lastGenerateNodeInput).toMatchObject({
+    expect(mockSetNodes.mock.lastCall?.[0][0]).toMatchObject({
       data: {
         title: 'Plugin title',
         desc: 'Plugin description',

@@ -131,7 +131,7 @@ const clients = new Set<QueryClient>()
 const features = zGetFeaturesResponse.parse({ apps: { size: 1, limit: 10 } })
 
 beforeEach(() => {
-  vi.clearAllMocks()
+  vi.resetAllMocks()
   localStorage.clear()
   search.params = new URLSearchParams()
   importResponse = completed

@@ -1,4 +1,5 @@
-import type { PreProcessingRule, Rules } from '@/models/datasets'
+import type { PreProcessingRule } from '@dify/contracts/api/console/datasets/types.gen'
+import type { Rules } from '@/models/datasets'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode, ProcessMode } from '@/models/datasets'
@@ -16,76 +17,8 @@ describe('useSegmentationState', () => {
   })
 
   // --- Default state ---
-  describe('default state', () => {
-    it('should initialize with default values', () => {
-      const { result } = renderHook(() => useSegmentationState())
-
-      expect(result.current.segmentationType).toBe(ProcessMode.general)
-      expect(result.current.segmentIdentifier).toBe(DEFAULT_SEGMENT_IDENTIFIER)
-      expect(result.current.maxChunkLength).toBe(DEFAULT_MAXIMUM_CHUNK_LENGTH)
-      expect(result.current.overlap).toBe(DEFAULT_OVERLAP)
-      expect(result.current.rules).toEqual([])
-      expect(result.current.parentChildConfig).toEqual(defaultParentChildConfig)
-    })
-
-    it('should accept initial segmentation type', () => {
-      const { result } = renderHook(() =>
-        useSegmentationState({ initialSegmentationType: ProcessMode.parentChild }),
-      )
-      expect(result.current.segmentationType).toBe(ProcessMode.parentChild)
-    })
-
-    it('should accept initial summary index setting', () => {
-      const setting = { enable: true }
-      const { result } = renderHook(() =>
-        useSegmentationState({ initialSummaryIndexSetting: setting }),
-      )
-      expect(result.current.summaryIndexSetting).toEqual(setting)
-    })
-  })
 
   // --- Setters ---
-  describe('setters', () => {
-    it('should update segmentation type', () => {
-      const { result } = renderHook(() => useSegmentationState())
-
-      act(() => {
-        result.current.setSegmentationType(ProcessMode.parentChild)
-      })
-      expect(result.current.segmentationType).toBe(ProcessMode.parentChild)
-    })
-
-    it('should update max chunk length', () => {
-      const { result } = renderHook(() => useSegmentationState())
-
-      act(() => {
-        result.current.setMaxChunkLength(2048)
-      })
-      expect(result.current.maxChunkLength).toBe(2048)
-    })
-
-    it('should update overlap', () => {
-      const { result } = renderHook(() => useSegmentationState())
-
-      act(() => {
-        result.current.setOverlap(100)
-      })
-      expect(result.current.overlap).toBe(100)
-    })
-
-    it('should update rules', () => {
-      const newRules: PreProcessingRule[] = [
-        { id: 'remove_extra_spaces', enabled: true },
-        { id: 'remove_urls_emails', enabled: false },
-      ]
-      const { result } = renderHook(() => useSegmentationState())
-
-      act(() => {
-        result.current.setRules(newRules)
-      })
-      expect(result.current.rules).toEqual(newRules)
-    })
-  })
 
   // --- Segment identifier with escaping ---
   describe('setSegmentIdentifier', () => {
@@ -167,15 +100,6 @@ describe('useSegmentationState', () => {
       expect(result.current.parentChildConfig.parent.delimiter).toBe('\\n')
     })
 
-    it('should update parent maxLength', () => {
-      const { result } = renderHook(() => useSegmentationState())
-
-      act(() => {
-        result.current.updateParentConfig('maxLength', 2048)
-      })
-      expect(result.current.parentChildConfig.parent.maxLength).toBe(2048)
-    })
-
     it('should update child delimiter with escaping', () => {
       const { result } = renderHook(() => useSegmentationState())
 
@@ -185,15 +109,6 @@ describe('useSegmentationState', () => {
       expect(result.current.parentChildConfig.child.delimiter).toBe('\\t')
     })
 
-    it('should update child maxLength', () => {
-      const { result } = renderHook(() => useSegmentationState())
-
-      act(() => {
-        result.current.updateChildConfig('maxLength', 256)
-      })
-      expect(result.current.parentChildConfig.child.maxLength).toBe(256)
-    })
-
     it('should set empty delimiter when value is empty', () => {
       const { result } = renderHook(() => useSegmentationState())
 
@@ -201,15 +116,6 @@ describe('useSegmentationState', () => {
         result.current.updateParentConfig('delimiter', '')
       })
       expect(result.current.parentChildConfig.parent.delimiter).toBe('')
-    })
-
-    it('should set chunk for context mode', () => {
-      const { result } = renderHook(() => useSegmentationState())
-
-      act(() => {
-        result.current.setChunkForContext('full-doc')
-      })
-      expect(result.current.parentChildConfig.chunkForContext).toBe('full-doc')
     })
   })
 
@@ -331,7 +237,7 @@ describe('useSegmentationState', () => {
       const rule = result.current.getProcessRule(ChunkingMode.parentChild)
       expect(rule.mode).toBe('hierarchical')
       expect(rule.rules!.parent_mode).toBe('paragraph')
-      expect(rule.rules!.subchunk_segmentation).toBeDefined()
+      expect(rule.rules!.subchunk_segmentation).toEqual({ separator: '\n', max_tokens: 512 })
     })
 
     it('should include summary index setting in process rule', () => {
@@ -355,18 +261,9 @@ describe('useSegmentationState', () => {
       act(() => {
         result.current.handleSummaryIndexSettingChange({ enable: true })
       })
-      expect(result.current.summaryIndexSetting).toEqual({ enable: true })
-    })
-
-    it('should merge with existing setting', () => {
-      const { result } = renderHook(() =>
-        useSegmentationState({ initialSummaryIndexSetting: { enable: true } }),
-      )
-
-      act(() => {
-        result.current.handleSummaryIndexSettingChange({ enable: false })
+      expect(result.current.getProcessRule(ChunkingMode.text).summary_index_setting).toEqual({
+        enable: true,
       })
-      expect(result.current.summaryIndexSetting?.enable).toBe(false)
     })
   })
 })

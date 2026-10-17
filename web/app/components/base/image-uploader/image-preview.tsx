@@ -63,10 +63,15 @@ function ImagePreviewContent({ url, title, onCancel, onPrev, onNext }: ImagePrev
     // Open in a new window, considering the case when the page is inside an iframe
     if (url.startsWith('http') || url.startsWith('/')) {
       window.open(url, '_blank')
-    } else if (url.startsWith('data:image')) {
+    } else if (url.startsWith('data:image') || isBase64(url)) {
       // Base64 image
       const win = window.open()
-      win?.document.write(`<img src="${url}" alt="${title}" />`)
+      if (win) {
+        const image = win.document.createElement('img')
+        image.src = isBase64(url) ? `data:image/png;base64,${url}` : url
+        image.alt = title
+        win.document.body.appendChild(image)
+      }
     } else {
       toast.error(`Unable to open image: ${url}`)
     }
@@ -210,7 +215,7 @@ function ImagePreviewContent({ url, title, onCancel, onPrev, onNext }: ImagePrev
       <DialogPopup
         ref={previewRef}
         aria-label={title.trim() || t(($) => $['common.preview'], { ns: 'workflow' })}
-        className="image-preview-container fixed inset-0! top-0! left-0! flex h-dvh! max-h-none! w-screen! max-w-none! translate-0! items-center justify-center overflow-hidden! rounded-none! border-none! bg-black/80 p-8! shadow-none!"
+        className="image-preview-container fixed inset-0 flex h-dvh w-screen items-center justify-center overflow-hidden bg-black/80 p-8"
       >
         <div
           data-testid="image-preview-container"

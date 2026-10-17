@@ -2,88 +2,34 @@ import type { ReactNode, RefObject } from 'react'
 import type { DebugWithSingleModelRefType } from '../index'
 import type { ChatItem } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import type { Collection } from '@/app/components/tools/types'
-import type { DatasetConfigs, ModelConfig } from '@/models/debug'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import type { ModelConfig } from '@/models/debug'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { createRef } from 'react'
-import { CollectionType } from '@/app/components/tools/types'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { PromptMode } from '@/models/debug'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
-import { AgentStrategy, AppModeEnum, ModelModeType, Resolution, TransferMethod } from '@/types/app'
+import {
+  createDebugConfigurationFixture,
+  createModelConfigFixture,
+} from '@/test/fixtures/debug-configuration'
+import { ModelModeType, TransferMethod } from '@/types/app'
 import DebugWithSingleModel from '../index'
 
-// ============================================================================
-// Test Data Factories (Following testing.md guidelines)
-// ============================================================================
-
-/**
- * Factory function for creating mock ModelConfig with type safety
- */
 function createMockModelConfig(overrides: Partial<ModelConfig> = {}): ModelConfig {
-  return {
+  return createModelConfigFixture({
     provider: 'openai',
     model_id: 'gpt-3.5-turbo',
     mode: ModelModeType.chat,
     configs: {
       prompt_template: 'Test template',
-      prompt_variables: [{ key: 'var1', name: 'Variable 1', type: 'text', required: false }],
-    },
-    chat_prompt_config: {
-      prompt: [],
-    },
-    completion_prompt_config: {
-      prompt: { text: '' },
-      conversation_histories_role: {
-        user_prefix: 'user',
-        assistant_prefix: 'assistant',
-      },
-    },
-    more_like_this: null,
-    opening_statement: '',
-    suggested_questions: [],
-    sensitive_word_avoidance: null,
-    speech_to_text: null,
-    text_to_speech: null,
-    file_upload: null,
-    suggested_questions_after_answer: null,
-    retriever_resource: null,
-    annotation_reply: null,
-    external_data_tools: [],
-    dataSets: [],
-    agentConfig: {
-      enabled: false,
-      max_iteration: 5,
-      tools: [],
-      strategy: AgentStrategy.react,
+      prompt_variables: [{ key: 'var1', name: 'Variable 1', type: 'string', required: false }],
     },
     ...overrides,
-  }
+  })
 }
 
-/**
- * Factory function for creating mock Collection list
- */
-function createMockCollections(collections: Partial<Collection>[] = []): Collection[] {
-  return collections.map(
-    (collection, index) =>
-      ({
-        id: `collection-${index}`,
-        name: `Collection ${index}`,
-        icon: 'icon-url',
-        type: 'tool',
-        ...collection,
-      }) as Collection,
-  )
-}
-
-// ============================================================================
-// Mock External Dependencies ONLY (Following testing.md guidelines)
-// ============================================================================
-
-// Mock service layer (API calls)
 const { mockSsePost, mockToastError } = vi.hoisted(() => ({
-  mockSsePost: vi.fn<(...args: any[]) => Promise<void>>(() => Promise.resolve()),
+  mockSsePost: vi.fn<typeof import('@/service/base').ssePost>(() => Promise.resolve()),
   mockToastError: vi.fn(),
 }))
 
@@ -99,7 +45,6 @@ vi.mock('@/service/base', () => ({
   get: vi.fn(() => Promise.resolve({ data: {} })),
   del: vi.fn(() => Promise.resolve({ data: {} })),
   patch: vi.fn(() => Promise.resolve({ data: {} })),
-  put: vi.fn(() => Promise.resolve({ data: {} })),
 }))
 
 vi.mock('@/service/fetch', () => ({
@@ -128,144 +73,25 @@ vi.mock('@/next/navigation', () => ({
   useParams: () => ({}),
 }))
 
-// Mock complex context providers
-const mockDebugConfigContext = {
+const mockDebugConfigContext = createDebugConfigurationFixture({
   readonly: false,
   canTestAndRun: true,
   appId: 'test-app-id',
   onOpenFeatures: vi.fn(),
-  isTrailFinished: false,
-  mode: AppModeEnum.CHAT,
-  modelModeType: ModelModeType.chat,
-  promptMode: PromptMode.simple,
-  setPromptMode: vi.fn(),
-  isAdvancedMode: false,
-  isAgent: false,
-  isFunctionCall: false,
-  isOpenAI: true,
-  collectionList: createMockCollections([
-    { id: 'test-provider', name: 'Test Tool', icon: 'icon-url' },
-  ]),
-  canReturnToSimpleMode: false,
-  setCanReturnToSimpleMode: vi.fn(),
-  chatPromptConfig: {},
-  completionPromptConfig: {},
-  currentAdvancedPrompt: [],
-  showHistoryModal: vi.fn(),
-  conversationHistoriesRole: { user_prefix: 'user', assistant_prefix: 'assistant' },
-  setConversationHistoriesRole: vi.fn(),
-  setCurrentAdvancedPrompt: vi.fn(),
-  hasSetBlockStatus: { context: false, history: false, query: false },
-  conversationId: null,
-  setConversationId: vi.fn(),
-  introduction: '',
-  setIntroduction: vi.fn(),
-  suggestedQuestions: [],
-  setSuggestedQuestions: vi.fn(),
-  controlClearChatMessage: 0,
-  setControlClearChatMessage: vi.fn(),
-  prevPromptConfig: { prompt_template: '', prompt_variables: [] },
-  setPrevPromptConfig: vi.fn(),
-  moreLikeThisConfig: { enabled: false },
-  setMoreLikeThisConfig: vi.fn(),
-  suggestedQuestionsAfterAnswerConfig: { enabled: false },
-  setSuggestedQuestionsAfterAnswerConfig: vi.fn(),
-  speechToTextConfig: { enabled: false },
-  setSpeechToTextConfig: vi.fn(),
-  textToSpeechConfig: { enabled: false, voice: '', language: '' },
-  setTextToSpeechConfig: vi.fn(),
-  citationConfig: { enabled: false },
-  setCitationConfig: vi.fn(),
-  moderationConfig: { enabled: false },
-  annotationConfig: {
-    id: '',
-    enabled: false,
-    score_threshold: 0.7,
-    embedding_model: { embedding_model_name: '', embedding_provider_name: '' },
-  },
-  setAnnotationConfig: vi.fn(),
-  setModerationConfig: vi.fn(),
-  externalDataToolsConfig: [],
-  setExternalDataToolsConfig: vi.fn(),
-  formattingChanged: false,
-  setFormattingChanged: vi.fn(),
   inputs: { var1: 'test input' },
-  setInputs: vi.fn(),
-  query: '',
-  setQuery: vi.fn(),
   completionParams: { max_tokens: 100, temperature: 0.7 },
-  setCompletionParams: vi.fn(),
-  modelConfig: createMockModelConfig({
-    agentConfig: {
-      enabled: false,
-      max_iteration: 5,
-      tools: [
-        {
-          tool_name: 'test-tool',
-          provider_id: 'test-provider',
-          provider_type: CollectionType.builtIn,
-          provider_name: 'test-provider',
-          tool_label: 'Test Tool',
-          tool_parameters: {},
-          enabled: true,
-        },
-      ],
-      strategy: AgentStrategy.react,
-    },
-  }),
-  setModelConfig: vi.fn(),
-  dataSets: [],
-  showSelectDataSet: vi.fn(),
-  setDataSets: vi.fn(),
-  datasetConfigs: {
-    retrieval_model: 'single',
-    reranking_model: { reranking_provider_name: '', reranking_model_name: '' },
-    top_k: 4,
-    score_threshold_enabled: false,
-    score_threshold: 0.7,
-    datasets: { datasets: [] },
-  } as DatasetConfigs,
-  datasetConfigsRef: createRef<DatasetConfigs>(),
-  setDatasetConfigs: vi.fn(),
-  hasSetContextVar: false,
-  isShowVisionConfig: false,
-  visionConfig: { enabled: false, number_limits: 2, detail: Resolution.low, transfer_methods: [] },
-  setVisionConfig: vi.fn(),
-  isAllowVideoUpload: false,
-  isShowDocumentConfig: false,
-  isShowAudioConfig: false,
-  rerankSettingModalOpen: false,
-  setRerankSettingModalOpen: vi.fn(),
-}
+  modelConfig: createMockModelConfig(),
+})
 
 const { mockUseDebugConfigurationContext } = vi.hoisted(() => ({
   mockUseDebugConfigurationContext: vi.fn(),
 }))
 
-// Set up the default implementation after mockDebugConfigContext is defined
 mockUseDebugConfigurationContext.mockReturnValue(mockDebugConfigContext)
 
 vi.mock('@/context/debug-configuration', () => ({
   useDebugConfigurationContext: mockUseDebugConfigurationContext,
 }))
-
-const mockConsoleState = {
-  userProfile: {
-    id: 'user-1',
-    avatar_url: 'https://example.com/avatar.png',
-    name: 'Test User',
-    email: 'test@example.com',
-  },
-  isCurrentWorkspaceManager: false,
-  isCurrentWorkspaceOwner: false,
-  isCurrentWorkspaceDatasetOperator: false,
-}
-
-const { mockConsoleStateReader } = vi.hoisted(() => ({
-  mockConsoleStateReader: vi.fn(),
-}))
-
-mockConsoleStateReader.mockReturnValue(mockConsoleState)
 
 type FeatureState = {
   moreLikeThis: { enabled: boolean }
@@ -336,23 +162,12 @@ vi.mock('../../hooks', () => ({
   useFormattingChangedSubscription: mockUseFormattingChangedSubscription,
 }))
 
-// Use real store - global zustand mock will auto-reset between tests
-
-// Mock event emitter context
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: vi.fn(() => ({
-    eventEmitter: null,
-  })),
-}))
-
-// Mock hooks/use-timestamp
 vi.mock('@/hooks/use-timestamp', () => ({
   default: vi.fn(() => ({
     formatTime: vi.fn((timestamp: number) => new Date(timestamp).toLocaleString()),
   })),
 }))
 
-// Mock audio player manager
 vi.mock('@/app/components/base/audio-btn/audio.player.manager', () => ({
   AudioPlayerManager: {
     getInstance: vi.fn(() => ({
@@ -411,8 +226,6 @@ const mockDocumentFile: FileEntity = {
   supportFileType: SupportUploadFileTypes.document,
 }
 
-// Mock Chat component (complex with many dependencies)
-// This is a pragmatic mock that tests the integration at DebugWithSingleModel level
 vi.mock('@/app/components/base/chat/chat', () => ({
   default: function MockChat({
     readonly,
@@ -451,9 +264,7 @@ vi.mock('@/app/components/base/chat/chat', () => ({
           placeholder="Type a message"
           readOnly={readonly}
           disabled={inputDisabled}
-          onChange={() => {
-            // Simulate input change
-          }}
+          onChange={() => {}}
         />
         <button
           data-testid="send-button"
@@ -546,10 +357,6 @@ vi.mock('@/app/components/base/chat/chat', () => ({
   },
 }))
 
-// ============================================================================
-// Tests
-// ============================================================================
-
 const logProps = { onOpenLog: vi.fn(), chatContainerRef: createRef<HTMLDivElement>() }
 
 describe('DebugWithSingleModel', () => {
@@ -557,11 +364,10 @@ describe('DebugWithSingleModel', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSsePost.mockReset().mockResolvedValue(undefined)
     ref = createRef<DebugWithSingleModelRefType | null>()
 
-    // Reset mock implementations using module-level mocks
     mockUseDebugConfigurationContext.mockReturnValue(mockDebugConfigContext)
-    mockConsoleStateReader.mockReturnValue(mockConsoleState)
     mockUseConfigFromDebugContext.mockReturnValue(mockConfigFromDebugContext)
     mockUseFormattingChangedSubscription.mockReturnValue(undefined)
     mockFeaturesState = { ...defaultFeatures }
@@ -570,32 +376,14 @@ describe('DebugWithSingleModel', () => {
       return mockFeaturesState
     })
 
-    // Reset mock implementations
     mockFetchConversationMessages.mockResolvedValue({ data: [] })
     mockFetchSuggestedQuestions.mockResolvedValue({ data: [] })
     mockStopChatMessageResponding.mockResolvedValue({})
   })
 
-  // Rendering Tests
-  describe('Rendering', () => {
-    it('should render with custom checkCanSend prop', () => {
-      const checkCanSend = vi.fn(() => true)
-
-      render(
-        <DebugWithSingleModel
-          {...logProps}
-          ref={ref as RefObject<DebugWithSingleModelRefType>}
-          checkCanSend={checkCanSend}
-        />,
-      )
-
-      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
-    })
-  })
-
-  // Props Tests
   describe('Props', () => {
     it('should respect checkCanSend returning true', async () => {
+      const user = userEvent.setup()
       const checkCanSend = vi.fn(() => true)
 
       render(
@@ -607,7 +395,7 @@ describe('DebugWithSingleModel', () => {
       )
 
       const sendButton = screen.getByTestId('send-button')
-      fireEvent.click(sendButton)
+      await user.click(sendButton)
 
       await waitFor(() => {
         expect(checkCanSend).toHaveBeenCalled()
@@ -615,6 +403,18 @@ describe('DebugWithSingleModel', () => {
       })
 
       expect(mockSsePost.mock.calls[0]![0]).toBe('apps/test-app-id/chat-messages')
+      expect(mockSsePost.mock.calls[0]![1].body).toMatchObject({
+        query: 'test message',
+        inputs: { var1: 'test input' },
+        parent_message_id: null,
+        model_config: {
+          model: {
+            provider: 'openai',
+            name: 'gpt-3.5-turbo',
+            completion_params: { max_tokens: 100, temperature: 0.7 },
+          },
+        },
+      })
       expect(mockSsePost.mock.calls[0]![2]).toEqual(
         expect.objectContaining({
           onNotifyError: expect.any(Function),
@@ -629,6 +429,7 @@ describe('DebugWithSingleModel', () => {
     })
 
     it('should prevent send when checkCanSend returns false', async () => {
+      const user = userEvent.setup()
       const checkCanSend = vi.fn(() => false)
 
       render(
@@ -640,7 +441,7 @@ describe('DebugWithSingleModel', () => {
       )
 
       const sendButton = screen.getByTestId('send-button')
-      fireEvent.click(sendButton)
+      await user.click(sendButton)
 
       await waitFor(() => {
         expect(checkCanSend).toHaveBeenCalled()
@@ -650,19 +451,20 @@ describe('DebugWithSingleModel', () => {
     })
   })
 
-  // User Interactions
   describe('User Interactions', () => {
-    it('should open feature configuration when feature bar is clicked', () => {
+    it('should open feature configuration when feature bar is clicked', async () => {
+      const user = userEvent.setup()
       render(
         <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
       )
 
-      fireEvent.click(screen.getByTestId('feature-bar-button'))
+      await user.click(screen.getByTestId('feature-bar-button'))
 
       expect(mockDebugConfigContext.onOpenFeatures).toHaveBeenCalledTimes(1)
     })
 
     it('should allow sending but disable feature configuration when configuration is readonly and test/run is allowed', async () => {
+      const user = userEvent.setup()
       mockUseDebugConfigurationContext.mockReturnValue({
         ...mockDebugConfigContext,
         readonly: true,
@@ -679,7 +481,7 @@ describe('DebugWithSingleModel', () => {
       expect(screen.queryByTestId('edit-annotation-button')).not.toBeInTheDocument()
       expect(screen.queryByTestId('remove-annotation-button')).not.toBeInTheDocument()
 
-      fireEvent.click(screen.getByTestId('send-button'))
+      await user.click(screen.getByTestId('send-button'))
 
       await waitFor(() => {
         expect(mockSsePost).toHaveBeenCalled()
@@ -707,9 +509,9 @@ describe('DebugWithSingleModel', () => {
     })
   })
 
-  // Model Configuration Tests
   describe('Model Configuration', () => {
     it('should include opening features in request when enabled', async () => {
+      const user = userEvent.setup()
       mockFeaturesState = {
         ...defaultFeatures,
         opening: { enabled: true, opening_statement: 'Hello!', suggested_questions: ['Q1'] },
@@ -719,18 +521,19 @@ describe('DebugWithSingleModel', () => {
         <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
       )
 
-      fireEvent.click(screen.getByTestId('send-button'))
+      await user.click(screen.getByTestId('send-button'))
 
       await waitFor(() => {
         expect(mockSsePost).toHaveBeenCalled()
       })
 
       const body = mockSsePost.mock.calls[0]![1].body
-      expect(body.model_config.opening_statement).toBe('Hello!')
-      expect(body.model_config.suggested_questions).toEqual(['Q1'])
+      expect(body).toHaveProperty('model_config.opening_statement', 'Hello!')
+      expect(body).toHaveProperty('model_config.suggested_questions', ['Q1'])
     })
 
     it('should omit opening statement when feature is disabled', async () => {
+      const user = userEvent.setup()
       mockFeaturesState = {
         ...defaultFeatures,
         opening: {
@@ -744,214 +547,44 @@ describe('DebugWithSingleModel', () => {
         <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
       )
 
-      fireEvent.click(screen.getByTestId('send-button'))
+      await user.click(screen.getByTestId('send-button'))
 
       await waitFor(() => {
         expect(mockSsePost).toHaveBeenCalled()
       })
 
       const body = mockSsePost.mock.calls[0]![1].body
-      expect(body.model_config.opening_statement).toBe('')
-      expect(body.model_config.suggested_questions).toEqual([])
-    })
-
-    it('should handle model without vision support', () => {
-      render(
-        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
-      )
-
-      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
-    })
-
-    it('should handle missing model in provider list', () => {
-      render(
-        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
-      )
-
-      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
+      expect(body).toHaveProperty('model_config.opening_statement', '')
+      expect(body).toHaveProperty('model_config.suggested_questions', [])
     })
   })
 
-  // Input Forms Tests
-  describe('Input Forms', () => {
-    it('should filter out api type prompt variables', () => {
-      mockUseDebugConfigurationContext.mockReturnValue({
-        ...mockDebugConfigContext,
-        modelConfig: createMockModelConfig({
-          configs: {
-            prompt_template: 'Test',
-            prompt_variables: [
-              { key: 'var1', name: 'Var 1', type: 'text', required: false },
-              { key: 'var2', name: 'Var 2', type: 'api', required: false },
-              { key: 'var3', name: 'Var 3', type: 'select', required: false },
-            ],
-          },
-        }),
-      })
-
-      render(
-        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
-      )
-
-      // Component should render successfully with filtered variables
-      // Component should render successfully with filtered variables
-      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
-    })
-
-    it('should handle empty prompt variables', () => {
-      mockUseDebugConfigurationContext.mockReturnValue({
-        ...mockDebugConfigContext,
-        modelConfig: createMockModelConfig({
-          configs: {
-            prompt_template: 'Test',
-            prompt_variables: [],
-          },
-        }),
-      })
-
-      render(
-        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
-      )
-
-      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
-    })
+  it('restarts the active conversation through the parent ref and allows a fresh request', async () => {
+    const user = userEvent.setup()
+    render(
+      <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Send' }))
+    const callbacks = mockSsePost.mock.calls[0]![2]!
+    act(() =>
+      callbacks.onData?.('Streamed answer', true, {
+        messageId: 'answer-1',
+        conversationId: 'conversation-1',
+        taskId: 'task-1',
+      }),
+    )
+    expect(await screen.findByText('Streamed answer')).toBeVisible()
+    act(() => ref.current!.handleRestart())
+    expect(screen.queryByText('Streamed answer')).not.toBeInTheDocument()
+    expect(screen.queryByText('test message')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Send' }))
+    await waitFor(() => expect(mockSsePost).toHaveBeenCalledTimes(2))
+    expect(mockSsePost.mock.calls[1]![1].body).toHaveProperty('parent_message_id', null)
   })
 
-  // Tool Icons Tests
-  describe('Tool Icons', () => {
-    it('should map tool icons from collection list', () => {
-      render(
-        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
-      )
-
-      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
-    })
-
-    it('should handle empty tools list', () => {
-      mockUseDebugConfigurationContext.mockReturnValue({
-        ...mockDebugConfigContext,
-        modelConfig: createMockModelConfig({
-          agentConfig: {
-            enabled: false,
-            max_iteration: 5,
-            tools: [],
-            strategy: AgentStrategy.react,
-          },
-        }),
-      })
-
-      render(
-        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
-      )
-
-      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
-    })
-
-    it('should handle missing collection for tool', () => {
-      mockUseDebugConfigurationContext.mockReturnValue({
-        ...mockDebugConfigContext,
-        modelConfig: createMockModelConfig({
-          agentConfig: {
-            enabled: false,
-            max_iteration: 5,
-            tools: [
-              {
-                tool_name: 'unknown-tool',
-                provider_id: 'unknown-provider',
-                provider_type: CollectionType.builtIn,
-                provider_name: 'unknown-provider',
-                tool_label: 'Unknown Tool',
-                tool_parameters: {},
-                enabled: true,
-              },
-            ],
-            strategy: AgentStrategy.react,
-          },
-        }),
-        collectionList: [],
-      })
-
-      render(
-        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
-      )
-
-      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
-    })
-  })
-
-  // Edge Cases
-  describe('Edge Cases', () => {
-    it('should handle empty inputs', () => {
-      mockUseDebugConfigurationContext.mockReturnValue({
-        ...mockDebugConfigContext,
-        inputs: {} as any,
-      })
-
-      render(
-        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
-      )
-
-      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
-    })
-
-    it('should handle missing user profile', () => {
-      mockConsoleStateReader.mockReturnValue({
-        ...mockConsoleState,
-        userProfile: {
-          id: '',
-          avatar_url: '',
-          name: '',
-          email: '',
-        },
-      })
-
-      render(
-        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
-      )
-
-      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
-    })
-
-    it('should handle null completion params', () => {
-      mockUseDebugConfigurationContext.mockReturnValue({
-        ...mockDebugConfigContext,
-        completionParams: {} as any,
-      })
-
-      render(
-        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
-      )
-
-      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
-    })
-  })
-
-  // Imperative Handle Tests
-  describe('Imperative Handle', () => {
-    it('should expose handleRestart method via ref', () => {
-      render(
-        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
-      )
-
-      expect(ref.current).not.toBeNull()
-      expect(ref.current?.handleRestart).toBeDefined()
-      expect(typeof ref.current?.handleRestart).toBe('function')
-    })
-
-    it('should call handleRestart when invoked via ref', () => {
-      render(
-        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
-      )
-
-      act(() => {
-        ref.current?.handleRestart()
-      })
-    })
-  })
-
-  // File Upload Tests
   describe('File Upload', () => {
-    it('should include document files when document is supported without vision', async () => {
+    it('serializes a document attachment when uploads are enabled', async () => {
+      const user = userEvent.setup()
       mockUseDebugConfigurationContext.mockReturnValue({
         ...mockDebugConfigContext,
         modelConfig: createMockModelConfig({
@@ -968,14 +601,14 @@ describe('DebugWithSingleModel', () => {
         <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
       )
 
-      fireEvent.click(screen.getByTestId('send-with-document'))
+      await user.click(screen.getByTestId('send-with-document'))
 
       await waitFor(() => {
         expect(mockSsePost).toHaveBeenCalled()
       })
 
       const body = mockSsePost.mock.calls[0]![1].body
-      expect(body.files).toEqual([
+      expect(body).toHaveProperty('files', [
         {
           type: SupportUploadFileTypes.document,
           transfer_method: TransferMethod.local_file,
@@ -985,7 +618,8 @@ describe('DebugWithSingleModel', () => {
       ])
     })
 
-    it('should support files when vision is enabled', async () => {
+    it('serializes an image attachment when uploads are enabled', async () => {
+      const user = userEvent.setup()
       mockUseDebugConfigurationContext.mockReturnValue({
         ...mockDebugConfigContext,
         modelConfig: createMockModelConfig({
@@ -1002,14 +636,16 @@ describe('DebugWithSingleModel', () => {
         <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
       )
 
-      fireEvent.click(screen.getByTestId('send-with-files'))
+      await user.click(screen.getByTestId('send-with-files'))
 
       await waitFor(() => {
         expect(mockSsePost).toHaveBeenCalled()
       })
 
       const body = mockSsePost.mock.calls[0]![1].body
-      expect(body.files).toHaveLength(1)
+      expect(body).toHaveProperty('files', [
+        { type: 'image', transfer_method: TransferMethod.local_file, url: '', upload_file_id: '' },
+      ])
     })
   })
 })

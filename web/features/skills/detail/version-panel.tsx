@@ -1,6 +1,7 @@
 'use client'
 
 import type { SkillVersionResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { AlertDialogActions } from '@langgenius/dify-ui/alert-dialog'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -8,15 +9,20 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
+  DialogBody,
   DialogClose,
+  DialogCloseButton,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import {
@@ -27,59 +33,19 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useId, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
+import { RestoreVersionDialogContent } from './restore-version-dialog-content'
 import { getSkillVersionTitle, invalidateSkillDetail } from './shared'
 
 type VersionFilterValue = 'all' | 'onlyNamed'
-
-export function RestoreVersionDialog({
-  loading,
-  onConfirm,
-  onOpenChange,
-  open,
-  versionTitle,
-}: {
-  loading: boolean
-  onConfirm: () => void
-  onOpenChange: (open: boolean) => void
-  open: boolean
-  versionTitle: string
-}) {
-  const { t } = useTranslation(['skill'])
-  const { t: tCommon } = useTranslation(['common'])
-
-  return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="p-6">
-        <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $['skillManagement.detail.restoreVersionConfirmTitle'])}
-        </AlertDialogTitle>
-        <AlertDialogDescription className="mt-2 system-md-regular whitespace-pre-line text-text-tertiary">
-          {t(($) => $['skillManagement.detail.restoreVersionConfirmDescription'], {
-            version: versionTitle,
-          })}
-        </AlertDialogDescription>
-        <AlertDialogFooter className="p-0 pt-6">
-          <AlertDialogCancelButton disabled={loading}>
-            {tCommon(($) => $['operation.cancel'])}
-          </AlertDialogCancelButton>
-          <AlertDialogConfirmButton loading={loading} onClick={onConfirm}>
-            {t(($) => $['skillManagement.detail.restoreVersion'])}
-          </AlertDialogConfirmButton>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  )
-}
 
 function VersionTimelineDot({
   isActive,
@@ -233,16 +199,28 @@ function VersionRow({
   const [renameOpen, setRenameOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [restoreOpen, setRestoreOpen] = useState(false)
+  const restoreActionsRef = useRef<AlertDialogActions>(null)
+  const deleteActionsRef = useRef<AlertDialogActions>(null)
   const [versionName, setVersionName] = useState(version.version_name)
   const [publishNote, setPublishNote] = useState(version.publish_note)
   const renameMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId.patch.mutationOptions(),
   )
   const restoreMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.restore.post.mutationOptions(),
+    consoleQuery.workspaces.current.skills.bySkillId.restore.post.mutationOptions({
+      onSuccess: () => {
+        restoreActionsRef.current?.close()
+        onSelect(null)
+      },
+    }),
   )
   const deleteMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId.delete.mutationOptions(),
+    consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId.delete.mutationOptions({
+      onSuccess: () => {
+        deleteActionsRef.current?.close()
+        onSelect(null)
+      },
+    }),
   )
   const publishedBy = version.published_by_name ?? version.published_by ?? '-'
   const versionTitle = getSkillVersionTitle(version)
@@ -279,49 +257,14 @@ function VersionRow({
   }
 
   const handleRestore = () => {
-    restoreMutation.mutate(
-      {
-        params: {
-          skill_id: skillId,
-        },
-        body: {
-          version_id: version.id,
-          version_name: version.version_name,
-        },
-      },
-      {
-        onSuccess: () => {
-          toast.success(t(($) => $['skillManagement.detail.restoreVersionSuccess']))
-          setRestoreOpen(false)
-          invalidateVersions()
-          onSelect(null)
-        },
-        onError: () => {
-          toast.error(t(($) => $['skillManagement.detail.restoreVersionFailed']))
-        },
-      },
-    )
+    restoreMutation.mutate({
+      params: { skill_id: skillId },
+      body: { version_id: version.id, version_name: version.version_name },
+    })
   }
 
   const handleDelete = () => {
-    deleteMutation.mutate(
-      {
-        params: {
-          skill_id: skillId,
-          version_id: version.id,
-        },
-      },
-      {
-        onSuccess: () => {
-          setDeleteOpen(false)
-          invalidateVersions()
-          onSelect(null)
-        },
-        onError: () => {
-          toast.error(t(($) => $['skillManagement.detail.deleteVersionFailed']))
-        },
-      },
-    )
+    deleteMutation.mutate({ params: { skill_id: skillId, version_id: version.id } })
   }
 
   return (
@@ -405,27 +348,15 @@ function VersionRow({
         </div>
       </li>
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <DialogContent className="w-full max-w-120 overflow-hidden! border-none p-0 text-left align-middle">
-          <DialogClose
-            render={
-              <IconButton
-                aria-label={tCommon(($) => $['operation.close'])}
-                size="lg"
-                className="absolute inset-e-6 top-6"
-              >
-                <span aria-hidden className="i-ri-close-line size-4" />
-              </IconButton>
-            }
-          />
-          <div className="px-6 pt-6 pr-14 pb-4">
-            <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {versionInfoLabel}
-            </DialogTitle>
+        <DialogContent className="w-120">
+          <DialogHeader>
+            <DialogTitle>{versionInfoLabel}</DialogTitle>
             <DialogDescription className="sr-only">
               {t(($) => $['skillManagement.detail.renameVersionPrompt'])}
             </DialogDescription>
-          </div>
-          <div className="flex flex-col gap-y-4 px-6 py-3">
+            <DialogCloseButton aria-label={tCommon(($) => $['operation.close'])} />
+          </DialogHeader>
+          <DialogBody className="flex flex-col gap-y-4">
             <Field name="versionTitle">
               <FieldLabel className="system-sm-semibold">
                 {t(($) => $['skillManagement.detail.versionTitle'])}
@@ -446,43 +377,57 @@ function VersionRow({
                 onValueChange={setPublishNote}
               />
             </Field>
-          </div>
-          <div className="flex justify-end p-6 pt-5">
-            <div className="flex items-center gap-x-3">
-              <DialogClose render={<Button disabled={renameMutation.isPending} />}>
-                {tCommon(($) => $['operation.cancel'])}
-              </DialogClose>
-              <Button variant="primary" loading={renameMutation.isPending} onClick={handleRename}>
-                {t(($) => $['skillManagement.detail.publish'])}
-              </Button>
-            </div>
-          </div>
+          </DialogBody>
+          <DialogFooter>
+            <DialogClose render={<Button disabled={renameMutation.isPending} />}>
+              {tCommon(($) => $['operation.cancel'])}
+            </DialogClose>
+            <Button variant="primary" loading={renameMutation.isPending} onClick={handleRename}>
+              {t(($) => $['skillManagement.detail.publish'])}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
-      <RestoreVersionDialog
+      <AlertDialog
+        actionsRef={restoreActionsRef}
         open={restoreOpen}
-        loading={restoreMutation.isPending}
-        versionTitle={versionTitle}
-        onOpenChange={setRestoreOpen}
-        onConfirm={handleRestore}
-      />
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent className="p-6">
-          <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t(($) => $['skillManagement.detail.deleteVersionConfirm'])}
-          </AlertDialogTitle>
-          <AlertDialogDescription className="mt-2 system-md-regular text-text-tertiary">
-            {versionTitle}
-          </AlertDialogDescription>
-          <AlertDialogFooter className="p-0 pt-6">
+        onOpenChange={(open, details) => {
+          if (!open && restoreMutation.isPending && details.reason !== 'imperative-action') {
+            details.cancel()
+            return
+          }
+          setRestoreOpen(open)
+        }}
+      >
+        <RestoreVersionDialogContent
+          isPending={restoreMutation.isPending}
+          versionTitle={versionTitle}
+          onConfirm={handleRestore}
+        />
+      </AlertDialog>
+      <AlertDialog
+        actionsRef={deleteActionsRef}
+        open={deleteOpen}
+        onOpenChange={(open, details) => {
+          if (!open && deleteMutation.isPending && details.reason !== 'imperative-action') {
+            details.cancel()
+            return
+          }
+          setDeleteOpen(open)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t(($) => $['skillManagement.detail.deleteVersionConfirm'])}
+            </AlertDialogTitle>
+            <AlertDialogDescription>{versionTitle}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
             <AlertDialogCancelButton disabled={deleteMutation.isPending}>
               {tCommon(($) => $['operation.cancel'])}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton
-              tone="destructive"
-              loading={deleteMutation.isPending}
-              onClick={handleDelete}
-            >
+            <AlertDialogConfirmButton loading={deleteMutation.isPending} onClick={handleDelete}>
               {tCommon(($) => $['operation.delete'])}
             </AlertDialogConfirmButton>
           </AlertDialogFooter>
