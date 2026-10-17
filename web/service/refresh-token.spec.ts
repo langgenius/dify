@@ -45,6 +45,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals()
   vi.useRealTimers()
+  vi.restoreAllMocks()
 })
 
 describe('refreshAccessTokenOrReLogin', () => {
