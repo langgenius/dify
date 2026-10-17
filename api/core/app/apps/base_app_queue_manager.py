@@ -11,6 +11,7 @@ from cachetools import TTLCache, cachedmethod
 from redis.exceptions import RedisError
 from sqlalchemy.orm import DeclarativeMeta
 
+from configs import dify_config
 from core.app.apps.execution_coordinator import (
     AppExecutionCoordinator,
     AppExecutionState,
@@ -48,7 +49,13 @@ class PublishFrom(IntEnum):
 
 
 class AppQueueManager(ABC):
-    def __init__(self, task_id: str, user_id: str, invoke_from: InvokeFrom):
+    def __init__(
+        self,
+        task_id: str,
+        user_id: str,
+        invoke_from: InvokeFrom,
+        listen_timeout: int | None = None,
+    ):
         if not user_id:
             raise ValueError("user is required")
 
@@ -68,9 +75,17 @@ class AppQueueManager(ABC):
         self._stopped_cache: TTLCache[tuple, bool] = TTLCache(maxsize=1, ttl=1)
         self._cache_lock = threading.Lock()
         self._listener_segment_completed = threading.Event()
+        # The listen timeout is the wall-clock cap the queue manager keeps the
+        # response channel open. Workflow / pipeline / advanced-chat runs need
+        # to follow ``WORKFLOW_MAX_EXECUTION_TIME`` (configurable per app) —
+        # see #39602. Subclasses that need a different cap must pass it
+        # explicitly here, otherwise the chat-style ``APP_MAX_EXECUTION_TIME``
+        # default kicks in and aborts the run prematurely.
+        self._listen_timeout = listen_timeout if listen_timeout is not None else dify_config.APP_MAX_EXECUTION_TIME
         self._execution_coordinator = AppExecutionCoordinator(
             task_id=self._task_id,
             on_timeout=self._publish_timeout_stop,
+            timeout_seconds=self._listen_timeout,
         )
 
     def listen(self):

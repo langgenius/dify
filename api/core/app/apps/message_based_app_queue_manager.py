@@ -1,5 +1,6 @@
 from typing import override
 
+from configs import dify_config
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.execution_coordinator import AppExecutionState
@@ -20,7 +21,16 @@ class MessageBasedAppQueueManager(AppQueueManager):
     def __init__(
         self, task_id: str, user_id: str, invoke_from: InvokeFrom, conversation_id: str, app_mode: str, message_id: str
     ):
-        super().__init__(task_id, user_id, invoke_from)
+        # #39602: Advanced Chat runs a workflow under the hood, so it must
+        # follow WORKFLOW_MAX_EXECUTION_TIME rather than the chat-style
+        # APP_MAX_EXECUTION_TIME default. Other message-based app modes
+        # (basic chat, completion, agent chat) keep the chat default.
+        listen_timeout = (
+            dify_config.WORKFLOW_MAX_EXECUTION_TIME
+            if app_mode == AppMode.ADVANCED_CHAT.value
+            else dify_config.APP_MAX_EXECUTION_TIME
+        )
+        super().__init__(task_id, user_id, invoke_from, listen_timeout=listen_timeout)
 
         self._conversation_id = str(conversation_id)
         self._app_mode = app_mode
