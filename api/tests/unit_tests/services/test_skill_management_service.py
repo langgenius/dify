@@ -3164,7 +3164,47 @@ def _zip_payload(files: dict[str, str]) -> bytes:
     return buffer.getvalue()
 
 
-def test_build_assistant_attachment_context_extracts_docx_text() -> None:
+@pytest.mark.parametrize(
+    ("body", "expected_text"),
+    [
+        pytest.param(
+            "<w:p><w:r><w:t>Escalate urgent tickets</w:t></w:r></w:p>",
+            "Escalate urgent tickets",
+            id="plain",
+        ),
+        pytest.param(
+            '<w:p><w:r><w:t xml:space="preserve">Keep </w:t></w:r>'
+            "<w:r><w:rPr><w:b/></w:rPr><w:t>customer_</w:t></w:r>"
+            "<w:r><w:t>id unchanged.</w:t></w:r></w:p>"
+            "<w:p><w:r><w:t>Next paragraph</w:t></w:r></w:p>",
+            "Keep customer_id unchanged.\nNext paragraph",
+            id="formatted-runs",
+        ),
+        pytest.param(
+            '<w:p><w:pPr><w:tabs><w:tab w:val="left" w:pos="720"/></w:tabs></w:pPr>'
+            "<w:r><w:t>left</w:t><w:tab/><w:t>middle</w:t><w:br/>"
+            "<w:t>right</w:t><w:cr/><w:t>soft</w:t><w:softHyphen/>"
+            "<w:t>hyphen</w:t><w:noBreakHyphen/><w:t>end</w:t></w:r></w:p>",
+            "left\tmiddle\nright\nsoft\u00adhyphen\u2011end",
+            id="inline-controls",
+        ),
+        pytest.param(
+            '<w:p><w:r><w:t>Before</w:t><w:pict><v:shape id="box"><v:textbox><w:txbxContent>'
+            '<w:p><w:r><w:t>Inside</w:t></w:r><w:r><w:t xml:space="preserve"> box</w:t></w:r></w:p>'
+            "</w:txbxContent></v:textbox></v:shape></w:pict><w:t>After</w:t></w:r></w:p>",
+            "Before\nInside box\nAfter",
+            id="nested-paragraphs",
+        ),
+        pytest.param(
+            "<w:tbl><w:tr><w:tc><w:p><w:r><w:t>First</w:t></w:r>"
+            '<w:r><w:t xml:space="preserve"> cell</w:t></w:r></w:p></w:tc>'
+            "<w:tc><w:p><w:r><w:t>Second cell</w:t></w:r></w:p></w:tc></w:tr></w:tbl>",
+            "First cell\nSecond cell",
+            id="table-paragraphs",
+        ),
+    ],
+)
+def test_build_assistant_attachment_context_extracts_docx_text(body: str, expected_text: str) -> None:
     attachment = SkillAssistAttachmentPayload(
         tool_file_id="docx-file-1",
         name="guide.docx",
@@ -3174,8 +3214,9 @@ def test_build_assistant_attachment_context_extracts_docx_text() -> None:
     payload = _zip_payload(
         {
             "word/document.xml": (
-                '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
-                "<w:body><w:p><w:r><w:t>Escalate urgent tickets</w:t></w:r></w:p></w:body>"
+                '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
+                'xmlns:v="urn:schemas-microsoft-com:vml">'
+                f"<w:body>{body}</w:body>"
                 "</w:document>"
             )
         }
@@ -3191,7 +3232,7 @@ def test_build_assistant_attachment_context_extracts_docx_text() -> None:
         )
 
     assert "--- guide.docx" in context
-    assert "Escalate urgent tickets" in context
+    assert context.split("\n", 1)[1] == expected_text
     assert "Binary attachment available" not in context
 
 
