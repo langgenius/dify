@@ -1,6 +1,6 @@
 """File adapter keeps admitted identity explicit across the FileService boundary."""
 
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 
 from machinery.context import RequestContext
 from models.account import Account
@@ -9,7 +9,7 @@ from services.workspace.gateways import WorkspaceFileGateway
 
 
 def test_upload_uses_admitted_account_and_explicit_workspace() -> None:
-    files = Mock(spec=FileService)
+    files = create_autospec(FileService, instance=True)
     files.upload_file.return_value = Mock(id="file-id")
     gateway = WorkspaceFileGateway(files=files)
     context = RequestContext("request", None, "account", "workspace")

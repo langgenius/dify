@@ -64,8 +64,8 @@ vi.mock('../add-block', () => ({
   default: () => <div data-testid="add-block" />,
 }))
 
-vi.mock('../more-actions', () => ({
-  default: () => <div data-testid="more-actions" />,
+vi.mock('../export-image', () => ({
+  ExportImage: () => <div data-testid="export-image" />,
 }))
 
 vi.mock('../tip-popup', () => ({
@@ -91,7 +91,7 @@ describe('Control', () => {
       render(<Control />)
 
       expect(screen.getByTestId('add-block')).toBeInTheDocument()
-      expect(screen.getByTestId('more-actions')).toBeInTheDocument()
+      expect(screen.getByTestId('export-image')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'workflow.common.pointerMode' })).toHaveAttribute(
         'aria-pressed',
         'true',

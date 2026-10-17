@@ -1,5 +1,6 @@
 import { screen, waitFor } from '@testing-library/react'
 import { StrictMode } from 'react'
+import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryWrapper, seedFeatures } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import { EducationVerifyFlow } from '../verify-flow'
@@ -92,7 +93,7 @@ describe('EducationVerifyFlow', () => {
   })
 
   it('renders the generic error state when verification fails', async () => {
-    mockRequestVerification.mockRejectedValue(new Response(null, { status: 503 }))
+    mockRequestVerification.mockRejectedValue(createHttpError(new Response(null, { status: 503 })))
 
     renderFlow({})
 

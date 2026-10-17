@@ -20,25 +20,10 @@ const render = (ui: ReactElement) => {
 
 let mockLocale = 'en-US'
 
-vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
-  __esModule: true,
-  default: ({ title, children }: { title: ReactNode; children: ReactNode }) => (
-    <div>
-      <div>{title}</div>
-      {children}
-    </div>
-  ),
-}))
-
 vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
   __esModule: true,
   default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   VarItem: ({ name, type }: { name: string; type: string }) => <div>{`${name}:${type}`}</div>,
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/split', () => ({
-  __esModule: true,
-  default: () => <div>split</div>,
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({

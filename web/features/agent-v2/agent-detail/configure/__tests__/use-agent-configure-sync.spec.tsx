@@ -18,6 +18,7 @@ import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { agentComposerSkillsAtom } from '@/features/agent-v2/agent-composer/store-modules/skills'
 import { consoleQuery } from '@/service/console'
+import { httpErrorFromResponse } from '@/service/http-error'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { useAgentConfigureSync } from '../use-agent-configure-sync'
 
@@ -182,59 +183,75 @@ vi.mock('@/service/use-plugins', () => ({
   }),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: toolProviderState.builtInTools }),
-  useAllCustomTools: () => ({ data: toolProviderState.customTools }),
-  useAllMCPTools: () => ({ data: toolProviderState.mcpTools }),
-  useAllWorkflowTools: () => ({ data: toolProviderState.workflowTools }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.builtin.get': () => ({ data: toolProviderState.builtInTools }),
+    'workspaces.current.tools.api.get': () => ({ data: toolProviderState.customTools }),
+    'workspaces.current.tools.mcp.get': () => ({ data: toolProviderState.mcpTools }),
+    'workspaces.current.tools.workflow.get': () => ({ data: toolProviderState.workflowTools }),
+  })
+})
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    agent: {
-      get: {
-        key: () => ['agents'],
+vi.mock('@/service/console', async () => {
+  const { consoleOperationStub } = await import('@/test/console/operation-hooks')
+  return {
+    consoleQuery: {
+      workspaces: {
+        current: {
+          tools: {
+            builtin: { get: consoleOperationStub('workspaces.current.tools.builtin.get') },
+            api: { get: consoleOperationStub('workspaces.current.tools.api.get') },
+            workflow: { get: consoleOperationStub('workspaces.current.tools.workflow.get') },
+            mcp: { get: consoleOperationStub('workspaces.current.tools.mcp.get') },
+          },
+        },
       },
-      byAgentId: {
+      agent: {
         get: {
-          queryKey: ({ input }: { input: { params: { agent_id: string } } }) => [
-            'agent-detail',
-            input.params.agent_id,
-          ],
+          key: () => ['agents'],
         },
-        apiAccess: {
+        byAgentId: {
           get: {
             queryKey: ({ input }: { input: { params: { agent_id: string } } }) => [
-              'agent-api-access',
+              'agent-detail',
               input.params.agent_id,
             ],
           },
-        },
-        composer: {
-          get: {
-            queryKey: ({ input }: { input: { params: { agent_id: string } } }) => [
-              'agent-composer',
-              input.params.agent_id,
-            ],
+          apiAccess: {
+            get: {
+              queryKey: ({ input }: { input: { params: { agent_id: string } } }) => [
+                'agent-api-access',
+                input.params.agent_id,
+              ],
+            },
           },
-          put: {
-            mutationOptions: composerPutMutationOptions,
+          composer: {
+            get: {
+              queryKey: ({ input }: { input: { params: { agent_id: string } } }) => [
+                'agent-composer',
+                input.params.agent_id,
+              ],
+            },
+            put: {
+              mutationOptions: composerPutMutationOptions,
+            },
           },
-        },
-        publish: {
-          post: {
-            mutationOptions: publishAgentMutationOptions,
+          publish: {
+            post: {
+              mutationOptions: publishAgentMutationOptions,
+            },
           },
-        },
-        versions: {
-          get: {
-            key: () => ['agent-versions'],
+          versions: {
+            get: {
+              key: () => ['agent-versions'],
+            },
           },
         },
       },
     },
-  },
-}))
+  }
+})
 
 function renderUseAgentConfigureSync({
   agentName = 'Agent',
@@ -1397,12 +1414,13 @@ describe('useAgentConfigureSync', () => {
         statusText: 'Bad Request',
       },
     )
-    publishAgentMutationFn.mockRejectedValueOnce(responseError)
+    const apiError = await httpErrorFromResponse(responseError)
+    publishAgentMutationFn.mockRejectedValueOnce(apiError)
     const { result } = renderUseAgentConfigureSync({
       currentModel: configuredModel,
     })
 
-    await expect(result.current.publishDraft()).rejects.toBe(responseError)
+    await expect(result.current.publishDraft()).rejects.toBe(apiError)
 
     expect(toastMock.error).toHaveBeenCalledWith('Model credential validation failed')
   })

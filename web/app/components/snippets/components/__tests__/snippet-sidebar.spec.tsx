@@ -1,5 +1,6 @@
 import type { InputVar } from '@/app/components/workflow/types'
-import type { SnippetDetail, SnippetInputField } from '@/models/snippet'
+import type { InputVar as PipelineInputVar } from '@/models/pipeline'
+import type { SnippetDetail } from '@/models/snippet'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { toast } from '@/app/notifications'
 import { PipelineInputVarType } from '@/models/pipeline'
@@ -44,7 +45,7 @@ vi.mock('@/app/components/app/configuration/config-var/config-modal', () => ({
           type="button"
           onClick={() =>
             props.onConfirm({
-              type: PipelineInputVarType.textInput as unknown as InputVar['type'],
+              type: PipelineInputVarType.textInput as InputVar['type'],
               label: 'Question',
               variable: 'question',
               required: false,
@@ -81,7 +82,7 @@ const snippet: SnippetDetail = {
   tags: [],
 }
 
-const fields: SnippetInputField[] = [
+const fields: PipelineInputVar[] = [
   {
     type: PipelineInputVarType.textInput,
     label: 'Query',
@@ -214,13 +215,13 @@ describe('SnippetSidebarContent', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /common\.operation\.add/i }))
     capturedConfigVarModalProps?.onConfirm({
-      type: PipelineInputVarType.textInput as unknown as InputVar['type'],
+      type: PipelineInputVarType.textInput as InputVar['type'],
       label: 'Another label',
       variable: 'query',
       required: true,
     })
     capturedConfigVarModalProps?.onConfirm({
-      type: PipelineInputVarType.textInput as unknown as InputVar['type'],
+      type: PipelineInputVarType.textInput as InputVar['type'],
       label: 'Query',
       variable: 'another_query',
       required: true,

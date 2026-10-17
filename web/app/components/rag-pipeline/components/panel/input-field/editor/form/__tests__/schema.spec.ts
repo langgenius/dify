@@ -1,11 +1,7 @@
 import type { TFunction } from 'i18next'
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { describe, expect, it } from 'vite-plus/test'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { createInputFieldSchema, TEXT_MAX_LENGTH } from '../schema'
-
-vi.mock('@/config', () => ({
-  MAX_VAR_KEY_LENGTH: 30,
-}))
 
 const t: TFunction<['appDebug']> = ((key: string) => key) as unknown as TFunction<['appDebug']>
 

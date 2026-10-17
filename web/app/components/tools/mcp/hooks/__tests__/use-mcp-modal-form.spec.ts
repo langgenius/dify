@@ -1,8 +1,10 @@
 import type { EmojiIcon, ImageIcon } from '@/app/components/base/icon-picker'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
-import { act, renderHook } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { MCPAuthMethod } from '@/app/components/tools/types'
+import { toast } from '@/app/notifications'
+import { createHttpError } from '@/service/http-error'
 import { isValidServerID, isValidUrl, useMCPModalForm } from '../use-mcp-modal-form'
 
 // Mock the API service
@@ -10,15 +12,9 @@ vi.mock('@/service/common', () => ({
   uploadRemoteFileInfo: vi.fn(),
 }))
 
-vi.mock('tldts', () => ({
-  getDomain: vi.fn((url: string) => {
-    try {
-      return new URL(url).hostname
-    } catch {
-      return null
-    }
-  }),
-}))
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 describe('useMCPModalForm', () => {
   describe('Utility Functions', () => {
@@ -336,18 +332,6 @@ describe('useMCPModalForm', () => {
       expect(result.current.state.appIcon).toEqual(newIcon)
     })
 
-    it('should toggle showIconPicker', () => {
-      const { result } = renderHook(() => useMCPModalForm())
-
-      expect(result.current.state.showIconPicker).toBe(false)
-
-      act(() => {
-        result.current.actions.setShowIconPicker(true)
-      })
-
-      expect(result.current.state.showIconPicker).toBe(true)
-    })
-
     it('should reset icon to default', () => {
       const { result } = renderHook(() => useMCPModalForm())
 
@@ -410,9 +394,14 @@ describe('useMCPModalForm', () => {
       const { result } = renderHook(() => useMCPModalForm())
 
       await act(async () => {
-        await result.current.actions.handleUrlBlur('https://example.com/mcp')
+        await result.current.actions.handleUrlBlur('https://api.example.co.uk/mcp')
       })
 
+      expect(uploadRemoteFileInfo).toHaveBeenCalledWith(
+        'https://www.google.com/s2/favicons?domain=example.co.uk&sz=128',
+        undefined,
+        true,
+      )
       expect(result.current.state.appIcon).toEqual({
         type: 'image',
         fileId: 'uploaded-icon-id',
@@ -420,50 +409,32 @@ describe('useMCPModalForm', () => {
       })
     })
 
-    it('should handle error when icon fetch fails with error code', async () => {
+    it.each([
+      {
+        name: 'HTTP failure',
+        error: createHttpError(new Response(null, { status: 400 }), {
+          code: 'UPLOAD_ERROR',
+          message: 'Remote icon upload failed',
+        }),
+        message: 'Remote icon upload failed',
+      },
+      {
+        name: 'network failure',
+        error: new TypeError('Failed to fetch'),
+        message: 'Failed to fetch',
+      },
+    ])('shows the error message for an icon $name', async ({ error, message }) => {
       const { uploadRemoteFileInfo } = await import('@/service/common')
-      const mockError = {
-        json: vi.fn().mockResolvedValue({ code: 'UPLOAD_ERROR' }),
-      }
-      vi.mocked(uploadRemoteFileInfo).mockRejectedValueOnce(mockError)
-
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-
+      vi.mocked(uploadRemoteFileInfo).mockRejectedValueOnce(error)
+      const warningSpy = vi.spyOn(toast, 'warning').mockReturnValue('icon-upload-warning')
       const { result } = renderHook(() => useMCPModalForm())
 
       await act(async () => {
         await result.current.actions.handleUrlBlur('https://example.com/mcp')
       })
 
-      // Should have called console.error
-      expect(consoleErrorSpy).toHaveBeenCalled()
-      // isFetchingIcon should be reset to false after error
+      expect(warningSpy).toHaveBeenCalledWith(message)
       expect(result.current.state.isFetchingIcon).toBe(false)
-
-      consoleErrorSpy.mockRestore()
-    })
-
-    it('should handle error when icon fetch fails without error code', async () => {
-      const { uploadRemoteFileInfo } = await import('@/service/common')
-      const mockError = {
-        json: vi.fn().mockResolvedValue({}),
-      }
-      vi.mocked(uploadRemoteFileInfo).mockRejectedValueOnce(mockError)
-
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-
-      const { result } = renderHook(() => useMCPModalForm())
-
-      await act(async () => {
-        await result.current.actions.handleUrlBlur('https://example.com/mcp')
-      })
-
-      // Should have called console.error
-      expect(consoleErrorSpy).toHaveBeenCalled()
-      // isFetchingIcon should be reset to false after error
-      expect(result.current.state.isFetchingIcon).toBe(false)
-
-      consoleErrorSpy.mockRestore()
     })
 
     it('should ignore stale blur when a newer blur starts before fetch completes', async () => {
@@ -486,7 +457,7 @@ describe('useMCPModalForm', () => {
       })
 
       vi.mocked(uploadRemoteFileInfo).mockImplementation((remoteIcon) => {
-        if (String(remoteIcon).includes('first.example.com')) return firstUpload
+        if (String(remoteIcon).includes('domain=example.com')) return firstUpload
         return Promise.resolve({
           id: 'file456',
           name: 'icon2.png',
@@ -498,10 +469,20 @@ describe('useMCPModalForm', () => {
 
       const { result } = renderHook(() => useMCPModalForm())
 
-      const firstBlur = result.current.actions.handleUrlBlur('https://first.example.com/mcp')
+      let firstBlur: Promise<void>
+      act(() => {
+        firstBlur = result.current.actions.handleUrlBlur('https://first.example.com/mcp')
+      })
+      await waitFor(() =>
+        expect(uploadRemoteFileInfo).toHaveBeenCalledWith(
+          'https://www.google.com/s2/favicons?domain=example.com&sz=128',
+          undefined,
+          true,
+        ),
+      )
 
       await act(async () => {
-        await result.current.actions.handleUrlBlur('https://second.example.com/mcp')
+        await result.current.actions.handleUrlBlur('https://second.example.org/mcp')
       })
 
       resolveFirstUpload!({

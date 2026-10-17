@@ -14,7 +14,7 @@ describe('AgentOutputBlockNode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     editor = createEditor({
-      nodes: [AgentOutputBlockNode as unknown as Klass<LexicalNode>],
+      nodes: [AgentOutputBlockNode as Klass<LexicalNode>],
     })
   })
 

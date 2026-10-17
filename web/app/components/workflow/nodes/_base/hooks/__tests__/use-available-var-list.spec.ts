@@ -1,7 +1,7 @@
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { Node, NodeOutPutVar, Var } from '@/app/components/workflow/types'
-import { renderHook } from '@testing-library/react'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
-import { FlowType } from '@/types/common'
 import useAvailableVarList from '../use-available-var-list'
 
 const mockGetTreeLeafNodes = vi.hoisted(() => vi.fn())
@@ -9,7 +9,7 @@ const mockGetBeforeNodesInSameBranchIncludeParent = vi.hoisted(() => vi.fn())
 const mockGetNodeById = vi.hoisted(() => vi.fn())
 const mockGetNodeAvailableVars = vi.hoisted(() => vi.fn())
 const mockFlowType = vi.hoisted(() => ({
-  value: undefined as FlowType | undefined,
+  value: undefined as EditorResource['kind'] | undefined,
 }))
 
 vi.mock('@/app/components/snippets/draft-store', () => ({
@@ -22,7 +22,7 @@ vi.mock('../../../../hooks/use-workflow', async (importOriginal) => {
 
   return {
     ...actual,
-    useIsChatMode: () => true,
+
     useWorkflow: () => ({
       getTreeLeafNodes: mockGetTreeLeafNodes,
       getBeforeNodesInSameBranchIncludeParent: mockGetBeforeNodesInSameBranchIncludeParent,
@@ -48,10 +48,12 @@ vi.mock('@/app/components/workflow/store', () => ({
 }))
 
 vi.mock('@/app/components/workflow/hooks-store/store', () => ({
-  useHooksStore: (selector: (state: { configsMap?: { flowType?: FlowType } }) => unknown) =>
+  useHooksStore: (
+    selector: (state: { configsMap?: { resourceKind?: EditorResource['kind'] } }) => unknown,
+  ) =>
     selector({
       configsMap: {
-        flowType: mockFlowType.value,
+        resourceKind: mockFlowType.value,
       },
     }),
 }))
@@ -114,12 +116,12 @@ describe('useAvailableVarList', () => {
   })
 
   it('filters system variables on snippet canvases', () => {
-    globalThis.history.pushState({}, '', '/snippets/snippet-1/orchestrate')
-
-    const { result } = renderHook(() =>
-      useAvailableVarList('node-1', {
-        filterVar: () => true,
-      }),
+    const { result } = renderHook(
+      () =>
+        useAvailableVarList('node-1', {
+          filterVar: () => true,
+        }),
+      { resource: { kind: 'snippet', snippetId: 'snippet-1' } },
     )
 
     expect(result.current.availableVars).toEqual([
@@ -137,22 +139,24 @@ describe('useAvailableVarList', () => {
   })
 
   it('keeps system variables outside snippet canvases', () => {
-    const { result } = renderHook(() =>
-      useAvailableVarList('node-1', {
-        filterVar: () => true,
-      }),
+    const { result } = renderHook(
+      () =>
+        useAvailableVarList('node-1', {
+          filterVar: () => true,
+        }),
+      { resource: { kind: 'app', appId: 'app-1', mode: 'advanced-chat' } },
     )
 
     expect(result.current.availableVars).toEqual(outputVarsWithSystemVars)
   })
 
   it('filters system variables when the current flow is a snippet', () => {
-    mockFlowType.value = FlowType.snippet
-
-    const { result } = renderHook(() =>
-      useAvailableVarList('node-1', {
-        filterVar: () => true,
-      }),
+    const { result } = renderHook(
+      () =>
+        useAvailableVarList('node-1', {
+          filterVar: () => true,
+        }),
+      { resource: { kind: 'snippet', snippetId: 'snippet-1' } },
     )
 
     expect(result.current.availableVars).toEqual([

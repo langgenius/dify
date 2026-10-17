@@ -2,7 +2,8 @@ import type { UpdateFromMarketPlacePayload } from '@/app/components/plugins/type
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum, TaskStatus } from '@/app/components/plugins/types'
-import { render } from '@/test/console/render'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createPluginDeclarationFixture } from '@/test/fixtures/plugin'
 import UpdateFromMarketplace from '../from-market-place'
 
 const {
@@ -30,9 +31,6 @@ vi.mock('@/context/workspace-state', async () => {
 
 vi.mock('@/app/components/base/badge/index', () => ({
   __esModule: true,
-  BadgeState: {
-    Warning: 'warning',
-  },
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
@@ -64,26 +62,14 @@ vi.mock('@/app/components/plugins/install-plugin/base/check-task-status', () => 
   }),
 }))
 
-vi.mock('@/app/components/plugins/install-plugin/utils', () => ({
-  pluginManifestToCardPluginProps: (payload: unknown) => payload,
-}))
-
 vi.mock('@/service/plugins', () => ({
   updateFromMarketPlace: mockUpdateFromMarketPlace,
 }))
 
-vi.mock('@/service/use-plugins', () => ({
+vi.mock('@/service/use-plugins', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-plugins')>()),
   usePluginTaskList: () => ({
     handleInstallTaskStart: mockHandleInstallTaskStart,
-  }),
-  useRemoveAutoUpgrade: () => ({
-    mutateAsync: mockRemoveAutoUpgrade,
-  }),
-}))
-
-vi.mock('../install-plugin/base/use-get-icon', () => ({
-  default: () => ({
-    getIconUrl: async (icon: string) => `https://cdn.example.com/${icon}`,
   }),
 }))
 
@@ -111,17 +97,28 @@ const createPayload = (
   category: PluginCategoryEnum.tool,
   originalPackageInfo: {
     id: 'plugin@1.0.0',
-    payload: {
+    payload: createPluginDeclarationFixture({
       version: '1.0.0',
       icon: 'plugin.png',
-      label: { en_US: 'Plugin Label' },
-    } as UpdateFromMarketPlacePayload['originalPackageInfo']['payload'],
+    }),
   },
   targetPackageInfo: {
     id: 'plugin@2.0.0',
     version: '2.0.0',
   },
   ...overrides,
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.plugin.autoUpgrade.exclude.post': (...args: unknown[]) =>
+        mockRemoveAutoUpgrade(...args),
+    }),
+  }
 })
 
 describe('UpdateFromMarketplace', () => {
@@ -141,7 +138,7 @@ describe('UpdateFromMarketplace', () => {
     expect(screen.getByText('plugin.upgrade.description')).toBeInTheDocument()
     expect(screen.getByText('1.0.0 -> 2.0.0')).toBeInTheDocument()
     await waitFor(() => {
-      expect(screen.getByTestId('plugin-card')).toHaveTextContent('Plugin Label')
+      expect(screen.getByTestId('plugin-card')).toHaveTextContent('Test Plugin')
     })
   })
 
@@ -197,8 +194,10 @@ describe('UpdateFromMarketplace', () => {
 
     await waitFor(() => {
       expect(mockRemoveAutoUpgrade).toHaveBeenCalledWith({
-        plugin_id: 'plugin-1',
-        category: PluginCategoryEnum.tool,
+        body: {
+          plugin_id: 'plugin-1',
+          category: PluginCategoryEnum.tool,
+        },
       })
       expect(mockUpdateFromMarketPlace).toHaveBeenCalled()
     })

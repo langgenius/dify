@@ -1,31 +1,32 @@
 'use client'
+
 import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
-import type { FC } from 'react'
-import { buttonVariants } from '@langgenius/dify-ui/button'
+import type { ReactNode } from 'react'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
-  DialogClose,
+  DialogBody,
+  DialogCloseButton,
   DialogContent,
   DialogDescription,
+  DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
-import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
-import { AppModeEnum } from '@/types/app'
 
-type IShareLinkProps = {
-  isShow: boolean
-  onClose: () => void
+type CustomizeDialogProps = {
+  disabled?: boolean
+  triggerLabel?: string
   api_base_url: string
   appId: string
   mode?: AppMode
   sourceCodeRepository?: 'webapp-conversation' | 'webapp-text-generator'
 }
 
-const StepNum: FC<{ children: React.ReactNode }> = ({ children }) => (
+const StepNum = ({ children }: { children: ReactNode }) => (
   <div className="mr-3 flex size-7 shrink-0 items-center justify-center rounded-2xl bg-util-colors-blue-blue-50 text-text-accent">
     {children}
   </div>
@@ -52,42 +53,41 @@ const GithubIcon = ({ className }: { className: string }) => {
 
 const prefixCustomize = 'overview.appInfo.customize'
 
-const CustomizeModal: FC<IShareLinkProps> = ({
-  isShow,
-  onClose,
+export function CustomizeDialog({
+  disabled,
+  triggerLabel,
   appId,
   api_base_url,
   mode,
   sourceCodeRepository,
-}) => {
+}: CustomizeDialogProps) {
   const { t } = useTranslation(['appOverview', 'common'])
   const docLink = useDocLink()
-  const isChatApp = mode === AppModeEnum.CHAT || mode === AppModeEnum.ADVANCED_CHAT
+  const isChatApp = mode === 'chat' || mode === 'advanced-chat'
   const repository =
     sourceCodeRepository ?? (isChatApp ? 'webapp-conversation' : 'webapp-text-generator')
   const apiDocLink = docLink('/api-reference/guides/get-started')
 
   return (
-    <Dialog open={isShow} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-160 flex-col overflow-hidden!">
-        <DialogTitle className="shrink-0 title-2xl-semi-bold text-text-primary">
-          {t(($) => $[`${prefixCustomize}.title`], { ns: 'appOverview' })}
-        </DialogTitle>
-        <DialogDescription className="mt-2 shrink-0 body-md-regular text-text-secondary">
-          {t(($) => $[`${prefixCustomize}.explanation`], { ns: 'appOverview' })}
-        </DialogDescription>
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute inset-e-6 top-6"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-        <div className="mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain">
+    <Dialog>
+      <DialogTrigger
+        disabled={disabled}
+        render={<Button variant="secondary" className="flex items-center gap-1 px-3" />}
+      >
+        <span aria-hidden className="i-custom-vender-deploy-code-block size-4" />
+        {triggerLabel ?? t(($) => $['overview.appInfo.customize.entry'], { ns: 'appOverview' })}
+      </DialogTrigger>
+      <DialogContent className="w-160">
+        <DialogHeader>
+          <DialogTitle>
+            {t(($) => $[`${prefixCustomize}.title`], { ns: 'appOverview' })}
+          </DialogTitle>
+          <DialogDescription>
+            {t(($) => $[`${prefixCustomize}.explanation`], { ns: 'appOverview' })}
+          </DialogDescription>
+          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody>
           <div className="w-full rounded-lg border-[0.5px] border-components-panel-border px-6 py-5">
             <span className="inline-flex shrink-0 rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary">
               {t(($) => $[`${prefixCustomize}.way`], { ns: 'appOverview' })} 1
@@ -179,10 +179,8 @@ const CustomizeModal: FC<IShareLinkProps> = ({
               />
             </a>
           </div>
-        </div>
+        </DialogBody>
       </DialogContent>
     </Dialog>
   )
 }
-
-export default CustomizeModal

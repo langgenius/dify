@@ -6,7 +6,7 @@ from collections.abc import Callable, Iterator
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, create_autospec, patch
 
 import pytest
 from flask import Flask
@@ -26,6 +26,8 @@ ABS_PATH = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.abspath(os.path.join(ABS_PATH, os.pardir, os.pardir))
 
 CACHED_APP = Flask(__name__)
+
+pytest_plugins = ("tests.unit_tests.audio_runtime_fixtures", "tests.unit_tests.agent_runtime_fixtures")
 
 # set global mock for Redis client
 redis_mock = MagicMock()
@@ -51,6 +53,7 @@ from extensions import ext_redis
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import TypeBase
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.rbac_fakes import RBACDomain, build_rbac_domain
 
 if TYPE_CHECKING:
     from extensions.application_services.app import AppServices
@@ -119,6 +122,18 @@ def _patch_redis_clients() -> Iterator[None]:
 def reset_redis_mock(_patch_redis_clients: None) -> None:
     """Reset the shared Redis mock after per-test client rebinding."""
     redis_mock.reset_mock()
+    # Restoring a monkeypatched method can leave it detached from the parent's reset traversal.
+    redis_mock.delete.reset_mock()
+    redis_mock.get.reset_mock()
+    redis_mock.setex.reset_mock()
+    redis_mock.setnx.reset_mock()
+    redis_mock.lock.reset_mock()
+    redis_mock.exists.reset_mock()
+    redis_mock.set.reset_mock()
+    redis_mock.expire.reset_mock()
+    redis_mock.hgetall.reset_mock()
+    redis_mock.hdel.reset_mock()
+    redis_mock.incr.reset_mock()
     redis_mock.get.return_value = None
     redis_mock.setex.return_value = None
     redis_mock.setnx.return_value = None
@@ -303,7 +318,6 @@ def account_application_services(
     sqlite_session_factory: sessionmaker[Session], account_domain: AccountDomain
 ) -> ApplicationServices:
     from dataclasses import replace
-    from unittest.mock import Mock
 
     from enums import DeploymentEdition
     from extensions.ext_application_services import build_application_services
@@ -313,7 +327,7 @@ def account_application_services(
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.COMMUNITY,
         initialization_password="",
-        redis=Mock(spec=RedisClientWrapper),
+        redis=create_autospec(RedisClientWrapper, instance=True),
     )
     return replace(
         services,
@@ -328,16 +342,24 @@ def account_application_services(
 
 
 @pytest.fixture
-def app_services(sqlite_session_factory: sessionmaker[Session]) -> AppServices:
+def rbac_domain(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch) -> RBACDomain:
+    return build_rbac_domain(sqlite_session_factory, monkeypatch)
+
+
+@pytest.fixture
+def app_services(sqlite_session_factory: sessionmaker[Session], rbac_domain: RBACDomain) -> AppServices:
     from unittest.mock import Mock
 
     from extensions.application_services.app import build_app_services
     from extensions.ext_application_services import _build_oauth_server_service
     from extensions.ext_redis import redis_client
+    from repositories.app.console_repository import ConsoleAppRepository
     from services.recommended_app_package_service import RecommendedAppPackageService
 
     return build_app_services(
         database_client=sqlite_session_factory,
+        repository=ConsoleAppRepository(session_factory=sqlite_session_factory),
+        rbac_members=rbac_domain.rbac.members,
         oauth=_build_oauth_server_service(database_client=sqlite_session_factory, redis=redis_client),
         recommended_packages=RecommendedAppPackageService(sources=Mock(), exporter=Mock()),
     )

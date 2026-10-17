@@ -10,6 +10,19 @@ import {
 } from '@/test/console/query-data'
 import { PROGRESS_ERROR } from '../../constants'
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'files.upload.get': vi.fn(() => ({
+      data: {
+        file_size_limit: 15,
+        batch_count_limit: 5,
+        file_upload_limit: 10,
+      },
+    })),
+  })
+})
+
 const { mockNotify, mockToast } = vi.hoisted(() => {
   const mockNotify = vi.fn()
   const mockToast = Object.assign(mockNotify, {
@@ -29,17 +42,8 @@ vi.mock('@/app/notifications', () => ({
 }))
 
 // Mock file uploader utils
-vi.mock('@/app/components/base/file-uploader/utils', () => ({
-  getFileUploadErrorMessage: (e: Error, defaultMsg: string) => e.message || defaultMsg,
-}))
 
 // Mock format utils used by the shared hook
-vi.mock('@/utils/format', () => ({
-  getFileExtension: (filename: string) => {
-    const parts = filename.split('.')
-    return parts[parts.length - 1] || ''
-  },
-}))
 // Mock i18n config
 vi.mock('@/i18n/language', () => ({
   LanguagesSupported: ['en-US', 'zh-Hans'],
@@ -63,15 +67,6 @@ vi.mock('../../../store', () => ({
 }))
 
 // Mock file upload config
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: vi.fn(() => ({
-    data: {
-      file_size_limit: 15,
-      batch_count_limit: 5,
-      file_upload_limit: 10,
-    },
-  })),
-}))
 
 // Mock upload service
 const mockUpload = vi.fn()
@@ -269,7 +264,7 @@ describe('useLocalFileUpload', () => {
       const mockFile = { name: 'test.pdf', size: 1024 }
 
       act(() => {
-        result.current.handlePreview(mockFile as unknown as CustomFile)
+        result.current.handlePreview(mockFile as CustomFile)
       })
 
       expect(mockSetCurrentLocalFile).not.toHaveBeenCalled()

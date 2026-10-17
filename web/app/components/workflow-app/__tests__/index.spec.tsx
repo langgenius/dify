@@ -1,8 +1,14 @@
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement, ReactNode } from 'react'
 import { screen, waitFor } from '@testing-library/react'
 import { useEffect } from 'react'
-import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { createAccountProfileQueryClient } from '@/test/console/account-profile'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { seedAppDetail } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppACLPermission } from '@/utils/permission'
 import WorkflowApp from '../index'
 
@@ -18,18 +24,9 @@ const mockWorkflowStoreSetState = vi.fn((state: Record<string, unknown>) => {
 const mockDebouncedCancel = vi.fn()
 const mockFinalDraftSync = vi.fn()
 const mockFetchRunDetail = vi.fn()
-const mockInitialNodes = vi.fn()
-const mockInitialEdges = vi.fn()
 const mockGetWorkflowRunAndTraceUrl = vi.fn()
 
-let appStoreState: {
-  appDetail?: {
-    id: string
-    mode: string
-    maintainer?: string
-    permission_keys?: string[]
-  }
-}
+let appDetail: AppDetailWithSite
 
 let workflowInitState: {
   data: {
@@ -66,10 +63,13 @@ let appTriggersState: {
 
 let searchParamsValue: string | null = null
 
-const render = (ui: ReactElement) =>
-  renderWithConsoleState(ui, {
-    wrapper: createAccountProfileQueryWrapper(consoleState.userProfile),
+const render = (ui: ReactElement) => {
+  const queryClient = createAccountProfileQueryClient(consoleState.userProfile)
+  seedAppDetail(queryClient, appDetail)
+  return renderWithConsoleState(ui, {
+    wrapper: createQueryClientWrapper(queryClient),
   })
+}
 
 const mockWorkflowStore = {
   setState: mockWorkflowStoreSetState,
@@ -83,10 +83,6 @@ const mockWorkflowStore = {
     },
   }),
 }
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: <T,>(selector: (state: typeof appStoreState) => T) => selector(appStoreState),
-}))
 
 vi.mock('@/app/components/workflow/store', () => ({
   useWorkflowStore: () => mockWorkflowStore,
@@ -117,7 +113,9 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@/next/navigation', () => ({
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({ appId: 'app-1' }),
   useSearchParams: () => ({
     get: (key: string) => (key === 'replayRunId' ? searchParamsValue : null),
   }),
@@ -127,9 +125,12 @@ vi.mock('@/service/log', () => ({
   fetchRunDetail: (...args: unknown[]) => mockFetchRunDetail(...args),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAppTriggers: () => appTriggersState,
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'apps.byAppId.triggers.get': () => appTriggersState,
+  })
+})
 
 vi.mock('../hooks/use-workflow-init', () => ({
   useWorkflowInit: () => workflowInitState,
@@ -140,15 +141,6 @@ vi.mock('../hooks/use-get-run-and-trace-url', () => ({
     getWorkflowRunAndTraceUrl: mockGetWorkflowRunAndTraceUrl,
   }),
 }))
-
-vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/workflow/utils')>()
-  return {
-    ...actual,
-    initialNodes: (...args: unknown[]) => mockInitialNodes(...args),
-    initialEdges: (...args: unknown[]) => mockInitialEdges(...args),
-  }
-})
 
 vi.mock('@/app/components/base/loading-placeholder', () => ({
   LoadingPlaceholder: () => <div data-testid="loading">loading</div>,
@@ -228,18 +220,26 @@ describe('WorkflowApp', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockIsWorkflowDataLoaded = true
-    appStoreState = {
-      appDetail: {
-        id: 'app-1',
-        mode: 'workflow',
-        permission_keys: [AppACLPermission.TestAndRun],
-      },
-    }
+    appDetail = createAppDetailFixture({
+      id: 'app-1',
+      mode: 'workflow' as const,
+      permission_keys: [AppACLPermission.TestAndRun],
+    })
     workflowInitState = {
       data: {
         graph: {
-          nodes: [{ id: 'raw-node' }],
-          edges: [{ id: 'raw-edge' }],
+          nodes: [
+            createNode({ id: 'raw-node', data: { type: BlockEnum.Start } }),
+            createNode({ id: 'end-node', data: { type: BlockEnum.End } }),
+          ],
+          edges: [
+            createEdge({
+              id: 'raw-edge',
+              source: 'raw-node',
+              target: 'end-node',
+              data: { targetType: BlockEnum.End },
+            }),
+          ],
           viewport: { x: 1, y: 2, zoom: 3 },
         },
         features: {
@@ -260,8 +260,6 @@ describe('WorkflowApp', () => {
     appTriggersState = {}
     searchParamsValue = null
     mockFetchRunDetail.mockResolvedValue({ inputs: null })
-    mockInitialNodes.mockReturnValue([{ id: 'node-1' }])
-    mockInitialEdges.mockReturnValue([{ id: 'edge-1' }])
     mockGetWorkflowRunAndTraceUrl.mockReturnValue({ runUrl: '/runs/run-1' })
   })
 
@@ -290,14 +288,18 @@ describe('WorkflowApp', () => {
 
     render(<WorkflowApp />)
 
-    expect(screen.getByTestId('workflow-default-context')).toHaveAttribute(
-      'data-nodes',
-      JSON.stringify([{ id: 'node-1' }]),
-    )
-    expect(screen.getByTestId('workflow-default-context')).toHaveAttribute(
-      'data-edges',
-      JSON.stringify([{ id: 'edge-1' }]),
-    )
+    const graphContext = screen.getByTestId('workflow-default-context')
+    expect(JSON.parse(graphContext.getAttribute('data-nodes')!)).toMatchObject([
+      { id: 'raw-node', data: { type: BlockEnum.Start, _connectedSourceHandleIds: ['source'] } },
+      { id: 'end-node', data: { type: BlockEnum.End, _connectedTargetHandleIds: ['target'] } },
+    ])
+    expect(JSON.parse(graphContext.getAttribute('data-edges')!)).toMatchObject([
+      {
+        source: 'raw-node',
+        target: 'end-node',
+        data: { sourceType: BlockEnum.Start, targetType: BlockEnum.End },
+      },
+    ])
     expect(screen.getByRole('region', { name: 'Workflow canvas' })).toHaveAttribute(
       'data-viewport',
       JSON.stringify({ x: 1, y: 2, zoom: 3 }),
@@ -360,13 +362,11 @@ describe('WorkflowApp', () => {
 
   it('should skip replay lookups when test/run permission is missing', async () => {
     searchParamsValue = 'run-1'
-    appStoreState = {
-      appDetail: {
-        id: 'app-1',
-        mode: 'workflow',
-        permission_keys: [AppACLPermission.ViewLayout],
-      },
-    }
+    appDetail = createAppDetailFixture({
+      id: 'app-1',
+      mode: 'workflow' as const,
+      permission_keys: [AppACLPermission.ViewLayout],
+    })
 
     render(<WorkflowApp />)
 

@@ -13,9 +13,6 @@ vi.mock('@/hooks/use-theme', () => ({
 }))
 
 // Mock theme types
-vi.mock('@/types/app', () => ({
-  Theme: { dark: 'dark', light: 'light' },
-}))
 
 // Mock SimplePieChart with dynamic import handling
 vi.mock('next/dynamic', () => ({

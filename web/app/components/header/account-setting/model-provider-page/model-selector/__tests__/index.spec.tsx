@@ -6,10 +6,11 @@ import type {
 import type { ReactNode } from 'react'
 import type { DefaultModelResponse } from '../../declarations'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render as renderWithoutUrlState, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient } from '@/test/console/query-data'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { ConfigurationMethodEnum, ModelStatusEnum, ModelTypeEnum } from '../../declarations'
 import { useSystemDefaultModelAndModelList } from '../../hooks'
 import { ModelSelector, SplitModelSelector } from '../index'
@@ -28,15 +29,6 @@ const makeModelItem = (
 })
 
 const mockModelProviders = vi.hoisted(() => ({ current: [] as ProviderWithModelsResponse[] }))
-const mockSetSettingsDestination = vi.hoisted(() => vi.fn())
-
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return {
-    ...actual,
-    useQueryState: () => [null, mockSetSettingsDestination],
-  }
-})
 
 vi.mock('../../provider-added-card/use-credential-panel-state', () => ({
   useCredentialPanelState: () => ({
@@ -114,6 +106,9 @@ const makeProviderSummary = (): ModelProviderSummaryResponse => ({
   },
   system_configuration: { enabled: true },
 })
+
+const onUrlUpdate = vi.fn()
+const render = createNuqsTestRenderer(renderWithoutUrlState, () => ({ onUrlUpdate }))
 
 const renderWithQueryClient = (node: ReactNode) => {
   const queryClient = createConsoleQueryClient()
@@ -227,7 +222,9 @@ describe('ModelSelector', () => {
 
     expect(triggerButton).toHaveAttribute('aria-expanded', 'false')
     expect(onHide).toHaveBeenCalledTimes(1)
-    expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('provider'),
+    )
   })
 
   it('should not open popup when disabled', () => {
@@ -263,7 +260,13 @@ describe('ModelSelector', () => {
           defaultModel={{
             model: 'missing-model',
             model_type: ModelTypeEnum.textGeneration,
-            provider: { provider, icon_small: { en_US: '', zh_Hans: '' } },
+            provider: {
+              provider,
+              icon_small: { en_US: '', zh_Hans: '' },
+              label: { en_US: provider, zh_Hans: provider },
+              supported_model_types: [],
+              tenant_id: 'tenant-1',
+            },
           }}
         />,
       )

@@ -50,7 +50,7 @@ const renderBaseField = ({
         <form.Field name={formSchema.name}>
           {(field) => (
             <BaseField
-              field={field as unknown as AnyFieldApi}
+              field={field as AnyFieldApi}
               formSchema={formSchema}
               fieldState={fieldState}
               onChange={onChange}

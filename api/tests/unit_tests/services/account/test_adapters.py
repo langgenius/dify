@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 from hashlib import sha256
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
@@ -82,6 +82,53 @@ def test_invitation_token_store_revokes_its_redis_key(redis_transport: tuple[Red
     email_hash = sha256(b"invitee@example.com").hexdigest()
     commands.assert_any_call("DEL", f"member_invite_token:workspace-1, {email_hash}:token-1")
     assert commands.call_count == 1
+
+
+def test_invitation_token_store_marks_membership_use_with_token_ttl(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    redis, commands = redis_transport
+    commands.side_effect = [1200, b"OK"]
+    lookup = InvitationLookup(workspace_id=None, email="invitee@example.com", token="token-1")
+
+    assert RedisInvitationTokenStore(redis=redis).consume_membership(lookup) is True
+
+    assert commands.call_args_list[0].args == ("PTTL", "member_invite:token:token-1")
+    set_args = commands.call_args_list[1].args
+    assert set_args[:3] == ("SET", "member_invite:token:token-1:membership_used", "1")
+    assert "NX" in set_args
+    assert set_args[set_args.index("PX") + 1] == 1200
+
+
+@pytest.mark.parametrize("ttl", [-2, -1, 0])
+def test_invitation_token_store_refuses_membership_use_without_live_token(
+    redis_transport: tuple[RedisClientWrapper, MagicMock], ttl: int
+) -> None:
+    redis, commands = redis_transport
+    commands.return_value = ttl
+    lookup = InvitationLookup(workspace_id=None, email="invitee@example.com", token="token-1")
+
+    assert RedisInvitationTokenStore(redis=redis).consume_membership(lookup) is False
+
+    assert commands.call_count == 1
+    assert commands.call_args.args == ("PTTL", "member_invite:token:token-1")
+
+
+@pytest.mark.parametrize(("stored", "expected"), [(b"1", True), (None, False)])
+def test_invitation_token_store_reports_membership_use(
+    redis_transport: tuple[RedisClientWrapper, MagicMock], stored: bytes | None, expected: bool
+) -> None:
+    redis, commands = redis_transport
+    commands.return_value = stored
+    lookup = InvitationLookup(workspace_id="workspace-1", email="invitee@example.com", token="token-1")
+
+    assert RedisInvitationTokenStore(redis=redis).is_membership_consumed(lookup) is expected
+
+    commands.assert_called_once_with(
+        "GET",
+        "member_invite:token:token-1:membership_used",
+        keys=["member_invite:token:token-1:membership_used"],
+    )
 
 
 def test_billing_eligibility_skips_gateway_when_disabled() -> None:
@@ -259,9 +306,14 @@ def test_security_gateway_counts_normal_ip_request(redis_transport: tuple[RedisC
 
     assert gateway.is_ip_limited("127.0.0.1") is False
 
-    commands.assert_any_call("SETEX", "email_send_ip_limit_minute:127.0.0.1", 60, 1)
-    commands.assert_any_call("EXPIRE", "email_send_ip_limit_minute:127.0.0.1", 60)
-    assert commands.call_count == 4
+    freeze_key = "email_send_ip_limit_freeze:127.0.0.1"
+    minute_key = "email_send_ip_limit_minute:127.0.0.1"
+    assert commands.call_args_list == [
+        call("GET", freeze_key, keys=[freeze_key]),
+        call("GET", minute_key, keys=[minute_key]),
+        call("SETEX", minute_key, 60, 1),
+        call("EXPIRE", minute_key, 60),
+    ]
 
 
 def test_security_gateway_freezes_second_over_limit_ip_strike(
@@ -278,8 +330,15 @@ def test_security_gateway_freezes_second_over_limit_ip_strike(
 
     assert gateway.is_ip_limited("127.0.0.1") is True
 
-    commands.assert_any_call("SETEX", "email_send_ip_limit_freeze:127.0.0.1", 3600, 1)
-    assert commands.call_count == 4
+    freeze_key = "email_send_ip_limit_freeze:127.0.0.1"
+    minute_key = "email_send_ip_limit_minute:127.0.0.1"
+    hour_key = "email_send_ip_limit_hour:127.0.0.1"
+    assert commands.call_args_list == [
+        call("GET", freeze_key, keys=[freeze_key]),
+        call("GET", minute_key, keys=[minute_key]),
+        call("GET", hour_key, keys=[hour_key]),
+        call("SETEX", freeze_key, 3600, 1),
+    ]
 
 
 def test_verification_gateway_binds_token_to_the_target_account() -> None:
@@ -312,10 +371,12 @@ def test_verification_gateway_creates_six_digit_account_bound_challenge() -> Non
     assert generate_token.call_args.kwargs["additional_data"] == {"code": "123456"}
 
 
-def test_verification_notifier_preserves_rate_limit_before_enqueuing_email() -> None:
-    limiter = MagicMock(spec=RateLimiter)
-    limiter.is_rate_limited.return_value = True
-    limiter.time_window = 60
+def test_verification_notifier_preserves_rate_limit_before_enqueuing_email(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    redis, commands = redis_transport
+    commands.return_value = 10
+    limiter = RateLimiter("deletion", 10, 60, redis_client=redis)
     notifier = CeleryAccountDeletionVerificationNotifier(rate_limiter=limiter)
 
     with (
@@ -324,5 +385,6 @@ def test_verification_notifier_preserves_rate_limit_before_enqueuing_email() -> 
     ):
         notifier.send(email="account@example.com", code="123456")
 
+    assert [call.args[0] for call in commands.call_args_list] == ["ZREMRANGEBYSCORE", "ZCARD"]
     assert error.value.retry_after_minutes == 1
     mail_task.delay.assert_not_called()

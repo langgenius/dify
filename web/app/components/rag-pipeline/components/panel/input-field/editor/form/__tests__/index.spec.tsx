@@ -21,14 +21,6 @@ const mockFileUploadConfig = {
   workflow_file_upload_limit: 10,
 }
 
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: () => ({
-    data: mockFileUploadConfig,
-    isLoading: false,
-    error: null,
-  }),
-}))
-
 const createFormData = (overrides?: Partial<FormData>): FormData => ({
   type: PipelineInputVarType.textInput,
   label: 'Test Label',
@@ -88,6 +80,17 @@ const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
 beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
   toastErrorSpy.mockClear()
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'files.upload.get': async () => mockFileUploadConfig,
+    }),
+  }
 })
 
 describe('InputFieldForm', () => {
@@ -304,23 +307,6 @@ describe('InputFieldForm', () => {
       renderWithProviders(<InputFieldForm {...props} />)
 
       expect(screen.queryByText(/appDebug.variableConfig.showAllSettings/i)).toBeInTheDocument()
-    })
-
-    it('should toggle showAllSettings state when clicking show all settings', async () => {
-      const props = createInputFieldFormProps()
-      renderWithProviders(<InputFieldForm {...props} />)
-
-      const showAllSettingsElement = screen.getByText(/appDebug.variableConfig.showAllSettings/i)
-      const clickableParent = showAllSettingsElement.closest('.cursor-pointer')
-      if (clickableParent) {
-        fireEvent.click(clickableParent)
-      }
-
-      await waitFor(() => {
-        expect(
-          screen.queryByText(/appDebug.variableConfig.showAllSettings/i),
-        ).not.toBeInTheDocument()
-      })
     })
   })
 

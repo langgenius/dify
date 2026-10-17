@@ -1,9 +1,9 @@
 import type { MockedFunction } from 'vite-plus/test'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useLocale } from '#i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { useMailValidity, useSendMail } from '@/service/use-common'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import CheckCode from '../page'
 
 const mockBack = vi.fn()
@@ -34,16 +34,9 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: vi.fn(),
 }))
 
-vi.mock('@/service/use-common', () => ({
-  useMailValidity: vi.fn(),
-  useSendMail: vi.fn(),
-}))
-
-const mockUseLocale = useLocale as unknown as MockedFunction<typeof useLocale>
-const mockUseRouter = useRouter as unknown as MockedFunction<typeof useRouter>
-const mockUseSearchParams = useSearchParams as unknown as MockedFunction<typeof useSearchParams>
-const mockUseMailValidity = useMailValidity as unknown as MockedFunction<typeof useMailValidity>
-const mockUseSendMail = useSendMail as unknown as MockedFunction<typeof useSendMail>
+const mockUseLocale = useLocale as MockedFunction<typeof useLocale>
+const mockUseRouter = useRouter as MockedFunction<typeof useRouter>
+const mockUseSearchParams = useSearchParams as MockedFunction<typeof useSearchParams>
 
 describe('Signup Check Code Page', () => {
   beforeEach(() => {
@@ -58,14 +51,8 @@ describe('Signup Check Code Page', () => {
       new URLSearchParams({
         email: 'user@example.com',
         token: 'signup-token',
-      }) as unknown as ReturnType<typeof useSearchParams>,
+      }) as ReturnType<typeof useSearchParams>,
     )
-    mockUseMailValidity.mockReturnValue({
-      mutateAsync: mockVerifyCode,
-    } as unknown as ReturnType<typeof useMailValidity>)
-    mockUseSendMail.mockReturnValue({
-      mutateAsync: mockSubmitMail,
-    } as unknown as ReturnType<typeof useSendMail>)
     mockVerifyCode.mockResolvedValue({ is_valid: true, token: 'verified-token' })
   })
 
@@ -88,9 +75,11 @@ describe('Signup Check Code Page', () => {
 
     await waitFor(() => {
       expect(mockVerifyCode).toHaveBeenCalledWith({
-        code: '123456',
-        email: 'user@example.com',
-        token: 'signup-token',
+        body: {
+          code: '123456',
+          email: 'user@example.com',
+          token: 'signup-token',
+        },
       })
     })
     expect(mockVerifyCode).toHaveBeenCalledTimes(1)
@@ -112,4 +101,16 @@ describe('Signup Check Code Page', () => {
     expect(codeInput).toHaveFocus()
     expect(mockVerifyCode).not.toHaveBeenCalled()
   })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'emailRegister.sendEmail.post': (input) => mockSubmitMail(input),
+      'emailRegister.validity.post': (input) => mockVerifyCode(input),
+    }),
+  }
 })

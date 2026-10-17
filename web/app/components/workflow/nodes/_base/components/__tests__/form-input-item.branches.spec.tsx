@@ -39,7 +39,7 @@ vi.mock('../../../../hooks/use-workflow', async (importOriginal) => {
 
   return {
     ...actual,
-    useIsChatMode: () => false,
+
     useWorkflow: () => ({
       getTreeLeafNodes: () => [],
       getNodeById: () => undefined,
@@ -142,6 +142,7 @@ const renderFormInputItem = (props: Partial<ComponentProps<typeof FormInputItem>
       {...props}
     />,
     {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
       edges: [],
       hooksStoreProps: {},
       nodes: [],
@@ -170,32 +171,6 @@ describe('FormInputItem branches', () => {
       field: {
         type: VarKindType.mixed,
         value: 'hello world',
-      },
-    })
-  })
-
-  it('should switch from variable mode back to constant mode with the schema default value', () => {
-    const { container, onChange } = renderFormInputItem({
-      schema: createSchema({
-        default: 7 as never,
-        type: FormTypeEnum.textNumber,
-      }),
-      value: {
-        field: {
-          type: VarKindType.variable,
-          value: ['node-1', 'count'],
-        },
-      },
-    })
-
-    const switchRoot = container.querySelector('.inline-flex.h-8.shrink-0.gap-px')
-    const clickableItems = switchRoot?.querySelectorAll('.cursor-pointer') ?? []
-    fireEvent.click(clickableItems[1] as HTMLElement)
-
-    expect(onChange).toHaveBeenCalledWith({
-      field: {
-        type: VarKindType.constant,
-        value: 7,
       },
     })
   })

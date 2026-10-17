@@ -4,7 +4,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from inspect import unwrap
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 
 import pytest
 from flask import Flask
@@ -35,16 +35,17 @@ class Services:
 
 @pytest.fixture
 def provisioning(monkeypatch: pytest.MonkeyPatch) -> Mock:
-    provisioning = Mock(spec=WorkspaceProvisioningService)
+    provisioning = create_autospec(WorkspaceProvisioningService, instance=True)
     services = WorkspaceServices(
-        queries=Mock(spec=WorkspaceQueryService),
-        management=Mock(spec=WorkspaceService),
+        queries=create_autospec(WorkspaceQueryService, instance=True),
+        management=create_autospec(WorkspaceService, instance=True),
         provisioning=provisioning,
         members=Mock(),
         member_queries=Mock(),
         owner_transfer=Mock(),
         invitations=Mock(),
         identity=Mock(),
+        resource_cleanup=Mock(),
     )
     monkeypatch.setattr(controller, "application_services", lambda: Services(services))
     return provisioning
@@ -84,6 +85,15 @@ def test_create_serialization(
         provisioning.create.assert_called_once_with(name="Test", owner_email="owner@example.com")
         assert "encrypt_public_key" not in body["tenant"]
         assert "custom_config" not in body["tenant"]
+
+
+def test_ownerless_create_keeps_empty_custom_config_object(app: Flask, provisioning: Mock) -> None:
+    provisioning.create.return_value = CreatedWorkspace(
+        "w1", "Test", "sandbox", "normal", datetime(2026, 1, 1), None, "public-key", {}
+    )
+    with app.test_request_context(method="POST", json={"name": "Test"}):
+        body = unwrap(controller.EnterpriseWorkspaceNoOwnerEmail.post)(controller.EnterpriseWorkspaceNoOwnerEmail())
+    assert body["tenant"]["custom_config"] == {}
 
 
 def test_owner_missing(app: Flask, provisioning: Mock) -> None:

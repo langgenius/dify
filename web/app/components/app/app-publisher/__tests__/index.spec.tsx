@@ -1,8 +1,10 @@
+import type { ComponentProps } from 'react'
 import { EnvironmentStatus, RuntimeState } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { WorkflowContext } from '@/app/components/workflow/context'
+import { createWorkflowStore } from '@/app/components/workflow/store'
 import { AccessMode } from '@/models/access-control'
 import { consoleQuery } from '@/service/console'
 import { appWorkflowVersionsInfiniteQueryOptions } from '@/service/workflow-queries'
@@ -11,12 +13,11 @@ import {
   renderWithConsoleQuery as renderWithQuery,
 } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
 import { AppPublisher } from '../index'
 
-let mockAppDetail: Record<string, any> | null = null
+let mockAppDetail: Record<string, unknown> | null = null
 
 const renderWithConsoleQuery = (
   ui: React.ReactElement,
@@ -49,7 +50,7 @@ const mockWindowOpen = vi.fn()
 const mockInvalidateAppWorkflow = vi.fn()
 const mockUpdateWorkflow = vi.fn()
 const mockFetchPublishedWorkflow = vi.fn()
-let mockPublishedWorkflow: Record<string, any> | null = null
+let mockPublishedWorkflow: Record<string, unknown> | null = null
 let mockPublishedWorkflowQueryState = {
   isError: false,
   isLoading: false,
@@ -57,8 +58,12 @@ let mockPublishedWorkflowQueryState = {
 }
 
 const sectionProps = vi.hoisted(() => ({
-  summary: null as null | Record<string, any>,
-  actions: null as null | Record<string, any>,
+  summary: null as null | ComponentProps<
+    typeof import('../built-in-publisher/summary-section').PublisherSummarySection
+  >,
+  actions: null as null | ComponentProps<
+    typeof import('../built-in-publisher/actions-section').PublisherActionsSection
+  >,
 }))
 const collaborationMocks = vi.hoisted(() => ({
   handler: undefined as
@@ -97,10 +102,6 @@ vi.mock('@/service/access-control/use-app-access-control', () => ({
 const mockPublishToCreatorsPlatform = vi.fn()
 const mockCreateWorkflowToolProvider = vi.fn()
 
-vi.mock('@/service/apps', () => ({
-  publishToCreatorsPlatform: (...args: unknown[]) => mockPublishToCreatorsPlatform(...args),
-}))
-
 vi.mock('@/service/tools', () => ({
   createWorkflowToolProvider: (...args: unknown[]) => mockCreateWorkflowToolProvider(...args),
   saveWorkflowToolProvider: vi.fn(),
@@ -136,14 +137,16 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
   },
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useWorkflowToolDetailByAppID: () => ({
-    data: undefined,
-    isLoading: false,
-  }),
-  useInvalidateAllWorkflowTools: () => vi.fn(),
-  useInvalidateWorkflowToolDetailByAppID: () => vi.fn(),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.toolProvider.workflow.get.get': async () => undefined,
+    }),
+  }
+})
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -200,7 +203,11 @@ vi.mock('@/app/components/tools/workflow-tool', () => ({
 }))
 
 vi.mock('../built-in-publisher/summary-section', () => ({
-  PublisherSummarySection: (props: Record<string, any>) => {
+  PublisherSummarySection: (
+    props: ComponentProps<
+      typeof import('../built-in-publisher/summary-section').PublisherSummarySection
+    >,
+  ) => {
     sectionProps.summary = props
     return (
       <div>
@@ -224,12 +231,16 @@ vi.mock('../built-in-publisher/summary-section', () => ({
 }))
 
 vi.mock('../built-in-publisher/actions-section', () => ({
-  PublisherActionsSection: (props: Record<string, any>) => {
+  PublisherActionsSection: (
+    props: ComponentProps<
+      typeof import('../built-in-publisher/actions-section').PublisherActionsSection
+    >,
+  ) => {
     sectionProps.actions = props
     return (
       <div>
         {props.showRunConfig && props.handleOpenRunConfig && (
-          <button type="button" onClick={() => props.handleOpenRunConfig(props.appURL)}>
+          <button type="button" onClick={() => props.handleOpenRunConfig?.(props.appURL)}>
             publisher-run-config
           </button>
         )}
@@ -269,7 +280,7 @@ describe('AppPublisher', () => {
     mockAppDetail = {
       id: 'app-1',
       name: 'Demo App',
-      mode: AppModeEnum.CHAT,
+      mode: 'chat' as const,
       maintainer: 'user-2',
       permission_keys: [],
       access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
@@ -346,7 +357,7 @@ describe('AppPublisher', () => {
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     mockAppDetail = {
       ...mockAppDetail,
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
       permission_keys: [AppACLPermission.Deploy],
     }
     mockOnPublish.mockResolvedValue(undefined)
@@ -398,7 +409,7 @@ describe('AppPublisher', () => {
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     mockAppDetail = {
       ...mockAppDetail,
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
       permission_keys: [],
     }
     mockOnPublish.mockResolvedValue(undefined)
@@ -423,7 +434,7 @@ describe('AppPublisher', () => {
     const user = userEvent.setup()
     mockAppDetail = {
       ...mockAppDetail,
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
     }
     mockPublishedWorkflow = {
       created_at: Math.floor(Date.now() / 1000),
@@ -458,7 +469,7 @@ describe('AppPublisher', () => {
     expect(mockUpdateWorkflow).toHaveBeenCalledWith(
       {
         appId: 'app-1',
-        appMode: AppModeEnum.WORKFLOW,
+        appMode: 'workflow' as const,
         url: '/apps/app-1/workflows/workflow-version-5',
         title: 'Release 6',
         releaseNotes: 'Updated notes',
@@ -480,7 +491,7 @@ describe('AppPublisher', () => {
     const queryClient = createConsoleQueryClient()
     mockAppDetail = {
       ...mockAppDetail,
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
       permission_keys: [AppACLPermission.Deploy],
     }
     const environmentsQuery =
@@ -513,7 +524,7 @@ describe('AppPublisher', () => {
   it('should keep the workflow publisher single-environment without app deploy ACL', () => {
     mockAppDetail = {
       ...mockAppDetail,
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
       permission_keys: [],
     }
 
@@ -581,7 +592,7 @@ describe('AppPublisher', () => {
     }
     mockAppDetail = {
       ...mockAppDetail,
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
       permission_keys: [AppACLPermission.Deploy],
     }
     const environmentsQuery =
@@ -684,7 +695,7 @@ describe('AppPublisher', () => {
     const detailRequests: Request[] = []
     mockAppDetail = {
       ...mockAppDetail,
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
       permission_keys: [AppACLPermission.Deploy],
     }
     const environmentsQuery =
@@ -800,7 +811,7 @@ describe('AppPublisher', () => {
             required: true,
             hide: true,
             default: '',
-          } as any,
+          },
         ]}
       />,
     )
@@ -832,7 +843,7 @@ describe('AppPublisher', () => {
   it('should keep workflow tool drawer mounted after closing the publish popover', () => {
     mockAppDetail = {
       ...mockAppDetail,
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
     }
 
     render(<AppPublisher appId="app-1" publishedAt={Date.now()} toolPublished />)
@@ -853,7 +864,7 @@ describe('AppPublisher', () => {
   it('should show one success toast when automatically publishing a workflow tool', async () => {
     mockAppDetail = {
       ...mockAppDetail,
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
     }
     mockOnPublish.mockImplementation(async (_params, options?: { showSuccessToast?: boolean }) => {
       if (options?.showSuccessToast !== false) mockToastSuccess('common.api.actionSuccess')
@@ -876,7 +887,7 @@ describe('AppPublisher', () => {
   it('should not show a success toast when workflow tool creation fails after publishing', async () => {
     mockAppDetail = {
       ...mockAppDetail,
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
     }
     mockOnPublish.mockImplementation(async (_params, options?: { showSuccessToast?: boolean }) => {
       if (options?.showSuccessToast !== false) mockToastSuccess('common.api.actionSuccess')
@@ -900,7 +911,7 @@ describe('AppPublisher', () => {
     const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     mockAppDetail = {
       ...mockAppDetail,
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
     }
     mockOnPublish.mockRejectedValueOnce(new Error('publish failed'))
 
@@ -922,7 +933,7 @@ describe('AppPublisher', () => {
     mockWorkspacePermissionKeys = []
     mockAppDetail = {
       ...mockAppDetail,
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
     }
 
     render(<AppPublisher appId="app-1" publishedAt={Date.now()} />)
@@ -972,8 +983,13 @@ describe('AppPublisher', () => {
   })
 
   it('should show marketplace button and open redirect URL on success', async () => {
-    mockPublishToCreatorsPlatform.mockResolvedValue({
-      redirect_url: 'https://marketplace.example.com/publish?code=abc',
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const request = new Request(input, init)
+      if (new URL(request.url).pathname.endsWith('/apps/app-1/publish-to-creators-platform')) {
+        mockPublishToCreatorsPlatform(request.method)
+        return Response.json({ redirect_url: 'https://marketplace.example.com/publish?code=abc' })
+      }
+      throw new Error(`Unexpected request: ${request.method} ${request.url}`)
     })
     const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
 
@@ -994,7 +1010,7 @@ describe('AppPublisher', () => {
     fireEvent.click(screen.getByText(/(?:^|\.)common\.publishToMarketplace(?=$|:)/))
 
     await waitFor(() => {
-      expect(mockPublishToCreatorsPlatform).toHaveBeenCalledWith({ appID: 'app-1' })
+      expect(mockPublishToCreatorsPlatform).toHaveBeenCalledWith('POST')
       expect(windowOpenSpy).toHaveBeenCalledWith(
         'https://marketplace.example.com/publish?code=abc',
         '_blank',
@@ -1005,7 +1021,7 @@ describe('AppPublisher', () => {
   })
 
   it('should show toast error when publish to marketplace fails', async () => {
-    mockPublishToCreatorsPlatform.mockRejectedValue(new Error('network error'))
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('network error'))
 
     renderWithConsoleQuery(
       <AppPublisher appId="app-1" publishedAt={Date.now()} onPublish={mockOnPublish} />,
@@ -1066,7 +1082,7 @@ describe('AppPublisher', () => {
     const user = userEvent.setup()
     mockAppDetail = {
       ...mockAppDetail,
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
     }
     mockPublishedWorkflow = {
       created_at: 1_710_000_100,
@@ -1097,12 +1113,11 @@ describe('AppPublisher', () => {
   it('should refresh the shared workflow query and store after a collaborator publishes', async () => {
     const setPublishedAt = vi.fn()
     const queryClient = createConsoleQueryClient()
-    const workflowStore = {
-      getState: () => ({ setPublishedAt }),
-    }
+    const workflowStore = createWorkflowStore({})
+    workflowStore.setState({ setPublishedAt })
     mockAppDetail = {
       ...mockAppDetail,
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
     }
     mockFetchPublishedWorkflow.mockResolvedValue({
       created_at: 1_710_000_300,
@@ -1114,7 +1129,7 @@ describe('AppPublisher', () => {
     })
 
     render(
-      <WorkflowContext value={workflowStore as any}>
+      <WorkflowContext value={workflowStore}>
         <AppPublisher appId="app-1" publishedAt={1_710_000_100_000} />
       </WorkflowContext>,
       queryClient,

@@ -1,14 +1,18 @@
-from datetime import UTC, datetime
-from types import SimpleNamespace
+from collections.abc import Callable
+from pathlib import Path
 from unittest.mock import MagicMock, call, patch
 
 import httpx
 import pytest
+from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.file.remote_file_metadata import FileInfo, InvalidRemoteFileMetadataError
 from core.helper.ssrf_proxy import MaxRetriesExceededError
 from core.tools.errors import ToolSSRFError
-from models.model import Account
+from extensions.ext_storage import Storage
+from extensions.storage.opendal_storage import OpenDALStorage
+from models.model import Account, UploadFile
 from services.errors.file import FileTooLargeError
 from services.file_service import FileService
 from services.remote_file_service import (
@@ -22,6 +26,7 @@ from services.remote_file_service import (
     RemoteFileUploadResult,
     RemoteFileUrlBlockedError,
 )
+from tests.unit_tests.model_factories import make_tenant
 
 REMOTE_URL = "https://example.com/files/report.pdf"
 
@@ -44,18 +49,35 @@ def _response(
 def _account() -> Account:
     account = Account(name="Test Account", email="test@example.com")
     account.id = "account-id"
+    account._current_tenant = make_tenant(tenant_id="tenant-id")
     return account
 
 
 @pytest.fixture
-def file_service() -> MagicMock:
-    service = MagicMock(spec=FileService)
-    service.is_file_size_within_limit.return_value = True
-    return service
+def storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Storage:
+    storage = Storage()
+    storage.storage_runner = OpenDALStorage(scheme="fs", root=str(tmp_path))
+    monkeypatch.setattr("services.file_service.storage", storage)
+    return storage
 
 
 @pytest.fixture
-def remote_file_service(file_service: MagicMock) -> RemoteFileService:
+def file_service(sqlite_session_factory: sessionmaker[Session]) -> FileService:
+    return FileService(sqlite_session_factory)
+
+
+@pytest.fixture
+def upload(file_service: FileService, mocker: MockerFixture) -> MagicMock:
+    return mocker.spy(file_service, "upload_file")
+
+
+@pytest.fixture
+def size_check(file_service: FileService, mocker: MockerFixture) -> MagicMock:
+    return mocker.spy(file_service, "is_file_size_within_limit")
+
+
+@pytest.fixture
+def remote_file_service(file_service: FileService) -> RemoteFileService:
     return RemoteFileService(files=file_service)
 
 
@@ -170,24 +192,15 @@ def test_fetch_info_rejects_invalid_content_length(remote_file_service: RemoteFi
 
 def test_upload_reuses_get_fallback_content_and_returns_signed_result(
     remote_file_service: RemoteFileService,
-    file_service: MagicMock,
+    upload: MagicMock,
+    size_check: MagicMock,
+    storage: Storage,
+    sqlite_session: Session,
 ) -> None:
     account = _account()
     head_response = _response("HEAD", httpx.codes.METHOD_NOT_ALLOWED)
     get_response = _response("GET", httpx.codes.OK, content=b"remote content")
     file_info = FileInfo(filename="report.pdf", extension=".pdf", mimetype="application/pdf", size=14)
-    created_at = datetime(2026, 9, 2, tzinfo=UTC)
-    upload_file = SimpleNamespace(
-        id="upload-id",
-        name="report.pdf",
-        size=14,
-        extension="pdf",
-        mime_type="application/pdf",
-        created_by=account.id,
-        created_at=created_at,
-    )
-    file_service.upload_file.return_value = upload_file
-
     with (
         patch(
             "services.remote_file_service.remote_fetcher.make_request",
@@ -209,8 +222,8 @@ def test_upload_reuses_get_fallback_content_and_returns_signed_result(
         call("HEAD", url=REMOTE_URL),
         call("GET", url=REMOTE_URL, timeout=3, follow_redirects=True),
     ]
-    file_service.is_file_size_within_limit.assert_called_once_with(extension=".pdf", file_size=14)
-    file_service.upload_file.assert_called_once_with(
+    size_check.assert_called_once_with(extension=".pdf", file_size=14)
+    upload.assert_called_once_with(
         filename="report.pdf",
         content=b"remote content",
         mimetype="application/pdf",
@@ -218,37 +231,34 @@ def test_upload_reuses_get_fallback_content_and_returns_signed_result(
         tenant_id="tenant-id",
         source_url=REMOTE_URL,
     )
-    get_signed_file_url.assert_called_once_with(upload_file_id="upload-id")
+    upload_file = sqlite_session.get(UploadFile, result.id)
+    assert upload_file is not None
+    assert upload_file.tenant_id == "tenant-id"
+    assert upload_file.source_url == REMOTE_URL
+    assert storage.load_once(upload_file.key) == b"remote content"
+    get_signed_file_url.assert_called_once_with(upload_file_id=result.id)
     assert result == RemoteFileUploadResult(
-        id="upload-id",
+        id=result.id,
         name="report.pdf",
         size=14,
         extension="pdf",
         url="https://example.com/signed/upload-id",
         mime_type="application/pdf",
         created_by="account-id",
-        created_at=created_at,
+        created_at=upload_file.created_at,
     )
 
 
 def test_upload_fetches_content_after_successful_head(
     remote_file_service: RemoteFileService,
-    file_service: MagicMock,
+    upload: MagicMock,
+    storage: Storage,
+    sqlite_session: Session,
 ) -> None:
     account = _account()
     head_response = _response("HEAD", httpx.codes.OK)
     content_response = _response("GET", httpx.codes.OK, content=b"downloaded content")
     file_info = FileInfo(filename="report.pdf", extension=".pdf", mimetype="application/pdf", size=18)
-    file_service.upload_file.return_value = SimpleNamespace(
-        id="upload-id",
-        name="report.pdf",
-        size=18,
-        extension="pdf",
-        mime_type="application/pdf",
-        created_by=account.id,
-        created_at=datetime(2026, 9, 2, tzinfo=UTC),
-    )
-
     with (
         patch(
             "services.remote_file_service.remote_fetcher.make_request",
@@ -257,16 +267,20 @@ def test_upload_fetches_content_after_successful_head(
         patch("services.remote_file_service.guess_file_info_from_response", return_value=file_info),
         patch("services.remote_file_service.file_helpers.get_signed_file_url", return_value="signed-url"),
     ):
-        remote_file_service.upload_from_url(url=REMOTE_URL, user=account)
+        result = remote_file_service.upload_from_url(url=REMOTE_URL, user=account)
 
     assert make_request.call_args_list == [call("HEAD", url=REMOTE_URL), call("GET", url=REMOTE_URL)]
-    assert file_service.upload_file.call_args.kwargs["content"] == b"downloaded content"
-    assert file_service.upload_file.call_args.kwargs["tenant_id"] is None
+    assert upload.call_args.kwargs["content"] == b"downloaded content"
+    assert upload.call_args.kwargs["tenant_id"] is None
+    upload_file = sqlite_session.get(UploadFile, result.id)
+    assert upload_file is not None
+    assert upload_file.tenant_id == "tenant-id"
+    assert storage.load_once(upload_file.key) == b"downloaded content"
 
 
 def test_upload_rejects_failed_content_download(
     remote_file_service: RemoteFileService,
-    file_service: MagicMock,
+    upload: MagicMock,
 ) -> None:
     head_response = _response("HEAD", httpx.codes.OK)
     content_response = _response("GET", httpx.codes.BAD_GATEWAY, content=b"bad gateway")
@@ -282,12 +296,12 @@ def test_upload_rejects_failed_content_download(
         with pytest.raises(RemoteFileUnavailableError):
             remote_file_service.upload_from_url(url=REMOTE_URL, user=_account())
 
-    file_service.upload_file.assert_not_called()
+    upload.assert_not_called()
 
 
 def test_upload_rejects_invalid_remote_metadata(
     remote_file_service: RemoteFileService,
-    file_service: MagicMock,
+    upload: MagicMock,
 ) -> None:
     response = _response("GET", httpx.codes.OK, content=b"remote content")
     metadata_error = InvalidRemoteFileMetadataError("invalid Content-Length")
@@ -300,12 +314,12 @@ def test_upload_rejects_invalid_remote_metadata(
             remote_file_service.upload_from_url(url=REMOTE_URL, user=_account())
 
     assert error_info.value.__cause__ is metadata_error
-    file_service.upload_file.assert_not_called()
+    upload.assert_not_called()
 
 
 def test_upload_does_not_translate_unknown_metadata_failure(
     remote_file_service: RemoteFileService,
-    file_service: MagicMock,
+    upload: MagicMock,
 ) -> None:
     response = _response("GET", httpx.codes.OK, content=b"remote content")
     source_error = ValueError("unexpected parser bug")
@@ -318,12 +332,12 @@ def test_upload_does_not_translate_unknown_metadata_failure(
             remote_file_service.upload_from_url(url=REMOTE_URL, user=_account())
 
     assert error_info.value.__cause__ is source_error
-    file_service.upload_file.assert_not_called()
+    upload.assert_not_called()
 
 
 def test_upload_rejects_remote_filename_with_path_separator(
     remote_file_service: RemoteFileService,
-    file_service: MagicMock,
+    upload: MagicMock,
 ) -> None:
     response = _response("GET", httpx.codes.OK, content=b"remote content")
     file_info = FileInfo(filename="folder/report.pdf", extension=".pdf", mimetype="application/pdf", size=14)
@@ -335,16 +349,18 @@ def test_upload_rejects_remote_filename_with_path_separator(
         with pytest.raises(RemoteFileInvalidResponseError):
             remote_file_service.upload_from_url(url=REMOTE_URL, user=_account())
 
-    file_service.upload_file.assert_not_called()
+    upload.assert_not_called()
 
 
 def test_upload_rejects_file_that_exceeds_size_limit(
     remote_file_service: RemoteFileService,
-    file_service: MagicMock,
+    upload: MagicMock,
+    size_check: MagicMock,
+    config_overrides: Callable[..., None],
 ) -> None:
     response = _response("GET", httpx.codes.OK, content=b"remote content")
     file_info = FileInfo(filename="report.pdf", extension=".pdf", mimetype="application/pdf", size=1024)
-    file_service.is_file_size_within_limit.return_value = False
+    config_overrides(UPLOAD_FILE_SIZE_LIMIT=0)
 
     with (
         patch("services.remote_file_service.remote_fetcher.make_request", return_value=response),
@@ -353,5 +369,5 @@ def test_upload_rejects_file_that_exceeds_size_limit(
         with pytest.raises(FileTooLargeError):
             remote_file_service.upload_from_url(url=REMOTE_URL, user=_account())
 
-    file_service.is_file_size_within_limit.assert_called_once_with(extension=".pdf", file_size=1024)
-    file_service.upload_file.assert_not_called()
+    size_check.assert_called_once_with(extension=".pdf", file_size=1024)
+    upload.assert_not_called()

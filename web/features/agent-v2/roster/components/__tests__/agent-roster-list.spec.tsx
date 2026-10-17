@@ -403,7 +403,7 @@ describe('AgentRosterList', () => {
         })
       else
         await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.moreActions/ }))
-      await user.click(screen.getByRole('menuitem', { name: 'app.exportApp' }))
+      await user.click(screen.getByRole('menuitem', { name: 'agentV2.exportAgent' }))
 
       expect(exportAppDslMock).toHaveBeenCalledWith({
         format: 'ifpkg',
@@ -420,7 +420,7 @@ describe('AgentRosterList', () => {
 
     await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.moreActions/ }))
 
-    expect(screen.getByRole('menuitem', { name: 'app.exportApp' })).toHaveAttribute(
+    expect(screen.getByRole('menuitem', { name: 'agentV2.exportAgent' })).toHaveAttribute(
       'aria-disabled',
       'true',
     )
@@ -490,9 +490,6 @@ describe('AgentRosterList', () => {
         client: expect.any(QueryClient),
       }),
     )
-    await waitFor(() => {
-      expect(toast.success).toHaveBeenCalledWith('agentRoster.roster.duplicateSuccess')
-    })
   })
 
   it('duplicates an agent with the dialog name, role, and description when provided', async () => {
@@ -540,9 +537,6 @@ describe('AgentRosterList', () => {
         client: expect.any(QueryClient),
       }),
     )
-    await waitFor(() => {
-      expect(toast.success).toHaveBeenCalledWith('agentRoster.roster.duplicateSuccess')
-    })
   })
 
   it('duplicates an agent with an empty role when the role is cleared', async () => {

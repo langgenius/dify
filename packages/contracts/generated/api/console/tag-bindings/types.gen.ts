@@ -14,6 +14,16 @@ export type SimpleResultResponse = {
   result: string
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type TagBindingRemovePayload = {
   tag_ids: Array<string>
   target_id: string
@@ -29,6 +39,12 @@ export type PostTagBindingsData = {
   url: '/tag-bindings'
 }
 
+export type PostTagBindingsErrors = {
+  default: ErrorResponse
+}
+
+export type PostTagBindingsError = PostTagBindingsErrors[keyof PostTagBindingsErrors]
+
 export type PostTagBindingsResponses = {
   200: SimpleResultResponse
 }
@@ -41,6 +57,13 @@ export type PostTagBindingsRemoveData = {
   query?: never
   url: '/tag-bindings/remove'
 }
+
+export type PostTagBindingsRemoveErrors = {
+  default: ErrorResponse
+}
+
+export type PostTagBindingsRemoveError =
+  PostTagBindingsRemoveErrors[keyof PostTagBindingsRemoveErrors]
 
 export type PostTagBindingsRemoveResponses = {
   200: SimpleResultResponse

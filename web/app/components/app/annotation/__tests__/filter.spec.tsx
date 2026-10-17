@@ -1,16 +1,10 @@
-import type { AnnotationCountResponse } from '@dify/contracts/api/console/apps/types.gen'
-import type { UseQueryResult } from '@tanstack/react-query'
-import type { Mock } from 'vite-plus/test'
 import type { QueryParam } from '../filter'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
-import * as useLogModule from '@/service/use-log'
 import Filter from '../filter'
 
-vi.mock('@/service/use-log')
-
-const mockUseAnnotationsCount = useLogModule.useAnnotationsCount as Mock
+const mockUseQuery = vi.fn()
 
 // ============================================================================
 // Test Utilities
@@ -34,18 +28,6 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
 // Mock Return Value Factory
 // ============================================================================
 
-type MockQueryResult<T> = Pick<UseQueryResult<T>, 'data' | 'isLoading' | 'error' | 'refetch'>
-
-const createMockQueryResult = <T,>(
-  overrides: Partial<MockQueryResult<T>> = {},
-): MockQueryResult<T> => ({
-  data: undefined,
-  isLoading: false,
-  error: null,
-  refetch: vi.fn(),
-  ...overrides,
-})
-
 // ============================================================================
 // Tests
 // ============================================================================
@@ -63,11 +45,9 @@ describe('Filter', () => {
   // Rendering Tests (REQUIRED)
   // --------------------------------------------------------------------------
   describe('Rendering', () => {
-    it('should render nothing when data is loading', () => {
+    it('should render nothing when data is loading', async () => {
       // Arrange
-      mockUseAnnotationsCount.mockReturnValue(
-        createMockQueryResult<AnnotationCountResponse>({ isLoading: true }),
-      )
+      mockUseQuery.mockReturnValue(new Promise(() => {}))
 
       // Act
       const { container } = renderWithQueryClient(
@@ -80,11 +60,9 @@ describe('Filter', () => {
       expect(container.firstChild).toBeNull()
     })
 
-    it('should render nothing when data is undefined', () => {
+    it('should render nothing when data is undefined', async () => {
       // Arrange
-      mockUseAnnotationsCount.mockReturnValue(
-        createMockQueryResult<AnnotationCountResponse>({ data: undefined, isLoading: false }),
-      )
+      mockUseQuery.mockReturnValue(new Promise(() => {}))
 
       // Act
       const { container } = renderWithQueryClient(
@@ -97,14 +75,9 @@ describe('Filter', () => {
       expect(container.firstChild).toBeNull()
     })
 
-    it('should render filter and children when data is available', () => {
+    it('should render filter and children when data is available', async () => {
       // Arrange
-      mockUseAnnotationsCount.mockReturnValue(
-        createMockQueryResult<AnnotationCountResponse>({
-          data: { count: 20 },
-          isLoading: false,
-        }),
-      )
+      mockUseQuery.mockResolvedValue({ count: 20 })
 
       // Act
       renderWithQueryClient(
@@ -114,7 +87,9 @@ describe('Filter', () => {
       )
 
       // Assert
-      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('searchbox', { name: 'common.operation.search' }),
+      ).toBeInTheDocument()
       expect(screen.getByText(childContent)).toBeInTheDocument()
     })
   })
@@ -123,14 +98,9 @@ describe('Filter', () => {
   // Props Tests (REQUIRED)
   // --------------------------------------------------------------------------
   describe('Props', () => {
-    it('should call useAnnotationsCount with appId', () => {
+    it('should query the annotations count for appId', async () => {
       // Arrange
-      mockUseAnnotationsCount.mockReturnValue(
-        createMockQueryResult<AnnotationCountResponse>({
-          data: { count: 10 },
-          isLoading: false,
-        }),
-      )
+      mockUseQuery.mockResolvedValue({ count: 10 })
 
       // Act
       renderWithQueryClient(
@@ -140,17 +110,12 @@ describe('Filter', () => {
       )
 
       // Assert
-      expect(mockUseAnnotationsCount).toHaveBeenCalledWith(appId)
+      expect(mockUseQuery).toHaveBeenCalledWith({ params: { app_id: appId } })
     })
 
-    it('should display keyword value in input', () => {
+    it('should display keyword value in input', async () => {
       // Arrange
-      mockUseAnnotationsCount.mockReturnValue(
-        createMockQueryResult<AnnotationCountResponse>({
-          data: { count: 10 },
-          isLoading: false,
-        }),
-      )
+      mockUseQuery.mockResolvedValue({ count: 10 })
       const queryParams: QueryParam = { keyword: 'test-keyword' }
 
       // Act
@@ -161,7 +126,7 @@ describe('Filter', () => {
       )
 
       // Assert
-      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toHaveValue(
+      expect(await screen.findByRole('searchbox', { name: 'common.operation.search' })).toHaveValue(
         'test-keyword',
       )
     })
@@ -171,14 +136,9 @@ describe('Filter', () => {
   // User Interactions
   // --------------------------------------------------------------------------
   describe('User Interactions', () => {
-    it('should call setQueryParams when typing in search input', () => {
+    it('should call setQueryParams when typing in search input', async () => {
       // Arrange
-      mockUseAnnotationsCount.mockReturnValue(
-        createMockQueryResult<AnnotationCountResponse>({
-          data: { count: 20 },
-          isLoading: false,
-        }),
-      )
+      mockUseQuery.mockResolvedValue({ count: 20 })
       const queryParams: QueryParam = { keyword: '' }
       const setQueryParams = vi.fn()
 
@@ -189,21 +149,16 @@ describe('Filter', () => {
       )
 
       // Act
-      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
+      const input = await screen.findByRole('searchbox', { name: 'common.operation.search' })
       fireEvent.change(input, { target: { value: 'updated' } })
 
       // Assert
       expect(setQueryParams).toHaveBeenCalledWith({ ...queryParams, keyword: 'updated' })
     })
 
-    it('should call setQueryParams with empty keyword when clearing input', () => {
+    it('should call setQueryParams with empty keyword when clearing input', async () => {
       // Arrange
-      mockUseAnnotationsCount.mockReturnValue(
-        createMockQueryResult<AnnotationCountResponse>({
-          data: { count: 20 },
-          isLoading: false,
-        }),
-      )
+      mockUseQuery.mockResolvedValue({ count: 20 })
       const queryParams: QueryParam = { keyword: 'prefill' }
       const setQueryParams = vi.fn()
 
@@ -214,7 +169,7 @@ describe('Filter', () => {
       )
 
       // Act
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'common.operation.clear' }))
 
       // Assert
       expect(setQueryParams).toHaveBeenCalledWith({ ...queryParams, keyword: '' })
@@ -225,14 +180,9 @@ describe('Filter', () => {
   // Edge Cases (REQUIRED)
   // --------------------------------------------------------------------------
   describe('Edge Cases', () => {
-    it('should handle empty keyword in queryParams', () => {
+    it('should handle empty keyword in queryParams', async () => {
       // Arrange
-      mockUseAnnotationsCount.mockReturnValue(
-        createMockQueryResult<AnnotationCountResponse>({
-          data: { count: 5 },
-          isLoading: false,
-        }),
-      )
+      mockUseQuery.mockResolvedValue({ count: 5 })
 
       // Act
       renderWithQueryClient(
@@ -242,17 +192,14 @@ describe('Filter', () => {
       )
 
       // Assert
-      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toHaveValue('')
+      expect(await screen.findByRole('searchbox', { name: 'common.operation.search' })).toHaveValue(
+        '',
+      )
     })
 
-    it('should handle undefined keyword in queryParams', () => {
+    it('should handle undefined keyword in queryParams', async () => {
       // Arrange
-      mockUseAnnotationsCount.mockReturnValue(
-        createMockQueryResult<AnnotationCountResponse>({
-          data: { count: 5 },
-          isLoading: false,
-        }),
-      )
+      mockUseQuery.mockResolvedValue({ count: 5 })
 
       // Act
       renderWithQueryClient(
@@ -262,17 +209,14 @@ describe('Filter', () => {
       )
 
       // Assert
-      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('searchbox', { name: 'common.operation.search' }),
+      ).toBeInTheDocument()
     })
 
-    it('should handle zero count', () => {
+    it('should handle zero count', async () => {
       // Arrange
-      mockUseAnnotationsCount.mockReturnValue(
-        createMockQueryResult<AnnotationCountResponse>({
-          data: { count: 0 },
-          isLoading: false,
-        }),
-      )
+      mockUseQuery.mockResolvedValue({ count: 0 })
 
       // Act
       renderWithQueryClient(
@@ -282,7 +226,20 @@ describe('Filter', () => {
       )
 
       // Assert - should still render when count is 0
-      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('searchbox', { name: 'common.operation.search' }),
+      ).toBeInTheDocument()
     })
   })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.annotations.count.get': (input) => mockUseQuery(input),
+    }),
+  }
 })

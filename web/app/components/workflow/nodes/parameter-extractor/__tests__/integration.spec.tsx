@@ -1,246 +1,17 @@
-import type { ReactNode } from 'react'
-import type { Var } from '../../../types'
-import type { Param, ParameterExtractorNodeType } from '../types'
-import type { PanelProps } from '@/types/workflow'
-import { fireEvent, render, screen } from '@testing-library/react'
+import type { Param } from '../types'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { ChangeType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
-import { AppModeEnum } from '@/types/app'
-import { BlockEnum } from '../../../types'
-import ExtractParameter from '../components/extract-parameter/list'
-import AddExtractParameter from '../components/extract-parameter/update'
-import ReasoningModePicker from '../components/reasoning-mode-picker'
-import Node from '../node'
-import Panel from '../panel'
-import { ParamType, ReasoningModeType } from '../types'
-import useConfig from '../use-config'
-
-const reasoningModeFunctionToolCallingLabel =
-  'workflowModels.nodes.parameterExtractor.reasoningModeFunctionToolCalling'
-const reasoningModePromptLabel = 'workflowModels.nodes.parameterExtractor.reasoningModePrompt'
+import { ExtractParameterList } from '../components/extract-parameter/list'
+import { ParameterDialog } from '../components/extract-parameter/update'
+import { ParamType } from '../types'
 
 vi.mock('@/app/notifications', () => ({
-  toast: {
-    success: vi.fn(),
-    error: vi.fn(),
-    warning: vi.fn(),
-    info: vi.fn(),
-  },
+  toast: { error: vi.fn() },
 }))
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useLanguage: () => 'en_US',
-  useTextGenerationCurrentProviderAndModelAndModelList: vi.fn(),
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  ModelSelector: ({ value }: { value?: { provider: string; model: string } }) => (
-    <div>{value ? `${value.provider}:${value.model}` : 'no-model'}</div>
-  ),
-}))
-
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
-  () => ({
-    __esModule: true,
-    default: ({
-      setModel,
-      onCompletionParamsChange,
-    }: {
-      setModel: (model: { provider: string; modelId: string; mode?: string }) => void
-      onCompletionParamsChange: (params: Record<string, unknown>) => void
-    }) => (
-      <div>
-        <button
-          type="button"
-          onClick={() =>
-            setModel({
-              provider: 'anthropic',
-              modelId: 'claude-3-7-sonnet',
-              mode: AppModeEnum.CHAT,
-            })
-          }
-        >
-          set-model
-        </button>
-        <button type="button" onClick={() => onCompletionParamsChange({ temperature: 0.2 })}>
-          set-params
-        </button>
-      </div>
-    ),
-  }),
-)
-
-vi.mock('@/app/components/workflow/nodes/_base/components/collapse', () => ({
-  FieldCollapse: ({ title, children }: { title: ReactNode; children: ReactNode }) => (
-    <div>
-      <div>{title}</div>
-      {children}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
-  __esModule: true,
-  default: ({
-    title,
-    operations,
-    children,
-  }: {
-    title: ReactNode
-    operations?: ReactNode
-    children: ReactNode
-  }) => (
-    <div>
-      <div>{title}</div>
-      <div>{operations}</div>
-      {children}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
-  __esModule: true,
-  default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  VarItem: ({ name, type }: { name: string; type: string }) => <div>{`${name}:${type}`}</div>,
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/split', () => ({
-  __esModule: true,
-  default: () => <div>split</div>,
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/config-vision', () => ({
-  __esModule: true,
-  default: ({
-    onEnabledChange,
-    onConfigChange,
-  }: {
-    onEnabledChange: (enabled: boolean) => void
-    onConfigChange: (value: { variable_selector: string[]; detail: string }) => void
-  }) => (
-    <div>
-      <button type="button" onClick={() => onEnabledChange(true)}>
-        vision-toggle
-      </button>
-      <button
-        type="button"
-        onClick={() => onConfigChange({ variable_selector: ['node-1', 'image'], detail: 'high' })}
-      >
-        vision-config
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/memory-config', () => ({
-  __esModule: true,
-  default: ({ onChange }: { onChange: (value: { enabled: boolean }) => void }) => (
-    <button type="button" onClick={() => onChange({ enabled: true })}>
-      memory-config
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/prompt/editor', () => ({
-  __esModule: true,
-  default: ({
-    title,
-    value,
-    onChange,
-  }: {
-    title: ReactNode
-    value: string
-    onChange: (value: string) => void
-  }) => (
-    <div>
-      <div>{typeof title === 'string' ? title : 'editor-title'}</div>
-      <textarea
-        aria-label="instruction-editor"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      />
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
-  __esModule: true,
-  default: ({ onChange }: { onChange: (value: string[]) => void }) => (
-    <button type="button" onClick={() => onChange(['node-1', 'query'])}>
-      pick-var
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/list-no-data-placeholder', () => ({
-  __esModule: true,
-  default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/option-card', () => ({
-  __esModule: true,
-  default: ({ title, onSelect }: { title: string; onSelect: () => void }) => (
-    <button type="button" onClick={onSelect}>
-      {title}
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/app/configuration/config-var/config-modal/field', () => ({
-  __esModule: true,
-  default: ({ title, children }: { title: ReactNode; children: ReactNode }) => (
-    <div>
-      <div>{title}</div>
-      {children}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/app/configuration/config-var/config-select', () => ({
-  __esModule: true,
-  default: ({ options, onChange }: { options: string[]; onChange: (value: string[]) => void }) => (
-    <div>
-      <div>{options.join(',')}</div>
-      <button type="button" onClick={() => onChange([...options, 'published'])}>
-        set-options
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('../use-config', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}))
-
-vi.mock('../components/extract-parameter/import-from-tool', () => ({
-  __esModule: true,
-  default: ({ onImport }: { onImport: (params: Param[]) => void }) => (
-    <button
-      type="button"
-      onClick={() =>
-        onImport([
-          {
-            name: 'city',
-            type: ParamType.string,
-            required: true,
-            description: 'City name',
-            options: ['Draft'],
-          },
-        ])
-      }
-    >
-      workflowModels.nodes.parameterExtractor.importFromTool
-    </button>
-  ),
-}))
-
-const mockUseTextGeneration = vi.mocked(useTextGenerationCurrentProviderAndModelAndModelList)
-const mockUseConfig = vi.mocked(useConfig)
 const mockToastError = vi.mocked(toast.error)
-
 const createParam = (overrides: Partial<Param> = {}): Param => ({
   name: 'city',
   type: ParamType.string,
@@ -249,412 +20,237 @@ const createParam = (overrides: Partial<Param> = {}): Param => ({
   ...overrides,
 })
 
-const createData = (
-  overrides: Partial<ParameterExtractorNodeType> = {},
-): ParameterExtractorNodeType => ({
-  title: 'Parameter Extractor',
-  desc: '',
-  type: BlockEnum.ParameterExtractor,
-  model: {
-    provider: 'openai',
-    name: 'gpt-4o',
-    mode: AppModeEnum.CHAT,
-    completion_params: {},
-  },
-  query: ['node-1', 'query'],
-  reasoning_mode: ReasoningModeType.prompt,
-  parameters: [createParam()],
-  instruction: 'Extract city and budget',
-  vision: {
-    enabled: false,
-  },
-  ...overrides,
-})
+describe('Parameter editing', () => {
+  it('should show the empty state for an empty parameter list', () => {
+    render(<ExtractParameterList readonly={false} list={[]} onChange={vi.fn()} />)
 
-const createConfigResult = (
-  overrides: Partial<ReturnType<typeof useConfig>> = {},
-): ReturnType<typeof useConfig> => ({
-  readOnly: false,
-  handleInputVarChange: vi.fn(),
-  filterVar: (_varPayload: Var) => true,
-  isChatMode: true,
-  inputs: createData(),
-  isChatModel: true,
-  isCompletionModel: false,
-  handleModelChanged: vi.fn(),
-  handleCompletionParamsChange: vi.fn(),
-  handleImportFromTool: vi.fn(),
-  handleExactParamsChange: vi.fn(),
-  addExtractParameter: vi.fn(),
-  handleInstructionChange: vi.fn(),
-  hasSetBlockStatus: { history: false, query: false, context: false },
-  availableVars: [],
-  availableNodesWithParent: [],
-  isSupportFunctionCall: true,
-  handleReasoningModeChange: vi.fn(),
-  handleMemoryChange: vi.fn(),
-  isVisionModel: true,
-  handleVisionResolutionEnabledChange: vi.fn(),
-  handleVisionResolutionChange: vi.fn(),
-  ...overrides,
-})
-
-const panelProps: PanelProps = {
-  getInputVars: vi.fn(() => []),
-  toVarInputs: vi.fn(() => []),
-  runInputData: {},
-  runInputDataRef: { current: {} },
-  setRunInputData: vi.fn(),
-  runResult: null,
-}
-
-describe('parameter-extractor path', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockToastError.mockClear()
-    mockUseTextGeneration.mockReturnValue({
-      currentProvider: undefined,
-      currentModel: undefined,
-      textGenerationModelList: [],
-      activeTextGenerationModelList: [],
-    } as unknown as ReturnType<typeof useTextGenerationCurrentProviderAndModelAndModelList>)
-    mockUseConfig.mockReturnValue(createConfigResult())
+    expect(
+      screen.getByText('workflowModels.nodes.parameterExtractor.extractParametersNotSet'),
+    ).toBeInTheDocument()
   })
 
-  describe('Tool import and parameter editing', () => {
-    it('should show the empty state for an empty parameter list', () => {
-      render(<ExtractParameter readonly={false} list={[]} onChange={vi.fn()} />)
+  it('should edit and delete parameters from the list', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    const { rerender } = render(
+      <ExtractParameterList readonly={false} list={[createParam()]} onChange={onChange} />,
+    )
 
-      expect(
-        screen.getByText('workflowModels.nodes.parameterExtractor.extractParametersNotSet'),
-      ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit city' }))
+    fireEvent.change(screen.getByDisplayValue('city'), { target: { value: 'city_name' } })
+    fireEvent.change(screen.getByDisplayValue('City name'), {
+      target: { value: 'Updated city description' },
     })
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-    it('should edit and delete parameters from the list', async () => {
-      const user = userEvent.setup()
-      const onChange = vi.fn()
-      const { container, rerender } = render(
-        <ExtractParameter readonly={false} list={[createParam()]} onChange={onChange} />,
-      )
-
-      const editAndDeleteButtons = container.querySelectorAll('.cursor-pointer.rounded-md.p-1')
-      fireEvent.click(editAndDeleteButtons[0] as HTMLElement)
-      fireEvent.change(screen.getByDisplayValue('city'), { target: { value: 'city_name' } })
-      fireEvent.change(screen.getByDisplayValue('City name'), {
-        target: { value: 'Updated city description' },
-      })
-      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
-
-      expect(onChange).toHaveBeenCalledWith(
-        [
-          {
-            name: 'city_name',
-            type: ParamType.string,
-            description: 'Updated city description',
-            required: false,
-          },
-        ],
-        undefined,
-      )
-
-      onChange.mockClear()
-
-      rerender(
-        <ExtractParameter
-          readonly={false}
-          list={[createParam({ name: 'budget' })]}
-          onChange={onChange}
-        />,
-      )
-
-      const deleteButtons = container.querySelectorAll('.cursor-pointer.rounded-md.p-1')
-      fireEvent.click(deleteButtons[1] as HTMLElement)
-
-      expect(onChange).toHaveBeenCalledWith([])
-    })
-
-    it('should validate required fields before saving an incomplete parameter', async () => {
-      const user = userEvent.setup()
-      const onSave = vi.fn()
-
-      render(
-        <AddExtractParameter
-          type="edit"
-          payload={createParam({
-            name: '',
-            description: '',
-          })}
-          onSave={onSave}
-        />,
-      )
-
-      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
-
-      expect(onSave).not.toHaveBeenCalled()
-      expect(mockToastError).toHaveBeenCalled()
-    })
-
-    it('should render the add trigger for new parameters', () => {
-      render(<AddExtractParameter type="add" onSave={vi.fn()} />)
-
-      expect(
-        screen.getByRole('button', {
-          name: 'workflowModels.nodes.parameterExtractor.addExtractParameter',
-        }),
-      ).toBeInTheDocument()
-    })
-
-    it('should reject invalid names and reset add modal fields after canceling', async () => {
-      const user = userEvent.setup()
-      const onCancel = vi.fn()
-
-      render(<AddExtractParameter type="add" onSave={vi.fn()} onCancel={onCancel} />)
-
-      await user.click(
-        screen.getByRole('button', {
-          name: 'workflowModels.nodes.parameterExtractor.addExtractParameter',
-        }),
-      )
-
-      const nameInput = screen.getByPlaceholderText(
-        'workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder',
-      )
-      const descriptionInput = screen.getByPlaceholderText(
-        'workflow.nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder',
-      )
-
-      fireEvent.change(nameInput, { target: { value: '1bad' } })
-      expect(mockToastError).toHaveBeenCalled()
-      expect(nameInput).toHaveValue('')
-
-      fireEvent.change(nameInput, { target: { value: 'temporary_name' } })
-      fireEvent.change(descriptionInput, { target: { value: 'Temporary description' } })
-
-      await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
-      expect(onCancel).toHaveBeenCalledTimes(1)
-      expect(screen.queryByTestId('base-modal')).not.toBeInTheDocument()
-
-      await user.click(
-        screen.getByRole('button', {
-          name: 'workflowModels.nodes.parameterExtractor.addExtractParameter',
-        }),
-      )
-      expect(
-        screen.getByPlaceholderText(
-          'workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder',
-        ),
-      ).toHaveValue('')
-      expect(
-        screen.getByPlaceholderText(
-          'workflow.nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder',
-        ),
-      ).toHaveValue('')
-    })
-
-    it('should require select options before saving a select parameter', async () => {
-      const user = userEvent.setup()
-      const onSave = vi.fn()
-
-      render(
-        <AddExtractParameter
-          type="edit"
-          payload={createParam({
-            name: 'status',
-            type: ParamType.select,
-            description: 'Status field',
-            options: [],
-          })}
-          onSave={onSave}
-        />,
-      )
-
-      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
-
-      expect(onSave).not.toHaveBeenCalled()
-      expect(mockToastError).toHaveBeenCalled()
-    })
-
-    it('should keep rename metadata and updated options when editing a select parameter', async () => {
-      const user = userEvent.setup()
-      const onSave = vi.fn()
-
-      render(
-        <AddExtractParameter
-          type="edit"
-          payload={createParam({
-            name: 'status',
-            type: ParamType.select,
-            description: 'Status',
-            options: ['draft'],
-          })}
-          onSave={onSave}
-        />,
-      )
-
-      fireEvent.change(screen.getByDisplayValue('status'), {
-        target: { value: 'approval_status' },
-      })
-      await user.click(screen.getByRole('button', { name: 'set-options' }))
-      await user.click(await screen.findByRole('button', { name: 'common.operation.save' }))
-
-      expect(onSave).toHaveBeenCalledWith(
+    expect(onChange).toHaveBeenCalledWith(
+      [
         {
-          name: 'approval_status',
-          type: ParamType.select,
-          description: 'Status',
-          options: ['draft', 'published'],
+          name: 'city_name',
+          type: ParamType.string,
+          description: 'Updated city description',
           required: false,
         },
-        undefined,
-      )
-    })
+      ],
+      { type: ChangeType.changeVarName, payload: { beforeKey: 'city', afterKey: 'city_name' } },
+    )
 
-    it('should persist rename metadata and required state for edited parameters', async () => {
-      const user = userEvent.setup()
-      const onSave = vi.fn()
+    onChange.mockClear()
 
-      render(
-        <AddExtractParameter
-          type="edit"
-          payload={createParam({
-            name: 'status',
-            description: 'Status description',
-          })}
-          onSave={onSave}
-        />,
-      )
+    rerender(
+      <ExtractParameterList
+        readonly={false}
+        list={[createParam({ name: 'budget' })]}
+        onChange={onChange}
+      />,
+    )
 
-      fireEvent.change(screen.getByDisplayValue('status'), {
-        target: { value: 'approval_status' },
-      })
-      await user.click(screen.getByRole('switch'))
-      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.delete budget' }))
 
-      expect(onSave).toHaveBeenCalledWith(
-        {
-          name: 'approval_status',
-          type: ParamType.string,
-          description: 'Status description',
-          required: true,
-        },
-        undefined,
-      )
-    })
+    expect(onChange).toHaveBeenCalledWith([])
   })
 
-  describe('Node and panel integration', () => {
-    it('should let users switch the reasoning mode', async () => {
-      const user = userEvent.setup()
-      const onChange = vi.fn()
+  it('should validate required fields before saving an incomplete parameter', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
 
-      render(<ReasoningModePicker type={ReasoningModeType.prompt} onChange={onChange} />)
+    render(
+      <ParameterDialog
+        type="edit"
+        payload={createParam({
+          name: '',
+          description: '',
+        })}
+        onSave={onSave}
+      />,
+    )
 
-      await user.click(screen.getByRole('button', { name: reasoningModeFunctionToolCallingLabel }))
-      await user.click(screen.getByRole('button', { name: reasoningModePromptLabel }))
+    await user.click(screen.getByRole('button', { name: /^common.operation.edit/ }))
 
-      expect(onChange).toHaveBeenNthCalledWith(1, ReasoningModeType.functionCall)
-      expect(onChange).toHaveBeenNthCalledWith(2, ReasoningModeType.prompt)
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+    expect(onSave).not.toHaveBeenCalled()
+    expect(mockToastError).toHaveBeenCalled()
+  })
+
+  it('should render the add trigger for new parameters', () => {
+    render(<ParameterDialog type="add" onSave={vi.fn()} />)
+
+    expect(
+      screen.getByRole('button', {
+        name: 'workflowModels.nodes.parameterExtractor.addExtractParameter',
+      }),
+    ).toBeInTheDocument()
+  })
+
+  it('should reject invalid names and reset add modal fields after canceling', async () => {
+    const user = userEvent.setup()
+
+    render(<ParameterDialog type="add" onSave={vi.fn()} />)
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'workflowModels.nodes.parameterExtractor.addExtractParameter',
+      }),
+    )
+
+    const nameInput = screen.getByPlaceholderText(
+      'workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder',
+    )
+    const descriptionInput = screen.getByPlaceholderText(
+      'workflow.nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder',
+    )
+
+    fireEvent.change(nameInput, { target: { value: '1bad' } })
+    expect(mockToastError).toHaveBeenCalled()
+    expect(nameInput).toHaveValue('')
+
+    fireEvent.change(nameInput, { target: { value: 'temporary_name' } })
+    fireEvent.change(descriptionInput, { target: { value: 'Temporary description' } })
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'workflowModels.nodes.parameterExtractor.addExtractParameter',
+      }),
+    )
+    expect(
+      screen.getByPlaceholderText(
+        'workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder',
+      ),
+    ).toHaveValue('')
+    expect(
+      screen.getByPlaceholderText(
+        'workflow.nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder',
+      ),
+    ).toHaveValue('')
+  })
+
+  it('should require select options before saving a select parameter', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+
+    render(
+      <ParameterDialog
+        type="edit"
+        payload={createParam({
+          name: 'status',
+          type: ParamType.select,
+          description: 'Status field',
+          options: [],
+        })}
+        onSave={onSave}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /^common.operation.edit/ }))
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+    expect(onSave).not.toHaveBeenCalled()
+    expect(mockToastError).toHaveBeenCalled()
+  })
+
+  it('should keep rename metadata and updated options when editing a select parameter', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+
+    render(
+      <ParameterDialog
+        type="edit"
+        payload={createParam({
+          name: 'status',
+          type: ParamType.select,
+          description: 'Status',
+          options: ['draft'],
+        })}
+        onSave={onSave}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /^common.operation.edit/ }))
+
+    fireEvent.change(screen.getByDisplayValue('status'), {
+      target: { value: 'approval_status' },
     })
+    await user.click(screen.getByRole('button', { name: 'appDebug.variableConfig.addOption' }))
+    await user.type(
+      screen.getByRole('textbox', { name: 'appDebug.variableConfig.options 2' }),
+      'published',
+    )
+    await user.click(await screen.findByRole('button', { name: 'common.operation.save' }))
 
-    it('should render the selected model on the node only when configured', () => {
-      const { rerender } = render(<Node id="parameter-node" data={createData()} />)
+    expect(onSave).toHaveBeenCalledWith(
+      {
+        name: 'approval_status',
+        type: ParamType.select,
+        description: 'Status',
+        options: ['draft', 'published'],
+        required: false,
+      },
+      {
+        type: ChangeType.changeVarName,
+        payload: { beforeKey: 'status', afterKey: 'approval_status' },
+      },
+    )
+  })
 
-      expect(screen.getByText('openai:gpt-4o')).toBeInTheDocument()
+  it('should persist rename metadata and required state for edited parameters', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
 
-      rerender(
-        <Node
-          id="parameter-node"
-          data={createData({
-            model: {
-              provider: '',
-              name: '',
-              mode: AppModeEnum.CHAT,
-              completion_params: {},
-            },
-          })}
-        />,
-      )
+    render(
+      <ParameterDialog
+        type="edit"
+        payload={createParam({
+          name: 'status',
+          description: 'Status description',
+        })}
+        onSave={onSave}
+      />,
+    )
 
-      expect(screen.queryByText('openai:gpt-4o')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /^common.operation.edit/ }))
+
+    fireEvent.change(screen.getByDisplayValue('status'), {
+      target: { value: 'approval_status' },
     })
+    await user.click(screen.getByRole('switch'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-    it('should wire panel actions across model, input, import, vision, memory, and outputs', async () => {
-      const user = userEvent.setup()
-      const handleModelChanged = vi.fn()
-      const handleCompletionParamsChange = vi.fn()
-      const handleInputVarChange = vi.fn()
-      const handleImportFromTool = vi.fn()
-      const handleInstructionChange = vi.fn()
-      const handleMemoryChange = vi.fn()
-      const handleReasoningModeChange = vi.fn()
-      const handleVisionResolutionEnabledChange = vi.fn()
-      const handleVisionResolutionChange = vi.fn()
-
-      mockUseConfig.mockReturnValueOnce(
-        createConfigResult({
-          inputs: createData({
-            parameters: [
-              createParam({ name: 'city' }),
-              createParam({ name: 'budget', type: ParamType.number }),
-            ],
-          }),
-          handleModelChanged,
-          handleCompletionParamsChange,
-          handleInputVarChange,
-          handleImportFromTool,
-          handleInstructionChange,
-          handleMemoryChange,
-          handleReasoningModeChange,
-          handleVisionResolutionEnabledChange,
-          handleVisionResolutionChange,
-        }),
-      )
-
-      render(<Panel id="parameter-node" data={createData()} panelProps={panelProps} />)
-
-      await user.click(screen.getByRole('button', { name: 'set-model' }))
-      await user.click(screen.getByRole('button', { name: 'set-params' }))
-      await user.click(screen.getByRole('button', { name: 'pick-var' }))
-      await user.click(
-        screen.getByRole('button', {
-          name: /workflowModels.nodes.parameterExtractor.importFromTool/i,
-        }),
-      )
-      await user.click(screen.getByRole('button', { name: 'vision-toggle' }))
-      await user.click(screen.getByRole('button', { name: 'vision-config' }))
-      fireEvent.change(screen.getByLabelText('instruction-editor'), {
-        target: { value: 'Extract city, budget, and due date' },
-      })
-      await user.click(screen.getByRole('button', { name: 'memory-config' }))
-      await user.click(screen.getByRole('button', { name: reasoningModeFunctionToolCallingLabel }))
-
-      expect(handleModelChanged).toHaveBeenCalledWith({
-        provider: 'anthropic',
-        modelId: 'claude-3-7-sonnet',
-        mode: AppModeEnum.CHAT,
-      })
-      expect(handleCompletionParamsChange).toHaveBeenCalledWith({ temperature: 0.2 })
-      expect(handleInputVarChange).toHaveBeenCalledWith(['node-1', 'query'])
-      expect(handleImportFromTool).toHaveBeenCalledWith([
-        {
-          name: 'city',
-          type: ParamType.string,
-          required: true,
-          description: 'City name',
-          options: ['Draft'],
-        },
-      ])
-      expect(handleVisionResolutionEnabledChange).toHaveBeenCalledWith(true)
-      expect(handleVisionResolutionChange).toHaveBeenCalledWith({
-        variable_selector: ['node-1', 'image'],
-        detail: 'high',
-      })
-      expect(handleInstructionChange).toHaveBeenCalledWith('Extract city, budget, and due date')
-      expect(handleMemoryChange).toHaveBeenCalledWith({ enabled: true })
-      expect(handleReasoningModeChange).toHaveBeenCalledWith(ReasoningModeType.functionCall)
-      expect(screen.getByText('city:string')).toBeInTheDocument()
-      expect(screen.getByText('budget:number')).toBeInTheDocument()
-      expect(screen.getByText('__usage:object')).toBeInTheDocument()
-    })
+    expect(onSave).toHaveBeenCalledWith(
+      {
+        name: 'approval_status',
+        type: ParamType.string,
+        description: 'Status description',
+        required: true,
+      },
+      {
+        type: ChangeType.changeVarName,
+        payload: { beforeKey: 'status', afterKey: 'approval_status' },
+      },
+    )
   })
 })

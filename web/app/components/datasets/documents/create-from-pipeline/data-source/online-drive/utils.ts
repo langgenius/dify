@@ -26,12 +26,12 @@ export const convertOnlineDriveData = (
 ): {
   fileList: OnlineDriveFile[]
   isTruncated: boolean
-  nextPageParameters: Record<string, any>
+  nextPageParameters: Record<string, unknown>
   hasBucket: boolean
 } => {
   const fileList: OnlineDriveFile[] = []
   let isTruncated = false
-  let nextPageParameters: Record<string, any> = {}
+  let nextPageParameters: Record<string, unknown> = {}
   let hasBucket = false
 
   if (data.length === 0) return { fileList, isTruncated, nextPageParameters, hasBucket }

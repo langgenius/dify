@@ -1,4 +1,4 @@
-import type { SimpleDocumentDetail } from '@/models/datasets'
+import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { Combobox } from '@langgenius/dify-ui/combobox'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -13,11 +13,11 @@ vi.mock('../../document-file-icon', () => ({
   ),
 }))
 
-const createDocument = (overrides: Partial<SimpleDocumentDetail> = {}): SimpleDocumentDetail => ({
+const createDocument = (
+  overrides: Partial<DocumentWithSegmentsResponse> = {},
+): DocumentWithSegmentsResponse => ({
   id: 'doc-1',
-  batch: 'batch-1',
   position: 1,
-  dataset_id: 'dataset-1',
   data_source_type: DataSourceType.FILE,
   data_source_info: {
     upload_file: {
@@ -40,22 +40,25 @@ const createDocument = (overrides: Partial<SimpleDocumentDetail> = {}): SimpleDo
   indexing_status: 'completed',
   display_status: 'enabled',
   doc_form: ChunkingMode.text,
-  doc_language: 'en',
   enabled: true,
   word_count: 1000,
   archived: false,
-  updated_at: Date.now(),
   hit_count: 0,
   data_source_detail_dict: {
     upload_file: {
+      id: 'file-1',
       name: 'report.pdf',
+      size: 1024,
       extension: 'pdf',
+      mime_type: 'application/pdf',
+      created_by: 'user-1',
+      created_at: 1700000000,
     },
   },
   ...overrides,
 })
 
-const renderDocumentList = (list: SimpleDocumentDetail[], onValueChange = vi.fn()) => ({
+const renderDocumentList = (list: DocumentWithSegmentsResponse[], onValueChange = vi.fn()) => ({
   onValueChange,
   ...render(
     <Combobox

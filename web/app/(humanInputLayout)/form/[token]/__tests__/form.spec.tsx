@@ -1,10 +1,15 @@
 import type { FormData } from '../form'
 import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
-import { act, render, renderHook, screen } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { createHttpError } from '@/service/http-error'
+import {
+  renderWithConsoleQuery as render,
+  renderHookWithConsoleQuery as renderHook,
+} from '@/test/console/query-data'
 import { TransferMethod } from '@/types/app'
 import FormContent from '../form'
 import { useFormSubmit } from '../use-form-submit'
@@ -39,12 +44,13 @@ vi.mock('@/next/navigation', () => ({
   useParams: () => ({ token: 'token-123' }),
 }))
 
-vi.mock('@/service/use-share', () => ({
+vi.mock('@/service/use-share', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-share')>()),
   useGetHumanInputForm: (...args: unknown[]) => mockUseGetHumanInputForm(...args),
-  useSubmitHumanInputForm: () => ({
-    mutate: mockSubmitForm,
-    isPending: false,
-  }),
+}))
+vi.mock('@/service/share', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/share')>()),
+  submitHumanInputForm: mockSubmitForm,
 }))
 
 vi.mock('@/hooks/use-document-title', () => ({
@@ -181,6 +187,7 @@ describe('Human input share form', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSubmitForm.mockResolvedValue({})
     mockContentItemState.staleAttachmentInputChange = undefined
     mockUseGetHumanInputForm.mockReturnValue({
       data: formData,
@@ -211,21 +218,27 @@ describe('Human input share form', () => {
   it('should render status cards for terminal fetch states', () => {
     const cases = [
       {
-        error: { code: 'human_input_form_expired' },
+        error: createHttpError(new Response(null, { status: 400 }), {
+          code: 'human_input_form_expired',
+        }),
         title: 'share.humanInput.sorry',
         subtitle: 'share.humanInput.expired',
         documentTitle: 'share.humanInput.expired',
         submissionID: true,
       },
       {
-        error: { code: 'human_input_form_submitted' },
+        error: createHttpError(new Response(null, { status: 400 }), {
+          code: 'human_input_form_submitted',
+        }),
         title: 'share.humanInput.sorry',
         subtitle: 'share.humanInput.completed',
         documentTitle: 'share.humanInput.completed',
         submissionID: true,
       },
       {
-        error: { code: 'web_form_rate_limit_exceeded' },
+        error: createHttpError(new Response(null, { status: 400 }), {
+          code: 'web_form_rate_limit_exceeded',
+        }),
         title: 'share.humanInput.rateLimitExceeded',
         subtitle: undefined,
         documentTitle: 'share.humanInput.rateLimitExceeded',
@@ -274,26 +287,20 @@ describe('Human input share form', () => {
     await user.click(screen.getByRole('button', { name: 'share-update-attachments' }))
     await user.click(screen.getByRole('button', { name: 'Approve' }))
 
-    expect(mockSubmitForm).toHaveBeenCalledWith(
-      {
-        token: 'token-123',
-        data: {
-          action: 'approve',
-          inputs: {
-            summary: 'updated summary',
-            attachments: [
-              {
-                type: 'document',
-                transfer_method: TransferMethod.local_file,
-                url: '',
-                upload_file_id: 'upload-file-1',
-              },
-            ],
-          },
+    await waitFor(() =>
+      expect(mockSubmitForm).toHaveBeenCalledWith('token-123', {
+        action: 'approve',
+        inputs: {
+          summary: 'updated summary',
+          attachments: [
+            {
+              type: 'document',
+              transfer_method: TransferMethod.local_file,
+              url: '',
+              upload_file_id: 'upload-file-1',
+            },
+          ],
         },
-      },
-      expect.objectContaining({
-        onSuccess: expect.any(Function),
       }),
     )
   })
@@ -307,17 +314,12 @@ describe('Human input share form', () => {
     await user.click(screen.getByRole('button', { name: 'share-update-attachments' }))
     await user.click(screen.getByRole('button', { name: 'Approve' }))
 
-    const options = mockSubmitForm.mock.calls[0]![1] as { onSuccess: () => void }
-    act(() => {
-      options.onSuccess()
-    })
-
-    expect(screen.getByText('share.humanInput.thanks')).toBeInTheDocument()
+    expect(await screen.findByText('share.humanInput.thanks')).toBeInTheDocument()
     expect(screen.getByText('share.humanInput.recorded')).toBeInTheDocument()
     expect(screen.getByText('share.humanInput.submissionID:{"id":"token-123"}')).toBeInTheDocument()
   })
 
-  it('should submit empty inputs when there are no form values to process', () => {
+  it('should submit empty inputs when there are no form values to process', async () => {
     const { result } = renderHook(() => useFormSubmit('token-empty'))
 
     act(() => {
@@ -328,16 +330,10 @@ describe('Human input share form', () => {
       )
     })
 
-    expect(mockSubmitForm).toHaveBeenCalledWith(
-      {
-        token: 'token-empty',
-        data: {
-          action: 'reject',
-          inputs: {},
-        },
-      },
-      expect.objectContaining({
-        onSuccess: expect.any(Function),
+    await waitFor(() =>
+      expect(mockSubmitForm).toHaveBeenCalledWith('token-empty', {
+        action: 'reject',
+        inputs: {},
       }),
     )
   })
@@ -350,26 +346,20 @@ describe('Human input share form', () => {
     await user.click(screen.getByRole('button', { name: 'share-update-attachments' }))
     await user.click(screen.getByRole('button', { name: 'Approve' }))
 
-    expect(mockSubmitForm).toHaveBeenCalledWith(
-      {
-        token: 'token-123',
-        data: {
-          action: 'approve',
-          inputs: {
-            summary: 'initial summary',
-            attachments: [
-              {
-                type: 'document',
-                transfer_method: TransferMethod.local_file,
-                url: '',
-                upload_file_id: 'upload-file-1',
-              },
-            ],
-          },
+    await waitFor(() =>
+      expect(mockSubmitForm).toHaveBeenCalledWith('token-123', {
+        action: 'approve',
+        inputs: {
+          summary: 'initial summary',
+          attachments: [
+            {
+              type: 'document',
+              transfer_method: TransferMethod.local_file,
+              url: '',
+              upload_file_id: 'upload-file-1',
+            },
+          ],
         },
-      },
-      expect.objectContaining({
-        onSuccess: expect.any(Function),
       }),
     )
   })

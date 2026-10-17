@@ -1,6 +1,7 @@
 import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { LLMNodeType } from '../types'
 import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { PanelProps } from '@/types/workflow'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
@@ -8,8 +9,6 @@ import userEvent from '@testing-library/user-event'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { AppModeEnum } from '@/types/app'
-import { FlowType } from '@/types/common'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import { BlockEnum } from '../../../types'
 import Panel from '../panel'
@@ -66,10 +65,6 @@ vi.mock(
   }),
 )
 
-vi.mock('../_base/components/config-vision', () => ({
-  default: () => null,
-}))
-
 vi.mock('../../_base/components/variable/var-reference-picker', () => ({
   default: () => null,
 }))
@@ -99,7 +94,7 @@ const baseNodeData: LLMNodeType = {
   model: {
     provider: 'openai',
     name: 'gpt-4o',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     completion_params: {},
   },
   prompt_template: [],
@@ -121,7 +116,7 @@ const buildUseConfigResult = (overrides?: Partial<MockUseConfigReturn>) => ({
   environmentVariables: [],
   isEnvironmentModelSource: false,
   isChatModel: true,
-  isChatMode: true,
+  isChatflow: true,
   isCompletionModel: false,
   shouldShowContextTip: false,
   isVisionModel: false,
@@ -163,7 +158,7 @@ const renderPanelElement = (data?: Partial<LLMNodeType>) => (
   </QueryClientProvider>
 )
 
-const renderPanel = (data?: Partial<LLMNodeType>, flowType?: FlowType) => {
+const renderPanel = (data?: Partial<LLMNodeType>, resourceKind?: EditorResource['kind']) => {
   panelQueryClient = createConsoleQueryWrapper().queryClient
   panelQueryClient.setQueryData(
     consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(),
@@ -178,9 +173,12 @@ const renderPanel = (data?: Partial<LLMNodeType>, flowType?: FlowType) => {
     },
   )
   return renderWorkflowFlowComponent(renderPanelElement(data), {
-    hooksStoreProps: flowType
-      ? { configsMap: { flowId: 'test-flow', flowType, fileSettings: {} } }
-      : {},
+    resource:
+      resourceKind === 'snippet'
+        ? { kind: 'snippet', snippetId: 'test-snippet' }
+        : resourceKind === 'knowledge-pipeline'
+          ? { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline' }
+          : { kind: 'app', appId: 'test-app', mode: 'workflow' },
   })
 }
 
@@ -244,7 +242,7 @@ describe('LLM Panel', () => {
   })
 
   it('does not offer an environment model source in snippet flows', () => {
-    renderPanel(undefined, FlowType.snippet)
+    renderPanel(undefined, 'snippet')
 
     expect(
       screen.queryByRole('radio', { name: 'workflow.nodes.common.typeSwitch.variable' }),
@@ -265,7 +263,7 @@ describe('LLM Panel', () => {
       }),
     )
 
-    renderPanel({ model_selector: ['env', 'shared_model'] }, FlowType.snippet)
+    renderPanel({ model_selector: ['env', 'shared_model'] }, 'snippet')
     await user.click(screen.getByRole('radio', { name: 'workflow.nodes.common.typeSwitch.input' }))
 
     expect(handleModelSourceChange).toHaveBeenCalledWith(false)
@@ -289,7 +287,7 @@ describe('LLM Panel', () => {
             value: {
               provider: 'openai',
               name: 'gpt-4o',
-              mode: AppModeEnum.CHAT,
+              mode: 'chat' as const,
             },
             description: '',
           },
@@ -345,7 +343,7 @@ describe('LLM Panel', () => {
             id: 'env-llm',
             name: 'for_summarize',
             value_type: 'llm',
-            value: { provider: 'openai', name: 'gpt-4o', mode: AppModeEnum.CHAT },
+            value: { provider: 'openai', name: 'gpt-4o', mode: 'chat' as const },
             description: '',
           },
         ],

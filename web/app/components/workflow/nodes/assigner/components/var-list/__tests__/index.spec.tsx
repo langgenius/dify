@@ -12,7 +12,7 @@ vi.mock('../../../../../hooks/use-workflow', async (importOriginal) => {
 
   return {
     ...actual,
-    useIsChatMode: () => false,
+
     useWorkflow: () => ({
       getTreeLeafNodes: () => [],
       getNodeById: () => undefined,
@@ -83,6 +83,7 @@ const renderVarList = (props: Partial<ComponentProps<typeof VarList>> = {}) => {
       {...props}
     />,
     {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
       nodes: [sourceNode, currentNode],
       edges: [],
       hooksStoreProps: {},

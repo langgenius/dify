@@ -37,11 +37,7 @@ import {
   removeAgentSkillAtom,
   upsertAgentSkillAtom,
 } from '@/features/agent-v2/agent-composer/store-modules/skills'
-import {
-  getSkillErrorCode,
-  getSkillErrorDetailString,
-  normalizeSkillError,
-} from '@/features/skills/error'
+import { getSkillErrorCode, getSkillErrorDetailString } from '@/features/skills/error'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
@@ -411,7 +407,7 @@ function WorkspaceAgentSkillItem({
             name: displayName,
           })}
           className={cn(
-            'pointer-events-none absolute top-1/2 right-1 z-10 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:pointer-events-auto data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary data-popup-open:opacity-100',
+            'pointer-events-none absolute top-1/2 right-1 z-10 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary data-popup-open:pointer-events-auto data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary data-popup-open:opacity-100',
             isRemoveHighlighted && 'text-text-destructive!',
           )}
           onClick={(event) => event.stopPropagation()}
@@ -525,9 +521,8 @@ export function AgentSkills() {
           },
         },
         {
-          onError: async (error) => {
-            const normalizedError = await normalizeSkillError(error)
-            const errorCode = getSkillErrorCode(normalizedError)
+          onError: (error) => {
+            const errorCode = getSkillErrorCode(error)
             if (errorCode === 'too_many_agent_skills') {
               toast.error(
                 t(($) => $['agentDetail.configure.skills.workspaceSelector.limitReached']),
@@ -537,7 +532,7 @@ export function AgentSkills() {
             if (errorCode === 'skill_name_conflict') {
               toast.error(
                 tSkill(($) => $['skillManagement.errors.nameConflict'], {
-                  name: getSkillErrorDetailString(normalizedError, 'name') ?? '',
+                  name: getSkillErrorDetailString(error, 'name') ?? '',
                 }),
               )
               return

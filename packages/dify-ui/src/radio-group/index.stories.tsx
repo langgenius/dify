@@ -12,7 +12,7 @@ const meta = {
     docs: {
       description: {
         component:
-          '`@langgenius/dify-ui/radio-group` exports the complete radio family. Every radio belongs to a `RadioGroup`, which owns single-selection state and group interaction. `Radio` is the default Dify control for plain form rows, `RadioItem` makes custom UI the radio item, and `RadioControl` renders the standard visual dot inside custom items.',
+          '`@langgenius/dify-ui/radio-group` exports the complete radio family. Every radio belongs to a `RadioGroup`, which owns single-selection state and group interaction. `Radio` is the default Dify control for plain form rows, `RadioItem` makes custom UI the radio item, and `RadioControl` renders the standard visual dot inside custom items. Label it with a visible `FieldLabel` or `<label>`; use `aria-label` only when there is no visible label, because a non-blank `aria-label` takes precedence over any associated label.',
       },
     },
   },
@@ -146,7 +146,7 @@ function OptionCardsDemo() {
               value={option.value}
               nativeButton
               render={<button type="button" />}
-              className="w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-4 text-left outline-hidden transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg"
+              className="w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-4 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>

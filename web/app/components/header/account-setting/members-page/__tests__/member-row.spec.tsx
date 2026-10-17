@@ -1,15 +1,24 @@
-import type { Member } from '@/models/common'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import MemberRow from '../member-row'
 
-vi.mock('@/hooks/use-format-time-from-now')
-vi.mock('@/service/access-control/use-member-roles')
+const { mockUpdateRolesOfMemberHook } = vi.hoisted(() => ({
+  mockUpdateRolesOfMemberHook: vi.fn(),
+}))
 
-const member: Member = {
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.rbac.members.byMemberId.rbacRoles.put': () => mockUpdateRolesOfMemberHook(),
+  })
+})
+
+vi.mock('@/hooks/use-format-time-from-now')
+
+const member: AccountWithRoleResponse = {
   id: 'member-1',
   name: 'Member User',
   email: 'member@example.com',
@@ -17,9 +26,9 @@ const member: Member = {
   avatar_url: '',
   role: 'normal',
   roles: [],
-  last_active_at: '1731000000',
-  last_login_at: '1731000000',
-  created_at: '1731000000',
+  last_active_at: 1731000000,
+  last_login_at: 1731000000,
+  created_at: 1731000000,
   status: 'active',
 }
 
@@ -49,9 +58,9 @@ describe('MemberRow details entry points', () => {
     vi.mocked(useFormatTimeFromNow).mockReturnValue({
       formatTimeFromNow: () => 'just now',
     })
-    vi.mocked(useUpdateRolesOfMember).mockReturnValue({
+    vi.mocked(mockUpdateRolesOfMemberHook).mockReturnValue({
       mutateAsync: vi.fn(),
-    } as unknown as ReturnType<typeof useUpdateRolesOfMember>)
+    })
   })
 
   it.each([

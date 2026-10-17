@@ -24,19 +24,11 @@ let mockSubscriptionListState: {
   subscriptions?: TriggerSubscription[]
 }
 
-let mockPluginDetail: PluginDetail | undefined
-
 vi.mock('../use-subscription-list', () => ({
   useSubscriptionList: () => {
     if (mockSubscriptionListError) throw mockSubscriptionListError
     return mockSubscriptionListState
   },
-}))
-
-vi.mock('../../../store', () => ({
-  usePluginStore: (
-    selector: (state: { detail: PluginDetail | undefined }) => PluginDetail | undefined,
-  ) => selector({ detail: mockPluginDetail }),
 }))
 
 const mockInitiateOAuth = vi.fn()
@@ -89,7 +81,6 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockRefetch.mockReset()
   mockSubscriptionListError = null
-  mockPluginDetail = undefined
   mockSubscriptionListState = {
     isLoading: false,
     refetch: mockRefetch,
@@ -164,14 +155,15 @@ describe('SubscriptionList', () => {
 
   describe('User Interactions', () => {
     it('should call onSelect with refetch callback when selecting a subscription', () => {
-      const onSelect = vi.fn()
+      const onSelect =
+        vi.fn<NonNullable<React.ComponentProps<typeof SubscriptionList>['onSelect']>>()
 
       render(<SubscriptionList mode={SubscriptionListMode.SELECTOR} onSelect={onSelect} />)
 
       fireEvent.click(screen.getByRole('button', { name: 'Subscription One' }))
 
       expect(onSelect).toHaveBeenCalledTimes(1)
-      const [selectedSubscription, callback] = (onSelect.mock.calls[0] ?? []) as [any, any]
+      const [selectedSubscription, callback] = onSelect.mock.calls[0]!
       expect(selectedSubscription).toMatchObject({ id: 'sub-1', name: 'Subscription One' })
       expect(typeof callback).toBe('function')
 
@@ -188,7 +180,8 @@ describe('SubscriptionList', () => {
     })
 
     it('should open delete confirm without triggering selection', () => {
-      const onSelect = vi.fn()
+      const onSelect =
+        vi.fn<NonNullable<React.ComponentProps<typeof SubscriptionList>['onSelect']>>()
       const { container } = render(
         <SubscriptionList mode={SubscriptionListMode.SELECTOR} onSelect={onSelect} />,
       )

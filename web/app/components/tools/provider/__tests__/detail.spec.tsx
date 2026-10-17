@@ -3,8 +3,9 @@ import type { ReactElement } from 'react'
 import type { Collection } from '../../types'
 import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { modelProviderDetailsQueryOptions } from '@/app/components/header/account-setting/model-provider-page/utils'
 import { consoleQuery } from '@/service/console'
-import { commonQueryKeys } from '@/service/use-common'
+import { createProviderResponseFixture } from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { AuthType, CollectionType } from '../../types'
 import ProviderDetail from '../detail'
@@ -37,11 +38,11 @@ const render = (ui: ReactElement) => {
     ],
     plugins: {},
   })
-  queryClient.setQueryData(commonQueryKeys.modelProviderDetails, {
-    data: [{ provider: 'model-collection-id' }],
+  queryClient.setQueryData(modelProviderDetailsQueryOptions().queryKey, {
+    data: [createProviderResponseFixture({ provider: 'model-collection-id' })],
   })
   void queryClient.invalidateQueries({
-    queryKey: commonQueryKeys.modelProviderDetails,
+    queryKey: modelProviderDetailsQueryOptions().queryKey,
     exact: true,
     refetchType: 'none',
   })
@@ -79,7 +80,6 @@ vi.mock('@/context/modal-context', () => ({
 
 const mockFetchBuiltInToolList = vi.fn().mockResolvedValue([])
 const mockFetchCustomToolList = vi.fn().mockResolvedValue([])
-const mockFetchModelToolList = vi.fn().mockResolvedValue([])
 const mockFetchCustomCollection = vi.fn().mockResolvedValue({
   credentials: { auth_type: 'none' },
 })
@@ -98,7 +98,6 @@ const mockSaveWorkflowToolProvider = vi.fn().mockResolvedValue({})
 vi.mock('@/service/tools', () => ({
   fetchBuiltInToolList: (...args: unknown[]) => mockFetchBuiltInToolList(...args),
   fetchCustomToolList: (...args: unknown[]) => mockFetchCustomToolList(...args),
-  fetchModelToolList: (...args: unknown[]) => mockFetchModelToolList(...args),
   fetchCustomCollection: (...args: unknown[]) => mockFetchCustomCollection(...args),
   fetchWorkflowToolDetail: (...args: unknown[]) => mockFetchWorkflowToolDetail(...args),
   updateBuiltInToolCredential: (...args: unknown[]) => mockUpdateBuiltInToolCredential(...args),
@@ -107,10 +106,6 @@ vi.mock('@/service/tools', () => ({
   removeCustomCollection: (...args: unknown[]) => mockRemoveCustomCollection(...args),
   deleteWorkflowTool: (...args: unknown[]) => mockDeleteWorkflowTool(...args),
   saveWorkflowToolProvider: (...args: unknown[]) => mockSaveWorkflowToolProvider(...args),
-}))
-
-vi.mock('@/service/use-tools', () => ({
-  useInvalidateAllWorkflowTools: () => vi.fn(),
 }))
 
 vi.mock('@/utils/var', () => ({
@@ -124,10 +119,6 @@ vi.mock('@/app/notifications', () => ({
     success: mockToastSuccess,
     error: mockToastError,
   },
-}))
-
-vi.mock('@langgenius/dify-ui/status-dot', () => ({
-  StatusDot: () => <span data-testid="indicator" />,
 }))
 
 vi.mock('@/app/components/plugins/card/base/card-icon', () => ({
@@ -276,7 +267,6 @@ describe('ProviderDetail', () => {
       },
     ])
     mockFetchCustomToolList.mockResolvedValue([])
-    mockFetchModelToolList.mockResolvedValue([])
     mockConsoleState.workspacePermissionKeys = [
       'tool.manage',
       'credential.use',
@@ -301,9 +291,7 @@ describe('ProviderDetail', () => {
 
       const dialog = screen.getByRole('dialog')
 
-      expect(
-        document.querySelector('.absolute.inset-0.z-50.bg-transparent'),
-      ).not.toBeInTheDocument()
+      expect(document.querySelector('.absolute.inset-0.bg-transparent')).not.toBeInTheDocument()
       expect(dialog.closest('.pointer-events-none')).toBeInTheDocument()
       expect(dialog).toHaveClass(
         'pointer-events-auto',
@@ -582,17 +570,6 @@ describe('ProviderDetail', () => {
 
   describe('Model Collection', () => {
     it('opens model modal when clicking auth button for model type', async () => {
-      mockFetchModelToolList.mockResolvedValue([
-        {
-          name: 'model-tool-1',
-          label: { en_US: 'MT1' },
-          description: { en_US: '' },
-          parameters: [],
-          labels: [],
-          author: '',
-          output_schema: {},
-        },
-      ])
       render(
         <ProviderDetail
           collection={createMockCollection({
@@ -642,19 +619,6 @@ describe('ProviderDetail', () => {
       )
       await waitFor(() => {
         expect(mockFetchBuiltInToolList).toHaveBeenCalledWith('test-collection')
-      })
-    })
-
-    it('calls fetchModelToolList for model type', async () => {
-      render(
-        <ProviderDetail
-          collection={createMockCollection({ type: CollectionType.model })}
-          onHide={mockOnHide}
-          onRefreshData={mockOnRefreshData}
-        />,
-      )
-      await waitFor(() => {
-        expect(mockFetchModelToolList).toHaveBeenCalledWith('test-collection')
       })
     })
 

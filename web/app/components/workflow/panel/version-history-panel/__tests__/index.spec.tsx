@@ -1,14 +1,13 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { ReactElement } from 'react'
 import type { Shape } from '../../../store'
-import type { VersionHistory } from '@/types/workflow'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useEffect, useRef } from 'react'
+import { renderEditor as renderWithConsoleState } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { render as renderWithConsoleState } from '@/test/console/render'
-import { AppModeEnum } from '@/types/app'
 import { VersionHistoryContextMenuOptions, WorkflowVersion } from '../../../types'
 
 const mockHandleRestoreFromPublishedWorkflow = vi.fn()
@@ -31,11 +30,13 @@ const mockToast = vi.hoisted(() => ({
 }))
 let mockPlanType: CloudPlan = 'professional'
 let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'CLOUD'
-let mockPublishedEnvironments: VersionHistory['environments']
+let mockPublishedEnvironments: FetchWorkflowDraftResponse['environments']
 let mockHasNextPage = false
 let mockIsFetching = false
 
-const createVersionHistory = (overrides: Partial<VersionHistory> = {}): VersionHistory => ({
+const createVersionHistory = (
+  overrides: Partial<FetchWorkflowDraftResponse> = {},
+): FetchWorkflowDraftResponse => ({
   id: 'version-id',
   version: WorkflowVersion.Draft,
   graph: { nodes: [], edges: [] },
@@ -61,7 +62,7 @@ const createVersionHistory = (overrides: Partial<VersionHistory> = {}): VersionH
   ...overrides,
 })
 
-let mockCurrentVersion: VersionHistory | null = null
+let mockCurrentVersion: FetchWorkflowDraftResponse | null = null
 
 type MockVersionStoreState = Pick<
   Shape,
@@ -69,27 +70,27 @@ type MockVersionStoreState = Pick<
 >
 type MockRestoreConfirmModalProps = {
   isOpen: boolean
-  versionInfo: VersionHistory
-  onRestore: (item: VersionHistory) => void
+  versionInfo: FetchWorkflowDraftResponse
+  onRestore: (item: FetchWorkflowDraftResponse) => void
 }
 type MockDeleteConfirmModalProps = {
   isOpen: boolean
 }
 type MockVersionHistoryItemProps = {
-  item: VersionHistory
-  onClick: (item: VersionHistory) => void
+  item: FetchWorkflowDraftResponse
+  onClick: (item: FetchWorkflowDraftResponse) => void
   handleClickActionMenuItem: (operation: VersionHistoryContextMenuOptions) => void
 }
 
 vi.mock('@/app/notifications', () => ({ toast: mockToast }))
 
-vi.mock('@/service/use-workflow', () => ({
+vi.mock('@/service/use-workflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-workflow')>()),
   useDeleteWorkflow: () => ({ mutateAsync: vi.fn() }),
   useInvalidateAppWorkflow: () => mockInvalidateAppWorkflow,
-  useInvalidAllLastRun: () => vi.fn(),
+  useInvalidateAllLastRun: () => vi.fn(),
   useResetWorkflowVersionHistory: () => vi.fn(),
   useRestoreWorkflow: () => ({ mutateAsync: mockRestoreWorkflow }),
-  useUpdateWorkflow: () => ({ mutateAsync: mockUpdateWorkflow }),
   useWorkflowVersionHistory: () => ({
     data: {
       pages: [
@@ -135,14 +136,14 @@ vi.mock('../../../hooks-store', () => ({
   useHooksStore: (
     selector: (state: {
       accessControl: { canImportExportDSL: boolean }
-      configsMap: { flowId: string; flowType: string }
+      configsMap: { flowId: string; resourceKind: string }
     }) => unknown,
   ) =>
     selector({
       accessControl: { canImportExportDSL: true },
       configsMap: {
         flowId: 'app-1',
-        flowType: 'appFlow',
+        resourceKind: 'appFlow',
       },
     }),
 }))
@@ -201,7 +202,7 @@ vi.mock('@/app/components/app/app-publisher/version-info-modal', () => ({
     versionInfo,
     onPublish,
   }: {
-    versionInfo: VersionHistory
+    versionInfo: FetchWorkflowDraftResponse
     onPublish: (params: { id?: string; title: string; releaseNotes: string }) => Promise<void>
   }) => (
     <button
@@ -275,6 +276,11 @@ vi.mock('../version-history-item', () => ({
   },
 }))
 
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  patch: (...args: unknown[]) => mockUpdateWorkflow(...args),
+}))
+
 describe('VersionHistoryPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -293,12 +299,7 @@ describe('VersionHistoryPanel', () => {
     mockHasNextPage = true
     const { VersionHistoryPanel } = await import('../index')
 
-    render(
-      <VersionHistoryPanel
-        latestVersionId="published-version-id"
-        restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
-      />,
-    )
+    render(<VersionHistoryPanel latestVersionId="published-version-id" />)
 
     await user.click(screen.getByRole('button', { name: 'workflow.common.loadMore' }))
     expect(mockFetchNextPage).toHaveBeenCalledTimes(1)
@@ -319,12 +320,7 @@ describe('VersionHistoryPanel', () => {
     it('should call handleLoadBackupDraft when draft version is selected on mount', async () => {
       const { VersionHistoryPanel } = await import('../index')
 
-      render(
-        <VersionHistoryPanel
-          latestVersionId="published-version-id"
-          restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
-        />,
-      )
+      render(<VersionHistoryPanel latestVersionId="published-version-id" />)
 
       expect(mockHandleLoadBackupDraft).toHaveBeenCalled()
       expect(mockHandleRestoreFromPublishedWorkflow).not.toHaveBeenCalled()
@@ -333,12 +329,7 @@ describe('VersionHistoryPanel', () => {
     it('should call handleRestoreFromPublishedWorkflow when clicking published version', async () => {
       const { VersionHistoryPanel } = await import('../index')
 
-      render(
-        <VersionHistoryPanel
-          latestVersionId="published-version-id"
-          restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
-        />,
-      )
+      render(<VersionHistoryPanel latestVersionId="published-version-id" />)
 
       vi.clearAllMocks()
 
@@ -352,12 +343,7 @@ describe('VersionHistoryPanel', () => {
   it('should set current version before confirming restore from context menu', async () => {
     const { VersionHistoryPanel } = await import('../index')
 
-    render(
-      <VersionHistoryPanel
-        latestVersionId="published-version-id"
-        restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
-      />,
-    )
+    render(<VersionHistoryPanel latestVersionId="published-version-id" />)
 
     await waitFor(() => {
       expect(mockHandleLoadBackupDraft).toHaveBeenCalled()
@@ -373,9 +359,7 @@ describe('VersionHistoryPanel', () => {
           id: 'published-version-id',
         }),
       )
-      expect(mockRestoreWorkflow).toHaveBeenCalledWith(
-        '/apps/app-1/workflows/published-version-id/restore',
-      )
+      expect(mockRestoreWorkflow).toHaveBeenCalledWith('published-version-id')
       expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ isRestoring: false })
       expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ backupDraft: undefined })
       expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalled()
@@ -386,12 +370,7 @@ describe('VersionHistoryPanel', () => {
     const { VersionHistoryPanel } = await import('../index')
     mockPlanType = 'sandbox'
 
-    render(
-      <VersionHistoryPanel
-        latestVersionId="published-version-id"
-        restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
-      />,
-    )
+    render(<VersionHistoryPanel latestVersionId="published-version-id" />)
 
     vi.clearAllMocks()
 
@@ -406,12 +385,7 @@ describe('VersionHistoryPanel', () => {
     const { VersionHistoryPanel } = await import('../index')
     mockPlanType = 'sandbox'
 
-    render(
-      <VersionHistoryPanel
-        latestVersionId="published-version-id"
-        restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
-      />,
-    )
+    render(<VersionHistoryPanel latestVersionId="published-version-id" />)
 
     vi.clearAllMocks()
 
@@ -425,12 +399,7 @@ describe('VersionHistoryPanel', () => {
     mockPublishedEnvironments = [{ id: 'environment-id', name: 'Production' }]
     const { VersionHistoryPanel } = await import('../index')
 
-    render(
-      <VersionHistoryPanel
-        latestVersionId="published-version-id"
-        restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
-      />,
-    )
+    render(<VersionHistoryPanel latestVersionId="published-version-id" />)
 
     fireEvent.click(screen.getByText('delete-published-version-id'))
 
@@ -443,12 +412,7 @@ describe('VersionHistoryPanel', () => {
   it('should allow deleting a version that is not deployed', async () => {
     const { VersionHistoryPanel } = await import('../index')
 
-    render(
-      <VersionHistoryPanel
-        latestVersionId="published-version-id"
-        restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
-      />,
-    )
+    render(<VersionHistoryPanel latestVersionId="published-version-id" />)
 
     fireEvent.click(screen.getByText('delete-published-version-id'))
 
@@ -463,12 +427,7 @@ describe('VersionHistoryPanel', () => {
       version: WorkflowVersion.Draft,
     })
 
-    render(
-      <VersionHistoryPanel
-        latestVersionId="published-version-id"
-        restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
-      />,
-    )
+    render(<VersionHistoryPanel latestVersionId="published-version-id" />)
 
     vi.clearAllMocks()
     mockRestoreWorkflow.mockRejectedValueOnce(new Error('restore failed'))
@@ -477,9 +436,7 @@ describe('VersionHistoryPanel', () => {
     fireEvent.click(screen.getByText('confirm restore'))
 
     await waitFor(() => {
-      expect(mockRestoreWorkflow).toHaveBeenCalledWith(
-        '/apps/app-1/workflows/published-version-id/restore',
-      )
+      expect(mockRestoreWorkflow).toHaveBeenCalledWith('published-version-id')
     })
 
     expect(mockWorkflowStoreSetState).not.toHaveBeenCalledWith({ isRestoring: false })
@@ -489,25 +446,16 @@ describe('VersionHistoryPanel', () => {
   })
 
   it('should refresh the published workflow after editing the latest app version', async () => {
-    mockUpdateWorkflow.mockImplementation(
-      async (
-        _params,
-        options?: {
-          onSuccess?: () => void
-          onSettled?: () => void
-        },
-      ) => {
-        options?.onSuccess?.()
-        options?.onSettled?.()
-      },
-    )
+    mockUpdateWorkflow.mockResolvedValue({
+      id: 'published-version-id',
+      marked_name: 'Updated release',
+      marked_comment: 'Updated notes',
+    })
     const { VersionHistoryPanel } = await import('../index')
 
     render(
       <VersionHistoryPanel
-        appMode={AppModeEnum.WORKFLOW}
         latestVersionId="published-version-id"
-        restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
         updateVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}`}
       />,
     )
@@ -517,14 +465,8 @@ describe('VersionHistoryPanel', () => {
 
     await waitFor(() => {
       expect(mockUpdateWorkflow).toHaveBeenCalledWith(
-        {
-          appId: 'app-1',
-          appMode: AppModeEnum.WORKFLOW,
-          releaseNotes: 'Updated notes',
-          title: 'Updated release',
-          url: '/apps/app-1/workflows/published-version-id',
-        },
-        expect.any(Object),
+        '/apps/app-1/workflows/published-version-id',
+        { body: { marked_name: 'Updated release', marked_comment: 'Updated notes' } },
       )
       expect(mockInvalidateAppWorkflow).toHaveBeenCalledWith('app-1')
     })
@@ -537,6 +479,7 @@ function render(ui: ReactElement) {
     features: { billing: { subscription: { plan: mockPlanType } } },
   })
   return renderWithConsoleState(ui, {
+    resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
     wrapper: ({ children }) => (
       <NuqsTestingAdapter>
         <QueryWrapper>{children}</QueryWrapper>

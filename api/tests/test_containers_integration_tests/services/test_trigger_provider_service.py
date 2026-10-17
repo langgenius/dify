@@ -21,7 +21,7 @@ class TestTriggerProviderService:
     """Integration tests for TriggerProviderService using testcontainers."""
 
     @pytest.fixture
-    def mock_external_service_dependencies(self) -> Generator[MockExternalServiceDependencies, None, None]:
+    def mock_external_service_dependencies(self) -> Generator[MockExternalServiceDependencies]:
         """Mock setup for external service dependencies."""
         with (
             patch("services.trigger.trigger_provider_service.TriggerManager") as mock_trigger_manager,

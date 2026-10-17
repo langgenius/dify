@@ -96,11 +96,22 @@ const mockRefetch = vi.fn()
 const mockUseAllToolProviders = vi.hoisted(() => vi.fn())
 const mockUseAllCustomTools = vi.hoisted(() => vi.fn())
 const mockUseAllWorkflowTools = vi.hoisted(() => vi.fn())
-vi.mock('@/service/use-tools', () => ({
-  useAllToolProviders: (enabled?: boolean, type?: string) => mockUseAllToolProviders(enabled, type),
-  useAllCustomTools: (enabled?: boolean) => mockUseAllCustomTools(enabled),
-  useAllWorkflowTools: (enabled?: boolean) => mockUseAllWorkflowTools(enabled),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.toolProviders.get': ({
+      input,
+      enabled,
+    }: {
+      input: { query: { type?: string } }
+      enabled?: boolean
+    }) => mockUseAllToolProviders(enabled, input.query.type),
+    'workspaces.current.tools.api.get': ({ enabled }: { enabled?: boolean }) =>
+      mockUseAllCustomTools(enabled),
+    'workspaces.current.tools.workflow.get': ({ enabled }: { enabled?: boolean }) =>
+      mockUseAllWorkflowTools(enabled),
+  })
+})
 
 const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: ['tool.manage', 'mcp.manage'] as string[],
@@ -162,7 +173,7 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
 }))
 
 vi.mock('@/app/components/header/account-setting/update-setting-dialog', () => ({
-  default: () => (
+  UpdateSettingDialog: () => (
     <button type="button" aria-label="plugin.autoUpdate.autoUpdate">
       plugin.autoUpdate.autoUpdate
     </button>
@@ -357,7 +368,7 @@ describe('getToolType', () => {
     ['workflow', ToolType.Workflow],
     ['mcp', ToolType.MCP],
     ['unknown', ToolType.BuiltIn],
-  ])('returns correct ToolType for "%s"', (input, expected) => {
+  ] as const)('returns correct ToolType for "%s"', (input, expected) => {
     expect(getToolType(input)).toBe(expected)
   })
 })

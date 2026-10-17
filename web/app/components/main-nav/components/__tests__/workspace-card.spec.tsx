@@ -97,15 +97,6 @@ const workspaceMenuAccessibleName = new RegExp(
   `${currentWorkspaceValue.name}.*navigation\\.mainNav\\.workspace\\.openMenu`,
 )
 
-const mockSetSettingsDestination = vi.fn()
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return {
-    ...actual,
-    useQueryState: (...args: Parameters<typeof actual.useQueryState>) =>
-      args[0] === 'pricing' ? actual.useQueryState(...args) : [null, mockSetSettingsDestination],
-  }
-})
 let mockCurrentWorkspace: GetWorkspacesCurrentSummaryResponse | undefined = currentWorkspaceValue
 let mockWorkspaces: TenantListItemResponse[] = []
 
@@ -319,10 +310,7 @@ describe('WorkspaceCard', () => {
     expect(
       within(panel).getByRole('button', { name: 'navigation.mainNav.workspace.sort.openMenu' }),
     ).toBeDisabled()
-    expect(within(panel).getByRole('button', { name: 'common.operation.search' })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
+    expect(within(panel).getByRole('button', { name: 'common.operation.search' })).toBeDisabled()
     expect(panel.querySelector('[aria-busy="true"]')).toBeInTheDocument()
     expect(within(panel).getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
     expect(within(panel).queryByRole('button', { name: 'Evan Workspace' })).not.toBeInTheDocument()
@@ -589,7 +577,11 @@ describe('WorkspaceCard', () => {
       await screen.findByRole('button', { name: 'navigation.mainNav.workspace.settings' }),
     )
 
-    expect(mockSetSettingsDestination).toHaveBeenCalledWith(ACCOUNT_SETTING_TAB.BILLING)
+    await waitFor(() =>
+      expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe(
+        ACCOUNT_SETTING_TAB.BILLING,
+      ),
+    )
   })
 
   it('opens members settings from workspace menu when billing is disabled', async () => {
@@ -605,8 +597,16 @@ describe('WorkspaceCard', () => {
       await screen.findByRole('button', { name: 'navigation.mainNav.workspace.settings' }),
     )
 
-    expect(mockSetSettingsDestination).toHaveBeenCalledWith(ACCOUNT_SETTING_TAB.MEMBERS)
-    expect(mockSetSettingsDestination).not.toHaveBeenCalledWith(ACCOUNT_SETTING_TAB.BILLING)
+    await waitFor(() =>
+      expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe(
+        ACCOUNT_SETTING_TAB.MEMBERS,
+      ),
+    )
+    expect(
+      onPricingUrlUpdate.mock.calls.some(
+        ([event]) => event.searchParams.get('settings') === ACCOUNT_SETTING_TAB.BILLING,
+      ),
+    ).toBe(false)
   })
 
   it('switches workspace from the workspace switcher item', async () => {

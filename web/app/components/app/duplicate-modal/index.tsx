@@ -1,18 +1,29 @@
 'use client'
 import type { AppDetailWithSite, CopyAppPayload } from '@dify/contracts/api/console/apps/types.gen'
-import type { IconPickerDefaultValue, IconPickerValue } from '@/app/components/base/icon-picker'
+import type { IconPickerInputValue, IconPickerValue } from '@/app/components/base/icon-picker'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogCloseButton,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppIcon from '@/app/components/base/app-icon'
-import { IconPickerDialog } from '@/app/components/base/icon-picker'
+import {
+  IconPicker,
+  IconPickerContent,
+  IconPickerIcon,
+  IconPickerTrigger,
+} from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { toast } from '@/app/notifications'
 import { deploymentEditionAtom } from '@/features/system-features/state'
@@ -43,15 +54,16 @@ const DuplicateAppModal = ({
 
   const [name, setName] = React.useState(appName)
 
-  const [showIconPicker, setShowIconPicker] = useState(false)
   const [selectedIcon, setSelectedIcon] = useState<IconPickerValue | null>(null)
-  const pickerDefaultValue: IconPickerDefaultValue | undefined =
+  const pickerValue: IconPickerInputValue | undefined =
     selectedIcon ??
     (icon_type === 'image' && icon
       ? { type: 'image', url: icon_url ?? '', fileId: icon }
       : icon_type === 'emoji' && icon
         ? { type: 'emoji', icon, background: icon_background }
-        : undefined)
+        : icon_type === 'link' && icon
+          ? { type: 'link', url: icon }
+          : undefined)
   const currentIcon = selectedIcon
     ? {
         icon_type: selectedIcon.type,
@@ -100,81 +112,60 @@ const DuplicateAppModal = ({
           if (!open) onHide()
         }}
       >
-        <DialogContent className="w-full max-w-120! overflow-hidden! border-none px-8 text-left align-middle">
-          <IconButton
-            size="lg"
-            className="absolute top-4 right-4"
-            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-            onClick={onHide}
-          >
-            <span aria-hidden="true" className="i-ri-close-line size-4" />
-          </IconButton>
-          <DialogTitle className="relative mt-3 mb-9 text-xl leading-7.5 font-semibold text-text-primary">
-            {t(($) => $.duplicateTitle, { ns: 'app' })}
-          </DialogTitle>
+        <DialogContent className="w-120">
+          <DialogHeader>
+            <DialogTitle>{t(($) => $.duplicateTitle, { ns: 'app' })}</DialogTitle>
+            <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          </DialogHeader>
           <form
+            className="contents"
             onSubmit={(event) => {
               event.preventDefault()
               submit()
             }}
           >
-            <div className="mb-9 system-sm-regular text-text-secondary">
-              <Field name="name">
-                <FieldLabel className="system-md-medium">
-                  {t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}
-                </FieldLabel>
-                <div className="flex items-center justify-between space-x-2">
-                  <button
-                    type="button"
-                    aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}`}
-                    onClick={() => {
-                      setShowIconPicker(true)
-                    }}
-                    className="shrink-0 cursor-pointer rounded-[10px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                  >
-                    <AppIcon
-                      size="large"
-                      iconType={currentIcon.icon_type === 'link' ? 'image' : currentIcon.icon_type}
-                      icon={currentIcon.icon ?? undefined}
-                      background={currentIcon.icon_background}
-                      imageUrl={
-                        currentIcon.icon_type === 'link' ? currentIcon.icon : currentIcon.icon_url
-                      }
+            <DialogBody>
+              <IconPicker value={pickerValue} onValueChange={setSelectedIcon}>
+                <Field name="name">
+                  <FieldLabel className="system-md-medium">
+                    {t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}
+                  </FieldLabel>
+                  <div className="flex items-center justify-between space-x-2">
+                    <IconPickerTrigger
+                      aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}`}
+                      className="shrink-0 cursor-pointer rounded-[10px]"
+                    >
+                      <IconPickerIcon size="large" />
+                    </IconPickerTrigger>
+                    <Input
+                      autoComplete="off"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="h-10"
+                      placeholder={t(($) => $['placeholder.input'], { ns: 'common' }) || ''}
                     />
-                  </button>
-                  <Input
-                    autoComplete="off"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="h-10"
-                    placeholder={t(($) => $['placeholder.input'], { ns: 'common' }) || ''}
-                  />
-                </div>
-              </Field>
+                  </div>
+                </Field>
+                <IconPickerContent />
+              </IconPicker>
               {isAppsFull && <AppsFull className="mt-4" loc="app-duplicate-create" />}
-            </div>
-            <div className="flex flex-row-reverse">
+            </DialogBody>
+            <DialogFooter>
+              <Button type="button" className="w-24" onClick={onHide}>
+                {t(($) => $['operation.cancel'], { ns: 'common' })}
+              </Button>
               <Button
                 type="submit"
                 disabled={isAppQuotaUnavailable || isAppsFull}
-                className="ml-2 w-24"
+                className="w-24"
                 variant="primary"
               >
                 {t(($) => $.duplicate, { ns: 'app' })}
               </Button>
-              <Button type="button" className="w-24" onClick={onHide}>
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </Button>
-            </div>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
-      <IconPickerDialog
-        open={showIconPicker}
-        defaultValue={pickerDefaultValue}
-        onOpenChange={setShowIconPicker}
-        onConfirm={setSelectedIcon}
-      />
     </>
   )
 }

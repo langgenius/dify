@@ -13,52 +13,6 @@ vi.mock('@/features/agent-v2/feature-flag', () => ({
   isAgentV2Enabled: () => mockIsAgentV2Enabled(),
 }))
 
-vi.mock('@/app/components/workflow/constants/node', () => ({
-  WORKFLOW_COMMON_NODES: [
-    {
-      metaData: { type: BlockEnum.LLM },
-      defaultValue: { title: 'LLM' },
-    },
-    {
-      metaData: { type: BlockEnum.HumanInput },
-      defaultValue: { title: 'Human Input' },
-    },
-    {
-      metaData: { type: BlockEnum.HttpRequest },
-      defaultValue: { title: 'HTTP Request' },
-    },
-    {
-      metaData: { type: BlockEnum.Agent },
-      defaultValue: { title: 'Agent' },
-    },
-    {
-      metaData: { type: BlockEnum.AgentV2 },
-      defaultValue: { title: 'Agent' },
-    },
-  ],
-}))
-
-vi.mock('@/app/components/workflow/nodes/data-source-empty/default', () => ({
-  default: {
-    metaData: { type: BlockEnum.DataSourceEmpty },
-    defaultValue: { title: 'Data Source Empty' },
-  },
-}))
-
-vi.mock('@/app/components/workflow/nodes/data-source/default', () => ({
-  default: {
-    metaData: { type: BlockEnum.DataSource },
-    defaultValue: { title: 'Data Source' },
-  },
-}))
-
-vi.mock('@/app/components/workflow/nodes/knowledge-base/default', () => ({
-  default: {
-    metaData: { type: BlockEnum.KnowledgeBase },
-    defaultValue: { title: 'Knowledge Base' },
-  },
-}))
-
 describe('useAvailableNodesMetaData', () => {
   beforeEach(() => {
     vi.clearAllMocks()

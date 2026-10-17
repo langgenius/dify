@@ -358,7 +358,7 @@ def test_elasticsearch_factory_branches(elasticsearch_module, monkeypatch: pytes
     )
 
     with patch.object(elasticsearch_module, "ElasticSearchVector", return_value="vector") as vector_cls:
-        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=MagicMock())
+        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=MagicMock(), session=None)
     assert result_1 == "vector"
     cfg = vector_cls.call_args.kwargs["config"]
     assert cfg.use_cloud is False
@@ -377,7 +377,7 @@ def test_elasticsearch_factory_branches(elasticsearch_module, monkeypatch: pytes
         ),
     )
     with patch.object(elasticsearch_module, "ElasticSearchVector", return_value="vector") as vector_cls:
-        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=MagicMock())
+        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=MagicMock(), session=None)
     assert result_2 == "vector"
     cfg = vector_cls.call_args.kwargs["config"]
     assert cfg.use_cloud is True
@@ -399,7 +399,7 @@ def test_elasticsearch_factory_branches(elasticsearch_module, monkeypatch: pytes
         ),
     )
     with patch.object(elasticsearch_module, "ElasticSearchVector", return_value="vector") as vector_cls:
-        factory.init_vector(dataset_without_index, attributes=[], embeddings=MagicMock())
+        factory.init_vector(dataset_without_index, attributes=[], embeddings=MagicMock(), session=None)
     cfg = vector_cls.call_args.kwargs["config"]
     assert cfg.use_cloud is False
     assert cfg.host == "fallback-host"

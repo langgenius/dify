@@ -1,17 +1,14 @@
 """Client-safe config for operation-scoped RuntimeLease acquisition."""
 
-from typing import ClassVar, Final
+from typing import ClassVar
 
-from agenton.layers import LayerConfig
-from pydantic import ConfigDict, Field
-
-DIFY_RUNTIME_LAYER_TYPE_ID: Final[str] = "dify.runtime"
+from pydantic import BaseModel, ConfigDict, Field
 
 
-class DifyRuntimeLayerConfig(LayerConfig):
+class DifyRuntimeLayerConfig(BaseModel):
     backend_binding_ref: str = Field(min_length=1)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
-__all__ = ["DIFY_RUNTIME_LAYER_TYPE_ID", "DifyRuntimeLayerConfig"]
+__all__ = ["DifyRuntimeLayerConfig"]

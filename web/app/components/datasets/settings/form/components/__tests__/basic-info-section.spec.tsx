@@ -1,12 +1,16 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactElement } from 'react'
-import type { Member } from '@/models/common'
-import type { DataSet, IconInfo } from '@/models/datasets'
+import type { IconInfo } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
+import { mockEmojiData } from '@/test/emoji-picker'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '../../../../create/step-two'
 import BasicInfoSection from '../basic-info-section'
@@ -59,11 +63,12 @@ vi.mock('@/app/components/base/image-uploader/hooks', () => ({
 }))
 
 describe('BasicInfoSection', () => {
-  const mockDataset: DataSet = {
+  const mockDataset: DatasetDetailWithPartialMembersResponse = {
+    ...createDatasetFixture(),
     id: 'dataset-1',
     name: 'Test Dataset',
     description: 'Test description',
-    permission: DatasetPermission.onlyMe,
+    permission: PermissionLevel.onlyMe,
     icon_info: {
       icon_type: 'emoji',
       icon: '📚',
@@ -71,7 +76,6 @@ describe('BasicInfoSection', () => {
       icon_url: '',
     },
     indexing_technique: IndexingType.QUALIFIED,
-    indexing_status: 'completed',
     data_source_type: DataSourceType.FILE,
     doc_form: ChunkingMode.text,
     embedding_model: 'text-embedding-ada-002',
@@ -79,7 +83,6 @@ describe('BasicInfoSection', () => {
     embedding_available: true,
     app_count: 0,
     document_count: 5,
-    total_document_count: 5,
     word_count: 1000,
     provider: 'vendor',
     tags: [],
@@ -106,17 +109,6 @@ describe('BasicInfoSection', () => {
       score_threshold_enabled: false,
       score_threshold: 0.5,
     } as RetrievalConfig,
-    retrieval_model: {
-      search_method: RETRIEVE_METHOD.semantic,
-      reranking_enable: false,
-      reranking_model: {
-        reranking_provider_name: '',
-        reranking_model_name: '',
-      },
-      top_k: 3,
-      score_threshold_enabled: false,
-      score_threshold: 0.5,
-    } as RetrievalConfig,
     built_in_field_enabled: false,
     keyword_number: 10,
     created_by: 'user-1',
@@ -127,7 +119,7 @@ describe('BasicInfoSection', () => {
     is_multimodal: false,
   }
 
-  const mockMemberList: Member[] = [
+  const mockMemberList: AccountWithRoleResponse[] = [
     {
       id: 'user-1',
       name: 'User 1',
@@ -136,8 +128,8 @@ describe('BasicInfoSection', () => {
       roles: [],
       avatar: '',
       avatar_url: '',
-      last_login_at: '',
-      created_at: '',
+      last_login_at: null,
+      created_at: null,
       status: 'active',
     },
     {
@@ -148,8 +140,8 @@ describe('BasicInfoSection', () => {
       roles: [],
       avatar: '',
       avatar_url: '',
-      last_login_at: '',
-      created_at: '',
+      last_login_at: null,
+      created_at: null,
       status: 'active',
     },
   ]
@@ -168,11 +160,8 @@ describe('BasicInfoSection', () => {
     description: 'Test description',
     setDescription: vi.fn(),
     iconInfo: mockIconInfo,
-    showIconPicker: false,
-    handleOpenAppIconPicker: vi.fn(),
     handleSelectAppIcon: vi.fn(),
-    setShowIconPicker: vi.fn(),
-    permission: DatasetPermission.onlyMe,
+    permission: PermissionLevel.onlyMe,
     setPermission: vi.fn(),
     selectedMemberIDs: ['user-1'],
     setSelectedMemberIDs: vi.fn(),
@@ -218,16 +207,13 @@ describe('BasicInfoSection', () => {
 
     it('names the icon action and opens it with the keyboard', async () => {
       const user = userEvent.setup()
-      const handleOpenAppIconPicker = vi.fn()
-      render(
-        <BasicInfoSection {...defaultProps} handleOpenAppIconPicker={handleOpenAppIconPicker} />,
-      )
+      render(<BasicInfoSection {...defaultProps} />)
 
       const trigger = screen.getByRole('button', { name: 'datasetSettings.form.changeIcon' })
       await user.tab()
       expect(trigger).toHaveFocus()
       await user.keyboard('{Enter}')
-      expect(handleOpenAppIconPicker).toHaveBeenCalledOnce()
+      expect(screen.getByRole('dialog', { name: 'app.iconPicker.title' })).toBeInTheDocument()
     })
 
     it('associates the permissions field label without losing the selected value', () => {
@@ -242,19 +228,12 @@ describe('BasicInfoSection', () => {
 
     it('does not open the icon picker when settings are read-only', async () => {
       const user = userEvent.setup()
-      const handleOpenAppIconPicker = vi.fn()
-      render(
-        <BasicInfoSection
-          {...defaultProps}
-          readonly
-          handleOpenAppIconPicker={handleOpenAppIconPicker}
-        />,
-      )
+      render(<BasicInfoSection {...defaultProps} readonly />)
 
       const trigger = screen.getByRole('button', { name: 'datasetSettings.form.changeIcon' })
       expect(trigger).toBeDisabled()
       await user.click(trigger)
-      expect(handleOpenAppIconPicker).not.toHaveBeenCalled()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
   })
 
@@ -323,53 +302,12 @@ describe('BasicInfoSection', () => {
   })
 
   describe('App Icon', () => {
-    it('should call handleOpenAppIconPicker when icon is clicked', async () => {
+    it('opens the icon picker from the fixed icon action', async () => {
       const user = userEvent.setup()
-      const handleOpenAppIconPicker = vi.fn()
-      render(
-        <BasicInfoSection {...defaultProps} handleOpenAppIconPicker={handleOpenAppIconPicker} />,
-      )
+      render(<BasicInfoSection {...defaultProps} />)
 
       await user.click(screen.getByRole('button', { name: 'datasetSettings.form.changeIcon' }))
-      expect(handleOpenAppIconPicker).toHaveBeenCalledOnce()
-    })
-
-    it('should not render IconPickerDialog when showIconPicker is false', () => {
-      const { container } = render(<BasicInfoSection {...defaultProps} showIconPicker={false} />)
-
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      // Check that IconPickerDialog is not rendered
-      expect(container.querySelector('[data-testid="app-icon-picker"]')).not.toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'app.iconPicker.title' })).toBeInTheDocument()
     })
 
     it('should render image icon when icon_type is image', () => {
@@ -391,13 +329,13 @@ describe('BasicInfoSection', () => {
 
   describe('Permission Selector', () => {
     it('should render with correct permission value', () => {
-      render(<BasicInfoSection {...defaultProps} permission={DatasetPermission.onlyMe} />)
+      render(<BasicInfoSection {...defaultProps} permission={PermissionLevel.onlyMe} />)
 
       expect(screen.getByText(/form\.permissionsOnlyMe/i))!.toBeInTheDocument()
     })
 
     it('should render all team members permission', () => {
-      render(<BasicInfoSection {...defaultProps} permission={DatasetPermission.allTeamMembers} />)
+      render(<BasicInfoSection {...defaultProps} permission={PermissionLevel.allTeamMembers} />)
 
       expect(screen.getByText(/form\.permissionsAllMember/i))!.toBeInTheDocument()
     })
@@ -432,7 +370,7 @@ describe('BasicInfoSection', () => {
         fireEvent.click(allMemberOptions[0]!)
       })
 
-      expect(setPermission).toHaveBeenCalledWith(DatasetPermission.allTeamMembers)
+      expect(setPermission).toHaveBeenCalledWith(PermissionLevel.allTeamMembers)
     })
   })
 
@@ -471,12 +409,12 @@ describe('BasicInfoSection', () => {
 
     it('should update when permission prop changes', () => {
       const { rerender } = render(
-        <BasicInfoSection {...defaultProps} permission={DatasetPermission.onlyMe} />,
+        <BasicInfoSection {...defaultProps} permission={PermissionLevel.onlyMe} />,
       )
 
       expect(screen.getByText(/form\.permissionsOnlyMe/i))!.toBeInTheDocument()
 
-      rerender(<BasicInfoSection {...defaultProps} permission={DatasetPermission.allTeamMembers} />)
+      rerender(<BasicInfoSection {...defaultProps} permission={PermissionLevel.allTeamMembers} />)
 
       expect(screen.getByText(/form\.permissionsAllMember/i))!.toBeInTheDocument()
     })
@@ -505,3 +443,5 @@ describe('BasicInfoSection', () => {
     })
   })
 })
+
+mockEmojiData()

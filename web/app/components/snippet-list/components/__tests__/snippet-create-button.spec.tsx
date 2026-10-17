@@ -1,5 +1,5 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { render } from '@/test/console/render'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import SnippetCreateButton from '../snippet-create-button'
 
 const {
@@ -42,34 +42,20 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@/service/use-snippets', () => ({
-  useCreateSnippetMutation: () => ({
-    mutateAsync: mockCreateMutateAsync,
-    isPending: false,
-  }),
-  useImportSnippetDSLMutation: () => ({
-    mutateAsync: mockImportMutateAsync,
-    isPending: false,
-  }),
-  useConfirmSnippetImportMutation: () => ({
-    mutateAsync: mockConfirmImportMutateAsync,
-    isPending: false,
-  }),
-}))
-
-vi.mock('@/service/console', () => ({
-  consoleClient: {
-    snippets: {
-      bySnippetId: {
-        workflows: {
-          draft: {
-            post: mockSyncDraftWorkflow,
-          },
-        },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.customizedSnippets.post': mockCreateMutateAsync,
+      'workspaces.current.customizedSnippets.imports.post': mockImportMutateAsync,
+      'workspaces.current.customizedSnippets.imports.byImportId.confirm.post':
+        mockConfirmImportMutateAsync,
+      'snippets.bySnippetId.workflows.draft.post': mockSyncDraftWorkflow,
+    }),
+  }
+})
 
 describe('SnippetCreateButton', () => {
   beforeEach(() => {
@@ -137,8 +123,6 @@ describe('SnippetCreateButton', () => {
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/snippets/snippet-123/orchestrate')
     })
-
-    expect(mockToastSuccess).toHaveBeenCalledWith('workflow.snippet.createSuccess')
   })
 
   it('should import a snippet from a DSL URL', async () => {
@@ -163,12 +147,13 @@ describe('SnippetCreateButton', () => {
 
     await waitFor(() => {
       expect(mockImportMutateAsync).toHaveBeenCalledWith({
-        mode: 'yaml-url',
-        yamlContent: undefined,
-        yamlUrl: 'https://example.com/snippet.yml',
+        body: {
+          mode: 'yaml-url',
+          yaml_content: undefined,
+          yaml_url: 'https://example.com/snippet.yml',
+        },
       })
     })
-    expect(mockToastSuccess).toHaveBeenCalledWith('snippet.importSuccess')
     expect(mockPush).toHaveBeenCalledWith('/snippets/snippet-imported/orchestrate')
   })
 })

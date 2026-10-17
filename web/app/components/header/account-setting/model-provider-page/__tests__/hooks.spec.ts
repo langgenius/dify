@@ -1,4 +1,5 @@
 import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { RenderHookOptions } from '@testing-library/react'
 import type { Mock } from 'vite-plus/test'
 import type {
   Credential,
@@ -7,10 +8,11 @@ import type {
   DefaultModelResponse,
   ModelProvider,
 } from '../declarations'
-import { act, renderHook } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { useLocale } from '#i18n'
-import { fetchDefaultModal } from '@/service/common'
 import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderHookWithConsoleQuery } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import {
   ConfigurationMethodEnum,
   CurrentSystemQuotaTypeEnum,
@@ -42,24 +44,6 @@ vi.mock('#i18n', async (importOriginal) => ({
 }))
 
 // Mock dependencies
-vi.mock('@tanstack/react-query', () => ({
-  useQuery: vi.fn(),
-  useQueryClient: vi.fn(() => ({
-    invalidateQueries: vi.fn(),
-  })),
-}))
-
-vi.mock('@/service/common', () => ({
-  fetchDefaultModal: vi.fn(),
-}))
-
-vi.mock('@/service/use-common', () => ({
-  commonQueryKeys: {
-    modelProviders: ['model-providers'],
-    modelProviderDetails: ['model-provider-details'],
-    defaultModel: (type: string) => ['default-model', type],
-  },
-}))
 
 vi.mock('@/context/modal-context', () => ({
   useModalContextSelector: vi.fn((selector) => {
@@ -85,12 +69,28 @@ vi.mock('../atoms', () => ({
   useExpandModelProviderList: vi.fn(() => vi.fn()),
 }))
 
-const { useQuery, useQueryClient } = await import('@tanstack/react-query')
-const { useModalContextSelector } = await import('@/context/modal-context')
-const { useMarketplacePlugins, useMarketplacePluginsByCollectionId } =
-  await import('@/app/components/plugins/marketplace/hooks')
-const { useExpandModelProviderList } = await import('../atoms')
-
+const { getDefaultModel, getModels } = vi.hoisted(() => ({
+  getDefaultModel: vi.fn(),
+  getModels: vi.fn(),
+}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.defaultModel.get': getDefaultModel,
+      'workspaces.current.models.modelTypes.byModelType.get': getModels,
+    }),
+  }
+})
+let queryClient = createConsoleQueryClient()
+function renderHook<Result, Props = void>(
+  callback: (props: Props) => Result,
+  options: Omit<RenderHookOptions<Props>, 'wrapper'> = {},
+) {
+  return renderHookWithConsoleQuery(callback, { ...options, queryClient })
+}
 const getModelListQueryKey = (modelType: ModelTypeEnum) =>
   consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
     input: {
@@ -100,9 +100,29 @@ const getModelListQueryKey = (modelType: ModelTypeEnum) =>
     },
   })
 
+const seedModelList = (data: ProviderWithModelsResponse[]) =>
+  queryClient.setQueryData<{ data: ProviderWithModelsResponse[] }>(
+    getModelListQueryKey(ModelTypeEnum.textGeneration),
+    { data },
+  )
+const seedDefaultModel = (data: DefaultModelResponse) =>
+  queryClient.setQueryData<{ data: DefaultModelResponse }>(
+    consoleQuery.workspaces.current.defaultModel.get.queryKey({
+      input: { query: { model_type: ModelTypeEnum.textGeneration } },
+    }),
+    { data },
+  )
+const { useModalContextSelector } = await import('@/context/modal-context')
+const { useMarketplacePlugins, useMarketplacePluginsByCollectionId } =
+  await import('@/app/components/plugins/marketplace/hooks')
+const { useExpandModelProviderList } = await import('../atoms')
+
 describe('hooks', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    queryClient = createConsoleQueryClient()
+    getDefaultModel.mockReset().mockImplementation(() => new Promise(() => {}))
+    getModels.mockReset().mockImplementation(() => new Promise(() => {}))
   })
 
   describe('useLanguage', () => {
@@ -166,6 +186,9 @@ describe('hooks', () => {
       provider: {
         provider: 'openai',
         icon_small: { en_US: 'icon', zh_Hans: 'icon' },
+        label: { en_US: 'Provider', zh_Hans: 'Provider' },
+        supported_model_types: [],
+        tenant_id: 'tenant-1',
       },
       model,
       model_type: ModelTypeEnum.textGeneration,
@@ -193,6 +216,9 @@ describe('hooks', () => {
         provider: {
           provider: 'anthropic',
           icon_small: { en_US: 'icon', zh_Hans: 'icon' },
+          label: { en_US: 'Provider', zh_Hans: 'Provider' },
+          supported_model_types: [],
+          tenant_id: 'tenant-1',
         },
         model: 'claude-3',
         model_type: ModelTypeEnum.textGeneration,
@@ -272,94 +298,54 @@ describe('hooks', () => {
   })
 
   describe('useDefaultModel', () => {
-    const mockDefaultModel = {
+    const defaultModel = {
       model: 'gpt-4',
       model_type: ModelTypeEnum.textGeneration,
-      provider: { provider: 'openai', icon_small: { en_US: 'icon', zh_Hans: 'icon' } },
+      provider: {
+        provider: 'openai',
+        icon_small: { en_US: 'icon', zh_Hans: 'icon' },
+        label: { en_US: 'OpenAI' },
+        supported_model_types: [],
+        tenant_id: 'tenant-1',
+      },
     }
-
-    it('should fetch default model successfully', async () => {
-      const refetch = vi.fn()
-      ;(useQuery as Mock).mockReturnValue({
-        data: { data: mockDefaultModel },
-        isPending: false,
-        refetch,
-      })
-
+    it('loads the default model and exposes the resolved response', async () => {
+      const request = createDeferred<{ data: typeof defaultModel }>()
+      getDefaultModel.mockReturnValue(request.promise)
       const { result } = renderHook(() => useDefaultModel(ModelTypeEnum.textGeneration))
-
-      expect(result.current.data).toEqual(mockDefaultModel)
-      expect(result.current.isLoading).toBe(false)
-
-      // Coverage for queryFn
-      const queryCall = (useQuery as Mock).mock.calls.find(
-        (call) => Array.isArray(call[0].queryKey) && call[0].queryKey[0] === 'default-model',
-      )
-      if (queryCall) {
-        await queryCall[0].queryFn()
-        expect(fetchDefaultModal).toHaveBeenCalled()
-      }
-    })
-
-    it('should return undefined when data is not available', () => {
-      ;(useQuery as Mock).mockReturnValue({
-        data: undefined,
-        isPending: false,
-        refetch: vi.fn(),
-      })
-
-      const { result } = renderHook(() => useDefaultModel(ModelTypeEnum.textGeneration))
-
+      expect(result.current.isLoading).toBe(true)
       expect(result.current.data).toBeUndefined()
+      await act(async () => request.resolve({ data: defaultModel }))
+      await waitFor(() => expect(result.current.data).toEqual(defaultModel))
+      expect(result.current.isLoading).toBe(false)
+      expect(getDefaultModel).toHaveBeenCalledWith({ query: { model_type: 'llm' } })
     })
-
-    it('should keep the query disabled when requested', () => {
-      ;(useQuery as Mock).mockReturnValue({
-        data: undefined,
-        isPending: true,
-        refetch: vi.fn(),
-      })
-
+    it('does not fetch or show loading when disabled', async () => {
       const { result } = renderHook(() =>
         useDefaultModel(ModelTypeEnum.textEmbedding, { enabled: false }),
       )
-
-      expect(useQuery).toHaveBeenCalledWith(
-        expect.objectContaining({
-          enabled: false,
-          queryKey: ['default-model', ModelTypeEnum.textEmbedding],
-        }),
-      )
+      await act(async () => {})
+      expect(getDefaultModel).not.toHaveBeenCalled()
       expect(result.current.isLoading).toBe(false)
     })
-
-    it('should handle loading state', () => {
-      ;(useQuery as Mock).mockReturnValue({
-        data: undefined,
-        isPending: true,
-        refetch: vi.fn(),
-      })
-
+    it('refreshes a cached default through mutate without returning to initial loading', async () => {
+      seedDefaultModel(defaultModel)
       const { result } = renderHook(() => useDefaultModel(ModelTypeEnum.textGeneration))
-
-      expect(result.current.isLoading).toBe(true)
-    })
-
-    it('should call mutate to refetch data', () => {
-      const refetch = vi.fn()
-      ;(useQuery as Mock).mockReturnValue({
-        data: { data: mockDefaultModel },
-        isPending: false,
-        refetch,
-      })
-
-      const { result } = renderHook(() => useDefaultModel(ModelTypeEnum.textGeneration))
-
+      const request = createDeferred<{ data: typeof defaultModel }>()
+      getDefaultModel.mockReturnValue(request.promise)
       act(() => {
-        result.current.mutate()
+        void result.current.mutate()
       })
-
-      expect(refetch).toHaveBeenCalled()
+      expect(result.current.isLoading).toBe(false)
+      expect(result.current.data).toEqual(defaultModel)
+      await act(async () => request.resolve({ data: { ...defaultModel, model: 'gpt-5' } }))
+      await waitFor(() => expect(result.current.data?.model).toBe('gpt-5'))
+    })
+    it('represents an unset server default as undefined', async () => {
+      getDefaultModel.mockResolvedValue({ data: null })
+      const { result } = renderHook(() => useDefaultModel(ModelTypeEnum.textGeneration))
+      await waitFor(() => expect(result.current.isLoading).toBe(false))
+      expect(result.current.data).toBeUndefined()
     })
   })
 
@@ -485,11 +471,7 @@ describe('hooks', () => {
 
     it('should return all text generation model lists', () => {
       const modelList = createModelList()
-      ;(useQuery as Mock).mockReturnValue({
-        data: modelList,
-        isPending: false,
-        refetch: vi.fn(),
-      })
+      seedModelList(modelList)
 
       const defaultModel = { provider: 'openai', model: 'gpt-4' }
       const { result } = renderHook(() =>
@@ -503,11 +485,7 @@ describe('hooks', () => {
 
     it('should filter active models correctly', () => {
       const modelList = createModelList()
-      ;(useQuery as Mock).mockReturnValue({
-        data: modelList,
-        isPending: false,
-        refetch: vi.fn(),
-      })
+      seedModelList(modelList)
 
       const { result } = renderHook(() => useTextGenerationCurrentProviderAndModelAndModelList())
 
@@ -517,11 +495,7 @@ describe('hooks', () => {
 
     it('should find current provider and model', () => {
       const modelList = createModelList()
-      ;(useQuery as Mock).mockReturnValue({
-        data: modelList,
-        isPending: false,
-        refetch: vi.fn(),
-      })
+      seedModelList(modelList)
 
       const defaultModel = { provider: 'openai', model: 'gpt-4' }
       const { result } = renderHook(() =>
@@ -533,11 +507,7 @@ describe('hooks', () => {
     })
 
     it('should handle empty model list', () => {
-      ;(useQuery as Mock).mockReturnValue({
-        data: [],
-        isPending: false,
-        refetch: vi.fn(),
-      })
+      seedModelList([])
 
       const { result } = renderHook(() => useTextGenerationCurrentProviderAndModelAndModelList())
 
@@ -548,15 +518,27 @@ describe('hooks', () => {
 
   describe('useModelListAndDefaultModel', () => {
     it('should return both model list and default model', () => {
-      const mockModelData = [{ provider: 'openai', models: [] }]
-      const mockDefaultModel = { model: 'gpt-4', provider: { provider: 'openai' } }
-      ;(useQuery as Mock)
-        .mockReturnValueOnce({ data: mockModelData, isPending: false, refetch: vi.fn() })
-        .mockReturnValueOnce({
-          data: { data: mockDefaultModel },
-          isPending: false,
-          refetch: vi.fn(),
-        })
+      const mockModelData: ProviderWithModelsResponse[] = [
+        {
+          provider: 'openai',
+          models: [],
+          tenant_id: 'tenant-1',
+          label: { en_US: 'OpenAI' },
+          status: 'active',
+        },
+      ]
+      const mockDefaultModel: DefaultModelResponse = {
+        model: 'gpt-4',
+        model_type: ModelTypeEnum.textGeneration,
+        provider: {
+          provider: 'openai',
+          label: { en_US: 'OpenAI' },
+          supported_model_types: [],
+          tenant_id: 'tenant-1',
+        },
+      }
+      seedModelList(mockModelData)
+      seedDefaultModel(mockDefaultModel)
 
       const { result } = renderHook(() => useModelListAndDefaultModel(ModelTypeEnum.textGeneration))
 
@@ -565,10 +547,6 @@ describe('hooks', () => {
     })
 
     it('should handle undefined values', () => {
-      ;(useQuery as Mock)
-        .mockReturnValueOnce({ data: undefined, isPending: false, refetch: vi.fn() })
-        .mockReturnValueOnce({ data: undefined, isPending: false, refetch: vi.fn() })
-
       const { result } = renderHook(() => useModelListAndDefaultModel(ModelTypeEnum.textGeneration))
 
       expect(result.current.modelList).toEqual([])
@@ -578,7 +556,7 @@ describe('hooks', () => {
 
   describe('useModelListAndDefaultModelAndCurrentProviderAndModel', () => {
     it('should return complete data structure', () => {
-      const mockModelData = [
+      const mockModelData: ProviderWithModelsResponse[] = [
         {
           tenant_id: 'test-workspace',
           provider: 'openai',
@@ -601,15 +579,16 @@ describe('hooks', () => {
       const mockDefaultModel = {
         model: 'gpt-4',
         model_type: ModelTypeEnum.textGeneration,
-        provider: { provider: 'openai', icon_small: { en_US: 'icon', zh_Hans: 'icon' } },
+        provider: {
+          provider: 'openai',
+          icon_small: { en_US: 'icon', zh_Hans: 'icon' },
+          label: { en_US: 'OpenAI' },
+          supported_model_types: [],
+          tenant_id: 'tenant-1',
+        },
       }
-      ;(useQuery as Mock)
-        .mockReturnValueOnce({ data: mockModelData, isPending: false, refetch: vi.fn() })
-        .mockReturnValueOnce({
-          data: { data: mockDefaultModel },
-          isPending: false,
-          refetch: vi.fn(),
-        })
+      seedModelList(mockModelData)
+      seedDefaultModel(mockDefaultModel)
 
       const { result } = renderHook(() =>
         useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration),
@@ -622,16 +601,16 @@ describe('hooks', () => {
     })
 
     it('should handle missing default model', () => {
-      const mockModelData = [
+      const mockModelData: ProviderWithModelsResponse[] = [
         {
           provider: 'openai',
           models: [],
+          tenant_id: 'tenant-1',
+          label: { en_US: 'OpenAI' },
           status: ModelStatusEnum.active,
         },
       ]
-      ;(useQuery as Mock)
-        .mockReturnValueOnce({ data: mockModelData, isPending: false, refetch: vi.fn() })
-        .mockReturnValueOnce({ data: undefined, isPending: false, refetch: vi.fn() })
+      seedModelList(mockModelData)
 
       const { result } = renderHook(() =>
         useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration),
@@ -644,8 +623,7 @@ describe('hooks', () => {
 
   describe('useUpdateModelList', () => {
     it('should invalidate model list queries', () => {
-      const invalidateQueries = vi.fn()
-      ;(useQueryClient as Mock).mockReturnValue({ invalidateQueries })
+      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
 
       const { result } = renderHook(() => useUpdateModelList())
 
@@ -659,8 +637,7 @@ describe('hooks', () => {
     })
 
     it('should handle multiple model types', () => {
-      const invalidateQueries = vi.fn()
-      ;(useQueryClient as Mock).mockReturnValue({ invalidateQueries })
+      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
 
       const { result } = renderHook(() => useUpdateModelList())
 
@@ -676,8 +653,7 @@ describe('hooks', () => {
 
   describe('useInvalidateDefaultModel', () => {
     it('should invalidate default model queries', () => {
-      const invalidateQueries = vi.fn()
-      ;(useQueryClient as Mock).mockReturnValue({ invalidateQueries })
+      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
 
       const { result } = renderHook(() => useInvalidateDefaultModel())
 
@@ -686,13 +662,14 @@ describe('hooks', () => {
       })
 
       expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ['default-model', ModelTypeEnum.textGeneration],
+        queryKey: consoleQuery.workspaces.current.defaultModel.get.queryKey({
+          input: { query: { model_type: ModelTypeEnum.textGeneration } },
+        }),
       })
     })
 
     it('should handle multiple model types', () => {
-      const invalidateQueries = vi.fn()
-      ;(useQueryClient as Mock).mockReturnValue({ invalidateQueries })
+      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
 
       const { result } = renderHook(() => useInvalidateDefaultModel())
 
@@ -708,8 +685,7 @@ describe('hooks', () => {
 
   describe('useUpdateModelProviders', () => {
     it('should invalidate model providers queries', () => {
-      const invalidateQueries = vi.fn()
-      ;(useQueryClient as Mock).mockReturnValue({ invalidateQueries })
+      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
 
       const { result } = renderHook(() => useUpdateModelProviders())
 
@@ -721,13 +697,12 @@ describe('hooks', () => {
         queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
       })
       expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ['model-provider-details'],
+        queryKey: consoleQuery.workspaces.current.modelProviders.get.key(),
       })
     })
 
     it('should be callable multiple times', () => {
-      const invalidateQueries = vi.fn()
-      ;(useQueryClient as Mock).mockReturnValue({ invalidateQueries })
+      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
 
       const { result } = renderHook(() => useUpdateModelProviders())
 
@@ -997,8 +972,7 @@ describe('hooks', () => {
     })
 
     it('should refresh providers and model lists', () => {
-      const invalidateQueries = vi.fn()
-      ;(useQueryClient as Mock).mockReturnValue({ invalidateQueries })
+      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
 
       const provider = createMockProvider()
       const modelProviderModelListQueryKey =
@@ -1024,7 +998,7 @@ describe('hooks', () => {
         queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
       })
       expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ['model-provider-details'],
+        queryKey: consoleQuery.workspaces.current.modelProviders.get.key(),
       })
       expect(invalidateQueries).toHaveBeenCalledWith({
         queryKey: getModelListQueryKey(ModelTypeEnum.textGeneration),
@@ -1035,9 +1009,8 @@ describe('hooks', () => {
     })
 
     it('should expand target provider list when refreshModelList is true and custom config is active', () => {
-      const invalidateQueries = vi.fn()
+      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
       const expandModelProviderList = vi.fn()
-      ;(useQueryClient as Mock).mockReturnValue({ invalidateQueries })
       ;(useExpandModelProviderList as Mock).mockReturnValue(expandModelProviderList)
 
       const provider = createMockProvider()
@@ -1072,9 +1045,8 @@ describe('hooks', () => {
     })
 
     it('should not expand provider list when custom config is not active', () => {
-      const invalidateQueries = vi.fn()
+      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
       const expandModelProviderList = vi.fn()
-      ;(useQueryClient as Mock).mockReturnValue({ invalidateQueries })
       ;(useExpandModelProviderList as Mock).mockReturnValue(expandModelProviderList)
 
       const provider = {
@@ -1105,8 +1077,7 @@ describe('hooks', () => {
     })
 
     it('should refetch active model provider list when custom refresh callback is absent', () => {
-      const invalidateQueries = vi.fn()
-      ;(useQueryClient as Mock).mockReturnValue({ invalidateQueries })
+      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
 
       const provider = createMockProvider()
       const modelProviderModelListQueryKey =
@@ -1131,8 +1102,7 @@ describe('hooks', () => {
     })
 
     it('should invalidate all supported model types when __model_type is undefined', () => {
-      const invalidateQueries = vi.fn()
-      ;(useQueryClient as Mock).mockReturnValue({ invalidateQueries })
+      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
 
       const provider = createMockProvider()
       const customFields = {
@@ -1154,8 +1124,7 @@ describe('hooks', () => {
     })
 
     it('should handle provider with single model type', () => {
-      const invalidateQueries = vi.fn()
-      ;(useQueryClient as Mock).mockReturnValue({ invalidateQueries })
+      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
 
       const provider = {
         ...createMockProvider(),
@@ -1172,7 +1141,7 @@ describe('hooks', () => {
         queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
       })
       expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ['model-provider-details'],
+        queryKey: consoleQuery.workspaces.current.modelProviders.get.key(),
       })
       expect(invalidateQueries).toHaveBeenCalledWith({
         queryKey: getModelListQueryKey(ModelTypeEnum.textGeneration),

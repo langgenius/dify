@@ -1,5 +1,11 @@
+import type {
+  AgentAppComposerResponse,
+  AgentBuildDraftResponse,
+  GetAgentByAgentIdVersionsByVersionIdResponse,
+} from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode, Ref } from 'react'
-import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
+import type { DeepPartial } from '@/test/console/system-features'
+import { focusManager, onlineManager, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ScopeProvider } from 'jotai-scope'
@@ -7,6 +13,9 @@ import { useState } from 'react'
 import { AgentPermission } from '@/features/agent-v2/acl'
 import { AgentScope } from '@/features/agent-v2/analytics'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
+import { createConsoleQueryClient, seedSystemFeatures } from '@/test/console/query-data'
+import { createAgentFixture } from '@/test/fixtures/agent'
 import { renderWithNuqs as render } from '@/test/nuqs-testing'
 import { AgentConfigureComposerScope } from '../components/composer-session'
 import { useAgentConfigureData } from '../hooks'
@@ -22,49 +31,10 @@ const mocks = vi.hoisted(() => ({
   saveComposerDraft: vi.fn(),
   stopBuildChat: vi.fn(),
   completeBuildConversation: undefined as (() => void) | undefined,
-  queryState: {
-    agent: {
-      data: {
-        permission_keys: [] as string[],
-        debug_conversation_has_messages: true,
-        debug_conversation_id: 'debug-conversation-old' as string | null,
-        debug_conversation_message_count: 1,
-        icon: 'agent',
-        icon_background: '#E0F2FE',
-        icon_type: 'emoji',
-        name: 'Research Agent',
-      },
-      isFetching: false,
-      isError: false,
-      isPending: false,
-      isSuccess: true,
-    },
-    composer: {
-      data: undefined as unknown,
-      isFetching: true,
-      isError: false,
-      isPending: true,
-      isSuccess: false,
-      refetch: vi.fn(),
-    },
-    version: {
-      data: undefined as unknown,
-      isFetching: false,
-      isError: false,
-      isPending: false,
-      isSuccess: false,
-    },
-    buildDraft: {
-      data: undefined as unknown,
-      dataUpdatedAt: 0,
-      error: null as unknown,
-      isFetching: false,
-      isError: false,
-      isPending: false,
-      isSuccess: false,
-      refetch: vi.fn(),
-    },
-  },
+  getAgent: vi.fn(),
+  getComposer: vi.fn(),
+  getVersion: vi.fn(),
+  getBuildDraft: vi.fn(),
 }))
 
 const toastMock = vi.hoisted(() => ({
@@ -85,7 +55,7 @@ const modelHooksState = vi.hoisted(() => ({
 
 const editionState = vi.hoisted(() => ({
   deploymentEdition: 'CLOUD' as 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE',
-  licenseStatus: 'none',
+  licenseStatus: 'none' as 'none' | 'active' | 'expired' | 'lost',
 }))
 
 function createDeferredPromise<T>() {
@@ -110,16 +80,15 @@ function expectFirstMockCallBefore(
   expect(firstCallOrder).toBeLessThan(secondCallOrder)
 }
 
+let agentData: ReturnType<typeof createAgentFixture>
+
 function clearBuildConversation() {
-  mocks.queryState.agent = {
-    ...mocks.queryState.agent,
-    data: {
-      ...mocks.queryState.agent.data,
-      debug_conversation_has_messages: false,
-      debug_conversation_id: null,
-      debug_conversation_message_count: 0,
-    },
-  }
+  setAgentData({
+    ...agentData,
+    debug_conversation_has_messages: false,
+    debug_conversation_id: null,
+    debug_conversation_message_count: 0,
+  })
 }
 
 function AgentConfigureComposerScopeHarness() {
@@ -142,60 +111,6 @@ function AgentConfigureComposerScopeHarness() {
   )
 }
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-
-  return {
-    ...actual,
-    useQuery: vi.fn((options: { queryKey?: readonly string[] }) => {
-      const queryKey = options.queryKey?.[0]
-
-      if (queryKey === 'agent') return mocks.queryState.agent
-      if (queryKey === 'composer') return mocks.queryState.composer
-      if (queryKey === 'version') return mocks.queryState.version
-      if (queryKey === 'build-draft') return mocks.queryState.buildDraft
-      if (queryKey === 'system-features') {
-        return {
-          data: {
-            deployment_edition: editionState.deploymentEdition,
-            license: {
-              status: 'none',
-            },
-          },
-          isPending: false,
-        }
-      }
-
-      return {
-        data: undefined,
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: false,
-      }
-    }),
-    useSuspenseQuery: vi.fn(
-      (options: {
-        select?: (data: {
-          deployment_edition: 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE'
-          license: { status: string }
-        }) => unknown
-      }) => {
-        const data = {
-          deployment_edition: editionState.deploymentEdition,
-          license: {
-            status: editionState.licenseStatus,
-          },
-        }
-
-        return {
-          data: options.select ? options.select(data) : data,
-        }
-      },
-    ),
-  }
-})
-
 vi.mock('@/app/notifications', () => ({
   toast: toastMock,
 }))
@@ -204,103 +119,29 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: trackEventMock,
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    systemFeatures: {
-      get: {
-        queryKey: () => ['system-features'],
-        queryOptions: () => ({ queryKey: ['system-features'] }),
-      },
-    },
-    agent: {
-      get: {
-        key: () => ['agents'],
-      },
-      byAgentId: {
-        get: {
-          queryOptions: () => ({ queryKey: ['agent'] }),
-          queryKey: () => ['agent'],
-        },
-        debugConversation: {
-          refresh: {
-            post: {
-              mutationOptions: (options?: {
-                onSuccess?: (data: {
-                  debug_conversation_has_messages?: boolean
-                  debug_conversation_id: string
-                  debug_conversation_message_count?: number
-                }) => void
-              }) => ({
-                mutationFn: mocks.refreshDebugConversation,
-                ...options,
-              }),
-            },
-          },
-        },
-        buildChat: {
-          finalize: {
-            post: {
-              mutationOptions: () => ({ mutationFn: mocks.finalizeBuildChat }),
-            },
-          },
-        },
-        publish: {
-          post: {
-            mutationOptions: () => ({ mutationFn: vi.fn() }),
-          },
-        },
-        composer: {
-          get: {
-            queryOptions: () => ({ queryKey: ['composer'] }),
-            queryKey: () => ['composer'],
-          },
-          put: {
-            mutationOptions: () => ({ mutationFn: mocks.saveComposerDraft }),
-          },
-        },
-        buildDraft: {
-          get: {
-            queryOptions: (options?: object) => ({
-              ...options,
-              queryFn: vi.fn(),
-              queryKey: ['build-draft'],
-            }),
-          },
-          checkout: {
-            post: {
-              mutationOptions: () => ({ mutationFn: mocks.checkoutBuildDraft }),
-            },
-          },
-          apply: {
-            post: {
-              mutationOptions: () => ({ mutationFn: mocks.applyBuildDraft }),
-            },
-          },
-          delete: {
-            mutationOptions: () => ({ mutationFn: mocks.discardBuildDraft }),
-          },
-        },
-        sandbox: {
-          files: {
-            get: {
-              key: () => ['sandbox-files'],
-            },
-          },
-        },
-        versions: {
-          byVersionId: {
-            get: {
-              queryOptions: () => ({ queryKey: ['version'] }),
-            },
-          },
-          get: {
-            key: () => ['versions'],
-          },
-        },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'agent.byAgentId.get': mocks.getAgent,
+      'agent.byAgentId.composer.get': mocks.getComposer,
+      'agent.byAgentId.versions.byVersionId.get': mocks.getVersion,
+      'agent.byAgentId.buildDraft.get': mocks.getBuildDraft,
+      'agent.byAgentId.debugConversation.refresh.post': mocks.refreshDebugConversation,
+      'agent.byAgentId.buildChat.finalize.post': mocks.finalizeBuildChat,
+      'agent.byAgentId.composer.put': mocks.saveComposerDraft,
+      'agent.byAgentId.buildDraft.checkout.post': mocks.checkoutBuildDraft,
+      'agent.byAgentId.buildDraft.apply.post': mocks.applyBuildDraft,
+      'agent.byAgentId.buildDraft.delete': mocks.discardBuildDraft,
+      'workspaces.current.tools.builtin.get': async () => [],
+      'workspaces.current.tools.api.get': async () => [],
+      'workspaces.current.tools.workflow.get': async () => [],
+      'workspaces.current.tools.mcp.get': async () => [],
+    }),
+  }
+})
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useDefaultModel: () => ({ data: modelHooksState.defaultTextGenerationModel }),
@@ -558,18 +399,65 @@ vi.mock('../components/preview/versions-panel', () => ({
   ),
 }))
 
-function createQueryClient() {
-  const client = new QueryClient()
-  client.setQueryData<Partial<typeof mocks.queryState.agent.data>>(
-    consoleQuery.agent.byAgentId.get.queryOptions({ input: { params: { agent_id: 'agent-1' } } })
-      .queryKey,
-    mocks.queryState.agent.data,
+const agentInput = { params: { agent_id: 'agent-1' } }
+const agentKey = consoleQuery.agent.byAgentId.get.queryKey({ input: agentInput })
+const composerKey = consoleQuery.agent.byAgentId.composer.get.queryKey({ input: agentInput })
+const buildDraftKey = consoleQuery.agent.byAgentId.buildDraft.get.queryKey({ input: agentInput })
+const versionKey = consoleQuery.agent.byAgentId.versions.byVersionId.get.queryKey({
+  input: { params: { agent_id: 'agent-1', version_id: 'snapshot-2' } },
+})
+let testQueryClient: ReturnType<typeof createConsoleQueryClient>
+function setAgentData(overrides: Partial<typeof agentData>) {
+  const data = createAgentFixture(overrides)
+  agentData = data
+  testQueryClient.setQueryData<typeof agentData>(agentKey, data)
+  mocks.getAgent.mockResolvedValue(data)
+}
+function setComposerData(data: DeepPartial<AgentAppComposerResponse>) {
+  testQueryClient.setQueryData<DeepPartial<AgentAppComposerResponse>>(composerKey, data)
+  mocks.getComposer.mockResolvedValue(data)
+}
+function setBuildDraftData(data: DeepPartial<AgentBuildDraftResponse>) {
+  testQueryClient.setQueryData<DeepPartial<AgentBuildDraftResponse>>(buildDraftKey, data)
+  mocks.getBuildDraft.mockResolvedValue(data)
+}
+function setVersionData(data: DeepPartial<GetAgentByAgentIdVersionsByVersionIdResponse>) {
+  testQueryClient.setQueryData<DeepPartial<GetAgentByAgentIdVersionsByVersionIdResponse>>(
+    versionKey,
+    data,
   )
-  return client
+  mocks.getVersion.mockResolvedValue(data)
+}
+async function primeComposerError(error: Error) {
+  testQueryClient.removeQueries({ queryKey: composerKey })
+  mocks.getComposer.mockRejectedValue(error)
+  await testQueryClient
+    .fetchQuery(consoleQuery.agent.byAgentId.composer.get.queryOptions({ input: agentInput }))
+    .catch(() => {})
+}
+async function primeBuildDraftError(error: unknown) {
+  testQueryClient.removeQueries({ queryKey: buildDraftKey })
+  mocks.getBuildDraft.mockRejectedValue(error)
+  await testQueryClient
+    .fetchQuery(consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({ input: agentInput }))
+    .catch(() => {})
+}
+function createQueryClient() {
+  testQueryClient.setQueryData<typeof agentData>(agentKey, agentData)
+  seedSystemFeatures(testQueryClient, {
+    deployment_edition: editionState.deploymentEdition,
+    license: { status: editionState.licenseStatus },
+  })
+  return testQueryClient
 }
 
 describe('AgentConfigurePage', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    testQueryClient = createConsoleQueryClient()
+    testQueryClient.setDefaultOptions({
+      queries: { retry: false, staleTime: Infinity, gcTime: Infinity, retryOnMount: false },
+      mutations: { retry: false },
+    })
     vi.clearAllMocks()
     mocks.completeBuildConversation = undefined
     editionState.deploymentEdition = 'CLOUD'
@@ -594,55 +482,36 @@ describe('AgentConfigurePage', () => {
       agent_soul: {},
     })
     mocks.discardBuildDraft.mockResolvedValue({ result: 'success' })
-    mocks.queryState.agent = {
-      data: {
-        permission_keys: Object.values(AgentPermission),
-        debug_conversation_has_messages: true,
-        debug_conversation_id: 'debug-conversation-old',
-        debug_conversation_message_count: 1,
-        icon: 'agent',
-        icon_background: '#E0F2FE',
-        icon_type: 'emoji',
-        name: 'Research Agent',
-      },
-      isFetching: false,
-      isError: false,
-      isPending: false,
-      isSuccess: true,
-    }
-    mocks.queryState.composer = {
-      data: undefined as unknown,
-      isFetching: true,
-      isError: false,
-      isPending: true,
-      isSuccess: false,
-      refetch: vi.fn(),
-    }
-    mocks.queryState.version = {
-      data: undefined as unknown,
-      isFetching: false,
-      isError: false,
-      isPending: false,
-      isSuccess: false,
-    }
-    mocks.queryState.buildDraft = {
-      data: undefined as unknown,
-      dataUpdatedAt: 0,
-      error: null,
-      isFetching: false,
-      isError: false,
-      isPending: false,
-      isSuccess: false,
-      refetch: vi.fn(),
-    }
+    setAgentData({
+      permission_keys: Object.values(AgentPermission),
+      debug_conversation_has_messages: true,
+      debug_conversation_id: 'debug-conversation-old',
+      debug_conversation_message_count: 1,
+      icon: 'agent',
+      icon_background: '#E0F2FE',
+      icon_type: 'emoji',
+      name: 'Research Agent',
+    })
+    mocks.getComposer.mockReturnValue(new Promise(() => {}))
+    testQueryClient.removeQueries({ queryKey: composerKey })
+    mocks.getVersion.mockResolvedValue({
+      config_snapshot: { prompt: { system_prompt: 'published prompt' } },
+    })
+    testQueryClient.removeQueries({ queryKey: versionKey })
+    await primeBuildDraftError(createHttpError(new Response(null, { status: 404 })))
+    mocks.getBuildDraft.mockClear()
   })
 
   afterEach(() => {
+    testQueryClient.clear()
+    focusManager.setFocused(undefined)
+    onlineManager.setOnline(true)
     vi.useRealTimers()
   })
 
   describe('Loading state', () => {
-    it('should load the build draft while keeping the page pending with composer data', () => {
+    it('should load the build draft while keeping the page pending with composer data', async () => {
+      testQueryClient.removeQueries({ queryKey: buildDraftKey })
       const queryClient = createQueryClient()
 
       render(
@@ -660,43 +529,23 @@ describe('AgentConfigurePage', () => {
         screen.getByRole('progressbar', { name: 'agentV2.agentDetail.sections.configure' }),
       ).toBeInTheDocument()
       expect(screen.queryByRole('region', { name: 'orchestrate-panel' })).not.toBeInTheDocument()
-      expect(
-        vi
-          .mocked(useQuery)
-          .mock.calls.find(
-            ([options]) => Array.isArray(options.queryKey) && options.queryKey[0] === 'build-draft',
-          )?.[0],
-      ).toMatchObject({ enabled: true })
+      expect(mocks.getBuildDraft).toHaveBeenCalled()
     })
 
-    it('should initialize the composer from the active build draft after its pending check', () => {
+    it('should initialize the composer from the active build draft after its pending check', async () => {
       const queryClient = createQueryClient()
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            prompt: {
-              system_prompt: 'draft prompt',
-            },
+      setComposerData({
+        agent_soul: {
+          prompt: {
+            system_prompt: 'draft prompt',
           },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
-      mocks.queryState.buildDraft = {
-        data: undefined as unknown,
-        dataUpdatedAt: 0,
-        error: null,
-        isFetching: true,
-        isError: false,
-        isPending: true,
-        isSuccess: false,
-        refetch: vi.fn(),
-      }
+      })
+      const response = createDeferredPromise<DeepPartial<AgentBuildDraftResponse>>()
+      mocks.getBuildDraft.mockReturnValue(response.promise)
+      testQueryClient.removeQueries({ queryKey: buildDraftKey })
 
-      const view = render(
+      render(
         <QueryClientProvider client={queryClient}>
           <AgentConfigurePage agentId="agent-1" />
         </QueryClientProvider>,
@@ -708,45 +557,24 @@ describe('AgentConfigurePage', () => {
       ).toBeInTheDocument()
       expect(screen.queryByRole('region', { name: 'orchestrate-panel' })).not.toBeInTheDocument()
 
-      mocks.queryState.buildDraft = {
-        data: {
-          agent_soul: {
-            prompt: {
-              system_prompt: 'build prompt',
-            },
+      response.resolve({
+        agent_soul: {
+          prompt: {
+            system_prompt: 'build prompt',
           },
-          draft: {},
-          variant: 'agent_app',
         },
-        dataUpdatedAt: 1,
-        error: null,
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
-      view.rerender(
-        <QueryClientProvider client={queryClient}>
-          <AgentConfigurePage agentId="agent-1" />
-        </QueryClientProvider>,
-      )
+        draft: {},
+        variant: 'agent_app',
+      })
 
-      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+      expect(await screen.findByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
         'prompt:build prompt',
       )
     })
 
-    it('should leave the configure landmark to the orchestrate panel after loading', () => {
+    it('should leave the configure landmark to the orchestrate panel after loading', async () => {
       const queryClient = createQueryClient()
-      mocks.queryState.composer = {
-        data: {},
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+      setComposerData({})
 
       render(
         <QueryClientProvider client={queryClient}>
@@ -760,49 +588,35 @@ describe('AgentConfigurePage', () => {
       expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toBeInTheDocument()
     })
 
-    it('should initialize the composer from recovered query data after the initial request fails', () => {
+    it('should initialize the composer from recovered query data after the initial request fails', async () => {
       const queryClient = createQueryClient()
-      mocks.queryState.composer = {
-        data: undefined as unknown,
-        isFetching: false,
-        isError: true,
-        isPending: false,
-        isSuccess: false,
-        refetch: vi.fn(),
-      }
+      await primeComposerError(new Error('request failed'))
 
-      const view = render(
+      render(
         <QueryClientProvider client={queryClient}>
           <AgentConfigureComposerScopeHarness />
         </QueryClientProvider>,
       )
 
-      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+      expect(await screen.findByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
         'readonly:yes',
       )
 
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            prompt: {
-              system_prompt: 'recovered draft prompt',
-            },
+      mocks.getComposer.mockResolvedValue({
+        agent_soul: {
+          prompt: {
+            system_prompt: 'recovered draft prompt',
           },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
-      view.rerender(
-        <QueryClientProvider client={queryClient}>
-          <AgentConfigureComposerScopeHarness />
-        </QueryClientProvider>,
-      )
+      })
+      await act(async () => {
+        await queryClient.refetchQueries({ queryKey: composerKey })
+      })
 
-      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
-        'prompt:recovered draft prompt',
+      await waitFor(() =>
+        expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+          'prompt:recovered draft prompt',
+        ),
       )
       expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
         'readonly:no',
@@ -811,15 +625,8 @@ describe('AgentConfigurePage', () => {
   })
 
   describe('Right panel mode', () => {
-    it('should restore preview mode from the page URL', () => {
-      mocks.queryState.composer = {
-        data: {},
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+    it('should restore preview mode from the page URL', async () => {
+      setComposerData({})
 
       render(
         <QueryClientProvider client={createQueryClient()}>
@@ -830,25 +637,12 @@ describe('AgentConfigurePage', () => {
 
       expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent('preview:none')
       expect(screen.queryByRole('region', { name: 'build-chat' })).not.toBeInTheDocument()
-      expect(
-        vi
-          .mocked(useQuery)
-          .mock.calls.find(
-            ([options]) => Array.isArray(options.queryKey) && options.queryKey[0] === 'build-draft',
-          )?.[0],
-      ).toMatchObject({ enabled: false })
+      expect(mocks.getBuildDraft).not.toHaveBeenCalled()
     })
 
     it('should switch modes without confirmation before Build chat starts', async () => {
       const user = userEvent.setup()
-      mocks.queryState.composer = {
-        data: {},
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+      setComposerData({})
 
       const { onUrlUpdate } = render(
         <QueryClientProvider client={createQueryClient()}>
@@ -879,20 +673,13 @@ describe('AgentConfigurePage', () => {
         debug_conversation_message_count: number
       }>()
       mocks.refreshDebugConversation.mockReturnValueOnce(refreshBuildConversation.promise)
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            prompt: {
-              system_prompt: 'draft prompt',
-            },
+      setComposerData({
+        agent_soul: {
+          prompt: {
+            system_prompt: 'draft prompt',
           },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+      })
 
       render(
         <QueryClientProvider client={createQueryClient()}>
@@ -927,38 +714,22 @@ describe('AgentConfigurePage', () => {
 
     it('should confirm before discarding an existing build draft and switching to preview', async () => {
       const user = userEvent.setup()
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            prompt: {
-              system_prompt: 'draft prompt',
-            },
+      setComposerData({
+        agent_soul: {
+          prompt: {
+            system_prompt: 'draft prompt',
           },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
-      mocks.queryState.buildDraft = {
-        data: {
-          agent_soul: {
-            prompt: {
-              system_prompt: 'build prompt',
-            },
+      })
+      setBuildDraftData({
+        agent_soul: {
+          prompt: {
+            system_prompt: 'build prompt',
           },
-          draft: {},
-          variant: 'agent_app',
         },
-        dataUpdatedAt: 1,
-        error: null,
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+        draft: {},
+        variant: 'agent_app',
+      })
 
       const { onUrlUpdate } = render(
         <QueryClientProvider client={createQueryClient()}>
@@ -987,42 +758,27 @@ describe('AgentConfigurePage', () => {
     it('should confirm and discard the build session before switching to preview', async () => {
       const user = userEvent.setup()
       const discardBuildDraft = createDeferredPromise<{ result: string }>()
-      const refetchBuildDraft = vi.fn().mockResolvedValue({})
+      const refetchBuildDraft = vi.fn(async () => testQueryClient.getQueryData(buildDraftKey))
       mocks.discardBuildDraft.mockReturnValue(discardBuildDraft.promise)
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
-            prompt: {
-              system_prompt: 'draft prompt',
-            },
+      setComposerData({
+        agent_soul: {
+          model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
+          prompt: {
+            system_prompt: 'draft prompt',
           },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
-      mocks.queryState.buildDraft = {
-        data: {
-          agent_soul: {
-            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
-            prompt: {
-              system_prompt: 'build prompt',
-            },
+      })
+      setBuildDraftData({
+        agent_soul: {
+          model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
+          prompt: {
+            system_prompt: 'build prompt',
           },
-          draft: {},
-          variant: 'agent_app',
         },
-        dataUpdatedAt: 1,
-        error: null,
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: refetchBuildDraft,
-      }
+        draft: {},
+        variant: 'agent_app',
+      })
+      mocks.getBuildDraft.mockImplementation(refetchBuildDraft)
 
       const { onUrlUpdate } = render(
         <QueryClientProvider client={createQueryClient()}>
@@ -1065,7 +821,7 @@ describe('AgentConfigurePage', () => {
       const completeBuildConversation = mocks.completeBuildConversation
       if (!completeBuildConversation) throw new Error('Expected a Build completion callback.')
 
-      vi.useFakeTimers()
+      vi.useFakeTimers({ shouldAdvanceTime: true })
       try {
         await act(async () => {
           completeBuildConversation()
@@ -1087,7 +843,7 @@ describe('AgentConfigurePage', () => {
       expect(screen.getByRole('region', { name: 'preview-chat' })).toBeInTheDocument()
       expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
 
-      vi.useFakeTimers()
+      vi.useFakeTimers({ shouldAdvanceTime: true })
       try {
         await act(async () => {
           completeBuildConversation()
@@ -1104,42 +860,27 @@ describe('AgentConfigurePage', () => {
 
     it('should stay in build mode when discarding the build session fails', async () => {
       const user = userEvent.setup()
-      const refetchBuildDraft = vi.fn().mockResolvedValue({})
+      const refetchBuildDraft = vi.fn(async () => testQueryClient.getQueryData(buildDraftKey))
       mocks.discardBuildDraft.mockRejectedValueOnce(new Error('discard failed'))
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
-            prompt: {
-              system_prompt: 'draft prompt',
-            },
+      setComposerData({
+        agent_soul: {
+          model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
+          prompt: {
+            system_prompt: 'draft prompt',
           },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
-      mocks.queryState.buildDraft = {
-        data: {
-          agent_soul: {
-            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
-            prompt: {
-              system_prompt: 'build prompt',
-            },
+      })
+      setBuildDraftData({
+        agent_soul: {
+          model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
+          prompt: {
+            system_prompt: 'build prompt',
           },
-          draft: {},
-          variant: 'agent_app',
         },
-        dataUpdatedAt: 1,
-        error: null,
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: refetchBuildDraft,
-      }
+        draft: {},
+        variant: 'agent_app',
+      })
+      mocks.getBuildDraft.mockImplementation(refetchBuildDraft)
 
       const { onUrlUpdate } = render(
         <QueryClientProvider client={createQueryClient()}>
@@ -1165,7 +906,7 @@ describe('AgentConfigurePage', () => {
       const completeBuildConversation = mocks.completeBuildConversation
       if (!completeBuildConversation) throw new Error('Expected a Build completion callback.')
 
-      vi.useFakeTimers()
+      vi.useFakeTimers({ shouldAdvanceTime: true })
       try {
         await act(async () => {
           completeBuildConversation()
@@ -1191,57 +932,29 @@ describe('AgentConfigurePage', () => {
         variant: 'agent_app',
       }
       mocks.saveComposerDraft.mockReturnValue(draftSave.promise)
-      mocks.checkoutBuildDraft.mockImplementation(async () => {
-        mocks.queryState.buildDraft = {
-          data: forcedBuildDraft,
-          dataUpdatedAt: 2,
-          error: null,
-          isFetching: false,
-          isError: false,
-          isPending: false,
-          isSuccess: true,
-          refetch: vi.fn(),
-        }
-        return forcedBuildDraft
+      mocks.checkoutBuildDraft.mockResolvedValue(forcedBuildDraft)
+      setComposerData({
+        agent_soul: {
+          model: {
+            model: 'gpt-4o-mini',
+            model_provider: 'langgenius/openai/openai',
+            model_settings: undefined,
+            plugin_id: 'langgenius/openai',
+          },
+          prompt: {
+            system_prompt: 'draft prompt',
+          },
+        },
       })
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            model: {
-              model: 'gpt-4o-mini',
-              model_provider: 'langgenius/openai/openai',
-              model_settings: undefined,
-              plugin_id: 'langgenius/openai',
-            },
-            prompt: {
-              system_prompt: 'draft prompt',
-            },
+      setBuildDraftData({
+        agent_soul: {
+          prompt: {
+            system_prompt: 'stale build prompt',
           },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
-      mocks.queryState.buildDraft = {
-        data: {
-          agent_soul: {
-            prompt: {
-              system_prompt: 'stale build prompt',
-            },
-          },
-          draft: {},
-          variant: 'agent_app',
-        },
-        dataUpdatedAt: 1,
-        error: null,
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+        draft: {},
+        variant: 'agent_app',
+      })
 
       render(
         <QueryClientProvider client={queryClient}>
@@ -1273,24 +986,21 @@ describe('AgentConfigurePage', () => {
 
       expect(mocks.saveComposerDraft).toHaveBeenCalledTimes(1)
       expect(mocks.checkoutBuildDraft).not.toHaveBeenCalled()
-      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+      expect(await screen.findByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
         'readonly:yes',
       )
 
       draftSave.resolve({ agent_soul: {} })
 
       await waitFor(() => {
-        expect(mocks.checkoutBuildDraft).toHaveBeenCalledWith(
-          {
-            params: {
-              agent_id: 'agent-1',
-            },
-            body: {
-              force: true,
-            },
+        expect(mocks.checkoutBuildDraft).toHaveBeenCalledWith({
+          params: {
+            agent_id: 'agent-1',
           },
-          expect.any(Object),
-        )
+          body: {
+            force: true,
+          },
+        })
       })
       expectFirstMockCallBefore(mocks.refreshDebugConversation, mocks.saveComposerDraft)
       expectFirstMockCallBefore(mocks.saveComposerDraft, mocks.checkoutBuildDraft)
@@ -1305,44 +1015,28 @@ describe('AgentConfigurePage', () => {
       const user = userEvent.setup()
       const queryClient = createQueryClient()
       mocks.saveComposerDraft.mockRejectedValue(new Error('save failed'))
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            model: {
-              model: 'gpt-4o-mini',
-              model_provider: 'langgenius/openai/openai',
-              model_settings: undefined,
-              plugin_id: 'langgenius/openai',
-            },
-            prompt: {
-              system_prompt: 'draft prompt',
-            },
+      setComposerData({
+        agent_soul: {
+          model: {
+            model: 'gpt-4o-mini',
+            model_provider: 'langgenius/openai/openai',
+            model_settings: undefined,
+            plugin_id: 'langgenius/openai',
+          },
+          prompt: {
+            system_prompt: 'draft prompt',
           },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
-      mocks.queryState.buildDraft = {
-        data: {
-          agent_soul: {
-            prompt: {
-              system_prompt: 'build prompt',
-            },
+      })
+      setBuildDraftData({
+        agent_soul: {
+          prompt: {
+            system_prompt: 'build prompt',
           },
-          draft: {},
-          variant: 'agent_app',
         },
-        dataUpdatedAt: 1,
-        error: null,
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+        draft: {},
+        variant: 'agent_app',
+      })
 
       render(
         <QueryClientProvider client={queryClient}>
@@ -1375,16 +1069,9 @@ describe('AgentConfigurePage', () => {
     it('should stay in Preview when resetting the Build conversation fails', async () => {
       const user = userEvent.setup()
       mocks.refreshDebugConversation.mockRejectedValueOnce(new Error('refresh failed'))
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {},
-        },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+      setComposerData({
+        agent_soul: {},
+      })
 
       render(
         <QueryClientProvider client={createQueryClient()}>
@@ -1405,18 +1092,11 @@ describe('AgentConfigurePage', () => {
     it('should stay in Build without sending when force checkout fails at chat start', async () => {
       const user = userEvent.setup()
       mocks.checkoutBuildDraft.mockRejectedValueOnce(new Error('checkout failed'))
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
-          },
+      setComposerData({
+        agent_soul: {
+          model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+      })
 
       render(
         <QueryClientProvider client={createQueryClient()}>
@@ -1437,17 +1117,14 @@ describe('AgentConfigurePage', () => {
       await waitFor(() => {
         expect(toastMock.error).toHaveBeenCalledWith('common.api.actionFailed')
       })
-      expect(mocks.checkoutBuildDraft).toHaveBeenCalledWith(
-        {
-          params: {
-            agent_id: 'agent-1',
-          },
-          body: {
-            force: true,
-          },
+      expect(mocks.checkoutBuildDraft).toHaveBeenCalledWith({
+        params: {
+          agent_id: 'agent-1',
         },
-        expect.any(Object),
-      )
+        body: {
+          force: true,
+        },
+      })
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:no')
 
       await user.click(screen.getByRole('button', { name: 'send build message' }))
@@ -1462,14 +1139,7 @@ describe('AgentConfigurePage', () => {
       const user = userEvent.setup()
       const queryClient = createQueryClient()
       clearBuildConversation()
-      mocks.queryState.composer = {
-        data: {},
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+      setComposerData({})
 
       render(
         <QueryClientProvider client={queryClient}>
@@ -1511,14 +1181,7 @@ describe('AgentConfigurePage', () => {
     it('should refresh only the preview conversation when restarting preview mode', async () => {
       const user = userEvent.setup()
       const queryClient = createQueryClient()
-      mocks.queryState.composer = {
-        data: {},
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+      setComposerData({})
 
       render(
         <QueryClientProvider client={queryClient}>
@@ -1536,17 +1199,14 @@ describe('AgentConfigurePage', () => {
       await user.click(screen.getByRole('button', { name: 'restart preview' }))
 
       await waitFor(() => {
-        expect(mocks.refreshDebugConversation).toHaveBeenCalledWith(
-          {
-            params: {
-              agent_id: 'agent-1',
-            },
-            body: {
-              draft_type: 'draft',
-            },
+        expect(mocks.refreshDebugConversation).toHaveBeenCalledWith({
+          params: {
+            agent_id: 'agent-1',
           },
-          expect.any(Object),
-        )
+          body: {
+            draft_type: 'draft',
+          },
+        })
       })
       expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent('preview:none')
 
@@ -1555,26 +1215,16 @@ describe('AgentConfigurePage', () => {
       await waitFor(() => {
         expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
       })
-      expect(mocks.refreshDebugConversation).toHaveBeenLastCalledWith(
-        {
-          params: {
-            agent_id: 'agent-1',
-          },
+      expect(mocks.refreshDebugConversation).toHaveBeenLastCalledWith({
+        params: {
+          agent_id: 'agent-1',
         },
-        expect.any(Object),
-      )
+      })
     })
 
     it('should not carry a Build clear command into Preview mode', async () => {
       const user = userEvent.setup()
-      mocks.queryState.composer = {
-        data: {},
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+      setComposerData({})
 
       render(
         <QueryClientProvider client={createQueryClient()}>
@@ -1593,14 +1243,7 @@ describe('AgentConfigurePage', () => {
     it('should not keep a stale clear command after the composer content remounts', async () => {
       const user = userEvent.setup()
       const queryClient = createQueryClient()
-      mocks.queryState.composer = {
-        data: {},
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+      setComposerData({})
 
       const view = render(
         <QueryClientProvider client={queryClient}>
@@ -1618,23 +1261,14 @@ describe('AgentConfigurePage', () => {
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('clear:yes')
 
-      mocks.queryState.agent = {
-        ...mocks.queryState.agent,
-        data: {
-          ...mocks.queryState.agent.data,
-          debug_conversation_has_messages: true,
-          debug_conversation_id: 'debug-conversation-new',
-          debug_conversation_message_count: 1,
-        },
-      }
-      mocks.queryState.composer = {
-        data: undefined,
-        isFetching: true,
-        isError: false,
-        isPending: true,
-        isSuccess: false,
-        refetch: vi.fn(),
-      }
+      setAgentData({
+        ...agentData,
+        debug_conversation_has_messages: true,
+        debug_conversation_id: 'debug-conversation-new',
+        debug_conversation_message_count: 1,
+      })
+      mocks.getComposer.mockReturnValue(new Promise(() => {}))
+      testQueryClient.removeQueries({ queryKey: composerKey })
       view.rerender(
         <QueryClientProvider client={queryClient}>
           <AgentConfigurePage agentId="agent-1" />
@@ -1642,14 +1276,7 @@ describe('AgentConfigurePage', () => {
       )
       expect(screen.queryByRole('region', { name: 'build-chat' })).not.toBeInTheDocument()
 
-      mocks.queryState.composer = {
-        data: {},
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+      setComposerData({})
       view.rerender(
         <QueryClientProvider client={queryClient}>
           <AgentConfigurePage agentId="agent-1" />
@@ -1665,14 +1292,7 @@ describe('AgentConfigurePage', () => {
     it('should clear preview conversation state after the configure page remounts', async () => {
       const user = userEvent.setup()
       clearBuildConversation()
-      mocks.queryState.composer = {
-        data: {},
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+      setComposerData({})
 
       const view = render(
         <QueryClientProvider client={createQueryClient()}>
@@ -1697,16 +1317,9 @@ describe('AgentConfigurePage', () => {
       expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent('preview:none')
     })
 
-    it('should keep preview disabled in community edition', () => {
+    it('should keep preview disabled in community edition', async () => {
       editionState.deploymentEdition = 'COMMUNITY'
-      mocks.queryState.composer = {
-        data: {},
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+      setComposerData({})
 
       render(
         <QueryClientProvider client={createQueryClient()}>
@@ -1721,17 +1334,10 @@ describe('AgentConfigurePage', () => {
       )
     })
 
-    it('should enable preview in enterprise edition regardless of license status', () => {
+    it('should enable preview in enterprise edition regardless of license status', async () => {
       editionState.deploymentEdition = 'ENTERPRISE'
       editionState.licenseStatus = 'lost'
-      mocks.queryState.composer = {
-        data: {},
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+      setComposerData({})
 
       render(
         <QueryClientProvider client={createQueryClient()}>
@@ -1747,38 +1353,22 @@ describe('AgentConfigurePage', () => {
     it('should hide the stale build draft until chat starts and leave Build without discarding it', async () => {
       const user = userEvent.setup()
       clearBuildConversation()
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            prompt: {
-              system_prompt: 'draft prompt',
-            },
+      setComposerData({
+        agent_soul: {
+          prompt: {
+            system_prompt: 'draft prompt',
           },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
-      mocks.queryState.buildDraft = {
-        data: {
-          agent_soul: {
-            prompt: {
-              system_prompt: 'build prompt',
-            },
+      })
+      setBuildDraftData({
+        agent_soul: {
+          prompt: {
+            system_prompt: 'build prompt',
           },
-          draft: {},
-          variant: 'agent_app',
         },
-        dataUpdatedAt: 1,
-        error: null,
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+        draft: {},
+        variant: 'agent_app',
+      })
       render(
         <QueryClientProvider client={createQueryClient()}>
           <AgentConfigurePage agentId="agent-1" />
@@ -1824,23 +1414,13 @@ describe('AgentConfigurePage', () => {
     it('should disable restart when the debug conversation has no messages', async () => {
       const user = userEvent.setup()
       const queryClient = createQueryClient()
-      mocks.queryState.agent = {
-        ...mocks.queryState.agent,
-        data: {
-          ...mocks.queryState.agent.data,
-          debug_conversation_has_messages: false,
-          debug_conversation_id: 'debug-conversation-empty',
-          debug_conversation_message_count: 0,
-        },
-      }
-      mocks.queryState.composer = {
-        data: {},
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+      setAgentData({
+        ...agentData,
+        debug_conversation_has_messages: false,
+        debug_conversation_id: 'debug-conversation-empty',
+        debug_conversation_message_count: 0,
+      })
+      setComposerData({})
 
       render(
         <QueryClientProvider client={queryClient}>
@@ -1860,18 +1440,11 @@ describe('AgentConfigurePage', () => {
     it('should switch to preview without confirmation after restarting a build session', async () => {
       const user = userEvent.setup()
       mocks.checkoutBuildDraft.mockRejectedValueOnce(new Error('checkout failed'))
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
-          },
+      setComposerData({
+        agent_soul: {
+          model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+      })
 
       const { onUrlUpdate } = render(
         <QueryClientProvider client={createQueryClient()}>
@@ -1894,32 +1467,16 @@ describe('AgentConfigurePage', () => {
       })
     })
 
-    it('should stay in normal draft mode when build draft returns 404 even if a debug conversation exists', () => {
+    it('should stay in normal draft mode when build draft returns 404 even if a debug conversation exists', async () => {
       const queryClient = createQueryClient()
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            prompt: {
-              system_prompt: 'draft prompt',
-            },
+      setComposerData({
+        agent_soul: {
+          prompt: {
+            system_prompt: 'draft prompt',
           },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
-      mocks.queryState.buildDraft = {
-        data: undefined as unknown,
-        dataUpdatedAt: 0,
-        error: new Response(null, { status: 404 }),
-        isFetching: false,
-        isError: true,
-        isPending: false,
-        isSuccess: false,
-        refetch: vi.fn(),
-      }
+      })
+      await primeBuildDraftError(createHttpError(new Response(null, { status: 404 })))
 
       render(
         <QueryClientProvider client={queryClient}>
@@ -1939,77 +1496,55 @@ describe('AgentConfigurePage', () => {
       expect(screen.queryByRole('region', { name: 'build-draft-bar' })).not.toBeInTheDocument()
     })
 
-    it('should keep build draft query refresh owned by explicit workflow actions', () => {
+    it('should keep build draft query refresh owned by explicit workflow actions', async () => {
       const queryClient = createQueryClient()
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            prompt: {
-              system_prompt: 'draft prompt',
-            },
+      setComposerData({
+        agent_soul: {
+          prompt: {
+            system_prompt: 'draft prompt',
           },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+      })
 
+      setBuildDraftData({
+        agent_soul: { prompt: { system_prompt: 'build prompt' } },
+        draft: { id: 'draft-1' },
+        variant: 'agent_app',
+      })
       render(
         <QueryClientProvider client={queryClient}>
           <AgentConfigurePage agentId="agent-1" />
         </QueryClientProvider>,
       )
 
-      let buildDraftQueryOptions: unknown
-      for (const [options] of vi.mocked(useQuery).mock.calls) {
-        if (Array.isArray(options.queryKey) && options.queryKey[0] === 'build-draft') {
-          buildDraftQueryOptions = options
-          break
-        }
-      }
-
-      expect(buildDraftQueryOptions).toMatchObject({
-        refetchOnReconnect: false,
-        refetchOnWindowFocus: false,
+      await act(async () => {
+        await queryClient.invalidateQueries({ queryKey: buildDraftKey, refetchType: 'none' })
+        focusManager.setFocused(false)
+        focusManager.setFocused(true)
+        onlineManager.setOnline(false)
+        onlineManager.setOnline(true)
       })
+      expect(mocks.getBuildDraft).not.toHaveBeenCalled()
     })
 
-    it('should enter build draft mode when build draft data exists', () => {
+    it('should enter build draft mode when build draft data exists', async () => {
       const queryClient = createQueryClient()
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            prompt: {
-              system_prompt: 'draft prompt',
-            },
+      setComposerData({
+        agent_soul: {
+          prompt: {
+            system_prompt: 'draft prompt',
           },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
-      mocks.queryState.buildDraft = {
-        data: {
-          agent_soul: {
-            prompt: {
-              system_prompt: 'build prompt',
-            },
+      })
+      setBuildDraftData({
+        agent_soul: {
+          prompt: {
+            system_prompt: 'build prompt',
           },
-          draft: {},
-          variant: 'agent_app',
         },
-        dataUpdatedAt: 1,
-        error: null,
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+        draft: {},
+        variant: 'agent_app',
+      })
 
       render(
         <QueryClientProvider client={queryClient}>
@@ -2017,7 +1552,7 @@ describe('AgentConfigurePage', () => {
         </QueryClientProvider>,
       )
 
-      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+      expect(await screen.findByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
         'readonly:yes',
       )
       expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
@@ -2031,40 +1566,24 @@ describe('AgentConfigurePage', () => {
 
     it('should track the run without checking out again in active build draft mode', async () => {
       const queryClient = createQueryClient()
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
-            prompt: {
-              system_prompt: 'draft prompt',
-            },
+      setComposerData({
+        agent_soul: {
+          model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
+          prompt: {
+            system_prompt: 'draft prompt',
           },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
-      mocks.queryState.buildDraft = {
-        data: {
-          agent_soul: {
-            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
-            prompt: {
-              system_prompt: 'build prompt',
-            },
+      })
+      setBuildDraftData({
+        agent_soul: {
+          model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
+          prompt: {
+            system_prompt: 'build prompt',
           },
-          draft: {},
-          variant: 'agent_app',
         },
-        dataUpdatedAt: 1,
-        error: null,
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+        draft: {},
+        variant: 'agent_app',
+      })
 
       render(
         <QueryClientProvider client={queryClient}>
@@ -2089,42 +1608,26 @@ describe('AgentConfigurePage', () => {
 
     it('should show the working directory action after the first build reply completes', async () => {
       const queryClient = createQueryClient()
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
-            prompt: {
-              system_prompt: 'draft prompt',
-            },
+      setComposerData({
+        agent_soul: {
+          model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
+          prompt: {
+            system_prompt: 'draft prompt',
           },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
-      mocks.queryState.buildDraft = {
-        data: {
-          agent_soul: {
-            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
-            prompt: {
-              system_prompt: 'build prompt',
-            },
+      })
+      setBuildDraftData({
+        agent_soul: {
+          model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
+          prompt: {
+            system_prompt: 'build prompt',
           },
-          draft: {
-            id: 'build-draft-1',
-          },
-          variant: 'agent_app',
         },
-        dataUpdatedAt: 1,
-        error: null,
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+        draft: {
+          id: 'build-draft-1',
+        },
+        variant: 'agent_app',
+      })
 
       render(
         <QueryClientProvider client={queryClient}>
@@ -2154,49 +1657,30 @@ describe('AgentConfigurePage', () => {
       expect(screen.getByRole('button', { name: 'open working directory' })).toBeInTheDocument()
     })
 
-    it('should hide the working directory action when the build chat has no conversation', () => {
+    it('should hide the working directory action when the build chat has no conversation', async () => {
       const queryClient = createQueryClient()
-      mocks.queryState.agent = {
-        ...mocks.queryState.agent,
-        data: {
-          ...mocks.queryState.agent.data,
-          debug_conversation_has_messages: false,
-          debug_conversation_id: '',
-          debug_conversation_message_count: 0,
-        },
-      }
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            prompt: {
-              system_prompt: 'draft prompt',
-            },
+      setAgentData({
+        ...agentData,
+        debug_conversation_has_messages: false,
+        debug_conversation_id: '',
+        debug_conversation_message_count: 0,
+      })
+      setComposerData({
+        agent_soul: {
+          prompt: {
+            system_prompt: 'draft prompt',
           },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
-      mocks.queryState.buildDraft = {
-        data: {
-          agent_soul: {
-            prompt: {
-              system_prompt: 'build prompt',
-            },
+      })
+      setBuildDraftData({
+        agent_soul: {
+          prompt: {
+            system_prompt: 'build prompt',
           },
-          draft: {},
-          variant: 'agent_app',
         },
-        dataUpdatedAt: 1,
-        error: null,
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+        draft: {},
+        variant: 'agent_app',
+      })
 
       render(
         <QueryClientProvider client={queryClient}>
@@ -2212,44 +1696,28 @@ describe('AgentConfigurePage', () => {
     it('should show chat features from the active build draft source as read-only', async () => {
       const user = userEvent.setup()
       const queryClient = createQueryClient()
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            app_features: {
-              opening_statement: 'draft opening',
-            },
-            prompt: {
-              system_prompt: 'draft prompt',
-            },
+      setComposerData({
+        agent_soul: {
+          app_features: {
+            opening_statement: 'draft opening',
+          },
+          prompt: {
+            system_prompt: 'draft prompt',
           },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
-      mocks.queryState.buildDraft = {
-        data: {
-          agent_soul: {
-            app_features: {
-              opening_statement: 'build opening',
-            },
-            prompt: {
-              system_prompt: 'build prompt',
-            },
+      })
+      setBuildDraftData({
+        agent_soul: {
+          app_features: {
+            opening_statement: 'build opening',
           },
-          draft: {},
-          variant: 'agent_app',
+          prompt: {
+            system_prompt: 'build prompt',
+          },
         },
-        dataUpdatedAt: 1,
-        error: null,
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+        draft: {},
+        variant: 'agent_app',
+      })
 
       render(
         <QueryClientProvider client={queryClient}>
@@ -2269,31 +1737,15 @@ describe('AgentConfigurePage', () => {
 
     it('should switch to build draft mode without resetting the sending chat when sending from normal draft mode', async () => {
       const queryClient = createQueryClient()
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
-            prompt: {
-              system_prompt: 'draft prompt',
-            },
+      setComposerData({
+        agent_soul: {
+          model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
+          prompt: {
+            system_prompt: 'draft prompt',
           },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
-      mocks.queryState.buildDraft = {
-        data: undefined as unknown,
-        dataUpdatedAt: 0,
-        error: new Response(null, { status: 404 }),
-        isFetching: false,
-        isError: true,
-        isPending: false,
-        isSuccess: false,
-        refetch: vi.fn(),
-      }
+      })
+      await primeBuildDraftError(createHttpError(new Response(null, { status: 404 })))
 
       render(
         <QueryClientProvider client={queryClient}>
@@ -2311,17 +1763,14 @@ describe('AgentConfigurePage', () => {
       fireEvent.click(screen.getByRole('button', { name: 'send build message' }))
 
       await waitFor(() => {
-        expect(mocks.checkoutBuildDraft).toHaveBeenCalledWith(
-          {
-            params: {
-              agent_id: 'agent-1',
-            },
-            body: {
-              force: false,
-            },
+        expect(mocks.checkoutBuildDraft).toHaveBeenCalledWith({
+          params: {
+            agent_id: 'agent-1',
           },
-          expect.any(Object),
-        )
+          body: {
+            force: false,
+          },
+        })
       })
       await waitFor(() => {
         expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:yes')
@@ -2329,7 +1778,7 @@ describe('AgentConfigurePage', () => {
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent(
         'build:build-conversation-new',
       )
-      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+      expect(await screen.findByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
         'readonly:yes',
       )
       expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
@@ -2342,30 +1791,14 @@ describe('AgentConfigurePage', () => {
 
     it('should require an explicit model even when the workspace has a default', async () => {
       const queryClient = createQueryClient()
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            prompt: {
-              system_prompt: 'draft prompt',
-            },
+      setComposerData({
+        agent_soul: {
+          prompt: {
+            system_prompt: 'draft prompt',
           },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
-      mocks.queryState.buildDraft = {
-        data: undefined as unknown,
-        dataUpdatedAt: 0,
-        error: new Response(null, { status: 404 }),
-        isFetching: false,
-        isError: true,
-        isPending: false,
-        isSuccess: false,
-        refetch: vi.fn(),
-      }
+      })
+      await primeBuildDraftError(createHttpError(new Response(null, { status: 404 })))
 
       render(
         <QueryClientProvider client={queryClient}>
@@ -2386,43 +1819,28 @@ describe('AgentConfigurePage', () => {
     })
 
     it('should keep the build draft bar disabled while a build conversation is responding', async () => {
-      vi.useFakeTimers()
+      vi.useFakeTimers({ shouldAdvanceTime: true })
       const queryClient = createQueryClient()
-      const refetchBuildDraft = vi.fn().mockResolvedValue({})
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
-            prompt: {
-              system_prompt: 'draft prompt',
-            },
+      const refetchBuildDraft = vi.fn(async () => testQueryClient.getQueryData(buildDraftKey))
+      setComposerData({
+        agent_soul: {
+          model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
+          prompt: {
+            system_prompt: 'draft prompt',
           },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
-      mocks.queryState.buildDraft = {
-        data: {
-          agent_soul: {
-            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
-            prompt: {
-              system_prompt: 'build prompt',
-            },
+      })
+      setBuildDraftData({
+        agent_soul: {
+          model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
+          prompt: {
+            system_prompt: 'build prompt',
           },
-          draft: {},
-          variant: 'agent_app',
         },
-        dataUpdatedAt: 1,
-        error: null,
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: refetchBuildDraft,
-      }
+        draft: {},
+        variant: 'agent_app',
+      })
+      mocks.getBuildDraft.mockImplementation(refetchBuildDraft)
 
       render(
         <QueryClientProvider client={queryClient}>
@@ -2458,40 +1876,24 @@ describe('AgentConfigurePage', () => {
 
     it('should not keep a stale build draft action lock after the composer content remounts', async () => {
       const queryClient = createQueryClient()
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
-            prompt: {
-              system_prompt: 'draft prompt',
-            },
+      setComposerData({
+        agent_soul: {
+          model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
+          prompt: {
+            system_prompt: 'draft prompt',
           },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
-      mocks.queryState.buildDraft = {
-        data: {
-          agent_soul: {
-            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
-            prompt: {
-              system_prompt: 'build prompt',
-            },
+      })
+      setBuildDraftData({
+        agent_soul: {
+          model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
+          prompt: {
+            system_prompt: 'build prompt',
           },
-          draft: {},
-          variant: 'agent_app',
         },
-        dataUpdatedAt: 1,
-        error: null,
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+        draft: {},
+        variant: 'agent_app',
+      })
 
       const view = render(
         <QueryClientProvider client={queryClient}>
@@ -2508,14 +1910,8 @@ describe('AgentConfigurePage', () => {
 
       expect(screen.getByRole('button', { name: 'apply build draft' })).toBeDisabled()
 
-      mocks.queryState.composer = {
-        data: undefined,
-        isFetching: true,
-        isError: false,
-        isPending: true,
-        isSuccess: false,
-        refetch: vi.fn(),
-      }
+      mocks.getComposer.mockReturnValue(new Promise(() => {}))
+      testQueryClient.removeQueries({ queryKey: composerKey })
       view.rerender(
         <QueryClientProvider client={queryClient}>
           <AgentConfigurePage agentId="agent-1" />
@@ -2523,21 +1919,14 @@ describe('AgentConfigurePage', () => {
       )
       expect(screen.queryByRole('region', { name: 'build-draft-bar' })).not.toBeInTheDocument()
 
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
-            prompt: {
-              system_prompt: 'draft prompt',
-            },
+      setComposerData({
+        agent_soul: {
+          model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
+          prompt: {
+            system_prompt: 'draft prompt',
           },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+      })
       view.rerender(
         <QueryClientProvider client={queryClient}>
           <AgentConfigurePage agentId="agent-1" />
@@ -2549,41 +1938,26 @@ describe('AgentConfigurePage', () => {
     })
 
     it('should settle build draft actions when the build completion refresh fails', async () => {
-      vi.useFakeTimers()
+      vi.useFakeTimers({ shouldAdvanceTime: true })
       const queryClient = createQueryClient()
       const refetchBuildDraft = vi.fn().mockRejectedValue(new Error('refresh failed'))
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            prompt: {
-              system_prompt: 'draft prompt',
-            },
+      setComposerData({
+        agent_soul: {
+          prompt: {
+            system_prompt: 'draft prompt',
           },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
-      mocks.queryState.buildDraft = {
-        data: {
-          agent_soul: {
-            prompt: {
-              system_prompt: 'build prompt',
-            },
+      })
+      setBuildDraftData({
+        agent_soul: {
+          prompt: {
+            system_prompt: 'build prompt',
           },
-          draft: {},
-          variant: 'agent_app',
         },
-        dataUpdatedAt: 1,
-        error: null,
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: refetchBuildDraft,
-      }
+        draft: {},
+        variant: 'agent_app',
+      })
+      mocks.getBuildDraft.mockImplementation(refetchBuildDraft)
 
       render(
         <QueryClientProvider client={queryClient}>
@@ -2607,43 +1981,28 @@ describe('AgentConfigurePage', () => {
     })
 
     it('should not let a previous build completion refresh unlock a new build run', async () => {
-      vi.useFakeTimers()
+      vi.useFakeTimers({ shouldAdvanceTime: true })
       const queryClient = createQueryClient()
-      const refetchBuildDraft = vi.fn().mockResolvedValue({})
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
-            prompt: {
-              system_prompt: 'draft prompt',
-            },
+      const refetchBuildDraft = vi.fn(async () => testQueryClient.getQueryData(buildDraftKey))
+      setComposerData({
+        agent_soul: {
+          model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
+          prompt: {
+            system_prompt: 'draft prompt',
           },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
-      mocks.queryState.buildDraft = {
-        data: {
-          agent_soul: {
-            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
-            prompt: {
-              system_prompt: 'build prompt',
-            },
+      })
+      setBuildDraftData({
+        agent_soul: {
+          model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
+          prompt: {
+            system_prompt: 'build prompt',
           },
-          draft: {},
-          variant: 'agent_app',
         },
-        dataUpdatedAt: 1,
-        error: null,
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: refetchBuildDraft,
-      }
+        draft: {},
+        variant: 'agent_app',
+      })
+      mocks.getBuildDraft.mockImplementation(refetchBuildDraft)
 
       render(
         <QueryClientProvider client={queryClient}>
@@ -2671,7 +2030,7 @@ describe('AgentConfigurePage', () => {
     })
 
     it('should ignore a previous build completion refresh that is already in flight', async () => {
-      vi.useFakeTimers()
+      vi.useFakeTimers({ shouldAdvanceTime: true })
       const queryClient = createQueryClient()
       const refetchBuildDraft = vi.fn()
       const staleRefresh = createDeferredPromise<unknown>()
@@ -2686,40 +2045,25 @@ describe('AgentConfigurePage', () => {
         draft: {},
         variant: 'agent_app',
       })
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
-            prompt: {
-              system_prompt: 'draft prompt',
-            },
+      setComposerData({
+        agent_soul: {
+          model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
+          prompt: {
+            system_prompt: 'draft prompt',
           },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
-      mocks.queryState.buildDraft = {
-        data: {
-          agent_soul: {
-            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
-            prompt: {
-              system_prompt: 'build prompt',
-            },
+      })
+      setBuildDraftData({
+        agent_soul: {
+          model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
+          prompt: {
+            system_prompt: 'build prompt',
           },
-          draft: {},
-          variant: 'agent_app',
         },
-        dataUpdatedAt: 1,
-        error: null,
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: refetchBuildDraft,
-      }
+        draft: {},
+        variant: 'agent_app',
+      })
+      mocks.getBuildDraft.mockImplementation(refetchBuildDraft)
 
       render(
         <QueryClientProvider client={queryClient}>
@@ -2743,12 +2087,12 @@ describe('AgentConfigurePage', () => {
       })
       await act(async () => {
         staleRefresh.resolve({
-          data: {
-            agent_soul: {
-              model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
-              prompt: {
-                system_prompt: 'stale refreshed prompt',
-              },
+          variant: 'agent_app',
+          draft: {},
+          agent_soul: {
+            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
+            prompt: {
+              system_prompt: 'stale refreshed prompt',
             },
           },
         })
@@ -2765,30 +2109,14 @@ describe('AgentConfigurePage', () => {
     it('should discard the build draft when restarting build mode with a build draft', async () => {
       const user = userEvent.setup()
       const queryClient = createQueryClient()
-      mocks.queryState.composer = {
-        data: {},
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
-      mocks.queryState.buildDraft = {
-        data: {
-          agent_soul: {
-            model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
-          },
-          draft: {},
-          variant: 'agent_app',
+      setComposerData({})
+      setBuildDraftData({
+        agent_soul: {
+          model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
         },
-        dataUpdatedAt: 1,
-        error: null,
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+        draft: {},
+        variant: 'agent_app',
+      })
 
       render(
         <QueryClientProvider client={queryClient}>
@@ -2799,61 +2127,39 @@ describe('AgentConfigurePage', () => {
       await user.click(screen.getByRole('button', { name: 'restart preview' }))
 
       await waitFor(() =>
-        expect(mocks.discardBuildDraft).toHaveBeenCalledWith(
-          {
-            params: {
-              agent_id: 'agent-1',
-            },
-          },
-          expect.any(Object),
-        ),
-      )
-      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith(
-        {
+        expect(mocks.discardBuildDraft).toHaveBeenCalledWith({
           params: {
             agent_id: 'agent-1',
           },
-        },
-        expect.any(Object),
+        }),
       )
+      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith({
+        params: {
+          agent_id: 'agent-1',
+        },
+      })
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
     })
 
     it('should switch soul source to view version when selecting a version from build draft mode', async () => {
       const user = userEvent.setup()
       const queryClient = createQueryClient()
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            prompt: {
-              system_prompt: 'draft prompt',
-            },
+      setComposerData({
+        agent_soul: {
+          prompt: {
+            system_prompt: 'draft prompt',
           },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
-      mocks.queryState.buildDraft = {
-        data: {
-          agent_soul: {
-            prompt: {
-              system_prompt: 'build prompt',
-            },
+      })
+      setBuildDraftData({
+        agent_soul: {
+          prompt: {
+            system_prompt: 'build prompt',
           },
-          draft: {},
-          variant: 'agent_app',
         },
-        dataUpdatedAt: 1,
-        error: null,
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+        draft: {},
+        variant: 'agent_app',
+      })
 
       render(
         <QueryClientProvider client={queryClient}>
@@ -2866,7 +2172,7 @@ describe('AgentConfigurePage', () => {
       await user.click(screen.getByRole('button', { name: 'open versions' }))
       await user.click(screen.getByRole('button', { name: 'select version' }))
 
-      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+      expect(await screen.findByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
         'readonly:yes',
       )
       expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
@@ -2881,28 +2187,18 @@ describe('AgentConfigurePage', () => {
       const draftSave = createDeferredPromise<{ agent_soul: object }>()
       mocks.saveComposerDraft.mockReturnValue(draftSave.promise)
       const refetchComposer = vi.fn(async () => {
-        mocks.queryState.composer = {
-          ...mocks.queryState.composer,
-          data: {
-            agent_soul: {
-              prompt: { system_prompt: 'restored prompt' },
-            },
+        return {
+          agent_soul: {
+            prompt: { system_prompt: 'restored prompt' },
           },
         }
-        return {}
       })
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            prompt: { system_prompt: 'draft prompt' },
-          },
+      setComposerData({
+        agent_soul: {
+          prompt: { system_prompt: 'draft prompt' },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: refetchComposer,
-      }
+      })
+      mocks.getComposer.mockImplementation(refetchComposer)
 
       render(
         <QueryClientProvider client={queryClient}>
@@ -2937,46 +2233,29 @@ describe('AgentConfigurePage', () => {
       const user = userEvent.setup()
       const queryClient = createQueryClient()
       const refetchComposer = vi.fn(async () => {
-        mocks.queryState.composer = {
-          ...mocks.queryState.composer,
-          data: {
-            agent_soul: {
-              prompt: {
-                system_prompt: 'restored prompt',
-              },
+        return {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'restored prompt',
             },
           },
         }
-
-        return {}
       })
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            prompt: {
-              system_prompt: 'draft prompt',
-            },
+      setComposerData({
+        agent_soul: {
+          prompt: {
+            system_prompt: 'draft prompt',
           },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: refetchComposer,
-      }
-      mocks.queryState.version = {
-        data: {
-          config_snapshot: {
-            prompt: {
-              system_prompt: 'published prompt',
-            },
+      })
+      mocks.getComposer.mockImplementation(refetchComposer)
+      setVersionData({
+        config_snapshot: {
+          prompt: {
+            system_prompt: 'published prompt',
           },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-      }
+      })
 
       render(
         <QueryClientProvider client={queryClient}>
@@ -3008,51 +2287,31 @@ describe('AgentConfigurePage', () => {
       const queryClient = createQueryClient()
       const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
       const refetchComposer = vi.fn(async () => {
-        mocks.queryState.composer = {
-          ...mocks.queryState.composer,
-          data: {
-            agent_soul: {
-              prompt: {
-                system_prompt: 'applied prompt',
-              },
+        return {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'applied prompt',
             },
           },
         }
-
-        return {}
       })
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            prompt: {
-              system_prompt: 'old draft prompt',
-            },
+      setComposerData({
+        agent_soul: {
+          prompt: {
+            system_prompt: 'old draft prompt',
           },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: refetchComposer,
-      }
-      mocks.queryState.buildDraft = {
-        data: {
-          agent_soul: {
-            prompt: {
-              system_prompt: 'build prompt',
-            },
+      })
+      mocks.getComposer.mockImplementation(refetchComposer)
+      setBuildDraftData({
+        agent_soul: {
+          prompt: {
+            system_prompt: 'build prompt',
           },
-          draft: {},
-          variant: 'agent_app',
         },
-        dataUpdatedAt: 1,
-        error: null,
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+        draft: {},
+        variant: 'agent_app',
+      })
 
       render(
         <QueryClientProvider client={queryClient}>
@@ -3063,40 +2322,31 @@ describe('AgentConfigurePage', () => {
       await user.click(screen.getByRole('button', { name: 'apply build draft' }))
 
       await waitFor(() =>
-        expect(mocks.finalizeBuildChat).toHaveBeenCalledWith(
-          {
-            params: {
-              agent_id: 'agent-1',
-            },
-          },
-          expect.any(Object),
-        ),
-      )
-      await waitFor(() =>
-        expect(mocks.applyBuildDraft).toHaveBeenCalledWith(
-          {
-            params: {
-              agent_id: 'agent-1',
-            },
-          },
-          expect.any(Object),
-        ),
-      )
-      expectFirstMockCallBefore(mocks.finalizeBuildChat, mocks.applyBuildDraft)
-      expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ['agent'],
-      })
-      expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ['agents'],
-      })
-      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith(
-        {
+        expect(mocks.finalizeBuildChat).toHaveBeenCalledWith({
           params: {
             agent_id: 'agent-1',
           },
-        },
-        expect.any(Object),
+        }),
       )
+      await waitFor(() =>
+        expect(mocks.applyBuildDraft).toHaveBeenCalledWith({
+          params: {
+            agent_id: 'agent-1',
+          },
+        }),
+      )
+      expectFirstMockCallBefore(mocks.finalizeBuildChat, mocks.applyBuildDraft)
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: agentKey,
+      })
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: consoleQuery.agent.get.key(),
+      })
+      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith({
+        params: {
+          agent_id: 'agent-1',
+        },
+      })
       expect(refetchComposer).toHaveBeenCalled()
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
       await waitFor(() => {
@@ -3109,38 +2359,22 @@ describe('AgentConfigurePage', () => {
     it('should stop applying after finalize fails without adding a generic error toast', async () => {
       const user = userEvent.setup()
       mocks.finalizeBuildChat.mockRejectedValueOnce(new Error('finalize failed'))
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            prompt: {
-              system_prompt: 'old draft prompt',
-            },
+      setComposerData({
+        agent_soul: {
+          prompt: {
+            system_prompt: 'old draft prompt',
           },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
-      mocks.queryState.buildDraft = {
-        data: {
-          agent_soul: {
-            prompt: {
-              system_prompt: 'build prompt',
-            },
+      })
+      setBuildDraftData({
+        agent_soul: {
+          prompt: {
+            system_prompt: 'build prompt',
           },
-          draft: {},
-          variant: 'agent_app',
         },
-        dataUpdatedAt: 1,
-        error: null,
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+        draft: {},
+        variant: 'agent_app',
+      })
 
       render(
         <QueryClientProvider client={createQueryClient()}>
@@ -3166,52 +2400,32 @@ describe('AgentConfigurePage', () => {
       const queryClient = createQueryClient()
       const refetchComposerDeferred = createDeferredPromise<unknown>()
       const refetchComposer = vi.fn(async () => {
-        const result = await refetchComposerDeferred.promise
-        mocks.queryState.composer = {
-          ...mocks.queryState.composer,
-          data: {
-            agent_soul: {
-              prompt: {
-                system_prompt: 'applied prompt',
-              },
+        await refetchComposerDeferred.promise
+        return {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'applied prompt',
             },
           },
         }
-
-        return result
       })
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            prompt: {
-              system_prompt: 'old draft prompt',
-            },
+      setComposerData({
+        agent_soul: {
+          prompt: {
+            system_prompt: 'old draft prompt',
           },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: refetchComposer,
-      }
-      mocks.queryState.buildDraft = {
-        data: {
-          agent_soul: {
-            prompt: {
-              system_prompt: 'build prompt',
-            },
+      })
+      mocks.getComposer.mockImplementation(refetchComposer)
+      setBuildDraftData({
+        agent_soul: {
+          prompt: {
+            system_prompt: 'build prompt',
           },
-          draft: {},
-          variant: 'agent_app',
         },
-        dataUpdatedAt: 1,
-        error: null,
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+        draft: {},
+        variant: 'agent_app',
+      })
 
       render(
         <QueryClientProvider client={queryClient}>
@@ -3252,52 +2466,32 @@ describe('AgentConfigurePage', () => {
       const user = userEvent.setup()
       const queryClient = createQueryClient()
       const refetchComposer = vi.fn(async () => {
-        mocks.queryState.composer = {
-          ...mocks.queryState.composer,
-          data: {
-            agent_soul: {
-              prompt: {
-                system_prompt: 'applied prompt',
-              },
+        return {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'applied prompt',
             },
           },
         }
-
-        return {}
       })
       mocks.refreshDebugConversation.mockRejectedValueOnce(new Error('refresh failed'))
-      mocks.queryState.composer = {
-        data: {
-          agent_soul: {
-            prompt: {
-              system_prompt: 'old draft prompt',
-            },
+      setComposerData({
+        agent_soul: {
+          prompt: {
+            system_prompt: 'old draft prompt',
           },
         },
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: refetchComposer,
-      }
-      mocks.queryState.buildDraft = {
-        data: {
-          agent_soul: {
-            prompt: {
-              system_prompt: 'build prompt',
-            },
+      })
+      mocks.getComposer.mockImplementation(refetchComposer)
+      setBuildDraftData({
+        agent_soul: {
+          prompt: {
+            system_prompt: 'build prompt',
           },
-          draft: {},
-          variant: 'agent_app',
         },
-        dataUpdatedAt: 1,
-        error: null,
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+        draft: {},
+        variant: 'agent_app',
+      })
 
       render(
         <QueryClientProvider client={queryClient}>
@@ -3308,34 +2502,25 @@ describe('AgentConfigurePage', () => {
       await user.click(screen.getByRole('button', { name: 'apply build draft' }))
 
       await waitFor(() =>
-        expect(mocks.finalizeBuildChat).toHaveBeenCalledWith(
-          {
-            params: {
-              agent_id: 'agent-1',
-            },
-          },
-          expect.any(Object),
-        ),
-      )
-      await waitFor(() =>
-        expect(mocks.applyBuildDraft).toHaveBeenCalledWith(
-          {
-            params: {
-              agent_id: 'agent-1',
-            },
-          },
-          expect.any(Object),
-        ),
-      )
-      expectFirstMockCallBefore(mocks.finalizeBuildChat, mocks.applyBuildDraft)
-      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith(
-        {
+        expect(mocks.finalizeBuildChat).toHaveBeenCalledWith({
           params: {
             agent_id: 'agent-1',
           },
-        },
-        expect.any(Object),
+        }),
       )
+      await waitFor(() =>
+        expect(mocks.applyBuildDraft).toHaveBeenCalledWith({
+          params: {
+            agent_id: 'agent-1',
+          },
+        }),
+      )
+      expectFirstMockCallBefore(mocks.finalizeBuildChat, mocks.applyBuildDraft)
+      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith({
+        params: {
+          agent_id: 'agent-1',
+        },
+      })
       expect(refetchComposer).toHaveBeenCalled()
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
       await waitFor(() => {
@@ -3351,28 +2536,12 @@ describe('AgentConfigurePage', () => {
     it('should discard the build draft and start a new build session', async () => {
       const user = userEvent.setup()
       const queryClient = createQueryClient()
-      mocks.queryState.composer = {
-        data: {},
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
-      mocks.queryState.buildDraft = {
-        data: {
-          agent_soul: {},
-          draft: {},
-          variant: 'agent_app',
-        },
-        dataUpdatedAt: 1,
-        error: null,
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+      setComposerData({})
+      setBuildDraftData({
+        agent_soul: {},
+        draft: {},
+        variant: 'agent_app',
+      })
 
       render(
         <QueryClientProvider client={queryClient}>
@@ -3383,23 +2552,17 @@ describe('AgentConfigurePage', () => {
       await user.click(screen.getByRole('button', { name: 'discard build draft' }))
 
       await waitFor(() =>
-        expect(mocks.discardBuildDraft).toHaveBeenCalledWith(
-          {
-            params: {
-              agent_id: 'agent-1',
-            },
-          },
-          expect.any(Object),
-        ),
-      )
-      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith(
-        {
+        expect(mocks.discardBuildDraft).toHaveBeenCalledWith({
           params: {
             agent_id: 'agent-1',
           },
-        },
-        expect.any(Object),
+        }),
       )
+      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith({
+        params: {
+          agent_id: 'agent-1',
+        },
+      })
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
     })
 
@@ -3407,28 +2570,12 @@ describe('AgentConfigurePage', () => {
       const user = userEvent.setup()
       const queryClient = createQueryClient()
       mocks.refreshDebugConversation.mockRejectedValueOnce(new Error('refresh failed'))
-      mocks.queryState.composer = {
-        data: {},
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
-      mocks.queryState.buildDraft = {
-        data: {
-          agent_soul: {},
-          draft: {},
-          variant: 'agent_app',
-        },
-        dataUpdatedAt: 1,
-        error: null,
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
+      setComposerData({})
+      setBuildDraftData({
+        agent_soul: {},
+        draft: {},
+        variant: 'agent_app',
+      })
 
       render(
         <QueryClientProvider client={queryClient}>
@@ -3439,23 +2586,17 @@ describe('AgentConfigurePage', () => {
       await user.click(screen.getByRole('button', { name: 'discard build draft' }))
 
       await waitFor(() =>
-        expect(mocks.discardBuildDraft).toHaveBeenCalledWith(
-          {
-            params: {
-              agent_id: 'agent-1',
-            },
-          },
-          expect.any(Object),
-        ),
-      )
-      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith(
-        {
+        expect(mocks.discardBuildDraft).toHaveBeenCalledWith({
           params: {
             agent_id: 'agent-1',
           },
-        },
-        expect.any(Object),
+        }),
       )
+      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith({
+        params: {
+          agent_id: 'agent-1',
+        },
+      })
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
       await waitFor(() => {
         expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
@@ -3469,15 +2610,8 @@ describe('AgentConfigurePage', () => {
     [AgentPermission.TestAndRun, 'readonly:yes', 'publish:no', true],
     [AgentPermission.ReleaseAndVersion, 'readonly:yes', 'publish:yes', false],
   ])('keeps edit, run, and publish independent for %s', (permission, readonly, publish, canRun) => {
-    mocks.queryState.agent.data.permission_keys = [AgentPermission.Preview, permission]
-    mocks.queryState.composer = {
-      data: { agent_soul: {} },
-      isFetching: false,
-      isError: false,
-      isPending: false,
-      isSuccess: true,
-      refetch: vi.fn(),
-    }
+    agentData.permission_keys = [AgentPermission.Preview, permission]
+    setComposerData({ agent_soul: {} })
     render(
       <QueryClientProvider client={createQueryClient()}>
         <AgentConfigurePage agentId="agent-1" />

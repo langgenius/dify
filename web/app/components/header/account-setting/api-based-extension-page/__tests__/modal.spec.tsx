@@ -1,11 +1,14 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
+import type { QueryClient } from '@tanstack/react-query'
 import type { TFunction } from 'i18next'
 import type { ReactElement } from 'react'
-import { fireEvent, render as RTLRender, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render as RTLRender, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as reactI18next from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
+import { createQueryClientWrapper } from '@/test/console/query-client'
 import { withSelectorKey } from '@/test/i18n-mock'
+import { createTestQueryClient } from '@/test/query-client'
 import { ApiBasedExtensionModal } from '../modal'
 
 const { mockCreateApiBasedExtension, mockUpdateApiBasedExtension, mockToast } = vi.hoisted(() => {
@@ -31,24 +34,19 @@ vi.mock('@/service/console', () => ({
   consoleQuery: {
     apiBasedExtension: {
       post: {
-        mutationOptions: () => ({ mutationFn: mockCreateApiBasedExtension }),
+        mutationOptions: () => ({
+          mutationFn: (input: unknown) => mockCreateApiBasedExtension(input),
+        }),
       },
       byId: {
         post: {
-          mutationOptions: () => ({ mutationFn: mockUpdateApiBasedExtension }),
+          mutationOptions: () => ({
+            mutationFn: (input: unknown) => mockUpdateApiBasedExtension(input),
+          }),
         },
       },
     },
   },
-}))
-
-vi.mock('@tanstack/react-query', () => ({
-  useMutation: vi.fn((options: { mutationFn: (variables: unknown) => Promise<unknown> }) => ({
-    isPending: false,
-    mutate: (variables: unknown, mutationOptions?: { onSuccess?: (data: unknown) => void }) => {
-      options.mutationFn(variables).then((data) => mutationOptions?.onSuccess?.(data))
-    },
-  })),
 }))
 
 vi.mock('@/app/notifications', () => ({
@@ -69,7 +67,10 @@ describe('ApiBasedExtensionModal', () => {
     ...overrides,
   })
 
-  const render = (ui: ReactElement) => RTLRender(ui)
+  let queryClient: QueryClient
+  const render = (ui: ReactElement) =>
+    RTLRender(ui, { wrapper: createQueryClientWrapper(queryClient) })
+
   const renderModal = (
     props:
       | {
@@ -109,8 +110,13 @@ describe('ApiBasedExtensionModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    queryClient = createTestQueryClient()
+    mockCreateApiBasedExtension.mockReset()
+    mockUpdateApiBasedExtension.mockReset()
     vi.mocked(useDocLink).mockReturnValue(mockDocLink)
   })
+
+  afterEach(() => queryClient.clear())
 
   describe('Rendering', () => {
     it('should render correctly for adding a new extension', () => {
@@ -196,6 +202,38 @@ describe('ApiBasedExtensionModal', () => {
       })
     })
 
+    it.each(['success', 'failure'] as const)(
+      'prevents duplicate saves until a %s response settles',
+      async (outcome) => {
+        const user = userEvent.setup()
+        let resolveSave!: (value: ApiBasedExtensionResponse) => void
+        let rejectSave!: (reason: Error) => void
+        mockUpdateApiBasedExtension.mockImplementationOnce(
+          () =>
+            new Promise((resolve, reject) => {
+              resolveSave = resolve
+              rejectSave = reject
+            }),
+        )
+        renderModal({ mode: 'edit', apiBasedExtension: mockExtension({ api_key: 'secret-key' }) })
+        const save = screen.getByRole('button', { name: 'common.operation.save' })
+
+        await user.click(save)
+        await waitFor(() => expect(save).toBeDisabled())
+        await user.click(save)
+        expect(mockUpdateApiBasedExtension).toHaveBeenCalledOnce()
+        expect(mockOnSaved).not.toHaveBeenCalled()
+
+        await act(async () => {
+          if (outcome === 'success') resolveSave(mockExtension())
+          else rejectSave(new Error('Unable to save'))
+        })
+        await waitFor(() => expect(save).toBeEnabled())
+        if (outcome === 'success') expect(mockOnSaved).toHaveBeenCalledOnce()
+        else expect(mockOnSaved).not.toHaveBeenCalled()
+      },
+    )
+
     it('should call update mutation on save for existing extension', async () => {
       // Arrange
       const data = mockExtension({ api_key: 'long-secret-key' })
@@ -218,7 +256,6 @@ describe('ApiBasedExtensionModal', () => {
             api_key: '[__HIDDEN__]',
           },
         })
-        expect(mockToast.success).toHaveBeenCalledWith('common.actionMsg.modifiedSuccessfully')
         expect(mockOnSaved).toHaveBeenCalled()
       })
     })

@@ -1,4 +1,4 @@
-import type { DataSourceCredential } from '../types'
+import type { DatasourceCredentialResponse } from '@dify/contracts/api/console/auth/types.gen'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
@@ -22,7 +22,7 @@ const triggerRename = async () => {
 
 describe('Item Component', () => {
   const mockOnAction = vi.fn()
-  const mockCredentialItem: DataSourceCredential = {
+  const mockCredentialItem: DatasourceCredentialResponse = {
     id: 'test-id',
     name: 'Test Credential',
     credential: {},

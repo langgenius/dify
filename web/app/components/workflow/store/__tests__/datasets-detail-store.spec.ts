@@ -1,8 +1,8 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { createDatasetsDetailStore } from '../../datasets-detail-store/store'
 
-function makeDataset(id: string, name: string): DataSet {
-  return { id, name } as DataSet
+function makeDataset(id: string, name: string): DatasetDetailWithPartialMembersResponse {
+  return { id, name } as DatasetDetailWithPartialMembersResponse
 }
 
 describe('DatasetsDetailStore', () => {

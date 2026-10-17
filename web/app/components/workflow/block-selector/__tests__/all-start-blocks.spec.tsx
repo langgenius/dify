@@ -6,7 +6,7 @@ import { useLocale } from '#i18n'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
-import { useAvailableNodesMetaData } from '@/app/components/workflow-app/hooks/use-available-nodes-meta-data'
+import { useWorkflowNodeCatalog } from '@/app/components/workflow/node-catalog'
 import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { useFeaturedTriggersRecommendations } from '@/service/use-plugins'
@@ -48,8 +48,8 @@ vi.mock('../../store/workflow/use-nodes', () => ({
   default: vi.fn(),
 }))
 
-vi.mock('@/app/components/workflow-app/hooks/use-available-nodes-meta-data', () => ({
-  useAvailableNodesMetaData: vi.fn(),
+vi.mock('@/app/components/workflow/node-catalog', () => ({
+  useWorkflowNodeCatalog: vi.fn(),
 }))
 
 vi.mock('@/utils/var', async (importOriginal) => {
@@ -75,7 +75,7 @@ const mockUseAllTriggerPlugins = vi.mocked(useAllTriggerPlugins)
 const mockUseInvalidateAllTriggerPlugins = vi.mocked(useInvalidateAllTriggerPlugins)
 const mockUseFeaturedTriggersRecommendations = vi.mocked(useFeaturedTriggersRecommendations)
 const mockUseNodes = vi.mocked(useNodes)
-const mockUseAvailableNodesMetaData = vi.mocked(useAvailableNodesMetaData)
+const mockUseAvailableNodesMetaData = vi.mocked(useWorkflowNodeCatalog)
 
 type UseMarketplacePluginsReturn = ReturnType<typeof useMarketplacePlugins>
 type UseAllTriggerPluginsReturn = ReturnType<typeof useAllTriggerPlugins>
@@ -175,10 +175,10 @@ const createFeaturedTriggersRecommendationsMock = (
   ...overrides,
 })
 
-const createAvailableNodesMetaData = (): ReturnType<typeof useAvailableNodesMetaData> =>
+const createAvailableNodesMetaData = (): ReturnType<typeof useWorkflowNodeCatalog> =>
   ({
     nodes: [],
-  }) as unknown as ReturnType<typeof useAvailableNodesMetaData>
+  }) as unknown as ReturnType<typeof useWorkflowNodeCatalog>
 
 describe('AllStartBlocks', () => {
   beforeEach(() => {

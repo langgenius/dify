@@ -49,8 +49,8 @@ export default function DraggableBlockPlugin({
   return (
     <DraggableBlockPlugin_EXPERIMENTAL
       anchorElem={anchorElem}
-      menuRef={menuRef as any}
-      targetLineRef={targetLineRef as any}
+      menuRef={menuRef}
+      targetLineRef={targetLineRef}
       menuComponent={
         isSupportDrag ? (
           <div

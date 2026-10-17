@@ -1,14 +1,22 @@
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Role } from '@/models/access-control'
-import type { Member } from '@/models/common'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
-import { useRolesOfMember } from '@/service/access-control/use-member-roles'
-import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 import MemberDetailsModal from '../index'
 
-vi.mock('@/service/access-control/use-member-roles')
-vi.mock('@/service/access-control/use-workspace-roles')
+const { mockWorkspaceRoleListHook, mockRolesOfMemberHook } = vi.hoisted(() => ({
+  mockWorkspaceRoleListHook: vi.fn(),
+  mockRolesOfMemberHook: vi.fn(),
+}))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.rbac.roles.get': () => mockWorkspaceRoleListHook(),
+    'workspaces.current.rbac.members.byMemberId.rbacRoles.get': () => mockRolesOfMemberHook(),
+  })
+})
 
 const createRole = (overrides: Partial<Role>): Role => ({
   id: 'role-1',
@@ -23,7 +31,7 @@ const createRole = (overrides: Partial<Role>): Role => ({
   ...overrides,
 })
 
-const member: Member = {
+const member: AccountWithRoleResponse = {
   id: 'member-1',
   name: 'Admin User',
   email: 'admin@example.com',
@@ -31,23 +39,23 @@ const member: Member = {
   avatar_url: '',
   role: 'admin',
   roles: [createRole({ id: 'role-1', name: 'Custom role' })],
-  last_active_at: '1731000000',
-  last_login_at: '1731000000',
-  created_at: '1731000000',
+  last_active_at: 1731000000,
+  last_login_at: 1731000000,
+  created_at: 1731000000,
   status: 'active',
 }
 
 describe('MemberDetailsModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useRolesOfMember).mockReturnValue({
+    vi.mocked(mockRolesOfMemberHook).mockReturnValue({
       data: {
         account_id: member.id,
         roles: [createRole({ id: 'role-1', name: 'Custom role' })],
       },
       isLoading: false,
-    } as unknown as ReturnType<typeof useRolesOfMember>)
-    vi.mocked(useWorkspaceRoleList).mockReturnValue({
+    })
+    vi.mocked(mockWorkspaceRoleListHook).mockReturnValue({
       data: {
         pages: [
           {
@@ -70,7 +78,7 @@ describe('MemberDetailsModal', () => {
       hasNextPage: false,
       isFetchingNextPage: false,
       fetchNextPage: vi.fn(),
-    } as unknown as ReturnType<typeof useWorkspaceRoleList>)
+    })
   })
 
   describe('Rendering', () => {
@@ -114,10 +122,10 @@ describe('MemberDetailsModal', () => {
     })
 
     it('should render role loading state without assigned role chips or count', () => {
-      vi.mocked(useRolesOfMember).mockReturnValue({
+      vi.mocked(mockRolesOfMemberHook).mockReturnValue({
         data: undefined,
         isLoading: true,
-      } as unknown as ReturnType<typeof useRolesOfMember>)
+      })
 
       render(
         <MemberDetailsModal
@@ -182,7 +190,7 @@ describe('MemberDetailsModal', () => {
       const user = userEvent.setup()
       const handleAssignSubmit = vi.fn()
 
-      vi.mocked(useRolesOfMember).mockReturnValue({
+      vi.mocked(mockRolesOfMemberHook).mockReturnValue({
         data: {
           account_id: member.id,
           roles: [
@@ -190,7 +198,7 @@ describe('MemberDetailsModal', () => {
             createRole({ id: 'role-2', name: 'Second role' }),
           ],
         },
-      } as unknown as ReturnType<typeof useRolesOfMember>)
+      })
 
       render(
         <MemberDetailsModal

@@ -33,7 +33,7 @@ class DocumentIndexingTaskProxyTestDataFactory:
 class TestDocumentIndexingTaskProxy:
     """Test cases for DocumentIndexingTaskProxy class."""
 
-    def test_initialization(self):
+    def test_initialization(self) -> None:
         """Test DocumentIndexingTaskProxy initialization."""
         # Arrange
         tenant_id = "tenant-123"
@@ -52,7 +52,7 @@ class TestDocumentIndexingTaskProxy:
         assert proxy._tenant_isolated_task_queue._unique_key == "document_indexing"
 
     @patch("services.document_indexing_proxy.base.FeatureService")
-    def test_features_property(self, mock_feature_service):
+    def test_features_property(self, mock_feature_service: MagicMock) -> None:
         """Test cached_property features."""
         # Arrange
         mock_features = DocumentIndexingTaskProxyTestDataFactory.create_mock_features()
@@ -70,7 +70,7 @@ class TestDocumentIndexingTaskProxy:
         mock_feature_service.get_features.assert_called_once_with("tenant-123", exclude_vector_space=True)
 
     @patch("services.document_indexing_proxy.document_indexing_task_proxy.normal_document_indexing_task")
-    def test_send_to_direct_queue(self, mock_task):
+    def test_send_to_direct_queue(self, mock_task: MagicMock) -> None:
         """Test _send_to_direct_queue method."""
         # Arrange
         proxy = DocumentIndexingTaskProxyTestDataFactory.create_document_task_proxy()
@@ -85,7 +85,9 @@ class TestDocumentIndexingTaskProxy:
         )
 
     @patch("services.document_indexing_proxy.document_indexing_task_proxy.normal_document_indexing_task")
-    def test_send_to_tenant_queue_with_existing_task_key(self, mock_task, tenant_queue_commands: MagicMock):
+    def test_send_to_tenant_queue_with_existing_task_key(
+        self, mock_task: MagicMock, tenant_queue_commands: MagicMock
+    ) -> None:
         """Test _send_to_tenant_queue when task key exists."""
         # Arrange
         proxy = DocumentIndexingTaskProxyTestDataFactory.create_document_task_proxy()
@@ -108,7 +110,9 @@ class TestDocumentIndexingTaskProxy:
         mock_task.delay.assert_not_called()
 
     @patch("services.document_indexing_proxy.document_indexing_task_proxy.normal_document_indexing_task")
-    def test_send_to_tenant_queue_without_task_key(self, mock_task, tenant_queue_commands: MagicMock):
+    def test_send_to_tenant_queue_without_task_key(
+        self, mock_task: MagicMock, tenant_queue_commands: MagicMock
+    ) -> None:
         """Test _send_to_tenant_queue when no task key exists."""
         # Arrange
         proxy = DocumentIndexingTaskProxyTestDataFactory.create_document_task_proxy()
@@ -132,7 +136,7 @@ class TestDocumentIndexingTaskProxy:
         )
         assert all(entry.args[0] != "LPUSH" for entry in tenant_queue_commands.call_args_list)
 
-    def test_send_to_default_tenant_queue(self):
+    def test_send_to_default_tenant_queue(self) -> None:
         """Test _send_to_default_tenant_queue method."""
         # Arrange
         proxy = DocumentIndexingTaskProxyTestDataFactory.create_document_task_proxy()
@@ -144,7 +148,7 @@ class TestDocumentIndexingTaskProxy:
         # Assert
         proxy._send_to_tenant_queue.assert_called_once_with(proxy.NORMAL_TASK_FUNC)
 
-    def test_send_to_priority_tenant_queue(self):
+    def test_send_to_priority_tenant_queue(self) -> None:
         """Test _send_to_priority_tenant_queue method."""
         # Arrange
         proxy = DocumentIndexingTaskProxyTestDataFactory.create_document_task_proxy()
@@ -156,7 +160,7 @@ class TestDocumentIndexingTaskProxy:
         # Assert
         proxy._send_to_tenant_queue.assert_called_once_with(proxy.PRIORITY_TASK_FUNC)
 
-    def test_send_to_priority_direct_queue(self):
+    def test_send_to_priority_direct_queue(self) -> None:
         """Test _send_to_priority_direct_queue method."""
         # Arrange
         proxy = DocumentIndexingTaskProxyTestDataFactory.create_document_task_proxy()
@@ -170,7 +174,7 @@ class TestDocumentIndexingTaskProxy:
 
     @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     @patch("services.document_indexing_proxy.base.FeatureService")
-    def test_dispatch_with_cloud_sandbox_plan(self, mock_feature_service):
+    def test_dispatch_with_cloud_sandbox_plan(self, mock_feature_service: MagicMock) -> None:
         """Test _dispatch method in Cloud with Sandbox plan."""
         # Arrange
         mock_features = DocumentIndexingTaskProxyTestDataFactory.create_mock_features(plan=CloudPlan.SANDBOX)
@@ -186,7 +190,7 @@ class TestDocumentIndexingTaskProxy:
 
     @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     @patch("services.document_indexing_proxy.base.FeatureService")
-    def test_dispatch_with_cloud_paid_plan(self, mock_feature_service):
+    def test_dispatch_with_cloud_paid_plan(self, mock_feature_service: MagicMock) -> None:
         """Test _dispatch method in Cloud with a paid plan."""
         # Arrange
         mock_features = DocumentIndexingTaskProxyTestDataFactory.create_mock_features(plan=CloudPlan.TEAM)
@@ -202,7 +206,7 @@ class TestDocumentIndexingTaskProxy:
 
     @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     @patch("services.document_indexing_proxy.base.FeatureService")
-    def test_dispatch_outside_cloud(self, mock_feature_service):
+    def test_dispatch_outside_cloud(self, mock_feature_service: MagicMock) -> None:
         """Test _dispatch method outside Cloud."""
         # Arrange
         mock_features = DocumentIndexingTaskProxyTestDataFactory.create_mock_features()
@@ -218,7 +222,7 @@ class TestDocumentIndexingTaskProxy:
 
     @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     @patch("services.document_indexing_proxy.base.FeatureService")
-    def test_delay_method(self, mock_feature_service):
+    def test_delay_method(self, mock_feature_service: MagicMock) -> None:
         """Test delay method integration."""
         # Arrange
         mock_features = DocumentIndexingTaskProxyTestDataFactory.create_mock_features(plan=CloudPlan.SANDBOX)
@@ -233,7 +237,7 @@ class TestDocumentIndexingTaskProxy:
         # If billing enabled with sandbox plan, should send to default tenant queue
         proxy._send_to_default_tenant_queue.assert_called_once()
 
-    def test_document_task_dataclass(self):
+    def test_document_task_dataclass(self) -> None:
         """Test DocumentTask dataclass."""
         # Arrange
         tenant_id = "tenant-123"
@@ -250,7 +254,7 @@ class TestDocumentIndexingTaskProxy:
 
     @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     @patch("services.document_indexing_proxy.base.FeatureService")
-    def test_dispatch_edge_case_empty_plan(self, mock_feature_service):
+    def test_dispatch_edge_case_empty_plan(self, mock_feature_service: MagicMock) -> None:
         """Test _dispatch method with empty plan string."""
         # Arrange
         mock_features = DocumentIndexingTaskProxyTestDataFactory.create_mock_features(plan="")
@@ -266,7 +270,7 @@ class TestDocumentIndexingTaskProxy:
 
     @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     @patch("services.document_indexing_proxy.base.FeatureService")
-    def test_dispatch_edge_case_none_plan(self, mock_feature_service):
+    def test_dispatch_edge_case_none_plan(self, mock_feature_service: MagicMock) -> None:
         """Test _dispatch method with None plan."""
         # Arrange
         mock_features = DocumentIndexingTaskProxyTestDataFactory.create_mock_features(plan=None)
@@ -280,7 +284,7 @@ class TestDocumentIndexingTaskProxy:
         # Assert
         proxy._send_to_priority_tenant_queue.assert_called_once()
 
-    def test_initialization_with_empty_document_ids(self):
+    def test_initialization_with_empty_document_ids(self) -> None:
         """Test initialization with empty document_ids list."""
         # Arrange
         tenant_id = "tenant-123"
@@ -295,7 +299,7 @@ class TestDocumentIndexingTaskProxy:
         assert proxy._dataset_id == dataset_id
         assert proxy._document_ids == document_ids
 
-    def test_initialization_with_single_document_id(self):
+    def test_initialization_with_single_document_id(self) -> None:
         """Test initialization with single document_id."""
         # Arrange
         tenant_id = "tenant-123"

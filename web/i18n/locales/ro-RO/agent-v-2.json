@@ -363,5 +363,6 @@
   "agentDetail.versionHistory.filter": "Filtrați versiunile",
   "agentDetail.versionHistory.restore": "Restaurează",
   "agentDetail.versionHistory.versionName": "Versiunea {{version}}",
-  "agentDetail.versionHistory.viewOnly": "Doar vizualizare"
+  "agentDetail.versionHistory.viewOnly": "Doar vizualizare",
+  "exportAgent": "Exportă agentul"
 }

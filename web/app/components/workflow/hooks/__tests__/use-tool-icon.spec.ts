@@ -9,23 +9,26 @@ vi.mock('reactflow', async () =>
   (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock(),
 )
 
-vi.mock('@/service/use-tools', async () =>
-  (await import('../../__tests__/service-mock-factory')).createToolServiceMock({
-    buildInTools: [
-      {
-        id: 'builtin-1',
-        name: 'builtin',
-        icon: '/builtin.svg',
-        icon_dark: '/builtin-dark.svg',
-        plugin_id: 'p1',
-      },
-    ],
-    customTools: [{ id: 'custom-1', name: 'custom', icon: '/custom.svg', plugin_id: 'p2' }],
-    workflowTools: [
-      { id: 'workflow-1', name: 'workflow-tool', icon: '/workflow.svg', plugin_id: 'p3' },
-    ],
-    mcpTools: [{ id: 'mcp-1', name: 'mcp-tool', icon: '/mcp.svg', plugin_id: 'p4' }],
-  }),
+vi.mock('@tanstack/react-query', async (importOriginal) =>
+  (await import('@/test/console/operation-hooks')).mockConsoleOperationHooks(
+    await importOriginal(),
+    (await import('../../__tests__/service-mock-factory')).createToolOperationRoutes({
+      buildInTools: [
+        {
+          id: 'builtin-1',
+          name: 'builtin',
+          icon: '/builtin.svg',
+          icon_dark: '/builtin-dark.svg',
+          plugin_id: 'p1',
+        },
+      ],
+      customTools: [{ id: 'custom-1', name: 'custom', icon: '/custom.svg', plugin_id: 'p2' }],
+      workflowTools: [
+        { id: 'workflow-1', name: 'workflow-tool', icon: '/workflow.svg', plugin_id: 'p3' },
+      ],
+      mcpTools: [{ id: 'mcp-1', name: 'mcp-tool', icon: '/mcp.svg', plugin_id: 'p4' }],
+    }),
+  ),
 )
 
 vi.mock('@/service/use-triggers', async () =>
@@ -42,10 +45,6 @@ vi.mock('@/hooks/use-theme', () => ({
 vi.mock('@/utils/var', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/utils/var')>()),
   basePath: '/dify',
-}))
-
-vi.mock('@/utils', () => ({
-  canFindTool: (id: string, target: string) => id === target,
 }))
 
 const baseNodeData = { title: '', desc: '' }

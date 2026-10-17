@@ -24,10 +24,6 @@ class CleanProcessor:
                     pattern = r"[\t\f\r\x20\u00a0\u1680\u180e\u2000-\u200a\u202f\u205f\u3000]{2,}"
                     text = re.sub(pattern, " ", text)
                 elif pre_processing_rule["id"] == "remove_urls_emails" and pre_processing_rule["enabled"] is True:
-                    # Remove email
-                    pattern = r"([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)"
-                    text = re.sub(pattern, "", text)
-
                     # Remove URL but keep Markdown image URLs and link URLs
                     # Replace the ENTIRE markdown link/image with a single placeholder to protect
                     # the link text (which might also be a URL) from being removed
@@ -54,6 +50,10 @@ class CleanProcessor:
                     text = re.sub(markdown_link_pattern, replace_markdown_with_placeholder, text)
                     # Then protect markdown images
                     text = re.sub(markdown_image_pattern, replace_image_with_placeholder, text)
+
+                    # Remove email (after protection so Markdown link/image URLs are left intact)
+                    pattern = r"([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)"
+                    text = re.sub(pattern, "", text)
 
                     # Now remove all remaining URLs
                     url_pattern = r"https?://\S+"

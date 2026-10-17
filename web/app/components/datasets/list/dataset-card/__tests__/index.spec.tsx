@@ -1,4 +1,4 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -6,7 +6,8 @@ import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import { DatasetACLPermission } from '@/utils/permission'
@@ -114,7 +115,13 @@ vi.mock('../components/corner-labels', () => ({
   default: () => <div data-testid="corner-labels" />,
 }))
 vi.mock('../components/dataset-card-header', () => ({
-  default: ({ dataset, nameId }: { dataset: DataSet; nameId?: string }) => (
+  default: ({
+    dataset,
+    nameId,
+  }: {
+    dataset: DatasetDetailWithPartialMembersResponse
+    nameId?: string
+  }) => (
     <div id={nameId} data-testid="card-header">
       {dataset.name}
     </div>
@@ -157,13 +164,15 @@ vi.mock('../components/operations-dropdown', () => ({
 }))
 
 // Factory function for DataSet mock data
-const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet =>
+const createMockDataset = (
+  overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
+): DatasetDetailWithPartialMembersResponse =>
   ({
     id: 'dataset-1',
     name: 'Test Dataset',
     description: 'Test description',
     provider: 'vendor',
-    permission: DatasetPermission.allTeamMembers,
+    permission: PermissionLevel.allTeamMembers,
     data_source_type: DataSourceType.FILE,
     indexing_technique: IndexingType.QUALIFIED,
     embedding_available: true,
@@ -180,7 +189,7 @@ const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet =>
     total_available_documents: 10,
     runtime_mode: 'general',
     ...overrides,
-  }) as DataSet
+  }) as DatasetDetailWithPartialMembersResponse
 
 describe('DatasetCard Integration', () => {
   beforeEach(() => {
@@ -243,14 +252,14 @@ describe('DatasetCard Integration', () => {
       it('should apply opacity-30 when embedding_available is false', () => {
         const dataset = createMockDataset({ embedding_available: false })
         render(<Description dataset={dataset} />)
-        const descDiv = screen.getByTitle(dataset.description)
+        const descDiv = screen.getByTitle(dataset.description ?? '')
         expect(descDiv).toHaveClass('opacity-30')
       })
 
       it('should not apply opacity-30 when embedding_available is true', () => {
         const dataset = createMockDataset({ embedding_available: true })
         render(<Description dataset={dataset} />)
-        const descDiv = screen.getByTitle(dataset.description)
+        const descDiv = screen.getByTitle(dataset.description ?? '')
         expect(descDiv).not.toHaveClass('opacity-30')
       })
     })
@@ -388,9 +397,7 @@ describe('DatasetCard Component', () => {
     const dataset = createMockDataset({
       name: 'Preview Only Dataset',
       permission_keys: [DatasetACLPermission.Preview],
-      tags: [
-        { id: 'tag-preview', name: 'Readonly Tag', type: 'knowledge' as const, binding_count: '' },
-      ],
+      tags: [{ id: 'tag-preview', name: 'Readonly Tag', type: 'knowledge' as const }],
     })
     render(<DatasetCard dataset={dataset} />)
 

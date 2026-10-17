@@ -10,12 +10,15 @@ import { useGetProviderIcon } from '../use-provider-icon'
 
 const request = vi.hoisted(() => vi.fn<(url: string) => Promise<Response>>())
 vi.mock('@/service/base', () => ({ request }))
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({}),
-  useAllCustomTools: () => ({}),
-  useAllWorkflowTools: () => ({}),
-  useAllMCPTools: () => ({}),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.builtin.get': () => ({}),
+    'workspaces.current.tools.api.get': () => ({}),
+    'workspaces.current.tools.workflow.get': () => ({}),
+    'workspaces.current.tools.mcp.get': () => ({}),
+  })
+})
 vi.mock('@/service/use-triggers', () => ({ useAllTriggerPlugins: () => ({}) }))
 vi.mock('@/hooks/use-theme', () => ({ default: () => ({ theme: 'light' }) }))
 vi.mock('@/utils/var', async (importOriginal) => ({

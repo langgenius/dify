@@ -27,7 +27,7 @@ vi.mock('../../../../../hooks/use-workflow', async (importOriginal) => {
 
   return {
     ...actual,
-    useIsChatMode: () => false,
+
     useWorkflow: () => ({
       getTreeLeafNodes: () => [],
       getNodeById: () => undefined,
@@ -131,6 +131,7 @@ describe('VarReferencePicker branches', () => {
         />
       </div>,
       {
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
         nodes: [startNode, sourceNode, currentNode],
         edges: [],
         hooksStoreProps: {},

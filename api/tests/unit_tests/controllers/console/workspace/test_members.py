@@ -1,13 +1,15 @@
 from collections.abc import Callable
 from datetime import datetime
 from http import HTTPStatus
+from importlib import import_module
 from inspect import unwrap
 from typing import NamedTuple, override
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, create_autospec
 
 import pytest
 from flask import Flask
 from flask_restx import Api, Resource
+from pydantic import ValidationError
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.console.auth.error import (
@@ -53,16 +55,21 @@ from services.errors.workspace import (
 )
 from services.workspace.contracts import WorkspaceMemberRecord, WorkspaceMemberRole, WorkspaceMemberSummary
 from services.workspace.member_service import WorkspaceMemberQueryService, WorkspaceMemberService
+from tests.unit_tests.controllers.error_body import raised_error
 
 
 class _RecordingWorkspaceMemberQueryService(WorkspaceMemberQueryService):
     def __init__(self, result: tuple[WorkspaceMemberSummary, ...]) -> None:
         self._result = result
         self.contexts: list[RequestContext] = []
+        self.languages: list[str | None] = []
 
     @override
-    def list_current(self, context: RequestContext) -> tuple[WorkspaceMemberSummary, ...]:
+    def list_current(
+        self, context: RequestContext, *, language: str | None = None
+    ) -> tuple[WorkspaceMemberSummary, ...]:
         self.contexts.append(context)
+        self.languages.append(language)
         return self._result
 
 
@@ -75,7 +82,10 @@ class _ApplicationServicesStub(NamedTuple):
 
 
 class TestMemberListApi:
-    def test_get_passes_context_and_serializes_application_result(self, app: Flask) -> None:
+    @pytest.mark.parametrize(("language", "expected"), [("", None), (" JA ", "ja"), ("unknown", None)])
+    def test_get_passes_context_and_serializes_application_result(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, language: str, expected: str | None
+    ) -> None:
         api = MemberListApi()
         method = unwrap(api.get)
         request_context = RequestContext(
@@ -106,13 +116,12 @@ class TestMemberListApi:
         )
         application_services_stub = _ApplicationServicesStub(_WorkspaceServicesStub(workspace_member_queries))
 
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.workspace.members.application_services",
-                return_value=application_services_stub,
-            ),
-        ):
+        monkeypatch.setattr(
+            import_module("controllers.console.workspace.members"),
+            "application_services",
+            lambda: application_services_stub,
+        )
+        with app.test_request_context("/", query_string={"language": language}):
             result, status = method(api, request_context=request_context)
 
         assert status == HTTPStatus.OK
@@ -137,6 +146,7 @@ class TestMemberListApi:
             ]
         }
         assert workspace_member_queries.contexts == [request_context]
+        assert workspace_member_queries.languages == [expected]
 
 
 @pytest.fixture
@@ -145,13 +155,13 @@ def services(monkeypatch: pytest.MonkeyPatch) -> Mock:
     from extensions.ext_application_services import AccountServices, ApplicationServices
     from services.workspace.member_service import WorkspaceInvitationService, WorkspaceOwnerTransferService
 
-    services = Mock(spec=ApplicationServices)
-    services.accounts = Mock(spec=AccountServices)
-    services.workspaces = Mock(spec=WorkspaceServices)
-    services.workspaces.invitations = Mock(spec=WorkspaceInvitationService)
-    services.workspaces.owner_transfer = Mock(spec=WorkspaceOwnerTransferService)
-    services.workspaces.members = Mock(spec=WorkspaceMemberService)
-    services.workspaces.member_queries = Mock(spec=WorkspaceMemberQueryService)
+    services = create_autospec(ApplicationServices, instance=True)
+    services.accounts = create_autospec(AccountServices, instance=True)
+    services.workspaces = create_autospec(WorkspaceServices, instance=True)
+    services.workspaces.invitations = create_autospec(WorkspaceInvitationService, instance=True)
+    services.workspaces.owner_transfer = create_autospec(WorkspaceOwnerTransferService, instance=True)
+    services.workspaces.members = create_autospec(WorkspaceMemberService, instance=True)
+    services.workspaces.member_queries = create_autospec(WorkspaceMemberQueryService, instance=True)
     import importlib
 
     monkeypatch.setattr(
@@ -180,9 +190,9 @@ def test_member_mutation_delegates_admitted_ids(app: Flask, services: Mock, oper
 @pytest.mark.parametrize(
     ("error", "code", "status"),
     [
-        (CannotOperateSelfError("self"), "cannot-operate-self", 400),
+        (CannotOperateSelfError("self"), "cannot_operate_self", 400),
         (NoPermissionError("denied"), "forbidden", 403),
-        (MemberNotInTenantError("missing"), "member-not-found", 404),
+        (MemberNotInTenantError("missing"), "member_not_found", 404),
     ],
 )
 def test_member_mutation_maps_errors(
@@ -195,7 +205,9 @@ def test_member_mutation_maps_errors(
     api = MemberCancelInviteApi() if operation == "remove" else MemberUpdateRoleApi()
     method = api.delete if isinstance(api, MemberCancelInviteApi) else api.put
     with app.test_request_context("/", json={"role": "editor"}):
-        result = unwrap(method)(api, RequestContext("request", None, "actor", "workspace"), "member")
+        result = raised_error(
+            lambda: unwrap(method)(api, RequestContext("request", None, "actor", "workspace"), "member")
+        )
     assert result == ({"code": code, "message": str(error)}, status)
 
 
@@ -214,15 +226,17 @@ def test_member_mutation_maps_missing_account(app: Flask, services: Mock, operat
 @pytest.mark.parametrize(
     ("error", "code", "message"),
     [
-        (InvalidWorkspaceMemberRoleError(), "invalid-role", "Invalid role"),
-        (RoleAlreadyAssignedError("unchanged"), "role-already-assigned", "unchanged"),
+        (InvalidWorkspaceMemberRoleError(), "invalid_role", "Invalid role."),
+        (RoleAlreadyAssignedError("unchanged"), "role_already_assigned", "unchanged"),
     ],
 )
 def test_update_role_maps_role_errors(app: Flask, services: Mock, error: Exception, code: str, message: str) -> None:
     services.workspaces.members.update_role.side_effect = error
     api = MemberUpdateRoleApi()
     with app.test_request_context("/", json={"role": "editor"}):
-        result = unwrap(api.put)(api, RequestContext("request", None, "actor", "workspace"), "member")
+        result = raised_error(
+            lambda: unwrap(api.put)(api, RequestContext("request", None, "actor", "workspace"), "member")
+        )
     assert result == ({"code": code, "message": message}, 400)
 
 
@@ -306,6 +320,24 @@ def test_bulk_invite_serializes_results_and_normalizes_input(app: Flask, service
     services.workspaces.invitations.invite_many.assert_called_once_with(
         context, emails=["a@example.com", "b@example.com", "c@example.com"], language=None, role="normal"
     )
+
+
+@pytest.mark.parametrize(
+    "invalid_email",
+    ["", "invalid-email", "@example.com", "user@", "user@example", "user@example.com\n", "user@example.com\r\n"],
+)
+def test_bulk_invite_rejects_invalid_email_before_inviting(app: Flask, services: Mock, invalid_email: str) -> None:
+    api = MemberInviteEmailApi()
+    with (
+        app.test_request_context(
+            "/", method="POST", json={"emails": ["valid@example.com", invalid_email], "role": "normal"}
+        ),
+        pytest.raises(ValidationError, match="not a valid email") as error,
+    ):
+        unwrap(api.post)(api, RequestContext("request", None, "owner", "workspace"))
+
+    assert error.value.errors()[0]["loc"] == ("emails", 1)
+    services.workspaces.invitations.invite_many.assert_not_called()
 
 
 @pytest.mark.parametrize(("seats", "expected"), [(True, SeatsLimitExceeded), (False, WorkspaceMembersLimitExceeded)])

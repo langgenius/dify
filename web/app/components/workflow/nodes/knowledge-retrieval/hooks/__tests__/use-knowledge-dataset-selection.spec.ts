@@ -1,10 +1,15 @@
+import type {
+  DatasetDetailWithPartialMembersResponse,
+  DatasetListResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type { MutableRefObject } from 'react'
 import type { KnowledgeRetrievalNodeType } from '../../types'
-import type { DataSet } from '@/models/datasets'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { fetchDatasets } from '@/service/datasets'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
 import useKnowledgeDatasetSelection from '../use-knowledge-dataset-selection'
 
@@ -12,12 +17,14 @@ vi.mock('@/service/datasets', () => ({
   fetchDatasets: vi.fn(),
 }))
 
+type DatasetListItem = DatasetListResponse['data'][number]
+
 const mockFetchDatasets = vi.mocked(fetchDatasets)
 
-const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
+const createDataset = (overrides: Partial<DatasetListItem> = {}): DatasetListItem => ({
+  ...createDatasetFixture(),
   id: 'dataset-1',
   name: 'Dataset Name',
-  indexing_status: 'completed',
   icon_info: {
     icon: '📙',
     icon_background: '#FFF4ED',
@@ -25,33 +32,22 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
     icon_url: '',
   },
   description: 'Dataset description',
-  permission: DatasetPermission.onlyMe,
+  permission: PermissionLevel.onlyMe,
   data_source_type: DataSourceType.FILE,
-  indexing_technique: 'high_quality' as DataSet['indexing_technique'],
+  indexing_technique:
+    'high_quality' as DatasetDetailWithPartialMembersResponse['indexing_technique'],
   created_by: 'user-1',
   updated_by: 'user-1',
   updated_at: 1690000000,
   app_count: 0,
   doc_form: ChunkingMode.text,
   document_count: 1,
-  total_document_count: 1,
   word_count: 1000,
   provider: 'internal',
   embedding_model: 'text-embedding-3',
   embedding_model_provider: 'openai',
   embedding_available: true,
   retrieval_model_dict: {
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_model: {
-      reranking_provider_name: '',
-      reranking_model_name: '',
-    },
-    top_k: 5,
-    score_threshold_enabled: false,
-    score_threshold: 0,
-  },
-  retrieval_model: {
     search_method: RETRIEVE_METHOD.semantic,
     reranking_enable: false,
     reranking_model: {
@@ -160,17 +156,12 @@ describe('use-knowledge-dataset-selection', () => {
     })
 
     expect(mockFetchDatasets).toHaveBeenCalledWith({
-      url: '/datasets',
       params: {
         page: 1,
         ids: ['dataset-1'],
       },
     })
-    expect(setInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        dataset_ids: ['dataset-1'],
-      }),
-    )
+    expect(setInputs).not.toHaveBeenCalled()
     expect(result.current.showImageQueryVarSelector).toBe(true)
   })
 
@@ -203,13 +194,15 @@ describe('use-knowledge-dataset-selection', () => {
       createDataset({
         id: 'dataset-2',
         name: 'Economic Internal',
-        indexing_technique: 'economy' as DataSet['indexing_technique'],
+        indexing_technique:
+          'economy' as DatasetDetailWithPartialMembersResponse['indexing_technique'],
         provider: 'internal',
       }),
       createDataset({
         id: 'dataset-3',
         name: 'High Quality Internal',
-        indexing_technique: 'high_quality' as DataSet['indexing_technique'],
+        indexing_technique:
+          'high_quality' as DatasetDetailWithPartialMembersResponse['indexing_technique'],
         provider: 'internal',
       }),
     ]

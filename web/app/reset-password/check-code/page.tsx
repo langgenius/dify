@@ -10,7 +10,7 @@ import Countdown from '@/app/components/signin/countdown'
 import { toast } from '@/app/notifications'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { sendResetPasswordCode, verifyResetPasswordCode } from '@/service/common'
+import { consoleClient } from '@/service/console'
 
 type CheckCodeFormValues = {
   code: string
@@ -31,7 +31,7 @@ export default function CheckCode() {
     if (loading) return
     try {
       setLoading(true)
-      const ret = await verifyResetPasswordCode({ email, code, token })
+      const ret = await consoleClient.forgotPassword.validity.post({ body: { email, code, token } })
       if (ret.is_valid) {
         const params = new URLSearchParams(searchParams)
         params.set('token', encodeURIComponent(ret.token))
@@ -46,10 +46,10 @@ export default function CheckCode() {
 
   const resendCode = async () => {
     try {
-      const res = await sendResetPasswordCode(email, locale)
+      const res = await consoleClient.forgotPassword.post({ body: { email, language: locale } })
       if (res.result === 'success') {
         const params = new URLSearchParams(searchParams)
-        params.set('token', encodeURIComponent(res.data))
+        params.set('token', encodeURIComponent(res.data ?? ''))
         router.replace(`/reset-password/check-code?${params.toString()}`)
       }
     } catch (error) {

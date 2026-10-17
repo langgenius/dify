@@ -7,18 +7,21 @@ import { toast } from '@/app/notifications'
 import { FileContextProvider } from '../../store'
 import { useUpload } from '../use-upload'
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'files.upload.get': vi.fn(() => ({
+      data: {
+        image_file_batch_limit: 10,
+        single_chunk_attachment_limit: 20,
+        attachment_image_file_size_limit: 15,
+      },
+    })),
+  })
+})
+
 const { mockToastError } = vi.hoisted(() => ({
   mockToastError: vi.fn(),
-}))
-
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: vi.fn(() => ({
-    data: {
-      image_file_batch_limit: 10,
-      single_chunk_attachment_limit: 20,
-      attachment_image_file_size_limit: 15,
-    },
-  })),
 }))
 
 vi.mock('@/app/notifications', () => ({
@@ -40,11 +43,10 @@ type FileUploadOptions = {
 }
 
 const mockFileUpload = vi.fn<(options: FileUploadOptions) => void>()
-const mockGetFileUploadErrorMessage = vi.fn(() => 'Upload error')
 
-vi.mock('@/app/components/base/file-uploader/utils', () => ({
+vi.mock('@/app/components/base/file-uploader/utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/app/components/base/file-uploader/utils')>()),
   fileUpload: (options: FileUploadOptions) => mockFileUpload(options),
-  getFileUploadErrorMessage: () => mockGetFileUploadErrorMessage(),
 }))
 
 const createWrapper = () => {
@@ -374,7 +376,9 @@ describe('useUpload hook', () => {
       })
 
       await waitFor(() => {
-        expect(toast.error).toHaveBeenCalledWith('Upload error')
+        expect(toast.error).toHaveBeenCalledWith(
+          'common.fileUploader.uploadFromComputerUploadError',
+        )
       })
     })
   })
@@ -436,7 +440,9 @@ describe('useUpload hook', () => {
       })
 
       await waitFor(() => {
-        expect(toast.error).toHaveBeenCalledWith('Upload error')
+        expect(toast.error).toHaveBeenCalledWith(
+          'common.fileUploader.uploadFromComputerUploadError',
+        )
       })
     })
   })

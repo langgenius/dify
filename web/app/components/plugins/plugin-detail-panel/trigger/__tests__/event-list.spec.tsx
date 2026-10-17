@@ -8,10 +8,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   useLanguage: () => 'en_US',
 }))
 
-vi.mock('@langgenius/dify-ui/cn', () => ({
-  cn: (...args: (string | undefined | false | null)[]) => args.filter(Boolean).join(' '),
-}))
-
 const mockTriggerEvents = [
   {
     name: 'event-1',

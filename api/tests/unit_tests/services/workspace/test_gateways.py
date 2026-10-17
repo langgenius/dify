@@ -1,7 +1,7 @@
 """Workspace policies and notifications with only external clients replaced."""
 
 from collections.abc import Callable
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 
 import pytest
 
@@ -18,7 +18,7 @@ from tests.unit_tests.account_domain import AccountDomain
 
 @pytest.fixture
 def invitations() -> gateways.WorkspaceInvitationGateway:
-    redis = Mock(spec=RedisClientWrapper)
+    redis = create_autospec(RedisClientWrapper, instance=True)
     return gateways.WorkspaceInvitationGateway(tokens=RedisInvitationTokenStore(redis=redis), redis=redis)
 
 
@@ -56,7 +56,7 @@ def test_cloud_invitation_member_limit(
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     # Use the repository's current count, not a potentially stale billing size.
     features = Mock(return_value=FeatureModel(members=LimitationModel(size=99, limit=limit)))
-    license_query = Mock(spec=gateways.SystemFeatureService.get_license)
+    license_query = create_autospec(gateways.SystemFeatureService.get_license, instance=True)
     monkeypatch.setattr(gateways.FeatureService, "get_features", features)
     monkeypatch.setattr(gateways.SystemFeatureService, "get_license", license_query)
 
@@ -146,8 +146,8 @@ def test_community_invitation_does_not_query_quotas(
     config_overrides: Callable[..., None],
 ) -> None:
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-    features = Mock(spec=gateways.FeatureService.get_features)
-    license_query = Mock(spec=gateways.SystemFeatureService.get_license)
+    features = create_autospec(gateways.FeatureService.get_features, instance=True)
+    license_query = create_autospec(gateways.SystemFeatureService.get_license, instance=True)
     monkeypatch.setattr(gateways.FeatureService, "get_features", features)
     monkeypatch.setattr(gateways.SystemFeatureService, "get_license", license_query)
 
@@ -212,12 +212,12 @@ def test_single_invitation_quota_preserves_plan_and_license_limits(
 def test_owner_transfer_notifies_both_owners(account_domain: AccountDomain, monkeypatch: pytest.MonkeyPatch) -> None:
     old_owner = account_domain.accounts.create_account("old@example.com", "Old", "en-US")
     new_owner = account_domain.accounts.create_account("new@example.com", "New", "en-US")
-    old_notification = Mock(spec=gateways.send_old_owner_transfer_notify_email_task.delay)
-    new_notification = Mock(spec=gateways.send_new_owner_transfer_notify_email_task.delay)
+    old_notification = create_autospec(gateways.send_old_owner_transfer_notify_email_task.delay, instance=True)
+    new_notification = create_autospec(gateways.send_new_owner_transfer_notify_email_task.delay, instance=True)
     monkeypatch.setattr(gateways.send_old_owner_transfer_notify_email_task, "delay", old_notification)
     monkeypatch.setattr(gateways.send_new_owner_transfer_notify_email_task, "delay", new_notification)
 
-    gateway = gateways.WorkspaceOwnerTransferGateway(redis=Mock(spec=RedisClientWrapper))
+    gateway = gateways.WorkspaceOwnerTransferGateway(redis=create_autospec(RedisClientWrapper, instance=True))
     gateway.notify(old_owner=old_owner, new_owner=new_owner, workspace_name="Workspace")
 
     new_notification.assert_called_once_with(language="en-US", to=new_owner.email, workspace="Workspace")

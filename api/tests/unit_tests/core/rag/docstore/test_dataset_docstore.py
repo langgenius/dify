@@ -76,7 +76,7 @@ class _UsesSQLiteSession:
 class TestDatasetDocumentStoreInit(_UsesSQLiteSession):
     """Tests for DatasetDocumentStore initialization."""
 
-    def test_init_with_all_parameters(self):
+    def test_init_with_all_parameters(self) -> None:
         """Test initialization with dataset, user_id, and document_id."""
 
         mock_dataset = Dataset(
@@ -95,7 +95,7 @@ class TestDatasetDocumentStoreInit(_UsesSQLiteSession):
         assert store.dataset_id == "test-dataset-id"
         assert store.user_id == "test-user-id"
 
-    def test_init_without_document_id(self):
+    def test_init_without_document_id(self) -> None:
         """Test initialization without document_id."""
 
         mock_dataset = Dataset(
@@ -114,7 +114,7 @@ class TestDatasetDocumentStoreInit(_UsesSQLiteSession):
 class TestDatasetDocumentStoreSerialization(_UsesSQLiteSession):
     """Tests for to_dict and from_dict methods."""
 
-    def test_to_dict(self):
+    def test_to_dict(self) -> None:
         """Test serialization to dictionary."""
 
         mock_dataset = Dataset(
@@ -130,7 +130,7 @@ class TestDatasetDocumentStoreSerialization(_UsesSQLiteSession):
 
         assert result == {"dataset_id": "test-dataset-id"}
 
-    def test_from_dict(self):
+    def test_from_dict(self) -> None:
         """Test deserialization from dictionary."""
 
         config_dict = {
@@ -148,7 +148,7 @@ class TestDatasetDocumentStoreSerialization(_UsesSQLiteSession):
 class TestDatasetDocumentStoreDocs(_UsesSQLiteSession):
     """Tests for the docs property."""
 
-    def test_docs_returns_document_dict(self):
+    def test_docs_returns_document_dict(self) -> None:
         """Test that docs property returns a dictionary of documents."""
 
         mock_segment = _segment(index_node_id="node-1")
@@ -167,7 +167,7 @@ class TestDatasetDocumentStoreDocs(_UsesSQLiteSession):
         assert "node-1" in result
         assert isinstance(result["node-1"], Document)
 
-    def test_docs_empty_dataset(self):
+    def test_docs_empty_dataset(self) -> None:
         """Test docs property with no segments."""
 
         mock_dataset = Dataset(
@@ -189,7 +189,7 @@ class TestDatasetDocumentStoreDocs(_UsesSQLiteSession):
 class TestDatasetDocumentStoreAddDocuments(_UsesSQLiteSession):
     """Tests for add_documents method."""
 
-    def test_add_documents_new_document_with_token_count(self, sqlite_session: Session):
+    def test_add_documents_new_document_with_token_count(self, sqlite_session: Session) -> None:
         """Test adding a new document with a precomputed token count."""
 
         document = Document(
@@ -212,7 +212,7 @@ class TestDatasetDocumentStoreAddDocuments(_UsesSQLiteSession):
         assert segment.tokens == 10
         assert segment.position == 1
 
-    def test_add_documents_update_existing_document(self, sqlite_session: Session):
+    def test_add_documents_update_existing_document(self, sqlite_session: Session) -> None:
         """Test updating existing document with allow_update=True."""
 
         existing_segment = _persist_segment(sqlite_session)
@@ -231,7 +231,7 @@ class TestDatasetDocumentStoreAddDocuments(_UsesSQLiteSession):
         assert updated_segment.index_node_hash == "new-hash"
         assert updated_segment.tokens == 0
 
-    def test_add_documents_raises_when_not_allowed(self, sqlite_session: Session):
+    def test_add_documents_raises_when_not_allowed(self, sqlite_session: Session) -> None:
         """Test that adding existing doc without allow_update raises ValueError."""
 
         _persist_segment(sqlite_session)
@@ -251,7 +251,7 @@ class TestDatasetDocumentStoreAddDocuments(_UsesSQLiteSession):
 
         assert sqlite_session.scalar(select(func.count()).select_from(DocumentSegment)) == 1
 
-    def test_add_documents_with_answer_metadata(self, sqlite_session: Session):
+    def test_add_documents_with_answer_metadata(self, sqlite_session: Session) -> None:
         """Test adding document with answer in metadata."""
 
         document = Document(
@@ -271,7 +271,7 @@ class TestDatasetDocumentStoreAddDocuments(_UsesSQLiteSession):
         assert segment is not None
         assert segment.answer == "Test answer"
 
-    def test_add_documents_with_invalid_document_type(self, sqlite_session: Session):
+    def test_add_documents_with_invalid_document_type(self, sqlite_session: Session) -> None:
         """Test that non-Document raises ValueError."""
 
         store = DatasetDocumentStore(dataset=_dataset(), user_id=USER_ID, document_id=DOCUMENT_ID)
@@ -279,7 +279,7 @@ class TestDatasetDocumentStoreAddDocuments(_UsesSQLiteSession):
         with pytest.raises(ValueError, match="must be a Document"):
             store.add_documents(session=sqlite_session, docs=["not a document"], token_counts=[0])  # type: ignore[list-item]
 
-    def test_add_documents_with_none_metadata(self, sqlite_session: Session):
+    def test_add_documents_with_none_metadata(self, sqlite_session: Session) -> None:
         """Test that document with None metadata raises ValueError."""
 
         # Bypass model validation to exercise the store's legacy malformed-metadata guard.
@@ -289,7 +289,7 @@ class TestDatasetDocumentStoreAddDocuments(_UsesSQLiteSession):
         with pytest.raises(ValueError, match="metadata must be a dict"):
             store.add_documents(session=sqlite_session, docs=[document], token_counts=[0])
 
-    def test_add_documents_with_save_child(self, sqlite_session: Session):
+    def test_add_documents_with_save_child(self, sqlite_session: Session) -> None:
         """Test adding documents with save_child=True."""
 
         document = Document(
@@ -317,7 +317,7 @@ class TestDatasetDocumentStoreAddDocuments(_UsesSQLiteSession):
         assert child.content == "Child content"
         assert child.index_node_id == "child-1"
 
-    def test_add_documents_rejects_mismatched_token_counts(self, sqlite_session: Session):
+    def test_add_documents_rejects_mismatched_token_counts(self, sqlite_session: Session) -> None:
         document = Document(
             page_content="Test content",
             metadata={"doc_id": "doc-1", "doc_hash": "hash-1"},
@@ -333,7 +333,7 @@ class TestDatasetDocumentStoreAddDocuments(_UsesSQLiteSession):
 class TestDatasetDocumentStoreExists(_UsesSQLiteSession):
     """Tests for document_exists method."""
 
-    def test_document_exists_returns_true(self):
+    def test_document_exists_returns_true(self) -> None:
         """Test document_exists returns True when segment exists."""
 
         _persist_segment(self.session)
@@ -341,7 +341,7 @@ class TestDatasetDocumentStoreExists(_UsesSQLiteSession):
 
         assert store.document_exists("doc-1", session=self.session) is True
 
-    def test_document_exists_returns_false(self):
+    def test_document_exists_returns_false(self) -> None:
         """Test document_exists returns False when segment doesn't exist."""
 
         store = DatasetDocumentStore(dataset=_dataset(), user_id=USER_ID)
@@ -352,7 +352,7 @@ class TestDatasetDocumentStoreExists(_UsesSQLiteSession):
 class TestDatasetDocumentStoreGetDocument(_UsesSQLiteSession):
     """Tests for get_document method."""
 
-    def test_get_document_success(self):
+    def test_get_document_success(self) -> None:
         """Test getting a document successfully."""
 
         _persist_segment(self.session, index_node_id="node-1")
@@ -363,7 +363,7 @@ class TestDatasetDocumentStoreGetDocument(_UsesSQLiteSession):
         assert isinstance(result, Document)
         assert result.page_content == "Test content"
 
-    def test_get_document_returns_none_when_not_found(self):
+    def test_get_document_returns_none_when_not_found(self) -> None:
         """Test get_document returns None when not found and raise_error=False."""
 
         store = DatasetDocumentStore(dataset=_dataset(), user_id=USER_ID)
@@ -372,7 +372,7 @@ class TestDatasetDocumentStoreGetDocument(_UsesSQLiteSession):
 
         assert result is None
 
-    def test_get_document_raises_when_not_found(self):
+    def test_get_document_raises_when_not_found(self) -> None:
         """Test get_document raises ValueError when not found and raise_error=True."""
 
         store = DatasetDocumentStore(dataset=_dataset(), user_id=USER_ID)
@@ -384,7 +384,7 @@ class TestDatasetDocumentStoreGetDocument(_UsesSQLiteSession):
 class TestDatasetDocumentStoreDeleteDocument(_UsesSQLiteSession):
     """Tests for delete_document method."""
 
-    def test_delete_document_success(self):
+    def test_delete_document_success(self) -> None:
         """Test deleting a document successfully."""
 
         segment = _persist_segment(self.session)
@@ -394,7 +394,7 @@ class TestDatasetDocumentStoreDeleteDocument(_UsesSQLiteSession):
 
         assert self.session.get(DocumentSegment, segment.id) is None
 
-    def test_delete_document_returns_none_when_not_found(self):
+    def test_delete_document_returns_none_when_not_found(self) -> None:
         """Test delete_document returns None when not found and raise_error=False."""
 
         store = DatasetDocumentStore(dataset=_dataset(), user_id=USER_ID)
@@ -403,7 +403,7 @@ class TestDatasetDocumentStoreDeleteDocument(_UsesSQLiteSession):
 
         assert result is None
 
-    def test_delete_document_raises_when_not_found(self):
+    def test_delete_document_raises_when_not_found(self) -> None:
         """Test delete_document raises ValueError when not found and raise_error=True."""
 
         store = DatasetDocumentStore(dataset=_dataset(), user_id=USER_ID)
@@ -415,7 +415,7 @@ class TestDatasetDocumentStoreDeleteDocument(_UsesSQLiteSession):
 class TestDatasetDocumentStoreHashOperations(_UsesSQLiteSession):
     """Tests for set_document_hash and get_document_hash methods."""
 
-    def test_set_document_hash_success(self):
+    def test_set_document_hash_success(self) -> None:
         """Test setting document hash successfully."""
 
         segment = _persist_segment(self.session, index_node_hash="old-hash")
@@ -428,7 +428,7 @@ class TestDatasetDocumentStoreHashOperations(_UsesSQLiteSession):
         assert updated_segment is not None
         assert updated_segment.index_node_hash == "new-hash"
 
-    def test_set_document_hash_returns_none_when_not_found(self):
+    def test_set_document_hash_returns_none_when_not_found(self) -> None:
         """Test set_document_hash returns None when segment not found."""
 
         store = DatasetDocumentStore(dataset=_dataset(), user_id=USER_ID)
@@ -437,7 +437,7 @@ class TestDatasetDocumentStoreHashOperations(_UsesSQLiteSession):
 
         assert result is None
 
-    def test_get_document_hash_success(self):
+    def test_get_document_hash_success(self) -> None:
         """Test getting document hash successfully."""
 
         _persist_segment(self.session, index_node_hash="test-hash")
@@ -447,7 +447,7 @@ class TestDatasetDocumentStoreHashOperations(_UsesSQLiteSession):
 
         assert result == "test-hash"
 
-    def test_get_document_hash_returns_none_when_not_found(self):
+    def test_get_document_hash_returns_none_when_not_found(self) -> None:
         """Test get_document_hash returns None when segment not found."""
 
         store = DatasetDocumentStore(dataset=_dataset(), user_id=USER_ID)
@@ -460,7 +460,7 @@ class TestDatasetDocumentStoreHashOperations(_UsesSQLiteSession):
 class TestDatasetDocumentStoreSegment(_UsesSQLiteSession):
     """Tests for get_document_segment method."""
 
-    def test_get_document_segment_returns_segment(self):
+    def test_get_document_segment_returns_segment(self) -> None:
         """Test getting a document segment."""
 
         mock_segment = _segment()
@@ -478,7 +478,7 @@ class TestDatasetDocumentStoreSegment(_UsesSQLiteSession):
 
         assert result == mock_segment
 
-    def test_get_document_segment_returns_none(self):
+    def test_get_document_segment_returns_none(self) -> None:
         """Test getting a non-existent document segment."""
 
         mock_session = self.session
@@ -496,7 +496,7 @@ class TestDatasetDocumentStoreSegment(_UsesSQLiteSession):
 class TestDatasetDocumentStoreMultimodelBinding(_UsesSQLiteSession):
     """Tests for add_multimodel_documents_binding method."""
 
-    def test_add_multimodel_documents_binding_with_attachments(self):
+    def test_add_multimodel_documents_binding_with_attachments(self) -> None:
         """Test adding multimodel document bindings."""
 
         attachment = AttachmentDocument(page_content="attachment", metadata={"doc_id": ATTACHMENT_ID})
@@ -517,7 +517,7 @@ class TestDatasetDocumentStoreMultimodelBinding(_UsesSQLiteSession):
         assert binding.segment_id == "seg-1"
         assert binding.attachment_id == ATTACHMENT_ID
 
-    def test_add_multimodel_documents_binding_without_attachments(self):
+    def test_add_multimodel_documents_binding_without_attachments(self) -> None:
         """Test adding bindings with None attachments."""
 
         mock_session = self.session
@@ -532,7 +532,7 @@ class TestDatasetDocumentStoreMultimodelBinding(_UsesSQLiteSession):
 
         assert mock_session.scalar(select(func.count()).select_from(SegmentAttachmentBinding)) == 0
 
-    def test_add_multimodel_documents_binding_with_empty_list(self):
+    def test_add_multimodel_documents_binding_with_empty_list(self) -> None:
         """Test adding bindings with empty list."""
 
         mock_session = self.session
@@ -547,7 +547,7 @@ class TestDatasetDocumentStoreMultimodelBinding(_UsesSQLiteSession):
 
         assert mock_session.scalar(select(func.count()).select_from(SegmentAttachmentBinding)) == 0
 
-    def test_add_multimodel_documents_binding_with_none_document_id(self):
+    def test_add_multimodel_documents_binding_with_none_document_id(self) -> None:
         """Test that no bindings are added when document_id is None."""
 
         attachment = AttachmentDocument(page_content="attachment", metadata={"doc_id": ATTACHMENT_ID})
@@ -568,7 +568,7 @@ class TestDatasetDocumentStoreMultimodelBinding(_UsesSQLiteSession):
 class TestDatasetDocumentStoreAddDocumentsUpdateChild(_UsesSQLiteSession):
     """Tests for add_documents when updating existing documents with children."""
 
-    def test_add_documents_update_existing_with_children(self, sqlite_session: Session):
+    def test_add_documents_update_existing_with_children(self, sqlite_session: Session) -> None:
         """Test updating existing document with save_child=True and children."""
 
         segment = _persist_segment(sqlite_session)
@@ -616,7 +616,7 @@ class TestDatasetDocumentStoreAddDocumentsUpdateChild(_UsesSQLiteSession):
 class TestDatasetDocumentStoreAddDocumentsUpdateAnswer(_UsesSQLiteSession):
     """Tests for add_documents when updating existing documents with answer metadata."""
 
-    def test_add_documents_update_existing_with_answer(self, sqlite_session: Session):
+    def test_add_documents_update_existing_with_answer(self, sqlite_session: Session) -> None:
         """Test updating existing document with answer in metadata."""
 
         existing_segment = _persist_segment(sqlite_session)

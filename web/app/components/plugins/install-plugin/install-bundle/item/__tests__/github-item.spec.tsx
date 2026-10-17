@@ -1,21 +1,16 @@
-import type { GitHubItemAndMarketPlaceDependency, Plugin } from '../../../../types'
+import type { GitHubItemAndMarketPlaceDependency } from '../../../../types'
 import type { VersionProps } from '@/app/components/plugins/types'
 import { render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createPluginEntity } from '@/test/fixtures/plugin'
 import GithubItem from '../github-item'
 
 const mockUseUploadGitHub = vi.fn()
-const mockPluginManifestToCardPluginProps = vi.fn()
 const mockLoadedItem = vi.fn()
 
 vi.mock('@/service/use-plugins', () => ({
   useUploadGitHub: (params: { repo: string; version: string; package: string }) =>
     mockUseUploadGitHub(params),
-}))
-
-vi.mock('../../../utils', () => ({
-  pluginManifestToCardPluginProps: (manifest: unknown) =>
-    mockPluginManifestToCardPluginProps(manifest),
 }))
 
 vi.mock('../../../base/loading', () => ({
@@ -79,16 +74,20 @@ describe('GithubItem', () => {
       org: 'dify',
       icon: 'icon.png',
       version: '1.0.0',
-    } as Plugin
+    }
 
     mockUseUploadGitHub.mockReturnValue({
       data: {
-        manifest: { name: 'manifest' },
+        manifest: {
+          ...createPluginEntity().declaration,
+          name: 'Plugin One',
+          author: 'dify',
+          icon: 'icon.png',
+        },
         unique_identifier: 'plugin-1',
       },
       error: null,
     })
-    mockPluginManifestToCardPluginProps.mockReturnValue(payload)
 
     render(
       <GithubItem
@@ -102,7 +101,9 @@ describe('GithubItem', () => {
     )
 
     await waitFor(() => {
-      expect(onFetchedPayload).toHaveBeenCalledWith(payload)
+      expect(onFetchedPayload).toHaveBeenCalledWith(
+        expect.objectContaining({ ...payload, label: { en_US: 'Plugin label' }, tags: [] }),
+      )
       expect(screen.getByTestId('loaded-item')).toBeInTheDocument()
     })
 

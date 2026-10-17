@@ -2,7 +2,7 @@
 
 import json
 from hashlib import sha256
-from unittest.mock import Mock
+from unittest.mock import create_autospec
 from uuid import uuid4
 
 import pytest
@@ -50,7 +50,7 @@ def test_invitation_token_round_trip_and_acceptance(
     tenant, owner, invited = workspace
     invited.status = status
     db_session_with_containers.commit()
-    send = Mock(spec=gateways.send_invite_member_mail_task.delay)
+    send = create_autospec(gateways.send_invite_member_mail_task.delay, instance=True)
     monkeypatch.setattr(gateways.send_invite_member_mail_task, "delay", send)
     services = application_services()
 

@@ -1,6 +1,10 @@
+import type { ReactElement } from 'react'
 import type { CustomFile, FileItem } from '@/models/datasets'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { Theme } from '@/types/app'
 import CSVUploader from '../csv-uploader'
 
@@ -11,11 +15,6 @@ vi.mock('@/service/base', () => ({
 }))
 
 // Mock useFileUploadConfig
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: () => ({
-    data: { file_size_limit: 15 },
-  }),
-}))
 
 // Mock useTheme
 vi.mock('@/hooks/use-theme', () => ({
@@ -45,15 +44,14 @@ vi.mock('@/app/notifications', () => ({
   toast: toastMocks.api,
 }))
 
-vi.mock('use-context-selector', async (importOriginal) => {
-  const actual = (await importOriginal()) as Record<string, unknown>
-  return {
-    ...actual,
-    useContext: () => ({
-      toast: toastMocks.api,
-    }),
-  }
-})
+const render = (ui: ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.files.upload.get.queryKey(),
+    createFileUploadConfigFixture(),
+  )
+  return renderWithConsoleQuery(ui, { queryClient })
+}
 
 describe('CSVUploader', () => {
   beforeEach(() => {
@@ -511,7 +509,7 @@ describe('CSVUploader', () => {
       const dropEvent = new Event('drop', {
         bubbles: true,
         cancelable: true,
-      }) as unknown as DragEvent
+      }) as DragEvent
       Object.defineProperty(dropEvent, 'dataTransfer', {
         value: {
           files: [testFile],
@@ -537,7 +535,7 @@ describe('CSVUploader', () => {
       const dropEvent = new Event('drop', {
         bubbles: true,
         cancelable: true,
-      }) as unknown as DragEvent
+      }) as DragEvent
       Object.defineProperty(dropEvent, 'dataTransfer', {
         value: {
           files: [file1, file2],

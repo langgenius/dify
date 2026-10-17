@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, call, create_autospec, patch
 
 import pytest
 from redis import RedisError
@@ -73,18 +73,29 @@ def test_security_gateway_preserves_shared_ip_limit(
     commands.side_effect = [None, str(count), None, True] if limited else [None, str(count), True, True]
     gateway = RedisEmailRegistrationSecurityGateway(
         redis=redis,
-        login_security=Mock(spec=ConsoleAuthSecurityGateway),
+        login_security=create_autospec(ConsoleAuthSecurityGateway, instance=True),
         verification_failure_limit=5,
         verification_lockout_duration=600,
     )
 
     assert gateway.is_ip_limited("127.0.0.1") is limited
+    freeze_key = "email_send_ip_limit_freeze:127.0.0.1"
+    minute_key = "email_send_ip_limit_minute:127.0.0.1"
+    hour_key = "email_send_ip_limit_hour:127.0.0.1"
     if limited:
-        commands.assert_any_call("SET", "email_send_ip_limit_hour:127.0.0.1", 1, "NX", "EX", 600)
+        assert commands.call_args_list == [
+            call("GET", freeze_key, keys=[freeze_key]),
+            call("GET", minute_key, keys=[minute_key]),
+            call("GET", hour_key, keys=[hour_key]),
+            call("SET", hour_key, 1, "NX", "EX", 600),
+        ]
     else:
-        commands.assert_any_call("SETEX", "email_send_ip_limit_minute:127.0.0.1", 60, count + 1)
-        commands.assert_any_call("EXPIRE", "email_send_ip_limit_minute:127.0.0.1", 60)
-    assert commands.call_count == 4
+        assert commands.call_args_list == [
+            call("GET", freeze_key, keys=[freeze_key]),
+            call("GET", minute_key, keys=[minute_key]),
+            call("SETEX", minute_key, 60, count + 1),
+            call("EXPIRE", minute_key, 60),
+        ]
 
 
 def test_security_gateway_uses_registration_and_login_keys(
@@ -106,19 +117,22 @@ def test_security_gateway_uses_registration_and_login_keys(
         gateway.reset_verification_failures("user@example.com")
         gateway.reset_login_failures("user@example.com")
 
-    commands.assert_any_call("SETEX", "email_register_error_rate_limit:user@example.com", 600, 2)
-    commands.assert_any_call("DEL", "email_register_error_rate_limit:user@example.com")
+    key = "email_register_error_rate_limit:user@example.com"
+    assert commands.call_args_list == [
+        call("GET", key, keys=[key]),
+        call("SETEX", key, 600, 2),
+        call("DEL", key),
+    ]
     reset_login_error_rate_limit.assert_called_once_with("user@example.com")
-    assert commands.call_count == 3
 
 
 @pytest.mark.parametrize(("count", "limited"), [(5, False), (6, True)])
 def test_registration_verification_limit_preserves_threshold(count: int, limited: bool) -> None:
-    redis = Mock(spec=RedisClientWrapper)
+    redis = create_autospec(RedisClientWrapper, instance=True)
     redis.get.return_value = str(count)
     gateway = RedisEmailRegistrationSecurityGateway(
         redis=redis,
-        login_security=Mock(spec=ConsoleAuthSecurityGateway),
+        login_security=create_autospec(ConsoleAuthSecurityGateway, instance=True),
         verification_failure_limit=5,
         verification_lockout_duration=600,
     )
@@ -127,7 +141,7 @@ def test_registration_verification_limit_preserves_threshold(count: int, limited
 
 
 def test_registration_security_preserves_behavior_when_redis_is_unavailable() -> None:
-    redis = Mock(spec=RedisClientWrapper)
+    redis = create_autospec(RedisClientWrapper, instance=True)
     redis.get.side_effect = RedisError("offline")
     redis.delete.side_effect = RedisError("offline")
     gateway = RedisEmailRegistrationSecurityGateway(
@@ -168,7 +182,7 @@ def test_registration_gateway_preserves_domain_errors_and_translates_seat_limit(
     service_error: Exception,
     application_error: type[Exception],
 ) -> None:
-    gateway = AccountLifecycleRegistrationGateway(accounts=Mock(spec=AccountService))
+    gateway = AccountLifecycleRegistrationGateway(accounts=create_autospec(AccountService, instance=True))
 
     with patch.object(gateway._accounts, "create_account_and_tenant", side_effect=service_error):
         with pytest.raises(application_error) as raised:

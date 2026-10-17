@@ -1,12 +1,8 @@
 import type { Role } from '@/models/access-control'
-import { screen, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { toast } from '@/app/notifications'
-import {
-  useCreateWorkspaceRole,
-  useUpdateWorkspaceRole,
-} from '@/service/access-control/use-workspace-roles'
-import { render } from '@/test/console/render'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { useRoleGroups } from '../hooks'
 import PermissionsPage from '../index'
 
@@ -15,6 +11,18 @@ const mocks = vi.hoisted(() => ({
   createWorkspaceRole: vi.fn(),
   updateWorkspaceRole: vi.fn(),
 }))
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.rbac.roles.post': mocks.createWorkspaceRole,
+      'workspaces.current.rbac.roles.byRoleId.put': mocks.updateWorkspaceRole,
+    }),
+  }
+})
 
 vi.mock('@/app/notifications', () => ({
   toast: {
@@ -28,11 +36,6 @@ vi.mock('@/context/permission-state', async () => {
     workspacePermissionKeys: mocks.workspacePermissionKeys,
   }))
 })
-
-vi.mock('@/service/access-control/use-workspace-roles', () => ({
-  useCreateWorkspaceRole: vi.fn(),
-  useUpdateWorkspaceRole: vi.fn(),
-}))
 
 vi.mock('../hooks', () => ({
   useRoleGroups: vi.fn(),
@@ -114,15 +117,6 @@ const role: Role = {
   role_tag: '',
 }
 
-const mockMutation = (mock: ReturnType<typeof vi.fn>) => {
-  mock.mockImplementation((_payload, options) => {
-    options?.onSuccess?.()
-    return Promise.resolve()
-  })
-
-  return { mutateAsync: mock }
-}
-
 const renderPermissionsPage = () => {
   const containerRef = {
     current: document.createElement('div'),
@@ -155,16 +149,8 @@ describe('PermissionsPage', () => {
       hasNextPage: false,
       error: null,
     } as ReturnType<typeof useRoleGroups>)
-    vi.mocked(useCreateWorkspaceRole).mockReturnValue(
-      mockMutation(mocks.createWorkspaceRole) as unknown as ReturnType<
-        typeof useCreateWorkspaceRole
-      >,
-    )
-    vi.mocked(useUpdateWorkspaceRole).mockReturnValue(
-      mockMutation(mocks.updateWorkspaceRole) as unknown as ReturnType<
-        typeof useUpdateWorkspaceRole
-      >,
-    )
+    mocks.createWorkspaceRole.mockResolvedValue(role)
+    mocks.updateWorkspaceRole.mockResolvedValue(role)
   })
 
   it('hides role creation without workspace role manage permission', () => {
@@ -201,15 +187,14 @@ describe('PermissionsPage', () => {
     expect(screen.getByRole('dialog', { name: 'create role' })).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'submit role' }))
 
-    expect(mocks.createWorkspaceRole).toHaveBeenCalledWith(
-      {
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(mocks.createWorkspaceRole).toHaveBeenCalledWith({
+      body: {
         name: 'create name',
         description: 'create description',
         permission_keys: ['workspace.member.manage'],
       },
-      expect.any(Object),
-    )
-    expect(toast.success).toHaveBeenCalledWith('permission.role.created')
+    })
   })
 
   it('updates the selected workspace role from the edit modal', async () => {
@@ -221,15 +206,25 @@ describe('PermissionsPage', () => {
     expect(within(dialog).getByText('Custom manager')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'submit role' }))
 
-    expect(mocks.updateWorkspaceRole).toHaveBeenCalledWith(
-      {
-        id: 'role-1',
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(mocks.updateWorkspaceRole).toHaveBeenCalledWith({
+      params: { role_id: 'role-1' },
+      body: {
         name: 'edit name',
         description: 'edit description',
         permission_keys: ['workspace.member.manage'],
       },
-      expect.any(Object),
-    )
-    expect(toast.success).toHaveBeenCalledWith('permission.role.updated')
+    })
+  })
+  it('keeps the role modal open until creation succeeds', async () => {
+    const response = createDeferred<Role>()
+    mocks.createWorkspaceRole.mockReturnValue(response.promise)
+    mocks.workspacePermissionKeys = ['workspace.role.manage']
+    renderPermissionsPage()
+    await userEvent.click(screen.getByRole('button', { name: 'permission.role.addRole' }))
+    await userEvent.click(screen.getByRole('button', { name: 'submit role' }))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    await act(async () => response.resolve(role))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 })

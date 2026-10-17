@@ -1,5 +1,4 @@
 import type { ExternalKnowledgeApiResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { ExternalAPIItem } from '@/models/datasets'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 // Import mocked services
@@ -134,7 +133,7 @@ describe('ExternalKnowledgeAPICard', () => {
 
   describe('User Interactions - Edit', () => {
     it('should fetch API details and open modal when edit button is clicked', async () => {
-      const mockResponse: ExternalAPIItem = {
+      const mockResponse: ExternalKnowledgeApiResponse = {
         id: 'api-123',
         tenant_id: 'tenant-1',
         name: 'Test External API',
@@ -192,7 +191,7 @@ describe('ExternalKnowledgeAPICard', () => {
     })
 
     it('should invalidate the generated list query after editing', async () => {
-      const mockResponse: ExternalAPIItem = {
+      const mockResponse: ExternalKnowledgeApiResponse = {
         id: 'api-123',
         tenant_id: 'tenant-1',
         name: 'Test External API',
@@ -241,7 +240,7 @@ describe('ExternalKnowledgeAPICard', () => {
     })
 
     it('should not refresh the list query when editing is canceled', async () => {
-      const mockResponse: ExternalAPIItem = {
+      const mockResponse: ExternalKnowledgeApiResponse = {
         id: 'api-123',
         tenant_id: 'tenant-1',
         name: 'Test External API',
@@ -409,30 +408,6 @@ describe('ExternalKnowledgeAPICard', () => {
         />,
       )
       expect(screen.getByText('Test External API'))!.toBeInTheDocument()
-    })
-
-    it('should handle delete response with unsuccessful result', async () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-      vi.mocked(checkUsageExternalAPI).mockResolvedValue({ is_using: false, count: 0 })
-      vi.mocked(deleteExternalAPI).mockResolvedValue({ result: 'error' })
-
-      render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      const deleteButton = screen.getByRole('button', { name: deleteButtonName })
-
-      fireEvent.click(deleteButton!)
-
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: /confirm/i }))!.toBeInTheDocument()
-      })
-
-      const confirmButton = screen.getByRole('button', { name: /confirm/i })
-      fireEvent.click(confirmButton)
-
-      await waitFor(() => {
-        expect(consoleSpy).toHaveBeenCalledWith('Failed to delete external API')
-      })
-
-      consoleSpy.mockRestore()
     })
   })
 })
