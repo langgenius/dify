@@ -26,7 +26,6 @@ export function AppAvailabilityDetails({ app }: Props) {
   const { t } = useTranslation(['app'])
   if (app.availability !== 'unavailable') return null
   const sources = {
-    published: t(($) => $['studio.availability.published']),
     draft: t(($) => $['studio.availability.draft']),
     configuration: t(($) => $['studio.availability.configuration']),
   }

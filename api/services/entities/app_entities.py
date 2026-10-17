@@ -37,7 +37,7 @@ SUPPORTED_APP_TYPES: Final[tuple[AppMode, ...]] = tuple(AppMode(t.value) for t i
 
 AppListSortBy = Literal["last_modified", "recently_created", "earliest_created"]
 AppAvailabilityFilter = Literal["all", "available", "unavailable"]
-AppAvailabilitySource = Literal["published", "draft", "configuration"]
+AppAvailabilitySource = Literal["draft", "configuration"]
 
 
 class AppAvailabilityStatus(StrEnum):

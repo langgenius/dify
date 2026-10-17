@@ -50,10 +50,9 @@ logger = logging.getLogger(__name__)
 class AppAvailabilityRepository:
     """Evaluate an app definition without persisting a derived health flag.
 
-    The evaluator deliberately reads the definition that a runtime would use:
-    the active published workflow or Agent snapshot when one exists, and the
-    draft only for an app that has never been published. This keeps a dirty
-    draft from making an otherwise runnable published app appear unavailable.
+    Studio describes the editable draft, independently of published history.
+    Dependencies still follow their actual bindings: for example, a workflow
+    tool referenced by a draft may call a pinned published workflow version.
     """
 
     def __init__(self, *, session: Session, tenant_id: str) -> None:
@@ -63,13 +62,30 @@ class AppAvailabilityRepository:
         self._dataset_ready_cache: dict[str, bool] = {}
         self._external_knowledge_reason_cache: dict[str, str | None] = {}
         self._agent_soul_cache: dict[tuple[str, str], AgentSoulConfig | None] = {}
-        self._workflow_cache: dict[str, Workflow | None] = {}
         self._draft_workflow_cache: dict[str, Workflow | None] = {}
         self._visiting_workflows: set[str] = set()
         self._dependencies: list[AppModelDependency | AppToolDependency | AppPluginDependency] = []
         self._source: AppAvailabilitySource = "configuration"
 
     def collect_many(self, apps: Sequence[App]) -> dict[str, AppAvailabilityPlan]:
+        draft_app_ids = [
+            app.id
+            for app in apps
+            if app.tenant_id == self._tenant_id and app.mode in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}
+        ]
+        if draft_app_ids:
+            # The caller has already applied list permissions. Batch only those
+            # visible apps, including negative lookups, rather than querying a
+            # draft separately for every card in the page.
+            self._draft_workflow_cache.update(dict.fromkeys(draft_app_ids))
+            for workflow in self._session.scalars(
+                select(Workflow).where(
+                    Workflow.tenant_id == self._tenant_id,
+                    Workflow.app_id.in_(draft_app_ids),
+                    Workflow.version == Workflow.VERSION_DRAFT,
+                )
+            ):
+                self._draft_workflow_cache[workflow.app_id] = workflow
         return {app.id: self.collect(app) for app in apps}
 
     def collect(self, app: App) -> AppAvailabilityPlan:
@@ -242,37 +258,16 @@ class AppAvailabilityRepository:
                 )
 
     def _evaluate_workflow_app(self, app: App, issues: list[AppAvailabilityIssue]) -> None:
-        workflow: Workflow | None
-        published = app.workflow_id is not None
-        self._source = "published" if published else "draft"
-        if app.workflow_id:
-            workflow = self._load_workflow(app.workflow_id)
-            if workflow is None or workflow.tenant_id != self._tenant_id or workflow.app_id != app.id:
-                self._add_issue(
-                    issues,
-                    type=AppAvailabilityIssueType.WORKFLOW,
-                    reason="missing",
-                    resource_id=app.workflow_id,
-                )
-                return
-        else:
-            workflow = self._load_draft_workflow(app.id)
-            if workflow is None:
-                self._add_issue(
-                    issues,
-                    type=AppAvailabilityIssueType.WORKFLOW,
-                    reason="not-configured",
-                    resource_id=app.id,
-                )
-                return
-
-        if published and workflow.version == Workflow.VERSION_DRAFT:
+        self._source = "draft"
+        workflow = self._load_draft_workflow(app.id)
+        if workflow is None:
             self._add_issue(
                 issues,
                 type=AppAvailabilityIssueType.WORKFLOW,
-                reason="invalid-configuration",
-                resource_id=workflow.id,
+                reason="not-configured",
+                resource_id=app.id,
             )
+            return
         self._evaluate_workflow_graph(workflow, issues)
 
     def _evaluate_workflow_graph(self, workflow: Workflow, issues: list[AppAvailabilityIssue]) -> None:
@@ -600,45 +595,44 @@ class AppAvailabilityRepository:
             )
             return
 
-        snapshot_id: str | None = None
-        if agent_has_workflow_callable_active_snapshot(session=self._session, agent=agent):
-            self._source = "published"
-            snapshot_id = agent.active_config_snapshot_id
-        else:
-            draft = self._session.scalar(
-                select(AgentConfigDraft)
-                .where(
-                    AgentConfigDraft.tenant_id == self._tenant_id,
-                    AgentConfigDraft.agent_id == agent.id,
-                    AgentConfigDraft.draft_type == AgentConfigDraftType.DRAFT,
-                    AgentConfigDraft.account_id.is_(None),
-                )
-                .order_by(AgentConfigDraft.updated_at.desc())
-                .limit(1)
+        draft = self._session.scalar(
+            select(AgentConfigDraft)
+            .where(
+                AgentConfigDraft.tenant_id == self._tenant_id,
+                AgentConfigDraft.agent_id == agent.id,
+                AgentConfigDraft.draft_type == AgentConfigDraftType.DRAFT,
+                AgentConfigDraft.account_id.is_(None),
             )
-            if draft is not None:
-                try:
-                    self._evaluate_agent_soul(
-                        AgentSoulConfig.model_validate(draft.config_snapshot_dict),
-                        issues,
-                        resource_id=agent.id,
-                    )
-                    return
-                except Exception:
-                    logger.exception("Failed to parse Agent draft, agent_id=%s", agent.id)
-                    self._add_issue(
-                        issues,
-                        type=AppAvailabilityIssueType.AGENT,
-                        reason="invalid-configuration",
-                        resource_id=agent.id,
-                    )
-                    return
+            .order_by(AgentConfigDraft.updated_at.desc())
+            .limit(1)
+        )
+        if draft is not None:
+            try:
+                self._evaluate_agent_soul(
+                    AgentSoulConfig.model_validate(draft.config_snapshot_dict),
+                    issues,
+                    resource_id=agent.id,
+                )
+            except Exception:
+                logger.exception("Failed to parse Agent draft, agent_id=%s", agent.id)
+                self._add_issue(
+                    issues,
+                    type=AppAvailabilityIssueType.AGENT,
+                    reason="invalid-configuration",
+                    resource_id=agent.id,
+                )
+            return
 
+        # Match the Agent editor's read-only draft projection: before the first
+        # shared draft is saved, it edits the active snapshot. Do not search
+        # publish history or substitute a published snapshot for an existing
+        # incomplete draft.
+        snapshot_id = agent.active_config_snapshot_id
         if not snapshot_id:
             self._add_issue(
                 issues,
                 type=AppAvailabilityIssueType.AGENT,
-                reason="unpublished",
+                reason="not-configured",
                 resource_id=agent.id,
             )
             return
@@ -1172,13 +1166,6 @@ class AppAvailabilityRepository:
             statement.order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc()).limit(1)
         )
         return bool(credentials and credentials != "{}")
-
-    def _load_workflow(self, workflow_id: str) -> Workflow | None:
-        if workflow_id not in self._workflow_cache:
-            self._workflow_cache[workflow_id] = self._session.scalar(
-                select(Workflow).where(Workflow.id == workflow_id, Workflow.tenant_id == self._tenant_id).limit(1)
-            )
-        return self._workflow_cache[workflow_id]
 
     def _load_draft_workflow(self, app_id: str) -> Workflow | None:
         if app_id not in self._draft_workflow_cache:

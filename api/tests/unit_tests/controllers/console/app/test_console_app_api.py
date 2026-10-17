@@ -164,11 +164,11 @@ def test_list_serializes_dependency_reasons_but_not_internal_evaluation_plans(
     boundary.record = replace(
         RECORD,
         availability=AppAvailabilityStatus.UNAVAILABLE,
-        availability_source="published",
+        availability_source="draft",
         availability_reasons=(
             AppAvailabilityIssue(AppAvailabilityIssueType.MODEL, "disabled", "llm-node", "provider", "model"),
         ),
-        availability_plan=AppAvailabilityPlan("published", (), ()),
+        availability_plan=AppAvailabilityPlan("draft", (), ()),
     )
     with app.test_request_context("/"):
         response, status = cast(tuple[dict[str, object], int], invoke(controller.AppListApi, controller.AppListApi.get))
@@ -178,7 +178,7 @@ def test_list_serializes_dependency_reasons_but_not_internal_evaluation_plans(
     record = records[0]
     assert isinstance(record, dict)
     assert record["availability"] == "unavailable"
-    assert record["availability_source"] == "published"
+    assert record["availability_source"] == "draft"
     assert record["availability_reasons"] == [
         {"type": "model", "reason": "disabled", "resource_id": "llm-node", "provider": "provider", "model": "model"}
     ]

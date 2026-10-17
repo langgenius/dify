@@ -4,6 +4,7 @@ import json
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
@@ -72,14 +73,15 @@ def collect(session: Session, owner: App) -> AppAvailabilityPlan:
     return AppAvailabilityRepository(session=session, tenant_id=TENANT).collect(owner)
 
 
-def test_published_workflow_wins_over_dirty_draft(sqlite_session: Session) -> None:
-    owner = app(sqlite_session)
+@pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+def test_studio_checks_draft_even_when_a_published_workflow_exists(sqlite_session: Session, mode: AppMode) -> None:
+    owner = app(sqlite_session, mode)
     published = workflow(sqlite_session, owner, [llm("published")], version="v1")
     workflow(sqlite_session, owner, [llm("draft")])
     owner.workflow_id = published.id
     plan = collect(sqlite_session, owner)
-    assert plan.source == "published"
-    assert [d.model for d in plan.dependencies if isinstance(d, AppModelDependency)] == ["published"]
+    assert plan.source == "draft"
+    assert [d.model for d in plan.dependencies if isinstance(d, AppModelDependency)] == ["draft"]
     assert not plan.reasons
 
 
@@ -91,8 +93,29 @@ def test_unpublished_workflow_uses_draft(sqlite_session: Session) -> None:
     assert plan.dependencies == (AppModelDependency(MODEL["provider"], MODEL["name"], "llm", MODEL["name"]),)
 
 
+def test_draft_workflows_are_loaded_once_for_an_authorized_batch(sqlite_session: Session) -> None:
+    owners = [app(sqlite_session) for _ in range(8)]
+    for owner in owners[:-1]:
+        workflow(sqlite_session, owner, [llm()])
+    statements: list[str] = []
+
+    def executed(_connection: object, _cursor: object, statement: str, *_args: object) -> None:
+        statements.append(statement)
+
+    connection = sqlite_session.connection()
+    event.listen(connection, "before_cursor_execute", executed)
+    try:
+        plans = AppAvailabilityRepository(session=sqlite_session, tenant_id=TENANT).collect_many(owners)
+    finally:
+        event.remove(connection, "before_cursor_execute", executed)
+    assert all(plan.source == "draft" for plan in plans.values())
+    assert all(not plans[owner.id].reasons for owner in owners[:-1])
+    assert plans[owners[-1].id].reasons[0].reason == "not-configured"
+    assert len(statements) == 1
+
+
 @pytest.mark.parametrize("case", ["foreign_tenant", "wrong_app", "deleted"])
-def test_published_workflow_reference_never_falls_back_or_crosses_owner(sqlite_session: Session, case: str) -> None:
+def test_studio_draft_does_not_depend_on_the_published_reference(sqlite_session: Session, case: str) -> None:
     owner = app(sqlite_session)
     other = app(sqlite_session)
     published = workflow(sqlite_session, other if case == "wrong_app" else owner, [llm("secret")], "v1")
@@ -102,7 +125,23 @@ def test_published_workflow_reference_never_falls_back_or_crosses_owner(sqlite_s
     workflow(sqlite_session, owner, [llm("draft")])
     sqlite_session.flush()
     plan = collect(sqlite_session, owner)
-    assert [(r.type, r.reason) for r in plan.reasons] == [("workflow", "missing")]
+    assert plan.source == "draft"
+    assert not plan.reasons
+    assert [d.model for d in plan.dependencies if isinstance(d, AppModelDependency)] == ["draft"]
+
+
+@pytest.mark.parametrize("case", ["missing", "foreign_tenant"])
+def test_studio_never_substitutes_a_published_workflow_for_a_missing_draft(sqlite_session: Session, case: str) -> None:
+    owner = app(sqlite_session)
+    published = workflow(sqlite_session, owner, [llm("published")], "v1")
+    owner.workflow_id = published.id
+    if case == "foreign_tenant":
+        draft = workflow(sqlite_session, owner, [llm("secret")])
+        draft.tenant_id = str(uuid4())
+        sqlite_session.flush()
+    plan = collect(sqlite_session, owner)
+    assert plan.source == "draft"
+    assert [(r.type, r.reason) for r in plan.reasons] == [("workflow", "not-configured")]
     assert not plan.dependencies
 
 
@@ -509,7 +548,11 @@ def test_builtin_credential_metadata_is_scoped_to_provider_and_tenant(sqlite_ses
     assert "encrypted-secret" not in repr(plan)
 
 
-def test_agent_app_keeps_published_snapshot_after_shared_draft_edits(sqlite_session: Session) -> None:
+@pytest.mark.parametrize("published", [True, False])
+@pytest.mark.parametrize("draft_state", ["configured", "empty", "absent"])
+def test_agent_app_checks_editable_definition_not_publication_state(
+    sqlite_session: Session, published: bool, draft_state: str
+) -> None:
     owner = app(sqlite_session, AppMode.AGENT)
     agent = Agent(
         tenant_id=TENANT,
@@ -536,29 +579,36 @@ def test_agent_app_keeps_published_snapshot_after_shared_draft_edits(sqlite_sess
     sqlite_session.add(snapshot)
     sqlite_session.flush()
     agent.active_config_snapshot_id = snapshot.id
-    agent.active_config_is_published = False
-    sqlite_session.add_all(
-        [
-            AgentConfigRevision(
-                tenant_id=TENANT,
-                agent_id=agent.id,
-                current_snapshot_id=snapshot.id,
-                revision=1,
-                operation=AgentConfigRevisionOperation.PUBLISH_DRAFT,
-            ),
+    agent.active_config_is_published = published
+    sqlite_session.add(
+        AgentConfigRevision(
+            tenant_id=TENANT,
+            agent_id=agent.id,
+            current_snapshot_id=snapshot.id,
+            revision=1,
+            operation=AgentConfigRevisionOperation.PUBLISH_DRAFT,
+        )
+    )
+    if draft_state != "absent":
+        sqlite_session.add(
             AgentConfigDraft(
                 tenant_id=TENANT,
                 agent_id=agent.id,
                 draft_type=AgentConfigDraftType.DRAFT,
-                config_snapshot=AgentSoulConfig(),
-            ),
-        ]
-    )
+                config_snapshot=AgentSoulConfig.model_validate(
+                    {"model": {"plugin_id": "langgenius/openai", "model_provider": MODEL["provider"], "model": "draft"}}
+                )
+                if draft_state == "configured"
+                else AgentSoulConfig(),
+            )
+        )
     sqlite_session.flush()
     plan = collect(sqlite_session, owner)
-    assert plan.source == "published"
-    assert not plan.reasons
-    assert [d.model for d in plan.dependencies if isinstance(d, AppModelDependency)] == ["published"]
+    assert plan.source == "draft"
+    assert bool(plan.reasons) is (draft_state == "empty")
+    assert [d.model for d in plan.dependencies if isinstance(d, AppModelDependency)] == (
+        [] if draft_state == "empty" else ["published" if draft_state == "absent" else "draft"]
+    )
 
 
 def test_nonlocal_workflow_dependencies_are_detached(sqlite_session: Session) -> None:
@@ -612,6 +662,7 @@ def test_recursive_workflow_tools_visit_dependencies_without_treating_recursion_
             "edges": [],
         }
     )
+    workflow(sqlite_session, owner, json.loads(published.graph)["nodes"])
     plan = collect(sqlite_session, owner)
     assert not plan.reasons
     assert plan.dependencies == (AppModelDependency(MODEL["provider"], "recursive-model", "llm", "recursive-model"),)

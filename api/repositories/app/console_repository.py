@@ -414,7 +414,7 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
 
         if params.is_created_by_me:
             filters.append(App.created_by == user_id)
-        elif params.accessible_app_ids is not None:
+        if params.accessible_app_ids is not None:
             accessible_filter: ColumnElement[bool] = App.id.in_(params.accessible_app_ids)
             if params.include_own_apps:
                 accessible_filter = sa.or_(App.maintainer == user_id, accessible_filter)

@@ -171,7 +171,7 @@ it.each([AppCard, StarredAppCard])(
       icon_url: null,
       permission_keys: [AppACLPermission.Edit],
       availability: 'unavailable',
-      availability_source: 'published',
+      availability_source: 'draft',
       availability_reasons: [
         {
           type: 'model',
@@ -190,7 +190,7 @@ it.each([AppCard, StarredAppCard])(
     expect(link).not.toContainElement(details)
     await user.click(details)
     const dialog = await screen.findByRole('dialog', { name: 'Repairable App' })
-    expect(within(dialog).getByText('app.studio.availability.published')).toBeInTheDocument()
+    expect(within(dialog).getByText('app.studio.availability.draft')).toBeInTheDocument()
     expect(
       within(dialog).getByText(/example\/provider.*example-model.*llm-node/),
     ).toBeInTheDocument()

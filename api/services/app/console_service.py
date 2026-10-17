@@ -18,6 +18,7 @@ from services.entities.app_entities import (
     AppDeletion,
     AppExportOptions,
     AppFieldChanges,
+    AppListBaseParams,
     AppListParams,
     AppPage,
     AppRecord,
@@ -64,7 +65,7 @@ class InvalidAppAccessModesError(ValueError):
 
 
 class AppPermissions(Protocol):
-    def filter_list(self, params: AppListParams) -> AppListParams: ...
+    def filter_list[Params: AppListBaseParams](self, params: Params) -> Params: ...
 
     def keys_for(self, app_ids: list[str]) -> dict[str, list[str]]: ...
 
@@ -315,8 +316,7 @@ class ConsoleAppService:
 
     def list_apps(self, context: RequestContext, params: AppListParams | StarredAppListParams) -> AppPage:
         permissions = self._access.permissions(context)
-        if isinstance(params, AppListParams):
-            params = permissions.filter_list(params)
+        params = permissions.filter_list(params)
         evaluation = AppAvailabilityService.for_tenant(context.active_workspace_id)
         if params.availability == "all":
             page = self._apps.list_apps(context, params)

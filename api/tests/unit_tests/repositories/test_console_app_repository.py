@@ -3,6 +3,7 @@
 import json
 from collections.abc import Callable
 from dataclasses import asdict
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -16,9 +17,11 @@ from models.agent import Agent, AgentScope, AgentSource, AgentStatus
 from models.enums import CustomizeTokenStrategy
 from models.model import App, AppMode, AppModelConfig, AppStar, IconType, Site
 from models.workflow import Workflow, WorkflowType
+from repositories.app.availability_repository import AppAvailabilityRepository
 from repositories.app.console_repository import ConsoleAppRepository
 from services.app.console_service import ConsoleAppNotFoundError
 from services.entities.app_entities import (
+    AppAvailabilityPlan,
     AppListParams,
     AppRecord,
     AppTraceSettings,
@@ -55,6 +58,34 @@ def persist_app(session: Session, **changes: object) -> App:
 @pytest.fixture
 def repository(sqlite_session_factory: sessionmaker[Session]) -> ConsoleAppRepository:
     return ConsoleAppRepository(session_factory=sqlite_session_factory)
+
+
+@pytest.mark.parametrize("starred", [False, True])
+@pytest.mark.parametrize("created_by_me", [False, True])
+def test_list_collects_dependencies_only_for_authorized_workspace_apps(
+    sqlite_session: Session, repository: ConsoleAppRepository, starred: bool, created_by_me: bool
+) -> None:
+    visible = persist_app(sqlite_session, created_by=ACTOR)
+    hidden = persist_app(sqlite_session, created_by=ACTOR)
+    foreign = persist_app(sqlite_session, tenant_id=str(uuid4()))
+    for owner in (visible, hidden, foreign):
+        sqlite_session.add(AppStar(tenant_id=owner.tenant_id, app_id=owner.id, account_id=ACTOR))
+    sqlite_session.commit()
+    params = (StarredAppListParams if starred else AppListParams)(
+        accessible_app_ids=[visible.id, foreign.id], is_created_by_me=created_by_me
+    )
+    visited: list[str] = []
+    original = AppAvailabilityRepository.collect
+
+    def collect(collector: AppAvailabilityRepository, owner: App) -> AppAvailabilityPlan:
+        visited.append(owner.id)
+        return original(collector, owner)
+
+    with patch.object(AppAvailabilityRepository, "collect", autospec=True, side_effect=collect):
+        page = repository.list_apps(CONTEXT, params)
+    assert page.total == 1
+    assert [record.id for record in page.data] == [visible.id]
+    assert visited == [visible.id]
 
 
 @pytest.mark.parametrize("case", ["visible", "missing", "disabled_api", "disabled_status", "foreign_workspace"])

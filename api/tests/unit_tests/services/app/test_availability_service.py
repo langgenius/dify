@@ -24,7 +24,7 @@ def record(*dependencies: AppModelDependency | AppToolDependency | AppPluginDepe
         id="app",
         name="Example",
         mode_compatible_with_agent="workflow",
-        availability_plan=AppAvailabilityPlan("published", (), dependencies),
+        availability_plan=AppAvailabilityPlan("draft", (), dependencies),
     )
 
 
@@ -42,7 +42,7 @@ def test_model_status_uses_runtime_provider_configuration(status: ModelStatus) -
         result = AppAvailabilityService.for_tenant("tenant").evaluate_many([source])[0]
     assert result.availability == ("available" if status == ModelStatus.ACTIVE else "unavailable")
     assert [r.reason for r in result.availability_reasons] == ([] if status == ModelStatus.ACTIVE else [status.value])
-    assert result.availability_source == "published"
+    assert result.availability_source == "draft"
     assert result.availability_plan is None
     assert source.availability is None
 

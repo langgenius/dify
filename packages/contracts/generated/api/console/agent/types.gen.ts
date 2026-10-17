@@ -604,7 +604,7 @@ export type AgentAppPartial = {
   author_name?: string | null
   availability?: AppAvailabilityStatus | null
   availability_reasons?: Array<AppAvailabilityIssueResponse>
-  availability_source?: 'configuration' | 'draft' | 'published' | null
+  availability_source?: 'configuration' | 'draft' | null
   backing_app_id?: string | null
   bound_agent_id?: string | null
   create_user_name?: string | null
@@ -2375,7 +2375,7 @@ export type AgentAppPartialWritable = {
   author_name?: string | null
   availability?: AppAvailabilityStatus | null
   availability_reasons?: Array<AppAvailabilityIssueResponse>
-  availability_source?: 'configuration' | 'draft' | 'published' | null
+  availability_source?: 'configuration' | 'draft' | null
   backing_app_id?: string | null
   bound_agent_id?: string | null
   create_user_name?: string | null

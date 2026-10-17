@@ -45,7 +45,7 @@ it.each([AppCard, StarredAppCard])(
       author_name: 'Workspace owner',
       updated_at: 1792000000,
       availability: 'unavailable',
-      availability_source: 'published',
+      availability_source: 'draft',
       availability_reasons: Array.from({ length: 30 }, (_, index) => ({
         type: 'model',
         reason: 'disabled',

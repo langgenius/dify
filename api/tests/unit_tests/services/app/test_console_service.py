@@ -49,6 +49,7 @@ from services.entities.app_entities import (
     AppCreationSettings,
     AppDeletion,
     AppExportOptions,
+    AppListBaseParams,
     AppListParams,
     AppPage,
     AppRecord,
@@ -111,7 +112,7 @@ class Apps:
 
 @dataclass
 class Permissions:
-    def filter_list(self, params: AppListParams) -> AppListParams:
+    def filter_list[Params: AppListBaseParams](self, params: Params) -> Params:
         return params.model_copy(update={"accessible_app_ids": ["app"], "include_own_apps": True})
 
     def keys_for(self, app_ids: list[str]) -> dict[str, list[str]]:
@@ -339,7 +340,7 @@ def test_availability_filters_all_candidate_pages_before_pagination(
                 RECORD,
                 id=str(i),
                 availability_plan=AppAvailabilityPlan(
-                    "published",
+                    "draft",
                     (AppAvailabilityIssue(AppAvailabilityIssueType.MODEL, "disabled"),) if i % 2 == 0 else (),
                     (),
                 ),
@@ -384,8 +385,7 @@ def test_availability_filters_all_candidate_pages_before_pagination(
         assert batch.sort_by == "earliest_created"
         assert batch.tag_ids == ["tag"]
         assert batch.creator_ids == ["creator"]
-        if not starred:
-            assert batch.accessible_app_ids == ["app"]
+        assert batch.accessible_app_ids == ["app"]
     assert pages == [1, 2, 3]
     assert params.page == 2
     assert params.availability == status
@@ -453,15 +453,16 @@ def test_availability_remote_resolution_runs_after_repository_connection_is_rele
         event.remove(sqlite_engine, "checkin", checkin)
 
 
-def test_starred_list_preserves_existing_visibility_contract(ports: Ports) -> None:
+def test_starred_list_applies_read_permissions_before_dependency_collection(ports: Ports) -> None:
     service, apps, access, _, _ = ports
     params = StarredAppListParams()
     page = service.list_apps(CONTEXT, params)
     assert page.data[0].permission_keys == ["app.preview"]
     assert access.calls == [("permissions", CONTEXT, None), ("modes", ["app"])]
-    # visibility filtering is still skipped for starred lists
     _, _, listed_params = apps.calls[0]
-    assert listed_params is params
+    assert isinstance(listed_params, StarredAppListParams)
+    assert listed_params.accessible_app_ids == ["app"]
+    assert params.accessible_app_ids is None
 
 
 def test_recent_uses_list_visibility_and_permission_keys(ports: Ports) -> None:

@@ -1458,7 +1458,7 @@ export type AppPartial = {
   author_name?: string | null
   availability?: AppAvailabilityStatus | null
   availability_reasons?: Array<AppAvailabilityIssueResponse>
-  availability_source?: 'configuration' | 'draft' | 'published' | null
+  availability_source?: 'configuration' | 'draft' | null
   bound_agent_id?: string | null
   create_user_name?: string | null
   created_at?: number | null
@@ -4339,7 +4339,7 @@ export type AppPartialWritable = {
   author_name?: string | null
   availability?: AppAvailabilityStatus | null
   availability_reasons?: Array<AppAvailabilityIssueResponse>
-  availability_source?: 'configuration' | 'draft' | 'published' | null
+  availability_source?: 'configuration' | 'draft' | null
   bound_agent_id?: string | null
   create_user_name?: string | null
   created_at?: number | null
