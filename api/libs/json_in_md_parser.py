@@ -8,18 +8,23 @@ def parse_json_markdown(json_string: str):
     json_string = json_string.strip()
     parsed: dict = {}
 
-    # Anchor on the JSON brackets themselves: from the first "{" or "[" to the
-    # last "}" or "]". This works whether or not the JSON is wrapped in code
-    # fences, and - unlike marker-priority search - is not confused by
-    # backticks inside JSON string values or in surrounding prose.
+    # Anchor on the JSON brackets themselves, starting at the first "{" or "[".
+    # This works whether or not the JSON is wrapped in code fences, and - unlike
+    # marker-priority search - is not confused by backticks inside JSON string
+    # values or in surrounding prose.
     start_candidates = [i for i in (json_string.find("{"), json_string.find("[")) if i != -1]
     if start_candidates:
         start_index = min(start_candidates)
         end_index = max(json_string.rfind("}"), json_string.rfind("]"))
         if end_index != -1 and start_index < end_index:
-            end_index += 1
-            extracted_content = json_string[start_index:end_index].strip()
-            return json.loads(extracted_content)
+            # Decode the first complete JSON value starting at that bracket
+            # instead of slicing through to the last bracket in the string.
+            # Models routinely append prose after the JSON, and any "}" or "]"
+            # in that prose - a citation such as "[1]", or "see [docs]" after a
+            # closing fence - would otherwise be taken as the end of the JSON
+            # and leave the slice unparseable.
+            obj, _ = json.JSONDecoder().raw_decode(json_string, start_index)
+            return obj
 
     # Fallback for fenced content without brackets (e.g. a fenced scalar).
     starts = ["```json", "```", "``", "`"]

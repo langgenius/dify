@@ -72,7 +72,7 @@ def test_parse_and_check_json_markdown_success():
     assert obj == {"present": 1, "other": 2}
 
 
-def test_parse_and_check_json_markdown_multiple_blocks_fails():
+def test_parse_and_check_json_markdown_multiple_blocks_returns_the_first():
     src = """
     ```json
     {"a": 1}
@@ -82,10 +82,10 @@ def test_parse_and_check_json_markdown_multiple_blocks_fails():
     {"b": 2}
     ```
     """
-    # The current implementation is greedy and will match from the first
-    # opening fence to the last closing fence, causing JSON decode failure.
-    with pytest.raises(OutputParserError):
-        parse_and_check_json_markdown(src, [])
+    # Extraction stops at the end of the first complete JSON value, so a second
+    # block is trailing content like any other and is ignored. This used to
+    # raise instead, because the slice ran to the last "}" in the string.
+    assert parse_and_check_json_markdown(src, []) == {"a": 1}
 
 
 def test_parse_and_check_json_markdown_handles_think_fenced_and_raw_variants():
@@ -124,3 +124,29 @@ def test_parse_json_markdown_backtick_in_surrounding_prose():
 def test_parse_json_markdown_fenced_scalar_still_supported():
     """Fenced content without brackets still parses via the fence fallback."""
     assert parse_json_markdown('```json\n"hello"\n```') == "hello"
+
+
+def test_parse_json_markdown_ignores_trailing_prose_with_brackets():
+    """Prose after the JSON must not be pulled into the extracted slice.
+
+    Extraction used to run from the first "{"/"[" to the *last* "}"/"]" in the
+    whole string, so a bracket in trailing prose - a citation, or a "see [docs]"
+    after the closing fence - became the end of the JSON and the slice no longer
+    parsed.
+    """
+    assert parse_json_markdown('```json\n{"a": 1}\n```\nSee [docs] for more.') == {"a": 1}
+    assert parse_json_markdown('{"a": 1}\n\nReferences: [1]') == {"a": 1}
+    assert parse_json_markdown('Result: {"a": 1}. Note [1].') == {"a": 1}
+    assert parse_json_markdown('{"k": [1, 2]}\n\nThat is the answer [1].') == {"k": [1, 2]}
+
+
+def test_parse_json_markdown_top_level_list_ignores_trailing_prose():
+    assert parse_json_markdown('[{"a": 1}]\n\nSee [1].') == [{"a": 1}]
+
+
+def test_parse_and_check_json_markdown_accepts_trailing_prose():
+    src = '```json\n{"action": "Final Answer", "action_input": "done"}\n```\nHope that helps [1].'
+    assert parse_and_check_json_markdown(src, ["action", "action_input"]) == {
+        "action": "Final Answer",
+        "action_input": "done",
+    }
