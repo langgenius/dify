@@ -21,6 +21,7 @@ const pendingForm: HumanInputFormData = {
   expiration_time: null,
 }
 const filledForm: HumanInputFilledFormData = {
+  form_id: 'form-1',
   node_id: 'review',
   node_title: 'Completed review',
   rendered_content: 'Approved response',
