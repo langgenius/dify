@@ -1,12 +1,14 @@
 import tempfile
+import threading
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
+from charset_normalizer.models import CharsetMatches
 
-from core.rag.extractor import helpers
 from core.rag.extractor.helpers import detect_file_encodings
+from libs import file_encoding as helpers
 
 
 class TestHelpers:
@@ -57,17 +59,56 @@ class TestHelpers:
         # Assert the language field for full coverage
         assert encodings[0].language is not None
 
+    def test_timeout_returns_before_running_detector_finishes(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        file_path = tmp_path / "sample.txt"
+        file_path.write_bytes(b"sample")
+        entered = threading.Event()
+        release = threading.Event()
+        detector_finished = threading.Event()
+        returned = threading.Event()
+        errors: list[Exception] = []
+
+        def blocked_detector(_sample: bytes) -> CharsetMatches:
+            entered.set()
+            try:
+                release.wait(10)
+                return CharsetMatches()
+            finally:
+                detector_finished.set()
+
+        def detect() -> None:
+            try:
+                detect_file_encodings(str(file_path), timeout=1)
+            except Exception as error:
+                errors.append(error)
+            finally:
+                returned.set()
+
+        monkeypatch.setattr(helpers.charset_normalizer, "from_bytes", blocked_detector)
+        caller = threading.Thread(target=detect)
+        try:
+            caller.start()
+            assert entered.wait(3), "The real executor did not start detection"
+            assert returned.wait(3), "The caller still waits for the detector after its timeout"
+            assert len(errors) == 1
+            assert isinstance(errors[0], TimeoutError)
+            assert "Timeout reached while detecting encoding" in str(errors[0])
+        finally:
+            release.set()
+            caller.join(5)
+            assert detector_finished.wait(5)
+            assert not caller.is_alive()
+
     def test_detect_file_encodings_timeout(self, monkeypatch: pytest.MonkeyPatch):
         class FakeFuture:
             def result(self, timeout=None):
                 raise helpers.concurrent.futures.TimeoutError()
 
         class FakeExecutor:
-            def __enter__(self):
-                return self
-
-            def __exit__(self, exc_type, exc, tb):
-                return False
+            def shutdown(self, wait: bool = True, *, cancel_futures: bool = False) -> None:
+                pass
 
             def submit(self, fn, file_path):
                 return FakeFuture()
