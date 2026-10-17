@@ -77,6 +77,20 @@ def _stored_profile(
         if any(request.context.get(key) != value for key, value in expected.items()):
             raise NativeObservationError()
         profile = NativeRuntimeProfile.model_validate(request.context.get("profile"))
+        from services.dify_builder.native_testing.sandbox.qualification import (
+            PROFILE_ID as CODE_PROFILE_ID,
+        )
+        from services.dify_builder.native_testing.sandbox.qualification import (
+            NativeCodeBindingResolver,
+            current_metadata,
+        )
+
+        code_qualification = None
+        if profile.profile_id == CODE_PROFILE_ID:
+            if type(state.loader.resolver) is not NativeCodeBindingResolver:
+                raise NativeObservationError()
+            code_qualification = state.loader.resolver.qualification
+            code_qualification.validate_profile(profile)
         digest = canonical_digest(list(context.resource_manifest))
         if digest != request.context.get("resource_manifest_digest"):
             raise NativeObservationError()
@@ -84,7 +98,17 @@ def _stored_profile(
             node_id = descriptor.get("node_id")
             if type(node_id) is not str:
                 raise NativeObservationError()
-            _, current, current_digest = _current_metadata(session=session, owned=owned, node_id=node_id)
+            if code_qualification is None:
+                _, current, current_digest = _current_metadata(
+                    session=session, owned=owned, node_id=node_id
+                )
+            else:
+                _, current, current_digest = current_metadata(
+                    session=session,
+                    owned=owned,
+                    node_id=node_id,
+                    qualification=code_qualification,
+                )
             if current_digest != digest or canonical_digest(current) != canonical_digest(descriptor):
                 raise NativeObservationError()
         return profile, (canonical_digest(request.context), local.context_object_id)
@@ -106,7 +130,19 @@ def create_http_observation_guard(
         state.loader.load(ref=supplied.ref)
         actual = state.load_context(ref=supplied.ref)
         profile, stamp = _stored_profile(state, actual)
-        policy = NativeHttpObservationPolicy.qualify(context=supplied, profile=profile)
+        from services.dify_builder.native_testing.sandbox.qualification import (
+            NativeCodeBindingResolver,
+        )
+
+        resolver = state.loader.resolver
+        options = (
+            {"code_qualification": resolver.qualification}
+            if type(resolver) is NativeCodeBindingResolver
+            else {}
+        )
+        policy = NativeHttpObservationPolicy.qualify(
+            context=supplied, profile=profile, **options
+        )
         if canonical_digest(actual.model_dump(mode="json")) != canonical_digest(supplied.model_dump(mode="json")):
             raise NativeObservationError()
         current = state.load_context(ref=supplied.ref)

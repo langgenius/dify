@@ -641,3 +641,18 @@ def test_preclaim_cancel_refuses_uncertain_history_without_calling_physical_veri
     assert result.status == "cancelling"
     assert not case.state.cleanup_complete
     assert "verify" not in case.events
+
+
+def test_code_cleanup_sql_check_precedes_consume_and_rechecks_inside_writer(case):
+    from services.dify_builder.native_testing.host_capacity import NativeHostCapacity
+    class CodeCleanup:
+        def validate_cleanup_rows(self, **kwargs):
+            assert kwargs["session"] is case.session
+            case.events.append("code_rows")
+    owner = NativeHostCapacity(case.lifecycle, cleanup_verifier=OnceVerifier(case.events), code_cleanup=CodeCleanup())
+    assert owner.claim_dispatch(ref=case.ref, generation=0, dispatch_id="dispatch")
+    case.events.clear()
+    owner.record_cleanup(ref=case.ref, generation=0, dispatch_id="dispatch")
+    assert [event for event in case.events if event in ("code_rows", "verify", "request")] == [
+        "code_rows", "verify", "request", "code_rows"]
+    assert case.state.cleanup_complete

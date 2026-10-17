@@ -398,3 +398,53 @@ def test_initial_current_profile_keeps_owner_active_and_descriptor_guards(case, 
     else:
         c.context = c.context.model_copy(update={"resource_manifest": ({"node_id": "invented"},)})
     _refuses(c)
+
+
+def test_code_stored_profile_requires_current_exact_qualification_owner(case):
+    from services.dify_builder.native_testing.sandbox.qualification import (
+        NativeCodeBindingResolver,
+        describe_code_resource,
+    )
+    from tests.unit_tests.services.dify_builder.native_testing.test_code_qualification import (
+        qualification,
+        raw_code,
+    )
+
+    c = case
+    q, _ = qualification()
+    graph = deepcopy(c.context.graph)
+    target = next(n for n in graph["nodes"] if n["data"]["type"] == "http-request")
+    target["data"] = raw_code()
+    c.workflow.graph = json.dumps(graph)
+    revision = native_workflow_revision(c.workflow)
+    descriptor = describe_code_resource(
+        qualification=q,
+        node_id=target["id"],
+        raw=target["data"],
+        workflow_revision=revision,
+        app_id=c.workflow.app_id,
+        workflow_id=c.workflow.id,
+    )
+    c.context = c.context.model_copy(
+        update={
+            "graph": graph,
+            "graph_revision": revision,
+            "resource_manifest": (descriptor,),
+        }
+    )
+    c.request.context = {
+        **c.request.context,
+        "execution_revision": revision,
+        "profile": q.profile().model_dump(mode="json"),
+        "resource_manifest_digest": canonical_digest([descriptor]),
+    }
+    c.rebind()
+    # A stored profile/digest alone cannot select Code.
+    _refuses(c)
+    c.loader.resolver = NativeCodeBindingResolver(qualification=q)
+    guard = owner()(state=c.store, context=c.context, on_failure=lambda: None)
+    assert "CANARY" not in json.dumps(guard.graph(graph))
+    q.owner.validate = lambda **kw: (_ for _ in ()).throw(
+        ValueError("revoked private reason")
+    )
+    _refuses(c)

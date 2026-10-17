@@ -2229,3 +2229,20 @@ def test_get_cancel_interleaving_refreshes_orm_state_and_projects_one_cancellati
     assert len(c.published) == 1
     fresh = c.api.get(actor=c.actor, session_id="session", request_id=ref.request_id)
     assert fresh == public
+
+
+def test_code_capability_requires_explicit_trusted_owner_and_default_stays_http():
+    from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
+    from services.dify_builder.native_testing.runtime import DifyNativeRuntimeOwner
+    from tests.unit_tests.services.dify_builder.native_testing.test_code_qualification import (
+        capability,
+        qualification,
+    )
+
+    ordinary = DifyNativeRuntimeOwner()
+    assert ordinary.code_qualification is None
+    with pytest.raises(BuilderExecutionPolicyError):
+        DifyNativeRuntimeOwner(code_capability=capability())
+    q, _ = qualification()
+    explicit = DifyNativeRuntimeOwner(code_capability=q)
+    assert explicit.code_qualification is q

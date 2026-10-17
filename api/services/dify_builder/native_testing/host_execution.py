@@ -8,6 +8,13 @@ to the exact retained C03 bridge; native observation callbacks never commit it.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from services.dify_builder.native_testing.sandbox.qualification import (
+        NativeCodeBindingProducer,
+    )
+
 from collections.abc import Callable, Generator
 from contextlib import AbstractContextManager, contextmanager
 from dataclasses import dataclass
@@ -18,11 +25,13 @@ from typing import Literal, Protocol, cast, override
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
-from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
-from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
+from core.repositories.sqlalchemy_workflow_execution_repository import (
+    SQLAlchemyWorkflowExecutionRepository,
+)
+from core.repositories.sqlalchemy_workflow_node_execution_repository import (
+    SQLAlchemyWorkflowNodeExecutionRepository,
+)
 from core.workflow.workflow_entry import WorkflowEntry
-from libs.sensitive_http_telemetry import SensitiveThreadLogLease
-
 from graphon.filters import ResponseStreamFilter
 from graphon.graph_engine.command_channels import CommandChannel
 from graphon.graph_engine.entities.commands import GraphEngineCommand
@@ -40,8 +49,15 @@ from graphon.nodes.base.node import Node
 from graphon.nodes.iteration.iteration_node import IterationNode
 from graphon.nodes.loop.loop_node import LoopNode
 from graphon.runtime.graph_runtime_state import GraphRuntimeState
-from services.dify_builder.native_testing.call_adapter import NativeCallAdapter, ScalarAuthorizationPort
-from services.dify_builder.native_testing.checkpoint_bridge import NativeCheckpointBridge
+from libs.sensitive_http_telemetry import SensitiveThreadLogLease
+
+from services.dify_builder.native_testing.call_adapter import (
+    NativeCallAdapter,
+    ScalarAuthorizationPort,
+)
+from services.dify_builder.native_testing.checkpoint_bridge import (
+    NativeCheckpointBridge,
+)
 from services.dify_builder.native_testing.contracts import (
     ApprovalWait,
     DispatchPermit,
@@ -60,18 +76,33 @@ from services.dify_builder.native_testing.control import (
     NativeControlRefused,
     NativePolicyStop,
 )
-from services.dify_builder.native_testing.host_lifetime import CloseReason, NativeHostCallTicket, NativeHostLifetime
-from services.dify_builder.native_testing.http_adapter import PreparedHttpBinding, PreparedHttpRequest
+from services.dify_builder.native_testing.host_lifetime import (
+    CloseReason,
+    NativeHostCallTicket,
+    NativeHostLifetime,
+)
+from services.dify_builder.native_testing.http_adapter import (
+    PreparedHttpBinding,
+    PreparedHttpRequest,
+)
 from services.dify_builder.native_testing.http_binding import NativeHttpBindingProducer
-from services.dify_builder.native_testing.observation_adapters import NativeObservationError, NativeObservationGuard
-from services.dify_builder.native_testing.operation_journal import JournalAuthorizationPort, NodeOperationJournal
+from services.dify_builder.native_testing.observation_adapters import (
+    NativeObservationError,
+    NativeObservationGuard,
+)
+from services.dify_builder.native_testing.operation_journal import (
+    JournalAuthorizationPort,
+    NodeOperationJournal,
+)
 from services.dify_builder.native_testing.runtime_contracts import (
     NativeCheckpointPayload,
     NativeStatePort,
     ResolvedNativeTestContext,
 )
-
-from services.dify_builder.native_testing.stop_settlement import NativeEvidenceReadGate, NativeStopSettlement
+from services.dify_builder.native_testing.stop_settlement import (
+    NativeEvidenceReadGate,
+    NativeStopSettlement,
+)
 
 HttpTimeout = tuple[float | int, ...]
 
@@ -306,6 +337,7 @@ class NativeHostLaunch:
         self._deadline: float | None = None
         self._prepared: dict[str, HttpTimeout] = {}
         self._active_http: dict[NativeHostCallTicket, HttpTimeout] = {}
+        self._active_code: dict[NativeHostCallTicket, float] = {}
         self._runtimes: list[GraphRuntimeState] = []
         self._controls_seen: list[NativeControlRecord] = []
         self._calls: list[HostBoundScalarCalls] = []
@@ -317,7 +349,9 @@ class NativeHostLaunch:
         self._physical_phases: list[_HookScope] = []
         self._engine_bindings: NativeHostEngineBindings | None = None
         self._layer: _HostObservationLayer | None = _HostObservationLayer(self)
-        self._producers: list[NativeHttpBindingProducer] = []
+        self._producers: list[
+            NativeHttpBindingProducer | NativeCodeBindingProducer
+        ] = []
         self._release: Callable[[], None] | None = None
         self._retired = False
         self._root_started = False
@@ -758,16 +792,24 @@ class NativeHostLaunch:
         return receipt
 
     @property
-    def proposal_producers(self) -> tuple[NativeHttpBindingProducer, ...]:
+    def proposal_producers(
+        self,
+    ) -> tuple[NativeHttpBindingProducer | NativeCodeBindingProducer, ...]:
         with self._registration:
             self._require_live()
             return tuple(self._producers)
 
-    def register_proposals(self, *, producer: NativeHttpBindingProducer) -> None:
+    def register_proposals(
+        self, *, producer: NativeHttpBindingProducer | NativeCodeBindingProducer
+    ) -> None:
+        from services.dify_builder.native_testing.sandbox.qualification import (
+            NativeCodeBindingProducer,
+        )
+
         # Creation-site structural retention only. The later stream owner calls
         # each real approval_proposals() after quiescence, outside these locks.
         if (
-            type(producer) is not NativeHttpBindingProducer
+            type(producer) not in (NativeHttpBindingProducer, NativeCodeBindingProducer)
             or producer.association.ref != self.lifetime.ref
             or producer.journal is not self._journal
         ):
@@ -972,15 +1014,22 @@ class NativeHostLaunch:
         from decimal import Decimal
 
         from core.app.entities import queue_entities as queue
-
         from graphon.enums import WorkflowNodeExecutionMetadataKey as Metadata
         from graphon.graph_events import (
             NodeRunIterationSucceededEvent,
             NodeRunLoopSucceededEvent,
             NodeRunSucceededEvent,
         )
-        from services.dify_builder.native_testing.http_binding import build_native_http_profile
-        from services.dify_builder.native_testing.observation_privacy import NativeHttpObservationPolicy
+
+        from services.dify_builder.native_testing.observation_owner import (
+            _stored_profile,
+        )
+        from services.dify_builder.native_testing.observation_privacy import (
+            NativeHttpObservationPolicy,
+        )
+        from services.dify_builder.native_testing.sandbox.qualification import (
+            NativeCodeBindingResolver,
+        )
 
         result = getattr(event, "node_run_result", None)
         metadata = getattr(event, "metadata", None)
@@ -993,7 +1042,25 @@ class NativeHostLaunch:
         with guard.persistence_scope():
             engine = self.engine_bindings
             context = self.lifetime.context
-            NativeHttpObservationPolicy.qualify(context=context, profile=build_native_http_profile())
+            if self._journal is None:
+                raise ValueError("native_journal_unavailable")
+            state = self._journal._state
+            from services.dify_builder.native_testing.state_store import (
+                NativeExecutionStateStore,
+            )
+
+            if type(state) is not NativeExecutionStateStore:
+                raise ValueError("native_state_unavailable")
+            profile, _ = _stored_profile(state, context)
+            resolver = state.loader.resolver
+            options = (
+                {"code_qualification": resolver.qualification}
+                if type(resolver) is NativeCodeBindingResolver
+                else {}
+            )
+            NativeHttpObservationPolicy.qualify(
+                context=context, profile=profile, **options
+            )
             native_types = (NodeRunIterationSucceededEvent, NodeRunLoopSucceededEvent, NodeRunSucceededEvent)
             queue_types = (
                 queue.QueueIterationCompletedEvent,
@@ -1237,7 +1304,8 @@ class NativeHostLaunch:
     def _candidate_deadline(self) -> float:
         if self._deadline is not None:
             return self._deadline
-        allowance = max((sum(self._baseline), *(sum(item) for item in self._active_http.values())))
+        allowance = max((sum(self._baseline), *(sum(item) for item in self._active_http.values()),
+                         *self._active_code.values()))
         return monotonic() + allowance
 
     def confirm_never_started(self) -> None:
@@ -1417,3 +1485,57 @@ class HostBoundScalarCalls:
                     host._admission.release()
                 with host._registration:
                     host._active_http.pop(ticket)
+
+
+class HostBoundCodeCalls:
+    """Explicit Code-only C02 wrapper; no profile or production caller is installed.
+
+    The caller obtains its exact active ticket only inside the claimed callback.
+    This allows the Code owner to register physical ownership before reservation.
+    """
+
+    def __init__(self, *, host: NativeHostLaunch, adapter: NativeCallAdapter, allowance: float):
+        if type(allowance) not in (float, int) or not isfinite(allowance) or allowance <= 0:
+            raise ValueError("native_code_budget_invalid")
+        self._host, self._adapter, self._allowance = host, adapter, allowance
+        self._callback = None
+
+    def ticket(self, *, permit: DispatchPermit) -> NativeHostCallTicket:
+        current = self._callback
+        if current is None or current[0] is not permit or current[2] is not current_thread():
+            raise ValueError("native_code_claimed_callback_required")
+        return current[1]
+
+    def call(self, *, ref: NativeTestContextRef, intent: EffectIntent,
+             dispatch: Callable[[DispatchPermit], JsonValue]) -> JsonValue:
+        host = self._host
+        if ref != host.lifetime.ref or intent.kind != "code" or self._callback is not None:
+            raise NativePolicyStop(ref=ref, reason_code="native_host_capability_unqualified")
+        with host.lifetime.call_scope() as ticket:
+            with host._registration:
+                host._active_code[ticket] = self._allowance
+            held = False
+            def owned_dispatch(permit):
+                nonlocal held
+                try:
+                    with ticket.callback_scope():
+                        if not host.boundary_owner.dispatch_admissible:
+                            raise ValueError("native_host_callback_controlled")
+                        self._callback = (permit, ticket, current_thread())
+                        host._admission.release()
+                        held = False
+                        return dispatch(permit)
+                finally:
+                    self._callback = None
+                    if held:
+                        host._admission.release()
+                        held = False
+            try:
+                host._admission.acquire()
+                held = True
+                return self._adapter.call(ref=ref, intent=intent, dispatch=owned_dispatch)
+            finally:
+                if held:
+                    host._admission.release()
+                with host._registration:
+                    host._active_code.pop(ticket)

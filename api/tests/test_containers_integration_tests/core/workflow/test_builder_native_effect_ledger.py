@@ -186,6 +186,7 @@ def migrated_native_tables(flask_app_with_containers):
         # Imported module fixtures rerun after later migrations have installed
         # triggers. Remove their dependent tables before resetting the functions.
         for table in (
+            "code_physical_operations",  # Child FKs precede the native ledger reset.
             "effect_dispatch_claims",
             "payload_objects",
             "invocation_states",

@@ -41,12 +41,15 @@ class NativeHostCleanupVerifier(Protocol):
 
 
 class NativeHostCapacity:
-    def __init__(self, lifecycle: NativeTestLifecycleService, *, cleanup_verifier: NativeHostCleanupVerifier):
+    def __init__(self, lifecycle: NativeTestLifecycleService, *, cleanup_verifier: NativeHostCleanupVerifier,
+                 code_cleanup=None):
         if cleanup_verifier is None or not callable(getattr(cleanup_verifier, "consume_cleanup", None)):
             raise BuilderExecutionPolicyError("native_cleanup_verifier_required")
         if lifecycle._capacity is not None:
             raise BuilderExecutionPolicyError("native_capacity_already_bound")
         self.lifecycle, self.loader, self._verifier = lifecycle, lifecycle.loader, cleanup_verifier
+        # Absent for the existing HTTP-only runtime: do not query Code storage.
+        self._code_cleanup = code_cleanup
         self._used = False
         lifecycle._capacity = self
 
@@ -156,6 +159,9 @@ class NativeHostCapacity:
             state = invocation_state(session, ref, owned.tenant_id)
             selected = self._latest_acquired(session, ref, owned.tenant_id)
             self._validate_cleanup(state, selected, generation, dispatch_id)
+            if self._code_cleanup is not None:
+                self._code_cleanup.validate_cleanup_rows(session=session, ref=ref, tenant_id=owned.tenant_id,
+                                                         dispatch_id=dispatch_id, generation=generation)
         # This verifier is immutable and bound to ONE actual physical lifetime,
         # never a registry lookup that selects a newer lifetime by these IDs.
         if self._verifier.consume_cleanup(ref=ref, generation=generation, dispatch_id=dispatch_id) is not None:
@@ -164,6 +170,9 @@ class NativeHostCapacity:
             state = invocation_state(session, ref, owned.tenant_id)
             selected = self._latest_acquired(session, ref, owned.tenant_id)
             self._validate_cleanup(state, selected, generation, dispatch_id)
+            if self._code_cleanup is not None:
+                self._code_cleanup.validate_cleanup_rows(session=session, ref=ref, tenant_id=owned.tenant_id,
+                                                         dispatch_id=dispatch_id, generation=generation)
             for current in self.lifecycle._subtree(session, ref, owned.tenant_id):
                 current.cleanup_complete = True
 

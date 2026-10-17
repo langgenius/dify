@@ -794,3 +794,114 @@ def test_attach_rejects_foreign_control_composition_with_same_native_class_and_r
     with pytest.raises(NativeContextUnavailable, match="native_node_mismatch"):
         prepared.attach(other)
     cast(Mock, bridge.state).load_context.assert_not_called()
+
+
+@pytest.mark.parametrize("kind", ["code", "template-transform"])
+def test_code_delivery_composes_actual_native_protocol_without_eager_payload(kind):
+    from typing import Any
+
+    from graphon.nodes.code.code_node import CodeNode
+    from graphon.nodes.code.entities import CodeNodeData
+    from graphon.nodes.template_transform.entities import TemplateTransformNodeData
+    from graphon.nodes.template_transform.template_transform_node import (
+        TemplateTransformNode,
+    )
+    from graphon.runtime import VariablePool
+    from services.dify_builder.native_testing.runtime import build_delivery_bridge
+    from services.dify_builder.native_testing.sandbox.executor import NativeCodeExecutor
+    from tests.unit_tests.services.dify_builder.native_testing.test_code_host import (
+        code_case,
+    )
+    from tests.unit_tests.services.dify_builder.native_testing.test_code_qualification import (
+        qualification,
+        raw_code,
+    )
+
+    case = code_case()
+    q, _ = qualification()
+    store = Mock()
+    store.load_context.side_effect = AssertionError("eager protected input")
+    runtime = SimpleNamespace(
+        host=case.host,
+        lifecycle=SimpleNamespace(loader=object(), store=store),
+        code_qualification=q,
+        _journal=case.journal,
+        authorization=case.authorization,
+        code_owner=object(),
+    )
+    bridge = build_delivery_bridge(runtime=cast(Any, runtime))
+    state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0)
+    cls = CodeNode if kind == "code" else TemplateTransformNode
+    data = (
+        CodeNodeData.model_validate(raw_code())
+        if kind == "code"
+        else TemplateTransformNodeData.model_validate(
+            {
+                "type": kind,
+                "title": "private",
+                "template": "{{ secret }}",
+                "variables": [],
+            }
+        )
+    )
+    prepared = bridge.prepare_node(
+        ref=case.state.context.ref,
+        node_id="code",
+        node_data=data,
+        node_class=cls,
+        runtime_state=state,
+    )
+    args = prepared.arguments
+    executor = (
+        args["code_executor"]
+        if kind == "code"
+        else args["jinja2_template_renderer"]._executor
+    )
+    assert type(executor) is NativeCodeExecutor
+    assert (
+        executor.owner is runtime.code_owner
+        and executor.producer.association is prepared
+    )
+    assert executor.calls._host is case.host
+    assert (
+        args["code_limits"].max_string_length > 0
+        if kind == "code"
+        else args["max_output_length"] > 0
+    )
+    store.load_context.assert_not_called()
+
+
+def test_default_delivery_refuses_code_before_protected_payload():
+    from typing import Any
+
+    from graphon.nodes.code.code_node import CodeNode
+    from graphon.nodes.code.entities import CodeNodeData
+    from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
+    from services.dify_builder.native_testing.runtime import build_delivery_bridge
+    from tests.unit_tests.services.dify_builder.native_testing.test_code_host import (
+        code_case,
+    )
+    from tests.unit_tests.services.dify_builder.native_testing.test_code_qualification import (
+        raw_code,
+    )
+
+    case = code_case()
+    store = Mock()
+    store.load_context.side_effect = AssertionError("unqualified payload read")
+    runtime = SimpleNamespace(
+        host=case.host,
+        lifecycle=SimpleNamespace(loader=object(), store=store),
+        code_qualification=None,
+    )
+    bridge = build_delivery_bridge(runtime=cast(Any, runtime))
+    with pytest.raises(
+        BuilderExecutionPolicyError, match="native_capability_unavailable"
+    ):
+        bridge.prepare_node(
+            ref=case.state.context.ref,
+            node_id="code",
+            node_data=CodeNodeData.model_validate(raw_code()),
+            node_class=CodeNode,
+            runtime_state=object(),
+        )
+    store.load_context.assert_not_called()

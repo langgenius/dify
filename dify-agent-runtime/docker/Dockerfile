@@ -64,6 +64,15 @@ RUN apt-get update \
 
 RUN python -m pip install --no-cache-dir "uv==${UV_VERSION}"
 
+# Locked build inputs only; unsupported wheel/interpreter profiles fail closed.
+# The content receipt is evidence for independent OCI/scope qualification, not admission.
+COPY docker/native-code-python.requirements.txt /usr/share/dify-native/
+COPY docker/native-code-environment.py /usr/share/dify-native/
+RUN python -m pip install --require-hashes --only-binary=:all: --no-compile \
+        -r /usr/share/dify-native/native-code-python.requirements.txt \
+    && python -I -B /usr/share/dify-native/native-code-environment.py \
+        > /usr/share/dify-native/native-code-environment.json
+
 # Reviewed deployment profiles are shipped with the same runtime artifact.
 # The container/systemd owner must enforce them explicitly; copying is not activation.
 COPY docker/native-test-seccomp.json docker/native-test-apparmor.profile docker/native-test-supervisor.service docker/native-test-start.sh /usr/share/dify-native/

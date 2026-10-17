@@ -33,6 +33,37 @@ if TYPE_CHECKING:
     from services.dify_builder.native_testing.host_lifetime import NativeHostLifetimeRegistry
 
 
+def _profile_matches(raw, qualification):
+    from services.dify_builder.native_testing.context_binding import (
+        NativeRuntimeProfile,
+    )
+    from services.dify_builder.native_testing.sandbox.qualification import (
+        NativeCodeQualification,
+    )
+
+    if raw == build_native_http_profile().model_dump(mode="json"):
+        return True
+    if type(qualification) is not NativeCodeQualification:
+        return False
+    qualification.validate_profile(NativeRuntimeProfile.model_validate(raw))
+    return True
+
+
+def _profile_resolver(raw, qualification):
+    from services.dify_builder.native_testing.http_binding import (
+        NativeHttpBindingResolver,
+    )
+    from services.dify_builder.native_testing.sandbox.qualification import (
+        NativeCodeBindingResolver,
+    )
+
+    if raw == build_native_http_profile().model_dump(mode="json"):
+        return NativeHttpBindingResolver()
+    if not _profile_matches(raw, qualification):
+        raise BuilderExecutionPolicyError("native_code_qualification_unavailable")
+    return NativeCodeBindingResolver(qualification=qualification)
+
+
 class DifyNativeResumeSettlement:
     """Bounded SQL-only check in C03's existing resume writer.
 
@@ -40,6 +71,10 @@ class DifyNativeResumeSettlement:
     finalization. Neither the wait nor an absent process handle proves those
     acknowledgements. Inspect the source local generation, not scope generation.
     """
+
+    def __init__(self, *, code_qualification=None):
+        # Existing HTTP callers have no Code qualification owner.
+        self.code_qualification = code_qualification
 
     def validate(self, *, session, owned, state, checkpoint: CheckpointRef) -> None:
         dispatches = session.scalars(
@@ -68,7 +103,9 @@ class DifyNativeResumeSettlement:
         )
         if (
             request is None
-            or request.context.get("profile") != build_native_http_profile().model_dump(mode="json")
+            or not _profile_matches(
+                request.context.get("profile"), self.code_qualification
+            )
             or canonical_digest(request.context) != owned.ref.context_digest
             or saved is None
             or payload is None
@@ -162,7 +199,8 @@ def restore_claimed_host(*, host: NativeHostLaunch, lifecycle: NativeTestLifecyc
 class DifyNativeRuntime:
     """One actual acquisition, built inactive before C03 claims its delivery."""
 
-    def __init__(self, *, delivery: NativeDispatchRef, lifecycle, registry: NativeHostLifetimeRegistry):
+    def __init__(self, *, delivery: NativeDispatchRef, lifecycle, registry: NativeHostLifetimeRegistry,
+                 code_owner_factory=None):
         from services.dify_builder.native_testing.authorization import EffectAuthorizationService
         from services.dify_builder.native_testing.checkpoint_bridge import NativeCheckpointBridge
         from services.dify_builder.native_testing.host_capacity import NativeHostCapacity
@@ -203,7 +241,38 @@ class DifyNativeRuntime:
             http_baseline=(timeout.connect, timeout.read, timeout.write),
         )
         self.host.bind_cancellation_fence(fence=DifyNativeCancellationFence(lifecycle=lifecycle, delivery=delivery))
-        self.capacity = NativeHostCapacity(lifecycle, cleanup_verifier=lifetime)
+        # Existing API delivery remains HTTP-profile-bound. No caller installs
+        # Code; its table is queried only for an explicitly composed owner.
+        from services.dify_builder.native_testing.sandbox.qualification import (
+            NativeCodeBindingResolver,
+        )
+
+        self.code_qualification = (
+            lifecycle.loader.resolver.qualification
+            if type(lifecycle.loader.resolver) is NativeCodeBindingResolver
+            else None
+        )
+        if self.code_qualification is not None:
+            from services.dify_builder.native_testing.sandbox.host import (
+                NativeCodeHostOwner,
+            )
+
+            self.code_qualification.check()
+            if code_owner_factory is not None:
+                raise BuilderExecutionPolicyError(
+                    "native_code_host_composition_mismatch"
+                )
+            code_owner_factory = NativeCodeHostOwner
+        self.code_owner = None
+        if code_owner_factory is not None:
+            from services.dify_builder.native_testing.sandbox.host import (
+                NativeCodeHostOwner,
+            )
+
+            self.code_owner = code_owner_factory(host=self.host, loader=lifecycle.loader)
+            if type(self.code_owner) is not NativeCodeHostOwner or self.code_owner.host is not self.host:
+                raise BuilderExecutionPolicyError("native_code_host_composition_mismatch")
+        self.capacity = NativeHostCapacity(lifecycle, cleanup_verifier=lifetime, code_cleanup=self.code_owner)
         self._journal, self._checkpoints = journal, checkpoints
         self.host.bind_observation()
         self._started = False
@@ -316,6 +385,64 @@ def build_delivery_bridge(*, runtime: DifyNativeRuntime):
     denied = _UnavailableCollaborator()
 
     def collaborators(*, association):
+        from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
+        from graphon.nodes.code.code_node import CodeNode
+        from graphon.nodes.template_transform.template_transform_node import (
+            TemplateTransformNode,
+        )
+
+        from services.dify_builder.native_testing.call_adapter import NativeCallAdapter
+        from services.dify_builder.native_testing.host_execution import (
+            HostBoundCodeCalls,
+        )
+        from services.dify_builder.native_testing.sandbox.executor import (
+            NativeCodeExecutor,
+        )
+        from services.dify_builder.native_testing.sandbox.qualification import (
+            BOUNDS,
+            NativeCodeBindingProducer,
+        )
+
+        if runtime.code_qualification is not None and issubclass(
+            association.node_class, (CodeNode, TemplateTransformNode)
+        ):
+            producer = NativeCodeBindingProducer(
+                association=association,
+                loader=lifecycle.loader,
+                state_store=lifecycle.store,
+                journal=runtime._journal,
+                qualification=runtime.code_qualification,
+            )
+            calls = HostBoundCodeCalls(
+                host=host,
+                adapter=NativeCallAdapter(
+                    state=lifecycle.store,
+                    authorization=runtime.authorization,
+                    journal=runtime._journal,
+                    max_result_bytes=BOUNDS["result_bytes"],
+                ),
+                allowance=26,
+            )
+            executor = NativeCodeExecutor(
+                producer=producer,
+                calls=calls,
+                owner=runtime.code_owner,
+                on_prepared=lambda: host.register_proposals(producer=producer),
+            )
+            return NativeCollaborators(
+                denied,
+                denied,
+                denied,
+                denied,
+                denied,
+                executor,
+                CodeExecutorJinja2TemplateRenderer(executor=executor),
+                denied,
+                denied,
+                denied,
+            )
+        if runtime.code_qualification is not None:
+            return NativeCollaborators(*(denied for _ in range(10)))
         if not issubclass(association.node_class, HttpRequestNode):
             return NativeCollaborators(*(denied for _ in range(10)))
         producer = NativeHttpBindingProducer(
@@ -338,7 +465,30 @@ def build_delivery_bridge(*, runtime: DifyNativeRuntime):
         return NativeCollaborators(client, *(denied for _ in range(9)))
 
     def arguments(*, node_id, node_data, node_class, collaborators):
+        from graphon.nodes.code.code_node import CodeNode
+        from graphon.nodes.template_transform.template_transform_node import (
+            TemplateTransformNode,
+        )
+
+        from services.dify_builder.native_testing.sandbox.qualification import (
+            code_limits,
+            template_limit,
+        )
+
         kind = node_data.type
+        if runtime.code_qualification is not None:
+            if kind == "code" and node_class is CodeNode:
+                return {
+                    "code_executor": collaborators.code,
+                    "code_limits": code_limits(),
+                }
+            if kind == "template-transform" and node_class is TemplateTransformNode:
+                return {
+                    "jinja2_template_renderer": collaborators.jinja,
+                    "max_output_length": template_limit(),
+                }
+            if kind == "http-request":
+                raise BuilderExecutionPolicyError("native_capability_unavailable")
         if kind == "http-request" and node_class is HttpRequestNode:
             files = RefusingNativeHttpFiles()
             return {
@@ -397,15 +547,29 @@ class DifyNativeCancellationSettlement:
 class DifyNativeRuntimeOwner:
     """Bounded application-scoped current acquisitions, never cleanup by ID alone."""
 
-    def __init__(self):
+    def __init__(self, *, code_capability=None):
+        from services.dify_builder.native_testing.sandbox.qualification import (
+            NativeCodeQualification,
+        )
+
+        if code_capability is not None:
+            if type(code_capability) is not NativeCodeQualification:
+                raise BuilderExecutionPolicyError(
+                    "native_code_qualification_unavailable"
+                )
+            code_capability.check()
+        self.code_qualification = code_capability
         self._lock = RLock()
         self._requests = {}
         self._current = {}
 
     def delivery(self, *, sessions, delivery: NativeDispatchRef, actor_hint: Actor | None = None):
-        from services.dify_builder.native_testing.api_service import NativeTestApiService
-        from services.dify_builder.native_testing.host_lifetime import NativeHostLifetimeRegistry
-        from services.dify_builder.native_testing.http_binding import NativeHttpBindingResolver
+        from services.dify_builder.native_testing.api_service import (
+            NativeTestApiService,
+        )
+        from services.dify_builder.native_testing.host_lifetime import (
+            NativeHostLifetimeRegistry,
+        )
 
         with sessions() as session:
             request = session.scalar(
@@ -417,19 +581,22 @@ class DifyNativeRuntimeOwner:
             if request is None:
                 raise BuilderExecutionPolicyError("native_owner_mismatch")
             actor = Actor(account_id=request.actor_id, tenant_id=request.tenant_id)
+            profile_data = request.context.get("profile")
         if actor_hint is not None and actor_hint != actor:
             raise BuilderExecutionPolicyError("native_owner_mismatch")
         service = NativeTestApiService(
             session_factory=sessions,
             actor=actor,
-            resolver=NativeHttpBindingResolver(),
+            resolver=_profile_resolver(profile_data, self.code_qualification),
             admission=None,
             resolution=None,
             runtime=self,
             disclosure=None,
         )
         lifecycle = service.lifecycle
-        lifecycle.resume_settlement = DifyNativeResumeSettlement()
+        lifecycle.resume_settlement = DifyNativeResumeSettlement(
+            code_qualification=self.code_qualification
+        )
         lifecycle.cancellation_settlement = DifyNativeCancellationSettlement(lifecycle=lifecycle)
         # The persisted full chain is checked even for a harmless late duplicate.
         # Settlement reads can inspect a sealed source; they grant no new IO.
@@ -628,35 +795,65 @@ class DifyNativeInitialLaunch:
 
 
 def build_native_api(*, sessions, actor, owner: DifyNativeRuntimeOwner, publish):
-    from services.dify_builder.native_testing.api_service import NativeAdmissionDependencies, NativeTestApiService
-    from services.dify_builder.native_testing.context_binding import NativeAdmissionCompiler
+    from services.dify_builder.native_testing.api_service import (
+        NativeAdmissionDependencies,
+        NativeTestApiService,
+    )
+    from services.dify_builder.native_testing.context_binding import (
+        NativeAdmissionCompiler,
+    )
     from services.dify_builder.native_testing.http_binding import (
-        NativeHttpBindingResolver,
         NativeHttpDisclosure,
         NativeHttpResourceSnapshot,
     )
 
     if type(owner) is not DifyNativeRuntimeOwner:
         raise BuilderExecutionPolicyError("native_runtime_composition_mismatch")
+    qualification = owner.code_qualification
+    profile = (
+        build_native_http_profile()
+        if qualification is None
+        else qualification.profile()
+    )
     service = NativeTestApiService(
         session_factory=sessions,
         actor=actor,
-        resolver=NativeHttpBindingResolver(),
+        resolver=_profile_resolver(profile.model_dump(mode="json"), qualification),
         admission=None,
         resolution=None,
         runtime=owner,
         disclosure=None,
     )
-    service.lifecycle.resume_settlement = DifyNativeResumeSettlement()
+    service.lifecycle.resume_settlement = DifyNativeResumeSettlement(
+        code_qualification=qualification
+    )
     service.lifecycle.cancellation_settlement = DifyNativeCancellationSettlement(lifecycle=service.lifecycle)
+    from services.dify_builder.native_testing.sandbox.qualification import (
+        NativeCodeDisclosure,
+        NativeCodeResourceSnapshot,
+    )
+
+    resources = (
+        NativeHttpResourceSnapshot(session_factory=sessions)
+        if qualification is None
+        else NativeCodeResourceSnapshot(
+            session_factory=sessions, qualification=qualification
+        )
+    )
     service.admission = NativeAdmissionDependencies(
-        compiler=NativeAdmissionCompiler(
-            session_factory=sessions, resources=NativeHttpResourceSnapshot(session_factory=sessions)
-        ),
-        profile=build_native_http_profile(),
+        compiler=NativeAdmissionCompiler(session_factory=sessions, resources=resources),
+        profile=profile,
         launch=DifyNativeInitialLaunch(lifecycle=service.lifecycle, publish=publish),
     )
-    service.disclosure = NativeHttpDisclosure(loader=service.loader, state_store=service.store)
+    service.disclosure = (
+        NativeHttpDisclosure(loader=service.loader, state_store=service.store)
+        if qualification is None
+        else NativeCodeDisclosure(
+            loader=service.loader,
+            state_store=service.store,
+            qualification=qualification,
+        )
+    )
     return service
 
 

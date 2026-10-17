@@ -17,13 +17,19 @@ from dataclasses import dataclass
 from math import isfinite
 from threading import Condition, RLock, Thread, current_thread
 from time import monotonic
-from typing import Literal, Protocol
+from typing import TYPE_CHECKING, Literal, Protocol
 
 from graphon.nodes.base.node import Node
 from graphon.runtime.graph_runtime_state import GraphRuntimeState
 from services.dify_builder.native_testing.contracts import NativeTestContextRef
 from services.dify_builder.native_testing.control import NativeControlRecord
 from services.dify_builder.native_testing.runtime_contracts import ResolvedNativeTestContext
+
+if TYPE_CHECKING:
+    from services.dify_builder.native_testing.sandbox.host import (
+        NativeCodeHostOperation,
+        NativeCodeHostOwner,
+    )
 
 ThreadRole = Literal["worker", "reader", "dispatcher"]
 CloseReason = Literal["cancel", "consumer_closed", "exhausted", "failed"]
@@ -238,6 +244,8 @@ class NativeHostLifetime:
         self._node_scopes: list[NativeHostNodeScope] = []
         self._active_scopes: list[NativeHostNodeScope] = []
         self._tickets: list[NativeHostCallTicket] = []
+        self._code_participants: list[NativeCodeHostOperation] = []
+        self._code_owner: NativeCodeHostOwner | None = None
         self._expected_children: dict[RefKey, NativeHostLifetime | None] = {}
         self._records: list[NativeControlRecord] = []
         self._deadline: float | None = None
@@ -459,12 +467,58 @@ class NativeHostLifetime:
         finally:
             ticket._finish()
 
+    def bind_code_owner(self, *, owner) -> None:
+        from services.dify_builder.native_testing.sandbox.host import (
+            NativeCodeHostOwner,
+        )
+
+        # Inert runtime composition can bind before the durable activation.
+        with self._condition:
+            if (self._consumed or self._code_owner is not None or type(owner) is not NativeCodeHostOwner
+                    or owner.host.lifetime is not self):
+                raise ValueError("native_code_owner_rebound")
+            self._code_owner = owner
+
+    @property
+    def code_participants(self) -> tuple:
+        with self._condition:
+            return tuple(self._code_participants)
+
+    def check_code_current(self, *, admission: bool = False) -> None:
+        """Exact retained registry identity; DTOs cannot supply this check."""
+        with self._condition:
+            if admission:
+                self._require_open()
+            else:
+                self._require_tracking()
+
+    def register_code(self, *, ticket: NativeHostCallTicket, participant) -> None:
+        from services.dify_builder.native_testing.sandbox.host import (
+            NativeCodeHostOperation,
+        )
+
+        with self._condition:
+            self._require_open()
+            ticket._require_owner()
+            registry = self._registry
+            if (type(participant) is not NativeCodeHostOperation or participant.owner is not self._code_owner
+                    or participant.owner.host.lifetime is not self
+                    or ticket._lifetime is not self or not ticket._callback_active or registry is None
+                    or any(item is participant for item in self._code_participants)
+                    or sum(not item.cleanup_complete for life in registry._current.values()
+                           for item in life._code_participants) >= 2):
+                raise ValueError("native_code_registration_refused")
+            self._code_participants.append(participant)
+            self._invalidate_settlement()
+
     def _arm(self, deadline: float) -> None:
         if type(deadline) not in (float, int) or not isfinite(deadline):
             raise ValueError("native_host_deadline_invalid")
         self._require_current()
         if self._deadline is None:
             self._deadline = deadline
+        for participant in self._code_participants:
+            participant.request_close(deadline=self._deadline)
         self._condition.notify_all()
 
     def request_close(self, *, reason: CloseReason, deadline: float) -> None:
@@ -559,6 +613,9 @@ class NativeHostLifetime:
         with self._condition:
             threads = tuple(self._threads)
             children = tuple(self._expected_children.values())
+            code = tuple(self._code_participants)
+        for participant in code:
+            participant.refresh_join()
         for item in threads:
             thread = item.thread
             if thread is current_thread():
@@ -585,6 +642,7 @@ class NativeHostLifetime:
             or self._node_scopes
             or self._active_scopes
             or self._tickets
+            or self._code_participants
             or self._expected_children
             or self._records
             or any(child._parent_invocation_id == self.ref.invocation_id for child in registry._current.values())
@@ -625,6 +683,8 @@ class NativeHostLifetime:
                 continue
             if not item.joined or item.thread.is_alive() or (item.role != "dispatcher" and not item.finished):
                 return False
+        if not all(item.cleanup_complete for item in self._code_participants):
+            return False
         return all(ticket._closed and not ticket._callback_active for ticket in self._tickets) and all(
             child is not None and child._ready() for child in self._expected_children.values()
         )
@@ -653,7 +713,7 @@ class NativeHostLifetime:
                 if remaining <= 0 or any(item.thread is current_thread() for item in self._threads):
                     self._unknown = True
                     return "unknown"
-                self._condition.wait(timeout=remaining)
+                self._condition.wait(timeout=min(remaining, .01) if self._code_participants else remaining)
 
     def consume_cleanup(self, *, ref: NativeTestContextRef, generation: int, dispatch_id: str) -> None:
         """Frozen capacity verifier: exactly-once, exact-current physical proof.
@@ -687,6 +747,10 @@ class NativeHostLifetime:
             self._runtimes.clear()
             self._node_scopes.clear()
             self._tickets.clear()
+            self._code_participants.clear()
+            if self._code_owner is not None:
+                self._code_owner._operations.clear()
+            self._code_owner = None
             self._expected_children.clear()
             self._records.clear()
             self._condition.notify_all()

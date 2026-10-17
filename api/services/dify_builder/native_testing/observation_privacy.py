@@ -1,4 +1,4 @@
-"""Pure, opt-in diagnostic views of the qualified native HTTP-profile graph.
+"""Pure diagnostic views of the qualified native HTTP or Code profile graph.
 
 Structural qualification is not admission, authorization, binding provenance or
 proof of dispatch. The trusted host must reload the protected request/ref/profile,
@@ -254,7 +254,11 @@ class NativeHttpObservationPolicy:
 
     @classmethod
     def qualify(
-        cls, *, context: ResolvedNativeTestContext, profile: NativeRuntimeProfile
+        cls,
+        *,
+        context: ResolvedNativeTestContext,
+        profile: NativeRuntimeProfile,
+        code_qualification=None,
     ) -> Self:
         """Check actual server profile and descriptor shapes, without protected IO.
 
@@ -284,9 +288,25 @@ class NativeHttpObservationPolicy:
                 for name in NativeRuntimeProfile.model_fields
             }
             _shape(profile_data)
-            validate_native_http_profile(
-                NativeRuntimeProfile.model_validate(profile_data)
+            from services.dify_builder.native_testing.sandbox.qualification import (
+                PROFILE_ID as CODE_PROFILE_ID,
             )
+            from services.dify_builder.native_testing.sandbox.qualification import (
+                NativeCodeQualification,
+                describe_code_resource,
+            )
+
+            code_profile = profile.profile_id == CODE_PROFILE_ID
+            if code_profile:
+                if type(code_qualification) is not NativeCodeQualification:
+                    _refuse()
+                code_qualification.validate_profile(
+                    NativeRuntimeProfile.model_validate(profile_data)
+                )
+            else:
+                validate_native_http_profile(
+                    NativeRuntimeProfile.model_validate(profile_data)
+                )
             context_data = {
                 name: getattr(context, name)
                 for name in ResolvedNativeTestContext.model_fields
@@ -332,7 +352,18 @@ class NativeHttpObservationPolicy:
                 if node_id in nodes or type(kind) is not str or version != "1":
                     _refuse()
                 nodes[node_id] = (kind, version)
-                if kind == "http-request":
+                if code_profile and kind in {"code", "template-transform"}:
+                    expected.append(
+                        describe_code_resource(
+                            qualification=code_qualification,
+                            node_id=node_id,
+                            raw=raw,
+                            workflow_revision=checked.graph_revision,
+                            app_id=checked.app_id,
+                            workflow_id=checked.workflow_id,
+                        )
+                    )
+                elif kind == "http-request" and not code_profile:
                     expected.append(
                         describe_http_resource(
                             node_id=node_id,

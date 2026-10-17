@@ -8,10 +8,9 @@ import json
 from copy import deepcopy
 from datetime import UTC, datetime
 from importlib.metadata import version
-from typing import cast, override
+from typing import Any, cast, override
 
 import pytest
-
 from graphon.entities.pause_reason import HitlRequired, SchedulingPause
 from graphon.entities.workflow_start_reason import WorkflowStartReason
 from graphon.enums import WorkflowNodeExecutionMetadataKey as Metadata
@@ -1120,3 +1119,51 @@ def test_empty_http_manifest_keeps_schema_owner_and_privacy_refusals(fault):
     with pytest.raises(BuilderExecutionPolicyError) as caught:
         owner().qualify(context=ctx, profile=build_native_http_profile())
     assert SENTINEL not in str(caught.value)
+
+
+@pytest.mark.parametrize("kind", ["code", "template-transform"])
+def test_code_profile_redacts_source_template_values_and_retry_history(kind):
+    from services.dify_builder.native_testing.sandbox.qualification import (
+        describe_code_resource,
+    )
+    from tests.unit_tests.services.dify_builder.native_testing.test_code_qualification import (
+        qualification,
+        raw_code,
+    )
+
+    q, _ = qualification()
+    ctx = context()
+    graph = deepcopy(ctx.graph)
+    raw = (
+        raw_code(code=SENTINEL)
+        if kind == "code"
+        else {"type": kind, "title": SENTINEL, "variables": [], "template": SENTINEL}
+    )
+    cast(Any, graph)["nodes"][1]["data"] = raw
+    descriptor = describe_code_resource(
+        qualification=q,
+        node_id="http",
+        raw=raw,
+        workflow_revision=ctx.graph_revision,
+        app_id=ctx.app_id,
+        workflow_id=ctx.workflow_id,
+    )
+    ctx = ctx.model_copy(update={"graph": graph, "resource_manifest": (descriptor,)})
+    with pytest.raises(BuilderExecutionPolicyError):
+        owner().qualify(context=ctx, profile=q.profile())
+    policy = owner().qualify(context=ctx, profile=q.profile(), code_qualification=q)
+    assert SENTINEL not in json.dumps(policy.graph(ctx.graph))
+    event = NodeRunSucceededEvent(
+        id="event",
+        node_id="http",
+        node_type=kind,
+        node_version="1",
+        node_title=SENTINEL,
+        node_run_result=result(),
+        start_at=NOW,
+    )
+    assert SENTINEL not in policy.event(event).model_dump_json()
+    assert SENTINEL in event.model_dump_json()
+    cast(Any, q.owner).validate = lambda **kw: True
+    with pytest.raises(BuilderExecutionPolicyError):
+        owner().qualify(context=ctx, profile=q.profile(), code_qualification=q)
