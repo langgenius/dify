@@ -1,19 +1,14 @@
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { AccessPolicyWithBindings, ResourceUserAccessSetting } from '@/models/access-control'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import AccessRulesEditor from '../index'
 
 const mockMembers = vi.hoisted(() => ({
   accounts: [] as AccountWithRoleResponse[] | null,
-  isLoading: false,
 }))
 const mockMembersQuery = vi.hoisted(() => vi.fn())
-
-vi.mock('@tanstack/react-query', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
-  useQuery: mockMembersQuery,
-}))
 
 const createRule = (resourceType: 'app' | 'dataset'): AccessPolicyWithBindings => ({
   policy: {
@@ -89,11 +84,7 @@ describe('AccessRulesEditor', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockMembers.accounts = []
-    mockMembers.isLoading = false
-    mockMembersQuery.mockImplementation(() => ({
-      data: { accounts: mockMembers.accounts },
-      isPending: mockMembers.isLoading,
-    }))
+    mockMembersQuery.mockImplementation(() => Promise.resolve({ accounts: mockMembers.accounts }))
   })
 
   it('should render loading state before empty or row content', () => {
@@ -521,7 +512,7 @@ describe('AccessRulesEditor', () => {
     const dialog = await screen.findByRole('dialog', {
       name: 'permission.accessRule.addMembersTitle',
     })
-    expect(within(dialog).getByText('Evan')).toBeInTheDocument()
+    expect(await within(dialog).findByText('Evan')).toBeInTheDocument()
     const evanItem = within(dialog).getByRole('menuitem', { name: /Evan/ })
     expect(evanItem).toHaveAttribute('aria-disabled', 'true')
     expect(evanItem).toHaveTextContent('common.operation.added')
@@ -578,11 +569,7 @@ describe('AccessRulesEditor', () => {
 
   it('should announce a failed member load without offering candidates', async () => {
     const user = userEvent.setup()
-    mockMembersQuery.mockImplementation(() => ({
-      data: undefined,
-      isPending: false,
-      error: new Error('Request failed'),
-    }))
+    mockMembersQuery.mockRejectedValue(new Error('Request failed'))
 
     render(
       <AccessRulesEditor
@@ -603,7 +590,7 @@ describe('AccessRulesEditor', () => {
       name: 'permission.accessRule.addMembersTitle',
     })
 
-    expect(within(dialog).getByRole('alert')).toHaveTextContent('common.api.actionFailed')
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('common.api.actionFailed')
     expect(within(dialog).queryByRole('menuitem')).not.toBeInTheDocument()
     expect(
       within(dialog).queryByText('permission.accessRule.noAvailableMembers'),
@@ -698,4 +685,15 @@ describe('AccessRulesEditor', () => {
     ])
     expect(screen.queryByText('permission.accessRule.selected')).not.toBeInTheDocument()
   })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.members.get': (input) => mockMembersQuery(input),
+    }),
+  }
 })

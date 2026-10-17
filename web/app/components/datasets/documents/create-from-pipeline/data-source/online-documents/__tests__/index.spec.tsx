@@ -1,8 +1,9 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { DataSourceNotionWorkspace, NotionPage } from '@/models/common'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render as renderWithoutUrlState, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import OnlineDocuments from '../index'
 
 // Mock useDocLink - context hook requires mocking
@@ -17,12 +18,6 @@ vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (selector: (s: Record<string, unknown>) => unknown) =>
     selector({ dataset: { pipeline_id: mockPipelineId } }),
 }))
-
-const mockSetSettingsDestination = vi.fn()
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
-})
 
 // Mock ssePost - API service requires mocking
 const { mockSsePost } = vi.hoisted(() => ({
@@ -227,6 +222,9 @@ const createDefaultProps = (overrides?: Partial<OnlineDocumentsProps>): OnlineDo
   ...overrides,
 })
 
+const onUrlUpdate = vi.fn()
+const render = createNuqsTestRenderer(renderWithoutUrlState, () => ({ onUrlUpdate }))
+
 describe('OnlineDocuments', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -245,7 +243,7 @@ describe('OnlineDocuments', () => {
 
     // Reset context values
     mockPipelineId = 'pipeline-123'
-    mockSetSettingsDestination.mockClear()
+    onUrlUpdate.mockClear()
 
     // Default mock return values
     mockUseGetDataSourceAuth.mockReturnValue({
@@ -614,13 +612,15 @@ describe('OnlineDocuments', () => {
       expect(mockStoreState.setCurrentDocument).toHaveBeenCalled()
     })
 
-    it('should have stable handleSetting callback', () => {
+    it('should have stable handleSetting callback', async () => {
       const props = createDefaultProps()
       render(<OnlineDocuments {...props} />)
 
       fireEvent.click(screen.getByTestId('header-config-btn'))
 
-      expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
+      await waitFor(() =>
+        expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('data-source'),
+      )
     })
   })
 
@@ -709,13 +709,15 @@ describe('OnlineDocuments', () => {
       expect(mockStoreState.setCurrentDocument).toHaveBeenCalled()
     })
 
-    it('should handle configuration button click', () => {
+    it('should handle configuration button click', async () => {
       const props = createDefaultProps()
       render(<OnlineDocuments {...props} />)
 
       fireEvent.click(screen.getByTestId('header-config-btn'))
 
-      expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
+      await waitFor(() =>
+        expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('data-source'),
+      )
     })
 
     it('should handle credential change', () => {

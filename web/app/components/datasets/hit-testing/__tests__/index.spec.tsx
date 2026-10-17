@@ -1,19 +1,21 @@
 import type {
-  DatasetDetailWithPartialMembersResponse,
   DatasetQueryDetailResponse,
   HitTestingRecord,
   HitTestingResponse,
 } from '@dify/contracts/api/console/datasets/types.gen'
-import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { OperationKey } from '@orpc/tanstack-query'
 import type { ReactNode } from 'react'
 import type { RetrievalConfig } from '@/types/app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { describe, expect, it, vi } from 'vite-plus/test'
+import DatasetDetailContext from '@/context/dataset-detail'
+import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { render } from '@/test/console/render'
+import { createDeferred } from '@/test/deferred'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { createHitTestingRecordFixture } from '@/test/fixtures/hit-testing'
 import { RETRIEVE_METHOD } from '@/types/app'
 import HitTestingPage from '../index'
@@ -88,8 +90,7 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-// Mock use-context-selector
-const mockDataset = {
+const mockDataset = createDatasetFixture({
   id: 'dataset-1',
   name: 'Test Dataset',
   provider: 'vendor',
@@ -109,28 +110,12 @@ const mockDataset = {
   },
   is_multimodal: false,
   permission_keys: ['dataset.acl.retrieval_recall'],
-} as Partial<DatasetDetailWithPartialMembersResponse>
+})
 
 let mockConsoleState = {
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: [] as string[],
 }
-
-vi.mock('use-context-selector', () => ({
-  useContext: vi.fn(() => ({ dataset: mockDataset })),
-  useContextSelector: vi.fn((_, selector) => selector({ dataset: mockDataset })),
-  createContext: vi.fn(() => ({})),
-}))
-
-// Mock dataset detail context
-vi.mock('@/context/dataset-detail', () => ({
-  default: {},
-  useDatasetDetailContext: vi.fn(() => ({ dataset: mockDataset })),
-  useDatasetDetailContextWithSelector: vi.fn(
-    (selector: (v: { dataset?: typeof mockDataset }) => unknown) =>
-      selector({ dataset: mockDataset as DatasetDetailWithPartialMembersResponse }),
-  ),
-}))
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -148,17 +133,47 @@ vi.mock('@/features/system-features/state', async () => {
   return createSystemFeaturesStateModuleMock(() => mockConsoleState)
 })
 
-const mockRecordsRefetch = vi.fn()
-const mockHitTestingMutateAsync = vi.fn()
-const mockExternalHitTestingMutateAsync = vi.fn()
-
-const { mockRecordsQuery } = vi.hoisted(() => ({ mockRecordsQuery: vi.fn() }))
-
-// The page owns one mutation per retrieval kind, told apart by mutation key.
-const { mockHitTestingState, mockExternalHitTestingState } = vi.hoisted(() => ({
-  mockHitTestingState: vi.fn(),
-  mockExternalHitTestingState: vi.fn(),
-}))
+const { getRecords, mockHitTestingMutateAsync, mockExternalHitTestingMutateAsync } = vi.hoisted(
+  () => ({
+    getRecords: vi.fn(),
+    mockHitTestingMutateAsync: vi.fn(),
+    mockExternalHitTestingMutateAsync: vi.fn(),
+  }),
+)
+let recordsData:
+  | {
+      data: DatasetQueryDetailResponse[]
+      total: number
+      page: number
+      limit: number
+      has_more: boolean
+    }
+  | undefined
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.queries.get': getRecords,
+    }),
+    consoleClient: {
+      datasets: {
+        byDatasetId: {
+          hitTesting: { post: mockHitTestingMutateAsync },
+          externalHitTesting: { post: mockExternalHitTestingMutateAsync },
+        },
+      },
+    },
+  }
+})
+// Model catalog is a fixed boundary for retrieval settings; queries and mutations under test stay real.
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.models.modelTypes.byModelType.get': () => ({ data: [], isPending: false }),
+  })
+})
 
 // Mock breakpoints hook
 vi.mock('@/hooks/use-breakpoints', () => ({
@@ -179,16 +194,6 @@ vi.mock('@/hooks/use-timestamp', () => ({
 }))
 
 // Mock use-common to avoid QueryClient issues in nested hooks
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: vi.fn(() => ({
-    data: {
-      file_size_limit: 10,
-      batch_count_limit: 5,
-      image_file_size_limit: 5,
-    },
-    isLoading: false,
-  })),
-}))
 
 // Store ref to ImageUploader onChange for testing
 let _mockImageUploaderOnChange:
@@ -288,6 +293,7 @@ const createConsoleQueryClient = () =>
       queries: {
         retry: false,
         gcTime: 0,
+        staleTime: Infinity,
       },
       mutations: {
         retry: false,
@@ -296,9 +302,25 @@ const createConsoleQueryClient = () =>
   })
 
 const TestWrapper = ({ children }: { children: ReactNode }) => {
-  const queryClient = createConsoleQueryClient()
+  const [queryClient] = useState(() => {
+    const client = createConsoleQueryClient()
+    if (recordsData)
+      client.setQueryData(
+        consoleQuery.datasets.byDatasetId.queries.get.queryKey({
+          input: { params: { dataset_id: 'dataset-1' }, query: { limit: 10, page: 1 } },
+        }),
+        recordsData,
+      )
+    return client
+  })
   seedAccountProfileQuery(queryClient, mockConsoleState.userProfile)
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  return (
+    <QueryClientProvider client={queryClient}>
+      <DatasetDetailContext.Provider value={{ dataset: mockDataset }}>
+        {children}
+      </DatasetDetailContext.Provider>
+    </QueryClientProvider>
+  )
 }
 
 const renderWithProviders = (ui: React.ReactElement) => {
@@ -365,7 +387,7 @@ const _createMockRetrievalConfig = (overrides = {}): RetrievalConfig =>
 describe('HitTestingPage', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
-    mockRecordsRefetch.mockReset()
+    getRecords.mockReset()
     mockHitTestingMutateAsync.mockReset()
     mockExternalHitTestingMutateAsync.mockReset()
     Object.assign(mockDataset, {
@@ -378,19 +400,8 @@ describe('HitTestingPage', () => {
       userProfile: { id: 'user-1' },
       workspacePermissionKeys: [],
     }
-    mockRecordsQuery.mockReturnValue({
-      data: { data: [], total: 0, page: 1, limit: 10, has_more: false },
-      refetch: mockRecordsRefetch,
-      isLoading: false,
-    })
-    vi.mocked(mockHitTestingState).mockReturnValue({
-      mutateAsync: mockHitTestingMutateAsync,
-      isLoading: false,
-    })
-    vi.mocked(mockExternalHitTestingState).mockReturnValue({
-      mutateAsync: mockExternalHitTestingMutateAsync,
-      isLoading: false,
-    })
+    recordsData = { data: [], total: 0, page: 1, limit: 10, has_more: false }
+    getRecords.mockImplementation(() => Promise.resolve(recordsData))
 
     const useBreakpoints = await import('@/hooks/use-breakpoints')
     vi.mocked(useBreakpoints.default).mockReturnValue(
@@ -404,20 +415,12 @@ describe('HitTestingPage', () => {
     renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
 
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-    expect(mockRecordsQuery).toHaveBeenCalledWith(
-      expect.objectContaining({
-        input: { params: { dataset_id: 'dataset-1' }, query: { limit: 10, page: 1 } },
-        enabled: false,
-      }),
-    )
+    expect(getRecords).not.toHaveBeenCalled()
   })
 
   it('shows the records loading state', async () => {
-    mockRecordsQuery.mockReturnValue({
-      data: undefined,
-      refetch: mockRecordsRefetch,
-      isLoading: true,
-    })
+    recordsData = undefined
+    getRecords.mockReturnValue(new Promise(() => {}))
 
     renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
 
@@ -437,33 +440,19 @@ describe('HitTestingPage', () => {
     'announces loading and failure in the same status region for %s retrieval',
     async (provider) => {
       mockDataset.provider = provider
-      const setRetrievalState = (state: { isPending: boolean; isError: boolean }) => {
-        if (provider === 'external') {
-          vi.mocked(mockExternalHitTestingState).mockReturnValue({
-            mutateAsync: mockExternalHitTestingMutateAsync,
-            ...state,
-          })
-        } else {
-          vi.mocked(mockHitTestingState).mockReturnValue({
-            mutateAsync: mockHitTestingMutateAsync,
-            ...state,
-          })
-        }
-      }
-      const { rerender } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
+      const response = createDeferred<HitTestingResponse>()
+      const request =
+        provider === 'external' ? mockExternalHitTestingMutateAsync : mockHitTestingMutateAsync
+      request.mockReturnValue(response.promise)
+      renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
+      const user = userEvent.setup()
       const status = screen.getByRole('status')
-
-      setRetrievalState({ isPending: true, isError: false })
-      rerender(<HitTestingPage datasetId="dataset-1" />)
-
-      expect(status).toHaveTextContent('common.loading')
+      await user.type(screen.getByRole('textbox'), 'Test query')
+      await user.click(screen.getByRole('button', { name: /input.testing/ }))
+      await waitFor(() => expect(status).toHaveTextContent('common.loading'))
+      await act(async () => response.reject(new Error('Retrieval failed')))
+      await waitFor(() => expect(status).toHaveTextContent('common.api.actionFailed'))
       expect(screen.getByRole('status')).toBe(status)
-
-      setRetrievalState({ isPending: false, isError: true })
-      rerender(<HitTestingPage datasetId="dataset-1" />)
-
-      expect(screen.getByRole('status')).toBe(status)
-      expect(status).toHaveTextContent('common.api.actionFailed')
       expect(status).not.toHaveTextContent('common.loading')
     },
   )
@@ -476,50 +465,25 @@ describe('HitTestingPage', () => {
       query: { content: 'Test query' },
       records: [createMockHitTesting()],
     }
-    mockHitTestingMutateAsync.mockImplementationOnce(async (_params, options) => {
-      options?.onSuccess?.(response)
-      return response
-    })
-    const { rerender } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
+    mockHitTestingMutateAsync.mockResolvedValueOnce(response)
+    renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
     await user.type(screen.getByRole('textbox'), 'Test query')
     await user.click(screen.getByRole('button', { name: /input.testing/ }))
     expect(await screen.findByRole('dialog', { name: '1 Retrieved Chunks' })).toBeInTheDocument()
 
-    vi.mocked(mockHitTestingState).mockReturnValue({
-      mutateAsync: mockHitTestingMutateAsync,
-      isPending: true,
-      isError: false,
-    })
-    rerender(<HitTestingPage datasetId="dataset-1" />)
-
-    const pendingDialog = screen.getByRole('dialog', { name: 'datasetHitTesting.title' })
-    expect(within(pendingDialog).queryByText('1 Retrieved Chunks')).not.toBeInTheDocument()
-
-    vi.mocked(mockHitTestingState).mockReturnValue({
-      mutateAsync: mockHitTestingMutateAsync,
-      isPending: false,
-      isError: true,
-    })
-    rerender(<HitTestingPage datasetId="dataset-1" />)
-
-    const failedDialog = screen.getByRole('dialog', { name: 'datasetHitTesting.title' })
-    expect(within(failedDialog).getByText('common.api.actionFailed')).toBeInTheDocument()
-    expect(within(failedDialog).queryByText('1 Retrieved Chunks')).not.toBeInTheDocument()
-    expect(within(failedDialog).queryByText('test-document.pdf')).not.toBeInTheDocument()
-
-    await user.click(within(failedDialog).getByRole('button', { name: /operation.close/ }))
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    vi.mocked(mockHitTestingState).mockReturnValue({
-      mutateAsync: mockHitTestingMutateAsync,
-      isPending: false,
-      isError: false,
-    })
-    mockHitTestingMutateAsync.mockImplementationOnce(async (_params, options) => {
-      const emptyResponse = { ...response, records: [] }
-      options?.onSuccess?.(emptyResponse)
-      return emptyResponse
-    })
-    rerender(<HitTestingPage datasetId="dataset-1" />)
+    await user.click(screen.getByRole('button', { name: /operation.close/ }))
+    const nextResponse = createDeferred<HitTestingResponse>()
+    mockHitTestingMutateAsync.mockReturnValueOnce(nextResponse.promise)
+    await user.click(screen.getByRole('button', { name: /input.testing/ }))
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('common.loading'))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.queryByText('1 Retrieved Chunks')).not.toBeInTheDocument()
+    await act(async () => nextResponse.reject(new Error('Retrieval failed')))
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('common.api.actionFailed'),
+    )
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    mockHitTestingMutateAsync.mockResolvedValueOnce({ ...response, records: [] })
     await user.click(screen.getByRole('button', { name: /input.testing/ }))
     expect(await screen.findByRole('dialog', { name: '0 Retrieved Chunks' })).toBeInTheDocument()
   })
@@ -530,65 +494,52 @@ describe('HitTestingPage', () => {
       query: { content: 'No match' },
       records: [],
     }
-    mockHitTestingMutateAsync.mockImplementation(async (_params, options) => {
-      options?.onSuccess?.(response)
-      return response
-    })
+    mockHitTestingMutateAsync.mockResolvedValue(response)
     renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
     const status = screen.getByRole('status')
     await user.type(screen.getByRole('textbox'), 'No match')
     await user.click(screen.getByRole('button', { name: /input.testing/ }))
 
-    expect(status).toHaveTextContent('0 Retrieved Chunks')
+    await waitFor(() => expect(status).toHaveTextContent('0 Retrieved Chunks'))
   })
 
   it('loads a history record into the query input when selected', async () => {
     const user = userEvent.setup()
-    mockRecordsQuery.mockReturnValue({
-      data: {
-        data: [
-          createMockRecord({
-            queries: [
-              { content: 'Record query text', content_type: 'text_query', file_info: null },
-            ],
-          }),
-        ],
-        total: 1,
-        page: 1,
-        limit: 10,
-        has_more: false,
-      },
-      refetch: mockRecordsRefetch,
-      isLoading: false,
-    })
+    recordsData = {
+      data: [
+        createMockRecord({
+          queries: [{ content: 'Record query text', content_type: 'text_query', file_info: null }],
+        }),
+      ],
+      total: 1,
+      page: 1,
+      limit: 10,
+      has_more: false,
+    }
 
     renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
-    await user.click(screen.getByText('Record query text'))
+    await user.click(await screen.findByText('Record query text'))
 
     expect(screen.getByRole('textbox')).toHaveValue('Record query text')
   })
 
   it('requests the next records page through pagination', async () => {
     const user = userEvent.setup()
-    mockRecordsQuery.mockReturnValue({
-      data: {
-        data: Array.from({ length: 10 }, (_, index) => createMockRecord({ id: `record-${index}` })),
-        total: 25,
-        page: 1,
-        limit: 10,
-        has_more: true,
-      },
-      refetch: mockRecordsRefetch,
-      isLoading: false,
-    })
+    recordsData = {
+      data: Array.from({ length: 10 }, (_, index) => createMockRecord({ id: `record-${index}` })),
+      total: 25,
+      page: 1,
+      limit: 10,
+      has_more: true,
+    }
 
     renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
     await user.click(screen.getByRole('button', { name: /pagination.next/ }))
 
-    expect(mockRecordsQuery).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        input: { params: { dataset_id: 'dataset-1' }, query: { limit: 10, page: 2 } },
-        enabled: true,
+    await waitFor(() =>
+      expect(getRecords).toHaveBeenCalledWith({
+        params: { dataset_id: 'dataset-1' },
+        query: { limit: 10, page: 2 },
       }),
     )
   })
@@ -599,10 +550,7 @@ describe('HitTestingPage', () => {
       query: { content: 'Test query' },
       records: [createMockHitTesting()],
     }
-    mockHitTestingMutateAsync.mockImplementation(async (_params, options) => {
-      options?.onSuccess?.(response)
-      return response
-    })
+    mockHitTestingMutateAsync.mockResolvedValue(response)
 
     renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
     await user.click(screen.getByText(/semantic_search/))
@@ -617,17 +565,19 @@ describe('HitTestingPage', () => {
     await waitFor(() => {
       expect(mockHitTestingMutateAsync).toHaveBeenCalledWith(
         expect.objectContaining({
-          query: 'Test query',
-          attachment_ids: [],
-          retrieval_model: expect.objectContaining({
-            search_method: RETRIEVE_METHOD.semantic,
-            top_k: 8,
+          params: { dataset_id: 'dataset-1' },
+          body: expect.objectContaining({
+            query: 'Test query',
+            attachment_ids: [],
+            retrieval_model: expect.objectContaining({
+              search_method: RETRIEVE_METHOD.semantic,
+              top_k: 8,
+            }),
           }),
         }),
-        expect.objectContaining({ onSuccess: expect.any(Function) }),
       )
     })
-    expect(mockRecordsRefetch).toHaveBeenCalledTimes(1)
+    expect(getRecords).toHaveBeenCalledTimes(1)
     expect(await screen.findByText('test-document.pdf')).toBeInTheDocument()
     expect(screen.getByRole('status')).toHaveTextContent('1 Retrieved Chunks')
     expect(
@@ -649,10 +599,7 @@ describe('HitTestingPage', () => {
         },
       ],
     }
-    mockExternalHitTestingMutateAsync.mockImplementation(async (_params, options) => {
-      options?.onSuccess?.(response)
-      return response
-    })
+    mockExternalHitTestingMutateAsync.mockResolvedValue(response)
 
     renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
     await user.click(screen.getByRole('button', { name: /settingTitle/ }))
@@ -662,8 +609,9 @@ describe('HitTestingPage', () => {
     await user.click(screen.getByRole('button', { name: /input.testing/ }))
 
     await waitFor(() => {
-      expect(mockExternalHitTestingMutateAsync).toHaveBeenCalledWith(
-        {
+      expect(mockExternalHitTestingMutateAsync).toHaveBeenCalledWith({
+        params: { dataset_id: 'dataset-1' },
+        body: {
           query: 'External query',
           external_retrieval_model: {
             top_k: 8,
@@ -671,38 +619,10 @@ describe('HitTestingPage', () => {
             score_threshold_enabled: false,
           },
         },
-        expect.objectContaining({ onSuccess: expect.any(Function) }),
-      )
+      })
     })
     expect(mockHitTestingMutateAsync).not.toHaveBeenCalled()
-    expect(mockRecordsRefetch).toHaveBeenCalledTimes(1)
+    expect(getRecords).toHaveBeenCalledTimes(1)
     expect(await screen.findByText('External content')).toBeInTheDocument()
   })
-})
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useMutation: (options: { mutationKey: [string, string] }) => {
-      if (options.mutationKey[0] === 'hit-testing')
-        return mockHitTestingState() ?? { mutateAsync: mockHitTestingMutateAsync, isPending: false }
-      return (
-        mockExternalHitTestingState() ?? {
-          mutateAsync: mockExternalHitTestingMutateAsync,
-          isPending: false,
-        }
-      )
-    },
-    useQuery: (options: {
-      queryKey: OperationKey<
-        'query',
-        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
-      >
-    }) => {
-      if (options.queryKey[0].includes('modelTypes')) return { data: [], isPending: false }
-      if (options.queryKey[0].includes('queries')) return mockRecordsQuery(options)
-      return actual.useQuery(options)
-    },
-  }
 })

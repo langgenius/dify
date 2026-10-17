@@ -15,11 +15,6 @@ vi.mock('@/app/components/workflow/store', () => ({
   },
 }))
 
-vi.mock('@/types/app', () => ({
-  Resolution: { high: 'high' },
-  TransferMethod: { local_file: 'local_file', remote_url: 'remote_url' },
-}))
-
 describe('useFileSettings', () => {
   it('should include file settings with image disabled', () => {
     const { result } = renderHook(() => useFileSettings())

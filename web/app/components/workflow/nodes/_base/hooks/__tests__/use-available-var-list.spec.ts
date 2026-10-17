@@ -144,7 +144,7 @@ describe('useAvailableVarList', () => {
         useAvailableVarList('node-1', {
           filterVar: () => true,
         }),
-      { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
+      { resource: { kind: 'app', appId: 'app-1', mode: 'advanced-chat' } },
     )
 
     expect(result.current.availableVars).toEqual(outputVarsWithSystemVars)
@@ -172,11 +172,4 @@ describe('useAvailableVarList', () => {
       },
     ])
   })
-})
-
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => true) }
 })

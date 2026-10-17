@@ -15,22 +15,6 @@ import useConfig from '../use-config'
 
 const mockHandleAddOperationItem = vi.fn()
 
-vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
-  default: ({
-    title,
-    operations,
-    children,
-  }: ComponentProps<
-    typeof import('@/app/components/workflow/nodes/_base/components/field').default
-  >) => (
-    <div>
-      <div>{title}</div>
-      <div>{operations}</div>
-      {children}
-    </div>
-  ),
-}))
-
 vi.mock('@/app/components/workflow/nodes/_base/components/list-no-data-placeholder', () => ({
   default: ({
     children,

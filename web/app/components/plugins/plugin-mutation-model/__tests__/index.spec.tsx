@@ -42,15 +42,6 @@ vi.mock('../../hooks', () => ({
   }),
 }))
 
-vi.mock('@/utils/format', () => ({
-  formatNumber: (num: number) => num.toLocaleString(),
-}))
-
-vi.mock('@/utils/mcp', () => ({
-  shouldUseMcpIcon: (src: unknown) =>
-    typeof src === 'object' && src !== null && (src as { content?: string })?.content === '🔗',
-}))
-
 vi.mock('../../base/badges/partner', () => ({
   default: ({ className, text }: { className?: string; text?: string }) => (
     <div data-testid="partner-badge" className={className} title={text}>

@@ -1,6 +1,7 @@
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DocumentActionType } from '@/models/datasets'
+import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
 import { useDocumentActions } from '../use-document-actions'
 
 const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
@@ -15,28 +16,12 @@ const mockDisable = vi.fn()
 const mockDelete = vi.fn()
 const mockRetryIndex = vi.fn()
 const mockDownloadZip = vi.fn()
-let mockIsDownloadingZip = false
 
 const statusMocks: Record<string, (input: unknown) => unknown> = {
   archive: (input) => mockArchive(input),
   enable: (input) => mockEnable(input),
   disable: (input) => mockDisable(input),
 }
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'datasets.byDatasetId.documents.status.byAction.batch.patch': () => ({
-      mutateAsync: (input: { params: { action: string } }) =>
-        statusMocks[input.params.action]!(input),
-    }),
-    'datasets.byDatasetId.documents.generateSummary.post': () => ({ mutateAsync: mockSummary }),
-    'datasets.byDatasetId.documents.delete': () => ({ mutateAsync: mockDelete }),
-    'datasets.byDatasetId.retry.post': () => ({ mutateAsync: mockRetryIndex }),
-  })
-})
-vi.mock('@/service/knowledge/use-document', () => ({
-  useDocumentDownloadZip: () => ({ mutateAsync: mockDownloadZip, isPending: mockIsDownloadingZip }),
-}))
 
 vi.mock('@/app/notifications', () => ({
   toast: {
@@ -50,6 +35,22 @@ vi.mock('@/utils/download', () => ({
   downloadBlob: (...args: unknown[]) => mockDownloadBlob(...args),
 }))
 
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.documents.status.byAction.batch.patch': (input: {
+        params: { action: string }
+      }) => statusMocks[input.params.action]!(input),
+      'datasets.byDatasetId.documents.generateSummary.post': (input) => mockSummary(input),
+      'datasets.byDatasetId.documents.delete': (input) => mockDelete(input),
+      'datasets.byDatasetId.retry.post': (input) => mockRetryIndex(input),
+    }),
+  }
+})
+
 describe('useDocumentActions', () => {
   const defaultOptions = {
     datasetId: 'ds-1',
@@ -61,7 +62,6 @@ describe('useDocumentActions', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsDownloadingZip = false
   })
 
   it('should return expected functions and state', () => {
@@ -237,3 +237,8 @@ describe('useDocumentActions', () => {
     })
   })
 })
+
+vi.mock('@/service/datasets', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/datasets')>()),
+  downloadDocumentsZip: (...args: unknown[]) => mockDownloadZip(...args),
+}))

@@ -1,16 +1,8 @@
 import type { CodeNodeType } from '../types'
-import { renderHook } from '@testing-library/react'
+import { renderWorkflowFlowHook as renderHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
-import useNodeCrud from '../../_base/hooks/use-node-crud'
 import { CodeLanguage } from '../types'
 import useSingleRunFormParams from '../use-single-run-form-params'
-
-vi.mock('../../_base/hooks/use-node-crud', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}))
-
-const mockUseNodeCrud = vi.mocked(useNodeCrud)
 
 const createData = (overrides: Partial<CodeNodeType> = {}): CodeNodeType => ({
   title: 'Code',
@@ -37,10 +29,6 @@ const createData = (overrides: Partial<CodeNodeType> = {}): CodeNodeType => ({
 describe('code/use-single-run-form-params', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseNodeCrud.mockReturnValue({
-      inputs: createData(),
-      setInputs: vi.fn(),
-    } as unknown as ReturnType<typeof useNodeCrud>)
   })
 
   it('builds a single form, updates run input values, and exposes dependent vars', () => {

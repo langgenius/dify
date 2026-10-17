@@ -4,22 +4,6 @@ import { CollectionType } from '@/app/components/tools/types'
 import { BlockEnum } from '../../types'
 import { getToolCheckParams, wrapStructuredVarItem } from '../tool'
 
-vi.mock('@/app/components/tools/utils/to-form-schema', () => ({
-  toolParametersToFormSchemas: vi.fn((params: Array<Record<string, unknown>>) =>
-    params.map((p) => ({
-      variable: p.name,
-      label: p.label || { en_US: p.name },
-      type: p.type || 'string',
-      required: p.required ?? false,
-      form: p.form ?? 'llm',
-    })),
-  ),
-}))
-
-vi.mock('@/utils', () => ({
-  canFindTool: vi.fn((collectionId: string, providerId: string) => collectionId === providerId),
-}))
-
 function createToolData(overrides: Partial<ToolNodeType> = {}): ToolNodeType {
   return {
     title: 'Tool',
@@ -70,7 +54,7 @@ describe('getToolCheckParams', () => {
     const result = getToolCheckParams(createToolData(), [createToolCollection()], [], [], 'en_US')
 
     expect(result.toolInputsSchema).toEqual([
-      { label: 'Query', variable: 'query', type: 'string', required: true },
+      { label: 'Query', variable: 'query', type: 'text-input', required: true },
     ])
     expect(result.toolSettingSchema).toHaveLength(1)
     expect(result.toolSettingSchema[0]!.variable).toBe('api_key')

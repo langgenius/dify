@@ -31,7 +31,6 @@ const mockFetchAppDetailDirect = vi.fn()
 const mockFetchDatasets = vi.fn()
 const mockFetchCollectionList = vi.fn()
 const mockFetchAndMergeValidCompletionParams = vi.fn()
-const mockGetSelectedDatasetsMode = vi.fn()
 const mockToastError = vi.fn()
 const mockToastSuccess = vi.fn()
 const mockToastWarning = vi.fn()
@@ -65,17 +64,6 @@ vi.mock('@/utils/completion-params', () => ({
     mockFetchAndMergeValidCompletionParams(...args),
 }))
 
-vi.mock('@/app/components/workflow/nodes/knowledge-retrieval/utils', async () => {
-  const actual = await vi.importActual<
-    typeof import('@/app/components/workflow/nodes/knowledge-retrieval/utils')
-  >('@/app/components/workflow/nodes/knowledge-retrieval/utils')
-
-  return {
-    ...actual,
-    getSelectedDatasetsMode: (...args: unknown[]) => mockGetSelectedDatasetsMode(...args),
-  }
-})
-
 vi.mock('@/app/components/app/configuration/toast', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
@@ -87,13 +75,6 @@ vi.mock('@/app/components/app/configuration/toast', () => ({
 describe('useConfiguration utils', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockGetSelectedDatasetsMode.mockReturnValue({
-      allExternal: false,
-      allInternal: false,
-      inconsistentEmbeddingModel: false,
-      mixtureHighQualityAndEconomic: false,
-      mixtureInternalAndExternal: false,
-    })
   })
 
   it('should preserve persisted settings when loading and publishing without edits', async () => {
@@ -810,14 +791,9 @@ describe('useConfiguration utils', () => {
   it('should keep named datasets and open rerank settings when the selection mode requires it', () => {
     const setDataSets = vi.fn()
     const setRerankSettingModalOpen = vi.fn()
-    const nextDataSets = [createDatasetFixture({ id: 'dataset-2', name: 'Dataset Two' })]
-    mockGetSelectedDatasetsMode.mockReturnValue({
-      allExternal: true,
-      allInternal: false,
-      inconsistentEmbeddingModel: false,
-      mixtureHighQualityAndEconomic: false,
-      mixtureInternalAndExternal: false,
-    })
+    const nextDataSets = [
+      createDatasetFixture({ id: 'dataset-2', name: 'Dataset Two', provider: 'external' }),
+    ]
 
     const handleSelect = createDatasetSelectHandler({
       currentRerankModel: 'rerank-1',

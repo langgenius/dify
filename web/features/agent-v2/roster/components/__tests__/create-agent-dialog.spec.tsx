@@ -1,12 +1,10 @@
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentScope } from '@/features/agent-v2/analytics'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { CreateAgentDialog } from '../create-agent-dialog'
 
-const mutationMock = vi.hoisted(() => ({
-  isPending: false,
-  mutate: vi.fn(),
-}))
+const mutateRequest = vi.hoisted(() => vi.fn())
 
 const toastMock = vi.hoisted(() => ({
   error: vi.fn(),
@@ -16,14 +14,6 @@ const toastMock = vi.hoisted(() => ({
 const routerPushMock = vi.hoisted(() => vi.fn())
 
 const trackCreateAppMock = vi.hoisted(() => vi.fn())
-
-vi.mock('@tanstack/react-query', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
-  useMutation: () => ({
-    isPending: mutationMock.isPending,
-    mutate: mutationMock.mutate,
-  }),
-}))
 
 vi.mock('@/app/notifications', () => ({
   toast: toastMock,
@@ -39,20 +29,24 @@ vi.mock('@/utils/create-app-tracking', () => ({
   trackCreateApp: trackCreateAppMock,
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    agent: {
-      post: {
-        mutationOptions: vi.fn(() => ({})),
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'agent.post': mutateRequest,
+    }),
+  }
+})
 
 describe('CreateAgentDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mutationMock.isPending = false
+    mutateRequest.mockReset().mockResolvedValue({
+      id: 'agent-1',
+      binding: { agent_id: 'roster-agent-1', binding_type: 'roster_agent' },
+    })
   })
 
   it('submits agent app fields and default icon fields when creating an agent', async () => {
@@ -78,23 +72,16 @@ describe('CreateAgentDialog', () => {
     )
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
 
-    expect(mutationMock.mutate).toHaveBeenCalledWith(
-      {
-        body: {
-          name: 'Research Agent',
-          description: 'Find and summarize market materials.',
-          role: 'Research Assistant',
-          icon_type: 'emoji',
-          icon: '🧸',
-          icon_background: '#F5F3FF',
-        },
+    expect(mutateRequest).toHaveBeenCalledWith({
+      body: {
+        name: 'Research Agent',
+        description: 'Find and summarize market materials.',
+        role: 'Research Assistant',
+        icon_type: 'emoji',
+        icon: '🧸',
+        icon_background: '#F5F3FF',
       },
-      expect.objectContaining({
-        onSuccess: expect.any(Function),
-      }),
-    )
-    const mutationOptions = mutationMock.mutate.mock.calls[0]?.[1]
-    expect(mutationOptions).not.toHaveProperty('onError')
+    })
   })
 
   it('navigates to the new agent configure page after creating an agent', async () => {
@@ -112,10 +99,7 @@ describe('CreateAgentDialog', () => {
     )
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
 
-    const mutationOptions = mutationMock.mutate.mock.calls[0]?.[1]
-    await act(async () => {
-      mutationOptions.onSuccess({ id: 'agent-1' })
-    })
+    await waitFor(() => expect(routerPushMock).toHaveBeenCalledWith('/agents/agent-1/configure'))
 
     expect(toastMock.success).not.toHaveBeenCalled()
     expect(trackCreateAppMock).toHaveBeenCalledWith({
@@ -145,7 +129,7 @@ describe('CreateAgentDialog', () => {
       await within(dialog).findByText('agentRoster.roster.createForm.nameRequired'),
     ).toBeInTheDocument()
     expect(toastMock.error).not.toHaveBeenCalled()
-    expect(mutationMock.mutate).not.toHaveBeenCalled()
+    expect(mutateRequest).not.toHaveBeenCalled()
   })
 
   it('focuses the name field when opened and resets native form values after closing', async () => {
@@ -225,21 +209,16 @@ describe('CreateAgentDialog', () => {
     )
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
 
-    expect(mutationMock.mutate).toHaveBeenCalledWith(
-      {
-        body: {
-          name: 'Research Agent',
-          description: '',
-          role: '',
-          icon_type: 'emoji',
-          icon: '🧸',
-          icon_background: '#F5F3FF',
-        },
+    expect(mutateRequest).toHaveBeenCalledWith({
+      body: {
+        name: 'Research Agent',
+        description: '',
+        role: '',
+        icon_type: 'emoji',
+        icon: '🧸',
+        icon_background: '#F5F3FF',
       },
-      expect.objectContaining({
-        onSuccess: expect.any(Function),
-      }),
-    )
+    })
   })
 
   it('keeps the form open when the backdrop is clicked', async () => {

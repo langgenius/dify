@@ -12,11 +12,6 @@ import { StepOnePreview, StepTwoPreview } from '../preview-panel'
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
   return mockConsoleOperationHooks(await importOriginal(), {
-    'rag.pipelines.byPipelineId.workflows.published.datasource.nodes.byNodeId.preview.post':
-      () => ({
-        mutateAsync: vi.fn().mockResolvedValue({ content: 'Mock document content' }),
-        isPending: false,
-      }),
     'files.byFileId.preview.get': vi.fn(() => ({
       data: { content: 'Mock file content for testing' },
       isFetching: false,
@@ -274,4 +269,16 @@ describe('StepTwoPreview', () => {
       expect(container.querySelector('.h-full')).toBeInTheDocument()
     })
   })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.byPipelineId.workflows.published.datasource.nodes.byNodeId.preview.post': () =>
+        Promise.resolve({ content: 'Mock document content' }),
+    }),
+  }
 })

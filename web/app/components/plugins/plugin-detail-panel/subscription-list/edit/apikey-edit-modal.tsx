@@ -342,6 +342,7 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
             <div className="mb-4">
               {credentialsFormSchemas.length > 0 && (
                 <BaseForm
+                  key="credentials"
                   formSchemas={credentialsFormSchemas}
                   ref={credentialsFormRef}
                   labelClassName="system-sm-medium mb-2 flex items-center gap-1 text-text-primary"
@@ -353,6 +354,7 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
           ) : (
             <div className="max-h-[70vh]">
               <BaseForm
+                key="configuration"
                 formSchemas={basicFormSchemas}
                 ref={basicFormRef}
                 labelClassName="system-sm-medium mb-2 flex items-center gap-1 text-text-primary"

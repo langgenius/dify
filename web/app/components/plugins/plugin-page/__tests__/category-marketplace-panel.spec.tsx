@@ -1,6 +1,8 @@
 import type { PluginCategoryEnum } from '../../types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { PluginCategoryEnum as Category } from '../../types'
 import { getCategoryMarketplaceId } from '../category-marketplace'
 import CategoryMarketplacePanel from '../category-marketplace-panel'
@@ -8,40 +10,12 @@ import CategoryMarketplacePanel from '../category-marketplace-panel'
 const mocks = vi.hoisted(() => ({
   canInstallPlugin: true,
   fetchNextPage: vi.fn(),
-  installedPluginIds: ['installed/plugin'] as string[] | undefined,
-  installedPluginIdsError: false,
-  installedPluginIdsRefetch: vi.fn(),
+  getInstalledIds: vi.fn(),
   searchParams: undefined as unknown,
-}))
-
-vi.mock('@tanstack/react-query', () => ({
-  useQuery: () => ({
-    data: mocks.installedPluginIds,
-    isError: mocks.installedPluginIdsError,
-    isFetching: false,
-    isPending: false,
-    refetch: mocks.installedPluginIdsRefetch,
-  }),
 }))
 
 vi.mock('next-themes', () => ({
   useTheme: () => ({ theme: 'light' }),
-}))
-
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    workspaces: {
-      current: {
-        plugin: {
-          installedIds: {
-            get: {
-              queryOptions: () => ({}),
-            },
-          },
-        },
-      },
-    },
-  },
 }))
 
 vi.mock('@/app/components/plugins/marketplace/query', () => ({
@@ -97,12 +71,32 @@ vi.mock('@/app/components/plugins/provider-card', () => ({
   default: ({ payload }: { payload: { name: string } }) => <div>{payload.name}</div>,
 }))
 
+let seedIds = true
+const render = (ui: React.ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  if (seedIds)
+    queryClient.setQueryDefaults(consoleQuery.workspaces.current.plugin.installedIds.get.key(), {
+      initialData: { plugin_ids: ['installed/plugin'] },
+    })
+  return renderWithConsoleQuery(ui, { queryClient })
+}
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.installedIds.get': mocks.getInstalledIds,
+    }),
+  }
+})
+
 describe('CategoryMarketplacePanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.canInstallPlugin = true
-    mocks.installedPluginIds = ['installed/plugin']
-    mocks.installedPluginIdsError = false
+    seedIds = true
+    mocks.getInstalledIds.mockResolvedValue({ plugin_ids: ['installed/plugin'] })
     mocks.searchParams = undefined
   })
 
@@ -157,16 +151,17 @@ describe('CategoryMarketplacePanel', () => {
     expect(screen.getByText('Calendar')).toBeInTheDocument()
   })
 
-  it('shows a retry action when installed plugin IDs cannot be loaded', () => {
-    mocks.installedPluginIds = undefined
-    mocks.installedPluginIdsError = true
-
+  it('retries installed plugin IDs after a request failure and resumes marketplace search', async () => {
+    seedIds = false
+    mocks.getInstalledIds.mockRejectedValueOnce(new Error('Unavailable'))
     render(<CategoryMarketplacePanel category={Category.trigger} searchText="" />)
-
-    expect(screen.getByRole('alert')).toHaveTextContent('common.errorBoundary.title')
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.retry' }))
-    expect(mocks.installedPluginIdsRefetch).toHaveBeenCalledTimes(1)
+    expect(await screen.findByRole('alert')).toHaveTextContent('common.errorBoundary.title')
     expect(mocks.searchParams).toBeUndefined()
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    await waitFor(() => expect(mocks.getInstalledIds).toHaveBeenCalledTimes(2))
+    expect(await screen.findByText('Calendar')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(mocks.searchParams).toMatchObject({ exclude: ['installed/plugin'] })
   })
 
   it('supports collapsing and loading the next marketplace page', () => {

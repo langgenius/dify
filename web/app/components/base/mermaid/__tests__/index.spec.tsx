@@ -695,50 +695,6 @@ describe('Mermaid Flowchart Component Module Isolation', () => {
       }
     })
 
-    it.skip('should show container-not-found error when container ref remains null', async () => {
-      vi.resetModules()
-      vi.doMock('react', async () => {
-        const reactActual = await vi.importActual<typeof import('react')>('react')
-        let pendingContainerRef: ReturnType<typeof reactActual.useRef> | null = null
-        let patchedContainerRef = false
-        const mockedUseRef = ((initialValue: unknown) => {
-          const ref = reactActual.useRef(initialValue as never)
-          if (!patchedContainerRef && initialValue === null) pendingContainerRef = ref
-
-          if (
-            !patchedContainerRef &&
-            pendingContainerRef &&
-            typeof initialValue === 'string' &&
-            initialValue.startsWith('mermaid-chart-')
-          ) {
-            Object.defineProperty(pendingContainerRef, 'current', {
-              configurable: true,
-              get() {
-                return null
-              },
-              set(_value: HTMLDivElement | null) {},
-            })
-            patchedContainerRef = true
-            pendingContainerRef = null
-          }
-          return ref
-        }) as typeof reactActual.useRef
-
-        return {
-          ...reactActual,
-          useRef: mockedUseRef,
-        }
-      })
-
-      try {
-        const { default: FlowchartFresh } = await import('../index')
-        render(<FlowchartFresh PrimitiveCode={mockCode} />)
-        expect(await screen.findByText('Container element not found')).toBeInTheDocument()
-      } finally {
-        vi.doUnmock('react')
-      }
-    })
-
     it('should cancel a pending classic render on unmount', async () => {
       const { default: FlowchartFresh } = await import('../index')
 

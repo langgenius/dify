@@ -11,19 +11,6 @@ const { mockUseDocumentList } = vi.hoisted(() => ({
   mockUseDocumentList: vi.fn(),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'datasets.byDatasetId.documents.get': (options: {
-      input: { params: { dataset_id: string }; query: Record<string, unknown> }
-    }) =>
-      mockUseDocumentList({
-        datasetId: options.input.params.dataset_id,
-        query: options.input.query,
-      }),
-  })
-})
-
 const createDocument = (
   overrides: Partial<DocumentWithSegmentsResponse> = {},
 ): DocumentWithSegmentsResponse => ({
@@ -105,9 +92,15 @@ describe('DocumentPicker', () => {
         createDocument({ id: 'doc-2', name: 'Document 2' }),
       ],
     }
-    mockUseDocumentList.mockImplementation(() => ({
-      data: mockDocumentListData,
-    }))
+    mockUseDocumentList.mockImplementation(() =>
+      Promise.resolve({
+        ...mockDocumentListData,
+        total: mockDocumentListData?.data.length ?? 0,
+        page: 1,
+        limit: 20,
+        has_more: false,
+      }),
+    )
   })
 
   it('should render the current document and chunking mode', () => {
@@ -134,7 +127,7 @@ describe('DocumentPicker', () => {
 
     await waitFor(() => {
       expect(mockUseDocumentList).toHaveBeenLastCalledWith({
-        datasetId: 'dataset-custom',
+        params: { dataset_id: 'dataset-custom' },
         query: {
           keyword: 'report',
           page: 1,
@@ -162,9 +155,16 @@ describe('DocumentPicker', () => {
 
   it('should keep focus in the search input when deleting from an empty result', async () => {
     const user = userEvent.setup()
-    mockUseDocumentList.mockImplementation(({ query }) => ({
-      data: query.keyword === 'missing' ? { data: [] } : mockDocumentListData,
-    }))
+    mockUseDocumentList.mockImplementation(({ query }) =>
+      Promise.resolve({
+        ...mockDocumentListData,
+        data: query.keyword === 'missing' ? [] : mockDocumentListData?.data,
+        total: query.keyword === 'missing' ? 0 : mockDocumentListData?.data.length,
+        page: 1,
+        limit: 20,
+        has_more: false,
+      }),
+    )
 
     renderDocumentPicker()
 
@@ -227,4 +227,15 @@ describe('DocumentPicker', () => {
       (await screen.findByText('common.noData')).closest('[role="status"]'),
     ).toBeInTheDocument()
   })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.documents.get': mockUseDocumentList,
+    }),
+  }
 })

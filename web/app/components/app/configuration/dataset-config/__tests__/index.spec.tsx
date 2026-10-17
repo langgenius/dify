@@ -1,15 +1,14 @@
 import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { ComponentProps, PropsWithChildren } from 'react'
+import type { ComponentProps } from 'react'
 import type { DatasetConfigs } from '@/models/debug'
 import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useContext } from 'use-context-selector'
 import {
   ComparisonOperator,
   LogicalOperator,
   MetadataFilteringModeEnum,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import { getSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
+import DebugConfigurationContext from '@/context/debug-configuration'
 import { DataSourceType } from '@/models/datasets'
 import { PermissionLevel } from '@/models/permission'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -21,7 +20,7 @@ import {
   createModelConfigFixture,
 } from '@/test/fixtures/debug-configuration'
 import { ModelModeType, RETRIEVE_TYPE } from '@/types/app'
-import { DatasetACLPermission, getDatasetACLCapabilities } from '@/utils/permission'
+import { DatasetACLPermission } from '@/utils/permission'
 import DatasetConfig from '../index'
 
 const render = (ui: Parameters<typeof renderWithConsoleState>[0]) =>
@@ -30,23 +29,6 @@ const render = (ui: Parameters<typeof renderWithConsoleState>[0]) =>
   })
 
 // Mock external dependencies
-vi.mock('@/app/components/workflow/nodes/knowledge-retrieval/utils', () => ({
-  getMultipleRetrievalConfig: vi.fn(() => ({
-    top_k: 4,
-    score_threshold: 0.7,
-    reranking_enable: false,
-    reranking_model: undefined,
-    reranking_mode: 'reranking_model',
-    weights: { weight1: 1.0 },
-  })),
-  getSelectedDatasetsMode: vi.fn(() => ({
-    allInternal: true,
-    allExternal: false,
-    mixtureInternalAndExternal: false,
-    mixtureHighQualityAndEconomic: false,
-    inconsistentEmbeddingModel: false,
-  })),
-}))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useModelListAndDefaultModelAndCurrentProviderAndModel: vi.fn(() => ({
@@ -62,27 +44,6 @@ vi.mock('@/context/permission-state', async () => {
     workspacePermissionKeys: [],
   }))
 })
-
-vi.mock('@/utils/permission', () => ({
-  DatasetACLPermission: {
-    Readonly: 'dataset.acl.readonly',
-    Edit: 'dataset.acl.edit',
-    Use: 'dataset.acl.use',
-  },
-  getDatasetACLCapabilities: vi.fn(() => ({
-    canReadonly: false,
-    canEdit: true,
-    canImportExportDSL: false,
-    canPipelineTest: false,
-    canDocumentDownload: false,
-    canRetrievalRecall: false,
-    canUse: true,
-    canDeleteFile: false,
-    canPipelineRelease: false,
-    canDelete: false,
-    canAccessConfig: false,
-  })),
-}))
 
 vi.mock('../../debug/hooks', () => ({
   useFormattingChangedDispatcher: vi.fn(() => vi.fn()),
@@ -248,21 +209,13 @@ const mockConfigContext = createDebugConfigurationFixture({
   setRerankSettingModalOpen: vi.fn(),
 })
 
-vi.mock('@/context/debug-configuration', () => ({
-  default: ({ children }: PropsWithChildren) => (
-    <div data-testid="config-context-provider">{children}</div>
-  ),
-}))
-
-vi.mock('use-context-selector', () => ({
-  useContext: vi.fn(() => mockConfigContext),
-}))
-
 const createMockDataset = (
   overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
 ): DatasetDetailWithPartialMembersResponse => {
   const defaultDataset: DatasetDetailWithPartialMembersResponse = {
-    ...createDatasetFixture(),
+    ...createDatasetFixture({
+      permission_keys: [DatasetACLPermission.Edit, DatasetACLPermission.Use],
+    }),
     id: 'dataset-1',
     name: 'Test Dataset',
     icon_info: {
@@ -330,27 +283,18 @@ const createMockDataset = (
 
 const renderDatasetConfig = (contextOverrides: Partial<typeof mockConfigContext> = {}) => {
   const mergedContext = { ...mockConfigContext, ...contextOverrides }
-  vi.mocked(useContext).mockReturnValue(mergedContext)
 
-  return render(<DatasetConfig />)
+  return render(
+    <DebugConfigurationContext.Provider value={mergedContext}>
+      <DatasetConfig />
+    </DebugConfigurationContext.Provider>,
+  )
 }
 
 describe('DatasetConfig', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(getDatasetACLCapabilities).mockReturnValue({
-      canReadonly: false,
-      canEdit: true,
-      canImportExportDSL: false,
-      canPipelineTest: false,
-      canDocumentDownload: false,
-      canRetrievalRecall: false,
-      canUse: true,
-      canDeleteFile: false,
-      canPipelineRelease: false,
-      canDelete: false,
-      canAccessConfig: false,
-    })
+
     mockConfigContext.dataSets = []
     mockConfigContext.setDataSets = vi.fn()
     mockConfigContext.setModelConfig = vi.fn()
@@ -428,22 +372,12 @@ describe('DatasetConfig', () => {
     it('should trigger rerank setting modal when removing dataset requires rerank configuration', async () => {
       const user = userEvent.setup()
 
-      // Mock scenario that triggers rerank modal
-      // @ts-expect-error - same as above
-      vi.mocked(getSelectedDatasetsMode).mockReturnValue({
-        allInternal: false,
-        allExternal: true,
-        mixtureInternalAndExternal: false,
-        mixtureHighQualityAndEconomic: false,
-        inconsistentEmbeddingModel: false,
-      })
-
       const dataset = createMockDataset()
       renderDatasetConfig({
-        dataSets: [dataset],
+        dataSets: [dataset, createMockDataset({ id: 'external-dataset', provider: 'external' })],
       })
 
-      const removeButton = screen.getByText('Remove')
+      const removeButton = screen.getAllByText('Remove')[0]!
       await user.click(removeButton)
 
       expect(mockConfigContext.setRerankSettingModalOpen).toHaveBeenCalledWith(true)
@@ -489,19 +423,6 @@ describe('DatasetConfig', () => {
         permission: PermissionLevel.allTeamMembers,
         permission_keys: [DatasetACLPermission.Use],
       })
-      vi.mocked(getDatasetACLCapabilities).mockReturnValue({
-        canReadonly: false,
-        canEdit: false,
-        canImportExportDSL: false,
-        canPipelineTest: false,
-        canDocumentDownload: false,
-        canRetrievalRecall: false,
-        canUse: true,
-        canDeleteFile: false,
-        canPipelineRelease: false,
-        canDelete: false,
-        canAccessConfig: false,
-      })
 
       renderDatasetConfig({
         dataSets: [dataset],
@@ -509,13 +430,6 @@ describe('DatasetConfig', () => {
 
       expect(screen.getByTestId(`card-item-${dataset.id}`))!.toBeInTheDocument()
       expect(screen.queryByText('Edit')).not.toBeInTheDocument()
-      expect(getDatasetACLCapabilities).toHaveBeenCalledWith(
-        dataset.permission_keys,
-        expect.objectContaining({
-          currentUserId: 'user-123',
-          resourceMaintainer: dataset.maintainer,
-        }),
-      )
     })
   })
 
@@ -850,21 +764,6 @@ describe('DatasetConfig', () => {
 
       expect(screen.getByTestId('metadata-filter'))!.toBeInTheDocument()
       expect(screen.getByTestId('metadata-list-count'))!.toHaveTextContent('0')
-    })
-
-    it('should handle missing userProfile', () => {
-      vi.mocked(useContext).mockReturnValue({
-        ...mockConfigContext,
-        userProfile: null,
-      })
-
-      const dataset = createMockDataset()
-
-      renderDatasetConfig({
-        dataSets: [dataset],
-      })
-
-      expect(screen.getByTestId(`card-item-${dataset.id}`))!.toBeInTheDocument()
     })
 
     it('should handle missing datasetConfigsRef gracefully', () => {

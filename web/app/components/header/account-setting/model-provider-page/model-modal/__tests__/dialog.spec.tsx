@@ -18,10 +18,6 @@ vi.mock('@/context/workspace-state', async () => {
   }))
 })
 
-vi.mock('@/app/components/base/form/form-scenarios/auth', () => ({
-  default: () => <div data-testid="auth-form" />,
-}))
-
 vi.mock('../../model-auth', () => ({
   CredentialSelector: ({ credentials }: { credentials: Credential[] }) => (
     <div>{`credentials:${credentials.length}`}</div>

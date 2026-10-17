@@ -32,14 +32,18 @@ const mockToolCollections = vi.hoisted(() => ({
   workflow: [] as ToolWithProvider[],
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.tools.builtin.get': () => ({ data: mockToolCollections.builtIn }),
-    'workspaces.current.tools.api.get': () => ({ data: mockToolCollections.custom }),
-    'workspaces.current.tools.workflow.get': () => ({ data: mockToolCollections.workflow }),
-    'workspaces.current.tools.mcp.get': () => ({ data: [] }),
-  })
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.builtin.get': async () => mockToolCollections.builtIn,
+      'workspaces.current.tools.api.get': async () => mockToolCollections.custom,
+      'workspaces.current.tools.workflow.get': async () => mockToolCollections.workflow,
+      'workspaces.current.tools.mcp.get': async () => [],
+    }),
+  }
 })
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({

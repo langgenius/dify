@@ -15,7 +15,6 @@ const {
   mockHandleParamsChange,
   mockHandleBodyChange,
   mockHandleResponseBodyChange,
-  mockIsPrivateOrLocalAddress,
 } = vi.hoisted(() => ({
   mockHandleStatusCodeChange: vi.fn(),
   mockGenerateWebhookUrl: vi.fn(),
@@ -25,16 +24,6 @@ const {
   mockHandleParamsChange: vi.fn(),
   mockHandleBodyChange: vi.fn(),
   mockHandleResponseBodyChange: vi.fn(),
-  mockIsPrivateOrLocalAddress: vi.fn((_url: string) => false),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
-  default: ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <div>
-      <span>{title}</span>
-      {children}
-    </div>
-  ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
@@ -54,10 +43,6 @@ vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
       {children}
     </div>
   ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/split', () => ({
-  default: () => <div data-testid="split" />,
 }))
 
 vi.mock('../components/header-table', () => ({
@@ -116,10 +101,6 @@ vi.mock('../utils/render-output-vars', () => ({
   OutputVariablesContent: ({ variables }: { variables: unknown[] }) => (
     <div data-testid="output-variables">{variables.length}</div>
   ),
-}))
-
-vi.mock('@/utils/urlValidation', () => ({
-  isPrivateOrLocalAddress: (url: string) => mockIsPrivateOrLocalAddress(url),
 }))
 
 const mockConfigState = {
@@ -294,7 +275,6 @@ describe('WebhookTriggerPanel', () => {
 
     it('copies the debug URL from the keyboard and announces success while keeping its visible name', async () => {
       const user = userEvent.setup()
-      mockIsPrivateOrLocalAddress.mockReturnValue(true)
       mockConfigState.inputs = {
         ...mockConfigState.inputs,
         webhook_debug_url: 'http://127.0.0.1:8000/debug',

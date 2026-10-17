@@ -145,7 +145,7 @@ describe('useNodesAvailableVarList', () => {
           hideEnv: true,
           hideChatVar: true,
         }),
-      { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
+      { resource: { kind: 'app', appId: 'app-1', mode: 'advanced-chat' } },
     )
 
     expect(mockGetBeforeNodesInSameBranchIncludeParent).toHaveBeenCalledWith('loop-1')
@@ -246,7 +246,7 @@ describe('useNodesAvailableVarList', () => {
         useNodesAvailableVarList([currentNode], {
           filterVar: () => true,
         }),
-      { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
+      { resource: { kind: 'app', appId: 'app-1', mode: 'advanced-chat' } },
     )
 
     expect(result.current['node-a']?.availableVars).toEqual(outputVarsWithSystemVars)
@@ -286,7 +286,7 @@ describe('useNodesAvailableVarList', () => {
     const passedInAvailableNodes = [createNode({ id: 'manual-node' })]
 
     const { result } = renderHook(() => useGetNodesAvailableVarList(), {
-      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      resource: { kind: 'app', appId: 'app-1', mode: 'advanced-chat' },
     })
 
     const leafMap = result.current.getNodesAvailableVarList([firstNode], {
@@ -302,11 +302,4 @@ describe('useNodesAvailableVarList', () => {
     expect(leafMap['node-a']?.availableNodes.map((node) => node.id)).toEqual(['leaf-node-a'])
     expect(manualMap['node-b']?.availableNodes).toBe(passedInAvailableNodes)
   })
-})
-
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => true) }
 })
