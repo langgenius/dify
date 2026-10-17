@@ -1,4 +1,4 @@
-import type { Node } from '@/app/components/workflow/types'
+import { createNode as createWorkflowNode } from '@/app/components/workflow/__tests__/fixtures'
 import { BlockEnum } from '@/app/components/workflow/types'
 import {
   buildIterationChildCopy,
@@ -9,15 +9,8 @@ import {
   getRestrictedIterationPosition,
 } from '../use-interactions.helpers'
 
-const createNode = (overrides: Record<string, unknown> = {}) => ({
-  id: 'node',
-  type: 'custom',
-  position: { x: 0, y: 0 },
-  width: 100,
-  height: 80,
-  data: { type: BlockEnum.Code, title: 'Code', desc: '' },
-  ...overrides,
-})
+const createNode = (overrides: Parameters<typeof createWorkflowNode>[0] = {}) =>
+  createWorkflowNode({ width: 100, height: 80, ...overrides })
 
 describe('iteration interaction helpers', () => {
   it('calculates bounds, resize and drag restriction for iteration containers', () => {
@@ -66,7 +59,7 @@ describe('iteration interaction helpers', () => {
           createNode({ id: 'child', parentId: 'iteration-1' }),
           createNode({ id: 'start', parentId: 'iteration-1', type: 'custom-iteration-start' }),
           createNode({ id: 'other', parentId: 'other-iteration' }),
-        ] as Node[],
+        ],
         'iteration-1',
       ).map((item) => item.id),
     ).toEqual(['child'])
@@ -100,9 +93,9 @@ describe('iteration interaction helpers', () => {
     })
 
     const result = buildIterationChildCopy({
-      child: child as Node,
+      child,
       childNodeType: BlockEnum.Code,
-      defaultValue: { title: 'Code', desc: '', type: BlockEnum.Code } as Node['data'],
+      defaultValue: { title: 'Code', desc: '', type: BlockEnum.Code },
       title: 'blocks.code 3',
       newNodeId: 'iteration-2',
     })

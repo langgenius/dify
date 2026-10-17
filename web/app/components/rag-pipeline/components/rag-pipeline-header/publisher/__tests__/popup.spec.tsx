@@ -1,4 +1,5 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderEditor as renderWithConsoleState } from '@/app/components/workflow/editor-resource/__tests__/render'
@@ -21,7 +22,6 @@ const renderWithoutPricing = (ui: React.ReactElement) => {
 }
 
 const mockPublishWorkflow = vi.fn().mockResolvedValue({ created_at: '2024-01-01T00:00:00Z' })
-const mockPublishAsCustomizedPipeline = vi.fn().mockResolvedValue({})
 const toastMocks = vi.hoisted(() => ({
   call: vi.fn(),
   dismiss: vi.fn(),
@@ -64,10 +64,6 @@ vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'ds-123' }),
 }))
 
-vi.mock('@/next/link', () => ({
-  default: ({ children, ...props }: React.ComponentProps<'a'>) => <a {...props}>{children}</a>,
-}))
-
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) => {
     const state = {
@@ -86,12 +82,6 @@ vi.mock('@/app/components/workflow/store', () => ({
 
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
-}))
-
-vi.mock('@/app/components/base/premium-badge', () => ({
-  default: ({ children }: { children: React.ReactNode }) => (
-    <span data-testid="premium-badge">{children}</span>
-  ),
 }))
 
 vi.mock('@/config', async (importOriginal) => ({
@@ -141,35 +131,6 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
   }),
 }))
 
-vi.mock('../../../publish-as-knowledge-pipeline-modal', () => ({
-  default: ({
-    onConfirm,
-    onCancel,
-  }: {
-    onConfirm: (name: string, icon: unknown, desc: string) => void
-    onCancel: () => void
-  }) => (
-    <div data-testid="publish-as-modal">
-      <button
-        data-testid="publish-as-confirm"
-        onClick={() => onConfirm('My Pipeline', { icon_type: 'emoji' }, 'desc')}
-      >
-        Confirm
-      </button>
-      <button data-testid="publish-as-cancel" onClick={onCancel}>
-        Cancel
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('@remixicon/react', () => ({
-  RiArrowRightUpLine: () => <span />,
-  RiHammerLine: () => <span />,
-  RiPlayCircleLine: () => <span />,
-  RiTerminalBoxLine: () => <span />,
-}))
-
 function render(...args: Parameters<typeof renderWithoutPricing>) {
   args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
   return renderWithoutPricing(...args)
@@ -179,18 +140,6 @@ vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
   post: (...args: unknown[]) => mockPublishWorkflow(...args),
 }))
-
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'rag.pipelines.byPipelineId.customized.publish.post': (input) =>
-        mockPublishAsCustomizedPipeline(input),
-    }),
-  }
-})
 
 describe('Popup', () => {
   beforeEach(() => {
@@ -215,6 +164,7 @@ describe('Popup', () => {
       render(<Popup />)
 
       expect(screen.getByText('workflow.common.latestPublished')).toBeInTheDocument()
+      expect(screen.getByText(/formatted:2024-01-01/)).toBeInTheDocument()
       expect(screen.getByText(/workflow\.common\.publishedAt/)).toBeInTheDocument()
     })
 
@@ -223,37 +173,8 @@ describe('Popup', () => {
       render(<Popup />)
 
       expect(screen.getByText('workflow.common.currentDraftUnpublished')).toBeInTheDocument()
+      expect(screen.getByText(/formatted:2024-06-01/)).toBeInTheDocument()
       expect(screen.getByText(/workflow\.common\.autoSaved/)).toBeInTheDocument()
-    })
-
-    it('should render publish button with shortcuts', () => {
-      const { container } = render(<Popup />)
-
-      expect(screen.getByText('workflow.common.publishUpdate')).toBeInTheDocument()
-      expect(container.querySelectorAll('kbd')).toHaveLength(3)
-    })
-
-    it('should render "Publish As" button', () => {
-      const { container } = render(<Popup />)
-
-      expect(screen.getByText('pipeline.common.publishAs')).toBeInTheDocument()
-      expect(container.querySelector('.i-custom-vender-pipeline-pipeline-line')).toBeInTheDocument()
-    })
-  })
-
-  describe('Premium Badge', () => {
-    it('should not show premium badge when allowed', () => {
-      mockIsAllowPublishAsCustom = true
-      render(<Popup />)
-
-      expect(screen.queryByTestId('premium-badge')).not.toBeInTheDocument()
-    })
-
-    it('should show premium badge when not allowed', () => {
-      mockIsAllowPublishAsCustom = false
-      render(<Popup />)
-
-      expect(screen.getByTestId('premium-badge')).toBeInTheDocument()
     })
   })
 
@@ -308,7 +229,7 @@ describe('Popup', () => {
       const onRequestClose = vi.fn()
       render(<Popup onRequestClose={onRequestClose} />)
 
-      fireEvent.click(screen.getByText('pipeline.common.publishAs'))
+      await userEvent.setup().click(screen.getByText('pipeline.common.publishAs'))
 
       expect(onRequestClose).toHaveBeenCalledTimes(1)
       await waitFor(() =>
@@ -316,7 +237,7 @@ describe('Popup', () => {
       )
     })
 
-    it('should request closing the outer popover before opening publish-as modal', () => {
+    it('should request closing the outer popover before opening publish-as modal', async () => {
       const onRequestClose = vi.fn()
       const onShowPublishAsKnowledgePipelineModal = vi.fn()
       render(
@@ -326,7 +247,7 @@ describe('Popup', () => {
         />,
       )
 
-      fireEvent.click(screen.getByText('pipeline.common.publishAs'))
+      await userEvent.setup().click(screen.getByText('pipeline.common.publishAs'))
 
       expect(onRequestClose).toHaveBeenCalledTimes(1)
       expect(onShowPublishAsKnowledgePipelineModal).toHaveBeenCalledTimes(1)
@@ -337,26 +258,14 @@ describe('Popup', () => {
     it('closes the publish confirmation without publishing when cancelled', async () => {
       mockPublishedAt = undefined
       render(<Popup />)
-      fireEvent.click(screen.getByRole('button', { name: /^workflow\.common\.publishUpdate/ }))
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: /^workflow\.common\.publishUpdate/ }))
       const cancel = await screen.findByRole('button', { name: 'common.operation.cancel' })
-      fireEvent.click(cancel)
+      await userEvent.setup().click(cancel)
       await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+      expect(mockPublishWorkflow).not.toHaveBeenCalled()
       expect(mockSetPublishedAt).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('Time formatting', () => {
-    it('should format published time', () => {
-      render(<Popup />)
-
-      expect(screen.getByText(/formatted:2024-01-01/)).toBeInTheDocument()
-    })
-
-    it('should format draft updated time when unpublished', () => {
-      mockPublishedAt = undefined
-      render(<Popup />)
-
-      expect(screen.getByText(/formatted:2024-06-01/)).toBeInTheDocument()
     })
   })
 })

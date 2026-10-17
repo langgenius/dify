@@ -30,32 +30,6 @@ vi.mock('../components/agent-roster-list', () => ({
   AgentRosterList: () => <div>Agent roster</div>,
 }))
 
-vi.mock('../components/roster-toolbar', async () => {
-  const { useQueryState } = await import('nuqs')
-  const { rosterFilterQueryParser } = await import('../query-params')
-  return {
-    RosterToolbar: ({
-      publicationCounts,
-    }: {
-      publicationCounts: { drafts: number; published: number }
-    }) => {
-      const [filter, setFilter] = useQueryState('filter', rosterFilterQueryParser)
-      return (
-        <div>
-          <span>{`Roster toolbar: ${publicationCounts.published} published, ${publicationCounts.drafts} drafts`}</span>
-          <button
-            type="button"
-            aria-pressed={filter === 'drafts'}
-            onClick={() => void setFilter('drafts')}
-          >
-            Drafts
-          </button>
-        </div>
-      )
-    },
-  }
-})
-
 const onUrlUpdate = vi.fn()
 const render = (ui: ReactElement, options?: Parameters<typeof renderWithoutUrlState>[1]) =>
   renderWithoutUrlState(
@@ -84,16 +58,6 @@ describe('RosterPage', () => {
     })
   })
 
-  it('uses the localized roster title for the page heading', () => {
-    render(<RosterPage />)
-
-    expect(screen.getByRole('heading', { name: 'agentRoster.roster.title' })).toHaveAttribute(
-      'title',
-      'agentRoster.roster.title',
-    )
-    expect(screen.getByRole('region', { name: 'agentRoster.roster.title' })).toBeInTheDocument()
-  })
-
   it('reconciles the route title with client branding', () => {
     render(<RosterPage />, {
       systemFeatures: {
@@ -105,12 +69,18 @@ describe('RosterPage', () => {
     })
 
     expect(document.title).toBe('agentRoster.roster.title - Acme')
+    expect(screen.getByRole('heading', { name: 'agentRoster.roster.title' })).toBeInTheDocument()
   })
 
   it('requests the publication filter and displays server-owned counts', async () => {
     queryValues.filter = 'drafts'
     render(<RosterPage />)
-    expect(await screen.findByText('Roster toolbar: 1 published, 2 drafts')).toBeInTheDocument()
+    expect(
+      await screen.findByRole('radio', { name: 'agentRoster.roster.filters.published 1' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('radio', { name: 'agentRoster.roster.filters.drafts 2' }),
+    ).toBeInTheDocument()
     expect(listAgents).toHaveBeenCalledWith({
       query: {
         limit: 30,
@@ -133,10 +103,18 @@ describe('RosterPage', () => {
       })
       .mockReturnValueOnce(nextPage.promise)
     render(<RosterPage />)
-    expect(await screen.findByText('Roster toolbar: 1 published, 2 drafts')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Drafts' }))
+    expect(
+      await screen.findByRole('radio', { name: 'agentRoster.roster.filters.published 1' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('radio', { name: 'agentRoster.roster.filters.drafts 2' }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('radio', { name: 'agentRoster.roster.filters.drafts 2' }))
     await waitFor(() => expect(listAgents).toHaveBeenCalledTimes(2))
-    expect(screen.getByText('Roster toolbar: 1 published, 2 drafts')).toBeInTheDocument()
+    expect(
+      screen.getByRole('radio', { name: 'agentRoster.roster.filters.published 1' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'agentRoster.roster.filters.drafts 2' })).toBeChecked()
     await act(async () =>
       nextPage.resolve({
         data: [],
@@ -145,7 +123,9 @@ describe('RosterPage', () => {
         publication_counts: { drafts: 4, published: 1 },
       }),
     )
-    expect(await screen.findByText('Roster toolbar: 1 published, 4 drafts')).toBeInTheDocument()
+    expect(
+      await screen.findByRole('radio', { name: 'agentRoster.roster.filters.drafts 4' }),
+    ).toBeChecked()
   })
 
   it('renders stable zero counts before the first server response', () => {
@@ -153,6 +133,11 @@ describe('RosterPage', () => {
 
     render(<RosterPage />)
 
-    expect(screen.getByText('Roster toolbar: 0 published, 0 drafts')).toBeInTheDocument()
+    expect(
+      screen.getByRole('radio', { name: 'agentRoster.roster.filters.published 0' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('radio', { name: 'agentRoster.roster.filters.drafts 0' }),
+    ).toBeInTheDocument()
   })
 })

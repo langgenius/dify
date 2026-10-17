@@ -6,7 +6,7 @@ import type {
 import type { ReactNode, Ref } from 'react'
 import type { DeepPartial } from '@/test/console/system-features'
 import { focusManager, onlineManager, QueryClientProvider } from '@tanstack/react-query'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ScopeProvider } from 'jotai-scope'
 import { useState } from 'react'
@@ -15,6 +15,7 @@ import { AgentScope } from '@/features/agent-v2/analytics'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryClient, seedSystemFeatures } from '@/test/console/query-data'
+import { createDeferred as createDeferredPromise } from '@/test/deferred'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { renderWithNuqs as render } from '@/test/nuqs-testing'
 import { AgentConfigureComposerScope } from '../components/composer-session'
@@ -57,15 +58,6 @@ const editionState = vi.hoisted(() => ({
   deploymentEdition: 'CLOUD' as 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE',
   licenseStatus: 'none' as 'none' | 'active' | 'expired' | 'lost',
 }))
-
-function createDeferredPromise<T>() {
-  let resolve!: (value: T) => void
-  const promise = new Promise<T>((promiseResolve) => {
-    resolve = promiseResolve
-  })
-
-  return { promise, resolve }
-}
 
 function expectFirstMockCallBefore(
   first: ReturnType<typeof vi.fn>,
@@ -458,7 +450,7 @@ describe('AgentConfigurePage', () => {
       queries: { retry: false, staleTime: Infinity, gcTime: Infinity, retryOnMount: false },
       mutations: { retry: false },
     })
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     mocks.completeBuildConversation = undefined
     editionState.deploymentEdition = 'CLOUD'
     editionState.licenseStatus = 'none'
@@ -524,7 +516,6 @@ describe('AgentConfigurePage', () => {
         name: 'agentV2.agentDetail.sections.configure',
       })
       expect(configureSection).toHaveAttribute('aria-busy', 'true')
-      expect(configureSection).toHaveClass('bg-background-body')
       expect(
         screen.getByRole('progressbar', { name: 'agentV2.agentDetail.sections.configure' }),
       ).toBeInTheDocument()
@@ -570,22 +561,11 @@ describe('AgentConfigurePage', () => {
       expect(await screen.findByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
         'prompt:build prompt',
       )
-    })
-
-    it('should leave the configure landmark to the orchestrate panel after loading', async () => {
-      const queryClient = createQueryClient()
-      setComposerData({})
-
-      render(
-        <QueryClientProvider client={queryClient}>
-          <AgentConfigurePage agentId="agent-1" />
-        </QueryClientProvider>,
-      )
-
       expect(
-        screen.queryByRole('region', { name: 'agentV2.agentDetail.sections.configure' }),
+        screen.queryByRole('region', {
+          name: 'agentV2.agentDetail.sections.configure',
+        }),
       ).not.toBeInTheDocument()
-      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toBeInTheDocument()
     })
 
     it('should initialize the composer from recovered query data after the initial request fails', async () => {
@@ -1004,7 +984,6 @@ describe('AgentConfigurePage', () => {
       })
       expectFirstMockCallBefore(mocks.refreshDebugConversation, mocks.saveComposerDraft)
       expectFirstMockCallBefore(mocks.saveComposerDraft, mocks.checkoutBuildDraft)
-      expectFirstMockCallBefore(mocks.refreshDebugConversation, mocks.checkoutBuildDraft)
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:yes')
       expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
         'prompt:fresh build prompt',
@@ -1527,10 +1506,12 @@ describe('AgentConfigurePage', () => {
       expect(mocks.getBuildDraft).not.toHaveBeenCalled()
     })
 
-    it('should enter build draft mode when build draft data exists', async () => {
+    it('should track the run without checking out again in active build draft mode', async () => {
+      const user = userEvent.setup()
       const queryClient = createQueryClient()
       setComposerData({
         agent_soul: {
+          model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
           prompt: {
             system_prompt: 'draft prompt',
           },
@@ -1538,6 +1519,7 @@ describe('AgentConfigurePage', () => {
       })
       setBuildDraftData({
         agent_soul: {
+          model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
           prompt: {
             system_prompt: 'build prompt',
           },
@@ -1552,50 +1534,19 @@ describe('AgentConfigurePage', () => {
         </QueryClientProvider>,
       )
 
-      expect(await screen.findByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
-        'readonly:yes',
-      )
       expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
         'buildDraft:yes',
+      )
+
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'readonly:yes',
       )
       expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
         'publish:no',
       )
       expect(screen.getByRole('region', { name: 'build-draft-bar' })).toBeInTheDocument()
-    })
 
-    it('should track the run without checking out again in active build draft mode', async () => {
-      const queryClient = createQueryClient()
-      setComposerData({
-        agent_soul: {
-          model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
-          prompt: {
-            system_prompt: 'draft prompt',
-          },
-        },
-      })
-      setBuildDraftData({
-        agent_soul: {
-          model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
-          prompt: {
-            system_prompt: 'build prompt',
-          },
-        },
-        draft: {},
-        variant: 'agent_app',
-      })
-
-      render(
-        <QueryClientProvider client={queryClient}>
-          <AgentConfigurePage agentId="agent-1" />
-        </QueryClientProvider>,
-      )
-
-      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
-        'buildDraft:yes',
-      )
-
-      fireEvent.click(screen.getByRole('button', { name: 'send build message' }))
+      await user.click(screen.getByRole('button', { name: 'send build message' }))
 
       await waitFor(() => {
         expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:yes')
@@ -1607,6 +1558,7 @@ describe('AgentConfigurePage', () => {
     })
 
     it('should show the working directory action after the first build reply completes', async () => {
+      const user = userEvent.setup()
       const queryClient = createQueryClient()
       setComposerData({
         agent_soul: {
@@ -1638,7 +1590,7 @@ describe('AgentConfigurePage', () => {
       expect(screen.getByRole('button', { name: 'apply build draft' })).toBeEnabled()
       expect(screen.getByRole('button', { name: 'open working directory' })).toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: 'send build message' }))
+      await user.click(screen.getByRole('button', { name: 'send build message' }))
 
       await waitFor(() => {
         expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:yes')
@@ -1648,11 +1600,11 @@ describe('AgentConfigurePage', () => {
         screen.queryByRole('button', { name: 'open working directory' }),
       ).not.toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: 'complete build conversation' }))
+      await user.click(screen.getByRole('button', { name: 'complete build conversation' }))
 
       expect(screen.getByRole('button', { name: 'open working directory' })).toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: 'send build message' }))
+      await user.click(screen.getByRole('button', { name: 'send build message' }))
 
       expect(screen.getByRole('button', { name: 'open working directory' })).toBeInTheDocument()
     })
@@ -1736,6 +1688,7 @@ describe('AgentConfigurePage', () => {
     })
 
     it('should switch to build draft mode without resetting the sending chat when sending from normal draft mode', async () => {
+      const user = userEvent.setup()
       const queryClient = createQueryClient()
       setComposerData({
         agent_soul: {
@@ -1760,7 +1713,7 @@ describe('AgentConfigurePage', () => {
         'buildDraft:no',
       )
 
-      fireEvent.click(screen.getByRole('button', { name: 'send build message' }))
+      await user.click(screen.getByRole('button', { name: 'send build message' }))
 
       await waitFor(() => {
         expect(mocks.checkoutBuildDraft).toHaveBeenCalledWith({
@@ -1790,6 +1743,7 @@ describe('AgentConfigurePage', () => {
     })
 
     it('should require an explicit model even when the workspace has a default', async () => {
+      const user = userEvent.setup()
       const queryClient = createQueryClient()
       setComposerData({
         agent_soul: {
@@ -1806,7 +1760,7 @@ describe('AgentConfigurePage', () => {
         </QueryClientProvider>,
       )
 
-      fireEvent.click(screen.getByRole('button', { name: 'send build message' }))
+      await user.click(screen.getByRole('button', { name: 'send build message' }))
 
       await waitFor(() => {
         expect(toastMock.error).toHaveBeenCalledWith('modelProvider.modelProvider.selectModel')
@@ -1819,6 +1773,7 @@ describe('AgentConfigurePage', () => {
     })
 
     it('should keep the build draft bar disabled while a build conversation is responding', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTimeAsync })
       vi.useFakeTimers({ shouldAdvanceTime: true })
       const queryClient = createQueryClient()
       const refetchBuildDraft = vi.fn(async () => testQueryClient.getQueryData(buildDraftKey))
@@ -1850,7 +1805,7 @@ describe('AgentConfigurePage', () => {
 
       expect(screen.getByRole('region', { name: 'build-draft-bar' })).toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: 'send build message' }))
+      await user.click(screen.getByRole('button', { name: 'send build message' }))
 
       await act(async () => {
         await Promise.resolve()
@@ -1860,7 +1815,7 @@ describe('AgentConfigurePage', () => {
       expect(screen.getByRole('button', { name: 'apply build draft' })).toBeDisabled()
       expect(screen.getByRole('button', { name: 'discard build draft' })).toBeDisabled()
 
-      fireEvent.click(screen.getByRole('button', { name: 'complete build conversation' }))
+      await user.click(screen.getByRole('button', { name: 'complete build conversation' }))
 
       expect(refetchBuildDraft).not.toHaveBeenCalled()
 
@@ -1875,6 +1830,7 @@ describe('AgentConfigurePage', () => {
     })
 
     it('should not keep a stale build draft action lock after the composer content remounts', async () => {
+      const user = userEvent.setup()
       const queryClient = createQueryClient()
       setComposerData({
         agent_soul: {
@@ -1903,7 +1859,7 @@ describe('AgentConfigurePage', () => {
 
       expect(screen.getByRole('button', { name: 'apply build draft' })).toBeEnabled()
 
-      fireEvent.click(screen.getByRole('button', { name: 'send build message' }))
+      await user.click(screen.getByRole('button', { name: 'send build message' }))
       await act(async () => {
         await Promise.resolve()
       })
@@ -1938,11 +1894,13 @@ describe('AgentConfigurePage', () => {
     })
 
     it('should settle build draft actions when the build completion refresh fails', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTimeAsync })
       vi.useFakeTimers({ shouldAdvanceTime: true })
       const queryClient = createQueryClient()
       const refetchBuildDraft = vi.fn().mockRejectedValue(new Error('refresh failed'))
       setComposerData({
         agent_soul: {
+          model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
           prompt: {
             system_prompt: 'draft prompt',
           },
@@ -1950,6 +1908,7 @@ describe('AgentConfigurePage', () => {
       })
       setBuildDraftData({
         agent_soul: {
+          model: { model_provider: 'langgenius/openai/openai', model: 'gpt-4o-mini' },
           prompt: {
             system_prompt: 'build prompt',
           },
@@ -1965,11 +1924,11 @@ describe('AgentConfigurePage', () => {
         </QueryClientProvider>,
       )
 
-      fireEvent.click(screen.getByRole('button', { name: 'send build message' }))
+      await user.click(screen.getByRole('button', { name: 'send build message' }))
       await act(async () => {
         await Promise.resolve()
       })
-      fireEvent.click(screen.getByRole('button', { name: 'complete build conversation' }))
+      await user.click(screen.getByRole('button', { name: 'complete build conversation' }))
 
       await act(async () => {
         await vi.advanceTimersByTimeAsync(1000)
@@ -1981,6 +1940,7 @@ describe('AgentConfigurePage', () => {
     })
 
     it('should not let a previous build completion refresh unlock a new build run', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTimeAsync })
       vi.useFakeTimers({ shouldAdvanceTime: true })
       const queryClient = createQueryClient()
       const refetchBuildDraft = vi.fn(async () => testQueryClient.getQueryData(buildDraftKey))
@@ -2010,12 +1970,12 @@ describe('AgentConfigurePage', () => {
         </QueryClientProvider>,
       )
 
-      fireEvent.click(screen.getByRole('button', { name: 'send build message' }))
+      await user.click(screen.getByRole('button', { name: 'send build message' }))
       await act(async () => {
         await Promise.resolve()
       })
-      fireEvent.click(screen.getByRole('button', { name: 'complete build conversation' }))
-      fireEvent.click(screen.getByRole('button', { name: 'send build message' }))
+      await user.click(screen.getByRole('button', { name: 'complete build conversation' }))
+      await user.click(screen.getByRole('button', { name: 'send build message' }))
       await act(async () => {
         await Promise.resolve()
       })
@@ -2030,6 +1990,7 @@ describe('AgentConfigurePage', () => {
     })
 
     it('should ignore a previous build completion refresh that is already in flight', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTimeAsync })
       vi.useFakeTimers({ shouldAdvanceTime: true })
       const queryClient = createQueryClient()
       const refetchBuildDraft = vi.fn()
@@ -2071,17 +2032,17 @@ describe('AgentConfigurePage', () => {
         </QueryClientProvider>,
       )
 
-      fireEvent.click(screen.getByRole('button', { name: 'send build message' }))
+      await user.click(screen.getByRole('button', { name: 'send build message' }))
       await act(async () => {
         await Promise.resolve()
       })
-      fireEvent.click(screen.getByRole('button', { name: 'complete build conversation' }))
+      await user.click(screen.getByRole('button', { name: 'complete build conversation' }))
       await act(async () => {
         await vi.advanceTimersByTimeAsync(1000)
       })
       expect(refetchBuildDraft).toHaveBeenCalledTimes(1)
 
-      fireEvent.click(screen.getByRole('button', { name: 'send build message' }))
+      await user.click(screen.getByRole('button', { name: 'send build message' }))
       await act(async () => {
         await Promise.resolve()
       })
@@ -2282,80 +2243,6 @@ describe('AgentConfigurePage', () => {
       })
     })
 
-    it('should apply the build draft and rebase the composer store from the refetched normal draft', async () => {
-      const user = userEvent.setup()
-      const queryClient = createQueryClient()
-      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
-      const refetchComposer = vi.fn(async () => {
-        return {
-          agent_soul: {
-            prompt: {
-              system_prompt: 'applied prompt',
-            },
-          },
-        }
-      })
-      setComposerData({
-        agent_soul: {
-          prompt: {
-            system_prompt: 'old draft prompt',
-          },
-        },
-      })
-      mocks.getComposer.mockImplementation(refetchComposer)
-      setBuildDraftData({
-        agent_soul: {
-          prompt: {
-            system_prompt: 'build prompt',
-          },
-        },
-        draft: {},
-        variant: 'agent_app',
-      })
-
-      render(
-        <QueryClientProvider client={queryClient}>
-          <AgentConfigurePage agentId="agent-1" />
-        </QueryClientProvider>,
-      )
-
-      await user.click(screen.getByRole('button', { name: 'apply build draft' }))
-
-      await waitFor(() =>
-        expect(mocks.finalizeBuildChat).toHaveBeenCalledWith({
-          params: {
-            agent_id: 'agent-1',
-          },
-        }),
-      )
-      await waitFor(() =>
-        expect(mocks.applyBuildDraft).toHaveBeenCalledWith({
-          params: {
-            agent_id: 'agent-1',
-          },
-        }),
-      )
-      expectFirstMockCallBefore(mocks.finalizeBuildChat, mocks.applyBuildDraft)
-      expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: agentKey,
-      })
-      expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: consoleQuery.agent.get.key(),
-      })
-      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith({
-        params: {
-          agent_id: 'agent-1',
-        },
-      })
-      expect(refetchComposer).toHaveBeenCalled()
-      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
-      await waitFor(() => {
-        expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
-          'prompt:applied prompt',
-        )
-      })
-    })
-
     it('should stop applying after finalize fails without adding a generic error toast', async () => {
       const user = userEvent.setup()
       mocks.finalizeBuildChat.mockRejectedValueOnce(new Error('finalize failed'))
@@ -2398,6 +2285,7 @@ describe('AgentConfigurePage', () => {
     it('should keep the build draft UI while the applied normal draft is still refreshing', async () => {
       const user = userEvent.setup()
       const queryClient = createQueryClient()
+      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
       const refetchComposerDeferred = createDeferredPromise<unknown>()
       const refetchComposer = vi.fn(async () => {
         await refetchComposerDeferred.promise
@@ -2459,6 +2347,19 @@ describe('AgentConfigurePage', () => {
           'prompt:applied prompt',
         )
       })
+      expect(mocks.finalizeBuildChat).toHaveBeenCalledExactlyOnceWith({
+        params: { agent_id: 'agent-1' },
+      })
+      expect(mocks.applyBuildDraft).toHaveBeenCalledExactlyOnceWith({
+        params: { agent_id: 'agent-1' },
+      })
+      expectFirstMockCallBefore(mocks.finalizeBuildChat, mocks.applyBuildDraft)
+      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: agentKey })
+      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: consoleQuery.agent.get.key() })
+      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith({
+        params: { agent_id: 'agent-1' },
+      })
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
       expect(toastMock.success).toHaveBeenCalled()
     })
 

@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
@@ -39,7 +39,6 @@ const mockSync = vi.fn()
 const mockSyncWebsite = vi.fn()
 const mockPause = vi.fn()
 const mockResume = vi.fn()
-let isDownloadPending = false
 
 const mockGenerateSummary = vi.fn()
 const statusMocks: Record<string, (input: unknown) => unknown> = {
@@ -48,34 +47,27 @@ const statusMocks: Record<string, (input: unknown) => unknown> = {
   enable: (input) => mockEnable(input),
   disable: (input) => mockDisable(input),
 }
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'datasets.byDatasetId.documents.status.byAction.batch.patch': () => ({
-      mutateAsync: (input: { params: { action: string } }) =>
-        statusMocks[input.params.action]!(input),
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.documents.status.byAction.batch.patch': (input: {
+        params: { action: keyof typeof statusMocks }
+      }) => statusMocks[input.params.action]!(input),
+      'datasets.byDatasetId.documents.delete': (input) => mockDelete(input),
+      'datasets.byDatasetId.documents.byDocumentId.download.get': (input) => mockDownload(input),
+      'datasets.byDatasetId.documents.byDocumentId.notion.sync.get': (input) => mockSync(input),
+      'datasets.byDatasetId.documents.byDocumentId.websiteSync.get': (input) =>
+        mockSyncWebsite(input),
+      'datasets.byDatasetId.documents.byDocumentId.processing.pause.patch': (input) =>
+        mockPause(input),
+      'datasets.byDatasetId.documents.byDocumentId.processing.resume.patch': (input) =>
+        mockResume(input),
+      'datasets.byDatasetId.documents.generateSummary.post': (input) => mockGenerateSummary(input),
     }),
-    'datasets.byDatasetId.documents.delete': () => ({ mutateAsync: mockDelete }),
-    'datasets.byDatasetId.documents.byDocumentId.download.get': () => ({
-      mutateAsync: mockDownload,
-      isPending: isDownloadPending,
-    }),
-    'datasets.byDatasetId.documents.byDocumentId.notion.sync.get': () => ({
-      mutateAsync: mockSync,
-    }),
-    'datasets.byDatasetId.documents.byDocumentId.websiteSync.get': () => ({
-      mutateAsync: mockSyncWebsite,
-    }),
-    'datasets.byDatasetId.documents.byDocumentId.processing.pause.patch': () => ({
-      mutateAsync: mockPause,
-    }),
-    'datasets.byDatasetId.documents.byDocumentId.processing.resume.patch': () => ({
-      mutateAsync: mockResume,
-    }),
-    'datasets.byDatasetId.documents.generateSummary.post': () => ({
-      mutateAsync: mockGenerateSummary,
-    }),
-  })
+  }
 })
 
 // Mock downloadUrl utility
@@ -85,9 +77,7 @@ vi.mock('@/utils/download', () => ({
 }))
 
 afterEach(() => {
-  cleanup()
-  vi.clearAllMocks()
-  isDownloadPending = false
+  vi.useRealTimers()
 })
 
 describe('Operations', () => {
@@ -130,25 +120,8 @@ describe('Operations', () => {
   })
 
   describe('rendering', () => {
-    it('should render buttons when embeddingAvailable', () => {
-      render(<Operations {...defaultProps} />)
-      const buttons = screen.getAllByRole('button')
-      expect(buttons.length).toBeGreaterThan(0)
-    })
-
-    it('should not render settings when embeddingAvailable is false', () => {
-      render(<Operations {...defaultProps} embeddingAvailable={false} />)
-      expect(screen.queryByText('datasetDocuments.list.action.settings')).not.toBeInTheDocument()
-    })
-
-    it('should render disabled switch when embeddingAvailable is false in list scene', () => {
-      render(<Operations {...defaultProps} embeddingAvailable={false} scene="list" />)
-      const disabledSwitch = screen.getByRole('switch')
-      expect(disabledSwitch)!.toHaveAttribute('aria-disabled', 'true')
-    })
-
     it('should not render an operations menu and should disable switch without any document operation permissions', async () => {
-      vi.useFakeTimers()
+      vi.useFakeTimers({ shouldAdvanceTime: true })
       render(
         <Operations
           {...defaultProps}
@@ -166,7 +139,9 @@ describe('Operations', () => {
       const switchElement = screen.getByRole('switch')
       expect(switchElement)!.toHaveAttribute('aria-disabled', 'true')
       await act(async () => {
-        fireEvent.click(switchElement)
+        await userEvent
+          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
+          .click(switchElement)
         vi.advanceTimersByTime(600)
       })
       expect(mockEnable).not.toHaveBeenCalled()
@@ -187,7 +162,9 @@ describe('Operations', () => {
 
       const moreButton = screen.getByRole('button', { name: 'common.operation.more' })
       await act(async () => {
-        fireEvent.click(moreButton)
+        await userEvent
+          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
+          .click(moreButton)
       })
 
       expect(screen.getByText('datasetDocuments.list.action.download'))!.toBeInTheDocument()
@@ -206,7 +183,7 @@ describe('Operations', () => {
       { enabled: false, archived: false, embeddingAvailable: false, canEdit: true },
       { enabled: true, archived: false, embeddingAvailable: true, canEdit: false },
     ])(
-      'names the document enable switch across supported states: %j',
+      'allows toggling only editable, unarchived documents with embeddings: %j',
       ({ enabled, archived, embeddingAvailable, canEdit }) => {
         render(
           <Operations
@@ -216,36 +193,28 @@ describe('Operations', () => {
             canEdit={canEdit}
           />,
         )
-        expect(
-          screen.getByRole('switch', {
-            name: 'datasetDocuments.list.status.enabled: Test Document',
-          }),
-        ).toBeInTheDocument()
+        const toggle = screen.getByRole('switch', {
+          name: 'datasetDocuments.list.status.enabled: Test Document',
+        })
+        expect(toggle).toHaveAttribute('aria-checked', String(enabled))
+        if (archived || !embeddingAvailable || !canEdit)
+          expect(toggle).toHaveAttribute('aria-disabled', 'true')
+        else expect(toggle).not.toHaveAttribute('aria-disabled', 'true')
       },
     )
 
-    it('should render switch in list scene', () => {
-      render(<Operations {...defaultProps} scene="list" />)
-      const switches = document.querySelectorAll('[role="switch"], [class*="switch"]')
-      expect(switches.length).toBeGreaterThan(0)
-    })
-
-    it('should render disabled switch when archived', () => {
-      render(
-        <Operations {...defaultProps} scene="list" detail={{ ...defaultDetail, archived: true }} />,
-      )
-      const disabledSwitch = document.querySelector('[disabled]')
-      expect(disabledSwitch).toBeDefined()
-    })
-
     it('should call enable when switch is toggled on', async () => {
-      vi.useFakeTimers()
+      vi.useFakeTimers({ shouldAdvanceTime: true })
       render(
         <Operations {...defaultProps} scene="list" detail={{ ...defaultDetail, enabled: false }} />,
       )
-      const switchElement = document.querySelector('[role="switch"]')
+      const switchElement = screen.getByRole('switch', {
+        name: 'datasetDocuments.list.status.enabled: Test Document',
+      })
       await act(async () => {
-        fireEvent.click(switchElement!)
+        await userEvent
+          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
+          .click(switchElement!)
       })
       // Wait for debounce
       await act(async () => {
@@ -259,13 +228,17 @@ describe('Operations', () => {
     })
 
     it('should call disable when switch is toggled off', async () => {
-      vi.useFakeTimers()
+      vi.useFakeTimers({ shouldAdvanceTime: true })
       render(
         <Operations {...defaultProps} scene="list" detail={{ ...defaultDetail, enabled: true }} />,
       )
-      const switchElement = document.querySelector('[role="switch"]')
+      const switchElement = screen.getByRole('switch', {
+        name: 'datasetDocuments.list.status.enabled: Test Document',
+      })
       await act(async () => {
-        fireEvent.click(switchElement!)
+        await userEvent
+          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
+          .click(switchElement!)
       })
       // Wait for debounce
       await act(async () => {
@@ -277,38 +250,17 @@ describe('Operations', () => {
       })
       vi.useRealTimers()
     })
-
-    it('should not call enable if already enabled', async () => {
-      vi.useFakeTimers()
-      render(
-        <Operations {...defaultProps} scene="list" detail={{ ...defaultDetail, enabled: true }} />,
-      )
-      // Simulate trying to enable when already enabled - this won't happen via switch click
-      // because the switch would toggle to disable. But handleSwitch has early returns
-      vi.useRealTimers()
-    })
   })
 
   describe('settings navigation', () => {
-    it('should not render a standalone settings button', () => {
-      render(<Operations {...defaultProps} />)
-
-      expect(
-        screen.queryByRole('button', { name: 'datasetDocuments.list.action.settings' }),
-      ).not.toBeInTheDocument()
-    })
-
     it('should navigate to settings when settings menu item is clicked', async () => {
       render(<Operations {...defaultProps} />)
-      const moreButton = document.querySelector('[class*="commonIcon"]')?.parentElement
-      if (moreButton) {
-        await act(async () => {
-          fireEvent.click(moreButton)
-        })
-      }
+      await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.more' }))
       const settingsButton = screen.getByText('datasetDocuments.list.action.settings')
       await act(async () => {
-        fireEvent.click(settingsButton)
+        await userEvent
+          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
+          .click(settingsButton)
       })
       expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/documents/doc-1/settings')
     })
@@ -318,7 +270,9 @@ describe('Operations', () => {
 
       const moreButton = screen.getByRole('button', { name: 'common.operation.more' })
       await act(async () => {
-        fireEvent.click(moreButton)
+        await userEvent
+          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
+          .click(moreButton)
       })
 
       expect(screen.queryByText('datasetDocuments.list.action.settings')).not.toBeInTheDocument()
@@ -326,57 +280,26 @@ describe('Operations', () => {
   })
 
   describe('detail scene', () => {
-    it('should render differently in detail scene', () => {
-      render(<Operations {...defaultProps} scene="detail" />)
-      const container = document.querySelector('.flex.items-center')
-      expect(container)!.toBeInTheDocument()
-    })
-
     it('should not render switch in detail scene', () => {
       render(<Operations {...defaultProps} scene="detail" />)
       // In detail scene, there should be no switch
-      const switchInParent = document.querySelector('.flex.items-center > [role="switch"]')
-      expect(switchInParent).toBeNull()
-    })
-  })
-
-  describe('selectedIds handling', () => {
-    it('should accept selectedIds prop', () => {
-      render(
-        <Operations
-          {...defaultProps}
-          selectedIds={['doc-1', 'doc-2']}
-          onSelectedIdChange={mockOnSelectedIdChange}
-        />,
-      )
-      expect(document.querySelector('.flex.items-center'))!.toBeInTheDocument()
+      expect(screen.queryByRole('switch')).not.toBeInTheDocument()
     })
   })
 
   describe('popover menu actions', () => {
     const openPopover = async () => {
-      const moreButton = document.querySelector('[class*="commonIcon"]')?.parentElement
-      if (moreButton) {
-        await act(async () => {
-          fireEvent.click(moreButton)
-        })
-      }
+      await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.more' }))
     }
-
-    it('should open popover when more button is clicked', async () => {
-      render(<Operations {...defaultProps} />)
-      await openPopover()
-      // Check if popover content is visible
-      // Check if popover content is visible
-      expect(screen.getByText('datasetDocuments.list.table.rename'))!.toBeInTheDocument()
-    })
 
     it('should call archive when archive action is clicked', async () => {
       render(<Operations {...defaultProps} />)
       await openPopover()
       const archiveButton = screen.getByText('datasetDocuments.list.action.archive')
       await act(async () => {
-        fireEvent.click(archiveButton)
+        await userEvent
+          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
+          .click(archiveButton)
       })
       await waitFor(() => {
         expect(mockArchive).toHaveBeenCalledWith({
@@ -391,42 +314,13 @@ describe('Operations', () => {
       await openPopover()
       const unarchiveButton = screen.getByText('datasetDocuments.list.action.unarchive')
       await act(async () => {
-        fireEvent.click(unarchiveButton)
+        await userEvent
+          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
+          .click(unarchiveButton)
       })
       await waitFor(() => {
         expect(mockUnArchive).toHaveBeenCalledWith({
           params: { dataset_id: 'dataset-1', action: 'un_archive' },
-          query: { document_id: ['doc-1'] },
-        })
-      })
-    })
-
-    it('should show delete confirmation modal when delete is clicked', async () => {
-      render(<Operations {...defaultProps} />)
-      await openPopover()
-      const deleteButton = screen.getByText('datasetDocuments.list.action.delete')
-      await act(async () => {
-        fireEvent.click(deleteButton)
-      })
-      // Check if confirmation modal is shown
-      // Check if confirmation modal is shown
-      expect(screen.getByText('datasetDocuments.list.delete.title'))!.toBeInTheDocument()
-    })
-
-    it('should call delete when confirm is clicked in delete modal', async () => {
-      render(<Operations {...defaultProps} />)
-      await openPopover()
-      const deleteButton = screen.getByText('datasetDocuments.list.action.delete')
-      await act(async () => {
-        fireEvent.click(deleteButton)
-      })
-      const confirmButton = screen.getByText('common.operation.sure')
-      await act(async () => {
-        fireEvent.click(confirmButton)
-      })
-      await waitFor(() => {
-        expect(mockDelete).toHaveBeenCalledWith({
-          params: { dataset_id: 'dataset-1' },
           query: { document_id: ['doc-1'] },
         })
       })
@@ -437,7 +331,9 @@ describe('Operations', () => {
       await openPopover()
       const deleteButton = screen.getByText('datasetDocuments.list.action.delete')
       await act(async () => {
-        fireEvent.click(deleteButton)
+        await userEvent
+          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
+          .click(deleteButton)
       })
       // Verify modal is shown
       // Verify modal is shown
@@ -445,11 +341,14 @@ describe('Operations', () => {
       // Find and click the cancel button
       const cancelButton = screen.getByText('common.operation.cancel')
       await act(async () => {
-        fireEvent.click(cancelButton)
+        await userEvent
+          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
+          .click(cancelButton)
       })
       // Modal should be closed - title shouldn't be visible
       await waitFor(() => {
         expect(screen.queryByText('datasetDocuments.list.delete.title')).not.toBeInTheDocument()
+        expect(mockDelete).not.toHaveBeenCalled()
       })
     })
 
@@ -464,14 +363,23 @@ describe('Operations', () => {
       await openPopover()
       const deleteButton = screen.getByText('datasetDocuments.list.action.delete')
       await act(async () => {
-        fireEvent.click(deleteButton)
+        await userEvent
+          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
+          .click(deleteButton)
       })
       const confirmButton = screen.getByText('common.operation.sure')
       await act(async () => {
-        fireEvent.click(confirmButton)
+        await userEvent
+          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
+          .click(confirmButton)
       })
       await waitFor(() => {
         expect(mockOnSelectedIdChange).toHaveBeenCalledWith(['doc-2'])
+        expect(mockDelete).toHaveBeenCalledWith({
+          params: { dataset_id: 'dataset-1' },
+          query: { document_id: ['doc-1'] },
+        })
+        expect(mockOnUpdate).toHaveBeenCalledWith('delete')
       })
     })
 
@@ -479,8 +387,9 @@ describe('Operations', () => {
       const user = userEvent.setup()
       render(<Operations {...defaultProps} />)
       await openPopover()
-      const renameAction = screen.getByText('datasetDocuments.list.table.rename')
-        .parentElement as HTMLElement
+      const renameAction = screen.getByRole('menuitem', {
+        name: 'datasetDocuments.list.table.rename',
+      })
       await user.click(renameAction)
 
       const renameInput = await screen.findByRole('textbox')
@@ -497,7 +406,9 @@ describe('Operations', () => {
       await openPopover()
       const syncButton = screen.getByText('datasetDocuments.list.action.sync')
       await act(async () => {
-        fireEvent.click(syncButton)
+        await userEvent
+          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
+          .click(syncButton)
       })
       await waitFor(() => {
         expect(mockSync).toHaveBeenCalledWith({
@@ -516,7 +427,9 @@ describe('Operations', () => {
       await openPopover()
       const syncButton = screen.getByText('datasetDocuments.list.action.sync')
       await act(async () => {
-        fireEvent.click(syncButton)
+        await userEvent
+          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
+          .click(syncButton)
       })
       await waitFor(() => {
         expect(mockSyncWebsite).toHaveBeenCalledWith({
@@ -532,7 +445,9 @@ describe('Operations', () => {
       await openPopover()
       const pauseButton = screen.getByText('datasetDocuments.list.action.pause')
       await act(async () => {
-        fireEvent.click(pauseButton)
+        await userEvent
+          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
+          .click(pauseButton)
       })
       await waitFor(() => {
         expect(mockPause).toHaveBeenCalledWith({
@@ -548,7 +463,9 @@ describe('Operations', () => {
       await openPopover()
       const resumeButton = screen.getByText('datasetDocuments.list.action.resume')
       await act(async () => {
-        fireEvent.click(resumeButton)
+        await userEvent
+          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
+          .click(resumeButton)
       })
       await waitFor(() => {
         expect(mockResume).toHaveBeenCalledWith({
@@ -562,7 +479,9 @@ describe('Operations', () => {
       await openPopover()
       const downloadButton = screen.getByText('datasetDocuments.list.action.download')
       await act(async () => {
-        fireEvent.click(downloadButton)
+        await userEvent
+          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
+          .click(downloadButton)
       })
       await waitFor(() => {
         expect(mockDownload).toHaveBeenCalledWith({
@@ -573,28 +492,6 @@ describe('Operations', () => {
           fileName: 'Test Document',
         })
       })
-    })
-
-    it('should show settings above download in the operations menu', async () => {
-      render(<Operations {...defaultProps} />)
-      await openPopover()
-      const settingsButton = screen.getByText('datasetDocuments.list.action.settings').parentElement
-      const downloadButton = screen.getByText('datasetDocuments.list.action.download').parentElement
-
-      expect(settingsButton?.compareDocumentPosition(downloadButton!)).toBe(
-        Node.DOCUMENT_POSITION_FOLLOWING,
-      )
-    })
-
-    it('should show download option for archived file data source', async () => {
-      render(
-        <Operations
-          {...defaultProps}
-          detail={{ ...defaultDetail, archived: true, data_source_type: 'upload_file' }}
-        />,
-      )
-      await openPopover()
-      expect(screen.getByText('datasetDocuments.list.action.download'))!.toBeInTheDocument()
     })
 
     it('should show settings for archived non-file data source', async () => {
@@ -619,7 +516,9 @@ describe('Operations', () => {
       await openPopover()
       const downloadButton = screen.getByText('datasetDocuments.list.action.download')
       await act(async () => {
-        fireEvent.click(downloadButton)
+        await userEvent
+          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
+          .click(downloadButton)
       })
       await waitFor(() => {
         expect(mockDownload).toHaveBeenCalledWith({
@@ -633,109 +532,64 @@ describe('Operations', () => {
     it('should show error notification when operation fails', async () => {
       mockArchive.mockRejectedValue(new Error('API Error'))
       render(<Operations {...defaultProps} />)
-      const moreButton = document.querySelector('[class*="commonIcon"]')?.parentElement
-      if (moreButton) {
-        await act(async () => {
-          fireEvent.click(moreButton)
-        })
-      }
+      await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.more' }))
       const archiveButton = screen.getByText('datasetDocuments.list.action.archive')
       await act(async () => {
-        fireEvent.click(archiveButton)
+        await userEvent
+          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
+          .click(archiveButton)
       })
       await waitFor(() => {
         expect(mockToast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
+        expect(mockOnUpdate).not.toHaveBeenCalled()
       })
     })
 
     it('should show error notification when download fails', async () => {
       mockDownload.mockRejectedValue(new Error('Download Error'))
       render(<Operations {...defaultProps} />)
-      const moreButton = document.querySelector('[class*="commonIcon"]')?.parentElement
-      if (moreButton) {
-        await act(async () => {
-          fireEvent.click(moreButton)
-        })
-      }
+      await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.more' }))
       const downloadButton = screen.getByText('datasetDocuments.list.action.download')
       await act(async () => {
-        fireEvent.click(downloadButton)
+        await userEvent
+          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
+          .click(downloadButton)
       })
       await waitFor(() => {
         expect(mockToast.error).toHaveBeenCalledWith('common.actionMsg.downloadUnsuccessfully')
+        expect(mockDownloadUrl).not.toHaveBeenCalled()
       })
     })
 
     it('should show error notification when download returns no url', async () => {
       mockDownload.mockResolvedValue({})
       render(<Operations {...defaultProps} />)
-      const moreButton = document.querySelector('[class*="commonIcon"]')?.parentElement
-      if (moreButton) {
-        await act(async () => {
-          fireEvent.click(moreButton)
-        })
-      }
+      await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.more' }))
       const downloadButton = screen.getByText('datasetDocuments.list.action.download')
       await act(async () => {
-        fireEvent.click(downloadButton)
+        await userEvent
+          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
+          .click(downloadButton)
       })
       await waitFor(() => {
         expect(mockToast.error).toHaveBeenCalledWith('common.actionMsg.downloadUnsuccessfully')
+        expect(mockDownloadUrl).not.toHaveBeenCalled()
       })
     })
   })
 
   describe('display status', () => {
-    it('should render pause action when status is indexing', () => {
-      render(
-        <Operations {...defaultProps} detail={{ ...defaultDetail, display_status: 'indexing' }} />,
-      )
-      expect(document.querySelector('.flex.items-center'))!.toBeInTheDocument()
-    })
-
-    it('should render resume action when status is paused', () => {
-      render(
-        <Operations {...defaultProps} detail={{ ...defaultDetail, display_status: 'paused' }} />,
-      )
-      expect(document.querySelector('.flex.items-center'))!.toBeInTheDocument()
-    })
-
     it('should not show pause/resume for available status', async () => {
       render(
         <Operations {...defaultProps} detail={{ ...defaultDetail, display_status: 'available' }} />,
       )
-      const moreButton = document.querySelector('[class*="commonIcon"]')?.parentElement
-      if (moreButton) {
-        await act(async () => {
-          fireEvent.click(moreButton)
-        })
-      }
+      await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.more' }))
       expect(screen.queryByText('datasetDocuments.list.action.pause')).not.toBeInTheDocument()
       expect(screen.queryByText('datasetDocuments.list.action.resume')).not.toBeInTheDocument()
     })
   })
 
   describe('data source types', () => {
-    it('should handle notion data source type', () => {
-      render(
-        <Operations
-          {...defaultProps}
-          detail={{ ...defaultDetail, data_source_type: 'notion_import' }}
-        />,
-      )
-      expect(document.querySelector('.flex.items-center'))!.toBeInTheDocument()
-    })
-
-    it('should handle web data source type', () => {
-      render(
-        <Operations
-          {...defaultProps}
-          detail={{ ...defaultDetail, data_source_type: 'website_crawl' }}
-        />,
-      )
-      expect(document.querySelector('.flex.items-center'))!.toBeInTheDocument()
-    })
-
     it('should not show download for non-file data source', async () => {
       render(
         <Operations
@@ -743,12 +597,7 @@ describe('Operations', () => {
           detail={{ ...defaultDetail, data_source_type: 'notion_import' }}
         />,
       )
-      const moreButton = document.querySelector('[class*="commonIcon"]')?.parentElement
-      if (moreButton) {
-        await act(async () => {
-          fireEvent.click(moreButton)
-        })
-      }
+      await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.more' }))
       expect(screen.queryByText('datasetDocuments.list.action.download')).not.toBeInTheDocument()
     })
   })

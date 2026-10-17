@@ -63,6 +63,10 @@ describe('Marketplace mobile search layout', () => {
     const screen = await renderMarketplaceHome()
 
     const scrollContainer = document.getElementById(MARKETPLACE_CONTAINER_ID)!
+    await expect.element(screen.getByRole('banner')).toBeVisible()
+    await expect
+      .element(screen.getByRole('textbox', { name: 'Search plugins or templates' }))
+      .toBeVisible()
     const header = screen.getByRole('banner').element()
     const brand = screen.getByRole('link', { name: 'Dify Marketplace' }).element()
     const signIn = screen.getByRole('button', { name: 'Sign in' }).element()
@@ -113,6 +117,10 @@ describe('Marketplace mobile search layout', () => {
       </div>,
     )
 
+    await expect.element(screen.getByRole('banner')).toBeVisible()
+    await expect
+      .element(screen.getByRole('textbox', { name: 'Search plugins or templates' }))
+      .toBeVisible()
     const header = screen.getByRole('banner').element()
     const searchInput = screen
       .getByRole('textbox', { name: 'Search plugins or templates' })
@@ -129,6 +137,10 @@ describe('Marketplace mobile search layout', () => {
     const screen = await renderMarketplaceHome()
 
     const scrollContainer = document.getElementById(MARKETPLACE_CONTAINER_ID)!
+    await expect.element(screen.getByRole('banner')).toBeVisible()
+    await expect
+      .element(screen.getByRole('textbox', { name: 'Search plugins or templates' }))
+      .toBeVisible()
     const header = screen.getByRole('banner').element()
     const searchInput = screen
       .getByRole('textbox', { name: 'Search plugins or templates' })

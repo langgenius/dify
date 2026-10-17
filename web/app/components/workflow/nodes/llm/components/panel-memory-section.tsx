@@ -106,7 +106,7 @@ const PanelMemorySection: FC<Props> = ({
                   </Infotip>
                 </div>
               }
-              value={inputs.memory.query_prompt_template || defaultMemory.query_prompt_template}
+              value={inputs.memory.query_prompt_template ?? defaultMemory.query_prompt_template}
               onChange={handleSyeQueryChange}
               readOnly={readOnly}
               isShowContext={false}

@@ -1,12 +1,15 @@
 import type { ToolProviderApiEntityResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { Node } from '../../types'
+import type { AvailableNodesMetaData } from '../../hooks-store/store'
+import type { NodeDefault } from '../../types'
 import { waitFor } from '@testing-library/react'
 import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { CollectionType } from '@/app/components/tools/types'
 import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
+import { createNode } from '../../__tests__/fixtures'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
+import { BlockClassification } from '../../block-selector/types'
 import { BlockEnum } from '../../types'
-import { useNodeMetaData, useNodesMetaData } from '../use-nodes-meta-data'
+import { useNodeMetaData } from '../use-nodes-meta-data'
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en_US',
@@ -29,36 +32,12 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-const createNode = (overrides: Partial<Node> = {}): Node =>
-  ({
-    id: 'node-1',
-    type: 'custom',
-    position: { x: 0, y: 0 },
-    data: {
-      type: BlockEnum.LLM,
-      title: 'Node',
-      desc: '',
-    },
-    ...overrides,
-  }) as Node
-
 describe('useNodesMetaData', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     buildInToolsState.length = 0
     customToolsState.length = 0
     workflowToolsState.length = 0
-  })
-
-  it('returns empty metadata collections when the hooks store has no node map', () => {
-    const { result } = renderWorkflowHook(() => useNodesMetaData(), {
-      hooksStoreProps: {},
-    })
-
-    expect(result.current).toEqual({
-      nodes: [],
-      nodesMap: {},
-    })
   })
 
   it('resolves built-in tool metadata from tool providers', async () => {
@@ -130,14 +109,18 @@ describe('useNodesMetaData', () => {
       },
     })
 
-    const metadataMap = {
+    const metadataMap: Partial<Record<BlockEnum, NodeDefault>> = {
       [BlockEnum.LLM]: {
         metaData: {
+          classification: BlockClassification.Default,
+          sort: 0,
           type: BlockEnum.LLM,
           title: 'LLM',
           author: 'Dify',
           description: 'Node description',
         },
+        defaultValue: { type: BlockEnum.LLM, title: 'LLM', desc: '' },
+        checkValid: () => ({ isValid: true }),
       },
     }
 
@@ -148,7 +131,8 @@ describe('useNodesMetaData', () => {
       hooksStoreProps: {
         availableNodesMetaData: {
           nodes: [],
-          nodesMap: metadataMap as never,
+          // This catalog fixture intentionally exposes only the node under test.
+          nodesMap: metadataMap as AvailableNodesMetaData['nodesMap'],
         },
       },
     })
@@ -157,7 +141,8 @@ describe('useNodesMetaData', () => {
       hooksStoreProps: {
         availableNodesMetaData: {
           nodes: [],
-          nodesMap: metadataMap as never,
+          // This catalog fixture intentionally exposes only the node under test.
+          nodesMap: metadataMap as AvailableNodesMetaData['nodesMap'],
         },
       },
     })

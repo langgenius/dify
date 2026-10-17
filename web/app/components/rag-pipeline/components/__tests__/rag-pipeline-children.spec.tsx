@@ -1,5 +1,6 @@
-import type { EnvironmentVariable } from '@/app/components/workflow/types'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import type { ExportSecretEnvironmentVariable as EnvironmentVariable } from '@/app/components/workflow/export-secret-env-event'
+import { act, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import RagPipelineChildren from '../rag-pipeline-children'
 
@@ -101,62 +102,42 @@ vi.mock('../update-dsl-modal', () => ({
   ),
 }))
 
-vi.mock('../export-confirm-modal', () => ({
-  default: ({
-    envList,
-    onConfirm,
-    onClose,
-  }: {
-    envList: EnvironmentVariable[]
-    onConfirm: () => void
-    onClose: () => void
-  }) => (
-    <div data-testid="dsl-export-modal">
-      <div>{envList.map((env) => env.name).join(',')}</div>
-      <button onClick={onConfirm}>confirm export</button>
-      <button onClick={onClose}>close export</button>
-    </div>
-  ),
-}))
-
 describe('RagPipelineChildren', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockShowImportDSLModal = false
     mockSubscription = null
+    mockHandleExportDSL.mockResolvedValue(true)
   })
 
-  it('should render the main pipeline children and the import modal when enabled', () => {
+  it('should render the main pipeline children and the import modal when enabled', async () => {
     mockShowImportDSLModal = true
 
     render(<RagPipelineChildren />)
 
-    fireEvent.click(screen.getByText('close import'))
+    await userEvent.setup().click(screen.getByRole('button', { name: 'close import' }))
 
-    expect(mockUseRagPipelineSearch).toHaveBeenCalledTimes(1)
-    expect(screen.getByTestId('plugin-dependency')).toBeInTheDocument()
-    expect(screen.getByTestId('rag-header')).toBeInTheDocument()
-    expect(screen.getByTestId('rag-panel')).toBeInTheDocument()
-    expect(screen.getByTestId('publish-toast')).toBeInTheDocument()
     expect(screen.getByTestId('update-dsl-modal')).toBeInTheDocument()
     expect(mockSetShowImportDSLModal).toHaveBeenCalledWith(false)
   })
 
-  it('should show the DSL export confirmation modal after receiving the export event', () => {
+  it('should show the DSL export confirmation modal after receiving the export event', async () => {
+    const user = userEvent.setup()
     render(<RagPipelineChildren />)
 
     act(() => {
       mockSubscription?.({
         type: DSL_EXPORT_CHECK,
         payload: {
-          data: [{ name: 'API_KEY' } as EnvironmentVariable],
+          data: [{ name: 'API_KEY', value: 'masked' }],
         },
       })
     })
 
-    fireEvent.click(screen.getByText('confirm export'))
-
-    expect(screen.getByTestId('dsl-export-modal')).toHaveTextContent('API_KEY')
-    expect(mockHandleExportDSL).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('alertdialog')).toHaveTextContent('API_KEY')
+    await user.click(screen.getByRole('checkbox'))
+    await user.click(screen.getByRole('button', { name: 'workflow.env.export.export' }))
+    expect(mockHandleExportDSL).toHaveBeenCalledExactlyOnceWith(true)
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
   })
 })

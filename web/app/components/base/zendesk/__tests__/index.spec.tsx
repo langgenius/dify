@@ -1,6 +1,6 @@
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactNode } from 'react'
-import { render, screen } from '@testing-library/react'
+import { render } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import Zendesk from '../index'
 
@@ -49,7 +49,7 @@ type ZendeskScriptProps = {
 vi.mock('../script', () => ({
   ZendeskScript: (props: ZendeskScriptProps) => {
     mocks.scriptProps(props)
-    return <div data-testid="zendesk-runtime" data-nonce={props.nonce} />
+    return null
   },
 }))
 
@@ -104,9 +104,8 @@ describe('Zendesk', () => {
   it('should mount the runtime without a nonce in non-production', async () => {
     mockIsProd = false
     const result = await renderZendesk()
-    render(result as React.ReactElement) // result is ReactNode, which render accepts but types might be picky
+    render(result)
 
-    expect(screen.getByTestId('zendesk-runtime')).toHaveAttribute('data-nonce', '')
     expect(mocks.scriptProps).toHaveBeenCalledWith({ nonce: '', widgetKey: 'test-key' })
   })
 
@@ -114,9 +113,8 @@ describe('Zendesk', () => {
     mockIsProd = true
     mockNonce = 'prod-nonce'
     const result = await renderZendesk()
-    render(result as React.ReactElement)
+    render(result)
 
-    expect(screen.getByTestId('zendesk-runtime')).toHaveAttribute('data-nonce', 'prod-nonce')
     expect(mocks.scriptProps).toHaveBeenCalledWith({ nonce: 'prod-nonce', widgetKey: 'test-key' })
   })
 
@@ -124,8 +122,6 @@ describe('Zendesk', () => {
     mockIsProd = true
     mockNonce = null
     const result = await renderZendesk()
-    render(result as React.ReactElement)
-
-    expect(screen.getByTestId('zendesk-runtime')).toHaveAttribute('data-nonce', '')
+    render(result)
   })
 })

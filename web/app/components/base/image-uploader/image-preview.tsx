@@ -63,10 +63,15 @@ function ImagePreviewContent({ url, title, onCancel, onPrev, onNext }: ImagePrev
     // Open in a new window, considering the case when the page is inside an iframe
     if (url.startsWith('http') || url.startsWith('/')) {
       window.open(url, '_blank')
-    } else if (url.startsWith('data:image')) {
+    } else if (url.startsWith('data:image') || isBase64(url)) {
       // Base64 image
       const win = window.open()
-      win?.document.write(`<img src="${url}" alt="${title}" />`)
+      if (win) {
+        const image = win.document.createElement('img')
+        image.src = isBase64(url) ? `data:image/png;base64,${url}` : url
+        image.alt = title
+        win.document.body.appendChild(image)
+      }
     } else {
       toast.error(`Unable to open image: ${url}`)
     }

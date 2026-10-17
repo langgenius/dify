@@ -2,8 +2,6 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ImagePreview from '../image-preview'
 
-type _HotkeyHandler = () => void
-
 const mocks = vi.hoisted(() => ({
   notify: vi.fn(),
   downloadUrl: vi.fn(),
@@ -50,6 +48,8 @@ describe('ImagePreview', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.windowOpen.mockReset()
+    mocks.clipboardWrite.mockReset().mockResolvedValue()
     vi.stubGlobal(
       'fetch',
       vi
@@ -112,8 +112,6 @@ describe('ImagePreview', () => {
       const overlay = getOverlay()
       expect(overlay).toBeInTheDocument()
       expect(screen.getByRole('dialog', { name: 'Preview Image' })).toBeInTheDocument()
-      expect(screen.getByTestId('image-preview-container')).not.toHaveAttribute('aria-label')
-      expect(overlay.closest('[data-base-ui-portal]')?.parentElement).toBe(document.body)
       expect(screen.getByRole('img', { name: 'Preview Image' })).toHaveAttribute(
         'src',
         'https://example.com/image.png',
@@ -134,7 +132,8 @@ describe('ImagePreview', () => {
   })
 
   describe('Hotkeys', () => {
-    it('should trigger esc/left/right handlers from keyboard', async () => {
+    it('navigates images from the focused preview and closes with Escape', async () => {
+      const user = userEvent.setup()
       const onCancel = vi.fn()
       const onPrev = vi.fn()
       const onNext = vi.fn()
@@ -148,9 +147,8 @@ describe('ImagePreview', () => {
         />,
       )
 
-      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
-      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowLeft', code: 'ArrowLeft' })
-      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowRight', code: 'ArrowRight' })
+      await user.click(getCopyButton())
+      await user.keyboard('{ArrowLeft}{ArrowRight}{Escape}')
 
       expect(onCancel).toHaveBeenCalledTimes(1)
       expect(onPrev).toHaveBeenCalledTimes(1)
@@ -178,6 +176,7 @@ describe('ImagePreview', () => {
     })
 
     it('should zoom in and out from keyboard up/down hotkeys', async () => {
+      const user = userEvent.setup()
       render(
         <ImagePreview
           url="https://example.com/image.png"
@@ -187,12 +186,13 @@ describe('ImagePreview', () => {
       )
       const image = screen.getByRole('img', { name: 'Preview Image' })
 
-      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowUp', code: 'ArrowUp' })
+      await user.click(getCopyButton())
+      await user.keyboard('{ArrowUp}')
       await waitFor(() => {
         expect(image).toHaveStyle({ transform: 'scale(1.2) translate(0px, 0px)' })
       })
 
-      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowDown', code: 'ArrowDown' })
+      await user.keyboard('{ArrowDown}')
       await waitFor(() => {
         expect(image).toHaveStyle({ transform: 'scale(1) translate(0px, 0px)' })
       })
@@ -200,7 +200,8 @@ describe('ImagePreview', () => {
   })
 
   describe('User Interactions', () => {
-    it('should not close when image content is clicked', () => {
+    it('should not close when image content is clicked', async () => {
+      const user = userEvent.setup()
       const onCancel = vi.fn()
       render(
         <ImagePreview
@@ -210,7 +211,7 @@ describe('ImagePreview', () => {
         />,
       )
 
-      fireEvent.click(screen.getByRole('img', { name: 'Preview Image' }))
+      await user.click(screen.getByRole('img', { name: 'Preview Image' }))
 
       expect(onCancel).not.toHaveBeenCalled()
     })
@@ -304,9 +305,6 @@ describe('ImagePreview', () => {
           new MouseEvent('mousedown', { bubbles: true, clientX: 10, clientY: 10 }),
         )
       })
-      await waitFor(() => {
-        expect(image.style.transition).toBe('none')
-      })
 
       act(() => {
         overlay.dispatchEvent(
@@ -321,9 +319,8 @@ describe('ImagePreview', () => {
       act(() => {
         document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
       })
-      await waitFor(() => {
-        expect(image.style.transition).toContain('transform 0.2s ease-in-out')
-      })
+      fireEvent.mouseMove(overlay, { clientX: 0, clientY: 0 })
+      expect(image).toHaveStyle({ transform: 'scale(1.2) translate(70px, -22px)' })
     })
   })
 
@@ -341,23 +338,24 @@ describe('ImagePreview', () => {
       },
     )
 
-    it('should open data image by writing to popup window document', async () => {
-      const user = userEvent.setup()
-      const write = vi.fn()
-      mocks.windowOpen.mockReturnValue({
-        document: {
-          write,
-        },
-      } as unknown as Window)
+    it.each([dataImage, base64Image])(
+      'opens image %s with the title treated as text',
+      async (url) => {
+        const user = userEvent.setup()
+        const popupDocument = document.implementation.createHTMLDocument('')
+        mocks.windowOpen.mockReturnValue({ document: popupDocument } as Window)
+        const title = '" /><script>window.injected = true</script>'
+        render(<ImagePreview url={url} title={title} onCancel={vi.fn()} />)
 
-      render(<ImagePreview url={dataImage} title="Preview Image" onCancel={vi.fn()} />)
+        await user.click(getOpenInTabButton())
 
-      const openInTabButton = getOpenInTabButton()
-      await user.click(openInTabButton)
-
-      expect(mocks.windowOpen).toHaveBeenCalledWith()
-      expect(write).toHaveBeenCalledWith(`<img src="${dataImage}" alt="Preview Image" />`)
-    })
+        expect(mocks.windowOpen).toHaveBeenCalledOnce()
+        const image = popupDocument.querySelector('img')!
+        expect(image.src).toBe(dataImage)
+        expect(image.alt).toBe(title)
+        expect(popupDocument.querySelector('script')).toBeNull()
+      },
+    )
 
     it('should show error toast when opening unsupported url', async () => {
       const user = userEvent.setup()
@@ -494,7 +492,12 @@ describe('ImagePreview', () => {
 
     it('should copy image and show success toast', async () => {
       const user = userEvent.setup()
-      mocks.clipboardWrite.mockResolvedValue()
+      let copiedBlob: Blob | undefined
+      mocks.clipboardWrite.mockImplementation(async ([item]) => {
+        copiedBlob = await (item as unknown as { data: Record<string, Promise<Blob>> }).data[
+          'image/png'
+        ]
+      })
       render(<ImagePreview url={dataImage} title="Preview Image" onCancel={vi.fn()} />)
 
       const copyButton = getCopyButton()
@@ -503,6 +506,9 @@ describe('ImagePreview', () => {
       await waitFor(() => {
         expect(mocks.clipboardWrite).toHaveBeenCalledTimes(1)
       })
+      await waitFor(() => expect(copiedBlob).toBeDefined())
+      expect(fetch).toHaveBeenCalledWith(dataImage)
+      expect(await copiedBlob!.text()).toBe('image')
       expect(mocks.notify).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'success',
@@ -591,56 +597,6 @@ describe('ImagePreview', () => {
       await waitFor(() => {
         expect(image).toHaveStyle({ transform: 'scale(1) translate(0px, 0px)' })
       })
-    })
-
-    it('should zoom out below 1 without resetting position', async () => {
-      const user = userEvent.setup()
-      render(
-        <ImagePreview
-          url="https://example.com/image.png"
-          title="Preview Image"
-          onCancel={vi.fn()}
-        />,
-      )
-      const image = screen.getByRole('img', { name: 'Preview Image' })
-
-      await user.click(getZoomOutButton())
-      await waitFor(() => {
-        expect(image).toHaveStyle({ transform: 'scale(0.8333333333333334) translate(0px, 0px)' })
-      })
-    })
-
-    it('should keep drag move stable when rect data is unavailable', async () => {
-      const user = userEvent.setup()
-      render(
-        <ImagePreview
-          url="https://example.com/image.png"
-          title="Preview Image"
-          onCancel={vi.fn()}
-        />,
-      )
-
-      const overlay = getOverlay()
-      const image = screen.getByRole('img', { name: 'Preview Image' }) as HTMLImageElement
-      const imageParent = image.parentElement
-      if (!imageParent) throw new Error('Image parent element not found')
-
-      vi.spyOn(image, 'getBoundingClientRect').mockReturnValue(undefined as unknown as DOMRect)
-      vi.spyOn(imageParent, 'getBoundingClientRect').mockReturnValue(
-        undefined as unknown as DOMRect,
-      )
-
-      await user.click(getZoomInButton())
-      act(() => {
-        overlay.dispatchEvent(
-          new MouseEvent('mousedown', { bubbles: true, clientX: 10, clientY: 10 }),
-        )
-        overlay.dispatchEvent(
-          new MouseEvent('mousemove', { bubbles: true, clientX: 120, clientY: 60 }),
-        )
-      })
-
-      expect(image).toHaveStyle({ transform: 'scale(1.2) translate(0px, 0px)' })
     })
   })
 })

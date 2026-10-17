@@ -98,6 +98,8 @@ describe('AvatarWithEdit', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.onUpload = null
+    mocks.handleLocalFileUpload.mockReset()
+    mockedCreateCroppedAvatarImage.mockReset()
     mocks.request.mockImplementation(
       async () =>
         new Response(JSON.stringify(createAccountResponse('uploaded-avatar-id')), {

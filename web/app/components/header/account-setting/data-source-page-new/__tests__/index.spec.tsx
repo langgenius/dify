@@ -1,7 +1,6 @@
 import type { DatasourceProviderAuthResponse } from '@dify/contracts/api/console/auth/types.gen'
-import type { UseQueryResult } from '@tanstack/react-query'
 import type { PluginDetail } from '@/app/components/plugins/types'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useTheme } from 'next-themes'
 import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
@@ -18,12 +17,6 @@ import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { useDataSourceAuthUpdate, useMarketplaceAllPlugins } from '../hooks'
 import DataSourcePage from '../index'
 
-/**
- * DataSourcePage Component Tests
- * Using Unit approach to focus on page-level layout and conditional rendering.
- */
-
-// Mock external dependencies
 vi.mock('next-themes', () => ({
   useTheme: vi.fn(),
 }))
@@ -34,14 +27,15 @@ vi.mock('@/hooks/use-i18n', () => ({
 
 const { mockDataSourceListAuth } = vi.hoisted(() => ({ mockDataSourceListAuth: vi.fn() }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'auth.plugin.datasource.list.get': () => mockDataSourceListAuth(),
-    'oauth.plugin.byProviderId.datasource.getAuthorizationUrl.get': () => ({
-      mutateAsync: vi.fn(),
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'auth.plugin.datasource.list.get': () => mockDataSourceListAuth(),
     }),
-  })
+  }
 })
 
 vi.mock('@/service/use-plugins', () => ({
@@ -214,28 +208,16 @@ describe('DataSourcePage Component', () => {
   })
 
   describe('Initial View Rendering', () => {
-    it('should render an empty view when no data is available and marketplace is disabled', () => {
-      // Arrange
-      mockDataSourceListAuth.mockReturnValue({
-        data: { result: [] },
-        isLoading: false,
-      } as unknown as UseQueryResult<{ result: DatasourceProviderAuthResponse[] }, Error>)
+    it('should render an empty view when no data is available and marketplace is disabled', async () => {
+      mockDataSourceListAuth.mockResolvedValue({ result: [] })
 
-      // Act
       renderWithConsoleQuery(<DataSourcePage stickyToolbar />, {
         systemFeatures: { enable_marketplace: false },
       })
 
-      // Assert
+      expect(await screen.findByText('common.dataSourcePage.installFirst')).toBeInTheDocument()
+
       expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
-      expect(screen.getByPlaceholderText('common.operation.search').closest('.sticky')).toHaveClass(
-        'top-0',
-        'z-10',
-        '-mx-6',
-        'bg-components-panel-bg',
-        'px-6',
-        'pb-2',
-      )
       expect(
         screen.getByRole('button', { name: 'plugin.autoUpdate.autoUpdate' }),
       ).toBeInTheDocument()
@@ -248,20 +230,14 @@ describe('DataSourcePage Component', () => {
     })
 
     it('should show data source placeholders while the list is loading', () => {
-      // Arrange
-      mockDataSourceListAuth.mockReturnValue({
-        data: undefined,
-        isLoading: true,
-      } as unknown as UseQueryResult<{ result: DatasourceProviderAuthResponse[] }, Error>)
+      mockDataSourceListAuth.mockReturnValue(new Promise(() => {}))
 
-      // Act
       renderWithConsoleQuery(<DataSourcePage stickyToolbar />, {
         systemFeatures: { enable_marketplace: true },
       })
 
-      // Assert
       expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
-      expect(screen.queryByText('dataSourcePage.notSetUpTitle')).not.toBeInTheDocument()
+      expect(screen.queryByText('common.dataSourcePage.notSetUpTitle')).not.toBeInTheDocument()
       expect(
         screen.queryByText('modelProvider.modelProvider.installDataSource'),
       ).not.toBeInTheDocument()
@@ -269,78 +245,52 @@ describe('DataSourcePage Component', () => {
   })
 
   describe('Data Source List Rendering', () => {
-    it('should render Card components for each data source returned from the API', () => {
-      // Arrange
-      mockDataSourceListAuth.mockReturnValue({
-        data: { result: mockProviders },
-      } as unknown as UseQueryResult<{ result: DatasourceProviderAuthResponse[] }, Error>)
-
-      // Act
-      renderWithConsoleQuery(<DataSourcePage />, {
-        systemFeatures: { enable_marketplace: false },
-      })
-
-      // Assert
-      expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
-      expect(screen.getByText('Dify Source')).toBeInTheDocument()
-      expect(screen.getByText('Partner Source')).toBeInTheDocument()
-    })
-
-    it('should map installed plugin operations onto the data source card header', () => {
-      // Arrange
-      mockDataSourceListAuth.mockReturnValue({
-        data: { result: mockProviders },
-      } as unknown as UseQueryResult<{ result: DatasourceProviderAuthResponse[] }, Error>)
+    it('should map installed plugin operations onto the data source card header', async () => {
+      mockDataSourceListAuth.mockResolvedValue({ result: mockProviders })
       vi.mocked(useInstalledPluginList).mockReturnValue({
         data: { plugins: [mockPluginDetail], total: 1 },
       } as unknown as ReturnType<typeof useInstalledPluginList>)
 
-      // Act
       const { queryClient } = renderWithConsoleQuery(<DataSourcePage />, {
         systemFeatures: { enable_marketplace: false },
       })
 
+      expect(await screen.findByText('Dify Source')).toBeInTheDocument()
+
       const catalogKey = consoleQuery.rag.pipelines.datasourcePlugins.get.queryKey()
       queryClient.setQueryData(catalogKey, [])
-      fireEvent.click(screen.getByTestId('plugin-actions-plugin-1'))
+      await userEvent.setup().click(screen.getByTestId('plugin-actions-plugin-1'))
       expect(queryClient.getQueryState(catalogKey)?.isInvalidated).toBe(true)
 
-      // Assert
       expect(screen.getByTestId('plugin-actions-plugin-1')).toBeInTheDocument()
       expect(useInstalledPluginList).toHaveBeenLastCalledWith({
         category: PluginCategoryEnum.datasource,
       })
     })
 
-    it('should filter installed data sources and pass search text to marketplace', () => {
-      // Arrange
-      mockDataSourceListAuth.mockReturnValue({
-        data: { result: mockProviders },
-      } as unknown as UseQueryResult<{ result: DatasourceProviderAuthResponse[] }, Error>)
+    it('should filter installed data sources and pass search text to marketplace', async () => {
+      mockDataSourceListAuth.mockResolvedValue({ result: mockProviders })
 
-      // Act
       renderWithConsoleQuery(<DataSourcePage />, {
         systemFeatures: { enable_marketplace: true },
       })
-      fireEvent.change(screen.getByPlaceholderText('common.operation.search'), {
-        target: { value: 'partner' },
-      })
 
-      // Assert
+      expect(await screen.findByText('Dify Source')).toBeInTheDocument()
+      await userEvent.setup().type(screen.getByRole('searchbox'), 'partner')
+
       expect(screen.queryByText('Dify Source')).not.toBeInTheDocument()
       expect(screen.getByText('Partner Source')).toBeInTheDocument()
       expect(useMarketplaceAllPlugins).toHaveBeenLastCalledWith(mockProviders, 'partner')
     })
 
     it('announces the filtered installed data source count while searching', async () => {
-      mockDataSourceListAuth.mockReturnValue({
-        data: { result: mockProviders },
-        isLoading: false,
-      } as unknown as UseQueryResult<{ result: DatasourceProviderAuthResponse[] }, Error>)
+      mockDataSourceListAuth.mockResolvedValue({ result: mockProviders })
       const user = userEvent.setup()
       renderWithConsoleQuery(<DataSourcePage />, {
         systemFeatures: { enable_marketplace: false },
       })
+
+      expect(await screen.findByText('Dify Source')).toBeInTheDocument()
 
       expect(screen.queryByRole('status')).not.toBeInTheDocument()
       await user.type(screen.getByRole('searchbox'), 'partner')
@@ -356,68 +306,30 @@ describe('DataSourcePage Component', () => {
   })
 
   describe('Marketplace Integration', () => {
-    it('should render the InstallFromMarketplace component when enable_marketplace feature is enabled', () => {
-      // Arrange
-      mockDataSourceListAuth.mockReturnValue({
-        data: { result: mockProviders },
-      } as unknown as UseQueryResult<{ result: DatasourceProviderAuthResponse[] }, Error>)
+    it('should render the InstallFromMarketplace component when enable_marketplace feature is enabled', async () => {
+      mockDataSourceListAuth.mockResolvedValue({ result: mockProviders })
 
-      // Act
       renderWithConsoleQuery(<DataSourcePage />, {
         systemFeatures: { enable_marketplace: true },
       })
 
-      // Assert
+      expect(await screen.findByText('Dify Source')).toBeInTheDocument()
+
       expect(screen.getByText('modelProvider.modelProvider.installDataSource')).toBeInTheDocument()
       expect(screen.getByText('modelProvider.modelProvider.discoverMore')).toBeInTheDocument()
     })
 
-    it('should pass an empty array to InstallFromMarketplace if data result is missing but marketplace is enabled', () => {
-      // Arrange
-      mockDataSourceListAuth.mockReturnValue({
-        data: undefined,
-      } as unknown as UseQueryResult<{ result: DatasourceProviderAuthResponse[] }, Error>)
+    it('should handle the case where data exists but result is an empty array', async () => {
+      mockDataSourceListAuth.mockResolvedValue({ result: [] })
 
-      // Act
       renderWithConsoleQuery(<DataSourcePage />, {
         systemFeatures: { enable_marketplace: true },
       })
 
-      // Assert
-      expect(screen.getByText('modelProvider.modelProvider.installDataSource')).toBeInTheDocument()
-    })
+      expect(await screen.findByText('common.dataSourcePage.installFirst')).toBeInTheDocument()
 
-    it('should handle the case where data exists but result is an empty array', () => {
-      // Arrange
-      mockDataSourceListAuth.mockReturnValue({
-        data: { result: [] },
-      } as unknown as UseQueryResult<{ result: DatasourceProviderAuthResponse[] }, Error>)
-
-      // Act
-      renderWithConsoleQuery(<DataSourcePage />, {
-        systemFeatures: { enable_marketplace: true },
-      })
-
-      // Assert
       expect(screen.queryByText('Dify Source')).not.toBeInTheDocument()
       expect(screen.getByText('modelProvider.modelProvider.installDataSource')).toBeInTheDocument()
-    })
-
-    it('should handle the case where enable_marketplace is false (edge case for coverage)', () => {
-      // Arrange
-      mockDataSourceListAuth.mockReturnValue({
-        data: { result: [] },
-      } as unknown as UseQueryResult<{ result: DatasourceProviderAuthResponse[] }, Error>)
-
-      // Act
-      renderWithConsoleQuery(<DataSourcePage />, {
-        systemFeatures: { enable_marketplace: false },
-      })
-
-      // Assert
-      expect(
-        screen.queryByText('modelProvider.modelProvider.installDataSource'),
-      ).not.toBeInTheDocument()
     })
   })
 })

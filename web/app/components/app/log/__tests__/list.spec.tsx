@@ -1,5 +1,4 @@
 import type { MessageDetailResponse } from '@dify/contracts/api/console/apps/types.gen'
-import type { ReactNode } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -16,7 +15,7 @@ const mockUpdateLogMessageFeedbacks = vi.fn()
 const mockFeedbackResult = vi.fn()
 const mockUpdateLogMessageAnnotations = vi.fn()
 const mockOnRefresh = vi.fn()
-const mockCompletionRefetch = vi.fn()
+const completionDetailRequest = vi.fn()
 const mockDelAnnotation = vi.fn()
 
 let mockChatConversationDetail: Record<string, unknown> | undefined
@@ -35,40 +34,26 @@ vi.mock('@/hooks/use-breakpoints', () => ({
   },
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
-    useQuery: (options: Parameters<typeof actual.useQuery>[0]) => {
-      const [path] = options.queryKey as [string[]]
-      if (Array.isArray(path) && path.includes('byConversationId')) {
-        if (path.includes('chatConversations')) return { data: mockChatConversationDetail }
-        return { data: mockCompletionConversationDetail, refetch: mockCompletionRefetch }
-      }
-      return actual.useQuery(options)
-    },
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.chatConversations.byConversationId.get': () =>
+        mockChatConversationDetail ?? new Promise(() => {}),
+      'apps.byAppId.completionConversations.byConversationId.get': (input) =>
+        completionDetailRequest(input),
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.chatMessages.get': (input) => mockFetchChatMessages(input),
+      'apps.byAppId.feedbacks.post': (input) => mockUpdateLogMessageFeedbacks(input),
+      'apps.byAppId.annotations.post': (input) => mockUpdateLogMessageAnnotations(input),
+      'apps.byAppId.annotations.byAnnotationId.delete': (input) => mockDelAnnotation(input),
+    }),
   }
 })
-
-vi.mock('@/service/console', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/console')>()),
-  consoleClient: {
-    apps: {
-      byAppId: {
-        chatMessages: { get: (...args: unknown[]) => mockFetchChatMessages(...args) },
-        feedbacks: { post: (...args: unknown[]) => mockUpdateLogMessageFeedbacks(...args) },
-        annotations: {
-          post: (...args: unknown[]) => mockUpdateLogMessageAnnotations(...args),
-          byAnnotationId: { delete: (...args: unknown[]) => mockDelAnnotation(...args) },
-        },
-      },
-    },
-  },
-}))
-
-vi.mock('@/app/components/base/loading-placeholder', () => ({
-  LoadingPlaceholder: () => <div>loading</div>,
-}))
 
 vi.mock('@/app/components/app/log/model-info', () => ({
   default: ({ model }: { model: { name: string } }) => (
@@ -82,10 +67,6 @@ vi.mock('@/app/components/app/log/var-panel', () => ({
       {varList.map((item) => `${item.label}:${item.value}`).join(',')}
     </div>
   ),
-}))
-
-vi.mock('@/app/components/base/copy-icon', () => ({
-  default: ({ content }: { content: string }) => <div data-testid="copy-icon">{content}</div>,
 }))
 
 vi.mock('@/app/components/app/text-generate/item', () => ({
@@ -117,7 +98,7 @@ vi.mock('@/app/components/base/chat/chat', () => ({
     switchSibling,
     onOpenLog,
   }: {
-    chatList: Array<{ id: string }>
+    chatList: IChatItem[]
     onFeedback: (mid: string, value: { rating: string; content?: string }) => Promise<void>
     onAnnotationAdded: (
       annotationId: string,
@@ -133,6 +114,12 @@ vi.mock('@/app/components/base/chat/chat', () => ({
   }) => (
     <div data-testid="chat-panel" data-log-enabled={String(!!onOpenLog)}>
       <div>{chatList.length}</div>
+      {chatList.map((item) => (
+        <div key={item.id}>
+          <span>{item.content}</span>
+          <span>{item.annotation?.logAnnotation?.content}</span>
+        </div>
+      ))}
       {onOpenLog && (
         <>
           <button
@@ -251,10 +238,6 @@ vi.mock('@/app/components/base/prompt-log-modal', () => ({
   ),
 }))
 
-vi.mock('@/app/components/workflow/context', () => ({
-  WorkflowContextProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
-}))
-
 const createLogs = () => ({
   has_more: false,
   limit: 20,
@@ -359,9 +342,13 @@ const renderConversationList = ({
 
 describe('ConversationList', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     mockChatConversationDetail = undefined
     mockCompletionConversationDetail = undefined
+    completionDetailRequest.mockImplementation(
+      () => mockCompletionConversationDetail ?? new Promise(() => {}),
+    )
+    mockUpdateLogMessageFeedbacks.mockResolvedValue(undefined)
     mockDelAnnotation.mockResolvedValue(undefined)
     mockFetchChatMessages.mockResolvedValue({
       data: [],
@@ -370,12 +357,13 @@ describe('ConversationList', () => {
   })
 
   it('should render chat rows and push the conversation id into the url when a row is clicked', async () => {
+    const user = userEvent.setup()
     const { onUrlUpdate } = renderConversationList()
 
     expect(screen.getByText('hello world')).toBeInTheDocument()
     expect(screen.getAllByText('formatted-1710000000')).toHaveLength(2)
 
-    fireEvent.click(screen.getByText('hello world'))
+    await user.click(screen.getByText('hello world'))
 
     await waitFor(() => {
       expect(onUrlUpdate).toHaveBeenCalled()
@@ -438,6 +426,7 @@ describe('ConversationList', () => {
   )
 
   it('should close the drawer and refresh', async () => {
+    const user = userEvent.setup()
     mockChatConversationDetail = {
       id: 'conversation-1',
       created_at: 1710000000,
@@ -458,7 +447,7 @@ describe('ConversationList', () => {
     expect(
       await screen.findByRole('dialog', { name: 'appLog.detail.conversationId' }),
     ).toBeInTheDocument()
-    fireEvent.click(await screen.findByRole('button', { name: /(?:^|\.)operation\.close(?=$|:)/ }))
+    await user.click(await screen.findByRole('button', { name: /(?:^|\.)operation\.close(?=$|:)/ }))
 
     expect(mockOnRefresh).toHaveBeenCalledTimes(1)
 
@@ -475,6 +464,7 @@ describe('ConversationList', () => {
   it.each([true, false])(
     'settles admin feedback with the request outcome (success: %s)',
     async (succeeded) => {
+      const user = userEvent.setup()
       mockFeedbackResult.mockClear()
       if (!succeeded)
         mockUpdateLogMessageFeedbacks.mockRejectedValueOnce(new Error('Feedback failed'))
@@ -534,7 +524,7 @@ describe('ConversationList', () => {
       expect(screen.getByTestId('var-panel')).toHaveTextContent('query:Latest question')
       expect(screen.getByTestId('model-info')).toHaveTextContent('gpt-4o')
 
-      fireEvent.click(screen.getByText('chat-feedback'))
+      await user.click(screen.getByText('chat-feedback'))
 
       await waitFor(() => {
         expect(mockUpdateLogMessageFeedbacks).toHaveBeenCalledWith({
@@ -584,6 +574,7 @@ describe('ConversationList', () => {
   )
 
   it('should render completion details and refetch after feedback updates', async () => {
+    const user = userEvent.setup()
     mockCompletionConversationDetail = {
       id: 'conversation-1',
       created_at: 1710000000,
@@ -622,7 +613,14 @@ describe('ConversationList', () => {
     expect(screen.getByTestId('text-generation')).toHaveAttribute('data-log-enabled', 'false')
     expect(screen.queryByTestId('prompt-log-modal')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('completion-feedback'))
+    mockCompletionConversationDetail = {
+      ...mockCompletionConversationDetail,
+      message: {
+        ...(mockCompletionConversationDetail.message as Record<string, unknown>),
+        answer: 'Updated generated output',
+      },
+    }
+    await user.click(screen.getByText('completion-feedback'))
 
     await waitFor(() => {
       expect(mockUpdateLogMessageFeedbacks).toHaveBeenCalledWith({
@@ -633,7 +631,8 @@ describe('ConversationList', () => {
           content: 'great',
         },
       })
-      expect(mockCompletionRefetch).toHaveBeenCalled()
+      expect(completionDetailRequest).toHaveBeenCalledTimes(2)
+      expect(screen.getByText('Updated generated output')).toBeVisible()
     })
   })
 
@@ -723,6 +722,7 @@ describe('ConversationList', () => {
   })
 
   it('should support annotation changes and paginated scroll loading in the detail drawer', async () => {
+    const user = userEvent.setup()
     mockChatConversationDetail = {
       id: 'conversation-1',
       created_at: 1710000000,
@@ -774,9 +774,11 @@ describe('ConversationList', () => {
       expect(screen.getByText(/(?:^|\.)detail\.loading\.\.\.(?=$|:)/)).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByText('chat-add-annotation'))
-    fireEvent.click(screen.getByText('chat-edit-annotation'))
-    fireEvent.click(screen.getByText('chat-remove-annotation'))
+    await user.click(screen.getByText('chat-add-annotation'))
+    expect(await screen.findByText('Edited answer')).toBeVisible()
+    await user.click(screen.getByText('chat-edit-annotation'))
+    expect(await screen.findByText('Updated answer')).toBeVisible()
+    await user.click(screen.getByText('chat-remove-annotation'))
 
     await waitFor(() => {
       expect(mockDelAnnotation).toHaveBeenCalledWith({

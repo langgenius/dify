@@ -3,6 +3,7 @@ import type { ModalStates, VersionTarget } from '../use-detail-header-state'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import * as amplitude from '@/app/components/base/amplitude'
+import { createDeferred } from '@/test/deferred'
 import { PluginSource } from '../../../../types'
 import { usePluginOperations } from '../use-plugin-operations'
 
@@ -17,7 +18,6 @@ const {
   mockRefreshPluginList,
   mockUninstallPlugin,
   mockFetchReleases,
-  mockCheckForUpdates,
   mockToastNotify,
 } = vi.hoisted(() => {
   return {
@@ -26,10 +26,6 @@ const {
     mockRefreshPluginList: vi.fn(),
     mockUninstallPlugin: vi.fn(() => Promise.resolve({ success: true })),
     mockFetchReleases: vi.fn(() => Promise.resolve([{ tag_name: 'v2.0.0' }])),
-    mockCheckForUpdates: vi.fn(() => ({
-      needUpdate: true,
-      toastProps: { type: 'success', message: 'Update available' },
-    })),
     mockToastNotify: vi.fn(),
   }
 })
@@ -74,7 +70,6 @@ vi.mock('../../../../install-plugin/hooks', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../../install-plugin/hooks')>()
   return {
     ...actual,
-    checkForUpdates: mockCheckForUpdates,
     fetchReleases: mockFetchReleases,
   }
 })
@@ -144,44 +139,28 @@ describe('usePluginOperations', () => {
   })
 
   describe('Marketplace Update Flow', () => {
-    it('should show update modal for marketplace plugin', async () => {
-      const detail = createPluginDetail({ source: PluginSource.marketplace })
-      const { result } = renderHook(() =>
-        usePluginOperations({
-          detail,
-          modalStates,
-          versionPicker,
-          isFromMarketplace: true,
-          onUpdate: mockOnUpdate,
-        }),
-      )
+    it.each([false, true])(
+      'opens the marketplace update with downgrade=%s',
+      async (isDowngrade) => {
+        const detail = createPluginDetail({ source: PluginSource.marketplace })
+        const { result } = renderHook(() =>
+          usePluginOperations({
+            detail,
+            modalStates,
+            versionPicker,
+            isFromMarketplace: true,
+            onUpdate: mockOnUpdate,
+          }),
+        )
 
-      await act(async () => {
-        await result.current.handleUpdate()
-      })
+        await act(async () => {
+          await result.current.handleUpdate(isDowngrade)
+        })
 
-      expect(modalStates.showUpdateModal).toHaveBeenCalled()
-    })
-
-    it('should set isDowngrade when downgrading', async () => {
-      const detail = createPluginDetail({ source: PluginSource.marketplace })
-      const { result } = renderHook(() =>
-        usePluginOperations({
-          detail,
-          modalStates,
-          versionPicker,
-          isFromMarketplace: true,
-          onUpdate: mockOnUpdate,
-        }),
-      )
-
-      await act(async () => {
-        await result.current.handleUpdate(true)
-      })
-
-      expect(versionPicker.setIsDowngrade).toHaveBeenCalledWith(true)
-      expect(modalStates.showUpdateModal).toHaveBeenCalled()
-    })
+        expect(versionPicker.setIsDowngrade).toHaveBeenCalledWith(isDowngrade)
+        expect(modalStates.showUpdateModal).toHaveBeenCalled()
+      },
+    )
 
     it('waits for the updated plugin list before hiding the update modal', async () => {
       const detail = createPluginDetail({ source: PluginSource.marketplace })
@@ -220,73 +199,6 @@ describe('usePluginOperations', () => {
   })
 
   describe('GitHub Update Flow', () => {
-    it('should fetch releases from GitHub', async () => {
-      const detail = createPluginDetail({
-        source: PluginSource.github,
-        meta: { repo: 'owner/repo', version: 'v1.0.0', package: 'pkg' },
-      })
-      const { result } = renderHook(() =>
-        usePluginOperations({
-          detail,
-          modalStates,
-          versionPicker,
-          isFromMarketplace: false,
-          onUpdate: mockOnUpdate,
-        }),
-      )
-
-      await act(async () => {
-        await result.current.handleUpdate()
-      })
-
-      expect(mockFetchReleases).toHaveBeenCalledWith('owner', 'repo')
-    })
-
-    it('should check for updates after fetching releases', async () => {
-      const detail = createPluginDetail({
-        source: PluginSource.github,
-        meta: { repo: 'owner/repo', version: 'v1.0.0', package: 'pkg' },
-      })
-      const { result } = renderHook(() =>
-        usePluginOperations({
-          detail,
-          modalStates,
-          versionPicker,
-          isFromMarketplace: false,
-          onUpdate: mockOnUpdate,
-        }),
-      )
-
-      await act(async () => {
-        await result.current.handleUpdate()
-      })
-
-      expect(mockCheckForUpdates).toHaveBeenCalled()
-      expect(mockToastNotify).toHaveBeenCalledWith({ type: 'success', message: 'Update available' })
-    })
-
-    it('should show update plugin modal when update is needed', async () => {
-      const detail = createPluginDetail({
-        source: PluginSource.github,
-        meta: { repo: 'owner/repo', version: 'v1.0.0', package: 'pkg' },
-      })
-      const { result } = renderHook(() =>
-        usePluginOperations({
-          detail,
-          modalStates,
-          versionPicker,
-          isFromMarketplace: false,
-          onUpdate: mockOnUpdate,
-        }),
-      )
-
-      await act(async () => {
-        await result.current.handleUpdate()
-      })
-
-      expect(mockSetShowUpdatePluginModal).toHaveBeenCalled()
-    })
-
     it('waits for the update callback when GitHub update save callback fires', async () => {
       const detail = createPluginDetail({
         source: PluginSource.github,
@@ -313,8 +225,29 @@ describe('usePluginOperations', () => {
         await result.current.handleUpdate()
       })
 
-      const firstCall = mockSetShowUpdatePluginModal.mock.calls.at(0)?.[0]
-      const updatePromise = Promise.resolve(firstCall?.onSaveCallback?.())
+      expect(mockFetchReleases).toHaveBeenCalledWith('owner', 'repo')
+      expect(mockToastNotify).toHaveBeenCalledWith({
+        type: 'info',
+        message: 'New version available: v2.0.0',
+      })
+      expect(mockSetShowUpdatePluginModal).toHaveBeenCalledExactlyOnceWith({
+        onSaveCallback: expect.any(Function),
+        payload: {
+          type: PluginSource.github,
+          category: 'tool',
+          github: {
+            originalPackageInfo: {
+              id: 'test-uid',
+              repo: 'owner/repo',
+              version: 'v1.0.0',
+              package: 'pkg',
+              releases: [{ tag_name: 'v2.0.0' }],
+            },
+          },
+        },
+      })
+      const firstCall = mockSetShowUpdatePluginModal.mock.calls[0]![0]
+      const updatePromise = firstCall.onSaveCallback()
 
       expect(mockInvalidateCheckInstalled).toHaveBeenCalled()
       expect(mockOnUpdate).toHaveBeenCalled()
@@ -355,10 +288,7 @@ describe('usePluginOperations', () => {
     })
 
     it('should not show modal when no update needed', async () => {
-      mockCheckForUpdates.mockReturnValueOnce({
-        needUpdate: false,
-        toastProps: { type: 'info', message: 'Already up to date' },
-      })
+      mockFetchReleases.mockResolvedValueOnce([{ tag_name: 'v1.0.0' }])
       const detail = createPluginDetail({
         source: PluginSource.github,
         meta: { repo: 'owner/repo', version: 'v1.0.0', package: 'pkg' },
@@ -413,166 +343,45 @@ describe('usePluginOperations', () => {
   })
 
   describe('Delete Flow', () => {
-    it('should call uninstallPlugin with correct id', async () => {
-      const detail = createPluginDetail({ id: 'plugin-to-delete' })
-      const { result } = renderHook(() =>
-        usePluginOperations({
-          detail,
-          modalStates,
-          versionPicker,
-          isFromMarketplace: true,
-          onUpdate: mockOnUpdate,
-        }),
-      )
-
-      await act(async () => {
-        await result.current.handleDelete()
-      })
-
-      expect(mockUninstallPlugin).toHaveBeenCalledWith('plugin-to-delete')
-    })
-
-    it('should show and hide deleting state during delete', async () => {
-      const detail = createPluginDetail()
-      const { result } = renderHook(() =>
-        usePluginOperations({
-          detail,
-          modalStates,
-          versionPicker,
-          isFromMarketplace: true,
-          onUpdate: mockOnUpdate,
-        }),
-      )
-
-      await act(async () => {
-        await result.current.handleDelete()
-      })
-
-      expect(modalStates.showDeleting).toHaveBeenCalled()
-      expect(modalStates.hideDeleting).toHaveBeenCalled()
-    })
-
-    it('should call onUpdate with true after successful delete', async () => {
-      const detail = createPluginDetail()
-      const { result } = renderHook(() =>
-        usePluginOperations({
-          detail,
-          modalStates,
-          versionPicker,
-          isFromMarketplace: true,
-          onUpdate: mockOnUpdate,
-        }),
-      )
-
-      await act(async () => {
-        await result.current.handleDelete()
-      })
-
-      expect(mockInvalidateCheckInstalled).toHaveBeenCalled()
-      expect(mockOnUpdate).toHaveBeenCalledWith(true)
-    })
-
-    it('should hide delete confirm after successful delete', async () => {
-      const detail = createPluginDetail()
-      const { result } = renderHook(() =>
-        usePluginOperations({
-          detail,
-          modalStates,
-          versionPicker,
-          isFromMarketplace: true,
-          onUpdate: mockOnUpdate,
-        }),
-      )
-
-      await act(async () => {
-        await result.current.handleDelete()
-      })
-
-      expect(modalStates.hideDeleteConfirm).toHaveBeenCalled()
-    })
-
-    it('should refresh plugin list when deleting model plugin', async () => {
-      const detail = createPluginDetail({
-        declaration: {
-          author: 'test-author',
-          name: 'test-plugin-name',
-          category: 'model',
-          label: { en_US: 'Test' },
-          description: { en_US: 'Test' },
-          icon: 'icon.png',
-          verified: true,
-        } as unknown as PluginDetail['declaration'],
-      })
-      const { result } = renderHook(() =>
-        usePluginOperations({
-          detail,
-          modalStates,
-          versionPicker,
-          isFromMarketplace: true,
-          onUpdate: mockOnUpdate,
-        }),
-      )
-
-      await act(async () => {
-        await result.current.handleDelete()
-      })
-
-      expect(mockRefreshPluginList).toHaveBeenCalledWith({ category: 'model' })
-    })
-
-    it('should refresh plugin list when deleting tool plugin', async () => {
-      const detail = createPluginDetail({
-        declaration: {
-          author: 'test-author',
-          name: 'test-plugin-name',
-          category: 'tool',
-          label: { en_US: 'Test' },
-          description: { en_US: 'Test' },
-          icon: 'icon.png',
-          verified: true,
-        } as unknown as PluginDetail['declaration'],
-      })
-      const { result } = renderHook(() =>
-        usePluginOperations({
-          detail,
-          modalStates,
-          versionPicker,
-          isFromMarketplace: true,
-          onUpdate: mockOnUpdate,
-        }),
-      )
-
-      await act(async () => {
-        await result.current.handleDelete()
-      })
-
-      expect(mockRefreshPluginList).toHaveBeenCalledWith({ category: 'tool' })
-    })
-
-    it('should track plugin uninstalled event', async () => {
-      const detail = createPluginDetail()
-      const { result } = renderHook(() =>
-        usePluginOperations({
-          detail,
-          modalStates,
-          versionPicker,
-          isFromMarketplace: true,
-          onUpdate: mockOnUpdate,
-        }),
-      )
-
-      await act(async () => {
-        await result.current.handleDelete()
-      })
-
-      expect(amplitude.trackEvent).toHaveBeenCalledWith(
-        'plugin_uninstalled',
-        expect.objectContaining({
+    it.each(['model', 'tool'] as const)(
+      'deletes a %s plugin and refreshes its catalog after success',
+      async (category) => {
+        const request = createDeferred<{ success: boolean }>()
+        mockUninstallPlugin.mockReturnValueOnce(request.promise)
+        const detail = createPluginDetail()
+        detail.declaration.category = category
+        const { result } = renderHook(() =>
+          usePluginOperations({
+            detail,
+            modalStates,
+            versionPicker,
+            isFromMarketplace: true,
+            onUpdate: mockOnUpdate,
+          }),
+        )
+        let completion: Promise<void>
+        act(() => {
+          completion = result.current.handleDelete()
+        })
+        expect(mockUninstallPlugin).toHaveBeenCalledExactlyOnceWith('test-id')
+        expect(modalStates.showDeleting).toHaveBeenCalledOnce()
+        expect(modalStates.hideDeleting).not.toHaveBeenCalled()
+        expect(mockOnUpdate).not.toHaveBeenCalled()
+        await act(async () => {
+          request.resolve({ success: true })
+          await completion
+        })
+        expect(modalStates.hideDeleting).toHaveBeenCalledOnce()
+        expect(modalStates.hideDeleteConfirm).toHaveBeenCalledOnce()
+        expect(mockInvalidateCheckInstalled).toHaveBeenCalledOnce()
+        expect(mockOnUpdate).toHaveBeenCalledExactlyOnceWith(true)
+        expect(mockRefreshPluginList).toHaveBeenCalledExactlyOnceWith({ category })
+        expect(amplitude.trackEvent).toHaveBeenCalledExactlyOnceWith('plugin_uninstalled', {
           plugin_id: 'test-plugin',
           plugin_name: 'test-plugin-name',
-        }),
-      )
-    })
+        })
+      },
+    )
 
     it('should not call onUpdate when delete fails', async () => {
       mockUninstallPlugin.mockResolvedValueOnce({ success: false })
@@ -592,42 +401,10 @@ describe('usePluginOperations', () => {
       })
 
       expect(mockOnUpdate).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('Optional onUpdate Callback', () => {
-    it('should not throw when onUpdate is not provided for marketplace update', () => {
-      const detail = createPluginDetail()
-      const { result } = renderHook(() =>
-        usePluginOperations({
-          detail,
-          modalStates,
-          versionPicker,
-          isFromMarketplace: true,
-        }),
-      )
-
-      expect(() => {
-        result.current.handleUpdatedFromMarketplace()
-      }).not.toThrow()
-    })
-
-    it('should not throw when onUpdate is not provided for delete', async () => {
-      const detail = createPluginDetail()
-      const { result } = renderHook(() =>
-        usePluginOperations({
-          detail,
-          modalStates,
-          versionPicker,
-          isFromMarketplace: true,
-        }),
-      )
-
-      await expect(
-        act(async () => {
-          await result.current.handleDelete()
-        }),
-      ).resolves.not.toThrow()
+      expect(modalStates.hideDeleting).toHaveBeenCalledOnce()
+      expect(modalStates.hideDeleteConfirm).not.toHaveBeenCalled()
+      expect(mockInvalidateCheckInstalled).not.toHaveBeenCalled()
+      expect(mockRefreshPluginList).not.toHaveBeenCalled()
     })
   })
 })

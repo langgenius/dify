@@ -1,8 +1,8 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient } from '@/service/console'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import ChangePasswordForm from '../page'
 
 vi.mock('@/next/navigation', () => ({
@@ -29,15 +29,10 @@ vi.mock('@/service/console', async (importOriginal) => ({
   },
 }))
 
-vi.mock('@/hooks/use-document-title', () => ({
-  default: vi.fn(),
-}))
-
 const mockReplace = vi.fn()
 const mockUseRouter = vi.mocked(useRouter)
 const mockUseSearchParams = vi.mocked(useSearchParams)
 const mockChangePasswordWithToken = vi.mocked(consoleClient.forgotPassword.resets.post)
-const mockUseDocumentTitle = vi.mocked(useDocumentTitle)
 
 const redirectUrl = '/apps?template-id=template-1&utm_source=dify_blog'
 const encodedSigninUrl =
@@ -63,7 +58,7 @@ const completePasswordChange = async () => {
     expect(screen.getByRole('link', { name: /login\.passwordChanged/ })).toBeInTheDocument()
   })
   expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.passwordChangedTip')
-  expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('login.passwordChangedTip')
+  expect(document.title).toBe('login.passwordChangedTip - Dify')
 }
 
 describe('Reset Password Set Password Page', () => {
@@ -77,9 +72,11 @@ describe('Reset Password Set Password Page', () => {
   })
 
   it('reconciles the initial route title with client branding', () => {
-    render(<ChangePasswordForm />)
+    render(<ChangePasswordForm />, {
+      systemFeatures: { branding: { enabled: true, application_title: 'Acme' } },
+    })
 
-    expect(mockUseDocumentTitle).toHaveBeenCalledWith('login.changePassword')
+    expect(document.title).toBe('login.changePassword - Acme')
   })
 
   it('supports password reveal and native form submission', async () => {

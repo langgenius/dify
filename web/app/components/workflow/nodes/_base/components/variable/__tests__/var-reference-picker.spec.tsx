@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import {
   createNode,
   createStartNode,
@@ -114,12 +115,13 @@ describe('VarReferencePicker', () => {
   })
 
   it('should open the popup and select a variable from the available list', async () => {
+    const user = userEvent.setup()
     const { onChange } = renderPicker()
 
-    fireEvent.click(screen.getByTestId('var-reference-picker-trigger'))
+    await user.click(screen.getByTestId('var-reference-picker-trigger'))
 
     await waitFor(() => expect(screen.getByRole('searchbox')).toHaveFocus())
-    fireEvent.click(await screen.findByText('answer'))
+    await user.click(await screen.findByText('answer'))
 
     expect(onChange).toHaveBeenCalledWith(
       ['node-a', 'answer'],
@@ -132,6 +134,7 @@ describe('VarReferencePicker', () => {
   })
 
   it('should render the selected node and variable name, then clear it', async () => {
+    const user = userEvent.setup()
     const { onChange } = renderPicker({
       value: ['node-a', 'answer'],
     })
@@ -139,15 +142,16 @@ describe('VarReferencePicker', () => {
     expect(screen.getByText('Source Node')).toBeInTheDocument()
     expect(screen.getByText('answer')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: /Clear|operation.clear/ }))
+    await user.click(screen.getByRole('button', { name: /Clear|operation.clear/ }))
     expect(onChange).toHaveBeenCalledWith('', 'constant')
   })
 
   it('should show object variables in the popup and select the root object path', async () => {
+    const user = userEvent.setup()
     const { onChange } = renderPicker()
 
-    fireEvent.click(screen.getByTestId('var-reference-picker-trigger'))
-    fireEvent.click(await screen.findByText('payload'))
+    await user.click(screen.getByTestId('var-reference-picker-trigger'))
+    await user.click(await screen.findByText('payload'))
 
     expect(onChange).toHaveBeenCalledWith(
       ['node-a', 'payload'],
@@ -160,6 +164,7 @@ describe('VarReferencePicker', () => {
   })
 
   it('should render a placeholder and respect readonly mode', async () => {
+    const user = userEvent.setup()
     const { onChange } = renderPicker({
       readonly: true,
       placeholder: 'Pick a variable',
@@ -167,11 +172,9 @@ describe('VarReferencePicker', () => {
 
     expect(screen.getByText('Pick a variable')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByTestId('var-reference-picker-trigger'))
+    await user.click(screen.getByTestId('var-reference-picker-trigger'))
 
-    await waitFor(() => {
-      expect(screen.queryByText('answer')).not.toBeInTheDocument()
-    })
+    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
     expect(onChange).not.toHaveBeenCalled()
   })
 })

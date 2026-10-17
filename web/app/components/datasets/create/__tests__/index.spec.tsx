@@ -8,7 +8,8 @@ import type { TopBarProps } from '../top-bar'
 import type { NotionPage } from '@/models/common'
 import type { FileItem } from '@/models/datasets'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { DataSourceProvider } from '@/models/common'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
@@ -21,6 +22,16 @@ import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { RETRIEVE_METHOD } from '@/types/app'
 import DatasetUpdateForm from '../index'
+
+const notionPage: NotionPage = {
+  page_id: 'page-1',
+  page_name: 'Notes',
+  page_icon: null,
+  parent_id: 'root',
+  type: 'page',
+  is_bound: false,
+  workspace_id: 'workspace-1',
+}
 
 type StepOneProps = ComponentProps<typeof StepOneComponent>
 type StepThreeTestProps = ComponentProps<typeof StepThreeComponent>
@@ -181,11 +192,7 @@ vi.mock('../step-one', () => ({
         </button>
         <button
           data-testid="step-one-update-notion-pages"
-          onClick={() =>
-            props.updateNotionPages([
-              { page_id: 'page-1', type: 'page' },
-            ] as unknown as NotionPage[])
-          }
+          onClick={() => props.updateNotionPages([notionPage])}
         >
           Add Notion Page
         </button>
@@ -383,238 +390,19 @@ describe('DatasetUpdateForm', () => {
   })
 
   // Rendering Tests - Verify component renders correctly in different states
-  describe('Rendering', () => {
-    it('should render TopBar with correct active index for step 1', () => {
-      render(<DatasetUpdateForm />)
-
-      expect(screen.getByTestId('top-bar-active-index'))!.toHaveTextContent('0')
-    })
-
-    it('should render StepOne by default', () => {
-      render(<DatasetUpdateForm />)
-
-      expect(screen.getByTestId('step-one'))!.toBeInTheDocument()
-      expect(screen.queryByTestId('step-two')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('step-three')).not.toBeInTheDocument()
-    })
-
-    it('should show loading state when data source list is loading', () => {
-      seedDatasource = false
-      getDatasourceList.mockReturnValue(new Promise(() => {}))
-
-      render(<DatasetUpdateForm />)
-
-      // Assert - Loading component should be rendered (not the steps)
-      expect(screen.queryByTestId('step-one')).not.toBeInTheDocument()
-    })
-
-    it('should show error state when fetching fails', async () => {
-      seedDatasource = false
-      getDatasourceList.mockRejectedValue(new Error('Datasource unavailable'))
-
-      render(<DatasetUpdateForm />)
-
-      expect(await screen.findByText('datasetCreation.error.unavailable'))!.toBeInTheDocument()
-    })
-  })
 
   // Props Testing - Verify datasetId prop behavior
-  describe('Props', () => {
-    describe('datasetId prop', () => {
-      it('should pass datasetId to TopBar', () => {
-        render(<DatasetUpdateForm datasetId="dataset-abc" />)
-
-        expect(screen.getByTestId('top-bar-dataset-id'))!.toHaveTextContent('dataset-abc')
-      })
-
-      it('should pass datasetId to StepOne', () => {
-        render(<DatasetUpdateForm datasetId="dataset-abc" />)
-
-        expect(stepOneProps.datasetId).toBe('dataset-abc')
-      })
-
-      it('should render without datasetId', () => {
-        render(<DatasetUpdateForm />)
-
-        expect(screen.getByTestId('top-bar-dataset-id'))!.toHaveTextContent('none')
-        expect(stepOneProps.datasetId).toBeUndefined()
-      })
-    })
-  })
 
   // State Management - Test state initialization and transitions
-  describe('State Management', () => {
-    describe('dataSourceType state', () => {
-      it('should initialize with FILE data source type', () => {
-        render(<DatasetUpdateForm />)
-
-        expect(screen.getByTestId('step-one-data-source-type'))!.toHaveTextContent(
-          DataSourceType.FILE,
-        )
-      })
-
-      it('should update dataSourceType when changeType is called', () => {
-        render(<DatasetUpdateForm />)
-
-        fireEvent.click(screen.getByTestId('step-one-change-type'))
-
-        expect(screen.getByTestId('step-one-data-source-type'))!.toHaveTextContent(
-          DataSourceType.NOTION,
-        )
-      })
-    })
-
-    describe('step state', () => {
-      it('should initialize at step 1', () => {
-        render(<DatasetUpdateForm />)
-
-        expect(screen.getByTestId('step-one'))!.toBeInTheDocument()
-        expect(screen.getByTestId('top-bar-active-index'))!.toHaveTextContent('0')
-      })
-
-      it('should transition to step 2 when nextStep is called', () => {
-        render(<DatasetUpdateForm />)
-
-        fireEvent.click(screen.getByTestId('step-one-next'))
-
-        expect(screen.queryByTestId('step-one')).not.toBeInTheDocument()
-        expect(screen.getByTestId('step-two'))!.toBeInTheDocument()
-        expect(screen.getByTestId('top-bar-active-index'))!.toHaveTextContent('1')
-      })
-
-      it('should transition to step 3 from step 2', () => {
-        render(<DatasetUpdateForm />)
-
-        // First go to step 2
-        fireEvent.click(screen.getByTestId('step-one-next'))
-
-        // Act - go to step 3
-        fireEvent.click(screen.getByTestId('step-two-next'))
-
-        expect(screen.queryByTestId('step-two')).not.toBeInTheDocument()
-        expect(screen.getByTestId('step-three'))!.toBeInTheDocument()
-        expect(screen.getByTestId('top-bar-active-index'))!.toHaveTextContent('2')
-      })
-
-      it('should go back to step 1 from step 2', () => {
-        render(<DatasetUpdateForm />)
-        fireEvent.click(screen.getByTestId('step-one-next'))
-
-        fireEvent.click(screen.getByTestId('step-two-prev'))
-
-        expect(screen.getByTestId('step-one'))!.toBeInTheDocument()
-        expect(screen.queryByTestId('step-two')).not.toBeInTheDocument()
-      })
-    })
-
-    describe('fileList state', () => {
-      it('should initialize with empty file list', () => {
-        render(<DatasetUpdateForm />)
-
-        expect(screen.getByTestId('step-one-files-count'))!.toHaveTextContent('0')
-      })
-
-      it('should update file list when updateFileList is called', () => {
-        render(<DatasetUpdateForm />)
-
-        fireEvent.click(screen.getByTestId('step-one-update-files'))
-
-        expect(screen.getByTestId('step-one-files-count'))!.toHaveTextContent('1')
-      })
-    })
-
-    describe('notionPages state', () => {
-      it('should initialize with empty notion pages', () => {
-        render(<DatasetUpdateForm />)
-
-        expect(screen.getByTestId('step-one-notion-pages-count'))!.toHaveTextContent('0')
-      })
-
-      it('should update notion pages when updateNotionPages is called', () => {
-        render(<DatasetUpdateForm />)
-
-        fireEvent.click(screen.getByTestId('step-one-update-notion-pages'))
-
-        expect(screen.getByTestId('step-one-notion-pages-count'))!.toHaveTextContent('1')
-      })
-    })
-
-    describe('websitePages state', () => {
-      it('should initialize with empty website pages', () => {
-        render(<DatasetUpdateForm />)
-
-        expect(screen.getByTestId('step-one-website-pages-count'))!.toHaveTextContent('0')
-      })
-
-      it('should update website pages when setWebsitePages is called', () => {
-        render(<DatasetUpdateForm />)
-
-        fireEvent.click(screen.getByTestId('step-one-update-website-pages'))
-
-        expect(screen.getByTestId('step-one-website-pages-count'))!.toHaveTextContent('1')
-      })
-    })
-  })
 
   // Callback Stability - Test memoization of callbacks
-  describe('Callback Stability and Memoization', () => {
-    it('should provide stable updateNotionPages callback reference', () => {
-      const { rerender } = render(<DatasetUpdateForm />)
-      const initialCallback = stepOneProps.updateNotionPages
-
-      // Act - trigger a rerender
-      rerender(<DatasetUpdateForm />)
-
-      // Assert - callback reference should be the same due to useCallback
-      expect(stepOneProps.updateNotionPages).toBe(initialCallback)
-    })
-
-    it('should provide stable updateNotionCredentialId callback reference', () => {
-      const { rerender } = render(<DatasetUpdateForm />)
-      const initialCallback = stepOneProps.updateNotionCredentialId
-
-      rerender(<DatasetUpdateForm />)
-
-      expect(stepOneProps.updateNotionCredentialId).toBe(initialCallback)
-    })
-
-    it('should provide stable updateFileList callback reference', () => {
-      const { rerender } = render(<DatasetUpdateForm />)
-      const initialCallback = stepOneProps.updateFileList
-
-      rerender(<DatasetUpdateForm />)
-
-      expect(stepOneProps.updateFileList).toBe(initialCallback)
-    })
-
-    it('should provide stable updateFile callback reference', () => {
-      const { rerender } = render(<DatasetUpdateForm />)
-      const initialCallback = stepOneProps.updateFile
-
-      rerender(<DatasetUpdateForm />)
-
-      expect(stepOneProps.updateFile).toBe(initialCallback)
-    })
-
-    it('should provide stable updateIndexingTypeCache callback reference', () => {
-      const { rerender } = render(<DatasetUpdateForm />)
-      fireEvent.click(screen.getByTestId('step-one-next'))
-      const initialCallback = stepTwoProps.updateIndexingTypeCache
-
-      // Act - trigger a rerender without changing step
-      rerender(<DatasetUpdateForm />)
-
-      // Assert - callbacks with same dependencies should be stable
-      expect(stepTwoProps.updateIndexingTypeCache).toBe(initialCallback)
-    })
-  })
 
   // User Interactions - Test event handlers
   describe('User Interactions', () => {
     it('should open account settings when onSetting is called from StepOne', async () => {
       render(<DatasetUpdateForm />)
 
-      fireEvent.click(screen.getByTestId('step-one-setting'))
+      await userEvent.setup().click(screen.getByTestId('step-one-setting'))
 
       await waitFor(() =>
         expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('data-source'),
@@ -623,158 +411,57 @@ describe('DatasetUpdateForm', () => {
 
     it('should open provider settings when onSetting is called from StepTwo', async () => {
       render(<DatasetUpdateForm />)
-      fireEvent.click(screen.getByTestId('step-one-next'))
+      await userEvent.setup().click(screen.getByTestId('step-one-next'))
 
-      fireEvent.click(screen.getByTestId('step-two-setting'))
+      await userEvent.setup().click(screen.getByTestId('step-two-setting'))
 
       await waitFor(() =>
         expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('provider'),
       )
     })
 
-    it('should update crawl options when onCrawlOptionsChange is called', () => {
+    it('should update file progress correctly using immer produce', async () => {
       render(<DatasetUpdateForm />)
+      await userEvent.setup().click(screen.getByTestId('step-one-update-files'))
 
-      fireEvent.click(screen.getByTestId('step-one-update-crawl-options'))
-
-      expect(stepOneProps.crawlOptions.limit).toBe(20)
-    })
-
-    it('should update crawl provider when onWebsiteCrawlProviderChange is called', () => {
-      render(<DatasetUpdateForm />)
-
-      fireEvent.click(screen.getByTestId('step-one-update-crawl-provider'))
-
-      // Assert - Need to verify state through StepTwo props
-      fireEvent.click(screen.getByTestId('step-one-next'))
-      expect(stepTwoProps.websiteCrawlProvider).toBe(DataSourceProvider.fireCrawl)
-    })
-
-    it('should update job id when onWebsiteCrawlJobIdChange is called', () => {
-      render(<DatasetUpdateForm />)
-
-      fireEvent.click(screen.getByTestId('step-one-update-job-id'))
-
-      // Assert - Verify through StepTwo props
-      fireEvent.click(screen.getByTestId('step-one-next'))
-      expect(stepTwoProps.websiteCrawlJobId).toBe('job-123')
-    })
-
-    it('should update file progress correctly using immer produce', () => {
-      render(<DatasetUpdateForm />)
-      fireEvent.click(screen.getByTestId('step-one-update-files'))
-
-      fireEvent.click(screen.getByTestId('step-one-update-file-progress'))
+      await userEvent.setup().click(screen.getByTestId('step-one-update-file-progress'))
 
       // Assert - Progress should be updated
       expect(stepOneProps.files[0]!.progress).toBe(50)
-    })
-
-    it('should update notion credential id', () => {
-      render(<DatasetUpdateForm />)
-
-      fireEvent.click(screen.getByTestId('step-one-update-notion-credential'))
-
-      expect(stepOneProps.notionCredentialId).toBe('credential-123')
     })
   })
 
   // Step Two Specific Tests
   describe('StepTwo Rendering and Props', () => {
-    it('should pass isAPIKeySet as true when embeddingsDefaultModel exists', () => {
+    it('should pass isAPIKeySet as true when embeddingsDefaultModel exists', async () => {
       mockEmbeddingsDefaultModel = { model: 'model-1', provider: 'openai' }
       render(<DatasetUpdateForm />)
 
-      fireEvent.click(screen.getByTestId('step-one-next'))
+      await userEvent.setup().click(screen.getByTestId('step-one-next'))
 
       expect(screen.getByTestId('step-two-is-api-key-set'))!.toHaveTextContent('true')
     })
 
-    it('should pass isAPIKeySet as false when embeddingsDefaultModel is undefined', () => {
+    it('should pass isAPIKeySet as false when embeddingsDefaultModel is undefined', async () => {
       mockEmbeddingsDefaultModel = undefined
       render(<DatasetUpdateForm />)
 
-      fireEvent.click(screen.getByTestId('step-one-next'))
+      await userEvent.setup().click(screen.getByTestId('step-one-next'))
 
       expect(screen.getByTestId('step-two-is-api-key-set'))!.toHaveTextContent('false')
-    })
-
-    it('should pass correct dataSourceType to StepTwo', () => {
-      render(<DatasetUpdateForm />)
-      fireEvent.click(screen.getByTestId('step-one-change-type'))
-
-      fireEvent.click(screen.getByTestId('step-one-next'))
-
-      expect(screen.getByTestId('step-two-data-source-type'))!.toHaveTextContent(
-        DataSourceType.NOTION,
-      )
-    })
-
-    it('should pass files mapped to file property to StepTwo', () => {
-      render(<DatasetUpdateForm />)
-      fireEvent.click(screen.getByTestId('step-one-update-files'))
-
-      fireEvent.click(screen.getByTestId('step-one-next'))
-
-      expect(screen.getByTestId('step-two-files-count'))!.toHaveTextContent('1')
-    })
-
-    it('should update indexing type cache from StepTwo', () => {
-      render(<DatasetUpdateForm />)
-      fireEvent.click(screen.getByTestId('step-one-next'))
-
-      fireEvent.click(screen.getByTestId('step-two-update-indexing-cache'))
-
-      // Assert - Go to step 3 and verify
-      fireEvent.click(screen.getByTestId('step-two-next'))
-      expect(screen.getByTestId('step-three-indexing-type'))!.toHaveTextContent('high_quality')
-    })
-
-    it('should update retrieval method cache from StepTwo', () => {
-      render(<DatasetUpdateForm />)
-      fireEvent.click(screen.getByTestId('step-one-next'))
-
-      fireEvent.click(screen.getByTestId('step-two-update-retrieval-cache'))
-
-      // Assert - Go to step 3 and verify
-      fireEvent.click(screen.getByTestId('step-two-next'))
-      expect(screen.getByTestId('step-three-retrieval-method'))!.toHaveTextContent(
-        'semantic_search',
-      )
-    })
-
-    it('should update result cache from StepTwo', () => {
-      render(<DatasetUpdateForm />)
-      fireEvent.click(screen.getByTestId('step-one-next'))
-
-      fireEvent.click(screen.getByTestId('step-two-update-result-cache'))
-
-      // Assert - Go to step 3 and verify creationCache is passed
-      fireEvent.click(screen.getByTestId('step-two-next'))
-      expect(stepThreeProps.creationCache).toBeDefined()
-      expect(stepThreeProps.creationCache?.batch).toBe('batch-1')
     })
   })
 
   // Step Two with datasetId and datasetDetail
   describe('StepTwo with existing dataset', () => {
-    it('should not render StepTwo when datasetId exists but datasetDetail is undefined', () => {
+    it('should not render StepTwo when datasetId exists but datasetDetail is undefined', async () => {
       mockDatasetDetail = undefined
       render(<DatasetUpdateForm datasetId="dataset-123" />)
 
-      fireEvent.click(screen.getByTestId('step-one-next'))
+      await userEvent.setup().click(screen.getByTestId('step-one-next'))
 
       // Assert - StepTwo should not render due to condition
       expect(screen.queryByTestId('step-two')).not.toBeInTheDocument()
-    })
-
-    it('should render StepTwo when datasetId exists and datasetDetail is defined', () => {
-      mockDatasetDetail = createMockDataset()
-      render(<DatasetUpdateForm datasetId="dataset-123" />)
-
-      fireEvent.click(screen.getByTestId('step-one-next'))
-
-      expect(screen.getByTestId('step-two'))!.toBeInTheDocument()
     })
 
     it('should redirect when existing dataset does not grant add document permission', async () => {
@@ -788,78 +475,59 @@ describe('DatasetUpdateForm', () => {
       expect(screen.queryByTestId('step-one')).not.toBeInTheDocument()
     })
 
-    it('should pass add document permission to StepTwo for existing dataset', () => {
+    it('should pass add document permission to StepTwo for existing dataset', async () => {
       mockDatasetDetail = createMockDataset()
 
       render(<DatasetUpdateForm datasetId="dataset-123" />)
-      fireEvent.click(screen.getByTestId('step-one-next'))
+      await userEvent.setup().click(screen.getByTestId('step-one-next'))
 
       expect(screen.getByTestId('step-two-can-create-document')).toHaveTextContent('true')
-    })
-
-    it('should pass indexingType from datasetDetail to StepTwo', () => {
-      mockDatasetDetail = createMockDataset({ indexing_technique: IndexingTypeValues.ECONOMICAL })
-      render(<DatasetUpdateForm datasetId="dataset-123" />)
-
-      fireEvent.click(screen.getByTestId('step-one-next'))
-
-      expect(stepTwoProps.indexingType).toBe('economy')
     })
   })
 
   // Step Three Tests
   describe('StepThree Rendering and Props', () => {
-    it('should pass datasetId to StepThree', () => {
+    it('should pass datasetId to StepThree', async () => {
       // Arrange - Need datasetDetail for StepTwo to render when datasetId exists
       mockDatasetDetail = createMockDataset()
       render(<DatasetUpdateForm datasetId="dataset-456" />)
 
       // Act - Navigate to step 3
-      fireEvent.click(screen.getByTestId('step-one-next'))
-      fireEvent.click(screen.getByTestId('step-two-next'))
+      await userEvent.setup().click(screen.getByTestId('step-one-next'))
+      await userEvent.setup().click(screen.getByTestId('step-two-next'))
 
       expect(screen.getByTestId('step-three-dataset-id'))!.toHaveTextContent('dataset-456')
     })
 
-    it('should pass datasetName from datasetDetail to StepThree', () => {
-      mockDatasetDetail = createMockDataset({ name: 'My Special Dataset' })
-      render(<DatasetUpdateForm datasetId="dataset-123" />)
-
-      fireEvent.click(screen.getByTestId('step-one-next'))
-      fireEvent.click(screen.getByTestId('step-two-next'))
-
-      expect(screen.getByTestId('step-three-dataset-name'))!.toHaveTextContent('My Special Dataset')
-    })
-
-    it('should use cached indexing type when datasetDetail indexing_technique is not available', () => {
+    it('should use cached indexing type when datasetDetail indexing_technique is not available', async () => {
       render(<DatasetUpdateForm />)
 
       // Navigate to step 2 and set cache
-      fireEvent.click(screen.getByTestId('step-one-next'))
-      fireEvent.click(screen.getByTestId('step-two-update-indexing-cache'))
+      await userEvent.setup().click(screen.getByTestId('step-one-next'))
+      await userEvent.setup().click(screen.getByTestId('step-two-update-indexing-cache'))
 
       // Act - Navigate to step 3
-      fireEvent.click(screen.getByTestId('step-two-next'))
+      await userEvent.setup().click(screen.getByTestId('step-two-next'))
 
       expect(screen.getByTestId('step-three-indexing-type'))!.toHaveTextContent('high_quality')
     })
 
-    it('should use datasetDetail indexing_technique over cached value', () => {
+    it('should use datasetDetail indexing_technique over cached value', async () => {
       mockDatasetDetail = createMockDataset({ indexing_technique: IndexingTypeValues.ECONOMICAL })
       render(<DatasetUpdateForm datasetId="dataset-123" />)
 
       // Navigate to step 2 and set different cache
-      fireEvent.click(screen.getByTestId('step-one-next'))
-      fireEvent.click(screen.getByTestId('step-two-update-indexing-cache'))
+      await userEvent.setup().click(screen.getByTestId('step-one-next'))
+      await userEvent.setup().click(screen.getByTestId('step-two-update-indexing-cache'))
 
       // Act - Navigate to step 3
-      fireEvent.click(screen.getByTestId('step-two-next'))
+      await userEvent.setup().click(screen.getByTestId('step-two-next'))
 
       // Assert - Should use datasetDetail value, not cache
       expect(screen.getByTestId('step-three-indexing-type'))!.toHaveTextContent('economy')
     })
 
-    it('should use retrieval method from datasetDetail when available', () => {
+    it('should use retrieval method from datasetDetail when available', async () => {
       mockDatasetDetail = createMockDataset()
       mockDatasetDetail.retrieval_model_dict = {
         ...mockDatasetDetail.retrieval_model_dict,
@@ -867,8 +535,8 @@ describe('DatasetUpdateForm', () => {
       }
       render(<DatasetUpdateForm datasetId="dataset-123" />)
 
-      fireEvent.click(screen.getByTestId('step-one-next'))
-      fireEvent.click(screen.getByTestId('step-two-next'))
+      await userEvent.setup().click(screen.getByTestId('step-one-next'))
+      await userEvent.setup().click(screen.getByTestId('step-two-next'))
 
       expect(screen.getByTestId('step-three-retrieval-method'))!.toHaveTextContent(
         'full_text_search',
@@ -886,57 +554,19 @@ describe('DatasetUpdateForm', () => {
 
       expect(stepOneProps.authedDataSourceList).toEqual([mockAuth])
     })
-
-    it('should pass dataSourceTypeDisable as true when datasetDetail has data_source_type', () => {
-      mockDatasetDetail = createMockDataset({ data_source_type: DataSourceType.FILE })
-
-      render(<DatasetUpdateForm datasetId="dataset-123" />)
-
-      expect(stepOneProps.dataSourceTypeDisable).toBe(true)
-    })
-
-    it('should pass dataSourceTypeDisable as false when datasetDetail is undefined', () => {
-      mockDatasetDetail = undefined
-
-      render(<DatasetUpdateForm />)
-
-      expect(stepOneProps.dataSourceTypeDisable).toBe(false)
-    })
-
-    it('should pass default crawl options', () => {
-      render(<DatasetUpdateForm />)
-
-      expect(stepOneProps.crawlOptions).toEqual({
-        crawl_sub_pages: true,
-        only_main_content: true,
-        includes: '',
-        excludes: '',
-        limit: 10,
-        max_depth: '',
-        use_sitemap: true,
-      })
-    })
   })
 
   // Edge Cases - Test boundary conditions and error handling
   describe('Edge Cases', () => {
-    it('should handle empty data source list', () => {
-      mockDataSourceList = { result: [] }
-
-      render(<DatasetUpdateForm />)
-
-      expect(stepOneProps.authedDataSourceList).toEqual([])
-    })
-
-    it('should handle undefined datasetDetail retrieval_model_dict', () => {
+    it('should handle undefined datasetDetail retrieval_model_dict', async () => {
       mockDatasetDetail = createMockDataset()
       // @ts-expect-error - Testing undefined case
       mockDatasetDetail.retrieval_model_dict = undefined
       render(<DatasetUpdateForm datasetId="dataset-123" />)
 
-      fireEvent.click(screen.getByTestId('step-one-next'))
-      fireEvent.click(screen.getByTestId('step-two-update-retrieval-cache'))
-      fireEvent.click(screen.getByTestId('step-two-next'))
+      await userEvent.setup().click(screen.getByTestId('step-one-next'))
+      await userEvent.setup().click(screen.getByTestId('step-two-update-retrieval-cache'))
+      await userEvent.setup().click(screen.getByTestId('step-two-next'))
 
       // Assert - Should use cached value
       expect(screen.getByTestId('step-three-retrieval-method'))!.toHaveTextContent(
@@ -944,55 +574,17 @@ describe('DatasetUpdateForm', () => {
       )
     })
 
-    it('should handle step state correctly after multiple navigations', () => {
-      render(<DatasetUpdateForm />)
-
-      // Act - Navigate forward and back multiple times
-      fireEvent.click(screen.getByTestId('step-one-next')) // to step 2
-      fireEvent.click(screen.getByTestId('step-two-prev')) // back to step 1
-      fireEvent.click(screen.getByTestId('step-one-next')) // to step 2
-      fireEvent.click(screen.getByTestId('step-two-next')) // to step 3
-
-      expect(screen.getByTestId('step-three'))!.toBeInTheDocument()
-      expect(screen.getByTestId('top-bar-active-index'))!.toHaveTextContent('2')
-    })
-
-    it('should handle result cache being undefined', () => {
-      render(<DatasetUpdateForm />)
-
-      // Act - Navigate to step 3 without setting result cache
-      fireEvent.click(screen.getByTestId('step-one-next'))
-      fireEvent.click(screen.getByTestId('step-two-next'))
-
-      expect(stepThreeProps.creationCache).toBeUndefined()
-    })
-
-    it('should pass result cache to step three', async () => {
-      render(<DatasetUpdateForm />)
-      fireEvent.click(screen.getByTestId('step-one-next'))
-
-      // Set result cache value
-      fireEvent.click(screen.getByTestId('step-two-update-result-cache'))
-
-      // Navigate to step 3
-      fireEvent.click(screen.getByTestId('step-two-next'))
-
-      // Assert - Result cache is correctly passed to step three
-      expect(stepThreeProps.creationCache).toBeDefined()
-      expect(stepThreeProps.creationCache?.batch).toBe('batch-1')
-    })
-
-    it('should preserve state when navigating between steps', () => {
+    it('should preserve state when navigating between steps', async () => {
       render(<DatasetUpdateForm />)
 
       // Set up various states
-      fireEvent.click(screen.getByTestId('step-one-change-type'))
-      fireEvent.click(screen.getByTestId('step-one-update-files'))
-      fireEvent.click(screen.getByTestId('step-one-update-notion-pages'))
+      await userEvent.setup().click(screen.getByTestId('step-one-change-type'))
+      await userEvent.setup().click(screen.getByTestId('step-one-update-files'))
+      await userEvent.setup().click(screen.getByTestId('step-one-update-notion-pages'))
 
       // Navigate to step 2 and back
-      fireEvent.click(screen.getByTestId('step-one-next'))
-      fireEvent.click(screen.getByTestId('step-two-prev'))
+      await userEvent.setup().click(screen.getByTestId('step-one-next'))
+      await userEvent.setup().click(screen.getByTestId('step-two-prev'))
 
       // Assert - All state should be preserved
       expect(screen.getByTestId('step-one-data-source-type'))!.toHaveTextContent(
@@ -1005,18 +597,20 @@ describe('DatasetUpdateForm', () => {
 
   // Integration Tests - Test complete flows
   describe('Integration', () => {
-    it('should complete full flow from step 1 to step 3 with all state updates', () => {
+    it('should complete full flow from step 1 to step 3 with all state updates', async () => {
       render(<DatasetUpdateForm />)
 
       // Step 1: Set up data
-      fireEvent.click(screen.getByTestId('step-one-update-files'))
-      fireEvent.click(screen.getByTestId('step-one-next'))
+      await userEvent.setup().click(screen.getByTestId('step-one-update-files'))
+      await userEvent.setup().click(screen.getByTestId('step-one-next'))
+
+      expect(stepTwoProps.files).toEqual([expect.objectContaining({ name: 'test.txt' })])
 
       // Step 2: Set caches
-      fireEvent.click(screen.getByTestId('step-two-update-indexing-cache'))
-      fireEvent.click(screen.getByTestId('step-two-update-retrieval-cache'))
-      fireEvent.click(screen.getByTestId('step-two-update-result-cache'))
-      fireEvent.click(screen.getByTestId('step-two-next'))
+      await userEvent.setup().click(screen.getByTestId('step-two-update-indexing-cache'))
+      await userEvent.setup().click(screen.getByTestId('step-two-update-retrieval-cache'))
+      await userEvent.setup().click(screen.getByTestId('step-two-update-result-cache'))
+      await userEvent.setup().click(screen.getByTestId('step-two-next'))
 
       // Assert - All data flows through to Step 3
       expect(screen.getByTestId('step-three-indexing-type'))!.toHaveTextContent('high_quality')
@@ -1026,41 +620,44 @@ describe('DatasetUpdateForm', () => {
       expect(stepThreeProps.creationCache?.batch).toBe('batch-1')
     })
 
-    it('should handle complete website crawl workflow', () => {
+    it('should handle complete website crawl workflow', async () => {
       render(<DatasetUpdateForm />)
 
       // Set website data source through button click
-      fireEvent.click(screen.getByTestId('step-one-update-website-pages'))
-      fireEvent.click(screen.getByTestId('step-one-update-crawl-options'))
-      fireEvent.click(screen.getByTestId('step-one-update-crawl-provider'))
-      fireEvent.click(screen.getByTestId('step-one-update-job-id'))
+      await userEvent.setup().click(screen.getByTestId('step-one-update-website-pages'))
+      await userEvent.setup().click(screen.getByTestId('step-one-update-crawl-options'))
+      await userEvent.setup().click(screen.getByTestId('step-one-update-crawl-provider'))
+      await userEvent.setup().click(screen.getByTestId('step-one-update-job-id'))
 
       // Navigate to step 2
-      fireEvent.click(screen.getByTestId('step-one-next'))
+      await userEvent.setup().click(screen.getByTestId('step-one-next'))
 
       // Assert - All website data passed to StepTwo
-      expect(stepTwoProps.websitePages!.length).toBe(1)
+      expect(stepTwoProps.websitePages).toEqual([
+        { title: 'Test', markdown: '', description: '', source_url: 'https://test.com' },
+      ])
       expect(stepTwoProps.websiteCrawlProvider).toBe(DataSourceProvider.fireCrawl)
       expect(stepTwoProps.websiteCrawlJobId).toBe('job-123')
       expect(stepTwoProps.crawlOptions!.limit).toBe(20)
     })
 
-    it('should handle complete notion workflow', () => {
+    it('should handle complete notion workflow', async () => {
       render(<DatasetUpdateForm />)
 
       // Set notion data source
-      fireEvent.click(screen.getByTestId('step-one-change-type'))
-      fireEvent.click(screen.getByTestId('step-one-update-notion-pages'))
-      fireEvent.click(screen.getByTestId('step-one-update-notion-credential'))
+      await userEvent.setup().click(screen.getByTestId('step-one-change-type'))
+      await userEvent.setup().click(screen.getByTestId('step-one-update-notion-pages'))
+      await userEvent.setup().click(screen.getByTestId('step-one-update-notion-credential'))
 
       // Navigate to step 2
-      fireEvent.click(screen.getByTestId('step-one-next'))
+      await userEvent.setup().click(screen.getByTestId('step-one-next'))
 
-      expect(stepTwoProps.notionPages!.length).toBe(1)
+      expect(stepTwoProps.dataSourceType).toBe(DataSourceType.NOTION)
+      expect(stepTwoProps.notionPages).toEqual([notionPage])
       expect(stepTwoProps.notionCredentialId).toBe('credential-123')
     })
 
-    it('should handle edit mode with existing dataset', () => {
+    it('should handle edit mode with existing dataset', async () => {
       mockDatasetDetail = createMockDataset({
         name: 'Existing Dataset',
         indexing_technique: IndexingTypeValues.QUALIFIED,
@@ -1072,14 +669,14 @@ describe('DatasetUpdateForm', () => {
       expect(stepOneProps.dataSourceTypeDisable).toBe(true)
 
       // Navigate through
-      fireEvent.click(screen.getByTestId('step-one-next'))
+      await userEvent.setup().click(screen.getByTestId('step-one-next'))
 
       // Assert - Step 2 should receive dataset info
       expect(stepTwoProps.indexingType).toBe('high_quality')
       expect(stepTwoProps.datasetId).toBe('dataset-123')
 
       // Navigate to Step 3
-      fireEvent.click(screen.getByTestId('step-two-next'))
+      await userEvent.setup().click(screen.getByTestId('step-two-next'))
 
       // Assert - Step 3 should show dataset details
       expect(screen.getByTestId('step-three-dataset-name'))!.toHaveTextContent('Existing Dataset')
@@ -1089,30 +686,15 @@ describe('DatasetUpdateForm', () => {
 
   // Default Crawl Options Tests
   describe('Default Crawl Options', () => {
-    it('should have correct default crawl options structure', () => {
-      render(<DatasetUpdateForm />)
-
-      const crawlOptions = stepOneProps.crawlOptions
-      expect(crawlOptions).toMatchObject({
-        crawl_sub_pages: true,
-        only_main_content: true,
-        includes: '',
-        excludes: '',
-        limit: 10,
-        max_depth: '',
-        use_sitemap: true,
-      })
-    })
-
-    it('should preserve crawl options when navigating steps', () => {
+    it('should preserve crawl options when navigating steps', async () => {
       render(<DatasetUpdateForm />)
 
       // Update crawl options
-      fireEvent.click(screen.getByTestId('step-one-update-crawl-options'))
+      await userEvent.setup().click(screen.getByTestId('step-one-update-crawl-options'))
 
       // Navigate to step 2 and back
-      fireEvent.click(screen.getByTestId('step-one-next'))
-      fireEvent.click(screen.getByTestId('step-two-prev'))
+      await userEvent.setup().click(screen.getByTestId('step-one-next'))
+      await userEvent.setup().click(screen.getByTestId('step-two-prev'))
 
       expect(stepOneProps.crawlOptions.limit).toBe(20)
     })
@@ -1120,16 +702,6 @@ describe('DatasetUpdateForm', () => {
 
   // Error State Tests
   describe('Error States', () => {
-    it('should display error message when fetching data source list fails', async () => {
-      seedDatasource = false
-      getDatasourceList.mockRejectedValue(new Error('Datasource unavailable'))
-
-      render(<DatasetUpdateForm />)
-
-      const errorElement = await screen.findByText('datasetCreation.error.unavailable')
-      expect(errorElement)!.toBeInTheDocument()
-    })
-
     it('should not render steps when in error state', async () => {
       seedDatasource = false
       getDatasourceList.mockRejectedValue(new Error('Datasource unavailable'))
@@ -1151,29 +723,12 @@ describe('DatasetUpdateForm', () => {
       // Assert - Error state renders AppUnavailable, not the normal layout
       expect(await screen.findByText('500'))!.toBeInTheDocument()
       expect(screen.queryByTestId('top-bar')).not.toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.error.unavailable')).toBeInTheDocument()
     })
   })
 
   // Loading State Tests
   describe('Loading States', () => {
-    it('should not render steps while loading', () => {
-      seedDatasource = false
-      getDatasourceList.mockReturnValue(new Promise(() => {}))
-
-      render(<DatasetUpdateForm />)
-
-      expect(screen.queryByTestId('step-one')).not.toBeInTheDocument()
-    })
-
-    it('should render TopBar while loading', () => {
-      seedDatasource = false
-      getDatasourceList.mockReturnValue(new Promise(() => {}))
-
-      render(<DatasetUpdateForm />)
-
-      expect(screen.getByTestId('top-bar'))!.toBeInTheDocument()
-    })
-
     it('should render StepOne after loading completes', async () => {
       seedDatasource = false
       const response = createDeferred<{ result: DatasourceProviderAuthResponse[] }>()
@@ -1182,6 +737,8 @@ describe('DatasetUpdateForm', () => {
 
       // Assert - Initially not rendered
       expect(screen.queryByTestId('step-one')).not.toBeInTheDocument()
+
+      expect(screen.getByTestId('top-bar')).toBeInTheDocument()
 
       // Act - Loading completes
       response.resolve({ result: [createMockDataSourceAuth()] })

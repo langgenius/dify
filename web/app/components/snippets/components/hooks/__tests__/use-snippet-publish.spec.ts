@@ -1,12 +1,12 @@
 import { act, waitFor } from '@testing-library/react'
+import { renderWorkflowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
-import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
+import { createConsoleQueryClient } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { useSnippetPublish } from '../use-snippet-publish'
 
 const mockMutateAsync = vi.fn()
-const mockSetPublishedAt = vi.fn()
 
 const mockResetWorkflowVersionHistory = vi.fn()
 const mockHandleCheckBeforePublish = vi.fn<() => Promise<boolean>>()
@@ -20,14 +20,6 @@ vi.mock('@/app/notifications', () => ({
 
 vi.mock('@/service/use-workflow', () => ({
   useResetWorkflowVersionHistory: () => mockResetWorkflowVersionHistory,
-}))
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useWorkflowStore: () => ({
-    getState: () => ({
-      setPublishedAt: mockSetPublishedAt,
-    }),
-  }),
 }))
 
 vi.mock('@/app/components/workflow/hooks/use-checklist', () => ({
@@ -48,20 +40,29 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
+const renderPublish = () => {
+  const queryClient = createConsoleQueryClient()
+  return {
+    ...renderWorkflowHook(() => useSnippetPublish({ snippetId: 'snippet-1' }), {
+      queryClient,
+      resource: { kind: 'snippet', snippetId: 'snippet-1' },
+    }),
+    queryClient,
+  }
+}
+
 describe('useSnippetPublish', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     mockHandleCheckBeforePublish.mockResolvedValue(true)
     mockMutateAsync.mockResolvedValue({ created_at: 1_712_345_678 })
   })
 
   describe('Publish action', () => {
     it('should publish the snippet and show success feedback', async () => {
-      const { result, queryClient } = renderHook(() =>
-        useSnippetPublish({
-          snippetId: 'snippet-1',
-        }),
-      )
+      const request = createDeferred<{ created_at: number }>()
+      mockMutateAsync.mockReturnValueOnce(request.promise)
+      const { result, queryClient, store } = renderPublish()
 
       const detailKey = consoleQuery.workspaces.current.customizedSnippets.bySnippetId.get.queryKey(
         { input: { params: { snippet_id: 'snippet-1' } } },
@@ -84,9 +85,19 @@ describe('useSnippetPublish', () => {
         is_published: false,
       })
 
-      await act(async () => {
-        await result.current.handlePublish()
+      let publishing!: ReturnType<typeof result.current.handlePublish>
+      act(() => {
+        publishing = result.current.handlePublish()
       })
+      await waitFor(() => expect(result.current.isPublishing).toBe(true))
+      expect(queryClient.getQueryData(detailKey)).toMatchObject({ is_published: false })
+      expect(store.getState().publishedAt).toBe(0)
+      expect(toast.success).not.toHaveBeenCalled()
+      await act(async () => {
+        request.resolve({ created_at: 1_712_345_678 })
+        await expect(publishing).resolves.toBe(true)
+      })
+      await waitFor(() => expect(result.current.isPublishing).toBe(false))
 
       expect(mockHandleCheckBeforePublish).toHaveBeenCalledTimes(1)
       expect(mockMutateAsync).toHaveBeenCalledWith({
@@ -94,7 +105,7 @@ describe('useSnippetPublish', () => {
         body: {},
       })
       expect(queryClient.getQueryData(detailKey)).toMatchObject({ is_published: true })
-      expect(mockSetPublishedAt).toHaveBeenCalledWith(1_712_345_678)
+      expect(store.getState().publishedAt).toBe(1_712_345_678_000)
       expect(mockResetWorkflowVersionHistory).toHaveBeenCalledTimes(1)
       expect(toast.success).toHaveBeenCalledWith('snippet.publishSuccess')
     })
@@ -102,11 +113,7 @@ describe('useSnippetPublish', () => {
     it('should not publish the snippet when checklist validation fails', async () => {
       mockHandleCheckBeforePublish.mockResolvedValue(false)
 
-      const { result } = renderHook(() =>
-        useSnippetPublish({
-          snippetId: 'snippet-1',
-        }),
-      )
+      const { result, store } = renderPublish()
 
       await act(async () => {
         await result.current.handlePublish()
@@ -114,7 +121,7 @@ describe('useSnippetPublish', () => {
 
       expect(mockHandleCheckBeforePublish).toHaveBeenCalledTimes(1)
       expect(mockMutateAsync).not.toHaveBeenCalled()
-      expect(mockSetPublishedAt).not.toHaveBeenCalled()
+      expect(store.getState().publishedAt).toBe(0)
       expect(mockResetWorkflowVersionHistory).not.toHaveBeenCalled()
       expect(toast.success).not.toHaveBeenCalled()
     })
@@ -122,35 +129,16 @@ describe('useSnippetPublish', () => {
     it('should surface publish errors through toast feedback', async () => {
       mockMutateAsync.mockRejectedValue(new Error('publish failed'))
 
-      const { result } = renderHook(() =>
-        useSnippetPublish({
-          snippetId: 'snippet-1',
-        }),
-      )
+      const { result, store } = renderPublish()
 
       await act(async () => {
         await result.current.handlePublish()
       })
 
       expect(toast.error).toHaveBeenCalledWith('publish failed')
+      expect(store.getState().publishedAt).toBe(0)
+      expect(mockResetWorkflowVersionHistory).not.toHaveBeenCalled()
+      expect(toast.success).not.toHaveBeenCalled()
     })
-  })
-
-  it('exposes pending state until the publish request completes', async () => {
-    const request = createDeferred<{ created_at: number }>()
-    mockMutateAsync.mockReturnValue(request.promise)
-    const { result } = renderHook(() => useSnippetPublish({ snippetId: 'snippet-1' }))
-    let publishing: Promise<boolean | undefined>
-    act(() => {
-      publishing = result.current.handlePublish()
-    })
-    await waitFor(() => expect(result.current.isPublishing).toBe(true))
-    expect(toast.success).not.toHaveBeenCalled()
-    await act(async () => {
-      request.resolve({ created_at: 1_712_345_678 })
-      await publishing
-    })
-    await waitFor(() => expect(result.current.isPublishing).toBe(false))
-    expect(toast.success).toHaveBeenCalledWith('snippet.publishSuccess')
   })
 })

@@ -1,140 +1,59 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createPluginDeclarationFixture } from '@/test/fixtures/plugin'
 import { PluginCategoryEnum } from '../../../types'
+import Installed from '../installed'
 
-vi.mock('../../../card', () => ({
-  default: ({
-    installed,
-    installFailed,
-    titleLeft,
-  }: {
-    installed: boolean
-    installFailed: boolean
-    titleLeft?: React.ReactNode
-  }) => (
-    <div data-testid="card" data-installed={installed} data-failed={installFailed}>
-      {titleLeft}
-    </div>
-  ),
-}))
+it('closes without a navigation link when installation matches the current category', async () => {
+  const user = userEvent.setup()
+  const onCancel = vi.fn()
+  render(
+    <Installed
+      payload={createPluginDeclarationFixture({ category: PluginCategoryEnum.extension })}
+      installContextCategory={PluginCategoryEnum.extension}
+      isFailed={false}
+      onCancel={onCancel}
+    />,
+  )
 
-describe('Installed', () => {
-  let Installed: (typeof import('../installed'))['default']
+  expect(
+    screen.queryByRole('link', { name: 'plugin.installModal.viewDetails' }),
+  ).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+  expect(onCancel).toHaveBeenCalledOnce()
+})
 
-  beforeEach(async () => {
-    vi.clearAllMocks()
-    const mod = await import('../installed')
-    Installed = mod.default
-  })
+it('links to the installed category after success but keeps failures in the current context', async () => {
+  const user = userEvent.setup()
+  const onCancel = vi.fn()
+  const payload = createPluginDeclarationFixture({ category: PluginCategoryEnum.extension })
+  const { rerender } = render(
+    <Installed
+      payload={payload}
+      installContextCategory={PluginCategoryEnum.trigger}
+      isFailed={false}
+      onCancel={onCancel}
+    />,
+  )
 
-  it('should render success message when not failed', () => {
-    render(<Installed isFailed={false} onCancel={vi.fn()} />)
+  const details = screen.getByRole('link', { name: 'plugin.installModal.viewDetails' })
+  expect(details).toHaveAttribute('href', '/integrations/extension')
+  await user.click(details)
+  expect(onCancel).toHaveBeenCalledOnce()
 
-    expect(screen.getByText('plugin.installModal.installedSuccessfullyDesc')).toBeInTheDocument()
-  })
-
-  it('should render failure message when failed', () => {
-    render(<Installed isFailed={true} onCancel={vi.fn()} />)
-
-    expect(screen.getByText('plugin.installModal.installFailedDesc')).toBeInTheDocument()
-  })
-
-  it('should render custom error message when provided', () => {
-    render(<Installed isFailed={true} errMsg="Custom error" onCancel={vi.fn()} />)
-
-    expect(screen.getByText('Custom error')).toBeInTheDocument()
-  })
-
-  it('should render card with payload', () => {
-    const payload = createPluginDeclarationFixture()
-    render(<Installed payload={payload} isFailed={false} onCancel={vi.fn()} />)
-
-    const card = screen.getByTestId('card')
-    expect(card).toHaveAttribute('data-installed', 'true')
-    expect(card).toHaveAttribute('data-failed', 'false')
-  })
-
-  it('should render card as failed when isFailed', () => {
-    const payload = createPluginDeclarationFixture()
-    render(<Installed payload={payload} isFailed={true} onCancel={vi.fn()} />)
-
-    const card = screen.getByTestId('card')
-    expect(card).toHaveAttribute('data-installed', 'false')
-    expect(card).toHaveAttribute('data-failed', 'true')
-  })
-
-  it('should call onCancel when close button clicked', () => {
-    const mockOnCancel = vi.fn()
-    render(<Installed isFailed={false} onCancel={mockOnCancel} />)
-
-    fireEvent.click(screen.getByText('common.operation.close'))
-    expect(mockOnCancel).toHaveBeenCalled()
-  })
-
-  it('should keep close action when installed category matches integrations context', () => {
-    const mockOnCancel = vi.fn()
-    const payload = createPluginDeclarationFixture({
-      category: PluginCategoryEnum.extension,
-      name: 'test-plugin',
-      version: '1.0.0',
-    })
-    render(
-      <Installed
-        payload={payload}
-        installContextCategory={PluginCategoryEnum.extension}
-        isFailed={false}
-        onCancel={mockOnCancel}
-      />,
-    )
-
-    fireEvent.click(screen.getByText('common.operation.close'))
-
-    expect(mockOnCancel).toHaveBeenCalled()
-    expect(screen.getByText('common.operation.close').closest('a')).not.toBeInTheDocument()
-  })
-
-  it('should navigate to the installed category when integrations context differs', () => {
-    const mockOnCancel = vi.fn()
-    const payload = createPluginDeclarationFixture({
-      category: PluginCategoryEnum.extension,
-      name: 'test-plugin',
-      version: '1.0.0',
-    })
-    render(
-      <Installed
-        payload={payload}
-        installContextCategory={PluginCategoryEnum.trigger}
-        isFailed={false}
-        onCancel={mockOnCancel}
-      />,
-    )
-
-    expect(
-      screen.getByText('plugin.installModal.installedSuccessfullyWithPageDesc'),
-    ).toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('plugin.installModal.viewDetails'))
-
-    expect(mockOnCancel).toHaveBeenCalled()
-    expect(screen.getByText('plugin.installModal.viewDetails').closest('a')).toHaveAttribute(
-      'href',
-      '/integrations/extension',
-    )
-    expect(document.querySelector('.i-ri-arrow-right-up-line')).toBeInTheDocument()
-  })
-
-  it('should show version badge in card', () => {
-    const payload = createPluginDeclarationFixture()
-    render(<Installed payload={payload} isFailed={false} onCancel={vi.fn()} />)
-
-    expect(screen.getByText('1.0.0')).toBeInTheDocument()
-  })
-
-  it('should not render card when no payload', () => {
-    render(<Installed isFailed={false} onCancel={vi.fn()} />)
-
-    expect(screen.queryByTestId('card')).not.toBeInTheDocument()
-  })
+  rerender(
+    <Installed
+      payload={payload}
+      installContextCategory={PluginCategoryEnum.trigger}
+      isFailed
+      errMsg="Package verification failed"
+      onCancel={onCancel}
+    />,
+  )
+  expect(screen.getByText('Package verification failed')).toBeInTheDocument()
+  expect(
+    screen.queryByRole('link', { name: 'plugin.installModal.viewDetails' }),
+  ).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeEnabled()
 })

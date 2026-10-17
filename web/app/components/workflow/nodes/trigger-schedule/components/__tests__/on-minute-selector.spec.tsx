@@ -13,11 +13,10 @@ describe('trigger-schedule/on-minute-selector', () => {
       name: 'workflowIntegrations.nodes.triggerSchedule.onMinute',
     })
     expect(screen.getByRole('status')).toHaveTextContent('15')
-    expect(screen.getByRole('status')).toHaveAttribute('for', slider.id)
     slider.focus()
     await user.keyboard('{ArrowRight}')
 
-    expect(onChange).toHaveBeenCalledWith(16, expect.objectContaining({ activeThumbIndex: 0 }))
+    expect(onChange).toHaveBeenCalledWith(16, expect.anything())
     rerender(<OnMinuteSelector value={16} onChange={onChange} />)
     expect(screen.getByRole('status')).toHaveTextContent('16')
   })

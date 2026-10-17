@@ -2,14 +2,17 @@ import type {
   DatasetDetailWithPartialMembersResponse,
   DatasetDocMetadataResponse,
 } from '@dify/contracts/api/console/datasets/types.gen'
-import type { ReactNode } from 'react'
 import type { KnowledgeRetrievalNodeType } from '../types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
 import { PermissionLevel } from '@/models/permission'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
 import Panel from '../panel'
@@ -20,12 +23,6 @@ import {
   MetadataFilteringVariableType,
 } from '../types'
 import useConfig from '../use-config'
-
-const mockVarReferencePicker = vi.hoisted(() => vi.fn())
-const mockRetrievalConfig = vi.hoisted(() => vi.fn())
-const mockDatasetList = vi.hoisted(() => vi.fn())
-const mockAddKnowledge = vi.hoisted(() => vi.fn())
-const mockMetadataFilter = vi.hoisted(() => vi.fn())
 
 const createDataset = (
   overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
@@ -94,181 +91,19 @@ const createMetadata = (
   ...overrides,
 })
 
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
-  __esModule: true,
-  default: (props: {
-    value: string[]
-    onChange: (value: string[]) => void
-    filterVar: (value: { type: VarType }) => boolean
-  }) => {
-    mockVarReferencePicker(props)
-    return (
-      <button type="button" onClick={() => props.onChange(['node-2', 'query'])}>
-        var-reference-picker
-      </button>
-    )
-  },
-}))
-
-vi.mock('../components/retrieval-config', () => ({
-  __esModule: true,
-  default: (props: {
-    onRetrievalModeChange: (value: RETRIEVE_TYPE) => void
-    onMultipleRetrievalConfigChange: (
-      value: KnowledgeRetrievalNodeType['multiple_retrieval_config'],
-    ) => void
-    onSingleRetrievalModelChange: (model: {
-      provider: string
-      modelId: string
-      mode?: string
-    }) => void
-    onSingleRetrievalModelParamsChange: (params: Record<string, unknown>) => void
-  }) => {
-    mockRetrievalConfig(props)
-    return (
-      <div>
-        <button type="button" onClick={() => props.onRetrievalModeChange(RETRIEVE_TYPE.oneWay)}>
-          change-retrieval-mode
-        </button>
-        <button
-          type="button"
-          onClick={() => props.onMultipleRetrievalConfigChange({ top_k: 8, score_threshold: 0.4 })}
-        >
-          change-multiple-config
-        </button>
-        <button
-          type="button"
-          onClick={() =>
-            props.onSingleRetrievalModelChange({
-              provider: 'openai',
-              modelId: 'gpt-4o-mini',
-              mode: 'chat',
-            })
-          }
-        >
-          change-model
-        </button>
-        <button
-          type="button"
-          onClick={() => props.onSingleRetrievalModelParamsChange({ temperature: 0.2 })}
-        >
-          change-model-params
-        </button>
-      </div>
-    )
-  },
-}))
-
-vi.mock('../components/dataset-list', () => ({
-  __esModule: true,
-  default: (props: {
-    list: DatasetDetailWithPartialMembersResponse[]
-    onChange: (datasets: DatasetDetailWithPartialMembersResponse[]) => void
-  }) => {
-    mockDatasetList(props)
-    return (
-      <button
-        type="button"
-        onClick={() =>
-          props.onChange([createDataset({ id: 'dataset-2', name: 'Updated Dataset' })])
-        }
-      >
-        dataset-list
-      </button>
-    )
-  },
-}))
-
+// Retrieval and metadata have their own interaction suites; this suite covers panel composition.
+vi.mock('../components/retrieval-config', () => ({ default: () => null }))
 vi.mock('../components/add-dataset', () => ({
-  __esModule: true,
-  default: (props: {
-    selectedIds: string[]
-    onChange: (datasets: DatasetDetailWithPartialMembersResponse[]) => void
-  }) => {
-    mockAddKnowledge(props)
-    return (
-      <button
-        type="button"
-        onClick={() => props.onChange([createDataset({ id: 'dataset-3', name: 'Added Dataset' })])}
-      >
-        add-dataset
-      </button>
-    )
-  },
+  default: () => <button type="button">Add knowledge</button>,
 }))
-
 vi.mock('../components/metadata/metadata-filter', () => ({
-  __esModule: true,
-  default: (props: {
-    metadataList: DatasetDocMetadataResponse[]
-    handleAddCondition: ({ id, name, type }: DatasetDocMetadataResponse) => void
-    handleMetadataFilterModeChange: (mode: MetadataFilteringModeEnum) => void
-    handleRemoveCondition: (id: string) => void
-    handleToggleConditionLogicalOperator: () => void
-    handleUpdateCondition: (id: string, condition: unknown) => void
-    handleMetadataModelChange: (model: { provider: string; modelId: string; mode?: string }) => void
-    handleMetadataCompletionParamsChange: (params: Record<string, unknown>) => void
-  }) => {
-    mockMetadataFilter(props)
-    return (
-      <div>
-        <div>{props.metadataList.map((item) => item.name).join(',')}</div>
-        <button type="button" onClick={() => props.handleAddCondition(createMetadata())}>
-          add-condition
-        </button>
-        <button
-          type="button"
-          onClick={() => props.handleMetadataFilterModeChange(MetadataFilteringModeEnum.manual)}
-        >
-          change-filter-mode
-        </button>
-        <button type="button" onClick={() => props.handleRemoveCondition('condition-1')}>
-          remove-condition
-        </button>
-        <button type="button" onClick={() => props.handleToggleConditionLogicalOperator()}>
-          toggle-logical-operator
-        </button>
-        <button
-          type="button"
-          onClick={() =>
-            props.handleUpdateCondition('condition-1', {
-              id: 'condition-1',
-              name: 'topic',
-              metadata_id: 'meta-1',
-              comparison_operator: ComparisonOperator.is,
-              value: 'agent',
-            })
-          }
-        >
-          update-condition
-        </button>
-        <button
-          type="button"
-          onClick={() =>
-            props.handleMetadataModelChange({
-              provider: 'openai',
-              modelId: 'gpt-4.1-mini',
-              mode: 'chat',
-            })
-          }
-        >
-          change-metadata-model
-        </button>
-        <button
-          type="button"
-          onClick={() => props.handleMetadataCompletionParamsChange({ temperature: 0.3 })}
-        >
-          change-metadata-params
-        </button>
-      </div>
-    )
-  },
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
-  __esModule: true,
-  default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  VarItem: ({ name, type }: { name: string; type: string }) => <div>{`${name}:${type}`}</div>,
+  default: ({ metadataList }: { metadataList: DatasetDocMetadataResponse[] }) => (
+    <ul aria-label="Shared metadata">
+      {metadataList.map((metadata) => (
+        <li key={metadata.id}>{metadata.name}</li>
+      ))}
+    </ul>
+  ),
 }))
 
 vi.mock('../use-config', () => ({
@@ -385,81 +220,62 @@ describe('knowledge-retrieval/panel', () => {
     mockUseConfig.mockReturnValue(createConfigResult())
   })
 
-  it('wires panel actions and passes the intersected metadata list to metadata filters', async () => {
-    const user = userEvent.setup()
-
-    render(<Panel id="knowledge-node" data={createData()} panelProps={panelProps} />)
-
-    expect(screen.getByText('result:Array[Object]')).toBeInTheDocument()
-    expect(screen.getByText('shared')).toBeInTheDocument()
-
-    await user.click(screen.getAllByRole('button', { name: 'var-reference-picker' })[0]!)
-    await user.click(screen.getAllByRole('button', { name: 'var-reference-picker' })[1]!)
-    await user.click(screen.getByRole('button', { name: 'change-retrieval-mode' }))
-    await user.click(screen.getByRole('button', { name: 'change-multiple-config' }))
-    await user.click(screen.getByRole('button', { name: 'change-model' }))
-    await user.click(screen.getByRole('button', { name: 'change-model-params' }))
-    await user.click(screen.getByRole('button', { name: 'dataset-list' }))
-    await user.click(screen.getByRole('button', { name: 'add-dataset' }))
-    await user.click(screen.getByRole('button', { name: 'add-condition' }))
-    await user.click(screen.getByRole('button', { name: 'change-filter-mode' }))
-    await user.click(screen.getByRole('button', { name: 'remove-condition' }))
-    await user.click(screen.getByRole('button', { name: 'toggle-logical-operator' }))
-    await user.click(screen.getByRole('button', { name: 'update-condition' }))
-    await user.click(screen.getByRole('button', { name: 'change-metadata-model' }))
-    await user.click(screen.getByRole('button', { name: 'change-metadata-params' }))
-
-    expect(handleQueryVarChange).toHaveBeenCalledWith(['node-2', 'query'])
-    expect(handleQueryAttachmentChange).toHaveBeenCalledWith(['node-2', 'query'])
-    expect(handleRetrievalModeChange).toHaveBeenCalledWith(RETRIEVE_TYPE.oneWay)
-    expect(handleMultipleRetrievalConfigChange).toHaveBeenCalledWith({
-      top_k: 8,
-      score_threshold: 0.4,
+  const renderPanel = () => {
+    const { queryClient } = createConsoleQueryWrapper()
+    seedToolProviders(queryClient, {
+      builtInTools: [],
+      customTools: [],
+      workflowTools: [],
+      mcpTools: [],
     })
-    expect(handleModelChanged).toHaveBeenCalledWith({
-      provider: 'openai',
-      modelId: 'gpt-4o-mini',
-      mode: 'chat',
-    })
-    expect(handleCompletionParamsChange).toHaveBeenCalledWith({ temperature: 0.2 })
+    queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+    return renderWorkflowFlowComponent(
+      <Panel id="knowledge-node" data={createData()} panelProps={panelProps} />,
+      { queryClient, nodes: [], edges: [] },
+    )
+  }
+
+  it('offers only metadata shared by all selected datasets', () => {
+    renderPanel()
+    expect(screen.getByRole('list', { name: 'Shared metadata' })).toHaveTextContent('shared')
+    expect(screen.getAllByRole('listitem').map((item) => item.textContent)).toEqual(['shared'])
+  })
+
+  it('has no shared metadata when datasets have disjoint fields', () => {
+    mockUseConfig.mockReturnValue(
+      createConfigResult({
+        selectedDatasets: [
+          createDataset({ doc_metadata: [createMetadata()] }),
+          createDataset({ id: 'dataset-2', doc_metadata: [] }),
+        ],
+      }),
+    )
+    renderPanel()
+    expect(screen.getByRole('list', { name: 'Shared metadata' })).toBeEmptyDOMElement()
+  })
+
+  it('removes the chosen dataset through the real dataset list', async () => {
+    renderPanel()
+    await userEvent
+      .setup()
+      .click(screen.getAllByRole('button', { name: 'common.operation.remove' })[0]!)
     expect(handleOnDatasetsChange).toHaveBeenCalledWith([
       expect.objectContaining({ id: 'dataset-2' }),
     ])
-    expect(handleOnDatasetsChange).toHaveBeenCalledWith([
-      expect.objectContaining({ id: 'dataset-3' }),
-    ])
-    expect(handleAddCondition).toHaveBeenCalledWith(expect.objectContaining({ id: 'meta-1' }))
-    expect(handleMetadataFilterModeChange).toHaveBeenCalledWith(MetadataFilteringModeEnum.manual)
-    expect(handleRemoveCondition).toHaveBeenCalledWith('condition-1')
-    expect(handleToggleConditionLogicalOperator).toHaveBeenCalledTimes(1)
-    expect(handleUpdateCondition).toHaveBeenCalledWith(
-      'condition-1',
-      expect.objectContaining({ comparison_operator: ComparisonOperator.is }),
-    )
-    expect(handleMetadataModelChange).toHaveBeenCalledWith({
-      provider: 'openai',
-      modelId: 'gpt-4.1-mini',
-      mode: 'chat',
-    })
-    expect(handleMetadataCompletionParamsChange).toHaveBeenCalledWith({ temperature: 0.3 })
-    expect(mockMetadataFilter).toHaveBeenCalledWith(
-      expect.objectContaining({
-        metadataList: [expect.objectContaining({ name: 'shared' })],
-      }),
-    )
   })
 
-  it('hides readonly-only controls and the attachment selector when image queries are unavailable', () => {
-    mockUseConfig.mockReturnValueOnce(
-      createConfigResult({
-        readOnly: true,
-        showImageQueryVarSelector: false,
-      }),
+  it('hides dataset editing controls in read-only mode', () => {
+    mockUseConfig.mockReturnValue(
+      createConfigResult({ readOnly: true, showImageQueryVarSelector: false }),
     )
-
-    render(<Panel id="knowledge-node" data={createData()} panelProps={panelProps} />)
-
-    expect(screen.getAllByRole('button', { name: 'var-reference-picker' })).toHaveLength(1)
-    expect(screen.queryByRole('button', { name: 'add-dataset' })).not.toBeInTheDocument()
+    renderPanel()
+    expect(screen.getAllByText('Dataset Name')).toHaveLength(2)
+    expect(screen.queryByRole('button', { name: 'Add knowledge' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'common.operation.remove' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('workflowModels.nodes.knowledgeRetrieval.queryAttachment'),
+    ).not.toBeInTheDocument()
   })
 })

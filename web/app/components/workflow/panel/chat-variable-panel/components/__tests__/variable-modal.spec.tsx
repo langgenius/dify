@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
@@ -74,17 +74,19 @@ describe('variable-modal', () => {
     const user = userEvent.setup()
     const { onSave, store } = renderVariableModal()
 
-    store.setState({
-      conversationVariables: [
-        {
-          id: 'var-1',
-          name: 'existing_name',
-          description: '',
-          value_type: ChatVarType.String,
-          value: '',
-        },
-      ],
-    })
+    act(() =>
+      store.setState({
+        conversationVariables: [
+          {
+            id: 'var-1',
+            name: 'existing_name',
+            description: '',
+            value_type: ChatVarType.String,
+            value: '',
+          },
+        ],
+      }),
+    )
 
     await user.type(
       screen.getByPlaceholderText('workflow.chatVariable.modal.namePlaceholder'),
@@ -153,9 +155,9 @@ describe('variable-modal', () => {
     })
   })
 
-  it('should toggle object editing modes without changing behavior', async () => {
+  it('preserves object values when switching between JSON and form modes', async () => {
     const user = userEvent.setup()
-    renderVariableModal({
+    const { onSave } = renderVariableModal({
       chatVar: {
         id: 'var-3',
         name: 'payload',
@@ -171,16 +173,27 @@ describe('variable-modal', () => {
     })
     await user.click(screen.getByText('workflow.chatVariable.modal.editInForm'))
     expect(screen.getByDisplayValue('enabled')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    expect(onSave).toHaveBeenCalledWith({
+      id: 'var-3',
+      name: 'payload',
+      description: '',
+      value_type: ChatVarType.Object,
+      value: { enabled: 1 },
+    })
   })
 
-  it('should validate variable names on blur-sm and preserve underscore replacement', () => {
-    renderVariableModal()
+  it('normalizes spaces in the saved variable name on blur', async () => {
+    const user = userEvent.setup()
+    const { onSave } = renderVariableModal()
     const input = screen.getByPlaceholderText('workflow.chatVariable.modal.namePlaceholder')
 
-    fireEvent.change(input, { target: { value: 'bad name' } })
-    fireEvent.blur(input)
+    await user.type(input, 'bad name')
+    await user.tab()
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-    expect((input as HTMLInputElement).value).toBe('bad_name')
+    expect(input).toHaveValue('bad_name')
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ name: 'bad_name' }))
     expect(mockToastError).not.toHaveBeenCalled()
   })
 

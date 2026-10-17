@@ -1,4 +1,9 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import GetAutomaticRes from '../get-automatic-res'
 
 const mockGenerateBasicAppFirstTimeRule = vi.fn()
@@ -25,10 +30,29 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   }),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
-  useQuery: () => ({ data: mockInstructionTemplate }),
+vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', () => ({
+  default: () => ({ availableVars: [], availableNodes: [] }),
 }))
+vi.mock('@/app/components/workflow/hooks/use-workflow-variables', () => ({
+  useWorkflowVariableType: () => () => 'string',
+}))
+vi.mock('@/app/components/workflow/store', () => ({
+  useWorkflowStore: () => ({ getState: () => ({ nodesWithInspectVars: [] }) }),
+}))
+
+const render = (ui: ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.instructionGenerate.template.post.queryOptions({
+      input: { body: { type: 'prompt' } },
+    }).queryKey,
+    mockInstructionTemplate ?? { data: '' },
+  )
+  return renderWithConsoleQuery(<EventEmitterContextProvider>{ui}</EventEmitterContextProvider>, {
+    queryClient,
+  })
+}
+const instruction = () => screen.getByRole('textbox', { name: /instruction/ })
 
 vi.mock('@/service/debug', () => ({
   generateBasicAppFirstTimeRule: (...args: unknown[]) => mockGenerateBasicAppFirstTimeRule(...args),
@@ -66,48 +90,12 @@ vi.mock(
   }),
 )
 
-vi.mock('../instruction-editor', () => ({
-  default: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => (
-    <div>
-      <div data-testid="basic-editor">{value}</div>
-      <button onClick={() => onChange('basic instruction')}>set-basic-instruction</button>
-    </div>
-  ),
-}))
-
-vi.mock('../instruction-editor-in-workflow', () => ({
-  default: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => (
-    <div>
-      <div data-testid="workflow-editor">{value}</div>
-      <button onClick={() => onChange('workflow instruction')}>set-workflow-instruction</button>
-      <button onClick={() => onChange('')}>clear-workflow-instruction</button>
-    </div>
-  ),
-}))
-
-vi.mock('../idea-output', () => ({
-  default: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => (
-    <div>
-      <div data-testid="idea-output">{value}</div>
-      <button onClick={() => onChange('ideal output')}>set-idea-output</button>
-    </div>
-  ),
-}))
-
-vi.mock('../res-placeholder', () => ({
-  default: () => <div>result-placeholder</div>,
-}))
-
-vi.mock('../prompt-res', () => ({
-  default: ({ value }: { value: string }) => <div data-testid="result-panel">{value}</div>,
-}))
-
 describe('GetAutomaticRes', () => {
   const mockOnClose = vi.fn()
   const mockOnFinished = vi.fn()
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     localStorage.clear()
     sessionStorage.clear()
     mockDefaultModel = {
@@ -120,6 +108,7 @@ describe('GetAutomaticRes', () => {
   })
 
   it('should apply a basic suggestion and persist model updates', async () => {
+    const user = userEvent.setup()
     render(
       <GetAutomaticRes
         modelMode="chat"
@@ -133,22 +122,23 @@ describe('GetAutomaticRes', () => {
 
     expect(screen.getByRole('dialog', { name: /generate\.title/ })).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText(/(?:^|\.)generate\.template\.pythonDebugger\.name(?=$|:)/))
+    await user.click(screen.getByText(/(?:^|\.)generate\.template\.pythonDebugger\.name(?=$|:)/))
 
     await waitFor(() => {
-      expect(screen.getByTestId('basic-editor')).toHaveTextContent(
-        'generate.template.pythonDebugger.instruction',
+      expect(instruction()).toHaveValue(
+        'appGeneration.generate.template.pythonDebugger.instruction',
       )
     })
 
-    fireEvent.click(screen.getByText('change-model'))
+    await user.click(screen.getByText('change-model'))
     expect(localStorage.getItem('auto-gen-model')).toContain('"name":"gpt-4o-mini"')
 
-    fireEvent.click(screen.getByText('change-params'))
+    await user.click(screen.getByText('change-params'))
     expect(localStorage.getItem('auto-gen-model')).toContain('"temperature":0.3')
   })
 
   it('should preserve an intentionally cleared template instruction', async () => {
+    const user = userEvent.setup()
     mockInstructionTemplate = { data: 'template instruction' }
 
     render(
@@ -162,19 +152,20 @@ describe('GetAutomaticRes', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByTestId('workflow-editor')).toHaveTextContent('template instruction')
+      expect(instruction()).toHaveValue('template instruction')
     })
-    fireEvent.click(screen.getByText('clear-workflow-instruction'))
-    fireEvent.click(screen.getByText(/(?:^|\.)generate\.generate(?=$|:)/))
+    await user.clear(instruction())
+    await user.click(screen.getByText(/(?:^|\.)generate\.generate(?=$|:)/))
 
-    expect(screen.getByTestId('workflow-editor')).toBeEmptyDOMElement()
+    expect(instruction()).toHaveValue('')
     expect(mockToastError).toHaveBeenCalledWith(
       expect.stringMatching(/(?:^|\.)errorMsg\.fieldRequired(?=$|:)/),
     )
     expect(mockGenerateRule).not.toHaveBeenCalled()
   })
 
-  it('should block generation when instruction is empty', () => {
+  it('should block generation when instruction is empty', async () => {
+    const user = userEvent.setup()
     render(
       <GetAutomaticRes
         modelMode="chat"
@@ -186,16 +177,17 @@ describe('GetAutomaticRes', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText(/(?:^|\.)generate\.generate(?=$|:)/))
+    await user.click(screen.getByText(/(?:^|\.)generate\.generate(?=$|:)/))
 
     expect(mockToastError).toHaveBeenCalledWith(
       expect.stringMatching(/(?:^|\.)errorMsg\.fieldRequired(?=$|:)/),
     )
     expect(mockGenerateBasicAppFirstTimeRule).not.toHaveBeenCalled()
-    expect(screen.getByText('result-placeholder')).toBeInTheDocument()
+    expect(screen.getByText(/generate.newNoDataLine1/)).toBeInTheDocument()
   })
 
   it('should generate a basic prompt and apply the confirmed result', async () => {
+    const user = userEvent.setup()
     mockGenerateBasicAppFirstTimeRule.mockResolvedValue({
       prompt: 'generated prompt',
       variables: ['city'],
@@ -213,8 +205,8 @@ describe('GetAutomaticRes', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('set-basic-instruction'))
-    fireEvent.click(screen.getByText(/(?:^|\.)generate\.generate(?=$|:)/))
+    await user.type(instruction(), 'basic instruction')
+    await user.click(screen.getByText(/(?:^|\.)generate\.generate(?=$|:)/))
 
     await waitFor(() => {
       expect(mockGenerateBasicAppFirstTimeRule).toHaveBeenCalledWith(
@@ -226,16 +218,26 @@ describe('GetAutomaticRes', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByTestId('result-panel')).toHaveTextContent('generated prompt')
+      expect(screen.getByText('generated prompt')).toHaveTextContent('generated prompt')
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)generate\.apply(?=$|:)/ }))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)generate\.apply(?=$|:)/ }))
 
     await waitFor(() => {
       expect(screen.getByText(/(?:^|\.)generate\.overwriteTitle(?=$|:)/)).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.confirm(?=$|:)/ }))
+    const confirmation = screen.getByRole('alertdialog')
+    expect(mockOnFinished).not.toHaveBeenCalled()
+    await user.click(within(confirmation).getByRole('button', { name: /operation\.cancel/ }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(mockOnFinished).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: /generate\.apply/ }))
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: /operation\.confirm/,
+      }),
+    )
 
     expect(mockOnFinished).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -246,45 +248,8 @@ describe('GetAutomaticRes', () => {
     )
   })
 
-  it('should close overwrite confirmation without applying the generated result when cancelled', async () => {
-    mockGenerateBasicAppFirstTimeRule.mockResolvedValue({
-      prompt: 'generated prompt',
-      variables: ['city'],
-      opening_statement: 'hello there',
-    })
-
-    render(
-      <GetAutomaticRes
-        modelMode="chat"
-        isShow
-        onClose={mockOnClose}
-        onFinished={mockOnFinished}
-        flowId="flow-1"
-        isBasicMode
-      />,
-    )
-
-    fireEvent.click(screen.getByText('set-basic-instruction'))
-    fireEvent.click(screen.getByText(/(?:^|\.)generate\.generate(?=$|:)/))
-
-    await waitFor(() => {
-      expect(screen.getByTestId('result-panel')).toHaveTextContent('generated prompt')
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)generate\.apply(?=$|:)/ }))
-    const dialog = await screen.findByRole('alertdialog')
-
-    fireEvent.click(
-      within(dialog).getByRole('button', { name: /(?:^|\.)operation\.cancel(?=$|:)/ }),
-    )
-
-    await waitFor(() => {
-      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-    })
-    expect(mockOnFinished).not.toHaveBeenCalled()
-  })
-
   it('should request workflow generation and surface service errors', async () => {
+    const user = userEvent.setup()
     mockGenerateRule.mockResolvedValue({
       error: 'generation failed',
       modified: 'unused',
@@ -304,9 +269,10 @@ describe('GetAutomaticRes', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('set-workflow-instruction'))
-    fireEvent.click(screen.getByText('set-idea-output'))
-    fireEvent.click(screen.getByText(/(?:^|\.)generate\.generate(?=$|:)/))
+    await user.type(instruction(), 'workflow instruction')
+    await user.click(screen.getByRole('button', { name: /generate.idealOutput/ }))
+    await user.type(screen.getByRole('textbox', { name: /generate.idealOutput/ }), 'ideal output')
+    await user.click(screen.getByText(/(?:^|\.)generate\.generate(?=$|:)/))
 
     await waitFor(() => {
       expect(mockGenerateRule).toHaveBeenCalledWith(
@@ -325,6 +291,23 @@ describe('GetAutomaticRes', () => {
       expect(mockToastError).toHaveBeenCalledWith('generation failed')
     })
 
-    expect(screen.queryByTestId('result-panel')).not.toBeInTheDocument()
+    expect(screen.getByText(/generate.newNoDataLine1/)).toBeInTheDocument()
   })
 })
+
+// PromptEditor owns rich text behavior; this feature owns instruction persistence and generation.
+vi.mock('@/app/components/base/prompt-editor', () => ({
+  default: ({
+    value,
+    onChange,
+    'aria-label': label,
+    'aria-labelledby': labelledBy,
+  }: import('@/app/components/base/prompt-editor').PromptEditorProps) => (
+    <textarea
+      aria-label={label}
+      aria-labelledby={labelledBy}
+      value={value}
+      onChange={(event) => onChange?.(event.target.value)}
+    />
+  ),
+}))

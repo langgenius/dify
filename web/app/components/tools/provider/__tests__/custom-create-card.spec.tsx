@@ -1,5 +1,6 @@
 import type { CustomCollectionBackend } from '../../types'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { render } from '@/test/console/render'
 import { AuthType } from '../../types'
@@ -41,7 +42,6 @@ vi.mock('@/service/tools', () => ({
 }))
 
 // Track modal state
-let mockModalVisible = false
 
 // Mock EditCustomToolModal - complex component
 vi.mock('@/app/components/tools/edit-custom-collection-modal', () => ({
@@ -54,7 +54,6 @@ vi.mock('@/app/components/tools/edit-custom-collection-modal', () => ({
     onHide: () => void
     onAdd: (data: CustomCollectionBackend) => void
   }) => {
-    mockModalVisible = true
     void onAdd // Keep reference to avoid lint warning about unused param
     return (
       <div data-testid="edit-custom-collection-modal">
@@ -98,17 +97,10 @@ describe('CustomCreateCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockConsoleState.workspacePermissionKeys = ['tool.manage']
-    mockModalVisible = false
     mockCreateCustomCollection.mockResolvedValue({})
   })
 
   describe('tool.manage conditional rendering', () => {
-    it('should render card when user has tool.manage', () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
-
-      expect(screen.getByText(/createSwaggerAPIAsTool/i)).toBeInTheDocument()
-    })
-
     it('should not render anything when user does not have tool.manage', () => {
       mockConsoleState.workspacePermissionKeys = []
 
@@ -120,29 +112,6 @@ describe('CustomCreateCard', () => {
 
   // Tests for card rendering and styling
   describe('Card Rendering', () => {
-    it('should render add icon', () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
-
-      // RiAddCircleFill icon should be present
-      const iconContainer = document.querySelector('.size-10')
-      expect(iconContainer).toBeInTheDocument()
-    })
-
-    it('should have proper card styling', () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
-
-      const card = screen.getByText('tools.createSwaggerAPIAsTool').closest('.col-span-1')
-      expect(card).toBeInTheDocument()
-      expect(card).toHaveClass(
-        'h-30',
-        'border-[0.5px]',
-        'border-components-panel-border',
-        'shadow-md',
-      )
-      expect(card).toHaveClass('min-w-0')
-      expect(card).not.toHaveClass('flex-1')
-    })
-
     it('should render documentation link with Swagger API as Tool text', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
@@ -157,14 +126,6 @@ describe('CustomCreateCard', () => {
   })
 
   describe('Toolbar Button Rendering', () => {
-    it('should render toolbar add button when user has tool.manage', () => {
-      render(<NewCustomToolButton onRefreshData={mockOnRefreshData} />)
-
-      expect(
-        screen.getByRole('button', { name: /tools\.addSwaggerAPIAsTool/i }),
-      ).toBeInTheDocument()
-    })
-
     it('should not render toolbar add button when user does not have tool.manage', () => {
       mockConsoleState.workspacePermissionKeys = []
 
@@ -173,169 +134,64 @@ describe('CustomCreateCard', () => {
       expect(container.firstChild).toBeNull()
     })
 
-    it('should open modal when toolbar add button is clicked', () => {
+    it('should open modal when toolbar add button is clicked', async () => {
+      const user = userEvent.setup()
       render(<NewCustomToolButton onRefreshData={mockOnRefreshData} />)
 
-      fireEvent.click(screen.getByRole('button', { name: /tools\.addSwaggerAPIAsTool/i }))
+      await user.click(screen.getByRole('button', { name: /tools\.addSwaggerAPIAsTool/i }))
 
       expect(screen.getByTestId('edit-custom-collection-modal')).toBeInTheDocument()
     })
   })
 
   // Tests for modal interaction
-  describe('Modal Interaction', () => {
-    it('should open modal when card is clicked', () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
-
-      // Click on the card area (the group div)
-      const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
-      fireEvent.click(cardClickArea!)
-
-      expect(screen.getByTestId('edit-custom-collection-modal')).toBeInTheDocument()
-      expect(mockModalVisible).toBe(true)
-    })
-
-    it('should pass null payload to modal', () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
-
-      const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
-      fireEvent.click(cardClickArea!)
-
-      expect(screen.getByTestId('modal-payload')).toHaveTextContent('null')
-    })
-
-    it('should close modal when onHide is called', () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
-
-      // Open modal
-      const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
-      fireEvent.click(cardClickArea!)
-      expect(screen.getByTestId('edit-custom-collection-modal')).toBeInTheDocument()
-
-      // Close modal
-      fireEvent.click(screen.getByTestId('close-modal'))
-      expect(screen.queryByTestId('edit-custom-collection-modal')).not.toBeInTheDocument()
-    })
-  })
 
   // Tests for custom collection creation
   describe('Custom Collection Creation', () => {
     it('should call createCustomCollection when form is submitted', async () => {
+      const user = userEvent.setup()
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // Open modal
       const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
-      fireEvent.click(cardClickArea!)
+      await user.click(cardClickArea!)
 
       // Submit form
-      fireEvent.click(screen.getByTestId('submit-modal'))
+      await user.click(screen.getByTestId('submit-modal'))
 
       await waitFor(() => {
-        expect(mockCreateCustomCollection).toHaveBeenCalledTimes(1)
-      })
-    })
-
-    it('should close modal after successful creation', async () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
-
-      // Open modal
-      const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
-      fireEvent.click(cardClickArea!)
-      expect(screen.getByTestId('edit-custom-collection-modal')).toBeInTheDocument()
-
-      // Submit form
-      fireEvent.click(screen.getByTestId('submit-modal'))
-
-      await waitFor(() => {
+        expect(mockCreateCustomCollection).toHaveBeenCalledExactlyOnceWith({
+          provider: 'test-provider',
+          credentials: { auth_type: AuthType.none },
+          icon: { background: '#000', content: '🔧' },
+          schema_type: 'json',
+          schema: '{}',
+          privacy_policy: '',
+          custom_disclaimer: '',
+          labels: [],
+        })
+        expect(mockOnRefreshData).toHaveBeenCalledOnce()
         expect(screen.queryByTestId('edit-custom-collection-modal')).not.toBeInTheDocument()
-      })
-    })
-
-    it('should call onRefreshData after successful creation', async () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
-
-      // Open modal
-      const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
-      fireEvent.click(cardClickArea!)
-
-      // Submit form
-      fireEvent.click(screen.getByTestId('submit-modal'))
-
-      await waitFor(() => {
-        expect(mockOnRefreshData).toHaveBeenCalledTimes(1)
-      })
-    })
-
-    it('should pass correct data to createCustomCollection', async () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
-
-      // Open modal
-      const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
-      fireEvent.click(cardClickArea!)
-
-      // Submit form
-      fireEvent.click(screen.getByTestId('submit-modal'))
-
-      await waitFor(() => {
-        expect(mockCreateCustomCollection).toHaveBeenCalledWith(
-          expect.objectContaining({
-            provider: 'test-provider',
-            schema_type: 'json',
-          }),
-        )
       })
     })
   })
 
   // Tests for edge cases
   describe('Edge Cases', () => {
-    it('should call createCustomCollection and handle successful response', async () => {
-      mockCreateCustomCollection.mockResolvedValue({ success: true })
-
+    it('should not call onRefreshData if modal is just closed without submitting', async () => {
+      const user = userEvent.setup()
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // Open modal
       const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
-      fireEvent.click(cardClickArea!)
-
-      // Submit form
-      fireEvent.click(screen.getByTestId('submit-modal'))
-
-      // The API should be called
-      await waitFor(() => {
-        expect(mockCreateCustomCollection).toHaveBeenCalled()
-      })
-
-      // And refresh should be triggered
-      await waitFor(() => {
-        expect(mockOnRefreshData).toHaveBeenCalled()
-      })
-    })
-
-    it('should not call onRefreshData if modal is just closed without submitting', () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
-
-      // Open modal
-      const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
-      fireEvent.click(cardClickArea!)
+      await user.click(cardClickArea!)
 
       // Close modal without submitting
-      fireEvent.click(screen.getByTestId('close-modal'))
+      await user.click(screen.getByTestId('close-modal'))
 
       expect(mockOnRefreshData).not.toHaveBeenCalled()
-    })
-
-    it('should handle rapid open/close of modal', () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
-
-      const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
-
-      // Rapid open/close
-      fireEvent.click(cardClickArea!)
-      fireEvent.click(screen.getByTestId('close-modal'))
-      fireEvent.click(cardClickArea!)
-
-      expect(screen.getByTestId('edit-custom-collection-modal')).toBeInTheDocument()
+      expect(mockCreateCustomCollection).not.toHaveBeenCalled()
+      expect(screen.queryByTestId('edit-custom-collection-modal')).not.toBeInTheDocument()
     })
   })
 

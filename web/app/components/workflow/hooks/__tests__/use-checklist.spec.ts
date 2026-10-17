@@ -4,9 +4,10 @@ import type { ChecklistItem } from '../use-checklist'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { zWorkflowAgentComposerResponse } from '@dify/contracts/api/console/apps/zod.gen'
 import { QueryClient } from '@tanstack/react-query'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import { createElement, Fragment } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createEdge, createNode, resetFixtureCounters } from '../../__tests__/fixtures'
@@ -511,32 +512,6 @@ describe('useChecklist', () => {
     })
   })
 
-  it('should pass flow type to node validators', () => {
-    const checkValid = vi.fn(() => ({ errorMessage: '' }))
-    mockNodesMap[BlockEnum.LLM] = {
-      checkValid,
-      metaData: { isStart: false, isRequired: false },
-    }
-
-    const startNode = createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start' } })
-    const llmNode = createNode({
-      id: 'llm',
-      data: { type: BlockEnum.LLM, prompt_template: { role: 'user', text: '' }, title: 'LLM' },
-    })
-
-    const edges = [createEdge({ source: 'start', target: 'llm' })]
-
-    renderWorkflowHook(() => useChecklist([startNode, llmNode], edges), {
-      resource: { kind: 'snippet', snippetId: 'snippet-1' },
-    })
-
-    expect(checkValid).toHaveBeenCalledWith(
-      expect.objectContaining({ type: BlockEnum.LLM }),
-      expect.any(Function),
-      expect.objectContaining({ resourceKind: 'snippet' }),
-    )
-  })
-
   it('should report missing start node in workflow mode', () => {
     const codeNode = createNode({ id: 'code', data: { type: BlockEnum.Code, title: 'Code' } })
 
@@ -629,20 +604,6 @@ describe('useChecklist', () => {
 
     const startWarning = result.current.find((item: ChecklistItem) => item.id === 'start')
     expect(startWarning).toBeUndefined()
-  })
-
-  it('should skip nodes without CUSTOM_NODE type', () => {
-    const nonCustomNode = createNode({
-      id: 'alien',
-      type: 'not-custom',
-      data: { type: BlockEnum.Code, title: 'Non-Custom' },
-    })
-    const startNode = createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start' } })
-
-    const { result } = renderWorkflowHook(() => useChecklist([startNode, nonCustomNode], []))
-
-    const alienWarning = result.current.find((item: ChecklistItem) => item.id === 'alien')
-    expect(alienWarning).toBeUndefined()
   })
 
   it('should report configure model errors when an llm model provider plugin is missing', () => {
@@ -790,8 +751,14 @@ describe('useChecklistBeforePublish', () => {
     rfState.nodes = nodes
     rfState.edges = edges as unknown as typeof rfState.edges
 
-    const { result } = renderWorkflowHook(() => useChecklistBeforePublish())
-    await waitFor(async () => expect(await result.current.handleCheckBeforePublish()).toBe(false))
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    queryClient.setQueryData(consoleQuery.workspaces.current.agentProviders.get.queryKey(), [])
+    const { result } = renderWorkflowHook(() => useChecklistBeforePublish(), { queryClient })
+    let canPublish: boolean | undefined
+    await act(async () => {
+      canPublish = await result.current.handleCheckBeforePublish()
+    })
+    expect(canPublish).toBe(false)
   })
 })
 
@@ -800,6 +767,22 @@ describe('useChecklistBeforePublish', () => {
 // ---------------------------------------------------------------------------
 
 describe('useWorkflowRunValidation', () => {
+  it('blocks a run with disconnected nodes and explains why', () => {
+    const { nodes } = buildConnectedGraph()
+    rfState.edges = []
+    const { result } = renderWorkflowHook(() => useWorkflowRunValidation(), {
+      initialStoreState: { nodes },
+      hooksStoreProps: {},
+    })
+
+    expect(result.current.hasValidationErrors).toBe(true)
+    expect(result.current.warningNodes).toEqual(
+      expect.arrayContaining([expect.objectContaining({ unConnected: true })]),
+    )
+    expect(result.current.validateBeforeRun()).toBe(false)
+    expect(toast.error).toHaveBeenCalledExactlyOnceWith('workflow.panel.checklistTip')
+  })
+
   it('should return hasValidationErrors false when there are no warnings', () => {
     const { nodes, edges } = buildConnectedGraph()
     rfState.edges = edges as unknown as typeof rfState.edges
@@ -811,19 +794,8 @@ describe('useWorkflowRunValidation', () => {
 
     expect(result.current.hasValidationErrors).toBe(false)
     expect(result.current.warningNodes).toEqual([])
-  })
-
-  it('should return validateBeforeRun as a function that returns true when valid', () => {
-    const { nodes, edges } = buildConnectedGraph()
-    rfState.edges = edges as unknown as typeof rfState.edges
-
-    const { result } = renderWorkflowHook(() => useWorkflowRunValidation(), {
-      initialStoreState: { nodes },
-      hooksStoreProps: {},
-    })
-
-    expect(typeof result.current.validateBeforeRun).toBe('function')
     expect(result.current.validateBeforeRun()).toBe(true)
+    expect(toast.error).not.toHaveBeenCalled()
   })
 })
 

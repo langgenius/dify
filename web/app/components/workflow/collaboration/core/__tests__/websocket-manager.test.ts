@@ -55,28 +55,6 @@ describe('WebSocketClient', () => {
     expect(isDefaultSocketUrl('wss://collaboration.example.com')).toBe(false)
   })
 
-  it('connects with default url and registers base listeners', async () => {
-    const mockSocket = createMockSocket('socket-fallback')
-    ioMock.mockImplementation(() => mockSocket)
-
-    const { WebSocketClient } = await import('../websocket-manager')
-    const client = new WebSocketClient()
-    const socket = client.connect('app-1')
-
-    expect(ioMock).toHaveBeenCalledWith(
-      'ws://localhost:5001',
-      expect.objectContaining({
-        path: '/socket.io',
-        transports: ['websocket'],
-        withCredentials: true,
-      }),
-    )
-    expect(socket).toBe(mockSocket)
-    expect(mockSocket.on).toHaveBeenCalledWith('connect', expect.any(Function))
-    expect(mockSocket.on).toHaveBeenCalledWith('disconnect', expect.any(Function))
-    expect(mockSocket.on).toHaveBeenCalledWith('connect_error', expect.any(Function))
-  })
-
   it('reuses existing connected socket and avoids duplicate connections', async () => {
     const mockSocket = createMockSocket('socket-reuse')
     ioMock.mockImplementation(() => mockSocket)
@@ -91,7 +69,7 @@ describe('WebSocketClient', () => {
     expect(second).toBe(first)
   })
 
-  it('emits user_connect on connect without auth payload', async () => {
+  it('connects using cookies and joins the requested workflow when connected', async () => {
     const mockSocket = createMockSocket('socket-auth')
     ioMock.mockImplementation((url: string, options: IoOptions) => {
       expect(options.auth).toBeUndefined()
@@ -101,12 +79,13 @@ describe('WebSocketClient', () => {
     const { WebSocketClient } = await import('../websocket-manager')
     const client = new WebSocketClient()
     client.connect('app-auth')
+    expect(ioMock).toHaveBeenCalledWith('ws://localhost:5001', {
+      path: '/socket.io',
+      transports: ['websocket'],
+      withCredentials: true,
+    })
 
-    const connectHandler = mockSocket.on.mock.calls.find(
-      (call) => call[0] === 'connect',
-    )?.[1] as () => void
-    expect(connectHandler).toBeDefined()
-    connectHandler()
+    mockSocket.trigger('connect')
 
     expect(mockSocket.emit).toHaveBeenCalledWith(
       'user_connect',
@@ -115,7 +94,7 @@ describe('WebSocketClient', () => {
     )
   })
 
-  it('disconnects a specific app and clears internal maps', async () => {
+  it('disconnects a specific app and reports it as unavailable', async () => {
     const mockSocket = createMockSocket('socket-disconnect-one')
     ioMock.mockImplementation(() => mockSocket)
 

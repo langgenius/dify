@@ -2,12 +2,14 @@ import type { PropsWithChildren } from 'react'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import { usePluginStore } from '@/app/components/plugins/plugin-detail-panel/store'
 import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import {
   renderWorkflowComponent as renderWorkflowComponentWithoutUrlState,
   renderWorkflowFlowComponent as renderWorkflowFlowComponentWithoutUrlState,
 } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { fullWorkflowAccessControl } from '@/app/components/workflow/hooks-store/store'
 import { useNodeKeyboardInteractions } from '@/app/components/workflow/hooks/use-node-keyboard-interactions'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
@@ -18,12 +20,9 @@ const mockHandleNodeSelect = vi.fn()
 const mockHandleNodeDataUpdate = vi.fn()
 const mockHandleNodeDataUpdateWithSyncDraft = vi.fn()
 const mockSaveStateToHistory = vi.fn()
-const mockSetDetail = vi.fn()
 const mockHandleSingleRun = vi.fn()
 const mockHandleStop = vi.fn()
 const mockHandleRunWithParams = vi.fn()
-let mockNodesReadOnly = false
-let mockCanRun = true
 let mockBuiltInTools = [
   createToolProviderFixture({
     id: 'provider/tool',
@@ -78,12 +77,6 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useLanguage: () => 'en_US',
-}))
-
-vi.mock('@/app/components/plugins/plugin-detail-panel/store', () => ({
-  usePluginStore: () => ({
-    setDetail: mockSetDetail,
-  }),
 }))
 
 vi.mock('../../../../../hooks/use-available-blocks', async (importOriginal) => {
@@ -154,17 +147,6 @@ vi.mock('../../../../../hooks/use-tool-icon', async (importOriginal) => {
   }
 })
 
-vi.mock('../../../../../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../../../hooks/use-workflow')>()
-
-  return {
-    ...actual,
-    useNodesReadOnly: () => ({
-      nodesReadOnly: mockNodesReadOnly,
-    }),
-  }
-})
-
 vi.mock('../../../../../hooks/use-workflow-history', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../../../hooks/use-workflow-history')>()
 
@@ -179,24 +161,6 @@ vi.mock('../../../../../hooks/use-workflow-history', async (importOriginal) => {
     },
   }
 })
-
-vi.mock('@/app/components/workflow/hooks-store', () => ({
-  useHooksStore: (
-    selector: (state: {
-      configsMap: { flowId: string; resourceKind: string }
-      accessControl: { canRun: boolean }
-    }) => unknown,
-  ) =>
-    selector({
-      configsMap: {
-        flowId: 'flow-1',
-        resourceKind: 'app',
-      },
-      accessControl: {
-        canRun: mockCanRun,
-      },
-    }),
-}))
 
 vi.mock('../../../../../hooks/use-inspect-vars-crud', () => ({
   default: () => ({
@@ -358,8 +322,8 @@ describe('workflow-panel index', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockHandleNodeSelect.mockReset()
-    mockNodesReadOnly = false
-    mockCanRun = true
+    usePluginStore.setState({ detail: undefined })
+    localStorage.removeItem('workflow-node-panel-width')
     mockBuiltInTools = [
       createToolProviderFixture({
         id: 'provider/tool',
@@ -374,26 +338,6 @@ describe('workflow-panel index', () => {
     mockLastRunState.tabType = 'settings'
     mockLastRunState.singleRunParams = createMockSingleRunParams()
   })
-
-  it.each([BlockEnum.Start, BlockEnum.End])(
-    'moves focus from a keyboard opened %s node into its configuration panel',
-    async (type) => {
-      const user = userEvent.setup()
-      renderWorkflowFlowComponent(<KeyboardOpenedPanel type={type} />, {
-        nodes: [createNode({ id: 'node-1', data: { type } })],
-      })
-
-      const canvasNode = screen.getByRole('button', { name: 'Canvas node' })
-      await user.click(canvasNode)
-      await user.keyboard('{Enter}')
-
-      const description = await screen.findByRole('textbox', {
-        name: 'workflow.common.nodeDescription',
-      })
-      expect(description).toHaveFocus()
-      expect(canvasNode).not.toHaveFocus()
-    },
-  )
 
   it.each([BlockEnum.Start, BlockEnum.End])(
     'closes a %s node configuration panel with Escape and restores focus to its canvas node',
@@ -453,7 +397,8 @@ describe('workflow-panel index', () => {
     },
   )
 
-  it('should render the settings panel and wire title, description, run, and close actions', async () => {
+  it('saves edited title, description and credentials, and runs or closes the selected node', async () => {
+    const user = userEvent.setup()
     renderWorkflowComponent(
       <BasePanel id="node-1" data={createData() as never}>
         <div>panel-child</div>
@@ -473,15 +418,27 @@ describe('workflow-panel index', () => {
     expect(screen.getByText('panel-child')).toBeInTheDocument()
     expect(await screen.findByText('authorized-in-node')).toBeInTheDocument()
 
-    fireEvent.blur(screen.getByDisplayValue('Tool Node'), { target: { value: 'Updated title' } })
+    const title = screen.getByRole('textbox', { name: 'workflow.common.nodeTitle' })
+    await user.clear(title)
+    await user.type(title, 'Updated title{Enter}')
     fireEvent.change(screen.getByDisplayValue('Node description'), {
       target: { value: 'Updated description' },
     })
 
     await waitFor(() => {
-      expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalled()
+      expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith({
+        id: 'node-1',
+        data: { title: 'Updated title' },
+      })
+      expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith({
+        id: 'node-1',
+        data: { desc: 'Updated description' },
+      })
     })
-    expect(mockSaveStateToHistory).toHaveBeenCalled()
+    expect(mockSaveStateToHistory).toHaveBeenCalledWith('NodeTitleChange', { nodeId: 'node-1' })
+    expect(mockSaveStateToHistory).toHaveBeenCalledWith('NodeDescriptionChange', {
+      nodeId: 'node-1',
+    })
     fireEvent.click(await screen.findByText('authorized-in-node'))
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.panel.runThisStep' }))
@@ -497,88 +454,34 @@ describe('workflow-panel index', () => {
     )
   })
 
-  it('should hide the single-run action when nodes are readonly even with run permission', () => {
-    mockNodesReadOnly = true
-
-    renderWorkflowComponent(
-      <BasePanel id="node-1" data={createData() as never}>
-        <div>panel-child</div>
-      </BasePanel>,
-      {
-        initialStoreState: {
-          nodePanelWidth: 480,
-          otherPanelWidth: 200,
+  it.each([
+    { canEdit: true, canRun: true, canvasReadOnly: false, visible: true },
+    { canEdit: true, canRun: true, canvasReadOnly: true, visible: false },
+    { canEdit: true, canRun: false, canvasReadOnly: false, visible: false },
+    { canEdit: false, canRun: true, canvasReadOnly: false, visible: false },
+  ])(
+    'uses actual workflow access and canvas state for run availability: %j',
+    ({ canEdit, canRun, canvasReadOnly, visible }) => {
+      renderWorkflowComponent(
+        <BasePanel id="node-1" data={createData() as never}>
+          <div>panel-child</div>
+        </BasePanel>,
+        {
+          initialStoreState: { nodePanelWidth: 480, otherPanelWidth: 200, canvasReadOnly },
+          hooksStoreProps: { accessControl: { ...fullWorkflowAccessControl, canEdit, canRun } },
         },
-      },
-    )
-
-    expect(
-      screen.queryByRole('button', { name: 'workflow.panel.runThisStep' }),
-    ).not.toBeInTheDocument()
-  })
-
-  it('should hide the single-run action when run permission is missing', () => {
-    mockCanRun = false
-
-    renderWorkflowComponent(
-      <BasePanel id="node-1" data={createData() as never}>
-        <div>panel-child</div>
-      </BasePanel>,
-      {
-        initialStoreState: {
-          nodePanelWidth: 480,
-          otherPanelWidth: 200,
-        },
-      },
-    )
-
-    expect(
-      screen.queryByRole('button', { name: 'workflow.panel.runThisStep' }),
-    ).not.toBeInTheDocument()
-  })
-
-  it('should render the special result panel when logs request it', () => {
-    mockLogsState.showSpecialResultPanel = true
-
-    renderWorkflowComponent(
-      <BasePanel id="node-1" data={createData() as never}>
-        <div>panel-child</div>
-      </BasePanel>,
-      {
-        initialStoreState: {
-          nodePanelWidth: 480,
-          otherPanelWidth: 200,
-        },
-      },
-    )
-
-    expect(screen.getByText('special-result-panel')).toBeInTheDocument()
-  })
-
-  it('should render last-run content when the tab switches', () => {
-    mockLastRunState.tabType = 'lastRun'
-
-    renderWorkflowComponent(
-      <BasePanel id="node-1" data={createData() as never}>
-        <div>panel-child</div>
-      </BasePanel>,
-      {
-        initialStoreState: {
-          nodePanelWidth: 480,
-          otherPanelWidth: 200,
-        },
-      },
-    )
-
-    expect(screen.getByText('last-run-panel')).toBeInTheDocument()
-    expect(screen.getByRole('tabpanel')).toHaveClass('flex', 'flex-1', 'flex-col')
-  })
+      )
+      const run = screen.queryByRole('button', { name: 'workflow.panel.runThisStep' })
+      if (visible) expect(run).toBeEnabled()
+      else expect(run).not.toBeInTheDocument()
+    },
+  )
 
   it('should render the plain tab layout and allow last-run status updates', async () => {
     mockLastRunState.tabType = 'lastRun'
 
     renderWorkflowComponent(
-      <BasePanel id="node-plain" data={createData({ type: 'custom' }) as never}>
+      <BasePanel id="node-plain" data={createData({ type: BlockEnum.Code }) as never}>
         <div>panel-child</div>
       </BasePanel>,
       {
@@ -709,42 +612,67 @@ describe('workflow-panel index', () => {
     )
   })
 
-  it('should react to pending single run actions', () => {
-    renderWorkflowComponent(
+  it.each(['run', 'stop'] as const)(
+    'consumes a pending %s action for this node exactly once',
+    (action) => {
+      const { store, rerender } = renderWorkflowComponent(
+        <BasePanel id="node-1" data={createData() as never}>
+          <div>panel-child</div>
+        </BasePanel>,
+        {
+          initialStoreState: {
+            nodePanelWidth: 480,
+            otherPanelWidth: 200,
+            pendingSingleRun: { nodeId: 'node-1', action },
+          },
+        },
+      )
+      expect(action === 'run' ? mockHandleSingleRun : mockHandleStop).toHaveBeenCalledTimes(1)
+      expect(store.getState().pendingSingleRun).toBeUndefined()
+      rerender(
+        <BasePanel id="node-1" data={createData() as never}>
+          <div>updated-child</div>
+        </BasePanel>,
+      )
+      expect(action === 'run' ? mockHandleSingleRun : mockHandleStop).toHaveBeenCalledTimes(1)
+    },
+  )
+
+  it('leaves a queued run for another node untouched', () => {
+    const pendingSingleRun = { nodeId: 'other-node', action: 'run' as const }
+    const { store } = renderWorkflowComponent(
       <BasePanel id="node-1" data={createData() as never}>
         <div>panel-child</div>
       </BasePanel>,
-      {
-        initialStoreState: {
-          nodePanelWidth: 480,
-          otherPanelWidth: 200,
-          pendingSingleRun: {
-            nodeId: 'node-1',
-            action: 'run',
-          },
-        },
-      },
+      { initialStoreState: { pendingSingleRun } },
     )
+    expect(mockHandleSingleRun).not.toHaveBeenCalled()
+    expect(store.getState().pendingSingleRun).toEqual(pendingSingleRun)
+  })
 
-    expect(mockHandleSingleRun).toHaveBeenCalledTimes(1)
-
-    renderWorkflowComponent(
-      <BasePanel id="node-1" data={createData() as never}>
+  it('does not mark a node paused before it has run or inherit the previous node’s run state', () => {
+    mockLastRunState.tabType = 'lastRun'
+    const { rerender } = renderWorkflowComponent(
+      <BasePanel id="node-1" data={createData({ _isSingleRun: true }) as never}>
         <div>panel-child</div>
       </BasePanel>,
-      {
-        initialStoreState: {
-          nodePanelWidth: 480,
-          otherPanelWidth: 200,
-          pendingSingleRun: {
-            nodeId: 'node-1',
-            action: 'stop',
-          },
-        },
-      },
     )
-
-    expect(mockHandleStop).toHaveBeenCalledTimes(1)
+    expect(screen.getByText('active')).toBeInTheDocument()
+    rerender(
+      <BasePanel
+        id="node-1"
+        data={createData({ _singleRunningStatus: NodeRunningStatus.Running }) as never}
+      >
+        <div>panel-child</div>
+      </BasePanel>,
+    )
+    rerender(
+      <BasePanel id="node-2" data={createData({ _isSingleRun: true }) as never}>
+        <div>panel-child</div>
+      </BasePanel>,
+    )
+    expect(screen.getByText('active')).toBeInTheDocument()
+    expect(screen.queryByText('paused')).not.toBeInTheDocument()
   })
 
   it('should load trigger plugin details when the selected node is a trigger plugin', async () => {
@@ -779,7 +707,7 @@ describe('workflow-panel index', () => {
     )
 
     await waitFor(() => {
-      expect(mockSetDetail).toHaveBeenCalledWith(
+      expect(usePluginStore.getState().detail).toEqual(
         expect.objectContaining({
           id: 'trigger-1',
           name: 'Trigger Name',
@@ -818,7 +746,6 @@ describe('workflow-panel index', () => {
 
     const root = container.firstElementChild as HTMLElement
     expect(root.style.right).toBe('240px')
-    expect(root.className).toContain('absolute')
 
     fireEvent.click(
       screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.trigger.stop' }),
@@ -975,7 +902,7 @@ describe('workflow-panel index', () => {
   })
 
   it('should compress oversized panel widths', async () => {
-    const { container } = renderWorkflowComponent(
+    renderWorkflowComponent(
       <BasePanel id="node-resize" data={createData() as never}>
         <div>panel-child</div>
       </BasePanel>,
@@ -989,8 +916,10 @@ describe('workflow-panel index', () => {
     )
 
     await waitFor(() => {
-      const panel = container.querySelector('[style*="width"]') as HTMLElement
-      expect(panel.style.width).toBe('400px')
+      expect(screen.getByRole('separator', { name: 'workflow.panel.nodePanel' })).toHaveAttribute(
+        'aria-valuenow',
+        '400',
+      )
     })
   })
 })

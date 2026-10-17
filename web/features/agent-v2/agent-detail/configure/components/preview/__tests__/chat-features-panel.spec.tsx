@@ -64,6 +64,7 @@ function renderPanel(snapshot: AgentSoulAppFeaturesConfig, draft = snapshot, dis
   const rendered = renderWithConsoleQuery(ui(snapshot))
   return {
     ...rendered,
+    store,
     updateSnapshot: (next: AgentSoulAppFeaturesConfig) => rendered.rerender(ui(next)),
   }
 }
@@ -71,9 +72,11 @@ function renderPanel(snapshot: AgentSoulAppFeaturesConfig, draft = snapshot, dis
 describe('AgentChatFeaturesPanel', () => {
   it('keeps a newly saved opener enabled before the server snapshot catches up', async () => {
     const user = userEvent.setup({ skipHover: true })
-    const { updateSnapshot } = renderPanel({ opening_statement: '' })
+    const { updateSnapshot, store } = renderPanel({ opening_statement: '' })
 
-    await user.click(screen.getAllByRole('switch')[0]!)
+    await user.click(
+      screen.getByRole('switch', { name: 'appDebug.feature.conversationOpener.title' }),
+    )
     await user.hover(screen.getByText('appDebug.feature.conversationOpener.title'))
     await user.click(screen.getByRole('button', { name: 'appDebug.openingStatement.writeOpener' }))
     const editor = await screen.findByRole('textbox')
@@ -82,30 +85,45 @@ describe('AgentChatFeaturesPanel', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(await screen.findByText('Hello from the unsaved draft')).toBeVisible()
-    expect(screen.getAllByRole('switch')[0]!).toBeChecked()
+    expect(store.get(agentComposerAppFeaturesAtom)?.opening_statement).toBe(
+      'Hello from the unsaved draft',
+    )
+    expect(
+      screen.getByRole('switch', { name: 'appDebug.feature.conversationOpener.title' }),
+    ).toBeChecked()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
     await waitFor(() => expect(screen.queryByRole('switch')).not.toBeInTheDocument())
     await user.click(screen.getByRole('button', { name: 'Open features' }))
     expect(await screen.findByText('Hello from the unsaved draft')).toBeVisible()
-    expect(screen.getAllByRole('switch')[0]!).toBeChecked()
+    expect(
+      screen.getByRole('switch', { name: 'appDebug.feature.conversationOpener.title' }),
+    ).toBeChecked()
   })
 
   it('initializes editable features from the current draft instead of the stale snapshot', () => {
     renderPanel({ opening_statement: '' }, { opening_statement: 'Current draft opener' })
     expect(screen.getByText('Current draft opener')).toBeVisible()
-    expect(screen.getAllByRole('switch')[0]!).toBeChecked()
+    expect(
+      screen.getByRole('switch', { name: 'appDebug.feature.conversationOpener.title' }),
+    ).toBeChecked()
   })
 
-  it('shows the selected snapshot in read-only mode instead of the editable draft', () => {
-    renderPanel(
+  it('shows the selected snapshot without changing the editable draft in read-only mode', async () => {
+    const user = userEvent.setup()
+    const { store } = renderPanel(
       { opening_statement: 'Published opener' },
       { opening_statement: 'Current draft opener' },
       true,
     )
     expect(screen.getByText('Published opener')).toBeVisible()
     expect(screen.queryByText('Current draft opener')).not.toBeInTheDocument()
-    expect(screen.getAllByRole('switch')[0]!).toBeChecked()
-    expect(screen.getAllByRole('switch')[0]!).toHaveAttribute('aria-disabled', 'true')
+    expect(
+      screen.getByRole('switch', { name: 'appDebug.feature.conversationOpener.title' }),
+    ).toBeChecked()
+    const opener = screen.getByRole('switch', { name: 'appDebug.feature.conversationOpener.title' })
+    expect(opener).toHaveAttribute('aria-disabled', 'true')
+    await user.click(opener)
+    expect(store.get(agentComposerAppFeaturesAtom)?.opening_statement).toBe('Current draft opener')
   })
 })

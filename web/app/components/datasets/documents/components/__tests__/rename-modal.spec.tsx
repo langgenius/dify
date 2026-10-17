@@ -1,199 +1,68 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-// Import after mock
-import { renameDocumentName } from '@/service/datasets'
-import { createHttpError } from '@/service/http-error'
+import { createDeferred } from '@/test/deferred'
 import RenameModal from '../rename-modal'
 
-const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
-  mockToastSuccess: vi.fn(),
-  mockToastError: vi.fn(),
-}))
+const { rename, toastError } = vi.hoisted(() => ({ rename: vi.fn(), toastError: vi.fn() }))
+vi.mock('@/service/datasets', () => ({ renameDocumentName: rename }))
+vi.mock('@/app/notifications', () => ({ toast: { error: toastError } }))
+const props = {
+  datasetId: 'dataset-1',
+  documentId: 'doc-1',
+  name: 'Original document',
+  onClose: vi.fn(),
+  onSaved: vi.fn(),
+}
+const renamed = { id: 'doc-1', name: 'Updated document', data_source_detail_dict: {} }
 
-// Mock the service
-vi.mock('@/service/datasets', () => ({
-  renameDocumentName: vi.fn(),
-}))
-
-vi.mock('@/app/notifications', () => ({
-  toast: {
-    success: mockToastSuccess,
-    error: mockToastError,
-  },
-}))
-
-const mockRenameDocumentName = vi.mocked(renameDocumentName)
-
-// The rename endpoint answers with the renamed document.
-const renamedDocument = { id: 'doc-123', name: 'New Name', data_source_detail_dict: {} }
-
-describe('RenameModal', () => {
-  const defaultProps = {
-    datasetId: 'dataset-123',
-    documentId: 'doc-456',
-    name: 'Original Document',
-    onClose: vi.fn(),
-    onSaved: vi.fn(),
-  }
-
-  beforeEach(() => {
-    vi.clearAllMocks()
+it('submits the edited document name once while saving and reports completion', async () => {
+  const user = userEvent.setup()
+  const pending = createDeferred<typeof renamed>()
+  rename.mockReturnValue(pending.promise)
+  render(<RenameModal {...props} />)
+  const input = screen.getByRole('textbox', { name: 'datasetDocuments.list.table.name' })
+  expect(input).toHaveValue(props.name)
+  await user.clear(input)
+  await user.type(input, 'Updated document{Enter}')
+  await waitFor(() => expect(rename).toHaveBeenCalledOnce())
+  await user.keyboard('{Enter}')
+  expect(rename).toHaveBeenCalledOnce()
+  expect(rename).toHaveBeenCalledWith({
+    datasetId: 'dataset-1',
+    documentId: 'doc-1',
+    name: 'Updated document',
   })
+  expect(props.onSaved).not.toHaveBeenCalled()
+  expect(props.onClose).not.toHaveBeenCalled()
+  await act(async () => pending.resolve(renamed))
+  await waitFor(() => expect(props.onSaved).toHaveBeenCalledOnce())
+  expect(props.onClose).toHaveBeenCalledOnce()
+})
 
-  describe('Rendering', () => {
-    it('should render modal title', () => {
-      render(<RenameModal {...defaultProps} />)
-      expect(screen.getByText(/list\.table\.rename/i)).toBeInTheDocument()
-    })
+it('keeps the edited name after a failed save so the user can retry', async () => {
+  const user = userEvent.setup()
+  rename.mockRejectedValueOnce(new Error('API Error')).mockResolvedValue(renamed)
+  render(<RenameModal {...props} />)
+  const input = screen.getByRole('textbox', { name: 'datasetDocuments.list.table.name' })
+  await user.clear(input)
+  await user.type(input, 'Updated document')
+  await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+  await waitFor(() => expect(toastError).toHaveBeenCalledWith('API Error'))
+  expect(input).toHaveValue('Updated document')
+  expect(props.onSaved).not.toHaveBeenCalled()
+  expect(props.onClose).not.toHaveBeenCalled()
+  await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+  await waitFor(() => expect(props.onSaved).toHaveBeenCalledOnce())
+})
 
-    it('should render name label', () => {
-      render(<RenameModal {...defaultProps} />)
-      expect(screen.getByRole('textbox', { name: /list\.table\.name/i })).toBeInTheDocument()
-    })
-
-    it('should render input with initial name', () => {
-      render(<RenameModal {...defaultProps} />)
-      const input = screen.getByRole('textbox')
-      expect(input).toHaveValue('Original Document')
-    })
-
-    it('should render cancel button', () => {
-      render(<RenameModal {...defaultProps} />)
-      expect(screen.getByText(/operation\.cancel/i)).toBeInTheDocument()
-    })
-
-    it('should render save button', () => {
-      render(<RenameModal {...defaultProps} />)
-      expect(screen.getByText(/operation\.save/i)).toBeInTheDocument()
-    })
-  })
-
-  describe('Props', () => {
-    it('should display the provided name in input', () => {
-      render(<RenameModal {...defaultProps} name="Custom Name" />)
-      const input = screen.getByRole('textbox')
-      expect(input).toHaveValue('Custom Name')
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should update input value when typing', () => {
-      render(<RenameModal {...defaultProps} />)
-      const input = screen.getByRole('textbox')
-
-      fireEvent.change(input, { target: { value: 'New Name' } })
-
-      expect(input).toHaveValue('New Name')
-    })
-
-    it('should call onClose when cancel button is clicked', () => {
-      const handleClose = vi.fn()
-      render(<RenameModal {...defaultProps} onClose={handleClose} />)
-
-      const cancelButton = screen.getByText(/operation\.cancel/i)
-      fireEvent.click(cancelButton)
-
-      expect(handleClose).toHaveBeenCalledTimes(1)
-    })
-
-    it('should call renameDocumentName with correct params when save is clicked', async () => {
-      mockRenameDocumentName.mockResolvedValueOnce(renamedDocument)
-
-      render(<RenameModal {...defaultProps} />)
-      const input = screen.getByRole('textbox')
-      fireEvent.change(input, { target: { value: 'New Document Name' } })
-
-      const saveButton = screen.getByText(/operation\.save/i)
-      fireEvent.click(saveButton)
-
-      await waitFor(() => {
-        expect(mockRenameDocumentName).toHaveBeenCalledWith({
-          datasetId: 'dataset-123',
-          documentId: 'doc-456',
-          name: 'New Document Name',
-        })
-      })
-    })
-
-    it('should call onSaved and onClose on successful save', async () => {
-      mockRenameDocumentName.mockResolvedValueOnce(renamedDocument)
-      const handleSaved = vi.fn()
-      const handleClose = vi.fn()
-
-      render(<RenameModal {...defaultProps} onSaved={handleSaved} onClose={handleClose} />)
-
-      const saveButton = screen.getByText(/operation\.save/i)
-      fireEvent.click(saveButton)
-
-      await waitFor(() => {
-        expect(handleSaved).toHaveBeenCalledTimes(1)
-        expect(handleClose).toHaveBeenCalledTimes(1)
-      })
-    })
-  })
-
-  describe('Loading State', () => {
-    it('should not submit again while saving', async () => {
-      // Create a promise that we can resolve manually
-      let resolvePromise: (value: typeof renamedDocument) => void
-      const pendingPromise = new Promise<typeof renamedDocument>((resolve) => {
-        resolvePromise = resolve
-      })
-      mockRenameDocumentName.mockReturnValueOnce(pendingPromise)
-
-      render(<RenameModal {...defaultProps} />)
-      const user = userEvent.setup()
-      const input = screen.getByRole('textbox', { name: /list\.table\.name/i })
-      await user.click(input)
-      await user.keyboard('{Enter}')
-
-      await waitFor(() => {
-        expect(mockRenameDocumentName).toHaveBeenCalledTimes(1)
-      })
-      await user.keyboard('{Enter}')
-      expect(mockRenameDocumentName).toHaveBeenCalledTimes(1)
-
-      resolvePromise!(renamedDocument)
-      await waitFor(() => {
-        expect(defaultProps.onClose).toHaveBeenCalledTimes(1)
-      })
-    })
-  })
-
-  describe('Error Handling', () => {
-    it('should handle API error gracefully', async () => {
-      const error = createHttpError(new Response(null, { status: 500 }), { message: 'API Error' })
-      mockRenameDocumentName.mockRejectedValueOnce(error)
-      const handleSaved = vi.fn()
-      const handleClose = vi.fn()
-
-      render(<RenameModal {...defaultProps} onSaved={handleSaved} onClose={handleClose} />)
-
-      const saveButton = screen.getByText(/operation\.save/i)
-      fireEvent.click(saveButton)
-
-      await waitFor(() => {
-        // onSaved and onClose should not be called on error
-        expect(handleSaved).not.toHaveBeenCalled()
-        expect(handleClose).not.toHaveBeenCalled()
-        expect(mockToastError).toHaveBeenCalledWith('API Error')
-      })
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle empty name', () => {
-      render(<RenameModal {...defaultProps} name="" />)
-      const input = screen.getByRole('textbox')
-      expect(input).toHaveValue('')
-      expect(input).toHaveAttribute('placeholder', 'common.placeholder.input')
-    })
-
-    it('should handle name with special characters', () => {
-      render(<RenameModal {...defaultProps} name="Document <with> 'special' chars" />)
-      const input = screen.getByRole('textbox')
-      expect(input).toHaveValue("Document <with> 'special' chars")
-    })
-  })
+it('cancels an edited name without saving', async () => {
+  const user = userEvent.setup()
+  render(<RenameModal {...props} />)
+  await user.type(
+    screen.getByRole('textbox', { name: 'datasetDocuments.list.table.name' }),
+    ' draft',
+  )
+  await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+  expect(props.onClose).toHaveBeenCalledOnce()
+  expect(rename).not.toHaveBeenCalled()
 })

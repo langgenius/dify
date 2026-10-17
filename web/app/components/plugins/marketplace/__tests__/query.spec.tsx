@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 vi.mock('@/config', () => ({
@@ -18,19 +18,12 @@ const mockCollections = vi.fn()
 const mockCollectionPlugins = vi.fn()
 const mockSearchAdvanced = vi.fn()
 
-vi.mock('@/service/marketplace', () => ({
+vi.mock('@/service/marketplace', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/marketplace')>()),
   marketplaceClient: {
     collections: (...args: unknown[]) => mockCollections(...args),
     collectionPlugins: (...args: unknown[]) => mockCollectionPlugins(...args),
     searchAdvanced: (...args: unknown[]) => mockSearchAdvanced(...args),
-  },
-  marketplaceQuery: {
-    collections: {
-      queryKey: (params: unknown) => ['marketplace', 'collections', params],
-    },
-    searchAdvanced: {
-      queryKey: (params: unknown) => ['marketplace', 'searchAdvanced', params],
-    },
   },
 }))
 
@@ -74,22 +67,10 @@ describe('useMarketplaceCollectionsAndPlugins', () => {
       expect(result.current.data).toBeDefined()
     })
 
-    expect(result.current.data?.marketplaceCollections).toBeDefined()
-    expect(result.current.data?.marketplaceCollectionPluginsMap).toBeDefined()
-  })
-
-  it('should handle empty collections params', async () => {
-    mockCollections.mockResolvedValue({ data: { collections: [] } })
-
-    const { useMarketplaceCollectionsAndPlugins } = await import('../query')
-    const { Wrapper } = createWrapper()
-    const { result } = renderHook(() => useMarketplaceCollectionsAndPlugins({}), {
-      wrapper: Wrapper,
-    })
-
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true)
-    })
+    expect(result.current.data?.marketplaceCollections).toEqual(mockCollectionData)
+    expect(result.current.data?.marketplaceCollectionPluginsMap['col-1']).toEqual([
+      expect.objectContaining({ name: 'plugin1' }),
+    ])
   })
 })
 
@@ -158,9 +139,14 @@ describe('useMarketplacePlugins', () => {
       { wrapper: Wrapper },
     )
 
-    await waitFor(() => {
-      expect(result.current.data).toBeDefined()
-    })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data?.pages[0]?.plugins).toEqual([
+      expect.objectContaining({ name: 'b1', type: 'bundle' }),
+    ])
+    expect(mockSearchAdvanced).toHaveBeenCalledWith(
+      expect.objectContaining({ params: { kind: 'bundles' } }),
+      expect.any(Object),
+    )
   })
 
   it('should surface API errors instead of an empty success', async () => {
@@ -187,33 +173,30 @@ describe('useMarketplacePlugins', () => {
     expect(result.current.error).toEqual(new Error('Network error'))
   })
 
-  it('should determine next page correctly via getNextPageParam', async () => {
-    // Return enough data that there would be a next page
-    mockSearchAdvanced.mockResolvedValue({
-      data: {
-        plugins: Array.from({ length: 40 }, (_, i) => ({
-          type: 'plugin',
-          org: 'test',
-          name: `p${i}`,
-          tags: [],
-        })),
-        total: 100,
-      },
-    })
-
+  it('requests the next page and stops when the reported total is reached', async () => {
+    const plugin = (name: string) => ({ type: 'plugin', org: 'test', name, tags: [] })
+    mockSearchAdvanced
+      .mockResolvedValueOnce({ data: { plugins: [plugin('p1'), plugin('p2')], total: 3 } })
+      .mockResolvedValueOnce({ data: { plugins: [plugin('p3')], total: 3 } })
     const { useMarketplacePlugins } = await import('../query')
     const { Wrapper } = createWrapper()
     const { result } = renderHook(
-      () =>
-        useMarketplacePlugins({
-          query: 'paginated',
-          page_size: 40,
-        }),
+      () => useMarketplacePlugins({ query: 'paginated', page_size: 2 }),
       { wrapper: Wrapper },
     )
-
-    await waitFor(() => {
-      expect(result.current.hasNextPage).toBe(true)
+    await waitFor(() => expect(result.current.hasNextPage).toBe(true))
+    await act(async () => {
+      await result.current.fetchNextPage()
     })
+    await waitFor(() => expect(result.current.hasNextPage).toBe(false))
+    expect(
+      result.current.data?.pages.flatMap((page) => page.plugins.map((item) => item.name)),
+    ).toEqual(['p1', 'p2', 'p3'])
+    expect(mockSearchAdvanced).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({ page: 2, page_size: 2, query: 'paginated' }),
+      }),
+      expect.any(Object),
+    )
   })
 })

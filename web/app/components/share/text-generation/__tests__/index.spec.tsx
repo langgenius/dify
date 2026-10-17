@@ -1,5 +1,6 @@
 import type { TextGenerationRunControl } from '../types'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { AccessMode } from '@/models/access-control'
 import TextGeneration from '../index'
 
@@ -38,10 +39,6 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => ({
     get: (key: string) => (key === 'mode' ? mockMode.value : null),
   }),
-}))
-
-vi.mock('@/app/components/base/loading-placeholder', () => ({
-  LoadingPlaceholder: () => <div role="progressbar" aria-label="Loading app" />,
 }))
 
 vi.mock('../hooks/use-text-generation-app-state', () => ({
@@ -154,7 +151,7 @@ const createBatchState = (overrides: Record<string, unknown> = {}) => ({
 describe('TextGeneration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.useFakeTimers()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
     mockMode.value = 'create'
     mockMedia.value = 'pc'
     mockAppStateRef.value = createAppState()
@@ -170,7 +167,7 @@ describe('TextGeneration', () => {
 
     render(<TextGeneration />)
 
-    expect(screen.getByRole('progressbar', { name: 'Loading app' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
   })
 
   it('should fall back to create mode for unsupported query params', () => {
@@ -189,9 +186,10 @@ describe('TextGeneration', () => {
   })
 
   it('should orchestrate a run-once request and reveal the result panel', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     render(<TextGeneration />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'run-once' }))
+    await user.click(screen.getByRole('button', { name: 'run-once' }))
 
     act(() => {
       vi.runAllTimers()
@@ -204,11 +202,12 @@ describe('TextGeneration', () => {
   })
 
   it('should orchestrate batch runs through the batch hook and expose the result panel', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     mockMode.value = 'batch'
 
     render(<TextGeneration />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'run-batch' }))
+    await user.click(screen.getByRole('button', { name: 'run-batch' }))
 
     act(() => {
       vi.runAllTimers()

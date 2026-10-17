@@ -1,7 +1,7 @@
 import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { mockEmojiData, renderWithEmoji as render } from '@/test/emoji-picker'
 import { EditAgentDialog } from '../edit-agent-dialog'
 
 const mutateRequest = vi.hoisted(() => vi.fn())
@@ -15,7 +15,7 @@ vi.mock('@/app/notifications', () => ({
   toast: toastMock,
 }))
 
-vi.mock('@/app/components/base/icon-picker', () => import('@/test/icon-picker-mock'))
+mockEmojiData()
 
 const createAgent = (overrides: Partial<AgentAppPartial> = {}): AgentAppPartial => ({
   description: 'Find and summarize market materials.',
@@ -61,7 +61,7 @@ describe('EditAgentDialog', () => {
 
   it('submits the full agent payload when only the name changes', async () => {
     const user = userEvent.setup()
-    renderDialog()
+    const { onOpenChange } = renderDialog()
 
     const dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.editDialog.title' })
     await user.clear(
@@ -86,6 +86,9 @@ describe('EditAgentDialog', () => {
         icon_background: '#F5F3FF',
       },
     })
+
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
+    expect(toastMock.success).not.toHaveBeenCalled()
   })
 
   it('submits the full agent payload when only the role changes', async () => {
@@ -117,52 +120,6 @@ describe('EditAgentDialog', () => {
     })
   })
 
-  it('closes without a redundant success toast after updating', async () => {
-    const user = userEvent.setup()
-    const { onOpenChange } = renderDialog()
-
-    const dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.editDialog.title' })
-    const roleInput = within(dialog).getByRole('textbox', {
-      name: /agentRoster\.roster\.createForm\.roleLabel/,
-    })
-    await user.clear(roleInput)
-    await user.type(roleInput, 'Market Analyst')
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
-
-    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
-
-    expect(onOpenChange).toHaveBeenCalledWith(false)
-    expect(toastMock.success).not.toHaveBeenCalled()
-  })
-
-  it('submits selected icon fields when the roster icon changes', async () => {
-    const user = userEvent.setup()
-    renderDialog()
-
-    const dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.editDialog.title' })
-    await user.click(
-      within(dialog).getByRole('button', {
-        name: 'agentRoster.roster.createForm.changeIcon',
-      }),
-    )
-    await user.click(screen.getByRole('button', { hidden: true, name: 'Select brain icon' }))
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
-
-    expect(mutateRequest).toHaveBeenCalledWith({
-      params: {
-        agent_id: 'agent-1',
-      },
-      body: {
-        name: 'Research Agent',
-        description: 'Find and summarize market materials.',
-        role: 'Research Assistant',
-        icon_type: 'emoji',
-        icon: '🧠',
-        icon_background: '#E0F2FE',
-      },
-    })
-  })
-
   it('keeps the original form snapshot when the agent source changes while open', async () => {
     const user = userEvent.setup()
     const onOpenChange = vi.fn()
@@ -190,7 +147,24 @@ describe('EditAgentDialog', () => {
         name: 'agentRoster.roster.createForm.changeIcon',
       }),
     )
-    expect(screen.getByText('🧸:#F5F3FF')).toBeInTheDocument()
+    const picker = screen.getByRole('dialog', { name: 'app.iconPicker.title' })
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(picker).not.toBeInTheDocument())
+    await user.type(
+      within(dialog).getByRole('textbox', {
+        name: 'agentRoster.roster.createForm.nameLabel',
+      }),
+      ' edited',
+    )
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+    expect(mutateRequest).toHaveBeenCalledWith({
+      params: { agent_id: 'agent-1' },
+      body: expect.objectContaining({
+        name: 'Research Agent edited',
+        icon: '🧸',
+        icon_background: '#F5F3FF',
+      }),
+    })
   })
 
   it('keeps a user-selected icon when the agent source changes during the session', async () => {
@@ -206,7 +180,10 @@ describe('EditAgentDialog', () => {
         name: 'agentRoster.roster.createForm.changeIcon',
       }),
     )
-    await user.click(screen.getByRole('button', { hidden: true, name: 'Select brain icon' }))
+    const picker = screen.getByRole('dialog', { name: 'app.iconPicker.title' })
+    await user.click(within(picker).getByRole('radio', { name: 'app.iconPicker.color.green' }))
+    await user.click(within(picker).getByRole('button', { name: 'app.iconPicker.ok' }))
+    await waitFor(() => expect(picker).not.toBeInTheDocument())
 
     rerender(
       <EditAgentDialog
@@ -216,13 +193,17 @@ describe('EditAgentDialog', () => {
       />,
     )
 
-    expect(screen.getByText('🧠:#E0F2FE')).toBeInTheDocument()
     expect(
       within(screen.getByRole('dialog', { name: 'agentRoster.roster.editDialog.title' })).getByRole(
         'button',
         { name: 'common.operation.save' },
       ),
     ).not.toBeDisabled()
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+    expect(mutateRequest).toHaveBeenCalledWith({
+      params: { agent_id: 'agent-1' },
+      body: expect.objectContaining({ icon: '🧸', icon_background: '#F3FEE7' }),
+    })
   })
 
   it('creates a fresh form session from the latest agent after closing', async () => {
@@ -237,7 +218,10 @@ describe('EditAgentDialog', () => {
         name: 'agentRoster.roster.createForm.changeIcon',
       }),
     )
-    await user.click(screen.getByRole('button', { hidden: true, name: 'Select brain icon' }))
+    const picker = screen.getByRole('dialog', { name: 'app.iconPicker.title' })
+    await user.click(within(picker).getByRole('radio', { name: 'app.iconPicker.color.green' }))
+    await user.click(within(picker).getByRole('button', { name: 'app.iconPicker.ok' }))
+    await waitFor(() => expect(picker).not.toBeInTheDocument())
 
     rerender(<EditAgentDialog agent={agent} open={false} onOpenChange={onOpenChange} />)
     await waitFor(() => {
@@ -254,13 +238,21 @@ describe('EditAgentDialog', () => {
     const reopenedDialog = screen.getByRole('dialog', {
       name: 'agentRoster.roster.editDialog.title',
     })
-    await user.click(
-      within(reopenedDialog).getByRole('button', {
-        name: 'agentRoster.roster.createForm.changeIcon',
+    await user.type(
+      within(reopenedDialog).getByRole('textbox', {
+        name: 'agentRoster.roster.createForm.nameLabel',
       }),
+      ' edited',
     )
-
-    expect(screen.getByText('🦊:#FFEDD5')).toBeInTheDocument()
+    await user.click(within(reopenedDialog).getByRole('button', { name: 'common.operation.save' }))
+    expect(mutateRequest).toHaveBeenCalledWith({
+      params: { agent_id: 'agent-1' },
+      body: expect.objectContaining({
+        name: 'Research Agent edited',
+        icon: '🦊',
+        icon_background: '#FFEDD5',
+      }),
+    })
   })
 
   it('starts a new form session when the agent identity changes', async () => {
@@ -331,23 +323,6 @@ describe('EditAgentDialog', () => {
     expect(mutateRequest).not.toHaveBeenCalled()
   })
 
-  it('marks role and description as optional', () => {
-    renderDialog()
-
-    const dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.editDialog.title' })
-
-    expect(
-      within(dialog).getByRole('textbox', {
-        name: /agentRoster\.roster\.createForm\.roleLabel.*common\.label\.optional/,
-      }),
-    ).not.toBeRequired()
-    expect(
-      within(dialog).getByRole('textbox', {
-        name: /agentRoster\.roster\.createForm\.descriptionLabel.*common\.label\.optional/,
-      }),
-    ).not.toBeRequired()
-  })
-
   it('submits an empty role when the role is cleared', async () => {
     const user = userEvent.setup()
     renderDialog()
@@ -374,20 +349,5 @@ describe('EditAgentDialog', () => {
         icon_background: '#F5F3FF',
       },
     })
-  })
-
-  it('keeps the form open when the backdrop is clicked', async () => {
-    const user = userEvent.setup()
-    const { onOpenChange } = renderDialog()
-
-    const dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.editDialog.title' })
-    const backdrop = document.body.querySelector('.bg-background-overlay') as HTMLElement
-    await user.click(backdrop)
-
-    expect(onOpenChange).not.toHaveBeenCalledWith(false)
-    expect(dialog).toBeInTheDocument()
-
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
-    expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 })

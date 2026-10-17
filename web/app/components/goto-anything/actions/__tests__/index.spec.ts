@@ -1,81 +1,10 @@
-import type { ActionItem } from '../types'
 import { createCommandContext } from '../commands/__tests__/context'
 import { createSlashAction } from '../commands/slash'
 import { createActions, getActionSearchTerm, matchAction } from '../index'
+import { ragPipelineNodesAction } from '../rag-pipeline-nodes'
+import { workflowNodesAction } from '../workflow-nodes'
 
 const slash = createSlashAction(createCommandContext())
-
-vi.mock('../app', () => ({
-  appAction: {
-    key: '@app',
-    shortcut: '@app',
-    title: 'Apps',
-    description: 'Search apps',
-    source: 'remote',
-  } satisfies ActionItem,
-}))
-
-vi.mock('../knowledge', () => ({
-  knowledgeAction: {
-    key: '@knowledge',
-    shortcut: '@kb',
-    title: 'Knowledge',
-    description: 'Search knowledge',
-    source: 'remote',
-  } satisfies ActionItem,
-}))
-
-vi.mock('../plugin', () => ({
-  pluginAction: {
-    key: '@plugin',
-    shortcut: '@plugin',
-    title: 'Plugins',
-    description: 'Search plugins',
-    source: 'remote',
-  } satisfies ActionItem,
-}))
-
-vi.mock('../skill', () => ({
-  skillAction: {
-    key: '@skill',
-    shortcut: '@skill',
-    title: 'Skills',
-    description: 'Search skills',
-    source: 'remote',
-  } satisfies ActionItem,
-}))
-
-vi.mock('../agent', () => ({
-  agentAction: {
-    key: '@agents',
-    shortcut: '@agents',
-    title: 'Agents',
-    description: 'Search agents',
-    source: 'remote',
-  } satisfies ActionItem,
-}))
-
-vi.mock('../workflow-nodes', () => ({
-  workflowNodesAction: {
-    key: '@node',
-    shortcut: '@node',
-    title: 'Workflow Nodes',
-    description: 'Search workflow nodes',
-    source: 'local',
-    search: vi.fn(() => []),
-  } satisfies ActionItem,
-}))
-
-vi.mock('../rag-pipeline-nodes', () => ({
-  ragPipelineNodesAction: {
-    key: '@node',
-    shortcut: '@node',
-    title: 'RAG Pipeline Nodes',
-    description: 'Search RAG nodes',
-    source: 'local',
-    search: vi.fn(() => []),
-  } satisfies ActionItem,
-}))
 
 describe('createActions', () => {
   it('returns only global actions outside graph pages', () => {
@@ -95,15 +24,11 @@ describe('createActions', () => {
   })
 
   it('uses the workflow-owned node action on workflow pages', () => {
-    expect((createActions(slash, true, false) as Record<string, ActionItem>).node!.title).toBe(
-      'Workflow Nodes',
-    )
+    expect(createActions(slash, true, false)).toHaveProperty('node', workflowNodesAction)
   })
 
   it('uses the RAG-owned node action when both graph flags are true', () => {
-    expect((createActions(slash, true, true) as Record<string, ActionItem>).node!.title).toBe(
-      'RAG Pipeline Nodes',
-    )
+    expect(createActions(slash, true, true)).toHaveProperty('node', ragPipelineNodesAction)
   })
 })
 

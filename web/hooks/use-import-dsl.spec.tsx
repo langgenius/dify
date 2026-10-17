@@ -2,6 +2,7 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { httpErrorFromResponse } from '@/service/http-error'
 import { renderHookWithConsoleQuery } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { useImportDSL } from './use-import-dsl'
 
 const mockPush = vi.hoisted(() => vi.fn())
@@ -40,41 +41,13 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleQuery: {
-      ...actual.consoleQuery,
-      account: {
-        profile: {
-          get: {
-            queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
-          },
-        },
-      },
-      systemFeatures: actual.consoleQuery.systemFeatures,
-      apps: {
-        ...actual.consoleQuery.apps,
-        imports: {
-          ...actual.consoleQuery.apps.imports,
-          post: {
-            mutationOptions: () => ({
-              mutationFn: ({ body }: { body: Record<string, unknown> }) => mockImportDSL(body),
-            }),
-          },
-          byImportId: {
-            confirm: {
-              post: {
-                mutationOptions: () => ({
-                  mutationFn: ({ params }: { params: { import_id: string } }) =>
-                    mockImportDSLConfirm({ import_id: params.import_id }),
-                }),
-              },
-            },
-          },
-        },
-      },
-    },
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.imports.post': mockImportDSL,
+      'apps.imports.byImportId.confirm.post': mockImportDSLConfirm,
+    }),
   }
 })
 
@@ -111,7 +84,7 @@ describe('useImportDSL', () => {
       await result.current.handleImportDSL(payload, { onPending })
     })
 
-    expect(mockImportDSL).toHaveBeenCalledWith(payload)
+    expect(mockImportDSL).toHaveBeenCalledWith({ body: payload })
     expect(onPending).toHaveBeenCalledWith({ id: 'import-1', status: DSLImportStatus.PENDING })
   })
 
@@ -156,7 +129,7 @@ describe('useImportDSL', () => {
   })
 
   it('should complete a confirmed import that returns warnings', async () => {
-    let resolvePluginCheck: (() => void) | undefined
+    const pluginCheck = createDeferred()
     const pendingResponse = {
       id: 'import-1',
       status: DSLImportStatus.PENDING,
@@ -185,11 +158,7 @@ describe('useImportDSL', () => {
     const onFailed = vi.fn()
     mockImportDSL.mockResolvedValue(pendingResponse)
     mockImportDSLConfirm.mockResolvedValue(completedResponse)
-    mockHandleCheckPluginDependencies.mockReturnValue(
-      new Promise<void>((resolve) => {
-        resolvePluginCheck = resolve
-      }),
-    )
+    mockHandleCheckPluginDependencies.mockReturnValue(pluginCheck.promise)
 
     const { result } = renderHookWithConsoleQuery(() => useImportDSL())
 
@@ -216,12 +185,12 @@ describe('useImportDSL', () => {
     })
     expect(mockImportDSLConfirm).toHaveBeenCalledTimes(1)
 
-    resolvePluginCheck?.()
     await act(async () => {
+      pluginCheck.resolve()
       await confirmPromise
     })
 
-    expect(mockImportDSLConfirm).toHaveBeenCalledWith({ import_id: 'import-1' })
+    expect(mockImportDSLConfirm).toHaveBeenCalledWith({ params: { import_id: 'import-1' } })
     expect(onSuccess).toHaveBeenCalledWith(completedResponse)
     expect(onFailed).not.toHaveBeenCalled()
     expect(toastMocks.warning).toHaveBeenCalledWith('app.newApp.caution', {

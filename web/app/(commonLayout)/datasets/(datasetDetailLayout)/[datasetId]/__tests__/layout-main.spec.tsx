@@ -1,6 +1,11 @@
 import { screen, waitFor } from '@testing-library/react'
+import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
-import { renderWithConsoleQuery as renderWithConsoleQueryWithoutUrlState } from '@/test/console/query-data'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery as renderWithConsoleQueryWithoutUrlState,
+} from '@/test/console/query-data'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { DatasetACLPermission } from '@/utils/permission'
 import CreateDocumentsPage from '../documents/create/page'
@@ -19,31 +24,42 @@ const renderWithConsoleQuery = createNuqsTestRenderer(
   () => ({ onUrlUpdate }),
 )
 
-const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
-  renderWithConsoleQuery(ui, {
-    systemFeatures: {
-      rbac_enabled: mockIsRbacEnabled,
-    },
+let dataset: ReturnType<typeof createDatasetFixture> | undefined
+const { loadDataset } = vi.hoisted(() => ({ loadDataset: vi.fn() }))
+const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.defaultModel.get.queryKey({
+      input: { query: { model_type: 'text-embedding' } },
+    }),
+    { data: null },
+  )
+  if (dataset)
+    queryClient.setQueryData(
+      consoleQuery.datasets.byDatasetId.get.queryKey({
+        input: { params: { dataset_id: 'dataset-1' } },
+      }),
+      dataset,
+    )
+  queryClient.setQueryData(consoleQuery.auth.plugin.datasource.defaultList.get.queryKey(), {
+    result: [],
   })
+  return renderWithConsoleQuery(ui, {
+    queryClient,
+    systemFeatures: { rbac_enabled: mockIsRbacEnabled },
+  })
+}
 
 vi.mock('@/next/navigation', () => mockNavigation)
-
-const { mockDatasetDetailQuery } = vi.hoisted(() => ({ mockDatasetDetailQuery: vi.fn() }))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useDefaultModel: () => ({ data: undefined }),
-}))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'datasets.byDatasetId.get': mockDatasetDetailQuery,
-    'auth.plugin.datasource.defaultList.get': () => ({
-      data: { result: [] },
-      isLoading: false,
-      isError: false,
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.get': loadDataset,
     }),
-  })
+  }
 })
 
 vi.mock('@/app/components/datasets/create/step-one', () => ({
@@ -86,6 +102,8 @@ const mockUsePathname = mockNavigation.usePathname
 describe('DatasetDetailLayout', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    loadDataset.mockReset()
+    dataset = undefined
     document.title = ''
     mockIsRbacEnabled = true
     mockUsePathname.mockReturnValue('/datasets/dataset-1/documents')
@@ -106,17 +124,13 @@ describe('DatasetDetailLayout', () => {
       ['/datasets/dataset-1/api', 'common.appMenus.apiAccess'],
     ])('identifies the current detail page for %s', async (pathname, pageTitle) => {
       mockUsePathname.mockReturnValue(pathname)
-      mockDatasetDetailQuery.mockReturnValue({
-        data: {
-          id: 'dataset-1',
-          name: 'Dataset 1',
-          provider: 'vendor',
-          runtime_mode: 'general',
-          is_published: true,
-          permission_keys: Object.values(DatasetACLPermission),
-        },
-        error: null,
-        refetch: vi.fn(),
+      dataset = createDatasetFixture({
+        id: 'dataset-1',
+        name: 'Dataset 1',
+        provider: 'vendor',
+        runtime_mode: 'general',
+        is_published: true,
+        permission_keys: Object.values(DatasetACLPermission),
       })
 
       render(
@@ -135,17 +149,13 @@ describe('DatasetDetailLayout', () => {
       '/datasets/dataset-1/documents/document-1/settings',
     ])('delegates the document title for %s to the document page', (pathname) => {
       mockUsePathname.mockReturnValue(pathname)
-      mockDatasetDetailQuery.mockReturnValue({
-        data: {
-          id: 'dataset-1',
-          name: 'Dataset 1',
-          provider: 'vendor',
-          runtime_mode: 'general',
-          is_published: true,
-          permission_keys: Object.values(DatasetACLPermission),
-        },
-        error: null,
-        refetch: vi.fn(),
+      dataset = createDatasetFixture({
+        id: 'dataset-1',
+        name: 'Dataset 1',
+        provider: 'vendor',
+        runtime_mode: 'general',
+        is_published: true,
+        permission_keys: Object.values(DatasetACLPermission),
       })
 
       render(
@@ -159,17 +169,13 @@ describe('DatasetDetailLayout', () => {
 
     it('keeps the dataset title when the document creation route is composed', async () => {
       mockUsePathname.mockReturnValue('/datasets/dataset-1/documents/create')
-      mockDatasetDetailQuery.mockReturnValue({
-        data: {
-          id: 'dataset-1',
-          name: 'Dataset 1',
-          provider: 'vendor',
-          runtime_mode: 'general',
-          is_published: true,
-          permission_keys: Object.values(DatasetACLPermission),
-        },
-        error: null,
-        refetch: vi.fn(),
+      dataset = createDatasetFixture({
+        id: 'dataset-1',
+        name: 'Dataset 1',
+        provider: 'vendor',
+        runtime_mode: 'general',
+        is_published: true,
+        permission_keys: Object.values(DatasetACLPermission),
       })
       const page = await CreateDocumentsPage({
         params: Promise.resolve({ datasetId: 'dataset-1' }),
@@ -189,11 +195,7 @@ describe('DatasetDetailLayout', () => {
       'should redirect to datasets page when dataset detail returns %s',
       async (status) => {
         // Arrange
-        mockDatasetDetailQuery.mockReturnValue({
-          data: undefined,
-          error: createHttpError(new Response(null, { status })),
-          refetch: vi.fn(),
-        })
+        loadDataset.mockRejectedValue(createHttpError(new Response(null, { status })))
 
         // Act
         render(
@@ -212,45 +214,15 @@ describe('DatasetDetailLayout', () => {
   })
 
   describe('Rendering', () => {
-    it('should render children when dataset detail is available', () => {
-      // Arrange
-      mockDatasetDetailQuery.mockReturnValue({
-        data: {
-          id: 'dataset-1',
-          name: 'Dataset 1',
-          provider: 'vendor',
-          runtime_mode: 'rag_pipeline',
-          is_published: true,
-        },
-        error: null,
-        refetch: vi.fn(),
-      })
-
-      // Act
-      render(
-        <DatasetDetailLayout datasetId="dataset-1">
-          <div>Pipeline content</div>
-        </DatasetDetailLayout>,
-      )
-
-      // Assert
-      expect(screen.getByText('Pipeline content')).toBeInTheDocument()
-      expect(mockReplace).not.toHaveBeenCalled()
-    })
-
     it('should render document creation route content without owning the main skip target', () => {
       // Arrange
       mockUsePathname.mockReturnValue('/datasets/dataset-1/documents/create')
-      mockDatasetDetailQuery.mockReturnValue({
-        data: {
-          id: 'dataset-1',
-          name: 'Dataset 1',
-          provider: 'vendor',
-          runtime_mode: 'rag_pipeline',
-          is_published: true,
-        },
-        error: null,
-        refetch: vi.fn(),
+      dataset = createDatasetFixture({
+        id: 'dataset-1',
+        name: 'Dataset 1',
+        provider: 'vendor',
+        runtime_mode: 'rag_pipeline',
+        is_published: true,
       })
 
       // Act
@@ -270,17 +242,13 @@ describe('DatasetDetailLayout', () => {
     it('should redirect from hit testing when retrieval recall permission is missing', async () => {
       // Arrange
       mockUsePathname.mockReturnValue('/datasets/dataset-1/hitTesting')
-      mockDatasetDetailQuery.mockReturnValue({
-        data: {
-          id: 'dataset-1',
-          name: 'Dataset 1',
-          provider: 'external',
-          runtime_mode: 'general',
-          is_published: true,
-          permission_keys: [],
-        },
-        error: null,
-        refetch: vi.fn(),
+      dataset = createDatasetFixture({
+        id: 'dataset-1',
+        name: 'Dataset 1',
+        provider: 'external',
+        runtime_mode: 'general',
+        is_published: true,
+        permission_keys: [],
       })
 
       // Act
@@ -300,17 +268,13 @@ describe('DatasetDetailLayout', () => {
     it('should redirect from access config when access config permission is missing', async () => {
       // Arrange
       mockUsePathname.mockReturnValue('/datasets/dataset-1/access-config')
-      mockDatasetDetailQuery.mockReturnValue({
-        data: {
-          id: 'dataset-1',
-          name: 'Dataset 1',
-          provider: 'vendor',
-          runtime_mode: 'general',
-          is_published: true,
-          permission_keys: [],
-        },
-        error: null,
-        refetch: vi.fn(),
+      dataset = createDatasetFixture({
+        id: 'dataset-1',
+        name: 'Dataset 1',
+        provider: 'vendor',
+        runtime_mode: 'general',
+        is_published: true,
+        permission_keys: [],
       })
 
       // Act
@@ -330,17 +294,13 @@ describe('DatasetDetailLayout', () => {
     it('should render access config when access config permission is granted', () => {
       // Arrange
       mockUsePathname.mockReturnValue('/datasets/dataset-1/access-config')
-      mockDatasetDetailQuery.mockReturnValue({
-        data: {
-          id: 'dataset-1',
-          name: 'Dataset 1',
-          provider: 'vendor',
-          runtime_mode: 'general',
-          is_published: true,
-          permission_keys: [DatasetACLPermission.AccessConfig],
-        },
-        error: null,
-        refetch: vi.fn(),
+      dataset = createDatasetFixture({
+        id: 'dataset-1',
+        name: 'Dataset 1',
+        provider: 'vendor',
+        runtime_mode: 'general',
+        is_published: true,
+        permission_keys: [DatasetACLPermission.AccessConfig],
       })
 
       // Act
@@ -359,17 +319,13 @@ describe('DatasetDetailLayout', () => {
       // Arrange
       mockIsRbacEnabled = false
       mockUsePathname.mockReturnValue('/datasets/dataset-1/access-config')
-      mockDatasetDetailQuery.mockReturnValue({
-        data: {
-          id: 'dataset-1',
-          name: 'Dataset 1',
-          provider: 'vendor',
-          runtime_mode: 'general',
-          is_published: true,
-          permission_keys: [DatasetACLPermission.AccessConfig],
-        },
-        error: null,
-        refetch: vi.fn(),
+      dataset = createDatasetFixture({
+        id: 'dataset-1',
+        name: 'Dataset 1',
+        provider: 'vendor',
+        runtime_mode: 'general',
+        is_published: true,
+        permission_keys: [DatasetACLPermission.AccessConfig],
       })
 
       // Act

@@ -1,32 +1,21 @@
 import type { ComponentProps } from 'react'
 import type { SiteInfo } from '@/models/share'
+import { gunzipSync } from 'node:zlib'
 import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
-import { act } from 'react'
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vite-plus/test'
+import { afterAll, afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { InputVarType } from '@/app/components/workflow/types'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { EmbeddedDialogContent } from '../index'
 
-vi.mock('../style.module.css', () => ({
-  default: {
-    option: 'option',
-    active: 'active',
-    iframeIcon: 'iframeIcon',
-    scriptsIcon: 'scriptsIcon',
-    chromePluginIcon: 'chromePluginIcon',
-    pluginInstallIcon: 'pluginInstallIcon',
-  },
-}))
 vi.mock('copy-to-clipboard', () => ({
   default: vi.fn(),
 }))
 const mockWindowOpen = vi.spyOn(window, 'open').mockImplementation(() => null)
 const mockedCopy = vi.mocked(copy)
-const originalCompressionStream = globalThis.CompressionStream
 
 const siteInfo: SiteInfo = {
   title: 'test site',
@@ -52,22 +41,6 @@ function EmbeddedDialog(props: ComponentProps<typeof EmbeddedDialogContent>) {
 const getCopyButton = () => screen.getByRole('button', { name: /copy/i })
 
 describe('EmbeddedDialog', () => {
-  beforeAll(() => {
-    class MockCompressionStream {
-      readable: ReadableStream<Uint8Array>
-      writable: WritableStream<Uint8Array>
-
-      constructor() {
-        const transformStream = new TransformStream<Uint8Array, Uint8Array>()
-        this.readable = transformStream.readable
-        this.writable = transformStream.writable
-      }
-    }
-
-    // @ts-expect-error test polyfill
-    globalThis.CompressionStream = MockCompressionStream
-  })
-
   afterEach(() => {
     vi.clearAllMocks()
     mockWindowOpen.mockClear()
@@ -75,15 +48,12 @@ describe('EmbeddedDialog', () => {
 
   afterAll(() => {
     mockWindowOpen.mockRestore()
-    globalThis.CompressionStream = originalCompressionStream
   })
 
   it('copies iframe snippet', async () => {
     const user = userEvent.setup()
 
-    await act(async () => {
-      render(<EmbeddedDialog {...baseProps} />)
-    })
+    render(<EmbeddedDialog {...baseProps} />)
     await user.click(screen.getByRole('button', { name: /embedIntoSite/ }))
 
     await waitFor(() => {
@@ -105,9 +75,7 @@ describe('EmbeddedDialog', () => {
 
   it('links each embed method tab to a panel and supports arrow key selection', async () => {
     const user = userEvent.setup()
-    await act(async () => {
-      render(<EmbeddedDialog {...baseProps} />)
-    })
+    render(<EmbeddedDialog {...baseProps} />)
     await user.click(screen.getByRole('button', { name: /embedIntoSite/ }))
 
     const iframe = screen.getByRole('tab', {
@@ -144,9 +112,7 @@ describe('EmbeddedDialog', () => {
 
   it('opens chrome plugin store link when chrome option selected', async () => {
     const user = userEvent.setup()
-    await act(async () => {
-      render(<EmbeddedDialog {...baseProps} />)
-    })
+    render(<EmbeddedDialog {...baseProps} />)
     await user.click(screen.getByRole('button', { name: /embedIntoSite/ }))
 
     await user.click(
@@ -205,29 +171,19 @@ describe('EmbeddedDialog', () => {
 
     expect(screen.queryByLabelText('Secret')).not.toBeInTheDocument()
 
-    await act(async () => {
-      fireEvent.click(
-        screen
-          .getByText('appOverview.overview.appInfo.embedded.hiddenInputs.title')
-          .closest('button')!,
-      )
-    })
-
-    await waitFor(() => {
-      expect(screen.getByLabelText('Secret')).toBeInTheDocument()
-    })
-
-    await act(async () => {
-      fireEvent.change(screen.getByLabelText('Secret'), {
-        target: { value: 'top-secret' },
-      })
-    })
+    await user.click(screen.getByRole('button', { name: /hiddenInputs.title/ }))
+    await user.type(await screen.findByLabelText('Secret'), 'top-secret')
 
     expect(document.querySelector('pre')?.textContent ?? '').toContain('/chatbot/token')
 
     await waitFor(() => {
       const codeBlock = document.querySelector('pre')
-      expect(codeBlock?.textContent ?? '').toContain('/chatbot/token?secret=dG9wLXNlY3JldA%3D%3D')
+      const snippet = new DOMParser().parseFromString(codeBlock?.textContent ?? '', 'text/html')
+      const iframe = snippet.querySelector('iframe')!
+      const secret = new URL(iframe.src).searchParams.get('secret')!
+      expect(
+        gunzipSync(Uint8Array.from(atob(secret), (char) => char.charCodeAt(0))).toString('utf8'),
+      ).toBe('top-secret')
     })
 
     await user.click(
@@ -245,9 +201,7 @@ describe('EmbeddedDialog', () => {
   it('copies script content when scripts option is selected', async () => {
     const user = userEvent.setup()
 
-    await act(async () => {
-      render(<EmbeddedDialog {...baseProps} />)
-    })
+    render(<EmbeddedDialog {...baseProps} />)
     await user.click(screen.getByRole('button', { name: /embedIntoSite/ }))
 
     await user.click(
@@ -273,9 +227,7 @@ describe('EmbeddedDialog', () => {
   it('copies chrome plugin URL (without prefix) when chromePlugin option is selected', async () => {
     const user = userEvent.setup()
 
-    await act(async () => {
-      render(<EmbeddedDialog {...baseProps} />)
-    })
+    render(<EmbeddedDialog {...baseProps} />)
     await user.click(screen.getByRole('button', { name: /embedIntoSite/ }))
 
     await user.click(

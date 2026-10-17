@@ -61,7 +61,11 @@ function renderDependencies() {
 }
 
 describe('usePluginDependencies', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    mocks.request.mockReset()
+    mocks.pipeline.mockReset()
+    useStore.getState().setDependencies([])
+  })
 
   it('stores generated dependencies with nullable versions and clears an omitted dependency list', async () => {
     const dependency = {

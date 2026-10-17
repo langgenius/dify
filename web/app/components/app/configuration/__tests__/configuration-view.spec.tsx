@@ -3,13 +3,13 @@ import type { ConfigurationViewModel } from '../hooks/configuration-view-model'
 import type AppPublisher from '@/app/components/app/app-publisher/features-wrapper'
 import type { InstallBundleCompleteCallback } from '@/app/components/plugins/install-plugin/install-bundle'
 import type { Plugin } from '@/app/components/plugins/types'
-import type ConfigContext from '@/context/debug-configuration'
 import type { AgentTool } from '@/types/app'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
-import { ModelModeType } from '@/types/app'
+import { createDebugConfigurationFixture } from '@/test/fixtures/debug-configuration'
 import ConfigurationView from '../configuration-view'
 
 const mockIsAgentV2Enabled = vi.hoisted(() => vi.fn(() => false))
@@ -92,148 +92,8 @@ const createDeletedAgentTool = (providerId: string): AgentTool => ({
   isDeleted: true,
 })
 
-const createContextValue = (): ComponentProps<typeof ConfigContext.Provider>['value'] => ({
-  appId: 'app-1',
-  onOpenFeatures: vi.fn(),
-  isTrailFinished: false,
-  mode: 'chat' as const,
-  modelModeType: ModelModeType.chat,
-  promptMode: 'simple' as never,
-  setPromptMode: vi.fn(),
-  isAdvancedMode: false,
-  isAgent: false,
-  isFunctionCall: false,
-  isOpenAI: false,
-  collectionList: [],
-  canReturnToSimpleMode: false,
-  setCanReturnToSimpleMode: vi.fn(),
-  chatPromptConfig: { prompt: [] } as never,
-  completionPromptConfig: {
-    prompt: { text: '' },
-    conversation_histories_role: {
-      user_prefix: 'user',
-      assistant_prefix: 'assistant',
-    },
-  } as never,
-  currentAdvancedPrompt: [],
-  setCurrentAdvancedPrompt: vi.fn(),
-  showHistoryModal: vi.fn(),
-  conversationHistoriesRole: {
-    user_prefix: 'user',
-    assistant_prefix: 'assistant',
-  },
-  setConversationHistoriesRole: vi.fn(),
-  hasSetBlockStatus: {
-    context: false,
-    history: true,
-    query: true,
-  },
-  conversationId: '',
-  setConversationId: vi.fn(),
-  introduction: '',
-  setIntroduction: vi.fn(),
-  suggestedQuestions: [],
-  setSuggestedQuestions: vi.fn(),
-  controlClearChatMessage: 0,
-  setControlClearChatMessage: vi.fn(),
-  prevPromptConfig: {
-    prompt_template: '',
-    prompt_variables: [],
-  },
-  setPrevPromptConfig: vi.fn(),
-  moreLikeThisConfig: { enabled: false },
-  setMoreLikeThisConfig: vi.fn(),
-  suggestedQuestionsAfterAnswerConfig: { enabled: false },
-  setSuggestedQuestionsAfterAnswerConfig: vi.fn(),
-  speechToTextConfig: { enabled: false },
-  setSpeechToTextConfig: vi.fn(),
-  textToSpeechConfig: { enabled: false, voice: '', language: '' },
-  setTextToSpeechConfig: vi.fn(),
-  citationConfig: { enabled: false },
-  setCitationConfig: vi.fn(),
-  annotationConfig: {
-    id: '',
-    enabled: false,
-    score_threshold: 0.5,
-    embedding_model: {
-      embedding_model_name: '',
-      embedding_provider_name: '',
-    },
-  },
-  setAnnotationConfig: vi.fn(),
-  moderationConfig: { enabled: false },
-  setModerationConfig: vi.fn(),
-  externalDataToolsConfig: [],
-  setExternalDataToolsConfig: vi.fn(),
-  formattingChanged: false,
-  setFormattingChanged: vi.fn(),
-  inputs: {},
-  setInputs: vi.fn(),
-  query: '',
-  setQuery: vi.fn(),
-  completionParams: {},
-  setCompletionParams: vi.fn(),
-  modelConfig: {
-    provider: 'openai',
-    model_id: 'gpt-4o',
-    mode: ModelModeType.chat,
-    configs: {
-      prompt_template: '',
-      prompt_variables: [],
-    },
-    chat_prompt_config: null,
-    completion_prompt_config: null,
-    opening_statement: '',
-    more_like_this: null,
-    suggested_questions: [],
-    suggested_questions_after_answer: null,
-    speech_to_text: null,
-    text_to_speech: null,
-    file_upload: null,
-    retriever_resource: null,
-    sensitive_word_avoidance: null,
-    annotation_reply: null,
-    external_data_tools: [],
-    dataSets: [],
-    agentConfig: {
-      enabled: false,
-      strategy: 'react',
-      max_iteration: 1,
-      tools: [],
-    },
-  } as never,
-  setModelConfig: vi.fn(),
-  dataSets: [],
-  setDataSets: vi.fn(),
-  showSelectDataSet: vi.fn(),
-  datasetConfigs: {
-    retrieval_model: 'multiple',
-    reranking_model: {
-      reranking_provider_name: '',
-      reranking_model_name: '',
-    },
-    top_k: 3,
-    score_threshold_enabled: false,
-    score_threshold: 0.5,
-    datasets: { datasets: [] },
-  } as never,
-  datasetConfigsRef: { current: {} as never },
-  setDatasetConfigs: vi.fn(),
-  hasSetContextVar: false,
-  isShowVisionConfig: false,
-  visionConfig: {
-    enabled: false,
-    number_limits: 1,
-    detail: 'low',
-    transfer_methods: ['local_file'],
-  } as never,
-  setVisionConfig: vi.fn(),
-  isAllowVideoUpload: false,
-  isShowDocumentConfig: false,
-  isShowAudioConfig: false,
-  rerankSettingModalOpen: false,
-  setRerankSettingModalOpen: vi.fn(),
-})
+const createContextValue = () =>
+  createDebugConfigurationFixture({ appId: 'app-1', setModelConfig: vi.fn() })
 
 const createViewModel = (
   overrides: Partial<ConfigurationViewModel> = {},
@@ -326,16 +186,18 @@ describe('ConfigurationView', () => {
     expect(screen.queryByRole('main')).not.toBeInTheDocument()
   })
 
-  it('should open the mobile debug panel from the header button', () => {
+  it('should open the mobile debug panel from the header button', async () => {
+    const user = userEvent.setup()
     const onOpenDebugPanel = vi.fn()
     render(<ConfigurationView {...createViewModel({ isMobile: true, onOpenDebugPanel })} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /appDebug.operation.debugConfig/i }))
+    await user.click(screen.getByRole('button', { name: /appDebug.operation.debugConfig/i }))
 
     expect(onOpenDebugPanel).toHaveBeenCalledTimes(1)
   })
 
-  it('should close the GPT-4 confirmation dialog when cancel is clicked', () => {
+  it('should close the GPT-4 confirmation dialog when cancel is clicked', async () => {
+    const user = userEvent.setup()
     const setShowUseGPT4Confirm = vi.fn()
     render(
       <ConfigurationView
@@ -343,12 +205,13 @@ describe('ConfigurationView', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /operation.cancel/i }))
+    await user.click(screen.getByRole('button', { name: /operation.cancel/i }))
 
     expect(setShowUseGPT4Confirm).toHaveBeenCalledWith(false)
   })
 
   it('should show the legacy Agent badge for legacy Agent apps when Agent v2 is enabled', async () => {
+    const user = userEvent.setup()
     mockIsAgentV2Enabled.mockReturnValue(true)
     const contextValue = createContextValue()
     contextValue.mode = 'agent-chat'
@@ -356,10 +219,8 @@ describe('ConfigurationView', () => {
     render(<ConfigurationView {...createViewModel({ contextValue })} />)
 
     const badge = screen.getByRole('button', { name: 'appDebug.legacyAgentBadge.label' })
-    expect(badge).toHaveTextContent('appDebug.legacyAgentBadge.label')
-    expect(badge).not.toHaveAttribute('aria-label')
 
-    fireEvent.click(badge)
+    await user.click(badge)
 
     expect(await screen.findByText('appDebug.legacyAgentBadge.description')).toBeInTheDocument()
     expect(

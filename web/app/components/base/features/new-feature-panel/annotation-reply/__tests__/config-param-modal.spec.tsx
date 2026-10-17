@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
 import ConfigParamModal from '../config-param-modal'
@@ -37,10 +37,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
   ),
 }))
 
-vi.mock('@/config', () => ({
-  ANNOTATION_DEFAULT: { score_threshold: 0.9 },
-}))
-
 const defaultAnnotationConfig = {
   id: 'test-id',
   enabled: false,
@@ -52,11 +48,11 @@ const defaultAnnotationConfig = {
 }
 
 describe('ConfigParamModal', () => {
-  const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
+  let toastErrorSpy: typeof toast.error
 
   beforeEach(() => {
     vi.clearAllMocks()
-    toastErrorSpy.mockClear()
+    toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
     mockHooksReturn = {
       modelList: [
         { provider: { provider: 'openai' }, models: [{ model: 'text-embedding-ada-002' }] },
@@ -65,6 +61,8 @@ describe('ConfigParamModal', () => {
       currentModel: true,
     }
   })
+
+  afterEach(() => vi.restoreAllMocks())
 
   it('should not render when isShow is false', () => {
     render(
@@ -80,109 +78,6 @@ describe('ConfigParamModal', () => {
     expect(screen.queryByText(/initSetup/)).not.toBeInTheDocument()
   })
 
-  it('should render init title when isInit is true', () => {
-    render(
-      <ConfigParamModal
-        appId="test-app"
-        isShow={true}
-        isInit={true}
-        onHide={vi.fn()}
-        onSave={vi.fn()}
-        annotationConfig={defaultAnnotationConfig}
-      />,
-    )
-
-    expect(screen.getByText(/initSetup\.title/)).toBeInTheDocument()
-  })
-
-  it('should render config title when isInit is false', () => {
-    render(
-      <ConfigParamModal
-        appId="test-app"
-        isShow={true}
-        isInit={false}
-        onHide={vi.fn()}
-        onSave={vi.fn()}
-        annotationConfig={defaultAnnotationConfig}
-      />,
-    )
-
-    expect(screen.getByText(/initSetup\.configTitle/)).toBeInTheDocument()
-  })
-
-  it('should render score slider', () => {
-    render(
-      <ConfigParamModal
-        appId="test-app"
-        isShow={true}
-        onHide={vi.fn()}
-        onSave={vi.fn()}
-        annotationConfig={defaultAnnotationConfig}
-      />,
-    )
-
-    expect(screen.getByRole('slider')).toBeInTheDocument()
-  })
-
-  it('should render model selector', () => {
-    render(
-      <ConfigParamModal
-        appId="test-app"
-        isShow={true}
-        onHide={vi.fn()}
-        onSave={vi.fn()}
-        annotationConfig={defaultAnnotationConfig}
-      />,
-    )
-
-    expect(screen.getByTestId('model-selector')).toBeInTheDocument()
-  })
-
-  it('should render cancel and confirm buttons', () => {
-    render(
-      <ConfigParamModal
-        appId="test-app"
-        isShow={true}
-        isInit={true}
-        onHide={vi.fn()}
-        onSave={vi.fn()}
-        annotationConfig={defaultAnnotationConfig}
-      />,
-    )
-
-    expect(screen.getByText(/operation\.cancel/)).toBeInTheDocument()
-    expect(screen.getByText(/initSetup\.confirmBtn/)).toBeInTheDocument()
-  })
-
-  it('should display score threshold value', () => {
-    render(
-      <ConfigParamModal
-        appId="test-app"
-        isShow={true}
-        onHide={vi.fn()}
-        onSave={vi.fn()}
-        annotationConfig={defaultAnnotationConfig}
-      />,
-    )
-
-    expect(screen.getByRole('slider')).toHaveValue('0.9')
-  })
-
-  it('should render configConfirmBtn when isInit is false', () => {
-    render(
-      <ConfigParamModal
-        appId="test-app"
-        isShow={true}
-        isInit={false}
-        onHide={vi.fn()}
-        onSave={vi.fn()}
-        annotationConfig={defaultAnnotationConfig}
-      />,
-    )
-
-    expect(screen.getByText(/initSetup\.configConfirmBtn/)).toBeInTheDocument()
-  })
-
   it('should call onSave with embedding model and score when save is clicked', async () => {
     const onSave = vi.fn().mockResolvedValue(undefined)
     render(
@@ -196,9 +91,9 @@ describe('ConfigParamModal', () => {
     )
 
     // Click the confirm/save button
-    const buttons = screen.getAllByRole('button')
-    const saveBtn = buttons.find((b) => b.textContent?.includes('initSetup'))
-    fireEvent.click(saveBtn!)
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: /initSetup\.configConfirmBtn/ }))
 
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith(
@@ -208,7 +103,7 @@ describe('ConfigParamModal', () => {
     })
   })
 
-  it('should show error toast when embedding model is not set', () => {
+  it('should show error toast when embedding model is not set', async () => {
     const configWithoutModel = {
       ...defaultAnnotationConfig,
       embedding_model: undefined as unknown as typeof defaultAnnotationConfig.embedding_model,
@@ -231,16 +126,16 @@ describe('ConfigParamModal', () => {
       />,
     )
 
-    const buttons = screen.getAllByRole('button')
-    const saveBtn = buttons.find((b) => b.textContent?.includes('initSetup'))
-    fireEvent.click(saveBtn!)
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: /initSetup\.configConfirmBtn/ }))
 
     expect(toastErrorSpy).toHaveBeenCalledWith(
       'modelProvider.modelProvider.embeddingModel.required',
     )
   })
 
-  it('should call onHide when cancel is clicked and not loading', () => {
+  it('should call onHide when cancel is clicked and not loading', async () => {
     const onHide = vi.fn()
     render(
       <ConfigParamModal
@@ -252,73 +147,9 @@ describe('ConfigParamModal', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText(/operation\.cancel/))
+    await userEvent.setup().click(screen.getByText(/operation\.cancel/))
 
     expect(onHide).toHaveBeenCalled()
-  })
-
-  it('should render slider with expected bounds and current value', () => {
-    render(
-      <ConfigParamModal
-        appId="test-app"
-        isShow={true}
-        onHide={vi.fn()}
-        onSave={vi.fn()}
-        annotationConfig={defaultAnnotationConfig}
-      />,
-    )
-
-    const slider = screen.getByRole('slider')
-    expect(slider).toHaveAttribute('min', '0')
-    expect(slider).toHaveAttribute('max', '1')
-    expect(slider).toHaveValue('0.9')
-  })
-
-  it('should update embedding model when model selector is used', () => {
-    render(
-      <ConfigParamModal
-        appId="test-app"
-        isShow={true}
-        onHide={vi.fn()}
-        onSave={vi.fn()}
-        annotationConfig={defaultAnnotationConfig}
-      />,
-    )
-
-    // Click the select model button in mock
-    fireEvent.click(screen.getByTestId('select-model'))
-
-    // Model selector should now show the new provider/model
-    expect(screen.getByTestId('model-selector')).toHaveAttribute('data-provider', 'cohere')
-    expect(screen.getByTestId('model-selector')).toHaveAttribute('data-model', 'embed-english')
-  })
-
-  it('should call onSave with updated score from annotation config', async () => {
-    const onSave = vi.fn().mockResolvedValue(undefined)
-    render(
-      <ConfigParamModal
-        appId="test-app"
-        isShow={true}
-        onHide={vi.fn()}
-        onSave={onSave}
-        annotationConfig={{
-          ...defaultAnnotationConfig,
-          score_threshold: 0.95,
-        }}
-      />,
-    )
-
-    // Save
-    const buttons = screen.getAllByRole('button')
-    const saveBtn = buttons.find((b) => b.textContent?.includes('initSetup'))
-    fireEvent.click(saveBtn!)
-
-    await waitFor(() => {
-      expect(onSave).toHaveBeenCalledWith(
-        expect.objectContaining({ embedding_provider_name: 'openai' }),
-        0.95,
-      )
-    })
   })
 
   it('should call onSave with updated model after model selector change', async () => {
@@ -334,12 +165,12 @@ describe('ConfigParamModal', () => {
     )
 
     // Change model
-    fireEvent.click(screen.getByTestId('select-model'))
+    await userEvent.setup().click(screen.getByTestId('select-model'))
 
     // Save
-    const buttons = screen.getAllByRole('button')
-    const saveBtn = buttons.find((b) => b.textContent?.includes('initSetup'))
-    fireEvent.click(saveBtn!)
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: /initSetup\.configConfirmBtn/ }))
 
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith(
@@ -372,22 +203,50 @@ describe('ConfigParamModal', () => {
     )
   })
 
-  it('should use ANNOTATION_DEFAULT score_threshold when config has no score_threshold', () => {
-    const configWithoutThreshold = {
-      ...defaultAnnotationConfig,
-      score_threshold: undefined as unknown as number,
-    }
+  it('saves the displayed default threshold when the configuration omits it', async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined)
     render(
       <ConfigParamModal
         appId="test-app"
-        isShow={true}
+        isShow
         onHide={vi.fn()}
-        onSave={vi.fn()}
-        annotationConfig={configWithoutThreshold}
+        onSave={onSave}
+        annotationConfig={{
+          ...defaultAnnotationConfig,
+          score_threshold: undefined as unknown as number,
+        }}
       />,
     )
-
     expect(screen.getByRole('slider')).toHaveValue('0.9')
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: /initSetup\.configConfirmBtn/ }))
+    expect(onSave).toHaveBeenCalledWith(defaultAnnotationConfig.embedding_model, 0.9)
+  })
+
+  it('leaves the form usable after a failed save', async () => {
+    const onSave = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('save failed'))
+      .mockResolvedValue(undefined)
+    const onHide = vi.fn()
+    render(
+      <ConfigParamModal
+        appId="test-app"
+        isShow
+        onHide={onHide}
+        onSave={onSave}
+        annotationConfig={defaultAnnotationConfig}
+      />,
+    )
+    const user = userEvent.setup()
+    const save = screen.getByRole('button', { name: /initSetup\.configConfirmBtn/ })
+    await user.click(save)
+    await waitFor(() => expect(toastErrorSpy).toHaveBeenCalledWith('common.api.actionFailed'))
+    await user.click(save)
+    expect(onSave).toHaveBeenCalledTimes(2)
+    await user.click(screen.getByRole('button', { name: /operation\.cancel/ }))
+    expect(onHide).toHaveBeenCalledOnce()
   })
 
   it('should preserve zero score threshold instead of falling back to default', async () => {
@@ -407,9 +266,9 @@ describe('ConfigParamModal', () => {
 
     expect(screen.getByRole('slider')).toHaveValue('0')
 
-    const buttons = screen.getAllByRole('button')
-    const saveBtn = buttons.find((b) => b.textContent?.includes('initSetup'))
-    fireEvent.click(saveBtn!)
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: /initSetup\.configConfirmBtn/ }))
 
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith(
@@ -440,19 +299,18 @@ describe('ConfigParamModal', () => {
     )
 
     // Click save
-    const buttons = screen.getAllByRole('button')
-    const saveBtn = buttons.find((b) => b.textContent?.includes('initSetup'))
-    fireEvent.click(saveBtn!)
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: /initSetup\.configConfirmBtn/ }))
 
     // While loading, clicking cancel should not call onHide
-    fireEvent.click(screen.getByText(/operation\.cancel/))
+    await userEvent.setup().click(screen.getByText(/operation\.cancel/))
     expect(onHide).not.toHaveBeenCalled()
 
     // Resolve the save
-    resolveOnSave!()
-    await waitFor(() => {
-      expect(onSave).toHaveBeenCalled()
-    })
+    await act(async () => resolveOnSave!())
+    await userEvent.setup().click(screen.getByRole('button', { name: /operation\.cancel/ }))
+    expect(onHide).toHaveBeenCalledOnce()
   })
 
   it('should save updated score after slider changes', async () => {
@@ -473,9 +331,9 @@ describe('ConfigParamModal', () => {
     await user.keyboard('{ArrowRight}')
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('0.91'))
 
-    const buttons = screen.getAllByRole('button')
-    const saveBtn = buttons.find((b) => b.textContent?.includes('initSetup'))
-    fireEvent.click(saveBtn!)
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: /initSetup\.configConfirmBtn/ }))
 
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith(

@@ -138,20 +138,6 @@ describe('ServiceApiAccessPointCard', () => {
     expect(apiReferenceLink).toHaveAttribute('rel', 'noopener noreferrer')
   })
 
-  it('updates API status through the generated contract', async () => {
-    const user = userEvent.setup()
-    renderCard('workflow')
-
-    await user.click(screen.getByRole('switch'))
-
-    await waitFor(() => {
-      expect(mocks.apiEnable.mock.calls[0]?.[0]).toEqual({
-        params: { app_id: 'app-1' },
-        body: { enable_api: false },
-      })
-    })
-  })
-
   it('shows loading without reporting an environment failure', () => {
     renderCard('workflow', 'loading')
 
@@ -218,6 +204,10 @@ describe('ServiceApiAccessPointCard', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('switch')).not.toBeChecked()
+    })
+    expect(mocks.apiEnable).toHaveBeenCalledWith({
+      params: { app_id: 'app-1' },
+      body: { enable_api: false },
     })
     expect(accessSwitch).toHaveAttribute('aria-checked', 'false')
     expect(toast.success).not.toHaveBeenCalled()

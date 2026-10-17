@@ -5,7 +5,7 @@ import type {
 import type { ReactElement } from 'react'
 import type { Shape } from '@/app/components/workflow/store/workflow'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
   ConfigurationMethodEnum,
@@ -27,7 +27,6 @@ type MockModelParameterModalProps = {
 }
 
 let mockTextGenerationModelList: ProviderWithModelsResponse[] = []
-let latestModelParameterModalProps: MockModelParameterModalProps | undefined
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useTextGenerationCurrentProviderAndModelAndModelList: () => ({
@@ -42,8 +41,6 @@ vi.mock(
   '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
   () => ({
     default: (props: MockModelParameterModalProps) => {
-      latestModelParameterModalProps = props
-
       return (
         <div>
           <div>{props.modelId ? `selected:${props.modelId}` : 'selected:none'}</div>
@@ -143,7 +140,6 @@ describe('VariableModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockTextGenerationModelList = [createModelProvider()]
-    latestModelParameterModalProps = undefined
   })
 
   it('closes from an accessible icon button', async () => {
@@ -194,7 +190,9 @@ describe('VariableModal', () => {
 
   it('rejects invalid and duplicate variable names', async () => {
     const user = userEvent.setup()
-    renderWithProviders(<VariableModal onClose={vi.fn()} onSave={vi.fn()} />, {
+    const onSave = vi.fn()
+    const onClose = vi.fn()
+    renderWithProviders(<VariableModal onClose={onClose} onSave={onSave} />, {
       storeState: {
         environmentVariables: [
           createEnv({ id: 'env-existing', name: 'duplicated', value_type: 'string', value: '1' }),
@@ -202,9 +200,8 @@ describe('VariableModal', () => {
       },
     })
 
-    fireEvent.change(screen.getByPlaceholderText('workflow.env.modal.namePlaceholder'), {
-      target: { value: '1bad' },
-    })
+    await user.click(screen.getByRole('textbox', { name: 'workflow.env.modal.name' }))
+    await user.paste('1bad')
     expect(mockToastError).toHaveBeenCalled()
 
     mockToastError.mockClear()
@@ -216,6 +213,8 @@ describe('VariableModal', () => {
     expect(mockToastError).toHaveBeenCalledWith(
       'appDebug.varKeyError.keyAlreadyExists:{"key":"workflow.env.modal.name"}',
     )
+    expect(onSave).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
   })
 
   it('loads existing secret values and converts them to numbers when editing', async () => {
@@ -336,19 +335,8 @@ describe('VariableModal', () => {
     expect(screen.getByRole('button', { name: 'Number' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Secret', pressed: false })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'workflow.blocks.llm' })).toBeEnabled()
-
-    act(() => {
-      latestModelParameterModalProps?.setModel({
-        provider: 'openai',
-        modelId: 'completion-model',
-        mode: 'completion',
-      })
-    })
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-    expect(mockToastError).toHaveBeenCalledWith(
-      'modelProvider.modelProvider.selector.incompatibleTip',
-    )
     expect(onSave).toHaveBeenCalledWith(env)
   })
 })

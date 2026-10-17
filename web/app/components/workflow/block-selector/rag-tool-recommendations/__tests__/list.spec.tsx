@@ -8,7 +8,6 @@ import { BlockEnum } from '../../../types'
 import { createPlugin, createToolProvider } from '../../__tests__/factories'
 import { ViewType } from '../../types'
 import List from '../list'
-import UninstalledItem from '../uninstalled-item'
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: vi.fn(),
@@ -39,6 +38,7 @@ vi.mock(
   }),
 )
 
+// Installation owns its own status/permission tests; this list owns opening the selected package.
 vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () => ({
   default: ({ uniqueIdentifier, onClose }: { uniqueIdentifier: string; onClose: () => void }) => (
     <div data-testid="install-from-marketplace">
@@ -94,11 +94,16 @@ describe('RAG tool recommendations list', () => {
     const user = userEvent.setup()
 
     render(
-      <UninstalledItem
-        payload={createPlugin({
-          latest_package_identifier: 'rag-plugin@1.0.0',
-          label: { en_US: 'RAG Plugin', zh_Hans: 'RAG Plugin' },
-        })}
+      <List
+        tools={[]}
+        viewType={ViewType.flat}
+        onSelect={vi.fn()}
+        unInstalledPlugins={[
+          createPlugin({
+            latest_package_identifier: 'rag-plugin@1.0.0',
+            label: { en_US: 'RAG Plugin', zh_Hans: 'RAG Plugin' },
+          }),
+        ]}
       />,
     )
 
@@ -111,5 +116,7 @@ describe('RAG tool recommendations list', () => {
     await user.keyboard('{Enter}')
 
     expect(screen.getByTestId('install-from-marketplace')).toHaveTextContent('rag-plugin@1.0.0')
+    await user.click(screen.getByRole('button', { name: 'install-close' }))
+    expect(screen.queryByTestId('install-from-marketplace')).not.toBeInTheDocument()
   })
 })

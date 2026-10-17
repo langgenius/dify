@@ -17,15 +17,6 @@ import { ModelModeType } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import { useConfiguration } from '../use-configuration'
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'files.upload.get': () => ({
-      data: undefined,
-    }),
-  })
-})
-
 let mockAppPermissionKeys: string[] = [AppACLPermission.Edit, AppACLPermission.ReleaseAndVersion]
 
 const createRouteAppDetail = (overrides: Partial<AppDetailWithSite> = {}) =>
@@ -41,6 +32,10 @@ const createRouteAppDetail = (overrides: Partial<AppDetailWithSite> = {}) =>
 
 const createSeededQueryClient = (appDetail: Partial<AppDetailWithSite> = {}) => {
   const queryClient = createTestQueryClient()
+  void queryClient.query({
+    ...consoleQuery.files.upload.get.queryOptions(),
+    queryFn: () => new Promise(() => {}),
+  })
   seedAccountProfileQuery(queryClient, { id: 'user-1' })
   seedAppDetail(queryClient, createRouteAppDetail(appDetail))
   return queryClient
@@ -175,44 +170,20 @@ vi.mock('@/service/tools', () => ({
   fetchCollectionList: (...args: unknown[]) => mockFetchCollectionList(...args),
 }))
 
-vi.mock('@/service/console', async () => {
-  const actual = await vi.importActual<typeof import('@/service/console')>('@/service/console')
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleQuery: {
-      ...actual.consoleQuery,
-      files: actual.consoleQuery.files,
-      account: actual.consoleQuery.account,
-      apps: {
-        byAppId: {
-          get: {
-            queryKey: actual.consoleQuery.apps.byAppId.get.queryKey,
-            queryOptions: (
-              options: Parameters<typeof actual.consoleQuery.apps.byAppId.get.queryOptions>[0],
-            ) => ({
-              ...actual.consoleQuery.apps.byAppId.get.queryOptions(options),
-              queryFn: async () => createRouteAppDetail(),
-            }),
-          },
-          modelConfig: {
-            post: {
-              mutationOptions: (options: Record<string, unknown>) => ({
-                ...options,
-                mutationFn: (input: unknown) => mockUpdateModelConfig(input),
-              }),
-            },
-          },
-        },
-      },
-    },
-    consoleClient: {
-      apps: {
-        byAppId: {
-          get: (...args: unknown[]) => mockFetchAppDetailDirect(...args),
-          modelConfig: { post: mockUpdateModelConfig },
-        },
-      },
-    },
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.get': () => createRouteAppDetail(),
+      'apps.byAppId.modelConfig.post': (input) => mockUpdateModelConfig(input),
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.get': (input) => mockFetchAppDetailDirect(input),
+      'apps.byAppId.modelConfig.post': mockUpdateModelConfig,
+    }),
   }
 })
 
@@ -357,6 +328,7 @@ describe('useConfiguration', () => {
     })
 
     expect(result.current.isAdvancedMode).toBe(true)
+    expect(result.current.appPublisherProps.publishedAt).toBe(1710000000000)
     expect(result.current.contextValue.introduction).toBe('hello')
     expect(result.current.contextValue.suggestedQuestions).toEqual(['how are you?'])
     expect(result.current.appPublisherProps.publishedConfig.modelConfig.model_id).toBe('gpt-4o')
@@ -394,7 +366,6 @@ describe('useConfiguration', () => {
       { temperature: 0.7 },
       true,
     )
-    expect(result.current.appPublisherProps.onPublish).toBeDefined()
 
     await act(async () => {
       await result.current.appPublisherProps.onPublish!(undefined, result.current.featuresData)
@@ -403,6 +374,12 @@ describe('useConfiguration', () => {
     expect(consoleClient.apps.byAppId.modelConfig.post).toHaveBeenCalledWith(
       expect.objectContaining({
         params: { app_id: 'app-1' },
+        body: expect.objectContaining({
+          model: expect.objectContaining({
+            name: 'gpt-4.1',
+            completion_params: { temperature: 0.3 },
+          }),
+        }),
       }),
     )
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: detailQueryKey })
@@ -474,41 +451,6 @@ describe('useConfiguration', () => {
     )
   })
 
-  it('should update multiple-model debug configs', async () => {
-    const { result } = renderHook(() => useConfiguration())
-
-    await waitFor(() => {
-      expect(result.current.showLoading).toBe(false)
-    })
-
-    const modelConfigs = [
-      {
-        id: 'model-1',
-        model: 'gpt-4o',
-        provider: 'langgenius/openai/openai',
-        parameters: { temperature: 0.7 },
-      },
-      {
-        id: 'model-2',
-        model: 'gpt-4.1',
-        provider: 'langgenius/openai/openai',
-        parameters: {},
-      },
-      {
-        id: 'model-3',
-        model: '',
-        provider: '',
-        parameters: {},
-      },
-    ]
-
-    act(() => {
-      result.current.onMultipleModelConfigsChange(true, modelConfigs)
-    })
-
-    expect(mockHandleMultipleModelConfigsChange).toHaveBeenCalledWith(true, modelConfigs)
-  })
-
   it('should keep multiple-model debug state when restoring published config', async () => {
     const { result } = renderHook(() => useConfiguration())
 
@@ -565,16 +507,6 @@ describe('useConfiguration', () => {
     expect(result.current.contextValue.modelConfig.provider).toBe('langgenius/openai/openai')
     expect(result.current.contextValue.completionParams).toEqual({ temperature: 0.2 })
     expect(result.current.appPublisherProps.publishedConfig.modelConfig.model_id).toBe('gpt-4.1')
-  })
-
-  it('should expose the latest published time supplied by the app detail', async () => {
-    const { result } = renderHook(() => useConfiguration())
-
-    await waitFor(() => {
-      expect(result.current.showLoading).toBe(false)
-    })
-
-    expect(result.current.appPublisherProps.publishedAt).toBe(1710000000000)
   })
 
   it('should block publishing when app release permission is missing', async () => {
@@ -737,11 +669,12 @@ describe('useConfiguration', () => {
     expect(mockMigrateToDefaultPrompt).toHaveBeenCalled()
 
     act(() => {
-      result.current.onFeaturesChange(undefined as never)
-      result.current.onFeaturesChange({ moreLikeThis: { enabled: true } } as never)
+      result.current.onFeaturesChange({ moreLikeThis: { enabled: true } })
       result.current.onAutoAddPromptVariable([
-        { key: 'city', name: 'City', type: 'string', required: true } as never,
+        { key: 'city', name: 'City', type: 'string', required: true },
       ])
+    })
+    act(() => {
       result.current.onAgentSettingChange({
         enabled: true,
         max_iteration: 5,
@@ -759,6 +692,14 @@ describe('useConfiguration', () => {
     })
 
     expect(result.current.showAppConfigureFeaturesModal).toBe(true)
+    expect(result.current.featuresData.moreLikeThis).toEqual({ enabled: false })
+    expect(result.current.contextValue.modelConfig.configs.prompt_variables).toContainEqual(
+      expect.objectContaining({ key: 'city', name: 'City' }),
+    )
+    expect(result.current.contextValue.modelConfig.agentConfig).toMatchObject({
+      enabled: true,
+      max_iteration: 5,
+    })
     expect(mockFormattingChangedDispatcher).toHaveBeenCalled()
     expect(mockHandleMultipleModelConfigsChange).toHaveBeenCalled()
     expect(Cookies.get(DETAIL_SIDEBAR_COOKIE_NAME)).toBe('collapse')
@@ -770,10 +711,6 @@ describe('useConfiguration', () => {
       user_prefix: 'user',
     })
     expect(result.current.showUseGPT4Confirm).toBe(false)
-
-    act(() => {
-      result.current.appPublisherProps.resetAppConfig?.()
-    })
   })
 
   it('should preserve temporary stops, dataset selections, and manual formatting changes', async () => {

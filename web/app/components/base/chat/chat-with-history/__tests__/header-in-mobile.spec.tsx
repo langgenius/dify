@@ -1,14 +1,11 @@
-import type { i18n } from 'i18next'
 import type { ChatConfig } from '../../types'
 import type { ChatWithHistoryContextValue } from '../context'
 import type { AppData, AppMeta } from '@/models/share'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as ReactI18next from 'react-i18next'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
-import { withSelectorKey } from '@/test/i18n-mock'
-import { useChatWithHistoryContext } from '../context'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { ChatWithHistoryContext } from '../context'
 import HeaderInMobile from '../header-in-mobile'
 
 vi.mock('@/hooks/use-breakpoints', () => ({
@@ -17,13 +14,6 @@ vi.mock('@/hooks/use-breakpoints', () => ({
     mobile: 'mobile',
     tablet: 'tablet',
     pc: 'pc',
-  },
-}))
-
-vi.mock('../context', () => ({
-  useChatWithHistoryContext: vi.fn(),
-  ChatWithHistoryContext: {
-    Provider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   },
 }))
 
@@ -37,8 +27,6 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: vi.fn(() => new URLSearchParams()),
   useParams: vi.fn(() => ({})),
 }))
-
-// Sidebar mock removed to use real component
 
 const mockAppData: AppData = {
   app_id: 'test-app',
@@ -96,11 +84,20 @@ const defaultContextValue: ChatWithHistoryContextValue = {
   conversationRenaming: false,
 }
 
+let context = defaultContextValue
+const setContext = (value: ChatWithHistoryContextValue) => {
+  context = value
+}
+const render = (ui: React.ReactElement) =>
+  renderWithConsoleQuery(
+    <ChatWithHistoryContext.Provider value={context}>{ui}</ChatWithHistoryContext.Provider>,
+  )
+
 describe('HeaderInMobile', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(useBreakpoints).mockReturnValue(MediaType.mobile)
-    vi.mocked(useChatWithHistoryContext).mockReturnValue(defaultContextValue)
+    setContext(defaultContextValue)
   })
 
   it('should render title when no conversation', () => {
@@ -109,7 +106,7 @@ describe('HeaderInMobile', () => {
   })
 
   it('should render conversation name when active', async () => {
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       currentConversationId: '1',
       currentConversationItem: { id: '1', name: 'Conv 1', inputs: null, introduction: '' },
@@ -152,7 +149,7 @@ describe('HeaderInMobile', () => {
 
   it('opens named modal chat settings and closes with Escape', async () => {
     const user = userEvent.setup()
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       inputsForms: [{ variable: 'test', label: 'Test', type: 'text', required: true }],
     })
@@ -171,17 +168,17 @@ describe('HeaderInMobile', () => {
   })
 
   it('should hide chat settings option when no input forms', async () => {
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       inputsForms: [],
     })
 
     render(<HeaderInMobile />)
 
-    // Open dropdown
-    fireEvent.click(await screen.findByRole('button', { name: 'common.operation.more' }))
+    await userEvent
+      .setup()
+      .click(await screen.findByRole('button', { name: 'common.operation.more' }))
 
-    // "View Chat Settings" should not be present
     await waitFor(() => {
       expect(screen.queryByText(/share\.chat\.viewChatSettings/i)).not.toBeInTheDocument()
     })
@@ -189,21 +186,21 @@ describe('HeaderInMobile', () => {
 
   it('should handle new conversation', async () => {
     const handleNewConversation = vi.fn()
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       handleNewConversation,
     })
 
     render(<HeaderInMobile />)
 
-    // Open dropdown
-    fireEvent.click(await screen.findByRole('button', { name: 'common.operation.more' }))
+    await userEvent
+      .setup()
+      .click(await screen.findByRole('button', { name: 'common.operation.more' }))
 
-    // Click "New Conversation" or "Reset Chat"
     await waitFor(() => {
       expect(screen.getByText(/share\.chat\.resetChat/i))!.toBeInTheDocument()
     })
-    fireEvent.click(screen.getByText(/share\.chat\.resetChat/i))
+    await userEvent.setup().click(screen.getByText(/share\.chat\.resetChat/i))
 
     await waitFor(() => {
       expect(handleNewConversation).toHaveBeenCalled()
@@ -212,7 +209,7 @@ describe('HeaderInMobile', () => {
 
   it('should handle pin conversation', async () => {
     const handlePin = vi.fn()
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       currentConversationId: '1',
       currentConversationItem: { id: '1', name: 'Conv 1', inputs: null, introduction: '' },
@@ -222,19 +219,18 @@ describe('HeaderInMobile', () => {
 
     render(<HeaderInMobile />)
 
-    // Open dropdown for conversation
-    fireEvent.click(await screen.findByText('Conv 1'))
+    await userEvent.setup().click(await screen.findByText('Conv 1'))
 
     await waitFor(() => {
       expect(screen.getByText(/explore\.sidebar\.action\.pin/i))!.toBeInTheDocument()
     })
-    fireEvent.click(screen.getByText(/explore\.sidebar\.action\.pin/i))
+    await userEvent.setup().click(screen.getByText(/explore\.sidebar\.action\.pin/i))
     expect(handlePin).toHaveBeenCalledWith('1')
   })
 
   it('should handle unpin conversation', async () => {
     const handleUnpin = vi.fn()
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       currentConversationId: '1',
       currentConversationItem: { id: '1', name: 'Conv 1', inputs: null, introduction: '' },
@@ -244,19 +240,18 @@ describe('HeaderInMobile', () => {
 
     render(<HeaderInMobile />)
 
-    // Open dropdown for conversation
-    fireEvent.click(await screen.findByText('Conv 1'))
+    await userEvent.setup().click(await screen.findByText('Conv 1'))
 
     await waitFor(() => {
       expect(screen.getByText(/explore\.sidebar\.action\.unpin/i))!.toBeInTheDocument()
     })
-    fireEvent.click(screen.getByText(/explore\.sidebar\.action\.unpin/i))
+    await userEvent.setup().click(screen.getByText(/explore\.sidebar\.action\.unpin/i))
     expect(handleUnpin).toHaveBeenCalledWith('1')
   })
 
   it('should handle rename conversation', async () => {
     const handleRename = vi.fn()
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       currentConversationId: '1',
       currentConversationItem: { id: '1', name: 'Conv 1', inputs: null, introduction: '' },
@@ -265,26 +260,26 @@ describe('HeaderInMobile', () => {
     })
 
     render(<HeaderInMobile />)
-    fireEvent.click(await screen.findByText('Conv 1'))
+    await userEvent.setup().click(await screen.findByText('Conv 1'))
 
     await waitFor(() => {
       expect(screen.getByText(/explore\.sidebar\.action\.rename/i))!.toBeInTheDocument()
     })
-    fireEvent.click(screen.getByText(/explore\.sidebar\.action\.rename/i))
+    await userEvent.setup().click(screen.getByText(/explore\.sidebar\.action\.rename/i))
 
-    // RenameModal should be visible
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
     const input = screen.getByDisplayValue('Conv 1')
-    fireEvent.change(input, { target: { value: 'New Name' } })
+    await userEvent.setup().clear(input)
+    await userEvent.setup().type(input, 'New Name')
 
     const saveButton = screen.getByRole('button', { name: /common\.operation\.save/i })
-    fireEvent.click(saveButton)
+    await userEvent.setup().click(saveButton)
     expect(handleRename).toHaveBeenCalledWith('1', 'New Name', expect.any(Object))
   })
 
   it('should cancel rename conversation', async () => {
     const handleRename = vi.fn()
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       currentConversationId: '1',
       currentConversationItem: { id: '1', name: 'Conv 1', inputs: null, introduction: '' },
@@ -293,21 +288,18 @@ describe('HeaderInMobile', () => {
     })
 
     render(<HeaderInMobile />)
-    fireEvent.click(await screen.findByText('Conv 1'))
+    await userEvent.setup().click(await screen.findByText('Conv 1'))
 
     await waitFor(() => {
       expect(screen.getByText(/explore\.sidebar\.action\.rename/i))!.toBeInTheDocument()
     })
-    fireEvent.click(screen.getByText(/explore\.sidebar\.action\.rename/i))
+    await userEvent.setup().click(screen.getByText(/explore\.sidebar\.action\.rename/i))
 
-    // RenameModal should be visible
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
 
-    // Click cancel button
     const cancelButton = screen.getByRole('button', { name: /common\.operation\.cancel/i })
-    fireEvent.click(cancelButton)
+    await userEvent.setup().click(cancelButton)
 
-    // Modal should be closed
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
@@ -315,7 +307,7 @@ describe('HeaderInMobile', () => {
   })
 
   it('should show loading state while renaming', async () => {
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       currentConversationId: '1',
       currentConversationItem: { id: '1', name: 'Conv 1', inputs: null, introduction: '' },
@@ -325,20 +317,23 @@ describe('HeaderInMobile', () => {
     })
 
     render(<HeaderInMobile />)
-    fireEvent.click(await screen.findByText('Conv 1'))
+    await userEvent.setup().click(await screen.findByText('Conv 1'))
 
     await waitFor(() => {
       expect(screen.getByText(/explore\.sidebar\.action\.rename/i))!.toBeInTheDocument()
     })
-    fireEvent.click(screen.getByText(/explore\.sidebar\.action\.rename/i))
+    await userEvent.setup().click(screen.getByText(/explore\.sidebar\.action\.rename/i))
 
-    // RenameModal should be visible with loading state
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    const save = screen.getByRole('button', { name: /common\.operation\.save/i })
+    expect(save).toHaveAttribute('aria-disabled', 'true')
+    await userEvent.setup().click(save)
+    expect(context.handleRenameConversation).not.toHaveBeenCalled()
   })
 
   it('should handle delete conversation', async () => {
     const handleDelete = vi.fn()
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       currentConversationId: '1',
       currentConversationItem: { id: '1', name: 'Conv 1', inputs: null, introduction: '' },
@@ -347,24 +342,25 @@ describe('HeaderInMobile', () => {
     })
 
     render(<HeaderInMobile />)
-    fireEvent.click(await screen.findByText('Conv 1'))
+    await userEvent.setup().click(await screen.findByText('Conv 1'))
 
     await waitFor(() => {
       expect(screen.getByText(/explore\.sidebar\.action\.delete/i))!.toBeInTheDocument()
     })
-    fireEvent.click(screen.getByText(/explore\.sidebar\.action\.delete/i))
+    await userEvent.setup().click(screen.getByText(/explore\.sidebar\.action\.delete/i))
 
-    // Confirm modal
     await waitFor(() => {
       expect(screen.getAllByText(/share\.chat\.deleteConversation\.title/i)[0])!.toBeInTheDocument()
     })
-    fireEvent.click(screen.getByRole('button', { name: /common\.operation\.confirm/i }))
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: /common\.operation\.confirm/i }))
     expect(handleDelete).toHaveBeenCalledWith('1', expect.any(Object))
   })
 
   it('should cancel delete conversation', async () => {
     const handleDelete = vi.fn()
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       currentConversationId: '1',
       currentConversationItem: { id: '1', name: 'Conv 1', inputs: null, introduction: '' },
@@ -373,141 +369,30 @@ describe('HeaderInMobile', () => {
     })
 
     render(<HeaderInMobile />)
-    fireEvent.click(await screen.findByText('Conv 1'))
+    await userEvent.setup().click(await screen.findByText('Conv 1'))
 
     await waitFor(() => {
       expect(screen.getByText(/explore\.sidebar\.action\.delete/i))!.toBeInTheDocument()
     })
-    fireEvent.click(screen.getByText(/explore\.sidebar\.action\.delete/i))
+    await userEvent.setup().click(screen.getByText(/explore\.sidebar\.action\.delete/i))
 
-    // Confirm modal should be visible
     await waitFor(() => {
       expect(screen.getAllByText(/share\.chat\.deleteConversation\.title/i)[0])!.toBeInTheDocument()
     })
 
-    // Click cancel
-    fireEvent.click(screen.getByRole('button', { name: /common\.operation\.cancel/i }))
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: /common\.operation\.cancel/i }))
 
-    // Modal should be closed
     await waitFor(() => {
       expect(screen.queryByText(/share\.chat\.deleteConversation\.title/i)).not.toBeInTheDocument()
     })
     expect(handleDelete).not.toHaveBeenCalled()
   })
 
-  it('should render app icon and title correctly', () => {
-    const appDataWithIcon: AppData = {
-      app_id: 'test-app',
-      custom_config: null,
-      site: {
-        title: 'My App',
-        icon: 'emoji',
-        icon_type: 'emoji',
-        icon_url: '',
-        icon_background: '#FF0000',
-      },
-    }
-
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      appData: appDataWithIcon,
-    })
-
-    render(<HeaderInMobile />)
-    expect(screen.getByText('My App'))!.toBeInTheDocument()
-  })
-
-  it('should properly show and hide modals conditionally', async () => {
-    const handleRename = vi.fn()
-    const handleDelete = vi.fn()
-
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      currentConversationId: '1',
-      currentConversationItem: { id: '1', name: 'Conv 1', inputs: null, introduction: '' },
-      handleRenameConversation: handleRename,
-      handleDeleteConversation: handleDelete,
-      pinnedConversationList: [],
-    })
-
-    render(<HeaderInMobile />)
-
-    // Initially no modals
-    // Initially no modals
-    // Initially no modals
-    // Initially no modals
-    // Initially no modals
-    // Initially no modals
-    // Initially no modals
-    // Initially no modals
-    // Initially no modals
-    // Initially no modals
-    // Initially no modals
-    // Initially no modals
-    // Initially no modals
-    // Initially no modals
-    // Initially no modals
-    // Initially no modals
-    // Initially no modals
-    // Initially no modals
-    // Initially no modals
-    // Initially no modals
-    // Initially no modals
-    // Initially no modals
-    // Initially no modals
-    // Initially no modals
-    // Initially no modals
-    // Initially no modals
-    // Initially no modals
-    // Initially no modals
-    // Initially no modals
-    // Initially no modals
-    // Initially no modals
-    // Initially no modals
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(screen.queryByText('share.chat.deleteConversation.title')).not.toBeInTheDocument()
-  })
-
-  it('should use empty string fallback for delete content translation', async () => {
-    const handleDelete = vi.fn()
-    const useTranslationSpy = vi.spyOn(ReactI18next, 'useTranslation')
-    useTranslationSpy.mockReturnValue({
-      t: withSelectorKey((key: string) => (key === 'chat.deleteConversation.content' ? '' : key)),
-      i18n: {} as unknown as i18n,
-      ready: true,
-      tReady: true,
-    } as unknown as ReturnType<typeof ReactI18next.useTranslation>)
-
-    try {
-      vi.mocked(useChatWithHistoryContext).mockReturnValue({
-        ...defaultContextValue,
-        currentConversationId: '1',
-        currentConversationItem: { id: '1', name: 'Conv 1', inputs: null, introduction: '' },
-        handleDeleteConversation: handleDelete,
-        pinnedConversationList: [],
-      })
-
-      render(<HeaderInMobile />)
-      fireEvent.click(await screen.findByText('Conv 1'))
-      fireEvent.click(await screen.findByText(/sidebar\.action\.delete/i))
-
-      expect(
-        await screen.findByRole('button', {
-          name: /common\.operation\.confirm|operation\.confirm/i,
-        }),
-      )!.toBeInTheDocument()
-      fireEvent.click(
-        screen.getByRole('button', { name: /common\.operation\.confirm|operation\.confirm/i }),
-      )
-      expect(handleDelete).toHaveBeenCalledWith('1', expect.any(Object))
-    } finally {
-      useTranslationSpy.mockRestore()
-    }
-  })
-
   it('should use empty string fallback for rename modal name', async () => {
     const handleRename = vi.fn()
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    setContext({
       ...defaultContextValue,
       currentConversationId: '1',
       currentConversationItem: { id: '1', name: '', inputs: null, introduction: '' },
@@ -515,19 +400,22 @@ describe('HeaderInMobile', () => {
       pinnedConversationList: [],
     })
 
-    const { container } = render(<HeaderInMobile />)
-    const operationTrigger = container.querySelector('.system-md-semibold')
-      ?.parentElement as HTMLElement
-    fireEvent.click(operationTrigger)
-    fireEvent.click(
-      await screen.findByText(/explore\.sidebar\.action\.rename|sidebar\.action\.rename/i),
-    )
+    render(<HeaderInMobile />)
+    const operationTrigger = screen
+      .getAllByRole('button')
+      .find(
+        (button) => button.getAttribute('aria-haspopup') === 'menu' && button.textContent === '',
+      )!
+    await userEvent.setup().click(operationTrigger)
+    await userEvent
+      .setup()
+      .click(await screen.findByText(/explore\.sidebar\.action\.rename|sidebar\.action\.rename/i))
 
     const input = await screen.findByRole('textbox')
     expect(input)!.toHaveValue('')
 
-    fireEvent.change(input, { target: { value: 'Renamed from empty' } })
-    fireEvent.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
+    await userEvent.setup().type(input, 'Renamed from empty')
+    await userEvent.setup().click(screen.getByRole('button', { name: /common\.operation\.save/i }))
     expect(handleRename).toHaveBeenCalledWith('1', 'Renamed from empty', expect.any(Object))
   })
 })

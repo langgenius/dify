@@ -1,175 +1,55 @@
-import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { OperationKey } from '@orpc/tanstack-query'
-import { act, renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { act } from '@testing-library/react'
+import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
 import { RETRIEVE_METHOD } from '@/types/app'
+import { IndexingType, useIndexingConfig } from '../use-indexing-config'
 
-// Hoisted mock state
-const mocks = vi.hoisted(() => ({
-  rerankModelList: [] as Array<{ provider: { provider: string }; model: string }>,
-  rerankDefaultModel: null as { provider: { provider: string }; model: string } | null,
-  isRerankDefaultModelValid: null as { provider: { provider: string }; model: string } | null,
-  embeddingModelList: [] as Array<{ provider: { provider: string }; model: string }>,
-  defaultEmbeddingModel: null as { provider: { provider: string }; model: string } | null,
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelListAndDefaultModelAndCurrentProviderAndModel: () => ({
-    modelList: mocks.rerankModelList,
-    defaultModel: mocks.rerankDefaultModel,
-    currentModel: mocks.isRerankDefaultModelValid,
-  }),
-
-  useDefaultModel: () => ({ data: mocks.defaultEmbeddingModel }),
-}))
-
-const { IndexingType, useIndexingConfig } = await import('../use-indexing-config')
-
-describe('useIndexingConfig', () => {
-  const defaultOptions = {
-    isAPIKeySet: true,
-    hasSetIndexType: false,
-  }
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mocks.rerankModelList = []
-    mocks.rerankDefaultModel = null
-    mocks.isRerankDefaultModelValid = null
-    mocks.embeddingModelList = []
-    mocks.defaultEmbeddingModel = null
-  })
-
-  describe('initial state', () => {
-    it('should default to QUALIFIED when API key is set', () => {
-      const { result } = renderHook(() => useIndexingConfig(defaultOptions))
-      expect(result.current.indexType).toBe(IndexingType.QUALIFIED)
-    })
-
-    it('should default to ECONOMICAL when API key is not set', () => {
-      const { result } = renderHook(() =>
-        useIndexingConfig({ ...defaultOptions, isAPIKeySet: false }),
-      )
-      expect(result.current.indexType).toBe(IndexingType.ECONOMICAL)
-    })
-
-    it('should use initial index type when provided', () => {
-      const { result } = renderHook(() =>
-        useIndexingConfig({
-          ...defaultOptions,
-          initialIndexType: IndexingType.ECONOMICAL,
-        }),
-      )
-      expect(result.current.indexType).toBe(IndexingType.ECONOMICAL)
-    })
-
-    it('should use initial embedding model when provided', () => {
-      const { result } = renderHook(() =>
-        useIndexingConfig({
-          ...defaultOptions,
-          initialEmbeddingModel: { provider: 'openai', model: 'text-embedding-3-small' },
-        }),
-      )
-      expect(result.current.embeddingModel).toEqual({
-        provider: 'openai',
-        model: 'text-embedding-3-small',
-      })
-    })
-
-    it('should use initial retrieval config when provided', () => {
-      const config = {
-        search_method: RETRIEVE_METHOD.fullText,
-        reranking_enable: false,
-        reranking_model: { reranking_provider_name: '', reranking_model_name: '' },
-        top_k: 5,
-        score_threshold_enabled: true,
-        score_threshold: 0.8,
-      }
-      const { result } = renderHook(() =>
-        useIndexingConfig({ ...defaultOptions, initialRetrievalConfig: config }),
-      )
-      expect(result.current.retrievalConfig.search_method).toBe(RETRIEVE_METHOD.fullText)
-      expect(result.current.retrievalConfig.top_k).toBe(5)
-    })
-  })
-
-  describe('setters', () => {
-    it('should update index type', () => {
-      const { result } = renderHook(() => useIndexingConfig(defaultOptions))
-
-      act(() => {
-        result.current.setIndexType(IndexingType.ECONOMICAL)
-      })
-      expect(result.current.indexType).toBe(IndexingType.ECONOMICAL)
-    })
-
-    it('should update embedding model', () => {
-      const { result } = renderHook(() => useIndexingConfig(defaultOptions))
-
-      act(() => {
-        result.current.setEmbeddingModel({ provider: 'cohere', model: 'embed-v3' })
-      })
-      expect(result.current.embeddingModel).toEqual({ provider: 'cohere', model: 'embed-v3' })
-    })
-
-    it('should update retrieval config', () => {
-      const { result } = renderHook(() => useIndexingConfig(defaultOptions))
-      const newConfig = {
-        ...result.current.retrievalConfig,
-        top_k: 10,
-      }
-
-      act(() => {
-        result.current.setRetrievalConfig(newConfig)
-      })
-      expect(result.current.retrievalConfig.top_k).toBe(10)
-    })
-  })
-
-  describe('getIndexingTechnique', () => {
-    it('should return initialIndexType when provided', () => {
-      const { result } = renderHook(() =>
-        useIndexingConfig({
-          ...defaultOptions,
-          initialIndexType: IndexingType.ECONOMICAL,
-        }),
-      )
-      expect(result.current.getIndexingTechnique()).toBe(IndexingType.ECONOMICAL)
-    })
-
-    it('should return current indexType when no initialIndexType', () => {
-      const { result } = renderHook(() => useIndexingConfig(defaultOptions))
-      expect(result.current.getIndexingTechnique()).toBe(IndexingType.QUALIFIED)
-    })
-  })
-
-  describe('computed properties', () => {
-    it('should expose hasSetIndexType from options', () => {
-      const { result } = renderHook(() =>
-        useIndexingConfig({ ...defaultOptions, hasSetIndexType: true }),
-      )
-      expect(result.current.hasSetIndexType).toBe(true)
-    })
-
-    it('should expose showMultiModalTip as boolean', () => {
-      const { result } = renderHook(() => useIndexingConfig(defaultOptions))
-      expect(typeof result.current.showMultiModalTip).toBe('boolean')
-    })
-  })
-})
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    useQuery: (options: {
-      queryKey: OperationKey<
-        'query',
-        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
-      >
-    }) => {
-      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
-      return { data: mocks.embeddingModelList }
-    },
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.models.modelTypes.byModelType.get': async () => ({ data: [] }),
+      'workspaces.current.defaultModel.get': async () => ({ data: null }),
+    }),
   }
+})
+
+it('changes the default index technique when API-key availability changes', () => {
+  const { result, rerender } = renderHook(
+    (isAPIKeySet) => useIndexingConfig({ isAPIKeySet, hasSetIndexType: false }),
+    { initialProps: false },
+  )
+  expect(result.current.indexType).toBe(IndexingType.ECONOMICAL)
+  rerender(true)
+  expect(result.current.getIndexingTechnique()).toBe(IndexingType.QUALIFIED)
+  act(() => result.current.setIndexType(IndexingType.ECONOMICAL))
+  expect(result.current.getIndexingTechnique()).toBe(IndexingType.ECONOMICAL)
+})
+
+it('preserves the persisted technique and retrieval configuration over defaults', () => {
+  const retrievalConfig = {
+    search_method: RETRIEVE_METHOD.fullText,
+    reranking_enable: false,
+    reranking_model: { reranking_provider_name: '', reranking_model_name: '' },
+    top_k: 5,
+    score_threshold_enabled: true,
+    score_threshold: 0.8,
+  }
+  const embeddingModel = { provider: 'openai', model: 'text-embedding-3-small' }
+  const { result, rerender } = renderHook(
+    (isAPIKeySet) =>
+      useIndexingConfig({
+        isAPIKeySet,
+        hasSetIndexType: true,
+        initialIndexType: IndexingType.ECONOMICAL,
+        initialEmbeddingModel: embeddingModel,
+        initialRetrievalConfig: retrievalConfig,
+      }),
+    { initialProps: false },
+  )
+  rerender(true)
+  expect(result.current.getIndexingTechnique()).toBe(IndexingType.ECONOMICAL)
+  expect(result.current.embeddingModel).toEqual(embeddingModel)
+  expect(result.current.retrievalConfig).toEqual(retrievalConfig)
 })

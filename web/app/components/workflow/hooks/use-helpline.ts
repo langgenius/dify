@@ -55,98 +55,72 @@ const getAlignedNodes = ({
     .sort((a, b) => {
       const aPos = getNodeAlignPosition(a)
       const bPos = getNodeAlignPosition(b)
-      return aPos.x - bPos.x
+      return axis === 'y' ? aPos.x - bPos.x : aPos.y - bPos.y
     })
 }
 
 const buildHorizontalHelpLine = ({
   alignedNodes,
   node,
-  nodeAlignPos,
   getNodeAlignPosition,
   isEntryNode,
 }: {
   alignedNodes: Node[]
   node: Node
-  nodeAlignPos: NodeAlignPosition
   getNodeAlignPosition: (node: Node) => NodeAlignPosition
   isEntryNode: (node: Node) => boolean
 }) => {
   if (!alignedNodes.length) return undefined
 
-  const first = alignedNodes[0]
-  const last = alignedNodes[alignedNodes.length - 1]
-  const firstPos = getNodeAlignPosition(first!)
-  const lastPos = getNodeAlignPosition(last!)
-  const helpLine = {
-    top: firstPos.y,
-    left: firstPos.x,
-    width:
-      lastPos.x +
-      (isEntryNode(last!) ? getEntryNodeDimension(last!, 'width') : (last!.width ?? 0)) -
-      firstPos.x,
+  const allNodes = [...alignedNodes, node]
+  const left = Math.min(...allNodes.map((candidate) => getNodeAlignPosition(candidate).x))
+  const right = Math.max(
+    ...allNodes.map(
+      (candidate) =>
+        getNodeAlignPosition(candidate).x +
+        (isEntryNode(candidate)
+          ? getEntryNodeDimension(candidate, 'width')
+          : (candidate.width ?? 0)),
+    ),
+  )
+
+  return {
+    top: getNodeAlignPosition(alignedNodes[0]!).y,
+    left,
+    width: right - left,
   }
-
-  if (nodeAlignPos.x < firstPos.x) {
-    helpLine.left = nodeAlignPos.x
-    helpLine.width =
-      firstPos.x +
-      (isEntryNode(first!) ? getEntryNodeDimension(first!, 'width') : (first!.width ?? 0)) -
-      nodeAlignPos.x
-  }
-
-  if (nodeAlignPos.x > lastPos.x)
-    helpLine.width =
-      nodeAlignPos.x +
-      (isEntryNode(node) ? getEntryNodeDimension(node, 'width') : (node.width ?? 0)) -
-      firstPos.x
-
-  return helpLine
 }
 
 const buildVerticalHelpLine = ({
   alignedNodes,
   node,
-  nodeAlignPos,
   getNodeAlignPosition,
   isEntryNode,
 }: {
   alignedNodes: Node[]
   node: Node
-  nodeAlignPos: NodeAlignPosition
   getNodeAlignPosition: (node: Node) => NodeAlignPosition
   isEntryNode: (node: Node) => boolean
 }) => {
   if (!alignedNodes.length) return undefined
 
-  const first = alignedNodes[0]
-  const last = alignedNodes[alignedNodes.length - 1]
-  const firstPos = getNodeAlignPosition(first!)
-  const lastPos = getNodeAlignPosition(last!)
-  const helpLine = {
-    top: firstPos.y,
-    left: firstPos.x,
-    height:
-      lastPos.y +
-      (isEntryNode(last!) ? getEntryNodeDimension(last!, 'height') : (last!.height ?? 0)) -
-      firstPos.y,
+  const allNodes = [...alignedNodes, node]
+  const top = Math.min(...allNodes.map((candidate) => getNodeAlignPosition(candidate).y))
+  const bottom = Math.max(
+    ...allNodes.map(
+      (candidate) =>
+        getNodeAlignPosition(candidate).y +
+        (isEntryNode(candidate)
+          ? getEntryNodeDimension(candidate, 'height')
+          : (candidate.height ?? 0)),
+    ),
+  )
+
+  return {
+    top,
+    left: getNodeAlignPosition(alignedNodes[0]!).x,
+    height: bottom - top,
   }
-
-  if (nodeAlignPos.y < firstPos.y) {
-    helpLine.top = nodeAlignPos.y
-    helpLine.height =
-      firstPos.y +
-      (isEntryNode(first!) ? getEntryNodeDimension(first!, 'height') : (first!.height ?? 0)) -
-      nodeAlignPos.y
-  }
-
-  if (nodeAlignPos.y > lastPos.y)
-    helpLine.height =
-      nodeAlignPos.y +
-      (isEntryNode(node) ? getEntryNodeDimension(node, 'height') : (node.height ?? 0)) -
-      firstPos.y
-
-  return helpLine
 }
 
 export const useHelpline = () => {
@@ -181,14 +155,9 @@ export const useHelpline = () => {
       const nodes = getNodes()
       const { setHelpLineHorizontal, setHelpLineVertical } = workflowStore.getState()
 
-      if (node.data.isInIteration) {
-        return {
-          showHorizontalHelpLineNodes: [],
-          showVerticalHelpLineNodes: [],
-        }
-      }
-
-      if (node.data.isInLoop) {
+      if (node.data.isInIteration || node.data.isInLoop) {
+        setHelpLineHorizontal(undefined)
+        setHelpLineVertical(undefined)
         return {
           showHorizontalHelpLineNodes: [],
           showVerticalHelpLineNodes: [],
@@ -217,7 +186,6 @@ export const useHelpline = () => {
         buildHorizontalHelpLine({
           alignedNodes: showHorizontalHelpLineNodes,
           node,
-          nodeAlignPos,
           getNodeAlignPosition,
           isEntryNode,
         }),
@@ -226,7 +194,6 @@ export const useHelpline = () => {
         buildVerticalHelpLine({
           alignedNodes: showVerticalHelpLineNodes,
           node,
-          nodeAlignPos,
           getNodeAlignPosition,
           isEntryNode,
         }),

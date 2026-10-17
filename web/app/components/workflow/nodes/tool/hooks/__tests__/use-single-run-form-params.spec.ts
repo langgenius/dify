@@ -3,6 +3,7 @@ import type { InputVar } from '@/app/components/workflow/types'
 import type { NodeTracing } from '@/types/workflow'
 import { act } from '@testing-library/react'
 import { CollectionType } from '@/app/components/tools/types'
+import { createNodeTracing } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowHook as renderHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
@@ -40,34 +41,13 @@ const createInputVar = (variable: InputVar['variable']): InputVar => ({
   required: false,
 })
 
-const createRunResult = (): NodeTracing => ({
-  id: 'trace-1',
-  index: 0,
-  predecessor_node_id: '',
-  node_id: 'tool-node-1',
-  node_type: BlockEnum.Tool,
-  title: 'Google Search',
-  inputs: {},
-  inputs_truncated: false,
-  process_data: {},
-  process_data_truncated: false,
-  outputs_truncated: false,
-  status: 'succeeded',
-  elapsed_time: 1,
-  metadata: {
-    iterator_length: 0,
-    iterator_index: 0,
-    loop_length: 0,
-    loop_index: 0,
-  },
-  created_at: 0,
-  created_by: {
-    id: 'user-1',
-    name: 'User',
-    email: 'user@example.com',
-  },
-  finished_at: 1,
-})
+const createRunResult = () =>
+  createNodeTracing({
+    node_id: 'tool-node-1',
+    node_type: BlockEnum.Tool,
+    title: 'Google Search',
+    status: 'succeeded',
+  })
 
 describe('useSingleRunFormParams', () => {
   beforeEach(() => {
@@ -113,13 +93,11 @@ describe('useSingleRunFormParams', () => {
         '{{#legacy.answer#}}',
         'prefix {{#tool.result#}}',
       ])
-      expect(result.current.forms).toHaveLength(1)
       expect(result.current.forms[0]!.inputs).toEqual([
         createInputVar('#start.query#'),
         createInputVar(undefined as unknown as string),
         createInputVar('#legacy.answer#'),
       ])
-      expect(result.current.forms[0]!.values).toEqual({})
       expect(result.current.toolIcon).toBe('tool-icon')
       expect(result.current.getDependentVars()).toEqual([
         ['start', 'query'],

@@ -1,7 +1,7 @@
 import type { InputVar, Node } from '../../../types'
 import type { IterationNodeType } from '../types'
-import type { NodeTracing } from '@/types/workflow'
 import { act, renderHook } from '@testing-library/react'
+import { useState } from 'react'
 import { BlockEnum, ErrorHandleMode, InputVarType, VarType } from '@/app/components/workflow/types'
 import useSingleRunFormParams from '../use-single-run-form-params'
 
@@ -119,37 +119,39 @@ describe('iteration/use-single-run-form-params', () => {
     expect(result.current.nodeInfo).toBeUndefined()
   })
 
-  it('should forward form updates and expose iterator dependencies', () => {
-    const setRunInputData = vi.fn()
-
-    const { result } = renderHook(() =>
-      useSingleRunFormParams({
+  it('preserves edited external values when the iterator form changes', () => {
+    const { result } = renderHook(() => {
+      const [runInputData, setRunInputData] = useState<Record<string, unknown>>({
+        query: 'old',
+        'iteration-node.input_selector': ['source-node', 'records'],
+      })
+      return useSingleRunFormParams({
         id: 'iteration-node',
-        payload: createPayload({
-          iterator_selector: ['source-node', 'records'],
-        }),
-        runInputData: {
-          query: 'old',
-          'iteration-node.input_selector': ['source-node', 'records'],
-        },
-        runInputDataRef: { current: {} },
+        payload: createPayload({ iterator_selector: ['source-node', 'records'] }),
+        runInputData,
+        runInputDataRef: { current: runInputData },
         getInputVars: vi.fn(),
         setRunInputData,
-        toVarInputs: vi.fn(() => []),
-        iterationRunResult: [] as NodeTracing[],
-      }),
-    )
-
-    act(() => {
-      result.current.forms[0]!.onChange({ query: 'new' })
-      result.current.forms[1]!.onChange({
-        'iteration-node.input_selector': ['source-node', 'next'],
+        toVarInputs: () => [],
+        iterationRunResult: [],
       })
     })
-
-    expect(setRunInputData).toHaveBeenNthCalledWith(1, { query: 'new' })
-    expect(setRunInputData).toHaveBeenNthCalledWith(2, {
-      query: 'old',
+    act(() =>
+      result.current.forms[0]!.onChange({
+        ...result.current.forms[0]!.values,
+        query: 'new',
+      }),
+    )
+    act(() =>
+      result.current.forms[1]!.onChange({
+        'iteration-node.input_selector': ['source-node', 'next'],
+      }),
+    )
+    expect(result.current.forms[0]!.values).toEqual({
+      query: 'new',
+      'iteration-node.input_selector': ['source-node', 'next'],
+    })
+    expect(result.current.forms[1]!.values).toEqual({
       'iteration-node.input_selector': ['source-node', 'next'],
     })
     expect(result.current.getDependentVars()).toEqual([['source-node', 'records']])

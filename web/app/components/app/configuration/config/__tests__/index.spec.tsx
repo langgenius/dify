@@ -3,6 +3,7 @@ import type { ConfigurationAppMode } from '@/app/components/app/configuration/ho
 import type { ModelConfig, PromptVariable } from '@/models/debug'
 import type { ToolItem } from '@/types/app'
 import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { renderWithDebugConfiguration } from '@/test/debug-configuration'
 import { AgentStrategy, ModelModeType } from '@/types/app'
@@ -17,30 +18,44 @@ vi.mock('../../debug/hooks', () => ({
   useFormattingChangedDispatcher: () => mockFormattingDispatcher,
 }))
 
-let latestConfigPromptProps:
-  | ComponentProps<typeof import('@/app/components/app/configuration/config-prompt').default>
-  | undefined
 vi.mock('@/app/components/app/configuration/config-prompt', () => ({
   default: (
     props: ComponentProps<
       typeof import('@/app/components/app/configuration/config-prompt').default
     >,
-  ) => {
-    latestConfigPromptProps = props
-    return <div data-testid="config-prompt" />
-  },
+  ) => (
+    <>
+      <textarea
+        aria-label="Prompt draft"
+        defaultValue={props.promptTemplate}
+        onChange={(event) =>
+          props.onChange?.(event.target.value, [{ key: 'new', name: 'New', type: 'string' }])
+        }
+      />
+      <button
+        type="button"
+        onClick={() =>
+          props.onChange?.(props.promptTemplate, [{ key: 'added', name: 'Added', type: 'string' }])
+        }
+      >
+        Add prompt variable
+      </button>
+    </>
+  ),
 }))
-
-let latestConfigVarProps:
-  | ComponentProps<typeof import('@/app/components/app/configuration/config-var').default>
-  | undefined
 vi.mock('@/app/components/app/configuration/config-var', () => ({
   default: (
     props: ComponentProps<typeof import('@/app/components/app/configuration/config-var').default>,
-  ) => {
-    latestConfigVarProps = props
-    return <div data-testid="config-var" />
-  },
+  ) => (
+    <button
+      type="button"
+      onClick={() =>
+        props.onPromptVariablesChange?.([{ key: 'replacement', name: 'Variable', type: 'string' }])
+      }
+    >
+      Replace variables
+    </button>
+  ),
 }))
 
 vi.mock('../../dataset-config', () => ({
@@ -61,20 +76,6 @@ vi.mock('../config-document', () => ({
 
 vi.mock('../config-audio', () => ({
   default: () => <div data-testid="config-audio" />,
-}))
-
-let latestHistoryPanelProps:
-  | ComponentProps<typeof import('../../config-prompt/conversation-history/history-panel').default>
-  | undefined
-vi.mock('../../config-prompt/conversation-history/history-panel', () => ({
-  default: (
-    props: ComponentProps<
-      typeof import('../../config-prompt/conversation-history/history-panel').default
-    >,
-  ) => {
-    latestHistoryPanelProps = props
-    return <div data-testid="history-panel" />
-  },
 }))
 
 type MockContext = {
@@ -159,9 +160,6 @@ const renderConfig = (contextOverrides: Partial<MockContext> = {}) => {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  latestConfigPromptProps = undefined
-  latestConfigVarProps = undefined
-  latestHistoryPanelProps = undefined
 })
 
 // Rendering scenarios ensure the layout toggles agent/history specific sections correctly.
@@ -169,14 +167,16 @@ describe('Config - Rendering', () => {
   it('should render baseline sections without agent specific panels', () => {
     renderConfig()
 
-    expect(screen.getByTestId('config-prompt')).toBeInTheDocument()
-    expect(screen.getByTestId('config-var')).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Prompt draft' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Replace variables' })).toBeInTheDocument()
     expect(screen.getByTestId('dataset-config')).toBeInTheDocument()
     expect(screen.getByTestId('config-vision')).toBeInTheDocument()
     expect(screen.getByTestId('config-document')).toBeInTheDocument()
     expect(screen.getByTestId('config-audio')).toBeInTheDocument()
     expect(screen.queryByTestId('agent-tools')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('history-panel')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: 'appDebug.feature.conversationHistory.title' }),
+    ).not.toBeInTheDocument()
   })
 
   it('should show AgentTools when app runs in agent mode', () => {
@@ -185,7 +185,8 @@ describe('Config - Rendering', () => {
     expect(screen.getByTestId('agent-tools')).toBeInTheDocument()
   })
 
-  it('should display HistoryPanel for a chat app using an advanced completion prompt', () => {
+  it('should display HistoryPanel for a chat app using an advanced completion prompt', async () => {
+    const user = userEvent.setup()
     const showHistoryModal = vi.fn()
     renderConfig({
       isAdvancedMode: true,
@@ -199,20 +200,23 @@ describe('Config - Rendering', () => {
       showHistoryModal,
     })
 
-    expect(screen.getByTestId('history-panel')).toBeInTheDocument()
-    expect(latestHistoryPanelProps!.showWarning).toBe(true)
-    expect(latestHistoryPanelProps!.onShowEditModal).toBe(showHistoryModal)
+    expect(screen.getByText('appDebug.feature.conversationHistory.tip')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+    expect(showHistoryModal).toHaveBeenCalledTimes(1)
   })
 })
 
 // Prompt handling scenarios validate integration between Config and prompt children.
 describe('Config - Prompt Handling', () => {
-  it('should update prompt template and dispatch formatting event when text changes', () => {
+  it('should update prompt template and dispatch formatting event when text changes', async () => {
+    const user = userEvent.setup()
     const { contextValue } = renderConfig()
     const previousVariables = contextValue.modelConfig.configs.prompt_variables
     const additions = [createPromptVariable({ key: 'new', name: 'New' })]
 
-    latestConfigPromptProps!.onChange!('Updated template', additions)
+    const prompt = screen.getByRole('textbox', { name: 'Prompt draft' })
+    await user.clear(prompt)
+    await user.paste('Updated template')
 
     expect(contextValue.setPrevPromptConfig).toHaveBeenCalledWith(contextValue.modelConfig.configs)
     expect(contextValue.setModelConfig).toHaveBeenCalledWith(
@@ -223,24 +227,25 @@ describe('Config - Prompt Handling', () => {
         }),
       }),
     )
-    expect(mockFormattingDispatcher).toHaveBeenCalledTimes(1)
+    expect(mockFormattingDispatcher).toHaveBeenCalledTimes(2)
   })
 
-  it('should skip formatting dispatcher when template remains identical', () => {
+  it('should skip formatting dispatcher when template remains identical', async () => {
+    const user = userEvent.setup()
     const { contextValue } = renderConfig()
-    const unchangedTemplate = contextValue.modelConfig.configs.prompt_template
 
-    latestConfigPromptProps!.onChange!(unchangedTemplate, [createPromptVariable({ key: 'added' })])
+    await user.click(screen.getByRole('button', { name: 'Add prompt variable' }))
 
     expect(contextValue.setPrevPromptConfig).toHaveBeenCalledWith(contextValue.modelConfig.configs)
     expect(mockFormattingDispatcher).not.toHaveBeenCalled()
   })
 
-  it('should replace prompt variables when ConfigVar reports updates', () => {
+  it('should replace prompt variables when ConfigVar reports updates', async () => {
+    const user = userEvent.setup()
     const { contextValue } = renderConfig()
     const replacementVariables = [createPromptVariable({ key: 'replacement' })]
 
-    latestConfigVarProps!.onPromptVariablesChange!(replacementVariables)
+    await user.click(screen.getByRole('button', { name: 'Replace variables' }))
 
     expect(contextValue.setPrevPromptConfig).toHaveBeenCalledWith(contextValue.modelConfig.configs)
     expect(contextValue.setModelConfig).toHaveBeenCalledWith(

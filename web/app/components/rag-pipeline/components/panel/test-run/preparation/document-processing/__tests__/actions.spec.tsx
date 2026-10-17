@@ -1,81 +1,93 @@
 import type { CustomActionsProps } from '@/app/components/base/form/components/form/actions'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useAppForm, useFormContext } from '@/app/components/base/form'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { expectLoadingButton } from '@/test/button'
 import Actions from '../actions'
 
 let mockWorkflowRunningData: { result: { status: WorkflowRunningStatus } } | undefined
-
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (
     selector: (state: { workflowRunningData: typeof mockWorkflowRunningData }) => unknown,
-  ) =>
-    selector({
-      workflowRunningData: mockWorkflowRunningData,
-    }),
+  ) => selector({ workflowRunningData: mockWorkflowRunningData }),
 }))
 
-const createFormParams = (overrides: Partial<CustomActionsProps> = {}): CustomActionsProps => ({
-  form: {
-    handleSubmit: vi.fn(),
-  } as unknown as CustomActionsProps['form'],
-  isSubmitting: false,
-  canSubmit: true,
-  ...overrides,
+const Harness = ({
+  onSubmit,
+  runDisabled = false,
+  canSubmit = true,
+  isSubmitting = false,
+}: Pick<CustomActionsProps, 'canSubmit' | 'isSubmitting'> & {
+  onSubmit: () => void
+  runDisabled?: boolean
+}) => {
+  const form = useAppForm({
+    defaultValues: {} as Record<string, unknown>,
+    onSubmitMeta: {},
+    onSubmit,
+  })
+  return (
+    <form.AppForm>
+      <FormActions canSubmit={canSubmit} isSubmitting={isSubmitting} runDisabled={runDisabled} />
+    </form.AppForm>
+  )
+}
+
+function FormActions({
+  canSubmit,
+  isSubmitting,
+  runDisabled,
+}: {
+  canSubmit: boolean
+  isSubmitting: boolean
+  runDisabled: boolean
+}) {
+  const form = useFormContext()
+  return (
+    <Actions
+      formParams={{ form, canSubmit, isSubmitting }}
+      onBack={vi.fn()}
+      runDisabled={runDisabled}
+    />
+  )
+}
+
+beforeEach(() => {
+  mockWorkflowRunningData = undefined
 })
 
-describe('Document processing actions', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockWorkflowRunningData = undefined
-  })
-
-  it('should render back/process actions and trigger both callbacks', () => {
-    const onBack = vi.fn()
-    const formParams = createFormParams()
-
-    render(<Actions formParams={formParams} onBack={onBack} />)
-
-    fireEvent.click(
-      screen.getByRole('button', { name: 'datasetPipeline.operations.backToDataSource' }),
-    )
-    fireEvent.click(screen.getByRole('button', { name: 'datasetPipeline.operations.process' }))
-
-    expect(onBack).toHaveBeenCalledTimes(1)
-    expect(formParams.form.handleSubmit).toHaveBeenCalledTimes(1)
-  })
-
-  it('should disable processing when runDisabled or the workflow is already running', () => {
-    const { rerender } = render(
-      <Actions formParams={createFormParams()} onBack={vi.fn()} runDisabled />,
-    )
-
-    expect(
-      screen.getByRole('button', { name: 'datasetPipeline.operations.process' }),
-    ).toBeDisabled()
-
-    mockWorkflowRunningData = {
-      result: {
-        status: WorkflowRunningStatus.Running,
-      },
-    }
-    rerender(<Actions formParams={createFormParams()} onBack={vi.fn()} />)
-
-    expectLoadingButton(
-      screen.getByRole('button', { name: /datasetPipeline\.operations\.process/i }),
-    )
-  })
-
-  it('should keep the pending form submit action focusable when canSubmit becomes false', () => {
-    render(
-      <Actions
-        formParams={createFormParams({ canSubmit: false, isSubmitting: true })}
-        onBack={vi.fn()}
-      />,
-    )
-
-    expectLoadingButton(
-      screen.getByRole('button', { name: /datasetPipeline\.operations\.process/i }),
-    )
-  })
+it.each([
+  { reason: 'disabled run', runDisabled: true, canSubmit: true },
+  { reason: 'invalid form', runDisabled: false, canSubmit: false },
+])('blocks processing for $reason', async ({ runDisabled, canSubmit }) => {
+  const user = userEvent.setup()
+  const onSubmit = vi.fn()
+  render(
+    <Harness
+      onSubmit={onSubmit}
+      runDisabled={runDisabled}
+      canSubmit={canSubmit}
+      isSubmitting={false}
+    />,
+  )
+  const process = screen.getByRole('button', { name: 'datasetPipeline.operations.process' })
+  expect(process).toBeDisabled()
+  await user.click(process)
+  expect(onSubmit).not.toHaveBeenCalled()
 })
+
+it.each(['workflow', 'form'] as const)(
+  'prevents duplicate processing while the %s is pending',
+  async (pending) => {
+    const user = userEvent.setup()
+    if (pending === 'workflow')
+      mockWorkflowRunningData = { result: { status: WorkflowRunningStatus.Running } }
+    const onSubmit = vi.fn()
+    render(<Harness onSubmit={onSubmit} canSubmit={false} isSubmitting={pending === 'form'} />)
+    const process = screen.getByRole('button', { name: /datasetPipeline.operations.process/ })
+    expectLoadingButton(process)
+    await user.click(process)
+    expect(onSubmit).not.toHaveBeenCalled()
+  },
+)

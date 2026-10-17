@@ -17,9 +17,13 @@ import {
   unpinConversation,
   updateFeedback,
 } from '@/service/share'
-import { shareQueryKeys } from '@/service/use-share'
 import { CONVERSATION_ID_INFO, TAB_CONVERSATION_ID_INFO } from '../../constants'
-import { useChatWithHistory } from '.././hooks'
+import {
+  getProcessedSystemVariablesFromUrlParams,
+  getRawInputsFromUrlParams,
+  getRawUserVariablesFromUrlParams,
+} from '../../utils'
+import { useChatWithHistory } from '../hooks'
 
 vi.mock('@/hooks/use-app-favicon', () => ({
   useAppFavicon: vi.fn(),
@@ -86,8 +90,9 @@ const mockUnpinConversation = vi.mocked(unpinConversation)
 const mockRenameConversation = vi.mocked(renameConversation)
 const mockUpdateFeedback = vi.mocked(updateFeedback)
 
-const createQueryClient = () =>
-  new QueryClient({
+const queryClients: QueryClient[] = []
+const createQueryClient = () => {
+  const client = new QueryClient({
     defaultOptions: {
       queries: {
         retry: false,
@@ -95,6 +100,10 @@ const createQueryClient = () =>
       },
     },
   })
+
+  queryClients.push(client)
+  return client
+}
 
 const createWrapper = (queryClient: QueryClient) => {
   return ({ children }: { children: ReactNode }) => (
@@ -148,10 +157,25 @@ const setConversationIdInfo = (appId: string, conversationId: string) => {
   localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify(value))
 }
 
-// Scenario: useChatWithHistory integrates share queries for conversations and chat list.
 describe('useChatWithHistory', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    for (const service of [
+      mockFetchConversations,
+      mockFetchChatList,
+      mockGenerationConversationName,
+      mockDelConversation,
+      mockPinConversation,
+      mockUnpinConversation,
+      mockRenameConversation,
+      mockUpdateFeedback,
+    ])
+      service.mockReset()
+    vi.mocked(getProcessedSystemVariablesFromUrlParams).mockResolvedValue({ user_id: 'user-1' })
+    vi.mocked(getRawInputsFromUrlParams).mockResolvedValue({})
+    vi.mocked(getRawUserVariablesFromUrlParams).mockResolvedValue({})
+    mockFetchConversations.mockResolvedValue(createConversationData())
+    mockFetchChatList.mockResolvedValue({ data: [] })
     window.history.replaceState({}, '', '/')
     localStorage.removeItem(CONVERSATION_ID_INFO)
     sessionStorage.removeItem(TAB_CONVERSATION_ID_INFO)
@@ -173,12 +197,13 @@ describe('useChatWithHistory', () => {
   })
 
   afterEach(() => {
+    queryClients.splice(0).forEach((client) => client.clear())
+    vi.restoreAllMocks()
     localStorage.removeItem(CONVERSATION_ID_INFO)
     sessionStorage.removeItem(TAB_CONVERSATION_ID_INFO)
     localStorage.removeItem('webappSidebarCollapse')
   })
 
-  // Scenario: share query results populate conversation lists and trigger chat list fetch.
   describe('Share queries', () => {
     it('should load pinned, unpinned, and chat list data from share queries', async () => {
       // Arrange
@@ -233,7 +258,6 @@ describe('useChatWithHistory', () => {
     })
   })
 
-  // Scenario: completion invalidates share caches and merges generated names.
   describe('New conversation completion', () => {
     it('should invalidate share conversations and apply generated name', async () => {
       // Arrange
@@ -248,8 +272,7 @@ describe('useChatWithHistory', () => {
       mockFetchChatList.mockResolvedValue({ data: [] })
       mockGenerationConversationName.mockResolvedValue(generatedConversation)
 
-      const { result, queryClient } = await renderWithClient(() => useChatWithHistory())
-      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+      const { result } = await renderWithClient(() => useChatWithHistory())
 
       // Act
       act(() => {
@@ -267,11 +290,16 @@ describe('useChatWithHistory', () => {
       await waitFor(() => {
         expect(result!.current.conversationList[0]).toEqual(generatedConversation)
       })
-      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: shareQueryKeys.conversations })
+      expect(result!.current.currentConversationId).toBe('conversation-new')
+      expect(JSON.parse(localStorage.getItem(CONVERSATION_ID_INFO)!)['app-1']['user-1']).toBe(
+        'conversation-new',
+      )
+      expect(JSON.parse(sessionStorage.getItem(TAB_CONVERSATION_ID_INFO)!)['app-1']['user-1']).toBe(
+        'conversation-new',
+      )
     })
   })
 
-  // Scenario: chat list queries stop when reload key is cleared.
   describe('Chat list gating', () => {
     it('should not refetch chat list when newConversationId matches current conversation', async () => {
       // Arrange
@@ -345,7 +373,6 @@ describe('useChatWithHistory', () => {
     })
   })
 
-  // Scenario: the active conversation is tab-scoped while the last selection is cross-tab.
   describe('Conversation id persistence', () => {
     it('should prefer the current tab conversation over the last conversation', async () => {
       // Arrange
@@ -493,143 +520,66 @@ describe('useChatWithHistory', () => {
         'app-1',
       )
     })
-
-    it('should store the current and last conversation after completion', async () => {
-      // Arrange
-      const listData = createConversationData({
-        data: [createConversationItem({ id: 'conversation-1', name: 'First' })],
-      })
-      mockFetchConversations.mockResolvedValue(listData)
-      mockFetchChatList.mockResolvedValue({ data: [] })
-      mockGenerationConversationName.mockResolvedValue(
-        createConversationItem({ id: 'conversation-new' }),
-      )
-
-      const { result } = await renderWithClient(() => useChatWithHistory())
-
-      // Act
-      act(() => {
-        result!.current.handleNewConversationCompleted('conversation-new')
-      })
-
-      // Assert
-      await waitFor(() => {
-        const lastStoredValue = localStorage.getItem(CONVERSATION_ID_INFO)
-        const lastConversationIdInfo = lastStoredValue ? JSON.parse(lastStoredValue) : {}
-        const tabStoredValue = sessionStorage.getItem(TAB_CONVERSATION_ID_INFO)
-        const tabConversationIdInfo = tabStoredValue ? JSON.parse(tabStoredValue) : {}
-
-        expect(lastConversationIdInfo['app-1']?.['user-1']).toBe('conversation-new')
-        expect(tabConversationIdInfo['app-1']?.['user-1']).toBe('conversation-new')
-      })
-    })
   })
 
-  // Scenario: sidebar collapse state is toggled and persisted.
   describe('Sidebar collapse', () => {
-    it('should update sidebarCollapseState and localStorage when collapsed', async () => {
-      // Arrange
-      mockFetchConversations.mockResolvedValue(createConversationData())
-      mockFetchChatList.mockResolvedValue({ data: [] })
-
-      const { result } = await renderWithClient(() => useChatWithHistory())
-
-      // Act
-      act(() => {
-        result!.current.handleSidebarCollapse(true)
-      })
-
-      // Assert
-      await waitFor(() => {
-        expect(result!.current.sidebarCollapseState).toBe(true)
-      })
+    it('persists collapse and expansion across remounts', async () => {
+      const first = await renderWithClient(() => useChatWithHistory())
+      act(() => first.result!.current.handleSidebarCollapse(true))
       expect(localStorage.getItem('webappSidebarCollapse')).toBe('collapsed')
-    })
-
-    it('should set expanded state in localStorage when not collapsed', async () => {
-      // Arrange
-      mockFetchConversations.mockResolvedValue(createConversationData())
-      mockFetchChatList.mockResolvedValue({ data: [] })
-
-      const { result } = await renderWithClient(() => useChatWithHistory())
-
-      // Act
-      act(() => {
-        result!.current.handleSidebarCollapse(false)
-      })
-
-      // Assert
-      await waitFor(() => {
-        expect(result!.current.sidebarCollapseState).toBe(false)
-      })
+      first.unmount!()
+      const second = await renderWithClient(() => useChatWithHistory())
+      expect(second.result!.current.sidebarCollapseState).toBe(true)
+      act(() => second.result!.current.handleSidebarCollapse(false))
       expect(localStorage.getItem('webappSidebarCollapse')).toBe('expanded')
-    })
-
-    it('should read initial collapse state from localStorage', async () => {
-      // Arrange
-      localStorage.setItem('webappSidebarCollapse', 'collapsed')
-      mockFetchConversations.mockResolvedValue(createConversationData())
-      mockFetchChatList.mockResolvedValue({ data: [] })
-
-      // Act
-      const { result } = await renderWithClient(() => useChatWithHistory())
-
-      // Assert
-      expect(result!.current.sidebarCollapseState).toBe(true)
-      localStorage.removeItem('webappSidebarCollapse')
+      second.unmount!()
+      const third = await renderWithClient(() => useChatWithHistory())
+      expect(third.result!.current.sidebarCollapseState).toBe(false)
     })
   })
 
-  // Scenario: pin and unpin conversations call the correct service and invalidate queries.
   describe('Pin/Unpin conversation', () => {
-    it('should call pinConversation service and invalidate conversations', async () => {
-      // Arrange
-      mockFetchConversations.mockResolvedValue(createConversationData())
-      mockFetchChatList.mockResolvedValue({ data: [] })
-      mockPinConversation.mockResolvedValue(undefined)
-
-      const { result, queryClient } = await renderWithClient(() => useChatWithHistory())
-      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
-
-      // Act
-      await act(async () => {
-        await result!.current.handlePinConversation('conversation-1')
+    it('moves the conversation between lists after pinning and unpinning', async () => {
+      let pinned = false
+      const conversation = createConversationItem()
+      mockFetchConversations.mockImplementation(async (_source, _appId, _lastId, requestedPinned) =>
+        createConversationData({ data: requestedPinned === pinned ? [conversation] : [] }),
+      )
+      mockPinConversation.mockImplementation(async () => {
+        pinned = true
       })
-
-      // Assert
+      mockUnpinConversation.mockImplementation(async () => {
+        pinned = false
+      })
+      const { result } = await renderWithClient(() => useChatWithHistory())
+      await waitFor(() => expect(result!.current.conversationList).toEqual([conversation]))
+      await act(async () => {
+        await result!.current.handlePinConversation(conversation.id)
+      })
       expect(mockPinConversation).toHaveBeenCalledWith(
         AppSourceType.webApp,
         'app-1',
-        'conversation-1',
+        conversation.id,
       )
-      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: shareQueryKeys.conversations })
-    })
-
-    it('should call unpinConversation service and invalidate conversations', async () => {
-      // Arrange
-      mockFetchConversations.mockResolvedValue(createConversationData())
-      mockFetchChatList.mockResolvedValue({ data: [] })
-      mockUnpinConversation.mockResolvedValue(undefined)
-
-      const { result, queryClient } = await renderWithClient(() => useChatWithHistory())
-      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
-
-      // Act
-      await act(async () => {
-        await result!.current.handleUnpinConversation('conversation-1')
+      await waitFor(() => {
+        expect(result!.current.pinnedConversationList).toEqual([conversation])
+        expect(result!.current.conversationList).toEqual([])
       })
-
-      // Assert
+      await act(async () => {
+        await result!.current.handleUnpinConversation(conversation.id)
+      })
       expect(mockUnpinConversation).toHaveBeenCalledWith(
         AppSourceType.webApp,
         'app-1',
-        'conversation-1',
+        conversation.id,
       )
-      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: shareQueryKeys.conversations })
+      await waitFor(() => {
+        expect(result!.current.pinnedConversationList).toEqual([])
+        expect(result!.current.conversationList).toEqual([conversation])
+      })
     })
   })
 
-  // Scenario: delete conversation handles success, guard, and deletion of current conversation.
   describe('Delete conversation', () => {
     it('should call delConversation and invoke success callback', async () => {
       // Arrange
@@ -709,7 +659,6 @@ describe('useChatWithHistory', () => {
     })
   })
 
-  // Scenario: rename conversation handles success, empty name guard, and renaming guard.
   describe('Rename conversation', () => {
     it('should call renameConversation with new name and update list', async () => {
       // Arrange
@@ -792,7 +741,6 @@ describe('useChatWithHistory', () => {
     })
   })
 
-  // Scenario: handle feedback sends the correct payload.
   describe('Handle feedback', () => {
     it('should call updateFeedback with correct parameters', async () => {
       // Arrange
@@ -818,7 +766,6 @@ describe('useChatWithHistory', () => {
     })
   })
 
-  // Scenario: handle new conversation resets state.
   describe('Handle new conversation', () => {
     it('should reset conversation state and show new item in list', async () => {
       // Arrange
@@ -837,36 +784,11 @@ describe('useChatWithHistory', () => {
         expect(result!.current.currentConversationId).toBe('')
       })
       expect(result!.current.clearChatList).toBe(true)
-    })
-
-    it('should show new conversation item in the conversation list', async () => {
-      // Arrange
-      mockFetchConversations.mockResolvedValue(
-        createConversationData({
-          data: [createConversationItem({ id: 'conversation-1', name: 'First' })],
-        }),
-      )
-      mockFetchChatList.mockResolvedValue({ data: [] })
-
-      const { result } = await renderWithClient(() => useChatWithHistory())
-
-      await waitFor(() => {
-        expect(result!.current.conversationList).toHaveLength(1)
-      })
-
-      // Act
-      act(() => {
-        result!.current.handleNewConversation()
-      })
-
-      // Assert: new item with empty id prepended
-      await waitFor(() => {
-        expect(result!.current.conversationList[0]!.id).toBe('')
-      })
+      expect(result!.current.conversationList[0]!.id).toBe('')
+      expect(result!.current.appPrevChatTree).toEqual([])
     })
   })
 
-  // Scenario: handleChangeConversation clears newConversationId and updates conversationIdInfo.
   describe('Handle change conversation', () => {
     it('should clear newConversationId when switching to existing conversation', async () => {
       // Arrange
@@ -900,217 +822,36 @@ describe('useChatWithHistory', () => {
     })
   })
 
-  // Scenario: appParams drives inputsForms with various form item types
   describe('inputsForms', () => {
-    it('should return paragraph form item with truncated value when over max_length', async () => {
-      // Arrange
-      mockStoreState.appParams = {
-        user_input_form: [
-          {
-            paragraph: {
-              variable: 'para_var',
-              label: 'Paragraph',
-              required: true,
-              max_length: 5,
-              default: 'def',
-            },
-          },
-        ],
-      } as unknown as ChatConfig
-      mockFetchConversations.mockResolvedValue(createConversationData())
-      mockFetchChatList.mockResolvedValue({ data: [] })
-
-      // Act
-      const { result } = await renderWithClient(() => useChatWithHistory())
-
-      // Assert
-      await waitFor(() => {
-        const form = result!.current.inputsForms[0]
-        expect(form.type).toBe('paragraph')
-        expect(form.variable).toBe('para_var')
-      })
-    })
-
-    it('should return number form item', async () => {
-      // Arrange
-      mockStoreState.appParams = {
-        user_input_form: [
-          {
-            number: {
-              variable: 'num_var',
-              label: 'Number',
-              required: false,
-              default: 42,
-            },
-          },
-        ],
-      } as unknown as ChatConfig
-      mockFetchConversations.mockResolvedValue(createConversationData())
-      mockFetchChatList.mockResolvedValue({ data: [] })
-
-      const { result } = await renderWithClient(() => useChatWithHistory())
-
-      await waitFor(() => {
-        const form = result!.current.inputsForms[0]
-        expect(form.type).toBe('number')
-        expect(form.variable).toBe('num_var')
-      })
-    })
-
-    it('should return checkbox form item', async () => {
-      // Arrange
-      mockStoreState.appParams = {
-        user_input_form: [
-          {
-            checkbox: {
-              variable: 'check_var',
-              label: 'Check',
-              required: false,
-              default: false,
-            },
-          },
-        ],
-      } as unknown as ChatConfig
-      mockFetchConversations.mockResolvedValue(createConversationData())
-      mockFetchChatList.mockResolvedValue({ data: [] })
-
-      const { result } = await renderWithClient(() => useChatWithHistory())
-
-      await waitFor(() => {
-        const form = result!.current.inputsForms[0]
-        expect(form.type).toBe('checkbox')
-        expect(form.variable).toBe('check_var')
-      })
-    })
-
-    it('should return select form item', async () => {
-      // Arrange
-      mockStoreState.appParams = {
-        user_input_form: [
-          {
-            select: {
-              variable: 'sel_var',
-              label: 'Select',
-              required: false,
-              options: ['a', 'b'],
-              default: 'a',
-            },
-          },
-        ],
-      } as unknown as ChatConfig
-      mockFetchConversations.mockResolvedValue(createConversationData())
-      mockFetchChatList.mockResolvedValue({ data: [] })
-
-      const { result } = await renderWithClient(() => useChatWithHistory())
-
-      await waitFor(() => {
-        const form = result!.current.inputsForms[0]
-        expect(form.type).toBe('select')
-        expect(form.variable).toBe('sel_var')
-      })
-    })
-
-    it('should return file-list form item', async () => {
-      // Arrange
-      mockStoreState.appParams = {
-        user_input_form: [
-          {
-            'file-list': {
-              variable: 'files_var',
-              label: 'Files',
-              required: false,
-            },
-          },
-        ],
-      } as unknown as ChatConfig
-      mockFetchConversations.mockResolvedValue(createConversationData())
-      mockFetchChatList.mockResolvedValue({ data: [] })
-
-      const { result } = await renderWithClient(() => useChatWithHistory())
-
-      await waitFor(() => {
-        const form = result!.current.inputsForms[0]
-        expect(form.type).toBe('file-list')
-        expect(form.variable).toBe('files_var')
-      })
-    })
-
-    it('should return file form item', async () => {
-      // Arrange
-      mockStoreState.appParams = {
-        user_input_form: [
-          {
-            file: {
-              variable: 'file_var',
-              label: 'File',
-              required: false,
-            },
-          },
-        ],
-      } as unknown as ChatConfig
-      mockFetchConversations.mockResolvedValue(createConversationData())
-      mockFetchChatList.mockResolvedValue({ data: [] })
-
-      const { result } = await renderWithClient(() => useChatWithHistory())
-
-      await waitFor(() => {
-        const form = result!.current.inputsForms[0]
-        expect(form.type).toBe('file')
-        expect(form.variable).toBe('file_var')
-      })
-    })
-
-    it('should return json_object form item', async () => {
-      // Arrange
-      mockStoreState.appParams = {
-        user_input_form: [
-          {
-            json_object: {
-              variable: 'json_var',
-              label: 'JSON',
-              required: false,
-            },
-          },
-        ],
-      } as unknown as ChatConfig
-      mockFetchConversations.mockResolvedValue(createConversationData())
-      mockFetchChatList.mockResolvedValue({ data: [] })
-
-      const { result } = await renderWithClient(() => useChatWithHistory())
-
-      await waitFor(() => {
-        const form = result!.current.inputsForms[0]
-        expect(form.type).toBe('json_object')
-        expect(form.variable).toBe('json_var')
-      })
-    })
-
-    it('should return text-input form item', async () => {
-      // Arrange
-      mockStoreState.appParams = {
-        user_input_form: [
-          {
-            'text-input': {
-              variable: 'text_var',
-              label: 'Text',
-              required: true,
-              max_length: 50,
-              default: '',
-            },
-          },
-        ],
-      } as unknown as ChatConfig
-      mockFetchConversations.mockResolvedValue(createConversationData())
-      mockFetchChatList.mockResolvedValue({ data: [] })
-
-      const { result } = await renderWithClient(() => useChatWithHistory())
-
-      await waitFor(() => {
-        const form = result!.current.inputsForms[0]
-        expect(form.type).toBe('text-input')
-        expect(form.variable).toBe('text_var')
-      })
-    })
+    it.each([
+      ['paragraph', 'Draft'],
+      ['number', 42],
+      ['checkbox', false],
+      ['select', 'a'],
+      ['file-list', undefined],
+      ['file', undefined],
+      ['json_object', undefined],
+      ['text-input', 'Name'],
+    ])(
+      'preserves %s schema and seeds its default into new chat inputs',
+      async (type, defaultValue) => {
+        const schema = {
+          variable: 'input',
+          label: 'Input',
+          required: false,
+          default: defaultValue,
+          options: ['a', 'b'],
+        }
+        mockStoreState.appParams = {
+          user_input_form: [{ [type as string]: schema }],
+        } as unknown as ChatConfig
+        const { result } = await renderWithClient(() => useChatWithHistory())
+        await waitFor(() => {
+          expect(result!.current.inputsForms).toEqual([{ ...schema, type }])
+          expect(result!.current.newConversationInputs).toEqual({ input: defaultValue ?? null })
+        })
+      },
+    )
 
     it('should skip items with external_data_tool set', async () => {
       // Arrange
@@ -1137,7 +878,6 @@ describe('useChatWithHistory', () => {
     })
   })
 
-  // Scenario: handleStartChat calls callback when inputs are valid.
   describe('handleStartChat', () => {
     it('should invoke callback and show new conversation item when inputs are valid', async () => {
       // Arrange
@@ -1253,7 +993,6 @@ describe('useChatWithHistory', () => {
     })
   })
 
-  // Scenario: installedAppInfo changes the appSourceType and appData.
   describe('installedApp mode', () => {
     it('should use installedApp source type and derive appData from installedAppInfo', async () => {
       // Arrange
@@ -1285,10 +1024,16 @@ describe('useChatWithHistory', () => {
       expect(result!.current.isInstalledApp).toBe(true)
       expect(result!.current.appId).toBe('installed-app-id')
       expect(result!.current.appData?.site.title).toBe('Installed App')
+      expect(mockFetchConversations).toHaveBeenCalledWith(
+        AppSourceType.installedApp,
+        'installed-app-id',
+        undefined,
+        false,
+        100,
+      )
     })
   })
 
-  // Scenario: appPrevChatTree is built from chat list messages.
   describe('appPrevChatTree', () => {
     it('should build appPrevChatTree from fetched chat messages', async () => {
       // Arrange
@@ -1320,7 +1065,21 @@ describe('useChatWithHistory', () => {
 
       // Assert
       await waitFor(() => {
-        expect(result!.current.appPrevChatTree.length).toBeGreaterThan(0)
+        expect(result!.current.appPrevChatTree).toEqual([
+          expect.objectContaining({
+            id: 'question-msg-1',
+            content: 'Hello',
+            isAnswer: false,
+            children: [
+              expect.objectContaining({
+                id: 'msg-1',
+                content: 'Hi there',
+                isAnswer: true,
+                parentMessageId: 'question-msg-1',
+              }),
+            ],
+          }),
+        ])
       })
     })
 
@@ -1365,47 +1124,6 @@ describe('useChatWithHistory', () => {
       const answerNode = result!.current.appPrevChatTree[0]?.children?.[0]
       expect(answerNode?.humanInputFormDataList).toHaveLength(1)
       expect(answerNode?.workflow_run_id).toBe('wf-run-1')
-    })
-
-    it('should set workflow_run_id for normal messages with submitted human_input', async () => {
-      // Arrange
-      const listData = createConversationData({
-        data: [createConversationItem({ id: 'conversation-1' })],
-      })
-      const chatListData = {
-        data: [
-          {
-            id: 'msg-normal',
-            query: 'Normal query',
-            answer: 'Answer',
-            message_files: [],
-            feedback: null,
-            retriever_resources: [],
-            agent_thoughts: null,
-            parent_message_id: null,
-            inputs: {},
-            status: 'normal',
-            extra_contents: [
-              {
-                type: 'human_input',
-                submitted: true,
-                form_submission_data: { field: 'value' },
-              },
-            ],
-          },
-        ],
-      }
-      mockFetchConversations.mockResolvedValue(listData)
-      mockFetchChatList.mockResolvedValue(chatListData)
-
-      const { result } = await renderWithClient(() => useChatWithHistory())
-
-      await waitFor(() => {
-        expect(result!.current.appPrevChatTree.length).toBeGreaterThan(0)
-      })
-
-      const answerNode = result!.current.appPrevChatTree[0]?.children?.[0]
-      expect(answerNode?.humanInputFilledFormDataList).toHaveLength(1)
     })
 
     it('should parse human input payloads regardless of message status', async () => {
@@ -1489,7 +1207,6 @@ describe('useChatWithHistory', () => {
     })
   })
 
-  // Scenario: currentConversationItem is found from pinned list when not in conversationList.
   describe('currentConversationItem from pinned list', () => {
     it('should find currentConversationItem from pinnedConversationList when not in conversationList', async () => {
       // Arrange: set current ID to pinned-1
@@ -1516,62 +1233,6 @@ describe('useChatWithHistory', () => {
     })
   })
 
-  // Scenario: handleNewConversationInputsChange updates the inputs ref and state.
-  describe('handleNewConversationInputsChange', () => {
-    it('should update newConversationInputs when called', async () => {
-      // Arrange
-      mockFetchConversations.mockResolvedValue(createConversationData())
-      mockFetchChatList.mockResolvedValue({ data: [] })
-
-      const { result } = await renderWithClient(() => useChatWithHistory())
-
-      // Act
-      act(() => {
-        result!.current.handleNewConversationInputsChange({ key: 'value' })
-      })
-
-      // Assert
-      expect(result!.current.newConversationInputs).toEqual({ key: 'value' })
-      expect(result!.current.newConversationInputsRef.current).toEqual({ key: 'value' })
-    })
-  })
-
-  // Scenario: clearChatList and isResponding state control.
-  describe('State controls', () => {
-    it('should update clearChatList via setClearChatList', async () => {
-      // Arrange
-      mockFetchConversations.mockResolvedValue(createConversationData())
-      mockFetchChatList.mockResolvedValue({ data: [] })
-
-      const { result } = await renderWithClient(() => useChatWithHistory())
-
-      // Act
-      act(() => {
-        result!.current.setClearChatList(true)
-      })
-
-      // Assert
-      expect(result!.current.clearChatList).toBe(true)
-    })
-
-    it('should update isResponding via setIsResponding', async () => {
-      // Arrange
-      mockFetchConversations.mockResolvedValue(createConversationData())
-      mockFetchChatList.mockResolvedValue({ data: [] })
-
-      const { result } = await renderWithClient(() => useChatWithHistory())
-
-      // Act
-      act(() => {
-        result!.current.setIsResponding(true)
-      })
-
-      // Assert
-      expect(result!.current.isResponding).toBe(true)
-    })
-  })
-
-  // Scenario: handleSidebarCollapse is a no-op when appId is not available.
   describe('handleSidebarCollapse without appId', () => {
     it('should not update state when appId is absent', async () => {
       // Arrange
@@ -1592,7 +1253,6 @@ describe('useChatWithHistory', () => {
     })
   })
 
-  // Scenario: handleConversationIdInfoChange handles legacy string prevValue.
   describe('handleConversationIdInfoChange with legacy string prevValue', () => {
     it('should treat existing string value as empty object', async () => {
       // Arrange: store a string value instead of an object (legacy format)
@@ -1612,89 +1272,11 @@ describe('useChatWithHistory', () => {
       await waitFor(() => {
         const stored = localStorage.getItem(CONVERSATION_ID_INFO)
         const parsed = stored ? JSON.parse(stored) : {}
-        expect(parsed['app-1']).toBeTruthy()
+        expect(parsed['app-1']).toEqual({ 'user-1': 'new-conversation' })
       })
     })
   })
 
-  // Scenario: checkInputsRequired with file uploading (singleFile type, array).
-  describe('checkInputsRequired - file uploading', () => {
-    it('should return undefined (file uploading) when single file is still uploading as array', async () => {
-      // Arrange: single file type with file still uploading
-      mockStoreState.appParams = {
-        user_input_form: [
-          {
-            'text-input': {
-              variable: 'file_upload_var',
-              label: 'Upload',
-              required: false,
-              type: 'singleFile',
-              max_length: 100,
-              default: '',
-            },
-          },
-        ],
-      } as unknown as ChatConfig
-      mockFetchConversations.mockResolvedValue(createConversationData())
-      mockFetchChatList.mockResolvedValue({ data: [] })
-
-      const { result } = await renderWithClient(() => useChatWithHistory())
-
-      // Set up an input that looks like a file being uploaded
-      act(() => {
-        result!.current.handleNewConversationInputsChange({
-          file_upload_var: [{ transferMethod: 'local_file', uploadedId: null }],
-        })
-      })
-
-      const callback = vi.fn()
-      // Act: the hook uses checkInputsRequired which checks file uploading
-      // Since type is text-input and required=false, will pass
-      act(() => {
-        result!.current.handleStartChat(callback)
-      })
-
-      // Assert callback is called (no required field issue)
-      expect(callback).toHaveBeenCalled()
-    })
-
-    it('should return false when required text input is empty (not silent)', async () => {
-      // Arrange
-      mockStoreState.appParams = {
-        user_input_form: [
-          {
-            'text-input': {
-              variable: 'required_text',
-              label: 'Required Text',
-              required: true,
-              max_length: 100,
-              default: '',
-            },
-          },
-        ],
-      } as unknown as ChatConfig
-      mockFetchConversations.mockResolvedValue(createConversationData())
-      mockFetchChatList.mockResolvedValue({ data: [] })
-
-      const { result } = await renderWithClient(() => useChatWithHistory())
-      const callback = vi.fn()
-
-      // Ensure no input value is set
-      act(() => {
-        result!.current.handleNewConversationInputsChange({ required_text: '' })
-      })
-
-      // Act
-      act(() => {
-        result!.current.handleStartChat(callback)
-      })
-
-      // Assert: callback not called because required field is empty
-      expect(callback).not.toHaveBeenCalled()
-    })
-  })
-
-  // Scenario: paragraph and text-input max_length truncation from initInputs.
   describe('inputsForms value truncation', () => {
     it('should truncate paragraph value that exceeds max_length', async () => {
       // Arrange: mock getRawInputsFromUrlParams to return a long value
@@ -1722,7 +1304,8 @@ describe('useChatWithHistory', () => {
       await waitFor(() => {
         const form = result!.current.inputsForms[0]
         // default should be the truncated value
-        expect(form.default?.length ?? 0).toBeLessThanOrEqual(5)
+        expect(form.default).toBe('toolo')
+        expect(result!.current.newConversationInputs.para_var).toBe('toolo')
       })
 
       // Restore
@@ -1756,7 +1339,8 @@ describe('useChatWithHistory', () => {
 
       await waitFor(() => {
         const form = result!.current.inputsForms[0]
-        expect(form.default?.length ?? 0).toBeLessThanOrEqual(7)
+        expect(form.default).toBe('exceeds')
+        expect(result!.current.newConversationInputs.text_var).toBe('exceeds')
       })
 
       // Restore
@@ -1764,7 +1348,6 @@ describe('useChatWithHistory', () => {
     })
   })
 
-  // Scenario: handleNewConversation with inputsForms having form defaults.
   describe('handleNewConversation with inputsForms', () => {
     it('should reset new conversation inputs to form defaults', async () => {
       // Arrange
@@ -1791,6 +1374,8 @@ describe('useChatWithHistory', () => {
         result!.current.handleNewConversationInputsChange({ my_var: 'changed' })
       })
 
+      expect(result!.current.newConversationInputs).toEqual({ my_var: 'changed' })
+      expect(result!.current.newConversationInputsRef.current).toEqual({ my_var: 'changed' })
       // Act
       act(() => {
         result!.current.handleNewConversation()
@@ -1803,7 +1388,6 @@ describe('useChatWithHistory', () => {
     })
   })
 
-  // Scenario: select form item where input value is NOT in options.
   describe('inputsForms select option matching', () => {
     it('should use select default when initInput value is not in options', async () => {
       // Arrange
@@ -1870,40 +1454,42 @@ describe('useChatWithHistory', () => {
     })
   })
 
-  // Scenario: checkbox with initInputs preset value.
   describe('inputsForms checkbox with initInputs', () => {
-    it('should use initInputs preset=true for checkbox', async () => {
-      // Arrange
-      const { getRawInputsFromUrlParams } = await import('../../utils')
-      vi.mocked(getRawInputsFromUrlParams).mockResolvedValue({ check_var: true })
+    it.each([true, false])(
+      'preserves the URL checkbox value %s over the opposite default',
+      async (preset) => {
+        // Arrange
+        const { getRawInputsFromUrlParams } = await import('../../utils')
+        vi.mocked(getRawInputsFromUrlParams).mockResolvedValue({ check_var: preset })
 
-      mockStoreState.appParams = {
-        user_input_form: [
-          {
-            checkbox: {
-              variable: 'check_var',
-              label: 'Check',
-              required: false,
-              default: false,
+        mockStoreState.appParams = {
+          user_input_form: [
+            {
+              checkbox: {
+                variable: 'check_var',
+                label: 'Check',
+                required: false,
+                default: !preset,
+              },
             },
-          },
-        ],
-      } as unknown as ChatConfig
-      mockFetchConversations.mockResolvedValue(createConversationData())
-      mockFetchChatList.mockResolvedValue({ data: [] })
+          ],
+        } as unknown as ChatConfig
+        mockFetchConversations.mockResolvedValue(createConversationData())
+        mockFetchChatList.mockResolvedValue({ data: [] })
 
-      const { result } = await renderWithClient(() => useChatWithHistory())
+        const { result } = await renderWithClient(() => useChatWithHistory())
 
-      await waitFor(() => {
-        const form = result!.current.inputsForms[0]
-        expect(form.default).toBe(true)
-      })
+        await waitFor(() => {
+          const form = result!.current.inputsForms[0]
+          expect(form.default).toBe(preset)
+          expect(result!.current.newConversationInputs.check_var).toBe(preset)
+        })
 
-      vi.mocked(getRawInputsFromUrlParams).mockResolvedValue({})
-    })
+        vi.mocked(getRawInputsFromUrlParams).mockResolvedValue({})
+      },
+    )
   })
 
-  // Scenario: number form item with valid numeric initInput.
   describe('inputsForms number with initInputs', () => {
     it('should use converted number from initInputs', async () => {
       // Arrange
@@ -1967,157 +1553,32 @@ describe('useChatWithHistory', () => {
     })
   })
 
-  // Scenario: showNewConversationItemInList manual state management.
-  describe('setShowNewConversationItemInList', () => {
-    it('should not prepend empty item when showNewConversationItemInList is false', async () => {
-      // Arrange
-      mockFetchConversations.mockResolvedValue(
-        createConversationData({
-          data: [createConversationItem({ id: 'conversation-1', name: 'First' })],
-        }),
-      )
-      mockFetchChatList.mockResolvedValue({ data: [] })
-
+  describe('file input readiness', () => {
+    it.each([
+      ['file-list', [], false],
+      ['file-list', [{ transferMethod: 'local_file', uploadedId: null }], false],
+      ['file', { transferMethod: 'local_file', uploadedId: null }, false],
+      ['file-list', [{ transferMethod: 'local_file', uploadedId: 'uploaded-1' }], true],
+      ['file', { transferMethod: 'local_file', uploadedId: 'uploaded-1' }, true],
+      ['file', { transferMethod: 'remote_url', url: 'https://example.com/file.txt' }, true],
+    ])('validates %s value %j before starting chat', async (type, value, ready) => {
+      mockStoreState.appParams = {
+        user_input_form: [
+          { [type as string]: { variable: 'upload', label: 'Upload', required: true } },
+        ],
+      } as unknown as ChatConfig
       const { result } = await renderWithClient(() => useChatWithHistory())
-
-      await waitFor(() => {
-        expect(result!.current.conversationList).toHaveLength(1)
-      })
-
-      // Act: ensure showNewConversationItemInList is false
+      const callback = vi.fn()
       act(() => {
-        result!.current.setShowNewConversationItemInList(false)
+        result!.current.handleNewConversationInputsChange({ upload: value })
+        result!.current.handleStartChat(callback)
       })
-
-      // Assert
-      expect(result!.current.conversationList[0]!.id).toBe('conversation-1')
+      expect(callback).toHaveBeenCalledTimes(ready ? 1 : 0)
+      if (ready) expect(result!.current.conversationList[0]!.id).toBe('')
+      else expect(result!.current.conversationList.every((item) => item.id !== '')).toBe(true)
     })
   })
 
-  // Scenario: checkInputsRequired detects file still uploading (array form, local_file method, no uploadedId).
-  describe('checkInputsRequired - file uploading branches', () => {
-    it('should block chat start and show info toast when file-list file is uploading (Array.isArray path)', async () => {
-      // Arrange: file-list required form item
-      mockStoreState.appParams = {
-        user_input_form: [
-          {
-            'file-list': {
-              variable: 'files_var',
-              label: 'Files',
-              required: true,
-            },
-          },
-        ],
-      } as unknown as ChatConfig
-      mockFetchConversations.mockResolvedValue(createConversationData())
-      mockFetchChatList.mockResolvedValue({ data: [] })
-
-      const { result } = await renderWithClient(() => useChatWithHistory())
-
-      await waitFor(() => {
-        expect(result!.current.inputsForms[0].type).toBe('file-list')
-      })
-
-      // Set the input value to an array with a file still being uploaded
-      act(() => {
-        result!.current.handleNewConversationInputsChange({
-          files_var: [{ transferMethod: 'local_file', uploadedId: null }],
-        })
-      })
-
-      const callback = vi.fn()
-
-      // Act
-      act(() => {
-        result!.current.handleStartChat(callback)
-      })
-
-      // Assert: callback NOT called because file is still uploading
-      expect(callback).not.toHaveBeenCalled()
-    })
-
-    it('should block chat start when single file is uploading (non-array path)', async () => {
-      // Arrange: file (singleFile) required form item
-      mockStoreState.appParams = {
-        user_input_form: [
-          {
-            file: {
-              variable: 'single_file_var',
-              label: 'Single File',
-              required: true,
-            },
-          },
-        ],
-      } as unknown as ChatConfig
-      mockFetchConversations.mockResolvedValue(createConversationData())
-      mockFetchChatList.mockResolvedValue({ data: [] })
-
-      const { result } = await renderWithClient(() => useChatWithHistory())
-
-      await waitFor(() => {
-        expect(result!.current.inputsForms[0].type).toBe('file')
-      })
-
-      // Set the input value to a single file object still being uploaded
-      act(() => {
-        result!.current.handleNewConversationInputsChange({
-          single_file_var: { transferMethod: 'local_file', uploadedId: null },
-        })
-      })
-
-      const callback = vi.fn()
-
-      // Act
-      act(() => {
-        result!.current.handleStartChat(callback)
-      })
-
-      // Assert: callback NOT called because file is still uploading
-      expect(callback).not.toHaveBeenCalled()
-    })
-
-    it('should allow chat start when file-list file has been uploaded (uploadedId present)', async () => {
-      // Arrange: file-list required item, file fully uploaded
-      mockStoreState.appParams = {
-        user_input_form: [
-          {
-            'file-list': {
-              variable: 'files_var',
-              label: 'Files',
-              required: true,
-            },
-          },
-        ],
-      } as unknown as ChatConfig
-      mockFetchConversations.mockResolvedValue(createConversationData())
-      mockFetchChatList.mockResolvedValue({ data: [] })
-
-      const { result } = await renderWithClient(() => useChatWithHistory())
-
-      await waitFor(() => {
-        expect(result!.current.inputsForms[0].type).toBe('file-list')
-      })
-
-      // File has been fully uploaded
-      act(() => {
-        result!.current.handleNewConversationInputsChange({
-          files_var: [{ transferMethod: 'local_file', uploadedId: 'uploaded-id-123' }],
-        })
-      })
-
-      const callback = vi.fn()
-
-      // Act
-      act(() => {
-        result!.current.handleStartChat(callback)
-      })
-
-      // Assert: callback IS called because file is fully uploaded
-      expect(callback).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  // Scenario: getFormattedChatList handles mixed status paths, file mapping, and agent thoughts.
   describe('appPrevChatTree formatting branches', () => {
     it('should handle mixed message statuses, optional message_files, and mapped agent thought files', async () => {
       // Arrange
@@ -2249,7 +1710,6 @@ describe('useChatWithHistory', () => {
     })
   })
 
-  // Scenario: newConversation merge replaces existing conversation item when id already exists.
   describe('newConversation merge replace path', () => {
     it('should replace an existing conversation when generated conversation id already exists', async () => {
       // Arrange
@@ -2277,7 +1737,6 @@ describe('useChatWithHistory', () => {
     })
   })
 
-  // Scenario: conversation id update should no-op without appId and use DEFAULT key without userId.
   describe('handleConversationIdInfoChange fallback branches', () => {
     it('should no-op when appId is absent', async () => {
       // Arrange
@@ -2322,7 +1781,6 @@ describe('useChatWithHistory', () => {
     })
   })
 
-  // Scenario: currentConversationLatestInputs should fall back to empty object for missing inputs.
   describe('currentConversationLatestInputs fallback paths', () => {
     it('should fall back to {} when latest chat message has no inputs', async () => {
       // Arrange
@@ -2352,115 +1810,8 @@ describe('useChatWithHistory', () => {
         expect(result!.current.currentConversationInputs).toEqual({})
       })
     })
-
-    it('should use {} fallback when newConversationInputsRef is unset and no conversation is selected', async () => {
-      // Arrange
-      mockFetchConversations.mockResolvedValue(createConversationData())
-      mockFetchChatList.mockResolvedValue({ data: [] })
-      const { result } = await renderWithClient(() => useChatWithHistory())
-
-      // Act
-      act(() => {
-        result!.current.newConversationInputsRef.current = undefined as unknown as Record<
-          string,
-          unknown
-        >
-        result!.current.handleChangeConversation('')
-      })
-
-      // Assert
-      await waitFor(() => {
-        expect(result!.current.currentConversationId).toBe('')
-      })
-      expect(result!.current.newConversationInputs).toEqual({})
-    })
   })
 
-  // Scenario: checkInputsRequired guard short-circuits when a prior variable already failed.
-  describe('checkInputsRequired short-circuit guards', () => {
-    it('should short-circuit remaining required vars after first empty required input', async () => {
-      // Arrange
-      mockStoreState.appParams = {
-        user_input_form: [
-          {
-            'text-input': {
-              variable: 'required_one',
-              label: 'Required One',
-              required: true,
-              max_length: 50,
-              default: '',
-            },
-          },
-          {
-            'text-input': {
-              variable: 'required_two',
-              label: 'Required Two',
-              required: true,
-              max_length: 50,
-              default: '',
-            },
-          },
-        ],
-      } as unknown as ChatConfig
-      mockFetchConversations.mockResolvedValue(createConversationData())
-      mockFetchChatList.mockResolvedValue({ data: [] })
-      const { result } = await renderWithClient(() => useChatWithHistory())
-      const callback = vi.fn()
-
-      // Act
-      act(() => {
-        result!.current.handleStartChat(callback)
-      })
-
-      // Assert
-      expect(callback).not.toHaveBeenCalled()
-    })
-
-    it('should short-circuit remaining required vars after detecting uploading file', async () => {
-      // Arrange
-      mockStoreState.appParams = {
-        user_input_form: [
-          {
-            'file-list': {
-              variable: 'files_var',
-              label: 'Files',
-              required: true,
-            },
-          },
-          {
-            'text-input': {
-              variable: 'required_text',
-              label: 'Required Text',
-              required: true,
-              max_length: 50,
-              default: '',
-            },
-          },
-        ],
-      } as unknown as ChatConfig
-      mockFetchConversations.mockResolvedValue(createConversationData())
-      mockFetchChatList.mockResolvedValue({ data: [] })
-      const { result } = await renderWithClient(() => useChatWithHistory())
-      const callback = vi.fn()
-
-      act(() => {
-        result!.current.handleNewConversationInputsChange({
-          files_var: [{ transferMethod: 'local_file', uploadedId: null }],
-          required_text: '',
-        })
-      })
-
-      // Act
-      act(() => {
-        result!.current.handleStartChat(callback)
-      })
-
-      // Assert
-      expect(callback).not.toHaveBeenCalled()
-    })
-  })
-
-  // Scenario: handleNewConversation should normalize missing defaults to null.
   describe('handleNewConversation default normalization', () => {
     it('should assign null for input defaults that are empty strings', async () => {
       // Arrange

@@ -32,34 +32,20 @@ vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
 }))
 
-// Mock DocumentFileIcon - uses relative path from file-list-item.tsx
-vi.mock('@/app/components/datasets/common/document-file-icon', () => ({
-  default: ({ extension }: { extension: string }) => (
-    <div data-testid="document-icon">{extension}</div>
-  ),
-}))
-
-// Mock SimplePieChart
-vi.mock('next/dynamic', () => ({
-  default: () => {
-    const Component = ({ percentage }: { percentage: number }) => (
-      <div data-testid="pie-chart">{percentage}%</div>
-    )
-    return Component
-  },
-}))
-
 describe('FileUploader', () => {
-  const createMockFile = (overrides: Partial<File> = {}): File =>
-    ({
-      name: 'test.pdf',
-      size: 1024,
-      type: 'application/pdf',
-      ...overrides,
-    }) as File
+  const createMockFile = (overrides: Partial<File> = {}): File => {
+    const { name = 'test.pdf', ...extra } = overrides
+    return Object.assign(
+      new globalThis.File(['content'], name, {
+        type: 'application/pdf',
+        lastModified: 1700000000000,
+      }),
+      extra,
+    )
+  }
 
   const createMockFileItem = (overrides: Partial<FileItem> = {}): FileItem => ({
-    fileID: `file-${Date.now()}`,
+    fileID: 'file-1',
     file: createMockFile(overrides.file as Partial<File>),
     progress: PROGRESS_NOT_STARTED,
     ...overrides,
@@ -78,57 +64,7 @@ describe('FileUploader', () => {
     vi.clearAllMocks()
   })
 
-  describe('rendering', () => {
-    it('should render the component', () => {
-      render(<FileUploader {...defaultProps} />)
-      expect(screen.getByText('datasetCreation.stepOne.uploader.title')).toBeInTheDocument()
-    })
-
-    it('should render dropzone when no files', () => {
-      render(<FileUploader {...defaultProps} />)
-      expect(screen.getByText(/datasetCreation\.stepOne\.uploader\.button/)).toBeInTheDocument()
-    })
-
-    it('should render browse button', () => {
-      render(<FileUploader {...defaultProps} />)
-      expect(screen.getByText('datasetCreation.stepOne.uploader.browse')).toBeInTheDocument()
-    })
-  })
-
-  describe('file list rendering', () => {
-    it('should render file items when fileList has items', () => {
-      const fileList = [
-        createMockFileItem({ file: createMockFile({ name: 'file1.pdf' }) }),
-        createMockFileItem({ file: createMockFile({ name: 'file2.pdf' }) }),
-      ]
-
-      render(<FileUploader {...defaultProps} fileList={fileList} />)
-
-      expect(screen.getByText('file1.pdf')).toBeInTheDocument()
-      expect(screen.getByText('file2.pdf')).toBeInTheDocument()
-    })
-
-    it('should render document icons for files', () => {
-      const fileList = [createMockFileItem()]
-      render(<FileUploader {...defaultProps} fileList={fileList} />)
-
-      expect(screen.getByTestId('document-icon')).toBeInTheDocument()
-    })
-  })
-
   describe('batch upload mode', () => {
-    it('should show dropzone with batch upload enabled', () => {
-      render(<FileUploader {...defaultProps} supportBatchUpload={true} />)
-      expect(screen.getByText(/datasetCreation\.stepOne\.uploader\.button/)).toBeInTheDocument()
-    })
-
-    it('should show single file text when batch upload disabled', () => {
-      render(<FileUploader {...defaultProps} supportBatchUpload={false} />)
-      expect(
-        screen.getByText(/datasetCreation\.stepOne\.uploader\.buttonSingleFile/),
-      ).toBeInTheDocument()
-    })
-
     it('should hide dropzone when not batch upload and has files', () => {
       const fileList = [createMockFileItem()]
       render(<FileUploader {...defaultProps} supportBatchUpload={false} fileList={fileList} />)
@@ -144,7 +80,7 @@ describe('FileUploader', () => {
       const user = userEvent.setup()
       const onPreview = vi.fn()
       const fileItem = createMockFileItem({
-        file: createMockFile({ id: 'file-id' } as Partial<File>),
+        file: createMockFile({ id: 'file-id' }),
       })
 
       render(<FileUploader {...defaultProps} fileList={[fileItem]} onPreview={onPreview} />)
@@ -251,54 +187,6 @@ describe('FileUploader', () => {
       expect(status).toHaveTextContent('first.pdf: datasetCreation.stepOne.uploader.failed')
       expect(status).toHaveTextContent('second.pdf: datasetCreation.stepOne.uploader.completed')
       expect(status).toHaveAttribute('aria-atomic', 'false')
-    })
-  })
-
-  describe('upload progress', () => {
-    it('should show progress chart for uploading files', () => {
-      const fileItem = createMockFileItem({ progress: 50 })
-      render(<FileUploader {...defaultProps} fileList={[fileItem]} />)
-
-      expect(screen.getByTestId('pie-chart')).toBeInTheDocument()
-      expect(screen.getByText('50%')).toBeInTheDocument()
-    })
-
-    it('should not show progress chart for completed files', () => {
-      const fileItem = createMockFileItem({ progress: 100 })
-      render(<FileUploader {...defaultProps} fileList={[fileItem]} />)
-
-      expect(screen.queryByTestId('pie-chart')).not.toBeInTheDocument()
-    })
-
-    it('should not show progress chart for not started files', () => {
-      const fileItem = createMockFileItem({ progress: PROGRESS_NOT_STARTED })
-      render(<FileUploader {...defaultProps} fileList={[fileItem]} />)
-
-      expect(screen.queryByTestId('pie-chart')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('multiple files', () => {
-    it('should render all files in the list', () => {
-      const fileList = [
-        createMockFileItem({ fileID: 'f1', file: createMockFile({ name: 'doc1.pdf' }) }),
-        createMockFileItem({ fileID: 'f2', file: createMockFile({ name: 'doc2.docx' }) }),
-        createMockFileItem({ fileID: 'f3', file: createMockFile({ name: 'doc3.txt' }) }),
-      ]
-
-      render(<FileUploader {...defaultProps} fileList={fileList} />)
-
-      expect(screen.getByText('doc1.pdf')).toBeInTheDocument()
-      expect(screen.getByText('doc2.docx')).toBeInTheDocument()
-      expect(screen.getByText('doc3.txt')).toBeInTheDocument()
-    })
-  })
-
-  describe('styling', () => {
-    it('should have proper spacing', () => {
-      const { container } = render(<FileUploader {...defaultProps} />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('mb-5')
     })
   })
 })

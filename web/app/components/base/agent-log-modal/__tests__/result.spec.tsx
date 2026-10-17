@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import * as React from 'react'
 import ResultPanel from '../result'
 
+// Code editing and the status widget are independently covered; this owner formats log data.
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
   default: ({ title, value }: { title: React.ReactNode; value: string | object }) => (
     <div data-testid="code-editor">
@@ -53,23 +54,13 @@ const mockProps = {
 }
 
 describe('ResultPanel', () => {
-  it('should render status panel and code editors', () => {
+  it('shows inputs, outputs and execution metadata', () => {
     render(<ResultPanel {...mockProps} />)
-
-    expect(screen.getByTestId('status-panel')).toBeInTheDocument()
-
-    const editors = screen.getAllByTestId('code-editor')
-    expect(editors).toHaveLength(2)
 
     expect(screen.getByText('INPUT')).toBeInTheDocument()
     expect(screen.getByText('OUTPUT')).toBeInTheDocument()
     expect(screen.getByText(JSON.stringify(mockProps.inputs))).toBeInTheDocument()
     expect(screen.getByText(JSON.stringify(mockProps.outputs))).toBeInTheDocument()
-  })
-
-  it('should display correct metadata', () => {
-    render(<ResultPanel {...mockProps} />)
-
     expect(screen.getByText('User Name')).toBeInTheDocument()
     expect(screen.getByText('1.235s')).toBeInTheDocument() // toFixed(3)
     expect(screen.getByText('150 Tokens')).toBeInTheDocument()
@@ -81,20 +72,20 @@ describe('ResultPanel', () => {
     expect(screen.getByText(/formatted-/)).toBeInTheDocument()
   })
 
-  it('should handle missing created_by and tools', () => {
-    render(<ResultPanel {...mockProps} created_by={undefined} tools={[]} />)
+  it('shows available mode and fallbacks when execution metadata is missing', () => {
+    render(
+      <ResultPanel
+        {...mockProps}
+        created_by={undefined}
+        tools={[]}
+        total_tokens={undefined}
+        agentMode="react"
+      />,
+    )
 
     expect(screen.getByText('N/A')).toBeInTheDocument()
     expect(screen.getByText('Null')).toBeInTheDocument()
-  })
-
-  it('should display ReACT mode correctly', () => {
-    render(<ResultPanel {...mockProps} agentMode="react" />)
-    expect(screen.getByText('appDebug.agent.agentModeType.ReACT')).toBeInTheDocument()
-  })
-
-  it('should fallback to zero tokens when total_tokens is undefined', () => {
-    render(<ResultPanel {...mockProps} total_tokens={undefined} />)
     expect(screen.getByText('0 Tokens')).toBeInTheDocument()
+    expect(screen.getByText('appDebug.agent.agentModeType.ReACT')).toBeInTheDocument()
   })
 })

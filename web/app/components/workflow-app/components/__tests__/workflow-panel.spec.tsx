@@ -25,7 +25,7 @@ const renderPanel = (initialStoreState: WorkflowStoreState) => {
     queryClient,
     createAppDetailFixture({
       id: 'app-123',
-      mode: 'workflow' as const,
+      mode: chatflowMode ? 'advanced-chat' : 'workflow',
       workflow: { id: 'workflow-version-id' },
     }),
   )

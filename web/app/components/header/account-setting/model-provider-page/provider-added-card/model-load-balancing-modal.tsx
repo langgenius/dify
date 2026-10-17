@@ -27,7 +27,7 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { memo, useCallback, useEffect, useId, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { SwitchCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
@@ -119,9 +119,21 @@ const ModelLoadBalancingModal = ({
       {} as Record<string, ModelLoadBalancingConfigEntry>,
     )
   }, [originalConfig])
+  const draftIdentity = JSON.stringify([
+    provider.provider,
+    model.model,
+    model.model_type,
+    configFrom,
+    credential?.credential_id,
+    open,
+  ])
+  const previousDraftIdentity = useRef(draftIdentity)
   useEffect(() => {
-    if (originalConfig) setDraftConfig(originalConfig)
-  }, [originalConfig])
+    const changed = previousDraftIdentity.current !== draftIdentity
+    previousDraftIdentity.current = draftIdentity
+    // Credential edits refetch the server configuration, but must preserve local edits.
+    setDraftConfig((previous) => (changed ? originalConfig : (previous ?? originalConfig)))
+  }, [originalConfig, draftIdentity])
   const toggleModalBalancing = useCallback(
     (enabled: boolean) => {
       if (draftConfig) {
@@ -153,7 +165,7 @@ const ModelLoadBalancingModal = ({
   ])
   const encodeConfigEntrySecretValues = useCallback(
     (entry: ModelLoadBalancingConfigEntry) => {
-      const result = { ...entry }
+      const result = { ...entry, credentials: { ...entry.credentials } }
       extendedSecretFormSchemas.forEach(({ variable }) => {
         if (
           entry.id &&
@@ -265,8 +277,12 @@ const ModelLoadBalancingModal = ({
           const newIndex = available_credentials.findIndex(
             (c) => c.credential_id === modelCredential.credential_id,
           )
-          if (newIndex > -1 && prevIndex > -1)
-            newConfigs[prevIndex]!.name = available_credentials[newIndex]!.credential_name || ''
+          if (newIndex > -1 && prevIndex > -1) {
+            newConfigs[prevIndex] = {
+              ...newConfigs[prevIndex]!,
+              name: available_credentials[newIndex]!.credential_name || '',
+            }
+          }
           return {
             ...prev,
             configs: newConfigs,

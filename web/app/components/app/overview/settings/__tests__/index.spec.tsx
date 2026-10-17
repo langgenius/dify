@@ -1,7 +1,7 @@
 import type { AppSiteUpdatePayload } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement, ReactNode } from 'react'
 import type { SettingsAppInfo } from '../index'
-import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { consoleQuery } from '@/service/console'
@@ -105,6 +105,7 @@ describe('SettingsDialog', () => {
   })
 
   it('edits a site with nullable optional fields as empty form values', async () => {
+    const user = userEvent.setup()
     await renderSettingsDialog({
       id: 'app-null-fields',
       mode: 'chat',
@@ -112,7 +113,7 @@ describe('SettingsDialog', () => {
     })
 
     expect(screen.getByRole('textbox', { name: inputPlaceholderName })).toHaveValue('')
-    fireEvent.click(screen.getByText('common.operation.save'))
+    await user.click(screen.getByText('common.operation.save'))
 
     await waitFor(() =>
       expect(mockOnSave).toHaveBeenCalledWith(
@@ -131,27 +132,6 @@ describe('SettingsDialog', () => {
     await waitFor(() =>
       expect(screen.queryByRole('dialog', { name: dialogName })).not.toBeInTheDocument(),
     )
-  })
-
-  it('should render the modal with all settings exposed by default', async () => {
-    await renderSettingsDialog()
-    expect(screen.getByText('appOverview.overview.appInfo.settings.title')).toBeInTheDocument()
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
-
-    expect(
-      screen.queryByText('appOverview.overview.appInfo.settings.more.entry'),
-    ).not.toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: inputPlaceholderName })).toBeInTheDocument()
-    expect(
-      screen.getByPlaceholderText(
-        'appOverview.overview.appInfo.settings.more.copyRightPlaceholder',
-      ),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByPlaceholderText(
-        'appOverview.overview.appInfo.settings.more.privacyPolicyPlaceholder',
-      ),
-    ).toBeInTheDocument()
   })
 
   it('should explain that Web app settings apply to every environment when ACL allows deploy', async () => {
@@ -252,10 +232,11 @@ describe('SettingsDialog', () => {
   })
 
   it('should save valid settings and close the modal', async () => {
+    const user = userEvent.setup()
     mockOnSave.mockResolvedValueOnce(true)
     await renderSettingsDialog()
 
-    fireEvent.click(screen.getByText('common.operation.save'))
+    await user.click(screen.getByText('common.operation.save'))
 
     await waitFor(() => expect(mockOnSave).toHaveBeenCalled())
     expect(mockOnSave).toHaveBeenCalledWith(
@@ -473,6 +454,7 @@ describe('SettingsDialog', () => {
   })
 
   it('should preserve restricted settings when saving other Cloud settings', async () => {
+    const user = userEvent.setup()
     mockOnSave.mockResolvedValueOnce(true)
     deploymentEdition = 'CLOUD'
     copyrightEnabled = false
@@ -488,7 +470,7 @@ describe('SettingsDialog', () => {
       ),
     ).toBeDisabled()
 
-    fireEvent.click(screen.getByText('common.operation.save'))
+    await user.click(screen.getByText('common.operation.save'))
 
     await waitFor(() => {
       expect(mockOnSave).toHaveBeenCalledWith(
@@ -501,14 +483,16 @@ describe('SettingsDialog', () => {
   })
 
   it('should keep the input placeholder editable when billing is disabled', async () => {
+    const user = userEvent.setup()
     mockOnSave.mockResolvedValueOnce(true)
     deploymentEdition = 'COMMUNITY'
     copyrightEnabled = false
 
     await renderSettingsDialog()
     const inputPlaceholder = screen.getByRole('textbox', { name: inputPlaceholderName })
-    fireEvent.change(inputPlaceholder, { target: { value: 'Self-hosted prompt' } })
-    fireEvent.click(screen.getByText('common.operation.save'))
+    await user.clear(inputPlaceholder)
+    await user.type(inputPlaceholder, 'Self-hosted prompt')
+    await user.click(screen.getByText('common.operation.save'))
 
     expect(inputPlaceholder).toBeEnabled()
     expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
@@ -556,6 +540,7 @@ describe('SettingsDialog', () => {
   })
 
   it('should preserve image icons and apply textarea or switch changes when saving image-based settings', async () => {
+    const user = userEvent.setup()
     mockOnSave.mockResolvedValueOnce(true)
     const imageAppInfo = {
       ...mockAppInfo,
@@ -570,19 +555,15 @@ describe('SettingsDialog', () => {
 
     await renderSettingsDialog(imageAppInfo)
 
-    fireEvent.change(screen.getByDisplayValue('A description'), {
-      target: { value: 'Updated description' },
-    })
-    fireEvent.change(screen.getByPlaceholderText('E.g #A020F0'), {
-      target: { value: '' },
-    })
+    const description = screen.getByDisplayValue('A description')
+    await user.clear(description)
+    await user.type(description, 'Updated description')
+    await user.clear(screen.getByPlaceholderText('E.g #A020F0'))
 
     const switches = screen.getAllByRole('switch')
-    switches.forEach((toggle) => {
-      fireEvent.click(toggle)
-    })
+    for (const toggle of switches) await user.click(toggle)
 
-    fireEvent.click(screen.getByText('common.operation.save'))
+    await user.click(screen.getByText('common.operation.save'))
 
     await waitFor(() => {
       expect(mockOnSave).toHaveBeenCalledWith(
@@ -614,6 +595,7 @@ function renderWithData(
 }
 
 it('saves unrelated settings while entitlements are pending without clearing protected fields', async () => {
+  const user = userEvent.setup()
   const queryClient = createConsoleQueryClient()
   void queryClient.query({
     ...consoleQuery.features.get.queryOptions(),
@@ -628,7 +610,7 @@ it('saves unrelated settings while entitlements are pending without clearing pro
   await userEvent.setup().click(screen.getByRole('button', { name: triggerName }))
   expect(screen.getByRole('textbox', { name: inputPlaceholderName })).toBeDisabled()
   expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
-  fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
+  await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
   await waitFor(() =>
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({

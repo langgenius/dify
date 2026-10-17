@@ -26,7 +26,6 @@ export const extractFunctionParams = (code: string, language: CodeLanguage) => {
 }
 export const extractReturnType = (code: string, language: CodeLanguage): OutputVar => {
   const codeWithoutComments = code.replace(/\/\*\*[\s\S]*?\*\//, '')
-  // console.log(codeWithoutComments)
 
   const returnIndex = codeWithoutComments.indexOf('return')
   if (returnIndex === -1) return {}
@@ -60,23 +59,36 @@ export const extractReturnType = (code: string, language: CodeLanguage): OutputV
   if (endIndex === -1) return {}
 
   const returnContent = codeAfterReturn.slice(startIndex + 1, endIndex - 1)
-  // console.log(returnContent)
 
   const result: OutputVar = {}
 
-  const keyRegex = /['"]?(\w+)['"]?\s*:(?![^{]*\})/g
-  const matches = returnContent.matchAll(keyRegex)
-
-  for (const match of matches) {
-    // console.log(`Found key: "${match[1]}" from match: "${match[0]}"`)
-    const key = match[1]
-    result[key!] = {
-      type: VarType.string,
-      children: null,
+  // Split fields only at the outer object level; nested object keys are not outputs.
+  let depth = 0
+  let quote = ''
+  let escaped = false
+  let fieldStart = 0
+  const addField = (field: string) => {
+    const match = /^\s*(?:['"]([^'"]+)['"]|(\w+))\s*:/.exec(field)
+    const key = match?.[1] ?? match?.[2]
+    if (key) result[key] = { type: VarType.string, children: null }
+  }
+  for (let index = 0; index < returnContent.length; index++) {
+    const char = returnContent[index]!
+    if (quote) {
+      if (escaped) escaped = false
+      else if (char === '\\') escaped = true
+      else if (char === quote) quote = ''
+      continue
+    }
+    if (char === '"' || char === "'") quote = char
+    else if ('{[('.includes(char)) depth++
+    else if ('}])'.includes(char)) depth--
+    else if (char === ',' && depth === 0) {
+      addField(returnContent.slice(fieldStart, index))
+      fieldStart = index + 1
     }
   }
-
-  // console.log(result)
+  addField(returnContent.slice(fieldStart))
 
   return result
 }

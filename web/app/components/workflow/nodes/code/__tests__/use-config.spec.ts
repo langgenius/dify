@@ -45,8 +45,8 @@ describe('code/use-config', () => {
     for (const fetchDefaults of [fetchNodeDefault, fetchPipelineNodeDefault]) {
       vi.mocked(fetchDefaults).mockReset()
       vi.mocked(fetchDefaults)
-        .mockResolvedValueOnce({ config: createData() } as never)
-        .mockResolvedValueOnce({ config: python } as never)
+        .mockResolvedValueOnce({ config: createData() })
+        .mockResolvedValueOnce({ config: python })
     }
   })
   it('hydrates empty code and output ordering from stored defaults', async () => {

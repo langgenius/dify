@@ -69,21 +69,6 @@ vi.mock('../../model-auth/hooks', () => ({
   }),
 }))
 
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: mockState.workspacePermissionKeys,
-  }))
-})
-
-vi.mock('@/hooks/use-i18n', () => ({
-  useRenderI18nObject: () => (value: { en_US: string }) => value.en_US,
-}))
-
-vi.mock('../../hooks', () => ({
-  useLanguage: () => 'en_US',
-}))
-
 const createI18n = (text: string) => ({ en_US: text, zh_Hans: text })
 
 const createProvider = (overrides?: Partial<ModelProvider>): ModelProvider => ({
@@ -135,7 +120,9 @@ const renderModal = (overrides?: Partial<React.ComponentProps<typeof ModelModal>
     onRemove: vi.fn(),
     ...overrides,
   }
-  const view = render(<ModelModal {...props} />)
+  const view = render(<ModelModal {...props} />, {
+    workspacePermissionKeys: mockState.workspacePermissionKeys,
+  })
   return {
     ...props,
     unmount: view.unmount,
@@ -155,6 +142,11 @@ const credentialField = (
   show_on: [],
 })
 beforeEach(() => {
+  vi.clearAllMocks()
+  mockState.isLoading = false
+  mockState.doingAction = false
+  mockState.deleteCredentialId = null
+  mockState.workspacePermissionKeys = ['credential.use', 'credential.create', 'credential.manage']
   mockState.formSchemas = [
     credentialField('__authorization_name__', 'Authorization name'),
     credentialField('api_key', 'API key', FormTypeEnum.secretInput),

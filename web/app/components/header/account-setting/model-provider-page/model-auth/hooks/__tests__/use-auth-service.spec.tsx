@@ -1,6 +1,6 @@
 import type { CustomModel } from '../../../declarations'
-import { QueryClient, QueryClientProvider, skipToken } from '@tanstack/react-query'
-import { act, renderHook } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { ModelTypeEnum } from '../../../declarations'
 import { useAuthService, useGetCredential } from '../use-auth-service'
 
@@ -17,64 +17,43 @@ const mocks = vi.hoisted(() => ({
   switchModelCredential: vi.fn(),
 }))
 
-const { createQueryOptions } = vi.hoisted(() => ({
-  createQueryOptions:
-    (name: string, fetcher: (input: unknown) => void) =>
-    ({ input }: { input: unknown }) => {
-      fetcher(input)
-      return {
-        queryKey: [name, input],
-        queryFn: typeof input === 'symbol' ? input : () => ({ source: name }),
-      }
-    },
-}))
-
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    workspaces: {
-      current: {
-        modelProviders: {
-          byProvider: {
-            credentials: {
-              get: {
-                queryOptions: createQueryOptions('provider', mocks.providerCredentialOptions),
-              },
-            },
-            models: {
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.modelProviders.byProvider.credentials.get':
+        mocks.providerCredentialOptions,
+      'workspaces.current.modelProviders.byProvider.models.credentials.get':
+        mocks.modelCredentialOptions,
+    }),
+    consoleClient: {
+      workspaces: {
+        current: {
+          modelProviders: {
+            byProvider: {
               credentials: {
-                get: { queryOptions: createQueryOptions('model', mocks.modelCredentialOptions) },
+                post: mocks.addProviderCredential,
+                put: mocks.editProviderCredential,
+                delete: mocks.deleteProviderCredential,
+                switch: { post: mocks.switchProviderCredential },
+              },
+              models: {
+                credentials: {
+                  post: mocks.addModelCredential,
+                  put: mocks.editModelCredential,
+                  delete: mocks.deleteModelCredential,
+                  switch: { post: mocks.switchModelCredential },
+                },
               },
             },
           },
         },
       },
     },
-  },
-  consoleClient: {
-    workspaces: {
-      current: {
-        modelProviders: {
-          byProvider: {
-            credentials: {
-              post: mocks.addProviderCredential,
-              put: mocks.editProviderCredential,
-              delete: mocks.deleteProviderCredential,
-              switch: { post: mocks.switchProviderCredential },
-            },
-            models: {
-              credentials: {
-                post: mocks.addModelCredential,
-                put: mocks.editModelCredential,
-                delete: mocks.deleteModelCredential,
-                switch: { post: mocks.switchModelCredential },
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-}))
+  }
+})
 
 // The services are selected at runtime, so call sites pass a payload of either shape.
 type CredentialService = (payload: unknown) => Promise<unknown>
@@ -87,25 +66,41 @@ describe('useAuthService hooks', () => {
   const model: CustomModel = { model: 'gpt-4', model_type: ModelTypeEnum.textGeneration }
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    mocks.providerCredentialOptions.mockResolvedValue({ credentials: { api_key: 'provider-key' } })
+    mocks.modelCredentialOptions.mockResolvedValue({ credentials: { api_key: 'model-key' } })
     queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   })
 
-  it('should query the provider credential only when a credential id is given', () => {
-    renderHook(() => useGetCredential('openai', false, 'cred-123'), { wrapper })
+  it('fetches a provider credential only after its id is supplied', async () => {
+    const { result, rerender } = renderHook(
+      ({ id }: { id?: string }) => useGetCredential('openai', false, id),
+      { wrapper, initialProps: {} },
+    )
+    expect(result.current.fetchStatus).toBe('idle')
+    expect(mocks.providerCredentialOptions).not.toHaveBeenCalled()
+    rerender({ id: 'cred-123' })
+    await waitFor(() =>
+      expect(result.current.data).toEqual({ credentials: { api_key: 'provider-key' } }),
+    )
     expect(mocks.providerCredentialOptions).toHaveBeenCalledWith({
       params: { provider: 'openai' },
       query: { credential_id: 'cred-123' },
     })
-
-    renderHook(() => useGetCredential('openai', false), { wrapper })
-    expect(mocks.providerCredentialOptions).toHaveBeenLastCalledWith(skipToken)
+    expect(mocks.modelCredentialOptions).not.toHaveBeenCalled()
   })
 
-  it('should query the model credential only when a model is given', () => {
-    renderHook(() => useGetCredential('openai', true, 'cred-123', model, 'custom-model'), {
-      wrapper,
-    })
+  it('fetches model credentials only after the model is supplied and retains model-specific query fields', async () => {
+    const { result, rerender } = renderHook(
+      ({ selected }: { selected?: CustomModel }) =>
+        useGetCredential('openai', true, 'cred-123', selected, 'custom-model'),
+      { wrapper, initialProps: {} },
+    )
+    expect(result.current.fetchStatus).toBe('idle')
+    expect(mocks.modelCredentialOptions).not.toHaveBeenCalled()
+    rerender({ selected: model })
+    await waitFor(() =>
+      expect(result.current.data).toEqual({ credentials: { api_key: 'model-key' } }),
+    )
     expect(mocks.modelCredentialOptions).toHaveBeenCalledWith({
       params: { provider: 'openai' },
       query: {
@@ -115,9 +110,7 @@ describe('useAuthService hooks', () => {
         credential_id: 'cred-123',
       },
     })
-
-    renderHook(() => useGetCredential('openai', true, 'cred-123'), { wrapper })
-    expect(mocks.modelCredentialOptions).toHaveBeenLastCalledWith(skipToken)
+    expect(mocks.providerCredentialOptions).not.toHaveBeenCalled()
   })
 
   it('should send provider credential changes to the provider endpoints', async () => {

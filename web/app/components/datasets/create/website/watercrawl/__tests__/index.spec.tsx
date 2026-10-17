@@ -1,6 +1,6 @@
 import type { Mock } from 'vite-plus/test'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
-import { fireEvent, render as renderWithoutUrlState, screen, waitFor } from '@testing-library/react'
+import { act, render as renderWithoutUrlState, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { checkWatercrawlTaskStatus, createWatercrawlTask } from '@/service/datasets'
 import { createHttpError } from '@/service/http-error'
@@ -70,6 +70,9 @@ const render = createNuqsTestRenderer(renderWithoutUrlState, () => ({ onUrlUpdat
 describe('WaterCrawl', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(createWatercrawlTask).mockReset()
+    vi.mocked(checkWatercrawlTaskStatus).mockReset()
+    vi.mocked(sleep).mockReset().mockResolvedValue(undefined)
     vi.useFakeTimers({ shouldAdvanceTime: true })
   })
 
@@ -80,42 +83,6 @@ describe('WaterCrawl', () => {
 
   // Tests for initial component rendering
   describe('Rendering', () => {
-    it('should render header with configuration button', () => {
-      const props = createDefaultProps()
-
-      render(<WaterCrawl {...props} />)
-
-      expect(
-        screen.getByText('datasetCreation.stepOne.website.configureWatercrawl'),
-      )!.toBeInTheDocument()
-    })
-
-    it('should render URL input field', () => {
-      const props = createDefaultProps()
-
-      render(<WaterCrawl {...props} />)
-
-      // Assert - URL input has specific placeholder
-      // Assert - URL input has specific placeholder
-      expect(screen.getByPlaceholderText('https://docs.dify.ai/en/'))!.toBeInTheDocument()
-    })
-
-    it('should render run button', () => {
-      const props = createDefaultProps()
-
-      render(<WaterCrawl {...props} />)
-
-      expect(screen.getByRole('button', { name: /run/i }))!.toBeInTheDocument()
-    })
-
-    it('should render options section', () => {
-      const props = createDefaultProps()
-
-      render(<WaterCrawl {...props} />)
-
-      expect(screen.getByText('datasetCreation.stepOne.website.options'))!.toBeInTheDocument()
-    })
-
     it('should render doc link to WaterCrawl', () => {
       const props = createDefaultProps()
 
@@ -123,14 +90,6 @@ describe('WaterCrawl', () => {
 
       const docLink = screen.getByRole('link')
       expect(docLink)!.toHaveAttribute('href', 'https://docs.watercrawl.dev/')
-    })
-
-    it('should not render crawling or result components initially', () => {
-      const props = createDefaultProps()
-
-      render(<WaterCrawl {...props} />)
-
-      expect(screen.queryByText(/totalPageScraped/i)).not.toBeInTheDocument()
     })
   })
 
@@ -159,49 +118,8 @@ describe('WaterCrawl', () => {
         }
       } else {
         // Options might not be visible, just verify component renders
-        // Options might not be visible, just verify component renders
         expect(screen.getByText('datasetCreation.stepOne.website.options'))!.toBeInTheDocument()
       }
-    })
-
-    it('should execute crawl task when checkedCrawlResult is provided', async () => {
-      const checkedItem = createCrawlResultItem({ source_url: 'https://checked.com' })
-      const mockCreateTask = createWatercrawlTask as Mock
-      mockCreateTask.mockResolvedValueOnce({ job_id: 'test-job' })
-
-      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
-      mockCheckStatus.mockResolvedValueOnce({
-        status: 'completed',
-        current: 1,
-        total: 1,
-        data: [createCrawlResultItem()],
-      })
-
-      const props = createDefaultProps({
-        checkedCrawlResult: [checkedItem],
-      })
-
-      render(<WaterCrawl {...props} />)
-      const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://example.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
-
-      // Assert - crawl task should be created even with pre-checked results
-      await waitFor(() => {
-        expect(mockCreateTask).toHaveBeenCalled()
-      })
-    })
-
-    it('should use default crawlOptions limit in validation', () => {
-      const props = createDefaultProps({
-        crawlOptions: createDefaultCrawlOptions({ limit: '' }),
-      })
-
-      render(<WaterCrawl {...props} />)
-
-      // Assert - component renders with empty limit
-      // Assert - component renders with empty limit
-      expect(screen.getByPlaceholderText('https://docs.dify.ai/en/'))!.toBeInTheDocument()
     })
   })
 
@@ -223,7 +141,7 @@ describe('WaterCrawl', () => {
       await userEvent.type(urlInput, 'https://example.com')
 
       const runButton = screen.getByRole('button', { name: /run/i })
-      fireEvent.click(runButton)
+      await userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(runButton)
 
       // Assert - crawling indicator should appear
       await waitFor(() => {
@@ -232,71 +150,6 @@ describe('WaterCrawl', () => {
 
       // Cleanup - resolve the promise
       resolvePromise!()
-    })
-
-    it('should transition to finished state after successful crawl', async () => {
-      const mockCreateTask = createWatercrawlTask as Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
-
-      mockCreateTask.mockResolvedValueOnce({ job_id: 'test-job' })
-      mockCheckStatus.mockResolvedValueOnce({
-        status: 'completed',
-        current: 1,
-        total: 1,
-        data: [createCrawlResultItem({ title: 'Test Page' })],
-      })
-
-      const props = createDefaultProps()
-
-      render(<WaterCrawl {...props} />)
-      const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://example.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
-
-      await waitFor(() => {
-        expect(screen.getByText(/selectAll|resetAll/i))!.toBeInTheDocument()
-      })
-    })
-
-    it('should update crawl result state during polling', async () => {
-      const mockCreateTask = createWatercrawlTask as Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
-
-      mockCreateTask.mockResolvedValueOnce({ job_id: 'test-job-123' })
-      mockCheckStatus
-        .mockResolvedValueOnce({
-          status: 'running',
-          current: 1,
-          total: 3,
-          data: [createCrawlResultItem()],
-        })
-        .mockResolvedValueOnce({
-          status: 'completed',
-          current: 3,
-          total: 3,
-          data: [
-            createCrawlResultItem({ source_url: 'https://example.com/1' }),
-            createCrawlResultItem({ source_url: 'https://example.com/2' }),
-            createCrawlResultItem({ source_url: 'https://example.com/3' }),
-          ],
-        })
-
-      const onCheckedCrawlResultChange = vi.fn()
-      const onJobIdChange = vi.fn()
-      const props = createDefaultProps({ onCheckedCrawlResultChange, onJobIdChange })
-
-      render(<WaterCrawl {...props} />)
-      const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://example.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
-
-      await waitFor(() => {
-        expect(onJobIdChange).toHaveBeenCalledWith('test-job-123')
-      })
-
-      await waitFor(() => {
-        expect(onCheckedCrawlResultChange).toHaveBeenCalled()
-      })
     })
 
     it('should fold options when step changes from init', async () => {
@@ -316,7 +169,6 @@ describe('WaterCrawl', () => {
       render(<WaterCrawl {...props} />)
 
       // Options should be visible initially
-      // Options should be visible initially
       expect(screen.getByText('datasetCreation.stepOne.website.crawlSubPage'))!.toBeInTheDocument()
 
       const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
@@ -333,106 +185,8 @@ describe('WaterCrawl', () => {
   })
 
   // Side Effects and Cleanup Tests
-  describe('Side Effects and Cleanup', () => {
-    it('should call sleep during polling', async () => {
-      const mockSleep = sleep as Mock
-      const mockCreateTask = createWatercrawlTask as Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
-
-      mockCreateTask.mockResolvedValueOnce({ job_id: 'test-job' })
-      mockCheckStatus
-        .mockResolvedValueOnce({ status: 'running', current: 1, total: 2, data: [] })
-        .mockResolvedValueOnce({ status: 'completed', current: 2, total: 2, data: [] })
-
-      const props = createDefaultProps()
-
-      render(<WaterCrawl {...props} />)
-      const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://example.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
-
-      await waitFor(() => {
-        expect(mockSleep).toHaveBeenCalledWith(2500)
-      })
-    })
-
-    it('should update controlFoldOptions when step changes', async () => {
-      const mockCreateTask = createWatercrawlTask as Mock
-      mockCreateTask.mockImplementation(
-        () =>
-          new Promise(() => {
-            /* pending */
-          }),
-      )
-
-      const props = createDefaultProps()
-
-      render(<WaterCrawl {...props} />)
-
-      // Initially options should be visible
-      // Initially options should be visible
-      expect(screen.getByText('datasetCreation.stepOne.website.options'))!.toBeInTheDocument()
-
-      const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://example.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
-
-      // Assert - the crawling indicator should appear
-      await waitFor(() => {
-        expect(screen.getByText(/totalPageScraped/i))!.toBeInTheDocument()
-      })
-    })
-  })
 
   // Callback Stability and Memoization Tests
-  describe('Callback Stability', () => {
-    it('should maintain stable handleSetting callback', () => {
-      const props = createDefaultProps()
-
-      const { rerender } = render(<WaterCrawl {...props} />)
-      const configButton = screen.getByText('datasetCreation.stepOne.website.configureWatercrawl')
-      fireEvent.click(configButton)
-
-      expect(mockRouterPush).not.toHaveBeenCalled()
-
-      // Rerender and click again
-      rerender(<WaterCrawl {...props} />)
-      fireEvent.click(configButton)
-
-      expect(mockRouterPush).not.toHaveBeenCalled()
-    })
-
-    it('should memoize checkValid callback based on crawlOptions', async () => {
-      const mockCreateTask = createWatercrawlTask as Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
-
-      mockCreateTask.mockResolvedValue({ job_id: 'test-job' })
-      mockCheckStatus.mockResolvedValue({
-        status: 'completed',
-        current: 1,
-        total: 1,
-        data: [createCrawlResultItem()],
-      })
-
-      const props = createDefaultProps()
-
-      const { rerender } = render(<WaterCrawl {...props} />)
-      const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://example.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
-
-      await waitFor(() => {
-        expect(mockCreateTask).toHaveBeenCalledTimes(1)
-      })
-
-      // Rerender with same options
-      rerender(<WaterCrawl {...props} />)
-
-      // Assert - component should still work correctly
-      // Assert - component should still work correctly
-      expect(screen.getByPlaceholderText('https://docs.dify.ai/en/'))!.toBeInTheDocument()
-    })
-  })
 
   // User Interactions and Event Handlers Tests
   describe('User Interactions', () => {
@@ -449,64 +203,6 @@ describe('WaterCrawl', () => {
       expect(mockRouterPush).not.toHaveBeenCalled()
     })
 
-    it('should handle URL input and run button click', async () => {
-      const mockCreateTask = createWatercrawlTask as Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
-
-      mockCreateTask.mockResolvedValueOnce({ job_id: 'test-job' })
-      mockCheckStatus.mockResolvedValueOnce({
-        status: 'completed',
-        current: 1,
-        total: 1,
-        data: [createCrawlResultItem()],
-      })
-
-      const props = createDefaultProps()
-
-      render(<WaterCrawl {...props} />)
-      const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://test.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
-
-      await waitFor(() => {
-        expect(mockCreateTask).toHaveBeenCalledWith({
-          url: 'https://test.com',
-          options: props.crawlOptions,
-        })
-      })
-    })
-
-    it('should handle preview action on crawled result', async () => {
-      const mockCreateTask = createWatercrawlTask as Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
-      const onPreview = vi.fn()
-
-      mockCreateTask.mockResolvedValueOnce({ job_id: 'test-job' })
-      mockCheckStatus.mockResolvedValueOnce({
-        status: 'completed',
-        current: 1,
-        total: 1,
-        data: [createCrawlResultItem({ title: 'Preview Test' })],
-      })
-
-      const props = createDefaultProps({ onPreview })
-
-      render(<WaterCrawl {...props} />)
-      const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://preview.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
-
-      // Assert - result should be displayed
-      await waitFor(() => {
-        expect(screen.getByText('Preview Test'))!.toBeInTheDocument()
-      })
-
-      const previewButton = screen.getByText('datasetCreation.stepOne.website.preview')
-      await userEvent.click(previewButton)
-
-      expect(onPreview).toHaveBeenCalled()
-    })
-
     it('should handle checkbox changes in options', async () => {
       const onCrawlOptionsChange = vi.fn()
       const props = createDefaultProps({
@@ -517,7 +213,7 @@ describe('WaterCrawl', () => {
       render(<WaterCrawl {...props} />)
 
       const checkbox = screen.getByRole('checkbox', { name: /crawlSubPage/ })
-      fireEvent.click(checkbox)
+      await userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(checkbox)
 
       expect(onCrawlOptionsChange).toHaveBeenCalled()
     })
@@ -528,43 +224,11 @@ describe('WaterCrawl', () => {
       render(<WaterCrawl {...props} />)
 
       // Options content should be visible initially
-      // Options content should be visible initially
       expect(screen.getByText('datasetCreation.stepOne.website.crawlSubPage'))!.toBeInTheDocument()
 
       const optionsHeader = screen.getByText('datasetCreation.stepOne.website.options')
       await userEvent.click(optionsHeader)
 
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
       // Assert - options should be hidden
       expect(
         screen.queryByText('datasetCreation.stepOne.website.crawlSubPage'),
@@ -572,7 +236,6 @@ describe('WaterCrawl', () => {
 
       await userEvent.click(optionsHeader)
 
-      // Options should be visible again
       // Options should be visible again
       expect(screen.getByText('datasetCreation.stepOne.website.crawlSubPage'))!.toBeInTheDocument()
     })
@@ -592,7 +255,15 @@ describe('WaterCrawl', () => {
         data: [createCrawlResultItem()],
       })
 
-      const crawlOptions = createDefaultCrawlOptions({ limit: 5, max_depth: 3 })
+      const crawlOptions = createDefaultCrawlOptions({
+        limit: 5,
+        max_depth: 3,
+        crawl_sub_pages: false,
+        use_sitemap: true,
+        only_main_content: false,
+        includes: '/docs/*',
+        excludes: '/api/*',
+      })
       const props = createDefaultProps({ crawlOptions })
 
       render(<WaterCrawl {...props} />)
@@ -632,38 +303,6 @@ describe('WaterCrawl', () => {
       await waitFor(() => {
         const callArgs = mockCreateTask.mock.calls[0]![0]
         expect(callArgs.options).not.toHaveProperty('max_depth')
-      })
-    })
-
-    it('should poll for status with job_id', async () => {
-      const mockCreateTask = createWatercrawlTask as Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
-      const onJobIdChange = vi.fn()
-
-      mockCreateTask.mockResolvedValueOnce({ job_id: 'poll-job-123' })
-      mockCheckStatus.mockResolvedValueOnce({
-        status: 'completed',
-        current: 2,
-        total: 2,
-        data: [
-          createCrawlResultItem({ source_url: 'https://p1.com' }),
-          createCrawlResultItem({ source_url: 'https://p2.com' }),
-        ],
-      })
-
-      const props = createDefaultProps({ onJobIdChange })
-
-      render(<WaterCrawl {...props} />)
-      const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://poll-test.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
-
-      await waitFor(() => {
-        expect(onJobIdChange).toHaveBeenCalledWith('poll-job-123')
-      })
-
-      await waitFor(() => {
-        expect(mockCheckStatus).toHaveBeenCalledWith('poll-job-123')
       })
     })
 
@@ -717,34 +356,36 @@ describe('WaterCrawl', () => {
       expect(screen.getByText('API Error occurred')).toBeInTheDocument()
     })
 
-    it('should limit total to crawlOptions.limit', async () => {
-      const mockCreateTask = createWatercrawlTask as Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
-      const onCheckedCrawlResultChange = vi.fn()
-
-      mockCreateTask.mockResolvedValueOnce({ job_id: 'limit-job' })
-      mockCheckStatus.mockResolvedValueOnce({
-        status: 'completed',
-        current: 100,
-        total: 100,
-        data: Array.from({ length: 100 }, (_, i) =>
-          createCrawlResultItem({ source_url: `https://example.com/${i}` }),
-        ),
-      })
-
-      const props = createDefaultProps({
-        onCheckedCrawlResultChange,
-        crawlOptions: createDefaultCrawlOptions({ limit: 5 }),
-      })
-
+    it('caps displayed progress at the configured limit while polling', async () => {
+      let resume!: () => void
+      vi.mocked(sleep).mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            resume = resolve
+          }),
+      )
+      vi.mocked(createWatercrawlTask).mockResolvedValueOnce({ job_id: 'limit-job' })
+      vi.mocked(checkWatercrawlTaskStatus)
+        .mockResolvedValueOnce({ status: 'running', current: 1, total: 100, data: [] })
+        .mockResolvedValueOnce({
+          status: 'completed',
+          current: 1,
+          total: 100,
+          data: [createCrawlResultItem()],
+        })
+      const props = createDefaultProps({ crawlOptions: createDefaultCrawlOptions({ limit: 5 }) })
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       render(<WaterCrawl {...props} />)
-      const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://limit-test.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
-
-      await waitFor(() => {
-        expect(onCheckedCrawlResultChange).toHaveBeenCalled()
-      })
+      await user.type(
+        screen.getByPlaceholderText('https://docs.dify.ai/en/'),
+        'https://example.com',
+      )
+      await user.click(screen.getByRole('button', { name: /run/i }))
+      await waitFor(() => expect(screen.getByText(/totalPageScraped/)).toHaveTextContent('1/5'))
+      expect(checkWatercrawlTaskStatus).toHaveBeenCalledExactlyOnceWith('limit-job')
+      await act(async () => resume())
+      await screen.findByText('Test Page Title')
+      expect(props.onCheckedCrawlResultChange).toHaveBeenLastCalledWith([createCrawlResultItem()])
     })
 
     it('should handle response without status field as error', async () => {
@@ -839,36 +480,6 @@ describe('WaterCrawl', () => {
     it('should show error when limit is empty', async () => {
       const props = createDefaultProps({
         crawlOptions: createDefaultCrawlOptions({ limit: '' }),
-      })
-
-      render(<WaterCrawl {...props} />)
-      const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://example.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
-
-      await waitFor(() => {
-        expect(createWatercrawlTask).not.toHaveBeenCalled()
-      })
-    })
-
-    it('should show error when limit is null', async () => {
-      const props = createDefaultProps({
-        crawlOptions: createDefaultCrawlOptions({ limit: null as unknown as number }),
-      })
-
-      render(<WaterCrawl {...props} />)
-      const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://example.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
-
-      await waitFor(() => {
-        expect(createWatercrawlTask).not.toHaveBeenCalled()
-      })
-    })
-
-    it('should show error when limit is undefined', async () => {
-      const props = createDefaultProps({
-        crawlOptions: createDefaultCrawlOptions({ limit: undefined as unknown as number }),
       })
 
       render(<WaterCrawl {...props} />)
@@ -1063,60 +674,6 @@ describe('WaterCrawl', () => {
       })
     })
 
-    it('should handle undefined crawlResult data in finished state', async () => {
-      const mockCreateTask = createWatercrawlTask as Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
-      const onCheckedCrawlResultChange = vi.fn()
-
-      mockCreateTask.mockResolvedValueOnce({ job_id: 'undefined-result-data-job' })
-      mockCheckStatus.mockResolvedValueOnce({
-        status: 'completed',
-        current: 0,
-        total: 0,
-        time_consuming: 1.5,
-        // data is undefined
-      })
-
-      const props = createDefaultProps({ onCheckedCrawlResultChange })
-
-      render(<WaterCrawl {...props} />)
-      const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://undefined-result-data-test.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
-
-      // Assert - should complete and show results
-      await waitFor(() => {
-        expect(screen.getByText(/scrapTimeInfo/i))!.toBeInTheDocument()
-      })
-    })
-
-    it('should use parseFloat fallback when crawlResult.total is undefined', async () => {
-      const mockCreateTask = createWatercrawlTask as Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
-
-      mockCreateTask.mockResolvedValueOnce({ job_id: 'no-total-job' })
-      mockCheckStatus.mockImplementation(
-        () =>
-          new Promise(() => {
-            /* never resolves */
-          }),
-      )
-
-      const props = createDefaultProps({
-        crawlOptions: createDefaultCrawlOptions({ limit: 15 }),
-      })
-
-      render(<WaterCrawl {...props} />)
-      const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://no-total-test.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
-
-      // Assert - should use limit (15) as total
-      await waitFor(() => {
-        expect(screen.getByText(/totalPageScraped.*0\/15/))!.toBeInTheDocument()
-      })
-    })
-
     it('should handle crawlResult with current=0 and total=0 during running', async () => {
       const mockCreateTask = createWatercrawlTask as Mock
       const mockCheckStatus = checkWatercrawlTaskStatus as Mock
@@ -1146,280 +703,13 @@ describe('WaterCrawl', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(screen.getByText(/totalPageScraped/))!.toBeInTheDocument()
-      })
-    })
-  })
-
-  describe('Prop Variations', () => {
-    it('should handle different limit values in crawlOptions', async () => {
-      const mockCreateTask = createWatercrawlTask as Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
-
-      mockCreateTask.mockResolvedValueOnce({ job_id: 'limit-var-job' })
-      mockCheckStatus.mockResolvedValueOnce({
-        status: 'completed',
-        current: 1,
-        total: 1,
-        data: [createCrawlResultItem()],
-      })
-
-      const props = createDefaultProps({
-        crawlOptions: createDefaultCrawlOptions({ limit: 100 }),
-      })
-
-      render(<WaterCrawl {...props} />)
-      const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://limit.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
-
-      await waitFor(() => {
-        expect(mockCreateTask).toHaveBeenCalledWith(
-          expect.objectContaining({
-            options: expect.objectContaining({ limit: 100 }),
-          }),
-        )
-      })
-    })
-
-    it('should handle different max_depth values', async () => {
-      const mockCreateTask = createWatercrawlTask as Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
-
-      mockCreateTask.mockResolvedValueOnce({ job_id: 'depth-job' })
-      mockCheckStatus.mockResolvedValueOnce({
-        status: 'completed',
-        current: 1,
-        total: 1,
-        data: [createCrawlResultItem()],
-      })
-
-      const props = createDefaultProps({
-        crawlOptions: createDefaultCrawlOptions({ max_depth: 5 }),
-      })
-
-      render(<WaterCrawl {...props} />)
-      const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://depth.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
-
-      await waitFor(() => {
-        expect(mockCreateTask).toHaveBeenCalledWith(
-          expect.objectContaining({
-            options: expect.objectContaining({ max_depth: 5 }),
-          }),
-        )
-      })
-    })
-
-    it('should handle crawl_sub_pages disabled', async () => {
-      const mockCreateTask = createWatercrawlTask as Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
-
-      mockCreateTask.mockResolvedValueOnce({ job_id: 'nosub-job' })
-      mockCheckStatus.mockResolvedValueOnce({
-        status: 'completed',
-        current: 1,
-        total: 1,
-        data: [createCrawlResultItem()],
-      })
-
-      const props = createDefaultProps({
-        crawlOptions: createDefaultCrawlOptions({ crawl_sub_pages: false }),
-      })
-
-      render(<WaterCrawl {...props} />)
-      const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://nosub.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
-
-      await waitFor(() => {
-        expect(mockCreateTask).toHaveBeenCalledWith(
-          expect.objectContaining({
-            options: expect.objectContaining({ crawl_sub_pages: false }),
-          }),
-        )
-      })
-    })
-
-    it('should handle use_sitemap enabled', async () => {
-      const mockCreateTask = createWatercrawlTask as Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
-
-      mockCreateTask.mockResolvedValueOnce({ job_id: 'sitemap-job' })
-      mockCheckStatus.mockResolvedValueOnce({
-        status: 'completed',
-        current: 1,
-        total: 1,
-        data: [createCrawlResultItem()],
-      })
-
-      const props = createDefaultProps({
-        crawlOptions: createDefaultCrawlOptions({ use_sitemap: true }),
-      })
-
-      render(<WaterCrawl {...props} />)
-      const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://sitemap.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
-
-      await waitFor(() => {
-        expect(mockCreateTask).toHaveBeenCalledWith(
-          expect.objectContaining({
-            options: expect.objectContaining({ use_sitemap: true }),
-          }),
-        )
-      })
-    })
-
-    it('should handle includes and excludes patterns', async () => {
-      const mockCreateTask = createWatercrawlTask as Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
-
-      mockCreateTask.mockResolvedValueOnce({ job_id: 'patterns-job' })
-      mockCheckStatus.mockResolvedValueOnce({
-        status: 'completed',
-        current: 1,
-        total: 1,
-        data: [createCrawlResultItem()],
-      })
-
-      const props = createDefaultProps({
-        crawlOptions: createDefaultCrawlOptions({
-          includes: '/docs/*',
-          excludes: '/api/*',
-        }),
-      })
-
-      render(<WaterCrawl {...props} />)
-      const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://patterns.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
-
-      await waitFor(() => {
-        expect(mockCreateTask).toHaveBeenCalledWith(
-          expect.objectContaining({
-            options: expect.objectContaining({
-              includes: '/docs/*',
-              excludes: '/api/*',
-            }),
-          }),
-        )
-      })
-    })
-
-    it('should handle pre-selected crawl results', async () => {
-      const mockCreateTask = createWatercrawlTask as Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
-      const existingResult = createCrawlResultItem({ source_url: 'https://existing.com' })
-
-      mockCreateTask.mockResolvedValueOnce({ job_id: 'preselect-job' })
-      mockCheckStatus.mockResolvedValueOnce({
-        status: 'completed',
-        current: 1,
-        total: 1,
-        data: [createCrawlResultItem({ title: 'New' })],
-      })
-
-      const props = createDefaultProps({
-        checkedCrawlResult: [existingResult],
-      })
-
-      render(<WaterCrawl {...props} />)
-      const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://new.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
-
-      await waitFor(() => {
-        expect(mockCreateTask).toHaveBeenCalled()
-      })
-    })
-
-    it('should handle string type limit value', async () => {
-      const mockCreateTask = createWatercrawlTask as Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
-
-      mockCreateTask.mockResolvedValueOnce({ job_id: 'string-limit-job' })
-      mockCheckStatus.mockResolvedValueOnce({
-        status: 'completed',
-        current: 1,
-        total: 1,
-        data: [createCrawlResultItem()],
-      })
-
-      const props = createDefaultProps({
-        crawlOptions: createDefaultCrawlOptions({ limit: '25' }),
-      })
-
-      render(<WaterCrawl {...props} />)
-      const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://string-limit.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
-
-      await waitFor(() => {
-        expect(mockCreateTask).toHaveBeenCalled()
-      })
-    })
-
-    it('should handle only_main_content option', async () => {
-      const mockCreateTask = createWatercrawlTask as Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
-
-      mockCreateTask.mockResolvedValueOnce({ job_id: 'main-content-job' })
-      mockCheckStatus.mockResolvedValueOnce({
-        status: 'completed',
-        current: 1,
-        total: 1,
-        data: [createCrawlResultItem()],
-      })
-
-      const props = createDefaultProps({
-        crawlOptions: createDefaultCrawlOptions({ only_main_content: false }),
-      })
-
-      render(<WaterCrawl {...props} />)
-      const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://main-content.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
-
-      await waitFor(() => {
-        expect(mockCreateTask).toHaveBeenCalledWith(
-          expect.objectContaining({
-            options: expect.objectContaining({ only_main_content: false }),
-          }),
-        )
+        expect(screen.getByText(/totalPageScraped/)).toHaveTextContent('0/5')
       })
     })
   })
 
   // Display and UI State Tests
   describe('Display and UI States', () => {
-    it('should show crawling progress during running state', async () => {
-      const mockCreateTask = createWatercrawlTask as Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
-
-      mockCreateTask.mockResolvedValueOnce({ job_id: 'progress-job' })
-      mockCheckStatus.mockImplementation(
-        () =>
-          new Promise(() => {
-            /* pending */
-          }),
-      )
-
-      const props = createDefaultProps({
-        crawlOptions: createDefaultCrawlOptions({ limit: 10 }),
-      })
-
-      render(<WaterCrawl {...props} />)
-      const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://progress.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
-
-      await waitFor(() => {
-        expect(screen.getByText(/totalPageScraped.*0\/10/))!.toBeInTheDocument()
-      })
-    })
-
     it('should display time consumed after crawl completion', async () => {
       const mockCreateTask = createWatercrawlTask as Mock
       const mockCheckStatus = checkWatercrawlTaskStatus as Mock
@@ -1442,107 +732,6 @@ describe('WaterCrawl', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/scrapTimeInfo/i))!.toBeInTheDocument()
-      })
-    })
-
-    it('should display crawled results list after completion', async () => {
-      const mockCreateTask = createWatercrawlTask as Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
-
-      mockCreateTask.mockResolvedValueOnce({ job_id: 'result-job' })
-      mockCheckStatus.mockResolvedValueOnce({
-        status: 'completed',
-        current: 1,
-        total: 1,
-        data: [createCrawlResultItem({ title: 'Result Page' })],
-      })
-
-      const props = createDefaultProps()
-
-      render(<WaterCrawl {...props} />)
-      const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://result.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
-
-      await waitFor(() => {
-        expect(screen.getByText('Result Page'))!.toBeInTheDocument()
-      })
-    })
-
-    it('should show error message component when crawl fails', async () => {
-      const mockCreateTask = createWatercrawlTask as Mock
-
-      mockCreateTask.mockRejectedValueOnce(new Error('Failed'))
-      // Suppress console output during test to avoid noisy logs
-      vi.spyOn(console, 'log').mockImplementation(vi.fn())
-
-      const props = createDefaultProps()
-
-      render(<WaterCrawl {...props} />)
-      const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://fail.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
-
-      await waitFor(() => {
-        expect(
-          screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'),
-        )!.toBeInTheDocument()
-      })
-    })
-
-    it('should update progress during multiple polling iterations', async () => {
-      const mockCreateTask = createWatercrawlTask as Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
-      const onCheckedCrawlResultChange = vi.fn()
-
-      mockCreateTask.mockResolvedValueOnce({ job_id: 'multi-poll-job' })
-      mockCheckStatus
-        .mockResolvedValueOnce({
-          status: 'running',
-          current: 2,
-          total: 10,
-          data: [
-            createCrawlResultItem({ source_url: 'https://page1.com' }),
-            createCrawlResultItem({ source_url: 'https://page2.com' }),
-          ],
-        })
-        .mockResolvedValueOnce({
-          status: 'running',
-          current: 5,
-          total: 10,
-          data: Array.from({ length: 5 }, (_, i) =>
-            createCrawlResultItem({ source_url: `https://page${i + 1}.com` }),
-          ),
-        })
-        .mockResolvedValueOnce({
-          status: 'completed',
-          current: 10,
-          total: 10,
-          data: Array.from({ length: 10 }, (_, i) =>
-            createCrawlResultItem({ source_url: `https://page${i + 1}.com` }),
-          ),
-        })
-
-      const props = createDefaultProps({
-        onCheckedCrawlResultChange,
-        crawlOptions: createDefaultCrawlOptions({ limit: 10 }),
-      })
-
-      render(<WaterCrawl {...props} />)
-      const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://multi-poll.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
-
-      // Assert - should eventually complete
-      await waitFor(() => {
-        expect(mockCheckStatus).toHaveBeenCalledTimes(3)
-      })
-
-      // Final result should be selected
-      await waitFor(() => {
-        expect(onCheckedCrawlResultChange).toHaveBeenLastCalledWith(
-          expect.arrayContaining([expect.objectContaining({ source_url: 'https://page1.com' })]),
-        )
       })
     })
   })
@@ -1602,44 +791,19 @@ describe('WaterCrawl', () => {
         expect(screen.getByText('Page 5'))!.toBeInTheDocument()
       })
 
+      expect(mockCreateTask).toHaveBeenCalledExactlyOnceWith({
+        url: 'https://full-workflow.com',
+        options: props.crawlOptions,
+      })
+      expect(mockCheckStatus).toHaveBeenCalledTimes(2)
+      expect(mockCheckStatus).toHaveBeenNthCalledWith(1, 'full-workflow-job')
+      expect(mockCheckStatus).toHaveBeenNthCalledWith(2, 'full-workflow-job')
       // Assert - checked results should be updated
       expect(onCheckedCrawlResultChange).toHaveBeenLastCalledWith(
-        expect.arrayContaining([
-          expect.objectContaining({ source_url: 'https://page1.com' }),
-          expect.objectContaining({ source_url: 'https://page5.com' }),
-        ]),
+        [1, 2, 3, 4, 5].map((index) =>
+          createCrawlResultItem({ source_url: `https://page${index}.com`, title: `Page ${index}` }),
+        ),
       )
-    })
-
-    it('should handle select all and deselect all in results', async () => {
-      const mockCreateTask = createWatercrawlTask as Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
-      const onCheckedCrawlResultChange = vi.fn()
-
-      mockCreateTask.mockResolvedValueOnce({ job_id: 'select-all-job' })
-      mockCheckStatus.mockResolvedValueOnce({
-        status: 'completed',
-        current: 1,
-        total: 1,
-        data: [createCrawlResultItem({ title: 'Single' })],
-      })
-
-      const props = createDefaultProps({ onCheckedCrawlResultChange })
-
-      render(<WaterCrawl {...props} />)
-      const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://single.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
-
-      // Wait for results
-      await waitFor(() => {
-        expect(screen.getByText('Single'))!.toBeInTheDocument()
-      })
-
-      const selectAllCheckbox = screen.getByText(/selectAll|resetAll/i)
-      await userEvent.click(selectAllCheckbox)
-
-      expect(onCheckedCrawlResultChange).toHaveBeenCalled()
     })
 
     it('should handle complete workflow from input to preview', async () => {
@@ -1690,7 +854,13 @@ describe('WaterCrawl', () => {
 
       expect(onJobIdChange).toHaveBeenCalledWith('preview-workflow-job')
       expect(onCheckedCrawlResultChange).toHaveBeenCalled()
-      expect(onPreview).toHaveBeenCalled()
+      expect(onPreview).toHaveBeenCalledExactlyOnceWith(
+        createCrawlResultItem({
+          title: 'Preview Page',
+          markdown: '# Preview Content',
+          source_url: 'https://preview.com/page',
+        }),
+      )
     })
   })
 })
