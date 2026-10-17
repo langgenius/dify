@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -35,6 +36,13 @@ _ERROR_PATTERN = re.compile(
 )
 
 VECTOR_SPACE_ADMISSION_ERROR_CODE = "vector_space_estimate_exceeded"
+
+
+class _VectorSpaceEstimateWatermark(BaseModel):
+    model_config = ConfigDict(strict=True)
+
+    projected_usage_bytes: int = Field(ge=0)
+    document_ids: list[str]
 
 
 class VectorSpaceAdmissionError(ValueError):
@@ -347,17 +355,9 @@ class VectorSpaceAdmissionService:
                 stored_usage_bytes = 0
                 document_ids: set[str] = set()
                 if raw_state:
-                    state = json.loads(raw_state)
-                    stored_usage_bytes = state.get("projected_usage_bytes")
-                    raw_document_ids = state.get("document_ids")
-                    if (
-                        type(stored_usage_bytes) is not int
-                        or stored_usage_bytes < 0
-                        or not isinstance(raw_document_ids, list)
-                        or not all(isinstance(item, str) for item in raw_document_ids)
-                    ):
-                        raise ValueError("Invalid vector-space estimate watermark")
-                    document_ids = set(raw_document_ids)
+                    state = _VectorSpaceEstimateWatermark.model_validate_json(raw_state)
+                    stored_usage_bytes = state.projected_usage_bytes
+                    document_ids = set(state.document_ids)
 
                 base_usage_bytes = max(current_usage_bytes, stored_usage_bytes)
                 projected_usage_bytes = base_usage_bytes
