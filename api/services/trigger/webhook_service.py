@@ -429,6 +429,18 @@ class WebhookService:
         return processed_files
 
     @classmethod
+    def _resolve_trigger_end_user(cls, webhook_trigger: WorkflowWebhookTrigger) -> EndUser:
+        """Return the Trigger EndUser that executes webhook workflows."""
+        from extensions.ext_application_services import application_services
+
+        return application_services().app_scoped_end_users.commands.get_or_create_end_user_by_type(
+            type=EndUserType.TRIGGER,
+            tenant_id=webhook_trigger.tenant_id,
+            app_id=webhook_trigger.app_id,
+            user_id=None,
+        )
+
+    @classmethod
     def _create_file_from_binary(
         cls, file_content: bytes, mimetype: str, webhook_trigger: WorkflowWebhookTrigger
     ) -> Any:
@@ -443,10 +455,11 @@ class WebhookService:
             Any: A file object built from the binary content
         """
         tool_file_manager = ToolFileManager()
+        trigger_end_user = cls._resolve_trigger_end_user(webhook_trigger)
 
         # Create file using ToolFileManager
         tool_file = tool_file_manager.create_file_by_raw(
-            user_id=webhook_trigger.created_by,
+            user_id=trigger_end_user.id,
             tenant_id=webhook_trigger.tenant_id,
             conversation_id=None,
             file_binary=file_content,
