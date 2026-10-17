@@ -191,7 +191,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                     disabled={currentDocForm !== ChunkingMode.qa}
                   />
                   <Infotip>
-                    <InfotipTrigger aria-labelledby={qaLabelId} className="size-3.5" />
+                    <InfotipTrigger aria-labelledby={qaLabelId} />
                     <InfotipContent aria-labelledby={qaLabelId}>
                       {t(($) => $['stepTwo.QATip'], { ns: 'datasetCreation' })}
                     </InfotipContent>

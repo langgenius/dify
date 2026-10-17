@@ -203,7 +203,7 @@ const ModelLoadBalancingConfigs = ({
               <Infotip>
                 <InfotipTrigger
                   aria-labelledby={loadBalancingLabelId}
-                  className="relative z-20 size-3"
+                  className="relative z-20"
                   iconSize="small"
                 />
                 <InfotipContent aria-labelledby={loadBalancingLabelId}>

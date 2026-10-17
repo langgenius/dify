@@ -51,5 +51,15 @@ A few rules:
 
 ## Visual ownership
 
+`InfotipTrigger` owns its 16px button size, radius, focus indicator, and colors. Choose `tone="warning"`
+or `tone="error"` for status explanations. The default tone becomes darker on hover and while open;
+warning and error tones keep their semantic color. Disabled triggers use the disabled text color.
+`iconVariant` chooses the glyph independently of tone, and `iconSize` changes only the glyph size.
+
+Callers may use `className` for external margins and positioning. Inline `style` is not supported.
+Keep row-specific visibility on the layout owner, including visibility while the explanation is open.
+Web lint rejects trigger appearance overrides. A one-off brand color may use a narrowly scoped,
+documented lint exception that covers resting, hover, and open colors; do not add a tone for it.
+
 Infotip owns its hint surface, spacing, typography, radius, and shadow. Callers may constrain width
 or preserve intentional line breaks.

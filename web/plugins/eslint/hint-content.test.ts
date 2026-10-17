@@ -47,11 +47,64 @@ it('allows shortcut row composition and width constraints without restricting ot
       <TooltipTrigger className="border-0 bg-transparent" />
       <PopoverContent className="shadow-none" />
       <InfotipContent className="w-60 whitespace-pre-wrap" />
-      <InfotipTrigger className="ml-1 text-text-warning" />
+      <InfotipTrigger className="ml-1" tone="warning" />
       <div className="shadow-none" />
     </>
   `)
   expect(diagnostics).toEqual([])
+})
+
+it('allows Infotip trigger margins and positioning while rejecting appearance overrides', () => {
+  expect(
+    lintFixture(`
+    import { InfotipTrigger } from '@langgenius/dify-ui/infotip'
+    const example = <InfotipTrigger tone="error" iconSize="large"
+      className="ml-1 absolute right-1 top-1/2 -translate-y-1/2 relative z-20" />
+  `),
+  ).toEqual([])
+
+  const classes = [
+    'text-text-warning-secondary',
+    'hover:text-text-accent',
+    'data-popup-open:text-text-tertiary',
+    'not-data-disabled:data-popup-open:text-text-tertiary',
+    'dark:text-text-primary!',
+    'bg-transparent',
+    'hover:bg-state-base-hover',
+    'size-3.5',
+    'w-4',
+    'h-4',
+    'p-px',
+    'rounded-md',
+    'focus-visible:ring-0',
+    'opacity-0',
+    '[color:red]',
+  ]
+  const diagnostics = lintFixture(`
+    import { InfotipTrigger as Trigger } from '@langgenius/dify-ui/infotip'
+    const example = <Trigger className="${classes.join(' ')}" />
+  `)
+  expect(diagnostics).toHaveLength(classes.length)
+  for (const className of classes)
+    expect(diagnostics.some(({ message }) => message.includes(`"${className}"`))).toBe(true)
+})
+
+it('checks Infotip trigger class helpers and props without restricting unrelated triggers', () => {
+  const diagnostics = lintFixture(`
+    import { InfotipTrigger } from '@langgenius/dify-ui/infotip'
+    import { InfotipTrigger as OtherTrigger } from './feature'
+    import { cn } from '@langgenius/dify-ui/cn'
+    const color = 'text-text-destructive'
+    const props = { className: 'size-5' }
+    const examples = <>
+      <InfotipTrigger className={cn('ml-1', color)} />
+      <InfotipTrigger {...props} />
+      <OtherTrigger className="text-text-destructive size-5" />
+    </>
+  `)
+  expect(diagnostics).toHaveLength(2)
+  expect(diagnostics.some(({ message }) => message.includes('"text-text-destructive"'))).toBe(true)
+  expect(diagnostics.some(({ message }) => message.includes('"size-5"'))).toBe(true)
 })
 
 it('rejects surface overrides through aliases, variants, important modifiers, and arbitrary properties', () => {

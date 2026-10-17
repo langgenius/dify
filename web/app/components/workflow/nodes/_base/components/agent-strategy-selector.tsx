@@ -39,12 +39,7 @@ const NotFoundWarn = (props: { title: string; description: ReactNode }) => {
   const { t } = useTranslation(['workflowAgent'])
   return (
     <Infotip>
-      <InfotipTrigger
-        aria-label={title}
-        iconVariant="warning"
-        iconSize="large"
-        className="text-text-destructive"
-      />
+      <InfotipTrigger aria-label={title} iconVariant="warning" iconSize="large" tone="error" />
       <InfotipContent className="w-45">
         <div className="space-y-1">
           <InfotipTitle className="font-semibold text-text-primary">{title}</InfotipTitle>

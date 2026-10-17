@@ -52,6 +52,48 @@ export const Default: Story = {
   },
 }
 
+export const Tones: Story = {
+  render: () => (
+    <div className="flex items-center gap-6">
+      {(['default', 'warning', 'error'] as const).map((tone) => (
+        <div key={tone} className="flex items-center gap-1">
+          <span className="text-text-secondary">{tone}</span>
+          <Infotip>
+            <InfotipTrigger
+              aria-label={`${tone} explanation`}
+              tone={tone}
+              iconVariant={tone === 'default' ? 'question' : 'warning'}
+            />
+            <InfotipContent aria-label={`${tone} explanation`}>
+              {tone === 'default'
+                ? 'An explanation becomes highlighted while it is open.'
+                : 'A status explanation keeps its semantic color while it is open.'}
+            </InfotipContent>
+          </Infotip>
+        </div>
+      ))}
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const body = within(canvasElement.ownerDocument.body)
+    const trigger = canvas.getByRole('button', { name: 'error explanation' })
+    const restingColor = getComputedStyle(trigger).color
+    await userEvent.hover(trigger)
+    const popup = await body.findByRole('dialog', { name: 'error explanation' })
+    await userEvent.hover(popup)
+    expect(getComputedStyle(trigger).color).toBe(restingColor)
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(body.queryByRole('dialog')).not.toBeInTheDocument())
+    trigger.focus()
+    await userEvent.keyboard('{Enter}')
+    await body.findByRole('dialog', { name: 'error explanation' })
+    expect(getComputedStyle(trigger).color).toBe(restingColor)
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(body.queryByRole('dialog')).not.toBeInTheDocument())
+  },
+}
+
 export const WithLink: Story = {
   render: () => (
     <Infotip>
@@ -102,7 +144,7 @@ function ControlledExample() {
     <div className="flex items-center gap-3">
       <Button onClick={() => setOpen(true)}>Show explanation</Button>
       <Infotip open={open} onOpenChange={setOpen}>
-        <InfotipTrigger aria-label="Processing error" iconVariant="warning" />
+        <InfotipTrigger aria-label="Processing error" iconVariant="warning" tone="error" />
         <InfotipContent aria-label="Processing error">
           The file could not be processed. Review its contents before trying again.
         </InfotipContent>
@@ -128,7 +170,7 @@ export const Controlled: Story = {
 export const LongText: Story = {
   render: () => (
     <Infotip>
-      <InfotipTrigger aria-label="Indexing error" iconVariant="warning" />
+      <InfotipTrigger aria-label="Indexing error" iconVariant="warning" tone="error" />
       <InfotipContent aria-label="Indexing error" className="w-60 whitespace-pre-wrap">
         {
           'Unable to index the document.\nSource: https://example.com/documents/0123456789abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz'

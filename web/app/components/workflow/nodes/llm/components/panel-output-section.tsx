@@ -46,7 +46,8 @@ const PanelOutputSection: FC<Props> = ({
                   aria-label={t(($) => $['structOutput.modelNotSupported'], { ns: 'app' })}
                   iconVariant="warning"
                   iconSize="large"
-                  className="mr-1 text-text-warning-secondary"
+                  className="mr-1"
+                  tone="warning"
                 />
                 <InfotipContent className="w-58">
                   <InfotipTitle className="title-xs-semi-bold text-text-primary">

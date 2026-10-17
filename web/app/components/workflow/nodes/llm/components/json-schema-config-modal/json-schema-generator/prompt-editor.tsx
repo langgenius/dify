@@ -88,7 +88,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
             {t(($) => $['nodes.llm.jsonSchema.instruction'], { ns: 'workflowModels' })}
           </span>
           <Infotip>
-            <InfotipTrigger aria-labelledby={instructionLabelId} className="size-3.5" />
+            <InfotipTrigger aria-labelledby={instructionLabelId} />
             <InfotipContent aria-labelledby={instructionLabelId}>
               {t(($) => $['nodes.llm.jsonSchema.promptTooltip'], { ns: 'workflowModels' })}
             </InfotipContent>

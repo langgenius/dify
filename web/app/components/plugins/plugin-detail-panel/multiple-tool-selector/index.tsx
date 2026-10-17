@@ -162,7 +162,7 @@ const MultipleToolSelector = ({
           )}
           {tooltip ? (
             <Infotip>
-              <InfotipTrigger aria-labelledby={titleId} className="size-3.5" />
+              <InfotipTrigger aria-labelledby={titleId} />
               <InfotipContent aria-labelledby={titleId}>{tooltip}</InfotipContent>
             </Infotip>
           ) : null}

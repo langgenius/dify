@@ -228,10 +228,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           {t(($) => $[labelKey], { ns: 'modelProvider' })}
         </span>
         <Infotip>
-          <InfotipTrigger
-            aria-labelledby={`${modelLabelId}-${labelKey}`}
-            className="ml-0.5 text-text-tertiary"
-          />
+          <InfotipTrigger aria-labelledby={`${modelLabelId}-${labelKey}`} className="ml-0.5" />
           <InfotipContent aria-labelledby={`${modelLabelId}-${labelKey}`} className="w-65.25">
             {tipText}
           </InfotipContent>

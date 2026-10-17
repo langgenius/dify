@@ -295,10 +295,7 @@ export function SearchMethodOption({
                   </span>
                 </FieldLabel>
                 <Infotip>
-                  <InfotipTrigger
-                    aria-labelledby={rerankLabelId}
-                    className="ml-0.5 size-3.5 shrink-0"
-                  />
+                  <InfotipTrigger aria-labelledby={rerankLabelId} className="ml-0.5" />
                   <InfotipContent aria-labelledby={rerankLabelId}>{rerankModelTip}</InfotipContent>
                 </Infotip>
               </div>
