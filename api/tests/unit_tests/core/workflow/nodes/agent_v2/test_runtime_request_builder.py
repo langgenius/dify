@@ -21,6 +21,7 @@ from clients.agent_backend import (
 from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.workflow.file_reference import build_file_reference
+from core.workflow.nodes.agent.agent_node import AgentNode as LegacyAgentNode
 from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentDifyToolsBuilder
 from core.workflow.nodes.agent_v2.runtime_request_builder import (
     WorkflowAgentRuntimeBuildContext,
@@ -350,12 +351,7 @@ def test_single_step_loads_variables_referenced_only_by_knowledge_filters(
 
 
 def test_single_step_legacy_agent_v2_does_not_resolve_new_agent_binding(monkeypatch):
-    legacy_node = SimpleNamespace(id="legacy-agent")
     monkeypatch.setattr(WorkflowEntry, "_run_node_with_layers", lambda *_args, **_kwargs: iter(()))
-    monkeypatch.setattr(
-        "core.workflow.workflow_entry.DifyNodeFactory.from_graph_init_context",
-        lambda **_kwargs: SimpleNamespace(create_node=lambda _config: legacy_node),
-    )
 
     def reject_new_agent_binding(*_args, **_kwargs):
         raise AssertionError("Legacy Agent must not resolve an Agent v2 binding")
@@ -379,7 +375,8 @@ def test_single_step_legacy_agent_v2_does_not_resolve_new_agent_binding(monkeypa
         user_inputs={},
         variable_pool=VariablePool(),
     )
-    assert node is legacy_node
+    assert isinstance(node, LegacyAgentNode)
+    assert node.id == "legacy-agent"
 
 
 @pytest.mark.parametrize(
