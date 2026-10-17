@@ -73,7 +73,10 @@ function DuplicateAgentFormSession({
         </DialogDescription>
         <DialogCloseButton aria-label={tCommon(($) => $['operation.close'])} disabled={pending} />
       </DialogHeader>
-      <Form<AgentFormValues> onFormSubmit={(formValues) => onSubmit(formValues, agentIcon)}>
+      <Form<AgentFormValues>
+        className="contents"
+        onFormSubmit={(formValues) => onSubmit(formValues, agentIcon)}
+      >
         <AgentFormFields
           ref={nameInputRef}
           defaultValues={initialValues.fields}
@@ -148,7 +151,7 @@ export function DuplicateAgentDialog({ agent, open, onOpenChange }: DuplicateAge
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
-        <DialogContent initialFocus={nameInputRef} className="max-h-[calc(100dvh-2rem)] w-130">
+        <DialogContent initialFocus={nameInputRef} className="w-130">
           <DuplicateAgentFormSession
             key={latestAgent.id}
             agent={latestAgent}

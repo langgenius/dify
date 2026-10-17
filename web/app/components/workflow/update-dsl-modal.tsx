@@ -1,11 +1,13 @@
 'use client'
 
 import type { AppDetailWithSite, Import } from '@dify/contracts/api/console/apps/types.gen'
-import type { MouseEventHandler } from 'react'
+import type { DialogActions, DialogProps } from '@langgenius/dify-ui/dialog'
+import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
+  DialogClose,
   DialogCloseButton,
   DialogContent,
   DialogFooter,
@@ -14,7 +16,7 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { RiAlertFill, RiFileDownloadLine } from '@remixicon/react'
 import { useMutation } from '@tanstack/react-query'
-import { memo, useCallback, useState } from 'react'
+import { memo, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DSLImportWarningDescription from '@/app/components/app/create-from-dsl-modal/dsl-import-warning-description'
 import { Uploader } from '@/app/components/app/create-from-dsl-modal/uploader'
@@ -35,17 +37,26 @@ import {
 } from './update-dsl-modal.helpers'
 import { initialEdges, initialNodes } from './utils'
 
-type UpdateDSLModalProps = {
+type UpdateDSLModalProps = Pick<DialogProps, 'open' | 'onOpenChange'> & {
+  children?: ReactNode
   appId: string
   appMode: AppDetailWithSite['mode']
-  onCancel: () => void
   onBackup: () => void
   onImport?: () => void
 }
 
-const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: UpdateDSLModalProps) => {
+function UpdateDSLModal({
+  open,
+  onOpenChange,
+  children,
+  appId,
+  appMode,
+  onBackup,
+  onImport,
+}: UpdateDSLModalProps) {
+  const browseButtonRef = useRef<HTMLButtonElement>(null)
+  const actionsRef = useRef<DialogActions>(null)
   const { t } = useTranslation(['workflow', 'app', 'common'])
-  const [currentFile, setCurrentFile] = useState<File>()
   const { eventEmitter } = useEventEmitterContextContext()
   const { handleCheckPluginDependencies } = usePluginDependencies()
 
@@ -115,9 +126,9 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
       onImport?.()
       // Dependency checks own their feedback after the import has already succeeded.
       await handleCheckPluginDependencies(appId)
-      onCancel()
+      actionsRef.current?.close()
     },
-    [handleCheckPluginDependencies, handleWorkflowUpdate, onCancel, onImport, t],
+    [handleCheckPluginDependencies, handleWorkflowUpdate, onImport, t],
   )
 
   const handleImportResponse = async (response: Import) => {
@@ -180,12 +191,7 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
   const pendingImport = importMutation.data?.status === 'pending' ? importMutation.data : undefined
   const isImporting = importMutation.isPending || confirmImportMutation.isPending
 
-  const handleImport: MouseEventHandler = () => {
-    if (isImporting || !currentFile) return
-    importMutation.mutate(currentFile)
-  }
-
-  const onUpdateDSLConfirm: MouseEventHandler = () => {
+  const onUpdateDSLConfirm = () => {
     if (!pendingImport || isImporting) return
 
     confirmImportMutation.mutate({
@@ -194,120 +200,179 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
   }
 
   return (
-    <>
-      <Dialog
-        open={!pendingImport}
-        onOpenChange={(open) => {
-          if (!open && !isImporting) onCancel()
-        }}
-      >
-        <DialogContent className="w-120">
-          <DialogHeader>
-            <DialogTitle>{t(($) => $.importApp, { ns: 'app' })}</DialogTitle>
-            <DialogCloseButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              disabled={isImporting}
-            />
-          </DialogHeader>
-          <DialogBody>
-            <div className="relative mb-2 flex grow gap-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs">
-              <div className="pointer-events-none absolute top-0 left-0 size-full bg-toast-warning-bg opacity-40" />
-              <div className="flex items-start justify-center p-1">
-                <RiAlertFill className="size-4 shrink-0 text-text-warning-secondary" />
-              </div>
-              <div className="flex grow flex-col items-start gap-0.5 py-1">
-                <div className="system-xs-medium whitespace-pre-line text-text-primary">
-                  {t(($) => $['common.importDSLTip'], { ns: 'workflow' })}
+    <Dialog
+      actionsRef={actionsRef}
+      open={open}
+      onOpenChange={(nextOpen, details) => {
+        if (!nextOpen && isImporting && details.reason !== 'imperative-action') details.cancel()
+        else onOpenChange?.(nextOpen, details)
+      }}
+      onOpenChangeComplete={(nextOpen) => {
+        if (!nextOpen) {
+          importMutation.reset()
+          confirmImportMutation.reset()
+        }
+      }}
+    >
+      <DialogContent initialFocus={browseButtonRef} className="w-120">
+        <ImportForm
+          browseButtonRef={browseButtonRef}
+          isImporting={isImporting}
+          onBackup={onBackup}
+          onSubmit={(file) => {
+            if (!isImporting) importMutation.mutate(file)
+          }}
+        />
+        {children}
+        <Dialog
+          open={!!pendingImport}
+          onOpenChange={(open, details) => {
+            if (!open && isImporting) details.cancel()
+            else if (!open) importMutation.reset()
+          }}
+        >
+          <DialogContent className="w-120">
+            <form
+              className="contents"
+              onSubmit={(event) => {
+                event.preventDefault()
+                onUpdateDSLConfirm()
+              }}
+            >
+              <DialogHeader>
+                <DialogTitle>
+                  {t(($) => $['newApp.appCreateDSLErrorTitle'], { ns: 'app' })}
+                </DialogTitle>
+              </DialogHeader>
+              <DialogBody>
+                <div className="flex flex-col system-md-regular text-text-secondary">
+                  <div>{t(($) => $['newApp.appCreateDSLErrorPart1'], { ns: 'app' })}</div>
+                  <div>{t(($) => $['newApp.appCreateDSLErrorPart2'], { ns: 'app' })}</div>
+                  <br />
+                  <div>
+                    {t(($) => $['newApp.appCreateDSLErrorPart3'], { ns: 'app' })}
+                    <span className="system-md-medium">{pendingImport?.imported_dsl_version}</span>
+                  </div>
+                  <div>
+                    {t(($) => $['newApp.appCreateDSLErrorPart4'], { ns: 'app' })}
+                    <span className="system-md-medium">{pendingImport?.current_dsl_version}</span>
+                  </div>
                 </div>
-                <div className="flex items-start gap-1 self-stretch pt-1 pb-0.5">
-                  <Button
-                    size="small"
-                    variant="secondary"
-                    className="relative"
-                    disabled={isImporting}
-                    onClick={onBackup}
-                  >
-                    <RiFileDownloadLine className="size-3.5 text-components-button-secondary-text" />
-                    <div className="flex items-center justify-center gap-1">
-                      {t(($) => $['common.backupCurrentDraft'], { ns: 'workflow' })}
-                    </div>
-                  </Button>
-                </div>
-              </div>
-            </div>
-            <div>
-              <div className="pt-2 system-md-semibold text-text-primary">
-                {t(($) => $.chooseAppFile, { ns: 'app' })}
-              </div>
-              <div className="flex w-full flex-col items-start justify-center gap-4 self-stretch py-4">
-                <Uploader
-                  importType="app"
+              </DialogBody>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="secondary"
                   disabled={isImporting}
-                  file={currentFile}
-                  updateFile={setCurrentFile}
-                  className="mt-0! w-full"
-                />
-              </div>
+                  onClick={() => importMutation.reset()}
+                >
+                  {t(($) => $['newApp.Cancel'], { ns: 'app' })}
+                </Button>
+                <Button
+                  variant="primary"
+                  tone="destructive"
+                  disabled={isImporting}
+                  loading={confirmImportMutation.isPending}
+                  type="submit"
+                >
+                  {t(($) => $['newApp.Confirm'], { ns: 'app' })}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function ImportForm({
+  browseButtonRef,
+  isImporting,
+  onBackup,
+  onSubmit,
+}: {
+  browseButtonRef: React.RefObject<HTMLButtonElement | null>
+  isImporting: boolean
+  onBackup: UpdateDSLModalProps['onBackup']
+  onSubmit: (file: File) => void
+}) {
+  const { t } = useTranslation(['workflow', 'app', 'common'])
+  const [currentFile, setCurrentFile] = useState<File>()
+  return (
+    <form
+      className="contents"
+      onSubmit={(event) => {
+        event.preventDefault()
+        if (event.target === event.currentTarget && !isImporting && currentFile)
+          onSubmit(currentFile)
+      }}
+    >
+      <DialogHeader>
+        <DialogTitle>{t(($) => $.importApp, { ns: 'app' })}</DialogTitle>
+        <DialogCloseButton
+          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+          disabled={isImporting}
+        />
+      </DialogHeader>
+      <DialogBody>
+        <div className="relative mb-2 flex grow gap-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs">
+          <div className="pointer-events-none absolute top-0 left-0 size-full bg-toast-warning-bg opacity-40" />
+          <div className="flex items-start justify-center p-1">
+            <RiAlertFill className="size-4 shrink-0 text-text-warning-secondary" />
+          </div>
+          <div className="flex grow flex-col items-start gap-0.5 py-1">
+            <div className="system-xs-medium whitespace-pre-line text-text-primary">
+              {t(($) => $['common.importDSLTip'], { ns: 'workflow' })}
             </div>
-          </DialogBody>
-          <DialogFooter>
-            <Button disabled={isImporting} onClick={onCancel}>
-              {t(($) => $['newApp.Cancel'], { ns: 'app' })}
-            </Button>
-            <Button
-              disabled={isImporting || !currentFile}
-              variant="primary"
-              tone="destructive"
-              onClick={handleImport}
-              loading={importMutation.isPending}
-            >
-              {t(($) => $['common.overwriteAndImport'], { ns: 'workflow' })}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <Dialog
-        open={!!pendingImport}
-        onOpenChange={(open) => {
-          if (!open && !isImporting) onCancel()
-        }}
-      >
-        <DialogContent className="w-120">
-          <DialogHeader>
-            <DialogTitle>{t(($) => $['newApp.appCreateDSLErrorTitle'], { ns: 'app' })}</DialogTitle>
-          </DialogHeader>
-          <DialogBody>
-            <div className="flex flex-col system-md-regular text-text-secondary">
-              <div>{t(($) => $['newApp.appCreateDSLErrorPart1'], { ns: 'app' })}</div>
-              <div>{t(($) => $['newApp.appCreateDSLErrorPart2'], { ns: 'app' })}</div>
-              <br />
-              <div>
-                {t(($) => $['newApp.appCreateDSLErrorPart3'], { ns: 'app' })}
-                <span className="system-md-medium">{pendingImport?.imported_dsl_version}</span>
-              </div>
-              <div>
-                {t(($) => $['newApp.appCreateDSLErrorPart4'], { ns: 'app' })}
-                <span className="system-md-medium">{pendingImport?.current_dsl_version}</span>
-              </div>
+            <div className="flex items-start gap-1 self-stretch pt-1 pb-0.5">
+              <Button
+                type="button"
+                size="small"
+                variant="secondary"
+                className="relative"
+                disabled={isImporting}
+                onClick={onBackup}
+              >
+                <RiFileDownloadLine className="size-3.5 text-components-button-secondary-text" />
+                <div className="flex items-center justify-center gap-1">
+                  {t(($) => $['common.backupCurrentDraft'], { ns: 'workflow' })}
+                </div>
+              </Button>
             </div>
-          </DialogBody>
-          <DialogFooter>
-            <Button variant="secondary" disabled={isImporting} onClick={onCancel}>
-              {t(($) => $['newApp.Cancel'], { ns: 'app' })}
-            </Button>
-            <Button
-              variant="primary"
-              tone="destructive"
+          </div>
+        </div>
+        <div>
+          <div className="pt-2 system-md-semibold text-text-primary">
+            {t(($) => $.chooseAppFile, { ns: 'app' })}
+          </div>
+          <div className="flex w-full flex-col items-start justify-center gap-4 self-stretch py-4">
+            <Uploader
+              browseButtonRef={browseButtonRef}
+              importType="app"
               disabled={isImporting}
-              loading={confirmImportMutation.isPending}
-              onClick={onUpdateDSLConfirm}
-            >
-              {t(($) => $['newApp.Confirm'], { ns: 'app' })}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+              file={currentFile}
+              updateFile={setCurrentFile}
+              className="mt-0! w-full"
+            />
+          </div>
+        </div>
+      </DialogBody>
+      <DialogFooter>
+        <DialogClose disabled={isImporting} render={<Button type="button" />}>
+          {t(($) => $['newApp.Cancel'], { ns: 'app' })}
+        </DialogClose>
+        <Button
+          disabled={isImporting || !currentFile}
+          variant="primary"
+          tone="destructive"
+          type="submit"
+          loading={isImporting}
+        >
+          {t(($) => $['common.overwriteAndImport'], { ns: 'workflow' })}
+        </Button>
+      </DialogFooter>
+    </form>
   )
 }
 

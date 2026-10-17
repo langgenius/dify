@@ -55,11 +55,6 @@
       "count": 2
     }
   },
-  "web/app/account/(commonLayout)/delete-account/index.tsx": {
-    "shadcn/no-restyle": {
-      "count": 3
-    }
-  },
   "web/app/components/app/annotation/add-annotation-modal/edit-item/index.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -1614,11 +1609,6 @@
   },
   "web/app/components/plugins/install-plugin/install-from-github/index.tsx": {
     "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "web/app/components/plugins/install-plugin/install-from-marketplace/index.tsx": {
-    "shadcn/no-restyle": {
       "count": 2
     }
   },
@@ -3423,7 +3413,7 @@
   },
   "web/features/new-rag/quality/quality-evaluation-panel.tsx": {
     "shadcn/no-restyle": {
-      "count": 16
+      "count": 18
     }
   },
   "web/features/new-rag/settings/delete-knowledge.tsx": {
@@ -3448,7 +3438,7 @@
   },
   "web/features/new-rag/space/api-access-dialog.tsx": {
     "shadcn/no-restyle": {
-      "count": 7
+      "count": 9
     }
   },
   "web/features/new-rag/upgrade/knowledge-upgrade-dialog.tsx": {
@@ -3458,7 +3448,7 @@
   },
   "web/features/new-rag/upload/local-file-preview.tsx": {
     "shadcn/no-restyle": {
-      "count": 5
+      "count": 7
     }
   },
   "web/features/skills/client.ts": {

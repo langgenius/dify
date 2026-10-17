@@ -833,6 +833,24 @@ describe('CreateFromDSLModal', () => {
     })
   })
 
+  it('validates and submits the URL with Enter inside the dialog form', async () => {
+    const user = userEvent.setup()
+    mockImportDSL.mockResolvedValue({ id: 'import-enter', status: DSLImportStatus.FAILED })
+    render(<CreateFromDSLModal show onClose={vi.fn()} activeTab={CreateFromDSLModalTab.FROM_URL} />)
+    const input = screen.getByRole('textbox', { name: /importFromDSLUrl/ })
+    await user.click(input)
+    await user.keyboard('{Enter}')
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+    expect(mockImportDSL).not.toHaveBeenCalled()
+    await user.type(input, 'https://example.com/app.yml{Enter}')
+    await waitFor(() =>
+      expect(mockImportDSL).toHaveBeenCalledExactlyOnceWith({
+        mode: DSLImportMode.YAML_URL,
+        yaml_url: 'https://example.com/app.yml',
+      }),
+    )
+  })
+
   it('submits a URL through the keyboard shortcut', async () => {
     const handleClose = vi.fn()
     mockImportDSL.mockResolvedValue({

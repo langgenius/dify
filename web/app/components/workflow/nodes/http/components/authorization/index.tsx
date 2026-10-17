@@ -151,6 +151,7 @@ function AuthorizationForm({
       </DialogHeader>
 
       <form
+        className="contents"
         onSubmit={(event) => {
           event.preventDefault()
           onChange(tempPayload)

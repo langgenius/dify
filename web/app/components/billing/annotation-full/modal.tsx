@@ -24,7 +24,7 @@ const AnnotationFullModal: FC<Props> = ({ show, onHide }) => {
         if (!open) onHide()
       }}
     >
-      <DialogContent className="w-full overflow-hidden">
+      <DialogContent className="w-full">
         <DialogClose
           render={
             <IconButton

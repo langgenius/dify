@@ -89,6 +89,7 @@ function EditAgentFormSession({
         <DialogCloseButton aria-label={tCommon(($) => $['operation.close'])} disabled={pending} />
       </DialogHeader>
       <Form<AgentFormValues>
+        className="contents"
         onChange={handleFormChange}
         onFormSubmit={(formValues) => {
           if (hasChanges) onSubmit(formValues, agentIcon)
@@ -160,7 +161,7 @@ export function EditAgentDialog({ agent, open, onOpenChange }: EditAgentDialogPr
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
-        <DialogContent initialFocus={nameInputRef} className="max-h-[calc(100dvh-2rem)] w-130">
+        <DialogContent initialFocus={nameInputRef} className="w-130">
           <EditAgentFormSession
             key={agent.id}
             agent={agent}

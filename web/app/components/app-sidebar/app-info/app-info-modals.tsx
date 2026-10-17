@@ -1,250 +1,83 @@
-import type {
-  AppDetailWithSite,
-  EnvironmentVariableItemResponse,
-} from '@dify/contracts/api/console/apps/types.gen'
-import type { AppInfoModalType } from './use-app-info-actions'
-import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
-import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
-import {
-  AlertDialog,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@langgenius/dify-ui/alert-dialog'
-import { Button } from '@langgenius/dify-ui/button'
-import { Field, FieldLabel } from '@langgenius/dify-ui/field'
-import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
-import dynamic from 'next/dynamic'
-import * as React from 'react'
-import { useCallback, useState } from 'react'
-import { Trans, useTranslation } from 'react-i18next'
-import { AppExportConfirmContent } from '@/app/components/app/export-confirm-modal'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { AlertDialogProps } from '@langgenius/dify-ui/alert-dialog'
+import type { DialogProps } from '@langgenius/dify-ui/dialog'
+import { useState } from 'react'
+import SwitchAppModal from '@/app/components/app/switch-app-modal'
+import UpdateDSLModal from '@/app/components/workflow/update-dsl-modal'
+import { AppMetadataDialog } from './app-metadata-dialog'
+import { DeleteAppDialog } from './delete-app-dialog'
+import { ExportAppDialog } from './export-app-dialog'
 
-const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-modal'), {
-  ssr: false,
-})
-const CreateAppModal = dynamic(() => import('@/app/components/explore/create-app-modal'), {
-  ssr: false,
-})
-const DuplicateAppModal = dynamic(() => import('@/app/components/app/duplicate-modal'), {
-  ssr: false,
-})
-const UpdateDSLModal = dynamic(() => import('@/app/components/workflow/update-dsl-modal'), {
-  ssr: false,
-})
+export type AppInfoOperation = 'edit' | 'duplicate' | 'delete' | 'switch' | 'importDSL'
 
 type AppInfoModalsProps = {
   appDetail: AppDetailWithSite
-  activeModal: AppInfoModalType
-  closeModal: () => void
-  secretEnvList: EnvironmentVariableItemResponse[]
-  setSecretEnvList: (list: EnvironmentVariableItemResponse[]) => void
-  onEdit: CreateAppModalProps['onConfirm']
-  onCopy: DuplicateAppModalProps['onConfirm']
-  onExport: (include?: boolean) => Promise<boolean>
-  isExporting: boolean
-  exportCheck: () => void
-  handleConfirmExport: () => Promise<void>
-  onConfirmDelete: () => void
+  activeModal: AppInfoOperation | null
+  onOpenChange: DialogProps['onOpenChange']
+  exportOpen: AlertDialogProps['open']
+  onExportOpenChange: AlertDialogProps['onOpenChange']
 }
 
-const AppInfoModals = ({
+export default function AppInfoModals({
   appDetail,
   activeModal,
-  closeModal,
-  secretEnvList,
-  setSecretEnvList,
-  onEdit,
-  onCopy,
-  onExport,
-  isExporting,
-  exportCheck,
-  handleConfirmExport,
-  onConfirmDelete,
-}: AppInfoModalsProps) => {
-  const { t } = useTranslation(['app', 'common', 'workflow'])
-  const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
-  const exportConfirmLabelId = React.useId()
-  const isDeleteConfirmDisabled = confirmDeleteInput !== appDetail.name
-  const exportDialogMode =
-    secretEnvList.length > 0 ? 'secret' : activeModal === 'exportWarning' ? 'warning' : null
-  const isExportDialogOpen = exportDialogMode !== null
-
-  const handleDeleteDialogClose = () => {
-    setConfirmDeleteInput('')
-    closeModal()
-  }
-
-  const handleExportDialogClose = useCallback(() => {
-    if (exportDialogMode === 'secret') {
-      setSecretEnvList([])
-      return
-    }
-
-    closeModal()
-  }, [closeModal, exportDialogMode, setSecretEnvList])
-
-  const handleExportDialogOpenChange = useCallback(
-    (open: boolean) => {
-      if (open || isExporting) return
-
-      handleExportDialogClose()
-    },
-    [handleExportDialogClose, isExporting],
-  )
-
+  onOpenChange,
+  exportOpen,
+  onExportOpenChange,
+}: AppInfoModalsProps) {
   return (
     <>
-      {activeModal === 'switch' && (
-        <SwitchAppModal show sourceApp={appDetail} onClose={closeModal} />
-      )}
-      {activeModal === 'edit' && (
-        <CreateAppModal
-          isEditModal
-          appName={appDetail.name}
-          appIconType={appDetail.icon_type}
-          appIcon={appDetail.icon}
-          appIconBackground={appDetail.icon_background}
-          appIconUrl={appDetail.icon_url}
-          appDescription={appDetail.description}
-          appMode={appDetail.mode}
-          appUseIconAsAnswerIcon={appDetail.use_icon_as_answer_icon}
-          max_active_requests={appDetail.max_active_requests ?? null}
-          show
-          onConfirm={onEdit}
-          onHide={closeModal}
-        />
-      )}
-      {activeModal === 'duplicate' && (
-        <DuplicateAppModal
-          appName={appDetail.name}
-          icon_type={appDetail.icon_type}
-          icon={appDetail.icon}
-          icon_background={appDetail.icon_background}
-          icon_url={appDetail.icon_url}
-          show
-          onConfirm={onCopy}
-          onHide={closeModal}
-        />
-      )}
-      <AlertDialog
+      <AppMetadataDialog
+        appDetail={appDetail}
+        operation="edit"
+        open={activeModal === 'edit'}
+        onOpenChange={onOpenChange}
+      />
+      <AppMetadataDialog
+        appDetail={appDetail}
+        operation="duplicate"
+        open={activeModal === 'duplicate'}
+        onOpenChange={onOpenChange}
+      />
+      <SwitchAppModal
+        sourceApp={appDetail}
+        open={activeModal === 'switch'}
+        onOpenChange={onOpenChange}
+      />
+      <DeleteAppDialog
+        appDetail={appDetail}
         open={activeModal === 'delete'}
-        onOpenChange={(open) => !open && handleDeleteDialogClose()}
-      >
-        <AlertDialogContent>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              if (isDeleteConfirmDisabled) return
-              onConfirmDelete()
-            }}
-          >
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                {t(($) => $.deleteAppConfirmTitle, { ns: 'app' })}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {t(($) => $.deleteAppConfirmContent, { ns: 'app' })}
-              </AlertDialogDescription>
-              <Field name="confirm-app-name">
-                <FieldLabel>
-                  <Trans
-                    i18nKey={($) => $.deleteAppConfirmInputLabel}
-                    ns="app"
-                    values={{ appName: appDetail.name }}
-                    components={{
-                      appName: (
-                        <span className="system-sm-semibold text-text-primary" translate="no" />
-                      ),
-                    }}
-                  />
-                </FieldLabel>
-                <InputGroup>
-                  <InputGroupInput
-                    type="text"
-                    autoComplete="off"
-                    spellCheck={false}
-                    placeholder={t(($) => $.deleteAppConfirmInputPlaceholder, { ns: 'app' })}
-                    value={confirmDeleteInput}
-                    onValueChange={setConfirmDeleteInput}
-                  />
-                  <InputGroupAddon align="inline-end">
-                    <Button
-                      variant="tertiary"
-                      size="small"
-                      onClick={() => setConfirmDeleteInput(appDetail.name)}
-                    >
-                      {t(($) => $['operation.fill'], { ns: 'common' })}
-                    </Button>
-                  </InputGroupAddon>
-                </InputGroup>
-              </Field>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancelButton type="button">
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </AlertDialogCancelButton>
-              <AlertDialogConfirmButton type="submit" disabled={isDeleteConfirmDisabled}>
-                {t(($) => $['operation.confirm'], { ns: 'common' })}
-              </AlertDialogConfirmButton>
-            </AlertDialogFooter>
-          </form>
-        </AlertDialogContent>
-      </AlertDialog>
-      {activeModal === 'importDSL' && (
-        <UpdateDSLModal
-          appId={appDetail.id}
-          appMode={appDetail.mode}
-          onCancel={closeModal}
-          onBackup={exportCheck}
-        />
-      )}
-      <AlertDialog open={isExportDialogOpen} onOpenChange={handleExportDialogOpenChange}>
-        {exportDialogMode === 'secret' ? (
-          <AppExportConfirmContent
-            envList={secretEnvList}
-            onConfirm={onExport}
-            onClose={() => setSecretEnvList([])}
-            isExporting={isExporting}
-          />
-        ) : (
-          exportDialogMode === 'warning' && (
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>
-                  {t(($) => $['sidebar.exportWarning'], { ns: 'workflow' })}
-                </AlertDialogTitle>
-                <AlertDialogDescription>
-                  {t(($) => $['sidebar.exportWarningDesc'], { ns: 'workflow' })}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancelButton>
-                  {t(($) => $['operation.cancel'], { ns: 'common' })}
-                </AlertDialogCancelButton>
-                <AlertDialogConfirmButton
-                  tone="default"
-                  loading={isExporting}
-                  aria-labelledby={exportConfirmLabelId}
-                  onClick={handleConfirmExport}
-                >
-                  <span id={exportConfirmLabelId}>
-                    {isExporting
-                      ? t(($) => $['operation.exporting'], { ns: 'common' })
-                      : t(($) => $['operation.confirm'], { ns: 'common' })}
-                  </span>
-                </AlertDialogConfirmButton>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          )
-        )}
-      </AlertDialog>
+        onOpenChange={onOpenChange}
+      />
+      <ImportAppDialog
+        appDetail={appDetail}
+        open={activeModal === 'importDSL'}
+        onOpenChange={onOpenChange}
+      />
+      <ExportAppDialog appDetail={appDetail} open={exportOpen} onOpenChange={onExportOpenChange} />
     </>
   )
 }
 
-export default React.memo(AppInfoModals)
+function ImportAppDialog({
+  appDetail,
+  open,
+  onOpenChange,
+}: {
+  appDetail: AppDetailWithSite
+  open: DialogProps['open']
+  onOpenChange: DialogProps['onOpenChange']
+}) {
+  const [backupOpen, setBackupOpen] = useState(false)
+  return (
+    <UpdateDSLModal
+      appId={appDetail.id}
+      appMode={appDetail.mode}
+      open={open}
+      onOpenChange={onOpenChange}
+      onBackup={() => setBackupOpen(true)}
+    >
+      <ExportAppDialog appDetail={appDetail} open={backupOpen} onOpenChange={setBackupOpen} />
+    </UpdateDSLModal>
+  )
+}

@@ -118,6 +118,7 @@ const DuplicateAppModal = ({
             <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
           </DialogHeader>
           <form
+            className="contents"
             onSubmit={(event) => {
               event.preventDefault()
               submit()

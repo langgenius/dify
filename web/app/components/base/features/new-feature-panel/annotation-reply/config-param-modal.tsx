@@ -92,7 +92,7 @@ const ConfigParamModal: FC<Props> = ({
         if (!open) onHide()
       }}
     >
-      <DialogContent className="w-160 max-w-none">
+      <DialogContent className="w-160">
         <DialogHeader>
           <DialogTitle>
             {t(($) => $[`initSetup.${isInit ? 'title' : 'configTitle'}`], { ns: 'appAnnotation' })}

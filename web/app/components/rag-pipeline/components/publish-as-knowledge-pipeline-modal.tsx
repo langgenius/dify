@@ -76,6 +76,7 @@ const PublishAsKnowledgePipelineModal = ({
     >
       <DialogContent className="w-120">
         <form
+          className="contents"
           onSubmit={(event) => {
             event.preventDefault()
             handleConfirm()

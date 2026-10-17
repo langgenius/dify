@@ -673,7 +673,13 @@ export function AppCardInteractions({
         />
       )}
       {activeDialog === 'switch' && (
-        <SwitchAppModal show sourceApp={app} onClose={() => setActiveDialog(null)} />
+        <SwitchAppModal
+          open
+          sourceApp={app}
+          onOpenChange={(open) => {
+            if (!open) setActiveDialog(null)
+          }}
+        />
       )}
       <AlertDialog open={activeDialog === 'delete'} onOpenChange={onDeleteDialogOpenChange}>
         <AlertDialogContent>

@@ -5,6 +5,7 @@ import type { QueryClient } from '@tanstack/react-query'
 import type { DragEvent, UIEvent } from 'react'
 import {
   AlertDialog,
+  AlertDialogBody,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
@@ -329,6 +330,7 @@ function DeleteSkillDialog({
     >
       <AlertDialogContent>
         <form
+          className="contents"
           onSubmit={(event) => {
             event.preventDefault()
             handleDelete()
@@ -339,8 +341,10 @@ function DeleteSkillDialog({
               {t(($) => $['skillManagement.deleteDialog.title'], { name: skill.display_name })}
             </AlertDialogTitle>
             <AlertDialogDescription>{description}</AlertDialogDescription>
-            {referenceCount > 0 &&
-              (referencesQuery.isPending ? (
+          </AlertDialogHeader>
+          {referenceCount > 0 && (
+            <AlertDialogBody className="flex flex-col gap-2">
+              {referencesQuery.isPending ? (
                 <SkillReferencesListSkeleton compact />
               ) : (
                 <SkillReferencesList
@@ -350,8 +354,7 @@ function DeleteSkillDialog({
                   testId="skill-delete-reference-list"
                   visibleLimit={5}
                 />
-              ))}
-            {referenceCount > 0 && (
+              )}
               <Field name="confirm-skill-name">
                 <FieldLabel>
                   <Trans
@@ -387,8 +390,8 @@ function DeleteSkillDialog({
                   </InputGroupAddon>
                 </InputGroup>
               </Field>
-            )}
-          </AlertDialogHeader>
+            </AlertDialogBody>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancelButton disabled={deleteMutation.isPending}>
               {tCommon(($) => $['operation.cancel'])}
@@ -882,6 +885,7 @@ function ImportSkillDialogForm({
 
   return (
     <form
+      className="contents"
       onSubmit={(event) => {
         event.preventDefault()
         if (file && !importing) onImport(file)
