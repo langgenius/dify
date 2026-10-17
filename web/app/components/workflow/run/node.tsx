@@ -23,6 +23,7 @@ import { use, useCallback, useEffect, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
+import { isBoundAgentV2Execution } from '@/app/components/workflow/nodes/agent-v2/execution'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 import { hasRetryNode } from '@/app/components/workflow/utils'
@@ -277,7 +278,7 @@ const NodePanel: FC<Props> = ({
                       <span aria-hidden className="i-ri-arrow-right-line size-4" />
                     </Button>
                   )}
-                {nodeInfo.node_type === BlockEnum.AgentV2 && externalTraceRun && (
+                {isBoundAgentV2Execution(nodeInfo) && externalTraceRun && (
                   <dl>
                     <ExternalTraceRow
                       source={{
