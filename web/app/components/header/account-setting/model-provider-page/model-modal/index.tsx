@@ -29,7 +29,7 @@ import {
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import { EncryptedBottom, EncryptedFooter } from '@/app/components/base/encrypted-bottom'
+import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import {
@@ -314,7 +314,7 @@ const ModelModal: FC<ModelModalProps> = ({
 
   return (
     <Dialog open onOpenChange={handleOpenChange}>
-      <DialogContent backdropProps={{ forceRender: true }} className="w-160 max-w-160">
+      <DialogContent backdropProps={{ forceRender: true }} className="w-160">
         <DialogHeader>
           {modalTitle}
           {modalDesc}
@@ -382,52 +382,50 @@ const ModelModal: FC<ModelModalProps> = ({
             />
           )}
         </DialogBody>
-        <EncryptedFooter>
-          <DialogFooter>
-            {provider.help && (provider.help.title || provider.help.url) && (
-              <a
-                href={provider.help?.url[language] || provider.help?.url.en_US}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="me-auto inline-block align-middle system-xs-regular text-text-accent"
-                onClick={(e) => !provider.help?.url && e.preventDefault()}
-              >
-                {provider.help.title?.[language] ||
-                  provider.help.url[language] ||
-                  provider.help.title?.en_US ||
-                  provider.help.url.en_US}
-                <span
-                  aria-hidden
-                  className="-mt-0.5 ml-1 i-custom-vender-line-general-link-external-02 inline-block h-3 w-3 align-middle"
-                />
-              </a>
-            )}
-            {isEditMode && (
-              <Button
-                variant="primary"
-                tone="destructive"
-                onClick={() => openConfirmDelete(credential, model)}
-              >
-                {t(($) => $['operation.remove'], { ns: 'common' })}
-              </Button>
-            )}
-            <Button onClick={onCancel}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
+        <DialogFooter>
+          {provider.help && (provider.help.title || provider.help.url) && (
+            <a
+              href={provider.help?.url[language] || provider.help?.url.en_US}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="me-auto inline-block align-middle system-xs-regular text-text-accent"
+              onClick={(e) => !provider.help?.url && e.preventDefault()}
+            >
+              {provider.help.title?.[language] ||
+                provider.help.url[language] ||
+                provider.help.title?.en_US ||
+                provider.help.url.en_US}
+              <span
+                aria-hidden
+                className="-mt-0.5 ml-1 i-custom-vender-line-general-link-external-02 inline-block h-3 w-3 align-middle"
+              />
+            </a>
+          )}
+          {isEditMode && (
             <Button
               variant="primary"
-              onClick={handleSave}
-              disabled={isLoading || doingAction || !canSaveCredentialChange}
+              tone="destructive"
+              onClick={() => openConfirmDelete(credential, model)}
             >
-              {saveButtonText}
+              {t(($) => $['operation.remove'], { ns: 'common' })}
             </Button>
-          </DialogFooter>
-          {(mode === ModelModalModeEnum.configCustomModel ||
-            mode === ModelModalModeEnum.configProviderCredential) && (
-            <EncryptedBottom
-              front={t(($) => $['modelProvider.encrypted.front'], { ns: 'modelProvider' })}
-              back={t(($) => $['modelProvider.encrypted.back'], { ns: 'modelProvider' })}
-            />
           )}
-        </EncryptedFooter>
+          <Button onClick={onCancel}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
+          <Button
+            variant="primary"
+            onClick={handleSave}
+            disabled={isLoading || doingAction || !canSaveCredentialChange}
+          >
+            {saveButtonText}
+          </Button>
+        </DialogFooter>
+        {(mode === ModelModalModeEnum.configCustomModel ||
+          mode === ModelModalModeEnum.configProviderCredential) && (
+          <EncryptedBottom
+            front={t(($) => $['modelProvider.encrypted.front'], { ns: 'modelProvider' })}
+            back={t(($) => $['modelProvider.encrypted.back'], { ns: 'modelProvider' })}
+          />
+        )}
       </DialogContent>
       <AlertDialog open={!!deleteCredentialId} onOpenChange={handleConfirmOpenChange}>
         <AlertDialogContent backdropProps={{ forceRender: true }}>

@@ -107,7 +107,7 @@ function ChangePasswordForm({
   }
 
   return (
-    <Form<ChangePasswordFormValues> onFormSubmit={handleSubmit}>
+    <Form<ChangePasswordFormValues> className="contents" onFormSubmit={handleSubmit}>
       <DialogHeader>
         <DialogTitle>
           {isPasswordSet

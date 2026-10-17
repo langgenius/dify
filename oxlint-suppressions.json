@@ -55,11 +55,6 @@
       "count": 2
     }
   },
-  "web/app/account/(commonLayout)/delete-account/index.tsx": {
-    "shadcn/no-restyle": {
-      "count": 3
-    }
-  },
   "web/app/components/app/annotation/add-annotation-modal/edit-item/index.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -1624,11 +1619,6 @@
   },
   "web/app/components/plugins/install-plugin/install-from-github/index.tsx": {
     "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "web/app/components/plugins/install-plugin/install-from-marketplace/index.tsx": {
-    "shadcn/no-restyle": {
       "count": 2
     }
   },

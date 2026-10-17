@@ -17,7 +17,7 @@ export function ReadmeDialog({ detail, open, onOpenChange, triggerId }: ReadmeDi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} triggerId={triggerId}>
-      <DialogContent className="h-[calc(100dvh-16px)] w-full max-w-200 overflow-hidden">
+      <DialogContent className="h-[calc(100dvh-16px)] w-200 overflow-hidden">
         <ReadmePanelContent
           detail={detail}
           title={

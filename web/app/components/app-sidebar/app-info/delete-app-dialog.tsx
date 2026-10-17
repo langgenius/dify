@@ -112,7 +112,7 @@ function DeleteAppForm({
         </AlertDialogDescription>
       </AlertDialogHeader>
       <AlertDialogBody>
-        <Field name="confirm-app-name" className="pb-1">
+        <Field name="confirm-app-name">
           <FieldLabel>
             <Trans
               i18nKey={($) => $.deleteAppConfirmInputLabel}

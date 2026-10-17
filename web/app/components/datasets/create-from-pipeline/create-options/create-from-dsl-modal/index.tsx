@@ -66,18 +66,20 @@ const CreateFromDSLModal = ({
             <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
           </DialogHeader>
           <form
+            className="contents"
             onSubmit={(event) => {
               event.preventDefault()
               handleCreateApp()
             }}
           >
             <Tabs
+              className="contents"
               value={currentTab}
               onValueChange={(value) => {
                 if (value !== null) setCurrentTab(value as CreateFromDSLModalTab)
               }}
             >
-              <TabsList className="h-9 gap-6 border-b border-divider-subtle px-6">
+              <TabsList className="h-9 shrink-0 gap-6 border-b border-divider-subtle px-6">
                 <TabsTab value={CreateFromDSLModalTab.FROM_FILE} className="h-full py-0">
                   {t(($) => $.importFromDSLFile, { ns: 'app' })}
                 </TabsTab>

@@ -94,6 +94,7 @@ const EditPipelineInfo = ({ onClose, pipeline }: EditPipelineInfoProps) => {
 
   return (
     <form
+      className="contents"
       onSubmit={(event) => {
         event.preventDefault()
         void handleSave()

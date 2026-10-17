@@ -15,7 +15,7 @@ import {
 import { isEqual } from 'es-toolkit/predicate'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { EncryptedBottom, EncryptedFooter } from '@/app/components/base/encrypted-bottom'
+import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import { BaseForm } from '@/app/components/base/form/components/base'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
@@ -372,25 +372,23 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
             </div>
           )}
         </DialogBody>
-        <EncryptedFooter>
-          <DialogFooter>
-            {currentStep === EditStep.EditConfiguration && (
-              <>
-                <Button variant="secondary" onClick={handleBack} disabled={isDisabled}>
-                  {t(($) => $['modal.common.back'], { ns: 'pluginTrigger' })}
-                </Button>
-                <div className="mx-1 h-4 w-px bg-divider-regular"></div>
-              </>
-            )}
-            <Button onClick={onClose} disabled={isDisabled}>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </Button>
-            <Button variant="primary" onClick={handleConfirm} disabled={isDisabled}>
-              {confirmButtonText}
-            </Button>
-          </DialogFooter>
-          {currentStep === EditStep.EditCredentials && <EncryptedBottom />}
-        </EncryptedFooter>
+        <DialogFooter>
+          {currentStep === EditStep.EditConfiguration && (
+            <>
+              <Button variant="secondary" onClick={handleBack} disabled={isDisabled}>
+                {t(($) => $['modal.common.back'], { ns: 'pluginTrigger' })}
+              </Button>
+              <div className="mx-1 h-4 w-px bg-divider-regular"></div>
+            </>
+          )}
+          <Button onClick={onClose} disabled={isDisabled}>
+            {t(($) => $['operation.cancel'], { ns: 'common' })}
+          </Button>
+          <Button variant="primary" onClick={handleConfirm} disabled={isDisabled}>
+            {confirmButtonText}
+          </Button>
+        </DialogFooter>
+        {currentStep === EditStep.EditCredentials && <EncryptedBottom />}
       </DialogContent>
     </Dialog>
   )

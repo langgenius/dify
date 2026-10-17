@@ -37,6 +37,7 @@ const RenameModal: FC<IRenameModalProps> = ({ isShow, saveLoading, name, onClose
           <DialogTitle>{t(($) => $['chat.renameConversation'], { ns: 'common' })}</DialogTitle>
         </DialogHeader>
         <Form
+          className="contents"
           onFormSubmit={() => {
             if (!saveLoading) onSave(tempName)
           }}

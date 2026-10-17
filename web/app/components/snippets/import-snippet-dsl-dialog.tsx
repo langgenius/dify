@@ -103,7 +103,7 @@ function SnippetDSLConfirmDialog({
           <AlertDialogCancelButton>
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </AlertDialogCancelButton>
-          <AlertDialogConfirmButton onClick={onConfirm} disabled={confirmDisabled}>
+          <AlertDialogConfirmButton tone="default" onClick={onConfirm} disabled={confirmDisabled}>
             {t(($) => $['operation.confirm'], { ns: 'common' })}
           </AlertDialogConfirmButton>
         </AlertDialogFooter>

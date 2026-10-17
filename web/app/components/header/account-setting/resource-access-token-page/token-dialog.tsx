@@ -159,7 +159,7 @@ export default function ResourceAccessTokenDialog({
             </DialogFooter>
           </>
         ) : (
-          <form onSubmit={handleSubmit}>
+          <form className="contents" onSubmit={handleSubmit}>
             <DialogBody className="grid gap-5">
               <Field name="name">
                 <FieldLabel>{nameLabel}</FieldLabel>

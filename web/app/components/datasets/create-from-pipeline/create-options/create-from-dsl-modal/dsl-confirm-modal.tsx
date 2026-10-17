@@ -57,7 +57,7 @@ const DSLConfirmModal = ({
           <AlertDialogCancelButton>
             {t(($) => $['newApp.Cancel'], { ns: 'app' })}
           </AlertDialogCancelButton>
-          <AlertDialogConfirmButton onClick={onConfirm} disabled={confirmDisabled}>
+          <AlertDialogConfirmButton tone="default" onClick={onConfirm} disabled={confirmDisabled}>
             {t(($) => $['newApp.Confirm'], { ns: 'app' })}
           </AlertDialogConfirmButton>
         </AlertDialogFooter>

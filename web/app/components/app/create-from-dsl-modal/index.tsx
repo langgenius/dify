@@ -5,6 +5,7 @@ import type { Hotkey } from '@tanstack/react-hotkeys'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
+  DialogBody,
   DialogCloseButton,
   DialogContent,
   DialogFooter,
@@ -325,8 +326,8 @@ function CreateFromDSLModal({
               event.currentTarget.requestSubmit()
             }}
           >
-            <Tabs value={currentTab} onValueChange={handleTabChange}>
-              <TabsList className="h-9 gap-6 border-b border-divider-subtle px-6">
+            <Tabs className="contents" value={currentTab} onValueChange={handleTabChange}>
+              <TabsList className="h-9 shrink-0 gap-6 border-b border-divider-subtle px-6">
                 <TabsTab
                   value={CreateFromDSLModalTab.FROM_FILE}
                   className="h-full pt-0 pb-0"
@@ -345,7 +346,7 @@ function CreateFromDSLModal({
               <TabsPanel
                 value={CreateFromDSLModalTab.FROM_FILE}
                 tabIndex={-1}
-                className="px-6 py-4"
+                render={<DialogBody />}
               >
                 <Uploader
                   importType="app"
@@ -356,7 +357,11 @@ function CreateFromDSLModal({
                   disabled={isImporting}
                 />
               </TabsPanel>
-              <TabsPanel value={CreateFromDSLModalTab.FROM_URL} tabIndex={-1} className="px-6 py-4">
+              <TabsPanel
+                value={CreateFromDSLModalTab.FROM_URL}
+                tabIndex={-1}
+                render={<DialogBody />}
+              >
                 <Field name="dslUrl">
                   <FieldLabel>{t(($) => $.importFromDSLUrl, { ns: 'app' })}</FieldLabel>
                   <Input

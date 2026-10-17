@@ -88,7 +88,7 @@ export function FollowUpSettingsDialog({ data, onSave, disabled }: FollowUpSetti
           {t(($) => $['operation.settings'], { ns: 'common' })}
         </DialogTrigger>
       </div>
-      <DialogContent className="w-160 max-w-none">
+      <DialogContent className="w-160">
         <FollowUpSettingsForm
           data={data}
           onSave={(value) => {
@@ -160,6 +160,7 @@ function FollowUpSettingsForm({ data, onSave }: Omit<FollowUpSettingsDialogProps
 
   return (
     <form
+      className="contents"
       onSubmit={(event) => {
         event.preventDefault()
         if (!isCustomPromptInvalid) handleSave()

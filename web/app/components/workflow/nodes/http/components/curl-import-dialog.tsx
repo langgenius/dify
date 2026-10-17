@@ -29,6 +29,7 @@ function CurlImportForm({ onImport }: Pick<CurlImportDialogProps, 'onImport'>) {
 
   return (
     <form
+      className="contents"
       onSubmit={(event) => {
         event.preventDefault()
         const command = new FormData(event.currentTarget).get('curl')
@@ -46,10 +47,10 @@ function CurlImportForm({ onImport }: Pick<CurlImportDialogProps, 'onImport'>) {
         />
       </DialogBody>
       <DialogFooter>
-        <DialogClose render={<Button className="w-23.75!" />}>
+        <DialogClose render={<Button className="min-w-24" />}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </DialogClose>
-        <Button type="submit" className="w-23.75!" variant="primary">
+        <Button type="submit" className="min-w-24" variant="primary">
           {t(($) => $['operation.save'], { ns: 'common' })}
         </Button>
       </DialogFooter>
@@ -83,7 +84,7 @@ export function CurlImportDialog({ readOnly, onImport }: CurlImportDialogProps) 
         />
         {label}
       </DialogTrigger>
-      <DialogContent className="w-100 max-w-100">
+      <DialogContent className="w-100">
         <DialogHeader>
           <DialogTitle>
             {t(($) => $['nodes.http.curl.title'], { ns: 'workflowIntegrations' })}
