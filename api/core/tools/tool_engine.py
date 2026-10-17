@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from mimetypes import guess_type
 from typing import Any, cast
 
+from pydantic import TypeAdapter, ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 from yarl import URL
 
@@ -38,6 +39,8 @@ from models.enums import CreatorUserRole, MessageFileBelongsTo
 from models.model import Message, MessageFile
 
 logger = logging.getLogger(__name__)
+
+_tool_parameters_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
 
 
 class ToolEngine:
@@ -74,9 +77,12 @@ class ToolEngine:
             if parameters and len(parameters) == 1:
                 tool_parameters = {parameters[0].name: tool_parameters}
             else:
-                with contextlib.suppress(Exception):
-                    tool_parameters = json.loads(tool_parameters)
+                with contextlib.suppress(ValidationError):
+                    tool_parameters = _tool_parameters_adapter.validate_json(tool_parameters)
                 if not isinstance(tool_parameters, dict):
+                    # Keep legacy interpolation for valid JSON scalars; malformed input stays raw.
+                    with contextlib.suppress(json.JSONDecodeError):
+                        tool_parameters = json.loads(tool_parameters)
                     raise ValueError(f"tool_parameters should be a dict, but got a string: {tool_parameters}")
 
         try:
