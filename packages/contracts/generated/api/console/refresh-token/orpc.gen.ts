@@ -17,7 +17,7 @@ export const post = oc
     path: '/refresh-token',
     tags: ['console'],
   })
-  .input(z.object({ headers: zPostRefreshTokenHeaders.optional() }))
+  .input(z.object({ headers: zPostRefreshTokenHeaders.optional() }).optional())
   .output(zPostRefreshTokenResponse)
 
 export const refreshToken = {
