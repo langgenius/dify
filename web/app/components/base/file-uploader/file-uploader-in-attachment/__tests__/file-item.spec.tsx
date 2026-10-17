@@ -8,10 +8,6 @@ vi.mock('@/utils/download', () => ({
   downloadUrl: vi.fn(),
 }))
 
-vi.mock('@/utils/format', () => ({
-  formatFileSize: (size: number) => `${size}B`,
-}))
-
 const createFile = (overrides: Partial<FileEntity> = {}): FileEntity => ({
   id: 'file-1',
   name: 'document.pdf',
@@ -40,7 +36,7 @@ describe('FileInAttachmentItem', () => {
   it('should render file size', () => {
     render(<FileInAttachmentItem file={createFile({ size: 2048 })} />)
 
-    expect(screen.getByText(/2048B/))!.toBeInTheDocument()
+    expect(screen.getByText(/2.00 KB/))!.toBeInTheDocument()
   })
 
   it('should render FileTypeIcon for non-image files', () => {

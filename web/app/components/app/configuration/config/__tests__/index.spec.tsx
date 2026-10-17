@@ -1,20 +1,16 @@
-import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { ComponentProps } from 'react'
+import type { ConfigurationAppMode } from '@/app/components/app/configuration/hooks/configuration-lifecycle/types'
 import type { ModelConfig, PromptVariable } from '@/models/debug'
 import type { ToolItem } from '@/types/app'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import * as React from 'react'
-import * as useContextSelector from 'use-context-selector'
+import { renderWithDebugConfiguration } from '@/test/debug-configuration'
 import { AgentStrategy, ModelModeType } from '@/types/app'
 import Config from '../index'
 
-vi.mock('use-context-selector', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('use-context-selector')>()
-  return {
-    ...actual,
-    useContext: vi.fn(),
-  }
-})
+let configuration: Parameters<typeof renderWithDebugConfiguration>[1] = {}
+const render = (ui: Parameters<typeof renderWithDebugConfiguration>[0]) =>
+  renderWithDebugConfiguration(ui, configuration)
 
 const mockFormattingDispatcher = vi.fn()
 vi.mock('../../debug/hooks', () => ({
@@ -82,7 +78,7 @@ vi.mock('../../config-prompt/conversation-history/history-panel', () => ({
 }))
 
 type MockContext = {
-  mode: AppMode
+  mode: ConfigurationAppMode
   isAdvancedMode: boolean
   modelModeType: ModelModeType
   isAgent: boolean
@@ -152,11 +148,9 @@ const createContextValue = (overrides: Partial<MockContext> = {}): MockContext =
   ...overrides,
 })
 
-const mockUseContext = vi.mocked(useContextSelector.useContext)
-
 const renderConfig = (contextOverrides: Partial<MockContext> = {}) => {
   const contextValue = createContextValue(contextOverrides)
-  mockUseContext.mockReturnValue(contextValue)
+  configuration = contextValue
   return {
     contextValue,
     ...render(<Config />),

@@ -61,7 +61,7 @@ function WorkflowLaunchForm({
   }
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form className="contents" onSubmit={handleSubmit}>
       <DialogBody className="space-y-4">
         <WorkflowHiddenInputFields
           hiddenVariables={hiddenVariables}

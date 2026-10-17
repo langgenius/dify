@@ -1,321 +1,106 @@
-import { renderHook } from '@testing-library/react'
-import { act } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
+import { act } from '@testing-library/react'
+import { useReactFlow } from 'reactflow'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowFlowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { usePipeline } from '../use-pipeline'
 
-const mockGetNodes = vi.fn()
-const mockSetNodes = vi.fn()
-const mockEdges: Array<{ id: string; source: string; target: string }> = []
-
-vi.mock('reactflow', () => ({
-  useStoreApi: () => ({
-    getState: () => ({
-      getNodes: mockGetNodes,
-      setNodes: mockSetNodes,
-      edges: mockEdges,
+const source = (id: string) =>
+  createNode({ id, data: { type: BlockEnum.DataSource, datasource_parameters: {} } })
+const consumer = (id: string, nodeId = 'source', variable = 'query') =>
+  createNode({
+    id,
+    data: {
+      type: BlockEnum.Code,
+      variables: [{ variable: 'input', value_selector: ['rag', nodeId, variable] }],
+      code_language: 'python3',
+      code: '',
+      outputs: {},
+    },
+  })
+const edge = (source: string, target: string) => ({ id: `${source}-${target}`, source, target })
+const renderPipeline = (
+  nodes: ReturnType<typeof createNode>[],
+  edges: ReturnType<typeof edge>[] = [],
+) =>
+  renderWorkflowFlowHook(
+    () => ({
+      pipeline: usePipeline(),
+      flow: useReactFlow<CodeNodeType>(),
     }),
-  }),
-  getOutgoers: (
-    node: { id: string },
-    nodes: Array<{ id: string }>,
-    edges: Array<{ source: string; target: string }>,
-  ) => {
-    return nodes.filter((n) => edges.some((e) => e.source === node.id && e.target === n.id))
-  },
-}))
+    { nodes, edges },
+  )
 
-const mockFindUsedVarNodes = vi.fn()
-const mockUpdateNodeVars = vi.fn()
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/utils', () => ({
-  findUsedVarNodes: (...args: unknown[]) => mockFindUsedVarNodes(...args),
-  updateNodeVars: (...args: unknown[]) => mockUpdateNodeVars(...args),
-}))
+it('finds references along multiple downstream hops and ignores disconnected nodes', () => {
+  const { result } = renderPipeline(
+    [
+      source('source'),
+      consumer('middle', 'source', 'other'),
+      consumer('leaf'),
+      consumer('disconnected', 'source', 'isolated'),
+    ],
+    [edge('source', 'middle'), edge('middle', 'leaf')],
+  )
+  expect(result.current.pipeline.isVarUsedInNodes(['rag', 'source', 'query'])).toBe(true)
+  expect(result.current.pipeline.isVarUsedInNodes(['rag', 'source', 'isolated'])).toBe(false)
+  expect(result.current.pipeline.isVarUsedInNodes(['rag', 'missing', 'query'])).toBe(false)
+})
 
-vi.mock('@/app/components/workflow/types', () => ({
-  BlockEnum: {
-    DataSource: 'data-source',
-  },
-}))
+it('renames shared inputs across entrances and clears references when the input is removed', () => {
+  const { result } = renderPipeline(
+    [source('one'), source('two'), consumer('joined', 'shared')],
+    [edge('one', 'joined'), edge('two', 'joined')],
+  )
+  expect(result.current.pipeline.isVarUsedInNodes(['rag', 'shared', 'query'])).toBe(true)
+  act(() =>
+    result.current.pipeline.handleInputVarRename(
+      'shared',
+      ['rag', 'shared', 'query'],
+      ['rag', 'shared', 'renamed'],
+    ),
+  )
+  expect(result.current.flow.getNode('joined')?.data.variables).toEqual([
+    { variable: 'input', value_selector: ['rag', 'shared', 'renamed'] },
+  ])
+  expect(result.current.pipeline.isVarUsedInNodes(['rag', 'shared', 'query'])).toBe(false)
+  act(() => result.current.pipeline.removeUsedVarInNodes(['rag', 'shared', 'renamed']))
+  expect(result.current.flow.getNode('joined')?.data.variables).toEqual([
+    { variable: 'input', value_selector: [] },
+  ])
+})
 
-vi.mock('es-toolkit/compat', () => ({
-  uniqBy: (arr: Array<{ id: string }>, key: string) => {
-    const seen = new Set<string>()
-    return arr.filter((item) => {
-      const val = item[key as keyof typeof item]
-      if (seen.has(val)) return false
-      seen.add(val)
-      return true
-    })
-  },
-}))
-
-function createNode(id: string, type: string) {
-  return { id, data: { type }, position: { x: 0, y: 0 } }
-}
-
-describe('usePipeline', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockEdges.length = 0
-  })
-
-  afterEach(() => {
-    vi.clearAllMocks()
-  })
-
-  describe('hook initialization', () => {
-    it('should return handleInputVarRename function', () => {
-      mockGetNodes.mockReturnValue([])
-      const { result } = renderHook(() => usePipeline())
-
-      expect(result.current.handleInputVarRename).toBeDefined()
-      expect(typeof result.current.handleInputVarRename).toBe('function')
-    })
-
-    it('should return isVarUsedInNodes function', () => {
-      mockGetNodes.mockReturnValue([])
-      const { result } = renderHook(() => usePipeline())
-
-      expect(result.current.isVarUsedInNodes).toBeDefined()
-      expect(typeof result.current.isVarUsedInNodes).toBe('function')
-    })
-
-    it('should return removeUsedVarInNodes function', () => {
-      mockGetNodes.mockReturnValue([])
-      const { result } = renderHook(() => usePipeline())
-
-      expect(result.current.removeUsedVarInNodes).toBeDefined()
-      expect(typeof result.current.removeUsedVarInNodes).toBe('function')
-    })
-  })
-
-  describe('isVarUsedInNodes', () => {
-    it('should return true when variable is used in downstream nodes', () => {
-      const dsNode = createNode('ds-1', 'data-source')
-      const downstreamNode = createNode('node-2', 'llm')
-      mockGetNodes.mockReturnValue([dsNode, downstreamNode])
-      mockEdges.push({ id: 'e1', source: 'ds-1', target: 'node-2' })
-      mockFindUsedVarNodes.mockReturnValue([downstreamNode])
-
-      const { result } = renderHook(() => usePipeline())
-
-      const isUsed = result.current.isVarUsedInNodes(['rag', 'ds-1', 'var1'])
-      expect(isUsed).toBe(true)
-      expect(mockFindUsedVarNodes).toHaveBeenCalledWith(['rag', 'ds-1', 'var1'], expect.any(Array))
-    })
-
-    it('should return false when variable is not used', () => {
-      const dsNode = createNode('ds-1', 'data-source')
-      mockGetNodes.mockReturnValue([dsNode])
-      mockFindUsedVarNodes.mockReturnValue([])
-
-      const { result } = renderHook(() => usePipeline())
-
-      const isUsed = result.current.isVarUsedInNodes(['rag', 'ds-1', 'var1'])
-      expect(isUsed).toBe(false)
-    })
-
-    it('should handle shared nodeId by collecting all datasource nodes', () => {
-      const ds1 = createNode('ds-1', 'data-source')
-      const ds2 = createNode('ds-2', 'data-source')
-      const node3 = createNode('node-3', 'llm')
-      mockGetNodes.mockReturnValue([ds1, ds2, node3])
-      mockEdges.push({ id: 'e1', source: 'ds-1', target: 'node-3' })
-      mockFindUsedVarNodes.mockReturnValue([node3])
-
-      const { result } = renderHook(() => usePipeline())
-
-      const isUsed = result.current.isVarUsedInNodes(['rag', 'shared', 'var1'])
-      expect(isUsed).toBe(true)
-    })
-
-    it('should return false for shared nodeId when no datasource nodes exist', () => {
-      mockGetNodes.mockReturnValue([createNode('node-1', 'llm')])
-      mockFindUsedVarNodes.mockReturnValue([])
-
-      const { result } = renderHook(() => usePipeline())
-
-      const isUsed = result.current.isVarUsedInNodes(['rag', 'shared', 'var1'])
-      expect(isUsed).toBe(false)
-    })
-  })
-
-  describe('handleInputVarRename', () => {
-    it('should rename variable in affected nodes', () => {
-      const dsNode = createNode('ds-1', 'data-source')
-      const node2 = createNode('node-2', 'llm')
-      const updatedNode2 = { ...node2, data: { ...node2.data, renamed: true } }
-      mockGetNodes.mockReturnValue([dsNode, node2])
-      mockEdges.push({ id: 'e1', source: 'ds-1', target: 'node-2' })
-      mockFindUsedVarNodes.mockReturnValue([node2])
-      mockUpdateNodeVars.mockReturnValue(updatedNode2)
-
-      const { result } = renderHook(() => usePipeline())
-
-      act(() => {
-        result.current.handleInputVarRename(
-          'ds-1',
-          ['rag', 'ds-1', 'oldVar'],
-          ['rag', 'ds-1', 'newVar'],
-        )
-      })
-
-      expect(mockFindUsedVarNodes).toHaveBeenCalledWith(
-        ['rag', 'ds-1', 'oldVar'],
-        expect.any(Array),
-      )
-      expect(mockUpdateNodeVars).toHaveBeenCalledWith(
-        node2,
-        ['rag', 'ds-1', 'oldVar'],
-        ['rag', 'ds-1', 'newVar'],
-      )
-      expect(mockSetNodes).toHaveBeenCalled()
-    })
-
-    it('should not call setNodes when no nodes are affected', () => {
-      const dsNode = createNode('ds-1', 'data-source')
-      mockGetNodes.mockReturnValue([dsNode])
-      mockFindUsedVarNodes.mockReturnValue([])
-
-      const { result } = renderHook(() => usePipeline())
-
-      act(() => {
-        result.current.handleInputVarRename(
-          'ds-1',
-          ['rag', 'ds-1', 'oldVar'],
-          ['rag', 'ds-1', 'newVar'],
-        )
-      })
-
-      expect(mockSetNodes).not.toHaveBeenCalled()
-    })
-
-    it('should only update affected nodes, leave others unchanged', () => {
-      const dsNode = createNode('ds-1', 'data-source')
-      const node2 = createNode('node-2', 'llm')
-      const node3 = createNode('node-3', 'end')
-      mockGetNodes.mockReturnValue([dsNode, node2, node3])
-      mockEdges.push(
-        { id: 'e1', source: 'ds-1', target: 'node-2' },
-        { id: 'e2', source: 'node-2', target: 'node-3' },
-      )
-      mockFindUsedVarNodes.mockReturnValue([node2])
-      const updatedNode2 = { ...node2, updated: true }
-      mockUpdateNodeVars.mockReturnValue(updatedNode2)
-
-      const { result } = renderHook(() => usePipeline())
-
-      act(() => {
-        result.current.handleInputVarRename(
-          'ds-1',
-          ['rag', 'ds-1', 'var1'],
-          ['rag', 'ds-1', 'var2'],
-        )
-      })
-
-      const setNodesArg = mockSetNodes.mock.calls[0]![0]
-      expect(setNodesArg).toContain(dsNode)
-      expect(setNodesArg).toContain(updatedNode2)
-      expect(setNodesArg).toContain(node3)
-    })
-  })
-
-  describe('removeUsedVarInNodes', () => {
-    it('should remove variable references from affected nodes', () => {
-      const dsNode = createNode('ds-1', 'data-source')
-      const node2 = createNode('node-2', 'llm')
-      const cleanedNode2 = { ...node2, data: { ...node2.data, cleaned: true } }
-      mockGetNodes.mockReturnValue([dsNode, node2])
-      mockEdges.push({ id: 'e1', source: 'ds-1', target: 'node-2' })
-      mockFindUsedVarNodes.mockReturnValue([node2])
-      mockUpdateNodeVars.mockReturnValue(cleanedNode2)
-
-      const { result } = renderHook(() => usePipeline())
-
-      act(() => {
-        result.current.removeUsedVarInNodes(['rag', 'ds-1', 'var1'])
-      })
-
-      expect(mockUpdateNodeVars).toHaveBeenCalledWith(
-        node2,
-        ['rag', 'ds-1', 'var1'],
-        [], // Empty array removes the variable
-      )
-      expect(mockSetNodes).toHaveBeenCalled()
-    })
-
-    it('should not call setNodes when no nodes use the variable', () => {
-      const dsNode = createNode('ds-1', 'data-source')
-      mockGetNodes.mockReturnValue([dsNode])
-      mockFindUsedVarNodes.mockReturnValue([])
-
-      const { result } = renderHook(() => usePipeline())
-
-      act(() => {
-        result.current.removeUsedVarInNodes(['rag', 'ds-1', 'var1'])
-      })
-
-      expect(mockSetNodes).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('getAllNodesInSameBranch — edge cases', () => {
-    it('should traverse multi-level downstream nodes', () => {
-      const ds = createNode('ds-1', 'data-source')
-      const n2 = createNode('node-2', 'llm')
-      const n3 = createNode('node-3', 'end')
-      mockGetNodes.mockReturnValue([ds, n2, n3])
-      mockEdges.push(
-        { id: 'e1', source: 'ds-1', target: 'node-2' },
-        { id: 'e2', source: 'node-2', target: 'node-3' },
-      )
-      mockFindUsedVarNodes.mockReturnValue([n3])
-      mockUpdateNodeVars.mockReturnValue(n3)
-
-      const { result } = renderHook(() => usePipeline())
-
-      const isUsed = result.current.isVarUsedInNodes(['rag', 'ds-1', 'var1'])
-      expect(isUsed).toBe(true)
-
-      const nodesArg = mockFindUsedVarNodes.mock.calls[0]![1] as Array<{ id: string }>
-      const nodeIds = nodesArg.map((n) => n.id)
-      expect(nodeIds).toContain('ds-1')
-      expect(nodeIds).toContain('node-2')
-      expect(nodeIds).toContain('node-3')
-    })
-
-    it('should return empty array for non-existent node', () => {
-      mockGetNodes.mockReturnValue([createNode('ds-1', 'data-source')])
-      mockFindUsedVarNodes.mockReturnValue([])
-
-      const { result } = renderHook(() => usePipeline())
-
-      const isUsed = result.current.isVarUsedInNodes(['rag', 'non-existent', 'var1'])
-      expect(isUsed).toBe(false)
-    })
-
-    it('should deduplicate nodes when traversal finds shared nodes', () => {
-      const ds = createNode('ds-1', 'data-source')
-      const n2 = createNode('node-2', 'llm')
-      const n3 = createNode('node-3', 'llm')
-      const n4 = createNode('node-4', 'end')
-      mockGetNodes.mockReturnValue([ds, n2, n3, n4])
-      mockEdges.push(
-        { id: 'e1', source: 'ds-1', target: 'node-2' },
-        { id: 'e2', source: 'ds-1', target: 'node-3' },
-        { id: 'e3', source: 'node-2', target: 'node-4' },
-        { id: 'e4', source: 'node-3', target: 'node-4' },
-      )
-      mockFindUsedVarNodes.mockReturnValue([])
-
-      const { result } = renderHook(() => usePipeline())
-
-      result.current.isVarUsedInNodes(['rag', 'ds-1', 'var1'])
-
-      const nodesArg = mockFindUsedVarNodes.mock.calls[0]![1] as Array<{ id: string }>
-      const nodeIds = nodesArg.map((n) => n.id)
-      const uniqueIds = [...new Set(nodeIds)]
-      expect(nodeIds.length).toBe(uniqueIds.length)
-    })
-  })
+it('does not change other fields or another entrance when renaming an entrance-specific input', () => {
+  const { result } = renderPipeline(
+    [
+      source('source'),
+      source('other'),
+      consumer('used'),
+      consumer('untouched', 'source', 'different'),
+      consumer('other-branch'),
+    ],
+    [edge('source', 'used'), edge('source', 'untouched'), edge('other', 'other-branch')],
+  )
+  act(() =>
+    result.current.pipeline.handleInputVarRename(
+      'source',
+      ['rag', 'source', 'query'],
+      ['rag', 'source', 'renamed'],
+    ),
+  )
+  expect(result.current.flow.getNode('used')?.data.variables[0]?.value_selector).toEqual([
+    'rag',
+    'source',
+    'renamed',
+  ])
+  expect(result.current.flow.getNode('untouched')?.data.variables[0]?.value_selector).toEqual([
+    'rag',
+    'source',
+    'different',
+  ])
+  expect(result.current.flow.getNode('other-branch')?.data.variables[0]?.value_selector).toEqual([
+    'rag',
+    'source',
+    'query',
+  ])
 })

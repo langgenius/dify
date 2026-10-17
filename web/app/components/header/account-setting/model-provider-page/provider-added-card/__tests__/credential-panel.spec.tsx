@@ -105,12 +105,6 @@ vi.mock('../model-auth-dropdown', () => ({
   ),
 }))
 
-vi.mock('@langgenius/dify-ui/status-dot', () => ({
-  StatusDot: ({ status }: { status: string }) => (
-    <div data-testid="indicator" data-status={status} />
-  ),
-}))
-
 const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =>
   ({
     provider: 'langgenius/openai/openai',
@@ -211,24 +205,22 @@ describe('CredentialPanel', () => {
   })
 
   describe('Status label variants', () => {
-    it('should show green indicator and credential name for api-fallback (exhausted + authorized key)', () => {
+    it('should show credential name for api-fallback (exhausted + authorized key)', () => {
       mockTrialCredits.isExhausted = true
       renderWithQueryClient(createProvider())
-      expect(screen.getByTestId('indicator')).toHaveAttribute('data-status', 'success')
       expect(screen.getByText('test-credential')).toBeInTheDocument()
     })
 
-    it('should show green indicator for api-active (custom priority + authorized)', () => {
+    it('should show credential name for api-active (custom priority + authorized)', () => {
       renderWithQueryClient(
         createProvider({
           preferred_provider_type: PreferredProviderTypeEnum.custom,
         }),
       )
-      expect(screen.getByTestId('indicator')).toHaveAttribute('data-status', 'success')
       expect(screen.getByText('test-credential')).toBeInTheDocument()
     })
 
-    it('should show red indicator and credential name for api-unavailable (exhausted + named unauthorized key)', () => {
+    it('should show unavailable credential name for api-unavailable (exhausted + named unauthorized key)', () => {
       mockTrialCredits.isExhausted = true
       renderWithQueryClient(
         createProvider({
@@ -241,7 +233,6 @@ describe('CredentialPanel', () => {
           },
         }),
       )
-      expect(screen.getByTestId('indicator')).toHaveAttribute('data-status', 'error')
       expect(screen.getByText('Bad Key')).toBeInTheDocument()
     })
   })

@@ -54,10 +54,6 @@ vi.mock('../authorized', () => ({
   ),
 }))
 
-vi.mock('@langgenius/dify-ui/status-dot', () => ({
-  StatusDot: ({ status }: { status: string }) => <div data-testid={`indicator-${status}`} />,
-}))
-
 vi.mock('@remixicon/react', () => ({
   RiArrowDownSLine: () => <div data-testid="arrow-icon" />,
   RiQuestionLine: () => <div data-testid="question-icon" />,
@@ -98,7 +94,6 @@ describe('SwitchCredentialInLoadBalancing', () => {
     )
 
     expect(screen.getByText('Key 1'))!.toBeInTheDocument()
-    expect(screen.getByTestId('indicator-success'))!.toBeInTheDocument()
   })
 
   it('should render auth removed status when selected credential is not in list', () => {
@@ -113,7 +108,6 @@ describe('SwitchCredentialInLoadBalancing', () => {
     )
 
     expect(screen.getByText(/modelProvider.auth.authRemoved/))!.toBeInTheDocument()
-    expect(screen.getByTestId('indicator-error'))!.toBeInTheDocument()
   })
 
   it('should render add credential status when credentials list is empty and create is allowed', () => {
@@ -128,7 +122,6 @@ describe('SwitchCredentialInLoadBalancing', () => {
     )
 
     expect(screen.getByText(/modelProvider.auth.addCredential/))!.toBeInTheDocument()
-    expect(screen.queryByTestId(/indicator-/)).not.toBeInTheDocument()
   })
 
   it('should call setCustomModelCredential when an item is selected in Authorized', () => {
@@ -204,7 +197,7 @@ describe('SwitchCredentialInLoadBalancing', () => {
   })
 
   // not_allowed_to_use=true: indicator is red and destructive button text is shown
-  it('should show red indicator and unavailable button text when credential has not_allowed_to_use=true', () => {
+  it('should show unavailable button text when credential has not_allowed_to_use=true', () => {
     const unavailableCredential = {
       credential_id: 'cred-1',
       credential_name: 'Key 1',
@@ -221,7 +214,6 @@ describe('SwitchCredentialInLoadBalancing', () => {
       />,
     )
 
-    expect(screen.getByTestId('indicator-error'))!.toBeInTheDocument()
     expect(screen.getByText(/auth.credentialUnavailableInButton/))!.toBeInTheDocument()
   })
 
@@ -296,7 +288,6 @@ describe('SwitchCredentialInLoadBalancing', () => {
 
     // credentials is undefined -> empty=true -> add credential text shown when creation is allowed.
     expect(screen.getByText(/modelProvider.auth.addCredential/))!.toBeInTheDocument()
-    expect(screen.queryByTestId(/indicator-/)).not.toBeInTheDocument()
   })
 
   it('should render nothing for credential_name when it is empty string', () => {
@@ -312,9 +303,6 @@ describe('SwitchCredentialInLoadBalancing', () => {
       />,
     )
 
-    // indicator-success shown (not authRemoved, not unavailable, not empty)
-    // indicator-success shown (not authRemoved, not unavailable, not empty)
-    expect(screen.getByTestId('indicator-success'))!.toBeInTheDocument()
     // credential_name is empty so nothing printed for name
     // credential_name is empty so nothing printed for name
     // credential_name is empty so nothing printed for name

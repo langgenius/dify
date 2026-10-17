@@ -1,9 +1,10 @@
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ChangeEvent } from 'react'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
+import { ORPCError } from '@orpc/client'
 import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/image-uploader/utils'
+import { imageUpload } from '@/app/components/base/image-uploader/utils'
 import { createConsoleQueryClient, renderHookWithConsoleQuery } from '@/test/console/query-data'
 import useWebAppBrand from '../use-web-app-brand'
 
@@ -115,13 +116,12 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@/app/components/base/image-uploader/utils', () => ({
+vi.mock('@/app/components/base/image-uploader/utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/app/components/base/image-uploader/utils')>()),
   imageUpload: vi.fn(),
-  getImageUploadErrorMessage: vi.fn(),
 }))
 
 const mockImageUpload = vi.mocked(imageUpload)
-const mockGetImageUploadErrorMessage = vi.mocked(getImageUploadErrorMessage)
 
 const testUserProfile = {
   id: '',
@@ -165,7 +165,6 @@ describe('useWebAppBrand', () => {
     customConfigQueryError = undefined
     mockUpdateCustomConfig.mockResolvedValue(customConfig)
     canReplaceLogo = true
-    mockGetImageUploadErrorMessage.mockReturnValue('upload error')
   })
 
   // Derived state from context and store inputs.
@@ -332,7 +331,7 @@ describe('useWebAppBrand', () => {
 
     it('should surface upload errors and set the failure state', () => {
       mockImageUpload.mockImplementation(({ onErrorCallback }) => {
-        onErrorCallback({ response: { code: 'forbidden' } })
+        onErrorCallback(new ORPCError('forbidden', { message: 'Workspace upload denied' }))
       })
 
       const { result } = renderHook(() => useWebAppBrand())
@@ -343,10 +342,9 @@ describe('useWebAppBrand', () => {
         } as unknown as ChangeEvent<HTMLInputElement>)
       })
 
-      expect(mockGetImageUploadErrorMessage).toHaveBeenCalled()
       expect(mockNotify).toHaveBeenCalledWith({
         type: 'error',
-        message: 'upload error',
+        message: 'Workspace upload denied',
       })
       expect(result.current.uploadProgress).toBe(-1)
     })

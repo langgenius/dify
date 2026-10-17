@@ -20,12 +20,7 @@ const AccessControlDialog = ({ className, children, show, onClose }: DialogProps
 
   return (
     <Dialog open={show} disablePointerDismissal onOpenChange={(open) => !open && close()}>
-      <DialogContent
-        className={cn(
-          'max-h-[calc(100dvh-2rem)] min-h-80.75 w-150 max-w-none transition-all',
-          className,
-        )}
-      >
+      <DialogContent className={cn('min-h-80.75 w-150 transition-all', className)}>
         <DialogClose
           render={
             <IconButton

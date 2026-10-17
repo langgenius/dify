@@ -5,11 +5,13 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import CreatorsFilter from '../creators-filter'
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.members.get': () => ({
-      data: {
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.members.get': async () => ({
         accounts: [
           { id: 'member-1', name: 'Zoe', avatar_url: null, status: 'active' },
           { id: 'member-2', name: 'Alice', avatar_url: null, status: 'active' },
@@ -18,9 +20,9 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
           { id: 'member-5', name: 'Charlie', avatar_url: null, status: 'active' },
           { id: 'member-6', name: 'Robin', avatar_url: null, status: 'active' },
         ],
-      },
+      }),
     }),
-  })
+  }
 })
 
 const mockOnChange = vi.hoisted(() => vi.fn())
@@ -118,13 +120,13 @@ describe('CreatorsFilter', () => {
     expect(mockOnChange).toHaveBeenCalledWith(['missing-member', 'member-3'])
   })
 
-  it('should expose the selected creator count from the closed trigger', () => {
+  it('should expose the selected creator count from the closed trigger', async () => {
     render(<CreatorsFilter value={['member-2', 'member-3']} onChange={mockOnChange} />)
 
     const trigger = screen.getByRole('combobox', { name: 'app.studio.filters.creators' })
     const selectedCount = within(trigger).getByText('common.dynamicSelect.selected:{"count":2}')
     expect(selectedCount).toHaveClass('sr-only')
-    expect(within(trigger).queryByText(/^\+\d+$/)).not.toBeInTheDocument()
+    await waitFor(() => expect(within(trigger).queryByText(/^\+\d+$/)).not.toBeInTheDocument())
   })
 
   it.each([
@@ -146,12 +148,12 @@ describe('CreatorsFilter', () => {
     },
   ])(
     'shows only the $remainingCount undisplayed creators in the overflow count',
-    ({ value, visibleInitials, remainingCount }) => {
+    async ({ value, visibleInitials, remainingCount }) => {
       render(<CreatorsFilter value={value} onChange={mockOnChange} />)
 
       const trigger = screen.getByRole('combobox', { name: 'app.studio.filters.creators' })
       for (const initial of visibleInitials) {
-        expect(within(trigger).getByText(initial, { exact: true })).toBeInTheDocument()
+        expect(await within(trigger).findByText(initial, { exact: true })).toBeInTheDocument()
       }
       expect(within(trigger).queryByText('C', { exact: true })).not.toBeInTheDocument()
       expect(within(trigger).queryByText('R', { exact: true })).not.toBeInTheDocument()

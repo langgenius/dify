@@ -7,7 +7,6 @@ const mockUseAllBuiltInTools = vi.hoisted(() => vi.fn())
 const mockUseAllCustomTools = vi.hoisted(() => vi.fn())
 const mockUseAllWorkflowTools = vi.hoisted(() => vi.fn())
 const mockUseAllMCPTools = vi.hoisted(() => vi.fn())
-const mockCanFindTool = vi.hoisted(() => vi.fn())
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
@@ -18,10 +17,6 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     'workspaces.current.tools.mcp.get': () => mockUseAllMCPTools(),
   })
 })
-
-vi.mock('@/utils', () => ({
-  canFindTool: (...args: unknown[]) => mockCanFindTool(...args),
-}))
 
 const createToolCollection = (overrides: Partial<ToolWithProvider> = {}): ToolWithProvider =>
   ({
@@ -44,9 +39,6 @@ const createToolCollection = (overrides: Partial<ToolWithProvider> = {}): ToolWi
 describe('useCurrentToolCollection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockCanFindTool.mockImplementation(
-      (collectionId: string, providerId: string) => collectionId === providerId,
-    )
     mockUseAllBuiltInTools.mockReturnValue({ data: [] })
     mockUseAllCustomTools.mockReturnValue({ data: [] })
     mockUseAllWorkflowTools.mockReturnValue({ data: [] })
@@ -63,7 +55,6 @@ describe('useCurrentToolCollection', () => {
 
     expect(result.current.currentTools).toEqual([builtInCollection])
     expect(result.current.currCollection).toBe(builtInCollection)
-    expect(mockCanFindTool).toHaveBeenCalledWith('builtin-search', 'builtin-search')
   })
 
   it('should select the custom tool collection when the provider type is custom', () => {

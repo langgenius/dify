@@ -1,6 +1,7 @@
-import type { CommonNodeType, Node, ToolWithProvider } from '../../types'
-import { act, renderHook } from '@testing-library/react'
+import type { CommonNodeType, Node } from '../../types'
+import { act } from '@testing-library/react'
 import { CollectionType } from '@/app/components/tools/types'
+import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
 import { findWorkflowNodes } from '../../goto-anything-search'
 import { BlockEnum } from '../../types'
 import { useWorkflowSearch } from '../use-workflow-search'
@@ -18,22 +19,21 @@ vi.mock('../use-nodes-interactions', () => ({
   }),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.tools.builtin.get': () => ({
-      data: [
-        {
-          id: 'provider-1',
-          icon: 'tool-icon',
-          tools: [],
-        },
-      ] satisfies Partial<ToolWithProvider>[],
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { createToolProviderFixture } = await import('@/test/console/tool-provider-fixture')
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.builtin.get': async () => [
+        createToolProviderFixture({ id: 'provider-1', icon: 'tool-icon' }),
+      ],
+      'workspaces.current.tools.api.get': async () => [],
+      'workspaces.current.tools.workflow.get': async () => [],
+      'workspaces.current.tools.mcp.get': async () => [],
     }),
-    'workspaces.current.tools.api.get': () => ({ data: [] }),
-    'workspaces.current.tools.workflow.get': () => ({ data: [] }),
-    'workspaces.current.tools.mcp.get': () => ({ data: [] }),
-  })
+  }
 })
 
 const createNode = (overrides: Partial<Node> = {}): Node => ({
@@ -54,7 +54,7 @@ describe('useWorkflowSearch', () => {
     runtimeNodes.length = 0
   })
 
-  it('registers workflow node search results with tool icons and llm metadata scoring', async () => {
+  it('registers workflow node search results with llm metadata scoring', async () => {
     runtimeNodes.push(
       createNode({
         id: 'llm-1',

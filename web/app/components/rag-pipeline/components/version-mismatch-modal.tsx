@@ -59,7 +59,7 @@ const VersionMismatchModal = ({
           <AlertDialogCancelButton>
             {t(($) => $['newApp.Cancel'], { ns: 'app' })}
           </AlertDialogCancelButton>
-          <AlertDialogConfirmButton onClick={onConfirm}>
+          <AlertDialogConfirmButton tone="default" onClick={onConfirm}>
             {t(($) => $['newApp.Confirm'], { ns: 'app' })}
           </AlertDialogConfirmButton>
         </AlertDialogFooter>

@@ -1,16 +1,10 @@
 import type { Resources } from '../index'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { downloadUrl } from '@/utils/download'
 import Popup from '../popup'
-
-const { mockUseDocumentDownload } = vi.hoisted(() => ({ mockUseDocumentDownload: vi.fn() }))
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'datasets.byDatasetId.documents.byDocumentId.download.get': () => mockUseDocumentDownload(),
-  })
-})
 
 vi.mock('@/utils/download', () => ({
   downloadUrl: vi.fn(),
@@ -75,10 +69,7 @@ const queryDownloadButton = (name = 'report.pdf') =>
 describe('Popup', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseDocumentDownload.mockReturnValue({
-      mutateAsync: mockDownloadDocument,
-      isPending: false,
-    })
+    mockDownloadDocument.mockResolvedValue({ url: 'https://example.com/file.pdf' })
   })
 
   describe('Rendering – Trigger', () => {
@@ -208,17 +199,19 @@ describe('Popup', () => {
       expect(queryDownloadButton()).not.toBeInTheDocument()
     })
 
-    it('should disable the download button while isDownloading is true', async () => {
-      mockUseDocumentDownload.mockReturnValue({
-        mutateAsync: mockDownloadDocument,
-        isPending: true,
-      })
+    it('disables download while pending and re-enables it after completion', async () => {
+      const response = createDeferred<{ url: string }>()
+      mockDownloadDocument.mockReturnValue(response.promise)
       const user = userEvent.setup()
       render(<Popup data={makeData()} />)
-
       await openPopup(user)
-
-      expect(getDownloadButton()).toBeDisabled()
+      await user.click(getDownloadButton())
+      await waitFor(() => expect(getDownloadButton()).toBeDisabled())
+      await user.click(getDownloadButton())
+      expect(mockDownloadDocument).toHaveBeenCalledTimes(1)
+      await act(async () => response.resolve({ url: 'https://example.com/file.pdf' }))
+      await waitFor(() => expect(getDownloadButton()).toBeEnabled())
+      expect(mockDownloadUrl).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -544,20 +537,6 @@ describe('Popup', () => {
       expect(mockDownloadDocument).not.toHaveBeenCalled()
     })
 
-    it('should not call downloadDocument when isDownloading is true', async () => {
-      mockUseDocumentDownload.mockReturnValue({
-        mutateAsync: mockDownloadDocument,
-        isPending: true,
-      })
-      const user = userEvent.setup()
-      render(<Popup data={makeData({ dataSourceType: 'upload_file' })} />)
-
-      await openPopup(user)
-      await user.click(getDownloadButton())
-
-      expect(mockDownloadDocument).not.toHaveBeenCalled()
-    })
-
     it('should use documentId from data.documentId as priority over sources[0].document_id', async () => {
       mockDownloadDocument.mockResolvedValue({ url: 'https://example.com/file.pdf' })
       const user = userEvent.setup()
@@ -826,4 +805,16 @@ describe('Popup', () => {
       })
     })
   })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.documents.byDocumentId.download.get': (input) =>
+        mockDownloadDocument(input),
+    }),
+  }
 })

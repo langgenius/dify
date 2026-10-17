@@ -1,6 +1,7 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, screen } from '@testing-library/react'
 import * as React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import StatusItem from '../index'
 
 const toastMocks = vi.hoisted(() => {
@@ -29,13 +30,6 @@ const toastMocks = vi.hoisted(() => {
     }),
   }
 })
-vi.mock('use-context-selector', () => ({
-  createContext: (defaultValue: unknown) => React.createContext(defaultValue),
-  useContext: () => ({
-    notify: toastMocks.api,
-  }),
-  useContextSelector: (context: unknown, selector: (state: unknown) => unknown) => selector({}),
-}))
 
 vi.mock('@/app/notifications', () => ({
   toast: toastMocks.api,
@@ -63,15 +57,18 @@ const statusMocks: Record<string, (input: unknown) => unknown> = {
   enable: (input) => mockEnable(input),
   disable: (input) => mockDisable(input),
 }
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'datasets.byDatasetId.documents.status.byAction.batch.patch': () => ({
-      mutateAsync: (input: { params: { action: string } }) =>
-        statusMocks[input.params.action]!(input),
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.documents.status.byAction.batch.patch': (input: {
+        params: { action: string }
+      }) => statusMocks[input.params.action]!(input),
+      'datasets.byDatasetId.documents.delete': (input) => mockDelete(input),
     }),
-    'datasets.byDatasetId.documents.delete': () => ({ mutateAsync: mockDelete }),
-  })
+  }
 })
 
 beforeEach(() => {

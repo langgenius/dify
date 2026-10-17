@@ -37,7 +37,7 @@ export function RestoreVersionDialogContent({
         <AlertDialogCancelButton disabled={isPending}>
           {tCommon(($) => $['operation.cancel'])}
         </AlertDialogCancelButton>
-        <AlertDialogConfirmButton loading={isPending} onClick={onConfirm}>
+        <AlertDialogConfirmButton tone="default" loading={isPending} onClick={onConfirm}>
           {t(($) => $['skillManagement.detail.restoreVersion'])}
         </AlertDialogConfirmButton>
       </AlertDialogFooter>

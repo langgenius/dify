@@ -13,10 +13,8 @@ const mockUseConfig = vi.hoisted(() => vi.fn())
 const mockUseStore = vi.hoisted(() => vi.fn())
 const mockUseMatchSchemaType = vi.hoisted(() => vi.fn())
 const mockGetMatchedSchemaType = vi.hoisted(() => vi.fn())
-const mockWrapStructuredVarItem = vi.hoisted(() => vi.fn())
 const mockToolForm = vi.hoisted(() => vi.fn())
 const mockStructureOutputItem = vi.hoisted(() => vi.fn())
-const mockSplit = vi.hoisted(() => vi.fn())
 
 vi.mock('../hooks/use-config', () => ({
   __esModule: true,
@@ -31,10 +29,6 @@ vi.mock('../../_base/components/variable/use-match-schema-type', () => ({
   __esModule: true,
   default: (...args: unknown[]) => mockUseMatchSchemaType(...args),
   getMatchedSchemaType: (...args: unknown[]) => mockGetMatchedSchemaType(...args),
-}))
-
-vi.mock('@/app/components/workflow/utils/tool', () => ({
-  wrapStructuredVarItem: (...args: unknown[]) => mockWrapStructuredVarItem(...args),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
@@ -90,20 +84,12 @@ vi.mock(
   '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show',
   () => ({
     __esModule: true,
-    default: (props: { payload: { id: string } }) => {
+    default: (props: { payload: Record<string, unknown> }) => {
       mockStructureOutputItem(props)
-      return <div data-testid="structured-output">{props.payload.id}</div>
+      return <div data-testid="structured-output">{JSON.stringify(props.payload)}</div>
     },
   }),
 )
-
-vi.mock('../../_base/components/split', () => ({
-  __esModule: true,
-  default: (props: { className?: string }) => {
-    mockSplit(props)
-    return <div data-testid="split">{props.className ?? 'default'}</div>
-  },
-}))
 
 const mockWorkflowStoreState = {
   pipelineId: undefined as string | undefined,
@@ -182,9 +168,6 @@ describe('ToolPanel', () => {
       schemaTypeDefinitions: [{ name: 'structured' }],
     })
     mockGetMatchedSchemaType.mockReturnValue('')
-    mockWrapStructuredVarItem.mockImplementation((outputItem, schemaType) => ({
-      id: `${outputItem.name}-${schemaType || 'plain'}`,
-    }))
     mockUseConfig.mockReturnValue(createConfigResult())
   })
 
@@ -223,7 +206,6 @@ describe('ToolPanel', () => {
 
       expect(screen.getByText('workflow.nodes.tool.inputVars'))!.toBeInTheDocument()
       expect(screen.getByText('workflow.nodes.tool.settings'))!.toBeInTheDocument()
-      expect(screen.getAllByTestId('split')).toHaveLength(2)
 
       fireEvent.click(screen.getByRole('button', { name: 'Manage Input Field' }))
 
@@ -293,18 +275,18 @@ describe('ToolPanel', () => {
       expect(screen.getByText('summary'))!.toBeInTheDocument()
       expect(screen.getByText('string (qa_structured)'))!.toBeInTheDocument()
       expect(screen.getByText('Summary field'))!.toBeInTheDocument()
-      expect(screen.getByTestId('structured-output'))!.toHaveTextContent(
-        'details-object_structured',
-      )
-      expect(mockWrapStructuredVarItem).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: 'details',
-        }),
-        'object_structured',
-      )
+      expect(screen.getByTestId('structured-output'))!.toHaveTextContent('object_structured')
       expect(mockStructureOutputItem).toHaveBeenCalledWith(
         expect.objectContaining({
-          payload: { id: 'details-object_structured' },
+          payload: {
+            schema: {
+              type: 'object',
+              properties: {
+                details: { type: 'object', properties: {}, schemaType: 'object_structured' },
+              },
+              additionalProperties: false,
+            },
+          },
         }),
       )
     })

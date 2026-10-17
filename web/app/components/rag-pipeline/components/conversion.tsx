@@ -33,7 +33,7 @@ const Conversion = () => {
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
-  const { mutateAsync: convert, isPending } = useMutation(
+  const { mutate: convert, isPending } = useMutation(
     consoleQuery.rag.pipelines.transform.datasets.byDatasetId.post.mutationOptions(),
   )
   const queryClient = useQueryClient()

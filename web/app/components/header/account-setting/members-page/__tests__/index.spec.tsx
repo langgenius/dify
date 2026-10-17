@@ -9,20 +9,17 @@ import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import MembersPage from '../index'
 
-const { mockMembersHook, mockWorkspaceRoleListHook, mockUpdateRolesOfMemberHook } = vi.hoisted(
-  () => ({
-    mockMembersHook: vi.fn(),
-    mockWorkspaceRoleListHook: vi.fn(),
-    mockUpdateRolesOfMemberHook: vi.fn(),
-  }),
-)
+const { mockMembersHook, mockWorkspaceRoleListHook, mockUpdateRolesOfMember } = vi.hoisted(() => ({
+  mockMembersHook: vi.fn(),
+  mockWorkspaceRoleListHook: vi.fn(),
+  mockUpdateRolesOfMember: vi.fn(),
+}))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
   return mockConsoleOperationHooks(await importOriginal(), {
     'workspaces.current.members.get': () => mockMembersHook(),
     'workspaces.current.rbac.roles.get': () => mockWorkspaceRoleListHook(),
-    'workspaces.current.rbac.members.byMemberId.rbacRoles.put': () => mockUpdateRolesOfMemberHook(),
   })
 })
 
@@ -47,31 +44,12 @@ vi.mock('@/hooks/use-format-time-from-now')
 const { inviteMember } = vi.hoisted(() => ({ inviteMember: vi.fn() }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleQuery: new Proxy(actual.consoleQuery, {
-      get(target, key) {
-        if (key !== 'workspaces') return Reflect.get(target, key)
-        return {
-          current: {
-            summary: target.workspaces.current.summary,
-            permission: target.workspaces.current.permission,
-            rbac: target.workspaces.current.rbac,
-            members: {
-              get: target.workspaces.current.members.get,
-              inviteEmail: {
-                post: {
-                  mutationOptions: (
-                    options: Parameters<
-                      typeof actual.consoleQuery.workspaces.current.members.inviteEmail.post.mutationOptions
-                    >[0],
-                  ) => ({ ...options, mutationFn: inviteMember }),
-                },
-              },
-            },
-          },
-        }
-      },
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.members.inviteEmail.post': inviteMember,
+      'workspaces.current.rbac.members.byMemberId.rbacRoles.put': mockUpdateRolesOfMember,
     }),
   }
 })
@@ -191,7 +169,6 @@ vi.mock('@/app/components/billing/upgrade-btn', () => ({
 describe('MembersPage', () => {
   const mockRefetch = vi.fn()
   const mockFormatTimeFromNow = vi.fn(() => 'just now')
-  const mockUpdateRolesOfMember = vi.fn()
 
   const mockAccounts: AccountWithRoleResponse[] = [
     {
@@ -237,13 +214,7 @@ describe('MembersPage', () => {
       data: { accounts: mockAccounts },
       refetch: mockRefetch,
     })
-    mockUpdateRolesOfMember.mockImplementation((_payload, options) => {
-      options?.onSuccess?.()
-      return Promise.resolve()
-    })
-    vi.mocked(mockUpdateRolesOfMemberHook).mockReturnValue({
-      mutateAsync: mockUpdateRolesOfMember,
-    })
+    mockUpdateRolesOfMember.mockResolvedValue({ result: 'success' })
 
     inviteMember.mockResolvedValue({
       result: 'success',
@@ -673,14 +644,11 @@ describe('MembersPage', () => {
     await user.click(getMemberDetailsButton('2'))
     await user.click(screen.getByRole('button', { name: 'Submit Member Roles' }))
 
-    expect(mockUpdateRolesOfMember).toHaveBeenCalledWith(
-      {
-        params: { member_id: '2' },
-        body: { role_ids: ['role-next'] },
-      },
-      expect.any(Object),
-    )
-    expect(mockRefetch).toHaveBeenCalled()
+    expect(mockUpdateRolesOfMember).toHaveBeenCalledWith({
+      params: { member_id: '2' },
+      body: { role_ids: ['role-next'] },
+    })
+    await waitFor(() => expect(mockRefetch).toHaveBeenCalled())
     expect(screen.getByText('Member Details Modal')).toBeInTheDocument()
     expect(screen.getByTestId('details-member-name')).toHaveTextContent('Admin User')
   })
@@ -700,13 +668,10 @@ describe('MembersPage', () => {
     await user.click(getMemberDetailsButton('2'))
     await user.click(screen.getByRole('button', { name: 'Submit Member Roles' }))
 
-    expect(mockUpdateRolesOfMember).toHaveBeenCalledWith(
-      {
-        params: { member_id: '2' },
-        body: { role_ids: ['role-next', 'role-extra'] },
-      },
-      expect.any(Object),
-    )
+    expect(mockUpdateRolesOfMember).toHaveBeenCalledWith({
+      params: { member_id: '2' },
+      body: { role_ids: ['role-next', 'role-extra'] },
+    })
   })
 
   it('should not open member details when clicking the member menu area', async () => {

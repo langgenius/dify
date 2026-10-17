@@ -10,10 +10,6 @@ vi.mock('../use-subscription-list', () => ({
   useSubscriptionList: () => ({ subscriptions: mockSubscriptions }),
 }))
 
-vi.mock('../../../store', () => ({
-  usePluginStore: () => ({ detail: undefined }),
-}))
-
 vi.mock('@/service/use-triggers', () => ({
   useTriggerProviderInfo: () => ({ data: { supported_creation_methods: [] } }),
   useTriggerOAuthConfig: () => ({ data: undefined, refetch: vi.fn() }),

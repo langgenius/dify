@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { Edge, Node } from '@/app/components/workflow/types'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { WORKFLOW_COMMON_NODES } from '@/app/components/workflow/constants/node'
+import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import humanInputDefault from '@/app/components/workflow/nodes/human-input/default'
 import HumanInputNode from '@/app/components/workflow/nodes/human-input/node'
 import {
@@ -239,7 +240,9 @@ describe('DSL Import with Human Input Node', () => {
     it('should display delivery method labels when methods are present', () => {
       const node = createHumanInputNode()
 
-      render(<HumanInputNode id={node.id} data={node.data as HumanInputNodeType} />)
+      render(<HumanInputNode id={node.id} data={node.data as HumanInputNodeType} />, {
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      })
 
       // Delivery method type labels are rendered in lowercase
       // Delivery method type labels are rendered in lowercase
@@ -250,7 +253,9 @@ describe('DSL Import with Human Input Node', () => {
     it('should display user action IDs', () => {
       const node = createHumanInputNode()
 
-      render(<HumanInputNode id={node.id} data={node.data as HumanInputNodeType} />)
+      render(<HumanInputNode id={node.id} data={node.data as HumanInputNodeType} />, {
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      })
 
       expect(screen.getByText('approve'))!.toBeInTheDocument()
       expect(screen.getByText('reject'))!.toBeInTheDocument()
@@ -259,7 +264,9 @@ describe('DSL Import with Human Input Node', () => {
     it('should always display Timeout handle', () => {
       const node = createHumanInputNode()
 
-      render(<HumanInputNode id={node.id} data={node.data as HumanInputNodeType} />)
+      render(<HumanInputNode id={node.id} data={node.data as HumanInputNodeType} />, {
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      })
 
       expect(screen.getByText('Timeout'))!.toBeInTheDocument()
     })
@@ -267,7 +274,9 @@ describe('DSL Import with Human Input Node', () => {
     it('should hide delivery method labels when no methods are configured', () => {
       const node = createHumanInputNode({ delivery_methods: [] })
 
-      render(<HumanInputNode id={node.id} data={node.data as HumanInputNodeType} />)
+      render(<HumanInputNode id={node.id} data={node.data as HumanInputNodeType} />, {
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      })
 
       expect(screen.queryByText('webapp')).not.toBeInTheDocument()
       expect(screen.queryByText('email')).not.toBeInTheDocument()
@@ -276,7 +285,9 @@ describe('DSL Import with Human Input Node', () => {
     it('should keep the timeout branch when no user actions are configured', () => {
       const node = createHumanInputNode({ user_actions: [] })
 
-      render(<HumanInputNode id={node.id} data={node.data as HumanInputNodeType} />)
+      render(<HumanInputNode id={node.id} data={node.data as HumanInputNodeType} />, {
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      })
 
       expect(screen.getByText('Timeout'))!.toBeInTheDocument()
     })
@@ -286,7 +297,9 @@ describe('DSL Import with Human Input Node', () => {
         delivery_methods: [{ id: 'dm-1', type: DeliveryMethodType.WebApp, enabled: true }],
       })
 
-      render(<HumanInputNode id={node.id} data={node.data as HumanInputNodeType} />)
+      render(<HumanInputNode id={node.id} data={node.data as HumanInputNodeType} />, {
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      })
 
       expect(screen.getByText('webapp'))!.toBeInTheDocument()
       expect(screen.queryByText('email')).not.toBeInTheDocument()
@@ -301,7 +314,9 @@ describe('DSL Import with Human Input Node', () => {
         ],
       })
 
-      render(<HumanInputNode id={node.id} data={node.data as HumanInputNodeType} />)
+      render(<HumanInputNode id={node.id} data={node.data as HumanInputNodeType} />, {
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      })
 
       expect(screen.getByText('action_1'))!.toBeInTheDocument()
       expect(screen.getByText('action_2'))!.toBeInTheDocument()
@@ -648,11 +663,4 @@ describe('DSL Import with Human Input Node', () => {
       expect((hiNode.data as HumanInputNodeType).delivery_methods).toHaveLength(2)
     })
   })
-})
-
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => false) }
 })

@@ -56,7 +56,7 @@ const AssignRolesModalBody = ({
   }
 
   return (
-    <DialogContent className="flex h-121 flex-col" backdropProps={{ forceRender: true }}>
+    <DialogContent className="h-121" backdropProps={{ forceRender: true }}>
       <DialogHeader>
         <DialogTitle>{title}</DialogTitle>
         <DialogDescription>{description}</DialogDescription>

@@ -119,11 +119,7 @@ const MemberDetailsModal = ({
           if (!next) onClose()
         }}
       >
-        <DialogContent
-          // oxlint-disable-next-line shadcn/no-restyle -- Keeps content that reaches past the edge unclipped, as before.
-          className="w-110 overflow-visible"
-          backdropProps={{ forceRender: true }}
-        >
+        <DialogContent className="w-110" backdropProps={{ forceRender: true }}>
           <DialogHeader>
             <DialogTitle>
               {t(($) => $['members.memberDetails.title'], {
@@ -143,11 +139,9 @@ const MemberDetailsModal = ({
               <div className="truncate system-md-semibold text-text-primary">{member.name}</div>
               <div className="truncate system-xs-regular text-text-tertiary">{member.email}</div>
             </div>
-          </DialogBody>
 
-          <div className="border-t border-divider-subtle" />
+            <div className="-mx-6 my-3 border-t border-divider-subtle" />
 
-          <DialogBody>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 system-sm-semibold text-text-secondary">
                 <span>{assignedRolesLabel}</span>

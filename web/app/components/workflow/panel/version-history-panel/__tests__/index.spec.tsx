@@ -84,13 +84,13 @@ type MockVersionHistoryItemProps = {
 
 vi.mock('@/app/notifications', () => ({ toast: mockToast }))
 
-vi.mock('@/service/use-workflow', () => ({
+vi.mock('@/service/use-workflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-workflow')>()),
   useDeleteWorkflow: () => ({ mutateAsync: vi.fn() }),
   useInvalidateAppWorkflow: () => mockInvalidateAppWorkflow,
   useInvalidateAllLastRun: () => vi.fn(),
   useResetWorkflowVersionHistory: () => vi.fn(),
   useRestoreWorkflow: () => ({ mutateAsync: mockRestoreWorkflow }),
-  useUpdateWorkflow: () => ({ mutateAsync: mockUpdateWorkflow }),
   useWorkflowVersionHistory: () => ({
     data: {
       pages: [
@@ -276,6 +276,11 @@ vi.mock('../version-history-item', () => ({
   },
 }))
 
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  patch: (...args: unknown[]) => mockUpdateWorkflow(...args),
+}))
+
 describe('VersionHistoryPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -441,18 +446,11 @@ describe('VersionHistoryPanel', () => {
   })
 
   it('should refresh the published workflow after editing the latest app version', async () => {
-    mockUpdateWorkflow.mockImplementation(
-      async (
-        _params,
-        options?: {
-          onSuccess?: () => void
-          onSettled?: () => void
-        },
-      ) => {
-        options?.onSuccess?.()
-        options?.onSettled?.()
-      },
-    )
+    mockUpdateWorkflow.mockResolvedValue({
+      id: 'published-version-id',
+      marked_name: 'Updated release',
+      marked_comment: 'Updated notes',
+    })
     const { VersionHistoryPanel } = await import('../index')
 
     render(
@@ -467,14 +465,8 @@ describe('VersionHistoryPanel', () => {
 
     await waitFor(() => {
       expect(mockUpdateWorkflow).toHaveBeenCalledWith(
-        {
-          appId: 'app-1',
-          appMode: 'workflow' as const,
-          releaseNotes: 'Updated notes',
-          title: 'Updated release',
-          url: '/apps/app-1/workflows/published-version-id',
-        },
-        expect.any(Object),
+        '/apps/app-1/workflows/published-version-id',
+        { body: { marked_name: 'Updated release', marked_comment: 'Updated notes' } },
       )
       expect(mockInvalidateAppWorkflow).toHaveBeenCalledWith('app-1')
     })

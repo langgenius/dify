@@ -1,7 +1,7 @@
 import type { DocumentWithSegmentsListResponse as DocumentListResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { DataSourceType } from '@/models/datasets'
 import { consoleQuery } from '@/service/console'
@@ -9,13 +9,6 @@ import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import { useDocumentsPageState } from '../hooks/use-documents-page-state'
 import Documents from '../index'
-
-type DocumentListQueryOptions = {
-  input: { query: { status?: string } }
-  refetchInterval?: (query: {
-    state: { data?: { data: Array<{ indexing_status?: string | null }> } }
-  }) => number | false
-}
 
 const expectDocumentsInvalidated = () => {
   expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
@@ -28,13 +21,19 @@ const expectDocumentsInvalidated = () => {
   })
 }
 
+let documentData: DocumentListResponse | undefined
+
 const render = (ui: Parameters<typeof renderWithConsoleState>[0]) => {
   const queryClient = createAccountProfileQueryClient({ id: 'test-user' })
-  return renderWithConsoleState(ui, {
+  queryClient.setQueryDefaults(consoleQuery.datasets.byDatasetId.documents.get.key(), {
+    initialData: documentData,
+  })
+  const rendered = renderWithConsoleState(ui, {
     wrapper: ({ children }: { children: ReactNode }) => (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     ),
   })
+  return { ...rendered, queryClient }
 }
 
 // Type for mock selector function - use `as MockState` to bypass strict type checking in tests
@@ -96,51 +95,42 @@ vi.mock('@/features/system-features/state', async () => {
   }))
 })
 
-// Mock the generated document list query
-const { mockDocumentListQuery } = vi.hoisted(() => ({
-  mockDocumentListQuery: vi.fn(
-    (
-      _options?: unknown,
-    ): { data?: DocumentListResponse; isLoading: boolean; refetch: () => void } => ({
-      data: {
-        data: [
-          {
-            id: 'doc-1',
-            name: 'Document 1',
-            indexing_status: 'completed',
-            data_source_type: 'upload_file',
-            position: 1,
-            enabled: true,
-          },
-          {
-            id: 'doc-2',
-            name: 'Document 2',
-            indexing_status: 'indexing',
-            data_source_type: 'upload_file',
-            position: 2,
-            enabled: true,
-          },
-        ],
-        total: 2,
-        page: 1,
-        limit: 10,
-        has_more: false,
-      } as DocumentListResponse,
-      isLoading: false,
-      refetch: vi.fn(),
+const getDocuments = vi.hoisted(() => vi.fn())
+const defaultDocumentData = {
+  data: [
+    {
+      id: 'doc-1',
+      name: 'Document 1',
+      indexing_status: 'completed',
+      data_source_type: 'upload_file',
+      position: 1,
+      enabled: true,
+    },
+    {
+      id: 'doc-2',
+      name: 'Document 2',
+      indexing_status: 'indexing',
+      data_source_type: 'upload_file',
+      position: 2,
+      enabled: true,
+    },
+  ],
+  total: 2,
+  page: 1,
+  limit: 10,
+  has_more: false,
+} as DocumentListResponse
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.documents.get': getDocuments,
     }),
-  ),
-}))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'datasets.byDatasetId.documents.get': (options: unknown) => mockDocumentListQuery(options),
-  })
+  }
 })
 
-// Mock segment service hooks
-// Mock metadata hook
 vi.mock('../../metadata/hooks/use-edit-dataset-metadata', () => ({
   default: vi.fn(() => ({
     isShowEditModal: false,
@@ -319,6 +309,8 @@ describe('Documents', () => {
   beforeEach(() => {
     vi.spyOn(QueryClient.prototype, 'invalidateQueries')
     vi.clearAllMocks()
+    documentData = defaultDocumentData
+    getDocuments.mockReset().mockImplementation(() => new Promise(() => {}))
     mockPush.mockClear()
     // Reset context mocks to default
     vi.mocked(useDatasetDetailContextWithSelector).mockImplementation((selector: MockSelector) => {
@@ -350,50 +342,46 @@ describe('Documents', () => {
       expect(screen.getByTestId('list-documents-count')).toHaveTextContent('2')
     })
 
-    it('should render loading state when isLoading is true', () => {
-      mockDocumentListQuery.mockReturnValueOnce({
-        data: undefined,
-        isLoading: true,
-        refetch: vi.fn(),
-      })
+    it('shows loading until the initial document request resolves', async () => {
+      documentData = undefined
 
+      getDocuments.mockResolvedValue(defaultDocumentData)
       render(<Documents {...defaultProps} />)
       expect(screen.queryByTestId('documents-list')).not.toBeInTheDocument()
+      expect(await screen.findByTestId('documents-list')).toBeInTheDocument()
     })
 
-    it('should keep rendering list when loading with existing data', () => {
-      mockDocumentListQuery.mockReturnValueOnce({
-        data: {
-          data: [
-            {
-              id: 'doc-1',
-              name: 'Document 1',
-              indexing_status: 'completed',
-              data_source_type: 'upload_file',
-              position: 1,
-              enabled: true,
-            },
-          ],
-          total: 1,
-          page: 1,
-          limit: 10,
-          has_more: false,
-        } as DocumentListResponse,
-        isLoading: true,
-        refetch: vi.fn(),
-      })
+    it('keeps cached documents visible during a background refresh', async () => {
+      documentData = {
+        data: [
+          {
+            id: 'doc-1',
+            name: 'Document 1',
+            indexing_status: 'completed',
+            data_source_type: 'upload_file',
+            position: 1,
+            enabled: true,
+          },
+        ],
+        total: 1,
+        page: 1,
+        limit: 10,
+        has_more: false,
+      } as DocumentListResponse
 
-      render(<Documents {...defaultProps} />)
+      const { queryClient } = render(<Documents {...defaultProps} />)
+      act(() => {
+        void queryClient.invalidateQueries({
+          queryKey: consoleQuery.datasets.byDatasetId.documents.get.key(),
+        })
+      })
+      await waitFor(() => expect(getDocuments).toHaveBeenCalledOnce())
       expect(screen.getByTestId('documents-list')).toBeInTheDocument()
       expect(screen.getByTestId('list-documents-count')).toHaveTextContent('1')
     })
 
     it('should render empty element when no documents exist', () => {
-      mockDocumentListQuery.mockReturnValueOnce({
-        data: { data: [], total: 0, page: 1, limit: 10, has_more: false },
-        isLoading: false,
-        refetch: vi.fn(),
-      })
+      documentData = { data: [], total: 0, page: 1, limit: 10, has_more: false }
 
       render(<Documents {...defaultProps} />)
       expect(screen.getByTestId('empty-element')).toBeInTheDocument()
@@ -418,11 +406,7 @@ describe('Documents', () => {
           return selector(mockState as MockState)
         },
       )
-      mockDocumentListQuery.mockReturnValueOnce({
-        data: { data: [], total: 0, page: 1, limit: 10, has_more: false },
-        isLoading: false,
-        refetch: vi.fn(),
-      })
+      documentData = { data: [], total: 0, page: 1, limit: 10, has_more: false }
 
       render(<Documents {...defaultProps} />)
       expect(screen.getByTestId('empty-type')).toHaveTextContent('sync')
@@ -553,11 +537,7 @@ describe('Documents', () => {
           return selector(mockState as MockState)
         },
       )
-      mockDocumentListQuery.mockReturnValueOnce({
-        data: { data: [], total: 0, page: 1, limit: 10, has_more: false },
-        isLoading: false,
-        refetch: vi.fn(),
-      })
+      documentData = { data: [], total: 0, page: 1, limit: 10, has_more: false }
 
       render(<Documents {...defaultProps} />)
 
@@ -567,81 +547,56 @@ describe('Documents', () => {
     })
   })
 
-  describe('Query Options', () => {
-    it('should pass function refetchInterval to the document list query', () => {
-      render(<Documents {...defaultProps} />)
-
-      const payload = mockDocumentListQuery.mock.calls.at(-1)?.[0] as
-        | DocumentListQueryOptions
-        | undefined
-      expect(payload).toBeDefined()
-      expect(typeof payload?.refetchInterval).toBe('function')
+  describe('polling', () => {
+    afterEach(() => {
+      vi.useRealTimers()
     })
 
-    it('should stop polling when all documents are in terminal statuses', () => {
+    it('polls processing documents and stops after every document reaches a terminal state', async () => {
+      vi.useFakeTimers()
+      const completed = {
+        ...defaultDocumentData,
+        data: defaultDocumentData.data.map((document) => ({
+          ...document,
+          indexing_status: 'completed',
+        })),
+      }
+      getDocuments.mockResolvedValue(completed)
       render(<Documents {...defaultProps} />)
-
-      const payload = mockDocumentListQuery.mock.calls.at(-1)?.[0] as
-        | DocumentListQueryOptions
-        | undefined
-      const refetchInterval = payload?.refetchInterval
-      expect(typeof refetchInterval).toBe('function')
-      if (typeof refetchInterval !== 'function')
-        throw new Error('Expected function refetchInterval')
-
-      const interval = refetchInterval({
-        state: {
-          data: {
-            data: [
-              { indexing_status: 'completed' },
-              { indexing_status: 'paused' },
-              { indexing_status: 'error' },
-            ],
-          },
-        },
+      expect(getDocuments).not.toHaveBeenCalled()
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2500)
       })
-
-      expect(interval).toBe(false)
+      expect(getDocuments).toHaveBeenCalledOnce()
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10000)
+      })
+      expect(getDocuments).toHaveBeenCalledOnce()
     })
 
-    it('should keep polling for transient status filters', () => {
-      vi.mocked(useDocumentsPageState).mockReturnValueOnce({
-        inputValue: '',
-        debouncedSearchValue: '',
-        handleInputChange: mockHandleInputChange,
-        statusFilterValue: 'indexing',
-        sortValue: '-created_at' as const,
+    it('keeps polling a transient status filter even when its current result is empty', async () => {
+      vi.useFakeTimers()
+      const original = vi.mocked(useDocumentsPageState).getMockImplementation()!
+      vi.mocked(useDocumentsPageState).mockImplementation(() => ({
+        ...original(),
         normalizedStatusFilterValue: 'indexing',
-        handleStatusFilterChange: mockHandleStatusFilterChange,
-        handleStatusFilterClear: mockHandleStatusFilterClear,
-        handleSortChange: mockHandleSortChange,
-        currPage: 0,
-        limit: 10,
-        handlePageChange: mockHandlePageChange,
-        handleLimitChange: mockHandleLimitChange,
-        selectedIds: [] as string[],
-        setSelectedIds: mockSetSelectedIds,
-      })
-
-      render(<Documents {...defaultProps} />)
-
-      const payload = mockDocumentListQuery.mock.calls.find(
-        ([options]) => (options as DocumentListQueryOptions).input.query.status === 'indexing',
-      )?.[0] as DocumentListQueryOptions | undefined
-      const refetchInterval = payload?.refetchInterval
-      expect(typeof refetchInterval).toBe('function')
-      if (typeof refetchInterval !== 'function')
-        throw new Error('Expected function refetchInterval')
-
-      const interval = refetchInterval({
-        state: {
-          data: {
-            data: [{ indexing_status: 'completed' }],
-          },
-        },
-      })
-
-      expect(interval).toBe(2500)
+        statusFilterValue: 'indexing',
+      }))
+      documentData = { data: [], total: 0, page: 1, limit: 10, has_more: false }
+      getDocuments.mockResolvedValue(documentData)
+      try {
+        render(<Documents {...defaultProps} />)
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(5000)
+        })
+        expect(getDocuments).toHaveBeenCalledTimes(2)
+        expect(getDocuments).toHaveBeenLastCalledWith({
+          params: { dataset_id: 'test-dataset-id' },
+          query: expect.objectContaining({ status: 'indexing' }),
+        })
+      } finally {
+        vi.mocked(useDocumentsPageState).mockImplementation(original)
+      }
     })
   })
 
@@ -685,23 +640,7 @@ describe('Documents', () => {
     })
 
     it('should handle empty documents array', () => {
-      mockDocumentListQuery.mockReturnValueOnce({
-        data: { data: [], total: 0, page: 1, limit: 10, has_more: false },
-        isLoading: false,
-        refetch: vi.fn(),
-      })
-
-      render(<Documents {...defaultProps} />)
-
-      expect(screen.getByTestId('empty-element')).toBeInTheDocument()
-    })
-
-    it('should handle undefined documentsRes', () => {
-      mockDocumentListQuery.mockReturnValueOnce({
-        data: undefined,
-        isLoading: false,
-        refetch: vi.fn(),
-      })
+      documentData = { data: [], total: 0, page: 1, limit: 10, has_more: false }
 
       render(<Documents {...defaultProps} />)
 

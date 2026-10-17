@@ -351,117 +351,119 @@ export function AgentSkillDetailDialog({
   return (
     <DialogContent
       backdropProps={{ forceRender: true, className: 'fixed' }}
-      className="flex h-[min(720px,calc(100dvh-2rem))] max-h-none w-[min(960px,calc(100vw-2rem))] overflow-hidden"
+      className="h-[min(720px,calc(100dvh-2rem))] w-[min(960px,calc(100vw-2rem))] overflow-hidden"
     >
-      <div
-        className={cn(
-          'flex w-56 min-w-0 shrink-0 border-r-[0.5px] border-divider-subtle bg-background-section',
-          detail.fileListPanelClassName,
-        )}
-      >
-        <DialogDescription className="sr-only">{detail.description}</DialogDescription>
-        <DialogTitle id={dialogTitleId} className="sr-only">
-          {previewTitle || skillName}
-        </DialogTitle>
-        <div className="min-h-0 w-full">
-          <AgentSkillFileList
-            fileListHeader={detail.fileListHeader}
-            fileListLoading={detail.fileListLoading}
-            fileListTreeClassName={detail.fileListTreeClassName}
-            fileListTreeListClassName={detail.fileListTreeListClassName}
-            fileListTitle={detail.fileListTitle}
-            files={detail.files}
-            folderOpenState={detail.folderOpenState}
-            onFolderOpenChange={detail.onFolderOpenChange}
-            onFolderEnter={detail.onFolderEnter}
-            selectedFileId={detail.selectedFileId}
-            onSelectFile={detail.onSelectFile}
-            renderFolderSuffix={detail.renderFolderSuffix}
-          />
-        </div>
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex shrink-0 items-start gap-2 px-4 pt-3.5 pb-2">
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            {!!previewTitle && (
-              <h2
-                className="min-w-0 truncate system-xl-semibold text-text-primary"
-                title={previewTitle}
-              >
-                {previewTitle}
-              </h2>
-            )}
-          </div>
-          <div className="-my-0.5 flex shrink-0 items-center gap-1">
-            {detail.onDownloadFile && previewTitle && (
-              <button
-                type="button"
-                aria-label={`${isHeaderDownloadLoading ? tCommon(($) => $['operation.downloading']) : tCommon(($) => $['operation.download'])} ${previewTitle}`}
-                onClick={() => detail.onDownloadFile?.('header')}
-                disabled={isHeaderDownloadLoading}
-                className="flex size-8 shrink-0 items-center justify-center rounded-lg text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-              >
-                <span
-                  aria-hidden
-                  className={cn(
-                    'size-4',
-                    isHeaderDownloadLoading
-                      ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none'
-                      : 'i-ri-download-line',
-                  )}
-                />
-              </button>
-            )}
-            <DialogClose
-              render={
-                <IconButton
-                  aria-label={tCommon(($) => $['operation.close'])}
-                  size="lg"
-                  className="shrink-0"
-                >
-                  <span aria-hidden className="i-ri-close-line size-4" />
-                </IconButton>
-              }
+      <div className="flex min-h-0 flex-1">
+        <div
+          className={cn(
+            'flex w-56 min-w-0 shrink-0 border-r-[0.5px] border-divider-subtle bg-background-section',
+            detail.fileListPanelClassName,
+          )}
+        >
+          <DialogDescription className="sr-only">{detail.description}</DialogDescription>
+          <DialogTitle id={dialogTitleId} className="sr-only">
+            {previewTitle || skillName}
+          </DialogTitle>
+          <div className="min-h-0 w-full">
+            <AgentSkillFileList
+              fileListHeader={detail.fileListHeader}
+              fileListLoading={detail.fileListLoading}
+              fileListTreeClassName={detail.fileListTreeClassName}
+              fileListTreeListClassName={detail.fileListTreeListClassName}
+              fileListTitle={detail.fileListTitle}
+              files={detail.files}
+              folderOpenState={detail.folderOpenState}
+              onFolderOpenChange={detail.onFolderOpenChange}
+              onFolderEnter={detail.onFolderEnter}
+              selectedFileId={detail.selectedFileId}
+              onSelectFile={detail.onSelectFile}
+              renderFolderSuffix={detail.renderFolderSuffix}
             />
           </div>
         </div>
-        <ScrollArea className="min-h-0 flex-1 overflow-hidden rounded-br-2xl">
-          <ScrollAreaViewport
-            aria-labelledby={dialogTitleId}
-            className="overscroll-contain"
-            role="region"
-          >
-            <ScrollAreaContent
-              style={{ minWidth: 0 }}
-              className="flex min-h-full w-full max-w-full flex-col gap-2"
-            >
-              {detail.filePreview && (
-                <AgentFilePreviewContent
-                  binary={detail.filePreview.binary}
-                  content={detail.filePreview.content}
-                  downloadActionLoadingTarget={detail.filePreview.downloadActionLoadingTarget}
-                  downloadUrl={detail.filePreview.downloadUrl}
-                  fileName={detail.filePreview.fileName}
-                  imageData={detail.filePreview.imageData}
-                  isDownloadError={detail.filePreview.isDownloadError}
-                  isDownloadLoading={detail.filePreview.isDownloadLoading}
-                  isError={detail.filePreview.isError}
-                  isImage={detail.filePreview.isImage}
-                  isLoading={detail.filePreview.isLoading}
-                  onDownloadFile={detail.onDownloadFile}
-                />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex shrink-0 items-start gap-2 px-4 pt-3.5 pb-2">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              {!!previewTitle && (
+                <h2
+                  className="min-w-0 truncate system-xl-semibold text-text-primary"
+                  title={previewTitle}
+                >
+                  {previewTitle}
+                </h2>
               )}
-              {detail.sections.map((section) => (
-                <div key={section.id} className="px-4">
-                  <AgentSkillDetailSectionBlock section={section} />
-                </div>
-              ))}
-            </ScrollAreaContent>
-          </ScrollAreaViewport>
-          <ScrollAreaScrollbar>
-            <ScrollAreaThumb />
-          </ScrollAreaScrollbar>
-        </ScrollArea>
+            </div>
+            <div className="-my-0.5 flex shrink-0 items-center gap-1">
+              {detail.onDownloadFile && previewTitle && (
+                <button
+                  type="button"
+                  aria-label={`${isHeaderDownloadLoading ? tCommon(($) => $['operation.downloading']) : tCommon(($) => $['operation.download'])} ${previewTitle}`}
+                  onClick={() => detail.onDownloadFile?.('header')}
+                  disabled={isHeaderDownloadLoading}
+                  className="flex size-8 shrink-0 items-center justify-center rounded-lg text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                >
+                  <span
+                    aria-hidden
+                    className={cn(
+                      'size-4',
+                      isHeaderDownloadLoading
+                        ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none'
+                        : 'i-ri-download-line',
+                    )}
+                  />
+                </button>
+              )}
+              <DialogClose
+                render={
+                  <IconButton
+                    aria-label={tCommon(($) => $['operation.close'])}
+                    size="lg"
+                    className="shrink-0"
+                  >
+                    <span aria-hidden className="i-ri-close-line size-4" />
+                  </IconButton>
+                }
+              />
+            </div>
+          </div>
+          <ScrollArea className="min-h-0 flex-1 overflow-hidden rounded-br-2xl">
+            <ScrollAreaViewport
+              aria-labelledby={dialogTitleId}
+              className="overscroll-contain"
+              role="region"
+            >
+              <ScrollAreaContent
+                style={{ minWidth: 0 }}
+                className="flex min-h-full w-full max-w-full flex-col gap-2"
+              >
+                {detail.filePreview && (
+                  <AgentFilePreviewContent
+                    binary={detail.filePreview.binary}
+                    content={detail.filePreview.content}
+                    downloadActionLoadingTarget={detail.filePreview.downloadActionLoadingTarget}
+                    downloadUrl={detail.filePreview.downloadUrl}
+                    fileName={detail.filePreview.fileName}
+                    imageData={detail.filePreview.imageData}
+                    isDownloadError={detail.filePreview.isDownloadError}
+                    isDownloadLoading={detail.filePreview.isDownloadLoading}
+                    isError={detail.filePreview.isError}
+                    isImage={detail.filePreview.isImage}
+                    isLoading={detail.filePreview.isLoading}
+                    onDownloadFile={detail.onDownloadFile}
+                  />
+                )}
+                {detail.sections.map((section) => (
+                  <div key={section.id} className="px-4">
+                    <AgentSkillDetailSectionBlock section={section} />
+                  </div>
+                ))}
+              </ScrollAreaContent>
+            </ScrollAreaViewport>
+            <ScrollAreaScrollbar>
+              <ScrollAreaThumb />
+            </ScrollAreaScrollbar>
+          </ScrollArea>
+        </div>
       </div>
     </DialogContent>
   )

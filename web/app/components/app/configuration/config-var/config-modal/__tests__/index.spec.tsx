@@ -624,7 +624,7 @@ describe('ConfigModal', () => {
     const scrollArea = screen.getByTestId('config-modal-scroll-area')
 
     expect(dialog).toHaveClass('overflow-y-auto')
-    expect(scrollArea).toHaveClass('overflow-x-hidden')
+    expect(scrollArea).toHaveClass('overflow-y-auto')
   })
 
   it('should block save when the label is missing', () => {

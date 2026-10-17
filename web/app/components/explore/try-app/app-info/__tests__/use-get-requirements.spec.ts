@@ -1,14 +1,39 @@
-import type { TrialAppDetailResponse } from '@dify/contracts/api/console/trial-apps/types.gen'
-import { renderHook } from '@testing-library/react'
+import type {
+  TrialAppDetailResponse,
+  TrialWorkflowResponse,
+} from '@dify/contracts/api/console/trial-apps/types.gen'
+import { waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderHookWithConsoleQuery } from '@/test/console/query-data'
 import useGetRequirements from '../use-get-requirements'
 
-const mockUseQuery = vi.fn()
-
-vi.mock('@tanstack/react-query', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
-  useQuery: (...args: unknown[]) => mockUseQuery(...args),
-}))
+const getWorkflow = vi.hoisted(() => vi.fn(() => new Promise(() => {})))
+let workflowData: TrialWorkflowResponse | undefined
+const setWorkflowResponse = (response: { data: Pick<TrialWorkflowResponse, 'graph'> | null }) => {
+  workflowData = response.data ? { id: 'workflow-1', ...response.data } : undefined
+}
+function renderHook<T>(callback: () => T) {
+  const queryClient = createConsoleQueryClient()
+  if (workflowData)
+    queryClient.setQueryData(
+      consoleQuery.trialApps.byAppId.workflows.get.queryKey({
+        input: { params: { app_id: 'test-app-id' } },
+      }),
+      workflowData,
+    )
+  return renderHookWithConsoleQuery(callback, { queryClient })
+}
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'trialApps.byAppId.workflows.get': getWorkflow,
+    }),
+  }
+})
 
 vi.mock('@/config', () => ({
   MARKETPLACE_API_PREFIX: 'https://marketplace.api',
@@ -56,7 +81,7 @@ describe('useGetRequirements', () => {
 
   describe('basic app modes (chat, completion, agent-chat)', () => {
     it('returns model provider for chat mode', () => {
-      mockUseQuery.mockReturnValue({ data: null })
+      setWorkflowResponse({ data: null })
 
       const appDetail = createMockAppDetail('chat')
       const { result } = renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
@@ -69,7 +94,7 @@ describe('useGetRequirements', () => {
     })
 
     it('returns model provider for completion mode', () => {
-      mockUseQuery.mockReturnValue({ data: null })
+      setWorkflowResponse({ data: null })
 
       const appDetail = createMockAppDetail('completion', {
         model_config: {
@@ -91,7 +116,7 @@ describe('useGetRequirements', () => {
     })
 
     it('returns model provider and tools for agent-chat mode', () => {
-      mockUseQuery.mockReturnValue({ data: null })
+      setWorkflowResponse({ data: null })
 
       const appDetail = createMockAppDetail('agent-chat', {
         model_config: {
@@ -134,7 +159,7 @@ describe('useGetRequirements', () => {
     })
 
     it('filters out disabled tools in agent mode', () => {
-      mockUseQuery.mockReturnValue({ data: null })
+      setWorkflowResponse({ data: null })
 
       const appDetail = createMockAppDetail('agent-chat', {
         model_config: {
@@ -171,7 +196,7 @@ describe('useGetRequirements', () => {
 
   describe('advanced app modes (workflow, advanced-chat)', () => {
     it('returns requirements from flow data for workflow mode', () => {
-      mockUseQuery.mockReturnValue({
+      setWorkflowResponse({
         data: {
           graph: {
             nodes: [
@@ -205,7 +230,7 @@ describe('useGetRequirements', () => {
     })
 
     it('returns requirements from flow data for advanced-chat mode', () => {
-      mockUseQuery.mockReturnValue({
+      setWorkflowResponse({
         data: {
           graph: {
             nodes: [
@@ -231,7 +256,7 @@ describe('useGetRequirements', () => {
     })
 
     it('returns empty requirements when flow data has no nodes', () => {
-      mockUseQuery.mockReturnValue({
+      setWorkflowResponse({
         data: {
           graph: {
             nodes: [],
@@ -245,8 +270,8 @@ describe('useGetRequirements', () => {
       expect(result.current.requirements).toHaveLength(0)
     })
 
-    it('returns empty requirements when flow data is null', () => {
-      mockUseQuery.mockReturnValue({
+    it('returns empty requirements while flow data is pending', () => {
+      setWorkflowResponse({
         data: null,
       })
 
@@ -257,7 +282,7 @@ describe('useGetRequirements', () => {
     })
 
     it('extracts multiple LLM nodes from flow data', () => {
-      mockUseQuery.mockReturnValue({
+      setWorkflowResponse({
         data: {
           graph: {
             nodes: [
@@ -293,7 +318,7 @@ describe('useGetRequirements', () => {
     })
 
     it('extracts multiple tool nodes from flow data', () => {
-      mockUseQuery.mockReturnValue({
+      setWorkflowResponse({
         data: {
           graph: {
             nodes: [
@@ -327,7 +352,7 @@ describe('useGetRequirements', () => {
 
   describe('deduplication', () => {
     it('removes duplicate requirements by name', () => {
-      mockUseQuery.mockReturnValue({
+      setWorkflowResponse({
         data: {
           graph: {
             nodes: [
@@ -364,7 +389,7 @@ describe('useGetRequirements', () => {
 
   describe('icon URL generation', () => {
     it('generates correct icon URL for model providers', () => {
-      mockUseQuery.mockReturnValue({ data: null })
+      setWorkflowResponse({ data: null })
 
       const appDetail = createMockAppDetail('chat', {
         model_config: {
@@ -387,7 +412,7 @@ describe('useGetRequirements', () => {
     })
 
     it('maps google model provider to gemini plugin icon URL', () => {
-      mockUseQuery.mockReturnValue({ data: null })
+      setWorkflowResponse({ data: null })
 
       const appDetail = createMockAppDetail('chat', {
         model_config: {
@@ -410,7 +435,7 @@ describe('useGetRequirements', () => {
     })
 
     it('maps special builtin tool providers to *_tool plugin icon URL', () => {
-      mockUseQuery.mockReturnValue({ data: null })
+      setWorkflowResponse({ data: null })
 
       const appDetail = createMockAppDetail('agent-chat', {
         model_config: {
@@ -446,21 +471,23 @@ describe('useGetRequirements', () => {
 
   describe('hook calls', () => {
     it('does not request workflow data for basic apps', () => {
-      mockUseQuery.mockReturnValue({ data: null })
+      setWorkflowResponse({ data: null })
 
       const appDetail = createMockAppDetail('chat')
       renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
 
-      expect(mockUseQuery).toHaveBeenCalledWith(expect.objectContaining({ enabled: false }))
+      expect(getWorkflow).not.toHaveBeenCalled()
     })
 
-    it('requests workflow data for advanced apps', () => {
-      mockUseQuery.mockReturnValue({ data: null })
+    it('requests workflow data for advanced apps', async () => {
+      setWorkflowResponse({ data: null })
 
       const appDetail = createMockAppDetail('workflow')
       renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
 
-      expect(mockUseQuery).toHaveBeenCalledWith(expect.objectContaining({ enabled: true }))
+      await waitFor(() =>
+        expect(getWorkflow).toHaveBeenCalledWith({ params: { app_id: 'test-app-id' } }),
+      )
     })
   })
 })

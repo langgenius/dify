@@ -69,7 +69,6 @@ export default function FeedBack(props: DeleteAccountProps) {
       }}
     >
       <DialogContent
-        className="max-w-120"
         backdropProps={{ className: 'bg-background-overlay-backdrop backdrop-blur-[6px]' }}
       >
         <DialogHeader>
@@ -78,6 +77,7 @@ export default function FeedBack(props: DeleteAccountProps) {
           </DialogTitle>
         </DialogHeader>
         <Form<FeedbackFormValues>
+          className="contents"
           onFormSubmit={({ feedback }) => {
             void handleSubmit(feedback)
           }}
@@ -96,10 +96,10 @@ export default function FeedBack(props: DeleteAccountProps) {
             </Field>
           </DialogBody>
           <DialogFooter className="flex-col items-stretch">
-            <Button type="submit" className="w-full" loading={isPending} variant="primary">
+            <Button type="submit" loading={isPending} variant="primary">
               {t(($) => $['operation.submit'], { ns: 'common' })}
             </Button>
-            <Button type="button" className="w-full" onClick={handleSkip}>
+            <Button type="button" onClick={handleSkip}>
               {t(($) => $['operation.skip'], { ns: 'common' })}
             </Button>
           </DialogFooter>

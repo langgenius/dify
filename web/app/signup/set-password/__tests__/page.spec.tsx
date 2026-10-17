@@ -11,17 +11,6 @@ import { seedSystemFeatures } from '@/test/console/query-data'
 import { getBrowserTimezone } from '@/utils/timezone'
 import ChangePasswordForm from '../page'
 
-const { mockMailRegisterHook } = vi.hoisted(() => ({
-  mockMailRegisterHook: vi.fn(),
-}))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'emailRegister.post': (options: unknown) => mockMailRegisterHook(options),
-  })
-})
-
 const {
   mockRememberCreateAppExternalAttribution,
   mockRememberRegistrationSuccess,
@@ -65,7 +54,6 @@ const mockReplace = vi.fn()
 const mockUseLocale = useLocale as MockedFunction<typeof useLocale>
 const mockUseSearchParams = useSearchParams as MockedFunction<typeof useSearchParams>
 const mockUseRouter = useRouter as MockedFunction<typeof useRouter>
-const mockUseMailRegister = mockMailRegisterHook
 const mockGetBrowserTimezone = getBrowserTimezone as MockedFunction<typeof getBrowserTimezone>
 
 const renderWithQueryClient = (ui: ReactElement) => {
@@ -90,10 +78,6 @@ describe('Signup Set Password Page', () => {
     mockUseRouter.mockReturnValue({ replace: mockReplace } as unknown as ReturnType<
       typeof useRouter
     >)
-    mockUseMailRegister.mockReturnValue({
-      mutateAsync: mockRegister,
-      isPending: false,
-    })
     mockGetBrowserTimezone.mockReturnValue('Asia/Shanghai')
     mockRegister.mockResolvedValue({ result: 'fail', data: {} })
   })
@@ -229,4 +213,15 @@ describe('Signup Set Password Page', () => {
       expect(Cookies.get('utm_info')).toBeUndefined()
     })
   })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'emailRegister.post': (input) => mockRegister(input),
+    }),
+  }
 })

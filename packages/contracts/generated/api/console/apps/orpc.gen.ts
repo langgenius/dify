@@ -588,7 +588,7 @@ export const get2 = oc
     path: '/apps/recent',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetAppsRecentQuery.optional() }))
+  .input(z.object({ query: zGetAppsRecentQuery.optional() }).optional())
   .output(zGetAppsRecentResponse)
 
 export const recent = {
@@ -607,7 +607,7 @@ export const get3 = oc
     path: '/apps/starred',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetAppsStarredQuery.optional() }))
+  .input(z.object({ query: zGetAppsStarredQuery.optional() }).optional())
   .output(zGetAppsStarredResponse)
 
 export const starred = {
@@ -5007,7 +5007,7 @@ export const get85 = oc
     path: '/apps',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetAppsQuery.optional() }))
+  .input(z.object({ query: zGetAppsQuery.optional() }).optional())
   .output(zGetAppsResponse)
 
 /**

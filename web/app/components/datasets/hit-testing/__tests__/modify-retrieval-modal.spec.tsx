@@ -27,10 +27,6 @@ vi.mock('@/app/notifications', () => ({
   toast: mockToast,
 }))
 
-vi.mock('@/app/components/datasets/common/check-rerank-model', () => ({
-  isReRankModelSelected: vi.fn(() => true),
-}))
-
 vi.mock('@/app/components/datasets/common/retrieval-method-config', () => ({
   default: ({
     value,
@@ -57,10 +53,6 @@ vi.mock('@/app/components/datasets/common/economical-retrieval-method-config', (
 
 vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: () => 'model-name',
-}))
-
-vi.mock('../../settings/utils', () => ({
-  checkShowMultiModalTip: () => false,
 }))
 
 describe('ModifyRetrievalModal', () => {

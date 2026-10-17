@@ -114,6 +114,7 @@ function DatasetScopeContent({
 
   return (
     <form
+      className="contents"
       onSubmit={(event) => {
         event.preventDefault()
         handleConfirm()

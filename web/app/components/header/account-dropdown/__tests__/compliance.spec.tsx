@@ -33,16 +33,6 @@ vi.mock('@/utils/download', () => ({
   downloadUrl: vi.fn(),
 }))
 
-const mockSetSettingsDestination = vi.fn()
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return {
-    ...actual,
-    useQueryState: (...args: Parameters<typeof actual.useQueryState>) =>
-      args[0] === 'pricing' ? actual.useQueryState(...args) : [null, mockSetSettingsDestination],
-  }
-})
-
 function render(...args: Parameters<typeof renderWithoutPricing>) {
   args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
   return renderWithoutPricing(...args)
@@ -216,7 +206,7 @@ describe('Compliance', () => {
       )
     })
 
-    it('should handle upgrade click on badge for non-sandbox plan', () => {
+    it('should handle upgrade click on badge for non-sandbox plan', async () => {
       // Arrange
       seedFeatures(queryClient, { billing: { subscription: { plan: 'professional' } } })
 
@@ -227,7 +217,9 @@ describe('Compliance', () => {
       fireEvent.click(upgradeBadges[0]!)
 
       // Assert
-      expect(mockSetSettingsDestination).toHaveBeenCalledWith('billing')
+      await waitFor(() =>
+        expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('billing'),
+      )
     })
 
     // isPending branches: spinner visible and the owning menu item blocks a second call

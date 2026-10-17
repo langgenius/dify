@@ -18,6 +18,7 @@ const mockUserCanAccessApp = vi.hoisted(() => ({
 }))
 const mockAppDslExport = vi.hoisted(() => ({
   exportAppDsl: vi.fn(),
+  reset: vi.fn(),
   isExporting: false,
 }))
 const mockWorkflowAppDslExport = vi.hoisted(() => ({
@@ -144,19 +145,6 @@ vi.mock('@/app/notifications', () => ({
   toast: toastMocks.api,
 }))
 
-// Mock use-context-selector with stable toast reference for tracking calls
-// Include createContext for components that use it (like Toast)
-vi.mock('use-context-selector', () => ({
-  createContext: <T,>(defaultValue: T) => React.createContext(defaultValue),
-  useContext: () => ({
-    notify: toastMocks.api,
-  }),
-  useContextSelector: (_context: unknown, selector: (state: Record<string, unknown>) => unknown) =>
-    selector({
-      notify: toastMocks.api,
-    }),
-}))
-
 const mockConsoleState = vi.hoisted(() => ({
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: ['app.create_and_management'] as string[],
@@ -224,10 +212,6 @@ vi.mock('@/context/permission-state', async () => {
 })
 
 // systemFeatures is seeded into the QueryClient via the local render helper.
-
-vi.mock('@/service/apps', () => ({
-  deleteApp: vi.fn(() => Promise.resolve()),
-}))
 
 const { installedRequest } = vi.hoisted(() => ({
   installedRequest:
@@ -368,19 +352,19 @@ vi.mock('next/dynamic', () => ({
     }
     if (fnString.includes('switch-app-modal')) {
       return function MockSwitchAppModal({
-        show,
-        onClose,
+        open,
+        onOpenChange,
       }: {
-        show: boolean
-        onClose: () => void
+        open: boolean
+        onOpenChange: (open: boolean) => void
       }) {
-        if (!show) return null
+        if (!open) return null
         return React.createElement(
           'div',
           { 'data-testid': 'switch-modal' },
           React.createElement(
             'button',
-            { onClick: onClose, 'data-testid': 'close-switch-modal' },
+            { onClick: () => onOpenChange(false), 'data-testid': 'close-switch-modal' },
             'Close',
           ),
         )
@@ -1263,13 +1247,21 @@ describe('AppCard', () => {
       })
     })
 
-    it('should prevent duplicate exports while an app DSL export is pending', () => {
+    it('keeps other menu actions available while preventing duplicate exports', async () => {
       mockAppDslExport.isExporting = true
       render(<AppCard app={mockApp} />)
 
-      const trigger = screen.getByRole('button', { name: 'common.operation.exporting' })
-
-      expect(trigger).toBeDisabled()
+      const trigger = getOperationsTrigger()
+      expect(trigger).not.toBeDisabled()
+      fireEvent.click(trigger)
+      const exportItem = await screen.findByRole('menuitem', { name: 'app.exportApp' })
+      expect(exportItem).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.getByRole('menuitem', { name: 'app.editApp' })).not.toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+      fireEvent.click(exportItem)
+      expect(mockAppDslExport.exportAppDsl).not.toHaveBeenCalled()
     })
   })
 

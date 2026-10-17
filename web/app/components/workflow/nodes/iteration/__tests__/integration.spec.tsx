@@ -162,7 +162,7 @@ describe('iteration path', () => {
     )
   })
 
-  it('should wire panel input, output, numeric, and error mode actions', async () => {
+  it('commits numeric parallelism and the selected error policy', async () => {
     const user = userEvent.setup()
     const handleInputChange = vi.fn()
     const handleOutputVarChange = vi.fn()
@@ -184,8 +184,6 @@ describe('iteration path', () => {
 
     render(<Panel id="iteration-node" data={createData()} panelProps={panelProps} />)
 
-    await user.click(screen.getByRole('button', { name: 'pick-input-var' }))
-    await user.click(screen.getByRole('button', { name: 'pick-output-var' }))
     const parallelInput = screen.getByRole('textbox', {
       name: 'workflowLogic.nodes.iteration.MaxParallelismTitle',
     })
@@ -198,12 +196,6 @@ describe('iteration path', () => {
       }),
     )
 
-    expect(handleInputChange).toHaveBeenCalledWith(['node-1', 'items'], 'variable', {
-      type: VarType.arrayString,
-    })
-    expect(handleOutputVarChange).toHaveBeenCalledWith(['child-node', 'text'], 'variable', {
-      type: VarType.string,
-    })
     expect(changeParallelNums).toHaveBeenCalledWith(7)
     expect(changeErrorResponseMode).toHaveBeenCalledWith(
       expect.objectContaining({

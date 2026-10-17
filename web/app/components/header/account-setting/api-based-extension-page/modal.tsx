@@ -102,7 +102,7 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
           </DialogTitle>
           <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
-        <Form<ApiBasedExtensionPayload> onFormSubmit={handleSubmit}>
+        <Form<ApiBasedExtensionPayload> className="contents" onFormSubmit={handleSubmit}>
           <DialogBody className="grid gap-4">
             <Field name="name">
               <FieldLabel>{nameLabel}</FieldLabel>
