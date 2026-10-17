@@ -218,6 +218,13 @@ def migrated_native_tables(flask_app_with_containers):
             _assert_single_request_state_check(connection, native=True)
             _assert_waiting_policy(connection, native=True)
         connection.execute(text("COMMENT ON TABLE dify_builder_native_attempts IS 'ci-alembic:c67e12a904bf'"))
+        # The Code child table is dropped with the native parents above but is not part
+        # of the native ledger migration, so nothing restores it. Recreate it from the
+        # deployed metadata now that every FK target exists again (operations, attempts
+        # and invocations from the migration, effect_dispatch_claims above, dispatches
+        # never dropped). Teardown truncates all of db.metadata, so a missing table here
+        # fails every test in every module that uses this fixture.
+        db.metadata.tables["dify_builder_native_code_physical_operations"].create(connection)
 
 
 def raw_ledger_case(native_owner, no_live):
