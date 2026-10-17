@@ -36,12 +36,13 @@ vi.mock('@/hooks/use-breakpoints', () => ({
 }))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { getOperationPath } = await import('@/test/console/operation-hooks')
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
     ...actual,
     useQuery: (options: Parameters<typeof actual.useQuery>[0]) => {
-      const [path] = options.queryKey as [string[]]
-      if (Array.isArray(path) && path.includes('byConversationId')) {
+      const path = getOperationPath(options.queryKey)
+      if (path?.includes('byConversationId')) {
         if (path.includes('chatConversations')) return { data: mockChatConversationDetail }
         return { data: mockCompletionConversationDetail, refetch: mockCompletionRefetch }
       }

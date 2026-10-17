@@ -133,7 +133,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       'agent.byAgentId.buildChat.finalize.post': mocks.finalizeBuildChat,
       'agent.byAgentId.composer.put': mocks.saveComposerDraft,
       'agent.byAgentId.buildDraft.checkout.post': mocks.checkoutBuildDraft,
-      'agent.byAgentId.buildDraft.apply.post': mocks.applyBuildDraft,
+      'agent.byAgentId.buildDraft.applyAction.post': mocks.applyBuildDraft,
       'agent.byAgentId.buildDraft.delete': mocks.discardBuildDraft,
       'workspaces.current.tools.builtin.get': async () => [],
       'workspaces.current.tools.api.get': async () => [],

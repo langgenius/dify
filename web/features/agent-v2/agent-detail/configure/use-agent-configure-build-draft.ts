@@ -304,7 +304,7 @@ export function useAgentConfigureBuildDraftActions({
     consoleQuery.agent.byAgentId.buildChat.finalize.post.mutationOptions(),
   )
   const applyBuildDraftMutation = useMutation(
-    consoleQuery.agent.byAgentId.buildDraft.apply.post.mutationOptions(),
+    consoleQuery.agent.byAgentId.buildDraft.applyAction.post.mutationOptions(),
   )
   const discardBuildDraftMutation = useMutation(
     consoleQuery.agent.byAgentId.buildDraft.delete.mutationOptions(),

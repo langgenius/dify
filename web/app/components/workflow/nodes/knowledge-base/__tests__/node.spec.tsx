@@ -229,11 +229,12 @@ describe('KnowledgeBaseNode', () => {
 })
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { getOperationPath } = await import('@/test/console/operation-hooks')
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
     ...actual,
-    useQuery: (options: { queryKey?: readonly [readonly string[], unknown] }) =>
-      options.queryKey?.[0].includes('modelTypes')
+    useQuery: (options: { queryKey?: unknown }) =>
+      getOperationPath(options.queryKey)?.includes('modelTypes')
         ? mockModelListQuery(options)
         : { data: undefined },
   }

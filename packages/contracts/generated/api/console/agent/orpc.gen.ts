@@ -400,7 +400,7 @@ export const post5 = oc
     plaintext_secret_not_allowed_error: { data: zPlaintextSecretNotAllowedError },
   })
 
-export const apply = {
+export const applyAction = {
   post: post5,
 }
 
@@ -486,7 +486,7 @@ export const buildDraft = {
   delete: delete2,
   get: get4,
   put,
-  apply,
+  applyAction,
   checkout,
 }
 

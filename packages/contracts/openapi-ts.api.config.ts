@@ -126,10 +126,21 @@ const operationId = (method: string, routePath: string) => {
   ])
 }
 
+// oRPC v2 client and query-utils proxies pass these keys through to the function itself.
+const orpcReservedRouterKeys = new Set([
+  'apply',
+  'bind',
+  'call',
+  'then',
+  'toJSON',
+  'toString',
+  'valueOf',
+])
+
 const contractPathSegments = (operation: ApiContractOperation) => {
-  const segments = routeNamingSegments(operation.path).map((segment) =>
-    toCamelCase(segmentWords(segment)),
-  )
+  const segments = routeNamingSegments(operation.path)
+    .map((segment) => toCamelCase(segmentWords(segment)))
+    .map((segment) => (orpcReservedRouterKeys.has(segment) ? `${segment}Action` : segment))
 
   return [...(segments.length > 0 ? segments : ['root']), operation.method.toLowerCase()]
 }
