@@ -4,7 +4,8 @@ Comprehensive unit tests for services.app_generate_service.AppGenerateService.
 Covers:
   - _build_streaming_task_on_subscribe  (streams / pubsub / exception / idempotency)
   - generate                           (COMPLETION / AGENT_CHAT / CHAT / ADVANCED_CHAT / WORKFLOW / invalid mode,
-                                         streaming & blocking, billing, quota-refund-on-error, rate_limit.exit)
+                                         streaming & blocking, billing, quota-refund-on-error, rate_limit.exit,
+                                         streaming active-request slot held until close)
   - _get_max_active_requests            (all limit combos)
   - generate_single_iteration           (ADVANCED_CHAT / WORKFLOW / invalid mode)
   - generate_single_loop                (ADVANCED_CHAT / WORKFLOW / invalid mode)
@@ -16,8 +17,8 @@ Covers:
 import json
 import threading
 import uuid
-from collections.abc import Callable
-from contextlib import contextmanager
+from collections.abc import Callable, Generator, Mapping
+from typing import Protocol, cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -26,6 +27,8 @@ from sqlalchemy.orm import Session
 
 import services.app_generate_service as ags_module
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.features.rate_limiting.rate_limit import RateLimit
+from core.errors.error import AppInvokeQuotaExceededError
 from enums import DeploymentEdition, QuotaType
 from graphon.enums import WorkflowExecutionStatus
 from models.account import Account
@@ -144,12 +147,6 @@ def _make_workflow_run(*, run_id: str, ended: bool) -> WorkflowRun:
     )
     run.id = run_id
     return run
-
-
-@contextmanager
-def _noop_rate_limit_context(rate_limit, request_id):
-    """Drop-in replacement for rate_limit_context that doesn't touch Redis."""
-    yield
 
 
 # ---------------------------------------------------------------------------
@@ -318,11 +315,6 @@ class TestGenerate(_RealSessionTest):
     def _common(self, mocker: MockerFixture, config_overrides: Callable[..., None]):
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         mocker.patch("services.app_generate_service.RateLimit", _DummyRateLimit)
-        # Prevent AppExecutionParams.new from touching real models via isinstance
-        mocker.patch(
-            "services.app_generate_service.rate_limit_context",
-            _noop_rate_limit_context,
-        )
 
     # -- COMPLETION ---------------------------------------------------------
     def test_completion_mode(self, mocker: MockerFixture):
@@ -654,6 +646,197 @@ class TestGenerate(_RealSessionTest):
             )
 
 
+_ACTIVE_REQUESTS_KEY = "dify:rate_limit:app-id:active_requests"
+
+
+class _ClosableStream(Protocol):
+    def __iter__(self) -> "_ClosableStream": ...
+
+    def __next__(self) -> str: ...
+
+    def close(self) -> None: ...
+
+
+class _HashRedis:
+    """Redis hash stand-in that matches RateLimit.enter/exit field semantics."""
+
+    def __init__(self) -> None:
+        self.values: dict[str, str] = {}
+        self.hashes: dict[str, dict[str, str]] = {}
+        self.removed = 0
+
+    def exists(self, key: str) -> bool:
+        return key in self.values or key in self.hashes
+
+    def setex(self, key: str, ttl: object, value: object) -> bool:
+        self.values[key] = str(value)
+        return True
+
+    def get(self, key: str) -> bytes | None:
+        value = self.values.get(key)
+        return None if value is None else value.encode()
+
+    def expire(self, key: str, ttl: object) -> bool:
+        return key in self.values or key in self.hashes
+
+    def hset(self, key: str, field: str, value: object) -> int:
+        bucket = self.hashes.setdefault(key, {})
+        is_new = field not in bucket
+        bucket[field] = str(value)
+        return 1 if is_new else 0
+
+    def hgetall(self, key: str) -> dict[bytes, bytes]:
+        return {field.encode(): value.encode() for field, value in self.hashes.get(key, {}).items()}
+
+    def hlen(self, key: str) -> int:
+        return len(self.hashes.get(key, {}))
+
+    def hdel(self, key: str, *fields: str) -> int:
+        bucket = self.hashes.get(key, {})
+        removed = 0
+        for field in fields:
+            if field in bucket:
+                del bucket[field]
+                removed += 1
+                self.removed += 1
+        return removed
+
+
+def _stream_chunks(*chunks: str, error: BaseException | None = None) -> Generator[str, None, None]:
+    yield from chunks
+    if error is not None:
+        raise error
+
+
+# ---------------------------------------------------------------------------
+# generate – streaming active-request limit (#35895)
+# ---------------------------------------------------------------------------
+class TestStreamingActiveRequestLimit(_RealSessionTest):
+    """A streaming run keeps its app_max_active_requests slot until the stream closes."""
+
+    @pytest.fixture(autouse=True)
+    def _limit_backend(self, mocker: MockerFixture, config_overrides: Callable[..., None]) -> None:
+        config_overrides(
+            DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
+            PUBSUB_REDIS_CHANNEL_TYPE="streams",
+            APP_MAX_ACTIVE_REQUESTS=0,
+            APP_DEFAULT_ACTIVE_REQUESTS=0,
+        )
+        RateLimit._instance_dict.clear()
+        self.redis = _HashRedis()
+        mocker.patch("core.app.features.rate_limiting.rate_limit.redis_client", self.redis)
+
+    def _active(self) -> int:
+        return self.redis.hlen(_ACTIVE_REQUESTS_KEY)
+
+    def _open(
+        self, mocker: MockerFixture, mode: AppMode, events: Generator[str, None, None], limit: int
+    ) -> _ClosableStream:
+        mocker.patch.object(AppGenerateService, "_get_workflow", return_value=_make_workflow())
+        mocker.patch(
+            "services.app_generate_service.AppExecutionParams.new",
+            return_value=MagicMock(workflow_run_id="wfr-stream", model_dump_json=MagicMock(return_value="{}")),
+        )
+        mocker.patch("services.app_generate_service.workflow_based_app_execution_task.delay")
+        if mode is AppMode.ADVANCED_CHAT:
+            generator = MagicMock()
+            generator.retrieve_events.return_value = events
+            generator.convert_to_event_stream.side_effect = lambda value: value
+            mocker.patch("services.app_generate_service.AdvancedChatAppGenerator", return_value=generator)
+            args: Mapping[str, object] = {"workflow_id": None, "query": "hi", "inputs": {}}
+        elif mode is AppMode.WORKFLOW:
+            mocker.patch(
+                "services.app_generate_service.MessageBasedAppGenerator.retrieve_events",
+                return_value=events,
+            )
+            mocker.patch(
+                "services.app_generate_service.WorkflowAppGenerator.convert_to_event_stream",
+                side_effect=lambda value: value,
+            )
+            args = {"inputs": {}}
+        else:
+            raise AssertionError(f"unsupported streaming mode {mode}")
+
+        stream = AppGenerateService.generate(
+            app_model=_make_app(mode, max_active_requests=limit),
+            user=_make_user(),
+            args=args,
+            invoke_from=InvokeFrom.SERVICE_API,
+            streaming=True,
+            session=self.session,
+        )
+        assert hasattr(stream, "close")
+        return cast(_ClosableStream, stream)
+
+    @pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+    def test_normal_close_releases_slot_once(self, mocker: MockerFixture, mode: AppMode) -> None:
+        stream = self._open(mocker, mode, _stream_chunks("one", "two"), limit=2)
+        assert self._active() == 1
+
+        assert next(stream) == "one"
+        assert self._active() == 1
+        assert list(stream) == ["two"]
+        assert self._active() == 0
+        assert self.redis.removed == 1
+
+        stream.close()
+        assert self.redis.removed == 1
+
+    @pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+    def test_error_mid_stream_releases_slot_once(self, mocker: MockerFixture, mode: AppMode) -> None:
+        stream = self._open(mocker, mode, _stream_chunks("one", error=RuntimeError("boom")), limit=2)
+        assert self._active() == 1
+
+        assert next(stream) == "one"
+        assert self._active() == 1
+        with pytest.raises(RuntimeError, match="boom"):
+            next(stream)
+        assert self._active() == 0
+        assert self.redis.removed == 1
+
+        stream.close()
+        assert self.redis.removed == 1
+
+    @pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+    def test_client_disconnect_releases_slot_once(self, mocker: MockerFixture, mode: AppMode) -> None:
+        stream = self._open(mocker, mode, _stream_chunks("one", "two"), limit=2)
+        assert self._active() == 1
+
+        assert next(stream) == "one"
+        assert self._active() == 1
+        stream.close()
+        assert self._active() == 0
+        assert self.redis.removed == 1
+
+        stream.close()
+        with pytest.raises(StopIteration):
+            next(stream)
+        assert self.redis.removed == 1
+
+    @pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+    def test_limit_of_one_blocks_a_second_stream_until_the_first_closes(
+        self, mocker: MockerFixture, mode: AppMode
+    ) -> None:
+        """#35895: max_active_requests=1 admits the next streaming run only after the first closes."""
+        first = self._open(mocker, mode, _stream_chunks("open", "still-open"), limit=1)
+        try:
+            assert self._active() == 1
+            with pytest.raises(AppInvokeQuotaExceededError):
+                self._open(mocker, mode, _stream_chunks("blocked"), limit=1)
+            assert self._active() == 1
+        finally:
+            first.close()
+
+        assert self._active() == 0
+        second = self._open(mocker, mode, _stream_chunks("after-close"), limit=1)
+        try:
+            assert next(second) == "after-close"
+            assert self._active() == 1
+        finally:
+            second.close()
+        assert self._active() == 0
+
+
 # ---------------------------------------------------------------------------
 # generate – billing / quota
 # ---------------------------------------------------------------------------
@@ -661,10 +844,6 @@ class TestGenerateBilling(_RealSessionTest):
     @pytest.fixture(autouse=True)
     def _common(self, mocker: MockerFixture):
         mocker.patch("services.app_generate_service.RateLimit", _DummyRateLimit)
-        mocker.patch(
-            "services.app_generate_service.rate_limit_context",
-            _noop_rate_limit_context,
-        )
 
     def test_cloud_edition_consumes_quota(self, mocker: MockerFixture, config_overrides: Callable[..., None]):
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
