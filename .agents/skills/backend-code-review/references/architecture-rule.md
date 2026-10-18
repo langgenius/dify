@@ -2,7 +2,7 @@
 
 The backend uses a ports-and-adapters architecture, with application services orchestrating domain aggregates where business complexity warrants them. Each business capability is a slice. Application services own the use cases and declare ports for everything they need from outside. Adapters implement those ports, and a thin transport layer admits requests and translates them. One composition root connects the parts. The [API agent guide][api-guide] states the condensed rules; this document explains the architecture and how to review it. The legacy execution kernel is migration-only: never propose new files or extracted implementations there.
 
-This document describes the architecture as it is today. Business rules live in application services that work with plain records, and no slice uses aggregates yet. The [next step](#next-step) section describes how aggregates are introduced.
+This document describes the architecture as it is today. Business rules live in application services that work with plain records, and one slice pilots an aggregate. The [next step](#next-step) section describes how aggregates are introduced and what the pilot settled.
 
 ## Layers
 
@@ -125,6 +125,19 @@ Records carry no behavior, so business rules collect in application services and
 - **Ports**: an aggregate repository port accepts and returns aggregates, and a query port returns records. Sessions and SQLAlchemy models never cross either kind. Use cases return records, so the transport layer never receives an aggregate.
 - **Repositories**: aggregate repositories load and save whole aggregates and map them to and from SQLAlchemy models. Rules that repositories enforce today move into aggregates. Rules that span aggregates, such as uniqueness, stay with the database, as the [consistency](#consistency) section describes.
 - **Consistency**: a load and the later save run in separate transactions, so a decision made on loaded state can be stale when it is saved. For every invariant that concurrent writers can break, the slice names the mechanism from the [consistency](#consistency) section that protects it. Writing only the difference between the loaded and the changed aggregate keeps concurrent changes to other parts of the aggregate. It is a limited strategy, not a consistency guarantee: it does not protect decisions that rest on state a concurrent writer can change, and two competing transitions still end with the last writer.
+
+### What the first pilot settled
+
+One slice has adopted an aggregate. These choices are specific to that pilot; the rules above still apply wherever they differ.
+
+- **Immutability**: the aggregate is an immutable value. Each behavior checks its rules and returns the changed aggregate, so the loaded state stays available for the save.
+- **Errors**: the slice's errors live in a module of their own, so the aggregate raises them without importing a service module.
+- **Values from outside**: the service supplies new identifiers and the current time, and the composition root provides the clock. The aggregate owns its timestamps and stays deterministic in tests.
+- **Input checks**: a use case checks its input against the aggregate's rules before the load, so malformed input fails before any database work and errors keep their order.
+- **Side effects**: the aggregate reports which side effects a change calls for, such as the users it newly mentions, and the write returns the data those effects need.
+- **Reads**: reads that only present data stay on query ports and do not load aggregates.
+- **Saving**: the save receives the loaded and the changed aggregate and writes only the difference, under a lock on the root row that also detects a root deleted since the load. This is the limited strategy described above. It keeps concurrent changes to other parts of the aggregate, and checks of who created a record need nothing more. It does not protect decisions on state that concurrent writers can change, so the port lists each rule with its mechanism and names the ones left unprotected.
+- **Tests**: service tests use in-memory ports that keep aggregates and assert that each save receives the state that was loaded. Repository tests also cover writing only the difference and two loads of one aggregate saved one after the other.
 
 Adopt this slice by slice, starting with services whose rules belong to one business model, and add the aggregate contract from the [boundary contracts](#boundary-contracts) section with the first aggregate in each slice.
 
