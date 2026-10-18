@@ -421,6 +421,7 @@ jobs:
           FILES += [path for path in ['api/tests/unit_tests/services/dify_builder/test_agent_confirmed_workspace.py',
            'api/tests/unit_tests/services/dify_builder/test_agent_operation_owner.py'] if path not in FILES]
           FILES += [path for path in ['api/tests/unit_tests/services/dify_builder/native_testing/test_confirmed_agent_completion.py'] if path not in FILES]
+          FILES += [path for path in ['api/tests/unit_tests/services/dify_builder/test_agent_model_result_canonical.py'] if path not in FILES]
           SELECTED_GUARDS = [
               "api/tests/unit_tests/controllers/console/app/test_workflow.py::test_sync_draft_workflow_rejects_empty_graph_without_confirmation",
           ]
@@ -695,6 +696,11 @@ jobs:
           # Confirmed blank Home: collected required-field, isolated-owner and real SQL restore cases.
           for module, functions in {'tests.unit_tests.services.dify_builder.test_agent_confirmed_workspace': {'test_current_normal_workspace_requires_complete_sql_owner_chain': 10}}.items():
               a4_expected.setdefault(module, {}).update(functions)
+          # Candidate 3: frozen exact collection; retain every previously required function.
+          a4_expected.setdefault('tests.unit_tests.services.dify_builder.test_agent_model_result_canonical', {}).update({'test_model_receipt_matches_sdk_roundtrip_without_changing_stream_or_accepting_replacement': 2})
+          a4_expected.setdefault('tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion', {}).update({'test_actual_terminal_run_can_use_the_protected_context_native_id_without_a_column_ack': 1,
+           'test_completion_uses_the_immutable_admitted_revision_basis': 3,
+           'test_context_native_identity_never_replaces_the_actual_owned_native_run': 2})
           for module, expected in {**a3_expected, **a4_expected}.items():
               actual = {}
               for classname, name in identities:
@@ -912,6 +918,10 @@ jobs:
               # Confirmed blank Home: collected required-field, isolated-owner and real SQL restore cases.
               for module, functions in {'tests.test_containers_integration_tests.core.workflow.test_builder_native_agent_associations': {'test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read': 1}}.items():
                   EXPECTED.setdefault(module, {}).update(functions)
+              # Candidate 3: actual PostgreSQL collection adds cases without dropping old guards.
+              EXPECTED.setdefault('tests.test_containers_integration_tests.core.workflow.test_builder_agent_operations', {}).update({'test_confirmed_deferred_calls_have_distinct_pending_and_one_c03_snapshot': 2})
+              EXPECTED.setdefault('tests.test_containers_integration_tests.core.workflow.test_builder_native_agent_associations', {}).update({'test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read': 6,
+               'test_real_unmarked_profiles_keep_raw_revision_and_immutable_private_scope': 2})
               REPORT = "builder-native-continuation.xml"
               code = pytest.main(['api/tests/test_containers_integration_tests/core/workflow/test_builder_agent_operations.py', 'api/tests/test_containers_integration_tests/core/workflow/test_builder_agent_create_recovery.py', 'api/tests/test_containers_integration_tests/core/workflow/test_builder_agent_continuation.py', 'api/tests/test_containers_integration_tests/core/workflow/test_builder_native_continuation.py', 'api/tests/test_containers_integration_tests/core/workflow/test_builder_native_pause.py', 'api/tests/test_containers_integration_tests/core/workflow/test_builder_native_http_binding.py', 'api/tests/test_containers_integration_tests/core/workflow/test_builder_native_approval_scope.py', 'api/tests/test_containers_integration_tests/core/workflow/test_builder_native_dispatch_fence.py', 'api/tests/test_containers_integration_tests/core/workflow/test_builder_native_host_capacity.py', 'api/tests/test_containers_integration_tests/core/workflow/test_builder_native_stop_sealing.py', 'api/tests/test_containers_integration_tests/core/workflow/test_builder_native_claimed_resume_checkpoint.py', 'api/tests/test_containers_integration_tests/core/workflow/test_builder_native_observation_history.py', 'api/tests/test_containers_integration_tests/core/workflow/test_builder_native_agent_associations.py', 'api/tests/test_containers_integration_tests/core/workflow/test_builder_native_runtime.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-native-continuation.xml', '-p', 'no:benchmark', '--no-cov', '--timeout=360', '--timeout-method=thread'])
               problems = []
@@ -1622,6 +1632,11 @@ jobs:
                                                                                              'test_normal_blank_home_association_roundtrip_retains_explicit_none': 1,
                                                                                              'test_nullable_normal_home_cannot_enter_isolated_workspace_owner': 2}}.items():
               new_expected.setdefault(module, {}).update(functions)
+          # Candidate 3: confirmed semantic basis and unchanged legacy/isolated revision guards.
+          new_expected.setdefault('tests.unit_tests.services.dify_builder.native_testing.test_context_binding', {}).update({'test_canvas_basis_never_reinterprets_old_context_or_child_workflow': 2,
+           'test_canvas_basis_requires_exact_server_profile_and_supported_marker': 2,
+           'test_confirmed_compiler_rechecks_canvas_basis_without_resolving_secret_values': 5,
+           'test_confirmed_snapshot_graph_still_refuses_executable_payload_tampering': 1})
           new_actual = {module: Counter() for module in new_expected}
           expected = {path.removeprefix("api/").removesuffix(".py").replace("/", ".") for path in files}
           expected = physical_owner_baseline_expected | set(new_expected)

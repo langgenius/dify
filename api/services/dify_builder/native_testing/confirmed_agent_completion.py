@@ -9,6 +9,7 @@ matching admission's lock order. It contains SQL and pure presentation only.
 from dataclasses import asdict
 from uuid import NAMESPACE_URL, uuid5
 
+from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import select
 
 from core.dify_builder.errors import ConflictError
@@ -23,10 +24,22 @@ from models.workflow import Workflow, WorkflowRun
 from services.dify_builder import session_lock
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.execution_contracts import ExecutionEvidenceSummary, canonical_digest
-from services.dify_builder.native_testing.contracts import NativeTestContextRef
-from services.dify_builder.native_testing.repository import native_workflow_revision
+from services.dify_builder.native_testing.contracts import ID, NativeTestContextRef
+from services.dify_builder.native_testing.repository import admitted_workflow_revision
 from services.dify_builder.native_testing.runtime_contracts import NativeWorkflowOutcome
 from services.dify_builder.repository import SqlDifyBuilderRepository
+
+
+def _native_run_id(request: DifyBuilderExecutionRequest) -> str | None:
+    try:
+        planned = TypeAdapter(ID).validate_python(request.context.get("native_run_id"))
+    except ValidationError:
+        return None
+    # Ordinary admission retains the allocated identity in the protected
+    # context. Only the actual owned WorkflowRun below can acknowledge it.
+    if request.native_run_id is not None and request.native_run_id != planned:
+        return None
+    return request.native_run_id or planned
 
 
 def _request(sql, *, actor, ref):
@@ -52,9 +65,9 @@ def _request(sql, *, actor, ref):
                 "workflow_id",
                 "session_id",
                 "test_input_id",
-                "native_run_id",
             )
         )
+        or _native_run_id(request) is None
         or request.context.get("profile", {}).get("profile_id") != "builder-agent-confirmed-v1"
     ):
         return None
@@ -81,7 +94,7 @@ def _terminal_proof(sql, *, request, ref):
     if (
         outcome.ref != ref
         or outcome.status != "completed"
-        or outcome.native_run_id != request.native_run_id
+        or outcome.native_run_id != _native_run_id(request)
         or state.generation != scope.generation
         or outcome.pending_operation_ids
     ):
@@ -95,7 +108,7 @@ def _terminal_proof(sql, *, request, ref):
         return None
     native = sql.scalar(
         select(WorkflowRun).where(
-            WorkflowRun.id == request.native_run_id,
+            WorkflowRun.id == _native_run_id(request),
             WorkflowRun.tenant_id == request.tenant_id,
             WorkflowRun.app_id == request.app_id,
             WorkflowRun.workflow_id == request.workflow_id,
@@ -142,7 +155,9 @@ def reconcile_builder_run(*, sessions, actor: Actor, ref: NativeTestContextRef) 
 
 def _project(*, sessions, actor, ref, request):
     repo = SqlDifyBuilderRepository(sessions)
-    session_id, test_input_id, native_run_id = request.session_id, request.test_input_id, request.native_run_id
+    session_id, test_input_id, native_run_id = request.session_id, request.test_input_id, _native_run_id(request)
+    if native_run_id is None:
+        return False
     owner, context = repo.get_session(session_id)
     if (
         (owner.tenant_id, owner.owner_account_id) != (actor.tenant_id, actor.account_id)
@@ -239,7 +254,7 @@ def _project(*, sessions, actor, ref, request):
                 or saved is None
                 or saved.session_id != session_id
                 or fresh is None
-                or native_workflow_revision(workflow) != fresh.context.get("execution_revision")
+                or admitted_workflow_revision(workflow, fresh.context) != fresh.context.get("execution_revision")
                 or canonical_digest(saved.inputs) != fresh.context.get("input_revision")
                 or _terminal_proof(sql, request=fresh, ref=ref) is None
             ):

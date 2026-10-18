@@ -133,7 +133,10 @@ def test_confirmed_admission_uses_original_key_and_preallocated_parent_run(conti
         admit_confirmed_agent_execution(**{**kwargs, "native_run_id": str(uuid4())})
 
 
-def test_confirmed_deferred_calls_have_distinct_pending_and_one_c03_snapshot(continuation_case, native_owner):
+@pytest.mark.parametrize("canvas_save", [False, True])
+def test_confirmed_deferred_calls_have_distinct_pending_and_one_c03_snapshot(
+    continuation_case, native_owner, canvas_save
+):
     """SQL owners are real; current tool metadata is the explicit no-I/O fixture."""
     from datetime import UTC, datetime, timedelta
 
@@ -144,10 +147,12 @@ def test_confirmed_deferred_calls_have_distinct_pending_and_one_c03_snapshot(con
         NativeTestInvocation,
     )
     from services.dify_builder.execution_contracts import canonical_digest
+    from services.dify_builder.native_testing.api_service import NativeTestApiService
     from services.dify_builder.native_testing.approval_contracts import NativeApprovalProposal, NativeApprovalTerms
     from services.dify_builder.native_testing.authorization import EffectAuthorizationService
     from services.dify_builder.native_testing.contracts import OperationKey, operation_digest
     from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
+    from services.dify_builder.native_testing.public_contracts import PendingActionDisclosure
     from services.dify_builder.native_testing.repository import NativeBinding, OwnedNativeTestLoader
     from services.dify_builder.native_testing.runtime_contracts import NativeCheckpointPayload, NodeJournalState
     from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
@@ -310,18 +315,69 @@ def test_confirmed_deferred_calls_have_distinct_pending_and_one_c03_snapshot(con
         pending_operation_ids=(first.pending_operation_id, second.pending_operation_id),
         expected_generation=0,
     )
+    if canvas_save:
+        import json
+
+        from models.workflow import Workflow
+
+        with factory.begin() as session:
+            workflow = session.get(Workflow, context.workflow_id)
+            graph = json.loads(workflow.graph)
+            graph["viewport"] = {"x": 8, "y": 21, "zoom": 0.7}
+            graph["nodes"][0]["positionAbsolute"] = {"x": 8, "y": 21}
+            workflow.graph = json.dumps(graph, separators=(",", ":"))
     selected = store.read_checkpoint(ref=ref, checkpoint=paused.checkpoint)
     assert tuple(intent for journal in selected.node_journals for intent in journal.intents) == effects
     assert tuple(proposal.key for proposal in selected.approval_proposals) == tuple(effect.key for effect in effects)
-    for effect in effects:
-        guard.decide(
-            ref=ref,
-            intent=effect,
-            decision="approved",
-            max_calls=1,
-            max_dispatches=1,
-            max_cost_units=1,
-            expires_at=datetime.fromisoformat(terms.expires_at),
+
+    class FixtureDisclosure:
+        def describe(self, *, actor, resolved):
+            assert actor == loader.actor
+            with factory() as session:
+                operation = session.scalar(
+                    select(NativeEffectOperation).where(
+                        NativeEffectOperation.request_id == ref.request_id,
+                        NativeEffectOperation.operation_digest == operation_digest(resolved.intent.key),
+                    )
+                )
+                pending = session.scalar(
+                    select(NativePendingAction).where(NativePendingAction.operation_id == operation.id)
+                )
+                return PendingActionDisclosure(
+                    pending_operation_id=pending.id,
+                    wait_reason="approval",
+                    version=1,
+                    scope_digest=pending.owner_version,
+                    account_label="inert fixture account",
+                    action="fixture tool",
+                    target=None,
+                    parameters_summary=resolved.intent.parameters,
+                    risk_notice="No provider I/O in this SQL component test",
+                    required_configuration=(),
+                    native_form_ref=None,
+                    approval_limits=terms,
+                )
+
+    api = NativeTestApiService(
+        session_factory=factory,
+        actor=actor,
+        resolver=case.ledger.metadata,
+        admission=None,
+        resolution=None,
+        runtime=None,
+        disclosure=FixtureDisclosure(),
+    )
+    receipt = api.get(actor=actor, session_id=session_id, request_id=ref.request_id)
+    for item in receipt.pending:
+        api.decide(
+            actor=actor,
+            session_id=session_id,
+            request_id=ref.request_id,
+            pending_operation_id=item.pending_operation_id,
+            decision="confirm",
+            scope_digest=item.scope_digest,
+            expected_version=receipt.version,
+            idempotency_key="decision-" + item.pending_operation_id,
         )
     with factory() as session:
         assert (

@@ -53,6 +53,7 @@ from services.dify_builder.native_testing.public_contracts import PendingActionD
 from services.dify_builder.native_testing.repository import (
     NativeBinding,
     OwnedNativeTestLoader,
+    admitted_workflow_revision,
     native_workflow_revision,
 )
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore, ObjectReceipt, owner_query
@@ -120,7 +121,13 @@ def _sql_resource(*, session, owned, descriptor):
     workflow = validate_invocation_workflow(
         session, tenant_id=owned.tenant_id, app_id=owned.app_id, workflow_id=owned.workflow_id
     )
-    if native_workflow_revision(workflow) != descriptor["graph_revision"]:
+    revision_context = getattr(owned, "revision_context", None)
+    revision = (
+        admitted_workflow_revision(workflow, revision_context)
+        if revision_context
+        else native_workflow_revision(workflow)
+    )
+    if revision != descriptor["graph_revision"]:
         raise BuilderExecutionPolicyError("native_revision_drift")
     snapshot = session.get(AgentConfigSnapshot, descriptor["snapshot_id"])
     agent = session.get(Agent, descriptor["agent_id"])
@@ -528,6 +535,8 @@ class AgentOperationService:
         self.validate_model(envelope=envelope)
 
     def invoke_model(self, *, envelope, invoke):
+        from graphon.model_runtime.entities.llm_entities import LLMResultChunk
+
         ref, intent, permit = api_ref(envelope.ref), api_intent(envelope.intent), api_permit(envelope.permit)
         self.validate_model(envelope=envelope)
         self.bridge.authorization.claim_dispatch(ref=ref, intent=intent, permit=permit)
@@ -535,7 +544,8 @@ class AgentOperationService:
         chunks = []
         try:
             for chunk in invoke():
-                chunks.append(chunk.model_dump(mode="json"))
+                # Store the same Graphon wire representation consumed by the SDK.
+                chunks.append(LLMResultChunk.model_validate(chunk.model_dump(mode="json")).model_dump(mode="json"))
                 yield chunk
             result_ref = self.state_store.store_result(ref=ref, key=intent.key, result=chunks)
             self.bridge.authorization.record_outcome(permit=permit, outcome="completed", result_ref=result_ref)
@@ -1006,6 +1016,7 @@ def admit_confirmed_agent_execution(
         invocation_id=invocation_id,
         native_run_id=native_run_id,
         profile=profile,
+        revision_basis="confirmed-canvas-v1",
     )
     context = compilation.context
     with sessions.begin() as session:

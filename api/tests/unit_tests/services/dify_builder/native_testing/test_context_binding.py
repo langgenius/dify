@@ -397,3 +397,107 @@ def test_restore_refuses_native_agent_state_before_graph_sync(
         )
     sync.assert_not_called()
     assert port.read_graph(agent_case.workflow.app_id, agent_case.actor) == (current, revision)
+
+
+@pytest.mark.parametrize("change", ["canvas", "execution", "features", "environment", "conversation"])
+def test_confirmed_compiler_rechecks_canvas_basis_without_resolving_secret_values(owned, change, monkeypatch):
+    import json
+
+    from models.workflow import Workflow
+    from services.dify_builder.native_testing.context_binding import (
+        NativeAdmissionCompiler,
+        NativeContextUnavailable,
+        NativeRuntimeProfile,
+    )
+
+    factory, actor, _app, workflow, sid, tid = owned
+
+    def secret_read(_self):
+        raise AssertionError("revision checks must never decrypt variables")
+
+    monkeypatch.setattr(Workflow, "environment_variables", property(secret_read))
+    monkeypatch.setattr(Workflow, "conversation_variables", property(secret_read))
+    compiler = NativeAdmissionCompiler(session_factory=factory, resources=lambda **_kwargs: ())
+    compiled = compiler.compile(
+        actor=actor,
+        session_id=sid,
+        test_input_id=tid,
+        expected_version=1,
+        mode="native",
+        request_id="request-canvas",
+        invocation_id="root-canvas",
+        native_run_id="run-canvas",
+        profile=NativeRuntimeProfile(
+            profile_id="builder-agent-confirmed-v1", implementation_revision="v1", limits={"calls": 4}
+        ),
+        revision_basis="confirmed-canvas-v1",
+    )
+    assert compiled.request_context["revision_basis"] == "confirmed-canvas-v1"
+    with factory.begin() as session:
+        current = session.get(Workflow, workflow.id)
+        if change in {"canvas", "execution"}:
+            graph = json.loads(current.graph)
+            graph["viewport"] = {"x": 14, "y": 29, "zoom": 1}
+            graph["nodes"][0]["positionAbsolute"] = {"x": 14, "y": 29}
+            if change == "execution":
+                graph["nodes"][0]["data"]["new_execution_input"] = True
+            current.graph = json.dumps(graph, separators=(",", ":"))
+        elif change == "features":
+            current.features = '{"changed":true}'
+        elif change == "environment":
+            current._environment_variables = '[{"changed":"opaque-ciphertext"}]'
+        else:
+            current._conversation_variables = '[{"changed":"opaque-ciphertext"}]'
+    with factory.begin() as session:
+        if change == "canvas":
+            compiler.recheck_local(session=session, actor=actor, compilation=compiled)
+        else:
+            with pytest.raises(NativeContextUnavailable, match="native_revision_drift"):
+                compiler.recheck_local(session=session, actor=actor, compilation=compiled)
+
+
+@pytest.mark.parametrize("scope", ["legacy", "child"])
+def test_canvas_basis_never_reinterprets_old_context_or_child_workflow(owned, scope):
+    import json
+
+    from services.dify_builder.native_testing.repository import admitted_workflow_revision, native_workflow_revision
+
+    _factory, _actor, _app, workflow, _sid, _tid = owned
+    request_context = {"profile": {"profile_id": "builder-agent-confirmed-v1"}, "workflow_id": workflow.id}
+    if scope == "child":
+        request_context.update(revision_basis="confirmed-canvas-v1", workflow_id="other-root")
+    original = admitted_workflow_revision(workflow, request_context)
+    graph = json.loads(workflow.graph)
+    graph["viewport"] = {"x": 7, "y": 8, "zoom": 1}
+    workflow.graph = json.dumps(graph)
+    assert admitted_workflow_revision(workflow, request_context) != original
+    assert admitted_workflow_revision(workflow, request_context) == native_workflow_revision(workflow)
+
+
+@pytest.mark.parametrize(
+    ("profile", "basis"), [("isolated", "confirmed-canvas-v1"), ("builder-agent-confirmed-v1", "unknown")]
+)
+def test_canvas_basis_requires_exact_server_profile_and_supported_marker(owned, profile, basis):
+    from services.dify_builder.native_testing.repository import admitted_workflow_revision
+
+    _factory, _actor, _app, workflow, _sid, _tid = owned
+    with pytest.raises(BuilderExecutionPolicyError, match="native_revision_basis_unavailable"):
+        admitted_workflow_revision(
+            workflow, {"profile": {"profile_id": profile}, "revision_basis": basis, "workflow_id": workflow.id}
+        )
+
+
+def test_confirmed_snapshot_graph_still_refuses_executable_payload_tampering(owned):
+    from copy import deepcopy
+
+    from services.dify_builder.native_testing.repository import admitted_graph_matches
+
+    _factory, _actor, _app, workflow, _sid, _tid = owned
+    request_context = {
+        "profile": {"profile_id": "builder-agent-confirmed-v1"},
+        "revision_basis": "confirmed-canvas-v1",
+        "workflow_id": workflow.id,
+    }
+    protected_graph = deepcopy(workflow.graph_dict)
+    protected_graph["nodes"][0]["data"]["new_execution_input"] = "injected"
+    assert admitted_graph_matches(workflow, protected_graph, request_context) is False

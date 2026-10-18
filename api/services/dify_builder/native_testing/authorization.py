@@ -46,6 +46,7 @@ from services.dify_builder.native_testing.repository import (
     NativeBinding,
     OwnedNativeTest,
     OwnedNativeTestLoader,
+    admitted_workflow_revision,
     native_workflow_revision,
     utc_now,
 )
@@ -528,7 +529,13 @@ class EffectAuthorizationService:
             workflow = validate_invocation_workflow(
                 session, tenant_id=owned.tenant_id, app_id=authority.app_id, workflow_id=authority.workflow_id
             )
-            if native_workflow_revision(workflow) != authority.graph_revision:
+            revision_context = getattr(authority, "revision_context", None)
+            revision = (
+                admitted_workflow_revision(workflow, revision_context)
+                if revision_context
+                else native_workflow_revision(workflow)
+            )
+            if revision != authority.graph_revision:
                 raise BuilderExecutionPolicyError("native_revision_drift")
             existing = session.scalar(
                 _owned_query(NativeEffectDispatchClaim, owned).where(

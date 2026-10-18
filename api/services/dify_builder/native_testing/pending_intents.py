@@ -36,6 +36,7 @@ from services.dify_builder.native_testing.public_contracts import NativeTestPubl
 from services.dify_builder.native_testing.repository import (
     OwnedNativeTest,
     OwnedNativeTestLoader,
+    admitted_workflow_revision,
     native_workflow_revision,
 )
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
@@ -242,7 +243,13 @@ class PendingDecisionGuard(FrozenDTO):
         workflow = validate_invocation_workflow(
             session, tenant_id=owned.tenant_id, app_id=self.invocation_app_id, workflow_id=self.invocation_workflow_id
         )
-        if native_workflow_revision(workflow) != self.invocation_revision:
+        revision_context = getattr(owned, "revision_context", None)
+        revision = (
+            admitted_workflow_revision(workflow, revision_context)
+            if revision_context
+            else native_workflow_revision(workflow)
+        )
+        if revision != self.invocation_revision:
             raise BuilderExecutionPolicyError("native_revision_drift")
         validate_pending_snapshot(
             resolved=self.resolved,

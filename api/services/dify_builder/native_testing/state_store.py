@@ -71,6 +71,8 @@ from services.dify_builder.native_testing.private_reads import (
 )
 from services.dify_builder.native_testing.repository import (
     OwnedNativeTestLoader,
+    admitted_graph_matches,
+    admitted_workflow_revision,
     native_workflow_revision,
     utc_now,
 )
@@ -303,11 +305,17 @@ class NativeExecutionStateStore:
         with self.loader.session_factory() as session:
             workflow = session.get(Workflow, owned.workflow_id)
             test_input = session.get(DifyBuilderTestInput, owned.test_input_id)
+            revision_context = getattr(owned, "revision_context", None)
             if (
                 workflow is None
                 or test_input is None
-                or context.graph != json.loads(workflow.graph)
-                or context.graph_revision != native_workflow_revision(workflow)
+                or not admitted_graph_matches(workflow, context.graph, revision_context)
+                or context.graph_revision
+                != (
+                    admitted_workflow_revision(workflow, revision_context)
+                    if revision_context
+                    else native_workflow_revision(workflow)
+                )
                 or canonical_digest(context.inputs) != canonical_digest(test_input.inputs)
                 or context.input_revision != canonical_digest(context.inputs)
             ):
@@ -636,7 +644,13 @@ class NativeExecutionStateStore:
         workflow = validate_invocation_workflow(
             session, tenant_id=owned.tenant_id, app_id=context.app_id, workflow_id=context.workflow_id
         )
-        if native_workflow_revision(workflow) != context.graph_revision or json.loads(workflow.graph) != context.graph:
+        revision_context = getattr(owned, "revision_context", None)
+        revision = (
+            admitted_workflow_revision(workflow, revision_context)
+            if revision_context
+            else native_workflow_revision(workflow)
+        )
+        if revision != context.graph_revision or not admitted_graph_matches(workflow, context.graph, revision_context):
             raise BuilderExecutionPolicyError("native_revision_drift")
 
     def load_result(self, *, ref: NativeTestContextRef, result_ref: str) -> JsonValue:

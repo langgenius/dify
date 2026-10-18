@@ -6,6 +6,7 @@ The mandatory resolver rereads resource/credential *metadata* from their real
 owners without decrypting credentials, OAuth, model, network or other I/O.
 """
 
+import json
 from collections.abc import Generator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -78,6 +79,8 @@ class OwnedNativeTest:
     task_approved: bool
     expires_at: datetime
     state: str
+    # Only a newly admitted confirmed root opts in; legacy/isolated owners retain raw revisions.
+    revision_context: Mapping | None = None
 
 
 class NativeBindingResolver(Protocol):
@@ -111,6 +114,48 @@ def native_workflow_revision(workflow: Workflow) -> str:
             "conversation": workflow._conversation_variables,
         }
     )
+
+
+def _confirmed_canvas_revision(workflow: Workflow, request_context: Mapping | None) -> bool:
+    if request_context is None or request_context.get("revision_basis") is None:
+        return False
+    if (
+        request_context.get("revision_basis") != "confirmed-canvas-v1"
+        or request_context.get("profile", {}).get("profile_id") != "builder-agent-confirmed-v1"
+    ):
+        raise BuilderExecutionPolicyError("native_revision_basis_unavailable")
+    return workflow.id == request_context.get("workflow_id")
+
+
+def admitted_workflow_revision(workflow: Workflow, request_context: Mapping | None) -> str:
+    """Use the immutable admission basis; never reinterpret old raw contexts.
+
+    The confirmed root reuses Builder's pure canvas projection only. Serialized
+    feature/variable bytes remain pinned; no resolved variable or key-provider
+    access is allowed in these SQL metadata guards. Child workflows stay raw.
+    """
+    if not _confirmed_canvas_revision(workflow, request_context):
+        return native_workflow_revision(workflow)
+    from services.dify_builder.revision import normalize_execution_graph
+
+    return canonical_digest(
+        {
+            "graph": normalize_execution_graph(json.loads(workflow.graph)),
+            "features": workflow.serialized_features,
+            "environment": workflow._environment_variables,
+            "conversation": workflow._conversation_variables,
+        }
+    )
+
+
+def admitted_graph_matches(workflow: Workflow, graph: dict, request_context: Mapping | None) -> bool:
+    """Retain protected snapshot comparison using the same admitted graph basis."""
+    current = json.loads(workflow.graph)
+    if not _confirmed_canvas_revision(workflow, request_context):
+        return current == graph
+    from services.dify_builder.revision import normalize_execution_graph
+
+    return normalize_execution_graph(current) == normalize_execution_graph(graph)
 
 
 class OwnedNativeTestLoader:
@@ -188,7 +233,9 @@ class OwnedNativeTestLoader:
                 session_id=request.session_id,
                 test_input_id=request.test_input_id,
             )
-            if native_workflow_revision(owners.workflow) != request.context.get("execution_revision"):
+            if admitted_workflow_revision(owners.workflow, request.context) != request.context.get(
+                "execution_revision"
+            ):
                 raise BuilderExecutionPolicyError("native_revision_drift")
         scope = session.scalar(
             select(NativeTestScope).where(
@@ -221,6 +268,7 @@ class OwnedNativeTestLoader:
             task_approved=scope.task_approved,
             expires_at=scope.expires_at,
             state=request.state,
+            revision_context=request.context if request.context.get("revision_basis") is not None else None,
         ), scope
 
 

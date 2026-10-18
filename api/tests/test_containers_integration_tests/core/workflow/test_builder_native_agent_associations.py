@@ -79,10 +79,11 @@ CANARY = "PRIVATE_A5_PROTECTED_BYTES_CANARY_81ac"
 
 
 @pytest.fixture
-def association_case(native_owner, no_live, migrated_continuation_tables, monkeypatch):
+def association_case(native_owner, no_live, migrated_continuation_tables, monkeypatch, request):
     from extensions.ext_database import db
 
     assert migrated_continuation_tables is None
+    legacy_confirmed = getattr(request, "param", None) == "legacy_confirmed"
     # The workspace fixture supplies only allocation identities. S1 resource
     # checks require real roster publication and complete native node data.
     # Establish these rows before raw_ledger_case stamps graph/owner revisions.
@@ -159,6 +160,8 @@ def association_case(native_owner, no_live, migrated_continuation_tables, monkey
             "input_revision": canonical_digest(inputs),
             "start_schema_hash": selected_input.start_schema_hash,
         }
+        if legacy_confirmed:
+            request.context = {**request.context, "profile": {"profile_id": "builder-agent-confirmed-v1"}}
         request.context_digest = canonical_digest(request.context)
         ref = ledger.ref.model_copy(update={"context_digest": request.context_digest})
         app_id, workflow_id = request.app_id, request.workflow_id
@@ -472,7 +475,10 @@ def test_real_queued_agent_checkpoint_is_readable_before_single_dispatch_claim(a
     assert not lifecycle.claim_dispatch(ref=c.ref, generation=resumed.generation, dispatch_id=resumed.dispatch_id)
 
 
-def test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read(association_case, native_owner, monkeypatch):
+@pytest.mark.parametrize("guard_change", ["none", "canvas", "execution", "input", "actor", "target"])
+def test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read(
+    association_case, native_owner, monkeypatch, guard_change
+):
     """Actual normal SQL/crypto owners; only backend allocation is a no-I/O fixture."""
     from core.workflow.nodes.agent_v2.session_store import WorkflowAgentSessionScope, WorkflowAgentWorkspaceStore
     from models.dify_builder import DifyBuilderSession
@@ -633,6 +639,36 @@ def test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read(assoc
         state = session.scalar(select(NativeInvocationState).where(NativeInvocationState.request_id == ref.request_id))
         state.generation = 1
         session.get(NativeTestScope, ref.request_id).generation = 1
+        if guard_change in {"canvas", "execution"}:
+            workflow = session.get(Workflow, context.workflow_id)
+            graph = json.loads(workflow.graph)
+            graph["viewport"] = {"x": 41, "y": 12, "zoom": 0.8}
+            for node in graph["nodes"]:
+                node["positionAbsolute"] = {"x": 41, "y": 12}
+                node["width"], node["selected"] = 244, True
+            if guard_change == "execution":
+                graph["nodes"][-1]["data"]["new_execution_input"] = "changed"
+            workflow.graph = json.dumps(graph, separators=(",", ":"))
+        elif guard_change == "input":
+            session.get(DifyBuilderTestInput, test_input_id).inputs = {"changed": True}
+        elif guard_change == "actor":
+            from models.dify_builder import DifyBuilderSession
+
+            session.get(DifyBuilderSession, session_id).owner_account_id = str(uuid4())
+        elif guard_change == "target":
+            snapshot = session.get(AgentConfigSnapshot, snapshot_id)
+            soul = snapshot.config_snapshot_dict
+            soul["model"]["model"] = "changed-model"
+            snapshot.config_snapshot = AgentSoulConfig.model_validate(soul)
+    if guard_change not in {"none", "canvas"}:
+        with pytest.raises(BuilderExecutionPolicyError):
+            store.read_checkpoint(ref=ref, checkpoint=saved)
+        with factory() as session:
+            assert (
+                session.scalar(select(NativeEffectAttempt).where(NativeEffectAttempt.request_id == ref.request_id))
+                is None
+            )
+        return
     selected = store.read_checkpoint(ref=ref, checkpoint=saved)
     protected = store.load_agent_association(ref=ref, parent_node=parent, wait=selected.agent_associations[0])
     assert protected.association.home_snapshot_id is None
@@ -653,3 +689,31 @@ def test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read(assoc
         session.get(AgentWorkspaceBinding, stored.binding_id).base_home_snapshot_id = c.workspace.home_snapshot_id
     with pytest.raises(BuilderExecutionPolicyError, match="native_agent_pin_mismatch"):
         store.read_checkpoint(ref=ref, checkpoint=saved)
+
+
+@pytest.mark.parametrize("association_case", ["legacy_confirmed", "isolated"], indirect=True)
+def test_real_unmarked_profiles_keep_raw_revision_and_immutable_private_scope(association_case):
+    from models.dify_builder_native_tests import NativeEffectAttempt, NativeEffectGrant
+
+    c = association_case
+    assert c.store.load_context(ref=c.ref).ref == c.ref
+    with c.factory.begin() as session:
+        request = session.get(DifyBuilderExecutionRequest, c.ref.request_id)
+        original_context, original_digest = json.loads(json.dumps(request.context)), request.context_digest
+        assert "revision_basis" not in original_context
+        workflow = session.get(Workflow, request.workflow_id)
+        graph = json.loads(workflow.graph)
+        graph["viewport"] = {"x": 28, "y": 13, "zoom": 1}
+        workflow.graph = json.dumps(graph, separators=(",", ":"))
+    with pytest.raises(BuilderExecutionPolicyError, match="native_revision_drift"):
+        c.loader.load(ref=c.ref)
+    with pytest.raises(BuilderExecutionPolicyError, match="native_revision_drift"):
+        c.store.load_context(ref=c.ref)
+    with c.factory() as session:
+        request = session.get(DifyBuilderExecutionRequest, c.ref.request_id)
+        assert (request.context, request.context_digest) == (original_context, original_digest)
+        assert (
+            session.scalar(select(NativeEffectAttempt).where(NativeEffectAttempt.request_id == c.ref.request_id))
+            is None
+        )
+        assert session.scalar(select(NativeEffectGrant).where(NativeEffectGrant.request_id == c.ref.request_id)) is None

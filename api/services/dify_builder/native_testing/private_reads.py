@@ -12,7 +12,7 @@ from models.workflow import Workflow
 from services.dify_builder.execution_contracts import BuilderExecutionPolicyError, canonical_digest
 from services.dify_builder.execution_policy_service import check_execution_permission, load_execution_owners
 from services.dify_builder.native_testing.contracts import NativeTestContextRef
-from services.dify_builder.native_testing.repository import OwnedNativeTestLoader, native_workflow_revision
+from services.dify_builder.native_testing.repository import OwnedNativeTestLoader, admitted_workflow_revision
 
 
 @dataclass(frozen=True)
@@ -31,6 +31,7 @@ class PrivateReadOwner:
     cancelled: bool
     active: bool
     request_state: str
+    revision_context: dict | None = None
 
 
 def validate_invocation_workflow(session, *, tenant_id: str, app_id: str, workflow_id: str) -> Workflow:
@@ -120,13 +121,15 @@ def validate_private_read(loader: OwnedNativeTestLoader, ref: NativeTestContextR
             parent_invocation_id=state.parent_invocation_id,
             context_object_id=state.context_object_id,
             generation=state.generation,
-            graph_revision=native_workflow_revision(workflow),
-            root_revision_matches=native_workflow_revision(root.workflow) == request.context.get("execution_revision"),
+            graph_revision=admitted_workflow_revision(workflow, request.context),
+            root_revision_matches=admitted_workflow_revision(root.workflow, request.context)
+            == request.context.get("execution_revision"),
             input_revision=canonical_digest(root.test_input.inputs) if state.parent_invocation_id is None else None,
             expires_at=scope.expires_at,
             cancelled=scope.cancelled,
             active=invocation.active,
             request_state=request.state,
+            revision_context=request.context if request.context.get("revision_basis") is not None else None,
         )
         root_app_id = request.app_id
     for app_id in dict.fromkeys((root_app_id, owned.app_id)):

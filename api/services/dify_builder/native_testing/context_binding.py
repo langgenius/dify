@@ -18,7 +18,7 @@ from models.workflow import Workflow
 from services.dify_builder.execution_contracts import canonical_digest
 from services.dify_builder.execution_policy_service import check_execution_permission, load_execution_owners
 from services.dify_builder.native_testing.contracts import ID, Counter, FrozenDTO, JsonValue, NativeTestContextRef
-from services.dify_builder.native_testing.repository import native_workflow_revision
+from services.dify_builder.native_testing.repository import admitted_workflow_revision, native_workflow_revision
 from services.dify_builder.native_testing.runtime_contracts import NativeStatePort, ResolvedNativeTestContext
 
 
@@ -111,6 +111,7 @@ class NativeAdmissionCompiler:
         invocation_id: str,
         native_run_id: str,
         profile: NativeRuntimeProfile,
+        revision_basis: Literal["confirmed-canvas-v1"] | None = None,
     ) -> NativeAdmissionCompilation:
         if type(expected_version) is not int or expected_version < 1 or mode not in ("native", "mock"):
             raise NativeContextUnavailable("native_admission_invalid")
@@ -133,7 +134,18 @@ class NativeAdmissionCompiler:
             app_id, workflow_id = owner.app.id, owner.workflow.id
             graph = json.loads(owner.workflow.graph)
             inputs = json.loads(json.dumps(owner.test_input.inputs))
-            revision = native_workflow_revision(owner.workflow)
+            revision = (
+                admitted_workflow_revision(
+                    owner.workflow,
+                    {
+                        "revision_basis": revision_basis,
+                        "profile": profile.model_dump(mode="json"),
+                        "workflow_id": workflow_id,
+                    },
+                )
+                if revision_basis is not None
+                else native_workflow_revision(owner.workflow)
+            )
             schema_hash = owner.test_input.start_schema_hash
         check_execution_permission(actor, app_id, self._sessions)
         manifest = self._resources(
@@ -162,6 +174,8 @@ class NativeAdmissionCompiler:
             "profile": profile.model_dump(mode="json"),
             "resource_manifest_digest": canonical_digest(list(manifest)),
         }
+        if revision_basis is not None:
+            request_context["revision_basis"] = revision_basis
         ref = NativeTestContextRef(
             request_id=request_id,
             invocation_id=invocation_id,
@@ -231,7 +245,12 @@ class NativeAdmissionCompiler:
             owner.session is None
             or owner.test_input is None
             or owner.session.version != compilation.expected_version
-            or native_workflow_revision(owner.workflow) != context.graph_revision
+            or (
+                admitted_workflow_revision(owner.workflow, compilation.request_context)
+                if compilation.request_context.get("revision_basis") is not None
+                else native_workflow_revision(owner.workflow)
+            )
+            != context.graph_revision
             or canonical_digest(owner.test_input.inputs) != context.input_revision
             or owner.test_input.start_schema_hash != compilation.start_schema_hash
         ):

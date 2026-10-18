@@ -11,6 +11,10 @@ from datetime import datetime, timedelta
 from re import fullmatch
 from typing import TYPE_CHECKING, Literal, Protocol, Self, cast
 
+from pydantic import StrictBool, model_validator
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from core.dify_builder.models import Actor
 from models.dify_builder import DifyBuilderExecutionRequest
 from models.dify_builder_native_tests import (
@@ -24,7 +28,6 @@ from models.dify_builder_native_tests import (
     NativeTestInvocation,
     NativeTestScope,
 )
-from pydantic import StrictBool, model_validator
 from services.dify_builder.execution_contracts import BuilderExecutionPolicyError, canonical_digest
 from services.dify_builder.native_testing.contracts import (
     ID,
@@ -41,6 +44,7 @@ from services.dify_builder.native_testing.private_reads import validate_invocati
 from services.dify_builder.native_testing.repository import (
     OwnedNativeTest,
     OwnedNativeTestLoader,
+    admitted_workflow_revision,
     native_workflow_revision,
     utc_now,
 )
@@ -61,8 +65,6 @@ from services.dify_builder.native_testing.transitions import (
     validate_pending_fence,
     validate_pending_history,
 )
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 if TYPE_CHECKING:
     from services.dify_builder.native_testing.host_capacity import NativeHostCapacity
@@ -244,7 +246,13 @@ class NativeTestLifecycleService:
             workflow = validate_invocation_workflow(
                 session, tenant_id=owned.tenant_id, app_id=authority.app_id, workflow_id=authority.workflow_id
             )
-            if native_workflow_revision(workflow) != authority.graph_revision:
+            revision_context = getattr(authority, "revision_context", None)
+            revision = (
+                admitted_workflow_revision(workflow, revision_context)
+                if revision_context
+                else native_workflow_revision(workflow)
+            )
+            if revision != authority.graph_revision:
                 raise BuilderExecutionPolicyError("native_revision_drift")
             if (
                 not isinstance(pending_operation_ids, tuple)
@@ -832,8 +840,14 @@ class NativeTestLifecycleService:
             session, tenant_id=owned.tenant_id, app_id=context.app_id, workflow_id=context.workflow_id
         )
         inputs = session.get(DifyBuilderTestInput, owned.test_input_id)
+        revision_context = getattr(owned, "revision_context", None)
         if (
-            native_workflow_revision(workflow) != context.graph_revision
+            (
+                admitted_workflow_revision(workflow, revision_context)
+                if revision_context
+                else native_workflow_revision(workflow)
+            )
+            != context.graph_revision
             or inputs is None
             or canonical_digest(inputs.inputs) != context.input_revision
             or canonical_digest(context.inputs) != context.input_revision

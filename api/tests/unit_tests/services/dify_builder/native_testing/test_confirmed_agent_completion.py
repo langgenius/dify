@@ -35,7 +35,7 @@ from tests.builder_agent_fixtures import make_case
 
 
 @pytest.fixture
-def completed(sqlite_session_factory, monkeypatch):
+def completed(sqlite_session_factory, monkeypatch, request):
     factory = sqlite_session_factory
     with factory.begin() as sql:
         case = make_case(sql)
@@ -108,6 +108,11 @@ def completed(sqlite_session_factory, monkeypatch):
         "session_id": session.id,
         "test_input_id": saved_id,
     }
+    if getattr(request, "param", "legacy") == "confirmed":
+        from services.dify_builder.native_testing.repository import admitted_workflow_revision
+
+        request_context["revision_basis"] = "confirmed-canvas-v1"
+        request_context["execution_revision"] = admitted_workflow_revision(case.workflow, request_context)
     ref = NativeTestContextRef(
         request_id=request_id, invocation_id="root", context_digest=canonical_digest(request_context)
     )
@@ -313,6 +318,51 @@ def test_inflight_builder_command_keeps_its_session_lease(completed, monkeypatch
     monkeypatch.setattr(session_lock, "acquire", lambda _: None)
     observe(completed)
     assert completed.repo.get_run(completed.verify_id).status == "running"
+
+
+def test_actual_terminal_run_can_use_the_protected_context_native_id_without_a_column_ack(completed):
+    owner = completed
+    with owner.factory.begin() as sql:
+        sql.get(DifyBuilderExecutionRequest, owner.request_id).native_run_id = None
+    observe(owner)
+    assert owner.repo.get_run(owner.verify_id).status == "succeeded"
+    assert owner.repo.get_run(owner.verify_id).dify_run_id == owner.native_id
+    with owner.factory() as sql:
+        assert sql.get(DifyBuilderExecutionRequest, owner.request_id).native_run_id is None
+
+
+@pytest.mark.parametrize("drift", ["column_disagrees", "actual_row_missing"])
+def test_context_native_identity_never_replaces_the_actual_owned_native_run(completed, drift):
+    owner = completed
+    with owner.factory.begin() as sql:
+        request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+        request.native_run_id = str(uuid4()) if drift == "column_disagrees" else None
+        if drift == "actual_row_missing":
+            sql.delete(sql.get(WorkflowRun, owner.native_id))
+    observe(owner)
+    assert owner.repo.get_run(owner.verify_id).status == "running"
+
+
+@pytest.mark.parametrize(
+    ("completed", "change", "expected"),
+    [("confirmed", "canvas", True), ("confirmed", "task", False), ("legacy", "canvas", False)],
+    indirect=["completed"],
+)
+def test_completion_uses_the_immutable_admitted_revision_basis(completed, change, expected):
+    from models.workflow import Workflow
+
+    owner = completed
+    with owner.factory.begin() as sql:
+        workflow = sql.get(Workflow, owner.case.workflow.id)
+        graph = workflow.graph_dict
+        if change == "canvas":
+            graph["nodes"][1]["position"] = {"x": 900, "y": 42}
+            graph["viewport"] = {"x": 50, "y": 60, "zoom": 0.8}
+        else:
+            graph["nodes"][1]["data"]["agent_task"] = "An executable task change"
+        workflow.graph = json.dumps(graph)
+    observe(owner)
+    assert (owner.repo.get_run(owner.verify_id).status == "succeeded") is expected
 
 
 def test_resume_finalizes_actual_c03_before_closing_original_builder_run(completed):
