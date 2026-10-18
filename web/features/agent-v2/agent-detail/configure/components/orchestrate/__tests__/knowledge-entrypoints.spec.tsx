@@ -1,5 +1,3 @@
-import type { ComponentProps } from 'react'
-import type PromptEditor from '@/app/components/base/prompt-editor'
 import { zKnowledgeFsSpaceListResponse } from '@dify/contracts/api/console/knowledge-fs/zod.gen'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -13,23 +11,13 @@ import {
 } from '@/test/console/query-data'
 import { AgentOrchestratePanel } from '../index'
 
-// Keep the panel, KnowledgeFS dialog, prompt commands and action registration real.
-// Independent sections and Lexical selection are outside this entry-point contract.
+// Keep the panel, prompt editor, KnowledgeFS dialog, prompt commands and action registration real.
+// Independent sections are outside this entry-point contract.
 vi.mock('../model-config/field', () => ({ AgentModelField: () => null }))
 vi.mock('../skills', () => ({ AgentSkills: () => null }))
 vi.mock('../files', () => ({ AgentFiles: () => null }))
 vi.mock('../tools', () => ({ AgentTools: () => null }))
 vi.mock('../advanced', () => ({ AgentAdvancedSettings: () => null }))
-vi.mock('@/app/components/base/prompt-editor', () => ({
-  default: (props: ComponentProps<typeof PromptEditor>) => (
-    <textarea
-      aria-labelledby={props['aria-labelledby']}
-      value={props.value}
-      readOnly={!props.editable}
-      onChange={(event) => props.onChange?.(event.target.value)}
-    />
-  ),
-}))
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
   const emptyToolList = () => ({ data: [] })
@@ -154,10 +142,11 @@ describe('KnowledgeFS entry points in the real Agent configuration panel', () =>
     await confirmSpace(user)
 
     expect(
-      screen.getByRole<HTMLTextAreaElement>('textbox', { name: /prompt.label/ }).value,
-    ).toMatch(/^\[§knowledge:[0-9a-f-]+:Product manual§\] $/)
+      within(screen.getByRole('textbox', { name: /prompt.label/ })).getByText('Product manual'),
+    ).toBeInTheDocument()
     expect(screen.queryByRole('dialog', { name: /prompt.insert.label/ })).not.toBeInTheDocument()
-    expect(screen.getByText('Product manual')).toBeInTheDocument()
+    // One reference in the prompt and one binding in the knowledge section.
+    expect(screen.getAllByText('Product manual')).toHaveLength(2)
   })
 
   it('explains unavailable runtime and follows capability updates without losing bindings', async () => {

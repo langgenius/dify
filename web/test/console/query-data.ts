@@ -75,6 +75,20 @@ const getAppDslVersionQueryKey = () => {
   return appDslVersionQuery?.get?.queryKey() ?? fallbackAppDslVersionQueryKey
 }
 
+const fallbackKnowledgeFsFeaturesQueryKey = [
+  ['console', 'knowledgeFs', 'features', 'get'],
+  { type: 'query' },
+] as const
+
+// Suites that rebuild `consoleQuery.knowledgeFs` with object spreads drop the generated proxy paths.
+const getKnowledgeFsFeaturesQueryKey = () => {
+  const knowledgeFsQuery = (
+    consoleQuery as { knowledgeFs?: { features?: { get?: QueryKeyProvider } } }
+  ).knowledgeFs
+
+  return knowledgeFsQuery?.features?.get?.queryKey() ?? fallbackKnowledgeFsFeaturesQueryKey
+}
+
 const getCurrentWorkspaceQueryKey = () => {
   const currentWorkspaceQuery = (
     consoleQuery as {
@@ -147,7 +161,7 @@ export const seedKnowledgeFsFeatures = (
     agent_enabled: false,
     ...overrides,
   }
-  queryClient.setQueryData(consoleQuery.knowledgeFs.features.get.queryKey(), data)
+  queryClient.setQueryData(getKnowledgeFsFeaturesQueryKey(), data)
   return data
 }
 
@@ -197,8 +211,12 @@ export type ConsoleQueryTestOptions = {
    * keep the systemFeatures query in the pending state.
    */
   systemFeatures?: DeepPartial<GetSystemFeaturesResponse> | null
-  /** Seed the signed-in KnowledgeFS availability query; omitted leaves it unseeded. */
-  knowledgeFsFeatures?: Partial<KnowledgeFsFeaturesResponse>
+  /**
+   * Partial overrides for the signed-in KnowledgeFS availability query. When
+   * omitted, every KnowledgeFS surface is seeded as unavailable. Pass `null`
+   * to leave the query unseeded.
+   */
+  knowledgeFsFeatures?: Partial<KnowledgeFsFeaturesResponse> | null
   accountProfile?: Partial<GetAccountProfileResponse> | null
   accountProfileMeta?: Partial<UserProfileWithMeta['meta']>
   features?: DeepPartial<GetFeaturesResponse>
@@ -230,7 +248,12 @@ export const createConsoleQueryWrapper = (
     else ensureAccountProfileQuery(queryClient, { timezone: 'UTC' }, options.accountProfileMeta)
   }
   if (options.features) seedFeatures(queryClient, options.features)
-  if (options.knowledgeFsFeatures) seedKnowledgeFsFeatures(queryClient, options.knowledgeFsFeatures)
+  if (options.knowledgeFsFeatures !== null) {
+    const queryKey = getKnowledgeFsFeaturesQueryKey()
+    if (options.knowledgeFsFeatures)
+      seedKnowledgeFsFeatures(queryClient, options.knowledgeFsFeatures)
+    else if (queryClient.getQueryData(queryKey) === undefined) seedKnowledgeFsFeatures(queryClient)
+  }
   if (options.educationStatus) seedEducationStatus(queryClient, options.educationStatus)
   if (options.currentWorkspace !== null) {
     const queryKey = getCurrentWorkspaceQueryKey()

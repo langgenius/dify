@@ -164,7 +164,7 @@ const renderList = (
   const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
     queryClient,
     knowledgeFsFeatures: queryClient
-      ? undefined
+      ? null
       : {
           enabled: mockConsoleState.knowledgeFsEnabled,
         },
