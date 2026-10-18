@@ -197,6 +197,7 @@
   "newApp.foundResult": "{{count}} Kết quả",
   "newApp.foundResults": "{{count}} Kết quả",
   "newApp.import": "Nhập khẩu",
+  "newApp.name": "Tên ứng dụng",
   "newApp.nameNotEmpty": "Tên không được để trống",
   "newApp.noIdeaTip": "Không có ý tưởng? Kiểm tra các mẫu của chúng tôi",
   "newApp.noTemplateFound": "Không tìm thấy mẫu",

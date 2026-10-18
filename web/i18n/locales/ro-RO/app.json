@@ -197,6 +197,7 @@
   "newApp.foundResult": "{{count}} Rezultat",
   "newApp.foundResults": "{{count}} Rezultatele",
   "newApp.import": "Importa",
+  "newApp.name": "Numele aplicației",
   "newApp.nameNotEmpty": "Numele nu poate fi gol",
   "newApp.noIdeaTip": "Nicio idee? Consultați șabloanele noastre",
   "newApp.noTemplateFound": "Nu s-au găsit șabloane",

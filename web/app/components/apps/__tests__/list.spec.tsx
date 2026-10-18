@@ -394,9 +394,7 @@ it('opens a real blank-app form from the first empty state', async () => {
   const { user } = await setup()
   await user.click(screen.getByRole('button', { name: /app.newApp.startFromBlank/ }))
   const dialog = await screen.findByRole('dialog', { name: 'app.newApp.startFromBlank' })
-  expect(
-    within(dialog).getByRole('textbox', { name: 'app.newApp.captionName' }),
-  ).toBeInTheDocument()
+  expect(within(dialog).getByRole('textbox', { name: 'app.newApp.name' })).toBeInTheDocument()
 })
 
 it('opens DSL import with the file dropped on the app list', async () => {

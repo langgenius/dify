@@ -197,6 +197,7 @@
   "newApp.foundResult": "{{count}} 결과",
   "newApp.foundResults": "{{count}} 결과",
   "newApp.import": "가져오기",
+  "newApp.name": "앱 이름",
   "newApp.nameNotEmpty": "이름을 입력하세요",
   "newApp.noIdeaTip": "아이디어가 없으신가요? 템플릿을 확인해 보세요",
   "newApp.noTemplateFound": "템플릿을 찾을 수 없습니다.",

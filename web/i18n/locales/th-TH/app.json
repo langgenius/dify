@@ -197,6 +197,7 @@
   "newApp.foundResult": "{{count}} ผล",
   "newApp.foundResults": "{{count}} ผลลัพธ์",
   "newApp.import": "นําเข้า",
+  "newApp.name": "ชื่อแอป",
   "newApp.nameNotEmpty": "ชื่อต้องไม่ว่างเปล่า",
   "newApp.noIdeaTip": "ไม่มีความคิด? ดูเทมเพลตของเรา",
   "newApp.noTemplateFound": "ไม่พบเทมเพลต",

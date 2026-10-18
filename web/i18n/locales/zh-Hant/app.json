@@ -197,6 +197,7 @@
   "newApp.foundResult": "{{count}}結果",
   "newApp.foundResults": "{{count}}結果",
   "newApp.import": "進口",
+  "newApp.name": "應用程式名稱",
   "newApp.nameNotEmpty": "名稱不能為空",
   "newApp.noIdeaTip": "沒有想法？查看我們的範本",
   "newApp.noTemplateFound": "未找到範本",

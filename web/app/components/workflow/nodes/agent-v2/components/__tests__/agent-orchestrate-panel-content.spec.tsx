@@ -484,14 +484,26 @@ describe('Inline Agent configure workspace', () => {
 
   it('does not unlock a new build run when an older completion refresh resolves', async () => {
     const user = userEvent.setup()
+    // Advance the delayed refresh without spending the test budget on real timers.
+    const completeAndRefresh = async (index = 0) => {
+      vi.useFakeTimers()
+      try {
+        await complete(index)
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(1000)
+        })
+      } finally {
+        vi.useRealTimers()
+      }
+    }
     const refreshed = createDeferred<AgentBuildDraftResponse>()
     renderWorkspace()
     await sendBuild(user)
     await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
     await receive()
     api.loadBuildDraft.mockReturnValue(refreshed.promise)
-    await complete()
-    await waitFor(() => expect(api.loadBuildDraft).toHaveBeenCalledTimes(2), { timeout: 2000 })
+    await completeAndRefresh()
+    expect(api.loadBuildDraft).toHaveBeenCalledTimes(2)
     await sendBuild(user, 'Improve the reviewer')
     await waitFor(() => expect(ssePost).toHaveBeenCalledTimes(2))
     await act(async () => refreshed.resolve(createBuildDraft('Old completion')))
@@ -500,8 +512,8 @@ describe('Inline Agent configure workspace', () => {
     expect(promptEditor()).not.toHaveTextContent('Old completion')
     await receive(1, 'build-conversation', 'Improved reviewer')
     api.loadBuildDraft.mockResolvedValue(createBuildDraft('Improved instructions'))
-    await complete(1)
-    await waitFor(() => expect(applyButton()).toBeEnabled(), { timeout: 2000 })
+    await completeAndRefresh(1)
+    await waitFor(() => expect(applyButton()).toBeEnabled())
   })
 
   it('unlocks draft actions after the chat stream fails', async () => {
