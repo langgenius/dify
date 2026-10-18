@@ -2,6 +2,7 @@ import logging
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
 
+from sqlalchemy import update
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -338,27 +339,39 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         workflow_run = session.get(WorkflowRun, run_id)
         if workflow_run is None:
             return
-        if self._tenant_id and workflow_run.tenant_id != self._tenant_id:
+        if workflow_run.tenant_id != self._tenant_id:
             logger.warning(
                 "Skip persisting workflow stop status due to tenant mismatch, workflow_run_id=%s",
                 run_id,
             )
             return
 
-        if workflow_run.status in (
+        terminal_statuses = (
             WorkflowExecutionStatus.SUCCEEDED,
             WorkflowExecutionStatus.FAILED,
             WorkflowExecutionStatus.STOPPED,
             WorkflowExecutionStatus.PARTIAL_SUCCEEDED,
-        ):
+        )
+        if workflow_run.status in terminal_statuses:
             return
 
-        workflow_run.status = status
-        workflow_run.error = error
         finished_at = workflow_run.finished_at or naive_utc_now()
-        workflow_run.finished_at = finished_at
-        workflow_run.elapsed_time = (finished_at - workflow_run.created_at).total_seconds()
-        session.add(workflow_run)
+        # The engine may commit a terminal state after the read, so recheck it atomically when writing.
+        session.execute(
+            update(WorkflowRun)
+            .where(
+                WorkflowRun.id == run_id,
+                WorkflowRun.tenant_id == self._tenant_id,
+                WorkflowRun.status.not_in(terminal_statuses),
+            )
+            .values(
+                status=status,
+                error=error,
+                finished_at=finished_at,
+                elapsed_time=(finished_at - workflow_run.created_at).total_seconds(),
+            )
+            .execution_options(synchronize_session=False)
+        )
 
     def _handle_ping_event(self, event: QueuePingEvent, **kwargs) -> Generator[PingStreamResponse]:
         """Handle ping events."""
