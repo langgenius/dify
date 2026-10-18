@@ -3,7 +3,7 @@ import logging
 from collections.abc import Callable, Sequence
 from typing import Any
 
-from sqlalchemy import asc, desc, func, or_, select
+from sqlalchemy import and_, asc, desc, func, or_, select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -82,7 +82,9 @@ class ConversationService:
                 reference_conversation=last_conversation,
             )
             stmt = stmt.where(filter_condition)
-        query_stmt = stmt.order_by(sort_direction(getattr(Conversation, sort_field))).limit(limit)
+        query_stmt = stmt.order_by(
+            sort_direction(getattr(Conversation, sort_field)), sort_direction(Conversation.id)
+        ).limit(limit)
         conversations = session.scalars(query_stmt).all()
 
         has_more = False
@@ -110,9 +112,16 @@ class ConversationService:
     def _build_filter_condition(cls, sort_field: str, sort_direction: Callable, reference_conversation: Conversation):
         field_value = getattr(reference_conversation, sort_field)
         if sort_direction is desc:
-            return getattr(Conversation, sort_field) < field_value
+            field_condition = getattr(Conversation, sort_field) < field_value
+            id_condition = Conversation.id < reference_conversation.id
+        else:
+            field_condition = getattr(Conversation, sort_field) > field_value
+            id_condition = Conversation.id > reference_conversation.id
 
-        return getattr(Conversation, sort_field) > field_value
+        return or_(
+            field_condition,
+            and_(getattr(Conversation, sort_field) == field_value, id_condition),
+        )
 
     @classmethod
     def rename(

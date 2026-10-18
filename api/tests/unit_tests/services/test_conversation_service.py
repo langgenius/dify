@@ -464,6 +464,54 @@ def test_legacy_auto_generate_name_reports_missing_first_message(sqlite_session:
 class TestConversationServicePagination:
     """Test conversation pagination operations."""
 
+    @pytest.mark.parametrize("sort_by", ["updated_at", "-updated_at", "created_at", "-created_at"])
+    def test_pagination_includes_conversations_with_tied_timestamps(
+        self, sqlite_session: Session, sort_by: str
+    ) -> None:
+        app_model = ConversationServiceTestDataFactory.create_app()
+        user = ConversationServiceTestDataFactory.create_account()
+        timestamp = naive_utc_now()
+        conversations = [
+            ConversationServiceTestDataFactory.create_conversation(
+                conversation_id=conversation_id,
+                updated_at=timestamp,
+                created_at=timestamp,
+            )
+            for conversation_id in (
+                "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+                "cccccccc-cccc-cccc-cccc-cccccccccccc",
+            )
+        ]
+        sqlite_session.add_all(conversations)
+        sqlite_session.commit()
+
+        pages = []
+        has_more_values = []
+        last_id = None
+        while True:
+            result = ConversationService.pagination_by_last_id(
+                session=sqlite_session,
+                app_model=app_model,
+                user=user,
+                last_id=last_id,
+                limit=1,
+                invoke_from=InvokeFrom.WEB_APP,
+                sort_by=sort_by,
+            )
+            pages.extend(conversation.id for conversation in result.data)
+            has_more_values.append(result.has_more)
+            if not result.has_more:
+                break
+            assert result.data
+            last_id = result.data[-1].id
+
+        expected = sorted(conversation.id for conversation in conversations)
+        if sort_by.startswith("-"):
+            expected.reverse()
+        assert pages == expected
+        assert has_more_values == [True, True, False]
+
     def test_pagination_with_empty_include_ids(self, sqlite_session: Session):
         """
         Test that empty include_ids returns empty result.
