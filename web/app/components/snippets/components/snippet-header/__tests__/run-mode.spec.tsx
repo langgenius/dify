@@ -26,20 +26,15 @@ const renderRunMode = (text?: string, workflowRunningData?: ReturnType<typeof ba
       <EventSource />
       <RunMode text={text} />
     </EventEmitterProvider>,
-    { initialStoreState: { workflowRunningData } },
+    {
+      initialStoreState: { workflowRunningData },
+      // Start and stop come from the snippet hooks through the hooks store.
+      hooksStoreProps: {
+        handleWorkflowStartRunInWorkflow: workflowHookMocks.handleWorkflowStartRunInWorkflow,
+        handleStopRun: workflowHookMocks.handleStopRun,
+      },
+    },
   )
-
-vi.mock('@/app/components/workflow/hooks/use-workflow-run', () => ({
-  useWorkflowRun: () => ({
-    handleStopRun: workflowHookMocks.handleStopRun,
-  }),
-}))
-
-vi.mock('@/app/components/workflow/hooks/use-workflow-start-run', () => ({
-  useWorkflowStartRun: () => ({
-    handleWorkflowStartRunInWorkflow: workflowHookMocks.handleWorkflowStartRunInWorkflow,
-  }),
-}))
 
 describe('RunMode', () => {
   beforeEach(() => {
