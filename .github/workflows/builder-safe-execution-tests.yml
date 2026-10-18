@@ -420,6 +420,7 @@ jobs:
            'api/tests/unit_tests/services/test_app_generate_service_in_process.py'] if path not in FILES]
           FILES += [path for path in ['api/tests/unit_tests/services/dify_builder/test_agent_confirmed_workspace.py',
            'api/tests/unit_tests/services/dify_builder/test_agent_operation_owner.py'] if path not in FILES]
+          FILES += [path for path in ['api/tests/unit_tests/services/dify_builder/native_testing/test_confirmed_agent_completion.py'] if path not in FILES]
           SELECTED_GUARDS = [
               "api/tests/unit_tests/controllers/console/app/test_workflow.py::test_sync_draft_workflow_rejects_empty_graph_without_confirmation",
           ]
@@ -682,6 +683,18 @@ jobs:
                                                                                  'test_reasoning_assessment_cannot_grant_or_hide_opaque_tool_scope': 1,
                                                                                  'test_result_upload_cannot_create_or_replace_a_physical_result': 1}}.items():
               a4_expected.setdefault(module, {}).update(functions)
+          # Confirmed parent completion: collected exact inventory, including concurrent observers.
+          for module, functions in {'tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion': {'test_actual_native_failure_closes_old_run_without_diagnosis_or_new_execution': 1,
+                                                                                                     'test_concurrent_terminal_observers_commit_one_result_on_the_same_attempt': 1,
+                                                                                                     'test_inflight_builder_command_keeps_its_session_lease': 1,
+                                                                                                     'test_resume_finalizes_actual_c03_before_closing_original_builder_run': 1,
+                                                                                                     'test_terminal_projection_refuses_stale_or_unsettled_original_attempt': 7,
+                                                                                                     'test_terminal_public_read_closes_same_builder_run_and_review_without_dispatch': 1,
+                                                                                                     'test_user_session_cas_wins_during_terminal_result_read': 1}}.items():
+              a4_expected.setdefault(module, {}).update(functions)
+          # Confirmed blank Home: collected required-field, isolated-owner and real SQL restore cases.
+          for module, functions in {'tests.unit_tests.services.dify_builder.test_agent_confirmed_workspace': {'test_current_normal_workspace_requires_complete_sql_owner_chain': 10}}.items():
+              a4_expected.setdefault(module, {}).update(functions)
           for module, expected in {**a3_expected, **a4_expected}.items():
               actual = {}
               for classname, name in identities:
@@ -895,6 +908,9 @@ jobs:
                                                                                                                 'test_real_post_commit_ack_loss_reuses_private_object_without_rewrite': 1,
                                                                                                                 'test_real_queued_agent_checkpoint_is_readable_before_single_dispatch_claim': 1,
                                                                                                                 'test_real_second_node_occurrence_cannot_share_temporary_single_workspace': 1}}.items():
+                  EXPECTED.setdefault(module, {}).update(functions)
+              # Confirmed blank Home: collected required-field, isolated-owner and real SQL restore cases.
+              for module, functions in {'tests.test_containers_integration_tests.core.workflow.test_builder_native_agent_associations': {'test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read': 1}}.items():
                   EXPECTED.setdefault(module, {}).update(functions)
               REPORT = "builder-native-continuation.xml"
               code = pytest.main(['api/tests/test_containers_integration_tests/core/workflow/test_builder_agent_operations.py', 'api/tests/test_containers_integration_tests/core/workflow/test_builder_agent_create_recovery.py', 'api/tests/test_containers_integration_tests/core/workflow/test_builder_agent_continuation.py', 'api/tests/test_containers_integration_tests/core/workflow/test_builder_native_continuation.py', 'api/tests/test_containers_integration_tests/core/workflow/test_builder_native_pause.py', 'api/tests/test_containers_integration_tests/core/workflow/test_builder_native_http_binding.py', 'api/tests/test_containers_integration_tests/core/workflow/test_builder_native_approval_scope.py', 'api/tests/test_containers_integration_tests/core/workflow/test_builder_native_dispatch_fence.py', 'api/tests/test_containers_integration_tests/core/workflow/test_builder_native_host_capacity.py', 'api/tests/test_containers_integration_tests/core/workflow/test_builder_native_stop_sealing.py', 'api/tests/test_containers_integration_tests/core/workflow/test_builder_native_claimed_resume_checkpoint.py', 'api/tests/test_containers_integration_tests/core/workflow/test_builder_native_observation_history.py', 'api/tests/test_containers_integration_tests/core/workflow/test_builder_native_agent_associations.py', 'api/tests/test_containers_integration_tests/core/workflow/test_builder_native_runtime.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-native-continuation.xml', '-p', 'no:benchmark', '--no-cov', '--timeout=360', '--timeout-method=thread'])
@@ -1600,6 +1616,11 @@ jobs:
                                                                                  'test_strict_route_requires_complete_bounded_selection': 5,
                                                                                  'test_strict_route_requires_installed_lineage_even_without_markers': 1,
                                                                                  'test_transport_selection_refuses_noncanonical_or_duplicate_key_json': 4}}.items():
+              new_expected.setdefault(module, {}).update(functions)
+          # Confirmed blank Home: collected required-field, isolated-owner and real SQL restore cases.
+          for module, functions in {'tests.unit_tests.services.dify_builder.native_testing.test_agent_associations': {'test_blank_home_never_weakens_required_fields_or_isolated_pins': 4,
+                                                                                             'test_normal_blank_home_association_roundtrip_retains_explicit_none': 1,
+                                                                                             'test_nullable_normal_home_cannot_enter_isolated_workspace_owner': 2}}.items():
               new_expected.setdefault(module, {}).update(functions)
           new_actual = {module: Counter() for module in new_expected}
           expected = {path.removeprefix("api/").removesuffix(".py").replace("/", ".") for path in files}

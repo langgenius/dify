@@ -22,8 +22,22 @@ from services.dify_builder.native_testing.agent_contracts import AgentTestWorksp
 from services.dify_builder.native_testing.contracts import NativeTestContextRef
 
 
-@pytest.mark.parametrize("drift", [None, "profile", "run_owner", "snapshot", "backend_workspace"])
-def test_current_normal_workspace_requires_complete_sql_owner_chain(monkeypatch, drift):
+@pytest.mark.parametrize(
+    ("home_id", "drift"),
+    [
+        ("home", None),
+        ("home", "profile"),
+        ("home", "run_owner"),
+        ("home", "snapshot"),
+        ("home", "backend_workspace"),
+        (None, None),
+        (None, "binding_home"),
+        (None, "snapshot_home"),
+        ("home", "home_status"),
+        ("home", "home_tenant"),
+    ],
+)
+def test_current_normal_workspace_requires_complete_sql_owner_chain(monkeypatch, home_id, drift):
     from services.agent import access_service
     from services.agent.workspace_service import AgentWorkspaceService
     from services.dify_builder.native_testing import agent_confirmed_workspace as module
@@ -45,7 +59,7 @@ def test_current_normal_workspace_requires_complete_sql_owner_chain(monkeypatch,
         backend_binding_ref="ordinary-binding",
         backend_workspace_ref="ordinary-workspace",
         pinned_snapshot_id="snapshot",
-        home_snapshot_id="home",
+        home_snapshot_id=home_id,
         workspace_generation=0,
     )
     context = SimpleNamespace(
@@ -77,18 +91,18 @@ def test_current_normal_workspace_requires_complete_sql_owner_chain(monkeypatch,
             id="snapshot",
             tenant_id="tenant",
             agent_id="agent",
-            home_snapshot_id="home",
+            home_snapshot_id=home_id,
             config_snapshot_dict=AgentSoulConfig().model_dump(mode="json"),
         ),
         AgentHomeSnapshot: SimpleNamespace(
-            id="home", tenant_id="tenant", agent_id="agent", status=AgentWorkingResourceStatus.ACTIVE
+            id=home_id, tenant_id="tenant", agent_id="agent", status=AgentWorkingResourceStatus.ACTIVE
         ),
         Agent: SimpleNamespace(tenant_id="tenant", active_config_snapshot_id="snapshot"),
     }
     binding = SimpleNamespace(
         workspace_id="workspace",
         agent_id="agent",
-        base_home_snapshot_id="home",
+        base_home_snapshot_id=home_id,
         agent_config_version_id="snapshot",
         agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
         backend_binding_ref="ordinary-binding",
@@ -109,6 +123,14 @@ def test_current_normal_workspace_requires_complete_sql_owner_chain(monkeypatch,
         rows[Agent].active_config_snapshot_id = "new-snapshot"
     elif drift == "backend_workspace":
         rows[AgentWorkspace].backend_workspace_ref = "foreign-workspace"
+    elif drift == "binding_home":
+        binding.base_home_snapshot_id = "foreign-home"
+    elif drift == "snapshot_home":
+        rows[AgentConfigSnapshot].home_snapshot_id = "foreign-home"
+    elif drift == "home_status":
+        rows[AgentHomeSnapshot].status = AgentWorkingResourceStatus.RETIRED
+    elif drift == "home_tenant":
+        rows[AgentHomeSnapshot].tenant_id = "foreign"
     kwargs = {
         "session": session,
         "owned": object(),

@@ -7,7 +7,7 @@ never admits another parent or child execution.
 
 import logging
 from types import SimpleNamespace
-from typing import Literal
+from typing import Literal, cast
 
 from dify_agent.protocol.native_continuation import RedisStreamID
 from dify_agent.protocol.native_testing import AgentNativeTestRef, ContinuationClaim, ContinueRunRequest
@@ -187,6 +187,8 @@ class ConfirmedAgentCommands:
         self._request(actor=actor, session_id=session_id, request_id=request_id)
         receipt = self.api.get(actor=actor, session_id=session_id, request_id=request_id)
         ref = self._root_ref(actor=actor, request_id=request_id)
+        if receipt.status == "terminal" and receipt.outcome in {"succeeded", "failed"}:
+            self._complete_builder(ref=ref)
         if receipt.status == "waiting":
             self.continuation.read_parent_pause(ref=ref)
         # A queued outbox is not proof that the ordinary resume worker ran.
@@ -224,6 +226,17 @@ class ConfirmedAgentCommands:
                     logger.warning("Confirmed Agent acknowledgement remains unknown")
                 return receipt.model_copy(update={"status": "terminal", "outcome": "unknown"})
         return receipt
+
+    def _complete_builder(self, *, ref):
+        from services.dify_builder.native_testing.confirmed_agent_completion import reconcile_builder_run
+
+        try:
+            reconcile_builder_run(sessions=self.loader.session_factory, actor=self.actor, ref=ref)
+        except Exception:
+            # Native completion stays true even when the Builder CAS loses or
+            # the original worker has not committed its pending card yet.
+            # An authenticated status reconnect retries only this projection.
+            logger.warning("Confirmed Agent Builder completion remains unprojected")
 
     def _waiting_event(self, *, run_id):
         from dify_agent.protocol.schemas import RunEventsResponse, RunWaitingEvent
@@ -719,7 +732,8 @@ class ConfirmedAgentCommands:
                 },
             )
         elif status in {"succeeded", "failed", "partial-succeeded", "stopped"}:
-            outcome = NativeWorkflowOutcome(status="completed", **{**values, "native_status": status})
+            native_status = cast(Literal["succeeded", "failed", "partial-succeeded", "stopped"], status)
+            outcome = NativeWorkflowOutcome(status="completed", **{**values, "native_status": native_status})
         else:
             outcome = NativeWorkflowOutcome(status="unknown", **{**values, "reason_code": "native_resume_unknown"})
         with self.loader.locked(ref=ref, settlement=True) as (session, owned, scope):
@@ -741,6 +755,8 @@ class ConfirmedAgentCommands:
                 generation=generation,
                 outcome=outcome,
             )
+        if outcome.status == "completed":
+            self._complete_builder(ref=ref)
 
     def snapshots(self, *, actor, session_id):
         self.api._actor(actor)

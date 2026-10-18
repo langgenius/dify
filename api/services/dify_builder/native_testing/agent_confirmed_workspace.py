@@ -46,6 +46,8 @@ def current_confirmed_workspace(*, session, owned, context, allocation, definiti
         raise BuilderExecutionPolicyError("native_workspace_owner_mismatch")
     scope = WorkflowAgentSessionScope(**allocation["scope"])
     workspace_ref = AgentTestWorkspaceRef.model_validate(allocation["workspace"])
+    if workspace_ref.workspace_generation != 0:
+        raise BuilderExecutionPolicyError("native_workspace_owner_mismatch")
     if (
         scope.tenant_id,
         scope.app_id,
@@ -95,10 +97,17 @@ def current_confirmed_workspace(*, session, owned, context, allocation, definiti
     )
     workspace = session.get(AgentWorkspace, workspace_ref.workspace_id)
     snapshot = session.get(AgentConfigSnapshot, workspace_ref.pinned_snapshot_id)
-    home = session.get(AgentHomeSnapshot, workspace_ref.home_snapshot_id)
+    home_id = workspace_ref.home_snapshot_id
+    home = session.get(AgentHomeSnapshot, home_id) if home_id is not None else None
     agent = session.get(Agent, scope.agent_id)
-    if binding is None or workspace is None or snapshot is None or home is None or agent is None:
+    if binding is None or workspace is None or snapshot is None or agent is None:
         raise BuilderExecutionPolicyError("native_workspace_owner_mismatch")
+    if home_id is not None and (
+        home is None
+        or (home.tenant_id, home.agent_id, home.status)
+        != (context.tenant_id, scope.agent_id, AgentWorkingResourceStatus.ACTIVE)
+    ):
+        raise BuilderExecutionPolicyError("native_agent_pin_mismatch")
     if (
         binding.workspace_id,
         binding.agent_id,
@@ -110,25 +119,19 @@ def current_confirmed_workspace(*, session, owned, context, allocation, definiti
         snapshot.tenant_id,
         snapshot.agent_id,
         snapshot.home_snapshot_id,
-        home.tenant_id,
-        home.agent_id,
-        home.status,
         agent.tenant_id,
         agent.active_config_snapshot_id,
     ) != (
         workspace_ref.workspace_id,
         scope.agent_id,
-        home.id,
+        home_id,
         snapshot.id,
         AgentConfigVersionKind.SNAPSHOT,
         workspace_ref.backend_binding_ref,
         workspace_ref.backend_workspace_ref,
         context.tenant_id,
         scope.agent_id,
-        home.id,
-        context.tenant_id,
-        scope.agent_id,
-        AgentWorkingResourceStatus.ACTIVE,
+        home_id,
         context.tenant_id,
         snapshot.id,
     ):
@@ -192,7 +195,7 @@ def prepare_confirmed_agent_request(
     with loader.session_factory() as session:
         binding = session.get(AgentWorkspaceBinding, stored_session.binding_id)
         workspace = session.get(AgentWorkspace, stored_session.workspace_id)
-        if binding is None or workspace is None or binding.base_home_snapshot_id is None:
+        if binding is None or workspace is None:
             raise BuilderExecutionPolicyError("native_pinned_home_unavailable")
         workspace_ref = AgentTestWorkspaceRef(
             binding_id=binding.id,

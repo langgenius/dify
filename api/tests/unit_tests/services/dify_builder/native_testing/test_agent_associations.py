@@ -10,7 +10,7 @@ import importlib.util
 import pytest
 from pydantic import ValidationError
 
-from services.dify_builder.execution_contracts import canonical_digest
+from services.dify_builder.execution_contracts import BuilderExecutionPolicyError, canonical_digest
 from services.dify_builder.native_testing.contracts import NativeTestContextRef
 from services.dify_builder.native_testing.runtime_contracts import NativeCheckpointPayload, NodeJournalState
 
@@ -215,9 +215,7 @@ def test_agent_contract_imports_are_pure_without_database_flask_or_backend_sdk()
     }
 
 
-@pytest.mark.parametrize(
-    "dependency", ["flask", "sqlalchemy", "dify_agent.protocol.schemas"]
-)
+@pytest.mark.parametrize("dependency", ["flask", "sqlalchemy", "dify_agent.protocol.schemas"])
 @pytest.mark.parametrize("placement", ["direct", "runtime-branch", "type-only-else"])
 def test_contract_purity_guard_detects_runtime_dependencies(dependency, placement):
     statement = f"import {dependency}"
@@ -284,18 +282,12 @@ def state_case(monkeypatch):
             if entity is NativeTestInvocation:
                 return self.owner.invocation
             if entity in (NativeContinuation, NativePayloadObject):
-                params = {
-                    key.rsplit("_", 1)[0]: value
-                    for key, value in query.compile().params.items()
-                }
+                params = {key.rsplit("_", 1)[0]: value for key, value in query.compile().params.items()}
                 return next(
                     (
                         row
                         for row in self.owner.rows
-                        if isinstance(row, entity)
-                        and all(
-                            getattr(row, key) == value for key, value in params.items()
-                        )
+                        if isinstance(row, entity) and all(getattr(row, key) == value for key, value in params.items())
                     ),
                     None,
                 )
@@ -446,10 +438,11 @@ def state_case(monkeypatch):
             status=AgentWorkingResourceStatus.ACTIVE,
         ),
     }
+    from shellctl.shared.schemas import NativeScopeLimits, NativeScopeSpec
+
     from services.dify_builder.native_testing.agent_workspace import (
         AgentWorkspaceAllocation,
     )
-    from shellctl.shared.schemas import NativeScopeLimits, NativeScopeSpec
 
     allocation = AgentWorkspaceAllocation(
         tenant_id="tenant",
@@ -493,9 +486,7 @@ def state_case(monkeypatch):
         "nodes": [
             {
                 "id": "agent-node",
-                "data": native_node_data(
-                    agent_id="agent", snapshot_id="snapshot", node_job=job
-                ),
+                "data": native_node_data(agent_id="agent", snapshot_id="snapshot", node_job=job),
             }
         ]
     }
@@ -573,13 +564,9 @@ def state_case(monkeypatch):
     monkeypatch.setattr(
         module,
         "validate_invocation_workflow",
-        lambda *_args, **_kwargs: SimpleNamespace(
-            graph=json.dumps(graph), version="published"
-        ),
+        lambda *_args, **_kwargs: SimpleNamespace(graph=json.dumps(graph), version="published"),
     )
-    monkeypatch.setattr(
-        module, "native_workflow_revision", lambda _workflow: "revision"
-    )
+    monkeypatch.setattr(module, "native_workflow_revision", lambda _workflow: "revision")
     store = module.NativeExecutionStateStore(loader)
     receipt = store.prepare_object(
         ref=loader.ref,
@@ -590,9 +577,7 @@ def state_case(monkeypatch):
     )
     loader.rows.append(NativePayloadObject(**vars(receipt)))
     loader.state.context_object_id = receipt.id
-    input_ref = store.store_node_inputs(
-        ref=loader.ref, generation=0, native_execution_id=EXECUTION, inputs=INPUTS
-    )
+    input_ref = store.store_node_inputs(ref=loader.ref, generation=0, native_execution_id=EXECUTION, inputs=INPUTS)
     parent = contracts().AgentParentNodeRef(
         ref=loader.ref,
         execution_id=EXECUTION,
@@ -653,12 +638,8 @@ def backend_checkpoint(c, association, generation=7):
     }
 
 
-@pytest.mark.parametrize(
-    "fault", ["account", "tenant", "membership", "agent-pin", "published-binding"]
-)
-def test_actual_agent_access_and_publication_guards_precede_private_write(
-    state_case, fault
-):
+@pytest.mark.parametrize("fault", ["account", "tenant", "membership", "agent-pin", "published-binding"])
+def test_actual_agent_access_and_publication_guards_precede_private_write(state_case, fault):
     from models.account import (
         Account,
         AccountStatus,
@@ -680,11 +661,7 @@ def test_actual_agent_access_and_publication_guards_precede_private_write(
         c.loader.resources[Agent].active_config_snapshot_id = "foreign"
     else:
         c.loader.resources[WorkflowAgentNodeBinding] = None
-    reason = (
-        "agent_access_denied"
-        if fault in ("account", "tenant", "membership")
-        else "native_agent_pin_mismatch"
-    )
+    reason = "agent_access_denied" if fault in ("account", "tenant", "membership") else "native_agent_pin_mismatch"
     before = c.loader.rows.copy()
     with pytest.raises(BuilderExecutionPolicyError, match=reason):
         bound_state(c)
@@ -1126,5 +1103,63 @@ def test_actual_allocation_owner_parser_rejects_malformed_scope_and_unknown_proo
     with pytest.raises(BuilderExecutionPolicyError):
         c.store.store_agent_config(
             ref=c.ref, parent_node=c.parent, expected_invocation_generation=0, config={"private": True}
+        )
+    assert "save" not in c.events
+
+
+def test_normal_blank_home_association_roundtrip_retains_explicit_none():
+    c = contracts()
+    raw = association_data()
+    raw["home_snapshot_id"] = None
+    raw["workspace"] = {
+        **workspace_data(),
+        "home_snapshot_id": None,
+        "workspace_generation": 0,
+        "backend_binding_ref": "ordinary-binding",
+        "backend_workspace_ref": "ordinary-workspace",
+    }
+    selected = c.AgentNodeAssociation.model_validate(raw)
+    assert selected.home_snapshot_id is None
+    assert selected.workspace.home_snapshot_id is None
+    assert c.AgentNodeAssociation.model_validate_json(selected.model_dump_json()) == selected
+
+
+@pytest.mark.parametrize("fault", ["isolated", "missing_home", "missing_workspace_home", "mismatched_home"])
+def test_blank_home_never_weakens_required_fields_or_isolated_pins(fault):
+    c = contracts()
+    raw = association_data()
+    raw["home_snapshot_id"] = None
+    raw["workspace"] = {**workspace_data(), "home_snapshot_id": None, "workspace_generation": 0}
+    if fault == "isolated":
+        raw["workspace"]["workspace_generation"] = 1
+    elif fault == "missing_home":
+        del raw["home_snapshot_id"]
+    elif fault == "missing_workspace_home":
+        del raw["workspace"]["home_snapshot_id"]
+    else:
+        raw["workspace"]["home_snapshot_id"] = "home"
+    with pytest.raises(ValidationError):
+        c.AgentNodeAssociation.model_validate(raw)
+
+
+@pytest.mark.parametrize("physical_generation", [0, 1])
+def test_nullable_normal_home_cannot_enter_isolated_workspace_owner(state_case, physical_generation):
+    c = state_case
+    c_contracts = contracts()
+    normal = c_contracts.AgentTestWorkspaceRef.model_validate(
+        {
+            **workspace_data(),
+            "home_snapshot_id": None,
+            "workspace_generation": 0,
+        }
+    )
+    assert normal.home_snapshot_id is None
+    allocation = dict(c.loader.invocation.bindings["_agent_workspace_v1"])
+    allocation["home_snapshot_id"] = None
+    allocation["native_scope"] = {**allocation["native_scope"], "generation": physical_generation}
+    c.loader.invocation.bindings = {"_agent_workspace_v1": allocation}
+    with pytest.raises(BuilderExecutionPolicyError):
+        c.store.store_agent_config(
+            ref=c.ref, parent_node=c.parent, expected_invocation_generation=0, config={"inert": True}
         )
     assert "save" not in c.events

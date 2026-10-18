@@ -470,3 +470,186 @@ def test_real_queued_agent_checkpoint_is_readable_before_single_dispatch_claim(a
     assert prepared.payload == selected
     assert lifecycle.claim_dispatch(ref=c.ref, generation=resumed.generation, dispatch_id=resumed.dispatch_id)
     assert not lifecycle.claim_dispatch(ref=c.ref, generation=resumed.generation, dispatch_id=resumed.dispatch_id)
+
+
+def test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read(association_case, native_owner, monkeypatch):
+    """Actual normal SQL/crypto owners; only backend allocation is a no-I/O fixture."""
+    from core.workflow.nodes.agent_v2.session_store import WorkflowAgentSessionScope, WorkflowAgentWorkspaceStore
+    from models.dify_builder import DifyBuilderSession
+    from models.dify_builder_native_tests import NativeEffectAttempt, NativeInvocationState, NativeTestScope
+    from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
+    from services.dify_builder.native_testing.agent_confirmed_workspace import (
+        build_confirmed_agent_preparation,
+        prepare_confirmed_agent_request,
+    )
+    from services.dify_builder.native_testing.agent_operations import admit_confirmed_agent_execution
+
+    c = association_case
+    factory, actor, _app, _workflow, session_id, test_input_id = native_owner
+    snapshot_id = c.workspace.pinned_snapshot_id
+    with factory.begin() as session:
+        snapshot = session.get(AgentConfigSnapshot, snapshot_id)
+        snapshot.home_snapshot_id = None
+        agent_id = snapshot.agent_id
+        version = session.get(DifyBuilderSession, session_id).version
+    run_id, execution_id = str(uuid4()), str(uuid4())
+    context = admit_confirmed_agent_execution(
+        actor=actor,
+        session_id=session_id,
+        test_input_id=test_input_id,
+        expected_version=version,
+        native_run_id=run_id,
+        idempotency_key="normal-blank-home",
+        limits={"calls": 4, "dispatches": 4, "cost_units": 4},
+    )
+    node_id = context.graph["nodes"][-1]["id"]
+    with factory.begin() as session:
+        node_binding = session.scalar(
+            select(WorkflowAgentNodeBinding).where(
+                WorkflowAgentNodeBinding.workflow_id == context.workflow_id,
+                WorkflowAgentNodeBinding.node_id == node_id,
+            )
+        )
+        workflow_binding_id = node_binding.id
+        session.add(
+            WorkflowRun(
+                id=run_id,
+                tenant_id=actor.tenant_id,
+                app_id=context.app_id,
+                workflow_id=context.workflow_id,
+                type="workflow",
+                triggered_from="debugging",
+                version="draft",
+                graph=json.dumps(context.graph),
+                inputs=json.dumps(context.inputs),
+                status="running",
+                created_by_role="account",
+                created_by=actor.account_id,
+            )
+        )
+        session.add(
+            WorkflowNodeExecutionModel(
+                id=execution_id,
+                tenant_id=actor.tenant_id,
+                app_id=context.app_id,
+                workflow_id=context.workflow_id,
+                workflow_run_id=run_id,
+                node_id=node_id,
+                node_type="agent",
+                node_execution_id=execution_id,
+                triggered_from="workflow-run",
+                index=1,
+                title="blank-home fixture",
+                status="running",
+                process_data=json.dumps({"workflow_agent_binding_id": workflow_binding_id}),
+                created_by_role="account",
+                created_by=actor.account_id,
+            )
+        )
+    allocations = []
+
+    @contextmanager
+    def normal_backend():
+        def create(request):
+            assert request.home_snapshot_ref is None
+            assert request.native_test_scope is None
+            allocations.append(request.binding_id)
+            return CreateExecutionBindingResponse(
+                binding_ref="ordinary:" + request.binding_id, workspace_ref="ordinary:" + request.workspace_id
+            )
+
+        yield SimpleNamespace(create_execution_binding_sync=create)
+
+    monkeypatch.setattr(AgentWorkspaceService, "_client", normal_backend)
+    scope = WorkflowAgentSessionScope(
+        tenant_id=actor.tenant_id,
+        app_id=context.app_id,
+        workflow_id=context.workflow_id,
+        workflow_run_id=run_id,
+        node_id=node_id,
+        node_execution_id=execution_id,
+        workflow_agent_binding_id=workflow_binding_id,
+        agent_id=agent_id,
+        agent_config_snapshot_id=snapshot_id,
+    )
+    stored = WorkflowAgentWorkspaceStore().load_or_create_node_execution_session(scope, home_snapshot_id=None)
+    service = build_confirmed_agent_preparation(actor=actor, backend=SimpleNamespace())
+    store, ref = service.state_store, context.ref
+    inputs = {"typed": [True, 1, "1"]}
+    input_ref = store.store_node_inputs(ref=ref, generation=0, native_execution_id=execution_id, inputs=inputs)
+    parent = AgentParentNodeRef(
+        ref=ref, execution_id=execution_id, input_result_ref=input_ref, input_digest=canonical_digest(inputs)
+    )
+    prepared = prepare_confirmed_agent_request(
+        service=service,
+        ref=ref,
+        parent_node=parent,
+        node_id=node_id,
+        stored_session=stored,
+        inputs=inputs,
+    )
+    config = store.load_prepared_config(ref=ref, parent_node=parent, config_ref=prepared.claim.config_ref)
+    assert config.workspace.home_snapshot_id is None
+    assert config.workspace.workspace_generation == 0
+    assert prepared.request.native_test_profile == "confirmed"
+    # Structural backend selection is fixture-owned; no child create/ACK is claimed.
+    association = AgentNodeAssociation(
+        parent_node=parent,
+        workflow_native_run_id=run_id,
+        agent_run_id=str(uuid4()),
+        config_ref=config.config_ref,
+        config_digest=config.config_digest,
+        pinned_snapshot_id=snapshot_id,
+        home_snapshot_id=None,
+        workspace=config.workspace,
+    )
+    association_ref = store.bind_agent_run(
+        ref=ref, parent_node=parent, expected_invocation_generation=0, association=association
+    )
+    checkpoint = {
+        "run_id": association.agent_run_id,
+        "generation": 7,
+        "ref": ref.model_dump(mode="json"),
+        "config_ref": association.config_ref,
+        "config_digest": association.config_digest,
+        "history": [],
+        "pending_calls": [],
+        "operation_cursor": 0,
+        "result_refs": {},
+        "job_refs": [],
+        "session_snapshot": {"layers": {}},
+    }
+    wait = store.store_agent_wait(
+        ref=ref,
+        parent_node=parent,
+        association_object_ref=association_ref,
+        agent_generation=7,
+        checkpoint=checkpoint,
+        backend_wait_event_id="1234-0",
+    )
+    normal = SimpleNamespace(ref=ref, context=context, parent=parent)
+    saved = store.commit_checkpoint(ref=ref, generation=0, payload=payload(normal, wait))
+    with factory.begin() as session:
+        state = session.scalar(select(NativeInvocationState).where(NativeInvocationState.request_id == ref.request_id))
+        state.generation = 1
+        session.get(NativeTestScope, ref.request_id).generation = 1
+    selected = store.read_checkpoint(ref=ref, checkpoint=saved)
+    protected = store.load_agent_association(ref=ref, parent_node=parent, wait=selected.agent_associations[0])
+    assert protected.association.home_snapshot_id is None
+    assert protected.association.workspace.workspace_generation == 0
+    assert (
+        store.load_prepared_config(
+            ref=ref, parent_node=parent, config_ref=prepared.claim.config_ref
+        ).workspace.home_snapshot_id
+        is None
+    )
+    assert len(allocations) == 1
+    with factory() as session:
+        assert (
+            session.scalar(select(NativeEffectAttempt).where(NativeEffectAttempt.request_id == ref.request_id)) is None
+        )
+    # Current SQL drift still invalidates the original protected null pin.
+    with factory.begin() as session:
+        session.get(AgentWorkspaceBinding, stored.binding_id).base_home_snapshot_id = c.workspace.home_snapshot_id
+    with pytest.raises(BuilderExecutionPolicyError, match="native_agent_pin_mismatch"):
+        store.read_checkpoint(ref=ref, checkpoint=saved)
