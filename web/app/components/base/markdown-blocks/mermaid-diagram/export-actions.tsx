@@ -1,3 +1,4 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -64,7 +65,14 @@ export function ExportActions({ exportSvg, disabled }: ExportActionsProps) {
 
   return (
     <>
-      <span role="status" className="sr-only">
+      <span
+        role="status"
+        className={cn(
+          copyState === 'error'
+            ? 'absolute top-full right-0 rounded-md bg-components-panel-bg px-2 py-1 system-xs-regular text-text-destructive'
+            : 'sr-only',
+        )}
+      >
         {status}
       </span>
       <IconButton

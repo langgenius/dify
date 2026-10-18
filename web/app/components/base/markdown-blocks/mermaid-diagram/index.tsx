@@ -1,6 +1,7 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogBackdrop,
@@ -59,10 +60,16 @@ function DiagramPreview({ source }: { source: string }) {
       <DialogViewport className="p-4 sm:p-8">
         <DialogPopup
           aria-label="Mermaid"
-          className={`${styles.diagram} pointer-events-none flex h-full min-h-0 flex-col transition-opacity data-ending-style:scale-100 data-starting-style:scale-100`}
+          className={cn(
+            styles.diagram,
+            'pointer-events-none flex h-full min-h-0 flex-col transition-opacity data-ending-style:scale-100 data-starting-style:scale-100',
+          )}
         >
           <div
-            className={`${styles.previewActions} pointer-events-auto relative mb-2 flex shrink-0 items-center justify-end gap-1 self-end`}
+            className={cn(
+              styles.previewActions,
+              'pointer-events-auto relative mb-2 flex shrink-0 items-center justify-end gap-1 self-end',
+            )}
           >
             <ZoomControls disabled={!diagram.ready} zoomBy={diagram.zoomBy} reset={diagram.reset} />
             <ExportActions exportSvg={diagram.exportSvg} disabled={!diagram.ready} />
@@ -77,7 +84,7 @@ function DiagramPreview({ source }: { source: string }) {
           <div ref={diagram.stageRef} className="flex min-h-0 flex-1 items-center">
             <div
               ref={diagram.canvasRef}
-              className={`${styles.canvas} pointer-events-auto bg-components-panel-bg`}
+              className={cn(styles.canvas, 'pointer-events-auto bg-components-panel-bg')}
             />
           </div>
           {diagram.error && (
