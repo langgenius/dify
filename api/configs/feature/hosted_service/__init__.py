@@ -287,15 +287,11 @@ class HostedAnthropicConfig(BaseSettings):
 
     HOSTED_ANTHROPIC_TRIAL_MODELS: str = Field(
         description="Comma-separated list of available models for paid access",
-        default="claude-opus-4-8,"
-        "claude-sonnet-5-5,"
-        "claude-haiku-4-5-20251001",
+        default="claude-opus-4-8,claude-sonnet-5-5,claude-haiku-4-5-20251001",
     )
     HOSTED_ANTHROPIC_PAID_MODELS: str = Field(
         description="Comma-separated list of available models for paid access",
-        default="claude-opus-4-8,"
-        "claude-sonnet-5-5,"
-        "claude-haiku-4-5-20251001",
+        default="claude-opus-4-8,claude-sonnet-5-5,claude-haiku-4-5-20251001",
     )
 
 
