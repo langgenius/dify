@@ -256,6 +256,7 @@ const usePipelineRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       handleWorkflowAgentLog,
       handleWorkflowTextChunk,
       handleWorkflowTextReplace,
+      pipelineId,
     ],
   )
 
