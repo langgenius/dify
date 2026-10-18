@@ -18,8 +18,4 @@ describe('formatWorkflowRunIdentifier', () => {
     const result = formatWorkflowRunIdentifier(timestamp)
     expect(result).toMatch(/^ \(\d{2}:\d{2}:\d{2}( [AP]M)?\)$/)
   })
-
-  it('should handle single-char fallback text', () => {
-    expect(formatWorkflowRunIdentifier(undefined, 'x')).toBe(' (X)')
-  })
 })

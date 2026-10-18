@@ -2,9 +2,17 @@
 import type { AppDetailWithSite, CopyAppPayload } from '@dify/contracts/api/console/apps/types.gen'
 import type { IconPickerInputValue, IconPickerValue } from '@/app/components/base/icon-picker'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { Field, FieldLabel } from '@langgenius/dify-ui/field'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
+import { Field } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Input } from '@langgenius/dify-ui/input'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -105,63 +113,62 @@ const DuplicateAppModal = ({
           if (!open) onHide()
         }}
       >
-        <DialogContent className="w-full max-w-120! overflow-hidden! border-none px-8 text-left align-middle">
-          <IconButton
-            size="lg"
-            className="absolute top-4 right-4"
-            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-            onClick={onHide}
-          >
-            <span aria-hidden="true" className="i-ri-close-line size-4" />
-          </IconButton>
-          <DialogTitle className="relative mt-3 mb-9 text-xl leading-7.5 font-semibold text-text-primary">
-            {t(($) => $.duplicateTitle, { ns: 'app' })}
-          </DialogTitle>
+        <DialogContent className="w-120">
+          <DialogHeader>
+            <DialogTitle>{t(($) => $.duplicateTitle, { ns: 'app' })}</DialogTitle>
+            <DialogHeaderCloseButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            />
+          </DialogHeader>
           <form
+            className="contents"
             onSubmit={(event) => {
               event.preventDefault()
               submit()
             }}
           >
-            <div className="mb-9 system-sm-regular text-text-secondary">
-              <IconPicker value={pickerValue} onValueChange={setSelectedIcon}>
-                <Field name="name">
-                  <FieldLabel className="system-md-medium">
-                    {t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}
-                  </FieldLabel>
-                  <div className="flex items-center justify-between space-x-2">
+            <DialogBody>
+              <Fieldset>
+                <FieldsetLegend className="system-md-medium">
+                  {t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}
+                </FieldsetLegend>
+                <div className="flex items-center justify-between space-x-2">
+                  <IconPicker value={pickerValue} onValueChange={setSelectedIcon}>
                     <IconPickerTrigger
-                      aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}`}
+                      aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
                       className="shrink-0 cursor-pointer rounded-[10px]"
                     >
                       <IconPickerIcon size="large" />
                     </IconPickerTrigger>
+                    <IconPickerContent />
+                  </IconPicker>
+                  <Field name="name" className="grow">
                     <Input
+                      aria-label={t(($) => $['newApp.name'], { ns: 'app' })}
                       autoComplete="off"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       className="h-10"
                       placeholder={t(($) => $['placeholder.input'], { ns: 'common' }) || ''}
                     />
-                  </div>
-                </Field>
-                <IconPickerContent />
-              </IconPicker>
+                  </Field>
+                </div>
+              </Fieldset>
               {isAppsFull && <AppsFull className="mt-4" loc="app-duplicate-create" />}
-            </div>
-            <div className="flex flex-row-reverse">
+            </DialogBody>
+            <DialogFooter>
+              <Button type="button" className="w-24" onClick={onHide}>
+                {t(($) => $['operation.cancel'], { ns: 'common' })}
+              </Button>
               <Button
                 type="submit"
                 disabled={isAppQuotaUnavailable || isAppsFull}
-                className="ml-2 w-24"
+                className="w-24"
                 variant="primary"
               >
                 {t(($) => $.duplicate, { ns: 'app' })}
               </Button>
-              <Button type="button" className="w-24" onClick={onHide}>
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </Button>
-            </div>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

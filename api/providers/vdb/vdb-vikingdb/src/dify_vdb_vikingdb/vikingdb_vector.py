@@ -146,9 +146,7 @@ class VikingDBVector(BaseVector):
     def text_exists(self, id: str) -> bool:
         docs = self._client.get_collection(self._collection_name).fetch_data(id)
         not_exists_str = "data does not exist"
-        if docs is not None and not_exists_str not in docs.fields.get("message", ""):
-            return True
-        return False
+        return bool(docs is not None and not_exists_str not in docs.fields.get("message", ""))
 
     @override
     def delete_by_ids(self, ids: list[str]):

@@ -2,7 +2,7 @@
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Event } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
-import type { PluginTriggerVarInputs } from '@/app/components/workflow/nodes/trigger-plugin/types'
+import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { useId } from 'react'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -14,8 +14,8 @@ type Props = Readonly<{
   readOnly: boolean
   nodeId: string
   schema: CredentialFormSchema
-  value: PluginTriggerVarInputs
-  onChange: (value: PluginTriggerVarInputs) => void
+  value: ResourceVarInputs
+  onChange: (value: ResourceVarInputs) => void
   currentEvent?: Event
   currentProvider?: TriggerWithProvider
   extraParams?: Record<string, unknown>

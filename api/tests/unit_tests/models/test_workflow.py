@@ -44,7 +44,7 @@ def test_environment_variables():
     variable1 = StringVariable(name="var1", value="value1", id=str(uuid4()), selector=["env", "var1"])
     variable2 = IntegerVariable(name="var2", value=123, id=str(uuid4()), selector=["env", "var2"])
     variable3 = SecretVariable(name="var3", value="secret", id=str(uuid4()), selector=["env", "var3"])
-    variable4 = FloatVariable(name="var4", value=3.14, id=str(uuid4()), selector=["env", "var4"])
+    variable4 = FloatVariable(name="var4", value=float("3.14"), id=str(uuid4()), selector=["env", "var4"])
 
     with (
         mock.patch("core.helper.encrypter.encrypt_token", return_value="encrypted_token"),
@@ -110,7 +110,7 @@ def test_update_environment_variables():
         selector=["env", "var3"],
         description="old description",
     )
-    variable4 = FloatVariable(name="var4", value=3.14, id=str(uuid4()), selector=["env", "var4"])
+    variable4 = FloatVariable(name="var4", value=float("3.14"), id=str(uuid4()), selector=["env", "var4"])
 
     with (
         mock.patch("core.helper.encrypter.encrypt_token", return_value="encrypted_token"),
@@ -298,7 +298,7 @@ class TestIsSystemVariableEditable:
         for name, editable in cases:
             assert editable == is_system_variable_editable(name)
 
-        assert is_system_variable_editable("invalid_or_new_system_variable") == False
+        assert is_system_variable_editable("invalid_or_new_system_variable") is False
 
 
 class TestWorkflowDraftVariableGetValue:

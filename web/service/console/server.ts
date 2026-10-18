@@ -9,6 +9,7 @@ import { SERVER_CONSOLE_API_PREFIX } from '@/config/server'
 import { cookies, headers } from '@/next/headers'
 import { httpErrorFromResponse, isHttpErrorStatus } from '@/service/http-error'
 import { createConsoleContractLink } from './contract-loader'
+import { validateDefinedErrors } from './defined-errors'
 import { normalizeConsoleOpenAPIURL } from './openapi-url'
 import 'server-only'
 
@@ -81,6 +82,7 @@ function createServerConsoleOpenAPILink(
       return response
     },
     interceptors: [
+      validateDefinedErrors(contract),
       onError((error) => {
         console.error(error)
       }),

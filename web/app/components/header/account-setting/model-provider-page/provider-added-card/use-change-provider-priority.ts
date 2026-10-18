@@ -45,6 +45,7 @@ export function useChangeProviderPriority(
     ),
   )
   const handleChangePriority = (key: PreferredProviderTypeEnum) => {
+    if (!providerName) return
     changePriority({
       params: { provider: providerName },
       body: { preferred_provider_type: key },

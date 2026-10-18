@@ -1,9 +1,9 @@
+import contextlib
 import logging
 import queue
 import time
 from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import timedelta
-from typing import Union
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -53,11 +53,11 @@ class MockNotification(Notification[MockNotificationParams, str]):
     params: MockNotificationParams
 
 
-class ReceiveRequest(RootModel[Union[MockRequest, ClientRequest]]):
+class ReceiveRequest(RootModel[MockRequest | ClientRequest]):
     pass
 
 
-class ReceiveNotification(RootModel[Union[CancelledNotification, MockNotification, JSONRPCNotification]]):
+class ReceiveNotification(RootModel[CancelledNotification | MockNotification | JSONRPCNotification]):
     pass
 
 
@@ -189,7 +189,7 @@ def test_send_request_retry_loop_coverage(streams):
             time.sleep(0.2)
             response = JSONRPCResponse(jsonrpc="2.0", id=req_id, result={"result": "slow"})
             read_stream.put(SessionMessage(message=JSONRPCMessage(response)))
-        except:
+        except BaseException:
             pass
 
     import threading
@@ -215,7 +215,7 @@ def test_send_request_jsonrpc_error(streams):
             req_id = msg.message.root.id
             error = JSONRPCError(jsonrpc="2.0", id=req_id, error=ErrorData(code=-32000, message="Error"))
             read_stream.put(SessionMessage(message=JSONRPCMessage(error)))
-        except:
+        except BaseException:
             pass
 
     import threading
@@ -242,7 +242,7 @@ def test_send_request_auth_error(streams):
             req_id = msg.message.root.id
             error = JSONRPCError(jsonrpc="2.0", id=req_id, error=ErrorData(code=401, message="Unauthorized"))
             read_stream.put(SessionMessage(message=JSONRPCMessage(error)))
-        except:
+        except BaseException:
             pass
 
     import threading
@@ -271,7 +271,7 @@ def test_send_request_http_status_error_coverage(streams):
             response = Response(status_code=403, request=Request("GET", "http://test"))
             error = HTTPStatusError("Forbidden", request=response.request, response=response)
             session._response_streams[req_id].put(error)
-        except:
+        except BaseException:
             pass
 
     import threading
@@ -300,7 +300,7 @@ def test_send_request_http_status_auth_error(streams):
             response = Response(status_code=401, request=Request("GET", "http://test"))
             error = HTTPStatusError("Unauthorized", request=response.request, response=response)
             read_stream.put(error)
-        except:
+        except BaseException:
             pass
 
     import threading
@@ -466,10 +466,8 @@ def test_check_receiver_status_fail(streams):
     future = executor.submit(raise_err)
     session._receiver_future = future
 
-    try:
+    with contextlib.suppress(BaseException):
         future.result()
-    except:
-        pass
 
     with pytest.raises(RuntimeError, match="Receiver failed"):
         session.check_receiver_status()
@@ -536,7 +534,7 @@ def test_send_request_none_response(streams):
             msg = write_stream.get(timeout=2)
             req_id = msg.message.root.id
             session._response_streams[req_id].put(None)
-        except:
+        except BaseException:
             pass
 
     import threading

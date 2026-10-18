@@ -1,3 +1,4 @@
+import type { ReasoningConfigValue } from './reasoning-config-form'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
@@ -6,19 +7,6 @@ import { FormTypeEnum } from '@/app/components/header/account-setting/model-prov
 import { reasoningShowOnConditionMet } from '@/app/components/plugins/plugin-detail-panel/tool-selector/utils/show-on'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { VarType } from '@/app/components/workflow/types'
-
-type ReasoningConfigInputValue = {
-  type?: VarKindType
-  value?: unknown
-  [key: string]: unknown
-} | null
-
-type ReasoningConfigInput = {
-  value: ReasoningConfigInputValue
-  auto?: 0 | 1
-}
-
-export type ReasoningConfigValue = Record<string, ReasoningConfigInput>
 
 export const getVarKindType = (type: string) => {
   if (type === FormTypeEnum.file || type === FormTypeEnum.files) return VarKindType.variable
@@ -198,7 +186,7 @@ export const updateVariableSelectorValue = (
   })
 }
 
-export const getFieldFlags = (type: string, varInput?: ReasoningConfigInputValue) => {
+export const getFieldFlags = (type: string, varInput?: ReasoningConfigValue[string]['value']) => {
   const isDateRange = type === FormTypeEnum.dateRange
   const isDate = type === FormTypeEnum.date
   const isString = type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput

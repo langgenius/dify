@@ -11,18 +11,24 @@ from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
+from core.agent.entities import AgentEntity
 from core.agent.errors import AgentMaxIterationError
 from core.agent.fc_agent_runner import FunctionCallAgentRunner
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
+from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfig
 from core.app.apps.base_app_queue_manager import PublishFrom
-from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
+from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
+from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, CreditUsageCreatedBy
 from core.app.entities.queue_entities import QueueMessageFileEvent
 from core.credit_usage import CreditUsageAppType
-from graphon.model_runtime.entities.llm_entities import LLMUsage
+from core.model_manager import ModelInstance
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
     DocumentPromptMessageContent,
     ImagePromptMessageContent,
     PromptMessageContentType,
+    SystemPromptMessage,
     TextPromptMessageContent,
     UserPromptMessage,
 )
@@ -111,6 +117,45 @@ class DummyResult:
 
 
 @pytest.fixture
+def real_runner(
+    sqlite_session: Session,
+    agent_records: tuple[Conversation, Message],
+    agent_generate_entity: AgentChatAppGenerateEntity,
+    agent_queue_manager: MessageBasedAppQueueManager,
+) -> FunctionCallAgentRunner:
+    """Construct the production runner, including its history, callbacks and schema lookup."""
+    conversation, message = agent_records
+    app_config = agent_generate_entity.app_config
+    assert isinstance(app_config, AgentChatAppConfig)
+    assert app_config.agent is not None
+    app_config.agent.strategy = AgentEntity.Strategy.FUNCTION_CALLING
+    return FunctionCallAgentRunner(
+        session=sqlite_session,
+        tenant_id=app_config.tenant_id,
+        application_generate_entity=agent_generate_entity,
+        conversation=conversation,
+        app_config=app_config,
+        model_config=agent_generate_entity.model_conf,
+        config=app_config.agent,
+        queue_manager=agent_queue_manager,
+        message=message,
+        user_id=agent_generate_entity.user_id,
+        model_instance=ModelInstance(
+            provider_model_bundle=agent_generate_entity.model_conf.provider_model_bundle,
+            model=agent_generate_entity.model_conf.model,
+        ),
+    )
+
+
+def _tool_call(call_id: str, name: str, arguments: str) -> AssistantPromptMessage.ToolCall:
+    return AssistantPromptMessage.ToolCall(
+        id=call_id,
+        type="function",
+        function=AssistantPromptMessage.ToolCall.ToolCallFunction(name=name, arguments=arguments),
+    )
+
+
+@pytest.fixture
 def runner(mocker: MockerFixture, sqlite_engine: Engine) -> Iterator[FunctionCallAgentRunner]:
     # Completely bypass BaseAgentRunner __init__ to avoid DB / Flask context
     mocker.patch(
@@ -194,15 +239,25 @@ def runner(mocker: MockerFixture, sqlite_engine: Engine) -> Iterator[FunctionCal
 
 
 class TestToolCallChecks:
-    @pytest.mark.parametrize(("tool_calls", "expected"), [([], False), ([MagicMock()], True)])
-    def test_check_tool_calls(self, runner: FunctionCallAgentRunner, tool_calls, expected):
-        chunk = DummyChunk(message=DummyMessage(tool_calls=tool_calls))
-        assert runner.check_tool_calls(chunk) is expected
+    @pytest.mark.parametrize("has_tools", [False, True])
+    def test_check_tool_calls(self, real_runner: FunctionCallAgentRunner, has_tools: bool) -> None:
+        chunk = LLMResultChunk(
+            model="m",
+            delta=LLMResultChunkDelta(
+                index=0, message=AssistantPromptMessage(tool_calls=[_tool_call("1", "tool", "{}")] if has_tools else [])
+            ),
+        )
+        assert real_runner.check_tool_calls(chunk) is has_tools
 
-    @pytest.mark.parametrize(("tool_calls", "expected"), [([], False), ([MagicMock()], True)])
-    def test_check_blocking_tool_calls(self, runner: FunctionCallAgentRunner, tool_calls, expected):
-        result = DummyResult(message=DummyMessage(tool_calls=tool_calls))
-        assert runner.check_blocking_tool_calls(result) is expected
+    @pytest.mark.parametrize("has_tools", [False, True])
+    def test_check_blocking_tool_calls(self, real_runner: FunctionCallAgentRunner, has_tools: bool) -> None:
+        result = LLMResult(
+            model="m",
+            prompt_messages=[],
+            usage=LLMUsage.empty_usage(),
+            message=AssistantPromptMessage(tool_calls=[_tool_call("1", "tool", "{}")] if has_tools else []),
+        )
+        assert real_runner.check_blocking_tool_calls(result) is has_tools
 
 
 # ==============================
@@ -211,36 +266,36 @@ class TestToolCallChecks:
 
 
 class TestExtractToolCalls:
-    def test_extract_tool_calls_with_valid_json(self, runner: FunctionCallAgentRunner):
-        tool_call = MagicMock()
-        tool_call.id = "1"
-        tool_call.function.name = "tool"
-        tool_call.function.arguments = json.dumps({"a": 1})
-
-        chunk = DummyChunk(message=DummyMessage(tool_calls=[tool_call]))
-        calls = runner.extract_tool_calls(chunk)
+    def test_extract_tool_calls_with_valid_json(self, real_runner: FunctionCallAgentRunner) -> None:
+        chunk = LLMResultChunk(
+            model="m",
+            delta=LLMResultChunkDelta(
+                index=0, message=AssistantPromptMessage(tool_calls=[_tool_call("1", "tool", json.dumps({"a": 1}))])
+            ),
+        )
+        calls = real_runner.extract_tool_calls(chunk)
 
         assert calls == [("1", "tool", {"a": 1})]
 
-    def test_extract_tool_calls_empty_arguments(self, runner: FunctionCallAgentRunner):
-        tool_call = MagicMock()
-        tool_call.id = "1"
-        tool_call.function.name = "tool"
-        tool_call.function.arguments = ""
-
-        chunk = DummyChunk(message=DummyMessage(tool_calls=[tool_call]))
-        calls = runner.extract_tool_calls(chunk)
+    def test_extract_tool_calls_empty_arguments(self, real_runner: FunctionCallAgentRunner) -> None:
+        chunk = LLMResultChunk(
+            model="m",
+            delta=LLMResultChunkDelta(
+                index=0, message=AssistantPromptMessage(tool_calls=[_tool_call("1", "tool", "")])
+            ),
+        )
+        calls = real_runner.extract_tool_calls(chunk)
 
         assert calls == [("1", "tool", {})]
 
-    def test_extract_blocking_tool_calls(self, runner: FunctionCallAgentRunner):
-        tool_call = MagicMock()
-        tool_call.id = "2"
-        tool_call.function.name = "block"
-        tool_call.function.arguments = json.dumps({"x": 2})
-
-        result = DummyResult(message=DummyMessage(tool_calls=[tool_call]))
-        calls = runner.extract_blocking_tool_calls(result)
+    def test_extract_blocking_tool_calls(self, real_runner: FunctionCallAgentRunner) -> None:
+        result = LLMResult(
+            model="m",
+            prompt_messages=[],
+            usage=LLMUsage.empty_usage(),
+            message=AssistantPromptMessage(tool_calls=[_tool_call("2", "block", json.dumps({"x": 2}))]),
+        )
+        calls = real_runner.extract_blocking_tool_calls(result)
 
         assert calls == [("2", "block", {"x": 2})]
 
@@ -255,10 +310,10 @@ class TestInitSystemMessage:
         result = runner._init_system_message("system", [])
         assert len(result) == 1
 
-    def test_init_system_message_insert_at_start(self, runner: FunctionCallAgentRunner):
-        msgs = [MagicMock()]
-        result = runner._init_system_message("system", msgs)
-        assert result[0].content == "system"
+    def test_init_system_message_insert_at_start(self, real_runner: FunctionCallAgentRunner) -> None:
+        query = UserPromptMessage(content="query")
+        result = real_runner._init_system_message("system", [query])
+        assert result == [SystemPromptMessage(content="system"), query]
 
     def test_init_system_message_no_template(self, runner: FunctionCallAgentRunner):
         result = runner._init_system_message("", [])
@@ -303,21 +358,14 @@ class TestOrganizeUserQuery:
 
 
 class TestClearUserPromptImageMessages:
-    def test_clear_text_and_image_content(self, runner: FunctionCallAgentRunner):
-        text = MagicMock()
-        text.type = "text"
-        text.data = "hello"
+    def test_clear_text_and_image_content(self, real_runner: FunctionCallAgentRunner) -> None:
+        text = TextPromptMessageContent(data="hello")
+        image = ImagePromptMessageContent(format="url", mime_type="image/png", url="https://example.test/image.png")
+        user_msg = UserPromptMessage(content=[text, image])
 
-        image = MagicMock()
-        image.type = "image"
-        image.data = "img"
-
-        user_msg = MagicMock()
-        user_msg.__class__.__name__ = "UserPromptMessage"
-        user_msg.content = [text, image]
-
-        result = runner._clear_user_prompt_image_messages([user_msg])
-        assert isinstance(result, list)
+        result = real_runner._clear_user_prompt_image_messages([user_msg])
+        assert result == [UserPromptMessage(content="hello\n[image]")]
+        assert user_msg.content == [text, image]
 
     def test_clear_includes_file_placeholder(self, runner: FunctionCallAgentRunner):
         text = TextPromptMessageContent(data="hello")

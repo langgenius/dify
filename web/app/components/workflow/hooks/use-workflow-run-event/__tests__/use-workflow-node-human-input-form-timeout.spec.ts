@@ -1,4 +1,3 @@
-import type { HumanInputFormTimeoutResponse } from '@/types/workflow'
 import { baseRunningData, renderWorkflowHook } from '../../../__tests__/workflow-test-env'
 import { useWorkflowNodeHumanInputFormTimeout } from '../use-workflow-node-human-input-form-timeout'
 
@@ -21,8 +20,11 @@ describe('useWorkflowNodeHumanInputFormTimeout', () => {
     })
 
     result.current.handleWorkflowNodeHumanInputFormTimeout({
+      task_id: 'task',
+      workflow_run_id: 'run',
+      event: 'human_input_form_timeout',
       data: { node_id: 'n1', node_title: 'Node 1', expiration_time: 1000 },
-    } as HumanInputFormTimeoutResponse)
+    })
 
     expect(store.getState().workflowRunningData!.humanInputFormDataList![0]!.expiration_time).toBe(
       1000,

@@ -13,7 +13,7 @@ from tests.unit_tests.core.datasource.factories import datasource_entity
 
 
 class TestOnlineDriveDatasourcePlugin:
-    def test_init(self):
+    def test_init(self) -> None:
         # Arrange
         entity = datasource_entity("test_name")
         runtime = DatasourceRuntime(tenant_id="test_tenant")
@@ -37,7 +37,7 @@ class TestOnlineDriveDatasourcePlugin:
         assert plugin.icon == icon
         assert plugin.plugin_unique_identifier == plugin_unique_identifier
 
-    def test_online_drive_browse_files(self):
+    def test_online_drive_browse_files(self) -> None:
         # Arrange
         entity = datasource_entity("test_name")
         entity.identity.provider = "test_provider"
@@ -64,8 +64,8 @@ class TestOnlineDriveDatasourcePlugin:
         messages = [OnlineDriveBrowseFilesResponse(result=[])]
         response_stream = (message for message in messages)
 
-        with patch("core.datasource.online_drive.online_drive_plugin.PluginDatasourceManager") as MockManager:
-            mock_manager_instance = MockManager.return_value
+        with patch("core.datasource.online_drive.online_drive_plugin.PluginDatasourceManager") as mock_manager:
+            mock_manager_instance = mock_manager.return_value
             mock_manager_instance.online_drive_browse_files.return_value = response_stream
 
             # Act
@@ -84,7 +84,7 @@ class TestOnlineDriveDatasourcePlugin:
                 provider_type=provider_type,
             )
 
-    def test_online_drive_download_file(self):
+    def test_online_drive_download_file(self) -> None:
         # Arrange
         entity = datasource_entity("test_name")
         entity.identity.provider = "test_provider"
@@ -111,8 +111,8 @@ class TestOnlineDriveDatasourcePlugin:
         messages = [DatasourceMessage(type="text", message=DatasourceMessage.TextMessage(text="document content"))]
         response_stream = (message for message in messages)
 
-        with patch("core.datasource.online_drive.online_drive_plugin.PluginDatasourceManager") as MockManager:
-            mock_manager_instance = MockManager.return_value
+        with patch("core.datasource.online_drive.online_drive_plugin.PluginDatasourceManager") as mock_manager:
+            mock_manager_instance = mock_manager.return_value
             mock_manager_instance.online_drive_download_file.return_value = response_stream
 
             # Act
@@ -131,7 +131,7 @@ class TestOnlineDriveDatasourcePlugin:
                 provider_type=provider_type,
             )
 
-    def test_datasource_provider_type(self):
+    def test_datasource_provider_type(self) -> None:
         # Arrange
         entity = datasource_entity("test_name")
         runtime = DatasourceRuntime(tenant_id="test_tenant")

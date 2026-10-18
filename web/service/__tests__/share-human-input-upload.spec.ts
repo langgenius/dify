@@ -20,7 +20,8 @@ vi.mock('../webapp-auth', () => ({
 
 describe('human input form upload services', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    mockPostPublic.mockReset()
+    mockUpload.mockReset()
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-05-06T00:00:00Z'))
   })
@@ -71,6 +72,12 @@ describe('human input form upload services', () => {
       true,
       '/human-input-forms/files',
     )
+    const uploadOptions = mockUpload.mock.calls[0]![0]
+    expect(uploadOptions.data.get('file')).toBe(file)
+    uploadOptions.onprogress(
+      new ProgressEvent('progress', { lengthComputable: true, loaded: 3, total: 7 }),
+    )
+    expect(onProgressCallback).toHaveBeenCalledWith(42)
     expect(onSuccessCallback).toHaveBeenCalledWith(expect.objectContaining({ id: 'file-1' }))
     expect(onErrorCallback).not.toHaveBeenCalled()
   })
