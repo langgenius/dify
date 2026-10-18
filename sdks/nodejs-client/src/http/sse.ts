@@ -79,7 +79,14 @@ export const parseSseStream = async function* <T>(stream: Readable): AsyncIterab
     dataLines.length = 0
   }
 
-  for await (const line of readLines(stream)) {
+  let firstLine = true
+  for await (let line of readLines(stream)) {
+    if (firstLine) {
+      firstLine = false
+      if (line.startsWith('\uFEFF')) {
+        line = line.slice(1)
+      }
+    }
     if (!line) {
       yield* emitEvent()
       continue

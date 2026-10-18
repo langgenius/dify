@@ -4,6 +4,27 @@ import { createBinaryStream, createSseStream, parseSseStream } from './sse'
 
 describe('sse parsing', () => {
   it.each(['\n', '\r\n', '\r'])(
+    'ignores one leading UTF-8 BOM with %j line endings across byte boundaries',
+    async (ending) => {
+      const body = Buffer.from(`\uFEFFdata: {"answer":"你好"}${ending}${ending}`)
+      const chunks = [Buffer.alloc(0), ...Array.from(body, (byte) => Buffer.from([byte]))]
+      const events = []
+      for await (const event of parseSseStream(Readable.from(chunks))) {
+        events.push(event)
+      }
+      expect(events).toEqual([
+        { event: undefined, data: { answer: '你好' }, raw: '{"answer":"你好"}' },
+      ])
+    },
+  )
+
+  it('preserves BOM characters in payloads and does not strip later field prefixes', async () => {
+    const body = 'data: {"answer":"\uFEFFkept"}\n\n\uFEFFdata: {"answer":"ignored"}\n\n'
+    const stream = createSseStream(Readable.from([body]), { status: 200, headers: {} })
+    expect(await stream.toText()).toBe('\uFEFFkept')
+  })
+
+  it.each(['\n', '\r\n', '\r'])(
     'parses events with %j line endings across byte boundaries',
     async (ending) => {
       const body = Buffer.from(
