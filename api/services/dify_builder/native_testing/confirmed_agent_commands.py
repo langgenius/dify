@@ -702,6 +702,11 @@ class ConfirmedAgentCommands:
         except Exception:
             logger.warning("Confirmed Agent cancellation preparation unavailable")
         self.api.lifecycle.cancel(actor=actor, request_id=request_id, idempotency_key=idempotency_key)
+        if not children:
+            try:
+                children = list(ConfirmedAgentCancellation(self).retry_children(ref=ref))
+            except Exception:
+                logger.warning("Confirmed Agent cancellation retry remains unproven")
         for child in children:
             try:
                 self.backend.cancel_run(child)

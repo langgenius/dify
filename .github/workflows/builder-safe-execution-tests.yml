@@ -732,6 +732,11 @@ jobs:
               'test_failed_preparation_still_revokes_without_fabricating_native_stop': 1,
               'test_unverified_child_never_stops_native_or_projects_declined_result': 5,
           })
+          # Explicit cancellation retry retains the same protected child.
+          a4_expected.setdefault('tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion', {}).update({
+              'test_cancel_retry_refuses_missing_forged_stale_or_foreign_retained_proof': 5,
+              'test_explicit_cancel_retry_reaches_same_child_after_real_active_reader_refusal': 1,
+          })
           for module, expected in {**a3_expected, **a4_expected}.items():
               actual = {}
               for classname, name in identities:

@@ -24,11 +24,18 @@ from models.dify_builder_native_tests import (
 from models.enums import CreatorUserRole
 from models.workflow import WorkflowPause, WorkflowPauseReason, WorkflowRun
 from services.dify_builder.execution_contracts import canonical_digest
+from services.dify_builder.native_testing.agent_contracts import AgentNodeAssociation
 from services.dify_builder.native_testing.confirmed_agent_completion import _native_run_id, _request, _terminal_proof
 from services.dify_builder.native_testing.confirmed_agent_continuation import validate_parent_snapshot
 from services.dify_builder.native_testing.contracts import CheckpointRef
-from services.dify_builder.native_testing.runtime_contracts import NativeWorkflowOutcome
-from services.dify_builder.native_testing.state_store import ObjectReceipt, invocation_state, owner_query
+from services.dify_builder.native_testing.private_reads import validate_private_read
+from services.dify_builder.native_testing.runtime_contracts import NativeCheckpointPayload, NativeWorkflowOutcome
+from services.dify_builder.native_testing.state_store import (
+    NativeExecutionStateStore,
+    ObjectReceipt,
+    invocation_state,
+    owner_query,
+)
 
 PREPARATION = "confirmed_agent_cancel_v1"
 
@@ -194,6 +201,78 @@ class ConfirmedAgentCancellation:
             and self._objects(sql, ref, owned.tenant_id) == proof["objects"]
             and [list(source) for source in self._sources(sql, ref)] == proof["sources"]
         )
+
+    def retry_children(self, *, ref):
+        """Targets for an explicit cancel only; revoked scopes gain no read/run grant.
+
+        Resolve the original encrypted checkpoint and binding again rather than
+        trusting a child ID copied into observations. The final SQL proof check
+        ends before the caller can issue a cancellation RPC. GET never calls this.
+        """
+        validate_private_read(self.loader, ref)
+        with self.loader.session_factory() as sql:
+            owned, scope = self.loader._load(sql, ref=ref, lock=False, settlement=True)
+            request = _request(sql, actor=self.commands.actor, ref=ref)
+            state = invocation_state(sql, ref, owned.tenant_id)
+            if request is None or not scope.cancelled or state.state != "cancelled" or state.outcome is not None:
+                return ()
+            proofs = [record[PREPARATION] for record in request.observations if PREPARATION in record]
+            if len(proofs) != 1 or _native_run_id(request) != proofs[0]["native_run_id"]:
+                return ()
+            proof = proofs[0]
+            objects = self._objects(sql, ref, owned.tenant_id)
+            if objects != proof["objects"]:
+                return ()
+        receipts = {value["id"]: ObjectReceipt(**value) for value in objects}
+        checkpoint = receipts[proof["checkpoint"]["checkpoint_id"]]
+        if checkpoint.kind != "checkpoint" or checkpoint.payload_digest != proof["checkpoint"]["payload_digest"]:
+            return ()
+        payload = NativeCheckpointPayload.model_validate(self.commands.api.store._read_object(checkpoint))
+        if (
+            payload.native_run_id != proof["native_run_id"]
+            or payload.generation != proof["generation"]
+            or canonical_digest(payload.graph_runtime_state_json) != proof["runtime_digest"]
+            or not payload.agent_associations
+        ):
+            return ()
+        children = []
+        for wait in payload.agent_associations:
+            binding = receipts[wait.association_object_ref]
+            if (
+                wait.parent_node.ref != ref
+                or binding.kind != "result"
+                or binding.logical_key != NativeExecutionStateStore._agent_key("agent-bind", wait.parent_node)
+            ):
+                return ()
+            association = AgentNodeAssociation.model_validate(self.commands.api.store._read_object(binding))
+            if (
+                association.parent_node != wait.parent_node
+                or association.workflow_native_run_id != payload.native_run_id
+            ):
+                return ()
+            children.append(association.agent_run_id)
+        targets = tuple(sorted(set(children)))
+        if list(targets) != proof["children"]:
+            return ()
+        paused = WorkflowResumptionContext.loads(storage.load(proof["state_object_key"]).decode())
+        validate_parent_snapshot(state=paused, ref=ref, native_run_id=proof["native_run_id"])
+        if canonical_digest(paused.serialized_graph_runtime_state) != proof["runtime_digest"]:
+            return ()
+        with self.loader.locked(ref=ref, settlement=True) as (sql, owned, scope):
+            request = _request(sql, actor=self.commands.actor, ref=ref)
+            state = invocation_state(sql, ref, owned.tenant_id)
+            if (
+                request is None
+                or _native_run_id(request) != proof["native_run_id"]
+                or not scope.cancelled
+                or scope.generation != proof["generation"]
+                or state.state != "cancelled"
+                or state.outcome is not None
+                or [record[PREPARATION] for record in request.observations if PREPARATION in record] != [proof]
+                or not self._matches(sql, ref, owned, proof)
+            ):
+                return ()
+        return targets
 
     def settle(self, *, ref):
         with self.loader.session_factory() as sql:

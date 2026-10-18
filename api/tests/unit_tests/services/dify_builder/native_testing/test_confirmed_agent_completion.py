@@ -1015,3 +1015,260 @@ def test_clean_physical_receipt_cannot_finish_confirmed_paused_parent_without_lo
         assert sql.scalar(select(NativeInvocationState)).outcome is None
         assert sql.get(WorkflowRun, owner.native_id).status == "paused"
     assert owner.repo.get_run(owner.verify_id).status == "running"
+
+
+@pytest.fixture
+def retrying_decline(declining, monkeypatch):
+    """Retain real active-reader refusal and integrity-checked SQL object reads."""
+    from contextlib import contextmanager
+
+    from models.dify_builder_native_tests import NativeContinuation, NativePayloadObject
+    from services.dify_builder.native_testing import state_store
+    from services.dify_builder.native_testing.agent_contracts import (
+        AgentNodeAssociation,
+        AgentParentNodeRef,
+        AgentTestWorkspaceRef,
+        AgentWaitAssociation,
+    )
+    from services.dify_builder.native_testing.runtime_contracts import NativeCheckpointPayload, NodeJournalState
+
+    owner = declining
+    execution_id = owner.commands.continuation._stored_waits(ref=owner.ref)[0].parent_node.execution_id
+    parent = AgentParentNodeRef(
+        ref=owner.ref, execution_id=execution_id, input_result_ref="input", input_digest="b" * 64
+    )
+    association = AgentNodeAssociation(
+        parent_node=parent,
+        workflow_native_run_id=owner.native_id,
+        agent_run_id="original-child",
+        config_ref="config",
+        config_digest="c" * 64,
+        pinned_snapshot_id=owner.case.snapshot.id,
+        home_snapshot_id=None,
+        workspace=AgentTestWorkspaceRef(
+            binding_id="binding",
+            workspace_id="workspace",
+            backend_binding_ref="binding",
+            backend_workspace_ref="workspace",
+            pinned_snapshot_id=owner.case.snapshot.id,
+            home_snapshot_id=None,
+            workspace_generation=0,
+        ),
+    )
+    wait = AgentWaitAssociation(
+        parent_node=parent,
+        association_object_ref="association",
+        agent_generation=1,
+        checkpoint_object_ref="agent-checkpoint",
+        checkpoint_digest="d" * 64,
+        backend_wait_event_id="1-0",
+    )
+    payload = NativeCheckpointPayload(
+        schema_version="1",
+        native_run_id=owner.native_id,
+        generation=1,
+        generate_entity_json="{}",
+        graph_runtime_state_json=owner.paused.state.serialized_graph_runtime_state,
+        response_stream_filter_json="{}",
+        node_journals=(
+            NodeJournalState(
+                invocation_id=owner.ref.invocation_id,
+                occurrence_path=(execution_id,),
+                input_result_ref="input",
+                input_digest="b" * 64,
+                cursor=0,
+                operation_keys=(),
+                result_refs=(),
+            ),
+        ),
+        child_refs=(),
+        input_result_refs=("input",),
+        agent_associations=(wait,),
+    )
+    objects = {}
+    with owner.factory.begin() as sql:
+        for identity, kind, key, value in (
+            ("checkpoint", "checkpoint", "checkpoint", payload.model_dump(mode="json")),
+            (
+                "association",
+                "result",
+                state_store.NativeExecutionStateStore._agent_key("agent-bind", parent),
+                association.model_dump(mode="json"),
+            ),
+        ):
+            raw, digest = state_store.encode_payload(
+                tenant_id=owner.case.actor.tenant_id,
+                request_id=owner.request_id,
+                invocation_id=owner.ref.invocation_id,
+                kind=kind,
+                payload=value,
+            )
+            row = sql.get(NativePayloadObject, identity)
+            if row is None:
+                row = NativePayloadObject(
+                    id=identity,
+                    tenant_id=owner.case.actor.tenant_id,
+                    request_id=owner.request_id,
+                    invocation_id=owner.ref.invocation_id,
+                    kind=kind,
+                    logical_key=key,
+                    storage_key=identity + "-storage",
+                    payload_digest=digest,
+                    value_digest=canonical_digest(value),
+                )
+                sql.add(row)
+            else:
+                row.payload_digest, row.value_digest = digest, canonical_digest(value)
+            objects[row.storage_key] = raw.encode()
+            if kind == "checkpoint":
+                sql.scalar(select(NativeContinuation)).payload_digest = digest
+
+    loader = owner.commands.loader
+    original_locked = loader.locked
+    owner.writer_depth = 0
+
+    @contextmanager
+    def tracked_writer(**values):
+        with original_locked(**values) as rows:
+            owner.writer_depth += 1
+            try:
+                yield rows
+            finally:
+                owner.writer_depth -= 1
+
+    loader.locked = tracked_writer
+
+    def active_waits(**_):
+        loader.load(ref=owner.ref)
+        return (wait,)
+
+    def active_association(**_):
+        loader.load(ref=owner.ref)
+        return SimpleNamespace(association=association)
+
+    def active_pause(**_):
+        loader.load(ref=owner.ref)
+        return owner.paused
+
+    owner.commands.continuation._stored_waits = active_waits
+    owner.commands.continuation.read_parent_pause = active_pause
+    owner.commands.api.store.load_agent_association = active_association
+    owner.commands.api.store.read_checkpoint = lambda **_: payload
+    owner.commands.api.store._read_object = state_store.NativeExecutionStateStore._read_object
+
+    def load_object(key):
+        assert owner.writer_depth == 0
+        return objects[key]
+
+    monkeypatch.setattr(state_store, "storage", SimpleNamespace(load=load_object))
+    monkeypatch.setattr(state_store.encrypter, "decrypt_token", lambda _tenant, raw: raw)
+    owner.child_status = "waiting"
+
+    def cancel_after_one_lost_post(child):
+        assert owner.writer_depth == 0
+        assert child == "original-child"
+        owner.cancel_calls.append(child)
+        if len(owner.cancel_calls) == 1:
+            raise TimeoutError("first POST was not delivered")
+        owner.child_status = "cancelled"
+
+    owner.commands.backend.cancel_run = cancel_after_one_lost_post
+    original_status = owner.commands.backend.client.get_run_sync
+
+    def read_status(child):
+        assert owner.writer_depth == 0
+        return original_status(child)
+
+    owner.commands.backend.client.get_run_sync = read_status
+    owner.commands.publish = lambda **_: pytest.fail("cancel retry dispatched a resume")
+    return owner
+
+
+def test_explicit_cancel_retry_reaches_same_child_after_real_active_reader_refusal(retrying_decline):
+    from models.dify_builder_native_tests import NativeDispatch
+
+    owner = retrying_decline
+    values = {
+        "actor": owner.case.actor,
+        "session_id": owner.session.id,
+        "request_id": owner.request_id,
+        "idempotency_key": "deny",
+    }
+    first = owner.commands.cancel(**values)
+    assert first.status == "running"
+    assert owner.child_status == "waiting"
+    with pytest.raises(BuilderExecutionPolicyError):
+        owner.commands.continuation._stored_waits(ref=owner.ref)
+    with pytest.raises(BuilderExecutionPolicyError):
+        owner.commands.api.store.load_agent_association(ref=owner.ref)
+    observe(owner)
+    assert owner.cancel_calls == ["original-child"]
+    second = owner.commands.cancel(**values)
+    assert owner.cancel_calls == ["original-child", "original-child"]
+    assert second.outcome == "cancelled"
+    assert second.native_status == "stopped"
+    assert second.cancellation.status == "cancelling"
+    assert owner.repo.get_run(owner.verify_id).status == "failed"
+    session, _ = owner.repo.get_session(owner.session.id)
+    assert session.current_state == PcState.BUILD_REVIEW
+    observe(owner)
+    observe(owner)
+    assert owner.cancel_calls == ["original-child", "original-child"]
+    assert owner.repo.get_session(owner.session.id)[0].version == session.version
+    with owner.factory() as sql:
+        assert len(sql.scalars(select(NativeDispatch)).all()) == 1
+        assert len(sql.scalars(select(NativeEffectOperation)).all()) == 1
+        assert len(sql.scalars(select(DifyBuilderRun)).all()) == 2
+        assert not sql.scalar(select(NativeInvocationState)).cleanup_complete
+    assert (
+        len(
+            [
+                item
+                for item in owner.repo.list_conversation_page(owner.session.id, limit=20).data
+                if item.kind == "test_result"
+            ]
+        )
+        == 1
+    )
+
+
+@pytest.mark.parametrize(
+    "drift", ["missing", "forged_child", "stale_checkpoint", "foreign_association", "foreign_owner"]
+)
+def test_cancel_retry_refuses_missing_forged_stale_or_foreign_retained_proof(retrying_decline, drift):
+    from copy import deepcopy
+
+    from models.dify_builder_native_tests import NativePayloadObject
+    from services.dify_builder.native_testing.confirmed_agent_cancellation import PREPARATION
+
+    owner = retrying_decline
+    values = {
+        "actor": owner.case.actor,
+        "session_id": owner.session.id,
+        "request_id": owner.request_id,
+        "idempotency_key": "deny",
+    }
+    owner.commands.cancel(**values)
+    with owner.factory.begin() as sql:
+        request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+        if drift == "missing":
+            request.observations = []
+        elif drift == "forged_child":
+            records = deepcopy(request.observations)
+            next(record[PREPARATION] for record in records if PREPARATION in record)["children"] = ["foreign-child"]
+            request.observations = records
+        elif drift == "stale_checkpoint":
+            sql.scalar(select(NativeInvocationState)).checkpoint_id = "stale-checkpoint"
+        elif drift == "foreign_association":
+            sql.get(NativePayloadObject, "association").tenant_id = str(uuid4())
+        else:
+            sql.get(DifyBuilderSession, owner.session.id).owner_account_id = str(uuid4())
+    receipt = owner.commands.cancel(**values)
+    assert owner.cancel_calls == ["original-child"]
+    assert owner.child_status == "waiting"
+    assert receipt.outcome is None
+    with owner.factory() as sql:
+        assert sql.get(WorkflowRun, owner.native_id).status == "paused"
+        assert sql.scalar(select(NativeInvocationState)).outcome is None
+        assert not sql.scalar(select(NativeInvocationState)).cleanup_complete
+    assert owner.repo.get_run(owner.verify_id).status == "running"
