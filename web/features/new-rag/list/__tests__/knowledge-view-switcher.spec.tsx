@@ -1,59 +1,35 @@
-import { render, screen, within } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { KnowledgeViewSwitcher } from '../knowledge-view-switcher'
 
-const guideStorageMock = vi.hoisted(() => ({
-  dismissed: false,
-  setDismissed: vi.fn(),
-}))
-
-vi.mock('@/features/new-rag/list/storage', () => ({
-  useNewKnowledgeGuideDismissedValue: () => guideStorageMock.dismissed,
-  useSetNewKnowledgeGuideDismissed: () => guideStorageMock.setDismissed,
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path?: string) => `https://docs.example.com${path ?? ''}`,
-}))
+const guide = () => screen.getByRole('dialog', { name: 'knowledgeSpace.guideTitle' })
 
 describe('KnowledgeViewSwitcher', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    guideStorageMock.dismissed = false
+    localStorage.clear()
   })
 
   it('restores focus to the guide trigger when Escape closes the popover', async () => {
     const user = userEvent.setup()
     render(<KnowledgeViewSwitcher value="agent" onChange={vi.fn()} />)
 
-    const trigger = screen.getByRole('button', {
-      name: 'knowledgeSpace.guideTitle',
-    })
-    const guide = screen.getByRole('dialog', {
-      name: 'knowledgeSpace.guideTitle',
-    })
-    within(guide).getByRole('button', { name: 'knowledgeSpace.gotIt' }).focus()
-
+    within(guide()).getByRole('button', { name: 'knowledgeSpace.gotIt' }).focus()
     await user.keyboard('{Escape}')
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(trigger).toHaveFocus()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.guideTitle' })).toHaveFocus()
   })
 
-  it('dismisses the guide without changing the selected knowledge view', async () => {
+  it('remembers a dismissed guide without changing the selected view', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
+    const { unmount } = render(<KnowledgeViewSwitcher value="agent" onChange={onChange} />)
+
+    await user.click(within(guide()).getByRole('button', { name: 'knowledgeSpace.gotIt' }))
+    unmount()
     render(<KnowledgeViewSwitcher value="agent" onChange={onChange} />)
 
-    await user.click(
-      within(
-        screen.getByRole('dialog', {
-          name: 'knowledgeSpace.guideTitle',
-        }),
-      ).getByRole('button', { name: 'knowledgeSpace.gotIt' }),
-    )
-
-    expect(guideStorageMock.setDismissed).toHaveBeenCalledWith(true)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(onChange).not.toHaveBeenCalled()
   })
