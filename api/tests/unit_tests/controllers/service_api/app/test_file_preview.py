@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 from uuid import UUID, uuid4
 
 import pytest
-from flask import Response
+from flask import Flask, Response
 
 from controllers.service_api.app.error import FileAccessDeniedError, FileNotFoundError
 from controllers.service_api.app.file_preview import FilePreviewApi, FilePreviewQuery
@@ -24,9 +24,10 @@ def _preview(
     name: str = "test_file.jpg",
     extension: str = "jpg",
     size: int = 1024,
+    content: bytes | None = None,
 ) -> MessageFilePreview:
     return MessageFilePreview(
-        content=iter([b"file content"]),
+        content=iter([content]) if content is not None else iter([b"file content"]),
         file=MessageFilePreviewRecord(
             key="storage/key/test_file.jpg",
             name=name,
@@ -149,3 +150,54 @@ class TestFilePreviewApi:
             assert response.mimetype == preview.file.mime_type
         if preview.file.mime_type == "video/mp4":
             assert response.headers["Accept-Ranges"] == "bytes"
+
+    def test_preview_honors_range_request(self, app: Flask) -> None:
+        preview = _preview(mime_type="audio/mpeg", name="clip.mp3", extension="mp3", size=1000, content=b"x" * 1000)
+
+        with app.test_request_context("/", headers={"Range": "bytes=0-99"}):
+            response = FilePreviewApi()._build_file_response(preview=preview)
+
+        assert response.status_code == 206
+        assert response.headers["Content-Range"] == "bytes 0-99/1000"
+        assert response.headers["Accept-Ranges"] == "bytes"
+        assert response.headers["Content-Length"] == "100"
+        assert b"".join(response.response) == b"x" * 100
+
+    def test_preview_suffix_range_returns_file_tail(self, app: Flask) -> None:
+        preview = _preview(mime_type="audio/mpeg", name="clip.mp3", extension="mp3", size=1000, content=b"x" * 1000)
+
+        with app.test_request_context("/", headers={"Range": "bytes=-50"}):
+            response = FilePreviewApi()._build_file_response(preview=preview)
+
+        assert response.status_code == 206
+        assert response.headers["Content-Range"] == "bytes 950-999/1000"
+        assert response.headers["Content-Length"] == "50"
+
+    def test_preview_unsatisfiable_range_returns_416(self, app: Flask) -> None:
+        preview = _preview(mime_type="audio/mpeg", name="clip.mp3", extension="mp3", size=1000, content=b"x" * 1000)
+
+        with app.test_request_context("/", headers={"Range": "bytes=1000-"}):
+            response = FilePreviewApi()._build_file_response(preview=preview)
+
+        assert response.status_code == 416
+        assert response.headers["Content-Range"] == "bytes */1000"
+        assert response.headers["Accept-Ranges"] == "bytes"
+
+    def test_preview_range_ignored_for_non_media_type(self, app: Flask) -> None:
+        preview = _preview(mime_type="image/jpeg", content=b"y" * 100)
+
+        with app.test_request_context("/", headers={"Range": "bytes=0-9"}):
+            response = FilePreviewApi()._build_file_response(preview=preview)
+
+        assert response.status_code == 200
+        assert "Content-Range" not in response.headers
+
+    def test_preview_without_range_still_sends_full_body(self, app: Flask) -> None:
+        preview = _preview(mime_type="audio/mpeg", name="clip.mp3", extension="mp3", size=100, content=b"x" * 100)
+
+        with app.test_request_context("/"):
+            response = FilePreviewApi()._build_file_response(preview=preview)
+
+        assert response.status_code == 200
+        assert "Content-Range" not in response.headers
+        assert b"".join(response.response) == b"x" * 100
