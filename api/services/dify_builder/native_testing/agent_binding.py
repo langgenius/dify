@@ -100,6 +100,27 @@ class AgentBindingAuthorization:
     agent_ids: frozenset[str]
 
 
+@dataclass(frozen=True)
+class ConfirmedAgentNodeSelection:
+    agent_id: str
+    snapshot_id: str
+    authorization: AgentBindingAuthorization
+
+
+def authorize_graph_agent_selection(*, actor: Actor, app_id: str, node_data: Mapping) -> ConfirmedAgentNodeSelection:
+    """Authorize the exact native graph selection before opening resolver SQL.
+
+    This is only a current permission check. The binding resolver must still
+    verify the complete owner chain and selected generation at execution.
+    """
+    if not has_native_roster_binding(node_data):
+        raise BuilderExecutionPolicyError("agent_binding_not_prepared")
+    binding = node_data["agent_binding"]
+    agent_id, snapshot_id = binding["agent_id"], binding["current_snapshot_id"]
+    authorization = AgentBindingService.authorize(actor=actor, app_id=app_id, agent_ids=frozenset({agent_id}))
+    return ConfirmedAgentNodeSelection(agent_id, snapshot_id, authorization)
+
+
 class AgentBindingService:
     def __init__(self, session: Session, *, authorization: AgentBindingAuthorization | None = None):
         self.session = session

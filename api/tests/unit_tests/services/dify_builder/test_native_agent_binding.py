@@ -207,7 +207,10 @@ def test_current_membership_revocation_blocks_apply(agent_case, sqlite_session):
         )
 
 
-def test_fresh_native_resolution_reconfirms_but_paused_keeps_snapshot(agent_case, sqlite_session, monkeypatch):
+@pytest.mark.parametrize("conversation_id", [None, "new-test-conversation"])
+def test_fresh_native_resolution_reconfirms_but_paused_keeps_snapshot(
+    agent_case, sqlite_session, monkeypatch, conversation_id
+):
     from contextlib import contextmanager
 
     from core.workflow.nodes.agent_v2 import binding_resolver
@@ -263,12 +266,149 @@ def test_fresh_native_resolution_reconfirms_but_paused_keeps_snapshot(agent_case
         "workflow_id": case.workflow.id,
         "node_id": "review",
         "builder_actor": case.actor,
+        "selected_agent_id": case.agent.id,
         "selected_snapshot_id": old_id,
+        "conversation_id": conversation_id,
     }
     with pytest.raises(AgentSnapshotChanged):
         binding_resolver.WorkflowAgentBindingResolver().resolve(**args)
+    ordinary_args = {key: value for key, value in args.items() if not key.startswith(("builder_", "selected_"))}
+    assert binding_resolver.WorkflowAgentBindingResolver().resolve(**ordinary_args).snapshot.id == replacement.id
     pinned = binding_resolver.WorkflowAgentBindingResolver().resolve(**args, binding_id=binding.id, snapshot_id=old_id)
     assert pinned.snapshot.id == old_id
+
+
+@pytest.mark.parametrize(
+    ("change", "reason"),
+    [
+        ("published", "agent_snapshot_changed"),
+        ("binding", "agent_binding_owner_mismatch"),
+        ("membership", "agent_access_denied"),
+        ("preview", "agent_access_denied"),
+    ],
+)
+def test_confirmed_ordinary_agent_rechecks_selection_before_backend(
+    agent_case, sqlite_session, monkeypatch, change, reason
+):
+    """The actual ordinary node must refuse changed authority before allocation or dispatch."""
+    from contextlib import contextmanager
+
+    from configs import dify_config
+    from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
+    from core.rbac import RBACPermission
+    from core.workflow.nodes.agent_v2 import binding_resolver
+    from graphon.entities import GraphInitParams
+    from graphon.enums import WorkflowNodeExecutionStatus
+    from models.account import TenantAccountJoin
+    from models.agent import AgentConfigSnapshot, WorkflowAgentBindingType, WorkflowAgentNodeBinding
+    from models.agent_config_entities import WorkflowNodeJobConfig
+    from services.agent import access_service
+    from services.enterprise.rbac_service import RBACService
+    from tests.builder_agent_fixtures import add_agent
+    from tests.unit_tests.core.workflow.nodes.agent_v2.test_agent_node import _node
+
+    case = agent_case
+    selected_id, selected_snapshot_id = case.agent.id, case.snapshot.id
+    binding = WorkflowAgentNodeBinding(
+        tenant_id=case.actor.tenant_id,
+        app_id=case.workflow.app_id,
+        workflow_id=case.workflow.id,
+        workflow_version="draft",
+        node_id="agent-node",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+        agent_id=selected_id,
+        current_snapshot_id=selected_snapshot_id,
+        node_job_config=WorkflowNodeJobConfig(),
+    )
+    sqlite_session.add(binding)
+    if change == "published":
+        replacement = AgentConfigSnapshot(
+            tenant_id=case.actor.tenant_id,
+            agent_id=selected_id,
+            version=2,
+            config_snapshot=case.snapshot.config_snapshot,
+        )
+        sqlite_session.add(replacement)
+        sqlite_session.flush()
+        case.agent.active_config_snapshot_id = replacement.id
+        from models.agent import AgentConfigRevision, AgentConfigRevisionOperation
+
+        sqlite_session.add(
+            AgentConfigRevision(
+                tenant_id=case.actor.tenant_id,
+                agent_id=selected_id,
+                current_snapshot_id=replacement.id,
+                revision=2,
+                operation=AgentConfigRevisionOperation.PUBLISH_DRAFT,
+            )
+        )
+    elif change == "binding":
+        other, snapshot = add_agent(sqlite_session, tenant_id=case.actor.tenant_id, name="Unselected")
+        binding.agent_id, binding.current_snapshot_id = other.id, snapshot.id
+    elif change == "membership":
+        membership = sqlite_session.query(TenantAccountJoin).filter_by(account_id=case.actor.account_id).one()
+        sqlite_session.delete(membership)
+    sqlite_session.commit()
+    if change == "preview":
+        monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
+        monkeypatch.setattr(
+            access_service,
+            "resolve_current_agent_access_filter",
+            lambda **_kwargs: access_service.AgentAccessFilter.unrestricted(),
+        )
+        monkeypatch.setattr(
+            RBACService.CheckAccess,
+            "check",
+            lambda *_args, **kwargs: kwargs["scene"] != RBACPermission.AGENT_PREVIEW,
+        )
+
+    @contextmanager
+    def session_context():
+        yield sqlite_session
+
+    monkeypatch.setattr(binding_resolver.session_factory, "create_session", session_context)
+    graph = {
+        "nodes": [
+            {
+                "id": "agent-node",
+                "data": {
+                    "type": "agent",
+                    "version": "2",
+                    "agent_node_kind": "dify_agent",
+                    "agent_binding": {
+                        "binding_type": "roster_agent",
+                        "agent_id": selected_id,
+                        "current_snapshot_id": selected_snapshot_id,
+                    },
+                },
+            }
+        ]
+    }
+    context = DifyRunContext(
+        tenant_id=case.actor.tenant_id,
+        app_id=case.workflow.app_id,
+        user_id=case.actor.account_id,
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
+        builder_tool_credential_bindings={},
+    )
+    node = _node(
+        graph_init_params=GraphInitParams(
+            workflow_id=case.workflow.id,
+            graph_config=graph,
+            run_context={DIFY_RUN_CONTEXT_KEY: context},
+            call_depth=0,
+        )
+    )
+    node._binding_resolver = binding_resolver.WorkflowAgentBindingResolver()
+
+    events = list(node._run())
+
+    result = events[-1].node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert result.error_type == reason
+    assert node._agent_backend_client.request is None
+    assert node._session_store.resolved_scopes == []
 
 
 def test_sync_cannot_skip_native_selection_admission(agent_case, sqlite_session):

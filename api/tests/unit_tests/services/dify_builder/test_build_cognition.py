@@ -1070,6 +1070,110 @@ def test_plan_prompt_names_the_ready_tools_it_may_use(monkeypatch):
     assert "separate word" in system
 
 
+@pytest.mark.parametrize("with_actor", [True, False])
+def test_initial_plan_uses_only_current_actor_eligible_published_agent_metadata(
+    sqlite_session, monkeypatch, with_actor
+):
+    from types import SimpleNamespace
+
+    from configs import dify_config
+    from services.agent import access_service
+    from services.dify_builder.agent.llm_agent import LlmBuilderAgent
+    from tests.builder_agent_fixtures import add_agent, make_case
+
+    monkeypatch.setattr(dify_config, "RBAC_ENABLED", False)
+    case = make_case(sqlite_session)
+    case.snapshot.summary = "Review report evidence"
+    unpublished, _ = add_agent(sqlite_session, tenant_id=case.actor.tenant_id, name="Unpublished", published=False)
+    hidden, _ = add_agent(sqlite_session, tenant_id=case.actor.tenant_id, name="Hidden")
+    sqlite_session.commit()
+    monkeypatch.setattr(
+        access_service,
+        "resolve_current_agent_access_filter",
+        lambda **_kwargs: access_service.AgentAccessFilter(accessible_agent_ids={case.agent.id, unpublished.id}),
+    )
+    monkeypatch.setattr(resources, "db", SimpleNamespace(engine=sqlite_session.get_bind()))
+    monkeypatch.setattr(resources, "_list_models", lambda _tenant_id: [])
+    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id: [])
+    monkeypatch.setattr(resources, "_list_tools", lambda _tenant_id: [])
+    captured = {}
+    steps = ["start node receives report", "New Agent v2 node reviews the report", "end node returns summary"]
+
+    def propose(_model, *, system, user, **_kwargs):
+        captured.update(system=system, user=user)
+        return _plan_reply(steps)
+
+    monkeypatch.setattr(build.llm, "invoke_text", propose)
+    agent = LlmBuilderAgent(case.actor.tenant_id, {}, account_id=case.actor.account_id if with_actor else None)
+    monkeypatch.setattr(agent, "_model", lambda: object())
+
+    result = agent.propose_plan_v1({"result": "summary"}, goal_text="Use a Workspace Agent to review a report")
+
+    assert result is not None
+    assert result.items == steps
+    system = captured["system"]
+    assert "New Agent v2" in system
+    assert "version=2" in system
+    assert "agent_node_kind=dify_agent" in system
+    assert "legacy" in system.lower()
+    assert unpublished.id not in system
+    assert hidden.id not in system
+    if with_actor:
+        assert case.agent.id in system
+        assert "Review report evidence" in system
+        assert '"report": {"required": true, "type": "string"}' in system
+        assert "published_soul.app_variables" in system
+        assert "node_job_required" in system
+        assert "tool:plugin/provider/read" in system
+    else:
+        assert case.agent.id not in system
+        assert "# Published Workspace Agents" not in system
+    assert "HIDDEN" not in system
+
+
+def test_initial_plan_keeps_agent_catalogue_failure_distinct_from_no_agents(monkeypatch):
+    from services.dify_builder.agent.llm_agent import LlmBuilderAgent
+
+    monkeypatch.setattr(
+        resources,
+        "list_tenant_resources",
+        lambda *_args, **_kwargs: resources.TenantResources(
+            models=[], datasets=[], tools=[], agent_source_error="Published Agent catalog unavailable"
+        ),
+    )
+    model = _FakeInstance([_plan_reply(["start node receives report", "end node returns report"])])
+    agent = LlmBuilderAgent("tenant-1", {}, account_id="actor-1")
+    monkeypatch.setattr(agent, "_model", lambda: model)
+
+    assert agent.propose_plan_v1({}, goal_text="Review a report") is not None
+
+    system = model.calls[0][0][0].content
+    assert "Agent catalog is unavailable" in system
+    assert "do not infer" in system
+
+
+def test_agent_binding_names_new_agent_step_instead_of_end(monkeypatch):
+    agent_id = "agent:agent-1:snapshot-1:" + "a" * 64
+    monkeypatch.setattr(
+        resources,
+        "list_tenant_resources",
+        lambda *_args, **_kwargs: resources.TenantResources(
+            models=[], datasets=[], tools=[], agents=[resources.ResourceRef(id=agent_id, label="Reviewer")]
+        ),
+    )
+
+    result = build.bind_resources(
+        None,
+        "tenant-1",
+        ["start node receives report", "New Agent v2 node reviews the report", "end node returns summary"],
+        [agent_id],
+        account_id="actor-1",
+    )
+
+    assert result[1] == "New Agent v2 node reviews the report (using Reviewer [" + agent_id + "])"
+    assert result[2] == "end node returns summary"
+
+
 def test_plan_prompt_without_tools_has_no_tool_section(monkeypatch):
     captured = {}
 

@@ -23,6 +23,7 @@ class PublishedAgentCandidate:
     name: str
     description: str
     capability: str
+    capability_source: Literal["published_snapshot.summary", "public_roster.description", "node_job_required"]
     dependencies: tuple[str, ...]
     input_schema: dict[str, JsonValue]
     output_schema: None
@@ -67,8 +68,17 @@ def project_published_agent(*, agent: Agent, snapshot: AgentConfigSnapshot) -> P
             + [f"knowledge:{dataset.id}" for item in soul.knowledge.sets for dataset in item.datasets if dataset.id]
         )
     )
-    description = snapshot.summary or ""
+    # Roster description is public catalog metadata, not a published Soul
+    # contract. Keep its provenance explicit when no snapshot summary exists.
+    description = snapshot.summary or agent.description or ""
     capability = description or "Published Workspace Agent; caller must declare its node-job outputs."
+    capability_source: Literal["published_snapshot.summary", "public_roster.description", "node_job_required"] = (
+        "published_snapshot.summary"
+        if snapshot.summary
+        else "public_roster.description"
+        if agent.description
+        else "node_job_required"
+    )
     digest = canonical_digest(
         {
             "agent_id": agent.id,
@@ -76,6 +86,7 @@ def project_published_agent(*, agent: Agent, snapshot: AgentConfigSnapshot) -> P
             "inputs": inputs,
             "dependencies": list(dependencies),
             "description": description,
+            "capability_source": capability_source,
             "output_contract_source": "node_job_required",
         }
     )
@@ -86,6 +97,7 @@ def project_published_agent(*, agent: Agent, snapshot: AgentConfigSnapshot) -> P
         name=agent.name,
         description=description,
         capability=capability,
+        capability_source=capability_source,
         dependencies=dependencies,
         input_schema=inputs,
         output_schema=None,

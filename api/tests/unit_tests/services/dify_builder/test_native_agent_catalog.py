@@ -50,6 +50,144 @@ def test_projection_rejects_cross_owner_snapshot():
         project_published_agent(agent=agent, snapshot=snapshot)
 
 
+@pytest.mark.parametrize("summary", [None, "", "Published risk review"])
+def test_public_roster_description_is_an_honest_capability_fallback(summary):
+    from services.dify_builder.native_testing.agent_catalog import project_published_agent
+
+    agent = Agent(id=str(uuid4()), tenant_id=str(uuid4()), name="Reviewer", description="Public report review")
+    snapshot = AgentConfigSnapshot(
+        id=str(uuid4()),
+        tenant_id=agent.tenant_id,
+        agent_id=agent.id,
+        version=1,
+        summary=summary,
+        config_snapshot=AgentSoulConfig.model_validate({"prompt": {"system_prompt": "PRIVATE PROMPT"}}),
+    )
+
+    candidate = project_published_agent(agent=agent, snapshot=snapshot)
+
+    assert candidate.description == (summary or "Public report review")
+    assert candidate.capability == (summary or "Public report review")
+    assert candidate.capability_source == ("published_snapshot.summary" if summary else "public_roster.description")
+    assert "PRIVATE" not in repr(asdict(candidate))
+
+
+@pytest.mark.parametrize("phase", ["discovery", "generation"])
+def test_agent_contract_reaches_planning_without_private_soul_values(sqlite_session, monkeypatch, phase):
+    """An eligible real SQL projection must survive both planning consumers intact."""
+    import json
+    from types import SimpleNamespace
+
+    from configs import dify_config
+    from core.app.app_config.entities import ModelConfig
+    from models.agent_config_entities import WorkflowNodeJobConfig
+    from services.dify_builder.agent import build, resources
+    from services.dify_builder.native_testing.agent_binding import native_node_data
+    from services.dify_builder.native_testing.agent_catalog import project_published_agent
+    from tests.builder_agent_fixtures import make_case
+
+    monkeypatch.setattr(dify_config, "RBAC_ENABLED", False)
+    case = make_case(sqlite_session)
+    case.agent.description = "Public review capability " * 40
+    case.snapshot.summary = None
+    soul = case.snapshot.config_snapshot_dict
+    soul["app_variables"][0]["default"] = "PRIVATE DEFAULT"
+    soul["prompt"] = {"system_prompt": "PRIVATE SYSTEM"}
+    case.snapshot.config_snapshot = AgentSoulConfig.model_validate(soul)
+    sqlite_session.commit()
+    candidate = project_published_agent(agent=case.agent, snapshot=case.snapshot)
+    monkeypatch.setattr(resources, "db", SimpleNamespace(engine=sqlite_session.get_bind()))
+    monkeypatch.setattr(resources, "_list_models", lambda _tenant_id: [])
+    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id: [])
+    monkeypatch.setattr(resources, "_list_tools", lambda _tenant_id: [])
+    payloads = []
+    if phase == "discovery":
+
+        def recommend(_model, **kwargs):
+            payloads.append(kwargs["user"])
+            return {"resource_ids": [candidate.resource_id]}
+
+        monkeypatch.setattr(build.llm, "invoke_json", recommend)
+        options = build.discover_resources(
+            object(), case.actor.tenant_id, ["Review the report"], account_id=case.actor.account_id
+        )
+        assert len(options) == 1
+        assert "public roster description" in options[0].meta
+    else:
+        mc = ModelConfig.model_validate({"provider": "provider", "name": "model", "mode": "chat"})
+        monkeypatch.setattr(build, "_generator_model_config", lambda *_args: mc)
+        agent_data = native_node_data(
+            agent_id=case.agent.id,
+            snapshot_id=case.snapshot.id,
+            node_job=WorkflowNodeJobConfig(
+                workflow_prompt="Review {{#start.report#}}", declared_outputs=[{"name": "summary", "type": "string"}]
+            ),
+        )
+
+        def generate(**kwargs):
+            payloads.append(kwargs["instruction"])
+            return {
+                "graph": {
+                    "nodes": [
+                        {
+                            "id": "start",
+                            "data": {
+                                "type": "start",
+                                "title": "Start",
+                                "variables": [
+                                    {"variable": "report", "label": "Report", "type": "paragraph", "required": True}
+                                ],
+                            },
+                        },
+                        {"id": "review", "data": agent_data},
+                        {
+                            "id": "end",
+                            "data": {
+                                "type": "end",
+                                "title": "End",
+                                "outputs": [
+                                    {
+                                        "variable": "summary",
+                                        "value_type": "string",
+                                        "value_selector": ["review", "summary"],
+                                    }
+                                ],
+                            },
+                        },
+                    ],
+                    "edges": [
+                        {"id": "first", "source": "start", "target": "review"},
+                        {"id": "last", "source": "review", "target": "end"},
+                    ],
+                }
+            }
+
+        monkeypatch.setattr(build.WorkflowGeneratorService, "generate_workflow_graph", generate)
+        result = build.build_nodes(
+            case.actor.tenant_id,
+            {},
+            ["Review the report"],
+            resource_ids=[candidate.resource_id],
+            account_id=case.actor.account_id,
+        )
+        assert result.intents, result.diagnostics
+        assert any(intent.args.get("node_type") == "agent" for intent in result.intents)
+
+    assert len(payloads) == 1
+    prompt = payloads[0]
+    for public_value in (
+        json.dumps({"report": {"type": "string", "required": True}}, sort_keys=True),
+        "published_soul.app_variables",
+        "node_job_required",
+        "public_roster.description",
+        "model:model-plugin/provider/test-model",
+        "tool:plugin/provider/read",
+    ):
+        assert public_value in prompt
+    assert "PRIVATE" not in prompt
+    assert "HIDDEN" not in prompt
+
+
 def test_catalog_source_failure_is_not_an_empty_catalog(monkeypatch, sqlite_session):
     from services.agent import access_service
     from services.dify_builder.native_testing.agent_catalog import AgentCatalogService

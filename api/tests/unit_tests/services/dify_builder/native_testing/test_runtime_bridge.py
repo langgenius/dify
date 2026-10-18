@@ -636,7 +636,10 @@ def test_actual_engine_equal_inputs_distinct_occurrences_restore_retry_and_fresh
     assert before.dispatches == []
     assert owner.status == "WAIT_RECORDED"
     waited_keys = {key for key, _ in before.entries}
-    assert len(waited_keys) == (1 if kind == "loop" else 2)
+    # The first pause defers unclaimed siblings. A parallel sibling may have
+    # reached its guard already, but both must complete distinctly on restore.
+    assert 1 <= len(waited_keys) <= (1 if kind == "loop" else 2)
+    assert len(waited_keys) == len(before.entries)
     assert {record.native_execution_id for record in sink.records} == {key.occurrence_path[0] for key in waited_keys}
     restored = GraphRuntimeState.from_snapshot(runtime.dumps())
     after = EffectsWitness("retry")
@@ -645,7 +648,7 @@ def test_actual_engine_equal_inputs_distinct_occurrences_restore_retry_and_fresh
     assert isinstance(terminal, GraphRunPartialSucceededEvent)
     assert terminal.exceptions_count == 2
     completed_keys = set(after.dispatches)
-    assert len(completed_keys) == 2
+    assert len(after.dispatches) == len(completed_keys) == 2
     assert waited_keys <= completed_keys
     for key in completed_keys:
         assert len([entry for entry, _ in after.entries if entry == key]) == 2

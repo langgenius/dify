@@ -9,7 +9,7 @@ import json
 import logging
 import re
 from collections.abc import Callable, Sequence
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlsplit
@@ -346,6 +346,9 @@ _DIFY_NODE_VOCABULARY = """\
 - "template-transform"  — Jinja2 string templating.
 - "http-request"        — call an external HTTP API.
 - "tool"                — call a Dify built-in or installed plugin tool (web search, Slack, JSON, …).
+- "agent"               — New Agent v2 (version=2, agent_node_kind=dify_agent): call a listed published Workspace Agent.
+                          Use only eligible roster candidates, never legacy Agent strategies.
+                          Inputs follow its published declarations; outputs are caller node-job declarations.
 - "if-else"             — branch on a condition.
 - "iteration"           — run a sub-pipeline over every item of a list.
 - "loop"                — repeat a sub-pipeline until an exit condition holds.
@@ -419,12 +422,31 @@ def ready_tool_catalogue(
     (``None``: team-shared only), never access to another member's credential.
     A listing failure yields ``[]`` -- the plan then just cannot name tools,
     which is the pre-existing behaviour, never a crashed advance."""
+    return planning_catalogue(tenant_id, account_id=account_id, goal_text=goal_text, requirements=requirements).tools
+
+
+def planning_catalogue(
+    tenant_id: str,
+    *,
+    account_id: str | None = None,
+    goal_text: str = "",
+    requirements: dict[str, Any] | None = None,
+) -> resources.TenantResources:
+    """One metadata read preserves eligible Agents beside ranked installed tools.
+
+    The resource owner enforces current actor/publication visibility; no actor
+    means no Agent catalog. This projection proposes a plan, never a binding.
+    """
     try:
-        tools = resources.list_tenant_resources(tenant_id, account_id=account_id).tools
+        inventory = resources.list_tenant_resources(tenant_id, account_id=account_id)
     except Exception:
-        logger.warning("dify_builder: tool listing failed; planning without a tool catalogue", exc_info=True)
-        return []
-    return _rank_tools(tools, _request_text(goal_text, requirements))[:_MAX_PLANNER_TOOLS]
+        logger.warning("dify_builder: resource listing failed; planning without a catalogue", exc_info=True)
+        return resources.TenantResources(
+            models=[], datasets=[], tools=[], agent_source_error="Published Agent catalog unavailable"
+        )
+    return replace(
+        inventory, tools=_rank_tools(inventory.tools, _request_text(goal_text, requirements))[:_MAX_PLANNER_TOOLS]
+    )
 
 
 def _planner_tool_section(tools: Sequence[ResourceRef]) -> str:
@@ -446,6 +468,23 @@ def _planner_tool_section(tools: Sequence[ResourceRef]) -> str:
     )
 
 
+def _planner_agent_section(agents: Sequence[ResourceRef], source_error: str | None) -> str:
+    if source_error:
+        return "\n\nPublished Agent catalog is unavailable; do not infer that the workspace has no matching Agents."
+    if not agents:
+        return ""
+    listing = "\n".join(_discovery_line(ref.id, "agent", ref) for ref in agents)
+    return (
+        "\n\n# Published Workspace Agents you may name (resource confirmation required)\n"
+        "When a listed candidate fits the original request, plan an `agent` node using New Agent v2 and name its "
+        "exact listed id. Resource confirmation must select that binding before generation. Its capability source "
+        "and dependencies are public metadata; setup/readiness is not runtime authorization. Inputs come from "
+        "published Soul app-variable declarations. Outputs must be declared by the caller's node job; "
+        "never invent a published Agent output schema.\n"
+        f"{listing}"
+    )
+
+
 def _cognition_source(goal_text: str, requirements: dict[str, Any] | None) -> str:
     """Keep the full source in every source-dependent cognition payload."""
     return f"ORIGINAL GOAL:\n{goal_text}\n\nCONFIRMED REQUIREMENTS:\n" + json.dumps(
@@ -459,6 +498,8 @@ def propose_plan_v1(
     on_reasoning: Callable[[str], None] | None = None,
     *,
     tools: Sequence[ResourceRef] = (),
+    agents: Sequence[ResourceRef] = (),
+    agent_source_error: str | None = None,
     goal_text: str = "",
 ) -> WorkflowPlan | None:
     """Return an intact plan or None, with at most one schema correction.
@@ -480,7 +521,8 @@ def propose_plan_v1(
         '"llm node drafts a reply from the ticket text". Bad: "Notify the team on Feishu" '
         "-- that names a product, not a node.\n\n"
         "Dify has no scheduler, database, email or messaging node. An external action can use "
-        "a ready matching installed `tool` node, an `http-request` node with a user-supplied "
+        "a matching installed `tool` node, a listed eligible published Workspace Agent, "
+        "an `http-request` node with a user-supplied "
         "endpoint, or an `http-request` node whose endpoint is a required Start input supplied "
         "at runtime. A missing URL alone is not an unsupported capability: retain the requested "
         "HTTP action and require the endpoint input rather than skipping it. Reserve work "
@@ -489,7 +531,7 @@ def propose_plan_v1(
         "deferral does not establish API availability, authentication, request schema or response "
         "schema; do not invent any of them. Resource mentions, including optional or negative "
         "mentions, do not alone require using a resource."
-        f"{_planner_tool_section(tools)}\n\n"
+        f"{_planner_tool_section(tools)}{_planner_agent_section(agents, agent_source_error)}\n\n"
         f"{PLAN_PRESENTATION_INSTRUCTION}"
     )
     system += "\n\n" + native_constant_output_system_rules()
@@ -587,6 +629,9 @@ def _discovery_line(rid: str, kind: str, ref: ResourceRef) -> str:
     meta = ref.meta.replace("\n", " ").strip()
     if meta:
         line += f" — {meta[:240]}"
+    if kind == "agent" and ref.agent_contract is not None:
+        # Public input/dependency declarations must survive the prose cap.
+        line += "\n  Agent contract: " + json.dumps(ref.agent_contract, sort_keys=True)
     return line
 
 
@@ -659,6 +704,7 @@ def assess_capability_gap(
 _STEP_KEYWORDS_BY_KIND: dict[str, tuple[str, ...]] = {
     "model": ("llm", "question-classifier", "parameter-extractor"),
     "plugin": ("tool",),
+    "agent": ("agent",),
 }
 
 
@@ -1120,11 +1166,17 @@ def build_nodes(
             from services.dify_builder.native_testing.agent_binding import AgentBindingSelection
 
             selected_agents = [
-                AgentBindingSelection.from_resource_id(ref.id).model_dump(mode="json") for ref in agent_refs
+                {
+                    **AgentBindingSelection.from_resource_id(ref.id).model_dump(mode="json"),
+                    "name": ref.label,
+                    "capability": ref.capability,
+                    "contract": ref.agent_contract,
+                }
+                for ref in agent_refs
             ]
             base_instruction += (
                 "\nSELECTED PUBLISHED WORKSPACE AGENTS (use only these exact bindings):\n"
-                + json.dumps(selected_agents)
+                + json.dumps(selected_agents, sort_keys=True)
                 + "\nUse native type=agent, version=2, agent_node_kind=dify_agent, "
                 "agent_binding={binding_type:roster_agent,agent_id,current_snapshot_id:snapshot_id}, agent_task, "
                 "and agent_declared_outputs. Outputs are caller node-job declarations, never a published Agent schema."

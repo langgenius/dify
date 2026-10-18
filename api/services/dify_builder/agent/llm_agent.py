@@ -136,13 +136,16 @@ class LlmBuilderAgent:
         )
 
     def propose_plan_v1(self, requirements: dict[str, Any], *, goal_text: str) -> WorkflowPlan | None:
+        catalogue = build.planning_catalogue(
+            self._tenant_id, account_id=self._account_id, goal_text=goal_text, requirements=requirements
+        )
         return build.propose_plan_v1(
             self.model_or_none(),
             requirements,
             self._reasoning_for("propose-build-plan"),
-            tools=build.ready_tool_catalogue(
-                self._tenant_id, account_id=self._account_id, goal_text=goal_text, requirements=requirements
-            ),
+            tools=catalogue.tools,
+            agents=catalogue.agents,
+            agent_source_error=catalogue.agent_source_error,
             goal_text=goal_text,
         )
 

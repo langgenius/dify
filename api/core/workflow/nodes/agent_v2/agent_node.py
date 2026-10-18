@@ -157,6 +157,9 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         process_data: dict[str, Any],
         metadata: dict[str, Any],
     ) -> Generator[NodeEventBase | NodeRunPauseRequestedEvent]:
+        from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
+        from services.dify_builder.native_testing.agent_binding import AgentSnapshotChanged
+
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
         workflow_id = self.graph_init_params.workflow_id
         workflow_run_id = get_system_text(
@@ -171,6 +174,31 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
 
         # ──── Setup: resolve binding once + extract declared outputs for stage 4 checks ────
         try:
+            builder_resolution: dict[str, Any] = {}
+            # The ordinary Builder Test Run always supplies this server-owned
+            # map, including {} for Agent-only graphs. Ordinary runs leave it
+            # None. Recheck its graph selection at the actual Agent boundary.
+            if dify_ctx.builder_tool_credential_bindings is not None:
+                from core.dify_builder.models import Actor
+                from services.dify_builder.native_testing.agent_binding import authorize_graph_agent_selection
+
+                nodes = [
+                    node
+                    for node in self.graph_init_params.graph_config.get("nodes", [])
+                    if isinstance(node, Mapping) and node.get("id") == self._node_id
+                ]
+                if len(nodes) != 1 or not isinstance(nodes[0].get("data"), Mapping):
+                    raise BuilderExecutionPolicyError("agent_binding_not_prepared")
+                actor = Actor(tenant_id=dify_ctx.tenant_id, account_id=dify_ctx.user_id)
+                selection = authorize_graph_agent_selection(
+                    actor=actor, app_id=dify_ctx.app_id, node_data=nodes[0]["data"]
+                )
+                builder_resolution = {
+                    "builder_actor": actor,
+                    "builder_authorization": selection.authorization,
+                    "selected_agent_id": selection.agent_id,
+                    "selected_snapshot_id": selection.snapshot_id,
+                }
             existing_scope = self._session_store.load_existing_node_execution_scope(
                 tenant_id=dify_ctx.tenant_id,
                 app_id=dify_ctx.app_id,
@@ -188,7 +216,17 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 binding_id=existing_scope.workflow_agent_binding_id if existing_scope is not None else None,
                 snapshot_id=existing_scope.agent_config_snapshot_id if existing_scope is not None else None,
                 conversation_id=conversation_id,
+                **builder_resolution,
             )
+        except (AgentSnapshotChanged, BuilderExecutionPolicyError) as error:
+            yield self._failure_event(
+                inputs=inputs,
+                process_data=process_data,
+                metadata=metadata,
+                error=str(error),
+                error_type="agent_snapshot_changed" if isinstance(error, AgentSnapshotChanged) else error.reason_code,
+            )
+            return
         except WorkflowAgentBindingError as error:
             yield self._failure_event(
                 inputs=inputs,

@@ -21,6 +21,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
+from pydantic import JsonValue
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -52,6 +53,8 @@ class ResourceRef:
     # Verified public declaration facts, for draft annotation/native selection.
     needs_credentials: bool = False
     plugin_id: str = ""
+    # Internal Agent planning allowlist; no Soul prompt/defaults or credentials.
+    agent_contract: dict[str, JsonValue] | None = None
 
 
 @dataclass(frozen=True)
@@ -226,6 +229,11 @@ def list_tenant_resources(
                         tenant_id=tenant_id, actor_id=account_id, app_id=None, query=None
                     )
 
+            capability_sources = {
+                "published_snapshot.summary": "published snapshot summary",
+                "public_roster.description": "public roster description (no published summary)",
+                "node_job_required": "no published capability summary",
+            }
             agents = [
                 ResourceRef(
                     id=item.resource_id,
@@ -233,11 +241,20 @@ def list_tenant_resources(
                     meta=(
                         f"Published version {item.display_version}; outputs must be declared by the node job. "
                         f"{SETUP_REQUIRED_NOTE if item.readiness == 'missing_config' else ''} "
+                        f"{capability_sources[item.capability_source]}: "
                         f"{item.description}"
                     ),
                     readiness=item.readiness,
                     description=item.description,
                     capability=item.capability,
+                    agent_contract={
+                        "capability_source": item.capability_source,
+                        "input_schema": item.input_schema,
+                        "input_contract_source": item.input_contract_source,
+                        "dependencies": list(item.dependencies),
+                        "output_schema": item.output_schema,
+                        "output_contract_source": item.output_contract_source,
+                    },
                 )
                 for item in candidates
             ]

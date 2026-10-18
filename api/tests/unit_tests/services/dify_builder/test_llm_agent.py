@@ -6,7 +6,7 @@ from services.dify_builder.agent import build as build_mod
 from services.dify_builder.agent import chat as chat_mod
 from services.dify_builder.agent import edit as edit_mod
 from services.dify_builder.agent import fix as fix_mod
-from services.dify_builder.agent import llm_agent
+from services.dify_builder.agent import llm_agent, resources
 from services.dify_builder.agent.llm_agent import LlmBuilderAgent
 
 
@@ -56,8 +56,10 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch):
     self._tenant_id/self._model_config directly instead)."""
     seen = {}
 
-    def mock_propose_plan_v1(model, requirements, _reasoning=None, *, tools=(), goal_text):
-        seen["propose_plan_v1"] = (model, requirements, list(tools), goal_text)
+    def mock_propose_plan_v1(
+        model, requirements, _reasoning=None, *, tools=(), agents=(), agent_source_error=None, goal_text
+    ):
+        seen["propose_plan_v1"] = (model, requirements, list(tools), list(agents), agent_source_error, goal_text)
         return []
 
     def mock_discover_resources(
@@ -98,9 +100,13 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch):
         return "skill"
 
     monkeypatch.setattr(build_mod, "propose_plan_v1", mock_propose_plan_v1)
-    # The wrapper now hands the planner the tenant's READY tools (Plan 3 Task 2);
-    # stub the listing so this test never reaches the plugin daemon.
-    monkeypatch.setattr(build_mod, "ready_tool_catalogue", lambda _tenant_id, **_kwargs: ["catalogue-stub"])
+    monkeypatch.setattr(
+        build_mod,
+        "planning_catalogue",
+        lambda _tenant_id, **_kwargs: resources.TenantResources(
+            models=[], datasets=[], tools=["catalogue-stub"], agents=["agent-stub"]
+        ),
+    )
     monkeypatch.setattr(build_mod, "discover_resources", mock_discover_resources)
     monkeypatch.setattr(build_mod, "assess_capability_gap", mock_assess_capability_gap)
     monkeypatch.setattr(build_mod, "bind_resources", mock_bind_resources)
@@ -114,7 +120,7 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch):
     goal = "Upload the real file. " + "原始目标。" * 1800
     requirements = {"format": "pptx", "endpoint": {"url": "https://example.test"}}
     agent.propose_plan_v1(requirements, goal_text=goal)
-    assert seen["propose_plan_v1"] == ("MODEL", requirements, ["catalogue-stub"], goal)
+    assert seen["propose_plan_v1"] == ("MODEL", requirements, ["catalogue-stub"], ["agent-stub"], None, goal)
     assert seen["propose_plan_v1"][1] is requirements
 
     agent.discover_resources(["step"], goal_text=goal, requirements=requirements)
@@ -325,9 +331,9 @@ def test_message_reply_delegates_stream_callback(monkeypatch):
 def _capture_tool_owners(monkeypatch) -> dict:
     seen: dict = {}
 
-    def ready_tool_catalogue(tenant_id, **kwargs):
-        seen["ready_tool_catalogue"] = (tenant_id, kwargs)
-        return []
+    def planning_catalogue(tenant_id, **kwargs):
+        seen["planning_catalogue"] = (tenant_id, kwargs)
+        return resources.TenantResources(models=[], datasets=[], tools=[])
 
     def discover_resources(model, tenant_id, plan_items, _reasoning=None, **kwargs):  # noqa: ARG001
         seen["discover_resources"] = (tenant_id, kwargs)
@@ -342,7 +348,7 @@ def _capture_tool_owners(monkeypatch) -> dict:
         return []
 
     monkeypatch.setattr(build_mod, "propose_plan_v1", lambda *_a, **_k: [])
-    monkeypatch.setattr(build_mod, "ready_tool_catalogue", ready_tool_catalogue)
+    monkeypatch.setattr(build_mod, "planning_catalogue", planning_catalogue)
     monkeypatch.setattr(build_mod, "discover_resources", discover_resources)
     monkeypatch.setattr(build_mod, "bind_resources", bind_resources)
     monkeypatch.setattr(build_mod, "build_nodes", build_nodes)
@@ -356,7 +362,7 @@ def test_planner_tool_catalogue_is_ranked_against_the_goal_and_requirements(monk
 
     agent.propose_plan_v1({"channel": "#oncall"}, goal_text="Page the on-call responders")
 
-    tenant_id, kwargs = seen["ready_tool_catalogue"]
+    tenant_id, kwargs = seen["planning_catalogue"]
     assert tenant_id == "t1"
     query = " ".join(str(value) for value in kwargs.values())
     assert "Page the on-call responders" in query
@@ -373,7 +379,7 @@ def test_every_tool_owner_receives_the_acting_account(monkeypatch):
     agent.bind_resources(["step"], ["rid"])
     agent.build_nodes(["step"])
 
-    for owner in ("ready_tool_catalogue", "discover_resources", "bind_resources", "build_nodes"):
+    for owner in ("planning_catalogue", "discover_resources", "bind_resources", "build_nodes"):
         assert seen[owner][0] == "t1"
         assert seen[owner][1].get("account_id") == "acct-a", owner
 

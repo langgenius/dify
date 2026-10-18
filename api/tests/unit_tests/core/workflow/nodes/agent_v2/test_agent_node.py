@@ -417,8 +417,9 @@ def _node(
     binding_resolver: FakeBindingResolver | None = None,
     runtime_request_builder: WorkflowAgentRuntimeRequestBuilder | None = None,
     error_strategy: ErrorStrategy | None = None,
+    graph_init_params: GraphInitParams | None = None,
 ) -> DifyAgentNode:
-    graph_init_params = GraphInitParams(
+    graph_init_params = graph_init_params or GraphInitParams(
         workflow_id="workflow-1",
         graph_config={"nodes": [], "edges": []},
         run_context={

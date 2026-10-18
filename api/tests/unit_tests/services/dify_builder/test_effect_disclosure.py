@@ -86,6 +86,99 @@ def test_targets_and_objects_name_what_is_touched_without_secrets():
     assert "upstream outputs" in items["slack"].object
 
 
+def test_agent_v2_discloses_selected_binding_and_limits_of_outer_node_risk() -> None:
+    graph = {
+        "nodes": [
+            _node(
+                "agent",
+                type="agent",
+                version="2",
+                agent_node_kind="dify_agent",
+                agent_binding={
+                    "binding_type": "roster_agent",
+                    "agent_id": "agent-123",
+                    "current_snapshot_id": "snapshot-456",
+                },
+            )
+        ]
+    }
+
+    disclosure = disclose(graph)
+    item = disclosure.items[0]
+
+    assert item.target == "Agent agent-123 / snapshot snapshot-456"
+    assert item.object == (
+        "May use its configured model and tools. Nested runtime targets cannot be predicted from this outer node."
+    )
+    assert item.tier == "side_effect"
+    assert disclosure.mocked_node_ids(None) == {"agent"}
+    assert disclosure.mocked_node_ids(disclosure.confirmation(["agent"])) == set()
+
+
+def test_agent_v2_unavailable_binding_is_explicit_without_rendering_other_fields() -> None:
+    item = disclose(
+        {
+            "nodes": [
+                _node(
+                    "agent",
+                    type="agent",
+                    version="2",
+                    agent_node_kind="dify_agent",
+                    agent_binding={"agent_id": {"secret": "must-not-render"}, "current_snapshot_id": None},
+                )
+            ]
+        }
+    ).items[0]
+
+    assert item.target == "Dify Agent (binding unavailable)"
+    assert "must-not-render" not in item.target + item.object
+
+
+def test_agent_v2_confirmation_keeps_full_configuration_binding() -> None:
+    graph = {
+        "nodes": [
+            _node(
+                "agent",
+                type="agent",
+                version="2",
+                agent_node_kind="dify_agent",
+                agent_task="Summarize",
+                agent_binding={
+                    "binding_type": "roster_agent",
+                    "agent_id": "agent-123",
+                    "current_snapshot_id": "snapshot-456",
+                },
+            )
+        ]
+    }
+    confirmation = disclose(graph).confirmation(["agent"])
+    changed_snapshot = deepcopy(graph)
+    changed_snapshot["nodes"][0]["data"]["agent_binding"]["current_snapshot_id"] = "snapshot-789"
+    changed_task = deepcopy(graph)
+    changed_task["nodes"][0]["data"]["agent_task"] = "Send summary"
+
+    assert disclose(changed_snapshot).mocked_node_ids(confirmation) == {"agent"}
+    assert disclose(changed_task).mocked_node_ids(confirmation) == {"agent"}
+
+
+def test_legacy_agent_disclosure_keeps_its_model_target() -> None:
+    item = disclose(
+        {
+            "nodes": [
+                _node(
+                    "agent",
+                    type="agent",
+                    version="2",
+                    model={"provider": "langgenius/openai/openai", "name": "gpt-4o"},
+                )
+            ]
+        }
+    ).items[0]
+
+    assert item.target == "openai / gpt-4o"
+    assert item.object == ""
+
+
 def test_default_is_mock_for_every_side_effect_and_destructive_node():
     disclosure = disclose(GRAPH)
 

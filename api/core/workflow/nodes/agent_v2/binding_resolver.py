@@ -56,6 +56,7 @@ class WorkflowAgentBindingResolver:
         conversation_id: str | None = None,
         builder_actor: Actor | None = None,
         builder_authorization: AgentBindingAuthorization | None = None,
+        selected_agent_id: str | None = None,
         selected_snapshot_id: str | None = None,
     ) -> WorkflowAgentBindingBundle:
         """Resolve the generation pinned by an execution or a Chatflow conversation participant."""
@@ -66,7 +67,7 @@ class WorkflowAgentBindingResolver:
                 "Workflow Agent binding and config snapshot must be pinned together.",
             )
 
-        if selected_snapshot_id is not None and builder_actor is None:
+        if (selected_agent_id is not None or selected_snapshot_id is not None) and builder_actor is None:
             raise WorkflowAgentBindingError(
                 "agent_binding_owner_mismatch", "Builder actor required for snapshot selection."
             )
@@ -92,7 +93,13 @@ class WorkflowAgentBindingResolver:
             if builder_actor is not None:
                 from services.dify_builder.native_testing.agent_binding import AgentBindingService
 
-                if builder_actor.tenant_id != tenant_id:
+                if builder_actor.tenant_id != tenant_id or (
+                    selected_agent_id is not None
+                    and (
+                        binding.agent_id != selected_agent_id
+                        or binding.binding_type != WorkflowAgentBindingType.ROSTER_AGENT
+                    )
+                ):
                     raise WorkflowAgentBindingError("agent_binding_owner_mismatch", "Builder actor owner mismatch.")
                 AgentBindingService(session, authorization=builder_authorization).recheck_access(
                     actor=builder_actor, app_id=app_id, agent_id=binding.agent_id
@@ -152,7 +159,7 @@ class WorkflowAgentBindingResolver:
                     "Workflow Agent binding has no current config snapshot.",
                 )
 
-            if selected_snapshot_id is not None and not pinned_execution and not conversation_id:
+            if selected_snapshot_id is not None and not pinned_execution:
                 from services.dify_builder.native_testing.agent_binding import require_selected_snapshot
 
                 require_selected_snapshot(

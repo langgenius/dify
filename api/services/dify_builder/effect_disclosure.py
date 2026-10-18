@@ -23,6 +23,7 @@ from typing import Any, Literal
 from urllib.parse import urlsplit
 
 from core.dify_builder.credentials import is_credential_param_key
+from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from services.dify_builder.revision import node_config_digest, normalize_execution_graph
 
 EffectTier = Literal["pure", "sandboxed", "read", "side_effect", "destructive"]
@@ -470,9 +471,26 @@ def _classify(node_type: str, data: Mapping[str, Any]) -> tuple[EffectTier, str,
         return _http(data)
     if node_type == "tool":
         return _tool(data)
+    if node_type == "agent" and is_dify_agent_node_data(data):
+        return _agent_v2(data)
     # Agents may call any tool; datasource/indexing and unknown types are not
     # Workflow test material. All of them need an explicit confirmation.
     return "side_effect", _model_target(data) or node_type, ""
+
+
+def _agent_v2(data: Mapping[str, Any]) -> tuple[EffectTier, str, str]:
+    """Name the selected graph binding without predicting nested runtime actions."""
+    target = "Dify Agent (binding unavailable)"
+    binding = data.get("agent_binding")
+    if isinstance(binding, Mapping):
+        agent_id, snapshot_id = binding.get("agent_id"), binding.get("current_snapshot_id")
+        if isinstance(agent_id, str) and agent_id.strip() and isinstance(snapshot_id, str) and snapshot_id.strip():
+            target = _truncate(f"Agent {agent_id} / snapshot {snapshot_id}")
+    return (
+        "side_effect",
+        target,
+        "May use its configured model and tools. Nested runtime targets cannot be predicted from this outer node.",
+    )
 
 
 def _model_target(data: Mapping[str, Any]) -> str:

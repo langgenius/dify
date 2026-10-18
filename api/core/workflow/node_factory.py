@@ -6,18 +6,9 @@ from dataclasses import dataclass
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any, Protocol, cast, final, override, runtime_checkable
 
-from configs import dify_config
-from extensions.application_services.data_sources import build_data_source_credentials
-from models.model import Conversation
-from services.dify_builder.effect_mock import mocked_node_class
-from services.dify_builder.json_tool_execution import admit_json_workflow
-from services.dify_builder.json_tool_runtime import QualifiedJsonToolNodeRuntime
-from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
-from services.dify_builder.native_testing.runtime_bridge import NativeRuntimeBridge
-from services.dify_builder.revision import node_config_digest
-from services.dify_builder.template_execution import MAX_OUTPUT_BYTES, BoundedJinja2TemplateRenderer
 from sqlalchemy import select
 
+from configs import dify_config
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.app.llm.model_access import build_dify_model_access, fetch_model_config
 from core.credit_usage import created_by_from_app_type
@@ -85,6 +76,7 @@ from core.workflow.restricted_execution import (
 )
 from core.workflow.system_variables import SystemVariableKey, get_system_text, system_variable_selector
 from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
+from extensions.application_services.data_sources import build_data_source_credentials
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from graphon.enums import BuiltinNodeTypes, NodeType
@@ -105,6 +97,14 @@ from graphon.nodes.question_classifier.entities import QuestionClassifierNodeDat
 from graphon.nodes.start.start_node import StartNode
 from graphon.nodes.tool.tool_node import ToolNode
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment
+from models.model import Conversation
+from services.dify_builder.effect_mock import mocked_node_class
+from services.dify_builder.json_tool_execution import admit_json_workflow
+from services.dify_builder.json_tool_runtime import QualifiedJsonToolNodeRuntime
+from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
+from services.dify_builder.native_testing.runtime_bridge import NativeRuntimeBridge
+from services.dify_builder.revision import node_config_digest
+from services.dify_builder.template_execution import MAX_OUTPUT_BYTES, BoundedJinja2TemplateRenderer
 
 if TYPE_CHECKING:
     from graphon.entities import GraphInitParams
@@ -704,6 +704,15 @@ class DifyNodeFactory(NodeFactory):
                 graph_runtime_state=self.graph_runtime_state,
                 **kwargs,
             )
+        if node_id in self._dify_context.builder_mocked_node_ids:
+            # Validate native configuration, then stop before any dependency
+            # factory or native constructor can acquire execution resources.
+            return mocked_node_class(node_class)(
+                node_id=node_id,
+                data=resolved_node_data.model_dump(mode="python", by_alias=True),
+                graph_init_params=self.graph_init_params,
+                graph_runtime_state=self.graph_runtime_state,
+            )
         node_type = node_data.type
         if node_type == BuiltinNodeTypes.LLM:
             resolved_node_data = self._resolve_llm_model_reference(cast(LLMNodeData, resolved_node_data))
@@ -777,10 +786,6 @@ class DifyNodeFactory(NodeFactory):
         }
         node_init_kwargs = node_init_kwargs_factories.get(node_type, lambda: {})()
         constructor_node_data = resolved_node_data.model_dump(mode="python", by_alias=True)
-        if node_id in self._dify_context.builder_mocked_node_ids:
-            # Builder confirmed Test Run: an unconfirmed side effect returns a
-            # mocked result. Ordinary runs never carry mocked IDs.
-            node_class = mocked_node_class(node_class)
         node = node_class(
             node_id=node_id,
             data=constructor_node_data,
@@ -950,7 +955,6 @@ class DifyNodeFactory(NodeFactory):
         if issubclass(node_class, DifyAgentNode):
             from clients.agent_backend import AgentBackendRunEventAdapter, AgentBackendRunRequestBuilder
             from clients.agent_backend.factory import create_agent_backend_run_client
-
             from core.workflow.nodes.agent_v2.file_tenant_validator import AgentOutputFileTenantValidator
             from core.workflow.nodes.agent_v2.output_failure_orchestrator import OutputFailureOrchestrator
             from core.workflow.nodes.agent_v2.output_file_rebacker import reback_tool_file_output
