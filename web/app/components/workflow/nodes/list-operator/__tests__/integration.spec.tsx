@@ -1,79 +1,34 @@
-import type { ComponentProps } from 'react'
 import type { ListFilterNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
-import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
+import { renderWorkflowFlowComponent as renderFlow } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { ComparisonOperator } from '@/app/components/workflow/nodes/if-else/types'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import ExtractInput from '../components/extract-input'
 import LimitConfig from '../components/limit-config'
 import SubVariablePicker from '../components/sub-variable-picker'
 import Node from '../node'
 import Panel from '../panel'
 import { OrderBy } from '../types'
-import useConfig from '../use-config'
 
-vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', () => ({
-  default: () => ({ availableVars: [], availableNodesWithParent: [] }),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/input-support-select-var', () => ({
-  default: ({
-    value,
-    onChange,
-    placeholder,
-    className,
-    readOnly,
-    onFocusChange,
-  }: ComponentProps<
-    typeof import('@/app/components/workflow/nodes/_base/components/input-support-select-var').default
-  >) => (
-    <input
-      value={value}
-      placeholder={placeholder}
-      className={className}
-      readOnly={readOnly}
-      onFocus={() => onFocusChange?.(true)}
-      onBlur={() => onFocusChange?.(false)}
-      onChange={(event) => onChange(event.target.value)}
-    />
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
-  default: ({
-    onChange,
-  }: ComponentProps<
-    typeof import('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker').default
-  >) => (
-    <button type="button" onClick={() => onChange(['node-1', 'items'], VarKindType.variable)}>
-      pick-var
-    </button>
-  ),
-}))
-
-vi.mock('../components/filter-condition', () => ({
-  default: ({
-    onChange,
-  }: ComponentProps<typeof import('../components/filter-condition').default>) => (
-    <button
-      type="button"
-      onClick={() =>
-        onChange({ key: 'size', comparison_operator: ComparisonOperator.equal, value: '1' })
-      }
-    >
-      filter-condition
-    </button>
-  ),
-}))
-
-vi.mock('../use-config', () => ({
-  default: vi.fn(),
-}))
-
-const mockUseConfig = vi.mocked(useConfig)
+const renderWorkflowFlowComponent = (
+  ui: Parameters<typeof renderFlow>[0],
+  options: Parameters<typeof renderFlow>[1] = {},
+) => {
+  const { queryClient } = createConsoleQueryWrapper()
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+  return renderFlow(ui, { queryClient, ...options })
+}
 
 const createData = (overrides: Partial<ListFilterNodeType> = {}): ListFilterNodeType => ({
   title: 'List Operator',
@@ -92,28 +47,6 @@ const createData = (overrides: Partial<ListFilterNodeType> = {}): ListFilterNode
   ...overrides,
 })
 
-const createConfigResult = (
-  overrides: Partial<ReturnType<typeof useConfig>> = {},
-): ReturnType<typeof useConfig> => ({
-  readOnly: false,
-  inputs: createData(),
-  filterVar: vi.fn(() => true),
-  varType: VarType.arrayNumber,
-  itemVarType: VarType.number,
-  itemVarTypeShowName: 'number',
-  hasSubVariable: true,
-  handleVarChanges: vi.fn(),
-  handleFilterEnabledChange: vi.fn(),
-  handleFilterChange: vi.fn(),
-  handleLimitChange: vi.fn(),
-  handleOrderByEnabledChange: vi.fn(),
-  handleOrderByKeyChange: vi.fn(),
-  handleOrderByTypeChange: vi.fn(() => vi.fn()),
-  handleExtractsEnabledChange: vi.fn(),
-  handleExtractsChange: vi.fn(),
-  ...overrides,
-})
-
 const panelProps: PanelProps = {
   getInputVars: vi.fn(() => []),
   toVarInputs: vi.fn(() => []),
@@ -124,32 +57,30 @@ const panelProps: PanelProps = {
 }
 
 const renderPanel = (data: ListFilterNodeType = createData()) =>
-  render(<Panel id="node-1" data={data} panelProps={panelProps} />)
-
-describe('list-operator path', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseConfig.mockReturnValue(createConfigResult())
+  renderWorkflowFlowComponent(<Panel id="node-1" data={data} panelProps={panelProps} />, {
+    nodes: [{ id: 'node-1', position: { x: 0, y: 0 }, data }],
   })
 
+describe('list-operator path', () => {
   // The list-operator path should expose extract, limit, ordering, and node variable previews.
   describe('Path Integration', () => {
     it('should update the extract input', async () => {
       const user = userEvent.setup()
       const onChange = vi.fn()
-      const { rerender } = render(
+      const { rerender } = renderWorkflowFlowComponent(
         <ExtractInput nodeId="node-1" readOnly={false} value="1" onChange={onChange} />,
       )
 
-      fireEvent.change(screen.getByDisplayValue('1'), { target: { value: '2' } })
-      expect(onChange).toHaveBeenCalledWith('2')
-      onChange.mockClear()
+      const editor = screen.getByRole('textbox')
+      expect(editor).toHaveTextContent('1')
+      await user.type(editor, '2')
+      await waitFor(() => expect(onChange).toHaveBeenCalledWith('12'))
 
       rerender(<ExtractInput nodeId="node-1" readOnly value="" onChange={onChange} />)
 
-      await user.type(screen.getByRole('textbox'), '3')
-      expect(screen.getByRole('textbox')).toHaveValue('')
-      expect(onChange).not.toHaveBeenCalled()
+      await waitFor(() => expect(editor).toHaveAttribute('contenteditable', 'false'))
+      await user.type(editor, '3')
+      expect(editor).toHaveTextContent('')
     })
 
     it('should change the selected sub variable', async () => {
@@ -242,34 +173,19 @@ describe('list-operator path', () => {
     })
 
     it('should hide disabled sections and render order controls without sub variables', () => {
-      mockUseConfig.mockReturnValue(
-        createConfigResult({
-          inputs: createData({
-            variable: [],
-            filter_by: { enabled: false, conditions: [] },
-            extract_by: { enabled: false, serial: '' },
-            order_by: { enabled: false, key: '', value: OrderBy.ASC },
-          }),
-          hasSubVariable: false,
-        }),
-      )
-
-      const { rerender } = renderPanel()
-
-      expect(screen.queryByText('filter-condition')).not.toBeInTheDocument()
-      expect(screen.queryByDisplayValue('1')).not.toBeInTheDocument()
+      const data = createData({
+        variable: [],
+        filter_by: { enabled: false, conditions: [] },
+        extract_by: { enabled: false, serial: '' },
+        order_by: { enabled: false, key: '', value: OrderBy.ASC },
+      })
+      const { unmount } = renderPanel(data)
+      expect(
+        screen.queryByText('workflowIntegrations.nodes.http.extractListPlaceholder'),
+      ).not.toBeInTheDocument()
       expect(screen.queryByText('workflowLogic.nodes.listFilter.asc')).not.toBeInTheDocument()
-
-      mockUseConfig.mockReturnValue(
-        createConfigResult({
-          inputs: createData({
-            order_by: { enabled: true, key: '', value: OrderBy.ASC },
-          }),
-          hasSubVariable: false,
-        }),
-      )
-
-      rerender(<Panel id="node-1" data={createData()} panelProps={panelProps} />)
+      unmount()
+      renderPanel(createData({ ...data, order_by: { enabled: true, key: '', value: OrderBy.ASC } }))
 
       expect(screen.getByText('workflowLogic.nodes.listFilter.asc')).toBeInTheDocument()
       expect(screen.queryByText('common.placeholder.select')).not.toBeInTheDocument()

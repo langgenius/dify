@@ -1,7 +1,13 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import type { ComponentProps } from 'react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 import { AppSourceType } from '@/service/share'
-import { createWorkflowProcessFixture } from '@/test/fixtures/workflow-process'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import {
+  createHumanInputFormFixture,
+  createWorkflowProcessFixture,
+} from '@/test/fixtures/workflow-process'
 import GenerationItem from '../index'
 
 const mockFetchMoreLikeThis = vi.fn()
@@ -56,36 +62,31 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-vi.mock('../workflow-body', () => ({
+// Monaco is outside the tab-selection contract; WorkflowBody and ResultTab stay real.
+vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
   default: ({
-    currentTab,
-    onSubmitHumanInputForm,
-    onSwitchTab,
-  }: {
-    currentTab: string
-    onSubmitHumanInputForm: (
-      token: string,
-      data: { inputs: Record<string, string>; action: string },
-    ) => Promise<void>
-    onSwitchTab: (tab: string) => Promise<void>
-  }) => (
-    <div>
-      <div>{`workflow-body:${currentTab}`}</div>
-      <button
-        onClick={() =>
-          void onSubmitHumanInputForm('token-1', { action: 'submit', inputs: { name: 'dify' } })
-        }
-      >
-        submit-human-input
-      </button>
-      <button onClick={() => void onSwitchTab('LOG')}>switch-workflow-tab</button>
-    </div>
+    title,
+    value,
+  }: ComponentProps<
+    typeof import('@/app/components/workflow/nodes/_base/components/editor/code-editor').default
+  >) => (
+    <section aria-label="Workflow detail">
+      {title}
+      <pre>{String(value)}</pre>
+    </section>
   ),
 }))
+
+const approvalForm = () =>
+  createHumanInputFormFixture({
+    actions: [{ id: 'submit', title: 'Approve', button_style: UserActionButtonType.Primary }],
+  })
 
 describe('GenerationItem', () => {
   beforeEach(() => {
     vi.resetAllMocks()
+    mockSubmitHumanInputForm.mockResolvedValue(undefined)
+    mockSubmitHumanInputFormWorkflow.mockResolvedValue(undefined)
   })
 
   it('should render markdown content and allow more-like-this recursion', async () => {
@@ -247,17 +248,19 @@ describe('GenerationItem', () => {
         siteInfo={null}
         workflowProcessData={createWorkflowProcessFixture({
           resultText: 'workflow result',
+          humanInputFormDataList: [approvalForm()],
         })}
       />,
     )
 
-    expect(screen.getByText('workflow-body:RESULT')).toBeInTheDocument()
+    expect(screen.getByText('markdown:workflow result')).toBeInTheDocument()
 
-    await user.click(screen.getByText('submit-human-input'))
+    await user.click(screen.getByRole('button', { name: 'Approve' }))
 
+    expect(mockSubmitHumanInputForm).not.toHaveBeenCalled()
     expect(mockSubmitHumanInputFormWorkflow).toHaveBeenCalledWith('token-1', {
       action: 'submit',
-      inputs: { name: 'dify' },
+      inputs: {},
     })
   })
 
@@ -274,20 +277,29 @@ describe('GenerationItem', () => {
         siteInfo={null}
         workflowProcessData={createWorkflowProcessFixture({
           resultText: 'workflow result',
+          humanInputFormDataList: [approvalForm()],
         })}
       />,
     )
 
-    expect(screen.getByText('workflow-body:RESULT')).toBeInTheDocument()
+    expect(screen.getByText('markdown:workflow result')).toBeInTheDocument()
 
-    await user.click(screen.getByText('submit-human-input'))
-    await user.click(screen.getByText('switch-workflow-tab'))
+    await user.click(screen.getByRole('button', { name: 'Approve' }))
+    await user.click(screen.getByText('runLog.detail'))
 
+    expect(mockSubmitHumanInputFormWorkflow).not.toHaveBeenCalled()
     expect(mockSubmitHumanInputForm).toHaveBeenCalledWith('token-1', {
       action: 'submit',
-      inputs: { name: 'dify' },
+      inputs: {},
     })
-    expect(screen.getByText('workflow-body:LOG')).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Workflow detail' })).toHaveTextContent(
+      'workflow result',
+    )
+    expect(screen.queryByText('markdown:workflow result')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument()
+    await user.click(screen.getByText('runLog.result'))
+    expect(screen.getByText('markdown:workflow result')).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Workflow detail' })).not.toBeInTheDocument()
   })
 
   it('should clear recursive results when requested or when the parent reloads', async () => {

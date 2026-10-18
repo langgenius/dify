@@ -1,15 +1,19 @@
 import type { CustomRunFormProps, DataSourceNodeType } from '../types'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useDataSourceStoreWithSelector } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
-import { DatasourceType } from '@/models/pipeline'
+import {
+  useDataSourceStore,
+  useDataSourceStoreWithSelector,
+} from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
+import { CrawlStep } from '@/models/datasets'
+import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
 import { BlockEnum } from '../../../types'
 import BeforeRunForm from '../before-run-form'
 import useBeforeRunForm from '../hooks/use-before-run-form'
 
-const mockClearOnlineDocumentData = vi.hoisted(() => vi.fn())
-const mockClearWebsiteCrawlData = vi.hoisted(() => vi.fn())
-const mockClearOnlineDriveData = vi.hoisted(() => vi.fn())
+// The provider-specific selection UIs are outside this credential/reset contract.
+// Capture their real parent-owned store so stale selections can be seeded and inspected.
+let dataSourceStore: ReturnType<typeof useDataSourceStore>
 
 function CredentialAction({
   name,
@@ -20,6 +24,7 @@ function CredentialAction({
   credentialId: string
   onCredentialChange: (id: string) => void
 }) {
+  dataSourceStore = useDataSourceStore()
   const currentCredentialId = useDataSourceStoreWithSelector((state) => state.currentCredentialId)
   return (
     <>
@@ -80,12 +85,6 @@ vi.mock(
   }),
 )
 
-vi.mock('@/app/components/rag-pipeline/components/panel/test-run/preparation/hooks', () => ({
-  useOnlineDocument: () => ({ clearOnlineDocumentData: mockClearOnlineDocumentData }),
-  useWebsiteCrawl: () => ({ clearWebsiteCrawlData: mockClearWebsiteCrawlData }),
-  useOnlineDrive: () => ({ clearOnlineDriveData: mockClearOnlineDriveData }),
-}))
-
 vi.mock('../hooks/use-before-run-form', () => ({
   __esModule: true,
   default: vi.fn(),
@@ -125,7 +124,6 @@ const createProps = (overrides: Partial<CustomRunFormProps> = {}): CustomRunForm
 
 describe('data-source/before-run-form', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     mockUseBeforeRunForm.mockReturnValue({
       isPending: false,
       handleRunWithSyncDraft: vi.fn(),
@@ -160,7 +158,7 @@ describe('data-source/before-run-form', () => {
     expect(handleRunWithSyncDraft).toHaveBeenCalled()
   })
 
-  it('clears stale online document data before switching credentials', async () => {
+  it('clears stale online document data when switching credentials', async () => {
     const user = userEvent.setup()
 
     mockUseBeforeRunForm.mockReturnValue({
@@ -177,14 +175,48 @@ describe('data-source/before-run-form', () => {
       />,
     )
 
+    const page = {
+      page_id: 'old-page',
+      page_name: 'Old page',
+      workspace_id: 'workspace',
+      parent_id: '',
+      type: 'page',
+      page_icon: null,
+      is_bound: true,
+    }
+    act(() => {
+      const state = dataSourceStore.getState()
+      state.setCurrentCredentialId('old-credential')
+      state.setDocumentsData([
+        {
+          workspace_id: 'workspace',
+          workspace_name: 'Old workspace',
+          workspace_icon: null,
+          pages: [page],
+        },
+      ])
+      state.setSearchValue('old query')
+      state.setSelectedPagesId(new Set([page.page_id]))
+      state.setOnlineDocuments([page])
+      state.setCurrentDocument(page)
+    })
+    expect(dataSourceStore.getState().previewOnlineDocumentRef.current).toEqual(page)
     await user.click(screen.getByRole('button', { name: 'online-documents' }))
 
-    expect(mockClearOnlineDocumentData).toHaveBeenCalled()
+    expect(dataSourceStore.getState()).toMatchObject({
+      documentsData: [],
+      searchValue: '',
+      selectedPagesId: new Set(),
+      onlineDocuments: [],
+      currentDocument: undefined,
+      currentCredentialId: 'credential-doc',
+      previewOnlineDocumentRef: { current: undefined },
+    })
     expect(screen.getByRole('status')).toHaveTextContent('credential-doc')
     expect(screen.getByRole('button', { name: 'workflow.singleRun.startRun' })).toBeDisabled()
   })
 
-  it('clears website crawl data before switching credentials', async () => {
+  it('clears website crawl data when switching credentials', async () => {
     const user = userEvent.setup()
 
     mockUseBeforeRunForm.mockReturnValue({
@@ -201,13 +233,37 @@ describe('data-source/before-run-form', () => {
       />,
     )
 
+    const page = {
+      title: 'Old site',
+      markdown: 'Old content',
+      description: '',
+      source_url: 'https://example.com',
+    }
+    act(() => {
+      const state = dataSourceStore.getState()
+      state.setCurrentCredentialId('old-credential')
+      state.setStep(CrawlStep.finished)
+      state.setCrawlResult({ data: [page], time_consuming: 1 })
+      state.setWebsitePages([page])
+      state.setCurrentWebsite(page)
+      state.setPreviewIndex(0)
+    })
+    expect(dataSourceStore.getState().previewWebsitePageRef.current).toEqual(page)
     await user.click(screen.getByRole('button', { name: 'website-crawl' }))
 
-    expect(mockClearWebsiteCrawlData).toHaveBeenCalled()
+    expect(dataSourceStore.getState()).toMatchObject({
+      step: CrawlStep.init,
+      crawlResult: undefined,
+      websitePages: [],
+      currentWebsite: undefined,
+      previewIndex: -1,
+      currentCredentialId: 'credential-site',
+      previewWebsitePageRef: { current: undefined },
+    })
     expect(screen.getByRole('status')).toHaveTextContent('credential-site')
   })
 
-  it('clears online drive data before switching credentials', async () => {
+  it('clears online drive data when switching credentials', async () => {
     const user = userEvent.setup()
 
     mockUseBeforeRunForm.mockReturnValue({
@@ -224,9 +280,28 @@ describe('data-source/before-run-form', () => {
       />,
     )
 
+    const file = { id: 'old-file', name: 'Old file', type: OnlineDriveFileType.file, size: 12 }
+    act(() => {
+      const state = dataSourceStore.getState()
+      state.setCurrentCredentialId('old-credential')
+      state.setOnlineDriveFileList([file])
+      state.setBucket('old-bucket')
+      state.setPrefix(['old-folder'])
+      state.setKeywords('old query')
+      state.setSelectedFileIds([file.id])
+    })
+    expect(dataSourceStore.getState().previewOnlineDriveFileRef.current).toEqual(file)
     await user.click(screen.getByRole('button', { name: 'online-drive' }))
 
-    expect(mockClearOnlineDriveData).toHaveBeenCalled()
+    expect(dataSourceStore.getState()).toMatchObject({
+      onlineDriveFileList: [],
+      bucket: '',
+      prefix: [],
+      keywords: '',
+      selectedFileIds: [],
+      currentCredentialId: 'credential-drive',
+      previewOnlineDriveFileRef: { current: undefined },
+    })
     expect(screen.getByRole('status')).toHaveTextContent('credential-drive')
   })
 })

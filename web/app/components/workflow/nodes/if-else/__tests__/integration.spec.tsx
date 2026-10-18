@@ -1,11 +1,14 @@
-import type { Var } from '../../../types'
 import type { IfElseNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { useNodes } from 'reactflow'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper, seedAppDslVersion } from '@/test/console/query-data'
+import { createNode } from '../../../__tests__/fixtures'
 import { BlockEnum, VarType } from '../../../types'
 import ConditionAdd from '../components/condition-add'
 import ConditionFilesListValue from '../components/condition-files-list-value'
@@ -16,12 +19,12 @@ import ConditionValue from '../components/condition-value'
 import Node from '../node'
 import Panel from '../panel'
 import { ComparisonOperator, LogicalOperator } from '../types'
-import useConfig from '../use-config'
 
 vi.mock('react-sortablejs', () => ({
   ReactSortable: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
+// Label presentation is independent; assertions below cover condition formatting and editing.
 vi.mock(
   '@/app/components/workflow/nodes/_base/components/variable/variable-label',
   async (importOriginal) => ({
@@ -40,12 +43,6 @@ vi.mock(
 vi.mock('@/app/components/workflow/nodes/_base/components/variable-tag', () => ({
   __esModule: true,
   default: ({ valueSelector }: { valueSelector: string[] }) => <div>{valueSelector.join('.')}</div>,
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/node-handle', () => ({
-  NodeSourceHandle: ({ handleId }: { handleId: string }) => (
-    <div data-testid={`handle-${handleId}`} />
-  ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/use-match-schema-type', () => ({
@@ -79,12 +76,6 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-vi.mock('../use-config', () => ({
-  default: vi.fn(),
-}))
-
-const mockUseConfig = vi.mocked(useConfig)
-
 const createData = (overrides: Partial<IfElseNodeType> = {}): IfElseNodeType => ({
   title: 'If Else',
   desc: '',
@@ -106,54 +97,6 @@ const createData = (overrides: Partial<IfElseNodeType> = {}): IfElseNodeType => 
       ],
     },
   ],
-  ...overrides,
-})
-
-const createConfigResult = (
-  overrides: Partial<ReturnType<typeof useConfig>> = {},
-): ReturnType<typeof useConfig> => ({
-  readOnly: false,
-  inputs: createData(),
-  filterVar: () => true,
-  filterNumberVar: (varPayload: Var) => varPayload.type === VarType.number,
-  handleAddCase: vi.fn(),
-  handleRemoveCase: vi.fn(),
-  handleSortCase: vi.fn(),
-  handleAddCondition: vi.fn(),
-  handleUpdateCondition: vi.fn(),
-  handleRemoveCondition: vi.fn(),
-  handleToggleConditionLogicalOperator: vi.fn(),
-  handleAddSubVariableCondition: vi.fn(),
-  handleRemoveSubVariableCondition: vi.fn(),
-  handleUpdateSubVariableCondition: vi.fn(),
-  handleToggleSubVariableConditionLogicalOperator: vi.fn(),
-  nodesOutputVars: [
-    {
-      nodeId: 'node-1',
-      title: 'Start Node',
-      vars: [
-        {
-          variable: 'answer',
-          type: VarType.string,
-        },
-      ],
-    },
-  ],
-  availableNodes: [],
-  nodesOutputNumberVars: [
-    {
-      nodeId: 'node-1',
-      title: 'Start Node',
-      vars: [
-        {
-          variable: 'score',
-          type: VarType.number,
-        },
-      ],
-    },
-  ],
-  availableNumberNodes: [],
-  varsIsVarFileAttribute: {},
   ...overrides,
 })
 
@@ -179,8 +122,12 @@ const panelProps: PanelProps = {
 const render = (
   ui: Parameters<typeof renderWorkflowFlowComponent>[0],
   options: Parameters<typeof renderWorkflowFlowComponent>[1] = {},
-) =>
-  renderWorkflowFlowComponent(ui, {
+) => {
+  const { queryClient } = createConsoleQueryWrapper()
+  seedModelProviderQueries(queryClient)
+  seedAppDslVersion(queryClient)
+  return renderWorkflowFlowComponent(ui, {
+    queryClient,
     nodes: [
       {
         id: 'node-1',
@@ -190,17 +137,13 @@ const render = (
     ],
     ...options,
   })
+}
 const renderWithConsoleQuery = render
 const numberVariables = [
   { nodeId: 'node-1', title: 'Start Node', vars: [{ variable: 'score', type: VarType.number }] },
 ]
 
 describe('if-else path', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseConfig.mockReturnValue(createConfigResult())
-  })
-
   describe('Condition controls', () => {
     it('should add a condition variable from the selector', async () => {
       const user = userEvent.setup()
@@ -357,14 +300,12 @@ describe('if-else path', () => {
         { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
       )
 
-      expect(screen.getByText('node-1.answer')).toBeInTheDocument()
       expect(screen.getByText('{{answer}}')).toBeInTheDocument()
-      expect(screen.getByText('node-1.files')).toBeInTheDocument()
       expect(screen.getByText('name')).toBeInTheDocument()
       expect(screen.getByText('report')).toBeInTheDocument()
     })
 
-    it('should render node cases, missing setup state, and else handles', () => {
+    it('should render node cases and missing setup state', () => {
       render(
         <Node
           id="if-else-node"
@@ -408,32 +349,27 @@ describe('if-else path', () => {
       expect(screen.getByText('workflowLogic.nodes.ifElse.conditionNotSetup')).toBeInTheDocument()
       expect(screen.getByText('False')).toBeInTheDocument()
       expect(screen.getByText('ELSE')).toBeInTheDocument()
-      expect(screen.getByTestId('handle-case-1')).toBeInTheDocument()
-      expect(screen.getByTestId('handle-case-2')).toBeInTheDocument()
-      expect(screen.getByTestId('handle-false')).toBeInTheDocument()
     })
   })
 
   describe('Panel integration', () => {
-    it('should add a case from the panel action and render else description', async () => {
+    it('adds a branch through the panel and persists it in the real graph', async () => {
       const user = userEvent.setup()
-      const handleAddCase = vi.fn()
-      const inputs = createData({ cases: [] })
-
-      mockUseConfig.mockReturnValueOnce(
-        createConfigResult({
-          inputs,
-          handleAddCase,
-        }),
-      )
-
-      render(<Panel id="if-else-node" data={inputs} panelProps={panelProps} />, {
-        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      const data = createData({
+        cases: [{ case_id: 'case-1', logical_operator: LogicalOperator.and, conditions: [] }],
       })
-
+      const ConnectedPanel = () => {
+        const node = useNodes<IfElseNodeType>().find((node) => node.id === 'if-else-node')
+        return node ? <Panel id={node.id} data={node.data} panelProps={panelProps} /> : null
+      }
+      render(<ConnectedPanel />, { nodes: [createNode({ id: 'if-else-node', data })] })
+      expect(
+        await screen.findAllByRole('button', { name: /workflowLogic.nodes.ifElse.addCondition/i }),
+      ).toHaveLength(1)
       await user.click(screen.getByRole('button', { name: /elif/i }))
-
-      expect(handleAddCase).toHaveBeenCalled()
+      expect(
+        await screen.findAllByRole('button', { name: /workflowLogic.nodes.ifElse.addCondition/i }),
+      ).toHaveLength(2)
       expect(screen.getByText('workflowLogic.nodes.ifElse.elseDescription')).toBeInTheDocument()
     })
   })
