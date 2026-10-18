@@ -2,10 +2,10 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
@@ -132,7 +132,9 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
               <DialogTitle>
                 {t(($) => $['members.transferModal.title'], { ns: 'workspaceMembers' })}
               </DialogTitle>
-              <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+              <DialogHeaderCloseButton
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              />
             </DialogHeader>
             <DialogBody>
               <div className="space-y-1 pt-1 pb-2">
@@ -171,7 +173,9 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
               <DialogTitle>
                 {t(($) => $['members.transferModal.verifyEmail'], { ns: 'workspaceMembers' })}
               </DialogTitle>
-              <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+              <DialogHeaderCloseButton
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              />
             </DialogHeader>
             <DialogBody>
               <div className="pt-1 pb-2">
@@ -251,7 +255,9 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
               <DialogTitle>
                 {t(($) => $['members.transferModal.title'], { ns: 'workspaceMembers' })}
               </DialogTitle>
-              <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+              <DialogHeaderCloseButton
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              />
             </DialogHeader>
             <DialogBody>
               <div className="space-y-1 pt-1 pb-2">

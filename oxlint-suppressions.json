@@ -1560,11 +1560,6 @@
       "count": 8
     }
   },
-  "web/app/components/plugins/update-plugin/from-market-place.tsx": {
-    "shadcn/no-restyle": {
-      "count": 1
-    }
-  },
   "web/app/components/rag-pipeline/components/panel/input-field/editor/form/hidden-fields.tsx": {
     "eslint-react/static-components": {
       "count": 2

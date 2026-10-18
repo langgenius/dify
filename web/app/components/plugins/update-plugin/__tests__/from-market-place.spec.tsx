@@ -273,8 +273,10 @@ describe('UpdateFromMarketplace', () => {
   it.each([
     { warning: false, button: 'common.operation.cancel' },
     { warning: true, button: 'app.newApp.Cancel' },
+    { warning: false, button: 'common.operation.close' },
+    { warning: true, button: 'common.operation.close' },
   ])(
-    'cancels before any update or exclusion request (warning=$warning)',
+    'cancels via $button before any update or exclusion request (warning=$warning)',
     async ({ warning, button }) => {
       const user = userEvent.setup()
       const onCancel = vi.fn()
