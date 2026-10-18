@@ -95,21 +95,6 @@ vi.mock('@/service/use-workflow', async (importOriginal) => ({
   }),
 }))
 
-vi.mock('../../../hooks/use-DSL', () => ({
-  useDSL: () => ({ handleExportDSL: mockHandleExportDSL }),
-}))
-
-vi.mock('../../../hooks/use-workflow-refresh-draft', () => ({
-  useWorkflowRefreshDraft: () => ({ handleRefreshWorkflowDraft: mockHandleRefreshWorkflowDraft }),
-}))
-
-vi.mock('../../../hooks/use-workflow-run', () => ({
-  useWorkflowRun: () => ({
-    handleRestoreFromPublishedWorkflow: mockHandleRestoreFromPublishedWorkflow,
-    handleLoadBackupDraft: mockHandleLoadBackupDraft,
-  }),
-}))
-
 vi.mock('../../../collaboration/core/collaboration-manager', () => ({
   collaborationManager: {
     emitRestoreIntent: mockEmitRestoreIntent,
@@ -360,7 +345,14 @@ function render(ui: ReactElement) {
   const rendered = renderWorkflowComponent(<NuqsTestingAdapter>{ui}</NuqsTestingAdapter>, {
     queryClient,
     resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
-    hooksStoreProps: { accessControl: fullWorkflowAccessControl },
+    // Export, draft refresh and restore are provided by the app hooks through the hooks store.
+    hooksStoreProps: {
+      accessControl: fullWorkflowAccessControl,
+      handleExportDSL: mockHandleExportDSL,
+      handleRefreshWorkflowDraft: mockHandleRefreshWorkflowDraft,
+      handleRestoreFromPublishedWorkflow: mockHandleRestoreFromPublishedWorkflow,
+      handleLoadBackupDraft: mockHandleLoadBackupDraft,
+    },
     initialStoreState: {
       currentVersion: mockCurrentVersion,
       isRestoring: true,

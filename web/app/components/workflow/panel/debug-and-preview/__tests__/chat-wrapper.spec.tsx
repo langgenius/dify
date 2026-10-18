@@ -9,10 +9,18 @@ import { createStartNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { InputVarType } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import ChatWrapper from '../chat-wrapper'
 
 const mockUseChat = vi.hoisted(() => vi.fn())
-const mockUseSubscription = vi.hoisted(() => vi.fn())
+
+let emitWorkflowEvent: ((event: { type: string }) => void) | undefined
+const EmitterProbe = () => {
+  const { eventEmitter } = useEventEmitterContextContext()
+  emitWorkflowEvent = (event) => eventEmitter?.emit(event as never)
+  return null
+}
 
 const mockRequest = vi.hoisted(() => vi.fn())
 
@@ -128,14 +136,6 @@ vi.mock('@/app/components/base/features/hooks', () => ({
         file: { enabled: false },
       },
     }),
-}))
-
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => ({
-    eventEmitter: {
-      useSubscription: mockUseSubscription,
-    },
-  }),
 }))
 
 const createChatState = (overrides: Record<string, unknown> = {}) => ({
@@ -261,13 +261,16 @@ describe('ChatWrapper', () => {
     )
 
     const { store } = renderWorkflowFlowComponent(
-      <ChatWrapper
-        ref={createChatWrapperRef()}
-        showConversationVariableModal={false}
-        onConversationModalHide={vi.fn()}
-        showInputsFieldsPanel={false}
-        onHide={vi.fn()}
-      />,
+      <EventEmitterContextProvider>
+        <EmitterProbe />
+        <ChatWrapper
+          ref={createChatWrapperRef()}
+          showConversationVariableModal={false}
+          onConversationModalHide={vi.fn()}
+          showInputsFieldsPanel={false}
+          onHide={vi.fn()}
+        />
+      </EventEmitterContextProvider>,
       {
         nodes: [
           createStartNode({
@@ -361,12 +364,7 @@ describe('ChatWrapper', () => {
       })
     })
 
-    const subscription = mockUseSubscription.mock.calls[0]?.[0] as (payload: {
-      type: string
-    }) => void
-    act(() => {
-      subscription({ type: EVENT_WORKFLOW_STOP })
-    })
+    act(() => emitWorkflowEvent?.({ type: EVENT_WORKFLOW_STOP }))
 
     expect(handleStop).toHaveBeenCalledTimes(1)
   })
