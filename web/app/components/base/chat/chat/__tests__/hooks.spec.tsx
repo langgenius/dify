@@ -4,7 +4,6 @@ import { act, renderHook } from '@testing-library/react'
 import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'
-import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { useChat } from '../hooks'
 
 const useTimestampMock = vi.hoisted(() =>
@@ -628,12 +627,13 @@ describe('useChat', () => {
       expect(lastResponse!.workflowProcess?.tracing).toHaveLength(3) // node, iteration, loop
     })
 
-    it('should merge each parallel tool result into the thought that called the tool', () => {
+    it('should merge each parallel tool result into the thought that called the tool', async () => {
       let callbacks: HookCallbacks
       vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
         callbacks = options as HookCallbacks
       })
 
+      const { renderHookWithConsoleQuery } = await import('@/test/console/query-data')
       const { result } = renderHookWithConsoleQuery(() => useChat())
 
       act(() => {
@@ -668,7 +668,7 @@ describe('useChat', () => {
       ])
     })
 
-    it('should merge each parallel tool result into its thought after a resumed stream', () => {
+    it('should merge each parallel tool result into its thought after a resumed stream', async () => {
       let initialCallbacks: HookCallbacks
       let resumedCallbacks: HookCallbacks
       vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
@@ -678,6 +678,7 @@ describe('useChat', () => {
         resumedCallbacks = options as HookCallbacks
       })
 
+      const { renderHookWithConsoleQuery } = await import('@/test/console/query-data')
       const { result } = renderHookWithConsoleQuery(() => useChat())
 
       act(() => {
@@ -1524,7 +1525,7 @@ describe('useChat', () => {
   })
 
   describe('handleResume', () => {
-    it('merges parallel tool results into their thoughts when resuming directly', () => {
+    it('merges parallel tool results into their thoughts when resuming directly', async () => {
       let callbacks: HookCallbacks
       vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
         callbacks = options as HookCallbacks
@@ -1547,6 +1548,7 @@ describe('useChat', () => {
           ],
         },
       ]
+      const { renderHookWithConsoleQuery } = await import('@/test/console/query-data')
       const { result } = renderHookWithConsoleQuery(() =>
         useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
       )
