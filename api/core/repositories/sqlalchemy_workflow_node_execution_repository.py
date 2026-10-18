@@ -12,6 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING, Any, override
 
 import psycopg2.errors
+from pydantic import ValidationError
 from sqlalchemy import UnaryExpression, asc, desc, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
@@ -46,6 +47,46 @@ if TYPE_CHECKING:
     from services.dify_builder.native_testing.runtime_contracts import ResolvedNativeTestContext
 
 logger = logging.getLogger(__name__)
+
+
+def _preserve_agent_process_data(
+    identity_source: Mapping[str, Any] | None,
+    process_data: Mapping[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Keep bounded durable create identities when terminal events replace metadata.
+
+    A terminal event can predate an acknowledged child; it cannot erase that
+    identity or replace the original create key/request digest.
+    """
+    merged = preserve_workflow_agent_binding_id(identity_source, process_data)
+    if not any("agent_create_attempts" in data for data in (identity_source or {}, process_data or {})):
+        return merged
+    from services.agent.workflow_run_recovery import AgentCreateIntent
+
+    attempts: dict[int, AgentCreateIntent] = {}
+    for data in (identity_source or {}, process_data or {}):
+        raw = data.get("agent_create_attempts", [])
+        if not isinstance(raw, list) or len(raw) > 11:
+            raise ValueError("Agent create identities are invalid")
+        try:
+            validated = [AgentCreateIntent.model_validate(item) for item in raw]
+        except ValidationError:
+            raise ValueError("Agent create identities are invalid") from None
+        if len({item.attempt for item in validated}) != len(validated):
+            raise ValueError("Agent create identities are ambiguous")
+        for item in validated:
+            existing = attempts.get(item.attempt)
+            if existing is not None:
+                if (existing.key, existing.digest) != (item.key, item.digest) or (
+                    existing.child_run_id is not None
+                    and item.child_run_id is not None
+                    and existing.child_run_id != item.child_run_id
+                ):
+                    raise ValueError("Agent create identity does not match")
+                if existing.child_run_id is not None:
+                    continue
+            attempts[item.attempt] = item
+    return {**(merged or {}), "agent_create_attempts": [item.model_dump(mode="json") for item in attempts.values()]}
 
 
 @dataclasses.dataclass(frozen=True)
@@ -439,10 +480,12 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             return self._native_observation.persist_node(self, db_model)
         with self._session_factory() as session:
             # Check if record already exists
-            existing = session.get(WorkflowNodeExecutionModel, db_model.id)
+            existing = session.scalar(
+                select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id == db_model.id).with_for_update()
+            )
 
             if existing:
-                merged_process_data = preserve_workflow_agent_binding_id(
+                merged_process_data = _preserve_agent_process_data(
                     existing.process_data_dict,
                     db_model.process_data_dict,
                 )
@@ -508,7 +551,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             else:
                 db_model.outputs = self._json_encode(domain_model.outputs)
 
-        process_data = preserve_workflow_agent_binding_id(db_model.process_data_dict, domain_model.process_data)
+        process_data = _preserve_agent_process_data(db_model.process_data_dict, domain_model.process_data)
         if process_data is not None:
             result = self._truncate_and_upload(
                 process_data,
@@ -516,9 +559,9 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                 ExecutionOffLoadType.PROCESS_DATA,
             )
             if result is not None:
-                truncated_process_data = preserve_workflow_agent_binding_id(
+                truncated_process_data = _preserve_agent_process_data(
                     process_data,
-                    result.truncated_value,
+                    {key: value for key, value in result.truncated_value.items() if key != "agent_create_attempts"},
                 )
                 if truncated_process_data is None:
                     raise ValueError("truncated process data is unavailable")
@@ -530,6 +573,21 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
         db_model.offload_data = offload_data
         with self._session_factory() as session, session.begin():
+            # Uploads deliberately happen outside this transaction. Re-read the
+            # receipt under the same row lock used by the create intent owner so
+            # an ACK committed during upload cannot be lost by detached merge.
+            existing = session.scalar(
+                select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id == db_model.id).with_for_update()
+            )
+            if existing is not None:
+                latest_process_data = _preserve_agent_process_data(
+                    existing.process_data_dict, db_model.process_data_dict
+                )
+                db_model.process_data = (
+                    self._json_encode(latest_process_data) if latest_process_data is not None else None
+                )
+                if domain_model.get_truncated_process_data() is not None and latest_process_data is not None:
+                    domain_model.set_truncated_process_data(latest_process_data)
             session.merge(db_model)
             session.flush()
 

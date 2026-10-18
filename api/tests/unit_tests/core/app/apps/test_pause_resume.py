@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 import core.workflow.nodes.human_input.entities  # noqa: F401
 from core.app.apps.advanced_chat import app_generator as adv_app_gen_module
 from core.app.apps.workflow import app_generator as wf_app_gen_module
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.workflow import node_factory as node_factory_module
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.system_variables import build_system_variables
@@ -301,7 +301,7 @@ def test_workflow_app_pause_resume_matches_baseline(mocker: MockerFixture):
         app_model=_make_app(),
         workflow=_make_workflow(),
         user=_make_account(),
-        application_generate_entity=SimpleNamespace(
+        application_generate_entity=WorkflowAppGenerateEntity.model_construct(
             builder_execution=None,
             native_test_required=False,
             native_test_ref=None,

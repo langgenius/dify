@@ -36,6 +36,8 @@ from dify_agent.agent_stub.shell_env import ShellAgentStubTokenFactory
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.runtime.context import Services
 from dify_agent.runtime.native_continuation import NativeContinuationOwner
+from dify_agent.protocol.native_testing import NativeTestCapabilities
+from dify_agent.runtime.confirmed_continuation import ConfirmedNativeContinuationOwner
 from dify_agent.runtime.run_scheduler import RunScheduler
 from dify_agent.runtime_backend.local import LocalExecutionBindingBackend
 from dify_agent.server.auth import create_bearer_token_dependency
@@ -60,8 +62,10 @@ def create_app(
     resolved_settings = settings or ServerSettings()
     if native_owner is not None and (
         resolved_settings.api_token is None
-        or resolved_settings.inner_api_key
-        or resolved_settings.plugin_daemon_api_key
+        or (
+            (resolved_settings.inner_api_key or resolved_settings.plugin_daemon_api_key)
+            and not isinstance(native_owner, ConfirmedNativeContinuationOwner)
+        )
     ):
         raise AgentRuntimeTransportError("native_legacy_authority_unqualified")
     agent_stub_token_codec = resolved_settings.create_agent_stub_token_codec()
@@ -147,6 +151,21 @@ def create_app(
         redis = Redis.from_url(resolved_settings.redis_url)
         plugin_daemon_http_client = create_plugin_daemon_http_client(resolved_settings)
         dify_api_inner_http_client = create_dify_api_inner_http_client(resolved_settings)
+        confirmed_api_http_client = (
+            AgentRuntimeHTTPClient(
+                api_url=resolved_settings.inner_api_url,
+                api_token=resolved_settings.api_token,
+                timeout=resolved_settings.create_outbound_http_timeout(),
+                limits=_http_limits(resolved_settings),
+            )
+            if resolved_settings.api_token is not None
+            else None
+        )
+        resolved_native_owner = native_owner
+        if resolved_native_owner is None and confirmed_api_http_client is not None:
+            resolved_native_owner = ConfirmedNativeContinuationOwner(
+                http_client=confirmed_api_http_client, base_url=resolved_settings.inner_api_url
+            )
         store = RedisRunStore(
             redis,
             prefix=resolved_settings.redis_prefix,
@@ -154,11 +173,12 @@ def create_app(
             run_event_stream_max_length=resolved_settings.run_event_stream_max_length,
         )
         scheduler = RunScheduler(
-            native_owner=native_owner,
+            native_owner=resolved_native_owner,
             store=store,
             services=Services(
                 plugin_daemon_http_client=plugin_daemon_http_client,
                 dify_api_http_client=dify_api_inner_http_client,
+                confirmed_api_http_client=confirmed_api_http_client,
                 plugin_daemon_url=resolved_settings.plugin_daemon_url,
                 plugin_daemon_api_key=resolved_settings.plugin_daemon_api_key,
                 inner_api_url=resolved_settings.inner_api_url,
@@ -184,6 +204,8 @@ def create_app(
             await scheduler.shutdown()
             state.clear()
             await dify_api_inner_http_client.aclose()
+            if confirmed_api_http_client is not None:
+                await confirmed_api_http_client.aclose()
             await plugin_daemon_http_client.aclose()
             await redis.aclose()
             # Closed last so runs draining above still reach the exporter.
@@ -199,11 +221,24 @@ def create_app(
     def get_scheduler() -> RunScheduler:
         return cast(RunScheduler, state["scheduler"])
 
+    def get_capabilities() -> NativeTestCapabilities:
+        capabilities = get_scheduler().native_capabilities
+        # Authenticated lookup and the production Redis claim owner are installed
+        # together here. Anonymous migration never advertises recovery admission.
+        if resolved_settings.api_token is not None:
+            return capabilities.model_copy(update={"features": capabilities.features | {"create-idempotency-v1"}})
+        return capabilities
+
     control_plane_router = APIRouter(
         dependencies=[create_bearer_token_dependency(resolved_settings.api_token)],
     )
     control_plane_router.include_router(
-        create_runs_router(get_store, get_scheduler, lambda: get_scheduler().native_capabilities)
+        create_runs_router(
+            get_store,
+            get_scheduler,
+            get_capabilities,
+            enable_lookup=resolved_settings.api_token is not None,
+        )
     )
     # Ordinary anonymous migration mode must never expose protected checkpoint history.
     if resolved_settings.api_token is not None:

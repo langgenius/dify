@@ -4,6 +4,7 @@ from typing import cast, override
 from unittest.mock import Mock
 
 import pytest
+
 from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
 from services.dify_builder.native_testing.runtime_contracts import NativeWorkflowOutcome, ResolvedNativeTestContext
 from tests.unit_tests.services.dify_builder.native_testing.test_runtime_contracts import CONTEXT
@@ -257,13 +258,11 @@ def test_native_owner_calls_existing_generator_with_reserved_id_and_server_actor
 
 
 def test_ordinary_resume_cannot_rebuild_trace_for_native_marked_entity(monkeypatch):
-    from types import SimpleNamespace
-
     from core.app.apps.workflow import app_generator
 
     trace = Mock(side_effect=AssertionError("eager trace credentials"))
     monkeypatch.setattr(app_generator, "TraceQueueManager", trace)
-    entity = SimpleNamespace(
+    entity = app_generator.WorkflowAppGenerateEntity.model_construct(
         native_test_required=True, native_test_ref=None, builder_execution=None, trace_manager=None
     )
     with pytest.raises(NativeContextUnavailable, match="native_context_missing"):
@@ -271,7 +270,7 @@ def test_ordinary_resume_cannot_rebuild_trace_for_native_marked_entity(monkeypat
             app_model=Mock(),
             workflow=Mock(),
             user=Mock(),
-            application_generate_entity=cast(app_generator.WorkflowAppGenerateEntity, entity),
+            application_generate_entity=entity,
             graph_runtime_state=Mock(),
             workflow_execution_repository=Mock(),
             workflow_node_execution_repository=Mock(),
@@ -373,12 +372,13 @@ def test_in_process_worker_refusal_terminates_native_queue_without_ordinary_setu
 def _worker_refusal_case(owned, monkeypatch, *, refusal, redis_failure):
     import contextvars
 
+    from flask import Flask
+
     from core.app.apps import base_app_queue_manager
     from core.app.apps.execution_coordinator import AppExecutionState
     from core.app.apps.workflow import app_generator
     from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
     from core.app.entities.queue_entities import QueueErrorEvent
-    from flask import Flask
     from models.account import Account
 
     factory, actor, app, workflow, _, _ = owned
@@ -450,7 +450,6 @@ def _worker_refusal_case(owned, monkeypatch, *, refusal, redis_failure):
     from core.repositories.sqlalchemy_workflow_node_execution_repository import (
         SQLAlchemyWorkflowNodeExecutionRepository,
     )
-
     from graphon.filters import ResponseStreamFilter
 
     # Actual synchronous repository constructors are retained; this early

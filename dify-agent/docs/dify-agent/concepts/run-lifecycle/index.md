@@ -46,13 +46,17 @@ independent of composition and session snapshot v2. An ordinary request keeps
 its existing execution and migration behavior.
 
 The private, bearer-authenticated `GET /runs/capabilities` endpoint reports
-installed features. Both client create/continue and server admission require
+installed features. The default `native_test_profile="isolated"` retains
+the existing requirements:
 `pending-call-v1`, `policy-gate-v1`, `test-scope-v1` and
-`child-continuation-v1`. The client fetches fresh capabilities for every native
+`child-continuation-v1`. Explicit `native_test_profile="confirmed"` instead
+requires `pending-call-v1`, `policy-gate-v1` and `create-idempotency-v1`, plus a
+bounded nonempty create idempotency key. It uses ordinary execution and makes no
+test-scope or hidden child-continuation claim. The client fetches fresh capabilities for every native
 request and never falls back after missing endpoints, malformed responses or
 version mismatch. The scheduler and runner independently reject an unsupported
-native request before loading modules or acquiring resources. A2 advertises only
-`pending-call-v1`; it does not qualify policy, test scope or child continuation.
+native request before loading modules or acquiring resources. Anonymous migration
+mode advertises only `pending-call-v1` and cannot admit confirmed execution.
 A3/A4/A5 must install and qualify their owners before enabling the complete set.
 The stable refusal code is `native_test_protocol_unsupported`.
 
@@ -104,8 +108,20 @@ content and owner against the pinned digest, restores the exact checkpoint state
 and resolves pending actions through the API authority before constructing any
 native `ToolApproved` object. A reference alone never authorizes execution.
 The returned `NativeContinuation.capabilities` contains fresh native capability
-instances, assembled by the existing runner and Agent factory. The default has
-no installed owner and therefore cannot execute a marked native test.
+instances, assembled by the existing runner and Agent factory. With a configured
+service bearer, the application installs `ConfirmedNativeContinuationOwner`.
+It prepares immutable configuration through the API, restores exact SDK pending
+calls/history and reads protected API-owned results. Denial and unknown outcomes
+remain control errors. A restored call revalidates its final arguments and owned
+resource identity before executing; a completed result bypasses the handler.
+
+Confirmed execution borrows a separate run-bound API client. Ordinary runs retain
+their existing legacy service clients and keys. Confirmed plugin/core tools use
+the API tool service with the native dispatch envelope; direct plugin-daemon
+dispatch has no marked-run fallback. The ordinary-confirmed owner does not
+implement shell lineage or claim isolated runtime support. SDK callers use
+`continue_run(..., profile="confirmed")` (or its synchronous variant); the
+server independently selects the durable checkpoint profile.
 
 `RedisAgentResultStore` binds protected payloads to the full native reference and
 operation key, limits each payload to 1 MiB and refuses conflicting writes.
@@ -138,3 +154,34 @@ the returned checkpoint. A bearer is service authentication, not tenant or human
 authority. Readback does not prove C02 approval, outer C03 checkpoint ACK, terminal
 completion, current resume authority or physical cleanup. No native continuation
 owner, node wiring or full native capability is enabled by this read interface.
+
+### Create acknowledgement recovery
+
+A create with an `idempotency_key` (1–256 characters) binds that key to the SHA256
+fingerprint of the complete validated request, excluding only the key. Use
+`dify_agent.protocol.create_run_fingerprint` before submitting it. This create
+fingerprint includes metadata and native ownership/profile fields; the existing
+native executable-request digest keeps its separate meaning.
+
+The server maps a hashed key to a versioned private UUIDv5 namespace and writes
+one RunRecord with `SET NX EX`. Only the inserted claim schedules an initial
+supervisor. Repeating an identical retained create returns its current acceptance;
+changed request content returns 409. Unkeyed creates keep fresh UUID4 identities.
+Keys and configuration are not exposed by lookup or stored as create payloads;
+only private key/request digests join the existing record.
+
+With service bearer authentication configured, `POST /runs/lookup` accepts only
+`LookupRunRequest(idempotency_key=..., request_digest=...)` and returns the same
+`CreateRunResponse` fields with `Cache-Control: no-store`. It returns 404 for a
+missing/expired record and 409 for conflicting or corrupt retained identity. The
+SDK's `lookup_run` and `lookup_run_sync` each make one lookup POST and never
+create, enqueue, retry or fall back. Lookup does not retrieve execution
+configuration or refresh retention. Anonymous migration mode omits this route.
+
+The caller must durably save the create key and fingerprint before its first
+create POST. If that acknowledgement is lost, recovery uses only that saved
+selection and status reads. It must never allocate another attempt or re-POST
+create, including after a 404. A retained running record does not prove that a
+worker is live: a crash after persistence and before scheduling remains unknown.
+Deduplication lasts only for the existing Redis retention window and does not
+claim exactly-once external effects.

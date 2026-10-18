@@ -157,8 +157,7 @@ def agent_endpoint_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         if (
             getattr(g, "agent_runtime_admitted", False)
-            and getattr(g, "agent_runtime_request", None)
-            is cast(LocalProxy, request)._get_current_object()
+            and getattr(g, "agent_runtime_request", None) is cast(LocalProxy, request)._get_current_object()
         ):
             return view(*args, **kwargs)
         return authenticated_legacy(*args, **kwargs)
@@ -178,15 +177,14 @@ def agent_runtime_api_only(boundary: str):
     def decorate(view):
         @wraps(view)
         def guarded(*args, **kwargs):
+            from controllers.inner_api.agent.runtime_selection import (
+                parse_agent_run_selection,
+            )
             from services.dify_builder.execution_contracts import (
                 BuilderExecutionPolicyError,
             )
             from services.dify_builder.native_testing.agent_lineage import (
                 AgentServicePrincipal,
-            )
-
-            from controllers.inner_api.agent.runtime_selection import (
-                parse_agent_run_selection,
             )
 
             token = dify_config.AGENT_BACKEND_API_TOKEN
@@ -222,20 +220,14 @@ def agent_runtime_api_only(boundary: str):
                     from controllers.inner_api.agent.native_testing import _parse
 
                     _parse(
-                        AgentPrepareRunPayload
-                        if boundary == "prepare-run"
-                        else AgentReadPreparedConfigPayload,
+                        AgentPrepareRunPayload if boundary == "prepare-run" else AgentReadPreparedConfigPayload,
                         limit=MAX_AGENT_CONTROL_BYTES,
                     )
                 lineage = current_app.extensions.get("native_agent_endpoint_lineage")
                 if lineage is None:
-                    raise BuilderExecutionPolicyError(
-                        "native_endpoint_lineage_unavailable"
-                    )
+                    raise BuilderExecutionPolicyError("native_endpoint_lineage_unavailable")
                 body = request.get_json(silent=True) if request.is_json else None
-                raw = (
-                    body if isinstance(body, dict) else request.args.to_dict(flat=True)
-                )
+                raw = body if isinstance(body, dict) else request.args.to_dict(flat=True)
                 caller = raw.get("caller", raw)
                 if not isinstance(caller, dict):
                     raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")
@@ -250,30 +242,22 @@ def agent_runtime_api_only(boundary: str):
                         boundary in {"prepare-run", "prepared-config", "native-control"}
                         or raw.get("native_dispatch") is not None
                     ):
-                        raise BuilderExecutionPolicyError(
-                            "native_endpoint_owner_mismatch"
-                        )
+                        raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")
                 elif boundary in {"prepare-run", "prepared-config"}:
-                    if selection.parent_node is None or raw.get(
-                        "parent_node"
-                    ) != selection.parent_node.model_dump(mode="json"):
-                        raise BuilderExecutionPolicyError(
-                            "native_endpoint_owner_mismatch"
-                        )
+                    if selection.parent_node is None or raw.get("parent_node") != selection.parent_node.model_dump(
+                        mode="json"
+                    ):
+                        raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")
                     if boundary == "prepare-run" and (
                         raw.get("agent_run_id") != selection.agent_run_id
                         or raw.get("request_digest") != selection.request_digest
                     ):
-                        raise BuilderExecutionPolicyError(
-                            "native_endpoint_owner_mismatch"
-                        )
-                    if (
-                        boundary == "prepared-config"
-                        and raw.get("config_ref") != context.config.config_ref
-                    ):
-                        raise BuilderExecutionPolicyError(
-                            "native_endpoint_owner_mismatch"
-                        )
+                        raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")
+                    if boundary == "prepared-config" and raw.get("config_ref") != context.config.config_ref:
+                        raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")
+                elif boundary == "native-control":
+                    if raw.get("ref") != context.ref.model_dump(mode="json"):
+                        raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")
                 elif boundary in {
                     "model",
                     "core_tool",
@@ -286,23 +270,15 @@ def agent_runtime_api_only(boundary: str):
                     )
 
                     try:
-                        envelope = AgentPhysicalDispatchPayload.model_validate(
-                            raw.get("native_dispatch")
-                        )
+                        envelope = AgentPhysicalDispatchPayload.model_validate(raw.get("native_dispatch"))
                     except ValueError:
-                        raise BuilderExecutionPolicyError(
-                            "native_endpoint_owner_mismatch"
-                        ) from None
+                        raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch") from None
                     if envelope.ref != context.ref:
-                        raise BuilderExecutionPolicyError(
-                            "native_endpoint_owner_mismatch"
-                        )
+                        raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")
                     # The inherited controller validates final target/arguments
                     # at its shared preflight; its physical owner remains closed.
                 else:
-                    raise BuilderExecutionPolicyError(
-                        "native_endpoint_dependency_unavailable"
-                    )
+                    raise BuilderExecutionPolicyError("native_endpoint_dependency_unavailable")
             except BuilderExecutionPolicyError:
                 raise AgentRuntimeRefused() from None
             # g can outlive one request under an explicitly pushed app context.

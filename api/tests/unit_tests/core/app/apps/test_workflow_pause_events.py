@@ -86,7 +86,7 @@ def _persist_human_input_form(
 
 
 def _build_runner():
-    app_entity = SimpleNamespace(
+    app_entity = WorkflowAppGenerateEntity.model_construct(
         app_config=SimpleNamespace(app_id="app-id"),
         inputs={},
         files=[],

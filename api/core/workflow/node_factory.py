@@ -961,7 +961,7 @@ class DifyNodeFactory(NodeFactory):
             from core.workflow.nodes.agent_v2.output_type_checker import PerOutputTypeChecker
             from core.workflow.nodes.agent_v2.session_store import WorkflowAgentWorkspaceStore
 
-            return {
+            kwargs: dict[str, object] = {
                 "binding_resolver": WorkflowAgentBindingResolver(),
                 "runtime_request_builder": WorkflowAgentRuntimeRequestBuilder(
                     request_builder=AgentBackendRunRequestBuilder(),
@@ -984,6 +984,16 @@ class DifyNodeFactory(NodeFactory):
                 "failure_orchestrator": OutputFailureOrchestrator(),
                 "session_store": WorkflowAgentWorkspaceStore(),
             }
+            if self._dify_context.builder_agent_execution is not None:
+                from core.dify_builder.models import Actor
+                from services.dify_builder.wiring import build_confirmed_agent_node_owners
+
+                preparation, commands, recovery = build_confirmed_agent_node_owners(
+                    actor=Actor(tenant_id=self._dify_context.tenant_id, account_id=self._dify_context.user_id),
+                    backend=kwargs["agent_backend_client"],
+                )
+                kwargs.update(agent_preparation=preparation, agent_commands=commands, agent_run_recovery=recovery)
+            return kwargs
         return {
             "strategy_resolver": self._agent_strategy_resolver,
             "presentation_provider": self._agent_strategy_presentation_provider,

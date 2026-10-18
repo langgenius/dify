@@ -6,6 +6,8 @@ import uuid
 from collections.abc import Callable, Generator, Mapping
 from typing import TYPE_CHECKING, Any, Literal, TypedDict, cast
 
+from sqlalchemy.orm import Session
+
 from configs import dify_config
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.agent_app.app_generator import AgentAppGenerator
@@ -31,10 +33,8 @@ from enums import DeploymentEdition, QuotaType
 from extensions.otel import AppGenerateHandler, trace_span
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowRun
-from sqlalchemy.orm import Session
-from tasks.app_generate.workflow_execute_task import AppExecutionParams, workflow_based_app_execution_task
-
 from services.dify_builder.execution_policy_service import restricted_admission_snapshot
+from services.dify_builder.native_testing.agent_context import BuilderAgentExecutionContext
 from services.errors.app import (
     QuotaExceededError,
     TriggerWorkflowServiceModeUnavailableError,
@@ -45,6 +45,7 @@ from services.errors.llm import InvokeRateLimitError
 from services.quota_service import QuotaService, unlimited
 from services.tools.draft_tool_setup import admit_draft_tool_setup
 from services.workflow_service import WorkflowService
+from tasks.app_generate.workflow_execute_task import AppExecutionParams, workflow_based_app_execution_task
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +60,6 @@ _MANUAL_WORKFLOW_INVOKE_SOURCES = frozenset(
 
 if TYPE_CHECKING:
     from controllers.console.app.workflow import LoopNodeRunPayload
-
     from services.dify_builder.native_testing.contracts import NativeTestContextRef
     from services.dify_builder.native_testing.host_execution import NativeHostLaunch
     from services.dify_builder.native_testing.native_execution import ClosableNativeEventStream
@@ -132,6 +132,7 @@ class AppGenerateService:
         | JsonToolExecutionContext
         | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
+        builder_agent_execution: BuilderAgentExecutionContext | None = None,
         builder_mocked_node_ids: frozenset[str] = frozenset(),
         builder_expected_revision: str | None = None,
         builder_tool_credential_bindings: Mapping[str, str] | None = None,
@@ -147,6 +148,14 @@ class AppGenerateService:
             inside a worker task, avoiding a synchronous wait for another Celery slot.
         :return:
         """
+        if builder_agent_execution is not None and (
+            builder_execution is not None
+            or app_model.mode != AppMode.WORKFLOW
+            or workflow_execution_mode != "in_process"
+            or invoke_from != InvokeFrom.DEBUGGER
+            or not isinstance(user, Account)
+        ):
+            raise BuilderExecutionPolicyError("unsupported_execution_transport")
         if (
             builder_mocked_node_ids
             or builder_expected_revision is not None
@@ -193,6 +202,7 @@ class AppGenerateService:
                 workflow_execution_mode=workflow_execution_mode,
                 builder_execution=builder_execution,
                 builder_execution_admit=builder_execution_admit,
+                builder_agent_execution=builder_agent_execution,
                 builder_mocked_node_ids=builder_mocked_node_ids,
                 builder_expected_revision=builder_expected_revision,
                 builder_tool_credential_bindings=builder_tool_credential_bindings,
@@ -337,6 +347,7 @@ class AppGenerateService:
         | JsonToolExecutionContext
         | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
+        builder_agent_execution: BuilderAgentExecutionContext | None = None,
         builder_mocked_node_ids: frozenset[str] = frozenset(),
         builder_expected_revision: str | None = None,
         builder_tool_credential_bindings: Mapping[str, str] | None = None,
@@ -346,7 +357,9 @@ class AppGenerateService:
             if app_model.is_agent_with_session(session=session) and app_model.mode != AppMode.AGENT_CHAT
             else app_model.mode
         )
-        if builder_execution is not None and effective_mode != AppMode.WORKFLOW:
+        if (
+            builder_execution is not None or builder_agent_execution is not None
+        ) and effective_mode != AppMode.WORKFLOW:
             error = BuilderExecutionPolicyError("unsupported_workflow")
             if builder_execution_admit is not None:
                 builder_execution_admit.on_refusal(error, preworker=True)
@@ -540,6 +553,10 @@ class AppGenerateService:
                             pause_state_config=pause_config if builder_execution is None else None,
                             builder_execution=builder_execution,
                             builder_execution_admit=builder_execution_admit,
+                            builder_agent_execution=builder_agent_execution,
+                            workflow_run_id=(
+                                builder_agent_execution.native_run_id if builder_agent_execution is not None else None
+                            ),
                             builder_mocked_node_ids=builder_mocked_node_ids,
                             builder_expected_revision=builder_expected_revision,
                             builder_tool_credential_bindings=builder_tool_credential_bindings,

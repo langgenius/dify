@@ -52,7 +52,7 @@ import threading
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
-from uuid import NAMESPACE_URL, uuid5
+from uuid import NAMESPACE_URL, uuid4, uuid5
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -100,14 +100,16 @@ from libs.datetime_utils import naive_utc_now
 from libs.flask_utils import set_login_user
 from models.account import Account
 from models.dify_builder import DifyBuilderRun, DifyBuilderSession, DifyBuilderTestInput
+from models.enums import CreatorUserRole
 from models.model import App
 from models.tools import BuiltinToolProvider
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from services.app_generate_service import AppGenerateService
 from services.dify_builder import graph_ops
 from services.dify_builder.effect_disclosure import EffectDisclosure, disclose
 from services.dify_builder.errors import HashMismatchError, PreflightError, WorkflowNotInitializedError
+from services.dify_builder.execution_contracts import canonical_digest
 from services.dify_builder.execution_policy_service import (
     BuilderExecutionPolicyService,
     _is_json_parse_candidate,
@@ -1225,6 +1227,97 @@ class WorkflowServiceDifyPort:
             row.elapsed_ms = run.elapsed_ms
             row.immutable = run.status in {"succeeded", "failed"} and bool(run.dify_run_id)
 
+    @staticmethod
+    def _prepare_confirmed_agent_execution(*, actor, session_id, test_input_id, expected_version, reservation_id):
+        from services.dify_builder.native_testing.agent_context import BuilderAgentExecutionContext
+        from services.dify_builder.native_testing.agent_operations import admit_confirmed_agent_execution
+
+        native_run_id = str(uuid4())
+        context = admit_confirmed_agent_execution(
+            actor=actor,
+            session_id=session_id,
+            test_input_id=test_input_id,
+            expected_version=expected_version,
+            native_run_id=native_run_id,
+            idempotency_key=reservation_id,
+            limits={"calls": 32, "dispatches": 32, "cost_units": 32},
+        )
+        return BuilderAgentExecutionContext(ref=context.ref, native_run_id=native_run_id)
+
+    @staticmethod
+    def _recover_confirmed_agent_parent_id(*, actor, app_id, session_id, test_input_id, graph):
+        """A planned ID is a locator, never proof that a Run was launched."""
+        if not any(
+            isinstance(node, dict) and node.get("data", {}).get("type") == "agent" for node in graph.get("nodes", [])
+        ):
+            return None
+        from models.dify_builder import DifyBuilderExecutionRequest
+
+        with _session_factory()() as session:
+            requests = session.scalars(
+                select(DifyBuilderExecutionRequest).where(
+                    DifyBuilderExecutionRequest.tenant_id == actor.tenant_id,
+                    DifyBuilderExecutionRequest.actor_id == actor.account_id,
+                    DifyBuilderExecutionRequest.app_id == app_id,
+                    DifyBuilderExecutionRequest.session_id == session_id,
+                    DifyBuilderExecutionRequest.test_input_id == test_input_id,
+                )
+            ).all()
+            actual = []
+            for request in requests:
+                if request.context.get("profile", {}).get("profile_id") != "builder-agent-confirmed-v1":
+                    continue
+                if canonical_digest(request.context) != request.context_digest:
+                    raise BuilderExecutionPolicyError("native_context_mismatch")
+                row = session.scalar(
+                    select(WorkflowRun).where(
+                        WorkflowRun.id == request.context.get("native_run_id"),
+                        WorkflowRun.tenant_id == actor.tenant_id,
+                        WorkflowRun.created_by == actor.account_id,
+                        WorkflowRun.created_by_role == CreatorUserRole.ACCOUNT,
+                        WorkflowRun.app_id == app_id,
+                        WorkflowRun.workflow_id == request.workflow_id,
+                    )
+                )
+                if row is not None:
+                    actual.append(row.id)
+            if len(actual) > 1:
+                raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
+            return actual[0] if actual else None
+
+    @staticmethod
+    def _settle_confirmed_agent_parent(*, actor, app_id, session_id, test_input_id, native_run_id, paused):
+        from models.dify_builder import DifyBuilderExecutionRequest
+        from services.dify_builder.native_testing.contracts import NativeTestContextRef
+        from services.dify_builder.wiring import build_confirmed_agent_command_service
+
+        with _session_factory()() as session:
+            rows = session.scalars(
+                select(DifyBuilderExecutionRequest).where(
+                    DifyBuilderExecutionRequest.tenant_id == actor.tenant_id,
+                    DifyBuilderExecutionRequest.actor_id == actor.account_id,
+                    DifyBuilderExecutionRequest.app_id == app_id,
+                    DifyBuilderExecutionRequest.session_id == session_id,
+                    DifyBuilderExecutionRequest.test_input_id == test_input_id,
+                )
+            ).all()
+            selected = [
+                row
+                for row in rows
+                if row.context.get("profile", {}).get("profile_id") == "builder-agent-confirmed-v1"
+                and row.context.get("native_run_id") == native_run_id
+            ]
+            if not selected:
+                return None
+            if len(selected) != 1:
+                raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
+            row = selected[0]
+            ref = NativeTestContextRef(
+                request_id=row.id, invocation_id=row.context["invocation_id"], context_digest=row.context_digest
+            )
+        commands = build_confirmed_agent_command_service(actor=actor)
+        return commands.persist_parent_wait(ref=ref) if paused else commands.settle_parent(ref=ref)
+
     def _run_confirmed_full_draft(
         self,
         app_id: str,
@@ -1260,12 +1353,24 @@ class WorkflowServiceDifyPort:
                 return _unsupported_run(BuilderExecutionPolicyError("test_input_binding_mismatch"))
             draft = _load_draft_workflow_or_raise(app, session=session)
             graph = dict(draft.graph_dict)
+            owner_version = owner.version
             before_revision = execution_revision(draft)
             before_graph_revision = executable_graph_revision(graph)
             names, bindings = _tool_account_metadata(session, tenant_id, graph)
             mocked = disclose(
                 graph, names, account_bindings=bindings, inputs=inputs, scope_binding=_effect_scope_binding(draft)
             ).mocked_node_ids(effect_confirmation)
+            # Only New Agent owns the nested-call confirmation transport. A
+            # legacy strategy Agent must not fall through to its ordinary tools.
+            if any(
+                isinstance(node, dict)
+                and isinstance(node.get("data"), dict)
+                and node["data"].get("type") == "agent"
+                and node.get("id") not in mocked
+                and (node["data"].get("version"), node["data"].get("agent_node_kind")) != ("2", "dify_agent")
+                for node in graph.get("nodes", [])
+            ):
+                return _unsupported_run(BuilderExecutionPolicyError("unsupported_node_implementation"))
             args: dict[str, Any] = {"inputs": dict(inputs)}
             if app.mode == "advanced-chat":
                 validate_query(inputs)
@@ -1278,6 +1383,17 @@ class WorkflowServiceDifyPort:
             session_id, test_input_id, before_revision, before_graph_revision, mocked
         )
         if not launch:
+            if not reservation.dify_run_id:
+                recovered = self._recover_confirmed_agent_parent_id(
+                    actor=actor,
+                    app_id=app_id,
+                    session_id=session_id,
+                    test_input_id=test_input_id,
+                    graph=graph,
+                )
+                if recovered:
+                    self._bind_full_native_id(reservation.id, recovered)
+                    reservation.dify_run_id = recovered
             if reservation.immutable or not reservation.dify_run_id:
                 if not reservation.dify_run_id and reservation.verification is not None:
                     evidence = reservation.verification.execution_evidence
@@ -1297,9 +1413,28 @@ class WorkflowServiceDifyPort:
         final: dict[str, Any] = {}
         stream_run_id = reservation.dify_run_id
         error_frame: dict[str, str] | None = None
+        pending_pause_event = None
         if launch:
             response = None
             try:
+                real_agent = any(
+                    isinstance(node, dict)
+                    and isinstance(node.get("data"), dict)
+                    and node["data"].get("type") == "agent"
+                    and node.get("id") not in mocked
+                    for node in graph.get("nodes", [])
+                )
+                agent_context = (
+                    self._prepare_confirmed_agent_execution(
+                        actor=actor,
+                        session_id=session_id,
+                        test_input_id=test_input_id,
+                        expected_version=owner_version,
+                        reservation_id=reservation.id,
+                    )
+                    if real_agent
+                    else None
+                )
                 set_login_user(account)
                 # Only native generation owns this session; Builder reads and
                 # the durable reservation committed before any provider I/O.
@@ -1317,6 +1452,7 @@ class WorkflowServiceDifyPort:
                         builder_tool_credential_bindings={
                             node_id: binding for node_id, binding in bindings.items() if node_id not in mocked
                         },
+                        builder_agent_execution=agent_context,
                     )
                 if isinstance(response, Mapping):
                     final = dict(response.get("data") or {})
@@ -1334,7 +1470,10 @@ class WorkflowServiceDifyPort:
                             self._bind_full_native_id(reservation.id, native_id)
                             stream_run_id = native_id
                         if on_workflow_event is not None:
-                            on_workflow_event(payload)
+                            if agent_context is not None and payload.get("event") == "workflow_paused":
+                                pending_pause_event = payload
+                            else:
+                                on_workflow_event(payload)
                         node_event = node_event_from_stream_chunk(payload)
                         if node_event is not None:
                             on_event(node_event)
@@ -1354,6 +1493,18 @@ class WorkflowServiceDifyPort:
                 if callable(close):
                     close()
 
+        if not stream_run_id:
+            recovered = self._recover_confirmed_agent_parent_id(
+                actor=actor,
+                app_id=app_id,
+                session_id=session_id,
+                test_input_id=test_input_id,
+                graph=graph,
+            )
+            if recovered:
+                self._bind_full_native_id(reservation.id, recovered)
+                stream_run_id = recovered
+
         # Without a native ID, no terminal claim can establish what launched.
         result = (
             self._finish_run(tenant_id, app_id, final, stream_run_id, error_frame=error_frame)
@@ -1361,6 +1512,41 @@ class WorkflowServiceDifyPort:
             else (map_unknown_run_outcome({"id": ""}, []), None)
         )
         run, _ = result
+        # A real Agent control wait is neither a failed workflow nor permission
+        # to diagnose/rebuild it. C04 exposes waiting only after the native
+        # WorkflowPause has actually persisted; Builder retains its same Run.
+        native_row = result[1]
+        native_graph = getattr(native_row, "graph_dict", {})
+        has_agent = (
+            any(
+                isinstance(node, dict) and isinstance(node.get("data"), dict) and node["data"].get("type") == "agent"
+                for node in native_graph.get("nodes", [])
+            )
+            if isinstance(native_graph, dict)
+            else False
+        )
+        if native_row is not None and has_agent:
+            try:
+                paused = str(native_row.status) == "paused"
+                receipt = self._settle_confirmed_agent_parent(
+                    actor=actor,
+                    app_id=app_id,
+                    session_id=session_id,
+                    test_input_id=test_input_id,
+                    native_run_id=run.dify_run_id,
+                    paused=paused,
+                )
+                if paused and receipt is not None:
+                    run.status = "running"
+                    run.error = "Agent test is waiting for explicit call confirmation; continue the same Run."
+                    if pending_pause_event is not None and on_workflow_event is not None:
+                        on_workflow_event(pending_pause_event)
+                elif receipt is not None and receipt.status == "unknown":
+                    run.status = "running"
+                    run.error = "Agent effect acknowledgement is unknown; automatic replay is disabled."
+            except Exception:
+                run.status = "running"
+                run.error = "Agent test recovery is pending; automatic replay is disabled."
         if run.verification is None:
             run.verification = RunVerification(
                 execution_revision="",

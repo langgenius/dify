@@ -108,6 +108,9 @@ class TestWorkflowBasedAppRunner:
             )
 
     def test_init_graph_includes_trace_session_id_in_run_context(self, monkeypatch: pytest.MonkeyPatch):
+        from tests.unit_tests.services.dify_builder.native_testing.test_agent_context import marker
+
+        agent_context = marker()
         runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
         runtime_state = GraphRuntimeState(
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
@@ -132,9 +135,11 @@ class TestWorkflowBasedAppRunner:
             invoke_from=InvokeFrom.DEBUGGER,
             root_node_id="root",
             trace_session_id="session-1",
+            builder_agent_execution=agent_context,
         )
 
         assert captured["run_context"][DIFY_RUN_CONTEXT_KEY].trace_session_id == "session-1"
+        assert captured["run_context"][DIFY_RUN_CONTEXT_KEY].builder_agent_execution == agent_context
 
     def test_ordinary_init_graph_keeps_python_mode_typed_serialization(self, monkeypatch: pytest.MonkeyPatch):
         runner = WorkflowBasedAppRunner(queue_manager=Mock(spec=AppQueueManager), app_id="app")

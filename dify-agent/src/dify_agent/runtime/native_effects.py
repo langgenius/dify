@@ -6,6 +6,7 @@ or SDK is treated as authority, and transport errors are never retried here.
 """
 
 import json
+import httpx
 from collections.abc import Awaitable, Callable
 from contextvars import ContextVar
 from dataclasses import dataclass, field
@@ -113,10 +114,32 @@ class NativeEffectDispatcher:
         try:
             result = await invoke(permit)
             result_ref = await result_store.store(ref=ref, key=intent.key, result=result)
-        except BaseException:
+        except BaseException as error:
             # Once an invocation starts, cancellation or a lost response cannot prove
             # that it did not happen. Recording unknown also closes replay admission.
-            await self.policy.record_outcome(permit=permit, outcome="unknown", result_ref=None)
+            receipt = await self.policy.record_outcome(permit=permit, outcome="unknown", result_ref=None)
+            # The API physical owner may already have committed the real result
+            # before its response was lost. Recover only transport/OS I/O loss
+            # (including an explicit client wrapper cause), never cancellation,
+            # control exceptions, validation failures, or a foreign receipt.
+            cause = error
+            transport_failure = False
+            if isinstance(error, Exception):
+                for _ in range(8):
+                    if isinstance(cause, (OSError, httpx.RequestError)):
+                        transport_failure = True
+                        break
+                    if cause.__cause__ is None:
+                        break
+                    cause = cause.__cause__
+            if (
+                transport_failure
+                and isinstance(receipt, AgentEffectReceipt)
+                and receipt.outcome == "completed"
+                and receipt.result_ref is not None
+                and (receipt.operation_id, receipt.attempt_id) == (permit.operation_id, permit.attempt_id)
+            ):
+                return await result_store.load(receipt.result_ref)
             raise
         await self.policy.record_outcome(permit=permit, outcome="completed", result_ref=result_ref)
         return result
@@ -194,6 +217,9 @@ class NativeEffectSession:
     result_store: AgentResultStore
     prepare_intent: IntentPreparer
     validate_shell_lineage: ShellLineageValidator | None = None
+    restored_calls: dict[str, tuple[AgentPendingCall, AgentDispatchPermit | AgentRecordedResult]] = field(
+        default_factory=dict, repr=False
+    )
     _prepared: dict[str, tuple[AgentEffectIntent, AgentDispatchPermit | AgentRecordedResult]] = field(
         default_factory=dict, repr=False
     )
@@ -217,9 +243,12 @@ class NativeEffectSession:
             await self.validate_shell_lineage(
                 ref=self.continuation.ref, boundary=boundary, target=target, parameters=parameters
             )
-        key = AgentOperationKey(
-            invocation_id=self.continuation.ref.invocation_id, occurrence_path=(boundary, call_id), cursor=0
-        )
+        path = (boundary, call_id)
+        if self.continuation.native_test_profile == "confirmed":
+            if self.continuation.parent_execution_id is None:
+                raise NativePolicyStopped("native_effect_owner_mismatch")
+            path = (self.continuation.parent_execution_id, *path)
+        key = AgentOperationKey(invocation_id=self.continuation.ref.invocation_id, occurrence_path=path, cursor=0)
         intent = await self.prepare_intent(
             ref=self.continuation.ref, key=key, boundary=boundary, target=target, parameters=parameters
         )
@@ -291,6 +320,18 @@ class NativeEffectsCapability(AbstractCapability[Deps]):
         intent = await self.session.intent(
             boundary=boundary.boundary, call_id=call.tool_call_id, target=target, parameters=parameters
         )
+        restored = self.session.restored_calls.pop(call.tool_call_id, None)
+        if restored is not None:
+            pending, decision = restored
+            if (
+                pending.tool_name != call.tool_name
+                or canonical_effect_json(pending.intent.model_dump(mode="json"))
+                != canonical_effect_json(intent.model_dump(mode="json"))
+                or canonical_effect_json(pending.native_arguments) != canonical_effect_json(call.args_as_dict())
+            ):
+                raise NativePolicyStopped("native_effect_arguments_changed")
+            self.session._prepared[call.tool_call_id] = (intent, decision)
+            return args
         try:
             decision = await self.session.dispatcher.decide(
                 ref=self.session.continuation.ref,

@@ -503,6 +503,10 @@ def workflow_based_app_execution_task(
 
 
 def _resume_app_execution(payload: dict[str, Any]) -> None:
+    from services.dify_builder.native_testing.confirmed_agent_commands import preflight_confirmed_agent_resume
+
+    if not preflight_confirmed_agent_resume(payload=payload):
+        return
     workflow_run_id = payload["workflow_run_id"]
 
     session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
@@ -520,6 +524,10 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
         return
 
     generate_entity = resumption_context.get_generate_entity()
+    from services.dify_builder.native_testing.confirmed_agent_commands import guard_confirmed_agent_resume
+
+    if not guard_confirmed_agent_resume(payload=payload, generate_entity=generate_entity):
+        return
     if generate_entity.native_test_required or generate_entity.native_test_ref is not None:
         dispatch_native_worker(ref=generate_entity.native_test_ref, generation=None)
         return
@@ -792,4 +800,11 @@ def _resume_workflow(
 
 @shared_task(queue=WORKFLOW_BASED_APP_EXECUTION_QUEUE, name="resume_app_execution")
 def resume_app_execution(payload: dict[str, Any]) -> None:
-    _resume_app_execution(payload)
+    from services.dify_builder.native_testing.confirmed_agent_commands import finish_confirmed_agent_resume
+
+    payload = dict(payload)
+    payload.pop("_builder_agent_claimed", None)
+    try:
+        _resume_app_execution(payload)
+    finally:
+        finish_confirmed_agent_resume(payload=payload)

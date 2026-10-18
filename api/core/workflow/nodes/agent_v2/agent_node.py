@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, override
+from types import SimpleNamespace
+from typing import TYPE_CHECKING, Any, cast, override
 
 from dify_agent.protocol import CancelRunRequest
 from dify_agent.protocol.snapshot import SessionSnapshot
@@ -17,6 +18,7 @@ from clients.agent_backend import (
     AgentBackendRunEventAdapter,
     AgentBackendRunFailedInternalEvent,
     AgentBackendRunSucceededInternalEvent,
+    AgentBackendRunWaitingInternalEvent,
     AgentBackendStreamError,
     AgentBackendStreamInternalEvent,
     AgentBackendTransportError,
@@ -24,6 +26,7 @@ from clients.agent_backend import (
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.workflow.system_variables import SystemVariableKey, get_system_text
+from graphon.entities.pause_reason import SchedulingPause
 from graphon.enums import (
     BuiltinNodeTypes,
     ErrorStrategy,
@@ -59,16 +62,23 @@ from .session_store import WorkflowAgentSessionScope, WorkflowAgentWorkspaceStor
 if TYPE_CHECKING:
     from graphon.entities import GraphInitParams
     from graphon.runtime import GraphRuntimeState
+    from services.agent.workflow_run_recovery import AgentCreateRecoveryClient, WorkflowAgentRunRecovery
+    from services.dify_builder.native_testing.agent_preparation import AgentPreparationService
+    from services.dify_builder.native_testing.confirmed_agent_commands import ConfirmedAgentCommands
+    from services.dify_builder.native_testing.runtime_bridge import NativeNodePreparation
 
 logger = logging.getLogger(__name__)
 
 
-# Stage 4 §5+§7: the terminal events that `_consume_event_stream` may return.
+# Terminal and waiting controls that `_consume_event_stream` may return.
 # Stream + started events are filtered out (plain-run text deltas are yielded
 # as stream chunks instead); transport errors
 # are surfaced as a separate StreamCompletedEvent in the second tuple slot.
 type _TerminalAgentBackendEvent = (
-    AgentBackendRunSucceededInternalEvent | AgentBackendRunFailedInternalEvent | AgentBackendRunCancelledInternalEvent
+    AgentBackendRunSucceededInternalEvent
+    | AgentBackendRunFailedInternalEvent
+    | AgentBackendRunCancelledInternalEvent
+    | AgentBackendRunWaitingInternalEvent
 )
 
 
@@ -98,6 +108,9 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         type_checker: PerOutputTypeChecker,
         failure_orchestrator: OutputFailureOrchestrator,
         session_store: WorkflowAgentWorkspaceStore,
+        agent_preparation: AgentPreparationService | None = None,
+        agent_commands: ConfirmedAgentCommands | None = None,
+        agent_run_recovery: WorkflowAgentRunRecovery | None = None,
     ) -> None:
         super().__init__(
             node_id=node_id,
@@ -118,6 +131,17 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         self._type_checker = type_checker
         self._failure_orchestrator = failure_orchestrator
         self._session_store = session_store
+        self._agent_preparation = agent_preparation
+        self._agent_commands = agent_commands
+        self._agent_run_recovery = agent_run_recovery
+
+    @override
+    def _get_error_strategy(self) -> ErrorStrategy | None:
+        context = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
+        # Confirmed control failures cannot become default output or an alternate branch.
+        if context.builder_agent_execution is not None:
+            return None
+        return super()._get_error_strategy()
 
     @classmethod
     @override
@@ -161,6 +185,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         from services.dify_builder.native_testing.agent_binding import AgentSnapshotChanged
 
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
+        confirmed = dify_ctx.builder_agent_execution
         workflow_id = self.graph_init_params.workflow_id
         workflow_run_id = get_system_text(
             self.graph_runtime_state.variable_pool,
@@ -171,6 +196,19 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             self.graph_runtime_state.variable_pool,
             SystemVariableKey.CONVERSATION_ID,
         )
+        if confirmed is not None and (
+            workflow_run_id != confirmed.native_run_id
+            or conversation_id is not None
+            or dify_ctx.invoke_from.value != "debugger"
+            or dify_ctx.user_from.value != "account"
+            or dify_ctx.builder_execution is not None
+            or dify_ctx.native_test_required
+            or dify_ctx.native_test_ref is not None
+            or self._agent_preparation is None
+            or self._agent_commands is None
+            or self._agent_run_recovery is None
+        ):
+            raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
 
         # ──── Setup: resolve binding once + extract declared outputs for stage 4 checks ────
         try:
@@ -278,24 +316,50 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         # ──── Retry loop (Stage 4 §7) ────
         attempt = 0
         while True:
+            parent_node = None
+            after = None
+            runtime_request = None
+            create_response = None
             try:
-                runtime_request = self._runtime_request_builder.build(
-                    WorkflowAgentRuntimeBuildContext(
-                        dify_context=dify_ctx,
-                        workflow_id=workflow_id,
-                        workflow_run_id=workflow_run_id,
-                        node_id=self._node_id,
-                        node_execution_id=self.execution_id,
-                        variable_pool=self.graph_runtime_state.variable_pool,
-                        binding=bundle.binding,
-                        agent=bundle.agent,
-                        snapshot=bundle.snapshot,
-                        binding_id=stored_session.binding_id,
-                        backend_binding_ref=stored_session.backend_binding_ref,
-                        attempt=attempt,
-                        session_snapshot=stored_session.session_snapshot,
+                if confirmed is not None:
+                    from services.agent.workflow_run_recovery import AgentCreateAcknowledgementUnknown
+
+                    try:
+                        create_response, parent_node, after = self._start_or_resume_confirmed(
+                            dify_context=dify_ctx,
+                            session_scope=session_scope,
+                            stored_session=stored_session,
+                            process_data=process_data,
+                        )
+                    except AgentCreateAcknowledgementUnknown:
+                        yield self._control_pause(inputs, process_data, metadata, "agent_create_ack_unknown")
+                        return
+                    except BuilderExecutionPolicyError as error:
+                        if error.reason_code == "native_agent_continuation_unknown":
+                            yield self._control_pause(inputs, process_data, metadata, error.reason_code)
+                            return
+                        raise
+                    inputs["agent_backend_request"] = {"execution_mode": "builder_test", "profile": "confirmed"}
+                    metadata["attempt"] = 0
+                    metadata["agent_backend"] = {"run_id": create_response.run_id, "status": create_response.status}
+                else:
+                    runtime_request = self._runtime_request_builder.build(
+                        WorkflowAgentRuntimeBuildContext(
+                            dify_context=dify_ctx,
+                            workflow_id=workflow_id,
+                            workflow_run_id=workflow_run_id,
+                            node_id=self._node_id,
+                            node_execution_id=self.execution_id,
+                            variable_pool=self.graph_runtime_state.variable_pool,
+                            binding=bundle.binding,
+                            agent=bundle.agent,
+                            snapshot=bundle.snapshot,
+                            binding_id=stored_session.binding_id,
+                            backend_binding_ref=stored_session.backend_binding_ref,
+                            attempt=attempt,
+                            session_snapshot=stored_session.session_snapshot,
+                        )
                     )
-                )
             except WorkflowAgentRuntimeRequestBuildError as error:
                 yield self._failure_event(
                     inputs=inputs,
@@ -317,24 +381,26 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
 
             # Capture inputs only from the first attempt so retry doesn't churn the
             # node's "inputs" payload that ends up in the workflow detail view.
-            if attempt == 0:
-                inputs["agent_backend_request"] = runtime_request.redacted_request
-            metadata.clear()
-            metadata.update(runtime_request.metadata)
-            metadata["attempt"] = attempt
+            if confirmed is None:
+                assert runtime_request is not None
+                if attempt == 0:
+                    inputs["agent_backend_request"] = runtime_request.redacted_request
+                metadata.clear()
+                metadata.update(runtime_request.metadata)
+                metadata["attempt"] = attempt
+                try:
+                    create_response = self._agent_backend_client.create_run(runtime_request.request)
+                except AgentBackendError as error:
+                    yield self._failure_event(
+                        inputs=inputs,
+                        process_data=process_data,
+                        metadata=metadata,
+                        error=str(error),
+                        error_type=self._agent_backend_error_type(error),
+                    )
+                    return
 
-            try:
-                create_response = self._agent_backend_client.create_run(runtime_request.request)
-            except AgentBackendError as error:
-                yield self._failure_event(
-                    inputs=inputs,
-                    process_data=process_data,
-                    metadata=metadata,
-                    error=str(error),
-                    error_type=self._agent_backend_error_type(error),
-                )
-                return
-
+            assert create_response is not None
             metadata["agent_backend"] = {
                 **dict(metadata.get("agent_backend") or {}),
                 "run_id": create_response.run_id,
@@ -349,7 +415,41 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 stream_text=not custom_outputs
                 and not node_job.output_routes.enabled
                 and self.error_strategy != ErrorStrategy.DEFAULT_VALUE,
+                after=after,
             )
+            if isinstance(terminal_event, AgentBackendRunWaitingInternalEvent):
+                if confirmed is None or parent_node is None:
+                    yield self._failure_event(
+                        inputs=inputs,
+                        process_data=process_data,
+                        metadata=metadata,
+                        error="Agent wait has no confirmed owner",
+                        error_type="agent_wait_unsupported",
+                    )
+                    return
+                try:
+                    if terminal_event.run_id != create_response.run_id or terminal_event.source_event_id is None:
+                        raise BuilderExecutionPolicyError("native_agent_checkpoint_unavailable")
+                    assert self._agent_commands is not None
+                    wait = self._agent_commands.prepare_wait(
+                        ref=confirmed.ref,
+                        parent_node=parent_node,
+                        agent_generation=terminal_event.generation,
+                        backend_wait_event_id=terminal_event.source_event_id,
+                    )
+                    process_data["agent_wait"] = wait.model_dump(mode="json")
+                except BuilderExecutionPolicyError:
+                    yield self._control_pause(inputs, process_data, metadata, "native_agent_wait_unverified")
+                    return
+                yield self._control_pause(inputs, process_data, metadata, "agent_tool_approval")
+                return
+            if (
+                confirmed is not None
+                and not self._is_graph_aborted()
+                and (exhausted is not None or terminal_event is None)
+            ):
+                yield self._control_pause(inputs, process_data, metadata, "agent_stream_ack_unknown")
+                return
             # None means no post-exit snapshot was produced; leave the previously stored session snapshot untouched.
             if (
                 isinstance(terminal_event, AgentBackendRunFailedInternalEvent | AgentBackendRunCancelledInternalEvent)
@@ -422,6 +522,15 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     metadata["output_failure_reason"] = outcome.primary_reason
 
                     if outcome.decision == OutputFailureDecision.RETRY:
+                        if confirmed is not None:
+                            yield self._failure_event(
+                                inputs=inputs,
+                                process_data=process_data,
+                                metadata=metadata,
+                                error="Confirmed Agent output validation cannot create another child automatically.",
+                                error_type="native_agent_output_retry_unavailable",
+                            )
+                            return
                         attempt = outcome.next_attempt
                         continue
 
@@ -471,6 +580,110 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             )
             return
 
+    def _start_or_resume_confirmed(self, *, dify_context, session_scope, stored_session, process_data):
+        from services.agent.workflow_run_recovery import AgentCreateAcknowledgementUnknown, AgentCreateScope
+        from services.dify_builder.execution_contracts import BuilderExecutionPolicyError, canonical_digest
+        from services.dify_builder.native_testing.agent_confirmed_workspace import (
+            load_confirmed_agent_parent,
+            prepare_confirmed_agent_request,
+        )
+        from services.dify_builder.native_testing.agent_contracts import AgentCreateInserted, AgentParentNodeRef
+
+        marker = dify_context.builder_agent_execution
+        assert marker is not None
+        assert self._agent_preparation is not None
+        assert self._agent_commands is not None
+        assert self._agent_run_recovery is not None
+        scope = AgentCreateScope(
+            tenant_id=session_scope.tenant_id,
+            app_id=session_scope.app_id,
+            workflow_id=session_scope.workflow_id,
+            workflow_run_id=session_scope.workflow_run_id,
+            node_id=self._node_id,
+            execution_id=self.execution_id,
+            workflow_binding_id=session_scope.workflow_agent_binding_id,
+        )
+        parent = load_confirmed_agent_parent(
+            service=self._agent_preparation, ref=marker.ref, execution_id=self.execution_id
+        )
+        response = self._agent_run_recovery.recover_existing(
+            scope=scope,
+            client=cast("AgentCreateRecoveryClient", self._agent_backend_client),
+            on_persisted=process_data.update,
+        )
+        if parent is not None:
+            if response is None:
+                # A previously prepared occurrence cannot acquire first-POST
+                # authority merely because another process stopped before ACK.
+                raise AgentCreateAcknowledgementUnknown("Agent create acknowledgement is unknown")
+            protected = self._agent_commands.load_wait(ref=marker.ref, parent_node=parent)
+            if protected is not None:
+                if protected.association.agent_run_id != response.run_id:
+                    raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
+                continued = self._agent_commands.continue_wait(ref=marker.ref, parent_node=parent)
+                if continued.association.agent_run_id != response.run_id or continued.wait is None:
+                    raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
+                return response, parent, continued.wait.backend_wait_event_id
+            return response, parent, None
+        if response is not None:
+            raise BuilderExecutionPolicyError("native_agent_input_unavailable")
+        context = self._agent_preparation.state_store.load_context(ref=marker.ref)
+        builder = self._agent_preparation.config_builder
+        if builder is None:
+            raise BuilderExecutionPolicyError("native_agent_preparation_unavailable")
+        definition = builder.load_definition(context=context, node_id=self._node_id)
+        typed_inputs = builder.typed_inputs(
+            association=cast("NativeNodePreparation", SimpleNamespace(runtime_state=self.graph_runtime_state)),
+            definition=definition,
+        )
+        input_ref = self._agent_preparation.state_store.store_node_inputs(
+            ref=marker.ref,
+            generation=context.generation,
+            native_execution_id=self.execution_id,
+            inputs=typed_inputs,
+        )
+        parent = AgentParentNodeRef(
+            ref=marker.ref,
+            execution_id=self.execution_id,
+            input_result_ref=input_ref,
+            input_digest=canonical_digest(typed_inputs),
+        )
+        prepared = prepare_confirmed_agent_request(
+            service=self._agent_preparation,
+            ref=marker.ref,
+            parent_node=parent,
+            node_id=self._node_id,
+            stored_session=stored_session,
+            inputs=typed_inputs,
+        )
+        if not isinstance(prepared.claim, AgentCreateInserted):
+            raise AgentCreateAcknowledgementUnknown("Agent create acknowledgement is unknown")
+        response = self._agent_run_recovery.start_or_recover(
+            scope=scope,
+            attempt=0,
+            request=prepared.request,
+            client=cast("AgentCreateRecoveryClient", self._agent_backend_client),
+            on_persisted=process_data.update,
+        )
+        return response, parent, None
+
+    def _control_pause(self, inputs, process_data, metadata, reason):
+        metadata["agent_backend"] = {**dict(metadata.get("agent_backend") or {}), "status": reason}
+        return NodeRunPauseRequestedEvent(
+            id=self.execution_id,
+            node_id=self._node_id,
+            node_type=self.node_type,
+            node_version=self.version(),
+            reason=SchedulingPause(message=reason),
+            node_run_result=NodeRunResult(
+                status=WorkflowNodeExecutionStatus.PAUSED,
+                inputs=inputs,
+                process_data=process_data,
+                outputs={},
+                metadata={WorkflowNodeExecutionMetadataKey.AGENT_LOG: metadata},
+            ),
+        )
+
     def _consume_event_stream(
         self,
         run_id: str,
@@ -479,6 +692,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         process_data: dict[str, Any],
         metadata: dict[str, Any],
         stream_text: bool,
+        after: str | None = None,
     ) -> Generator[
         StreamChunkEvent,
         None,
@@ -511,8 +725,13 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             process_data=process_data,
             metadata=metadata,
             stream_text=stream_text,
+            after=after,
         )
-        if stream_text and (metadata.get("agent_backend") or {}).get("agent_message_delta_count"):
+        if (
+            not isinstance(result[0], AgentBackendRunWaitingInternalEvent)
+            and stream_text
+            and (metadata.get("agent_backend") or {}).get("agent_message_delta_count")
+        ):
             yield StreamChunkEvent(selector=[self._node_id, "text"], chunk="", is_final=True)
         return result
 
@@ -524,6 +743,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         process_data: dict[str, Any],
         metadata: dict[str, Any],
         stream_text: bool,
+        after: str | None = None,
     ) -> Generator[
         StreamChunkEvent,
         None,
@@ -531,16 +751,24 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
     ]:
         stream_event_count = 0
         last_event_id: str | None = None
+        confirmed = (
+            DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY)).builder_agent_execution
+            is not None
+        )
         try:
             for public_event in self._agent_backend_client.stream_events(
                 run_id,
                 should_stop=self._is_graph_aborted,
+                **({"after": after} if after is not None else {}),
             ):
                 stream_event_count += 1
                 if public_event.id is not None:
                     last_event_id = public_event.id
                 for internal_event in self._event_adapter.adapt(public_event):
-                    if internal_event.type == AgentBackendInternalEventType.RUN_STARTED:
+                    if internal_event.type in (
+                        AgentBackendInternalEventType.RUN_STARTED,
+                        AgentBackendInternalEventType.RUN_RESUMED,
+                    ):
                         continue
                     if internal_event.type == AgentBackendInternalEventType.STREAM_EVENT:
                         if isinstance(internal_event, AgentBackendStreamInternalEvent):
@@ -560,7 +788,9 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         **dict(metadata.get("agent_backend") or {}),
                         "stream_event_count": stream_event_count,
                     }
-                    # Narrow to known terminal event types before returning to the caller.
+                    # Known waiting is control only on the explicit confirmed path.
+                    if isinstance(internal_event, AgentBackendRunWaitingInternalEvent) and confirmed:
+                        return internal_event, None
                     if isinstance(
                         internal_event,
                         AgentBackendRunSucceededInternalEvent
@@ -568,10 +798,14 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         | AgentBackendRunCancelledInternalEvent,
                     ):
                         return internal_event, None
-                    cancellation = self._cancel_backend_run(
-                        run_id,
-                        reason="unexpected_event",
-                        after=last_event_id,
+                    cancellation = (
+                        None
+                        if confirmed
+                        else self._cancel_backend_run(
+                            run_id,
+                            reason="unexpected_event",
+                            after=last_event_id,
+                        )
                     )
                     return cancellation, self._failure_event(
                         inputs=inputs,
@@ -581,10 +815,14 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         error_type="agent_backend_stream_error",
                     )
         except AgentBackendError as error:
-            cancellation = self._cancel_backend_run(
-                run_id,
-                reason=self._stream_stop_reason(),
-                after=last_event_id,
+            cancellation = (
+                None
+                if confirmed and not self._is_graph_aborted()
+                else self._cancel_backend_run(
+                    run_id,
+                    reason=self._stream_stop_reason(),
+                    after=last_event_id,
+                )
             )
             return cancellation, self._failure_event(
                 inputs=inputs,
@@ -594,10 +832,14 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 error_type=self._agent_backend_error_type(error),
             )
         except Exception as error:
-            cancellation = self._cancel_backend_run(
-                run_id,
-                reason=self._stream_stop_reason(),
-                after=last_event_id,
+            cancellation = (
+                None
+                if confirmed and not self._is_graph_aborted()
+                else self._cancel_backend_run(
+                    run_id,
+                    reason=self._stream_stop_reason(),
+                    after=last_event_id,
+                )
             )
             return cancellation, self._failure_event(
                 inputs=inputs,
@@ -607,10 +849,16 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 error_type="agent_backend_stream_error",
             )
 
-        cancellation = self._cancel_backend_run(
-            run_id,
-            reason=self._stream_stop_reason() if self._is_graph_aborted() else "stream_ended_without_terminal_event",
-            after=last_event_id,
+        cancellation = (
+            None
+            if confirmed and not self._is_graph_aborted()
+            else self._cancel_backend_run(
+                run_id,
+                reason=self._stream_stop_reason()
+                if self._is_graph_aborted()
+                else "stream_ended_without_terminal_event",
+                after=last_event_id,
+            )
         )
         return cancellation, None
 

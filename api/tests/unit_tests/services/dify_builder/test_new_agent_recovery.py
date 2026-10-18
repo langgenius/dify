@@ -32,6 +32,8 @@ from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTri
 from services.dify_builder import dify_port
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.effect_disclosure import disclose
+from services.dify_builder.native_testing.agent_context import BuilderAgentExecutionContext
+from services.dify_builder.native_testing.contracts import NativeTestContextRef
 from tests.unit_tests.core.workflow.nodes.agent_v2.test_agent_node import FakeSessionStore, _node
 from tests.unit_tests.services.dify_builder import test_confirmed_full_run as full_run_tests
 
@@ -124,6 +126,16 @@ def _client(http):
 def test_agent_acknowledged_attempt_recovers_parent_without_second_child(harness, monkeypatch, status):
     """Removing the reservation recovery branch would create a second child."""
     native_id, workflow_id = str(uuid4()), str(uuid4())
+    # This test's generator explicitly runs an ordinary child. Admission itself
+    # has real SQL coverage elsewhere; keep this transport regression focused on
+    # the parent reservation and do not pretend this fake generator propagates
+    # the confirmed marker into that ordinary child.
+    marker = BuilderAgentExecutionContext(
+        ref=NativeTestContextRef(request_id=str(uuid4()), invocation_id=str(uuid4()), context_digest="a" * 64),
+        native_run_id=native_id,
+    )
+    monkeypatch.setattr(WorkflowServiceDifyPort, "_prepare_confirmed_agent_execution",
+                        staticmethod(lambda **_kwargs: marker))
     dify_port._load_draft_workflow_or_raise.return_value.graph = json.dumps(AGENT_GRAPH)
     monkeypatch.setattr(WorkflowServiceDifyPort, "_finish_run", harness.native_finish)
     monkeypatch.setattr(WorkflowServiceDifyPort, "_bind_run", _bind_native_result)
@@ -200,6 +212,7 @@ def test_agent_acknowledged_attempt_recovers_parent_without_second_child(harness
             assert recovered.per_node[0].outputs == {"text": "child answer"}
         assert len(parent_dispatches) == len(transport.created) == 1
         assert parent_dispatches[0]["builder_mocked_node_ids"] == frozenset()
+        assert parent_dispatches[0]["builder_agent_execution"] == marker
         assert CreateRunRequest.model_validate(transport.created[0]).execution_mode == "ordinary"
         # Request keys are sent, but one launch is established by the SQL
         # reservation above; this transport deliberately implements no dedup.

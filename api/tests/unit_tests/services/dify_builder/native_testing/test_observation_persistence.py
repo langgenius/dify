@@ -113,6 +113,11 @@ class MemorySQLPort:
         # does not implement SQL selection/tenant filtering or durability.
         return self
 
+    def scalar(self, statement):
+        # Match Session.scalar for the repository's locked current-row reread.
+        # This remains a query-shape port, with no claim of real SQL locking.
+        return self.execute(statement).scalars().first()
+
     def scalars(self):
         return self
 

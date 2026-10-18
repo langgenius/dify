@@ -7,25 +7,13 @@ import uuid
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal, Protocol, overload
 
-import contexts
-from configs import dify_config
-from extensions.ext_database import db
-from factories import file_factory
 from flask import Flask, current_app
-from libs.flask_utils import preserve_flask_contexts
-from models.account import Account
-from models.enums import WorkflowRunTriggeredFrom
-from models.model import App, EndUser
-from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
 from pydantic import ValidationError
-from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
-from services.dify_builder.native_testing.contracts import NativeTestContextRef
-from services.dify_builder.native_testing.observation_adapters import NativeObservationError, NativeObservationGuard
-from services.dify_builder.native_testing.runtime_bridge import NativeRuntimeBridge
-from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+import contexts
+from configs import dify_config
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -63,12 +51,25 @@ from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.trigger.constants import is_trigger_node_type
 from core.workflow.node_factory import get_default_root_node_id
+from extensions.ext_database import db
+from factories import file_factory
 from graphon.enums import NodeType
 from graphon.filters import ResponseStreamFilter
 from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from graphon.runtime import GraphRuntimeState
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
+from libs.flask_utils import preserve_flask_contexts
+from models.account import Account
+from models.enums import WorkflowRunTriggeredFrom
+from models.model import App, AppMode, EndUser
+from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
+from services.dify_builder.native_testing.agent_context import BuilderAgentExecutionContext
+from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
+from services.dify_builder.native_testing.contracts import NativeTestContextRef
+from services.dify_builder.native_testing.observation_adapters import NativeObservationError, NativeObservationGuard
+from services.dify_builder.native_testing.runtime_bridge import NativeRuntimeBridge
+from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
 if TYPE_CHECKING:
     from controllers.console.app.workflow import LoopNodeRunPayload
@@ -169,6 +170,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         | JsonToolExecutionContext
         | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
+        builder_agent_execution: BuilderAgentExecutionContext | None = None,
         native_test_required: bool = False,
         native_test_ref: NativeTestContextRef | None = None,
         native_runtime: NativeRuntimeBridge | None = None,
@@ -199,6 +201,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         | JsonToolExecutionContext
         | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
+        builder_agent_execution: BuilderAgentExecutionContext | None = None,
         native_test_required: bool = False,
         native_test_ref: NativeTestContextRef | None = None,
         native_runtime: NativeRuntimeBridge | None = None,
@@ -229,6 +232,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         | JsonToolExecutionContext
         | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
+        builder_agent_execution: BuilderAgentExecutionContext | None = None,
         native_test_required: bool = False,
         native_test_ref: NativeTestContextRef | None = None,
         native_runtime: NativeRuntimeBridge | None = None,
@@ -258,6 +262,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         | JsonToolExecutionContext
         | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
+        builder_agent_execution: BuilderAgentExecutionContext | None = None,
         native_test_required: bool = False,
         native_test_ref: NativeTestContextRef | None = None,
         native_runtime: NativeRuntimeBridge | None = None,
@@ -268,6 +273,21 @@ class WorkflowAppGenerator(BaseAppGenerator):
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]:
         from services.dify_builder.native_testing.generation_wiring import validate_native_host
 
+        if builder_agent_execution is not None:
+            if (
+                builder_execution is not None
+                or native_test_required
+                or native_test_ref is not None
+                or native_runtime is not None
+                or native_host is not None
+                or invoke_from != InvokeFrom.DEBUGGER
+                or not isinstance(user, Account)
+                or app_model.mode != AppMode.WORKFLOW
+                or call_depth != 0
+                or (workflow_run_id is not None and str(workflow_run_id) != builder_agent_execution.native_run_id)
+            ):
+                raise BuilderExecutionPolicyError("unsupported_execution_transport")
+            workflow_run_id = builder_agent_execution.native_run_id
         validate_native_host(
             required=native_test_required or native_test_ref is not None,
             ref=native_test_ref,
@@ -408,6 +428,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 invoke_from=invoke_from,
                 call_depth=call_depth,
                 builder_execution=builder_execution,
+                builder_agent_execution=builder_agent_execution,
                 native_test_required=native_test_required,
                 native_test_ref=native_test_ref,
                 builder_mocked_node_ids=builder_mocked_node_ids,
@@ -501,6 +522,20 @@ class WorkflowAppGenerator(BaseAppGenerator):
         ``trace_manager`` is transient and excluded from generate-entity serialization,
         so resumed executions rebuild it here before persistence layers receive the entity.
         """
+        if application_generate_entity.builder_agent_execution is not None and (
+            application_generate_entity.builder_execution is not None
+            or application_generate_entity.native_test_required
+            or application_generate_entity.native_test_ref is not None
+            or native_runtime is not None
+            or native_host is not None
+            or application_generate_entity.invoke_from != InvokeFrom.DEBUGGER
+            or not isinstance(user, Account)
+            or app_model.mode != AppMode.WORKFLOW
+            or application_generate_entity.call_depth != 0
+            or application_generate_entity.workflow_execution_id
+            != application_generate_entity.builder_agent_execution.native_run_id
+        ):
+            raise BuilderExecutionPolicyError("unsupported_execution_transport")
         if application_generate_entity.native_test_required or application_generate_entity.native_test_ref is not None:
             if application_generate_entity.native_test_ref is None:
                 raise NativeContextUnavailable("native_context_missing")

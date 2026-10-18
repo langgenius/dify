@@ -46,6 +46,8 @@ class AgentPendingCall(NativeDTO):
 
 class AgentCheckpoint(NativeDTO):
     protocol_version: Literal[1] = 1
+    native_test_profile: Literal["isolated", "confirmed"] = "isolated"
+    create_idempotency_key: str | None = Field(default=None, min_length=1, max_length=256)
     run_id: ID
     generation: Counter
     ref: AgentNativeTestRef

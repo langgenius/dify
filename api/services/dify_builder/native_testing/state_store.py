@@ -11,6 +11,9 @@ from dataclasses import dataclass
 from typing import Literal
 from uuid import UUID, uuid4
 
+from pydantic import TypeAdapter
+from sqlalchemy import select
+
 from core.helper import encrypter
 from extensions.ext_storage import storage
 from models.agent import (
@@ -35,9 +38,6 @@ from models.dify_builder_native_tests import (
     NativeTestInvocation,
 )
 from models.workflow import Workflow
-from pydantic import TypeAdapter
-from sqlalchemy import select
-
 from services.dify_builder.execution_contracts import (
     BuilderExecutionPolicyError,
     canonical_digest,
@@ -250,9 +250,7 @@ class NativeExecutionStateStore:
         return row
 
     @staticmethod
-    def _read_object(
-        row: NativePayloadObject | ObjectReceipt, *, max_bytes: int | None = None
-    ) -> JsonValue:
+    def _read_object(row: NativePayloadObject | ObjectReceipt, *, max_bytes: int | None = None) -> JsonValue:
         try:
             stored = storage.load(row.storage_key)
             if max_bytes is not None and len(stored) > max_bytes:
@@ -671,9 +669,7 @@ class NativeExecutionStateStore:
         definition_receipt: AgentDefinitionReceipt | None = None,
     ) -> tuple[AgentTestWorkspaceRef, str]:
         """Current SQL allocation/pin/workspace chain only; no physical/backend IO."""
-        invocation = session.scalar(
-            owner_query(NativeTestInvocation, context.ref, owned.tenant_id)
-        )
+        invocation = session.scalar(owner_query(NativeTestInvocation, context.ref, owned.tenant_id))
         if (
             invocation is None
             or not invocation.active
@@ -681,6 +677,17 @@ class NativeExecutionStateStore:
             != (context.tenant_id, context.ref.request_id, context.ref.invocation_id)
         ):
             raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
+        confirmed = invocation.bindings.get("_agent_confirmed_workspace_v1")
+        if confirmed is not None:
+            from services.dify_builder.native_testing.agent_confirmed_workspace import current_confirmed_workspace
+
+            return current_confirmed_workspace(
+                session=session,
+                owned=owned,
+                context=context,
+                allocation=confirmed,
+                definition_receipt=definition_receipt,
+            )
         allocation = invocation.bindings.get("_agent_workspace_v1")
         if not isinstance(allocation, dict):
             raise BuilderExecutionPolicyError("native_workspace_unavailable")
@@ -709,10 +716,7 @@ class NativeExecutionStateStore:
             raise BuilderExecutionPolicyError("native_workspace_owner_mismatch")
         binding_id = TypeAdapter(ID).validate_python(allocation.get("binding_id"))
         TypeAdapter(Counter).validate_python(scope.get("generation"))
-        if (
-            scope.get("scope_id") != binding_id
-            or scope.get("binding_ref") != binding_id
-        ):
+        if scope.get("scope_id") != binding_id or scope.get("binding_ref") != binding_id:
             raise BuilderExecutionPolicyError("native_workspace_owner_mismatch")
         if parsed_allocation.native_scope.deadline <= utc_now():
             raise BuilderExecutionPolicyError("native_workspace_unavailable")
@@ -733,16 +737,11 @@ class NativeExecutionStateStore:
             app_id=context.app_id,
         )
         agent = session.get(Agent, agent_id)
-        if (
-            agent is None
-            or agent.tenant_id != context.tenant_id
-            or agent.active_config_snapshot_id != snapshot.id
-        ):
+        if agent is None or agent.tenant_id != context.tenant_id or agent.active_config_snapshot_id != snapshot.id:
             raise BuilderExecutionPolicyError("native_agent_pin_mismatch")
 
         if (
-            (snapshot.tenant_id, snapshot.agent_id, snapshot.home_snapshot_id)
-            != (context.tenant_id, agent_id, home.id)
+            (snapshot.tenant_id, snapshot.agent_id, snapshot.home_snapshot_id) != (context.tenant_id, agent_id, home.id)
             or (home.tenant_id, home.agent_id, home.status, home.snapshot_ref)
             != (
                 context.tenant_id,
@@ -805,13 +804,10 @@ class NativeExecutionStateStore:
         from core.agent.publish_visibility import (
             workflow_callable_active_snapshot_filter,
         )
-
         from services.agent.roster_service import AgentRosterService
 
         eligible = session.scalar(
-            AgentRosterService._build_roster_agents_stmt(
-                tenant_id=context.tenant_id, keyword=None
-            ).where(
+            AgentRosterService._build_roster_agents_stmt(tenant_id=context.tenant_id, keyword=None).where(
                 Agent.id == agent_id,
                 Agent.active_config_has_model.is_(True),
                 workflow_callable_active_snapshot_filter(),
@@ -848,30 +844,22 @@ class NativeExecutionStateStore:
                     WorkflowAgentNodeBinding.node_id == node.get("id"),
                     WorkflowAgentNodeBinding.agent_id == agent_id,
                     WorkflowAgentNodeBinding.current_snapshot_id == snapshot.id,
-                    WorkflowAgentNodeBinding.binding_type
-                    == WorkflowAgentBindingType.ROSTER_AGENT,
+                    WorkflowAgentNodeBinding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT,
                 )
             )
             if published_binding is None:
                 raise BuilderExecutionPolicyError("native_agent_pin_mismatch")
-            definitions.append(
-                {"node": node, "node_job": published_binding.node_job_config_dict}
-            )
-            if (
-                definition_receipt is not None
-                and node.get("id") == definition_receipt.node_id
-            ):
+            definitions.append({"node": node, "node_job": published_binding.node_job_config_dict})
+            if definition_receipt is not None and node.get("id") == definition_receipt.node_id:
                 # Compare the producing definition, not a fresh stamp assigned to
                 # already-composed bytes after the claim's initial async reads.
                 stamp = canonical_digest(
                     {
                         "node": node,
-                        "soul": AgentSoulConfig.model_validate(
-                            snapshot.config_snapshot_dict
-                        ).model_dump(mode="json"),
-                        "job": WorkflowNodeJobConfig.model_validate(
-                            published_binding.node_job_config_dict
-                        ).model_dump(mode="json"),
+                        "soul": AgentSoulConfig.model_validate(snapshot.config_snapshot_dict).model_dump(mode="json"),
+                        "job": WorkflowNodeJobConfig.model_validate(published_binding.node_job_config_dict).model_dump(
+                            mode="json"
+                        ),
                     }
                 )
                 if stamp != definition_receipt.stamp:
@@ -908,21 +896,13 @@ class NativeExecutionStateStore:
                 NativePayloadObject.logical_key == logical_key,
             )
             if object_ref is not None:
-                query = query.where(
-                    NativePayloadObject.id
-                    == TypeAdapter(ID).validate_python(object_ref)
-                )
+                query = query.where(NativePayloadObject.id == TypeAdapter(ID).validate_python(object_ref))
             row = session.scalar(query)
             if row is None:
                 if required:
                     raise BuilderExecutionPolicyError("native_agent_object_unavailable")
                 return None
-            receipt = ObjectReceipt(
-                **{
-                    name: getattr(row, name)
-                    for name in ObjectReceipt.__dataclass_fields__
-                }
-            )
+            receipt = ObjectReceipt(**{name: getattr(row, name) for name in ObjectReceipt.__dataclass_fields__})
         if (
             receipt.tenant_id,
             receipt.request_id,
@@ -972,7 +952,7 @@ class NativeExecutionStateStore:
                 context,
                 authority,
                 context.generation,
-                allowed_states=("running",) if writing else ("running", "waiting"),
+                allowed_states=("running",) if writing else ("running", "waiting", "queued"),
             )
             self._agent_single_parent(session, context, parent)
             workspace, stamp = self._agent_resources(session, owned, context)
@@ -1002,7 +982,7 @@ class NativeExecutionStateStore:
             prepared.context,
             prepared.authority,
             prepared.context.generation,
-            allowed_states=("running",) if writing else ("running", "waiting"),
+            allowed_states=("running",) if writing else ("running", "waiting", "queued"),
         )
         self._agent_single_parent(session, prepared.context, prepared.parent)
         workspace, stamp = self._agent_resources(
@@ -1012,22 +992,17 @@ class NativeExecutionStateStore:
             raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
         for receipt in prepared.objects:
             row = session.scalar(
-                owner_query(
-                    NativePayloadObject, prepared.parent.ref, owned.tenant_id
-                ).where(
+                owner_query(NativePayloadObject, prepared.parent.ref, owned.tenant_id).where(
                     NativePayloadObject.id == receipt.id,
                     NativePayloadObject.kind == "result",
                 )
             )
             if row is None or any(
-                getattr(row, name) != getattr(receipt, name)
-                for name in ObjectReceipt.__dataclass_fields__
+                getattr(row, name) != getattr(receipt, name) for name in ObjectReceipt.__dataclass_fields__
             ):
                 raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
 
-    def _agent_ack(
-        self, prepared: _AgentPreparation, *, logical_key: str, value: JsonValue
-    ) -> str:
+    def _agent_ack(self, prepared: _AgentPreparation, *, logical_key: str, value: JsonValue) -> str:
         existing = self._agent_object(prepared, logical_key=logical_key, required=False)
         receipt = None
         if existing is not None:
@@ -1055,15 +1030,10 @@ class NativeExecutionStateStore:
             AgentBindingService,
         )
 
-        if (
-            validate_private_read(self.loader, prepared.parent.ref)
-            != prepared.authority
-        ):
+        if validate_private_read(self.loader, prepared.parent.ref) != prepared.authority:
             raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
         with self.loader.session_factory() as session:
-            snapshot = session.get(
-                AgentConfigSnapshot, prepared.workspace.pinned_snapshot_id
-            )
+            snapshot = session.get(AgentConfigSnapshot, prepared.workspace.pinned_snapshot_id)
             if snapshot is None or snapshot.tenant_id != prepared.context.tenant_id:
                 raise BuilderExecutionPolicyError("native_agent_pin_mismatch")
             agent_id = snapshot.agent_id
@@ -1074,9 +1044,7 @@ class NativeExecutionStateStore:
         )
 
     @staticmethod
-    def _agent_executable_config(
-        config: JsonValue, parent: AgentParentNodeRef
-    ) -> JsonValue:
+    def _agent_executable_config(config: JsonValue, parent: AgentParentNodeRef) -> JsonValue:
         """No metadata, secrets, assigned config ref, or caller ownership fields persist."""
         from dify_agent.protocol.schemas import CreateRunRequest
 
@@ -1112,22 +1080,15 @@ class NativeExecutionStateStore:
                         }
                         and item
                     ):
-                        raise BuilderExecutionPolicyError(
-                            "native_agent_config_credentials"
-                        )
+                        raise BuilderExecutionPolicyError("native_agent_config_credentials")
                     credential_free(item)
             elif isinstance(value, list):
                 for item in value:
                     credential_free(item)
 
-        normalized = request.model_dump(
-            mode="json", include={"composition", "session_snapshot"}
-        )
+        normalized = request.model_dump(mode="json", include={"composition", "session_snapshot"})
         credential_free(normalized)
-        if (
-            len(json.dumps(normalized, ensure_ascii=False).encode())
-            > 1024 * 1024 - 4096
-        ):
+        if len(json.dumps(normalized, ensure_ascii=False).encode()) > 1024 * 1024 - 4096:
             raise BuilderExecutionPolicyError("native_agent_config_unavailable")
         return _JSON.validate_python(normalized)
 
@@ -1194,9 +1155,7 @@ class NativeExecutionStateStore:
                 selected = self.acknowledge_object(session, receipt)
                 return AgentCreateInserted(selected.id, canonical_digest(config))
 
-    def _agent_prepared_config(
-        self, prepared: _AgentPreparation, config_ref: str | None
-    ) -> AgentPreparedConfig:
+    def _agent_prepared_config(self, prepared: _AgentPreparation, config_ref: str | None) -> AgentPreparedConfig:
         selected = self._agent_object(
             prepared,
             logical_key=self._agent_key("agent-config", prepared.parent),
@@ -1247,9 +1206,7 @@ class NativeExecutionStateStore:
     ) -> AgentPreparedConfig:
         """Private current-config read with owner/resource recheck after decryption."""
         with _agent_boundary():
-            prepared = self._agent_prepare(
-                ref=ref, parent_node=parent_node, writing=False
-            )
+            prepared = self._agent_prepare(ref=ref, parent_node=parent_node, writing=False)
             result = self._agent_prepared_config(prepared, config_ref)
             self._agent_refresh_access(prepared)
             with self.loader.locked(ref=ref) as (session, owned, scope):
@@ -1261,9 +1218,7 @@ class NativeExecutionStateStore:
     ) -> AgentNodeAssociation | None:
         """Observed unbound namespace is unknown, never authority to create/retry."""
         with _agent_boundary():
-            prepared = self._agent_prepare(
-                ref=ref, parent_node=parent_node, writing=False
-            )
+            prepared = self._agent_prepare(ref=ref, parent_node=parent_node, writing=False)
             # A binding discovery always proves its config, including an unbound reservation.
             self._agent_prepared_config(prepared, None)
             selected = self._agent_object(
@@ -1271,11 +1226,7 @@ class NativeExecutionStateStore:
                 logical_key=self._agent_key("agent-bind", prepared.parent),
                 required=False,
             )
-            association = (
-                None
-                if selected is None
-                else AgentNodeAssociation.model_validate(selected[1])
-            )
+            association = None if selected is None else AgentNodeAssociation.model_validate(selected[1])
             if association is not None:
                 self._agent_config_relation(prepared, association)
             self._agent_refresh_access(prepared)
@@ -1286,8 +1237,7 @@ class NativeExecutionStateStore:
                     and session.scalar(
                         owner_query(NativePayloadObject, ref, owned.tenant_id).where(
                             NativePayloadObject.kind == "result",
-                            NativePayloadObject.logical_key
-                            == self._agent_key("agent-bind", prepared.parent),
+                            NativePayloadObject.logical_key == self._agent_key("agent-bind", prepared.parent),
                         )
                     )
                     is not None
@@ -1326,9 +1276,7 @@ class NativeExecutionStateStore:
         self._agent_config_relation(prepared, association)
         return association
 
-    def _agent_config_relation(
-        self, prepared: _AgentPreparation, association: AgentNodeAssociation
-    ) -> None:
+    def _agent_config_relation(self, prepared: _AgentPreparation, association: AgentNodeAssociation) -> None:
         if (
             association.parent_node,
             association.workflow_native_run_id,
@@ -1347,9 +1295,7 @@ class NativeExecutionStateStore:
         assert selected is not None
         value = selected[1]
         if isinstance(value, dict) and value.get("schema") == "agent-config-v2":
-            selected_config = self._agent_prepared_config(
-                prepared, association.config_ref
-            )
+            selected_config = self._agent_prepared_config(prepared, association.config_ref)
             if selected_config.config_digest != association.config_digest:
                 raise BuilderExecutionPolicyError("native_agent_config_mismatch")
             return

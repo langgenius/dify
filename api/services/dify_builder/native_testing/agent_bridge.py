@@ -24,9 +24,9 @@ from dify_agent.protocol.native_testing import (
     AgentRunTransportSelection,
 )
 from flask import current_app
-from werkzeug.local import LocalProxy
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from werkzeug.local import LocalProxy
 
 from core.dify_builder.models import Actor
 from extensions.ext_database import db
@@ -395,8 +395,15 @@ class AgentNativeTestingBridge:
     readiness: AgentReadinessPort | None
     materializer: AgentCredentialMaterializer | None
     fence: AgentDispatchFence | None
+    settlement: Callable | None = None
+    validate_call: Callable | None = None
 
     def before_call(self, *, ref: AgentNativeTestRef, intent: AgentEffectIntent) -> AgentEffectDecision:
+        if self.validate_call is not None:
+            try:
+                self.validate_call(ref=ref, intent=intent)
+            except BuilderExecutionPolicyError as error:
+                return AgentPolicyStop(reason_code=error.reason_code)
         owned_ref, effect = api_ref(ref), api_intent(intent)
         if self.readiness is not None:
             self.authorization.loader.load(ref=owned_ref)
@@ -424,6 +431,8 @@ class AgentNativeTestingBridge:
     def record_outcome(
         self, *, ref: AgentNativeTestRef, permit: AgentDispatchPermit, outcome: Outcome, result_ref: str | None
     ) -> AgentEffectReceipt:
+        if self.settlement is not None:
+            return self.settlement(ref=ref, permit=permit, outcome=outcome, result_ref=result_ref)
         native_permit = api_permit(permit)
         # Settlement retains the original request owner even after revocation.
         if self.authorization._permit_ref(native_permit) != api_ref(ref):
@@ -476,8 +485,11 @@ def agent_bridge_for_ref(ref: AgentNativeTestRef) -> AgentNativeTestingBridge:
         actor = Actor(account_id=row.actor_id, tenant_id=row.tenant_id)
     factory = current_app.extensions.get("native_agent_bridge_factory")
     if factory is None:
-        raise BuilderExecutionPolicyError("native_agent_bridge_unavailable")
-    bridge = factory(actor=actor)
+        from services.dify_builder.wiring import build_native_agent_operation_service
+
+        bridge = build_native_agent_operation_service(actor=actor).bridge
+    else:
+        bridge = factory(actor=actor)
     if not isinstance(bridge, AgentNativeTestingBridge) or bridge.authorization.loader.actor != actor:
         raise BuilderExecutionPolicyError("native_agent_bridge_unavailable")
     return bridge
@@ -512,9 +524,10 @@ def claim_agent_endpoint(
 ) -> None:
     """Compatibility service preflight; strict Resources already prove lineage.
 
-    Genuine legacy plugin paths retain their service authorization. S2a refuses
-    native effects before service work. A controller cannot spend a
-    permit, including when called with an explicit native envelope.
+    Genuine legacy plugin paths retain their service authorization. Confirmed
+    model/core-tool requests pass only exact-envelope validation here; their
+    actual services must still revalidate and claim at dispatch. Other native
+    boundaries remain unavailable. A controller never spends a permit.
     """
     from flask import g, request
 
@@ -527,11 +540,7 @@ def claim_agent_endpoint(
         if envelope is not None:
             raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")
         return
-    if (
-        not isinstance(context, NativeAgentEndpointContext)
-        or envelope is None
-        or envelope.ref != context.ref
-    ):
+    if not isinstance(context, NativeAgentEndpointContext) or envelope is None or envelope.ref != context.ref:
         raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")
     effect = envelope.intent
     if (
@@ -540,7 +549,25 @@ def claim_agent_endpoint(
         or canonical_json(effect.parameters) != canonical_json(parameters)
     ):
         raise BuilderExecutionPolicyError("native_endpoint_arguments_mismatch")
+    # The confirmed API core-tools service now owns its adjacent physical claim.
+    # This is validation only; neither a readiness flag nor another boundary can
+    # consume the permit here.
+    if boundary in {"core_tool", "model"} and context.native_test_profile == "confirmed":
+        return
     # No implemented service/runtime owner consumes this permit adjacent to its
     # physical call yet. Validation is not a dispatch claim, even if a caller
     # supplies physical_owner_ready=True to this compatibility preflight.
     raise BuilderExecutionPolicyError("native_endpoint_dependency_unavailable")
+
+
+def require_agent_service_envelope(envelope: AgentPhysicalDispatchPayload | None) -> None:
+    """A marked request cannot enter an ordinary service by omitting its envelope."""
+    from flask import g, has_request_context, request
+
+    if (
+        has_request_context()
+        and getattr(g, "agent_runtime_request", None) is cast(LocalProxy, request)._get_current_object()
+        and isinstance(getattr(g, "agent_runtime_context", None), NativeAgentEndpointContext)
+        and envelope is None
+    ):
+        raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")

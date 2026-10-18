@@ -20,6 +20,11 @@ from dify_agent.protocol.native_testing import (
     AgentPrepareRunPayload,
     AgentPrepareRunResponse,
     AgentReadPreparedConfigPayload,
+    AgentPrepareIntentPayload,
+    AgentStoreResultPayload,
+    AgentStoredResultResponse,
+    AgentReadResultPayload,
+    AgentReadResultResponse,
     NativeDTO,
     executable_request_digest,
 )
@@ -68,6 +73,22 @@ class HttpAgentPolicyClient:
     http_client: httpx.AsyncClient = field(repr=False)
     # Bound by trusted composition; outcome must retain the original owner ref.
     ref: AgentNativeTestRef | None = None
+
+    async def prepare_intent(self, *, payload: AgentPrepareIntentPayload) -> AgentEffectIntent:
+        self._require_ref(payload.ref)
+        return AgentEffectIntent.model_validate(await self._post("prepare-intent", payload))
+
+    async def store_result(self, *, payload: AgentStoreResultPayload) -> str:
+        self._require_ref(payload.ref)
+        return AgentStoredResultResponse.model_validate(await self._post("results", payload)).result_ref
+
+    async def read_result(self, *, payload: AgentReadResultPayload) -> JsonValue:
+        self._require_ref(payload.ref)
+        return AgentReadResultResponse.model_validate(await self._post("read-result", payload)).result
+
+    def _require_ref(self, ref: AgentNativeTestRef) -> None:
+        if self.ref is None or self.ref != ref:
+            raise AgentPolicyTransportUnavailable("native_policy_owner_mismatch")
 
     async def _post(self, path: str, payload: NativeDTO):
         url, headers = agent_api_endpoint(

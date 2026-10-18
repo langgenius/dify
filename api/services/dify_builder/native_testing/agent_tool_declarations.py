@@ -163,7 +163,13 @@ class AgentToolDeclarationService:
         self.metadata = metadata
 
     def prepare(
-        self, *, tenant_id: str, actor_id: str, app_id: str, tools: AgentSoulToolsConfig
+        self,
+        *,
+        tenant_id: str,
+        actor_id: str,
+        app_id: str,
+        tools: AgentSoulToolsConfig,
+        profile: Literal["isolated", "confirmed"] = "isolated",
     ) -> PreparedAgentToolDeclarations:
         plugins, core, references = [], [], []
         names: set[str] = set()
@@ -212,8 +218,9 @@ class AgentToolDeclarationService:
                     "parameters": parameters,
                     "parameters_json_schema": _schema(parameters),
                 }
-                if selected.provider_type == ToolProviderType.PLUGIN or (
-                    selected.provider_type == ToolProviderType.BUILT_IN and provider_id.count("/") == 2
+                if profile == "isolated" and (
+                    selected.provider_type == ToolProviderType.PLUGIN
+                    or (selected.provider_type == ToolProviderType.BUILT_IN and provider_id.count("/") == 2)
                 ):
                     plugin_id, provider = provider_id.rsplit("/", 1)
                     plugins.append(

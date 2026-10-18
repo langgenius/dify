@@ -18,7 +18,7 @@ import time
 from collections.abc import AsyncIterator, Callable, Iterator
 from json import JSONDecodeError
 from types import TracebackType
-from typing import Any, Self, TypeVar, cast
+from typing import Any, Literal, Self, TypeVar, cast
 from urllib.parse import quote
 
 import httpx
@@ -48,6 +48,7 @@ from dify_agent.protocol import (
     RunEventsResponse,
     RunStatusResponse,
 )
+from dify_agent.protocol.run_recovery import LookupRunRequest
 from dify_agent.protocol.native_continuation import (
     MAX_CHECKPOINT_REQUEST_BYTES,
     MAX_CHECKPOINT_RESPONSE_BYTES,
@@ -364,25 +365,29 @@ class Client:
         if self._owns_sync_http_client and self._sync_http_client is not None:
             self.close_sync()
 
-    async def native_test_capabilities(self) -> NativeTestCapabilities:
+    async def native_test_capabilities(
+        self, *, profile: Literal["isolated", "confirmed"] = "isolated"
+    ) -> NativeTestCapabilities:
         """Negotiate fresh on every native create/continue; never use a stale cache."""
         try:
             response = await self._get_async_http_client().get(
                 self._url("/runs/capabilities"), headers=self._merged_headers(), timeout=self._timeout
             )
             capabilities = _parse_model_response(response, NativeTestCapabilities)
-            require_native_test_capabilities(capabilities)
+            require_native_test_capabilities(capabilities, profile=profile)
             return capabilities
         except (httpx.HTTPError, DifyAgentClientError, ValueError) as exc:
             raise NativeTestProtocolUnsupported() from exc
 
-    def native_test_capabilities_sync(self) -> NativeTestCapabilities:
+    def native_test_capabilities_sync(
+        self, *, profile: Literal["isolated", "confirmed"] = "isolated"
+    ) -> NativeTestCapabilities:
         try:
             response = self._get_sync_http_client().get(
                 self._url("/runs/capabilities"), headers=self._merged_headers(), timeout=self._timeout
             )
             capabilities = _parse_model_response(response, NativeTestCapabilities)
-            require_native_test_capabilities(capabilities)
+            require_native_test_capabilities(capabilities, profile=profile)
             return capabilities
         except (httpx.HTTPError, DifyAgentClientError, ValueError) as exc:
             raise NativeTestProtocolUnsupported() from exc
@@ -486,13 +491,17 @@ class Client:
         except httpx.RequestError:
             raise DifyAgentClientError("native checkpoint read failed") from None
 
-    async def continue_run(self, run_id: str, request: ContinueRunRequest) -> ContinuationClaim:
-        await self.native_test_capabilities()
+    async def continue_run(
+        self, run_id: str, request: ContinueRunRequest, *, profile: Literal["isolated", "confirmed"] = "isolated"
+    ) -> ContinuationClaim:
+        await self.native_test_capabilities(profile=profile)
         response = await self._post_async_json("continue_run", f"/runs/{quote(run_id, safe='')}/continue", request)
         return _parse_model_response(response, ContinuationClaim)
 
-    def continue_run_sync(self, run_id: str, request: ContinueRunRequest) -> ContinuationClaim:
-        self.native_test_capabilities_sync()
+    def continue_run_sync(
+        self, run_id: str, request: ContinueRunRequest, *, profile: Literal["isolated", "confirmed"] = "isolated"
+    ) -> ContinuationClaim:
+        self.native_test_capabilities_sync(profile=profile)
         response = self._post_sync_json("continue_run_sync", f"/runs/{quote(run_id, safe='')}/continue", request)
         return _parse_model_response(response, ContinuationClaim)
 
@@ -505,7 +514,7 @@ class Client:
         """
         request_model = _validate_create_run_request(request)
         if request_model.execution_mode == "builder_test":
-            await self.native_test_capabilities()
+            await self.native_test_capabilities(profile=request_model.native_test_profile)
         try:
             response = await self._get_async_http_client().post(
                 self._url("/runs"),
@@ -523,7 +532,7 @@ class Client:
         """Synchronous variant of ``create_run`` with the same no-retry contract."""
         request_model = _validate_create_run_request(request)
         if request_model.execution_mode == "builder_test":
-            self.native_test_capabilities_sync()
+            self.native_test_capabilities_sync(profile=request_model.native_test_profile)
         try:
             response = self._get_sync_http_client().post(
                 self._url("/runs"),
@@ -535,6 +544,18 @@ class Client:
             raise DifyAgentTimeoutError("create_run_sync timed out") from exc
         except httpx.RequestError as exc:
             raise DifyAgentClientError(f"create_run_sync request failed: {exc}") from exc
+        return _parse_model_response(response, CreateRunResponse)
+
+    async def lookup_run(self, request: LookupRunRequest) -> CreateRunResponse:
+        """Read one retained create identity; never retry or fall back to create."""
+        selected = _validate_lookup_run_request(request)
+        response = await self._post_async_json("lookup_run", "/runs/lookup", selected)
+        return _parse_model_response(response, CreateRunResponse)
+
+    def lookup_run_sync(self, request: LookupRunRequest) -> CreateRunResponse:
+        """Synchronous read-only recovery with the same one-POST contract."""
+        selected = _validate_lookup_run_request(request)
+        response = self._post_sync_json("lookup_run_sync", "/runs/lookup", selected)
         return _parse_model_response(response, CreateRunResponse)
 
     async def cancel_run(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
@@ -1161,9 +1182,24 @@ def _create_run_json(request: CreateRunRequest) -> str:
     """Preserve the strict pre-native ordinary wire, including its old defaults."""
     if request.execution_mode == "ordinary":
         return request.model_dump_json(
-            exclude={"execution_mode", "native_test_ref", "native_test_protocol_version", "native_parent_node"}
+            exclude={
+                "execution_mode",
+                "native_test_ref",
+                "native_test_protocol_version",
+                "native_parent_node",
+                "native_test_profile",
+            }
         )
     return request.model_dump_json()
+
+
+def _validate_lookup_run_request(request: LookupRunRequest) -> LookupRunRequest:
+    try:
+        if not isinstance(request, LookupRunRequest):
+            raise ValueError
+        return LookupRunRequest.model_validate(request.model_dump(mode="json"))
+    except (ValueError, TypeError):
+        raise DifyAgentValidationError("invalid create identity selection") from None
 
 
 def _validate_create_run_request(request: CreateRunRequest) -> CreateRunRequest:

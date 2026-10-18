@@ -6,14 +6,6 @@ from collections.abc import Sequence
 from functools import wraps
 from typing import TYPE_CHECKING, cast
 
-from extensions.ext_redis import redis_client
-from extensions.otel import WorkflowAppRunnerHandler, trace_span
-from extensions.workflow_warm_shutdown import WORKFLOW_WARM_SHUTDOWN_ABORT_REASON, celery_warm_shutdown_started
-from libs.datetime_utils import naive_utc_now
-from models.workflow import Workflow
-from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
-from services.dify_builder.native_testing.runtime_bridge import NativeRuntimeBridge
-
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.execution_coordinator import app_task_command_channel_key
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
@@ -46,12 +38,19 @@ from core.workflow.snippet_start import get_compatible_start_aliases
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
+from extensions.ext_redis import redis_client
+from extensions.otel import WorkflowAppRunnerHandler, trace_span
+from extensions.workflow_warm_shutdown import WORKFLOW_WARM_SHUTDOWN_ABORT_REASON, celery_warm_shutdown_started
 from graphon.enums import WorkflowType
 from graphon.filters import ResponseStreamFilter
 from graphon.graph_engine.command_channels import RedisChannel
 from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variable_loader import VariableLoader
+from libs.datetime_utils import naive_utc_now
+from models.workflow import Workflow
+from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
+from services.dify_builder.native_testing.runtime_bridge import NativeRuntimeBridge
 
 if TYPE_CHECKING:
     from services.dify_builder.native_testing.host_execution import NativeHostLaunch
@@ -227,6 +226,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             variable_pool = graph_runtime_state.variable_pool
             graph = self._init_graph(
                 builder_execution=entity.builder_execution,
+                builder_agent_execution=entity.builder_agent_execution,
                 native_test_required=entity.native_test_required,
                 native_test_ref=entity.native_test_ref,
                 native_runtime=self._native_runtime,
@@ -303,6 +303,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
             graph = self._init_graph(
                 builder_execution=entity.builder_execution,
+                builder_agent_execution=entity.builder_agent_execution,
                 native_test_required=entity.native_test_required,
                 native_test_ref=entity.native_test_ref,
                 native_runtime=self._native_runtime,
@@ -380,6 +381,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         workflow_entry.graph_engine.layer(
             build_workflow_agent_workspace_retirement_layer(
                 dify_run_context=DifyRunContext(
+                    builder_agent_execution=entity.builder_agent_execution,
                     native_test_required=entity.native_test_required,
                     native_test_ref=entity.native_test_ref,
                     tenant_id=self._workflow.tenant_id,

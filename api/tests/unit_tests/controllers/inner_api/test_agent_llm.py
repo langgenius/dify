@@ -6,7 +6,9 @@ from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
-from flask import Flask
+import pytest
+from flask import Flask, g
+from flask import request as flask_request
 from pydantic import JsonValue
 
 from controllers.inner_api import bp as inner_api_bp
@@ -225,3 +227,52 @@ def test_post_preserves_stream_quota_failure() -> None:
         "error_type": "AgentLLMQuotaExceededError",
         "message": "Insufficient hosted model quota remaining.",
     }
+
+
+@pytest.mark.parametrize(
+    ("failure", "error_type", "message", "code"),
+    [
+        (
+            RuntimeError("PRIVATE_MODEL_TOKEN_CANARY"),
+            "NativeAgentModelDispatchFailed",
+            "Native Agent model invocation failed.",
+            -500,
+        ),
+        (
+            QuotaExceededError("PRIVATE_MODEL_TOKEN_CANARY"),
+            "AgentLLMQuotaExceededError",
+            "Insufficient hosted model quota remaining.",
+            -429,
+        ),
+    ],
+)
+def test_native_stream_error_is_bounded_even_if_provider_raises_private_text(
+    failure, error_type, message, code
+) -> None:
+    from tests.unit_tests.services.dify_builder.test_agent_operation_owner import envelope
+
+    payload = {**_payload(), "native_dispatch": envelope().model_dump(mode="json")}
+    prepared = PreparedAgentLLMInvocation(
+        request=AgentLLMInvokeRequest.model_validate(payload), model_instance=MagicMock()
+    )
+    app = _flask_app()
+
+    @app.before_request
+    def admitted_transport():
+        # This test exercises the emitter after the independently tested runtime admission guard.
+        g.agent_runtime_admitted = True
+        g.agent_runtime_request = flask_request._get_current_object()
+
+    with (
+        _agent_inner_auth(),
+        patch("controllers.inner_api.agent.llm.claim_agent_endpoint"),
+        patch("controllers.inner_api.agent.llm.AgentLLMInnerService.prepare", return_value=prepared),
+        patch("controllers.inner_api.agent.llm.AgentLLMInnerService.invoke", side_effect=failure),
+    ):
+        response = app.test_client().post("/inner/api/agent/llm/invoke", json=payload)
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert "PRIVATE_MODEL_TOKEN_CANARY" not in body
+    wire = json.loads(body.strip().removeprefix("data: "))
+    assert wire["code"] == code
+    assert json.loads(wire["message"]) == {"error_type": error_type, "message": message}

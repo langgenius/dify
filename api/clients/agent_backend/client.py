@@ -28,6 +28,7 @@ from dify_agent.protocol import (
     RunStatusResponse,
 )
 from dify_agent.protocol.native_continuation import ReadNativeCheckpointRequest, SelectedNativeCheckpoint
+from dify_agent.protocol.run_recovery import LookupRunRequest
 
 from clients.agent_backend.errors import (
     AgentBackendError,
@@ -73,6 +74,11 @@ class AgentBackendNativeRunClient(AgentBackendRunClient, Protocol):
     """Private read extension; ordinary run clients/fakes retain their contract."""
 
     def read_native_checkpoint(self, run_id: str, request: ReadNativeCheckpointRequest) -> SelectedNativeCheckpoint: ...
+
+
+@runtime_checkable
+class _DifyAgentRecoverySyncClient(Protocol):
+    def lookup_run_sync(self, request: LookupRunRequest) -> CreateRunResponse: ...
 
 
 @runtime_checkable
@@ -133,6 +139,15 @@ class DifyAgentBackendRunClient:
         """Create one run through ``POST /runs`` and normalize client exceptions."""
         try:
             return self.client.create_run_sync(request)
+        except Exception as exc:
+            raise _normalize_dify_agent_error(exc) from exc
+
+    def lookup_run(self, request: LookupRunRequest) -> CreateRunResponse:
+        """Observe one retained create identity; never retry the create request."""
+        if not isinstance(self.client, _DifyAgentRecoverySyncClient):
+            raise AgentBackendTransportError("Agent create identity lookup is unavailable")
+        try:
+            return self.client.lookup_run_sync(request)
         except Exception as exc:
             raise _normalize_dify_agent_error(exc) from exc
 

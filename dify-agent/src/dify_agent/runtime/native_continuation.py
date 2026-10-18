@@ -6,7 +6,7 @@ DTOs and constructing native ToolApproved values never authorizes an effect.
 """
 
 from dataclasses import dataclass, field
-from typing import Protocol
+from typing import Literal, Protocol
 
 from pydantic import JsonValue, TypeAdapter, ValidationError
 from pydantic_ai import ApprovalRequired, CallDeferred, DeferredToolRequests, DeferredToolResults, ToolApproved
@@ -73,6 +73,9 @@ class NativeContinuation:
     generation: int
     config_ref: str
     config_digest: str
+    native_test_profile: Literal["isolated", "confirmed"] = "isolated"
+    parent_execution_id: str | None = None
+    create_idempotency_key: str | None = None
     capabilities: list[AbstractCapability[Deps]] = field(default_factory=list, repr=False)
     operation_cursor: int = 0
     result_refs: dict[str, str] = field(default_factory=dict)
@@ -107,6 +110,8 @@ class NativeContinuation:
 
     def _checkpoint(self, calls: tuple[AgentPendingCall, ...], stage: Stage) -> AgentCheckpoint:
         return AgentCheckpoint(
+            native_test_profile=self.native_test_profile,
+            create_idempotency_key=self.create_idempotency_key,
             run_id=self.run_id,
             generation=self.generation,
             ref=self.ref,

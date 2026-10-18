@@ -1,19 +1,17 @@
-"""Dormant strict Agent Resources sharing existing controller/service owners.
+"""Strict Agent Resources sharing existing controller/service owners.
 
 Outer method decorators run before inherited parsing, sessions and services.
 Legacy Resource authentication cannot grant this admission.
 """
 
-from libs.external_api import document_errors
-
 # Flask-RESTX declares a mutable Resource decorator list; each subclass owns
 # its own list. Tuple/ClassVar overrides conflict with that upstream contract.
-# ruff: noqa: RUF012
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.agent import files, llm, native_testing, tools
 from controllers.inner_api.knowledge import retrieval
 from controllers.inner_api.plugin import agent_config
 from controllers.inner_api.wraps import AgentRuntimeRefused, agent_runtime_api_only
+from libs.external_api import document_errors
 
 
 @inner_api_ns.route("/agent/runtime/llm/invoke")
@@ -142,9 +140,7 @@ class AgentRuntimeConfigDownloadApi(agent_config.AgentConfigDownloadRequestApi):
 document_errors(AgentRuntimeConfigDownloadApi, AgentRuntimeRefused)
 
 
-@inner_api_ns.route(
-    "/agent/runtime/config/<string:agent_id>/skills/<string:name>/inspect"
-)
+@inner_api_ns.route("/agent/runtime/config/<string:agent_id>/skills/<string:name>/inspect")
 @inner_api_ns.doc(
     security="AgentBearer",
     params={
@@ -322,3 +318,27 @@ class AgentRuntimeNativeClaimApi(native_testing.AgentNativeDispatchClaimApi):
 
 
 document_errors(AgentRuntimeNativeClaimApi, AgentRuntimeRefused)
+
+
+@inner_api_ns.route("/agent/runtime/native-testing/prepare-intent")
+class AgentRuntimeNativeIntentApi(native_testing.AgentNativePrepareIntentApi):
+    method_decorators = [agent_runtime_api_only("native-control")]
+
+
+document_errors(AgentRuntimeNativeIntentApi, AgentRuntimeRefused)
+
+
+@inner_api_ns.route("/agent/runtime/native-testing/results")
+class AgentRuntimeNativeStoreResultApi(native_testing.AgentNativeStoreResultApi):
+    method_decorators = [agent_runtime_api_only("native-control")]
+
+
+document_errors(AgentRuntimeNativeStoreResultApi, AgentRuntimeRefused)
+
+
+@inner_api_ns.route("/agent/runtime/native-testing/read-result")
+class AgentRuntimeNativeReadResultApi(native_testing.AgentNativeReadResultApi):
+    method_decorators = [agent_runtime_api_only("native-control")]
+
+
+document_errors(AgentRuntimeNativeReadResultApi, AgentRuntimeRefused)

@@ -54,6 +54,8 @@ from dify_agent.protocol.schemas import (
     utc_now,
 )
 from dify_agent.protocol.snapshot import SessionSnapshot
+from dify_agent.protocol.run_recovery import LookupRunRequest
+from dify_agent.protocol.schemas import CreateRunResponse
 from dify_agent.runtime.cancellation import RunCancellationIntent
 from dify_agent.runtime.event_sink import (
     NonTerminalRunEvent,
@@ -63,7 +65,7 @@ from dify_agent.runtime.event_sink import (
     terminal_event_status_fields,
 )
 from dify_agent.runtime.native_continuation import AgentCheckpoint, NativeContinuationConflict
-from dify_agent.server.schemas import RunRecord, new_run_id
+from dify_agent.server.schemas import RunCreateClaim, RunRecord, create_key_digest, keyed_run_id, new_run_id
 from dify_agent.server.settings import DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH, DEFAULT_RUN_RETENTION_SECONDS
 from dify_agent.storage.redis_keys import run_cancel_intent_key, run_events_key, run_record_key
 
@@ -72,6 +74,24 @@ _TERMINAL_RUN_EVENT_TYPES = {"run_succeeded", "run_failed", "run_cancelled"}
 
 class RunNotFoundError(LookupError):
     """Raised when a requested run record does not exist."""
+
+
+class RunCreateConflictError(RuntimeError):
+    """The retained key identifies a different or unavailable create request."""
+
+
+_LOOKUP_RUN_SCRIPT = """
+local kind = redis.call("TYPE", KEYS[1]).ok
+if kind == "none" then return {-1, "", ""} end
+if kind ~= "string" then return {-2, "", ""} end
+if redis.call("STRLEN", KEYS[1]) > tonumber(ARGV[4]) then return {-2, "", ""} end
+local ok, r = pcall(cjson.decode, redis.call("GET", KEYS[1]))
+if not ok or type(r) ~= "table" or r.run_id ~= ARGV[1] or
+    r.create_key_digest ~= ARGV[2] or r.create_request_digest ~= ARGV[3] or
+    (r.status ~= "running" and r.status ~= "waiting" and r.status ~= "succeeded" and
+    r.status ~= "failed" and r.status ~= "cancelled") then return {-2, "", ""} end
+return {1, r.run_id, r.status}
+"""
 
 
 _FINALIZE_RUN_SCRIPT = """
@@ -327,6 +347,68 @@ class RedisRunStore(RunEventSink):
             ex=self.run_retention_seconds,
         )
         return record
+
+    async def claim_run(
+        self, *, selection: LookupRunRequest, identity: AgentRuntimeIdentitySeed | None = None
+    ) -> RunCreateClaim:
+        """SET NX EX is the single create claim; only its winner may schedule.
+
+        A lost SET acknowledgement or a winner lost before scheduling stays
+        unknown/running. Neither lookup nor a duplicate attempts dispatch again.
+        Deduplication lasts only as long as this existing run record is retained.
+        """
+        key_digest = create_key_digest(selection.idempotency_key)
+        run_id = keyed_run_id(key_digest)
+        record = RunRecord(
+            run_id=run_id,
+            status="running",
+            create_key_digest=key_digest,
+            create_request_digest=selection.request_digest,
+            runtime_identity=(
+                AgentRuntimeIdentity(run_id=run_id, agent_generation=0, **identity.model_dump())
+                if identity is not None
+                else None
+            ),
+        )
+        inserted = await self.redis.set(
+            run_record_key(self.prefix, run_id), record.model_dump_json(), ex=self.run_retention_seconds, nx=True
+        )
+        if inserted:
+            return RunCreateClaim(record=record, inserted=True)
+        selected = await self.lookup_run(selection)
+        # Return only public acceptance fields for duplicates. In particular, do
+        # not read a private checkpoint or refresh retention while recovering.
+        return RunCreateClaim(record=RunRecord(run_id=selected.run_id, status=selected.status), inserted=False)
+
+    async def lookup_run(self, selection: LookupRunRequest) -> CreateRunResponse:
+        """Read bounded retained acceptance only; never enqueue or refresh TTL."""
+        key_digest = create_key_digest(selection.idempotency_key)
+        run_id = keyed_run_id(key_digest)
+        reply = await cast(
+            Awaitable[object],
+            self.redis.eval(
+                _LOOKUP_RUN_SCRIPT,
+                1,
+                run_record_key(self.prefix, run_id),
+                run_id,
+                key_digest,
+                selection.request_digest,
+                MAX_CHECKPOINT_RECORD_BYTES,
+            ),
+        )
+        try:
+            if not isinstance(reply, (list, tuple)) or len(reply) != 3:
+                raise ValueError
+            code = int(reply[0])
+            if code == -1:
+                raise RunNotFoundError(run_id)
+            if code != 1:
+                raise ValueError
+            return CreateRunResponse.model_validate(
+                {"run_id": _decode_redis_text(reply[1]), "status": _decode_redis_text(reply[2])}
+            )
+        except (TypeError, ValueError):
+            raise RunCreateConflictError("create identity unavailable") from None
 
     async def read_run_identity(self, *, run_id: str, selection: ReadAgentRuntimeIdentity) -> AgentRuntimeIdentity:
         """Only bounded immutable metadata is read; legacy/unknown records refuse."""

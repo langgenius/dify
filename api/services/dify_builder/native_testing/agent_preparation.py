@@ -43,9 +43,7 @@ if TYPE_CHECKING:
 
 
 class AgentRuntimeIdentityReader(Protocol):
-    def read_run_identity_sync(
-        self, run_id: str, selection: ReadAgentRuntimeIdentity
-    ) -> AgentRuntimeIdentity: ...
+    def read_run_identity_sync(self, run_id: str, selection: ReadAgentRuntimeIdentity) -> AgentRuntimeIdentity: ...
 
 
 @dataclass
@@ -55,37 +53,25 @@ class AgentPreparationService:
     workspace: "AgentTestWorkspaceService | None"
     config_builder: "NativeAgentRuntimeConfigBuilder | None"
 
-    def prepare_initial(
-        self, *, association: "NativeNodePreparation"
-    ) -> AgentStartPreparation:
+    def prepare_initial(self, *, association: "NativeNodePreparation") -> AgentStartPreparation:
         from services.dify_builder.native_testing.state_store import _agent_boundary
 
         with _agent_boundary():
             return self._prepare_initial(association=association)
 
-    def _prepare_initial(
-        self, *, association: "NativeNodePreparation"
-    ) -> AgentStartPreparation:
+    def _prepare_initial(self, *, association: "NativeNodePreparation") -> AgentStartPreparation:
         if self.workspace is None or self.config_builder is None:
             raise BuilderExecutionPolicyError("native_agent_preparation_unavailable")
         context = association.resolve()
         node = association.bound_node
-        definition = self.config_builder.load_definition(
-            context=context, node_id=association.node_id
-        )
-        definition_receipt = AgentDefinitionReceipt(
-            association.node_id, definition.stamp
-        )
+        definition = self.config_builder.load_definition(context=context, node_id=association.node_id)
+        definition_receipt = AgentDefinitionReceipt(association.node_id, definition.stamp)
         # The bound node's own mutable data cannot override the stored published graph.
         nodes = context.graph.get("nodes")
         if not isinstance(nodes, list):
             raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
         selected = next(
-            (
-                item
-                for item in nodes
-                if isinstance(item, dict) and item.get("id") == association.node_id
-            ),
+            (item for item in nodes if isinstance(item, dict) and item.get("id") == association.node_id),
             None,
         )
         if selected is None or not isinstance(selected.get("data"), dict):
@@ -96,9 +82,7 @@ class AgentPreparationService:
         bound_data = node.node_data.model_dump(mode="json")
         if node.node_data != expected_node:
             raise BuilderExecutionPolicyError("native_agent_config_mismatch")
-        inputs = self.config_builder.typed_inputs(
-            association=association, definition=definition
-        )
+        inputs = self.config_builder.typed_inputs(association=association, definition=definition)
         execution_id = association.execution_id
         input_ref = self.state_store.store_node_inputs(
             ref=context.ref,
@@ -128,19 +112,11 @@ class AgentPreparationService:
             association.bound_node.node_data.model_dump(mode="json") != bound_data
             or association.resolve() != context
             or association.execution_id != execution_id
-            or self.config_builder.load_definition(
-                context=context, node_id=association.node_id
-            )
-            != definition
-            or self.config_builder.typed_inputs(
-                association=association, definition=definition
-            )
-            != inputs
+            or self.config_builder.load_definition(context=context, node_id=association.node_id) != definition
+            or self.config_builder.typed_inputs(association=association, definition=definition) != inputs
         ):
             raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
-        config = request.model_dump(
-            mode="json", include={"composition", "session_snapshot"}
-        )
+        config = request.model_dump(mode="json", include={"composition", "session_snapshot"})
         claim = self.state_store.claim_agent_create(
             ref=context.ref,
             parent_node=parent,
@@ -150,15 +126,9 @@ class AgentPreparationService:
         )
         return AgentStartPreparation(claim, parent, request)
 
-    def read_prepared_config(
-        self, *, payload: AgentReadPreparedConfigPayload
-    ) -> AgentPreparedConfigResponse:
-        parent = AgentParentNodeRef.model_validate(
-            payload.parent_node.model_dump(mode="json")
-        )
-        owned = self.state_store.load_prepared_config(
-            ref=parent.ref, parent_node=parent, config_ref=payload.config_ref
-        )
+    def read_prepared_config(self, *, payload: AgentReadPreparedConfigPayload) -> AgentPreparedConfigResponse:
+        parent = AgentParentNodeRef.model_validate(payload.parent_node.model_dump(mode="json"))
+        owned = self.state_store.load_prepared_config(ref=parent.ref, parent_node=parent, config_ref=payload.config_ref)
         return AgentPreparedConfigResponse(
             parent_node=WireParent.model_validate(parent.model_dump(mode="json")),
             config_ref=owned.config_ref,
@@ -166,40 +136,30 @@ class AgentPreparationService:
             config=owned.config,
         )
 
-    def bind_created_run(
-        self, *, payload: AgentPrepareRunPayload
-    ) -> AgentPrepareRunResponse:
-        parent = AgentParentNodeRef.model_validate(
-            payload.parent_node.model_dump(mode="json")
-        )
+    def bind_created_run(self, *, payload: AgentPrepareRunPayload) -> AgentPrepareRunResponse:
+        parent = AgentParentNodeRef.model_validate(payload.parent_node.model_dump(mode="json"))
         context = self.state_store.load_context(ref=parent.ref)
-        owned = self.state_store.load_prepared_config(
-            ref=parent.ref, parent_node=parent, config_ref=None
-        )
+        owned = self.state_store.load_prepared_config(ref=parent.ref, parent_node=parent, config_ref=None)
         if owned.config_digest != payload.request_digest:
             raise BuilderExecutionPolicyError("native_agent_config_mismatch")
-        selection = ReadAgentRuntimeIdentity(
-            parent_node=payload.parent_node, request_digest=owned.config_digest
-        )
+        selection = ReadAgentRuntimeIdentity(parent_node=payload.parent_node, request_digest=owned.config_digest)
         try:
             actual = AgentRuntimeIdentity.model_validate(
-                self.backend.read_run_identity_sync(
-                    payload.agent_run_id, selection
-                ).model_dump(mode="json")
+                self.backend.read_run_identity_sync(payload.agent_run_id, selection).model_dump(mode="json")
             )
         except (DifyAgentClientError, ValueError, BuilderExecutionPolicyError):
-            raise BuilderExecutionPolicyError(
-                "native_agent_identity_unavailable"
-            ) from None
+            raise BuilderExecutionPolicyError("native_agent_identity_unavailable") from None
         if (
             actual.run_id,
             actual.execution_mode,
+            actual.native_test_profile,
             actual.parent_node,
             actual.request_digest,
             actual.agent_generation,
         ) != (
             payload.agent_run_id,
             "builder_test",
+            self.config_builder.profile if self.config_builder is not None else "isolated",
             payload.parent_node,
             owned.config_digest,
             0,
@@ -207,9 +167,7 @@ class AgentPreparationService:
             raise BuilderExecutionPolicyError("native_agent_identity_mismatch")
         # Backend HTTP and all decryption/readback happened outside the root writer.
         # Recheck complete current ownership and bytes after that async boundary.
-        current = self.state_store.load_prepared_config(
-            ref=parent.ref, parent_node=parent, config_ref=owned.config_ref
-        )
+        current = self.state_store.load_prepared_config(ref=parent.ref, parent_node=parent, config_ref=owned.config_ref)
         if current != owned or self.state_store.load_context(ref=parent.ref) != context:
             raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
         association = AgentNodeAssociation(
@@ -237,21 +195,25 @@ class AgentPreparationService:
 
 def agent_preparation_for_ref(ref):
     """Shared service auth identifies the backend; actor always comes from stored SQL."""
-    from core.dify_builder.models import Actor
-    from extensions.ext_database import db
-    from models.dify_builder import DifyBuilderExecutionRequest
     from sqlalchemy import select
     from sqlalchemy.orm import Session
 
+    from core.dify_builder.models import Actor
+    from extensions.ext_database import db
+    from models.dify_builder import DifyBuilderExecutionRequest
     from services.dify_builder.wiring import build_native_agent_preparation_service
 
     with Session(db.engine) as session:
         row = session.scalar(
-            select(DifyBuilderExecutionRequest).where(
-                DifyBuilderExecutionRequest.id == ref.request_id
-            )
+            select(DifyBuilderExecutionRequest).where(DifyBuilderExecutionRequest.id == ref.request_id)
         )
         if row is None or row.context_digest != ref.context_digest:
             raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
         actor = Actor(account_id=row.actor_id, tenant_id=row.tenant_id)
+        profile = row.context.get("profile", {}).get("profile_id")
+    if profile == "builder-agent-confirmed-v1":
+        from services.dify_builder.native_testing.agent_confirmed_workspace import build_confirmed_agent_preparation
+        from services.dify_builder.wiring import _NativeAgentIdentityReader
+
+        return build_confirmed_agent_preparation(actor=actor, backend=_NativeAgentIdentityReader())
     return build_native_agent_preparation_service(actor=actor)

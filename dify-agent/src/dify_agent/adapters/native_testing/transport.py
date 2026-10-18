@@ -97,6 +97,9 @@ _POST_ROUTES = frozenset(
         "native-testing/outcome",
         "native-testing/materialize",
         "native-testing/claim-dispatch",
+        "native-testing/prepare-intent",
+        "native-testing/results",
+        "native-testing/read-result",
     }
 )
 _FORBIDDEN_HEADERS = frozenset(

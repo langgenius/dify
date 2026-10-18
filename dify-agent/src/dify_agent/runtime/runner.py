@@ -206,7 +206,7 @@ class AgentRunRunner:
         self._terminal_session_snapshot = None
         self._terminal_usage = None
         if self.request.execution_mode == "builder_test":
-            require_native_test_capabilities(self.native_capabilities)
+            require_native_test_capabilities(self.native_capabilities, profile=self.request.native_test_profile)
             if self.native_continuation is None or self.native_continuation.ref != self.request.native_test_ref:
                 raise NativeTestProtocolUnsupported()
             from dify_agent.runtime.native_effects import NativeEffectsCapability

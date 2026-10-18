@@ -77,11 +77,12 @@ class CreateRunRequest(BaseModel):
     """
 
     execution_mode: Literal["ordinary", "builder_test"] = "ordinary"
+    native_test_profile: Literal["isolated", "confirmed"] = "isolated"
     native_test_ref: AgentNativeTestRef | None = None
     native_parent_node: AgentParentNodeRef | None = Field(default=None, exclude_if=lambda value: value is None)
     native_test_protocol_version: Literal[1] | None = None
     composition: RunComposition
-    idempotency_key: str | None = None
+    idempotency_key: str | None = Field(default=None, min_length=1, max_length=256)
     metadata: dict[str, JsonValue] = Field(default_factory=dict)
     session_snapshot: SessionSnapshot | None = None
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
@@ -96,6 +97,10 @@ class CreateRunRequest(BaseModel):
     @model_validator(mode="after")
     def validate_native_mode(self) -> CreateRunRequest:
         marked = self.execution_mode == "builder_test"
+        if not marked and self.native_test_profile != "isolated":
+            raise ValueError("confirmed profile requires native test mode")
+        if self.native_test_profile == "confirmed" and self.idempotency_key is None:
+            raise ValueError("confirmed profile requires create identity")
         if marked != (self.native_test_ref is not None) or marked != (self.native_test_protocol_version is not None):
             raise ValueError("native test mode, reference and protocol version must agree")
         if marked != (self.native_parent_node is not None):

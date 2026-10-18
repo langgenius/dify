@@ -418,6 +418,7 @@ def _node(
     runtime_request_builder: WorkflowAgentRuntimeRequestBuilder | None = None,
     error_strategy: ErrorStrategy | None = None,
     graph_init_params: GraphInitParams | None = None,
+    confirmed_owners: tuple | None = None,
 ) -> DifyAgentNode:
     graph_init_params = graph_init_params or GraphInitParams(
         workflow_id="workflow-1",
@@ -481,6 +482,15 @@ def _node(
         type_checker=PerOutputTypeChecker(file_validator=_AlwaysAllowFileValidator()),
         failure_orchestrator=OutputFailureOrchestrator(),
         session_store=cast(WorkflowAgentWorkspaceStore, session_store or FakeSessionStore()),
+        **(
+            {
+                "agent_preparation": confirmed_owners[0],
+                "agent_commands": confirmed_owners[1],
+                "agent_run_recovery": confirmed_owners[2],
+            }
+            if confirmed_owners is not None
+            else {}
+        ),
     )
     node.bind_execution_id(str(uuid4()))
     return node

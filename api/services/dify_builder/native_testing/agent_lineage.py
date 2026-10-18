@@ -7,6 +7,7 @@ lineage only; no invocation permit is spent and no physical capability is ready.
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Literal
 
 from dify_agent.client import DifyAgentClientError
 from dify_agent.protocol.native_testing import (
@@ -39,6 +40,7 @@ class NativeAgentEndpointContext:
     config: AgentPreparedConfig
     association: AgentNodeAssociation | None
     physical_owner_ready: bool = False
+    native_test_profile: Literal["isolated", "confirmed"] = "isolated"
 
 
 @dataclass
@@ -54,9 +56,7 @@ class NativeAgentEndpointLineage:
         boundary: str,
         caller: dict,
     ) -> NativeAgentEndpointContext | None:
-        if not isinstance(principal, AgentServicePrincipal) or not isinstance(
-            selection, AgentRunTransportSelection
-        ):
+        if not isinstance(principal, AgentServicePrincipal) or not isinstance(selection, AgentRunTransportSelection):
             raise BuilderExecutionPolicyError("native_endpoint_principal_unavailable")
         if caller.get("agent_run_id", selection.agent_run_id) != selection.agent_run_id:
             raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")
@@ -69,18 +69,12 @@ class NativeAgentEndpointLineage:
         association = None
         control = boundary in {"prepare-run", "prepared-config"}
         if selection.parent_node is not None:
-            parent = AgentParentNodeRef.model_validate(
-                selection.parent_node.model_dump(mode="json")
-            )
+            parent = AgentParentNodeRef.model_validate(selection.parent_node.model_dump(mode="json"))
             store = self.preparation_for_ref(parent.ref).state_store
             context = store.load_context(ref=parent.ref)
-            config = store.load_prepared_config(
-                ref=parent.ref, parent_node=parent, config_ref=None
-            )
+            config = store.load_prepared_config(ref=parent.ref, parent_node=parent, config_ref=None)
             association = store.discover_agent_run(ref=parent.ref, parent_node=parent)
-            if config.config_digest != selection.request_digest or (
-                association is None and not control
-            ):
+            if config.config_digest != selection.request_digest or (association is None and not control):
                 raise BuilderExecutionPolicyError("native_agent_identity_mismatch")
         try:
             readback = self.backend.read_run_identity_sync(
@@ -91,9 +85,7 @@ class NativeAgentEndpointLineage:
                 ),
             )
             actual = AgentRuntimeIdentity.model_validate(
-                readback.model_dump(mode="json")
-                if isinstance(readback, AgentRuntimeIdentity)
-                else readback
+                readback.model_dump(mode="json") if isinstance(readback, AgentRuntimeIdentity) else readback
             )
         except (
             DifyAgentClientError,
@@ -102,9 +94,7 @@ class NativeAgentEndpointLineage:
             TimeoutError,
             BuilderExecutionPolicyError,
         ):
-            raise BuilderExecutionPolicyError(
-                "native_agent_identity_unavailable"
-            ) from None
+            raise BuilderExecutionPolicyError("native_agent_identity_unavailable") from None
         if (
             actual.run_id,
             actual.parent_node,
@@ -129,12 +119,8 @@ class NativeAgentEndpointLineage:
             raise BuilderExecutionPolicyError("native_agent_identity_mismatch")
         # Each S1 read checks current resources/RBAC after its own object I/O.
         # Repeat across the complete private identity/object boundary as well.
-        current_config = store.load_prepared_config(
-            ref=parent.ref, parent_node=parent, config_ref=config.config_ref
-        )
-        current_association = store.discover_agent_run(
-            ref=parent.ref, parent_node=parent
-        )
+        current_config = store.load_prepared_config(ref=parent.ref, parent_node=parent, config_ref=config.config_ref)
+        current_association = store.discover_agent_run(ref=parent.ref, parent_node=parent)
         if (
             current_config != config
             or current_association != association
@@ -165,4 +151,5 @@ class NativeAgentEndpointLineage:
             ref=AgentNativeTestRef.model_validate(parent.ref.model_dump(mode="json")),
             config=config,
             association=association,
+            native_test_profile=getattr(actual, "native_test_profile", "isolated"),
         )

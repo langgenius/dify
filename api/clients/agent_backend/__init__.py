@@ -22,8 +22,10 @@ from clients.agent_backend.event_adapter import (
     AgentBackendRunCancelledInternalEvent,
     AgentBackendRunEventAdapter,
     AgentBackendRunFailedInternalEvent,
+    AgentBackendRunResumedInternalEvent,
     AgentBackendRunStartedInternalEvent,
     AgentBackendRunSucceededInternalEvent,
+    AgentBackendRunWaitingInternalEvent,
     AgentBackendStreamInternalEvent,
 )
 from clients.agent_backend.factory import create_agent_backend_run_client
@@ -69,8 +71,10 @@ __all__ = [
     "AgentBackendRunFailedError",
     "AgentBackendRunFailedInternalEvent",
     "AgentBackendRunRequestBuilder",
+    "AgentBackendRunResumedInternalEvent",
     "AgentBackendRunStartedInternalEvent",
     "AgentBackendRunSucceededInternalEvent",
+    "AgentBackendRunWaitingInternalEvent",
     "AgentBackendStreamError",
     "AgentBackendStreamInternalEvent",
     "AgentBackendTransportError",

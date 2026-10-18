@@ -88,8 +88,14 @@ class NativeTestProtocolUnsupported(RuntimeError):
 NATIVE_TEST_CAPABILITIES = NativeTestCapabilities(protocol_version=1, features=frozenset({"pending-call-v1"}))
 
 
-def require_native_test_capabilities(capabilities: NativeTestCapabilities) -> None:
-    required = {"pending-call-v1", "policy-gate-v1", "test-scope-v1", "child-continuation-v1"}
+def require_native_test_capabilities(
+    capabilities: NativeTestCapabilities, *, profile: Literal["isolated", "confirmed"] = "isolated"
+) -> None:
+    required = {"pending-call-v1", "policy-gate-v1"}
+    if profile == "isolated":
+        required |= {"test-scope-v1", "child-continuation-v1"}
+    else:
+        required.add("create-idempotency-v1")
     if capabilities.protocol_version != 1 or not required.issubset(capabilities.features):
         raise NativeTestProtocolUnsupported()
 
@@ -110,6 +116,33 @@ class AgentEffectIntent(NativeDTO):
     parameters: FiniteJSON
     input_digest: Digest
     capability_digest: Digest
+
+
+class AgentPrepareIntentPayload(NativeDTO):
+    ref: AgentNativeTestRef
+    key: AgentOperationKey
+    boundary: ID
+    target: FiniteJSON
+    parameters: FiniteJSON
+
+
+class AgentStoreResultPayload(NativeDTO):
+    ref: AgentNativeTestRef
+    key: AgentOperationKey
+    result: FiniteJSON
+
+
+class AgentStoredResultResponse(NativeDTO):
+    result_ref: ID
+
+
+class AgentReadResultPayload(NativeDTO):
+    ref: AgentNativeTestRef
+    result_ref: ID
+
+
+class AgentReadResultResponse(NativeDTO):
+    result: FiniteJSON
 
 
 class AgentDispatchPermit(NativeDTO):
@@ -240,6 +273,7 @@ class AgentRunTransportSelection(NativeDTO):
 
 class AgentRuntimeIdentitySeed(NativeDTO):
     execution_mode: Literal["ordinary", "builder_test"]
+    native_test_profile: Literal["isolated", "confirmed"] = "isolated"
     parent_node: AgentParentNodeRef | None
     request_digest: Digest
 
@@ -247,6 +281,8 @@ class AgentRuntimeIdentitySeed(NativeDTO):
     def exact_mode_parent(self):
         if (self.execution_mode == "builder_test") != (self.parent_node is not None):
             raise ValueError("runtime identity mode and parent must agree")
+        if self.execution_mode == "ordinary" and self.native_test_profile != "isolated":
+            raise ValueError("confirmed profile requires native runtime identity")
         return self
 
 

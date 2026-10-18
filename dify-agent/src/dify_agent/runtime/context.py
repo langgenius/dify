@@ -45,6 +45,7 @@ class Services:
     shell_redact_patterns: list[str] = field(default_factory=list)
     agent_stub_api_base_url: str | None = None
     agent_stub_token_factory: ShellAgentStubTokenFactory | None = None
+    confirmed_api_http_client: AgentRuntimeHTTPClient | None = None
 
 
 @dataclass

@@ -2,12 +2,9 @@ from collections.abc import Mapping, Sequence
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Literal
 
-from constants import UUID_NIL
-from models.model import AppMode
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_serializer, field_validator
-from repositories.entities.workflow_execution import WorkflowExecutionTiming
-from services.dify_builder.native_testing.contracts import NativeTestContextRef
 
+from constants import UUID_NIL
 from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
 from core.credit_usage import (
     CreditUsageAppType,
@@ -27,6 +24,10 @@ from core.dify_builder.execution_policy import (
 from core.entities.provider_configuration import ProviderModelBundle
 from graphon.file import File, FileUploadConfig
 from graphon.model_runtime.entities.model_entities import AIModelEntity
+from models.model import AppMode
+from repositories.entities.workflow_execution import WorkflowExecutionTiming
+from services.dify_builder.native_testing.agent_context import BuilderAgentExecutionContext
+from services.dify_builder.native_testing.contracts import NativeTestContextRef
 
 if TYPE_CHECKING:
     from core.ops.ops_trace_manager import TraceQueueManager
@@ -114,6 +115,8 @@ class DifyRunContext(BaseModel):
     # Separate server marker: missing native authority must never select ordinary execution.
     native_test_required: bool = False
     native_test_ref: NativeTestContextRef | None = None
+    # Server-only confirmed Agent marker; the reference itself grants no authority.
+    builder_agent_execution: BuilderAgentExecutionContext | None = None
     # Builder confirmed Test Run only: nodes whose side effect was not confirmed
     # return a mocked result instead of running. Never set for ordinary runs.
     builder_mocked_node_ids: frozenset[str] = frozenset()
@@ -166,6 +169,7 @@ def build_dify_run_context(
     builder_execution: BuilderExecutionContext | ConfirmedToolExecutionContext | JsonToolExecutionContext | None = None,
     native_test_required: bool = False,
     native_test_ref: NativeTestContextRef | None = None,
+    builder_agent_execution: BuilderAgentExecutionContext | None = None,
     builder_mocked_node_ids: frozenset[str] = frozenset(),
     builder_tool_credential_bindings: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
@@ -180,6 +184,7 @@ def build_dify_run_context(
         builder_execution=builder_execution,
         native_test_required=native_test_required,
         native_test_ref=native_test_ref,
+        builder_agent_execution=builder_agent_execution,
         builder_mocked_node_ids=builder_mocked_node_ids,
         builder_tool_credential_bindings=builder_tool_credential_bindings,
         tenant_id=tenant_id,
@@ -230,6 +235,8 @@ class AppGenerateEntity(BaseModel):
     # Separate server marker: missing native authority must never select ordinary execution.
     native_test_required: bool = False
     native_test_ref: NativeTestContextRef | None = None
+    # Server-only confirmed Agent marker; the reference itself grants no authority.
+    builder_agent_execution: BuilderAgentExecutionContext | None = None
     # Builder confirmed Test Run only; see ``DifyRunContext.builder_mocked_node_ids``.
     builder_expected_revision: str | None = None
     builder_mocked_node_ids: frozenset[str] = frozenset()

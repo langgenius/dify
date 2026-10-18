@@ -13,6 +13,9 @@ from uuid import uuid4
 
 import pytest
 from dify_agent.protocol.execution_binding import CreateExecutionBindingResponse
+from shellctl.shared.schemas import NativeScopeLimits
+from sqlalchemy import select
+
 from libs.key_providers import generate_key_pair
 from models.account import Tenant
 from models.agent import (
@@ -53,8 +56,6 @@ from services.dify_builder.native_testing.runtime_contracts import (
     ResolvedNativeTestContext,
 )
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
-from shellctl.shared.schemas import NativeScopeLimits
-from sqlalchemy import select
 from tests.test_containers_integration_tests.core.workflow.test_builder_agent_workspace import (
     native_owner as native_owner,  # noqa: PLC0414
 )
@@ -91,26 +92,48 @@ def association_case(native_owner, no_live, migrated_continuation_tables, monkey
     snapshot_id = node["data"]["agent_binding"]["current_snapshot_id"]
     snapshot = db.session.get(AgentConfigSnapshot, snapshot_id)
     agent_id = snapshot.agent_id
-    soul = AgentSoulConfig.model_validate({"model": {
-        "plugin_id": "langgenius/openai", "model_provider": "openai", "model": "ci-inert-model",
-    }})
+    soul = AgentSoulConfig.model_validate(
+        {
+            "model": {
+                "plugin_id": "langgenius/openai",
+                "model_provider": "openai",
+                "model": "ci-inert-model",
+            }
+        }
+    )
     snapshot.config_snapshot = soul
-    db.session.add(Agent(
-        id=agent_id, tenant_id=actor.tenant_id, name="S1 fixture " + agent_id,
-        scope=AgentScope.ROSTER, source=AgentSource.ROSTER, status=AgentStatus.ACTIVE,
-        active_config_snapshot_id=snapshot_id, active_config_has_model=True,
-        created_by=actor.account_id, updated_by=actor.account_id,
-    ))
+    db.session.add(
+        Agent(
+            id=agent_id,
+            tenant_id=actor.tenant_id,
+            name="S1 fixture " + agent_id,
+            scope=AgentScope.ROSTER,
+            source=AgentSource.ROSTER,
+            status=AgentStatus.ACTIVE,
+            active_config_snapshot_id=snapshot_id,
+            active_config_has_model=True,
+            created_by=actor.account_id,
+            updated_by=actor.account_id,
+        )
+    )
     job = WorkflowNodeJobConfig(workflow_prompt="Review typed fixture inputs")
     node["data"] = native_node_data(agent_id=agent_id, snapshot_id=snapshot_id, node_job=job)
     workflow.graph = json.dumps(graph)
-    db.session.add(WorkflowAgentNodeBinding(
-        tenant_id=actor.tenant_id, app_id=app.id, workflow_id=workflow.id,
-        workflow_version=workflow.version, node_id=node["id"],
-        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
-        agent_id=agent_id, current_snapshot_id=snapshot_id, node_job_config=job,
-        created_by=actor.account_id, updated_by=actor.account_id,
-    ))
+    db.session.add(
+        WorkflowAgentNodeBinding(
+            tenant_id=actor.tenant_id,
+            app_id=app.id,
+            workflow_id=workflow.id,
+            workflow_version=workflow.version,
+            node_id=node["id"],
+            binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+            agent_id=agent_id,
+            current_snapshot_id=snapshot_id,
+            node_job_config=job,
+            created_by=actor.account_id,
+            updated_by=actor.account_id,
+        )
+    )
     db.session.commit()
     ledger = raw_ledger_case(native_owner, no_live)
     _, _, app, workflow, _, _ = native_owner
@@ -395,3 +418,55 @@ def test_real_second_node_occurrence_cannot_share_temporary_single_workspace(ass
         )
     save.assert_not_called()
     assert len(c.allocation_calls) == 1
+
+
+def test_real_queued_agent_checkpoint_is_readable_before_single_dispatch_claim(association_case):
+    from models.dify_builder_native_tests import NativePendingAction
+    from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
+    from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import ResolutionOwner
+
+    c = association_case
+    _, args = waiting(c)
+    wait = c.store.store_agent_wait(**args)
+    checkpoint = c.store.commit_checkpoint(ref=c.ref, generation=0, payload=payload(c, wait))
+    pending_id = str(uuid4())
+    # The configuration resolver is an explicit no-I/O fixture; checkpoint, pause,
+    # resume, generation, outbox and both dispatch claim phases are actual owners.
+    with c.factory.begin() as session:
+        session.add(
+            NativePendingAction(
+                id=pending_id,
+                tenant_id=c.context.tenant_id,
+                request_id=c.ref.request_id,
+                invocation_id=c.ref.invocation_id,
+                generation=0,
+                category="configuration",
+                reference_digest="7" * 64,
+                reference="fixture-config",
+                owner_ref="fixture-owner",
+                owner_version="fixture-version",
+                operation_id=None,
+            )
+        )
+    resolution = ResolutionOwner()
+    resolution.resolved = True
+    lifecycle = NativeTestLifecycleService(c.loader, state_store=c.store, resolution=resolution)
+    lifecycle.pause(ref=c.ref, checkpoint=checkpoint, pending_operation_ids=(pending_id,), expected_generation=0)
+    resumed = lifecycle.resume(
+        actor=c.loader.actor, request_id=c.ref.request_id, expected_generation=0, idempotency_key="queued-agent-test"
+    )
+    selected = c.store.read_checkpoint(ref=c.ref, checkpoint=checkpoint)
+    assert selected.agent_associations == (wait,)
+    assert c.store.load_agent_association(ref=c.ref, parent_node=c.parent, wait=wait).checkpoint == args["checkpoint"]
+    # The added read authority must not permit writes while queued.
+    with pytest.raises(BuilderExecutionPolicyError, match="native_invocation_mismatch"):
+        c.store.store_agent_config(
+            ref=c.ref, parent_node=c.parent, expected_invocation_generation=1, config={"new": True}
+        )
+    prepared = lifecycle.prepare_dispatch_claim(
+        ref=c.ref, generation=resumed.generation, dispatch_id=resumed.dispatch_id
+    )
+    assert prepared is not None
+    assert prepared.payload == selected
+    assert lifecycle.claim_dispatch(ref=c.ref, generation=resumed.generation, dispatch_id=resumed.dispatch_id)
+    assert not lifecycle.claim_dispatch(ref=c.ref, generation=resumed.generation, dispatch_id=resumed.dispatch_id)

@@ -73,6 +73,10 @@ class AgentLLMInvokeApi(Resource):
         service = AgentLLMInnerService()
         try:
             prepared = service.prepare(payload)
+        except BuilderExecutionPolicyError:
+            raise AgentLLMInvokeHttpError(
+                error_code="native_agent_control_refused", description="Native Agent dispatch refused.", status_code=409
+            ) from None
         except AgentLLMInnerServiceError as exc:
             raise AgentLLMInvokeHttpError(
                 error_code=exc.error_code,
@@ -102,7 +106,11 @@ class AgentLLMInvokeApi(Resource):
             except QuotaExceededError as exc:
                 error = {
                     "error_type": "AgentLLMQuotaExceededError",
-                    "message": str(exc) or "Insufficient hosted model quota remaining.",
+                    "message": (
+                        "Insufficient hosted model quota remaining."
+                        if payload.native_dispatch is not None
+                        else str(exc) or "Insufficient hosted model quota remaining."
+                    ),
                 }
                 envelope = {
                     "code": -429,
@@ -112,8 +120,12 @@ class AgentLLMInvokeApi(Resource):
                 yield f"data: {json.dumps(envelope, ensure_ascii=False, separators=(',', ':'))}\n\n"
             except Exception as exc:
                 error = {
-                    "error_type": type(exc).__name__,
-                    "message": str(exc) or "Agent LLM invocation failed.",
+                    "error_type": "NativeAgentModelDispatchFailed"
+                    if payload.native_dispatch is not None
+                    else type(exc).__name__,
+                    "message": "Native Agent model invocation failed."
+                    if payload.native_dispatch is not None
+                    else str(exc) or "Agent LLM invocation failed.",
                 }
                 envelope = {
                     "code": -500,

@@ -62,7 +62,9 @@ def validate_binding(intent: EffectIntent, binding: NativeBinding) -> None:
         raise BuilderExecutionPolicyError("destructive_effect_forbidden")
 
 
-def task_grant_allowed(binding: NativeBinding, *, task_approved: bool) -> bool:
+def task_grant_allowed(binding: NativeBinding, *, task_approved: bool, confirmed_model: bool = False) -> bool:
+    if confirmed_model and binding.kind == "model":
+        return task_approved and not binding.destructive
     return (
         task_approved
         and binding.kind in {"code", "file"}
@@ -167,7 +169,12 @@ class EffectAuthorizationService:
             return PolicyStop(reason_code="effect_denied")
         fence = dispatch_readiness(session, ref=owned.ref, tenant_id=owned.tenant_id, now=now, coalesce_self=True)
         if fence is not None:
-            return ApprovalWait(pending_operation_id=fence.id, wait_reason=fence.category)
+            from services.dify_builder.native_testing.agent_operations import confirmed_deferred_tool_approval
+
+            if not confirmed_deferred_tool_approval(
+                session=session, owned=owned, intent=intent, binding=binding, fence=fence
+            ):
+                return ApprovalWait(pending_operation_id=fence.id, wait_reason=fence.category)
         if operation is None:
             operation = NativeEffectOperation(
                 **_owner(owned),
@@ -179,7 +186,18 @@ class EffectAuthorizationService:
             )
             session.add(operation)
             session.flush()
-        if grant is None and task_grant_allowed(binding, task_approved=owned.task_approved):
+        if fence is not None:
+            return self._pending(session, owned, operation)
+        # Only the server-owned confirmed Agent producer can bind this exact
+        # selected model to an already confirmed outer task. Tool calls still
+        # require their actual-argument operation grant.
+        from services.dify_builder.native_testing.agent_operations import confirmed_task_model
+
+        if grant is None and task_grant_allowed(
+            binding,
+            task_approved=owned.task_approved,
+            confirmed_model=confirmed_task_model(session=session, owned=owned, intent=intent),
+        ):
             grant = NativeEffectGrant(
                 tenant_id=owned.tenant_id,
                 request_id=owned.ref.request_id,

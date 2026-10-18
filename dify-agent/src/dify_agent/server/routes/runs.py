@@ -11,10 +11,11 @@ replay backed by Redis event streams.
 """
 
 from collections.abc import Callable
-from typing import Annotated
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
 from fastapi.responses import StreamingResponse
+from pydantic import ValidationError
 
 from dify_agent.protocol.native_testing import (
     NATIVE_TEST_CAPABILITIES,
@@ -24,6 +25,7 @@ from dify_agent.protocol.native_testing import (
     NativeTestProtocolUnsupported,
     require_native_test_capabilities,
 )
+from dify_agent.protocol.run_recovery import LookupRunRequest
 from dify_agent.protocol.schemas import (
     CancelRunRequest,
     CancelRunResponse,
@@ -35,13 +37,15 @@ from dify_agent.protocol.schemas import (
 from dify_agent.runtime.native_continuation import NativeContinuationConflict, NativePolicyStopped
 from dify_agent.runtime.run_scheduler import RunCancellationConflictError, RunScheduler, SchedulerStoppingError
 from dify_agent.server.sse import sse_event_stream
-from dify_agent.storage.redis_run_store import RedisRunStore, RunNotFoundError
+from dify_agent.storage.redis_run_store import RedisRunStore, RunCreateConflictError, RunNotFoundError
 
 
 def create_runs_router(
     get_store: Callable[[], RedisRunStore],
     get_scheduler: Callable[[], RunScheduler],
     get_capabilities: Callable[[], NativeTestCapabilities] = lambda: NATIVE_TEST_CAPABILITIES,
+    *,
+    enable_lookup: bool = False,
 ) -> APIRouter:
     router = APIRouter(prefix="/runs", tags=["runs"])
 
@@ -51,9 +55,9 @@ def create_runs_router(
     async def scheduler_dep() -> RunScheduler:
         return get_scheduler()
 
-    def require_capabilities() -> None:
+    def require_capabilities(*, profile: Literal["isolated", "confirmed"] = "isolated") -> None:
         try:
-            require_native_test_capabilities(get_capabilities())
+            require_native_test_capabilities(get_capabilities(), profile=profile)
         except NativeTestProtocolUnsupported as exc:
             raise HTTPException(status_code=409, detail={"code": exc.code}) from exc
 
@@ -61,13 +65,49 @@ def create_runs_router(
     async def capabilities() -> NativeTestCapabilities:
         return get_capabilities()
 
+    if enable_lookup:
+
+        @router.post("/lookup", response_model=CreateRunResponse)
+        async def lookup_run(
+            request: Request,
+            response: Response,
+            store: Annotated[RedisRunStore, Depends(store_dep)],
+        ) -> CreateRunResponse:
+            """Recover retained acceptance without configuration reads or dispatch."""
+            response.headers["Cache-Control"] = "no-store"
+            body = bytearray()
+            async for chunk in request.stream():
+                if len(body) + len(chunk) > 4096:
+                    raise HTTPException(413, "lookup request too large", headers={"Cache-Control": "no-store"})
+                body.extend(chunk)
+            try:
+                selection = LookupRunRequest.model_validate_json(body)
+            except ValidationError:
+                # Default FastAPI errors echo rejected input, which could include
+                # private configuration even though this DTO forbids that input.
+                raise HTTPException(
+                    422, "invalid create identity selection", headers={"Cache-Control": "no-store"}
+                ) from None
+            try:
+                return await store.lookup_run(selection)
+            except RunNotFoundError as exc:
+                raise HTTPException(404, "run not found", headers={"Cache-Control": "no-store"}) from exc
+            except RunCreateConflictError as exc:
+                raise HTTPException(409, "create identity unavailable", headers={"Cache-Control": "no-store"}) from exc
+
     @router.post("/{run_id}/continue", response_model=ContinuationClaim, status_code=202)
     async def continue_run(
         run_id: str,
         request: ContinueRunRequest,
         scheduler: Annotated[RunScheduler, Depends(scheduler_dep)],
     ) -> ContinuationClaim:
-        require_capabilities()
+        # The scheduler checks the durable checkpoint's exact profile. The
+        # request carries no profile; preserve isolated clients' old contract.
+        capabilities = get_capabilities()
+        if capabilities.protocol_version != 1 or not {"pending-call-v1", "policy-gate-v1"}.issubset(
+            capabilities.features
+        ):
+            raise HTTPException(status_code=409, detail={"code": "native_test_protocol_unsupported"})
         try:
             return await scheduler.continue_run(run_id, request)
         except NativeTestProtocolUnsupported as exc:
@@ -89,7 +129,7 @@ def create_runs_router(
         scheduler: Annotated[RunScheduler, Depends(scheduler_dep)],
     ) -> CreateRunResponse:
         if request.execution_mode == "builder_test":
-            require_capabilities()
+            require_capabilities(profile=request.native_test_profile)
         try:
             record = await scheduler.create_run(request)
         except NativePolicyStopped as exc:
@@ -98,6 +138,8 @@ def create_runs_router(
             ) from exc
         except NativeTestProtocolUnsupported as exc:
             raise HTTPException(status_code=409, detail={"code": exc.code}) from exc
+        except RunCreateConflictError as exc:
+            raise HTTPException(status_code=409, detail="create identity unavailable") from exc
         except SchedulerStoppingError as exc:
             raise HTTPException(status_code=503, detail="run scheduler is shutting down") from exc
         return CreateRunResponse(run_id=record.run_id, status=record.status)

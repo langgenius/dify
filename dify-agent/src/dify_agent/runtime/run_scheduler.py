@@ -15,6 +15,7 @@ structured-output schemas, or session snapshots become asynchronous
 
 import asyncio
 import logging
+from dataclasses import replace
 from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
 from typing import Protocol
@@ -39,6 +40,7 @@ from dify_agent.protocol.native_testing import (
 )
 from dify_agent.protocol.schemas import AgentRunUsage, CancelRunRequest, CancelRunResponse, CreateRunRequest, RunStatus
 from dify_agent.protocol.snapshot import SessionSnapshot
+from dify_agent.protocol.run_recovery import LookupRunRequest, create_run_fingerprint
 from dify_agent.runtime.cancellation import RunCancellationIntent
 from dify_agent.runtime.context import Services
 from dify_agent.runtime.event_coalescer import (
@@ -56,7 +58,7 @@ from dify_agent.runtime.native_continuation import (
 )
 from dify_agent.runtime.observability import AgentObservability
 from dify_agent.runtime.runner import DEFAULT_AGENT_RUN_TIMEOUT_SECONDS, AgentRunRunner
-from dify_agent.server.schemas import RunRecord
+from dify_agent.server.schemas import RunCreateClaim, RunRecord
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +83,12 @@ class RunStore(RunEventSink, Protocol):
         self, *, run_id: str, expected_generation: int, idempotency_key: str
     ) -> ContinuationClaim: ...
     async def start_continuation(self, claim: ContinuationClaim) -> bool: ...
+
+    async def claim_run(
+        self, *, selection: LookupRunRequest, identity: AgentRuntimeIdentitySeed | None = None
+    ) -> RunCreateClaim:
+        """Atomically admit one keyed create; an existing record never schedules."""
+        ...
 
     async def create_run(self, *, identity: AgentRuntimeIdentitySeed | None = None) -> RunRecord:
         """Persist a new run record and return it with status ``running``."""
@@ -170,7 +178,14 @@ class RunScheduler:
         agent_observability: AgentObservability | None = None,
         native_owner: NativeContinuationOwner | None = None,
     ) -> None:
-        if native_owner is not None and (services.inner_api_key or services.plugin_daemon_api_key):
+        if (
+            native_owner is not None
+            and (services.inner_api_key or services.plugin_daemon_api_key)
+            and not (
+                getattr(native_owner, "profile", None) == "confirmed"
+                and isinstance(services.confirmed_api_http_client, AgentRuntimeHTTPClient)
+            )
+        ):
             raise AgentRuntimeTransportError("native_legacy_authority_unqualified")
         self.native_owner = native_owner
         self.store = store
@@ -189,16 +204,23 @@ class RunScheduler:
 
     @property
     def native_capabilities(self) -> NativeTestCapabilities:
-        return self.native_owner.capabilities if self.native_owner is not None else NATIVE_TEST_CAPABILITIES
+        capabilities = self.native_owner.capabilities if self.native_owner is not None else NATIVE_TEST_CAPABILITIES
+        if (
+            self.services.confirmed_api_http_client is not None
+            and callable(getattr(self.store, "claim_run", None))
+            and callable(getattr(self.store, "lookup_run", None))
+        ):
+            return capabilities.model_copy(update={"features": capabilities.features | {"create-idempotency-v1"}})
+        return capabilities
 
     async def continue_run(self, run_id: str, request: ContinueRunRequest) -> ContinuationClaim:
-        require_native_test_capabilities(self.native_capabilities)
         if self.native_owner is None:
             raise NativeTestProtocolUnsupported()
         async with self._lifecycle_lock:
             if self.stopping:
                 raise SchedulerStoppingError("run scheduler is shutting down")
             checkpoint = await self.store.get_checkpoint(run_id)
+            require_native_test_capabilities(self.native_capabilities, profile=checkpoint.native_test_profile)
             if checkpoint.ref != request.ref or checkpoint.generation != request.expected_generation:
                 raise NativeContinuationConflict("checkpoint owner or generation mismatch")
             claim = await self.store.claim_continuation(
@@ -279,19 +301,33 @@ class RunScheduler:
         callers can observe them through the normal event/status stream.
         """
         if request.execution_mode == "builder_test":
-            require_native_test_capabilities(self.native_capabilities)
+            require_native_test_capabilities(self.native_capabilities, profile=request.native_test_profile)
             if self.native_owner is None:
                 raise NativeTestProtocolUnsupported()
         async with self._lifecycle_lock:
             if self.stopping:
                 raise SchedulerStoppingError("run scheduler is shutting down")
-            record = await self.store.create_run(
-                identity=AgentRuntimeIdentitySeed(
-                    execution_mode=request.execution_mode,
-                    parent_node=request.native_parent_node,
-                    request_digest=executable_request_digest(request),
-                )
+            identity = AgentRuntimeIdentitySeed(
+                execution_mode=request.execution_mode,
+                native_test_profile=request.native_test_profile,
+                parent_node=request.native_parent_node,
+                request_digest=executable_request_digest(request),
             )
+            if request.idempotency_key is None:
+                record = await self.store.create_run(identity=identity)
+            else:
+                claim = await self.store.claim_run(
+                    selection=LookupRunRequest(
+                        idempotency_key=request.idempotency_key,
+                        request_digest=create_run_fingerprint(request),
+                    ),
+                    identity=identity,
+                )
+                record = claim.record
+                if not claim.inserted:
+                    # Retention proves acceptance, not worker liveness. Never
+                    # replay even if the winner crashed before task registration.
+                    return record
             prepared = None
             if request.execution_mode == "builder_test" and self.native_owner is not None:
                 try:
@@ -364,7 +400,10 @@ class RunScheduler:
     ) -> AsyncGenerator[None, None]:
         # Generic clients belong to explicit legacy composition or unit doubles.
         # Production strict clients always require the existing durable owner.
-        if not isinstance(self.services.dify_api_http_client, AgentRuntimeHTTPClient):
+        confirmed = isinstance(self.services.confirmed_api_http_client, AgentRuntimeHTTPClient) and (
+            (request is not None and request.execution_mode == "builder_test") or expected_ref is not None
+        )
+        if not isinstance(self.services.dify_api_http_client, AgentRuntimeHTTPClient) and not confirmed:
             yield
             return
         try:
@@ -381,6 +420,7 @@ class RunScheduler:
                 or identity.parent_node != seed.parent_node
                 or identity.request_digest != seed.request_digest
                 or identity.execution_mode != seed.execution_mode
+                or identity.native_test_profile != seed.native_test_profile
                 or identity.agent_generation != expected_generation
                 or (expected_digest is not None and identity.request_digest != expected_digest)
                 or (
@@ -391,6 +431,7 @@ class RunScheduler:
                     request is not None
                     and (
                         request.execution_mode != identity.execution_mode
+                        or request.native_test_profile != identity.native_test_profile
                         or request.native_parent_node != identity.parent_node
                     )
                 )
@@ -553,6 +594,16 @@ class RunScheduler:
         native_prepared: PreparedContinuation | None = None,
     ) -> RunnableRun:
         """Create the production runner for a stored run record."""
+        services = self.services
+        if request.execution_mode == "builder_test" and request.native_test_profile == "confirmed":
+            if services.confirmed_api_http_client is None:
+                raise AgentRuntimeTransportError("native_run_bound_transport_required")
+            services = replace(
+                services,
+                dify_api_http_client=services.confirmed_api_http_client,
+                inner_api_key="",
+                plugin_daemon_api_key="",
+            )
         return AgentRunRunner(
             native_continuation=native_prepared.continuation if native_prepared is not None else None,
             deferred_tool_results=native_prepared.deferred_tool_results if native_prepared is not None else None,
@@ -560,7 +611,7 @@ class RunScheduler:
             sink=self.store,
             request=request,
             run_id=record.run_id,
-            services=self.services,
+            services=services,
             is_cancelled=is_cancelled,
             run_timeout_seconds=self.run_timeout_seconds,
             stream_text_delta_coalescing_enabled=self.stream_text_delta_coalescing_enabled,

@@ -20,12 +20,13 @@ from core.dify_builder.models import Actor, DifyBuilderContext, EntryMode, NodeO
 from core.dify_builder.placeholder_agent import PlaceholderAgent
 from core.dify_builder.runner import Env
 from core.dify_builder.state import PcState
-from models.dify_builder import DifyBuilderRun, DifyBuilderSession, DifyBuilderTestInput
+from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderRun, DifyBuilderSession, DifyBuilderTestInput
 from models.tools import BuiltinToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowRun
 from services.dify_builder import dify_port
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.effect_disclosure import disclose
+from services.dify_builder.execution_contracts import canonical_digest
 from services.dify_builder.repository import SqlDifyBuilderRepository
 
 GRAPH = {
@@ -62,6 +63,7 @@ def harness(monkeypatch: pytest.MonkeyPatch, tmp_path):
     engine = create_engine(f"sqlite:///{tmp_path / 'full-run.sqlite'}")
     for model in (
         DifyBuilderRun,
+        DifyBuilderExecutionRequest,
         DifyBuilderSession,
         DifyBuilderTestInput,
         BuiltinToolProvider,
@@ -118,6 +120,7 @@ def harness(monkeypatch: pytest.MonkeyPatch, tmp_path):
         generate.generate.return_value = {"data": {"id": "native-1", "status": "succeeded"}}
         state = SimpleNamespace(
             app=app,
+            draft=draft,
             saved=saved,
             generate=generate.generate,
             finished=finished,
@@ -127,6 +130,133 @@ def harness(monkeypatch: pytest.MonkeyPatch, tmp_path):
         )
         yield state
     engine.dispose()
+
+
+def test_real_agent_admission_uses_reserved_parent_and_current_saved_input(harness, monkeypatch):
+    graph = {
+        "nodes": [{"id": "agent-1", "data": {"type": "agent", "version": "2", "agent_node_kind": "dify_agent"}}],
+        "edges": [],
+    }
+    harness.draft.graph = json.dumps(graph)
+    signature = disclose(graph, inputs={"topic": "x"}).items[0].signature
+    seen = []
+    context = SimpleNamespace(native_run_id=str(uuid4()))
+    monkeypatch.setattr(
+        WorkflowServiceDifyPort,
+        "_prepare_confirmed_agent_execution",
+        staticmethod(lambda **kwargs: seen.append(kwargs) or context),
+    )
+    _run(harness, {"agent-1": signature})
+    assert len(seen) == 1
+    assert seen[0]["session_id"] == harness.ids["session"]
+    assert seen[0]["test_input_id"] == harness.ids["input"]
+    assert seen[0]["expected_version"] == 1
+    assert harness.generate.call_args.kwargs["builder_agent_execution"] is context
+
+
+def test_mocked_agent_never_admits_a_real_agent_scope(harness):
+    harness.draft.graph = json.dumps({"nodes": [{"id": "agent-1", "data": {"type": "agent"}}], "edges": []})
+    with patch.object(WorkflowServiceDifyPort, "_prepare_confirmed_agent_execution") as prepare:
+        _run(harness, {})
+    prepare.assert_not_called()
+    assert harness.generate.call_args.kwargs.get("builder_agent_execution") is None
+
+
+def test_parent_recovery_requires_an_actual_fully_owned_native_row(harness):
+    native_id, workflow_id = str(uuid4()), str(uuid4())
+    context = {"profile": {"profile_id": "builder-agent-confirmed-v1"}, "native_run_id": native_id}
+    with harness.factory.begin() as session:
+        session.add(
+            DifyBuilderExecutionRequest(
+                id=str(uuid4()),
+                tenant_id=harness.ids["tenant"],
+                actor_id=harness.ids["account"],
+                app_id=harness.ids["app"],
+                workflow_id=workflow_id,
+                session_id=harness.ids["session"],
+                test_input_id=harness.ids["input"],
+                context=context,
+                context_digest=canonical_digest(context),
+                state="prepared",
+                observations=[],
+            )
+        )
+    kwargs = {
+        "actor": Actor(tenant_id=harness.ids["tenant"], account_id=harness.ids["account"]),
+        "app_id": harness.ids["app"],
+        "session_id": harness.ids["session"],
+        "test_input_id": harness.ids["input"],
+        "graph": {"nodes": [{"id": "agent", "data": {"type": "agent"}}]},
+    }
+    recover = WorkflowServiceDifyPort._recover_confirmed_agent_parent_id
+    assert recover(**kwargs) is None
+    with harness.factory.begin() as session:
+        session.add(
+            WorkflowRun(
+                id=native_id,
+                tenant_id=harness.ids["tenant"],
+                app_id=harness.ids["app"],
+                workflow_id=workflow_id,
+                type="workflow",
+                triggered_from="debugging",
+                version="draft",
+                graph=json.dumps(kwargs["graph"]),
+                inputs="{}",
+                status="running",
+                created_by_role="account",
+                created_by=str(uuid4()),
+            )
+        )
+    assert recover(**kwargs) is None
+    with harness.factory.begin() as session:
+        session.get(WorkflowRun, native_id).created_by = harness.ids["account"]
+    assert recover(**kwargs) == native_id
+
+
+@pytest.mark.parametrize("barrier_ok", [True, False])
+def test_confirmed_pause_frame_is_public_only_after_durable_parent_barrier(harness, monkeypatch, barrier_ok):
+    graph = {
+        "nodes": [{"id": "agent-1", "data": {"type": "agent", "version": "2", "agent_node_kind": "dify_agent"}}],
+        "edges": [],
+    }
+    harness.draft.graph = json.dumps(graph)
+    signature = disclose(graph, inputs={"topic": "x"}).items[0].signature
+    monkeypatch.setattr(
+        WorkflowServiceDifyPort,
+        "_prepare_confirmed_agent_execution",
+        staticmethod(lambda **_kwargs: SimpleNamespace(native_run_id=str(uuid4()))),
+    )
+    harness.generate.return_value = iter([{"event": "workflow_paused", "data": {"id": "native-1"}}])
+    monkeypatch.setattr(
+        WorkflowServiceDifyPort,
+        "_finish_run",
+        lambda *_args, **_kwargs: (
+            Run(status="failed", dify_run_id="native-1"),
+            SimpleNamespace(status="paused", graph_dict=graph),
+        ),
+    )
+    order = []
+
+    def barrier(**_kwargs):
+        order.append("barrier")
+        if not barrier_ok:
+            raise RuntimeError("storage unavailable")
+        return SimpleNamespace()
+
+    monkeypatch.setattr(WorkflowServiceDifyPort, "_settle_confirmed_agent_parent", staticmethod(barrier))
+    result = _run(harness, {"agent-1": signature}, on_workflow_event=lambda _event: order.append("public"))
+    assert order == (["barrier", "public"] if barrier_ok else ["barrier"])
+    assert result.status == "running"
+    assert result.verification.execution_evidence.sealed is False
+
+
+def test_legacy_agent_cannot_use_confirmed_profile_to_bypass_nested_tool_controls(harness):
+    graph = {"nodes": [{"id": "legacy", "data": {"type": "agent", "version": "1"}}], "edges": []}
+    harness.draft.graph = json.dumps(graph)
+    signature = disclose(graph, inputs={"topic": "x"}).items[0].signature
+    result = _run(harness, {"legacy": signature})
+    harness.generate.assert_not_called()
+    assert result.execution_refusal.reason_code == "unsupported_node_implementation"
 
 
 def _run(harness, confirmation=None, inputs=None, test_input_id="ti-1", *, on_workflow_event=None) -> Run:

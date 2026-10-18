@@ -17,6 +17,7 @@ from pydantic import BaseModel, ConfigDict, JsonValue, TypeAdapter
 from pydantic_ai import RunContext, Tool
 from pydantic_ai.tools import ToolDefinition
 from pydantic_ai.toolsets import FunctionToolset
+from dify_agent.adapters.native_testing.transport import AgentRuntimeHTTPClient
 
 from dify_agent.layers.dify_core_tools.client import (
     DifyCoreToolsClient,
@@ -38,7 +39,7 @@ from dify_agent.layers.dify_plugin.tools_layer import (
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.runtime.context import Deps
 from dify_agent.runtime.native_continuation import NativePolicyStopped
-from dify_agent.runtime.native_effects import NativeToolBoundary
+from dify_agent.runtime.native_effects import NativeToolBoundary, canonical_effect_json, current_native_dispatch
 
 CORE_TOOL_STRICT = False
 TEMPORARY_UNAVAILABLE_OBSERVATION = "Tool is temporarily unavailable. Please continue without it if possible."
@@ -122,7 +123,31 @@ class Toolset(FunctionToolset[Deps]):
 
         async def invoke_tool(_ctx: RunContext[Deps], **tool_arguments: object) -> str:
             if _ctx.deps.native_effects is not None:
-                raise NativePolicyStopped("native_dispatch_fence_unavailable")
+                if _ctx.deps.native_effects.continuation.native_test_profile != "confirmed" or not isinstance(
+                    client.http_client, AgentRuntimeHTTPClient
+                ):
+                    raise NativePolicyStopped("native_dispatch_fence_unavailable")
+                envelope = current_native_dispatch()
+                prepared = await native_arguments(tool_arguments)
+                target: dict[str, JsonValue] = {
+                    "provider_type": tool_config.provider_type,
+                    "provider_id": tool_config.provider_id,
+                    "tool_name": tool_config.tool_name,
+                }
+                if envelope is None or envelope.ref != _ctx.deps.native_effects.continuation.ref:
+                    raise NativePolicyStopped("native_dispatch_fence_unavailable")
+                if canonical_effect_json(envelope.intent.parameters) != canonical_effect_json(
+                    prepared
+                ) or canonical_effect_json(envelope.intent.target) != canonical_effect_json(target):
+                    raise NativePolicyStopped("native_effect_arguments_changed")
+                # API owns materialization and the adjacent physical dispatch claim.
+                # Errors remain control and close this issued operation as unknown.
+                response = await client.invoke(
+                    execution_context=execution_context,
+                    tool_config=tool_config,
+                    tool_parameters=prepared,
+                )
+                return response.observation
             prepared = tool_arguments
             if tool_config.uses_plugin_parameters:
                 try:

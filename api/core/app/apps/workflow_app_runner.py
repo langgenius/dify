@@ -99,6 +99,7 @@ from graphon.graph_events import (
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from models.workflow import Workflow
+from services.dify_builder.native_testing.agent_context import BuilderAgentExecutionContext
 from services.dify_builder.native_testing.contracts import NativeTestContextRef
 from services.dify_builder.native_testing.runtime_bridge import NativeRuntimeBridge
 from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
@@ -206,6 +207,7 @@ class WorkflowBasedAppRunner:
         execution_recorder: BuilderExecutionRecorder | None = None,
         native_test_required: bool = False,
         native_test_ref: NativeTestContextRef | None = None,
+        builder_agent_execution: BuilderAgentExecutionContext | None = None,
         native_runtime: NativeRuntimeBridge | None = None,
         native_call_depth: int = 0,
         builder_mocked_node_ids: frozenset[str] = frozenset(),
@@ -230,6 +232,7 @@ class WorkflowBasedAppRunner:
             builder_execution=builder_execution,
             native_test_required=native_test_required,
             native_test_ref=native_test_ref,
+            builder_agent_execution=builder_agent_execution,
             builder_mocked_node_ids=builder_mocked_node_ids,
             builder_tool_credential_bindings=builder_tool_credential_bindings,
             tenant_id=tenant_id or "",

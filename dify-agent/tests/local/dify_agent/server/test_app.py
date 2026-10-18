@@ -468,7 +468,8 @@ def test_create_app_native_owner_injection_and_truthful_capabilities(monkeypatch
     with TestClient(app) as client:
         response = client.get("/runs/capabilities", headers={"Authorization": "Bearer secret"})
         assert response.status_code == 200
-        assert response.json() == {"protocol_version": 1, "features": ["pending-call-v1"]}
+        assert response.json()["protocol_version"] == 1
+        assert set(response.json()["features"]) == {"pending-call-v1", "create-idempotency-v1"}
         assert client.get("/runs/capabilities").status_code == 401
         assert FakeRunScheduler.created[-1].native_owner is owner
 
@@ -527,3 +528,22 @@ def test_strict_embedded_stub_borrows_lifespan_reader_and_client(monkeypatch: py
     assert "X-Dify-Agent-Run" in seen[0].headers
     assert len(reads) >= 2
     assert all(store is reads[0][0] for store, _ in reads)
+
+
+def test_confirmed_owner_is_composed_without_withdrawing_ordinary_keys(monkeypatch):
+    from dify_agent.runtime.confirmed_continuation import ConfirmedNativeContinuationOwner
+    from dify_agent.adapters.native_testing.transport import AgentRuntimeHTTPClient
+
+    _patch_app_lifecycle(monkeypatch)
+    settings = ServerSettings(
+        _env_file=None, api_token="secret", inner_api_key="ordinary-inner", plugin_daemon_api_key="ordinary-plugin"
+    )
+    with TestClient(create_app(settings)) as client:
+        response = client.get("/runs/capabilities", headers={"Authorization": "Bearer secret"})
+        assert response.status_code == 200
+        assert set(response.json()["features"]) == {"pending-call-v1", "policy-gate-v1", "create-idempotency-v1"}
+        scheduler = FakeRunScheduler.created[-1]
+        assert isinstance(scheduler.native_owner, ConfirmedNativeContinuationOwner)
+        assert isinstance(scheduler.services.confirmed_api_http_client, AgentRuntimeHTTPClient)
+        assert scheduler.services.inner_api_key == "ordinary-inner"
+        assert scheduler.services.plugin_daemon_api_key == "ordinary-plugin"

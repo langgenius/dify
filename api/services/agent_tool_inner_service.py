@@ -12,6 +12,12 @@ the runtime with `ToolInvokeFrom.AGENT`, invokes through
 `ToolEngine.generic_invoke(...)`, and formats observations through the shared
 public `ToolEngine.tool_response_to_str` helper so Agent and workflow paths
 stay consistent.
+
+Confirmed Test Runs resolve a reference-only static declaration and explicit
+credential through the native operation owner before entering the same tool
+engine. That owner prevents ordinary runtime construction from refreshing OAuth
+or reading dynamic schema before permission, and settles the real observation
+before the HTTP acknowledgement.
 """
 
 from __future__ import annotations
@@ -43,6 +49,26 @@ class AgentToolInnerService:
     """Invoke one API-owned Agent tool declaration, including explicit plugin-via-core calls."""
 
     def invoke(self, request: AgentToolInvokeRequest, *, session: Session) -> AgentToolInvokeResponse:
+        from services.dify_builder.native_testing.agent_bridge import require_agent_service_envelope
+
+        require_agent_service_envelope(request.native_dispatch)
+        if request.native_dispatch is not None:
+            from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
+            from services.dify_builder.native_testing.agent_operations import agent_operations_for_ref
+
+            try:
+                return agent_operations_for_ref(request.native_dispatch.ref).invoke_tool(
+                    request=request, session=session, invoke=self._invoke
+                )
+            except BuilderExecutionPolicyError:
+                raise
+            except Exception:
+                raise BuilderExecutionPolicyError("native_agent_tool_dispatch_failed") from None
+        return self._invoke(request, session=session)
+
+    def _invoke(
+        self, request: AgentToolInvokeRequest, *, session: Session, prepared_runtime=None
+    ) -> AgentToolInvokeResponse:
         app = session.get(App, request.caller.app_id)
         if app is None:
             raise AgentToolInnerServiceError(
@@ -56,6 +82,10 @@ class AgentToolInnerService:
                 description="App does not belong to the caller tenant.",
                 status_code=403,
             )
+        if request.native_dispatch is not None:
+            # Current app ownership was read above. No business/runtime I/O occurs
+            # while this request's read transaction remains open.
+            session.rollback()
 
         agent_tool = AgentToolEntity(
             provider_type=ToolProviderType.value_of(request.tool.provider_type),
@@ -65,15 +95,19 @@ class AgentToolInnerService:
             credential_id=request.tool.credential_id,
         )
         try:
-            tool_runtime = ToolManager.get_agent_tool_runtime(
-                tenant_id=request.caller.tenant_id,
-                app_id=request.caller.app_id,
-                agent_tool=agent_tool,
-                user_id=request.caller.user_id,
-                invoke_from=InvokeFrom.value_of(request.caller.invoke_from),
-                variable_pool=None,
-                allow_file_parameters=True,
-                use_default_for_missing_form_parameters=True,
+            tool_runtime = (
+                prepared_runtime
+                if prepared_runtime is not None
+                else ToolManager.get_agent_tool_runtime(
+                    tenant_id=request.caller.tenant_id,
+                    app_id=request.caller.app_id,
+                    agent_tool=agent_tool,
+                    user_id=request.caller.user_id,
+                    invoke_from=InvokeFrom.value_of(request.caller.invoke_from),
+                    variable_pool=None,
+                    allow_file_parameters=True,
+                    use_default_for_missing_form_parameters=True,
+                )
             )
             if isinstance(tool_runtime, PluginTool):
                 # Tool.invoke overlays runtime values again. Reconcile this
