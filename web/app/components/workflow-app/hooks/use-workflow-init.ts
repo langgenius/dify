@@ -1,20 +1,19 @@
+import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { Edge, Node } from '@/app/components/workflow/types'
-import type { FileUploadConfigResponse } from '@/models/common'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { ORPCError } from '@orpc/client'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { useWorkflowConfig } from '@/service/use-workflow'
 import { fetchNodesDefaultConfigs, fetchWorkflowDraft, syncWorkflowDraft } from '@/service/workflow'
 import { appWorkflowQueryOptions } from '@/service/workflow-queries'
-import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { useWorkflowDraftGraphForCanvas } from './use-workflow-draft-graph-for-canvas'
 import { useWorkflowTemplate } from './use-workflow-template'
@@ -60,7 +59,7 @@ export const useWorkflowInit = () => {
   const queryClient = useQueryClient()
   const workflowStore = useWorkflowStore()
   const { nodes: nodesTemplate, edges: edgesTemplate } = useWorkflowTemplate()
-  const { appId } = useParams<{ appId: string }>()
+  const { appId } = useAtomValue(workflowAppIdentityAtom)
   const { data: appDetail } = useSuspenseQuery(
     consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
   )
@@ -82,12 +81,9 @@ export const useWorkflowInit = () => {
   const setSyncWorkflowDraftHash = useStore((s) => s.setSyncWorkflowDraftHash)
   const [data, setData] = useState<FetchWorkflowDraftResponse>()
   const [isLoading, setIsLoading] = useState(true)
-  useEffect(() => {
-    workflowStore.setState({ appId: appDetail.id, appName: appDetail.name })
-  }, [appDetail.id, workflowStore])
 
   const handleUpdateWorkflowFileUploadConfig = useCallback(
-    (config: FileUploadConfigResponse) => {
+    (config: UploadConfig) => {
       const { setFileUploadConfig } = workflowStore.getState()
       setFileUploadConfig(config)
     },
@@ -133,7 +129,7 @@ export const useWorkflowInit = () => {
     } catch (error: unknown) {
       if (error instanceof ORPCError) {
         if (error.code === 'draft_workflow_not_exist') {
-          const isAdvancedChat = appDetail.mode === AppModeEnum.ADVANCED_CHAT
+          const isAdvancedChat = appDetail.mode === 'advanced-chat'
           const initialGraph = {
             nodes: isAdvancedChat ? nodesTemplate : [],
             edges: isAdvancedChat ? edgesTemplate : [],

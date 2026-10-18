@@ -1,830 +1,304 @@
+import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { Node } from '@/app/components/workflow/types'
-import type { InputVar, RAGPipelineVariable, RAGPipelineVariables } from '@/models/pipeline'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import * as React from 'react'
+import type { RAGPipelineVariable } from '@/models/pipeline'
+import { QueryClient } from '@tanstack/react-query'
+import { act, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useNodes } from 'reactflow'
+import { createRagPipelineSliceSlice } from '@/app/components/rag-pipeline/store'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { fullWorkflowAccessControl } from '@/app/components/workflow/hooks-store/store'
+import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { PipelineInputVarType } from '@/models/pipeline'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
+import { createPipelineVariable } from '@/test/pipeline-variables'
+import InputFieldEditorPanel from '../editor'
 import InputFieldPanel from '../index'
 
-let mockNodesData: Node<DataSourceNodeType>[] = []
-vi.mock('reactflow', () => ({
-  useNodes: () => mockNodesData,
-}))
+// Catalog icon lookup is independent of field editing and graph reference updates.
+vi.mock('@/app/components/workflow/hooks/use-tool-icon', () => ({ useToolIcon: () => '' }))
 
-const mockCloseAllInputFieldPanels = vi.fn()
-const mockToggleInputFieldPreviewPanel = vi.fn()
-let mockIsPreviewing = false
-let mockIsEditing = false
-let mockCanEdit = true
-
-vi.mock('../../../../hooks/use-input-field-panel', () => ({
-  useInputFieldPanel: () => ({
-    closeAllInputFieldPanels: mockCloseAllInputFieldPanels,
-    toggleInputFieldPreviewPanel: mockToggleInputFieldPreviewPanel,
-    isPreviewing: mockIsPreviewing,
-    isEditing: mockIsEditing,
-  }),
-}))
-
-vi.mock('@/app/components/workflow/hooks-store', () => ({
-  useHooksStore: <T,>(selector: (state: { accessControl: { canEdit: boolean } }) => T): T =>
-    selector({
-      accessControl: {
-        canEdit: mockCanEdit,
-      },
-    }),
-}))
-
-let mockRagPipelineVariables: RAGPipelineVariables = []
-const mockSetRagPipelineVariables = vi.fn()
-
-type MockStoreState = {
-  ragPipelineVariables: RAGPipelineVariables
-  setRagPipelineVariables: typeof mockSetRagPipelineVariables
-}
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: MockStoreState) => unknown) => {
-    const state: MockStoreState = {
-      ragPipelineVariables: mockRagPipelineVariables,
-      setRagPipelineVariables: mockSetRagPipelineVariables,
-    }
-    return selector(state)
-  },
-  useWorkflowStore: () => ({
-    getState: () => ({
-      setRagPipelineVariables: mockSetRagPipelineVariables,
-    }),
-  }),
-}))
-
-const mockHandleSyncWorkflowDraft = vi.fn()
-
-vi.mock('@/app/components/workflow/hooks/use-nodes-sync-draft', () => ({
-  useNodesSyncDraft: () => ({
-    handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
-  }),
-}))
-
-vi.mock('../field-list', () => ({
-  default: ({
-    nodeId,
-    LabelRightContent,
-    inputFields,
-    handleInputFieldsChange,
-    readonly,
-    labelClassName,
-    allVariableNames,
-  }: {
-    nodeId: string
-    LabelRightContent: React.ReactNode
-    inputFields: InputVar[]
-    handleInputFieldsChange: (key: string, value: InputVar[]) => void
-    readonly?: boolean
-    labelClassName?: string
-    allVariableNames: string[]
-  }) => (
-    <div data-testid={`field-list-${nodeId}`}>
-      <span data-testid={`field-list-readonly-${nodeId}`}>{String(readonly)}</span>
-      <span data-testid={`field-list-classname-${nodeId}`}>{labelClassName}</span>
-      <span data-testid={`field-list-fields-count-${nodeId}`}>{inputFields.length}</span>
-      <span data-testid={`field-list-all-vars-${nodeId}`}>{allVariableNames.join(',')}</span>
-      {LabelRightContent}
-      <button
-        data-testid={`trigger-change-${nodeId}`}
-        onClick={() =>
-          handleInputFieldsChange(nodeId, [
-            ...inputFields,
-            {
-              type: PipelineInputVarType.textInput,
-              label: 'New Field',
-              variable: 'new_field',
-              max_length: 48,
-              required: true,
-            },
-          ])
-        }
-      >
-        Add Field
-      </button>
-      <button
-        data-testid={`trigger-remove-${nodeId}`}
-        onClick={() => handleInputFieldsChange(nodeId, [])}
-      >
-        Remove All
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('../footer-tip', () => ({
-  default: () => <div data-testid="footer-tip">Footer Tip</div>,
-}))
-
-vi.mock('../label-right-content/datasource', () => ({
-  default: ({ nodeData }: { nodeData: DataSourceNodeType }) => (
-    <div data-testid={`datasource-label-${nodeData.title}`}>{nodeData.title}</div>
-  ),
-}))
-
-vi.mock('../label-right-content/global-inputs', () => ({
-  default: () => <div data-testid="global-inputs-label">Global Inputs</div>,
-}))
-
-const createInputVar = (overrides?: Partial<InputVar>): InputVar => ({
-  type: PipelineInputVarType.textInput,
-  label: 'Test Label',
-  variable: 'test_variable',
-  max_length: 48,
-  default_value: '',
-  required: true,
-  tooltips: '',
-  options: [],
-  placeholder: '',
-  unit: '',
-  allowed_file_upload_methods: [],
-  allowed_file_types: [],
-  allowed_file_extensions: [],
-  ...overrides,
-})
-
-const createRAGPipelineVariable = (nodeId: string, overrides?: Partial<InputVar>) => ({
-  belong_to_node_id: nodeId,
-  ...createInputVar(overrides),
-})
-
-const createDataSourceNode = (
-  id: string,
-  title: string,
-  overrides?: Partial<DataSourceNodeType>,
-): Node<DataSourceNodeType> => ({
-  id,
-  type: 'custom',
+const source: Node<DataSourceNodeType> = {
+  id: 'source-node',
   position: { x: 0, y: 0 },
   data: {
     type: BlockEnum.DataSource,
-    title,
-    desc: 'Test datasource',
-    selected: false,
-    ...overrides,
-  } as DataSourceNodeType,
+    title: 'Knowledge source',
+    desc: '',
+    plugin_id: 'plugin-1',
+    provider_type: 'online_document',
+    provider_name: 'source',
+    datasource_name: 'source',
+    datasource_label: 'Source',
+    datasource_parameters: {},
+    datasource_configurations: {},
+  },
+}
+const consumer = (id: string, variable: string, nodeId = 'source-node'): Node<CodeNodeType> => ({
+  id,
+  position: { x: 200, y: 0 },
+  data: {
+    type: BlockEnum.Code,
+    title: id,
+    desc: '',
+    variables: [{ variable: 'input', value_selector: ['rag', nodeId, variable] }],
+    code_language: 'python3',
+    code: '',
+    outputs: {},
+  },
 })
 
-const setupMocks = (options?: {
-  nodes?: Node<DataSourceNodeType>[]
-  ragPipelineVariables?: RAGPipelineVariables
-  isPreviewing?: boolean
-  isEditing?: boolean
-  canEdit?: boolean
-}) => {
-  mockNodesData = options?.nodes || []
-  mockRagPipelineVariables = options?.ragPipelineVariables || []
-  mockIsPreviewing = options?.isPreviewing || false
-  mockIsEditing = options?.isEditing || false
-  mockCanEdit = options?.canEdit ?? true
+// Connect the actual editor to the public panel state and expose the resulting graph.
+const PanelHarness = () => {
+  const editor = useStore((s) => s.inputFieldEditPanelProps)
+  const nodes = useNodes<Partial<CodeNodeType>>()
+  return (
+    <>
+      <InputFieldPanel />
+      {editor && <InputFieldEditorPanel {...editor} />}
+      <output aria-label="Graph">
+        {JSON.stringify(nodes.map((node) => ({ id: node.id, variables: node.data.variables })))}
+      </output>
+    </>
+  )
 }
 
-describe('InputFieldPanel', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    setupMocks()
+const renderPanel = (
+  options: {
+    variables?: RAGPipelineVariable[]
+    withConsumer?: boolean
+    canEdit?: boolean
+  } = {},
+) => {
+  const syncDraft = vi.fn()
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, staleTime: Infinity } },
   })
-
-  describe('Rendering', () => {
-    it('should render panel title correctly', () => {
-      render(<InputFieldPanel />)
-
-      expect(screen.getByText('datasetPipeline.inputFieldPanel.title'))!.toBeInTheDocument()
-    })
-
-    it('should render panel description', () => {
-      render(<InputFieldPanel />)
-
-      expect(screen.getByText('datasetPipeline.inputFieldPanel.description'))!.toBeInTheDocument()
-    })
-
-    it('should render preview button', () => {
-      render(<InputFieldPanel />)
-
-      expect(screen.getByText('datasetPipeline.operations.preview'))!.toBeInTheDocument()
-    })
-
-    it('should render close button', () => {
-      render(<InputFieldPanel />)
-
-      const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
-      expect(closeButton)!.toBeInTheDocument()
-    })
-
-    it('should render footer tip component', () => {
-      render(<InputFieldPanel />)
-
-      expect(screen.getByTestId('footer-tip'))!.toBeInTheDocument()
-    })
-
-    it('should render unique inputs section title', () => {
-      render(<InputFieldPanel />)
-
-      expect(
-        screen.getByText('datasetPipeline.inputFieldPanel.uniqueInputs.title'),
-      )!.toBeInTheDocument()
-    })
-
-    it('should render global inputs field list', () => {
-      render(<InputFieldPanel />)
-
-      expect(screen.getByTestId('field-list-shared'))!.toBeInTheDocument()
-      expect(screen.getByTestId('global-inputs-label'))!.toBeInTheDocument()
-    })
+  queryClient.setQueryData(
+    consoleQuery.files.upload.get.queryKey(),
+    createFileUploadConfigFixture({ workflow_file_upload_limit: 10 }),
+  )
+  const view = renderWorkflowFlowComponent(<PanelHarness />, {
+    resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+    queryClient,
+    injectWorkflowStoreSliceFn: createRagPipelineSliceSlice,
+    nodes: options.withConsumer
+      ? [source, consumer('consumer', 'source'), consumer('unrelated', 'source')]
+      : [source],
+    edges: options.withConsumer ? [{ id: 'edge', source: source.id, target: 'consumer' }] : [],
+    initialStoreState: { ragPipelineVariables: options.variables ?? [], showInputFieldPanel: true },
+    hooksStoreProps: {
+      doSyncWorkflowDraft: syncDraft,
+      accessControl: { ...fullWorkflowAccessControl, canEdit: options.canEdit ?? true },
+    },
   })
+  return { ...view, syncDraft, user: userEvent.setup() }
+}
 
-  describe('DataSource Node Rendering', () => {
-    it('should render field list for each datasource node', () => {
-      const nodes = [
-        createDataSourceNode('node-1', 'DataSource 1'),
-        createDataSourceNode('node-2', 'DataSource 2'),
-      ]
-      setupMocks({ nodes })
+const submit = () => screen.getByRole('button', { name: /operation.submit/ })
+const variableInput = () => screen.getByRole('textbox', { name: /variableConfig.varName/ })
 
-      render(<InputFieldPanel />)
-
-      expect(screen.getByTestId('field-list-node-1'))!.toBeInTheDocument()
-      expect(screen.getByTestId('field-list-node-2'))!.toBeInTheDocument()
-    })
-
-    it('should render datasource label for each node', () => {
-      const nodes = [createDataSourceNode('node-1', 'My DataSource')]
-      setupMocks({ nodes })
-
-      render(<InputFieldPanel />)
-
-      expect(screen.getByTestId('datasource-label-My DataSource'))!.toBeInTheDocument()
-    })
-
-    it('should not render any datasource field lists when no nodes exist', () => {
-      setupMocks({ nodes: [] })
-
-      render(<InputFieldPanel />)
-
-      expect(screen.queryByTestId('field-list-node-1')).not.toBeInTheDocument()
-      expect(screen.getByTestId('field-list-shared'))!.toBeInTheDocument()
-    })
-
-    it('should filter only DataSource type nodes', () => {
-      const dataSourceNode = createDataSourceNode('ds-node', 'DataSource Node')
-      const otherNode = {
-        id: 'other-node',
-        type: 'custom',
-        position: { x: 0, y: 0 },
-        data: {
-          type: BlockEnum.LLM, // Not a datasource type
-          title: 'LLM Node',
-          selected: false,
-        },
-      } as Node<DataSourceNodeType>
-      mockNodesData = [dataSourceNode, otherNode]
-
-      render(<InputFieldPanel />)
-
-      expect(screen.getByTestId('field-list-ds-node'))!.toBeInTheDocument()
-      expect(screen.queryByTestId('field-list-other-node')).not.toBeInTheDocument()
-    })
+it('adds a datasource field through the editor, retains global fields and synchronizes the draft', async () => {
+  const global = createPipelineVariable({
+    belong_to_node_id: 'shared',
+    variable: 'global',
+    label: 'Global input',
   })
-
-  describe('Input Fields Map', () => {
-    it('should correctly distribute variables to their nodes', () => {
-      const nodes = [createDataSourceNode('node-1', 'DataSource 1')]
-      const variables = [
-        createRAGPipelineVariable('node-1', { variable: 'var1' }),
-        createRAGPipelineVariable('node-1', { variable: 'var2' }),
-        createRAGPipelineVariable('shared', { variable: 'shared_var' }),
-      ]
-      setupMocks({ nodes, ragPipelineVariables: variables })
-
-      render(<InputFieldPanel />)
-
-      expect(screen.getByTestId('field-list-fields-count-node-1'))!.toHaveTextContent('2')
-      expect(screen.getByTestId('field-list-fields-count-shared'))!.toHaveTextContent('1')
-    })
-
-    it('should show zero fields for nodes without variables', () => {
-      const nodes = [createDataSourceNode('node-1', 'DataSource 1')]
-      setupMocks({ nodes, ragPipelineVariables: [] })
-
-      render(<InputFieldPanel />)
-
-      expect(screen.getByTestId('field-list-fields-count-node-1'))!.toHaveTextContent('0')
-    })
-
-    it('should pass all variable names to field lists', () => {
-      const nodes = [createDataSourceNode('node-1', 'DataSource 1')]
-      const variables = [
-        createRAGPipelineVariable('node-1', { variable: 'var1' }),
-        createRAGPipelineVariable('shared', { variable: 'var2' }),
-      ]
-      setupMocks({ nodes, ragPipelineVariables: variables })
-
-      render(<InputFieldPanel />)
-
-      expect(screen.getByTestId('field-list-all-vars-node-1'))!.toHaveTextContent('var1,var2')
-      expect(screen.getByTestId('field-list-all-vars-shared'))!.toHaveTextContent('var1,var2')
-    })
-  })
-
-  describe('User Interactions', () => {
-    const isCloseButton = (btn: HTMLElement) =>
-      btn.classList.contains('size-6') ||
-      btn.className.includes('shrink-0 items-center justify-center p-0.5')
-
-    it('should call closeAllInputFieldPanels when close button is clicked', () => {
-      render(<InputFieldPanel />)
-      const buttons = screen.getAllByRole('button')
-      const closeButton = buttons.find(isCloseButton)
-
-      fireEvent.click(closeButton!)
-
-      expect(mockCloseAllInputFieldPanels).toHaveBeenCalledTimes(1)
-    })
-
-    it('should call toggleInputFieldPreviewPanel when preview button is clicked', () => {
-      render(<InputFieldPanel />)
-      const previewButton = screen.getByText('datasetPipeline.operations.preview')
-
-      fireEvent.click(previewButton)
-
-      expect(mockToggleInputFieldPreviewPanel).toHaveBeenCalledTimes(1)
-    })
-
-    it('should disable preview button when editing', () => {
-      setupMocks({ isEditing: true })
-
-      render(<InputFieldPanel />)
-
-      const previewButton = screen.getByText('datasetPipeline.operations.preview').closest('button')
-      expect(previewButton)!.toBeDisabled()
-    })
-
-    it('should not disable preview button when not editing', () => {
-      setupMocks({ isEditing: false })
-
-      render(<InputFieldPanel />)
-
-      const previewButton = screen.getByText('datasetPipeline.operations.preview').closest('button')
-      expect(previewButton).not.toBeDisabled()
-    })
-  })
-
-  describe('Preview State', () => {
-    it('should apply active styling when previewing', () => {
-      setupMocks({ isPreviewing: true })
-
-      render(<InputFieldPanel />)
-
-      const previewButton = screen.getByText('datasetPipeline.operations.preview').closest('button')
-      expect(previewButton)!.toHaveClass('bg-state-accent-active')
-      expect(previewButton)!.toHaveClass('text-text-accent')
-    })
-
-    it('should set readonly to true when previewing', () => {
-      setupMocks({ isPreviewing: true })
-
-      render(<InputFieldPanel />)
-
-      expect(screen.getByTestId('field-list-readonly-shared'))!.toHaveTextContent('true')
-    })
-
-    it('should set readonly to true when editing', () => {
-      setupMocks({ isEditing: true })
-
-      render(<InputFieldPanel />)
-
-      expect(screen.getByTestId('field-list-readonly-shared'))!.toHaveTextContent('true')
-    })
-
-    it('should set readonly to false when not previewing or editing', () => {
-      setupMocks({ isPreviewing: false, isEditing: false })
-
-      render(<InputFieldPanel />)
-
-      expect(screen.getByTestId('field-list-readonly-shared'))!.toHaveTextContent('false')
-    })
-
-    it('should set readonly to true when access control cannot edit', () => {
-      setupMocks({ canEdit: false })
-
-      render(<InputFieldPanel />)
-
-      expect(screen.getByTestId('field-list-readonly-shared'))!.toHaveTextContent('true')
-    })
-  })
-
-  describe('Input Fields Change Handler', () => {
-    it('should update rag pipeline variables when input fields change', async () => {
-      const nodes = [createDataSourceNode('node-1', 'DataSource 1')]
-      setupMocks({ nodes })
-      render(<InputFieldPanel />)
-
-      fireEvent.click(screen.getByTestId('trigger-change-node-1'))
-
-      await waitFor(() => {
-        expect(mockSetRagPipelineVariables).toHaveBeenCalled()
-      })
-    })
-
-    it('should call handleSyncWorkflowDraft when fields change', async () => {
-      const nodes = [createDataSourceNode('node-1', 'DataSource 1')]
-      setupMocks({ nodes })
-      render(<InputFieldPanel />)
-
-      fireEvent.click(screen.getByTestId('trigger-change-node-1'))
-
-      await waitFor(() => {
-        expect(mockHandleSyncWorkflowDraft).toHaveBeenCalled()
-      })
-    })
-
-    it('should place datasource node fields before global fields', async () => {
-      const nodes = [createDataSourceNode('node-1', 'DataSource 1')]
-      const variables = [createRAGPipelineVariable('shared', { variable: 'shared_var' })]
-      setupMocks({ nodes, ragPipelineVariables: variables })
-      render(<InputFieldPanel />)
-
-      fireEvent.click(screen.getByTestId('trigger-change-node-1'))
-
-      await waitFor(() => {
-        expect(mockSetRagPipelineVariables).toHaveBeenCalled()
-      })
-
-      const setVarsCall = mockSetRagPipelineVariables.mock.calls[0]![0] as RAGPipelineVariables
-      const isNotShared = (v: RAGPipelineVariable) => v.belong_to_node_id !== 'shared'
-      const isShared = (v: RAGPipelineVariable) => v.belong_to_node_id === 'shared'
-      const dsFields = setVarsCall.filter(isNotShared)
-      const sharedFields = setVarsCall.filter(isShared)
-
-      if (dsFields.length > 0 && sharedFields.length > 0) {
-        const firstDsIndex = setVarsCall.indexOf(dsFields[0]!)
-        const firstSharedIndex = setVarsCall.indexOf(sharedFields[0]!)
-        expect(firstDsIndex).toBeLessThan(firstSharedIndex)
-      }
-    })
-
-    it('should handle removing all fields from a node', async () => {
-      const nodes = [createDataSourceNode('node-1', 'DataSource 1')]
-      const variables = [
-        createRAGPipelineVariable('node-1', { variable: 'var1' }),
-        createRAGPipelineVariable('node-1', { variable: 'var2' }),
-      ]
-      setupMocks({ nodes, ragPipelineVariables: variables })
-      render(<InputFieldPanel />)
-
-      fireEvent.click(screen.getByTestId('trigger-remove-node-1'))
-
-      await waitFor(() => {
-        expect(mockSetRagPipelineVariables).toHaveBeenCalled()
-      })
-    })
-
-    it('should update global input fields correctly', async () => {
-      setupMocks()
-      render(<InputFieldPanel />)
-
-      fireEvent.click(screen.getByTestId('trigger-change-shared'))
-
-      await waitFor(() => {
-        expect(mockSetRagPipelineVariables).toHaveBeenCalled()
-      })
-
-      const setVarsCall = mockSetRagPipelineVariables.mock.calls[0]![0] as RAGPipelineVariables
-      const isSharedField = (v: RAGPipelineVariable) => v.belong_to_node_id === 'shared'
-      const hasSharedField = setVarsCall.some(isSharedField)
-      expect(hasSharedField).toBe(true)
-    })
-
-    it('should ignore input field changes when access control cannot edit', () => {
-      const nodes = [createDataSourceNode('node-1', 'DataSource 1')]
-      setupMocks({ nodes, canEdit: false })
-      render(<InputFieldPanel />)
-
-      fireEvent.click(screen.getByTestId('trigger-change-node-1'))
-
-      expect(mockSetRagPipelineVariables).not.toHaveBeenCalled()
-      expect(mockHandleSyncWorkflowDraft).not.toHaveBeenCalled()
-    })
-
-    it('should ignore input field changes while previewing', () => {
-      const nodes = [createDataSourceNode('node-1', 'DataSource 1')]
-      setupMocks({ nodes, isPreviewing: true })
-      render(<InputFieldPanel />)
-
-      fireEvent.click(screen.getByTestId('trigger-change-node-1'))
-
-      expect(mockSetRagPipelineVariables).not.toHaveBeenCalled()
-      expect(mockHandleSyncWorkflowDraft).not.toHaveBeenCalled()
-    })
-
-    it('should still persist input field changes while edit panel is open if access control can edit', async () => {
-      const nodes = [createDataSourceNode('node-1', 'DataSource 1')]
-      setupMocks({ nodes, isEditing: true, canEdit: true })
-      render(<InputFieldPanel />)
-
-      fireEvent.click(screen.getByTestId('trigger-change-node-1'))
-
-      await waitFor(() => {
-        expect(mockSetRagPipelineVariables).toHaveBeenCalled()
-      })
-      expect(mockHandleSyncWorkflowDraft).toHaveBeenCalled()
-    })
-  })
-
-  describe('Memoization', () => {
-    it('should compute allVariableNames correctly', () => {
-      const variables = [
-        createRAGPipelineVariable('node-1', { variable: 'alpha' }),
-        createRAGPipelineVariable('node-1', { variable: 'beta' }),
-        createRAGPipelineVariable('shared', { variable: 'gamma' }),
-      ]
-      setupMocks({ ragPipelineVariables: variables })
-
-      render(<InputFieldPanel />)
-
-      expect(screen.getByTestId('field-list-all-vars-shared'))!.toHaveTextContent(
-        'alpha,beta,gamma',
-      )
-    })
-  })
-
-  describe('Callback Stability', () => {
-    const findCloseButton = (buttons: HTMLElement[]) => {
-      const isCloseButton = (btn: HTMLElement) =>
-        btn.classList.contains('size-6') ||
-        btn.className.includes('shrink-0 items-center justify-center p-0.5')
-      return buttons.find(isCloseButton)
-    }
-
-    it('should maintain closePanel callback reference', () => {
-      const { rerender } = render(<InputFieldPanel />)
-
-      const buttons1 = screen.getAllByRole('button')
-      fireEvent.click(findCloseButton(buttons1)!)
-      const callCount1 = mockCloseAllInputFieldPanels.mock.calls.length
-
-      rerender(<InputFieldPanel />)
-      const buttons2 = screen.getAllByRole('button')
-      fireEvent.click(findCloseButton(buttons2)!)
-
-      expect(mockCloseAllInputFieldPanels.mock.calls.length).toBe(callCount1 + 1)
-    })
-
-    it('should maintain togglePreviewPanel callback reference', () => {
-      const { rerender } = render(<InputFieldPanel />)
-
-      fireEvent.click(screen.getByText('datasetPipeline.operations.preview'))
-      const callCount1 = mockToggleInputFieldPreviewPanel.mock.calls.length
-
-      rerender(<InputFieldPanel />)
-      fireEvent.click(screen.getByText('datasetPipeline.operations.preview'))
-
-      expect(mockToggleInputFieldPreviewPanel.mock.calls.length).toBe(callCount1 + 1)
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle empty ragPipelineVariables', () => {
-      setupMocks({ ragPipelineVariables: [] })
-
-      render(<InputFieldPanel />)
-
-      expect(screen.getByTestId('field-list-all-vars-shared'))!.toHaveTextContent('')
-    })
-
-    it('should handle undefined ragPipelineVariables', () => {
-      // @ts-expect-error Testing edge case with undefined value
-      mockRagPipelineVariables = undefined
-
-      render(<InputFieldPanel />)
-
-      expect(screen.getByTestId('field-list-shared'))!.toBeInTheDocument()
-    })
-
-    it('should handle null variable names in allVariableNames', () => {
-      const variables = [
-        createRAGPipelineVariable('node-1', { variable: 'valid_var' }),
-        createRAGPipelineVariable('node-1', { variable: '' }),
-      ]
-      setupMocks({ ragPipelineVariables: variables })
-
-      render(<InputFieldPanel />)
-
-      expect(screen.getByTestId('field-list-shared'))!.toBeInTheDocument()
-    })
-
-    it('should handle large number of datasource nodes', () => {
-      const nodes = Array.from({ length: 10 }, (_, i) =>
-        createDataSourceNode(`node-${i}`, `DataSource ${i}`),
-      )
-      setupMocks({ nodes })
-
-      render(<InputFieldPanel />)
-
-      nodes.forEach((_, i) => {
-        expect(screen.getByTestId(`field-list-node-${i}`))!.toBeInTheDocument()
-      })
-    })
-
-    it('should handle large number of variables', () => {
-      const variables = Array.from({ length: 100 }, (_, i) =>
-        createRAGPipelineVariable('shared', { variable: `var_${i}` }),
-      )
-      setupMocks({ ragPipelineVariables: variables })
-
-      render(<InputFieldPanel />)
-
-      expect(screen.getByTestId('field-list-fields-count-shared'))!.toHaveTextContent('100')
-    })
-
-    it('should handle special characters in variable names', () => {
-      const variables = [
-        createRAGPipelineVariable('shared', { variable: 'var_with_underscore' }),
-        createRAGPipelineVariable('shared', { variable: 'varWithCamelCase' }),
-      ]
-      setupMocks({ ragPipelineVariables: variables })
-
-      render(<InputFieldPanel />)
-
-      expect(screen.getByTestId('field-list-all-vars-shared'))!.toHaveTextContent(
-        'var_with_underscore,varWithCamelCase',
-      )
-    })
-  })
-
-  describe('Multiple Nodes Interaction', () => {
-    it('should handle changes to multiple nodes sequentially', async () => {
-      const nodes = [
-        createDataSourceNode('node-1', 'DataSource 1'),
-        createDataSourceNode('node-2', 'DataSource 2'),
-      ]
-      setupMocks({ nodes })
-      render(<InputFieldPanel />)
-
-      fireEvent.click(screen.getByTestId('trigger-change-node-1'))
-      fireEvent.click(screen.getByTestId('trigger-change-node-2'))
-
-      await waitFor(() => {
-        expect(mockSetRagPipelineVariables).toHaveBeenCalledTimes(2)
-      })
-    })
-
-    it('should maintain separate field lists for different nodes', () => {
-      const nodes = [
-        createDataSourceNode('node-1', 'DataSource 1'),
-        createDataSourceNode('node-2', 'DataSource 2'),
-      ]
-      const variables = [
-        createRAGPipelineVariable('node-1', { variable: 'var1' }),
-        createRAGPipelineVariable('node-2', { variable: 'var2' }),
-        createRAGPipelineVariable('node-2', { variable: 'var3' }),
-      ]
-      setupMocks({ nodes, ragPipelineVariables: variables })
-
-      render(<InputFieldPanel />)
-
-      expect(screen.getByTestId('field-list-fields-count-node-1'))!.toHaveTextContent('1')
-      expect(screen.getByTestId('field-list-fields-count-node-2'))!.toHaveTextContent('2')
-    })
-  })
-
-  describe('Component Structure', () => {
-    it('should have overflow scroll on content area', () => {
-      const { container } = render(<InputFieldPanel />)
-
-      const scrollContainer = container.querySelector('.overflow-y-auto')
-      expect(scrollContainer)!.toBeInTheDocument()
-    })
-
-    it('should render header section with proper spacing', () => {
-      render(<InputFieldPanel />)
-
-      expect(screen.getByText('datasetPipeline.inputFieldPanel.title'))!.toBeInTheDocument()
-      expect(screen.getByText('datasetPipeline.inputFieldPanel.description'))!.toBeInTheDocument()
-    })
-  })
-
-  describe('Integration with FieldList Component', () => {
-    it('should pass correct props to FieldList for datasource nodes', () => {
-      const nodes = [createDataSourceNode('node-1', 'DataSource 1')]
-      const variables = [createRAGPipelineVariable('node-1', { variable: 'test_var' })]
-      setupMocks({
-        nodes,
-        ragPipelineVariables: variables,
-        isPreviewing: true,
-      })
-
-      render(<InputFieldPanel />)
-
-      expect(screen.getByTestId('field-list-node-1'))!.toBeInTheDocument()
-      expect(screen.getByTestId('field-list-readonly-node-1'))!.toHaveTextContent('true')
-      expect(screen.getByTestId('field-list-fields-count-node-1'))!.toHaveTextContent('1')
-    })
-
-    it('should pass correct props to FieldList for shared node', () => {
-      const variables = [createRAGPipelineVariable('shared', { variable: 'shared_var' })]
-      setupMocks({ ragPipelineVariables: variables, isEditing: true })
-
-      render(<InputFieldPanel />)
-
-      expect(screen.getByTestId('field-list-shared'))!.toBeInTheDocument()
-      expect(screen.getByTestId('field-list-readonly-shared'))!.toHaveTextContent('true')
-      expect(screen.getByTestId('field-list-fields-count-shared'))!.toHaveTextContent('1')
-    })
-  })
-
-  describe('Variable Ordering', () => {
-    it('should maintain correct variable order in allVariableNames', () => {
-      const variables = [
-        createRAGPipelineVariable('node-1', { variable: 'first' }),
-        createRAGPipelineVariable('node-1', { variable: 'second' }),
-        createRAGPipelineVariable('shared', { variable: 'third' }),
-      ]
-      setupMocks({ ragPipelineVariables: variables })
-
-      render(<InputFieldPanel />)
-
-      expect(screen.getByTestId('field-list-all-vars-shared'))!.toHaveTextContent(
-        'first,second,third',
-      )
-    })
+  const { user, store, syncDraft } = renderPanel({ variables: [global] })
+  expect(screen.getByText('Knowledge source')).toBeInTheDocument()
+  await user.click(screen.getAllByRole('button', { name: 'common.operation.add' })[0]!)
+  expect(screen.getByRole('button', { name: /operations.preview/ })).toBeDisabled()
+  await user.type(variableInput(), 'source_url')
+  await user.tab()
+  await user.type(screen.getByRole('textbox', { name: /variableConfig.maxLength/ }), '100')
+  await user.click(submit())
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('textbox', { name: /variableConfig.varName/ }),
+    ).not.toBeInTheDocument(),
+  )
+  expect(
+    screen.getByRole('button', { name: 'common.operation.edit', description: 'source_url' }),
+  ).toBeEnabled()
+  expect(store.getState().ragPipelineVariables).toEqual([
+    expect.objectContaining({
+      variable: 'source_url',
+      belong_to_node_id: 'source-node',
+      max_length: 100,
+    }),
+    global,
+  ])
+  act(() => store.getState().flushPendingSync())
+  expect(syncDraft).toHaveBeenCalledOnce()
+})
+
+it('rejects a name used by another entrance and allows correction in the same editor', async () => {
+  const toastError = vi.spyOn(toast, 'error').mockReturnValue('error')
+  const global = createPipelineVariable({ belong_to_node_id: 'shared', variable: 'taken' })
+  const local = createPipelineVariable({ variable: 'original' })
+  const { user, store } = renderPanel({ variables: [global, local] })
+  await user.click(
+    screen.getByRole('button', { name: 'common.operation.edit', description: 'original' }),
+  )
+  await user.clear(variableInput())
+  await user.type(variableInput(), 'taken')
+  await user.click(submit())
+  await waitFor(() =>
+    expect(toastError).toHaveBeenCalledWith(
+      'datasetPipeline.inputFieldPanel.error.variableDuplicate',
+    ),
+  )
+  expect(variableInput()).toHaveValue('taken')
+  expect(store.getState().ragPipelineVariables).toEqual([global, local])
+  await user.clear(variableInput())
+  await user.type(variableInput(), 'available')
+  await user.click(submit())
+  await waitFor(() => expect(store.getState().inputFieldEditPanelProps).toBeNull())
+  expect(store.getState().ragPipelineVariables?.map((v) => v.variable)).toEqual([
+    'available',
+    'taken',
+  ])
+  act(() => store.getState().flushPendingSync())
+})
+
+it('renames real downstream references while leaving another branch untouched', async () => {
+  const { user, store } = renderPanel({ variables: [createPipelineVariable()], withConsumer: true })
+  await user.click(
+    screen.getByRole('button', { name: 'common.operation.edit', description: 'source' }),
+  )
+  await user.clear(variableInput())
+  await user.type(variableInput(), 'renamed')
+  await user.click(submit())
+  await waitFor(() => expect(store.getState().inputFieldEditPanelProps).toBeNull())
+  const graph = JSON.parse(screen.getByRole('status', { name: 'Graph' }).textContent!)
+  expect(graph.find((n: Node) => n.id === 'consumer').variables[0].value_selector).toEqual([
+    'rag',
+    'source-node',
+    'renamed',
+  ])
+  expect(graph.find((n: Node) => n.id === 'unrelated').variables[0].value_selector).toEqual([
+    'rag',
+    'source-node',
+    'source',
+  ])
+  expect(store.getState().ragPipelineVariables?.[0]?.variable).toBe('renamed')
+  act(() => store.getState().flushPendingSync())
+})
+
+it('requires confirmation to remove a referenced field and clears only its downstream references', async () => {
+  const variable = createPipelineVariable()
+  const { user, store } = renderPanel({ variables: [variable], withConsumer: true })
+  await user.click(
+    screen.getByRole('button', { name: 'common.operation.remove', description: 'source' }),
+  )
+  let dialog = await screen.findByRole('alertdialog')
+  await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+  expect(store.getState().ragPipelineVariables).toEqual([variable])
+  await user.click(
+    screen.getByRole('button', { name: 'common.operation.remove', description: 'source' }),
+  )
+  dialog = await screen.findByRole('alertdialog')
+  await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
+  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+  expect(store.getState().ragPipelineVariables).toEqual([])
+  const graph = JSON.parse(screen.getByRole('status', { name: 'Graph' }).textContent!)
+  expect(graph.find((n: Node) => n.id === 'consumer').variables[0].value_selector).toEqual([])
+  expect(graph.find((n: Node) => n.id === 'unrelated').variables[0].value_selector).toEqual([
+    'rag',
+    'source-node',
+    'source',
+  ])
+  act(() => store.getState().flushPendingSync())
+})
+
+it('reorders fields without persisting sortable metadata and removes an unused field directly', async () => {
+  const first = createPipelineVariable({ variable: 'first' })
+  const second = createPipelineVariable({ variable: 'second' })
+  const { user, store } = renderPanel({ variables: [first, second] })
+  await user.click(
+    screen.getByRole('button', { name: 'common.operation.moveDown', description: 'first' }),
+  )
+  expect(store.getState().ragPipelineVariables).toEqual([second, first])
+  await user.click(
+    screen.getByRole('button', { name: 'common.operation.remove', description: 'second' }),
+  )
+  expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  expect(store.getState().ragPipelineVariables).toEqual([first])
+  act(() => store.getState().flushPendingSync())
+})
+
+it('makes fields read-only while previewing and restores editing when preview closes', async () => {
+  const { user, store } = renderPanel({ variables: [createPipelineVariable()] })
+  const preview = screen.getByRole('button', { name: /operations.preview/ })
+  await user.click(preview)
+  expect(store.getState().showInputFieldPreviewPanel).toBe(true)
+  expect(screen.queryByRole('button', { name: 'common.operation.edit' })).not.toBeInTheDocument()
+  for (const add of screen.getAllByRole('button', { name: 'common.operation.add' }))
+    expect(add).toBeDisabled()
+  await user.click(preview)
+  expect(store.getState().showInputFieldPreviewPanel).toBe(false)
+  expect(screen.getByRole('button', { name: 'common.operation.edit' })).toBeEnabled()
+  await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+  expect(store.getState()).toMatchObject({
+    showInputFieldPanel: false,
+    showInputFieldPreviewPanel: false,
+    inputFieldEditPanelProps: null,
   })
 })
 
-describe('useFloatingRight Hook Integration', () => {
-  // Note: The hook is tested indirectly through the InputFieldPanel component
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    setupMocks()
+it('keeps all field mutation controls unavailable without edit permission', () => {
+  const { store, syncDraft } = renderPanel({
+    variables: [createPipelineVariable()],
+    canEdit: false,
   })
-
-  it('should render panel correctly with default floating state', () => {
-    render(<InputFieldPanel />)
-    expect(screen.getByTestId('field-list-shared'))!.toBeInTheDocument()
-  })
+  for (const add of screen.getAllByRole('button', { name: 'common.operation.add' }))
+    expect(add).toBeDisabled()
+  expect(screen.queryByRole('button', { name: 'common.operation.edit' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'common.operation.remove' })).not.toBeInTheDocument()
+  act(() => store.getState().flushPendingSync())
+  expect(syncDraft).not.toHaveBeenCalled()
 })
 
-describe('FooterTip Integration', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    setupMocks()
-  })
-
-  it('should render footer tip at the bottom of the panel', () => {
-    render(<InputFieldPanel />)
-
-    expect(screen.getByTestId('footer-tip'))!.toBeInTheDocument()
-  })
+it('cancels editing without changing the stored field', async () => {
+  const variable = createPipelineVariable()
+  const { user, store, syncDraft } = renderPanel({ variables: [variable] })
+  await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+  await user.clear(variableInput())
+  await user.type(variableInput(), 'discarded')
+  await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+  expect(screen.queryByRole('textbox', { name: /variableConfig.varName/ })).not.toBeInTheDocument()
+  expect(store.getState().ragPipelineVariables).toEqual([variable])
+  act(() => store.getState().flushPendingSync())
+  expect(syncDraft).not.toHaveBeenCalled()
 })
 
-describe('Label Components Integration', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    setupMocks()
+it('rejects a name added during an earlier editing session', async () => {
+  const toastError = vi.spyOn(toast, 'error').mockReturnValue('error')
+  const { user, store } = renderPanel({
+    variables: [createPipelineVariable({ variable: 'original' })],
   })
-
-  it('should render GlobalInputs label for shared field list', () => {
-    render(<InputFieldPanel />)
-
-    expect(screen.getByTestId('global-inputs-label'))!.toBeInTheDocument()
-  })
-
-  it('should render Datasource label for each datasource node', () => {
-    const nodes = [
-      createDataSourceNode('node-1', 'First DataSource'),
-      createDataSourceNode('node-2', 'Second DataSource'),
-    ]
-    setupMocks({ nodes })
-
-    render(<InputFieldPanel />)
-
-    expect(screen.getByTestId('datasource-label-First DataSource'))!.toBeInTheDocument()
-    expect(screen.getByTestId('datasource-label-Second DataSource'))!.toBeInTheDocument()
-  })
-})
-
-describe('Component Memo Behavior', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    setupMocks()
-  })
-
-  it('should handle state updates correctly with memo', async () => {
-    const nodes = [createDataSourceNode('node-1', 'DataSource 1')]
-    setupMocks({ nodes })
-    render(<InputFieldPanel />)
-
-    fireEvent.click(screen.getByTestId('trigger-change-node-1'))
-
-    await waitFor(() => {
-      expect(mockSetRagPipelineVariables).toHaveBeenCalled()
-    })
-  })
+  await user.click(
+    screen.getByRole('button', { name: 'common.operation.edit', description: 'original' }),
+  )
+  await user.clear(variableInput())
+  await user.type(variableInput(), 'taken_later')
+  await user.click(submit())
+  await waitFor(() => expect(store.getState().inputFieldEditPanelProps).toBeNull())
+  await user.click(screen.getAllByRole('button', { name: 'common.operation.add' })[1]!)
+  await user.type(variableInput(), 'taken_later')
+  await user.tab()
+  await user.type(screen.getByRole('textbox', { name: /variableConfig.maxLength/ }), '100')
+  await user.click(submit())
+  await waitFor(() =>
+    expect(toastError).toHaveBeenCalledWith(
+      'datasetPipeline.inputFieldPanel.error.variableDuplicate',
+    ),
+  )
+  expect(variableInput()).toHaveValue('taken_later')
+  expect(store.getState().ragPipelineVariables).toHaveLength(1)
+  act(() => store.getState().flushPendingSync())
 })

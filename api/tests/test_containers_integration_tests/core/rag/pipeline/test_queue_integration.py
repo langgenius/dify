@@ -355,7 +355,7 @@ class TestTenantIsolatedTaskQueueIntegration:
         """Test realistic batch processing scenario."""
         # Simulate batch processing tasks
         batch_tasks = []
-        for i in range(3):
+        for _i in range(3):
             task = {
                 "file_id": str(uuid4()),
                 "tenant_id": test_queue._tenant_id,

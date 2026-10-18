@@ -1,25 +1,17 @@
 import type { Node } from '../types'
 import { ContextMenu } from '@langgenius/dify-ui/context-menu'
 import { detectPlatform } from '@tanstack/react-hotkeys'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ReactFlowProvider } from 'reactflow'
 import { NodeContextmenu } from '../node-contextmenu'
+import { createNode } from './fixtures'
+import { renderWorkflowComponent } from './workflow-test-env'
 
-const mockUseNodes = vi.hoisted(() => vi.fn())
-const mockUseStore = vi.hoisted(() => vi.fn())
 const mockUseNodeActionsMenuModel = vi.hoisted(() => vi.fn())
-
-vi.mock('@/app/components/workflow/store/workflow/use-nodes', () => ({
-  __esModule: true,
-  default: () => mockUseNodes(),
-}))
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (
-    selector: (state: { contextMenuTarget?: { type: 'node'; nodeId: string } }) => unknown,
-  ) => mockUseStore(selector),
-}))
+const copy = vi.fn()
+const duplicate = vi.fn()
+const removeNode = vi.fn()
 
 vi.mock('@/app/components/workflow/node-actions-menu/use-node-actions-menu-model', () => ({
   useNodeActionsMenuModel: (props: unknown) => mockUseNodeActionsMenuModel(props),
@@ -33,24 +25,7 @@ describe('NodeContextmenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     contextMenuTarget = undefined
-    nodes = [
-      {
-        id: 'node-1',
-        type: 'custom',
-        position: { x: 0, y: 0 },
-        data: {
-          title: 'Node 1',
-          desc: '',
-          type: 'code' as never,
-        },
-      } as Node,
-    ]
-
-    mockUseNodes.mockImplementation(() => nodes)
-    mockUseStore.mockImplementation(
-      (selector: (state: { contextMenuTarget?: { type: 'node'; nodeId: string } }) => unknown) =>
-        selector({ contextMenuTarget }),
-    )
+    nodes = [createNode({ id: 'node-1', data: { title: 'Node 1' } })]
     mockUseNodeActionsMenuModel.mockImplementation(
       (props: { id: string; data: Node['data']; onClose: () => void }) => ({
         about: {
@@ -60,9 +35,18 @@ describe('NodeContextmenu', () => {
         canChangeBlock: false,
         canRun: false,
         data: props.data,
-        handleCopy: props.onClose,
-        handleDelete: props.onClose,
-        handleDuplicate: props.onClose,
+        handleCopy: () => {
+          copy()
+          props.onClose()
+        },
+        handleDelete: () => {
+          removeNode()
+          props.onClose()
+        },
+        handleDuplicate: () => {
+          duplicate()
+          props.onClose()
+        },
         handleRun: props.onClose,
         helpLinkUri: undefined,
         id: props.id,
@@ -76,29 +60,40 @@ describe('NodeContextmenu', () => {
   })
 
   const renderNodeContextmenu = () =>
-    render(
+    renderWorkflowComponent(
       <ReactFlowProvider>
         <ContextMenu open>
           <NodeContextmenu onClose={mockClose} />
         </ContextMenu>
       </ReactFlowProvider>,
+      { initialStoreState: { nodes, contextMenuTarget } },
     )
 
-  it.each(['c', 'd', 'Delete'])('runs %s from the node context menu owner', async (key) => {
-    const user = userEvent.setup()
-    contextMenuTarget = { type: 'node', nodeId: 'node-1' }
-    renderNodeContextmenu()
-    const item = screen.getByRole('menuitem', { name: /workflow.common.copy/ })
-    act(() => item.focus())
-    const mod = detectPlatform() === 'mac' ? 'Meta' : 'Control'
-    await user.keyboard(key.length === 1 ? `{${mod}>}${key}{/${mod}}` : `{${key}}`)
-    expect(mockClose).toHaveBeenCalledTimes(1)
-  })
+  it.each([
+    ['c', copy],
+    ['d', duplicate],
+    ['Delete', removeNode],
+  ] as const)(
+    'routes %s from the node context menu to its matching action',
+    async (key, handler) => {
+      const user = userEvent.setup()
+      contextMenuTarget = { type: 'node', nodeId: 'node-1' }
+      renderNodeContextmenu()
+      const item = screen.getByRole('menuitem', { name: /workflow.common.copy/ })
+      act(() => item.focus())
+      const mod = detectPlatform() === 'mac' ? 'Meta' : 'Control'
+      await user.keyboard(key.length === 1 ? `{${mod}>}${key}{/${mod}}` : `{${key}}`)
+      expect(mockClose).toHaveBeenCalledTimes(1)
+      expect(handler).toHaveBeenCalledOnce()
+      for (const other of [copy, duplicate, removeNode].filter((action) => action !== handler))
+        expect(other).not.toHaveBeenCalled()
+    },
+  )
 
   it('should stay hidden when the node menu is absent', () => {
     renderNodeContextmenu()
 
-    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
     expect(mockUseNodeActionsMenuModel).not.toHaveBeenCalled()
   })
 
@@ -107,25 +102,7 @@ describe('NodeContextmenu', () => {
 
     renderNodeContextmenu()
 
-    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
     expect(mockUseNodeActionsMenuModel).not.toHaveBeenCalled()
-  })
-
-  it('should render the node actions and close from content actions', () => {
-    contextMenuTarget = { type: 'node', nodeId: 'node-1' }
-    renderNodeContextmenu()
-
-    expect(screen.getByText('WORKFLOW.PANEL.ABOUT')).toBeInTheDocument()
-    expect(mockUseNodeActionsMenuModel).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: 'node-1',
-        data: expect.objectContaining({ title: 'Node 1' }),
-        showHelpLink: true,
-      }),
-    )
-
-    fireEvent.click(screen.getByRole('menuitem', { name: /workflow\.common\.copy/i }))
-
-    expect(mockClose).toHaveBeenCalledTimes(1)
   })
 })

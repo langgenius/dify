@@ -1,13 +1,12 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppInfoOperation } from './app-info-modals'
 import type { Operation } from './app-operations'
-import type { AppInfoModalType } from './use-app-info-actions'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities, hasPermission } from '@/utils/permission'
 import AppInfoHeader from './app-info-header'
 import { getAppModeLabel } from './app-mode-labels'
@@ -15,7 +14,7 @@ import { getAppModeLabel } from './app-mode-labels'
 type AppInfoTriggerProps = {
   appDetail: AppDetailWithSite
   expand: boolean
-  openModal: (modal: Exclude<AppInfoModalType, null>) => void
+  openModal: (modal: AppInfoOperation) => void
   isExporting: boolean
   exportCheck: () => void
 }
@@ -74,7 +73,7 @@ const AppInfoTrigger = ({
         ]
       : []),
     ...(appACLCapabilities.canImportExportDSL &&
-    (appDetail.mode === AppModeEnum.ADVANCED_CHAT || appDetail.mode === AppModeEnum.WORKFLOW)
+    (appDetail.mode === 'advanced-chat' || appDetail.mode === 'workflow')
       ? [
           {
             id: 'import',
@@ -99,8 +98,7 @@ const AppInfoTrigger = ({
     : []
 
   const workflowConversionOperations: Operation[] =
-    appACLCapabilities.canEdit &&
-    (appDetail.mode === AppModeEnum.COMPLETION || appDetail.mode === AppModeEnum.CHAT)
+    appACLCapabilities.canEdit && (appDetail.mode === 'completion' || appDetail.mode === 'chat')
       ? [
           {
             id: 'switch',

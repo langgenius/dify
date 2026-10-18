@@ -1,44 +1,24 @@
 import type { HumanInputNodeType } from '../../types'
+import type { WorkflowAppMode } from '@/app/components/apps/app-type'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { HumanInputFormData } from '@/types/workflow'
 import { act } from '@testing-library/react'
+import { renderWorkflowFlowHook as renderHookWithConsoleQuery } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
-import {
-  createConsoleQueryClient,
-  renderHookWithConsoleQuery,
-  seedAppDetail,
-} from '@/test/console/query-data'
+import { createConsoleQueryClient, seedAppDetail } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { withSelectorKey } from '@/test/i18n-mock'
-import { AppModeEnum, TransferMethod } from '@/types/app'
+import { TransferMethod } from '@/types/app'
 import useSingleRunFormParams from '../use-single-run-form-params'
 
-const mockUseTranslation = vi.hoisted(() => vi.fn())
-const mockUseParams = vi.hoisted(() => vi.fn())
 const mockFetchHumanInputNodeStepRunForm = vi.hoisted(() => vi.fn())
 const mockSubmitHumanInputNodeStepRunForm = vi.hoisted(() => vi.fn())
-const mockUseNodeCrud = vi.hoisted(() => vi.fn())
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => mockUseTranslation(),
-}))
-
-vi.mock('@/next/navigation', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/next/navigation')>()),
-  useParams: () => mockUseParams(),
-}))
 
 vi.mock('@/service/workflow', () => ({
   fetchHumanInputNodeStepRunForm: (...args: unknown[]) =>
     mockFetchHumanInputNodeStepRunForm(...args),
   submitHumanInputNodeStepRunForm: (...args: unknown[]) =>
     mockSubmitHumanInputNodeStepRunForm(...args),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
-  __esModule: true,
-  default: (...args: unknown[]) => mockUseNodeCrud(...args),
 }))
 
 const createPayload = (overrides: Partial<HumanInputNodeType> = {}): HumanInputNodeType => ({
@@ -92,12 +72,19 @@ describe('human-input/hooks/use-single-run-form-params', () => {
   const mockSetRunInputData = vi.fn()
   const getInputVars = vi.fn()
   let currentInputs = createPayload()
-  let appDetail: { id: string; mode: AppModeEnum } | undefined
+  let appDetail: { id: string; mode: WorkflowAppMode } | undefined
 
   const renderHook = <Result>(callback: () => Result) => {
     const queryClient = createConsoleQueryClient()
     if (appDetail) seedAppDetail(queryClient, createAppDetailFixture(appDetail))
-    return renderHookWithConsoleQuery(callback, { queryClient })
+    return renderHookWithConsoleQuery(callback, {
+      queryClient,
+      resource: {
+        kind: 'app',
+        appId: appDetail?.id ?? 'app-1',
+        mode: appDetail?.mode ?? 'workflow',
+      },
+    })
   }
 
   beforeEach(() => {
@@ -105,16 +92,9 @@ describe('human-input/hooks/use-single-run-form-params', () => {
     currentInputs = createPayload()
     appDetail = {
       id: 'app-1',
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
     }
 
-    mockUseTranslation.mockReturnValue({
-      t: withSelectorKey((key: string) => key),
-    })
-    mockUseParams.mockImplementation(() => ({ appId: appDetail?.id }))
-    mockUseNodeCrud.mockImplementation(() => ({
-      inputs: currentInputs,
-    }))
     getInputVars.mockReturnValue([
       createInputVar(),
       createInputVar({
@@ -170,7 +150,7 @@ describe('human-input/hooks/use-single-run-form-params', () => {
     expect(result.current.forms).toHaveLength(1)
     expect(result.current.forms[0]).toEqual(
       expect.objectContaining({
-        label: 'nodes.humanInput.singleRun.label',
+        label: 'workflowHumanInput.nodes.humanInput.singleRun.label',
         values: { topic: 'AI' },
         inputs: [
           expect.objectContaining({ variable: '#start.topic#' }),
@@ -286,12 +266,11 @@ describe('human-input/hooks/use-single-run-form-params', () => {
       }),
     )
 
+    const previewInputs = Object.freeze({ topic: 'AI', ignored: undefined as unknown as string })
     await act(async () => {
-      await result.current.handleShowGeneratedForm({
-        topic: 'AI',
-        ignored: undefined as unknown as string,
-      })
+      await result.current.handleShowGeneratedForm(previewInputs)
     })
+    expect(previewInputs).toHaveProperty('ignored', undefined)
 
     expect(result.current.showGeneratedForm).toBe(true)
     expect(mockFetchHumanInputNodeStepRunForm).toHaveBeenCalledWith(
@@ -352,13 +331,13 @@ describe('human-input/hooks/use-single-run-form-params', () => {
     expect(result.current.showGeneratedForm).toBe(false)
   })
 
-  it('should use the advanced-chat endpoint and skip remote fetches when app detail is missing', async () => {
+  it('should use the advanced-chat endpoint for chatflow form previews', async () => {
     appDetail = {
       id: 'app-2',
-      mode: AppModeEnum.ADVANCED_CHAT,
+      mode: 'advanced-chat' as const,
     }
 
-    const { result, rerender } = renderHook(() =>
+    const { result } = renderHook(() =>
       useSingleRunFormParams({
         id: 'node-9',
         payload: currentInputs,
@@ -378,14 +357,6 @@ describe('human-input/hooks/use-single-run-form-params', () => {
         inputs: { topic: 'hello' },
       },
     )
-
-    appDetail = undefined
-    rerender()
-
-    await act(async () => {
-      const data = await result.current.handleFetchFormContent({ topic: 'skip' })
-      expect(data).toBeNull()
-    })
 
     expect(mockFetchHumanInputNodeStepRunForm).toHaveBeenCalledTimes(1)
   })

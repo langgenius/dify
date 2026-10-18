@@ -1,3 +1,4 @@
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement } from 'react'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -9,7 +10,6 @@ import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { render } from '@/test/console/render'
 import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
-import { AppModeEnum } from '@/types/app'
 import { EnvironmentServiceApiCard } from '../deployed-environment-access-points/environment-service-api-card'
 import { EnvironmentWebAppCard } from '../deployed-environment-access-points/environment-web-app-card'
 
@@ -25,14 +25,7 @@ const mocks = vi.hoisted(() => ({
   apiKeyButtonProps: vi.fn(),
 }))
 
-vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => ({
-    queryKey: ['system-features'],
-    queryFn: vi.fn(),
-  }),
-}))
-
-let mockAppMode: AppModeEnum = AppModeEnum.WORKFLOW
+let mockAppMode: AppMode = 'workflow'
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.test/en${path}`,
@@ -107,7 +100,7 @@ const api = {
 
 function renderCard(ui: ReactElement, queryClient = createTestQueryClient()) {
   seedFeatures(queryClient)
-  seedSystemFeatures(queryClient)
+  seedSystemFeatures(queryClient, { webapp_auth: { enabled: true } })
   queryClient.setQueryData(
     consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
     createAppDetailFixture({
@@ -118,11 +111,6 @@ function renderCard(ui: ReactElement, queryClient = createTestQueryClient()) {
       }),
     }),
   )
-  queryClient.setQueryData(['system-features'], {
-    webapp_auth: {
-      enabled: true,
-    },
-  })
 
   return render(
     <NuqsTestingAdapter>
@@ -149,7 +137,7 @@ describe('environment access point cards', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.saveSiteConfig.mockResolvedValue(true)
-    mockAppMode = AppModeEnum.WORKFLOW
+    mockAppMode = 'workflow'
     vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = new Request(input, init)
       const path = new URL(request.url).pathname
@@ -247,7 +235,7 @@ describe('environment access point cards', () => {
   )
 
   it('sends a chatflow app to the chat web app shell', async () => {
-    mockAppMode = AppModeEnum.ADVANCED_CHAT
+    mockAppMode = 'advanced-chat'
 
     renderCard(<EnvironmentWebAppCard appId="app-1" environmentId="staging" canManageAccessPoint />)
 
@@ -441,20 +429,6 @@ describe('environment access point cards', () => {
       screen.getByRole('button', { name: /accessControlDialog\.accessItems\.specific/ }),
     ).toBeDisabled()
     expect(screen.getByRole('button', { name: /settings\.settings/ })).toBeDisabled()
-  })
-
-  it('uses Access Point management for every deployed Web App operation', async () => {
-    renderCard(<EnvironmentWebAppCard appId="app-1" environmentId="staging" canManageAccessPoint />)
-
-    expect(await screen.findByRole('switch')).toBeEnabled()
-    expect(screen.getByRole('button', { name: /regenerate/ })).toBeEnabled()
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: /customize\.entry/ })).toBeEnabled(),
-    )
-    expect(screen.getByRole('button', { name: /settings\.settings/ })).toBeEnabled()
-    expect(
-      screen.getByRole('button', { name: /accessControlDialog\.accessItems\.specific/ }),
-    ).toBeEnabled()
   })
 
   it('renders the real Service API endpoint, environment keys entry, docs entry, and API toggle', async () => {

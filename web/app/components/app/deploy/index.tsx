@@ -18,7 +18,6 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { getDocLanguage } from '@/i18n/language'
 import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { BuiltInEnvironmentCard } from './built-in-environment-card'
 import { EnvironmentTable } from './environment-table'
@@ -170,10 +169,7 @@ export default function AppDeploy() {
     workspacePermissionKeys,
   })
 
-  if (
-    (appDetail.mode !== AppModeEnum.WORKFLOW && appDetail.mode !== AppModeEnum.ADVANCED_CHAT) ||
-    !canDeploy
-  )
+  if ((appDetail.mode !== 'workflow' && appDetail.mode !== 'advanced-chat') || !canDeploy)
     return null
 
   return (

@@ -1,5 +1,6 @@
 import json
 from collections.abc import Iterator
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
@@ -87,10 +88,10 @@ class DummyMessage:
         self.tool_calls: list[Any] = tool_calls or []
 
 
+@dataclass(eq=False, repr=False)
 class DummyDelta:
-    def __init__(self, message: DummyMessage | None = None, usage: LLMUsage | None = None):
-        self.message: DummyMessage | None = message
-        self.usage: LLMUsage | None = usage
+    message: DummyMessage | None = None
+    usage: LLMUsage | None = None
 
 
 class DummyChunk:

@@ -1,7 +1,9 @@
 import type { ValueSelector } from '../../types'
+import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useStoreApi } from 'reactflow'
-import { useIsChatMode, useWorkflow } from '../../hooks/use-workflow'
+import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
+import { useWorkflow } from '../../hooks/use-workflow'
 import { useWorkflowVariables } from '../../hooks/use-workflow-variables'
 import { VarType } from '../../types'
 
@@ -11,7 +13,7 @@ type Params = {
   isInLoop: boolean
 }
 const useIsVarFileAttribute = ({ nodeId, isInIteration, isInLoop }: Params) => {
-  const isChatMode = useIsChatMode()
+  const isChatflow = useAtomValue(isChatflowAtom)
   const store = useStoreApi()
   const { getBeforeNodesInSameBranch } = useWorkflow()
   const { getNodes } = store.getState()
@@ -31,7 +33,7 @@ const useIsVarFileAttribute = ({ nodeId, isInIteration, isInLoop }: Params) => {
       parentNode: isInIteration ? iterationNode : loopNode,
       valueSelector: parentVariable,
       availableNodes,
-      isChatMode,
+      isChatflow,
       isConstant: false,
     })
     return varType === VarType.file

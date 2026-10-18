@@ -1,8 +1,9 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useCallback, useRef } from 'react'
+import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { useWorkflowDraftGraphForCanvas } from './use-workflow-draft-graph-for-canvas'
@@ -12,9 +13,9 @@ type RefreshWorkflowDraftOptions = {
 }
 
 export const useWorkflowRefreshDraft = () => {
-  const { appId: routeAppId } = useParams<{ appId: string }>()
+  const { appId } = useAtomValue(workflowAppIdentityAtom)
   const { data: appDetail } = useSuspenseQuery(
-    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: routeAppId } } }),
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
   )
   const workflowStore = useWorkflowStore()
   const refreshSequenceRef = useRef(0)
@@ -26,7 +27,6 @@ export const useWorkflowRefreshDraft = () => {
       if (options?.shouldApply && !options.shouldApply()) return Promise.resolve(false)
 
       const {
-        appId,
         setSyncWorkflowDraftHash,
         setIsSyncingWorkflowDraft,
         setEnvironmentVariables,
@@ -79,7 +79,7 @@ export const useWorkflowRefreshDraft = () => {
           if (refreshSequence === refreshSequenceRef.current) setIsSyncingWorkflowDraft(false)
         })
     },
-    [getWorkflowDraftGraphForCanvas, handleUpdateWorkflowCanvas, workflowStore],
+    [appId, getWorkflowDraftGraphForCanvas, handleUpdateWorkflowCanvas, workflowStore],
   )
 
   return {

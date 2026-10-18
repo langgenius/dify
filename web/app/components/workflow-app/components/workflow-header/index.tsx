@@ -1,18 +1,21 @@
 import type { HeaderProps } from '@/app/components/workflow/header'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo } from 'react'
+import {
+  isChatflowAtom,
+  workflowAppIdentityAtom,
+} from '@/app/components/workflow/editor-resource/state'
 import Header from '@/app/components/workflow/header'
 import { useStore } from '@/app/components/workflow/store'
-import { useParams } from '@/next/navigation'
 import { useResetWorkflowVersionHistory } from '@/service/use-workflow'
-import { useIsChatMode } from '../../hooks/use-is-chat-mode'
 import ChatVariableTrigger from './chat-variable-trigger'
 import FeaturesTrigger from './features-trigger'
 
 const WorkflowHeader = () => {
-  const { appId } = useParams<{ appId: string }>()
+  const { appId } = useAtomValue(workflowAppIdentityAtom)
   const setMessageLogItem = useStore((state) => state.setMessageLogItem)
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
-  const isChatMode = useIsChatMode()
+  const isChatflow = useAtomValue(isChatflowAtom)
 
   const handleClearLogAndMessageModal = useCallback(() => {
     setMessageLogItem(undefined)
@@ -21,11 +24,11 @@ const WorkflowHeader = () => {
   const viewHistoryProps = useMemo(() => {
     return {
       onClearLogAndMessageModal: handleClearLogAndMessageModal,
-      historyUrl: isChatMode
+      historyUrl: isChatflow
         ? `/apps/${appId}/advanced-chat/workflow-runs`
         : `/apps/${appId}/workflow-runs`,
     }
-  }, [appId, isChatMode, handleClearLogAndMessageModal])
+  }, [appId, isChatflow, handleClearLogAndMessageModal])
 
   const headerProps: HeaderProps = useMemo(() => {
     return {
@@ -35,8 +38,8 @@ const WorkflowHeader = () => {
           chatVariableTrigger: <ChatVariableTrigger />,
         },
         runAndHistoryProps: {
-          showRunButton: !isChatMode,
-          showPreviewButton: isChatMode,
+          showRunButton: !isChatflow,
+          showPreviewButton: isChatflow,
           viewHistoryProps,
         },
       },
@@ -47,7 +50,7 @@ const WorkflowHeader = () => {
         onRestoreSettled: resetWorkflowVersionHistory,
       },
     }
-  }, [resetWorkflowVersionHistory, isChatMode, viewHistoryProps])
+  }, [resetWorkflowVersionHistory, isChatflow, viewHistoryProps])
   return <Header {...headerProps} />
 }
 
