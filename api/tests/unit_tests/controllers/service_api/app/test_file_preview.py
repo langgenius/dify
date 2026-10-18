@@ -1,5 +1,6 @@
 """Unit tests for the Service API file-preview transport boundary."""
 
+from collections.abc import Iterator
 from inspect import unwrap
 from unittest.mock import Mock, patch
 from uuid import UUID, uuid4
@@ -184,6 +185,22 @@ class TestFilePreviewApi:
         assert response.headers["Content-Range"] == "bytes 2-5/10"
         assert response.headers["Content-Length"] == "4"
         assert b"".join(response.response) == b"2345"
+
+    def test_build_file_response_streams_ranges_across_storage_chunks(self) -> None:
+        consumed: list[bytes] = []
+
+        def content() -> Iterator[bytes]:
+            for chunk in (b"0", b"12", b"345", b"6789", b"unused"):
+                consumed.append(chunk)
+                yield chunk
+
+        preview = _preview(mime_type="video/mp4", content=b"0123456789", size=10)._replace(content=content())
+
+        response = FilePreviewApi()._build_file_response(preview=preview, range_header="bytes=2-6")
+
+        assert response.status_code == 206
+        assert b"".join(response.response) == b"23456"
+        assert consumed == [b"0", b"12", b"345", b"6789"]
 
     @pytest.mark.parametrize(
         ("range_header", "expected_range", "expected_body"),
