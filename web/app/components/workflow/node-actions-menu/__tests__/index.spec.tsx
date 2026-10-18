@@ -154,6 +154,22 @@ describe('NodeActionsDropdown', () => {
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
+  it.each([
+    { name: /workflow\.common\.copy/, clipboard: ['node-1'], nodeCount: 1 },
+    { name: /workflow\.common\.duplicate/, clipboard: undefined, nodeCount: 2 },
+  ])('runs the $name menu item on click', async ({ name, clipboard, nodeCount }) => {
+    const user = userEvent.setup()
+    const { store } = renderComponent()
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+
+    await user.click(screen.getByRole('menuitem', { name }))
+
+    if (clipboard)
+      expect(store.getState().clipboardElements.map((node) => node.id)).toEqual(clipboard)
+    expect(canvasNodes()!.split(',').filter(Boolean)).toHaveLength(nodeCount)
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+
   it('leaves composition alone and consumes held shortcuts without repeating the action', async () => {
     const user = userEvent.setup()
     renderComponent()
