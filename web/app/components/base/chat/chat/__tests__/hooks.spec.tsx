@@ -4,6 +4,7 @@ import { act, renderHook } from '@testing-library/react'
 import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'
+import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { useChat } from '../hooks'
 
 const useTimestampMock = vi.hoisted(() =>
@@ -633,7 +634,7 @@ describe('useChat', () => {
         callbacks = options as HookCallbacks
       })
 
-      const { result } = renderHook(() => useChat())
+      const { result } = renderHookWithConsoleQuery(() => useChat())
 
       act(() => {
         result.current.handleSend('test-url', { query: 'parallel tools' }, {})
@@ -677,7 +678,7 @@ describe('useChat', () => {
         resumedCallbacks = options as HookCallbacks
       })
 
-      const { result } = renderHook(() => useChat())
+      const { result } = renderHookWithConsoleQuery(() => useChat())
 
       act(() => {
         result.current.handleSend('test-url', { query: 'parallel tools after pause' }, {})
@@ -1546,7 +1547,7 @@ describe('useChat', () => {
           ],
         },
       ]
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
       )
 
