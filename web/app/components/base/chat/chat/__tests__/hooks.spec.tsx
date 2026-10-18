@@ -1523,6 +1523,64 @@ describe('useChat', () => {
   })
 
   describe('handleResume', () => {
+    it('merges parallel tool results into their thoughts when resuming directly', () => {
+      let callbacks: HookCallbacks
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const prevChatTree = [
+        {
+          id: 'q-1',
+          content: 'query',
+          isAnswer: false,
+          children: [
+            {
+              id: 'm-1',
+              content: '',
+              isAnswer: true,
+              workflow_run_id: 'wr-1',
+              agent_thoughts: [],
+              siblingIndex: 0,
+            },
+          ],
+        },
+      ]
+      const { result } = renderHook(() =>
+        useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
+      )
+
+      act(() => {
+        result.current.handleResume('m-1', 'wr-1', { isPublicAPI: true })
+      })
+
+      const toolThought = (id: string, tool: string, position: number, observation: string) => ({
+        id,
+        message_id: 'm-1',
+        conversation_id: 'c-1',
+        position,
+        thought: '',
+        tool,
+        tool_input: '{}',
+        observation,
+        message_files: [],
+      })
+
+      act(() => {
+        callbacks.onThought(toolThought('th-a', 'tool_a', 1, ''))
+        callbacks.onThought(toolThought('th-b', 'tool_b', 2, ''))
+        callbacks.onThought(toolThought('th-a', 'tool_a', 1, 'result a'))
+        callbacks.onThought(toolThought('th-b', 'tool_b', 2, 'result b'))
+      })
+
+      const thoughts = result.current.chatList[1]!.agent_thoughts!
+      expect(thoughts).toHaveLength(2)
+      expect(thoughts.map(({ id, observation }) => [id, observation])).toEqual([
+        ['th-a', 'result a'],
+        ['th-b', 'result b'],
+      ])
+    })
+
     it('should call sseGet to resume a node and handle complex tracing', async () => {
       let callbacks: HookCallbacks
       const onNotifyError = vi.fn()
