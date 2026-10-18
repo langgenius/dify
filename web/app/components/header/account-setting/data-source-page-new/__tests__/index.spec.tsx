@@ -53,6 +53,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.uninstall.post': api.uninstall,
       'auth.plugin.datasource.list.get': api.sources,
       'workspaces.current.plugin.readme.get': api.readme,
       'workspaces.current.plugin.byCategory.list.get': api.installed,
@@ -60,7 +61,6 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.plugin.uninstall.post': api.uninstall,
       'workspaces.current.plugin.permission.fetch.get': async () => ({
         install_permission: 'everyone',
         debug_permission: 'everyone',

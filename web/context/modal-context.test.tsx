@@ -3,7 +3,7 @@ import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import dayjs from 'dayjs'
 import * as React from 'react'
-import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { useModalContextSelector } from '@/context/modal-context'
 import { ModalContextProvider } from '@/context/modal-context-provider'
 import { createConsoleQueryWrapper, seedFeatures } from '@/test/console/query-data'
@@ -17,9 +17,9 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: vi.fn(() => new URLSearchParams()),
 }))
 
-vi.mock('@/app/components/plugins/update-plugin', () => ({
-  default: ({ onSave }: { onSave: () => void | Promise<void> }) => (
-    <button data-testid="save-plugin-update" onClick={onSave}>
+vi.mock('@/app/components/plugins/install-plugin/install-from-github', () => ({
+  default: ({ onSuccess }: { onSuccess: () => void | Promise<void> }) => (
+    <button data-testid="save-plugin-update" onClick={onSuccess}>
       Save plugin update
     </button>
   ),
@@ -48,7 +48,6 @@ const UpdatePluginTrigger = ({
         setShowUpdatePluginModal({
           onSaveCallback: onSave,
           payload: {
-            type: PluginSource.github,
             category,
             github: {
               originalPackageInfo: {
