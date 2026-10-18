@@ -1,5 +1,8 @@
 import json
 import time
+from collections.abc import Generator
+from contextlib import contextmanager
+from datetime import datetime
 from unittest.mock import MagicMock
 
 import pytest
@@ -10,14 +13,16 @@ from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import QueueStopEvent, QueueWorkflowStartedEvent
+from core.app.entities.task_entities import WorkflowFinishStreamResponse
 from core.workflow.system_variables import build_system_variables
 from extensions.ext_redis import RedisClientWrapper
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import GraphRuntimeState
 from models.account import Account
+from models.enums import CreatorUserRole
 from models.model import AppMode
-from models.workflow import Workflow, WorkflowType
+from models.workflow import Workflow, WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
 from tests.workflow_test_utils import build_test_variable_pool
 
 
@@ -53,7 +58,7 @@ def _build_runtime_state(run_id: str) -> GraphRuntimeState:
     return GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
 
-def _build_pipeline(run_id: str, unbound_session_factory: sessionmaker[Session]) -> WorkflowAppGenerateTaskPipeline:
+def _build_pipeline(run_id: str, session_factory: sessionmaker[Session]) -> WorkflowAppGenerateTaskPipeline:
     queue_manager = WorkflowAppQueueManager(
         task_id="task-id", user_id="user-id", invoke_from=InvokeFrom.SERVICE_API, app_mode=AppMode.WORKFLOW
     )
@@ -77,7 +82,13 @@ def _build_pipeline(run_id: str, unbound_session_factory: sessionmaker[Session])
         stream=False,
         draft_var_saver_factory=MagicMock(),
     )
-    pipeline._database_session = unbound_session_factory
+
+    @contextmanager
+    def database_session() -> Generator[Session]:
+        with session_factory.begin() as session:
+            yield session
+
+    pipeline._database_session = database_session
     return pipeline
 
 
@@ -107,50 +118,55 @@ def test_workflow_app_log_skipped_on_resumption_start(unbound_session_factory: s
     assert pipeline._workflow_execution_id == run_id
 
 
-def test_stop_event_persists_workflow_run_status() -> None:
+def test_stop_event_persists_workflow_run_status(sqlite_session_factory: sessionmaker[Session]) -> None:
     run_id = "run-stop"
-    pipeline = _build_pipeline(run_id)
+    pipeline = _build_pipeline(run_id, sqlite_session_factory)
 
     started_event = QueueWorkflowStartedEvent(reason=WorkflowStartReason.RESUMPTION)
     list(pipeline._handle_workflow_started_event(started_event))
 
-    workflow_run = MagicMock()
-    workflow_run.tenant_id = "tenant-id"
-    workflow_run.created_at = pipeline._workflow_response_converter._workflow_started_at  # type: ignore[attr-defined]
-    workflow_run.finished_at = None
-    workflow_run.elapsed_time = 0.0
-    workflow_run.error = None
-    workflow_run.status = WorkflowExecutionStatus.RUNNING
-
-    session = MagicMock()
-    session.get.return_value = workflow_run
-
-    @contextmanager
-    def _session_context():
-        yield session
-
-    pipeline._database_session = _session_context  # type: ignore[method-assign]
+    with sqlite_session_factory.begin() as session:
+        session.add(
+            WorkflowRun(
+                id=run_id,
+                tenant_id="tenant-id",
+                app_id="app-id",
+                workflow_id="workflow-id",
+                type=WorkflowType.WORKFLOW,
+                triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+                version=Workflow.VERSION_DRAFT,
+                status=WorkflowExecutionStatus.RUNNING,
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by="user-id",
+                created_at=datetime(2026, 1, 1),
+            )
+        )
 
     stop_event = QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL)
     list(pipeline._handle_workflow_failed_and_stop_events(stop_event))
 
-    assert workflow_run.status == WorkflowExecutionStatus.STOPPED
-    assert workflow_run.error is not None
-    assert workflow_run.finished_at is not None
-    session.add.assert_called_once_with(workflow_run)
+    with sqlite_session_factory() as session:
+        workflow_run = session.get(WorkflowRun, run_id)
+        assert workflow_run is not None
+        assert workflow_run.status == WorkflowExecutionStatus.STOPPED
+        assert workflow_run.error == stop_event.get_stop_reason()
+        assert workflow_run.finished_at is not None
+        assert workflow_run.elapsed_time == (workflow_run.finished_at - workflow_run.created_at).total_seconds()
 
 
-def test_stop_event_still_yields_finish_when_persistence_fails() -> None:
+def test_stop_event_still_yields_finish_when_persistence_fails(
+    unbound_session_factory: sessionmaker[Session],
+) -> None:
     run_id = "run-stop-persistence-fails"
-    pipeline = _build_pipeline(run_id)
+    pipeline = _build_pipeline(run_id, unbound_session_factory)
 
     started_event = QueueWorkflowStartedEvent(reason=WorkflowStartReason.RESUMPTION)
     list(pipeline._handle_workflow_started_event(started_event))
-    pipeline._database_session = MagicMock(side_effect=RuntimeError("db unavailable"))  # type: ignore[method-assign]
-    pipeline._workflow_response_converter.workflow_finish_to_stream_response = MagicMock(return_value="finish")
-
     stop_event = QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL)
     responses = list(pipeline._handle_workflow_failed_and_stop_events(stop_event))
 
-    assert responses == ["finish"]
-    pipeline._workflow_response_converter.workflow_finish_to_stream_response.assert_called_once()
+    assert len(responses) == 1
+    response = responses[0]
+    assert isinstance(response, WorkflowFinishStreamResponse)
+    assert response.data.status == WorkflowExecutionStatus.STOPPED
+    assert response.data.error == stop_event.get_stop_reason()
