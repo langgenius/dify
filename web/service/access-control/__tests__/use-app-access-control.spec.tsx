@@ -144,11 +144,16 @@ describe('use-app-access-control', () => {
     it('should call share access check when webapp auth is enabled', async () => {
       mockSystemFeatures.webappAuthEnabled = true
 
-      renderHook(() => useGetUserCanAccessApp({ appId: 'app-1', isInstalledApp: false }), {
-        wrapper: createWrapper(),
-      })
+      vi.mocked(getUserCanAccess).mockResolvedValue({ result: false })
+      const { result } = renderHook(
+        () => useGetUserCanAccessApp({ appId: 'app-1', isInstalledApp: false }),
+        {
+          wrapper: createWrapper(),
+        },
+      )
 
       await waitFor(() => {
+        expect(result.current.data).toEqual({ result: false })
         expect(getUserCanAccess).toHaveBeenCalledWith('app-1', false)
       })
     })

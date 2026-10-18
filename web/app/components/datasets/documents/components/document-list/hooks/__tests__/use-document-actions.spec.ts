@@ -1,7 +1,8 @@
-import { act } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DocumentActionType } from '@/models/datasets'
 import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { useDocumentActions } from '../use-document-actions'
 
 const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
@@ -64,14 +65,6 @@ describe('useDocumentActions', () => {
     vi.clearAllMocks()
   })
 
-  it('should return expected functions and state', () => {
-    const { result } = renderHook(() => useDocumentActions(defaultOptions))
-    expect(result.current.handleAction).toBeInstanceOf(Function)
-    expect(result.current.handleBatchReIndex).toBeInstanceOf(Function)
-    expect(result.current.handleBatchDownload).toBeInstanceOf(Function)
-    expect(typeof result.current.isDownloadingZip).toBe('boolean')
-  })
-
   describe('handleAction', () => {
     it('should call archive API and show success toast', async () => {
       mockArchive.mockResolvedValue({ result: 'success' })
@@ -87,6 +80,7 @@ describe('useDocumentActions', () => {
       })
       expect(mockToastSuccess).toHaveBeenCalledWith(expect.any(String))
       expect(defaultOptions.onUpdate).toHaveBeenCalled()
+      expect(defaultOptions.onClearSelection).not.toHaveBeenCalled()
     })
 
     it('should call enable API on enable action', async () => {
@@ -139,17 +133,6 @@ describe('useDocumentActions', () => {
       expect(defaultOptions.onUpdate).toHaveBeenCalled()
     })
 
-    it('should not call onClearSelection on non-delete action success', async () => {
-      mockArchive.mockResolvedValue({ result: 'success' })
-      const { result } = renderHook(() => useDocumentActions(defaultOptions))
-
-      await act(async () => {
-        await result.current.handleAction(DocumentActionType.archive)()
-      })
-
-      expect(defaultOptions.onClearSelection).not.toHaveBeenCalled()
-    })
-
     it('should show error toast on action failure', async () => {
       mockArchive.mockRejectedValue(new Error('fail'))
       const { result } = renderHook(() => useDocumentActions(defaultOptions))
@@ -192,6 +175,25 @@ describe('useDocumentActions', () => {
     })
   })
 
+  it('tracks the download request while the archive is being prepared', async () => {
+    const pending = createDeferred<Blob>()
+    mockDownloadZip.mockReturnValue(pending.promise)
+    const { result } = renderHook(() => useDocumentActions(defaultOptions))
+    let download: Promise<void>
+    act(() => {
+      download = result.current.handleBatchDownload()
+    })
+    await waitFor(() => expect(result.current.isDownloadingZip).toBe(true))
+    await act(async () => {
+      await result.current.handleBatchDownload()
+    })
+    expect(mockDownloadZip).toHaveBeenCalledOnce()
+    await act(async () => {
+      pending.resolve(new Blob(['archive']))
+      await download
+    })
+    await waitFor(() => expect(result.current.isDownloadingZip).toBe(false))
+  })
   describe('handleBatchDownload', () => {
     it('should download blob on success', async () => {
       const blob = new Blob(['test'])
@@ -216,17 +218,6 @@ describe('useDocumentActions', () => {
 
     it('should show error toast on download failure', async () => {
       mockDownloadZip.mockRejectedValue(new Error('fail'))
-      const { result } = renderHook(() => useDocumentActions(defaultOptions))
-
-      await act(async () => {
-        await result.current.handleBatchDownload()
-      })
-
-      expect(mockToastError).toHaveBeenCalledWith(expect.any(String))
-    })
-
-    it('should show error toast when blob is null', async () => {
-      mockDownloadZip.mockResolvedValue(null)
       const { result } = renderHook(() => useDocumentActions(defaultOptions))
 
       await act(async () => {

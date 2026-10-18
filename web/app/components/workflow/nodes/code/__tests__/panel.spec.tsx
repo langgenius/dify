@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
-import type { CodeNodeType, OutputVar } from '../types'
+import type { CodeNodeType } from '../types'
 import type useConfig from '../use-config'
-import type { NodePanelProps, Variable } from '@/app/components/workflow/types'
+import type { NodePanelProps } from '@/app/components/workflow/types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
@@ -9,136 +9,41 @@ import Panel from '../panel'
 import { CodeLanguage } from '../types'
 
 const mockUseConfig = vi.hoisted(() => vi.fn())
-const mockExtractFunctionParams = vi.hoisted(() => vi.fn())
-const mockExtractReturnType = vi.hoisted(() => vi.fn())
-const mockCodeEditor = vi.hoisted(() => vi.fn())
-const mockVarList = vi.hoisted(() => vi.fn())
-const mockOutputVarList = vi.hoisted(() => vi.fn())
-const mockRemoveEffectVarConfirm = vi.hoisted(() => vi.fn())
+const generatedCode = 'function main(foo, newParam) { return { result: foo } }'
 
-vi.mock('../use-config', () => ({
-  __esModule: true,
-  default: (...args: unknown[]) => mockUseConfig(...args),
-}))
+vi.mock('../use-config', () => ({ default: (...args: unknown[]) => mockUseConfig(...args) }))
 
-vi.mock('../code-parser', () => ({
-  extractFunctionParams: (...args: unknown[]) => mockExtractFunctionParams(...args),
-  extractReturnType: (...args: unknown[]) => mockExtractReturnType(...args),
-}))
-
+// The editor owns Monaco and code generation; the panel owns parsing generated code.
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  __esModule: true,
   default: (props: {
     readOnly: boolean
-    language: CodeLanguage
     value: string
     onChange: (value: string) => void
     onGenerated: (value: string) => void
     title: ReactNode
-  }) => {
-    mockCodeEditor(props)
-    return (
-      <div>
-        <div>{props.readOnly ? 'editor:readonly' : 'editor:editable'}</div>
-        <div>{props.language}</div>
-        <div>{props.title}</div>
-        <button type="button" onClick={() => props.onChange('generated code body')}>
-          change-code
-        </button>
-        <button type="button" onClick={() => props.onGenerated('generated signature code')}>
-          generate-code
-        </button>
-      </div>
-    )
-  },
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/selector', () => ({
-  __esModule: true,
-  default: (props: { value: CodeLanguage; onChange: (value: CodeLanguage) => void }) => (
-    <button type="button" onClick={() => props.onChange(CodeLanguage.python3)}>
-      {`language:${props.value}`}
-    </button>
+  }) => (
+    <div>
+      {props.title}
+      <textarea
+        aria-label="Code"
+        readOnly={props.readOnly}
+        value={props.value}
+        onChange={(event) => props.onChange(event.target.value)}
+      />
+      <button
+        type="button"
+        disabled={props.readOnly}
+        onClick={() => props.onGenerated(generatedCode)}
+      >
+        Generate code
+      </button>
+    </div>
   ),
 }))
 
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-list', () => ({
-  __esModule: true,
-  default: (props: {
-    readonly: boolean
-    list: Variable[]
-    onChange: (list: Variable[]) => void
-  }) => {
-    mockVarList(props)
-    return (
-      <div>
-        <div>{props.readonly ? 'var-list:readonly' : 'var-list:editable'}</div>
-        <button
-          type="button"
-          onClick={() =>
-            props.onChange([
-              {
-                variable: 'changed',
-                value_selector: ['start', 'changed'],
-              },
-            ])
-          }
-        >
-          change-var-list
-        </button>
-      </div>
-    )
-  },
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/output-var-list', () => ({
-  __esModule: true,
-  default: (props: {
-    readonly: boolean
-    outputs: OutputVar
-    onChange: (outputs: OutputVar) => void
-    onRemove: (name: string) => void
-  }) => {
-    mockOutputVarList(props)
-    return (
-      <div>
-        <div>{props.readonly ? 'output-list:readonly' : 'output-list:editable'}</div>
-        <button
-          type="button"
-          onClick={() =>
-            props.onChange({
-              next_result: {
-                type: VarType.number,
-                children: null,
-              },
-            })
-          }
-        >
-          change-output-list
-        </button>
-        <button type="button" onClick={() => props.onRemove('result')}>
-          remove-output
-        </button>
-      </div>
-    )
-  },
-}))
-
-vi.mock('../../_base/components/remove-effect-var-confirm', () => ({
-  __esModule: true,
-  default: (props: { isShow: boolean; onCancel: () => void; onConfirm: () => void }) => {
-    mockRemoveEffectVarConfirm(props)
-    return props.isShow ? (
-      <div>
-        <button type="button" onClick={props.onCancel}>
-          cancel-remove
-        </button>
-        <button type="button" onClick={props.onConfirm}>
-          confirm-remove
-        </button>
-      </div>
-    ) : null
-  },
+// Upstream variable browsing is a separate graph interaction; use the real input/output lists.
+vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
+  default: () => <span>Upstream variable</span>,
 }))
 
 const createData = (overrides: Partial<CodeNodeType> = {}): CodeNodeType => ({
@@ -146,24 +51,13 @@ const createData = (overrides: Partial<CodeNodeType> = {}): CodeNodeType => ({
   desc: '',
   type: BlockEnum.Code,
   code_language: CodeLanguage.javascript,
-  code: 'function main({ foo }) { return { result: foo } }',
-  variables: [
-    {
-      variable: 'foo',
-      value_selector: ['start', 'foo'],
-      value_type: VarType.string,
-    },
-  ],
-  outputs: {
-    result: {
-      type: VarType.string,
-      children: null,
-    },
-  },
+  code: 'function main(foo) { return { result: foo } }',
+  variables: [{ variable: 'foo', value_selector: ['start', 'foo'], value_type: VarType.string }],
+  outputs: { result: { type: VarType.string, children: null } },
   ...overrides,
 })
 
-const createConfigResult = (
+const createConfig = (
   overrides: Partial<ReturnType<typeof useConfig>> = {},
 ): ReturnType<typeof useConfig> => ({
   readOnly: false,
@@ -179,16 +73,17 @@ const createConfigResult = (
   handleVarsChange: vi.fn(),
   handleAddOutputVariable: vi.fn(),
   filterVar: vi.fn(() => true),
-  isShowRemoveVarConfirm: true,
+  isShowRemoveVarConfirm: false,
   hideRemoveVarConfirm: vi.fn(),
   onRemoveVarConfirm: vi.fn(),
   ...overrides,
 })
 
-const renderPanel = (data: CodeNodeType = createData()) => {
+const renderPanel = (config = createConfig()) => {
+  mockUseConfig.mockReturnValue(config)
   const props: NodePanelProps<CodeNodeType> = {
     id: 'code-node',
-    data,
+    data: config.inputs,
     panelProps: {
       getInputVars: vi.fn(() => []),
       toVarInputs: vi.fn(() => []),
@@ -198,156 +93,94 @@ const renderPanel = (data: CodeNodeType = createData()) => {
       runResult: null,
     },
   }
-
-  return render(<Panel {...props} />)
+  render(<Panel {...props} />)
+  return config
 }
 
-describe('code/panel', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockExtractFunctionParams.mockReturnValue(['summary', 'count'])
-    mockExtractReturnType.mockReturnValue({
-      result: {
-        type: VarType.string,
-        children: null,
-      },
-    })
-    mockUseConfig.mockReturnValue(createConfigResult())
-  })
+describe('code panel', () => {
+  beforeEach(() => vi.clearAllMocks())
 
-  it('renders editable controls and forwards all input, output, and code actions', async () => {
+  it('adds inputs and outputs, synchronizes the signature, and removes outputs by row index', async () => {
     const user = userEvent.setup()
-    const config = createConfigResult()
-    mockUseConfig.mockReturnValue(config)
-
-    renderPanel()
-
-    expect(screen.getByText('workflow.nodes.code.inputVars')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.code.outputVars')).toBeInTheDocument()
-    expect(screen.getByText('editor:editable')).toBeInTheDocument()
-    expect(screen.getByText('language:javascript')).toBeInTheDocument()
-
+    const config = renderPanel()
     await user.click(
       screen.getByRole('button', { name: 'common.operation.add workflow.nodes.code.inputVars' }),
     )
     await user.click(
       screen.getByRole('button', { name: 'workflow.nodes.code.syncFunctionSignature' }),
     )
-    await user.click(screen.getByRole('button', { name: 'change-code' }))
-    await user.click(screen.getByRole('button', { name: 'generate-code' }))
-    await user.click(screen.getByRole('button', { name: 'language:javascript' }))
-    await user.click(screen.getByRole('button', { name: 'change-var-list' }))
-    await user.click(screen.getByRole('button', { name: 'change-output-list' }))
-    await user.click(screen.getByRole('button', { name: 'remove-output' }))
     await user.click(
       screen.getByRole('button', { name: 'common.operation.add workflow.nodes.code.outputVars' }),
     )
-    await user.click(screen.getByRole('button', { name: 'cancel-remove' }))
-    await user.click(screen.getByRole('button', { name: 'confirm-remove' }))
-
-    expect(config.handleAddVariable).toHaveBeenCalled()
-    expect(config.handleSyncFunctionSignature).toHaveBeenCalled()
-    expect(config.handleCodeChange).toHaveBeenCalledWith('generated code body')
-    expect(config.handleCodeLanguageChange).toHaveBeenCalledWith(CodeLanguage.python3)
-    expect(config.handleVarListChange).toHaveBeenCalledWith([
-      {
-        variable: 'changed',
-        value_selector: ['start', 'changed'],
-      },
-    ])
-    expect(config.handleVarsChange).toHaveBeenCalledWith({
-      next_result: {
-        type: VarType.number,
-        children: null,
-      },
-    })
-    expect(config.handleRemoveVariable).toHaveBeenCalledWith('result')
-    expect(config.handleAddOutputVariable).toHaveBeenCalled()
-    expect(config.hideRemoveVarConfirm).toHaveBeenCalled()
-    expect(config.onRemoveVarConfirm).toHaveBeenCalled()
-    expect(config.handleCodeAndVarsChange).toHaveBeenCalledWith(
-      'generated signature code',
-      [
-        {
-          variable: 'summary',
-          value_selector: [],
-        },
-        {
-          variable: 'count',
-          value_selector: [],
-        },
-      ],
-      {
-        result: {
-          type: VarType.string,
-          children: null,
-        },
-      },
-    )
-    expect(mockExtractFunctionParams).toHaveBeenCalledWith(
-      'generated signature code',
-      CodeLanguage.javascript,
-    )
-    expect(mockExtractReturnType).toHaveBeenCalledWith(
-      'generated signature code',
-      CodeLanguage.javascript,
-    )
+    const removeButtons = screen.getAllByRole('button', { name: /operation.remove/ })
+    await user.click(removeButtons[0]!)
+    await user.click(removeButtons[1]!)
+    expect(config.handleAddVariable).toHaveBeenCalledOnce()
+    expect(config.handleSyncFunctionSignature).toHaveBeenCalledOnce()
+    expect(config.handleAddOutputVariable).toHaveBeenCalledOnce()
+    expect(config.handleVarListChange).toHaveBeenCalledWith([])
+    expect(config.handleRemoveVariable).toHaveBeenCalledWith(0)
   })
 
-  it('keeps the existing binding of a parameter that survives code regeneration', async () => {
+  it('changes the output type through the real type picker', async () => {
     const user = userEvent.setup()
-    const config = createConfigResult()
-    mockUseConfig.mockReturnValue(config)
-    mockExtractFunctionParams.mockReturnValue(['foo', 'newParam'])
-
-    renderPanel()
-
-    await user.click(screen.getByRole('button', { name: 'generate-code' }))
-
-    expect(config.handleCodeAndVarsChange).toHaveBeenCalledWith(
-      'generated signature code',
-      [
-        {
-          variable: 'foo',
-          value_selector: ['start', 'foo'],
-          value_type: VarType.string,
-        },
-        {
-          variable: 'newParam',
-          value_selector: [],
-        },
-      ],
-      {
-        result: {
-          type: VarType.string,
-          children: null,
-        },
-      },
-    )
+    const config = renderPanel()
+    await user.click(screen.getByRole('combobox'))
+    await user.click(screen.getByRole('option', { name: 'number' }))
+    expect(config.handleVarsChange).toHaveBeenCalledWith({
+      result: { type: VarType.number, children: null },
+    })
   })
 
-  it('removes input actions in readonly mode and passes readonly state to child sections', () => {
-    mockUseConfig.mockReturnValue(
-      createConfigResult({
-        readOnly: true,
-        isShowRemoveVarConfirm: false,
+  it('parses generated code while retaining bindings for surviving parameters', async () => {
+    const user = userEvent.setup()
+    const config = renderPanel(
+      createConfig({
+        inputs: createData({
+          variables: [
+            { variable: 'foo', value_selector: ['start', 'foo'], value_type: VarType.string },
+            { variable: 'removed', value_selector: ['start', 'removed'] },
+          ],
+        }),
       }),
     )
-
-    renderPanel()
-
-    expect(
-      screen.queryByRole('button', { name: 'workflow.nodes.code.syncFunctionSignature' }),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: 'common.operation.add workflow.nodes.code.inputVars' }),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'common.operation.add workflow.nodes.code.outputVars' }),
-    ).toBeInTheDocument()
-    expect(screen.getByText('editor:readonly')).toBeInTheDocument()
-    expect(screen.getByText('var-list:readonly')).toBeInTheDocument()
-    expect(screen.getByText('output-list:readonly')).toBeInTheDocument()
-    expect(mockRemoveEffectVarConfirm).toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Generate code' }))
+    expect(config.handleCodeAndVarsChange).toHaveBeenCalledExactlyOnceWith(
+      generatedCode,
+      [
+        { variable: 'foo', value_selector: ['start', 'foo'], value_type: VarType.string },
+        { variable: 'newParam', value_selector: [] },
+      ],
+      { result: { type: VarType.string, children: null } },
+    )
   })
+
+  it('prevents adding outputs or changing the language and variable names while readonly', async () => {
+    const user = userEvent.setup()
+    const config = renderPanel(createConfig({ readOnly: true }))
+    expect(screen.queryByRole('button', { name: /operation.add/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /syncFunctionSignature/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /operation.remove/ })).not.toBeInTheDocument()
+    expect(screen.getByDisplayValue('foo')).toBeDisabled()
+    expect(screen.getByDisplayValue('result')).toHaveAttribute('readonly')
+    await user.type(screen.getByDisplayValue('result'), 'changed')
+    await user.click(screen.getByText('JavaScript'))
+    expect(screen.queryByText('Python3')).not.toBeInTheDocument()
+    expect(config.handleVarsChange).not.toHaveBeenCalled()
+    expect(config.handleCodeLanguageChange).not.toHaveBeenCalled()
+  })
+
+  it.each(['confirm', 'cancel'] as const)(
+    'handles removal %s through the real confirmation dialog',
+    async (action) => {
+      const user = userEvent.setup()
+      const config = renderPanel(createConfig({ isShowRemoveVarConfirm: true }))
+      await user.click(screen.getByRole('button', { name: `common.operation.${action}` }))
+      if (action === 'confirm') expect(config.onRemoveVarConfirm).toHaveBeenCalledOnce()
+      else {
+        expect(config.hideRemoveVarConfirm).toHaveBeenCalledOnce()
+        expect(config.onRemoveVarConfirm).not.toHaveBeenCalled()
+      }
+    },
+  )
 })

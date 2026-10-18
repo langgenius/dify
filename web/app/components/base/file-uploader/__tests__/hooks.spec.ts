@@ -1,4 +1,3 @@
-import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { ReactNode } from 'react'
 import type { FileEntity } from '../types'
 import type { FileUpload } from '@/app/components/base/features/types'
@@ -101,10 +100,6 @@ afterEach(() => {
 })
 
 describe('getFileSizeLimit', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should return default limits when no config is provided', () => {
     const result = getFileSizeLimit()
 
@@ -117,14 +112,14 @@ describe('getFileSizeLimit', () => {
   })
 
   it('should use config values when provided', () => {
-    const config: UploadConfig = {
+    const config = createFileUploadConfigFixture({
       image_file_size_limit: 20,
       file_size_limit: 30,
       audio_file_size_limit: 100,
       video_file_size_limit: 200,
       skill_file_size_limit: 60,
       workflow_file_upload_limit: 20,
-    } as UploadConfig
+    })
 
     const result = getFileSizeLimit(config)
 
@@ -137,14 +132,14 @@ describe('getFileSizeLimit', () => {
   })
 
   it('should fall back to defaults when config values are zero', () => {
-    const config = {
+    const config = createFileUploadConfigFixture({
       image_file_size_limit: 0,
       file_size_limit: 0,
       audio_file_size_limit: 0,
       video_file_size_limit: 0,
       skill_file_size_limit: 0,
       workflow_file_upload_limit: 0,
-    } as UploadConfig
+    })
 
     const result = getFileSizeLimit(config)
 

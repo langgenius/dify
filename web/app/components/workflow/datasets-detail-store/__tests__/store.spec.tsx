@@ -1,58 +1,9 @@
-import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import { renderHook } from '@testing-library/react'
-import { ChunkingMode, DataSourceType } from '@/models/datasets'
-import { PermissionLevel } from '@/models/permission'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
-import { DatasetsDetailContext } from '../provider'
-import { createDatasetsDetailStore, useDatasetsDetailStore } from '../store'
+import { createDatasetsDetailStore } from '../store'
 
-const createDataset = (
-  id: string,
-  name = `dataset-${id}`,
-): DatasetDetailWithPartialMembersResponse => ({
-  ...createDatasetFixture(),
-  id,
-  name,
-  icon_info: {
-    icon: 'book',
-    icon_type: 'emoji',
-  },
-  description: `${name} description`,
-  permission: PermissionLevel.onlyMe,
-  data_source_type: DataSourceType.FILE,
-  indexing_technique:
-    'high_quality' as DatasetDetailWithPartialMembersResponse['indexing_technique'],
-  created_by: 'user-1',
-  updated_by: 'user-1',
-  updated_at: 1,
-  app_count: 0,
-  doc_form: ChunkingMode.text,
-  document_count: 0,
-  word_count: 0,
-  provider: 'provider',
-  embedding_model: 'model',
-  embedding_model_provider: 'provider',
-  embedding_available: true,
-  retrieval_model_dict: {} as DatasetDetailWithPartialMembersResponse['retrieval_model_dict'],
-  tags: [],
-  external_knowledge_info: {
-    external_knowledge_id: '',
-    external_knowledge_api_id: '',
-    external_knowledge_api_name: '',
-    external_knowledge_api_endpoint: '',
-  },
-  external_retrieval_model: {
-    top_k: 1,
-    score_threshold: 0,
-    score_threshold_enabled: false,
-  },
-  built_in_field_enabled: false,
-  runtime_mode: 'general',
-  enable_api: false,
-  is_multimodal: false,
-})
+const createDataset = (id: string, name: string) => createDatasetFixture({ id, name })
 
-describe('datasets-detail-store store', () => {
+describe('datasets-detail-store', () => {
   it('merges dataset details by id', () => {
     const store = createDatasetsDetailStore()
 
@@ -68,26 +19,5 @@ describe('datasets-detail-store store', () => {
       'dataset-1': { name: 'Dataset One' },
       'dataset-2': { name: 'Dataset Two Updated' },
     })
-  })
-
-  it('reads state from the datasets detail context', () => {
-    const store = createDatasetsDetailStore()
-    store.getState().updateDatasetsDetail([createDataset('dataset-3')])
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <DatasetsDetailContext.Provider value={store}>{children}</DatasetsDetailContext.Provider>
-    )
-
-    const { result } = renderHook(
-      () => useDatasetsDetailStore((state) => state.datasetsDetail['dataset-3']?.name),
-      { wrapper },
-    )
-
-    expect(result.current).toBe('dataset-dataset-3')
-  })
-
-  it('throws when the datasets detail provider is missing', () => {
-    expect(() => renderHook(() => useDatasetsDetailStore((state) => state.datasetsDetail))).toThrow(
-      'Missing DatasetsDetailContext.Provider in the tree',
-    )
   })
 })

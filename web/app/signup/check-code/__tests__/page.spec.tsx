@@ -25,10 +25,6 @@ vi.mock('#i18n', async (importOriginal) => ({
   useLocale: vi.fn(),
 }))
 
-vi.mock('@/hooks/use-document-title', () => ({
-  default: vi.fn(),
-}))
-
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(),
   useSearchParams: vi.fn(),
@@ -83,6 +79,11 @@ describe('Signup Check Code Page', () => {
       })
     })
     expect(mockVerifyCode).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(mockPush).toHaveBeenCalledTimes(1))
+    const destination = new URL(mockPush.mock.calls[0]![0], window.location.origin)
+    expect(destination.pathname).toBe('/signup/set-password')
+    expect(destination.searchParams.get('email')).toBe('user@example.com')
+    expect(destination.searchParams.get('token')).toBe('verified-token')
   })
 
   it('associates one localized error with an incomplete verification code', async () => {

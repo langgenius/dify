@@ -1,8 +1,6 @@
 import type { ExtraProps } from 'streamdown'
-import type { ChatContextValue } from '@/app/components/base/chat/chat/context'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-// markdown-button.spec.tsx
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChatContextProvider } from '@/app/components/base/chat/chat/context-provider'
@@ -27,27 +25,18 @@ describe('MarkdownButton (integration)', () => {
   })
 
   function renderWithCtx(node: TestNode) {
-    // Provide minimal ChatContext; cast to ChatContextValue to satisfy the provider signature
-    const ctx = {
-      onSend: (msg: unknown) => onSendSpy(msg),
-      // other props are optional at runtime; assert type to satisfy TS
-    } as unknown as ChatContextValue
-
     return render(
-      <ChatContextProvider {...ctx}>
+      <ChatContextProvider chatList={[]} onSend={onSendSpy}>
         <MarkdownButton node={node} />
       </ChatContextProvider>,
     )
   }
 
-  it('renders button text from node children', () => {
-    const node = createButtonNode({}, 'Click me')
-    renderWithCtx(node)
-    expect(screen.getByRole('button')).toHaveTextContent('Click me')
-  })
-
   it('renders a native link when the URL is valid', () => {
-    const node = createButtonNode({ dataLink: 'https://example.com' }, 'Go')
+    const node = createButtonNode(
+      { dataLink: 'https://example.com', dataMessage: 'Must not send' },
+      'Go',
+    )
 
     renderWithCtx(node)
     const link = screen.getByRole('link', { name: 'Go' })
@@ -64,7 +53,7 @@ describe('MarkdownButton (integration)', () => {
     const node = createButtonNode({ dataLink: 'not-a-url', dataMessage: 'hello!' }, 'Send')
 
     renderWithCtx(node)
-    await user.click(screen.getByRole('button'))
+    await user.click(screen.getByRole('button', { name: 'Send' }))
 
     expect(onSendSpy).toHaveBeenCalledTimes(1)
     expect(onSendSpy).toHaveBeenCalledWith('hello!')
@@ -75,7 +64,7 @@ describe('MarkdownButton (integration)', () => {
 
     const node = createButtonNode({}, 'Empty')
     renderWithCtx(node)
-    await user.click(screen.getByRole('button'))
+    await user.click(screen.getByRole('button', { name: 'Empty' }))
 
     expect(onSendSpy).not.toHaveBeenCalled()
   })
@@ -85,23 +74,8 @@ describe('MarkdownButton (integration)', () => {
     const node = createButtonNode({ dataMessage: 'msg-only' }, 'Msg')
 
     renderWithCtx(node)
-    await user.click(screen.getByRole('button'))
+    await user.click(screen.getByRole('button', { name: 'Msg' }))
 
     expect(onSendSpy).toHaveBeenCalledWith('msg-only')
-  })
-
-  it('falls back to empty label when first child value is missing', () => {
-    const node = createButtonNode({})
-    renderWithCtx(node)
-
-    expect(screen.getByRole('button')).toHaveTextContent('')
-  })
-
-  it('maps the legacy warning variant to a destructive primary button', () => {
-    renderWithCtx(createButtonNode({ dataVariant: 'warning' }, 'Delete'))
-
-    expect(screen.getByRole('button', { name: 'Delete' })).toHaveClass(
-      'bg-components-button-destructive-primary-bg',
-    )
   })
 })

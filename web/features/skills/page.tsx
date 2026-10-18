@@ -20,11 +20,11 @@ import {
   Dialog,
   DialogBody,
   DialogClose,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import {
@@ -893,7 +893,10 @@ function ImportSkillDialogForm({
     >
       <DialogHeader>
         <DialogTitle>{t(($) => $['skillManagement.importDialog.title'])}</DialogTitle>
-        <DialogCloseButton aria-label={tCommon(($) => $['operation.close'])} disabled={importing} />
+        <DialogHeaderCloseButton
+          aria-label={tCommon(($) => $['operation.close'])}
+          disabled={importing}
+        />
       </DialogHeader>
       <DialogBody>
         <div
@@ -1008,6 +1011,7 @@ function ImportSkillDialogForm({
 }
 
 export default function SkillsPage() {
+  const titleId = useId()
   const { t } = useTranslation(['skill'])
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -1203,7 +1207,10 @@ export default function SkillsPage() {
     <div className="flex h-0 min-w-0 grow flex-col overflow-hidden bg-background-body">
       <div className="shrink-0 bg-background-body px-8 pt-4 pb-2">
         <div className="flex h-6 min-w-0 items-center justify-between gap-4">
-          <h1 className="min-w-0 flex-1 truncate text-[18px]/[21.6px] font-semibold text-text-primary">
+          <h1
+            id={titleId}
+            className="min-w-0 flex-1 truncate text-[18px]/[21.6px] font-semibold text-text-primary"
+          >
             {t(($) => $['skillManagement.title'])}
           </h1>
         </div>
@@ -1222,6 +1229,8 @@ export default function SkillsPage() {
       <div className="min-h-0 flex-1">
         <ScrollArea className="h-full min-h-0 min-w-0 overflow-hidden">
           <ScrollAreaViewport
+            role="region"
+            aria-labelledby={titleId}
             ref={listViewportRef}
             tabIndex={-1}
             className="overscroll-contain"

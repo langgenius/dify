@@ -26,33 +26,17 @@ vi.mock('@/context/i18n', async (importOriginal) => ({
   useDocLink: () => (path: string) => path,
 }))
 vi.mock('@/hooks/use-timestamp', () => ({ default: () => ({ formatTime: () => '' }) }))
-vi.mock('@/service/console', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/console')>()),
-  consoleQuery: {
-    agent: {
-      byAgentId: {
-        feedbacks: { post: { mutationOptions: () => ({ mutationFn: vi.fn() }) } },
-        logSources: {
-          get: { queryOptions: () => ({ queryKey: ['log-sources'], queryFn: mocks.sources }) },
-        },
-        logs: {
-          get: {
-            key: () => ['agent-logs'],
-            queryOptions: () => ({ queryKey: ['agent-logs'], queryFn: mocks.logs }),
-          },
-          byConversationId: {
-            messages: {
-              get: {
-                key: () => ['agent-log-messages'],
-                queryOptions: () => ({ queryKey: ['agent-log-messages'], queryFn: vi.fn() }),
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'agent.byAgentId.logSources.get': mocks.sources,
+      'agent.byAgentId.logs.get': mocks.logs,
+    }),
+  }
+})
 
 const emptyLogs: AgentLogListResponse = {
   data: [],

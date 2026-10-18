@@ -25,7 +25,7 @@ export type EmojiIcon = {
   background: string
 }
 
-export type ImageIcon = {
+type ImageIcon = {
   type: 'image'
   fileId: string
   url: string

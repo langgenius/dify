@@ -34,16 +34,18 @@ export default function DraggableBlockPlugin({
   const [isSupportDrag, setIsSupportDrag] = useState(false)
 
   useEffect(() => {
-    const root = editor.getRootElement()
-    if (!root) return
-
-    const onMove = (e: MouseEvent) => {
-      const isSupportDrag = checkSupportDrag(e.target as Element)
-      setIsSupportDrag(isSupportDrag)
+    const onMove = (event: MouseEvent) => {
+      setIsSupportDrag(checkSupportDrag(event.target instanceof Element ? event.target : null))
     }
-
-    root.addEventListener('mousemove', onMove)
-    return () => root.removeEventListener('mousemove', onMove)
+    const unregister = editor.registerRootListener((root, previousRoot) => {
+      previousRoot?.removeEventListener('mousemove', onMove)
+      setIsSupportDrag(false)
+      root?.addEventListener('mousemove', onMove)
+    })
+    return () => {
+      unregister()
+      editor.getRootElement()?.removeEventListener('mousemove', onMove)
+    }
   }, [editor])
 
   return (

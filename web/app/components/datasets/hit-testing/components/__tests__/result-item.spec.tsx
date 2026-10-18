@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vite-plus/test'
 import { createHitTestingRecordFixture } from '@/test/fixtures/hit-testing'
+import { mockFixtureImageFetch } from '@/test/image-fetch'
 import { ResultItem } from '../result-item'
 
 function makePayload(
@@ -96,3 +97,42 @@ describe('ResultItem detail entries', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })
+
+// This exercises feature-owned event isolation and nested previews; no layout or native gesture is required.
+it('opens attachments independently and closes a nested preview without closing chunk details', async () => {
+  const user = userEvent.setup()
+  render(
+    <ResultItem
+      payload={makePayload({
+        files: [
+          {
+            id: 'image-1',
+            name: 'diagram.png',
+            size: 128,
+            extension: 'png',
+            mime_type: 'image/png',
+            source_url:
+              'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+          },
+        ],
+      })}
+    />,
+  )
+  await user.click(screen.getByRole('button', { name: 'diagram.png' }))
+  const preview = await screen.findByRole('dialog', { name: 'diagram.png' })
+  expect(screen.queryByRole('dialog', { name: dialogName })).not.toBeInTheDocument()
+  await user.click(within(preview).getByRole('button', { name: closeName }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+  await user.click(screen.getByRole('button', { name: triggerName }))
+  const detail = await screen.findByRole('dialog', { name: dialogName })
+  await user.click(within(detail).getByRole('button', { name: 'diagram.png' }))
+  expect(await screen.findByRole('dialog', { name: 'diagram.png' })).toBeInTheDocument()
+  await user.keyboard('{Escape}')
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog', { name: 'diagram.png' })).not.toBeInTheDocument(),
+  )
+  expect(screen.getByRole('dialog', { name: dialogName })).toBeVisible()
+})
+
+beforeEach(() => mockFixtureImageFetch())

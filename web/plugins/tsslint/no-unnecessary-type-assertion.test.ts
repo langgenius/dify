@@ -19,8 +19,10 @@ describe('no-unnecessary-type-assertion', () => {
     const prelude = 'declare const s: string\ndeclare function take(value: string | number): void\n'
     expect(fixedLines(`${prelude}take(s as string | number)\n`)).toEqual(['take(s)'])
     expect(
-      fixedLines(`${prelude}function f(): string | number {\n  return s as string | number\n}\n`),
-    ).toEqual(['}'])
+      lint(`${prelude}function f(): string | number {\n  return s as string | number\n}\n`).map(
+        (result) => result.fixed,
+      ),
+    ).toEqual([`${prelude}function f(): string | number {\n  return s\n}\n`])
     const assign = 'declare const d: { a: string; b: number }\ndeclare let t: { a: string }\n'
     expect(fixedLines(`${assign}t = d as { a: string }\n`)).toEqual(['t = d'])
   })

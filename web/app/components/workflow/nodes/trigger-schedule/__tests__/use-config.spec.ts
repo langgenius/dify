@@ -23,7 +23,6 @@ it('derives missing schedule defaults from the account timezone', () => {
   const { result } = renderNodeConfig(
     useConfig,
     createData({
-      mode: undefined as never,
       frequency: undefined,
       timezone: undefined,
       visual_config: undefined,
@@ -41,7 +40,10 @@ it('derives missing schedule defaults from the account timezone', () => {
 })
 
 it('persists consecutive schedule edits and clears the stale cron expression', () => {
-  const { result } = renderNodeConfig(useConfig, createData({ cron_expression: '0 0 * * *' }))
+  const { result } = renderNodeConfig(
+    useConfig,
+    createData({ mode: 'cron', cron_expression: '0 0 * * *' }),
+  )
   act(() => result.current.config.handleModeChange('visual'))
   act(() => result.current.config.handleFrequencyChange('hourly'))
   act(() => result.current.config.handleWeekdaysChange(['tue', 'thu']))

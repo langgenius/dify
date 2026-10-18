@@ -11,27 +11,6 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('server-only', () => ({}))
 
-vi.mock('react', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('react')>()
-
-  return {
-    ...actual,
-    cache: (factory: () => unknown) => {
-      let initialized = false
-      let value: unknown
-
-      return () => {
-        if (!initialized) {
-          value = factory()
-          initialized = true
-        }
-
-        return value
-      }
-    },
-  }
-})
-
 vi.mock('@/app/get-query-client', () => ({
   getQueryClient: mocks.getQueryClient,
 }))
@@ -59,21 +38,20 @@ describe('System Features server requests', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.resetModules()
-    mocks.getQueryClient.mockImplementation(
-      () => new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+    mocks.getQueryClient.mockReturnValue(
+      new QueryClient({ defaultOptions: { queries: { retry: false } } }),
     )
     mocks.connection.mockResolvedValue(undefined)
     mocks.getSystemFeatures.mockResolvedValue({ deployment_edition: 'CLOUD' })
   })
 
-  it('reuses a successful optional lookup for the rest of the request', async () => {
+  it('reuses a successful optional lookup from the request query client', async () => {
     const { dehydrateSystemFeatures, getOptionalSystemFeatures } = await import('../server')
 
     await expect(getOptionalSystemFeatures()).resolves.toEqual({ deployment_edition: 'CLOUD' })
     await expect(getOptionalSystemFeatures()).resolves.toEqual({ deployment_edition: 'CLOUD' })
 
     expect(mocks.getSystemFeatures).toHaveBeenCalledOnce()
-    expect(mocks.getQueryClient).toHaveBeenCalledOnce()
     expect(dehydrateSystemFeatures().queries).toEqual([
       expect.objectContaining({
         queryKey: mocks.queryKey,

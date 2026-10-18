@@ -20,12 +20,12 @@ type UseIndexingEstimateOptions = {
   docLanguage: string
   // File data source
   files: StepTwoFile[]
-  previewFileName?: string
+  previewItemId?: string
   // Notion data source
-  previewNotionPage?: StepTwoNotionPage
+  notionPages: StepTwoNotionPage[]
   notionCredentialId: string
   // Website data source
-  previewWebsitePage?: CrawlResultItem
+  websitePages: CrawlResultItem[]
   crawlOptions?: CrawlOptions
   websiteCrawlProvider?: DataSourceProvider
   websiteCrawlJobId?: string
@@ -41,10 +41,10 @@ export const useIndexingEstimate = (options: UseIndexingEstimateOptions) => {
     currentDocForm,
     docLanguage,
     files,
-    previewFileName,
-    previewNotionPage,
+    previewItemId,
+    notionPages,
     notionCredentialId,
-    previewWebsitePage,
+    websitePages,
     crawlOptions,
     websiteCrawlProvider,
     websiteCrawlJobId,
@@ -57,63 +57,68 @@ export const useIndexingEstimate = (options: UseIndexingEstimateOptions) => {
     consoleQuery.datasets.indexingEstimate.post.mutationOptions(),
   )
 
-  const getEstimateParams = useCallback(() => {
-    if (dataSourceType === DataSourceType.FILE) {
-      return getFileIndexingEstimateParamsForFile({
+  const getEstimateParams = useCallback(
+    (selectedId?: string) => {
+      if (dataSourceType === DataSourceType.FILE) {
+        return getFileIndexingEstimateParamsForFile({
+          docForm: currentDocForm,
+          docLanguage,
+          dataSourceType: DataSourceType.FILE,
+          files: selectedId ? files.filter((file) => file.id === selectedId) : files,
+          indexingTechnique,
+          processRule,
+          dataset_id: datasetId!,
+        })
+      }
+      if (dataSourceType === DataSourceType.NOTION) {
+        return getFileIndexingEstimateParamsForNotion({
+          docForm: currentDocForm,
+          docLanguage,
+          dataSourceType: DataSourceType.NOTION,
+          notionPages: notionPages.filter((page) => page.page_id === selectedId),
+          indexingTechnique,
+          processRule,
+          dataset_id: datasetId || '',
+          credential_id: notionCredentialId,
+        })
+      }
+      return getFileIndexingEstimateParamsForWeb({
         docForm: currentDocForm,
         docLanguage,
-        dataSourceType: DataSourceType.FILE,
-        files: previewFileName ? [files.find((file) => file.name === previewFileName)!] : files,
-        indexingTechnique,
-        processRule,
-        dataset_id: datasetId!,
-      })
-    }
-    if (dataSourceType === DataSourceType.NOTION) {
-      return getFileIndexingEstimateParamsForNotion({
-        docForm: currentDocForm,
-        docLanguage,
-        dataSourceType: DataSourceType.NOTION,
-        notionPages: previewNotionPage ? [previewNotionPage] : [],
+        dataSourceType: DataSourceType.WEB,
+        websitePages: websitePages.filter((page) => page.source_url === selectedId),
+        crawlOptions,
+        websiteCrawlProvider: websiteCrawlProvider ?? DataSourceProvider.jinaReader,
+        websiteCrawlJobId: websiteCrawlJobId ?? '',
         indexingTechnique,
         processRule,
         dataset_id: datasetId || '',
-        credential_id: notionCredentialId,
       })
-    }
-    return getFileIndexingEstimateParamsForWeb({
-      docForm: currentDocForm,
+    },
+    [
+      dataSourceType,
+      currentDocForm,
       docLanguage,
-      dataSourceType: DataSourceType.WEB,
-      websitePages: previewWebsitePage ? [previewWebsitePage] : [],
+      files,
+      notionPages,
+      notionCredentialId,
+      websitePages,
       crawlOptions,
-      websiteCrawlProvider: websiteCrawlProvider ?? DataSourceProvider.jinaReader,
-      websiteCrawlJobId: websiteCrawlJobId ?? '',
+      websiteCrawlProvider,
+      websiteCrawlJobId,
       indexingTechnique,
       processRule,
-      dataset_id: datasetId || '',
-    })
-  }, [
-    dataSourceType,
-    currentDocForm,
-    docLanguage,
-    files,
-    previewFileName,
-    previewNotionPage,
-    notionCredentialId,
-    previewWebsitePage,
-    crawlOptions,
-    websiteCrawlProvider,
-    websiteCrawlJobId,
-    indexingTechnique,
-    processRule,
-    datasetId,
-  ])
+      datasetId,
+    ],
+  )
 
   const { mutate } = estimateMutation
-  const fetchEstimate = useCallback(() => {
-    mutate({ body: getEstimateParams() })
-  }, [mutate, getEstimateParams])
+  const fetchEstimate = useCallback(
+    (selectedId = previewItemId) => {
+      mutate({ body: getEstimateParams(selectedId) })
+    },
+    [mutate, getEstimateParams, previewItemId],
+  )
 
   return {
     currentMutation: estimateMutation,

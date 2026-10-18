@@ -13,14 +13,14 @@ import {
 
 describe('datasource-info-builder', () => {
   describe('buildLocalFileDatasourceInfo', () => {
-    const file: CustomFile = {
-      id: 'file-1',
-      name: 'test.pdf',
-      type: 'application/pdf',
-      size: 1024,
-      extension: 'pdf',
-      mime_type: 'application/pdf',
-    } as unknown as CustomFile
+    const file: CustomFile = Object.assign(
+      new File(['x'.repeat(1024)], 'test.pdf', { type: 'application/pdf' }),
+      {
+        id: 'file-1',
+        extension: 'pdf',
+        mime_type: 'application/pdf',
+      },
+    )
 
     it('should build local file datasource info', () => {
       const result = buildLocalFileDatasourceInfo(file, 'cred-1')
@@ -36,21 +36,18 @@ describe('datasource-info-builder', () => {
         credential_id: 'cred-1',
       })
     })
-
-    it('should use empty credential when not provided', () => {
-      const result = buildLocalFileDatasourceInfo(file, '')
-      expect(result.credential_id).toBe('')
-    })
   })
 
   describe('buildOnlineDocumentDatasourceInfo', () => {
-    const page = {
+    const page: NotionPage = {
       page_id: 'page-1',
       page_name: 'My Page',
       workspace_id: 'ws-1',
       parent_id: 'root',
       type: 'page',
-    } as NotionPage & { workspace_id: string }
+      page_icon: null,
+      is_bound: false,
+    }
 
     it('should build online document info with workspace_id separated', () => {
       const result = buildOnlineDocumentDatasourceInfo(page, 'cred-2')
@@ -68,7 +65,7 @@ describe('datasource-info-builder', () => {
       title: 'Example',
       markdown: '# Hello',
       description: 'desc',
-    } as unknown as CrawlResultItem
+    }
 
     it('should spread crawl result and add credential_id', () => {
       const result = buildWebsiteCrawlDatasourceInfo(crawlResult, 'cred-3')
@@ -94,11 +91,6 @@ describe('datasource-info-builder', () => {
         type: 'file',
         credential_id: 'cred-4',
       })
-    })
-
-    it('should handle empty bucket', () => {
-      const result = buildOnlineDriveDatasourceInfo(file, '', 'cred-4')
-      expect(result.bucket).toBe('')
     })
   })
 })

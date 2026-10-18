@@ -24,6 +24,7 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
     emoji_icon_adapter,
 )
+from core.tools.mcp_tool.tool import schema_accepts_multiple_types
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.utils.encryption import create_provider_encrypter, create_tool_provider_encrypter
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
@@ -526,7 +527,8 @@ class ToolTransformService:
                 prop_type = resolve_property_type(prop)
                 if prop_type in type_mapping:
                     prop_type = type_mapping[prop_type]
-                input_schema = prop if prop_type in complex_types else None
+                # Keep the raw schema for multi-type unions so the LLM sees every accepted type, not just prop_type.
+                input_schema = prop if prop_type in complex_types or schema_accepts_multiple_types(prop) else None
                 parameters.append(
                     create_parameter(name, current_description, prop_type, name in required, input_schema)
                 )

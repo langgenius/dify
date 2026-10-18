@@ -1,77 +1,37 @@
+import type { AvailableNodesMetaData } from '@/app/components/workflow/hooks-store'
 import type { Node } from '@/app/components/workflow/types'
-import { renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
+import { useReactFlow } from 'reactflow'
 import { createIterationNode, createNode } from '@/app/components/workflow/__tests__/fixtures'
+import {
+  renderWorkflowFlowHook,
+  renderWorkflowHook,
+} from '@/app/components/workflow/__tests__/workflow-test-env'
 import { ITERATION_PADDING } from '@/app/components/workflow/constants'
+import { useWorkflowNodeCatalog } from '@/app/components/workflow/node-catalog'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useNodeIterationInteractions } from '../use-interactions'
 
-const mockGetNodes = vi.hoisted(() => vi.fn())
-const mockSetNodes = vi.hoisted(() => vi.fn())
-
-vi.mock('reactflow', async () => {
-  const actual = await vi.importActual<typeof import('reactflow')>('reactflow')
-  return {
-    ...actual,
-    useStoreApi: () => ({
-      getState: () => ({
-        getNodes: mockGetNodes,
-        setNodes: mockSetNodes,
-      }),
+const renderInteractions = (nodes: Node[]) => {
+  const { result: catalog } = renderWorkflowHook(useWorkflowNodeCatalog)
+  return renderWorkflowFlowHook(
+    () => ({
+      ...useNodeIterationInteractions(),
+      flow: useReactFlow(),
     }),
-  }
-})
-vi.mock('../../../hooks/use-nodes-meta-data', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../hooks/use-nodes-meta-data')>()
-
-  return {
-    ...actual,
-    useNodesMetaData: () => ({
-      nodesMap: {
-        [BlockEnum.Code]: {
-          defaultValue: {
-            title: 'Code',
-            desc: '',
-          },
-        },
+    {
+      nodes,
+      // The catalog contains heterogeneous node validators, as it does in WorkflowMain.
+      hooksStoreProps: {
+        availableNodesMetaData: catalog.current as unknown as AvailableNodesMetaData,
       },
-    }),
-  }
-})
+    },
+  )
+}
 
 describe('useNodeIterationInteractions', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should expand the iteration node when children overflow the bounds', () => {
-    mockGetNodes.mockReturnValue([
-      createIterationNode({
-        id: 'iteration-node',
-        width: 120,
-        height: 80,
-        data: { width: 120, height: 80 },
-      }),
-      createNode({
-        id: 'child-node',
-        parentId: 'iteration-node',
-        position: { x: 100, y: 90 },
-        width: 60,
-        height: 40,
-      }),
-    ])
-
-    const { result } = renderHook(() => useNodeIterationInteractions())
-    result.current.handleNodeIterationRerender('iteration-node')
-
-    expect(mockSetNodes).toHaveBeenCalledTimes(1)
-    const updatedNodes = mockSetNodes.mock.calls[0]![0]
-    const updatedIterationNode = updatedNodes.find((node: Node) => node.id === 'iteration-node')
-    expect(updatedIterationNode.width).toBe(100 + 60 + ITERATION_PADDING.right)
-    expect(updatedIterationNode.height).toBe(90 + 40 + ITERATION_PADDING.bottom)
-  })
-
   it('should restrict dragging to the iteration container padding', () => {
-    mockGetNodes.mockReturnValue([
+    const { result } = renderInteractions([
       createIterationNode({
         id: 'iteration-node',
         width: 200,
@@ -80,7 +40,6 @@ describe('useNodeIterationInteractions', () => {
       }),
     ])
 
-    const { result } = renderHook(() => useNodeIterationInteractions())
     const dragResult = result.current.handleNodeIterationChildDrag(
       createNode({
         id: 'child-node',
@@ -99,7 +58,7 @@ describe('useNodeIterationInteractions', () => {
   })
 
   it('should rerender the parent iteration node when a child size changes', () => {
-    mockGetNodes.mockReturnValue([
+    const { result } = renderInteractions([
       createIterationNode({
         id: 'iteration-node',
         width: 120,
@@ -115,28 +74,29 @@ describe('useNodeIterationInteractions', () => {
       }),
     ])
 
-    const { result } = renderHook(() => useNodeIterationInteractions())
-    result.current.handleNodeIterationChildSizeChange('child-node')
-
-    expect(mockSetNodes).toHaveBeenCalledTimes(1)
+    act(() => result.current.handleNodeIterationChildSizeChange('child-node'))
+    expect(result.current.flow.getNode('iteration-node')).toMatchObject({
+      width: 160 + ITERATION_PADDING.right,
+      height: 130 + ITERATION_PADDING.bottom,
+      data: { width: 160 + ITERATION_PADDING.right, height: 130 + ITERATION_PADDING.bottom },
+    })
   })
 
   it('should skip iteration rerender when the resized node has no parent', () => {
-    mockGetNodes.mockReturnValue([
+    const { result } = renderInteractions([
       createNode({
         id: 'standalone-node',
         data: { type: BlockEnum.Code, title: 'Standalone', desc: '' },
       }),
     ])
 
-    const { result } = renderHook(() => useNodeIterationInteractions())
-    result.current.handleNodeIterationChildSizeChange('standalone-node')
-
-    expect(mockSetNodes).not.toHaveBeenCalled()
+    const before = result.current.flow.getNodes()
+    act(() => result.current.handleNodeIterationChildSizeChange('standalone-node'))
+    expect(result.current.flow.getNodes()).toEqual(before)
   })
 
   it('should copy iteration children and remap ids', () => {
-    mockGetNodes.mockReturnValue([
+    const { result } = renderInteractions([
       createIterationNode({ id: 'iteration-node' }),
       createNode({
         id: 'child-node',
@@ -148,7 +108,6 @@ describe('useNodeIterationInteractions', () => {
         data: { type: BlockEnum.Code, title: 'Code', desc: '' },
       }),
     ])
-    const { result } = renderHook(() => useNodeIterationInteractions())
     const copyResult = result.current.handleNodeIterationChildrenCopy(
       'iteration-node',
       'new-iteration',

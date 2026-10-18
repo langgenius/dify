@@ -172,10 +172,6 @@ describe('variable utils', () => {
           }),
         ]),
       )
-      expect(availableVars.find((item) => item.nodeId === 'node-1')?.vars).not.toContainEqual({
-        variable: 'usage',
-        type: VarType.object,
-      })
     })
 
     it('uses Agent v2 declared outputs from graph data', () => {

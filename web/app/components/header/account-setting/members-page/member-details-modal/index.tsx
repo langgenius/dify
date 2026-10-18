@@ -6,10 +6,10 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { useQuery } from '@tanstack/react-query'
@@ -29,7 +29,7 @@ type MemberDetailsModalProps = {
   canAssignRoles?: boolean
   allowMultipleRoles?: boolean
   onClose: () => void
-  onAssignSubmit?: (roles: Role[]) => void
+  onAssignSubmit?: (roles: Role[]) => void | Promise<unknown>
 }
 
 const MemberDetailsModal = ({
@@ -42,6 +42,8 @@ const MemberDetailsModal = ({
   const { t } = useTranslation(['common', 'workspaceMembers'])
   const locale = useLocale()
   const [assignOpen, setAssignOpen] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveFailed, setSaveFailed] = useState(false)
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
 
   const { data: rolesOfMember, isLoading: isLoadingRolesOfMember } = useQuery(
@@ -106,17 +108,26 @@ const MemberDetailsModal = ({
     [allowMultipleRoles, selectedRoles],
   )
 
-  const handleSave = useCallback(() => {
-    onAssignSubmit?.(allowMultipleRoles ? selectedRoles : selectedRoles.slice(0, 1))
-    onClose()
-  }, [allowMultipleRoles, onAssignSubmit, onClose, selectedRoles])
+  const handleSave = useCallback(async () => {
+    if (isSaving || !onAssignSubmit) return
+    setIsSaving(true)
+    setSaveFailed(false)
+    try {
+      await onAssignSubmit(allowMultipleRoles ? selectedRoles : selectedRoles.slice(0, 1))
+      onClose()
+    } catch {
+      setSaveFailed(true)
+    } finally {
+      setIsSaving(false)
+    }
+  }, [allowMultipleRoles, isSaving, onAssignSubmit, onClose, selectedRoles])
 
   return (
     <>
       <Dialog
         open
         onOpenChange={(next) => {
-          if (!next) onClose()
+          if (!next && !isSaving) onClose()
         }}
       >
         <DialogContent className="w-110" backdropProps={{ forceRender: true }}>
@@ -127,7 +138,10 @@ const MemberDetailsModal = ({
                 defaultValue: 'Member Details',
               })}
             </DialogTitle>
-            <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+            <DialogHeaderCloseButton
+              disabled={isSaving}
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            />
           </DialogHeader>
 
           <DialogBody className="flex items-center gap-3">
@@ -152,7 +166,12 @@ const MemberDetailsModal = ({
                 )}
               </div>
               {canAssignRoles && (
-                <Button variant="ghost" size="small" onClick={() => setAssignOpen(true)}>
+                <Button
+                  variant="ghost"
+                  size="small"
+                  disabled={isSaving}
+                  onClick={() => setAssignOpen(true)}
+                >
                   <span aria-hidden className={assignActionIconClassName} />
                   {assignActionLabel}
                 </Button>
@@ -180,7 +199,7 @@ const MemberDetailsModal = ({
                           label={role.name}
                           isOwner={role.role_tag === 'owner'}
                           permissionKeys={role.permission_keys}
-                          onRemove={canRemoveRoles ? handleRemove : undefined}
+                          onRemove={canRemoveRoles && !isSaving ? handleRemove : undefined}
                         />
                       ))}
                     </div>
@@ -201,7 +220,7 @@ const MemberDetailsModal = ({
                           label={role.name}
                           isOwner={role.role_tag === 'owner'}
                           permissionKeys={role.permission_keys}
-                          onRemove={canRemoveRoles ? handleRemove : undefined}
+                          onRemove={canRemoveRoles && !isSaving ? handleRemove : undefined}
                         />
                       ))}
                     </div>
@@ -211,12 +230,18 @@ const MemberDetailsModal = ({
             )}
           </DialogBody>
 
+          {saveFailed && <p role="alert">{t(($) => $['api.actionFailed'], { ns: 'common' })}</p>}
           {canAssignRoles && (
             <DialogFooter>
-              <Button variant="secondary" onClick={onClose}>
+              <Button variant="secondary" disabled={isSaving} onClick={onClose}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </Button>
-              <Button variant="primary" onClick={handleSave} disabled={!onAssignSubmit}>
+              <Button
+                variant="primary"
+                onClick={handleSave}
+                loading={isSaving}
+                disabled={!onAssignSubmit}
+              >
                 {t(($) => $['operation.save'], { ns: 'common' })}
               </Button>
             </DialogFooter>

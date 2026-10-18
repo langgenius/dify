@@ -1,81 +1,41 @@
 import type { Features, OnFeaturesChange } from '../../../types'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
+import {
+  createCatalogModelFixture,
+  createDefaultModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { FeaturesProvider } from '../../../context'
 import AnnotationReply from '../index'
 
-const originalConsoleError = console.error
-let mockPathname = '/app/test-app-id/configuration'
-vi.mock('@/next/navigation', () => ({
-  usePathname: () => mockPathname,
+const { updateStatus, getStatus } = vi.hoisted(() => ({
+  updateStatus: vi.fn(),
+  getStatus: vi.fn(),
 }))
-
-let mockIsShowAnnotationConfigInit = false
-let mockIsShowAnnotationFullModal = false
-const mockHandleEnableAnnotation = vi.fn().mockResolvedValue(undefined)
-const mockHandleDisableAnnotation = vi.fn().mockResolvedValue(undefined)
-const mockSetIsShowAnnotationConfigInit = vi.fn((v: boolean) => {
-  mockIsShowAnnotationConfigInit = v
+vi.mock('@/next/navigation', () => ({ usePathname: () => '/app/test-app-id/configuration' }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.annotationReply.byAction.post': (input) => updateStatus(input),
+      'apps.byAppId.annotationReply.byAction.status.byJobId.get': (input) => getStatus(input),
+    }),
+  }
 })
-const mockSetIsShowAnnotationFullModal = vi.fn((v: boolean) => {
-  mockIsShowAnnotationFullModal = v
-})
 
-let capturedSetAnnotationConfig: ((config: Record<string, unknown>) => void) | null = null
-
-vi.mock(
-  '@/app/components/base/features/new-feature-panel/annotation-reply/use-annotation-config',
-  () => ({
-    default: ({
-      setAnnotationConfig,
-    }: {
-      setAnnotationConfig: (config: Record<string, unknown>) => void
-    }) => {
-      capturedSetAnnotationConfig = setAnnotationConfig
-      return {
-        handleEnableAnnotation: mockHandleEnableAnnotation,
-        handleDisableAnnotation: mockHandleDisableAnnotation,
-        get isShowAnnotationConfigInit() {
-          return mockIsShowAnnotationConfigInit
-        },
-        setIsShowAnnotationConfigInit: mockSetIsShowAnnotationConfigInit,
-        get isShowAnnotationFullModal() {
-          return mockIsShowAnnotationFullModal
-        },
-        setIsShowAnnotationFullModal: mockSetIsShowAnnotationFullModal,
-      }
-    },
-  }),
-)
-
-vi.mock('@/app/components/billing/annotation-full/modal', () => ({
-  default: ({ show, onHide }: { show: boolean; onHide: () => void }) =>
-    show ? (
-      <div data-testid="annotation-full-modal">
-        <button data-testid="full-hide" onClick={onHide}>
-          Hide
-        </button>
-      </div>
-    ) : null,
-}))
-
-vi.mock('@/config', () => ({
-  ANNOTATION_DEFAULT: { score_threshold: 0.9 },
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelListAndDefaultModelAndCurrentProviderAndModel: () => ({
-    modelList: [
-      { provider: { provider: 'openai' }, models: [{ model: 'text-embedding-ada-002' }] },
-    ],
-    defaultModel: { provider: { provider: 'openai' }, model: 'text-embedding-ada-002' },
-    currentModel: true,
-  }),
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  ModelSelector: () => <div data-testid="model-selector">Model Selector</div>,
-}))
-
+const embeddingModel = {
+  embedding_provider_name: 'openai',
+  embedding_model_name: 'embedding-model',
+}
 const defaultFeatures: Features = {
   moreLikeThis: { enabled: false },
   opening: { enabled: false },
@@ -85,452 +45,189 @@ const defaultFeatures: Features = {
   citation: { enabled: false },
   moderation: { enabled: false },
   file: { enabled: false },
-  annotationReply: { enabled: false },
+  annotationReply: { enabled: false, score_threshold: 0.8, embedding_model: embeddingModel },
 }
-
-const renderWithProvider = (
-  props: { disabled?: boolean; onChange?: OnFeaturesChange } = {},
-  featureOverrides?: Partial<Features>,
-) => {
-  const features = { ...defaultFeatures, ...featureOverrides }
-  return render(
-    <FeaturesProvider features={features}>
-      <AnnotationReply disabled={props.disabled} onChange={props.onChange} />
-    </FeaturesProvider>,
+function renderFeature({
+  enabled = false,
+  score = 0.8,
+  disabled = false,
+  onChange,
+  full = false,
+}: {
+  enabled?: boolean
+  score?: number
+  disabled?: boolean
+  onChange?: OnFeaturesChange
+  full?: boolean
+} = {}) {
+  const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient, [
+    createModelCatalogFixture({
+      models: [
+        createCatalogModelFixture({
+          model: 'embedding-model',
+          label: { en_US: 'embedding-model' },
+          model_type: 'text-embedding',
+        }),
+      ],
+    }),
+  ])
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.defaultModel.get.queryKey({
+      input: { query: { model_type: 'text-embedding' } },
+    }),
+    {
+      data: createDefaultModelFixture({ model: 'embedding-model', model_type: 'text-embedding' }),
+    },
+  )
+  return renderWithConsoleQuery(
+    <NuqsTestingAdapter>
+      <FeaturesProvider
+        features={{
+          ...defaultFeatures,
+          annotationReply: { enabled, score_threshold: score, embedding_model: embeddingModel },
+        }}
+      >
+        <AnnotationReply disabled={disabled} onChange={onChange} />
+      </FeaturesProvider>
+    </NuqsTestingAdapter>,
+    {
+      queryClient,
+      systemFeatures: { deployment_edition: 'CLOUD' },
+      features: { annotation_quota_limit: { size: full ? 10 : 0, limit: 10 } },
+    },
   )
 }
+const configDialog = () => screen.findByRole('dialog', { name: /initSetup.title/ })
+const save = () => screen.getByRole('button', { name: /initSetup.confirmBtn/ })
 
 describe('AnnotationReply', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
-      const message = args.map((arg) => String(arg)).join(' ')
-      if (
-        message.includes('A props object containing a "key" prop is being spread into JSX') ||
-        message.includes('React keys must be passed directly to JSX without using spread')
-      ) {
-        return
-      }
-      originalConsoleError(...(args as Parameters<typeof console.error>))
-    })
-    mockPathname = '/app/test-app-id/configuration'
-    mockIsShowAnnotationConfigInit = false
-    mockIsShowAnnotationFullModal = false
-    capturedSetAnnotationConfig = null
+    updateStatus.mockReset().mockResolvedValue({ job_id: 'job-1', job_status: 'waiting' })
+    getStatus.mockReset().mockResolvedValue({ job_status: 'completed' })
   })
+  afterEach(() => vi.restoreAllMocks())
 
-  it('should render the annotation reply title', () => {
-    renderWithProvider()
-
-    expect(screen.getByText(/feature\.annotation\.title/)).toBeInTheDocument()
-  })
-
-  it('should render description when not enabled', () => {
-    renderWithProvider()
-
-    expect(screen.getByText(/feature\.annotation\.description/)).toBeInTheDocument()
-  })
-
-  it('should render a switch toggle', () => {
-    renderWithProvider()
-
-    expect(screen.getByRole('switch')).toBeInTheDocument()
-  })
-
-  it('should call setIsShowAnnotationConfigInit when switch is toggled on', () => {
-    renderWithProvider()
-
-    fireEvent.click(screen.getByRole('switch'))
-
-    expect(mockSetIsShowAnnotationConfigInit).toHaveBeenCalledWith(true)
-  })
-
-  it('should call handleDisableAnnotation when switch is toggled off', () => {
-    renderWithProvider(
-      {},
-      {
-        annotationReply: {
-          enabled: true,
-          score_threshold: 0.9,
-          embedding_model: {
-            embedding_provider_name: 'openai',
-            embedding_model_name: 'text-embedding-ada-002',
-          },
-        },
-      },
-    )
-
-    fireEvent.click(screen.getByRole('switch'))
-
-    expect(mockHandleDisableAnnotation).toHaveBeenCalled()
-  })
-
-  it('should show score threshold and embedding model when enabled', () => {
-    renderWithProvider(
-      {},
-      {
-        annotationReply: {
-          enabled: true,
-          score_threshold: 0.9,
-          embedding_model: {
-            embedding_provider_name: 'openai',
-            embedding_model_name: 'text-embedding-ada-002',
-          },
-        },
-      },
-    )
-
-    expect(screen.getByText('0.9')).toBeInTheDocument()
-    expect(screen.getByText('text-embedding-ada-002')).toBeInTheDocument()
-  })
-
-  it('should show zero score threshold when enabled', () => {
-    renderWithProvider(
-      {},
-      {
-        annotationReply: {
-          enabled: true,
-          score_threshold: 0,
-          embedding_model: {
-            embedding_provider_name: 'openai',
-            embedding_model_name: 'text-embedding-ada-002',
-          },
-        },
-      },
-    )
-
-    expect(screen.getByText('0')).toBeInTheDocument()
-    expect(screen.getByText('text-embedding-ada-002')).toBeInTheDocument()
-  })
-
-  it('should show dash when score threshold is not set', () => {
-    renderWithProvider(
-      {},
-      {
-        annotationReply: {
-          enabled: true,
-          embedding_model: {
-            embedding_provider_name: 'openai',
-            embedding_model_name: 'text-embedding-ada-002',
-          },
-        },
-      },
-    )
-
-    expect(screen.getByText('-')).toBeInTheDocument()
-  })
-
-  it('should show buttons when hovering over enabled feature', () => {
-    renderWithProvider(
-      {},
-      {
-        annotationReply: {
-          enabled: true,
-          score_threshold: 0.9,
-          embedding_model: {
-            embedding_provider_name: 'openai',
-            embedding_model_name: 'text-embedding-ada-002',
-          },
-        },
-      },
-    )
-
-    const card = screen.getByText(/feature\.annotation\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
-
-    expect(screen.getByText(/operation\.params/)).toBeInTheDocument()
-    expect(screen.getByText(/feature\.annotation\.cacheManagement/)).toBeInTheDocument()
-  })
-
-  it('should call setIsShowAnnotationConfigInit when params button is clicked', () => {
-    renderWithProvider(
-      {},
-      {
-        annotationReply: {
-          enabled: true,
-          score_threshold: 0.9,
-          embedding_model: {
-            embedding_provider_name: 'openai',
-            embedding_model_name: 'text-embedding-ada-002',
-          },
-        },
-      },
-    )
-
-    const card = screen.getByText(/feature\.annotation\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
-    fireEvent.click(screen.getByText(/operation\.params/))
-
-    expect(mockSetIsShowAnnotationConfigInit).toHaveBeenCalledWith(true)
-  })
-
-  it('should link to the app annotations page from cache management', () => {
-    renderWithProvider(
-      {},
-      {
-        annotationReply: {
-          enabled: true,
-          score_threshold: 0.9,
-          embedding_model: {
-            embedding_provider_name: 'openai',
-            embedding_model_name: 'text-embedding-ada-002',
-          },
-        },
-      },
-    )
-
-    const card = screen.getByText(/feature\.annotation\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
-
-    expect(
-      screen.getByRole('link', { name: /feature\.annotation\.cacheManagement/ }),
-    ).toHaveAttribute('href', '/app/test-app-id/annotations')
-  })
-
-  it('should fallback appId to empty string when pathname does not match', () => {
-    mockPathname = '/apps/no-match'
-    renderWithProvider(
-      {},
-      {
-        annotationReply: {
-          enabled: true,
-          score_threshold: 0.9,
-          embedding_model: {
-            embedding_provider_name: 'openai',
-            embedding_model_name: 'text-embedding-ada-002',
-          },
-        },
-      },
-    )
-
-    const card = screen.getByText(/feature\.annotation\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
-
-    expect(
-      screen.getByRole('link', { name: /feature\.annotation\.cacheManagement/ }),
-    ).toHaveAttribute('href', '/app//annotations')
-  })
-
-  it('should show config param modal when isShowAnnotationConfigInit is true', async () => {
-    mockIsShowAnnotationConfigInit = true
-    await act(async () => {
-      renderWithProvider()
-      await Promise.resolve()
-    })
-
-    expect(screen.getByText(/initSetup\.title/)).toBeInTheDocument()
-  })
-
-  it('should hide config modal when hide is clicked', async () => {
-    mockIsShowAnnotationConfigInit = true
-    await act(async () => {
-      renderWithProvider()
-      await Promise.resolve()
-    })
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /operation\.cancel/ }))
-      await Promise.resolve()
-    })
-
-    expect(mockSetIsShowAnnotationConfigInit).toHaveBeenCalledWith(false)
-  })
-
-  it('should call handleEnableAnnotation when config save is clicked', async () => {
-    mockIsShowAnnotationConfigInit = true
-    renderWithProvider(
-      {},
-      {
-        annotationReply: {
-          enabled: true,
-          score_threshold: 0.9,
-          embedding_model: {
-            embedding_provider_name: 'openai',
-            embedding_model_name: 'text-embedding-ada-002',
-          },
-        },
-      },
-    )
-
-    await act(async () => {
-      fireEvent.click(screen.getByText(/initSetup\.confirmBtn/))
-      await Promise.resolve()
-    })
-
-    expect(mockHandleEnableAnnotation).toHaveBeenCalled()
-  })
-
-  it('should show annotation full modal when isShowAnnotationFullModal is true', () => {
-    mockIsShowAnnotationFullModal = true
-    renderWithProvider()
-
-    expect(screen.getByTestId('annotation-full-modal')).toBeInTheDocument()
-  })
-
-  it('should hide annotation full modal when hide is clicked', () => {
-    mockIsShowAnnotationFullModal = true
-    renderWithProvider()
-
-    fireEvent.click(screen.getByTestId('full-hide'))
-
-    expect(mockSetIsShowAnnotationFullModal).toHaveBeenCalledWith(false)
-  })
-
-  it('should call handleEnableAnnotation and hide config modal on save', async () => {
-    mockIsShowAnnotationConfigInit = true
-    renderWithProvider(
-      {},
-      {
-        annotationReply: {
-          enabled: true,
-          score_threshold: 0.9,
-          embedding_model: {
-            embedding_provider_name: 'openai',
-            embedding_model_name: 'text-embedding-ada-002',
-          },
-        },
-      },
-    )
-
-    await act(async () => {
-      fireEvent.click(screen.getByText(/initSetup\.confirmBtn/))
-      await Promise.resolve()
-    })
-
-    // handleEnableAnnotation should be called with embedding model and score
-    expect(mockHandleEnableAnnotation).toHaveBeenCalledWith(
-      { embedding_provider_name: 'openai', embedding_model_name: 'text-embedding-ada-002' },
-      0.9,
-    )
-
-    // After save resolves, config init should be hidden
-    await vi.waitFor(() => {
-      expect(mockSetIsShowAnnotationConfigInit).toHaveBeenCalledWith(false)
-    })
-  })
-
-  it('should update features and call onChange when updateAnnotationReply is invoked', () => {
+  it('enables annotation only after the background job completes and notifies its owner', async () => {
+    const user = userEvent.setup({ skipHover: true })
     const onChange = vi.fn()
-    renderWithProvider(
-      { onChange },
-      {
-        annotationReply: {
-          enabled: true,
-          score_threshold: 0.9,
-          embedding_model: {
-            embedding_provider_name: 'openai',
-            embedding_model_name: 'text-embedding-ada-002',
-          },
-        },
-      },
-    )
-
-    // The captured setAnnotationConfig is the component's updateAnnotationReply callback
-    expect(capturedSetAnnotationConfig).not.toBeNull()
-    act(() => {
-      capturedSetAnnotationConfig!({
-        enabled: true,
-        score_threshold: 0.8,
-        embedding_model: {
-          embedding_provider_name: 'openai',
-          embedding_model_name: 'new-model',
-        },
-      })
-    })
-
-    expect(onChange).toHaveBeenCalled()
-  })
-
-  it('should update features without calling onChange when onChange is not provided', () => {
-    renderWithProvider(
-      {},
-      {
-        annotationReply: {
-          enabled: true,
-          score_threshold: 0.9,
-          embedding_model: {
-            embedding_provider_name: 'openai',
-            embedding_model_name: 'text-embedding-ada-002',
-          },
-        },
-      },
-    )
-
-    // Should not throw when onChange is not provided
-    expect(capturedSetAnnotationConfig).not.toBeNull()
-    expect(() =>
-      act(() => {
-        capturedSetAnnotationConfig!({
-          enabled: true,
-          score_threshold: 0.7,
-        })
+    const status = createDeferred<{ job_status: string }>()
+    getStatus.mockReturnValueOnce(status.promise)
+    renderFeature({ onChange })
+    expect(screen.getByText(/feature.annotation.description/)).toBeInTheDocument()
+    await user.click(screen.getByRole('switch'))
+    await configDialog()
+    await user.click(save())
+    await waitFor(() =>
+      expect(getStatus).toHaveBeenCalledWith({
+        params: { app_id: 'test-app-id', action: 'enable', job_id: 'job-1' },
       }),
-    ).not.toThrow()
-  })
-
-  it('should hide info display when hovering over enabled feature', () => {
-    renderWithProvider(
-      {},
-      {
-        annotationReply: {
-          enabled: true,
-          score_threshold: 0.9,
-          embedding_model: {
-            embedding_provider_name: 'openai',
-            embedding_model_name: 'text-embedding-ada-002',
-          },
-        },
-      },
     )
-
-    // Before hover, info is visible
-    expect(screen.getByText('0.9')).toBeInTheDocument()
-
-    const card = screen.getByText(/feature\.annotation\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
-
-    // After hover, buttons shown instead of info
-    expect(screen.getByText(/operation\.params/)).toBeInTheDocument()
-    expect(screen.queryByText('0.9')).not.toBeInTheDocument()
-  })
-
-  it('should show info display again when mouse leaves', () => {
-    renderWithProvider(
-      {},
-      {
-        annotationReply: {
-          enabled: true,
-          score_threshold: 0.9,
-          embedding_model: {
-            embedding_provider_name: 'openai',
-            embedding_model_name: 'text-embedding-ada-002',
-          },
-        },
-      },
-    )
-
-    const card = screen.getByText(/feature\.annotation\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
-    fireEvent.mouseLeave(card)
-
-    expect(screen.getByText('0.9')).toBeInTheDocument()
-  })
-
-  it('should pass isInit prop to ConfigParamModal', async () => {
-    mockIsShowAnnotationConfigInit = true
-    await act(async () => {
-      renderWithProvider()
-      await Promise.resolve()
+    expect(updateStatus).toHaveBeenCalledExactlyOnceWith({
+      params: { app_id: 'test-app-id', action: 'enable' },
+      body: { score_threshold: 0.8, ...embeddingModel },
     })
-
-    expect(screen.getByText(/initSetup\.confirmBtn/)).toBeInTheDocument()
-    expect(screen.queryByText(/initSetup\.configConfirmBtn/)).not.toBeInTheDocument()
+    expect(onChange).not.toHaveBeenCalled()
+    expect(save()).toHaveAttribute('aria-disabled', 'true')
+    await act(async () => status.resolve({ job_status: 'completed' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.getByRole('switch')).toBeChecked()
+    expect(onChange).toHaveBeenCalledTimes(1)
   })
 
-  it('should not show annotation full modal when isShowAnnotationFullModal is false', () => {
-    mockIsShowAnnotationFullModal = false
-    renderWithProvider()
+  it('disables annotation and updates the feature without requiring an onChange callback', async () => {
+    const user = userEvent.setup({ skipHover: true })
+    renderFeature({ enabled: true })
+    await user.click(screen.getByRole('switch'))
+    await waitFor(() => expect(screen.getByRole('switch')).not.toBeChecked())
+    expect(updateStatus).toHaveBeenCalledWith(
+      expect.objectContaining({ params: { app_id: 'test-app-id', action: 'disable' } }),
+    )
+    expect(screen.getByText(/feature.annotation.description/)).toBeInTheDocument()
+  })
 
-    expect(screen.queryByTestId('annotation-full-modal')).not.toBeInTheDocument()
+  it('keeps the feature enabled after disabling fails and allows retry', async () => {
+    const user = userEvent.setup({ skipHover: true })
+    const notify = vi.spyOn(toast, 'error').mockImplementation(() => '')
+    updateStatus.mockRejectedValueOnce(new Error('Unavailable'))
+    renderFeature({ enabled: true })
+    await user.click(screen.getByRole('switch'))
+    await waitFor(() => expect(notify).toHaveBeenCalledWith('common.api.actionFailed'))
+    expect(screen.getByRole('switch')).toBeChecked()
+    await user.click(screen.getByRole('switch'))
+    await waitFor(() => expect(screen.getByRole('switch')).not.toBeChecked())
+  })
+
+  it('keeps failed setup open and allows retry without enabling the feature prematurely', async () => {
+    const user = userEvent.setup({ skipHover: true })
+    const notify = vi.spyOn(toast, 'error').mockImplementation(() => '')
+    getStatus.mockResolvedValueOnce({ job_status: 'error', error_msg: 'Indexing failed' })
+    const onChange = vi.fn()
+    renderFeature({ onChange })
+    await user.click(screen.getByRole('switch'))
+    await configDialog()
+    await user.click(save())
+    await waitFor(() => expect(notify).toHaveBeenCalledWith('common.api.actionFailed'))
+    expect(onChange).not.toHaveBeenCalled()
+    expect(save()).toBeEnabled()
+    await user.click(save())
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.getByRole('switch')).toBeChecked()
+    expect(onChange).toHaveBeenCalledTimes(1)
+  })
+
+  it('discards canceled parameter edits when reopening configuration', async () => {
+    const user = userEvent.setup({ skipHover: true })
+    renderFeature({ enabled: true })
+    await user.hover(screen.getByText(/feature.annotation.title/))
+    expect(
+      screen.getByRole('link', { name: /feature.annotation.cacheManagement/ }),
+    ).toHaveAttribute('href', '/app/test-app-id/annotations')
+    await user.click(screen.getByRole('button', { name: 'common.operation.params' }))
+    const dialog = await configDialog()
+    const slider = within(dialog).getByRole('slider')
+    slider.focus()
+    await user.keyboard('{Home}')
+    expect(slider).toHaveAttribute('aria-valuenow', '0')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await user.hover(screen.getByText(/feature.annotation.title/))
+    await user.click(screen.getByRole('button', { name: 'common.operation.params' }))
+    expect(within(await configDialog()).getByRole('slider')).toHaveAttribute('aria-valuenow', '0.8')
+    expect(updateStatus).not.toHaveBeenCalled()
+  })
+
+  it('preserves a zero score and restores the info after leaving the card', async () => {
+    const user = userEvent.setup({ skipHover: true })
+    renderFeature({ enabled: true, score: 0 })
+    expect(screen.getByText('0')).toBeInTheDocument()
+    expect(screen.getByText('embedding-model')).toBeInTheDocument()
+    await user.hover(screen.getByText(/feature.annotation.title/))
+    expect(screen.queryByText('0')).not.toBeInTheDocument()
+    await user.unhover(screen.getByText(/feature.annotation.title/))
+    expect(screen.getByText('0')).toBeInTheDocument()
+  })
+
+  it('shows the quota dialog instead of configuration when the limit is reached', async () => {
+    const user = userEvent.setup({ skipHover: true })
+    renderFeature({ full: true })
+    await user.click(screen.getByRole('switch'))
+    expect(
+      within(screen.getByRole('dialog')).getByText('billing.annotatedResponse.fullTipLine1'),
+    ).toBeVisible()
+    expect(screen.queryByRole('dialog', { name: /initSetup.title/ })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(updateStatus).not.toHaveBeenCalled()
+  })
+
+  it('does not allow configuration when the feature is disabled by its owner', async () => {
+    const user = userEvent.setup({ skipHover: true })
+    renderFeature({ disabled: true })
+    const toggle = screen.getByRole('switch')
+    expect(toggle).toHaveAttribute('aria-disabled', 'true')
+    await user.click(toggle)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(updateStatus).not.toHaveBeenCalled()
   })
 })

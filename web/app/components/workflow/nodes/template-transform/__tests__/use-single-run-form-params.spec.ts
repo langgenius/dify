@@ -23,10 +23,6 @@ const createData = (
 })
 
 describe('template-transform/use-single-run-form-params', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('exposes variable inputs and forwards single-run changes', () => {
     const setRunInputData = vi.fn()
     const varInputs: InputVar[] = [
@@ -41,7 +37,12 @@ describe('template-transform/use-single-run-form-params', () => {
     const { result } = renderHook(() =>
       useSingleRunFormParams({
         id: 'template-node',
-        payload: createData(),
+        payload: createData({
+          variables: [
+            createVariable(),
+            createVariable({ variable: 'locale', value_selector: ['node-2', 'language'] }),
+          ],
+        }),
         runInputData: { input_text: 'hello' },
         runInputDataRef: { current: {} },
         getInputVars: () => [],
@@ -57,7 +58,10 @@ describe('template-transform/use-single-run-form-params', () => {
     result.current.forms[0]!.onChange({ input_text: 'updated' })
 
     expect(setRunInputData).toHaveBeenCalledWith({ input_text: 'updated' })
-    expect(result.current.getDependentVars()).toEqual([['node-1', 'input_text']])
-    expect(result.current.getDependentVar('input_text')).toEqual(['node-1', 'input_text'])
+    expect(result.current.getDependentVars()).toEqual([
+      ['node-1', 'input_text'],
+      ['node-2', 'language'],
+    ])
+    expect(result.current.getDependentVar('locale')).toEqual(['node-2', 'language'])
   })
 })

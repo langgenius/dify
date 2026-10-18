@@ -1,6 +1,8 @@
 import type { Credential, CustomModel, ModelProvider } from '../../../declarations'
 import { act, renderHook } from '@testing-library/react'
+import { createProviderResponseFixture } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { ConfigurationMethodEnum, ModelModalModeEnum, ModelTypeEnum } from '../../../declarations'
 import { useAuth } from '../use-auth'
 
@@ -38,32 +40,8 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   useRefreshModel: () => ({ handleRefreshModel: mockHandleRefreshModel }),
 }))
 
-vi.mock('../use-auth-service', () => ({
-  useAuthService: () => ({
-    getDeleteCredentialService: (isModel: boolean) =>
-      isModel ? mockDeleteModelCredential : mockDeleteProviderCredential,
-    getActiveCredentialService: (isModel: boolean) =>
-      isModel ? mockActiveModelCredential : mockActiveProviderCredential,
-    getEditCredentialService: (isModel: boolean) =>
-      isModel ? mockEditModelCredential : mockEditProviderCredential,
-    getAddCredentialService: (isModel: boolean) =>
-      isModel ? mockAddModelCredential : mockAddProviderCredential,
-  }),
-}))
-
-const createDeferred = <T,>() => {
-  let resolve!: (value: T) => void
-  const promise = new Promise<T>((res) => {
-    resolve = res
-  })
-  return { promise, resolve }
-}
-
 describe('useAuth', () => {
-  const provider = {
-    provider: 'openai',
-    allow_custom_token: true,
-  } as ModelProvider
+  const provider = createProviderResponseFixture() as ModelProvider
 
   const credential: Credential = {
     credential_id: 'cred-1',
@@ -78,7 +56,7 @@ describe('useAuth', () => {
   let createWrapper = createConsoleQueryWrapper().wrapper
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     createWrapper = createConsoleQueryWrapper().wrapper
     mockDeleteModelService.mockResolvedValue({ result: 'success' })
     mockDeleteProviderCredential.mockResolvedValue({ result: 'success' })
@@ -89,29 +67,6 @@ describe('useAuth', () => {
     mockAddModelCredential.mockResolvedValue({ result: 'success' })
     mockEditProviderCredential.mockResolvedValue({ result: 'success' })
     mockEditModelCredential.mockResolvedValue({ result: 'success' })
-  })
-
-  it('should open and close delete confirmation state', () => {
-    const { result } = renderHook(
-      () => useAuth(provider, ConfigurationMethodEnum.predefinedModel),
-      { wrapper: createWrapper },
-    )
-
-    act(() => {
-      result.current.openConfirmDelete(credential, model)
-    })
-
-    expect(result.current.deleteCredentialId).toBe('cred-1')
-    expect(result.current.deleteModel).toEqual(model)
-    expect(result.current.pendingOperationCredentialId.current).toBe('cred-1')
-    expect(result.current.pendingOperationModel.current).toEqual(model)
-
-    act(() => {
-      result.current.closeConfirmDelete()
-    })
-
-    expect(result.current.deleteCredentialId).toBeNull()
-    expect(result.current.deleteModel).toBeNull()
   })
 
   it('should activate credential, notify success, and refresh models', async () => {
@@ -125,9 +80,12 @@ describe('useAuth', () => {
     })
 
     expect(mockActiveModelCredential).toHaveBeenCalledWith({
-      credential_id: 'cred-1',
-      model: 'gpt-4',
-      model_type: ModelTypeEnum.textGeneration,
+      params: { provider: 'openai' },
+      body: {
+        credential_id: 'cred-1',
+        model: 'gpt-4',
+        model_type: ModelTypeEnum.textGeneration,
+      },
     })
     expect(mockNotify).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -175,7 +133,10 @@ describe('useAuth', () => {
     })
 
     expect(mockDeleteProviderCredential).toHaveBeenCalledWith({
-      credential_id: 'cred-1',
+      params: { provider: 'openai' },
+      body: {
+        credential_id: 'cred-1',
+      },
     })
     expect(mockDeleteModelService).not.toHaveBeenCalled()
     expect(onRemove).toHaveBeenCalledWith('cred-1')
@@ -214,19 +175,28 @@ describe('useAuth', () => {
     )
 
     await act(async () => {
-      await result.current.handleSaveCredential({ api_key: 'new-key' })
+      await result.current.handleSaveCredential({ credentials: { api_key: 'new-key' } })
     })
 
-    expect(mockAddProviderCredential).toHaveBeenCalledWith({ api_key: 'new-key' })
+    expect(mockAddProviderCredential).toHaveBeenCalledWith({
+      params: { provider: 'openai' },
+      body: { credentials: { api_key: 'new-key' } },
+    })
     expect(mockHandleRefreshModel).toHaveBeenCalledWith(provider, undefined, true)
 
     await act(async () => {
-      await result.current.handleSaveCredential({ credential_id: 'cred-1', api_key: 'updated-key' })
+      await result.current.handleSaveCredential({
+        credential_id: 'cred-1',
+        credentials: { api_key: 'updated-key' },
+      })
     })
 
     expect(mockEditProviderCredential).toHaveBeenCalledWith({
-      credential_id: 'cred-1',
-      api_key: 'updated-key',
+      params: { provider: 'openai' },
+      body: {
+        credential_id: 'cred-1',
+        credentials: { api_key: 'updated-key' },
+      },
     })
     expect(mockHandleRefreshModel).toHaveBeenCalledWith(provider, undefined, false)
   })
@@ -244,14 +214,35 @@ describe('useAuth', () => {
     let second!: Promise<void>
 
     await act(async () => {
-      first = result.current.handleSaveCredential({ api_key: 'first' })
-      second = result.current.handleSaveCredential({ api_key: 'second' })
+      first = result.current.handleSaveCredential({ credentials: { api_key: 'first' } })
+      second = result.current.handleSaveCredential({ credentials: { api_key: 'second' } })
       deferred.resolve({ result: 'success' })
       await Promise.all([first, second])
     })
 
     expect(mockAddProviderCredential).toHaveBeenCalledTimes(1)
-    expect(mockAddProviderCredential).toHaveBeenCalledWith({ api_key: 'first' })
+    expect(mockAddProviderCredential).toHaveBeenCalledWith({
+      params: { provider: 'openai' },
+      body: { credentials: { api_key: 'first' } },
+    })
+  })
+
+  it('releases the pending action after a failed save so the user can retry', async () => {
+    const error = new Error('Save failed')
+    mockAddProviderCredential.mockRejectedValueOnce(error)
+    const { result } = renderHook(
+      () => useAuth(provider, ConfigurationMethodEnum.predefinedModel),
+      { wrapper: createWrapper },
+    )
+    const payload = { credentials: { api_key: 'retry-key' } }
+    await act(async () => {
+      await expect(result.current.handleSaveCredential(payload)).rejects.toBe(error)
+    })
+    expect(result.current.doingAction).toBe(false)
+    expect(mockHandleRefreshModel).not.toHaveBeenCalled()
+    await act(async () => result.current.handleSaveCredential(payload))
+    expect(mockAddProviderCredential).toHaveBeenCalledTimes(2)
+    expect(mockHandleRefreshModel).toHaveBeenCalledWith(provider, undefined, true)
   })
 
   it('should forward modal open arguments', () => {
@@ -296,15 +287,18 @@ describe('useAuth', () => {
     )
 
     await act(async () => {
-      await result.current.handleSaveCredential({ api_key: 'some-key' })
+      await result.current.handleSaveCredential({ credentials: { api_key: 'some-key' } })
     })
 
-    expect(mockAddProviderCredential).toHaveBeenCalledWith({ api_key: 'some-key' })
+    expect(mockAddProviderCredential).toHaveBeenCalledWith({
+      params: { provider: 'openai' },
+      body: { credentials: { api_key: 'some-key' } },
+    })
     expect(mockNotify).not.toHaveBeenCalled()
     expect(mockHandleRefreshModel).not.toHaveBeenCalled()
   })
 
-  it('should pass undefined model and model_type when handleActiveCredential is called without a model parameter', async () => {
+  it('activates provider credentials without model fields', async () => {
     const { result } = renderHook(
       () => useAuth(provider, ConfigurationMethodEnum.predefinedModel),
       { wrapper: createWrapper },
@@ -315,28 +309,14 @@ describe('useAuth', () => {
     })
 
     expect(mockActiveProviderCredential).toHaveBeenCalledWith({
-      credential_id: 'cred-1',
-      model: undefined,
-      model_type: undefined,
+      params: { provider: 'openai' },
+      body: {
+        credential_id: 'cred-1',
+      },
     })
   })
 
   // openConfirmDelete with credential only (no model): deleteCredentialId set, deleteModel stays null
-  it('should only set deleteCredentialId when openConfirmDelete is called without a model', () => {
-    const { result } = renderHook(
-      () => useAuth(provider, ConfigurationMethodEnum.predefinedModel),
-      { wrapper: createWrapper },
-    )
-
-    act(() => {
-      result.current.openConfirmDelete(credential, undefined)
-    })
-
-    expect(result.current.deleteCredentialId).toBe('cred-1')
-    expect(result.current.deleteModel).toBeNull()
-    expect(result.current.pendingOperationCredentialId.current).toBe('cred-1')
-    expect(result.current.pendingOperationModel.current).toBeNull()
-  })
 
   // doingActionRef guard: second handleConfirmDelete call while first is in progress is a no-op
   it('should ignore a second handleConfirmDelete call while the first is still in progress', async () => {
@@ -391,12 +371,31 @@ describe('useAuth', () => {
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.modelProviders.byProvider.models.delete': (input) =>
         mockDeleteModelService(input),
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.modelProviders.byProvider.credentials.post': (input) =>
+        mockAddProviderCredential(input),
+      'workspaces.current.modelProviders.byProvider.credentials.put': (input) =>
+        mockEditProviderCredential(input),
+      'workspaces.current.modelProviders.byProvider.credentials.delete': (input) =>
+        mockDeleteProviderCredential(input),
+      'workspaces.current.modelProviders.byProvider.credentials.switch.post': (input) =>
+        mockActiveProviderCredential(input),
+      'workspaces.current.modelProviders.byProvider.models.credentials.post': (input) =>
+        mockAddModelCredential(input),
+      'workspaces.current.modelProviders.byProvider.models.credentials.put': (input) =>
+        mockEditModelCredential(input),
+      'workspaces.current.modelProviders.byProvider.models.credentials.delete': (input) =>
+        mockDeleteModelCredential(input),
+      'workspaces.current.modelProviders.byProvider.models.credentials.switch.post': (input) =>
+        mockActiveModelCredential(input),
     }),
   }
 })

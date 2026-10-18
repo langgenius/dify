@@ -1,37 +1,45 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import * as React from 'react'
+import { zAvailableModelListResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import PublishWithMultipleModel from '../publish-with-multiple-model'
 
-const mockModelListQuery = vi.fn()
-vi.mock('@tanstack/react-query', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
-  useQuery: () => mockModelListQuery(),
-}))
+function render(ui: React.ReactElement) {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: 'llm' } },
+    }).queryKey,
+    zAvailableModelListResponse.parse({
+      data: [
+        {
+          provider: 'openai',
+          tenant_id: 'workspace-1',
+          status: 'active',
+          label: { en_US: 'OpenAI' },
+          models: [
+            {
+              model: 'gpt-4o',
+              label: { en_US: 'GPT-4o' },
+              model_type: 'llm',
+              status: 'active',
+              fetch_from: 'predefined-model',
+              model_properties: {},
+            },
+          ],
+        },
+      ],
+    }),
+  )
+  return renderWithConsoleQuery(ui, { queryClient })
+}
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useLanguage: () => 'en_US',
 }))
 
 describe('PublishWithMultipleModel', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockModelListQuery.mockReturnValue({
-      data: [
-        {
-          provider: 'openai',
-          models: [
-            {
-              model: 'gpt-4o',
-              label: {
-                en_US: 'GPT-4o',
-              },
-            },
-          ],
-        },
-      ],
-    })
-  })
-
   it('should disable the trigger when no valid model configuration is available', () => {
     render(
       <PublishWithMultipleModel
@@ -74,7 +82,8 @@ describe('PublishWithMultipleModel', () => {
     ).toBeDisabled()
   })
 
-  it('should open matching model options and call onSelect', () => {
+  it('should open matching model options and call onSelect', async () => {
+    const user = userEvent.setup()
     const handleSelect = vi.fn()
     const modelConfig = {
       id: 'config-1',
@@ -87,11 +96,11 @@ describe('PublishWithMultipleModel', () => {
       <PublishWithMultipleModel multipleModelConfigs={[modelConfig]} onSelect={handleSelect} />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.applyConfig(?=$|:)/ }))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.applyConfig(?=$|:)/ }))
 
     expect(screen.getByText(/(?:^|\.)publishAs(?=$|:)/)).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('GPT-4o'))
+    await user.click(screen.getByText('GPT-4o'))
 
     expect(handleSelect).toHaveBeenCalledWith(expect.objectContaining(modelConfig))
   })

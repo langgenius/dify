@@ -79,7 +79,7 @@ export const useWorkflowRefreshDraft = () => {
           if (refreshSequence === refreshSequenceRef.current) setIsSyncingWorkflowDraft(false)
         })
     },
-    [getWorkflowDraftGraphForCanvas, handleUpdateWorkflowCanvas, workflowStore],
+    [appId, getWorkflowDraftGraphForCanvas, handleUpdateWorkflowCanvas, workflowStore],
   )
 
   return {
