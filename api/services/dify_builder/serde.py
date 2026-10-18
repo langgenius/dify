@@ -32,7 +32,11 @@ def context_to_dict(fc: DifyBuilderContext) -> dict[str, Any]:
     ``ChecklistError``), turning each into a plain dict; every field is a
     str/int/bool/list/dict/None -- so the result is JSON-safe as-is.
     """
-    return asdict(fc)
+    from services.dify_builder.code_risk_assessment import validated_assessments
+
+    result = asdict(fc)
+    result["code_risk_assessments"] = validated_assessments(fc.code_risk_assessments)
+    return result
 
 
 def context_from_dict(d: dict[str, Any]) -> DifyBuilderContext:
@@ -43,6 +47,8 @@ def context_from_dict(d: dict[str, Any]) -> DifyBuilderContext:
     default matching the field default) so an older or partial dict still
     yields a valid ``DifyBuilderContext``.
     """
+    from services.dify_builder.code_risk_assessment import validated_assessments
+
     diagnosis = Diagnosis(**d["diagnosis"]) if d.get("diagnosis") else None
     staged_repair = [MutationIntent(**m) for m in d.get("staged_repair", [])]
     risk = Risk(**d["risk"]) if d.get("risk") else None
@@ -93,6 +99,7 @@ def context_from_dict(d: dict[str, Any]) -> DifyBuilderContext:
         effect_confirmation_form={
             str(node_id): str(signature) for node_id, signature in (d.get("effect_confirmation_form") or {}).items()
         },
+        code_risk_assessments=validated_assessments(d.get("code_risk_assessments")),
         skill_learning_policy=d.get("skill_learning_policy", "ask"),
         model_config=dict(d.get("model_config") or {}),
         reply_language=d.get("reply_language", ""),

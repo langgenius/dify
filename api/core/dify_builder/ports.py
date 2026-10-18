@@ -224,8 +224,25 @@ class DifyPort(Protocol):
         """
         ...
 
+    def prepare_code_risks(
+        self,
+        app_id: str,
+        actor: Actor,
+        *,
+        session_id: str,
+        inputs: Mapping[str, Any],
+        context: DifyBuilderContext,
+    ) -> dict[str, dict[str, Any]]:
+        """Prepare/reuse one bounded explanation using trusted in-turn cognition."""
+        ...
+
     def disclose_effects(
-        self, app_id: str, actor: Actor, *, inputs: Mapping[str, Any] | None = None
+        self,
+        app_id: str,
+        actor: Actor,
+        *,
+        inputs: Mapping[str, Any] | None = None,
+        code_risk_context: DifyBuilderContext | None = None,
     ) -> EffectDisclosure:
         """What a Test Run of the current draft would reach outside Dify (PRD §9.1).
 

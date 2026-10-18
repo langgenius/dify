@@ -567,6 +567,7 @@ def handle_apply_changes(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         fc.verify_run_id = ""
         fc.effect_confirmation = {}
         fc.effect_confirmation_form = {}
+        fc.code_risk_assessments = {}
         if fc.test_input_ref == "" or needs_effect_confirmation(env, s, fc, turn.actor):
             graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
             card, reply = testdata_form(
@@ -699,6 +700,22 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
         # of swallowing it, so diagnose/routing have something to act on.
         logger.exception("dify_builder verify run failed to launch (session=%s, app=%s)", s.id, s.app_id)
         status, per_node, dify_run_id, run_error = "failed", [], "", launch_error_text(exc)
+
+    if (
+        raw is not None
+        and raw.execution_refusal is not None
+        and raw.execution_refusal.reason_code == "code_risk_assessment_stale"
+    ):
+        return input_gate_result(
+            env,
+            s,
+            fc,
+            schema,
+            dict(inputs),
+            PcState.EDIT_AWAIT_TESTDATA,
+            copy_text(BuilderCopyId.TEST_POLICY_REVIEW),
+            actor=turn.actor,
+        )
 
     if status == "succeeded":
         progress.complete("edit-run-test")

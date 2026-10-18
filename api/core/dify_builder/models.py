@@ -412,6 +412,10 @@ class DifyBuilderContext:
     # under the same node ID. Only hashes are persisted, never account secrets.
     effect_confirmation_form: dict[str, str] = field(default_factory=dict)
 
+    # Server-prepared Code explanations, never public action authority. Only
+    # validated DTO projections (hashes, classification, notice) are persisted.
+    code_risk_assessments: dict[str, dict[str, Any]] = field(default_factory=dict)
+
     # -- Governance fields (C-2, additive) --
     skill_learning_policy: str = "ask"
 

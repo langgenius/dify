@@ -27,3 +27,17 @@ _MESSAGES = {
 
 def execution_refusal_message(reason_code: str) -> BuilderText:
     return _MESSAGES.get(reason_code, FALLBACK)
+
+
+# One Code-only preparation fallback. Existing fixed-copy IDs are translated by
+# Web; this backend-only disclosure cannot add a frontend catalog dependency.
+_CODE_RISK_UNAVAILABLE = {
+    "en": "The Code risk explanation is unavailable. This test will simulate this step "
+    "and cannot verify its real behavior. "
+    "Prepare a new test to try the risk review again.",
+    "zh": "暂时无法说明此代码步骤的风险。本次测试将模拟该节点，无法验证其业务行为。请重新准备测试以重试风险评估。",
+}
+
+
+def code_risk_unavailable_notice(reply_language: str) -> str:
+    return _CODE_RISK_UNAVAILABLE["zh" if reply_language.lower().startswith("zh") else "en"]

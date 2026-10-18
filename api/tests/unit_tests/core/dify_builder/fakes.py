@@ -327,10 +327,16 @@ class FakeDifyPort:
     def get_app_mode(self, _app_id: str, _actor: Actor) -> str:
         return self.app_mode
 
+    def prepare_code_risks(self, _app_id, _actor, *, session_id, inputs, context):
+        del session_id, inputs
+        # This canned fake has no reasoning/runtime implementation; Code tests
+        # use the real adapter with an explicit deterministic reasoner.
+        return dict(context.code_risk_assessments)
+
     def disclose_effects(
-        self, _app_id: str, _actor: Actor, *, inputs: Mapping[str, object] | None = None
+        self, _app_id: str, _actor: Actor, *, inputs: Mapping[str, object] | None = None, code_risk_context=None
     ) -> EffectDisclosure:
-        del inputs
+        del inputs, code_risk_context
         return self.effect_disclosure
 
     def stamp_http_fixtures(
@@ -571,10 +577,16 @@ class FakeBuildDifyPort:
     def get_app_mode(self, _app_id: str, _actor: Actor) -> str:
         return self.app_mode
 
+    def prepare_code_risks(self, _app_id, _actor, *, session_id, inputs, context):
+        del session_id, inputs
+        # This canned fake has no reasoning/runtime implementation; Code tests
+        # use the real adapter with an explicit deterministic reasoner.
+        return dict(context.code_risk_assessments)
+
     def disclose_effects(
-        self, _app_id: str, _actor: Actor, *, inputs: Mapping[str, object] | None = None
+        self, _app_id: str, _actor: Actor, *, inputs: Mapping[str, object] | None = None, code_risk_context=None
     ) -> EffectDisclosure:
-        del inputs
+        del inputs, code_risk_context
         return self.effect_disclosure
 
     def stamp_http_fixtures(

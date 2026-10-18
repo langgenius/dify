@@ -676,6 +676,7 @@ def handle_execution(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -
         # scoped to the preceding saved-input attempt, including unknown ones.
         fc.effect_confirmation = {}
         fc.effect_confirmation_form = {}
+        fc.code_risk_assessments = {}
         # A side effect not yet confirmed for its current target shows the form
         # again, with the prepared inputs, so it is never mocked unannounced.
         if fc.test_input_ref == "" or needs_effect_confirmation(env, s, fc, turn.actor):
@@ -825,6 +826,22 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
         # of swallowing it, so diagnose/routing have something to act on.
         logger.exception("dify_builder verify run failed to launch (session=%s, app=%s)", s.id, s.app_id)
         status, per_node, dify_run_id, run_error = "failed", [], "", launch_error_text(exc)
+
+    if (
+        raw is not None
+        and raw.execution_refusal is not None
+        and raw.execution_refusal.reason_code == "code_risk_assessment_stale"
+    ):
+        return input_gate_result(
+            env,
+            s,
+            fc,
+            schema,
+            dict(inputs),
+            PcState.BUILD_AWAIT_TESTDATA,
+            copy_text(BuilderCopyId.TEST_POLICY_REVIEW),
+            actor=turn.actor,
+        )
 
     if status == "succeeded":
         progress.complete("build-run-test")

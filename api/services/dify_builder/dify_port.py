@@ -84,6 +84,7 @@ from core.dify_builder.input_schema import SYSTEM_QUERY, validate_query
 from core.dify_builder.models import (
     Actor,
     ApplyResult,
+    DifyBuilderContext,
     Graph,
     Inputs,
     MutationIntent,
@@ -99,7 +100,7 @@ from graphon.enums import BuiltinNodeTypes
 from libs.datetime_utils import naive_utc_now
 from libs.flask_utils import set_login_user
 from models.account import Account
-from models.dify_builder import DifyBuilderRun, DifyBuilderSession, DifyBuilderTestInput
+from models.dify_builder import DifyBuilderRun, DifyBuilderSession, DifyBuilderSessionCommit, DifyBuilderTestInput
 from models.enums import CreatorUserRole
 from models.model import App
 from models.tools import BuiltinToolProvider
@@ -620,6 +621,11 @@ def _unsupported_run(error: BuilderExecutionPolicyError) -> Run:
     return Run(status="failed", execution_refusal=BuilderExecutionRefusal(reason_code=error.reason_code))
 
 
+def _code_scope_binding(workflow: Workflow) -> str:
+    """Code explanations bind execution features as well as namespace values."""
+    return canonical_digest({"features": workflow.features_dict, "namespace": _effect_scope_binding(workflow)})
+
+
 class WorkflowServiceDifyPort:
     """``DifyPort`` implementation backed directly by Dify's own services."""
 
@@ -643,8 +649,80 @@ class WorkflowServiceDifyPort:
             workflow = _load_draft_workflow_or_raise(app, session=session)
             return dict(workflow.graph_dict), execution_revision(workflow)
 
+    def prepare_code_risks(
+        self,
+        app_id: str,
+        actor: Actor,
+        *,
+        session_id: str,
+        inputs: Mapping[str, Any],
+        context: DifyBuilderContext,
+    ) -> dict[str, dict[str, Any]]:
+        """Reason once outside DB sessions; revalidate facts before exposing the snapshot."""
+        from services.dify_builder.code_risk_assessment import (
+            assess_code,
+            builder_code_reasoner,
+            code_facts,
+            unavailable,
+            validated_assessments,
+        )
+
+        if not dify_config.DIFY_BUILDER_CONFIRMED_RUN_ENABLED or self._restricted_admissible(app_id, actor):
+            return {}
+
+        def current_facts():
+            with _session_factory()() as session:
+                app = load_app(session, app_id, actor)
+                owner = session.get(DifyBuilderSession, session_id)
+                if owner is None or (owner.app_id, owner.tenant_id, owner.owner_account_id) != (
+                    app_id,
+                    actor.tenant_id,
+                    actor.account_id,
+                ):
+                    raise BuilderExecutionPolicyError("execution_owner_mismatch")
+                draft = _load_draft_workflow_or_raise(app, session=session)
+                return code_facts(
+                    dict(draft.graph_dict),
+                    inputs=inputs,
+                    goal_text=context.goal_text,
+                    model_config=context.model_config,
+                    scope_binding=_code_scope_binding(draft),
+                )
+
+        before = current_facts()
+        prior = validated_assessments(context.code_risk_assessments)
+        results = {}
+        for node_id, facts in before.items():
+            saved = prior.get(node_id)
+            if saved is not None and saved["facts_digest"] == facts.digest:
+                results[node_id] = saved
+            elif not context.goal_text or not context.model_config:
+                results[node_id] = unavailable(facts).model_dump(mode="json")
+            else:
+                results[node_id] = assess_code(
+                    facts,
+                    reason=builder_code_reasoner(
+                        tenant_id=actor.tenant_id,
+                        model_config=context.model_config,
+                    ),
+                ).model_dump(mode="json")
+        after = current_facts()
+        # A concurrent edit cannot inherit reasoning about the previous draft.
+        # Do not retry the model automatically; show unavailable/Mock instead.
+        return {
+            node_id: results[node_id]
+            if node_id in before and before[node_id].digest == facts.digest
+            else unavailable(facts).model_dump(mode="json")
+            for node_id, facts in after.items()
+        }
+
     def disclose_effects(
-        self, app_id: str, actor: Actor, *, inputs: Mapping[str, Any] | None = None
+        self,
+        app_id: str,
+        actor: Actor,
+        *,
+        inputs: Mapping[str, Any] | None = None,
+        code_risk_context: DifyBuilderContext | None = None,
     ) -> EffectDisclosure:
         """What a Test Run of the current draft would touch, with each Tool's credential name.
 
@@ -658,8 +736,24 @@ class WorkflowServiceDifyPort:
             workflow = _load_draft_workflow_or_raise(app, session=session)
             graph = dict(workflow.graph_dict)
             names, bindings = _tool_account_metadata(session, app.tenant_id, graph)
+            from services.dify_builder.code_risk_assessment import code_facts
+
+            context = code_risk_context or DifyBuilderContext()
+            facts = code_facts(
+                graph,
+                inputs=inputs or {},
+                goal_text=context.goal_text,
+                model_config=context.model_config,
+                scope_binding=_code_scope_binding(workflow),
+            )
             return disclose(
-                graph, names, account_bindings=bindings, inputs=inputs, scope_binding=_effect_scope_binding(workflow)
+                graph,
+                names,
+                account_bindings=bindings,
+                inputs=inputs,
+                scope_binding=_effect_scope_binding(workflow),
+                code_risk_assessments=context.code_risk_assessments,
+                code_facts_digests={node_id: fact.digest for node_id, fact in facts.items()},
             )
 
     def node_outputs(self, app_id: str, actor: Actor, run_id: str) -> list[NodeOutput]:
@@ -1318,6 +1412,40 @@ class WorkflowServiceDifyPort:
         commands = build_confirmed_agent_command_service(actor=actor)
         return commands.persist_parent_wait(ref=ref) if paused else commands.settle_parent(ref=ref)
 
+    @staticmethod
+    def _saved_code_risks(session, *, owner, graph, inputs, draft):
+        """Reload server-only assessment at worker boundaries; never call reasoning."""
+        from services.dify_builder.code_risk_assessment import code_facts, validated_assessments
+        from services.dify_builder.serde import context_from_dict
+
+        if not any(node.get("data", {}).get("type") == "code" for node in graph.get("nodes", [])):
+            return {}, {}
+        commit = session.scalar(
+            select(DifyBuilderSessionCommit)
+            .where(
+                DifyBuilderSessionCommit.session_id == owner.id,
+                DifyBuilderSessionCommit.version == owner.version,
+            )
+            .order_by(DifyBuilderSessionCommit.created_at.desc())
+            .limit(1)
+        )
+        if commit is None:
+            raise BuilderExecutionPolicyError("code_risk_assessment_stale")
+        context = context_from_dict(commit.context)
+        facts = code_facts(
+            graph,
+            inputs=inputs,
+            goal_text=context.goal_text,
+            model_config=context.model_config,
+            scope_binding=_code_scope_binding(draft),
+        )
+        risks = validated_assessments(context.code_risk_assessments)
+        if any(
+            node_id not in risks or risks[node_id]["facts_digest"] != fact.digest for node_id, fact in facts.items()
+        ):
+            raise BuilderExecutionPolicyError("code_risk_assessment_stale")
+        return risks, {node_id: fact.digest for node_id, fact in facts.items()}
+
     def _run_confirmed_full_draft(
         self,
         app_id: str,
@@ -1353,16 +1481,39 @@ class WorkflowServiceDifyPort:
                 return _unsupported_run(BuilderExecutionPolicyError("test_input_binding_mismatch"))
             draft = _load_draft_workflow_or_raise(app, session=session)
             graph = dict(draft.graph_dict)
+            if any(node.get("data", {}).get("type") == "code" for node in graph.get("nodes", [])) and (
+                canonical_digest(saved.inputs) != canonical_digest(dict(inputs))
+            ):
+                return _unsupported_run(BuilderExecutionPolicyError("test_input_binding_mismatch"))
             owner_version = owner.version
             before_revision = execution_revision(draft)
             before_graph_revision = executable_graph_revision(graph)
             names, bindings = _tool_account_metadata(session, tenant_id, graph)
-            mocked = disclose(
-                graph, names, account_bindings=bindings, inputs=inputs, scope_binding=_effect_scope_binding(draft)
-            ).mocked_node_ids(effect_confirmation)
+            reservation_id = str(uuid5(NAMESPACE_URL, f"dify-builder-full-run:{session_id}:{test_input_id}"))
+            existing = session.get(DifyBuilderRun, reservation_id)
+            # Recovery observes its old mock set/Run even if a later edit makes
+            # the preparation stale. It must never reassess or redispatch.
+            if existing is None:
+                try:
+                    risks, digests = self._saved_code_risks(
+                        session, owner=owner, graph=graph, inputs=inputs, draft=draft
+                    )
+                except BuilderExecutionPolicyError as error:
+                    return _unsupported_run(error)
+                mocked = disclose(
+                    graph,
+                    names,
+                    account_bindings=bindings,
+                    inputs=inputs,
+                    scope_binding=_effect_scope_binding(draft),
+                    code_risk_assessments=risks,
+                    code_facts_digests=digests,
+                ).mocked_node_ids(effect_confirmation)
+            else:
+                mocked = frozenset()  # _reserve_full_run returns the immutable old reservation below.
             # Only New Agent owns the nested-call confirmation transport. A
             # legacy strategy Agent must not fall through to its ordinary tools.
-            if any(
+            if existing is None and any(
                 isinstance(node, dict)
                 and isinstance(node.get("data"), dict)
                 and node["data"].get("type") == "agent"
@@ -1439,6 +1590,31 @@ class WorkflowServiceDifyPort:
                 # Only native generation owns this session; Builder reads and
                 # the durable reservation committed before any provider I/O.
                 with _session_factory()() as session:
+                    if any(node.get("data", {}).get("type") == "code" for node in graph.get("nodes", [])):
+                        current_owner = session.get(DifyBuilderSession, session_id)
+                        current_input = session.get(DifyBuilderTestInput, test_input_id)
+                        current_draft = _load_draft_workflow_or_raise(app, session=session)
+                        if (
+                            current_owner is None
+                            or current_owner.version != owner_version
+                            or (current_owner.app_id, current_owner.tenant_id, current_owner.owner_account_id)
+                            != (app_id, actor.tenant_id, actor.account_id)
+                            or current_input is None
+                            or current_input.session_id != session_id
+                            or canonical_digest(current_input.inputs) != canonical_digest(dict(inputs))
+                            or execution_revision(current_draft) != before_revision
+                        ):
+                            return _unsupported_run(BuilderExecutionPolicyError("code_risk_assessment_stale"))
+                        try:
+                            self._saved_code_risks(
+                                session,
+                                owner=current_owner,
+                                graph=dict(current_draft.graph_dict),
+                                inputs=inputs,
+                                draft=current_draft,
+                            )
+                        except BuilderExecutionPolicyError as error:
+                            return _unsupported_run(error)
                     response = AppGenerateService.generate(
                         app_model=app,
                         user=account,

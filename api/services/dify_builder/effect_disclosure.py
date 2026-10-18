@@ -27,6 +27,13 @@ from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from services.dify_builder.revision import node_config_digest, normalize_execution_graph
 
 EffectTier = Literal["pure", "sandboxed", "read", "side_effect", "destructive"]
+_CODE_TIERS: dict[str, EffectTier] = {
+    "pure": "sandboxed",
+    "read": "read",
+    "side_effect": "side_effect",
+    "destructive": "destructive",
+    "unknown": "side_effect",
+}
 
 # Test-data form keys for the per-node confirmation checkboxes. ``:`` never
 # appears in a Start variable name, so these keys cannot shadow an input.
@@ -199,10 +206,13 @@ class EffectItem:
     signature: str
     # Same graph/account snapshot, before direct Start values are bound.
     config_signature: str = ""
+    risk_notice: str = ""
+    assessment_digest: str = ""
+    assessment_status: str = ""
 
     @property
     def confirmable(self) -> bool:
-        return self.tier == "side_effect"
+        return self.tier == "side_effect" and self.assessment_status != "unavailable"
 
 
 @dataclass(frozen=True)
@@ -214,7 +224,7 @@ class EffectDisclosure:
 
     @property
     def confirmable(self) -> tuple[EffectItem, ...]:
-        return self.by_tier("side_effect")
+        return tuple(item for item in self.items if item.confirmable)
 
     def confirmation(self, node_ids: Iterable[str]) -> dict[str, str]:
         """Bind the confirmed side-effect nodes to their current signatures; others are ignored."""
@@ -227,7 +237,8 @@ class EffectDisclosure:
         return frozenset(
             item.node_id
             for item in self.items
-            if item.tier == "destructive"
+            if item.assessment_status == "unavailable"
+            or item.tier == "destructive"
             or (item.tier == "side_effect" and confirmed.get(item.node_id) != item.signature)
         )
 
@@ -239,6 +250,8 @@ def disclose(
     account_bindings: Mapping[str, str] | None = None,
     inputs: Mapping[str, Any] | None = None,
     scope_binding: str = "",
+    code_risk_assessments: Mapping[str, Any] | None = None,
+    code_facts_digests: Mapping[str, str] | None = None,
 ) -> EffectDisclosure:
     """Disclose configuration, resolved accounts, and direct invocation inputs.
 
@@ -248,6 +261,10 @@ def disclose(
     ``scope_binding`` is an adapter-owned digest of environment/conversation
     variable state; its values are never returned as part of the disclosure.
     """
+    from services.dify_builder.code_risk_assessment import UNAVAILABLE, validated_assessments
+    from services.dify_builder.execution_contracts import canonical_digest
+
+    code_risks = validated_assessments(code_risk_assessments)
     names = accounts or {}
     bindings = account_bindings or {}
     items: list[EffectItem] = []
@@ -314,6 +331,33 @@ def disclose(
             )
         account = names.get(node_id, "")
         config_tier, config_target, _ = _classify(node_type, data)
+        risk_notice, assessment_digest, assessment_status = "", "", ""
+        code_identity = None
+        if node_type == "code":
+            risk = code_risks.get(node_id)
+            if risk is not None and risk["facts_digest"] == (code_facts_digests or {}).get(node_id):
+                risk_notice = risk["risk_notice"]
+                assessment_digest = canonical_digest(risk)
+                assessment_status = risk["status"]
+                tier = _CODE_TIERS[risk["classification"]]
+            else:
+                assessment_status = "unavailable"
+                risk_notice = UNAVAILABLE
+            if assessment_status == "unavailable":
+                tier = "side_effect"
+            # The Code facts digest already binds typed inputs and the whole
+            # executable graph without canvas labels. Do not reintroduce the
+            # older dynamic HTTP/Tool graph signature or stringified inputs.
+            bound_inputs = {}
+            graph_binding = None
+            config_tier = tier
+            target = config_target = "Code runtime (destinations depend on the bound source and inputs)"
+            obj = ""
+            code_identity = {
+                "assessment": assessment_digest,
+                "status": assessment_status,
+                "facts": (code_facts_digests or {}).get(node_id, ""),
+            }
         title = data.get("title") if isinstance(data.get("title"), str) else ""
         items.append(
             EffectItem(
@@ -321,6 +365,9 @@ def disclose(
                 title=title or node_id,
                 node_type=node_type,
                 tier=tier,
+                risk_notice=risk_notice,
+                assessment_digest=assessment_digest,
+                assessment_status=assessment_status,
                 target=target,
                 account=account,
                 object=obj,
@@ -334,6 +381,7 @@ def disclose(
                     bound_inputs,
                     graph_binding,
                     scope_binding,
+                    code_identity,
                 ),
                 config_signature=_signature(
                     node_type,
@@ -345,6 +393,7 @@ def disclose(
                     {},
                     graph_binding,
                     scope_binding,
+                    code_identity,
                 ),
             )
         )
@@ -581,6 +630,7 @@ def _signature(
     bound_inputs: Mapping[str, Any],
     graph_binding: Mapping[str, Any] | None,
     scope_binding: str,
+    code_identity: Mapping[str, Any] | None = None,
 ) -> str:
     material: dict[str, Any] = {
         "type": node_type,
@@ -592,6 +642,8 @@ def _signature(
         "dynamic_graph": graph_binding,
         "scope_binding": scope_binding,
     }
+    if code_identity is not None:
+        material["code_assessment"] = code_identity
     # Bind all executable configuration, including HTTP headers and Tool form
     # configurations. A field allowlist can silently miss a new target/account
     # setting. Reuse the execution revision's canvas exclusions.

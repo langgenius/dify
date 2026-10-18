@@ -60,7 +60,7 @@ def test_tiers_follow_the_prd_mock_and_confirm_rules():
     assert tiers == {
         "start": "pure",
         "llm": "read",
-        "code": "sandboxed",
+        "code": "side_effect",  # Missing prepared assessment is unavailable/Mock.
         "branch": "pure",
         "fetch": "read",
         "hook": "side_effect",
@@ -182,7 +182,7 @@ def test_legacy_agent_disclosure_keeps_its_model_target() -> None:
 def test_default_is_mock_for_every_side_effect_and_destructive_node():
     disclosure = disclose(GRAPH)
 
-    assert disclosure.mocked_node_ids(None) == {"hook", "purge", "slack", "notion", "mystery", "child", "agent"}
+    assert disclosure.mocked_node_ids(None) == {"code", "hook", "purge", "slack", "notion", "mystery", "child", "agent"}
 
 
 def test_confirmation_runs_only_confirmed_side_effects_never_destructive():
@@ -190,7 +190,7 @@ def test_confirmation_runs_only_confirmed_side_effects_never_destructive():
     confirmation = disclosure.confirmation(["slack", "notion", "llm", "absent"])
 
     assert set(confirmation) == {"slack"}
-    assert disclosure.mocked_node_ids(confirmation) == {"hook", "purge", "notion", "mystery", "child", "agent"}
+    assert disclosure.mocked_node_ids(confirmation) == {"code", "hook", "purge", "notion", "mystery", "child", "agent"}
 
 
 def test_changing_a_confirmed_target_drops_only_that_confirmation():
@@ -280,7 +280,7 @@ def test_upstream_config_change_invalidates_dynamic_effect_but_keeps_fixed_targe
     changed = deepcopy(graph)
     changed["nodes"][1]["data"]["code"] = "return {'host': 'b.example.com'}"
 
-    assert disclose(changed).mocked_node_ids(confirmation) == {"dynamic"}
+    assert disclose(changed).mocked_node_ids(confirmation) == {"code", "dynamic"}
 
 
 def test_dynamic_effect_binds_start_inputs_used_by_its_upstream_node():
@@ -293,7 +293,7 @@ def test_dynamic_effect_binds_start_inputs_used_by_its_upstream_node():
     }
     confirmation = disclose(graph, inputs={"host": "a.example.com"}).confirmation(["hook"])
 
-    assert disclose(graph, inputs={"host": "b.example.com"}).mocked_node_ids(confirmation) == {"hook"}
+    assert disclose(graph, inputs={"host": "b.example.com"}).mocked_node_ids(confirmation) == {"code", "hook"}
 
 
 def test_advanced_chat_system_query_is_bound_for_templates_and_variable_selectors():

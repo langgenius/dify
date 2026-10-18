@@ -913,6 +913,14 @@ def testdata_form_fields(schema: StartSchema) -> list[FormField]:
     return fields
 
 
+def _test_effects(env: Env, s: Session, fc: DifyBuilderContext, actor: Actor, inputs: dict[str, Any]):
+    # HTTP/Tool direct-input approval semantics remain unchanged. Code's
+    # explanation additionally binds typed inputs plus trusted task/model facts.
+    if fc.code_risk_assessments:
+        return env.dify.disclose_effects(s.app_id, actor, inputs=inputs, code_risk_context=fc)
+    return env.dify.disclose_effects(s.app_id, actor, inputs=inputs)
+
+
 def testdata_form(
     env: Env,
     s: Session,
@@ -928,7 +936,14 @@ def testdata_form(
     # Use prepared values to show direct Start-based targets. Typing inputs in
     # this form is intentional; submission binds those values after checking
     # that the configuration itself still matches the shown disclosure.
-    disclosure = env.dify.disclose_effects(s.app_id, actor, inputs=values)
+    fc.code_risk_assessments = env.dify.prepare_code_risks(
+        s.app_id,
+        actor,
+        session_id=s.id,
+        inputs=values,
+        context=fc,
+    )
+    disclosure = _test_effects(env, s, fc, actor, values)
     fc.effect_confirmation_form = {
         item.node_id: item.config_signature or item.signature for item in disclosure.confirmable
     }
@@ -940,7 +955,7 @@ def testdata_form(
         values={**values, **effect_confirmation_values(disclosure, fc.effect_confirmation)},
         frozen=False,
     )
-    return card, with_effects_note(reply, effects_note(disclosure))
+    return card, with_effects_note(reply, effects_note(disclosure, reply_language=fc.reply_language))
 
 
 def record_effect_confirmation(
@@ -949,11 +964,11 @@ def record_effect_confirmation(
     """Record only checkboxes for configuration actually shown by the server.
 
     Return Start inputs and whether a selected effect needs fresh disclosure.
-    Direct Start values are bound to the approval after the static comparison;
-    an intentional input edit does not require a second form submission.
+    HTTP/Tool direct Start edits bind approval after the static comparison.
+    Code input changes require a fresh explanation before accepting its choice.
     """
     plain, confirmed = split_confirmations(inputs)
-    current = env.dify.disclose_effects(s.app_id, actor, inputs=plain)
+    current = _test_effects(env, s, fc, actor, plain)
     selected = {
         item.node_id: item.config_signature or item.signature
         for item in current.confirmable
@@ -962,7 +977,9 @@ def record_effect_confirmation(
     accepted = [
         node_id for node_id, signature in selected.items() if fc.effect_confirmation_form.get(node_id) == signature
     ]
-    stale = len(accepted) != len(selected)
+    stale = len(accepted) != len(selected) or any(
+        item.node_type == "code" and not item.assessment_digest for item in current.items
+    )
     fc.effect_confirmation = current.confirmation(accepted)
     fc.effect_confirmation_form = {}
     return plain, stale
@@ -971,8 +988,10 @@ def record_effect_confirmation(
 def needs_effect_confirmation(env: Env, s: Session, fc: DifyBuilderContext, actor: Actor) -> bool:
     """True while a side effect has no confirmation for its current target, so
     Run test shows the form again instead of silently mocking it."""
-    disclosure = env.dify.disclose_effects(s.app_id, actor, inputs=saved_test_inputs(env, fc))
-    return any(fc.effect_confirmation.get(item.node_id) != item.signature for item in disclosure.confirmable)
+    disclosure = _test_effects(env, s, fc, actor, saved_test_inputs(env, fc))
+    return any(fc.effect_confirmation.get(item.node_id) != item.signature for item in disclosure.confirmable) or any(
+        item.node_type == "code" and not item.assessment_digest for item in disclosure.items
+    )
 
 
 def saved_test_inputs(env: Env, fc: DifyBuilderContext) -> dict[str, Any]:
@@ -1211,6 +1230,7 @@ def handle_await_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
     fc.verify_run_id = ""
     fc.effect_confirmation = {}
     fc.effect_confirmation_form = {}
+    fc.code_risk_assessments = {}
     if fc.test_input_ref == "" or needs_effect_confirmation(env, s, fc, turn.actor):
         graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
         card, reply = testdata_form(
@@ -1367,6 +1387,18 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
     # fc.verify_run_id directly; run_id_sink is still populated so the
     # runner's generic write-back stays consistent (a no-op, since the id
     # already matches).
+    if result.execution_refusal is not None and result.execution_refusal.reason_code == "code_risk_assessment_stale":
+        return input_gate_result(
+            env,
+            s,
+            fc,
+            schema,
+            dict(inputs),
+            PcState.FIX_AWAIT_TESTDATA,
+            copy_text(BuilderCopyId.TEST_POLICY_REVIEW),
+            actor=turn.actor,
+        )
+
     run = Run(
         execution_refusal=result.execution_refusal if result else None,
         id=str(uuid.uuid4()),

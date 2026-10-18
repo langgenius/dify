@@ -424,6 +424,11 @@ jobs:
           FILES += [path for path in ['api/tests/unit_tests/services/dify_builder/test_agent_model_result_canonical.py'] if path not in FILES]
           FILES += ['api/tests/unit_tests/services/dify_builder/test_output_evidence.py']
           FILES += ['api/tests/unit_tests/services/test_workflow_run_service_pause.py']
+          FILES += [
+              'api/tests/unit_tests/services/dify_builder/test_code_risk_assessment.py',
+              'api/tests/unit_tests/services/dify_builder/test_code_risk_preparation.py',
+              'api/tests/unit_tests/core/dify_builder/test_ports.py',
+          ]
           SELECTED_GUARDS = [
               "api/tests/unit_tests/controllers/console/app/test_workflow.py::test_sync_draft_workflow_rejects_empty_graph_without_confirmation",
           ]
@@ -753,6 +758,46 @@ jobs:
               'test_initial_ordinary_run_without_dispatch_settles_same_declined_attempt_once': 1,
               'test_later_generation_requires_its_completed_source_before_declined_settlement': 2,
           })
+          # Code risk reasoning and preparation: exact reviewed function inventories.
+          a4_expected['tests.unit_tests.services.dify_builder.test_code_risk_assessment'] = {'test_code_facts_bind_original_typed_values_without_sharing_them': 4,
+           'test_code_upstream_confirmation_survives_canvas_title_and_node_order_only': 1,
+           'test_file_declared_type_is_projected_without_file_url_or_content': 1,
+           'test_invalid_reasoning_is_unavailable_never_pure': 3,
+           'test_missing_input_is_distinct_from_null_and_canvas_is_not_new_execution': 1,
+           'test_missing_or_changed_code_snapshot_cannot_accept_forged_confirmation': 1,
+           'test_model_facts_hide_body_file_and_credentials_and_notice_is_sanitized': 1,
+           'test_notice_redaction_retains_task_credential_provenance_without_storing_task': 1,
+           'test_oversize_and_failed_reasoning_are_unavailable_without_retry': 1,
+           'test_persisted_projection_rejects_extra_source_and_historical_missing_entries': 1,
+           'test_same_code_type_uses_prepared_reasoning_for_actual_choice': 5,
+           'test_selected_model_malformed_json_is_not_automatically_retried': 1,
+           'test_unavailable_reply_is_human_and_actionable_in_session_language': 2}
+          a4_expected['tests.unit_tests.services.dify_builder.test_code_risk_preparation'] = {'test_changed_code_input_redisplays_before_accepting_checkbox_and_reuses_shown_snapshot': 1,
+           'test_confirmed_code_write_launches_once_and_its_prose_cannot_rebind_target': 1,
+           'test_preparation_reuses_one_snapshot_and_does_not_hold_database_during_reasoning': 1,
+           'test_recovery_keeps_mocked_legacy_agent_when_code_snapshot_disappears': 1,
+           'test_stale_worker_risk_returns_existing_input_interaction_without_repair': 3,
+           'test_unavailable_code_is_selectively_mocked_and_recovery_keeps_original_attempt': 1,
+           'test_worker_input_race_preserves_boolean_number_type_distinction': 1,
+           'test_worker_race_after_reservation_cannot_dispatch_stale_code': 3,
+           'test_worker_refuses_missing_or_changed_snapshot_before_dispatch': 1,
+           'test_worker_uses_persisted_assessment_for_native_mock_choice': 4,
+           'test_workflow_feature_scope_change_invalidates_shown_code_explanation': 1}
+          a4_expected['tests.unit_tests.core.dify_builder.test_ports'] = {'test_actor_replaces_forward_auth_on_dify_port_methods': 1,
+           'test_agent_missing_learn_from_build_is_not_a_dify_builder_agent': 1,
+           'test_apply_result_defaults_and_changed_nodes_not_shared': 1,
+           'test_change_set_defaults_and_changed_nodes_not_shared': 1,
+           'test_diagnosis_defaults_and_construction': 1,
+           'test_dify_port_has_graph_primitive_methods': 1,
+           'test_errors_are_exception_subclasses': 1,
+           'test_fix_context_embeds_the_tightened_value_types': 1,
+           'test_mutation_intent_defaults_and_args_not_shared': 1,
+           'test_node_event_defaults_and_construction': 1,
+           'test_pcstate_is_the_state_module_type_used_by_compare_and_advance': 1,
+           'test_risk_defaults_and_construction': 1,
+           'test_stub_agent_satisfies_dify_builder_agent_protocol': 1,
+           'test_stub_dify_port_satisfies_dify_port_protocol': 1,
+           'test_stub_repository_satisfies_repository_protocol': 1}
           for module, expected in {**a3_expected, **a4_expected}.items():
               actual = {}
               for classname, name in identities:
