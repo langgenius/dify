@@ -11,6 +11,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
+from core.workflow.nodes.agent_v2.entities import DifyAgentNodeData
 from models.agent_config_entities import (
     DeclaredOutputChildConfig,
     DeclaredOutputConfig,
@@ -49,3 +50,37 @@ def declares_native_agent_output(data: Mapping[str, Any], variable: str) -> bool
             return False
         declared = next((child for child in declared.children if child.name == name), None)
     return declared is not None
+
+
+def native_agent_config_errors(config: Mapping[str, Any]) -> tuple[dict[str, Any], ...]:
+    """Collect safe, independent native schema errors within builder correction.
+
+    Legacy strategy configs retain their existing path. An explicit native
+    marker, v2 or roster binding identifies a native config attempt, including
+    an incomplete one. Wrapper type/title are supplied by graph assembly; no
+    binding selection, authorization, coercion or schema repair happens here.
+    """
+    binding = config.get("agent_binding")
+    roster_binding = isinstance(binding, Mapping) and binding.get("binding_type") == "roster_agent"
+    if config.get("agent_node_kind") != "dify_agent" and str(config.get("version")) != "2" and not roster_binding:
+        return ()
+    errors: list[dict[str, Any]] = []
+    validations = (
+        (DifyAgentNodeData, {"title": "Workspace Agent", **config, "type": "agent"}),
+        (
+            WorkflowNodeJobConfig,
+            {
+                "declared_outputs": config.get("agent_declared_outputs", []),
+                "output_routes": config.get("agent_output_routes", {}),
+            },
+        ),
+    )
+    for owner, payload in validations:
+        try:
+            owner.model_validate(payload)
+        except ValidationError as exc:
+            errors.extend(
+                {"loc": list(error["loc"]), "type": error["type"]}
+                for error in exc.errors(include_input=False, include_url=False)
+            )
+    return tuple(errors)

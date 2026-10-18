@@ -54,6 +54,35 @@ _NODE_SNIPPETS: dict[str, str] = {
 - answer (Advanced Chat mode only):
     {"variables": [],
      "answer": "<text with {{#<src>.<var>#}} placeholders>"}""",
+    "agent": """\
+- agent (native New Agent v2; only a provided confirmed published roster binding):
+    {"version": "2", "agent_node_kind": "dify_agent",
+     "agent_binding": {"binding_type": "roster_agent",
+                       "agent_id": "<provided-selected-agent-id>",
+                       "current_snapshot_id": "<provided-selected-snapshot-id>"},
+     "agent_task": "<task with {{#upstream_id.variable#}} inputs>",
+     "agent_declared_outputs": [
+       {"name": "list_value", "type": "array", "array_item": {"type": "string"}},
+       {"name": "details", "type": "object",
+        "children": [{"name": "approved", "type": "boolean"}]}
+     ],
+     "agent_output_routes": {"enabled": false, "routes": []}}
+    Copy ONLY the exact confirmed Agent ID and snapshot ID supplied in the
+    instruction. If no confirmed published binding is supplied, do not invent
+    an Agent, ID, snapshot or legacy agent strategy. Do not use tools/plugin
+    agent_strategy fields. Version MUST be the quoted string "2", never number 2.
+    The declaration examples illustrate native shapes, not a published Agent
+    output schema: choose caller job names/types from the approved task and
+    declared producer contract. Scalar types: string | number | boolean | file.
+    Arrays use array_item (type plus object children when applicable), NEVER
+    JSON Schema items; nested arrays are unsupported. Object fields use the
+    children list of name/type entries, NEVER JSON Schema properties.
+    System text is already available; switch is system-owned only when routes
+    are enabled. Never declare text, switch or _session as custom outputs.
+    Consumers reference custom outputs directly as ["<agent-node-id>", "<name>"].
+    Do not rename outputs to text or invent defaults. Leave routes disabled
+    unless the approved plan explicitly requires routing; enabled routes must
+    have at least two provided exits with stable id and selection name.""",
     "llm": """\
 - llm:
     {"model": {"provider": "<provider>", "name": "<model>", "mode": "chat",

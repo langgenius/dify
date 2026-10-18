@@ -27,6 +27,11 @@ minimum set of Dify workflow nodes needed to fulfil it, in execution order.
 - "template-transform"  — Jinja2 string templating.
 - "http-request"        — call an external HTTP API.
 - "tool"                — call a Dify built-in / plugin tool (e.g. web search, time, audio).
+- "agent"               — native New Agent v2, ONLY when a confirmed published
+                          roster Agent ID and snapshot ID are provided in the
+                          instruction. Copy that binding exactly; never invent
+                          an Agent, snapshot, published output schema, or legacy
+                          Agent strategy. Caller output names follow the task.
 - "if-else"             — conditional branch on a value.
 - "iteration"           — run a sub-pipeline over each item of a list (parallel-friendly map).
 - "loop"                — repeat a sub-pipeline until an exit condition is met.

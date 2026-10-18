@@ -89,7 +89,7 @@ from services.dify_builder.api_tool_output_context import (
     format_api_tool_code_system_rules,
     format_api_tool_output_context,
 )
-from services.dify_builder.native_agent_output_contract import declares_native_agent_output
+from services.dify_builder.native_agent_output_contract import declares_native_agent_output, native_agent_config_errors
 from services.dify_builder.native_api_output_contract import (
     collect_native_api_selector_refs,
     declares_native_api_output,
@@ -1435,6 +1435,10 @@ class WorkflowGenerator:
                 raise _StageSchemaError(stage, "missing 'config' object")
             if not isinstance(parsed["config"], dict):
                 raise _StageSchemaError(stage, f"'config' must be an object, got {type(parsed['config']).__name__}")
+            if node_type == BuiltinNodeTypes.AGENT:
+                errors = native_agent_config_errors(parsed["config"])
+                if errors:
+                    raise _StageSchemaError(stage, "native Agent config errors: " + json.dumps(errors))
 
         parsed = cls._invoke_and_parse_json(
             model_instance=model_instance,
