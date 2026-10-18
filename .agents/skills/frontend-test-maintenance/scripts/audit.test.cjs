@@ -36,14 +36,16 @@ function fixture(t) {
     run('audit.cjs', root, path.join(root, file), 'web')
     return read(file)
   }
-  const rank = (history) => {
+  const rank = (history, focus = 'quality', count = 40) => {
     run(
       'report.cjs',
       'rank',
       path.join(root, 'audit.json'),
-      '40',
+      String(count),
       path.join(root, 'queue.json'),
       ...(history ? [path.join(root, history)] : []),
+      '--focus',
+      focus,
     )
     return read('queue.json')
   }
@@ -92,41 +94,126 @@ afterEach(() => { mocker.clearAllMocks(); mocker.restoreAllMocks() })
   assert.equal(count('afterEach_mock_restore'), 1)
 })
 
-test('specific candidates outrank large mocks; only current explicit reviews defer files', (t) => {
+test('quality queues survive type volume and only explicit dimension reviews defer candidates', (t) => {
   const f = fixture(t)
+  f.write('web/cast.spec.ts', 'const value = {} as never\n'.repeat(100))
+  f.write(
+    'web/quality.spec.tsx',
+    `
+vi.mock('./hooks/use-save', () => ({ useSave: vi.fn() }))
+it('saves', () => { expect(save).toHaveBeenCalledWith('value') })
+`,
+  )
+  f.write('web/service.spec.ts', `vi.mock('@/service/use-save', () => ({}))`)
   f.write('web/large.spec.ts', 'vi.fn()\n'.repeat(100))
-  f.write('web/clear.spec.ts', 'afterEach(() => vi.clearAllMocks())\n')
-  f.write('web/cast.spec.ts', 'const value = {} as never\n')
   const baseline = f.scan()
   const ranked = f.rank()
   assert.deepEqual(
     ranked.candidates.map((row) => row.file),
-    ['web/cast.spec.ts', 'web/clear.spec.ts', 'web/large.spec.ts'],
+    ['web/quality.spec.tsx'],
   )
-  assert.equal(ranked.candidates[2].contextScore, 10)
-  const reviewed = baseline.inventory.find((row) => row.file === 'web/cast.spec.ts')
-  f.write(
-    'reviewed.json',
-    JSON.stringify({
-      scannerSha256: baseline.scannerSha256,
-      policies: baseline.policies,
-      files: [{ ...reviewed, decision: 'retain', reason: 'Reviewed external boundary adapter.' }],
-    }),
+  assert.equal(ranked.queues['mock-boundary'].length, 1)
+  assert.equal(ranked.queues['behavior-value'].length, 1)
+  assert.equal(f.rank(undefined, 'typing').candidates[0].file, 'web/cast.spec.ts')
+  assert.deepEqual(
+    f.rank(undefined, 'all').candidates.map((row) => row.file),
+    ['web/quality.spec.tsx', 'web/cast.spec.ts'],
   )
-  const next = f.rank('reviewed.json')
-  assert.equal(next.candidates[0].file, 'web/clear.spec.ts')
-  assert.equal(next.deferredReviewed[0].file, reviewed.file)
-  f.write('web/cast.spec.ts', 'const value = changed as never\n')
+  const file = baseline.inventory.find((row) => row.file === 'web/quality.spec.tsx')
+  const history = {
+    scannerSha256: baseline.scannerSha256,
+    reviewMethodSha256: ranked.reviewMethodSha256,
+    policies: baseline.policies,
+    files: [{ ...file, reviews: { typing: { decision: 'cleaned', reason: 'Typed fixture.' } } }],
+  }
+  const save = () => f.write('reviewed.json', JSON.stringify(history))
+  save()
+  assert.equal(f.rank('reviewed.json').candidates[0].file, file.file)
+  history.files[0].reviews['mock-boundary'] = { decision: 'retain', reason: 'Reviewed boundary.' }
+  save()
+  const partial = f.rank('reviewed.json')
+  assert.equal(partial.queues['mock-boundary'].length, 0)
+  assert.equal(partial.candidates[0].selectedFrom, 'behavior-value')
+  history.files[0].reviews['behavior-value'] = {
+    decision: 'retain',
+    reason: 'Reviewed callback contract.',
+  }
+  save()
+  assert.equal(f.rank('reviewed.json').candidates.length, 0)
+  history.reviewMethodSha256 = 'old method'
+  save()
+  assert.equal(f.rank('reviewed.json').reviewHistoryApplicable, false)
+  assert.equal(f.rank('reviewed.json').candidates.length, 1)
+  history.reviewMethodSha256 = ranked.reviewMethodSha256
+  history.files[0].dependencies = [{ file: 'web/owner.ts', sha256: 'changed' }]
+  f.write('web/owner.ts', 'export const owner = true')
+  save()
+  assert.deepEqual(f.rank('reviewed.json').staleReviewFiles, [file.file])
+  delete history.files[0].dependencies
+  save()
+  f.write('web/quality.spec.tsx', `vi.mock('./hooks/use-changed', () => ({}))`)
   f.scan()
-  assert.equal(f.rank('reviewed.json').candidates[0].file, reviewed.file)
-  f.write('web/cast.spec.ts', 'const value = {} as never\n')
+  assert.equal(f.rank('reviewed.json').candidates[0].file, file.file)
   f.write('web/docs/test.md', '# Updated policy\n')
   f.scan()
-  const changedPolicy = f.rank('reviewed.json')
-  assert.equal(changedPolicy.reviewHistoryApplicable, false)
-  assert.equal(changedPolicy.deferredReviewed.length, 0)
-  assert.equal(changedPolicy.candidates[0].file, reviewed.file)
+  assert.equal(f.rank('reviewed.json').reviewHistoryApplicable, false)
+  delete history.files[0].reviews
+  history.files[0].decision = 'cleaned'
+  history.files[0].reason = 'Legacy whole-file review'
+  save()
+  assert.deepEqual(f.rank('reviewed.json').legacyReviewFiles, [file.file])
+  assert.equal(f.rank('reviewed.json').deferredReviewed.length, 0)
   assert.throws(() => f.rank('queue.json'), /a ranked list is not a review record/)
+})
+
+test('a small shortlist samples both quality dimensions instead of filling with mocks', (t) => {
+  const f = fixture(t)
+  for (const file of ['a', 'b', 'c'])
+    f.write(`web/${file}.spec.ts`, `vi.mock('./hooks/use-owner', () => ({}))`)
+  f.write('web/behavior.spec.ts', `it('calls', () => expect(save).toHaveBeenCalled())`)
+  f.write('web/types.spec.ts', 'const unsafe = {} as never\n'.repeat(50))
+  f.scan()
+  const ranked = f.rank(undefined, 'quality', 2)
+  assert.deepEqual(
+    ranked.candidates.map((row) => row.selectedFrom),
+    ['mock-boundary', 'behavior-value'],
+  )
+  assert.equal(ranked.candidates[1].file, 'web/behavior.spec.ts')
+  assert.equal(ranked.queueSizes['mock-boundary'], 3)
+  assert.equal(ranked.queueSizes['behavior-value'], 1)
+})
+
+test('quality signals distinguish call-only bodies, local shims and service boundaries', (t) => {
+  const f = fixture(t)
+  f.write(
+    'web/app/example.spec.tsx',
+    `
+vi.mock('./use-owner', () => ({ useOwner: vi.fn() }))
+vi.mock('../service/use-api', () => ({ useApi: vi.fn() }))
+vi.mock('@/service/use-api', () => ({ useApi: vi.fn() }))
+vi.mock('./child', () => ({ default: () => <button>Save</button> }))
+vi.mock('@/service/view', () => ({ default: () => <button>Service</button> }))
+vi.mock('./plain', () => ({ value: 'not JSX' }))
+it('call only', () => {
+  expect(save).toHaveBeenCalledWith('data')
+  expect(cancel).not.toHaveBeenCalled()
+})
+it('mixed', () => {
+  expect(save).toHaveBeenCalledOnce()
+  expect(screen.getByRole('status')).toHaveTextContent('saved')
+})
+it('snapshot', () => expect(data).toMatchInlineSnapshot('value'))
+it('empty', () => render(<div />))
+`,
+  )
+  const report = f.scan()
+  const findings = (metric) => report.findings.filter((f) => f.metric === metric)
+  assert.equal(findings('mock_internal_hook_or_store_candidate').length, 1)
+  assert.equal(findings('local_mock_jsx_factory_candidate').length, 1)
+  assert.equal(findings('callback_only_test_candidate').length, 1)
+  assert.equal(findings('callback_only_test_candidate')[0].detail, 'call only')
+  assert.equal(findings('mock_call_assertions').length, 3)
+  assert.equal(findings('snapshots').length, 1)
 })
 
 test('comparison exposes debt moved to new helpers and rejects policy drift', (t) => {

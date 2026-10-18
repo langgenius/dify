@@ -99,6 +99,43 @@ function containsClassRead(n) {
     return true
   return !!ts.forEachChild(n, containsClassRead)
 }
+function containsJsx(node) {
+  if (!node) return false
+  return (
+    ts.isJsxElement(node) ||
+    ts.isJsxSelfClosingElement(node) ||
+    ts.isJsxFragment(node) ||
+    !!ts.forEachChild(node, containsJsx)
+  )
+}
+function expectSubject(expression) {
+  let receiver = expression
+  while (receiver && ts.isPropertyAccessExpression(receiver)) receiver = receiver.expression
+  return receiver && ts.isCallExpression(receiver) && name(receiver.expression) === 'expect'
+    ? receiver.arguments[0]
+    : undefined
+}
+const callMatchers = new Set([
+  'toHaveBeenCalled',
+  'toHaveBeenCalledOnce',
+  'toHaveBeenCalledTimes',
+  'toHaveBeenCalledWith',
+  'toHaveBeenExactlyCalledWith',
+  'toHaveBeenCalledExactlyOnceWith',
+  'toHaveBeenLastCalledWith',
+  'toHaveBeenNthCalledWith',
+  'toBeCalled',
+  'toBeCalledTimes',
+  'toBeCalledWith',
+  'lastCalledWith',
+  'nthCalledWith',
+])
+function localTarget(file, target) {
+  if (target.startsWith('@/') && file.startsWith('web/')) return `web/${target.slice(2)}`
+  if (target.startsWith('.'))
+    return path.posix.normalize(path.posix.join(path.posix.dirname(file), target))
+  return undefined
+}
 for (const file of files) {
   const text = fs.readFileSync(path.join(root, file), 'utf8')
   const sf = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true)
@@ -249,6 +286,13 @@ for (const file of files) {
             if (/(?:^|\/)use-[^/]+|(?:^|\/)hooks?(?:\/|$)/.test(t)) emit('mock_hook_target', n, t)
             if (/(?:^|\/)(?:store|stores)(?:\/|$)/.test(t)) emit('mock_store_target', n, t)
             if (t === 'nuqs' || t.startsWith('nuqs/')) emit('mock_nuqs', n, t)
+            const local = localTarget(file, t)
+            const boundary = local && /(?:^|\/)(?:service|next|test|__mocks__)(?:\/|$)/.test(local)
+            if (local && !boundary) {
+              if (/(?:^|\/)(?:use-[^/]+|hooks?|stores?)(?:\/|$)/.test(local))
+                emit('mock_internal_hook_or_store_candidate', n, local)
+              if (containsJsx(n.arguments[1])) emit('local_mock_jsx_factory_candidate', n, local)
+            }
           } else emit('module_mock_dynamic_target', n)
         }
       }
@@ -258,6 +302,34 @@ for (const file of files) {
       if (parts[0] === 'fireEvent') emit('fireEvent_calls', n, full)
       if (['querySelector', 'querySelectorAll', 'getElementsByClassName'].includes(method))
         emit('css_dom_queries', n, n.arguments[0]?.getText(sf) || '')
+      if (callMatchers.has(method) && expectSubject(n.expression))
+        emit('mock_call_assertions', n, expectSubject(n.expression).getText(sf).slice(0, 160))
+      // Direct named test bodies only; helpers and it.each are intentionally not inferred.
+      if (
+        ['it', 'test'].includes(full) &&
+        n.arguments[0] &&
+        ts.isStringLiteralLike(n.arguments[0])
+      ) {
+        const body = n.arguments[1]
+        if (body && (ts.isArrowFunction(body) || ts.isFunctionExpression(body))) {
+          let assertions = 0
+          let callAssertions = 0
+          function inspect(node) {
+            if (ts.isCallExpression(node) && expectSubject(node.expression)) {
+              assertions++
+              if (
+                ts.isPropertyAccessExpression(node.expression) &&
+                callMatchers.has(node.expression.name.text)
+              )
+                callAssertions++
+            }
+            ts.forEachChild(node, inspect)
+          }
+          inspect(body)
+          if (assertions > 0 && assertions === callAssertions)
+            emit('callback_only_test_candidate', n, n.arguments[0].text)
+        }
+      }
       if (method === 'toHaveClass') emit('class_assertions', n)
       if (
         method === 'toHaveAttribute' &&
@@ -383,7 +455,7 @@ const policies = policyPaths.map((file) => ({
 const report = {
   policies,
   version: 2,
-  metricSchema: 'frontend-test-maintenance-v3',
+  metricSchema: 'frontend-test-maintenance-v4',
   scannerSha256: crypto.createHash('sha256').update(fs.readFileSync(__filename)).digest('hex'),
   root,
   requestedScopes: scopes,
@@ -394,6 +466,8 @@ const report = {
     'Tracked and nonignored untracked JS/TS spec/test files in requested scopes; support in __tests__, __mocks__, test, tests, test-utils, Vitest setups and web/plugins/tsslint/test-utils.ts; explicit file scopes include custom helpers. Missing deleted files and declarations excluded. Web browser classification uses .browser.spec/test filename convention; Dify UI specs use browser and its stories use storybook. Recheck owner runner config if conventions change. Static syntax counts; runtime multiplicity and wrapper bodies not expanded.',
   limitations: [
     'Syntactic inventory, not a semantic audit or confirmed violation count.',
+    'Quality candidates locate local hook/store mocks, JSX mock factories and direct named tests whose visible assertions only check calls. These include legitimate child/service isolation; no behavior ownership is inferred.',
+    'Quality mock paths normalize relative imports and Web @/ only; re-exports and other aliases are not resolved. Callback-only detection does not expand helpers, it.each or aliased test/expect calls.',
     'Arbitrary aliases, re-exports, wrapper functions and computed access may evade individual rules.',
     'Mock hook/store categories are path-name heuristics; relative paths are not resolved.',
     'Bare async rule checks standalone expression statements only, not all promise dataflow.',
