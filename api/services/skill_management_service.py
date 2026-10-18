@@ -4657,9 +4657,12 @@ class SkillManagementService:
     @staticmethod
     def _extract_rtf_text(payload: bytes, *, max_chars: int) -> str:
         try:
-            source = payload.decode("utf-8")
+            payload.decode("utf-8")
+            text_encoding = "utf-8"
         except UnicodeDecodeError:
-            source = payload.decode("latin-1", errors="replace")
+            text_encoding = "latin-1"
+        # Keep source positions byte-aligned: \bin lengths count bytes, not decoded characters.
+        source = payload.decode("latin-1")
 
         text_parts: list[str] = []
         destination_skip_depth: int | None = None
@@ -4694,7 +4697,13 @@ class SkillManagementService:
                     if char not in "\r\n\x00":
                         fallback_remaining -= 1
                 else:
-                    text_parts.append("\n" if char in "\r\n" else char)
+                    end = index + 1
+                    while end < len(source) and source[end] not in "\\{}":
+                        end += 1
+                    literal = payload[index:end].decode(text_encoding, errors="replace")
+                    text_parts.append(literal.replace("\r", "\n"))
+                    index = end
+                    continue
                 index += 1
                 continue
 

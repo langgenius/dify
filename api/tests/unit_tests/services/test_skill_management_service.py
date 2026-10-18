@@ -3282,6 +3282,12 @@ def test_build_assistant_attachment_context_extracts_pptx_text() -> None:
         pytest.param(rb"{\rtf1\ansi\uc0\u-255!}", "！!", id="signed-unicode"),
         pytest.param(rb"{\rtf1\ansi\u945\bin3 abc followed}", "α followed", id="binary-fallback"),
         pytest.param(rb"{\rtf1\ansi{\*\hidden\uc0 discarded}\u945? kept}", "α kept", id="ignored-group"),
+        pytest.param(b"{\\rtf1\\u945\\bin2 \xc3\xa9OK}", "αOK", id="utf8-binary-fallback"),
+        pytest.param(b"{\\rtf1\\u945\\bin2 \xc3\xa9OK{\\*\\hidden \xff}}", "αOK", id="latin1-binary-fallback"),
+        pytest.param(b"{\\rtf1\\u945\\bin4 \xf0\x9f\x98\x80OK}", "αOK", id="utf8-four-byte-binary-fallback"),
+        pytest.param(b"{\\rtf1\\u945\\bin6 \xc3\xa9\xf0\x9f\x98\x80OK}", "αOK", id="utf8-mixed-binary-fallback"),
+        pytest.param("{\\rtf1 Café 中文}".encode(), "Café 中文", id="utf8-literal-text"),
+        pytest.param(b"{\\rtf1 Caf\xe9}", "Café", id="latin1-literal-text"),
     ],
 )
 def test_build_assistant_attachment_context_extracts_rtf_text(payload: bytes, expected: str) -> None:
