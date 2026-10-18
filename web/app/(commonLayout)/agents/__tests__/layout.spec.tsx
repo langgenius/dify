@@ -20,21 +20,8 @@ vi.mock('../feature-guard', () => ({
 
 describe('RosterLayout', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    mocks.guardAgentV2Route.mockReset()
     usePluginDependencyStore.setState({ dependencies: [] })
-  })
-
-  it('should render children when Agent v2 is enabled', async () => {
-    const { default: RosterLayout } = await import('../layout')
-
-    render(
-      <RosterLayout>
-        <div>Roster content</div>
-      </RosterLayout>,
-    )
-
-    expect(mocks.guardAgentV2Route).toHaveBeenCalledTimes(1)
-    expect(screen.getByText('Roster content')).toBeInTheDocument()
   })
 
   it('should show the missing-plugin installer across Agent routes', async () => {
@@ -63,6 +50,7 @@ describe('RosterLayout', () => {
       'bundle-size:1',
     )
     expect(screen.getByText('Agent route content')).toBeInTheDocument()
+    expect(mocks.guardAgentV2Route).toHaveBeenCalledOnce()
   })
 
   it('should block rendering when the roster guard throws notFound', async () => {

@@ -1,10 +1,10 @@
 'use client'
 
-import type { ReactNode } from 'react'
 import type {
   WorkflowCommentDetail,
-  WorkflowCommentDetailReply,
-} from '@/app/components/workflow/comment/types'
+  WorkflowCommentReply,
+} from '@dify/contracts/api/console/apps/types.gen'
+import type { ReactNode } from 'react'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -12,6 +12,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
@@ -34,13 +35,14 @@ import {
   RiMoreFill,
 } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow, useViewport } from 'reactflow'
 import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
+import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import { useParams } from '@/next/navigation'
 import { getAvatarInitial } from '@/utils/avatar'
 import { useStore } from '../store'
 import { MentionInput } from './mention-input'
@@ -197,8 +199,7 @@ function CommentThreadComponent({
   onReplyDelete,
   onReplyDeleteDirect,
 }: CommentThreadProps) {
-  const params = useParams()
-  const appId = params.appId as string
+  const appId = useAtomValue(editorAppIdAtom)
   const { flowToScreenPosition } = useReactFlow()
   const viewport = useViewport()
   const { data: userProfile } = useSuspenseQuery({
@@ -316,7 +317,7 @@ function CommentThreadComponent({
     [screenPosition.x, screenPosition.y, containerLeft, containerTop],
   )
 
-  const handleStartEdit = useCallback((reply: WorkflowCommentDetailReply) => {
+  const handleStartEdit = useCallback((reply: WorkflowCommentReply) => {
     setEditingReply({ id: reply.id, content: reply.content })
     setIsCommentEditing(false)
     setActiveReplyMenuId(null)
@@ -818,14 +819,14 @@ function CommentThreadComponent({
               : (replyInputRef.current ?? true)
           }
         >
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['comments.actions.deleteReply'], { ns: 'workflowComments' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="system-md-regular text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['operation.confirmAction'], { ns: 'common' })}
             </AlertDialogDescription>
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton disabled={loading}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

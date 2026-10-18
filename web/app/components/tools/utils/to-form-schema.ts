@@ -47,7 +47,7 @@ export type ToolFormSchema = {
   _type: string
   form: string
   required: boolean
-  default?: string
+  default?: ToolParameter['default']
   tooltip?: TypeWithI18N
   show_on: { variable: string; value: string }[]
   reset_on_change: string[]

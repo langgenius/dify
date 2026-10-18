@@ -196,7 +196,7 @@ function AllStartBlocks({
               <StartBlocks
                 searchText={trimmedSearchText}
                 onSelect={onSelect as OnSelectBlock}
-                availableBlocksTypes={entryNodeTypes as unknown as BlockEnum[]}
+                availableBlocksTypes={entryNodeTypes}
                 hideUserInput={!allowUserInputSelection && !hasTriggerNode}
                 showMostCommonBadge
                 showUserInputAdded={hasUserInputNode}

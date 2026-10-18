@@ -1,91 +1,68 @@
-import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { OperationKey } from '@orpc/tanstack-query'
-import type { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { render, screen } from '@testing-library/react'
+import { zProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
+import { screen } from '@testing-library/react'
+import { consoleQuery } from '@/service/console'
+import { createModelCreditsFixture } from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { ModelBar } from '../model-bar'
 
-type ModelProviderItem = {
-  provider: string
-  models: Array<{ model: string }>
+const render = createNuqsTestRenderer(renderWithConsoleQuery)
+const provider = zProviderWithModelsResponse.parse({
+  tenant_id: 'workspace-1',
+  provider: 'openai',
+  status: 'active',
+  label: { en_US: 'OpenAI' },
+  models: [
+    {
+      model: 'gpt-4o',
+      label: { en_US: 'GPT-4o' },
+      model_type: 'llm',
+      fetch_from: 'predefined-model',
+      status: 'active',
+      model_properties: {},
+      load_balancing_enabled: false,
+    },
+  ],
+})
+const createClient = () => {
+  const client = createConsoleQueryClient()
+  for (const model_type of [
+    'llm',
+    'moderation',
+    'rerank',
+    'speech2text',
+    'text-embedding',
+    'tts',
+  ] as const) {
+    client.setQueryData(
+      consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+        input: { params: { model_type } },
+      }),
+      { data: model_type === 'llm' ? [provider] : [] },
+    )
+  }
+  client.setQueryData(consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(), {
+    data: [],
+    plugins: {},
+  })
+  client.setQueryData(
+    consoleQuery.workspaces.current.modelProviders.credits.get.queryKey(),
+    createModelCreditsFixture(),
+  )
+  return client
 }
 
-const mockModelLists = new Map<string, ModelProviderItem[]>()
+it('distinguishes an unselected agent model from one missing in the installed catalog', () => {
+  const { rerender } = render(<ModelBar />, { queryClient: createClient() })
+  expect(screen.getByText('workflow.nodes.agent.modelNotSelected')).toBeInTheDocument()
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  ModelSelector: ({
-    value,
-    models,
-  }: {
-    value?: { provider: string; model: string }
-    models: ModelProviderItem[]
-  }) => (
-    <div>
-      {value ? `${value.provider}/${value.model}` : 'no-model'}:{models.length}
-    </div>
-  ),
-}))
+  rerender(<ModelBar provider="openai" model="gpt-4.1" />)
+  expect(screen.queryByText('workflow.nodes.agent.modelNotSelected')).not.toBeInTheDocument()
+  expect(screen.getByText('workflowAgent.nodes.agent.modelNotInstallTooltip')).toBeInTheDocument()
 
-vi.mock('@langgenius/dify-ui/status-dot', () => ({
-  StatusDot: ({ status }: { status: string }) => <div>{`indicator:${status}`}</div>,
-}))
-
-describe('agent/model-bar', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockModelLists.clear()
-    mockModelLists.set('llm' as ModelTypeEnum, [
-      { provider: 'openai', models: [{ model: 'gpt-4o' }] },
-    ])
-    mockModelLists.set('moderation' as ModelTypeEnum, [])
-    mockModelLists.set('rerank' as ModelTypeEnum, [])
-    mockModelLists.set('speech2text' as ModelTypeEnum, [])
-    mockModelLists.set('text-embedding' as ModelTypeEnum, [])
-    mockModelLists.set('tts' as ModelTypeEnum, [])
-  })
-
-  it('should render an empty disabled selector with a warning when no model is selected', () => {
-    render(<ModelBar />)
-
-    const emptySelector = screen.getByText((_, element) => element?.textContent === 'no-model:0')
-
-    expect(emptySelector).toBeInTheDocument()
-    expect(screen.getByText('indicator:error')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.agent.modelNotSelected')).toBeInTheDocument()
-  })
-
-  it('should render the selected model without warning when it is installed', () => {
-    render(<ModelBar provider="openai" model="gpt-4o" />)
-
-    expect(screen.getByText('openai/gpt-4o:1')).toBeInTheDocument()
-    expect(screen.queryByText('indicator:error')).not.toBeInTheDocument()
-  })
-
-  it('should show a warning tooltip when the selected model is not installed', () => {
-    render(<ModelBar provider="openai" model="gpt-4.1" />)
-
-    expect(screen.getByText('openai/gpt-4.1:1')).toBeInTheDocument()
-    expect(screen.getByText('indicator:error')).toBeInTheDocument()
-    expect(screen.getByText('workflowAgent.nodes.agent.modelNotInstallTooltip')).toBeInTheDocument()
-  })
-})
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useQuery: (options: {
-      queryKey: OperationKey<
-        'query',
-        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
-      >
-    }) => {
-      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
-
-      const modelType = options.queryKey[1].input?.params?.model_type
-      if (!modelType) throw new Error('Missing model type in query')
-      return {
-        data: mockModelLists.get(modelType) || [],
-      }
-    },
-  }
+  rerender(<ModelBar provider="openai" model="gpt-4o" />)
+  expect(screen.getByText('GPT-4o')).toBeInTheDocument()
+  expect(
+    screen.queryByText('workflowAgent.nodes.agent.modelNotInstallTooltip'),
+  ).not.toBeInTheDocument()
 })

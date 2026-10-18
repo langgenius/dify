@@ -1,13 +1,11 @@
-import type { ComponentProps } from 'react'
+import type { AppIconProps } from '../../base/app-icon'
 import type { Operation } from './app-operations'
 import { cn } from '@langgenius/dify-ui/cn'
 import AppIcon from '../../base/app-icon'
 import AppOperations from './app-operations'
 
-type AppInfoHeaderProps = Pick<
-  ComponentProps<typeof AppIcon>,
-  'iconType' | 'icon' | 'background' | 'imageUrl'
-> & {
+type AppInfoHeaderProps = {
+  icon: AppIconProps['icon']
   expand: boolean
   appName: string
   modeLabel?: string
@@ -18,10 +16,7 @@ export default function AppInfoHeader({
   expand,
   appName,
   modeLabel,
-  iconType,
   icon,
-  background,
-  imageUrl,
   operationGroups,
 }: AppInfoHeaderProps) {
   return (
@@ -32,15 +27,7 @@ export default function AppInfoHeader({
       )}
     >
       <div className="flex shrink-0 items-center">
-        <AppIcon
-          size="medium"
-          rounded
-          decorative
-          iconType={iconType}
-          icon={icon}
-          background={background}
-          imageUrl={imageUrl}
-        />
+        <AppIcon size="medium" shape="circle" icon={icon} />
       </div>
       {expand && (
         <div className="flex min-w-0 flex-1 flex-col items-start justify-center gap-0.5 self-stretch">

@@ -2,7 +2,7 @@ import json
 import logging
 import uuid
 from decimal import Decimal
-from typing import Union, cast
+from typing import cast
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -269,10 +269,10 @@ class BaseAgentRunner(AppRunner):
         self,
         agent_thought_id: str,
         tool_name: str | None,
-        tool_input: Union[str, dict, None],
+        tool_input: str | dict | None,
         thought: str | None,
-        observation: Union[str, dict, None],
-        tool_invoke_meta: Union[str, dict, None],
+        observation: str | dict | None,
+        tool_invoke_meta: str | dict | None,
         answer: str | None,
         messages_ids: list[str],
         llm_usage: LLMUsage | None = None,
@@ -408,9 +408,9 @@ class BaseAgentRunner(AppRunner):
                         else:
                             tool_responses = dict.fromkeys(tool_names, observation_payload)
 
-                        for tool in tool_names:
-                            # generate a uuid for tool call
-                            tool_call_id = str(uuid.uuid4())
+                        for index, tool in enumerate(tool_names):
+                            # Keep IDs stable across turns so replayed history can use prompt caching.
+                            tool_call_id = str(uuid.uuid5(uuid.NAMESPACE_OID, f"{agent_thought.id}:{index}:{tool}"))
                             tool_calls.append(
                                 AssistantPromptMessage.ToolCall(
                                     id=tool_call_id,

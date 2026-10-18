@@ -3,16 +3,14 @@
 import type { RoleModalMode, submitRoleData } from './role-modal'
 import type { Role } from '@/models/access-control'
 import { Button } from '@langgenius/dify-ui/button'
+import { useMutation } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { getAccessControlTemplateLanguage } from '@/i18n/language'
-import {
-  useCreateWorkspaceRole,
-  useUpdateWorkspaceRole,
-} from '@/service/access-control/use-workspace-roles'
+import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import { useRoleGroups } from './hooks'
 import RoleList from './role-list'
@@ -47,8 +45,12 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
       language,
     })
 
-  const { mutateAsync: createWorkspaceRole } = useCreateWorkspaceRole()
-  const { mutateAsync: updateWorkspaceRole } = useUpdateWorkspaceRole()
+  const { mutateAsync: createWorkspaceRole } = useMutation(
+    consoleQuery.workspaces.current.rbac.roles.post.mutationOptions(),
+  )
+  const { mutateAsync: updateWorkspaceRole } = useMutation(
+    consoleQuery.workspaces.current.rbac.roles.byRoleId.put.mutationOptions(),
+  )
 
   const openCreate = useCallback(() => {
     setModalState({ mode: 'create' })
@@ -65,31 +67,20 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
   const closeModal = useCallback(() => setModalState(null), [])
 
   const handleSubmit = useCallback(
-    (data: submitRoleData) => {
+    async (data: submitRoleData) => {
       const { name, description, permissionKeys } = data
       const mode = modalState?.mode ?? ''
       const roleId = modalState?.role?.id ?? ''
       if (mode === 'create') {
-        createWorkspaceRole(
-          { name, description, permission_keys: permissionKeys },
-          {
-            onSuccess: () => {
-              closeModal()
-            },
-          },
-        )
+        await createWorkspaceRole({ body: { name, description, permission_keys: permissionKeys } })
       } else if (mode === 'edit') {
-        updateWorkspaceRole(
-          { id: roleId, name, description, permission_keys: permissionKeys },
-          {
-            onSuccess: () => {
-              closeModal()
-            },
-          },
-        )
+        await updateWorkspaceRole({
+          params: { role_id: roleId },
+          body: { name, description, permission_keys: permissionKeys },
+        })
       }
     },
-    [createWorkspaceRole, updateWorkspaceRole, closeModal, modalState],
+    [createWorkspaceRole, updateWorkspaceRole, modalState],
   )
 
   useEffect(() => {

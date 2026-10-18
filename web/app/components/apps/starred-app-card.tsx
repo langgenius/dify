@@ -1,7 +1,6 @@
 'use client'
 
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
-import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -36,7 +35,6 @@ export const StarredAppCard = memo(
     const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
     const isRbacEnabled = systemFeatures.rbac_enabled
     const isPreviewOnly = hasOnlyAppPreviewPermission(app.permission_keys)
-    const appIconType = zIconType.safeParse(app.icon_type).data ?? null
 
     const editTimeText = useMemo(() => {
       const timestamp = app.updated_at || app.created_at
@@ -65,14 +63,7 @@ export const StarredAppCard = memo(
     const cardContent = (
       <>
         <div className="relative shrink-0">
-          <AppIcon
-            size="large"
-            iconType={appIconType}
-            icon={app.icon ?? undefined}
-            background={app.icon_background}
-            imageUrl={app.icon_url}
-            decorative
-          />
+          <AppIcon size="large" icon={app} />
           <AppTypeIcon
             type={app.mode}
             wrapperClassName="absolute -right-0.5 -bottom-0.5 h-4 w-4 shadow-sm"

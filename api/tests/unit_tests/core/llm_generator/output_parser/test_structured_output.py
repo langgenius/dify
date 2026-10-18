@@ -141,6 +141,66 @@ class TestStructuredOutput:
             with pytest.raises(OutputParserError):
                 _parse_structured_output(text)
 
+    def test_parse_structured_output_ignores_json_in_reasoning_block(self):
+        # Providers concatenate the reasoning block ahead of the answer, so a JSON object inside
+        # <think> must not be taken as the structured output.
+        text = '<think>\nthinking out loud\n{"think": "start"}\n</think>\n{"type": "user_input", "content": "hi"}'
+        assert _parse_structured_output(text) == {"type": "user_input", "content": "hi"}
+
+    def test_parse_structured_output_prefers_answer_over_reasoning_of_same_shape(self):
+        text = '<think>{"type": "draft", "content": "guess"}</think>{"type": "user_input", "content": "final"}'
+        assert _parse_structured_output(text) == {"type": "user_input", "content": "final"}
+
+    def test_parse_structured_output_ignores_reasoning_block_with_attributes(self):
+        text = '<Think duration="2s">{"think": "start"}</think>{"type": "user_input"}'
+        assert _parse_structured_output(text) == {"type": "user_input"}
+
+    def test_parse_structured_output_keeps_literal_think_tags_inside_answer(self):
+        text = '{"content": "<think>quoted, not reasoning</think>"}'
+        assert _parse_structured_output(text) == {"content": "<think>quoted, not reasoning</think>"}
+
+    def test_parse_structured_output_keeps_literal_think_tags_in_fenced_answer(self):
+        # Not strictly valid JSON, so it goes through the repair path, and the tags are still part
+        # of the answer rather than reasoning.
+        text = '```json\n{"content": "<think>quoted, not reasoning</think>"}\n```'
+        assert _parse_structured_output(text) == {"content": "<think>quoted, not reasoning</think>"}
+
+    def test_parse_structured_output_keeps_literal_think_tags_in_repaired_list(self):
+        # Repairs into several candidates, and the first one is already the answer: a response that
+        # does not open with a reasoning block keeps its literal tags.
+        text = '{"content": "<think>quoted, not reasoning</think>"}\n{"extra": 1}'
+        assert _parse_structured_output(text) == {"content": "<think>quoted, not reasoning</think>"}
+
+    def test_parse_structured_output_keeps_literal_think_tags_after_reasoning_block(self):
+        text = '<think>reasoning without json</think>{"content": "<think>x</think>"}\n{"extra": 1}'
+        assert _parse_structured_output(text) == {"content": "<think>x</think>"}
+
+    def test_parse_structured_output_keeps_literal_think_tags_after_empty_reasoning_block(self):
+        # The deepseek-r1 '<think>\n\n</think>\n' prefix the repair fallback already knew about.
+        text = '<think>\n\n</think>\n{"content": "<think>x</think>"}\n{"extra": 1}'
+        assert _parse_structured_output(text) == {"content": "<think>x</think>"}
+
+    @pytest.mark.parametrize("reasoning", ['{"key": "value"}', '{"key": "value"}\n{"other": 1}'])
+    def test_parse_structured_output_unclosed_reasoning_block(self, reasoning: str):
+        # A truncated answer keeps whatever the repair fallback made of it before.
+        text = f"<think>{reasoning}"
+        assert _parse_structured_output(text) == {"key": "value"}
+
+    @pytest.mark.parametrize("reasoning", ['{"key": "value"}', '{"key": "value"}\n{"other": 1}'])
+    def test_parse_structured_output_reasoning_only_output(self, reasoning: str):
+        # Nothing but reasoning: there is no answer to prefer, so the old result stands.
+        text = f"<think>{reasoning}</think>"
+        assert _parse_structured_output(text) == {"key": "value"}
+
+    def test_parse_structured_output_keeps_candidates_when_answer_cannot_be_repaired(self):
+        # Repairing the answer produces a scalar, so retain the original object candidates.
+        text = '<think>{"key": "value"}\n{"other": 1}</think>not json'
+        assert _parse_structured_output(text) == {"key": "value"}
+
+    def test_parse_structured_output_skips_consecutive_reasoning_blocks(self):
+        text = ' \n<Think>{"draft": 1}</THINK>\n<think>{"draft": 2}</think>\n{"answer": "final"}'
+        assert _parse_structured_output(text) == {"answer": "final"}
+
     def test_set_response_format(self):
         # Test JSON
         params = {}
@@ -403,6 +463,38 @@ class TestStructuredOutput:
         assert chunks[-1].structured_output == {"key": "value"}
         assert chunks[-1].system_fingerprint == "fp1"
         assert chunks[-1].prompt_messages == [UserPromptMessage(content="hi")]
+
+    def test_invoke_llm_with_structured_output_stream_reasoning_block(self):
+        model_schema = make_model_schema("gpt-4")
+        model_schema.features = []
+        model_schema.parameter_rules = []
+        model_schema.model = "gpt-4"
+
+        # The reasoning block spans several deltas, so the tags only pair up once accumulated.
+        deltas = ['<think>{"think": ', '"start"}</think>', '{"type": "user_input",', ' "content": "hi"}']
+        chunks_in = [
+            LLMResultChunk(
+                model=model_schema.model,
+                delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content=delta)),
+                prompt_messages=[UserPromptMessage(content="hi")],
+                system_fingerprint="fp1",
+            )
+            for delta in deltas
+        ]
+
+        generator = invoke_llm_with_structured_output(
+            provider="openai",
+            model_schema=model_schema,
+            model_instance=_ModelInstance(iter(chunks_in)),
+            prompt_messages=[UserPromptMessage(content="hi")],
+            json_schema={},
+            stream=True,
+        )
+
+        chunks = list(generator)
+        assert chunks[-1].structured_output == {"type": "user_input", "content": "hi"}
+        # The streamed text itself is untouched, so the reasoning still reaches the UI.
+        assert "".join(str(chunk.delta.message.content) for chunk in chunks[:-1]) == "".join(deltas)
 
     def test_invoke_llm_with_structured_output_stream_no_id_events(self):
         model_schema = make_model_schema("gpt-4")

@@ -22,7 +22,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 from base64 import b64encode
 from collections.abc import Generator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
@@ -4599,9 +4599,37 @@ class SkillManagementService:
         parts: list[str] = []
         try:
             with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+                archive_names = set(archive.namelist())
                 slide_names = sorted(
                     name for name in archive.namelist() if name.startswith("ppt/slides/slide") and name.endswith(".xml")
                 )
+                if {"ppt/presentation.xml", "ppt/_rels/presentation.xml.rels"} <= archive_names:
+                    # Part filenames need not match the presentation's displayed slide order.
+                    relationships = ET.fromstring(archive.read("ppt/_rels/presentation.xml.rels"))
+                    slide_targets: dict[str, str] = {}
+                    for relationship in relationships:
+                        if (
+                            not relationship.attrib.get("Type", "").endswith("/slide")
+                            or relationship.attrib.get("TargetMode") == "External"
+                        ):
+                            continue
+                        relationship_id = relationship.attrib.get("Id")
+                        target = relationship.attrib.get("Target")
+                        if relationship_id and target:
+                            slide_targets[relationship_id] = posixpath.normpath(posixpath.join("ppt", target)).lstrip(
+                                "/"
+                            )
+                    presentation = ET.fromstring(archive.read("ppt/presentation.xml"))
+                    slide_names = []
+                    for slide in presentation.iter():
+                        if slide.tag.rsplit("}", 1)[-1] != "sldId":
+                            continue
+                        relationship_id = next(
+                            (value for key, value in slide.attrib.items() if key.endswith("}id")), ""
+                        )
+                        target = slide_targets.get(relationship_id)
+                        if target is not None and target in archive_names:
+                            slide_names.append(target)
                 for name in slide_names:
                     parts.extend(SkillManagementService._xml_text_content(archive.read(name), text_tags={"t"}))
                     if sum(len(part) for part in parts) >= max_chars:
@@ -4708,10 +4736,8 @@ class SkillManagementService:
                 continue
 
             if source[index : index + 2] == "\\'":
-                try:
+                with suppress(ValueError):
                     text_parts.append(bytes.fromhex(source[index + 2 : index + 4]).decode("latin-1"))
-                except ValueError:
-                    pass
                 index += 4
                 continue
             if index + 1 < len(source):

@@ -187,8 +187,11 @@ const BlockIcon: FC<BlockIconProps> = ({
             <AppIcon
               className="size-full! shrink-0"
               size="tiny"
-              icon={resolvedToolIcon?.content}
-              background={resolvedToolIcon?.background}
+              icon={{
+                icon_type: 'emoji',
+                icon: resolvedToolIcon?.content,
+                icon_background: resolvedToolIcon?.background,
+              }}
             />
           )}
         </>

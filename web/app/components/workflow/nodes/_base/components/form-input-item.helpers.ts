@@ -267,9 +267,9 @@ export const getCheckboxListValue = (
 ) => {
   let current: string[] = []
 
-  if (Array.isArray(currentValue)) current = currentValue as string[]
+  if (Array.isArray(currentValue)) current = currentValue
   else if (typeof currentValue === 'string') current = [currentValue]
-  else if (Array.isArray(defaultValue)) current = defaultValue as string[]
+  else if (Array.isArray(defaultValue)) current = defaultValue
 
   const allowedValues = new Set(availableOptions.map((option) => option.value))
   return current.filter((item) => allowedValues.has(item))

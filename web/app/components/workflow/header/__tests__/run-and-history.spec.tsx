@@ -1,80 +1,49 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
+import { fullWorkflowAccessControl } from '../../hooks-store/store'
 import RunAndHistory from '../run-and-history'
 
-const mockState = vi.hoisted(() => ({
-  canRun: true,
-  nodesReadOnly: false,
-}))
-const mockRunMode = vi.hoisted(() => vi.fn())
-const mockHandleWorkflowStartRunInChatflow = vi.hoisted(() => vi.fn())
+vi.mock('../view-history', () => ({ default: () => null }))
+vi.mock('../checklist', () => ({ default: () => null }))
 
-vi.mock('../../hooks/use-workflow', () => ({
-  useNodesReadOnly: () => ({ nodesReadOnly: mockState.nodesReadOnly }),
-}))
-
-vi.mock('../../hooks/use-workflow-start-run', () => ({
-  useWorkflowStartRun: () => ({
-    handleWorkflowStartRunInChatflow: mockHandleWorkflowStartRunInChatflow,
-  }),
-}))
-
-vi.mock('../../hooks-store', () => ({
-  useHooksStore: <T,>(selector: (state: { accessControl: { canRun: boolean } }) => T): T =>
-    selector({
-      accessControl: {
-        canRun: mockState.canRun,
-      },
-    }),
-}))
-
-vi.mock('../run-mode', () => ({
-  default: ({ text, disabled }: { text?: string; disabled?: boolean }) => {
-    mockRunMode({ text, disabled })
-
-    return (
-      <button type="button" disabled={disabled}>
-        {text ?? 'workflow.common.run'}
-      </button>
-    )
-  },
-}))
-
-vi.mock('../view-history', () => ({
-  default: () => <button type="button">History</button>,
-}))
-
-vi.mock('../checklist', () => ({
-  default: ({ disabled }: { disabled: boolean }) => (
-    <button type="button" disabled={disabled}>
-      Checklist
+it('passes denied run permission to a custom run control', async () => {
+  const user = userEvent.setup()
+  const startRun = vi.fn()
+  const CustomRunMode = ({ text, disabled }: { text?: string; disabled?: boolean }) => (
+    <button type="button" disabled={disabled} onClick={startRun}>
+      {text}
     </button>
-  ),
-}))
+  )
+  renderWorkflowComponent(
+    <RunAndHistory
+      showRunButton
+      runButtonText="Test Run"
+      components={{ RunMode: CustomRunMode }}
+    />,
+    {
+      hooksStoreProps: { accessControl: { ...fullWorkflowAccessControl, canRun: false } },
+    },
+  )
 
-describe('RunAndHistory', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockState.canRun = true
-    mockState.nodesReadOnly = false
+  const run = screen.getByRole('button', { name: 'Test Run' })
+  expect(run).toBeDisabled()
+  await user.click(run)
+  expect(startRun).not.toHaveBeenCalled()
+})
+
+it('keeps preview visible but prevents starting it when run permission is denied', async () => {
+  const user = userEvent.setup()
+  const startPreview = vi.fn()
+  renderWorkflowComponent(<RunAndHistory showPreviewButton />, {
+    hooksStoreProps: {
+      accessControl: { ...fullWorkflowAccessControl, canRun: false },
+      handleWorkflowStartRunInChatflow: startPreview,
+    },
   })
 
-  it('should keep the test run button visible and disabled when workflow run permission is denied', () => {
-    mockState.canRun = false
-
-    render(<RunAndHistory showRunButton runButtonText="Test Run" />)
-
-    expect(screen.getByRole('button', { name: 'Test Run' })).toBeDisabled()
-    expect(mockRunMode).toHaveBeenCalledWith({
-      text: 'Test Run',
-      disabled: true,
-    })
-  })
-
-  it('should keep the preview button visible and disabled when workflow run permission is denied', () => {
-    mockState.canRun = false
-
-    render(<RunAndHistory showPreviewButton />)
-
-    expect(screen.getByRole('button', { name: 'workflow.common.debugAndPreview' })).toBeDisabled()
-  })
+  const preview = screen.getByRole('button', { name: 'workflow.common.debugAndPreview' })
+  expect(preview).toBeDisabled()
+  await user.click(preview)
+  expect(startPreview).not.toHaveBeenCalled()
 })

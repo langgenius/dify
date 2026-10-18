@@ -157,8 +157,10 @@ describe('form-input-item helpers', () => {
       },
     }
 
+    expect(
+      filterVisibleOptions(options, { mode: { type: VarKindType.constant, value: 'basic' } }),
+    ).toEqual([options[0]])
     const visibleOptions = filterVisibleOptions(options, values)
-    expect(visibleOptions).toHaveLength(2)
     expect(mapSelectItems(visibleOptions, 'en_US')).toEqual([
       { name: 'always', value: 'always' },
       { name: 'premium', value: 'premium' },
