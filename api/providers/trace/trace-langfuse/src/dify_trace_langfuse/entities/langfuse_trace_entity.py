@@ -101,6 +101,8 @@ class LangfuseTrace(BaseModel):
         description="You can make a trace public to share it via a public link. This allows others to view the trace "
         "without needing to log in or be members of your Langfuse project.",
     )
+    start_time: datetime | None = Field(default=None)
+    end_time: datetime | None = Field(default=None)
 
     @field_validator("input", "output")
     @classmethod
