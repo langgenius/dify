@@ -315,7 +315,7 @@ describe('HomeTrending', () => {
       pause: vi.fn(),
       play: vi.fn(),
       finished,
-    } as unknown as Animation
+    }
     Object.defineProperty(Element.prototype, 'animate', {
       configurable: true,
       value: vi.fn(() => progressAnimation),
@@ -399,7 +399,7 @@ describe('HomeTrending', () => {
       onfinish: null,
       pause,
       play,
-    } as unknown as Animation
+    }
     Object.defineProperty(Element.prototype, 'animate', {
       configurable: true,
       value: vi.fn(() => progressAnimation),
@@ -802,7 +802,7 @@ describe('HomeTrending', () => {
             addListener: vi.fn(),
             removeListener: vi.fn(),
             dispatchEvent: vi.fn(),
-          }) as MediaQueryList,
+          }) satisfies MediaQueryList,
       )
 
     const swipe = (slide: HTMLElement, points: Array<[x: number, y: number]>) => {

@@ -1,3 +1,4 @@
+import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema'
 import { describe, expect, it } from 'vite-plus/test'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
@@ -16,6 +17,18 @@ import {
   updateVariableSelectorValue,
   updateVariableTypeValue,
 } from '../reasoning-config-form.helpers'
+
+const createSchema = (overrides: Partial<ToolFormSchema> = {}): ToolFormSchema => ({
+  name: 'input',
+  variable: 'input',
+  label: { en_US: 'Input', zh_Hans: '输入' },
+  type: FormTypeEnum.textInput,
+  _type: 'string',
+  form: 'llm',
+  required: false,
+  show_on: [],
+  ...overrides,
+})
 
 describe('reasoning-config-form helpers', () => {
   it('maps schema types to variable-kind types and target variable types', () => {
@@ -42,10 +55,10 @@ describe('reasoning-config-form helpers', () => {
     const stringFilter = createFilterVar(FormTypeEnum.textInput)
     const fileFilter = createFilterVar(FormTypeEnum.files)
 
-    expect(numberFilter?.({ type: VarType.number } as never)).toBe(true)
-    expect(numberFilter?.({ type: VarType.string } as never)).toBe(false)
-    expect(stringFilter?.({ type: VarType.secret } as never)).toBe(true)
-    expect(fileFilter?.({ type: VarType.arrayFile } as never)).toBe(true)
+    expect(numberFilter?.({ variable: 'value', type: VarType.number })).toBe(true)
+    expect(numberFilter?.({ variable: 'value', type: VarType.string })).toBe(false)
+    expect(stringFilter?.({ variable: 'value', type: VarType.secret })).toBe(true)
+    expect(fileFilter?.({ variable: 'value', type: VarType.arrayFile })).toBe(true)
   })
 
   it('creates variable filters for date fields', () => {
@@ -53,17 +66,17 @@ describe('reasoning-config-form helpers', () => {
       type: FormTypeEnum.date,
       value: {},
       language: 'en_US',
-      schema: { type: FormTypeEnum.date } as never,
+      schema: createSchema({ type: FormTypeEnum.date }),
     }).filterVar
-    expect(dateFilter?.({ type: VarType.string } as never)).toBe(true)
-    expect(dateFilter?.({ type: VarType.number } as never)).toBe(true)
-    expect(dateFilter?.({ type: VarType.file } as never)).toBe(false)
+    expect(dateFilter?.({ variable: 'value', type: VarType.string })).toBe(true)
+    expect(dateFilter?.({ variable: 'value', type: VarType.number })).toBe(true)
+    expect(dateFilter?.({ variable: 'value', type: VarType.file })).toBe(false)
     expect(
       createPickerProps({
         type: FormTypeEnum.dateRange,
         value: {},
         language: 'en_US',
-        schema: { type: FormTypeEnum.dateRange } as never,
+        schema: createSchema({ type: FormTypeEnum.dateRange }),
       }).filterVar,
     ).toBeUndefined()
   })
@@ -84,7 +97,7 @@ describe('reasoning-config-form helpers', () => {
 
     expect(
       getVisibleSelectOptions(
-        options as never,
+        options,
         {
           mode: { value: { value: 'advanced' } },
         },
@@ -97,7 +110,7 @@ describe('reasoning-config-form helpers', () => {
 
     expect(
       getVisibleSelectOptions(
-        options as never,
+        options,
         {
           mode: { value: { value: 'basic' } },
         },
@@ -198,7 +211,7 @@ describe('reasoning-config-form helpers', () => {
         type: FormTypeEnum.select,
         value: {},
         language: 'en_US',
-        schema: {
+        schema: createSchema({
           options: [
             {
               value: 'one',
@@ -206,7 +219,7 @@ describe('reasoning-config-form helpers', () => {
               show_on: [],
             },
           ],
-        } as never,
+        }),
       }),
     ).toEqual(
       expect.objectContaining({

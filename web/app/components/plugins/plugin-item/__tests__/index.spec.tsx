@@ -4,6 +4,7 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createPluginDeclarationFixture } from '@/test/fixtures/plugin'
 import { PluginCategoryEnum, PluginSource } from '../../types'
 import PluginItem from '../index'
 
@@ -65,33 +66,20 @@ vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({ setShowUpdatePluginModal: vi.fn() }),
 }))
 
-const createPluginDeclaration = (
-  overrides: Partial<PluginDeclaration> = {},
-): PluginDeclaration => ({
-  plugin_unique_identifier: 'test-plugin-id',
-  version: '1.0.0',
-  author: 'test-author',
-  icon: 'test-icon.png',
-  icon_dark: 'test-icon-dark.png',
-  name: 'test-plugin',
-  category: PluginCategoryEnum.tool,
-  label: { en_US: 'Test Plugin' } as unknown as PluginDeclaration['label'],
-  description: { en_US: 'Test plugin description' } as unknown as PluginDeclaration['description'],
-  created_at: '2024-01-01',
-  resource: null,
-  plugins: null,
-  verified: false,
-  endpoint: undefined as PluginDeclaration['endpoint'],
-  model: null,
-  tags: [],
-  agent_strategy: null,
-  meta: {
-    version: '1.0.0',
-    minimum_dify_version: '0.5.0',
-  },
-  trigger: {} as unknown as PluginDeclaration['trigger'],
-  ...overrides,
-})
+const createPluginDeclaration = (overrides: Partial<PluginDeclaration> = {}): PluginDeclaration =>
+  createPluginDeclarationFixture({
+    plugin_unique_identifier: 'test-plugin-id',
+    icon_dark: 'test-icon-dark.png',
+    name: 'test-plugin',
+    description: {
+      ...createPluginDeclarationFixture().description,
+      en_US: 'Test plugin description',
+    },
+    verified: false,
+    endpoint: undefined,
+    meta: { version: '1.0.0', minimum_dify_version: '0.5.0' },
+    ...overrides,
+  })
 
 const createPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail => ({
   id: 'plugin-1',

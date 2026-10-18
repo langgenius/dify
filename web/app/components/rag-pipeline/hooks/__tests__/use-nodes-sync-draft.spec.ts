@@ -1,5 +1,5 @@
 import { act } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { createHttpError } from '@/service/http-error'
 import { useNodesSyncDraft } from '../use-nodes-sync-draft'
@@ -100,10 +100,6 @@ describe('useNodesSyncDraft', () => {
     })
   })
 
-  afterEach(() => {
-    vi.clearAllMocks()
-  })
-
   it.each(['page close', 'queued sync'] as const)(
     'sends the complete sanitized draft on %s without changing the canvas',
     async (mode) => {
@@ -190,22 +186,6 @@ describe('useNodesSyncDraft', () => {
 
     it('should not call postWithKeepalive when nodes array is empty', () => {
       mockGetNodes.mockReturnValue([])
-
-      const { result } = renderHook(() => useNodesSyncDraft(), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      act(() => {
-        result.current.syncWorkflowDraftWhenPageClose()
-      })
-
-      expect(mockPostWithKeepalive).not.toHaveBeenCalled()
-    })
-
-    it('should filter out temp nodes', () => {
-      mockGetNodes.mockReturnValue([
-        { id: 'node-1', data: { type: 'start', _isTempNode: true }, position: { x: 0, y: 0 } },
-      ])
 
       const { result } = renderHook(() => useNodesSyncDraft(), {
         resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },

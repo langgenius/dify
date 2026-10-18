@@ -10,6 +10,8 @@ diagnostics. Run the remaining commands from `packages/dify-ui/`:
 
 ## Test boundary
 
+For maintenance inventories and cleanup batches, use the [frontend test maintenance skill]. This guide remains the source of truth. When changing this policy, review and update affected skill guidance, policy-to-metric mappings, and scanner rules in the same change.
+
 This guide owns the Dify UI testing policy and runtime setup. Add tests for observable Dify
 integration behavior or a reproducible regression, not merely because a component or prop exists.
 Check existing stories and tests before adding coverage. Browser execution alone does not justify
@@ -62,3 +64,4 @@ but must restore the previous value during cleanup.
 [Vitest projects]: https://vitest.dev/guide/projects.html
 [`vitest.setup.ts`]: ../vitest.setup.ts
 [accessibility testing]: https://storybook.js.org/docs/writing-tests/accessibility-testing
+[frontend test maintenance skill]: ../../../.agents/skills/frontend-test-maintenance/SKILL.md

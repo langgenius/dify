@@ -49,27 +49,25 @@ const createCanvasMock = (
   context: CanvasRenderingContext2D | null,
   blob: Blob | null = new Blob(['ok']),
 ): CanvasMock => {
+  const element = document.createElement('canvas')
   const getContextMock = vi.fn(() => context)
   const toBlobMock = vi.fn((callback: BlobCallback) => callback(blob))
-  return {
-    element: {
-      width: 0,
-      height: 0,
-      getContext: getContextMock,
-      toBlob: toBlobMock,
-    } as unknown as HTMLCanvasElement,
-    getContextMock,
-    toBlobMock,
-  }
+  Object.defineProperties(element, {
+    getContext: { value: getContextMock },
+    toBlob: { value: toBlobMock },
+  })
+  return { element, getContextMock, toBlobMock }
 }
 
-const createCanvasContextMock = (): CanvasRenderingContext2D =>
-  ({
-    translate: vi.fn(),
-    rotate: vi.fn(),
-    scale: vi.fn(),
-    drawImage: vi.fn(),
-  }) as unknown as CanvasRenderingContext2D
+const createCanvasContextMock = () => {
+  const context = document.createElement('canvas').getContext('2d')
+  if (!context) throw new Error('The canvas test environment must provide a 2D context')
+  vi.spyOn(context, 'translate')
+  vi.spyOn(context, 'rotate')
+  vi.spyOn(context, 'scale')
+  vi.spyOn(context, 'drawImage').mockImplementation(() => {})
+  return context
+}
 
 const createWebP = (chunks: ReadonlyArray<readonly [string, Uint8Array]>) => {
   const size =
@@ -121,10 +119,10 @@ describe('utils', () => {
       vi.stubGlobal('Image', MockImageElement)
 
       const image = await createImage('https://example.com/image.png')
-      const mockImage = image as unknown as MockImageElement
-
-      expect(mockImage.crossOriginValue).toBe('anonymous')
-      expect(mockImage.src).toBe('https://example.com/image.png')
+      expect(image).toMatchObject({
+        crossOriginValue: 'anonymous',
+        src: 'https://example.com/image.png',
+      })
     })
 
     it('should reject when error event fires', async () => {

@@ -702,7 +702,7 @@ describe('AudioPlayer', () => {
           status: 200,
           headers: { get: () => 'audio/mpeg' },
           body: { getReader: () => failedReader },
-        } as AudioResponse)
+        } satisfies AudioResponse)
         .mockResolvedValueOnce(
           makeAudioResponse(200, [{ value: new Uint8Array([3, 4]), done: true }]),
         )
@@ -730,7 +730,7 @@ describe('AudioPlayer', () => {
 
     it('should ignore a pending HTTP response after destroy', async () => {
       let resolveResponse!: (response: AudioResponse) => void
-      const getReader = vi.fn()
+      const getReader = vi.fn(() => ({ read: async () => ({ value: undefined, done: true }) }))
       const callback = vi.fn()
       mockTextToAudioStream.mockImplementationOnce(
         () =>
@@ -747,7 +747,7 @@ describe('AudioPlayer', () => {
         status: 200,
         headers: { get: () => 'audio/wav' },
         body: { getReader },
-      } as unknown as AudioResponse)
+      } satisfies AudioResponse)
       await Promise.resolve()
       await Promise.resolve()
 

@@ -1,21 +1,19 @@
 import { renderHook } from '@testing-library/react'
 import { renderToString } from 'react-dom/server'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useOAuthCallback } from '../use-oauth'
 
 const originalUrl = window.location.href
 const originalOpener = window.opener
 const originalClose = window.close
 
-const setOpener = (opener: Window | null) => {
+const setOpener = (
+  opener: (Pick<Window, 'postMessage'> & Partial<Pick<Window, 'origin'>>) | null,
+) => {
   Object.defineProperty(window, 'opener', { configurable: true, writable: true, value: opener })
 }
 
 describe('useOAuthCallback', () => {
-  beforeEach(() => {
-    vi.restoreAllMocks()
-  })
-
   afterEach(() => {
     setOpener(originalOpener)
     window.close = originalClose
@@ -25,7 +23,7 @@ describe('useOAuthCallback', () => {
 
   it('posts a success message and closes the popup when window.opener is present and a subscription_id is in the query', () => {
     const postMessage = vi.fn()
-    setOpener({ origin: 'https://console.example.test', postMessage } as unknown as Window)
+    setOpener({ origin: 'https://console.example.test', postMessage })
     const close = vi.fn()
     window.close = close
     window.history.replaceState({}, '', '/oauth-callback?subscription_id=sub-123')
@@ -43,7 +41,7 @@ describe('useOAuthCallback', () => {
 
   it('posts an error message and closes the popup when window.opener is present and an error is in the query', () => {
     const postMessage = vi.fn()
-    setOpener({ origin: 'https://console.example.test', postMessage } as unknown as Window)
+    setOpener({ origin: 'https://console.example.test', postMessage })
     const close = vi.fn()
     window.close = close
     window.history.replaceState(
@@ -68,7 +66,7 @@ describe('useOAuthCallback', () => {
 
   it('falls back to targetOrigin "*" when window.opener has no origin (e.g. file:// popup)', () => {
     const postMessage = vi.fn()
-    setOpener({ postMessage } as unknown as Window)
+    setOpener({ postMessage })
     const close = vi.fn()
     window.close = close
     window.history.replaceState({}, '', '/oauth-callback?subscription_id=sub-1')

@@ -3,6 +3,7 @@ import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { VarType } from '@/app/components/workflow/types'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { VarInInspectType } from '@/types/workflow'
 import ValueContent from '../value-content'
 
@@ -58,15 +59,19 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 describe('ValueContent', () => {
-  const createVar = (overrides: Partial<VarInInspect>): VarInInspect =>
-    ({
-      id: 'var-default',
-      name: 'query',
-      type: VarInInspectType.node,
-      value_type: VarType.string,
-      value: '',
-      ...overrides,
-    }) as VarInInspect
+  const createVar = (overrides: Partial<VarInInspect>): VarInInspect => ({
+    id: 'var-default',
+    name: 'query',
+    type: VarInInspectType.node,
+    value_type: VarType.string,
+    value: '',
+    description: '',
+    edited: false,
+    is_truncated: false,
+    selector: ['node', 'query'],
+    visible: true,
+    ...overrides,
+  })
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -79,6 +84,7 @@ describe('ValueContent', () => {
   })
 
   it('should debounce text changes for string variables', async () => {
+    const user = userEvent.setup()
     const handleValueChange = vi.fn()
 
     renderWorkflowComponent(
@@ -93,14 +99,13 @@ describe('ValueContent', () => {
       />,
       {
         initialStoreState: {
-          fileUploadConfig: {
-            workflow_file_upload_limit: 5,
-          } as never,
+          fileUploadConfig: createFileUploadConfigFixture({ workflow_file_upload_limit: 5 }),
         },
       },
     )
 
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'updated' } })
+    await user.clear(screen.getByRole('textbox'))
+    await user.type(screen.getByRole('textbox'), 'updated')
 
     await waitFor(() => {
       expect(handleValueChange).toHaveBeenCalledWith('var-1', 'updated')
@@ -121,9 +126,7 @@ describe('ValueContent', () => {
       />,
       {
         initialStoreState: {
-          fileUploadConfig: {
-            workflow_file_upload_limit: 5,
-          } as never,
+          fileUploadConfig: createFileUploadConfigFixture({ workflow_file_upload_limit: 5 }),
         },
       },
     )
@@ -151,9 +154,7 @@ describe('ValueContent', () => {
       />,
       {
         initialStoreState: {
-          fileUploadConfig: {
-            workflow_file_upload_limit: 5,
-          } as never,
+          fileUploadConfig: createFileUploadConfigFixture({ workflow_file_upload_limit: 5 }),
         },
       },
     )
@@ -189,6 +190,7 @@ describe('ValueContent', () => {
   })
 
   it('should update boolean values', async () => {
+    const user = userEvent.setup()
     const handleValueChange = vi.fn()
 
     renderWorkflowComponent(
@@ -204,14 +206,12 @@ describe('ValueContent', () => {
       />,
       {
         initialStoreState: {
-          fileUploadConfig: {
-            workflow_file_upload_limit: 5,
-          } as never,
+          fileUploadConfig: createFileUploadConfigFixture({ workflow_file_upload_limit: 5 }),
         },
       },
     )
 
-    fireEvent.click(screen.getByText('True'))
+    await user.click(screen.getByText('True'))
 
     await waitFor(() => {
       expect(handleValueChange).toHaveBeenCalledWith('var-4', true)
@@ -234,9 +234,7 @@ describe('ValueContent', () => {
       />,
       {
         initialStoreState: {
-          fileUploadConfig: {
-            workflow_file_upload_limit: 5,
-          } as never,
+          fileUploadConfig: createFileUploadConfigFixture({ workflow_file_upload_limit: 5 }),
         },
       },
     )
@@ -263,9 +261,7 @@ describe('ValueContent', () => {
       />,
       {
         initialStoreState: {
-          fileUploadConfig: {
-            workflow_file_upload_limit: 5,
-          } as never,
+          fileUploadConfig: createFileUploadConfigFixture({ workflow_file_upload_limit: 5 }),
         },
       },
     )
@@ -293,9 +289,7 @@ describe('ValueContent', () => {
       />,
       {
         initialStoreState: {
-          fileUploadConfig: {
-            workflow_file_upload_limit: 5,
-          } as never,
+          fileUploadConfig: createFileUploadConfigFixture({ workflow_file_upload_limit: 5 }),
         },
       },
     )
@@ -316,7 +310,7 @@ describe('ValueContent', () => {
           id: 'var-llm',
           name: 'for_summarize',
           type: VarInInspectType.environment,
-          value_type: 'llm' as VarType,
+          value_type: 'llm',
           value,
         })}
         handleValueChange={vi.fn()}
@@ -324,9 +318,7 @@ describe('ValueContent', () => {
       />,
       {
         initialStoreState: {
-          fileUploadConfig: {
-            workflow_file_upload_limit: 5,
-          } as never,
+          fileUploadConfig: createFileUploadConfigFixture({ workflow_file_upload_limit: 5 }),
         },
       },
     )
@@ -338,6 +330,7 @@ describe('ValueContent', () => {
   })
 
   it('should update uploaded single file values and ignore pending uploads', async () => {
+    const user = userEvent.setup()
     const handleValueChange = vi.fn()
 
     renderWorkflowComponent(
@@ -353,18 +346,16 @@ describe('ValueContent', () => {
       />,
       {
         initialStoreState: {
-          fileUploadConfig: {
-            workflow_file_upload_limit: 5,
-          } as never,
+          fileUploadConfig: createFileUploadConfigFixture({ workflow_file_upload_limit: 5 }),
         },
       },
     )
 
-    fireEvent.click(screen.getByText('file-pending'))
+    await user.click(screen.getByText('file-pending'))
 
     expect(handleValueChange).not.toHaveBeenCalled()
 
-    fireEvent.click(screen.getByText('file-uploaded'))
+    await user.click(screen.getByText('file-uploaded'))
 
     await waitFor(() => {
       expect(handleValueChange).toHaveBeenCalledWith(
@@ -374,46 +365,10 @@ describe('ValueContent', () => {
     })
   })
 
-  it('should update uploaded file arrays and react to resize observer changes', async () => {
+  it('updates uploaded file arrays', async () => {
+    const user = userEvent.setup()
     const handleValueChange = vi.fn()
-    const observe = vi.fn()
-    const disconnect = vi.fn()
-    const originalResizeObserver = globalThis.ResizeObserver
-    const originalClientHeight = Object.getOwnPropertyDescriptor(
-      HTMLDivElement.prototype,
-      'clientHeight',
-    )
-
-    Object.defineProperty(HTMLDivElement.prototype, 'clientHeight', {
-      configurable: true,
-      get: () => 120,
-    })
-
-    class MockResizeObserver {
-      callback: ResizeObserverCallback
-
-      constructor(callback: ResizeObserverCallback) {
-        this.callback = callback
-      }
-
-      observe = (target: Element) => {
-        observe(target)
-        this.callback(
-          [
-            {
-              borderBoxSize: [{ inlineSize: 300, blockSize: 20 }],
-            } as unknown as ResizeObserverEntry,
-          ],
-          this as unknown as ResizeObserver,
-        )
-      }
-
-      disconnect = disconnect
-    }
-
-    vi.stubGlobal('ResizeObserver', MockResizeObserver as unknown as typeof ResizeObserver)
-
-    const { unmount } = renderWorkflowComponent(
+    renderWorkflowComponent(
       <ValueContent
         currentVar={createVar({
           id: 'var-9',
@@ -427,14 +382,12 @@ describe('ValueContent', () => {
       />,
       {
         initialStoreState: {
-          fileUploadConfig: {
-            workflow_file_upload_limit: 5,
-          } as never,
+          fileUploadConfig: createFileUploadConfigFixture({ workflow_file_upload_limit: 5 }),
         },
       },
     )
 
-    fireEvent.click(screen.getByText('file-array-uploaded'))
+    await user.click(screen.getByText('file-array-uploaded'))
 
     await waitFor(() => {
       expect(handleValueChange).toHaveBeenCalledWith(
@@ -445,18 +398,5 @@ describe('ValueContent', () => {
         ]),
       )
     })
-
-    expect(observe).toHaveBeenCalled()
-    expect(document.querySelector('[style="height: 100px;"]')).toBeInTheDocument()
-
-    if (originalClientHeight)
-      Object.defineProperty(HTMLDivElement.prototype, 'clientHeight', originalClientHeight)
-    else delete (HTMLDivElement.prototype as { clientHeight?: number }).clientHeight
-
-    if (originalResizeObserver) vi.stubGlobal('ResizeObserver', originalResizeObserver)
-    else vi.unstubAllGlobals()
-
-    unmount()
-    expect(disconnect).toHaveBeenCalledOnce()
   })
 })

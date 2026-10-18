@@ -56,16 +56,16 @@ function renderDetailSidebarFrame(
           <DetailSidebarFrame
             compact={compact}
             renderTop={({ expand, onToggle }) => (
-              <div data-testid="detail-top" data-expand={expand}>
-                <button type="button" data-testid="detail-toggle" onClick={onToggle}>
+              <div>
+                <button type="button" aria-expanded={expand} onClick={onToggle}>
                   Toggle
                 </button>
               </div>
             )}
             renderSection={({ expand }) => (
-              <div data-testid="detail-section" data-expand={expand}>
-                Section
-              </div>
+              <section aria-label="Details">
+                {expand ? 'Expanded section' : 'Collapsed section'}
+              </section>
             )}
           />
           <div contentEditable suppressContentEditableWarning role="textbox" aria-label="Note">
@@ -90,15 +90,15 @@ describe('DetailSidebarFrame', () => {
   it('renders expanded detail content by default', () => {
     renderDetailSidebarFrame()
 
-    expect(screen.getByTestId('detail-top')).toHaveAttribute('data-expand', 'true')
-    expect(screen.getByTestId('detail-section')).toHaveAttribute('data-expand', 'true')
+    expect(screen.getByRole('button', { name: 'Toggle' })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('region', { name: 'Details' })).toHaveTextContent('Expanded section')
   })
 
   it('renders the server-provided collapsed preference on the first render', () => {
     renderDetailSidebarFrame(null, 'mac', false, 'collapse')
 
-    expect(screen.getByTestId('detail-top')).toHaveAttribute('data-expand', 'false')
-    expect(screen.getByTestId('detail-section')).toHaveAttribute('data-expand', 'false')
+    expect(screen.getByRole('button', { name: 'Toggle' })).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByRole('region', { name: 'Details' })).toHaveTextContent('Collapsed section')
   })
 
   it('starts compact navigation collapsed and toggles without changing the desktop preference', async () => {
@@ -123,17 +123,26 @@ describe('DetailSidebarFrame', () => {
 
       fireEvent.keyDown(document.body, { key: 'b', ...modifiers })
 
-      expect(screen.getByTestId('detail-top')).toHaveAttribute('data-expand', 'false')
+      expect(screen.getByRole('button', { name: 'Toggle' })).toHaveAttribute(
+        'aria-expanded',
+        'false',
+      )
       expect(Cookies.get(DETAIL_SIDEBAR_COOKIE_NAME)).toBe('collapse')
 
       expect(fireEvent.keyDown(document.body, { key: 'b', repeat: true, ...modifiers })).toBe(false)
 
-      expect(screen.getByTestId('detail-top')).toHaveAttribute('data-expand', 'false')
+      expect(screen.getByRole('button', { name: 'Toggle' })).toHaveAttribute(
+        'aria-expanded',
+        'false',
+      )
 
       fireEvent.keyUp(document.body, { key: 'b', ...modifiers })
       fireEvent.keyDown(document.body, { key: 'b', ...modifiers })
 
-      expect(screen.getByTestId('detail-top')).toHaveAttribute('data-expand', 'true')
+      expect(screen.getByRole('button', { name: 'Toggle' })).toHaveAttribute(
+        'aria-expanded',
+        'true',
+      )
       expect(Cookies.get(DETAIL_SIDEBAR_COOKIE_NAME)).toBe('expand')
     })
 
@@ -165,38 +174,46 @@ describe('DetailSidebarFrame', () => {
         fireEvent(editor, event)
 
         expect(event.defaultPrevented).toBe(false)
-        expect(screen.getByTestId('detail-top')).toHaveAttribute('data-expand', 'true')
+        expect(screen.getByRole('button', { name: 'Toggle' })).toHaveAttribute(
+          'aria-expanded',
+          'true',
+        )
         expect(Cookies.get(DETAIL_SIDEBAR_COOKIE_NAME)).toBeUndefined()
       },
     )
   })
 
-  it('collapses detail content from the top toggle and hides environment metadata', () => {
+  it('collapses detail content from the top toggle and hides environment metadata', async () => {
+    const user = userEvent.setup()
     renderDetailSidebarFrame('TESTING')
-    fireEvent.click(screen.getByTestId('detail-toggle'))
+    await user.click(screen.getByRole('button', { name: 'Toggle' }))
 
-    expect(screen.getByTestId('detail-top')).toHaveAttribute('data-expand', 'false')
-    expect(screen.getByTestId('detail-section')).toHaveAttribute('data-expand', 'false')
+    expect(screen.getByRole('button', { name: 'Toggle' })).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByRole('region', { name: 'Details' })).toHaveTextContent('Collapsed section')
     expect(screen.queryByText('Environment tag')).not.toBeInTheDocument()
     expect(Cookies.get(DETAIL_SIDEBAR_COOKIE_NAME)).toBe('collapse')
   })
 
-  it('shows a floating preview on collapsed hover without changing persisted state', () => {
+  it('shows a floating preview on collapsed hover without changing persisted state', async () => {
+    const user = userEvent.setup()
     renderDetailSidebarFrame()
-    fireEvent.click(screen.getByTestId('detail-toggle'))
-    fireEvent.mouseEnter(screen.getByTestId('detail-top').parentElement!)
+    await user.click(screen.getByRole('button', { name: 'Toggle' }))
+    await user.unhover(screen.getByRole('button', { name: 'Toggle' }))
+    await user.hover(screen.getByRole('button', { name: 'Toggle' }))
 
-    expect(screen.getByTestId('detail-top')).toHaveAttribute('data-expand', 'true')
-    expect(screen.getByTestId('detail-section')).toHaveAttribute('data-expand', 'true')
+    expect(screen.getByRole('button', { name: 'Toggle' })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('region', { name: 'Details' })).toHaveTextContent('Expanded section')
     expect(Cookies.get(DETAIL_SIDEBAR_COOKIE_NAME)).toBe('collapse')
   })
 
-  it('keeps collapsed bottom actions in place when they are hovered', () => {
+  it('keeps collapsed bottom actions in place when they are hovered', async () => {
+    const user = userEvent.setup()
     renderDetailSidebarFrame()
-    fireEvent.click(screen.getByTestId('detail-toggle'))
-    fireEvent.mouseEnter(screen.getByRole('button', { name: 'help' }))
+    await user.click(screen.getByRole('button', { name: 'Toggle' }))
+    await user.unhover(screen.getByRole('button', { name: 'Toggle' }))
+    await user.hover(screen.getByRole('button', { name: 'help' }))
 
-    expect(screen.getByTestId('detail-top')).toHaveAttribute('data-expand', 'false')
+    expect(screen.getByRole('button', { name: 'Toggle' })).toHaveAttribute('aria-expanded', 'false')
     expect(screen.getByRole('button', { name: 'account' })).toHaveTextContent('Compact account')
     expect(Cookies.get(DETAIL_SIDEBAR_COOKIE_NAME)).toBe('collapse')
   })
@@ -215,7 +232,7 @@ describe('DetailSidebarFrame', () => {
               </button>
               <DetailSidebarFrame
                 compact={compact}
-                renderTop={({ expand }) => <div data-testid="detail-top" data-expand={expand} />}
+                renderTop={() => <button type="button">Toggle</button>}
                 renderSection={() => <div>Section</div>}
               />
             </HotkeysProvider>
@@ -227,7 +244,7 @@ describe('DetailSidebarFrame', () => {
     renderWithConsoleQuery(<ResponsiveDetailSidebar />, {
       accountProfileMeta: { currentEnv: null },
     })
-    fireEvent.mouseEnter(screen.getByTestId('detail-top').parentElement!)
+    await user.hover(screen.getByRole('button', { name: 'Toggle' }))
     expect(screen.getByRole('button', { name: 'account' })).toHaveTextContent('Expanded account')
 
     await user.click(screen.getByRole('button', { name: 'Switch layout' }))
@@ -236,14 +253,16 @@ describe('DetailSidebarFrame', () => {
     expect(screen.getByRole('button', { name: 'account' })).toHaveTextContent('Compact account')
   })
 
-  it('persists expansion when the hovered preview toggle is clicked', () => {
+  it('persists expansion when the hovered preview toggle is clicked', async () => {
+    const user = userEvent.setup()
     renderDetailSidebarFrame()
-    fireEvent.click(screen.getByTestId('detail-toggle'))
-    fireEvent.mouseEnter(screen.getByTestId('detail-top').parentElement!)
-    fireEvent.click(screen.getByTestId('detail-toggle'))
+    await user.click(screen.getByRole('button', { name: 'Toggle' }))
+    await user.unhover(screen.getByRole('button', { name: 'Toggle' }))
+    await user.hover(screen.getByRole('button', { name: 'Toggle' }))
+    await user.click(screen.getByRole('button', { name: 'Toggle' }))
 
-    expect(screen.getByTestId('detail-top')).toHaveAttribute('data-expand', 'true')
-    expect(screen.getByTestId('detail-section')).toHaveAttribute('data-expand', 'true')
+    expect(screen.getByRole('button', { name: 'Toggle' })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('region', { name: 'Details' })).toHaveTextContent('Expanded section')
     expect(Cookies.get(DETAIL_SIDEBAR_COOKIE_NAME)).toBe('expand')
   })
 })

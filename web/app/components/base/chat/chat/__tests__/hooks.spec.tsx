@@ -109,13 +109,6 @@ describe('useChat', () => {
     vi.restoreAllMocks()
   })
 
-  it('should initialize correctly with empty config', () => {
-    const { result } = renderHookWithConsoleQuery(() => useChat())
-    expect(result.current.chatList).toEqual([])
-    expect(result.current.isResponding).toBe(false)
-    expect(result.current.suggestedQuestions).toEqual([])
-  })
-
   it('should initialize with opening statement and suggested questions', () => {
     const config = {
       opening_statement: 'Hello {{name}}',
@@ -2688,7 +2681,7 @@ describe('useChat', () => {
     expect(result.current.chatList[3]!.annotation?.id).toBe('')
   })
 
-  it('should cover baseFile with transferMethod and without file type in handleResume and handleSend', () => {
+  it('preserves streamed attachment metadata when sending or resuming', () => {
     let resumeCallbacks: HookCallbacks
     vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
       resumeCallbacks = options as HookCallbacks
@@ -2727,27 +2720,32 @@ describe('useChat', () => {
     })
 
     act(() => {
-      const fileWithMethodAndNoType = {
+      const attachment = {
         id: 'f-1',
         transferMethod: 'remote_url',
-        type: undefined,
+        type: 'image',
+        url: 'https://example.com/uploaded.png',
         name: 'uploaded.png',
       }
-      sendCallbacks.onFile(fileWithMethodAndNoType)
-      resumeCallbacks.onFile(fileWithMethodAndNoType)
-
-      // Test the inner condition in handleSend `!isAgentMode` where we also push to current files
-      sendCallbacks.onFile(fileWithMethodAndNoType)
+      sendCallbacks.onFile(attachment)
+      resumeCallbacks.onFile(attachment)
     })
 
     const lastSendResponse = result.current.chatList[1]
-    expect(lastSendResponse!.message_files).toHaveLength(2)
+    expect(lastSendResponse?.message_files).toEqual([
+      expect.objectContaining({
+        id: 'f-1',
+        name: 'uploaded.png',
+        url: 'https://example.com/uploaded.png',
+        type: 'image',
+      }),
+    ])
 
     const lastResumeResponse = resumeResult.current.chatList[1]
-    expect(lastResumeResponse!.message_files).toHaveLength(1)
+    expect(lastResumeResponse?.message_files).toEqual(lastSendResponse?.message_files)
   })
 
-  it('should cover parallel_id tracing matches in iteration and loop finish', () => {
+  it('matches parallel iteration and loop completion to the correct trace', () => {
     let sendCallbacks: HookCallbacks
     vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
       sendCallbacks = options as HookCallbacks
@@ -2791,39 +2789,7 @@ describe('useChat', () => {
     expect(tracing[1]!.status).toBe('succeeded')
   })
 
-  it('should cover baseFile with ALL fields, avoiding all fallbacks', () => {
-    let sendCallbacks: HookCallbacks
-    vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
-      sendCallbacks = options as HookCallbacks
-    })
-
-    const { result } = renderHookWithConsoleQuery(() => useChat())
-
-    act(() => {
-      result.current.handleSend('url', { query: 'test exact file' }, {})
-    })
-
-    act(() => {
-      sendCallbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
-      sendCallbacks.onFile({
-        id: 'exact-1',
-        type: 'custom/mime',
-        transferMethod: 'local_file',
-        url: 'exact.url',
-        supportFileType: 'blob',
-        progress: 50,
-        name: 'exact.name',
-        size: 1024,
-      })
-    })
-
-    const lastResponse = result.current.chatList[result.current.chatList.length - 1]
-    expect(lastResponse!.message_files).toHaveLength(1)
-    expect(lastResponse!.message_files![0]!.type).toBe('custom/mime')
-    expect(lastResponse!.message_files![0]!.size).toBe(1024)
-  })
-
-  it('should cover edge case where node_id is missing or index is -1 in handleResume onNodeFinished and onLoopFinish', () => {
+  it('ignores completion events for traces that are absent from the resumed run', () => {
     let resumeCallbacks: HookCallbacks
     vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
       resumeCallbacks = options as HookCallbacks
@@ -2931,7 +2897,7 @@ describe('useChat', () => {
     expect(result.current.suggestedQuestions).toHaveLength(0)
   })
 
-  it('should cover handleResume onHumanInputFormFilled splicing and onHumanInputFormTimeout updating', () => {
+  it('moves submitted forms out of pending state and updates timeout for remaining forms', () => {
     let resumeCallbacks: HookCallbacks
     vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
       resumeCallbacks = options as HookCallbacks
@@ -2977,7 +2943,7 @@ describe('useChat', () => {
     expect(lastResponse!.humanInputFilledFormDataList).toHaveLength(1)
   })
 
-  it('should cover handleAnnotationAdded updating node', async () => {
+  it('updates an answer when an annotation is added', async () => {
     const prevChatTree = [
       {
         id: 'q-1',

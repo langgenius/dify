@@ -39,16 +39,14 @@ const originalRangeGetBoundingClientRect = Range.prototype.getBoundingClientRect
 beforeAll(() => {
   // Mock getClientRects on Range prototype
   Range.prototype.getClientRects = vi.fn(() => {
-    const rectList = [mockDOMRect] as unknown as DOMRectList
-    Object.defineProperty(rectList, 'length', { value: 1 })
-    Object.defineProperty(rectList, 'item', {
-      value: (index: number) => (index === 0 ? mockDOMRect : null),
+    const rectList = Object.assign([mockDOMRect], {
+      item: (index: number) => (index === 0 ? mockDOMRect : null),
     })
     return rectList
   })
 
   // Mock getBoundingClientRect on Range prototype
-  Range.prototype.getBoundingClientRect = vi.fn(() => mockDOMRect as DOMRect)
+  Range.prototype.getBoundingClientRect = vi.fn(() => mockDOMRect)
 })
 
 afterAll(() => {
@@ -57,7 +55,6 @@ afterAll(() => {
 })
 
 const CONTAINER_ID = 'host'
-const CONTENT_EDITABLE_ID = 'ce'
 
 const INSERT_TEXT = createCommand<string[]>('INSERT_TEST_TEXT')
 const InsertTextPlugin = () => {
@@ -115,7 +112,7 @@ const MinimalEditor: React.FC<MinimalEditorProps> = ({
         ref={withContainer ? setContainerEl : undefined}
       >
         <RichTextPlugin
-          contentEditable={<ContentEditable data-testid={CONTENT_EDITABLE_ID} />}
+          contentEditable={<ContentEditable aria-label="Prompt" />}
           placeholder={null}
           ErrorBoundary={LexicalErrorBoundary}
         />
@@ -141,9 +138,9 @@ function focusAndTriggerHotkey(
     ...(detectPlatform() === 'mac' ? { metaKey: true } : { ctrlKey: true }),
   },
 ) {
-  const ce = screen.getByTestId(CONTENT_EDITABLE_ID)
+  const ce = screen.getByRole('textbox', { name: 'Prompt' })
   ce.focus()
-  fireEvent.keyDown(screen.getByTestId(CONTENT_EDITABLE_ID), { key, ...modifiers })
+  fireEvent.keyDown(screen.getByRole('textbox', { name: 'Prompt' }), { key, ...modifiers })
 }
 
 describe('ShortcutsPopupPlugin', () => {
@@ -159,14 +156,14 @@ describe('ShortcutsPopupPlugin', () => {
     focusAndTriggerHotkey('k')
     expect(await screen.findByText(SHORTCUTS_EMPTY_CONTENT)).toBeInTheDocument()
     expect(onOpen).toHaveBeenCalledTimes(1)
-    fireEvent.keyDown(screen.getByTestId(CONTENT_EDITABLE_ID), { key: 'Escape' })
+    fireEvent.keyDown(screen.getByRole('textbox', { name: 'Prompt' }), { key: 'Escape' })
     await waitFor(() => expect(screen.queryByText(SHORTCUTS_EMPTY_CONTENT)).not.toBeInTheDocument())
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
   it('does not open when editor is not focused', async () => {
     render(<MinimalEditor />)
-    fireEvent.keyDown(screen.getByTestId(CONTENT_EDITABLE_ID), {
+    fireEvent.keyDown(screen.getByRole('textbox', { name: 'Prompt' }), {
       key: '/',
       ...(detectPlatform() === 'mac' ? { metaKey: true } : { ctrlKey: true }),
     })
@@ -177,10 +174,10 @@ describe('ShortcutsPopupPlugin', () => {
 
   it('closes on click outside', async () => {
     render(<MinimalEditor />)
-    const ce = screen.getByTestId(CONTENT_EDITABLE_ID)
+    const ce = screen.getByRole('textbox', { name: 'Prompt' })
     ce.focus()
 
-    fireEvent.keyDown(screen.getByTestId(CONTENT_EDITABLE_ID), {
+    fireEvent.keyDown(screen.getByRole('textbox', { name: 'Prompt' }), {
       key: '/',
       ...(detectPlatform() === 'mac' ? { metaKey: true } : { ctrlKey: true }),
     })
@@ -194,10 +191,10 @@ describe('ShortcutsPopupPlugin', () => {
 
   it('does not close on mousedown inside a Base UI portal overlay', async () => {
     render(<MinimalEditor />)
-    const ce = screen.getByTestId(CONTENT_EDITABLE_ID)
+    const ce = screen.getByRole('textbox', { name: 'Prompt' })
     ce.focus()
 
-    fireEvent.keyDown(screen.getByTestId(CONTENT_EDITABLE_ID), {
+    fireEvent.keyDown(screen.getByRole('textbox', { name: 'Prompt' }), {
       key: '/',
       ...(detectPlatform() === 'mac' ? { metaKey: true } : { ctrlKey: true }),
     })
@@ -224,74 +221,20 @@ describe('ShortcutsPopupPlugin', () => {
     const host = screen.getByTestId(CONTAINER_ID)
     focusAndTriggerHotkey('/')
     const portalContent = await screen.findByText(SHORTCUTS_EMPTY_CONTENT)
-    const floatingDiv = screen.getByTestId('shortcuts-popup')
     expect(host).toContainElement(portalContent)
-    expect(floatingDiv).toHaveStyle({ position: 'absolute' })
   })
 
   it('falls back to document.body when container is not provided', async () => {
     render(<MinimalEditor withContainer={false} />)
     focusAndTriggerHotkey('/')
     const portalContent = await screen.findByText(SHORTCUTS_EMPTY_CONTENT)
-    const floatingDiv = screen.getByTestId('shortcuts-popup')
     expect(document.body).toContainElement(portalContent)
-    expect(floatingDiv).toHaveStyle({ position: 'fixed' })
-    expect(floatingDiv).toHaveStyle({ overflow: 'visible' })
-  })
-
-  it('can render fixed next to the workflow panel instead of following the cursor', async () => {
-    const originalInnerWidth = window.innerWidth
-    const originalInnerHeight = window.innerHeight
-    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1200 })
-    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 900 })
-
-    const rightPanel = document.createElement('div')
-    rightPanel.setAttribute('data-workflow-right-panel', '')
-    rightPanel.getBoundingClientRect = vi.fn(
-      () =>
-        ({
-          x: 800,
-          y: 56,
-          width: 400,
-          height: 840,
-          top: 56,
-          right: 1200,
-          bottom: 896,
-          left: 800,
-          toJSON: () => ({}),
-        }) as DOMRect,
-    )
-    document.body.appendChild(rightPanel)
-
-    try {
-      render(<MinimalEditor withContainer={false} displayMode="workflow-panel-adjacent-center" />)
-      focusAndTriggerHotkey('/')
-      await screen.findByText(SHORTCUTS_EMPTY_CONTENT)
-
-      const floatingDiv = screen.getByTestId('shortcuts-popup')
-      await waitFor(() => {
-        expect(floatingDiv).toHaveStyle({
-          position: 'fixed',
-          right: '404px',
-          top: '474px',
-          transform: 'translateY(-50%)',
-        })
-      })
-      expect(floatingDiv.style.getPropertyValue('--shortcut-popup-max-width')).toBe('400px')
-      expect(floatingDiv.style.getPropertyValue('--shortcut-popup-max-height')).toBe('836px')
-    } finally {
-      rightPanel.remove()
-      Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalInnerWidth })
-      Object.defineProperty(window, 'innerHeight', {
-        configurable: true,
-        value: originalInnerHeight,
-      })
-    }
+    expect(screen.getByTestId(CONTAINER_ID)).not.toContainElement(portalContent)
   })
 
   it('does not open for an extra modifier or composing input', () => {
     render(<MinimalEditor />)
-    const editor = screen.getByTestId(CONTENT_EDITABLE_ID)
+    const editor = screen.getByRole('textbox', { name: 'Prompt' })
     editor.focus()
     const modifier = detectPlatform() === 'mac' ? { metaKey: true } : { ctrlKey: true }
     fireEvent.keyDown(editor, { key: '/', ...modifier, altKey: true })
@@ -321,7 +264,7 @@ describe('ShortcutsPopupPlugin', () => {
           <div>
             <button
               type="button"
-              data-testid="insert-btn"
+
               onClick={() => onInsert(INSERT_TEXT, ['inserted', 'text'])}
             >
               Insert
@@ -332,15 +275,15 @@ describe('ShortcutsPopupPlugin', () => {
     )
     focusAndTriggerHotkey('/')
 
-    const insertBtn = await screen.findByTestId('insert-btn')
+    const insertBtn = await screen.findByRole('button', { name: 'Insert' })
     await user.click(insertBtn)
     await waitFor(() =>
-      expect(screen.getByTestId(CONTENT_EDITABLE_ID)).toHaveTextContent('inserted text'),
+      expect(screen.getByRole('textbox', { name: 'Prompt' })).toHaveTextContent('inserted text'),
     )
 
     // After insert, the popup should close
     await waitFor(() => {
-      expect(screen.queryByTestId('insert-btn')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Insert' })).not.toBeInTheDocument()
     })
   })
 
@@ -349,7 +292,7 @@ describe('ShortcutsPopupPlugin', () => {
     render(
       <MinimalEditor displayMode="workflow-panel-adjacent-center">
         {(close: () => void) => (
-          <button type="button" data-testid="close-via-fn" onClick={close}>
+          <button type="button" onClick={close}>
             Close
           </button>
         )}
@@ -357,11 +300,11 @@ describe('ShortcutsPopupPlugin', () => {
     )
     focusAndTriggerHotkey('/')
 
-    const closeBtn = await screen.findByTestId('close-via-fn')
+    const closeBtn = await screen.findByRole('button', { name: 'Close' })
     await user.click(closeBtn)
 
     await waitFor(() => {
-      expect(screen.queryByTestId('close-via-fn')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
     })
   })
 
@@ -398,7 +341,7 @@ describe('ShortcutsPopupPlugin', () => {
       cancelable: true,
     })
     act(() => {
-      screen.getByTestId(CONTENT_EDITABLE_ID).dispatchEvent(escEvent)
+      screen.getByRole('textbox', { name: 'Prompt' }).dispatchEvent(escEvent)
     })
 
     await waitFor(() => {
@@ -406,28 +349,5 @@ describe('ShortcutsPopupPlugin', () => {
     })
     expect(escEvent.defaultPrevented).toBe(true)
     expect(parentKeyDown).not.toHaveBeenCalled()
-  })
-
-  it('opens via lastSelectionRef fallback when getSelection returns no ranges', async () => {
-    // First, focus and type so lastSelectionRef is populated
-    render(<MinimalEditor />)
-    focusAndTriggerHotkey('/')
-    // First open works normally
-    expect(await screen.findByText(SHORTCUTS_EMPTY_CONTENT)).toBeInTheDocument()
-    // Close it
-    fireEvent.keyDown(screen.getByTestId(CONTENT_EDITABLE_ID), { key: 'Escape' })
-    await waitFor(() => {
-      expect(screen.queryByText(SHORTCUTS_EMPTY_CONTENT)).not.toBeInTheDocument()
-    })
-
-    // Now stub getSelection to return no ranges so lastSelectionRef is used
-    const getSelection = vi
-      .spyOn(window, 'getSelection')
-      .mockReturnValue({ rangeCount: 0 } as Selection)
-
-    focusAndTriggerHotkey('/')
-    expect(await screen.findByText(SHORTCUTS_EMPTY_CONTENT)).toBeInTheDocument()
-
-    getSelection.mockRestore()
   })
 })

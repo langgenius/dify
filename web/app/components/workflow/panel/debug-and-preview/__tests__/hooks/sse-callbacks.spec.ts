@@ -343,45 +343,26 @@ describe('useChat – handleSend SSE callbacks', () => {
   })
 
   describe('onMessageEnd', () => {
-    it('should update citation and files', () => {
+    it.each([
+      {
+        name: 'retrieval results',
+        metadata: { retriever_resources: [{ document_id: 'r1' }] },
+        citation: [{ document_id: 'r1' }],
+      },
+      { name: 'no retrieval results', metadata: {}, citation: [] },
+    ])('publishes citations for $name', ({ metadata, citation }) => {
       const { result } = setupAndSend()
-
       act(() => {
         capturedCallbacks.onData('response', true, {
           conversationId: 'c1',
           messageId: 'msg-1',
           taskId: 't1',
         })
+        capturedCallbacks.onMessageEnd({ metadata, files: [] })
       })
-
-      act(() => {
-        capturedCallbacks.onMessageEnd({
-          metadata: { retriever_resources: [{ document_id: 'r1' }] },
-          files: [],
-        })
-      })
-
-      const answer = result.current.chatList.find((item) => item.id === 'msg-1')
-      expect(answer!.citation).toEqual([{ document_id: 'r1' }])
-    })
-
-    it('should default citation to empty array when no retriever_resources', () => {
-      const { result } = setupAndSend()
-
-      act(() => {
-        capturedCallbacks.onData('response', true, {
-          conversationId: 'c1',
-          messageId: 'msg-1',
-          taskId: 't1',
-        })
-      })
-
-      act(() => {
-        capturedCallbacks.onMessageEnd({ metadata: {}, files: [] })
-      })
-
-      const answer = result.current.chatList.find((item) => item.id === 'msg-1')
-      expect(answer!.citation).toEqual([])
+      expect(result.current.chatList.find((item) => item.id === 'msg-1')?.citation).toEqual(
+        citation,
+      )
     })
   })
 

@@ -128,6 +128,8 @@ Mocks must preserve the public contract needed by the test. Do not mock interact
 
 ## Workflow
 
+For maintenance inventories, hotspot shortlists, and cleanup batches, use the [frontend test maintenance skill]. This guide remains the source of truth. When changing this policy, review and update affected skill guidance, policy-to-metric mappings, and scanner rules in the same change.
+
 Use the behavior owner and nearby tests to identify a realistic regression and the assertion that would catch it. For a behavior change or bug fix, establish the failing case first when practical. Remove redundant tests and assertions as readily as adding missing coverage.
 
 Run the focused spec and the affected suite when it adds coverage beyond that spec, plus the required [static checks]. Once these pass, broaden or repeat verification only for new changes, failures, or unresolved concerns. Diagnose CI-only failures from the failing job and reproduce them locally when possible; reruns do not replace diagnosis or reporting.
@@ -185,4 +187,5 @@ Always pass `--project unit` or `--project browser`. Bare `vp test` runs both re
 [Vitest test projects]: https://vitest.dev/guide/projects
 [Vitest visual regression testing]: https://vitest.dev/guide/browser/visual-regression-testing
 [Why Browser Mode]: https://vitest.dev/guide/browser/why
+[frontend test maintenance skill]: ../../.agents/skills/frontend-test-maintenance/SKILL.md
 [static checks]: lint.md

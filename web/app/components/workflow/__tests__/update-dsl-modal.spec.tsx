@@ -1,9 +1,9 @@
-import type { EventEmitter } from 'ahooks/lib/useEventEmitter'
 import type { ReactNode } from 'react'
 import type { EventEmitterValue } from '@/context/event-emitter'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { EventEmitter } from 'ahooks/lib/useEventEmitter'
 import { toast } from '@/app/notifications'
 import { EventEmitterContext } from '@/context/event-emitter'
 import { DSLImportStatus } from '@/models/app'
@@ -110,7 +110,8 @@ describe('UpdateDSLModal', () => {
   })
 
   const renderModal = (props = defaultProps) => {
-    const eventEmitter = { emit: mockEmit } as unknown as EventEmitter<EventEmitterValue>
+    const eventEmitter = new EventEmitter<EventEmitterValue>()
+    eventEmitter.emit = mockEmit
 
     return render(
       <EventEmitterContext.Provider value={{ eventEmitter }}>

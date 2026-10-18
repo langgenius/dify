@@ -88,24 +88,16 @@ const EdgeMenuHarness = () => {
   return (
     <div>
       <RuntimeProbe />
-      <button
-        type="button"
-        aria-label="Right-click edge e1"
-        onContextMenu={(e) =>
-          handleEdgeContextMenu(e as never, edges.find((edge) => edge.id === 'e1') as never)
-        }
-      >
-        edge-e1
-      </button>
-      <button
-        type="button"
-        aria-label="Right-click edge e2"
-        onContextMenu={(e) =>
-          handleEdgeContextMenu(e as never, edges.find((edge) => edge.id === 'e2') as never)
-        }
-      >
-        edge-e2
-      </button>
+      {edges.map((edge) => (
+        <button
+          key={edge.id}
+          type="button"
+          aria-label={`Right-click edge ${edge.id}`}
+          onContextMenu={(event) => handleEdgeContextMenu(event, edge)}
+        >
+          {edge.id}
+        </button>
+      ))}
       <ContextMenu open>
         <EdgeContextmenu onClose={vi.fn()} />
       </ContextMenu>

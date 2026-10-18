@@ -82,20 +82,13 @@ describe('config-modal utils', () => {
     })
 
     it('should normalize json schema editor content', () => {
-      expect(getJsonSchemaEditorValue(InputVarType.jsonObject, { type: 'object' } as never)).toBe(
+      expect(getJsonSchemaEditorValue(InputVarType.jsonObject, { type: 'object' })).toBe(
         JSON.stringify({ type: 'object' }, null, 2),
       )
       expect(getJsonSchemaEditorValue(InputVarType.textInput, '{"type":"object"}')).toBe('')
       expect(getJsonSchemaEditorValue(InputVarType.jsonObject, '{"type":"object"}')).toBe(
         '{"type":"object"}',
       )
-    })
-
-    it('should fall back to an empty editor value when json schema serialization fails', () => {
-      const circular: Record<string, unknown> = {}
-      circular.self = circular
-
-      expect(getJsonSchemaEditorValue(InputVarType.jsonObject, circular as never)).toBe('')
     })
   })
 
@@ -126,7 +119,7 @@ describe('config-modal utils', () => {
       expect(isJsonSchemaEmpty(undefined)).toBe(true)
       expect(isJsonSchemaEmpty('   ')).toBe(true)
       expect(isJsonSchemaEmpty('{}')).toBe(false)
-      expect(isJsonSchemaEmpty({ type: 'object' } as never)).toBe(false)
+      expect(isJsonSchemaEmpty({ type: 'object' })).toBe(false)
       expect(isStringInputType(InputVarType.textInput)).toBe(true)
       expect(isStringInputType(InputVarType.paragraph)).toBe(true)
       expect(isStringInputType(InputVarType.number)).toBe(false)

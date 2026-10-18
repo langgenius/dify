@@ -86,3 +86,16 @@ it.each([
     ),
   )
 })
+
+it('restores the variable name when a display name is cleared before submission', async () => {
+  const { user, onSubmit } = renderForm()
+  await user.clear(screen.getByRole('textbox', { name: /variableConfig.displayName/ }))
+  await user.tab()
+  await user.click(screen.getByRole('button', { name: /operation.submit/ }))
+  await waitFor(() =>
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ variable: 'source', label: 'source' }),
+      undefined,
+    ),
+  )
+})

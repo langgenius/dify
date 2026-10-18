@@ -1,30 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'
+import { describe, expect, it } from 'vite-plus/test'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
-import { useConfigurations, useHiddenConfigurations, useHiddenFieldNames } from '../hooks'
-
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'files.upload.get': async () => ({
-        image_file_size_limit: 10,
-        file_size_limit: 15,
-        audio_file_size_limit: 50,
-        video_file_size_limit: 100,
-      }),
-    }),
-  }
-})
+import { useHiddenConfigurations, useHiddenFieldNames } from '../hooks'
 
 describe('useHiddenFieldNames', () => {
-  afterEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should return field names for paragraph type', () => {
     const { result } = renderHook(() => useHiddenFieldNames(PipelineInputVarType.paragraph))
 
@@ -64,103 +43,7 @@ describe('useHiddenFieldNames', () => {
   })
 })
 
-describe('useConfigurations', () => {
-  let mockGetFieldValue: ReturnType<typeof vi.fn<(...args: unknown[]) => unknown>>
-  let mockSetFieldValue: ReturnType<typeof vi.fn<(...args: unknown[]) => void>>
-
-  beforeEach(() => {
-    mockGetFieldValue = vi.fn()
-    mockSetFieldValue = vi.fn()
-    vi.clearAllMocks()
-  })
-
-  it('should set file defaults when type changes to singleFile', () => {
-    const { result } = renderHook(() =>
-      useConfigurations({
-        getFieldValue: mockGetFieldValue,
-        setFieldValue: mockSetFieldValue,
-        supportFile: true,
-      }),
-    )
-
-    const typeConfig = result.current.find((c) => c.variable === 'type')
-    typeConfig?.listeners?.onChange?.({
-      value: PipelineInputVarType.singleFile,
-      fieldApi: {} as never,
-    })
-
-    expect(mockSetFieldValue).toHaveBeenCalledWith(
-      'allowedFileUploadMethods',
-      DEFAULT_FILE_UPLOAD_SETTING.allowed_file_upload_methods,
-    )
-    expect(mockSetFieldValue).toHaveBeenCalledWith('allowedTypesAndExtensions', {
-      allowedFileTypes: DEFAULT_FILE_UPLOAD_SETTING.allowed_file_types,
-      allowedFileExtensions: DEFAULT_FILE_UPLOAD_SETTING.allowed_file_extensions,
-    })
-  })
-
-  it('should set maxLength when type changes to multiFiles', () => {
-    const { result } = renderHook(() =>
-      useConfigurations({
-        getFieldValue: mockGetFieldValue,
-        setFieldValue: mockSetFieldValue,
-        supportFile: true,
-      }),
-    )
-
-    const typeConfig = result.current.find((c) => c.variable === 'type')
-    typeConfig?.listeners?.onChange?.({
-      value: PipelineInputVarType.multiFiles,
-      fieldApi: {} as never,
-    })
-
-    expect(mockSetFieldValue).toHaveBeenCalledWith(
-      'maxLength',
-      DEFAULT_FILE_UPLOAD_SETTING.max_length,
-    )
-  })
-
-  it('should not set file defaults when type changes to text', () => {
-    const { result } = renderHook(() =>
-      useConfigurations({
-        getFieldValue: mockGetFieldValue,
-        setFieldValue: mockSetFieldValue,
-        supportFile: true,
-      }),
-    )
-
-    const typeConfig = result.current.find((c) => c.variable === 'type')
-    typeConfig?.listeners?.onChange?.({
-      value: PipelineInputVarType.textInput,
-      fieldApi: {} as never,
-    })
-
-    expect(mockSetFieldValue).not.toHaveBeenCalled()
-  })
-
-  it('should reset label to variable name when display name is cleared', () => {
-    mockGetFieldValue.mockReturnValue('existingVar')
-
-    const { result } = renderHook(() =>
-      useConfigurations({
-        getFieldValue: mockGetFieldValue,
-        setFieldValue: mockSetFieldValue,
-        supportFile: true,
-      }),
-    )
-
-    const labelConfig = result.current.find((c) => c.variable === 'label')
-    labelConfig?.listeners?.onBlur?.({ value: '', fieldApi: {} as never })
-
-    expect(mockSetFieldValue).toHaveBeenCalledWith('label', 'existingVar')
-  })
-})
-
 describe('useHiddenConfigurations', () => {
-  afterEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should include tooltips configuration for all types', () => {
     const { result } = renderHook(() => useHiddenConfigurations({ options: undefined }))
 

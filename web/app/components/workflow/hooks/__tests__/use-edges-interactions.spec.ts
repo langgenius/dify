@@ -1,4 +1,5 @@
-import { act, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, waitFor } from '@testing-library/react'
+import { createElement } from 'react'
 import { useEdges, useNodes } from 'reactflow'
 import { createEdge, createNode } from '../../__tests__/fixtures'
 import { renderWorkflowFlowHook } from '../../__tests__/workflow-test-env'
@@ -23,16 +24,8 @@ type EdgeRuntimeState = {
   _isBundled?: boolean
 }
 
-type NodeRuntimeState = {
-  selected?: boolean
-  _isBundled?: boolean
-}
-
 const getEdgeRuntimeState = (edge?: { data?: unknown }): EdgeRuntimeState =>
   (edge?.data ?? {}) as EdgeRuntimeState
-
-const getNodeRuntimeState = (node?: { data?: unknown }): NodeRuntimeState =>
-  (node?.data ?? {}) as NodeRuntimeState
 
 function createFlowNodes() {
   return [createNode({ id: 'n1' }), createNode({ id: 'n2', position: { x: 100, y: 0 } })]
@@ -87,6 +80,29 @@ function renderEdgesInteractions(options?: {
   }
 }
 
+function dispatchEdgeEvent(
+  result: {
+    current: ReturnType<typeof useEdgesInteractions> & { edges: ReturnType<typeof useEdges> }
+  },
+  name: 'mouseEnter' | 'mouseLeave' | 'contextMenu',
+) {
+  const edge = result.current.edges[0]
+  if (!edge) throw new Error('Expected an edge fixture')
+  const target = render(
+    createElement(
+      'button',
+      {
+        onMouseEnter: (event) => result.current.handleEdgeEnter(event, edge),
+        onMouseLeave: (event) => result.current.handleEdgeLeave(event, edge),
+        onContextMenu: (event) => result.current.handleEdgeContextMenu(event, edge),
+      },
+      'Edge',
+    ),
+  )
+  fireEvent[name](target.getByRole('button', { name: 'Edge' }))
+  target.unmount()
+}
+
 describe('useEdgesInteractions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -96,9 +112,7 @@ describe('useEdgesInteractions', () => {
   it('tracks hover only on the entered edge and clears it on leave', async () => {
     const { result } = renderEdgesInteractions()
 
-    act(() => {
-      result.current.handleEdgeEnter({} as never, result.current.edges[0] as never)
-    })
+    dispatchEdgeEvent(result, 'mouseEnter')
 
     await waitFor(() => {
       expect(
@@ -108,9 +122,7 @@ describe('useEdgesInteractions', () => {
         getEdgeRuntimeState(result.current.edges.find((edge) => edge.id === 'e2'))._hovering,
       ).toBe(false)
     })
-    act(() => {
-      result.current.handleEdgeLeave({} as never, result.current.edges[0] as never)
-    })
+    dispatchEdgeEvent(result, 'mouseLeave')
     await waitFor(() => {
       expect(result.current.edges.every((edge) => !getEdgeRuntimeState(edge)._hovering)).toBe(true)
     })
@@ -130,69 +142,6 @@ describe('useEdgesInteractions', () => {
       expect(result.current.edges.find((edge) => edge.id === 'e1')?.selected).toBe(true)
       expect(result.current.edges.find((edge) => edge.id === 'e2')?.selected).toBe(false)
     })
-  })
-
-  it('handleEdgeContextMenu should select the clicked edge and set the edge context menu target', async () => {
-    const preventDefault = vi.fn()
-    const { result, store } = renderEdgesInteractions({
-      nodes: [
-        createNode({
-          id: 'n1',
-          data: { selected: true, _isBundled: true },
-          selected: true,
-        }),
-        createNode({
-          id: 'n2',
-          position: { x: 100, y: 0 },
-          data: { _isBundled: true },
-        }),
-      ],
-      edges: [
-        createEdge({
-          id: 'e1',
-          source: 'n1',
-          target: 'n2',
-          sourceHandle: 'branch-a',
-          data: { _hovering: false, _isBundled: true },
-        }),
-        createEdge({
-          id: 'e2',
-          source: 'n1',
-          target: 'n2',
-          sourceHandle: 'branch-b',
-          data: { _hovering: false, _isBundled: true },
-        }),
-      ],
-    })
-
-    act(() => {
-      result.current.handleEdgeContextMenu(
-        {
-          preventDefault,
-          clientX: 320,
-          clientY: 180,
-        } as never,
-        result.current.edges[1] as never,
-      )
-    })
-
-    expect(preventDefault).toHaveBeenCalled()
-
-    await waitFor(() => {
-      expect(result.current.edges.find((edge) => edge.id === 'e1')?.selected).toBe(false)
-      expect(result.current.edges.find((edge) => edge.id === 'e2')?.selected).toBe(true)
-      expect(result.current.edges.every((edge) => !getEdgeRuntimeState(edge)._isBundled)).toBe(true)
-      expect(
-        result.current.nodes.every(
-          (node) =>
-            !getNodeRuntimeState(node).selected &&
-            !node.selected &&
-            !getNodeRuntimeState(node)._isBundled,
-        ),
-      ).toBe(true)
-    })
-
-    expect(store.getState().contextMenuTarget).toEqual({ type: 'edge', edgeId: 'e2' })
   })
 
   it('removes the selected edge, closes its menu and records history', async () => {
@@ -360,9 +309,7 @@ describe('useEdgesInteractions', () => {
     it('handleEdgeEnter should do nothing', () => {
       const { result } = renderEdgesInteractions()
 
-      act(() => {
-        result.current.handleEdgeEnter({} as never, result.current.edges[0] as never)
-      })
+      dispatchEdgeEvent(result, 'mouseEnter')
 
       expect(getEdgeRuntimeState(result.current.edges[0])._hovering).toBe(false)
     })
@@ -408,17 +355,7 @@ describe('useEdgesInteractions', () => {
     it('handleEdgeContextMenu should do nothing', () => {
       const { result, store } = renderEdgesInteractions()
 
-      act(() => {
-        result.current.handleEdgeContextMenu(
-          {
-            preventDefault: vi.fn(),
-            stopPropagation: vi.fn(),
-            clientX: 200,
-            clientY: 120,
-          } as never,
-          result.current.edges[0] as never,
-        )
-      })
+      dispatchEdgeEvent(result, 'contextMenu')
 
       expect(result.current.edges.every((edge) => !edge.selected)).toBe(true)
       expect(store.getState().contextMenuTarget).toBeUndefined()

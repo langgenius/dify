@@ -1,7 +1,9 @@
+import type { ComponentRef } from 'react'
 import type { Mock } from 'vite-plus/test'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import useEmblaCarousel from 'embla-carousel-react'
+import { createRef } from 'react'
 import { Carousel, useCarousel } from '../index'
 
 vi.mock('embla-carousel-react', () => ({
@@ -29,7 +31,7 @@ let mockSelectedIndex = 0
 let mockSlideCount = 3
 let listeners: Record<EmblaEventName, EmblaListener[]>
 let mockApi: MockEmblaApi
-const mockCarouselRef = vi.fn()
+const mockCarouselRef = () => {}
 
 const mockedUseEmblaCarousel = vi.mocked(useEmblaCarousel)
 
@@ -120,15 +122,9 @@ describe('Carousel', () => {
   // Ref API exposes embla and controls.
   describe('Ref API', () => {
     it('should expose carousel API and controls via ref', () => {
-      type CarouselRef = { api: unknown; selectedIndex: number }
-      const ref = { current: null as CarouselRef | null }
-
+      const ref = createRef<ComponentRef<typeof Carousel>>()
       render(
-        <Carousel
-          ref={(r) => {
-            ref.current = r as unknown as CarouselRef
-          }}
-        >
+        <Carousel ref={ref}>
           <Carousel.Content />
         </Carousel>,
       )
@@ -190,17 +186,11 @@ describe('Carousel', () => {
     it('should release embla subscriptions on unmount', () => {
       const { unmount } = renderCarouselWithControls()
 
-      const selectCallback = mockApi.on.mock.calls.find(
-        (call) => call[0] === 'select',
-      )?.[1] as EmblaListener
-
-      expect(mockApi.on).toHaveBeenCalledWith('reInit', expect.any(Function))
-      expect(mockApi.on).toHaveBeenCalledWith('select', expect.any(Function))
+      expect(listeners.select).toHaveLength(1)
+      expect(listeners.reInit).toHaveLength(1)
 
       unmount()
 
-      expect(mockApi.off).toHaveBeenCalledWith('reInit', selectCallback)
-      expect(mockApi.off).toHaveBeenCalledWith('select', selectCallback)
       expect(listeners).toEqual({ reInit: [], select: [] })
     })
   })
@@ -219,9 +209,7 @@ describe('Carousel', () => {
     })
 
     it('should render with disabled controls and no dots when embla api is undefined', () => {
-      mockedUseEmblaCarousel.mockReturnValue([mockCarouselRef, undefined] as unknown as ReturnType<
-        typeof useEmblaCarousel
-      >)
+      mockedUseEmblaCarousel.mockReturnValue([mockCarouselRef, undefined])
 
       renderCarouselWithControls()
 

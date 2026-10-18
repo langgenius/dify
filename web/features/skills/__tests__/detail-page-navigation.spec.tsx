@@ -4,6 +4,8 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vite-plus/test'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { seedSystemFeatures } from '@/test/console/query-data'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import {
   createFileTabSkillDetail,
@@ -98,6 +100,8 @@ describe('SkillDetailPage navigation', () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
     })
+    seedSystemFeatures(queryClient)
+    seedAccountProfileQuery(queryClient, { timezone: 'UTC' })
     const { wrapper } = createNuqsTestWrapper()
     const { rerender } = render(
       <QueryClientProvider client={queryClient}>

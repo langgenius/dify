@@ -18,7 +18,7 @@ describe('VideoPlayer', () => {
       x: 0,
       y: 0,
       toJSON: () => {},
-    } as DOMRect)
+    })
   }
 
   const getPlayButton = () => screen.getByRole('button', { name: 'common.operation.play' })
@@ -66,7 +66,7 @@ describe('VideoPlayer', () => {
   describe('Rendering', () => {
     it('should render with single src', () => {
       render(<VideoPlayer src={mockSrc} />)
-      const video = screen.getByTestId('video-element') as HTMLVideoElement
+      const video = screen.getByTestId<HTMLVideoElement>('video-element')
       expect(video.src).toContain(mockSrc)
     })
 
@@ -95,7 +95,7 @@ describe('VideoPlayer', () => {
     it('should toggle mute on button click', async () => {
       const user = userEvent.setup()
       render(<VideoPlayer src={mockSrc} />)
-      const video = screen.getByTestId('video-element') as HTMLVideoElement
+      const video = screen.getByTestId<HTMLVideoElement>('video-element')
       const muteBtn = getMuteButton()
 
       video.volume = 0.7
@@ -137,14 +137,14 @@ describe('VideoPlayer', () => {
 
     it('should handle video metadata and time updates', () => {
       render(<VideoPlayer src={mockSrc} />)
-      const video = screen.getByTestId('video-element') as HTMLVideoElement
+      const video = screen.getByTestId<HTMLVideoElement>('video-element')
 
       fireEvent(video, new Event('loadedmetadata'))
-      expect(screen.getByTestId('video-time-display'))!.toHaveTextContent('00:00 / 01:40')
+      expect(screen.getByTestId('video-time-display')).toHaveTextContent('00:00 / 01:40')
 
       Object.defineProperty(video, 'currentTime', { value: 30, configurable: true })
       fireEvent(video, new Event('timeupdate'))
-      expect(screen.getByTestId('video-time-display'))!.toHaveTextContent('00:30 / 01:40')
+      expect(screen.getByTestId('video-time-display')).toHaveTextContent('00:30 / 01:40')
     })
 
     it('should handle video end', async () => {
@@ -156,18 +156,18 @@ describe('VideoPlayer', () => {
       await user.click(playPauseBtn)
       fireEvent(video, new Event('ended'))
 
-      expect(getPlayButton())!.toBeInTheDocument()
+      expect(getPlayButton()).toBeInTheDocument()
     })
 
     it('should handle progress bar interactions', () => {
       render(<VideoPlayer src={mockSrc} />)
       const progressBar = screen.getByTestId('video-progress-bar')
-      const video = screen.getByTestId('video-element') as HTMLVideoElement
+      const video = screen.getByTestId<HTMLVideoElement>('video-element')
 
       mockBoundingRect(progressBar)
 
       fireEvent.mouseMove(progressBar, { clientX: 50 })
-      expect(screen.getByTestId('video-hover-time'))!.toHaveTextContent('00:50')
+      expect(screen.getByTestId('video-hover-time')).toHaveTextContent('00:50')
       fireEvent.mouseLeave(progressBar)
       expect(screen.queryByTestId('video-hover-time')).not.toBeInTheDocument()
 
@@ -186,7 +186,7 @@ describe('VideoPlayer', () => {
     it('should handle volume slider change', () => {
       render(<VideoPlayer src={mockSrc} />)
       const volumeSlider = screen.getByTestId('video-volume-slider')
-      const video = screen.getByTestId('video-element') as HTMLVideoElement
+      const video = screen.getByTestId<HTMLVideoElement>('video-element')
 
       mockBoundingRect(volumeSlider)
 
@@ -224,7 +224,7 @@ describe('VideoPlayer', () => {
       })
 
       await waitFor(() => {
-        expect(screen.getByTestId('video-time-display'))!.toBeInTheDocument()
+        expect(screen.getByTestId('video-time-display')).toBeInTheDocument()
       })
     })
 
@@ -253,7 +253,7 @@ describe('VideoPlayer', () => {
     it('should reset volume to 1 when unmuting with volume at 0', async () => {
       const user = userEvent.setup()
       render(<VideoPlayer src={mockSrc} />)
-      const video = screen.getByTestId('video-element') as HTMLVideoElement
+      const video = screen.getByTestId<HTMLVideoElement>('video-element')
       const muteBtn = getMuteButton()
 
       await user.click(muteBtn)
@@ -276,7 +276,7 @@ describe('VideoPlayer', () => {
       fireEvent.mouseDown(progressBar, { clientX: 50 })
 
       fireEvent.mouseLeave(progressBar)
-      expect(screen.getByTestId('video-hover-time'))!.toBeInTheDocument()
+      expect(screen.getByTestId('video-hover-time')).toBeInTheDocument()
 
       fireEvent.mouseUp(document)
     })
@@ -284,7 +284,7 @@ describe('VideoPlayer', () => {
     it('should not update time for out-of-bounds progress click', () => {
       render(<VideoPlayer src={mockSrc} />)
       const progressBar = screen.getByTestId('video-progress-bar')
-      const video = screen.getByTestId('video-element') as HTMLVideoElement
+      const video = screen.getByTestId<HTMLVideoElement>('video-element')
 
       mockBoundingRect(progressBar)
 
@@ -301,16 +301,16 @@ describe('VideoPlayer', () => {
       const container = screen.getByTestId('video-player-container')
       const controls = screen.getByTestId('video-controls')
 
-      expect(controls)!.toHaveAttribute('data-is-visible', 'true')
+      expect(controls).toHaveAttribute('data-is-visible', 'true')
 
       fireEvent.mouseMove(container)
       act(() => {
         vi.advanceTimersByTime(3001)
       })
-      expect(controls)!.toHaveAttribute('data-is-visible', 'false')
+      expect(controls).toHaveAttribute('data-is-visible', 'false')
 
       fireEvent.mouseEnter(container)
-      expect(controls)!.toHaveAttribute('data-is-visible', 'true')
+      expect(controls).toHaveAttribute('data-is-visible', 'true')
 
       vi.useRealTimers()
     })
@@ -318,7 +318,7 @@ describe('VideoPlayer', () => {
     it('unmutes playback when the volume slider is raised', async () => {
       const user = userEvent.setup()
       render(<VideoPlayer src={mockSrc} />)
-      const video = screen.getByTestId('video-element') as HTMLVideoElement
+      const video = screen.getByTestId<HTMLVideoElement>('video-element')
       const slider = screen.getByTestId('video-volume-slider')
       mockBoundingRect(slider)
       await user.click(getMuteButton())
@@ -329,28 +329,22 @@ describe('VideoPlayer', () => {
       expect(getMuteButton()).toHaveAttribute('aria-pressed', 'false')
     })
 
-    it('removes volume drag listeners if the player unmounts before mouseup', () => {
-      const addListener = vi.spyOn(document, 'addEventListener')
-      const removeListener = vi.spyOn(document, 'removeEventListener')
+    it('stops a pending volume drag when the player unmounts', () => {
       const { unmount } = render(<VideoPlayer src={mockSrc} />)
+      const video = screen.getByTestId<HTMLVideoElement>('video-element')
       const slider = screen.getByTestId('video-volume-slider')
       mockBoundingRect(slider)
       fireEvent.mouseDown(slider, { clientX: 50 })
-      const move = [...addListener.mock.calls]
-        .reverse()
-        .find(([event]) => event === 'mousemove')![1]
-      const up = [...addListener.mock.calls].reverse().find(([event]) => event === 'mouseup')![1]
-
+      expect(video.volume).toBe(0.5)
       unmount()
-
-      expect(removeListener).toHaveBeenCalledWith('mousemove', move)
-      expect(removeListener).toHaveBeenCalledWith('mouseup', up)
+      fireEvent.mouseMove(document, { clientX: 90 })
+      expect(video.volume).toBe(0.5)
     })
 
     it('should clamp volume slider to max 1', () => {
       render(<VideoPlayer src={mockSrc} />)
       const volumeSlider = screen.getByTestId('video-volume-slider')
-      const video = screen.getByTestId('video-element') as HTMLVideoElement
+      const video = screen.getByTestId<HTMLVideoElement>('video-element')
 
       mockBoundingRect(volumeSlider)
 

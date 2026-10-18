@@ -1,18 +1,14 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleClient } from '@/service/console'
-import { useVerifyForgotPasswordToken } from '@/service/use-common'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import ChangePasswordForm from './ChangePasswordForm'
 
 const mockReplace = vi.fn()
 vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams('token=url-token-t1'),
   useRouter: () => ({ replace: mockReplace }),
-}))
-
-vi.mock('@/service/use-common', () => ({
-  useVerifyForgotPasswordToken: vi.fn(),
 }))
 
 vi.mock('@/service/console', async (importOriginal) => ({
@@ -25,8 +21,7 @@ vi.mock('@/service/console', async (importOriginal) => ({
 
 vi.mock('@/utils/var', () => ({ basePath: '' }))
 
-type UseVerifyResult = ReturnType<typeof useVerifyForgotPasswordToken>
-const mockUseVerify = vi.mocked(useVerifyForgotPasswordToken)
+const mockVerify = vi.fn<typeof fetch>()
 const mockChangePassword = vi.mocked(consoleClient.forgotPassword.resets.post)
 
 const VALID_PASSWORD = 'ValidPass123!'
@@ -34,13 +29,13 @@ const VALID_PASSWORD = 'ValidPass123!'
 describe('ChangePasswordForm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubGlobal('fetch', mockVerify)
   })
 
+  afterEach(() => vi.unstubAllGlobals())
+
   it('uses the loading title while the token is being verified', () => {
-    mockUseVerify.mockReturnValue({
-      data: undefined,
-      refetch: vi.fn(),
-    } as unknown as UseVerifyResult)
+    mockVerify.mockReturnValue(new Promise(() => {}))
 
     render(<ChangePasswordForm />)
 
@@ -51,10 +46,14 @@ describe('ChangePasswordForm', () => {
     const T2 = 'verified-token-t2'
 
     beforeEach(() => {
-      mockUseVerify.mockReturnValue({
-        data: { result: 'success', is_valid: true, email: 'user@example.com', token: T2 },
-        refetch: vi.fn(),
-      } as unknown as UseVerifyResult)
+      mockVerify.mockResolvedValue(
+        Response.json({
+          result: 'success',
+          is_valid: true,
+          email: 'user@example.com',
+          token: T2,
+        }),
+      )
     })
 
     it('submits the verified token and shows successful password change', async () => {
@@ -63,7 +62,7 @@ describe('ChangePasswordForm', () => {
 
       render(<ChangePasswordForm />)
 
-      const passwordInput = screen.getByLabelText('accountSettings.account.newPassword')
+      const passwordInput = await screen.findByLabelText('accountSettings.account.newPassword')
       const confirmPasswordInput = screen.getByLabelText('accountSettings.account.confirmPassword')
       await user.type(passwordInput, VALID_PASSWORD)
       await user.type(confirmPasswordInput, VALID_PASSWORD)
@@ -88,7 +87,7 @@ describe('ChangePasswordForm', () => {
       const user = userEvent.setup()
       render(<ChangePasswordForm />)
 
-      const passwordInput = screen.getByLabelText('accountSettings.account.newPassword')
+      const passwordInput = await screen.findByLabelText('accountSettings.account.newPassword')
       expect(passwordInput).toHaveAccessibleDescription('login.error.passwordInvalid')
 
       await user.type(passwordInput, 'weak')
@@ -117,7 +116,7 @@ describe('ChangePasswordForm', () => {
       const user = userEvent.setup()
       render(<ChangePasswordForm />)
 
-      const passwordInput = screen.getByLabelText('accountSettings.account.newPassword')
+      const passwordInput = await screen.findByLabelText('accountSettings.account.newPassword')
       await user.type(passwordInput, VALID_PASSWORD)
       const confirmPasswordInput = screen.getByLabelText('accountSettings.account.confirmPassword')
       await user.type(confirmPasswordInput, 'DifferentPass123!{Enter}')
@@ -140,18 +139,16 @@ describe('ChangePasswordForm', () => {
 
     it('prevents duplicate submissions while the password is changing', async () => {
       const user = userEvent.setup()
-      let resolveRequest:
-        | ((value: Awaited<ReturnType<typeof consoleClient.forgotPassword.resets.post>>) => void)
-        | undefined
-      mockChangePassword.mockReturnValue(
-        new Promise((resolve) => {
-          resolveRequest = resolve
-        }),
-      )
+      const request =
+        createDeferred<Awaited<ReturnType<typeof consoleClient.forgotPassword.resets.post>>>()
+      mockChangePassword.mockReturnValue(request.promise)
 
       render(<ChangePasswordForm />)
 
-      await user.type(screen.getByLabelText('accountSettings.account.newPassword'), VALID_PASSWORD)
+      await user.type(
+        await screen.findByLabelText('accountSettings.account.newPassword'),
+        VALID_PASSWORD,
+      )
       await user.type(
         screen.getByLabelText('accountSettings.account.confirmPassword'),
         VALID_PASSWORD,
@@ -166,22 +163,21 @@ describe('ChangePasswordForm', () => {
       await user.click(submitButton)
       expect(mockChangePassword).toHaveBeenCalledTimes(1)
 
-      resolveRequest?.({ result: 'success' })
+      request.resolve({ result: 'success' })
       await screen.findByRole('heading', { level: 1, name: 'login.passwordChangedTip' })
     })
   })
 
   describe('when token is invalid', () => {
     beforeEach(() => {
-      mockUseVerify.mockReturnValue({
-        data: { result: 'success', is_valid: false, email: '', token: '' },
-        refetch: vi.fn(),
-      } as unknown as UseVerifyResult)
+      mockVerify.mockResolvedValue(
+        Response.json({ result: 'success', is_valid: false, email: '', token: '' }),
+      )
     })
 
-    it('shows invalid token state and no form', () => {
+    it('shows invalid token state and no form', async () => {
       render(<ChangePasswordForm />)
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.invalid')
+      expect(await screen.findByRole('heading', { name: 'login.invalid' })).toBeInTheDocument()
       expect(document.title).toBe('login.invalid - Dify')
       expect(
         screen.queryByRole('button', { name: /common\.operation\.reset/ }),

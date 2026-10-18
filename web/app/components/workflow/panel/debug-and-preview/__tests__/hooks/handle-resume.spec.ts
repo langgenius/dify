@@ -267,33 +267,25 @@ describe('useChat – handleResume', () => {
   })
 
   describe('onData', () => {
-    it('should append message content', async () => {
+    it('appends resumed chunks and adopts the conversation ID even before a message ID arrives', async () => {
       const { result } = await setupResumeWithTree()
-
       act(() => {
         capturedResumeOptions.onData('resumed', false, {
+          conversationId: 'conv-2',
+          taskId: 'task-2',
+        })
+      })
+      expect(result.current.conversationId).toBe('conv-2')
+      act(() => {
+        capturedResumeOptions.onData(' answer', false, {
           conversationId: 'conv-2',
           messageId: 'msg-resume',
           taskId: 'task-2',
         })
       })
-
-      const answer = result.current.chatList.find((item) => item.id === 'msg-resume')
-      expect(answer!.content).toContain('resumed')
-    })
-
-    it('should update conversationId when provided', async () => {
-      const { result } = await setupResumeWithTree()
-
-      act(() => {
-        capturedResumeOptions.onData('msg', false, {
-          conversationId: 'new-conv-resume',
-          messageId: undefined,
-          taskId: 'task-2',
-        })
-      })
-
-      expect(result.current.conversationId).toBe('new-conv-resume')
+      expect(result.current.chatList.find((item) => item.id === 'msg-resume')?.content).toBe(
+        'resumed answer',
+      )
     })
   })
 

@@ -1,6 +1,5 @@
 import type { ToolNodeType } from '../../types'
 import type { InputVar } from '@/app/components/workflow/types'
-import type { NodeTracing } from '@/types/workflow'
 import { act } from '@testing-library/react'
 import { CollectionType } from '@/app/components/tools/types'
 import { createNodeTracing } from '@/app/components/workflow/__tests__/fixtures'
@@ -71,7 +70,6 @@ describe('useSingleRunFormParams', () => {
       })
       const getInputVars = vi.fn(() => [
         createInputVar('#start.query#'),
-        createInputVar(undefined as unknown as string),
         createInputVar('#legacy.answer#'),
       ])
 
@@ -84,7 +82,7 @@ describe('useSingleRunFormParams', () => {
           getInputVars,
           setRunInputData: vi.fn(),
           toVarInputs: vi.fn(),
-          runResult: null as unknown as NodeTracing,
+          runResult: createRunResult(),
         }),
       )
 
@@ -95,7 +93,6 @@ describe('useSingleRunFormParams', () => {
       ])
       expect(result.current.forms[0]!.inputs).toEqual([
         createInputVar('#start.query#'),
-        createInputVar(undefined as unknown as string),
         createInputVar('#legacy.answer#'),
       ])
       expect(result.current.toolIcon).toBe('tool-icon')
@@ -103,7 +100,6 @@ describe('useSingleRunFormParams', () => {
         ['start', 'query'],
         ['legacy', 'answer'],
       ])
-      expect(result.current.nodeInfo).toBeNull()
     })
   })
 
@@ -127,7 +123,7 @@ describe('useSingleRunFormParams', () => {
           getInputVars,
           setRunInputData,
           toVarInputs: vi.fn(),
-          runResult: null as unknown as NodeTracing,
+          runResult: createRunResult(),
         }),
       )
 

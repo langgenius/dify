@@ -5,14 +5,6 @@ import { SearchInput } from '..'
 
 describe('SearchInput', () => {
   describe('Render', () => {
-    it('renders correctly with default props', () => {
-      render(<SearchInput value="" onValueChange={() => {}} />)
-      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
-      expect(input).toBeInTheDocument()
-      expect(input).toHaveValue('')
-      expect(input).toHaveAttribute('name', 'query')
-    })
-
     it('uses custom aria label', () => {
       render(<SearchInput value="" onValueChange={() => {}} aria-label="Search providers" />)
       expect(screen.getByRole('searchbox', { name: 'Search providers' })).toBeInTheDocument()
@@ -20,12 +12,14 @@ describe('SearchInput', () => {
 
     it('uses a custom form name', () => {
       render(
-        <form data-testid="search-form">
+        <form aria-label="Search providers">
           <SearchInput name="provider-query" value="tools" onValueChange={() => {}} />
         </form>,
       )
       expect(
-        new FormData(screen.getByTestId('search-form') as HTMLFormElement).get('provider-query'),
+        new FormData(screen.getByRole<HTMLFormElement>('form', { name: 'Search providers' })).get(
+          'provider-query',
+        ),
       ).toBe('tools')
     })
 

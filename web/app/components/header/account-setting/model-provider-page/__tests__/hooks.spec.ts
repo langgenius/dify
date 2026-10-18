@@ -1,6 +1,5 @@
 import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { RenderHookOptions } from '@testing-library/react'
-import type { Mock } from 'vite-plus/test'
 import type {
   Credential,
   CustomConfigurationModelFixedFields,
@@ -15,6 +14,7 @@ import { useLocale } from '#i18n'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
 import { useModelProviderListExpanded } from '../atoms'
 import {
   ConfigurationMethodEnum,
@@ -57,8 +57,6 @@ vi.mock('@/context/modal-context', () => ({
 vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
   useMarketplacePlugins: vi.fn(() => ({
     plugins: [],
-    queryPlugins: vi.fn(),
-    queryPluginsWithDebounced: vi.fn(),
     isLoading: false,
   })),
   useMarketplacePluginsByCollectionId: vi.fn(() => ({
@@ -114,36 +112,60 @@ const { useModalContextSelector } = await import('@/context/modal-context')
 const { useMarketplacePlugins, useMarketplacePluginsByCollectionId } =
   await import('@/app/components/plugins/marketplace/hooks')
 
+const createMarketplaceResult = (
+  overrides: Partial<ReturnType<typeof useMarketplacePlugins>> = {},
+): ReturnType<typeof useMarketplacePlugins> => ({
+  plugins: [],
+  total: 0,
+  page: 1,
+  isLoading: false,
+  isFetchingNextPage: false,
+  hasNextPage: false,
+  fetchNextPage: vi.fn(),
+  resetQueryParams: () => {},
+  queryPlugins: () => {},
+  queryPluginsWithDebounced: () => {},
+  cancelQueryPluginsWithDebounced: () => {},
+  ...overrides,
+})
+const createCollectionResult = (
+  overrides: Partial<ReturnType<typeof useMarketplacePluginsByCollectionId>> = {},
+): ReturnType<typeof useMarketplacePluginsByCollectionId> => ({
+  plugins: [],
+  isLoading: false,
+  isSuccess: true,
+  ...overrides,
+})
+
 describe('hooks', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(useLocale).mockReturnValue('en-US')
-    ;(useMarketplacePlugins as Mock).mockReturnValue({
-      plugins: [],
-      queryPlugins: vi.fn(),
-      queryPluginsWithDebounced: vi.fn(),
-      isLoading: false,
-    })
-    ;(useMarketplacePluginsByCollectionId as Mock).mockReturnValue({
-      plugins: [],
-      isLoading: false,
-    })
+    vi.mocked(useMarketplacePlugins).mockReturnValue(
+      createMarketplaceResult({
+        plugins: [],
+        isLoading: false,
+      }),
+    )
+    vi.mocked(useMarketplacePluginsByCollectionId).mockReturnValue(
+      createCollectionResult({
+        plugins: [],
+        isLoading: false,
+      }),
+    )
     queryClient = createConsoleQueryClient()
     getDefaultModel.mockReset().mockImplementation(() => new Promise(() => {}))
     getModels.mockReset().mockImplementation(() => new Promise(() => {}))
   })
 
   describe('useLanguage', () => {
-    it('should replace hyphen with underscore in locale', () => {
-      ;(useLocale as Mock).mockReturnValue('en-US')
+    it.each([
+      ['en-US', 'en_US'],
+      ['zh-Hans', 'zh_Hans'],
+    ] as const)('maps locale %s to provider language %s', (locale, language) => {
+      vi.mocked(useLocale).mockReturnValue(locale)
       const { result } = renderHook(() => useLanguage())
-      expect(result.current).toBe('en_US')
-    })
-
-    it('should handle Chinese locale', () => {
-      ;(useLocale as Mock).mockReturnValue('zh-Hans')
-      const { result } = renderHook(() => useLanguage())
-      expect(result.current).toBe('zh_Hans')
+      expect(result.current).toBe(language)
     })
   })
 
@@ -606,23 +628,27 @@ describe('hooks', () => {
 
   describe('useMarketplaceAllPlugins', () => {
     const createMockPlugins = () => [
-      { plugin_id: 'plugin1', type: 'plugin' },
-      { plugin_id: 'plugin2', type: 'plugin' },
+      createMarketplacePluginFixture({ plugin_id: 'plugin1', type: 'plugin' }),
+      createMarketplacePluginFixture({ plugin_id: 'plugin2', type: 'plugin' }),
     ]
 
     it('should combine collection and regular plugins', () => {
-      const collectionPlugins = [{ plugin_id: 'collection1', type: 'plugin' }]
+      const collectionPlugins = [
+        createMarketplacePluginFixture({ plugin_id: 'collection1', type: 'plugin' }),
+      ]
       const regularPlugins = createMockPlugins()
-      ;(useMarketplacePluginsByCollectionId as Mock).mockReturnValue({
-        plugins: collectionPlugins,
-        isLoading: false,
-      })
-      ;(useMarketplacePlugins as Mock).mockReturnValue({
-        plugins: regularPlugins,
-        queryPlugins: vi.fn(),
-        queryPluginsWithDebounced: vi.fn(),
-        isLoading: false,
-      })
+      vi.mocked(useMarketplacePluginsByCollectionId).mockReturnValue(
+        createCollectionResult({
+          plugins: collectionPlugins,
+          isLoading: false,
+        }),
+      )
+      vi.mocked(useMarketplacePlugins).mockReturnValue(
+        createMarketplaceResult({
+          plugins: regularPlugins,
+          isLoading: false,
+        }),
+      )
 
       const { result } = renderHook(() => useMarketplaceAllPlugins('', []))
 
@@ -632,22 +658,24 @@ describe('hooks', () => {
 
     it('should exclude installed providers', () => {
       const collectionPlugins = [
-        { plugin_id: 'openai', type: 'plugin' },
-        { plugin_id: 'other', type: 'plugin' },
+        createMarketplacePluginFixture({ plugin_id: 'openai', type: 'plugin' }),
+        createMarketplacePluginFixture({ plugin_id: 'other', type: 'plugin' }),
       ]
-      ;(useMarketplacePluginsByCollectionId as Mock).mockReturnValue({
-        plugins: collectionPlugins,
-        isLoading: false,
-      })
-      ;(useMarketplacePlugins as Mock).mockReturnValue({
-        plugins: [
-          { plugin_id: 'openai', type: 'plugin' },
-          { plugin_id: 'regular-only', type: 'plugin' },
-        ],
-        queryPlugins: vi.fn(),
-        queryPluginsWithDebounced: vi.fn(),
-        isLoading: false,
-      })
+      vi.mocked(useMarketplacePluginsByCollectionId).mockReturnValue(
+        createCollectionResult({
+          plugins: collectionPlugins,
+          isLoading: false,
+        }),
+      )
+      vi.mocked(useMarketplacePlugins).mockReturnValue(
+        createMarketplaceResult({
+          plugins: [
+            createMarketplacePluginFixture({ plugin_id: 'openai', type: 'plugin' }),
+            createMarketplacePluginFixture({ plugin_id: 'regular-only', type: 'plugin' }),
+          ],
+          isLoading: false,
+        }),
+      )
 
       const { result } = renderHook(() => useMarketplaceAllPlugins('', ['openai']))
 
@@ -660,16 +688,19 @@ describe('hooks', () => {
 
     it('should use search when searchText is provided', () => {
       const queryPluginsWithDebounced = vi.fn()
-      ;(useMarketplacePlugins as Mock).mockReturnValue({
-        plugins: [],
-        queryPlugins: vi.fn(),
-        queryPluginsWithDebounced,
-        isLoading: false,
-      })
-      ;(useMarketplacePluginsByCollectionId as Mock).mockReturnValue({
-        plugins: [],
-        isLoading: false,
-      })
+      vi.mocked(useMarketplacePlugins).mockReturnValue(
+        createMarketplaceResult({
+          plugins: [],
+          queryPluginsWithDebounced,
+          isLoading: false,
+        }),
+      )
+      vi.mocked(useMarketplacePluginsByCollectionId).mockReturnValue(
+        createCollectionResult({
+          plugins: [],
+          isLoading: false,
+        }),
+      )
 
       renderHook(() => useMarketplaceAllPlugins('test search', []))
 
@@ -685,19 +716,21 @@ describe('hooks', () => {
 
     it('should filter out bundle types', () => {
       const plugins = [
-        { plugin_id: 'plugin1', type: 'plugin' },
-        { plugin_id: 'bundle1', type: 'bundle' },
+        createMarketplacePluginFixture({ plugin_id: 'plugin1', type: 'plugin' }),
+        createMarketplacePluginFixture({ plugin_id: 'bundle1', type: 'bundle' }),
       ]
-      ;(useMarketplacePluginsByCollectionId as Mock).mockReturnValue({
-        plugins: [],
-        isLoading: false,
-      })
-      ;(useMarketplacePlugins as Mock).mockReturnValue({
-        plugins,
-        queryPlugins: vi.fn(),
-        queryPluginsWithDebounced: vi.fn(),
-        isLoading: false,
-      })
+      vi.mocked(useMarketplacePluginsByCollectionId).mockReturnValue(
+        createCollectionResult({
+          plugins: [],
+          isLoading: false,
+        }),
+      )
+      vi.mocked(useMarketplacePlugins).mockReturnValue(
+        createMarketplaceResult({
+          plugins,
+          isLoading: false,
+        }),
+      )
 
       const { result } = renderHook(() => useMarketplaceAllPlugins('', []))
 
@@ -706,17 +739,25 @@ describe('hooks', () => {
     })
 
     it('should deduplicate plugins that exist in both collections and regular plugins', () => {
-      const duplicatePlugin = { plugin_id: 'shared-plugin', type: 'plugin' }
-      ;(useMarketplacePluginsByCollectionId as Mock).mockReturnValue({
-        plugins: [duplicatePlugin],
-        isLoading: false,
+      const duplicatePlugin = createMarketplacePluginFixture({
+        plugin_id: 'shared-plugin',
+        type: 'plugin',
       })
-      ;(useMarketplacePlugins as Mock).mockReturnValue({
-        plugins: [{ ...duplicatePlugin }, { plugin_id: 'unique-plugin', type: 'plugin' }],
-        queryPlugins: vi.fn(),
-        queryPluginsWithDebounced: vi.fn(),
-        isLoading: false,
-      })
+      vi.mocked(useMarketplacePluginsByCollectionId).mockReturnValue(
+        createCollectionResult({
+          plugins: [duplicatePlugin],
+          isLoading: false,
+        }),
+      )
+      vi.mocked(useMarketplacePlugins).mockReturnValue(
+        createMarketplaceResult({
+          plugins: [
+            { ...duplicatePlugin },
+            createMarketplacePluginFixture({ plugin_id: 'unique-plugin', type: 'plugin' }),
+          ],
+          isLoading: false,
+        }),
+      )
 
       const { result } = renderHook(() => useMarketplaceAllPlugins('', []))
 
@@ -725,16 +766,18 @@ describe('hooks', () => {
     })
 
     it('should handle loading states', () => {
-      ;(useMarketplacePluginsByCollectionId as Mock).mockReturnValue({
-        plugins: [],
-        isLoading: true,
-      })
-      ;(useMarketplacePlugins as Mock).mockReturnValue({
-        plugins: [],
-        queryPlugins: vi.fn(),
-        queryPluginsWithDebounced: vi.fn(),
-        isLoading: true,
-      })
+      vi.mocked(useMarketplacePluginsByCollectionId).mockReturnValue(
+        createCollectionResult({
+          plugins: [],
+          isLoading: true,
+        }),
+      )
+      vi.mocked(useMarketplacePlugins).mockReturnValue(
+        createMarketplaceResult({
+          plugins: [],
+          isLoading: true,
+        }),
+      )
 
       const { result } = renderHook(() => useMarketplaceAllPlugins('', []))
 
@@ -742,16 +785,18 @@ describe('hooks', () => {
     })
 
     it('should return an empty list when plugin data is unavailable', () => {
-      ;(useMarketplacePluginsByCollectionId as Mock).mockReturnValue({
-        plugins: [],
-        isLoading: false,
-      })
-      ;(useMarketplacePlugins as Mock).mockReturnValue({
-        plugins: undefined,
-        queryPlugins: vi.fn(),
-        queryPluginsWithDebounced: vi.fn(),
-        isLoading: false,
-      })
+      vi.mocked(useMarketplacePluginsByCollectionId).mockReturnValue(
+        createCollectionResult({
+          plugins: [],
+          isLoading: false,
+        }),
+      )
+      vi.mocked(useMarketplacePlugins).mockReturnValue(
+        createMarketplaceResult({
+          plugins: undefined,
+          isLoading: false,
+        }),
+      )
 
       const { result } = renderHook(() => useMarketplaceAllPlugins('', []))
 
@@ -760,18 +805,24 @@ describe('hooks', () => {
     })
 
     it('should return search plugins (not allPlugins) when searchText is truthy', () => {
-      const searchPlugins = [{ plugin_id: 'search-result', type: 'plugin' }]
-      const collectionPlugins = [{ plugin_id: 'collection-only', type: 'plugin' }]
-      ;(useMarketplacePluginsByCollectionId as Mock).mockReturnValue({
-        plugins: collectionPlugins,
-        isLoading: false,
-      })
-      ;(useMarketplacePlugins as Mock).mockReturnValue({
-        plugins: searchPlugins,
-        queryPlugins: vi.fn(),
-        queryPluginsWithDebounced: vi.fn(),
-        isLoading: false,
-      })
+      const searchPlugins = [
+        createMarketplacePluginFixture({ plugin_id: 'search-result', type: 'plugin' }),
+      ]
+      const collectionPlugins = [
+        createMarketplacePluginFixture({ plugin_id: 'collection-only', type: 'plugin' }),
+      ]
+      vi.mocked(useMarketplacePluginsByCollectionId).mockReturnValue(
+        createCollectionResult({
+          plugins: collectionPlugins,
+          isLoading: false,
+        }),
+      )
+      vi.mocked(useMarketplacePlugins).mockReturnValue(
+        createMarketplaceResult({
+          plugins: searchPlugins,
+          isLoading: false,
+        }),
+      )
 
       const { result } = renderHook(() => useMarketplaceAllPlugins('openai', []))
 
@@ -780,42 +831,50 @@ describe('hooks', () => {
     })
 
     it('should hide installed plugins when a search response is stale', () => {
-      ;(useMarketplacePluginsByCollectionId as Mock).mockReturnValue({
-        plugins: [],
-        isLoading: false,
-      })
-      ;(useMarketplacePlugins as Mock).mockReturnValue({
-        plugins: [
-          { plugin_id: 'langgenius/openai', type: 'plugin' },
-          { plugin_id: 'langgenius/other', type: 'plugin' },
-        ],
-        queryPlugins: vi.fn(),
-        queryPluginsWithDebounced: vi.fn(),
-        isLoading: false,
-      })
+      vi.mocked(useMarketplacePluginsByCollectionId).mockReturnValue(
+        createCollectionResult({
+          plugins: [],
+          isLoading: false,
+        }),
+      )
+      vi.mocked(useMarketplacePlugins).mockReturnValue(
+        createMarketplaceResult({
+          plugins: [
+            createMarketplacePluginFixture({ plugin_id: 'langgenius/openai', type: 'plugin' }),
+            createMarketplacePluginFixture({ plugin_id: 'langgenius/other', type: 'plugin' }),
+          ],
+          isLoading: false,
+        }),
+      )
 
       const { result } = renderHook(() => useMarketplaceAllPlugins('openai', ['langgenius/openai']))
 
-      expect(result.current.plugins).toEqual([{ plugin_id: 'langgenius/other', type: 'plugin' }])
+      expect(result.current.plugins).toEqual([
+        createMarketplacePluginFixture({ plugin_id: 'langgenius/other', type: 'plugin' }),
+      ])
     })
 
     it('should preserve marketplace cache when disabled', () => {
       const queryPlugins = vi.fn()
       const queryPluginsWithDebounced = vi.fn()
       const cancelQueryPluginsWithDebounced = vi.fn()
-      const resetPlugins = vi.fn()
-      ;(useMarketplacePluginsByCollectionId as Mock).mockReturnValue({
-        plugins: [{ plugin_id: 'collection-only', type: 'plugin' }],
-        isLoading: true,
-      })
-      ;(useMarketplacePlugins as Mock).mockReturnValue({
-        plugins: [{ plugin_id: 'search-result', type: 'plugin' }],
-        queryPlugins,
-        queryPluginsWithDebounced,
-        cancelQueryPluginsWithDebounced,
-        resetPlugins,
-        isLoading: true,
-      })
+      vi.mocked(useMarketplacePluginsByCollectionId).mockReturnValue(
+        createCollectionResult({
+          plugins: [
+            createMarketplacePluginFixture({ plugin_id: 'collection-only', type: 'plugin' }),
+          ],
+          isLoading: true,
+        }),
+      )
+      vi.mocked(useMarketplacePlugins).mockReturnValue(
+        createMarketplaceResult({
+          plugins: [createMarketplacePluginFixture({ plugin_id: 'search-result', type: 'plugin' })],
+          queryPlugins,
+          queryPluginsWithDebounced,
+          cancelQueryPluginsWithDebounced,
+          isLoading: true,
+        }),
+      )
 
       const { result } = renderHook(() => useMarketplaceAllPlugins('', [], false))
 
@@ -823,7 +882,6 @@ describe('hooks', () => {
       expect(queryPlugins).not.toHaveBeenCalled()
       expect(queryPluginsWithDebounced).not.toHaveBeenCalled()
       expect(cancelQueryPluginsWithDebounced).toHaveBeenCalled()
-      expect(resetPlugins).not.toHaveBeenCalled()
       expect(useMarketplacePlugins).toHaveBeenCalledWith(false)
       expect(result.current.plugins).toEqual([])
       expect(result.current.isLoading).toBe(false)
@@ -977,7 +1035,7 @@ describe('hooks', () => {
 
     it('should open model modal with basic configuration', () => {
       const setShowModelModal = vi.fn()
-      ;(useModalContextSelector as Mock).mockReturnValue(setShowModelModal)
+      vi.mocked(useModalContextSelector).mockReturnValue(setShowModelModal)
 
       const provider = createMockProvider()
       const { result } = renderHook(() => useModelModalHandler())
@@ -1002,7 +1060,7 @@ describe('hooks', () => {
 
     it('should open model modal with custom configuration', () => {
       const setShowModelModal = vi.fn()
-      ;(useModalContextSelector as Mock).mockReturnValue(setShowModelModal)
+      vi.mocked(useModalContextSelector).mockReturnValue(setShowModelModal)
 
       const provider = createMockProvider()
       const customFields: CustomConfigurationModelFixedFields = {
@@ -1032,7 +1090,7 @@ describe('hooks', () => {
 
     it('should open model modal with extra options', () => {
       const setShowModelModal = vi.fn()
-      ;(useModalContextSelector as Mock).mockReturnValue(setShowModelModal)
+      vi.mocked(useModalContextSelector).mockReturnValue(setShowModelModal)
 
       const provider = createMockProvider()
       const credential: Credential = { credential_id: 'cred-1' }

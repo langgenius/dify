@@ -13,6 +13,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { StrictMode } from 'react'
 import { afterEach, vi } from 'vite-plus/test'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { seedSystemFeatures } from '@/test/console/query-data'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { SkillDetailPage } from '../detail/page'
 
@@ -148,22 +150,6 @@ vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', (
   ),
 }))
 
-vi.mock('@/hooks/use-document-title', () => ({
-  default: vi.fn(),
-}))
-
-vi.mock('@/hooks/use-format-time-from-now', () => ({
-  useFormatTimeFromNow: () => ({
-    formatTimeFromNow: () => 'just now',
-  }),
-}))
-
-vi.mock('@/hooks/use-timestamp', () => ({
-  default: () => ({
-    formatTime: () => '2026-07-21 12:00',
-  }),
-}))
-
 vi.mock('@/features/tag-management/components/tag-management-modal', () => ({
   TagManagementModal: ({ show }: { show: boolean }) =>
     show ? <div role="dialog">common.tag.manageTags</div> : null,
@@ -208,6 +194,8 @@ vi.mock('@/service/console', async (importOriginal) => {
       },
     },
     consoleQuery: {
+      systemFeatures: actual.consoleQuery.systemFeatures,
+      account: actual.consoleQuery.account,
       workspaces: {
         current: {
           models: actual.consoleQuery.workspaces.current.models,
@@ -502,6 +490,8 @@ export function renderSkillDetailPage({
   searchParams?: string
   strict?: boolean
 } = {}) {
+  seedSystemFeatures(queryClient)
+  seedAccountProfileQuery(queryClient, { timezone: 'UTC' })
   const { wrapper, onUrlUpdate } = createNuqsTestWrapper({ searchParams })
 
   return {
@@ -623,25 +613,19 @@ export function getFileTabButton(path: string) {
 }
 
 export function createDataTransfer(files: File[] = []) {
-  const data = new Map<string, string>()
-  const types = files.length > 0 ? ['Files'] : []
-  const setDragImage = vi.fn()
-
-  return {
-    dataTransfer: {
-      dropEffect: 'none',
-      effectAllowed: 'uninitialized',
-      files,
-      getData: (type: string) => data.get(type) ?? '',
-      setData: (type: string, value: string) => {
-        data.set(type, value)
-        if (!types.includes(type)) types.push(type)
-      },
-      setDragImage,
-      types,
-    } as unknown as DataTransfer,
-    setDragImage,
-  }
+  const dataTransfer = new DataTransfer()
+  for (const file of files) dataTransfer.items.add(file)
+  // happy-dom reports file MIME types here; browsers expose the special Files entry.
+  Object.defineProperty(dataTransfer, 'types', {
+    get: () => [
+      ...Array.from(dataTransfer.items)
+        .filter((item) => item.kind === 'string')
+        .map((item) => item.type),
+      ...(dataTransfer.files.length ? ['Files'] : []),
+    ],
+  })
+  const setDragImage = vi.spyOn(dataTransfer, 'setDragImage')
+  return { dataTransfer, setDragImage }
 }
 
 export async function openFileTreeActions(user: ReturnType<typeof userEvent.setup>, path: string) {

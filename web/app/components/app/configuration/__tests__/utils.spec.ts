@@ -1,4 +1,5 @@
-import type { ModelConfig } from '@/models/debug'
+import { CollectionType } from '@/app/components/tools/types'
+import { createModelConfigFixture as createModelConfig } from '@/test/fixtures/debug-configuration'
 import { ModelModeType, Resolution, TransferMethod } from '@/types/app'
 import {
   buildConfigurationFeaturesData,
@@ -6,57 +7,28 @@ import {
   withCollectionIconBasePath,
 } from '../utils'
 
-const createModelConfig = (overrides: Partial<ModelConfig> = {}): ModelConfig => ({
-  provider: 'openai',
-  model_id: 'gpt-4o',
-  mode: ModelModeType.chat,
-  configs: {
-    prompt_template: 'Hello',
-    prompt_variables: [],
-  },
-  chat_prompt_config: {
-    prompt: [],
-  } as ModelConfig['chat_prompt_config'],
-  completion_prompt_config: {
-    prompt: { text: '' },
-    conversation_histories_role: {
-      user_prefix: 'user',
-      assistant_prefix: 'assistant',
-    },
-  } as ModelConfig['completion_prompt_config'],
-  opening_statement: '',
-  more_like_this: { enabled: false },
-  suggested_questions: [],
-  suggested_questions_after_answer: { enabled: false },
-  speech_to_text: { enabled: false },
-  text_to_speech: { enabled: false, voice: '', language: '' },
-  file_upload: null,
-  retriever_resource: { enabled: false },
-  sensitive_word_avoidance: { enabled: false },
-  annotation_reply: null,
-  external_data_tools: [],
-  dataSets: [],
-  agentConfig: {
-    enabled: false,
-    strategy: 'react',
-    max_iteration: 1,
-    tools: [],
-  } as ModelConfig['agentConfig'],
-  ...overrides,
+const createCollection = (id: string, icon: string) => ({
+  id,
+  icon,
+  name: id,
+  author: 'Dify',
+  description: { en_US: '', zh_Hans: '' },
+  label: { en_US: id, zh_Hans: id },
+  type: CollectionType.builtIn,
+  team_credentials: {},
+  is_team_authorization: false,
+  allow_delete: false,
+  labels: [],
 })
 
 describe('configuration utils', () => {
   describe('withCollectionIconBasePath', () => {
-    beforeEach(() => {
-      vi.clearAllMocks()
-    })
-
     it('should prefix relative collection icons with the base path', () => {
       const result = withCollectionIconBasePath(
         [
-          { id: 'tool-1', icon: '/icons/tool.svg' },
-          { id: 'tool-2', icon: '/console/icons/prefixed.svg' },
-        ] as never,
+          createCollection('tool-1', '/icons/tool.svg'),
+          createCollection('tool-2', '/console/icons/prefixed.svg'),
+        ],
         '/console',
       )
 
@@ -66,10 +38,6 @@ describe('configuration utils', () => {
   })
 
   describe('buildConfigurationFeaturesData', () => {
-    beforeEach(() => {
-      vi.clearAllMocks()
-    })
-
     it('should derive feature toggles and upload fallbacks from model config', () => {
       const result = buildConfigurationFeaturesData(
         createModelConfig({
@@ -105,22 +73,18 @@ describe('configuration utils', () => {
   })
 
   describe('getConfigurationPublishingState', () => {
-    beforeEach(() => {
-      vi.clearAllMocks()
-    })
-
     it('should block publish when advanced completion mode is missing required blocks', () => {
       const result = getConfigurationPublishingState({
         chatPromptConfig: {
           prompt: [],
-        } as never,
+        },
         completionPromptConfig: {
           prompt: { text: 'Answer' },
           conversation_histories_role: {
             user_prefix: 'user',
             assistant_prefix: 'assistant',
           },
-        } as never,
+        },
         hasSetBlockStatus: {
           context: false,
           history: false,
@@ -142,14 +106,14 @@ describe('configuration utils', () => {
       const result = getConfigurationPublishingState({
         chatPromptConfig: {
           prompt: [],
-        } as never,
+        },
         completionPromptConfig: {
           prompt: { text: 'Completion prompt' },
           conversation_histories_role: {
             user_prefix: 'user',
             assistant_prefix: 'assistant',
           },
-        } as never,
+        },
         hasSetBlockStatus: {
           context: false,
           history: true,
@@ -172,14 +136,14 @@ describe('configuration utils', () => {
       const result = getConfigurationPublishingState({
         chatPromptConfig: {
           prompt: [{ text: '' }, { text: '' }],
-        } as never,
+        },
         completionPromptConfig: {
           prompt: { text: 'ignored' },
           conversation_histories_role: {
             user_prefix: 'user',
             assistant_prefix: 'assistant',
           },
-        } as never,
+        },
         hasSetBlockStatus: {
           context: true,
           history: true,
@@ -201,14 +165,14 @@ describe('configuration utils', () => {
       const result = getConfigurationPublishingState({
         chatPromptConfig: {
           prompt: [{ text: 'ignored' }],
-        } as never,
+        },
         completionPromptConfig: {
           prompt: { text: '' },
           conversation_histories_role: {
             user_prefix: 'user',
             assistant_prefix: 'assistant',
           },
-        } as never,
+        },
         hasSetBlockStatus: {
           context: true,
           history: true,

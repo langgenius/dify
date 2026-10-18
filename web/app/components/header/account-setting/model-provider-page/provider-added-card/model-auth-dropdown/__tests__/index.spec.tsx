@@ -1,10 +1,12 @@
-import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ModelProvider } from '../../../declarations'
 import type { CredentialPanelState } from '../../use-credential-panel-state'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { modelProviderDetailsQueryOptions } from '@/app/components/header/account-setting/model-provider-page/utils'
-import { createProviderResponseFixture } from '@/test/console/model-provider'
+import {
+  createProviderResponseFixture,
+  createProviderSummaryFixture,
+} from '@/test/console/model-provider'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { CustomConfigurationStatusEnum, PreferredProviderTypeEnum } from '../../../declarations'
@@ -23,17 +25,19 @@ vi.mock('../../../model-auth/hooks', () => ({
   }),
 }))
 
-const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =>
-  ({
-    ...createProviderResponseFixture({ provider: 'test' }),
-    custom_configuration: {
-      status: CustomConfigurationStatusEnum.active,
-      available_credentials: [],
-    },
-    system_configuration: { enabled: true, current_quota_type: 'trial', quota_configurations: [] },
-    preferred_provider_type: PreferredProviderTypeEnum.system,
-    ...overrides,
-  }) as unknown as ModelProvider
+const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider => ({
+  provider: 'test',
+  label: { en_US: 'Test', zh_Hans: 'Test' },
+  supported_model_types: ['llm'],
+  configurate_methods: ['predefined-model'],
+  custom_configuration: {
+    status: CustomConfigurationStatusEnum.active,
+    available_credentials: [],
+  },
+  system_configuration: { enabled: true, current_quota_type: 'trial', quota_configurations: [] },
+  preferred_provider_type: PreferredProviderTypeEnum.system,
+  ...overrides,
+})
 
 const createState = (overrides: Partial<CredentialPanelState> = {}): CredentialPanelState => ({
   variant: 'credits-active',
@@ -58,7 +62,7 @@ describe('ModelAuthDropdown', () => {
   describe('Popover behavior', () => {
     it('should keep the popover open and allow retrying when loading a summary detail fails', async () => {
       const user = userEvent.setup()
-      const providerSummary = {
+      const providerSummary = createProviderSummaryFixture({
         provider: 'test',
         plugin_id: 'test-plugin',
         label: { en_US: 'Test', zh_Hans: 'Test' },
@@ -73,7 +77,7 @@ describe('ModelAuthDropdown', () => {
           current_credential_usable: false,
         },
         system_configuration: { enabled: true },
-      } satisfies ModelProviderSummaryResponse
+      })
       const fullProvider = createProviderResponseFixture({ provider: 'test' })
       render(
         <ModelAuthDropdown
@@ -150,7 +154,7 @@ describe('ModelAuthDropdown', () => {
           current_credential_name: 'Key 1',
         },
       })
-      const providerSummary = {
+      const providerSummary = createProviderSummaryFixture({
         provider: 'test',
         is_configured: true,
         custom_configuration: {
@@ -159,7 +163,7 @@ describe('ModelAuthDropdown', () => {
           current_credential_name: 'Key 1',
           current_credential_usable: true,
         },
-      } as unknown as ModelProviderSummaryResponse
+      })
       render(
         <ModelAuthDropdown
           provider={providerSummary}
@@ -198,14 +202,14 @@ describe('ModelAuthDropdown', () => {
 
     it('should render updated provider detail from the query cache', async () => {
       const user = userEvent.setup()
-      const providerSummary = {
+      const providerSummary = createProviderSummaryFixture({
         provider: 'test',
         is_configured: true,
         custom_configuration: {
           available_credentials: [],
           current_credential_usable: true,
         },
-      } as unknown as ModelProviderSummaryResponse
+      })
       const firstProvider = createProviderResponseFixture({
         provider: 'test',
         custom_configuration: {

@@ -20,37 +20,38 @@ import {
 
 type TestIfElseInputs = ReturnType<typeof createInputs>
 
-const createInputs = (): IfElseNodeType =>
-  ({
-    title: 'If/Else',
-    desc: '',
-    type: BlockEnum.IfElse,
-    cases: [
-      {
-        case_id: 'case-1',
-        logical_operator: LogicalOperator.and,
-        conditions: [
-          {
-            id: 'condition-1',
-            varType: VarType.string,
-            variable_selector: ['node', 'value'],
-            comparison_operator: 'contains',
-            value: '',
-          },
-        ],
-      },
-    ],
-    _targetBranches: [
-      { id: 'case-1', name: 'Case 1' },
-      { id: 'false', name: 'Else' },
-    ],
-  }) as unknown as IfElseNodeType
+const createInputs = (): IfElseNodeType => ({
+  title: 'If/Else',
+  desc: '',
+  type: BlockEnum.IfElse,
+  isInIteration: false,
+  isInLoop: false,
+  cases: [
+    {
+      case_id: 'case-1',
+      logical_operator: LogicalOperator.and,
+      conditions: [
+        {
+          id: 'condition-1',
+          varType: VarType.string,
+          variable_selector: ['node', 'value'],
+          comparison_operator: 'contains',
+          value: '',
+        },
+      ],
+    },
+  ],
+  _targetBranches: [
+    { id: 'case-1', name: 'Case 1' },
+    { id: 'false', name: 'Else' },
+  ],
+})
 
 describe('if-else use-config helpers', () => {
   it('filters vars and derives file attribute flags', () => {
     expect(filterAllVars()).toBe(true)
-    expect(filterNumberVars({ type: VarType.number } as never)).toBe(true)
-    expect(filterNumberVars({ type: VarType.string } as never)).toBe(false)
+    expect(filterNumberVars({ variable: 'value', type: VarType.number })).toBe(true)
+    expect(filterNumberVars({ variable: 'value', type: VarType.string })).toBe(false)
     expect(
       getVarsIsVarFileAttribute(createInputs().cases, (selector) => selector[1] === 'value'),
     ).toEqual({
@@ -76,7 +77,7 @@ describe('if-else use-config helpers', () => {
     const sorted = sortCases(createInputs(), [
       { id: 'display-2', case_id: 'case-2', logical_operator: LogicalOperator.or, conditions: [] },
       { id: 'display-1', case_id: 'case-1', logical_operator: LogicalOperator.and, conditions: [] },
-    ] as unknown as Parameters<typeof sortCases>[1])
+    ])
     expect(sorted.cases?.map((item) => item.case_id)).toEqual(['case-2', 'case-1'])
     expect(sorted._targetBranches?.map((branch) => branch.id)).toEqual([
       'case-2',
@@ -90,7 +91,7 @@ describe('if-else use-config helpers', () => {
       inputs: createInputs(),
       caseId: 'case-1',
       valueSelector: ['node', 'flag'],
-      variable: { type: VarType.boolean } as never,
+      variable: { variable: 'value', type: VarType.boolean },
       isVarFileAttribute: false,
     })
     expect(withCondition.cases?.[0]?.conditions).toHaveLength(2)
@@ -172,13 +173,7 @@ describe('if-else use-config helpers', () => {
     )
   })
 
-  it('keeps inputs unchanged when guard branches short-circuit helper updates', () => {
-    const unchangedWithoutCases = addCase({
-      ...createInputs(),
-      cases: undefined,
-    } as unknown as IfElseNodeType)
-    expect(unchangedWithoutCases.cases).toBeUndefined()
-
+  it('preserves unrelated cases when the referenced condition or branch is absent', () => {
     const withoutTargetBranches = addCase({
       ...createInputs(),
       _targetBranches: undefined,
@@ -211,7 +206,7 @@ describe('if-else use-config helpers', () => {
       inputs: createInputs(),
       caseId: 'missing-case',
       valueSelector: ['node', 'value'],
-      variable: { type: VarType.string } as never,
+      variable: { variable: 'value', type: VarType.string },
       isVarFileAttribute: false,
     })
     expect(unchangedWhenCaseIsMissingForCondition).toEqual(createInputs())

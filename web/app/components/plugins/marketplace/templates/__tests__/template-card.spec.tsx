@@ -42,10 +42,6 @@ vi.mock('@/config', async (importOriginal) => ({
   MARKETPLACE_URL_PREFIX: 'https://marketplace.example.com',
 }))
 
-vi.mock('@/app/components/base/app-icon', () => ({
-  default: () => <div aria-hidden />,
-}))
-
 const template: MarketplaceTemplate = {
   id: 'template/one',
   template_name: 'Campaign planner',

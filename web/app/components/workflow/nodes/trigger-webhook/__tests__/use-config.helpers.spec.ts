@@ -10,36 +10,35 @@ import {
 } from '../use-config.helpers'
 import { WEBHOOK_RAW_VARIABLE_NAME } from '../utils/raw-variable'
 
-const createInputs = (): WebhookTriggerNodeType =>
-  ({
-    title: 'Webhook',
-    desc: '',
-    type: BlockEnum.TriggerWebhook,
-    method: 'POST',
-    content_type: 'application/json',
-    headers: [],
-    params: [],
-    body: [],
-    async_mode: false,
-    status_code: 200,
-    response_body: '',
-    variables: [
-      {
-        variable: 'existing_header',
-        label: 'header',
-        required: false,
-        value_selector: [],
-        value_type: VarType.string,
-      },
-      {
-        variable: 'body_value',
-        label: 'body',
-        required: true,
-        value_selector: [],
-        value_type: VarType.string,
-      },
-    ],
-  }) as unknown as WebhookTriggerNodeType
+const createInputs = (): WebhookTriggerNodeType => ({
+  title: 'Webhook',
+  desc: '',
+  type: BlockEnum.TriggerWebhook,
+  method: 'POST',
+  content_type: 'application/json',
+  headers: [],
+  params: [],
+  body: [],
+  async_mode: false,
+  status_code: 200,
+  response_body: '',
+  variables: [
+    {
+      variable: 'existing_header',
+      label: 'header',
+      required: false,
+      value_selector: [],
+      value_type: VarType.string,
+    },
+    {
+      variable: 'body_value',
+      label: 'body',
+      required: true,
+      value_selector: [],
+      value_type: VarType.string,
+    },
+  ],
+})
 
 describe('trigger webhook config helpers', () => {
   it('syncs variables, updates existing ones and validates names', () => {
@@ -118,8 +117,8 @@ describe('trigger webhook config helpers', () => {
       syncVariables({
         draft: {
           ...createInputs(),
-          variables: undefined,
-        } as unknown as WebhookTriggerNodeType,
+          variables: [],
+        },
         id: 'node-1',
         newData: [{ name: WEBHOOK_RAW_VARIABLE_NAME, type: VarType.string, required: true }],
         sourceType: 'body',
@@ -196,8 +195,8 @@ describe('trigger webhook config helpers', () => {
       updateContentType({
         inputs: {
           ...createInputs(),
-          variables: undefined,
-        } as unknown as WebhookTriggerNodeType,
+          variables: [],
+        },
         id: 'node-1',
         contentType: 'multipart/form-data',
         isVarUsedInNodes: () => false,

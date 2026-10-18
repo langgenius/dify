@@ -55,14 +55,6 @@ vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
   }),
 }))
 
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
-    userProfile: mockUserProfile,
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-
 vi.mock('@/utils/app-redirection', () => ({
   getRedirection: (...args: unknown[]) => mockGetRedirection(...args),
 }))
@@ -87,6 +79,8 @@ vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
 function render(ui: ReactElement) {
   return renderWithConsoleQuery(ui, {
     systemFeatures: { deployment_edition: 'CLOUD' },
+    accountProfile: mockUserProfile,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
     features: { apps: { size: appCount, limit: appLimit } },
   })
 }

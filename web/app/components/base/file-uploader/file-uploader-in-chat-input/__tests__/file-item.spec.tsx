@@ -37,18 +37,10 @@ describe('FileItem (chat-input)', () => {
   })
   afterEach(() => vi.restoreAllMocks())
 
-  it('should render file name', async () => {
-    render(<FileItem file={createFile()} />)
-
-    expect(screen.getByText(/document\.pdf/i)).toBeInTheDocument()
-  })
-
-  it('should render file extension and size', async () => {
+  it('identifies the attachment with its name, extension and size', () => {
     const { container } = render(<FileItem file={createFile()} />)
-
-    // Extension and size are rendered as text nodes in the metadata div
-    expect(container.textContent).toContain('pdf')
-    expect(container.textContent).toContain('2.00 KB')
+    expect(screen.getByText(/document\.pdf/i)).toBeInTheDocument()
+    expect(container).toHaveTextContent('pdf·2.00 KB')
   })
 
   it('should call onRemove when delete button is clicked', async () => {
@@ -67,7 +59,7 @@ describe('FileItem (chat-input)', () => {
     render(<FileItem file={createFile({ progress: -1 })} canPreview onReUpload={onReUpload} />)
 
     const replayIcon = screen.getByRole('button', { name: 'common.operation.retry' })
-    await user.click(replayIcon!)
+    await user.click(replayIcon)
 
     expect(onReUpload).toHaveBeenCalledWith('file-1')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -120,23 +112,6 @@ describe('FileItem (chat-input)', () => {
     expect(
       screen.queryByRole('button', { name: 'common.operation.download' }),
     ).not.toBeInTheDocument()
-  })
-
-  it('should not show preview when canPreview is false', async () => {
-    const user = userEvent.setup()
-    render(
-      <FileItem
-        file={createFile({
-          name: 'audio.mp3',
-          type: 'audio/mpeg',
-        })}
-        canPreview={false}
-      />,
-    )
-
-    await user.click(screen.getByText(/audio\.mp3/i))
-
-    expect(document.querySelector('audio')).not.toBeInTheDocument()
   })
 
   it('should close video preview', async () => {

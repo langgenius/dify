@@ -108,24 +108,22 @@ const speechToTextTarget = {
   appId: 'app-123',
 }
 
-const makeFile = (overrides: Partial<FileEntity> = {}): FileEntity =>
-  ({
-    id: 'file-1',
-    name: 'photo.png',
-    type: 'image/png',
-    size: 1024,
-    progress: 100,
-    transferMethod: TransferMethod.local_file,
-    uploadedId: 'uploaded-ok',
-    ...overrides,
-  }) as FileEntity
+const makeFile = (overrides: Partial<FileEntity> = {}): FileEntity => ({
+  id: 'file-1',
+  name: 'photo.png',
+  type: 'image/png',
+  size: 1024,
+  progress: 100,
+  transferMethod: TransferMethod.local_file,
+  uploadedId: 'uploaded-ok',
+  supportFileType: 'image',
+  ...overrides,
+})
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-const getTextarea = () =>
-  (screen.queryByPlaceholderText(/inputPlaceholder/i) ||
-    screen.queryByPlaceholderText(/inputDisabledPlaceholder/i)) as HTMLTextAreaElement | null
+const getTextarea = () => screen.getByRole<HTMLTextAreaElement>('textbox')
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -139,16 +137,6 @@ describe('ChatInputArea', () => {
     )
     vi.stubGlobal('cancelAnimationFrame', vi.fn())
     vi.stubGlobal('devicePixelRatio', 1)
-    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
-      scale: vi.fn(),
-      beginPath: vi.fn(),
-      moveTo: vi.fn(),
-      rect: vi.fn(),
-      fill: vi.fn(),
-      closePath: vi.fn(),
-      clearRect: vi.fn(),
-      roundRect: vi.fn(),
-    } as unknown as CanvasRenderingContext2D)
     vi.spyOn(HTMLCanvasElement.prototype, 'getBoundingClientRect').mockReturnValue(
       new DOMRect(0, 0, 100, 50),
     )
