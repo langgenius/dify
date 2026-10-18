@@ -1,7 +1,8 @@
 import type { ScheduleTriggerNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { BlockEnum } from '@/app/components/workflow/types'
 import Panel from '../panel'
 import useConfig from '../use-config'
 
@@ -18,7 +19,7 @@ const mockUseConfig = vi.mocked(useConfig)
 const createData = (overrides: Partial<ScheduleTriggerNodeType> = {}): ScheduleTriggerNodeType => ({
   title: 'Schedule Trigger',
   desc: '',
-  type: 'trigger-schedule' as ScheduleTriggerNodeType['type'],
+  type: BlockEnum.TriggerSchedule,
   mode: 'visual',
   frequency: 'daily',
   timezone: 'UTC',
@@ -131,7 +132,8 @@ describe('TriggerSchedulePanel', () => {
       })
     })
 
-    it('should render cron mode and forward expression changes', () => {
+    it('should render cron mode and forward expression changes', async () => {
+      const user = userEvent.setup()
       mockUseConfig.mockReturnValue({
         readOnly: false,
         inputs: createData({ mode: 'cron', frequency: undefined, cron_expression: '0 0 * * *' }),
@@ -146,12 +148,11 @@ describe('TriggerSchedulePanel', () => {
 
       renderPanel('node-3', createData({ mode: 'cron' }))
 
-      fireEvent.change(
-        screen.getByRole('textbox', {
-          name: 'workflow.nodes.triggerSchedule.cronExpression',
-        }),
-        { target: { value: '*/5 * * * *' } },
-      )
+      const input = screen.getByRole('textbox', {
+        name: 'workflow.nodes.triggerSchedule.cronExpression',
+      })
+      await user.tripleClick(input)
+      await user.paste('*/5 * * * *')
 
       expect(handleCronExpressionChange).toHaveBeenCalledWith('*/5 * * * *')
     })
@@ -180,7 +181,7 @@ describe('TriggerSchedulePanel', () => {
         inputs: createData({
           mode: 'cron',
           frequency: undefined,
-          cron_expression: undefined as any,
+          cron_expression: undefined,
         }),
         setInputs,
         handleModeChange,
@@ -197,7 +198,7 @@ describe('TriggerSchedulePanel', () => {
           data={createData({
             mode: 'cron',
             frequency: undefined,
-            cron_expression: undefined as any,
+            cron_expression: undefined,
           })}
           panelProps={panelProps}
         />,

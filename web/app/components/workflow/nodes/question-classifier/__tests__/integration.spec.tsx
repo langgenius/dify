@@ -1,10 +1,12 @@
 import type { ComponentProps } from 'react'
 import type { Topic } from '@/app/components/workflow/nodes/_base/components/branch-list/types'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { useEdges } from 'reactflow'
+import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowFlowComponent as render } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
-import { useEdgesInteractions } from '../../../hooks/use-edges-interactions'
 import ClassList from '../../_base/components/branch-list/class-list'
 import AdvancedSetting from '../components/advanced-setting'
 
@@ -45,16 +47,6 @@ vi.mock('../../_base/hooks/use-available-var-list', () => ({
   })),
 }))
 
-vi.mock('../../../hooks/use-edges-interactions', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../hooks/use-edges-interactions')>()
-  return {
-    ...actual,
-    useEdgesInteractions: vi.fn(),
-  }
-})
-
-const mockUseEdgesInteractions = vi.mocked(useEdgesInteractions)
-
 const createTopic = (overrides: Partial<Topic> = {}): Topic => ({
   id: 'topic-1',
   name: 'Billing questions',
@@ -62,13 +54,6 @@ const createTopic = (overrides: Partial<Topic> = {}): Topic => ({
 })
 
 describe('question-classifier path', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseEdgesInteractions.mockReturnValue({
-      handleEdgeDeleteByDeleteBranch: vi.fn(),
-    } as unknown as ReturnType<typeof useEdgesInteractions>)
-  })
-
   // Class editing and advanced settings share the real branch and memory controls.
   describe('Path Integration', () => {
     it('should render advanced settings and memory config', async () => {
@@ -102,28 +87,40 @@ describe('question-classifier path', () => {
     it('adds, edits, removes and collapses classes while retaining unrelated branches', async () => {
       const user = userEvent.setup()
       const onChange = vi.fn()
-      const removeEdge = vi.fn()
-      mockUseEdgesInteractions.mockReturnValue({
-        handleEdgeDeleteByDeleteBranch: removeEdge,
-      } as unknown as ReturnType<typeof useEdgesInteractions>)
       function ClassListHarness() {
-        const [list, setList] = useState([
+        const [list, setList] = useState(() => [
           createTopic(),
           createTopic({ id: 'topic-2', name: 'Refunds' }),
         ])
+        const edges = useEdges()
         return (
-          <ClassList
-            nodeId="node-1"
-            list={list}
-            onChange={(next) => {
-              setList(next)
-              onChange(next)
-            }}
-            filterVar={() => true}
-          />
+          <>
+            <output aria-label="Connected branches">
+              {edges.map((edge) => edge.sourceHandle).join(',')}
+            </output>
+            <ClassList
+              nodeId="node-1"
+              list={list}
+              onChange={(next) => {
+                setList(next)
+                onChange(next)
+              }}
+              filterVar={() => true}
+            />
+          </>
         )
       }
-      render(<ClassListHarness />)
+      const nodes = [
+        createNode({ id: 'node-1', data: { type: BlockEnum.QuestionClassifier } }),
+        createNode({ id: 'answer-1', data: { type: BlockEnum.Answer } }),
+        createNode({ id: 'answer-2', data: { type: BlockEnum.Answer } }),
+      ]
+      const edges = [
+        createEdge({ source: 'node-1', sourceHandle: 'topic-1', target: 'answer-1' }),
+        createEdge({ source: 'node-1', sourceHandle: 'topic-2', target: 'answer-2' }),
+      ]
+      render(<ClassListHarness />, { nodes, edges, historyStore: { nodes, edges } })
+      expect(screen.getByLabelText('Connected branches')).toHaveTextContent('topic-1,topic-2')
       await user.click(
         screen.getByRole('button', { name: 'workflowModels.nodes.questionClassifiers.addClass' }),
       )
@@ -141,7 +138,7 @@ describe('question-classifier path', () => {
       await user.click(screen.getAllByRole('button', { name: 'remove-item' })[0]!)
       expect(screen.queryByDisplayValue('Billing questions updated')).not.toBeInTheDocument()
       expect(screen.getByDisplayValue('Refunds')).toBeInTheDocument()
-      expect(removeEdge).toHaveBeenCalledExactlyOnceWith('node-1', 'topic-1')
+      expect(screen.getByLabelText('Connected branches').textContent).toBe('topic-2')
       await user.click(
         screen.getByRole('button', { name: /workflow.nodes.questionClassifiers.class/ }),
       )

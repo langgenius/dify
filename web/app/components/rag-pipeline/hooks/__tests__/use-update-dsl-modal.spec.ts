@@ -6,15 +6,6 @@ import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { httpErrorFromResponse } from '@/service/http-error'
 import { useUpdateDSLModal } from '../use-update-dsl-modal'
 
-class MockFileReader {
-  onload: ((this: FileReader, event: ProgressEvent<FileReader>) => void) | null = null
-
-  readAsText(_file: Blob) {
-    const event = { target: { result: 'test content' } } as unknown as ProgressEvent<FileReader>
-    this.onload?.call(this as unknown as FileReader, event)
-  }
-}
-
 const toastMocks = vi.hoisted(() => {
   const call = vi.fn()
   return {
@@ -94,6 +85,25 @@ const createFile = () => new File(['test content'], 'test.pipeline', { type: 'te
 
 type AsyncFn = () => Promise<void>
 
+const readAsText = FileReader.prototype.readAsText
+
+const selectFile = async (result: { current: ReturnType<typeof useUpdateDSLModal> }) => {
+  await act(async () => {
+    const loaded = new Promise<void>((resolve) => {
+      vi.spyOn(FileReader.prototype, 'readAsText').mockImplementationOnce(function (
+        this: FileReader,
+        file,
+        encoding,
+      ) {
+        this.addEventListener('loadend', () => resolve(), { once: true })
+        readAsText.call(this, file, encoding)
+      })
+    })
+    result.current.handleFile(createFile())
+    await loaded
+  })
+}
+
 describe('useUpdateDSLModal', () => {
   const mockOnCancel = vi.fn()
   const mockOnImport = vi.fn()
@@ -109,7 +119,6 @@ describe('useUpdateDSLModal', () => {
     )
 
   beforeEach(() => {
-    vi.stubGlobal('FileReader', MockFileReader as typeof FileReader)
     vi.clearAllMocks()
     mockImportDSL.mockResolvedValue({
       id: 'import-id',
@@ -120,7 +129,7 @@ describe('useUpdateDSLModal', () => {
   })
 
   afterEach(() => {
-    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
     vi.useRealTimers()
   })
 
@@ -128,9 +137,7 @@ describe('useUpdateDSLModal', () => {
     it('should call importDSL with correct parameters', async () => {
       const { result } = renderUpdateDSLModal()
 
-      act(() => {
-        result.current.handleFile(createFile())
-      })
+      await selectFile(result)
 
       await act(async () => {
         await (result.current.handleImport as AsyncFn)()
@@ -180,9 +187,7 @@ describe('useUpdateDSLModal', () => {
       })
 
       const { result } = renderUpdateDSLModal()
-      act(() => {
-        result.current.handleFile(createFile())
-      })
+      await selectFile(result)
 
       await act(async () => {
         await (result.current.handleImport as AsyncFn)()
@@ -203,9 +208,7 @@ describe('useUpdateDSLModal', () => {
       })
 
       const { result } = renderUpdateDSLModal()
-      act(() => {
-        result.current.handleFile(createFile())
-      })
+      await selectFile(result)
 
       await act(async () => {
         await (result.current.handleImport as AsyncFn)()
@@ -231,9 +234,7 @@ describe('useUpdateDSLModal', () => {
       })
 
       const { result } = renderUpdateDSLModal()
-      act(() => {
-        result.current.handleFile(createFile())
-      })
+      await selectFile(result)
 
       await act(async () => {
         await (result.current.handleImport as AsyncFn)()
@@ -253,9 +254,7 @@ describe('useUpdateDSLModal', () => {
       mockImportDSL.mockRejectedValue(new Error('Network error'))
 
       const { result } = renderUpdateDSLModal()
-      act(() => {
-        result.current.handleFile(createFile())
-      })
+      await selectFile(result)
 
       await act(async () => {
         await (result.current.handleImport as AsyncFn)()
@@ -284,9 +283,7 @@ describe('useUpdateDSLModal', () => {
       )
 
       const { result } = renderUpdateDSLModal()
-      act(() => {
-        result.current.handleFile(createFile())
-      })
+      await selectFile(result)
 
       await act(async () => {
         await (result.current.handleImport as AsyncFn)()
@@ -310,9 +307,7 @@ describe('useUpdateDSLModal', () => {
       })
 
       const { result } = renderUpdateDSLModal()
-      act(() => {
-        result.current.handleFile(createFile())
-      })
+      await selectFile(result)
 
       await act(async () => {
         await (result.current.handleImport as AsyncFn)()
@@ -338,9 +333,7 @@ describe('useUpdateDSLModal', () => {
         current_dsl_version: '1.0.0',
       })
 
-      act(() => {
-        result.current.handleFile(createFile())
-      })
+      await selectFile(result)
 
       await act(async () => {
         await (result.current.handleImport as AsyncFn)()

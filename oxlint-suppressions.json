@@ -2594,11 +2594,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/trigger-schedule/__tests__/panel.spec.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow/nodes/trigger-schedule/default.ts": {
     "dify/require-disable-directive-description": {
       "count": 1

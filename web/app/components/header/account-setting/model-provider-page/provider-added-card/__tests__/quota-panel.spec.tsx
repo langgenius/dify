@@ -1,11 +1,11 @@
 import type { ModelProviderCreditsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactElement } from 'react'
-import type { ModelProvider } from '../../declarations'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { createModelProviderFixture } from '@/test/fixtures/model-provider'
 import QuotaPanel from '../quota-panel'
 
 const createCredits = (
@@ -127,12 +127,13 @@ vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () =
 
 describe('QuotaPanel', () => {
   const mockProviders = [
-    {
-      provider: 'langgenius/openai/openai',
-      preferred_provider_type: 'custom',
-      custom_configuration: { available_credentials: [{ id: '1' }] },
-    },
-  ] as unknown as ModelProvider[]
+    createModelProviderFixture({
+      custom_configuration: {
+        status: 'active',
+        available_credentials: [{ credential_id: '1' }],
+      },
+    }),
+  ]
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -315,15 +316,7 @@ describe('QuotaPanel', () => {
   it('should show the supported-model tooltip for installed non-custom providers', () => {
     renderQuotaPanel(
       <QuotaPanel
-        providers={
-          [
-            {
-              provider: 'langgenius/openai/openai',
-              preferred_provider_type: 'system',
-              custom_configuration: { available_credentials: [] },
-            },
-          ] as unknown as ModelProvider[]
-        }
+        providers={[createModelProviderFixture({ preferred_provider_type: 'system' })]}
       />,
     )
 

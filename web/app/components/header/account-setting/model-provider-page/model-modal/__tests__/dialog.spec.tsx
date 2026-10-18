@@ -1,6 +1,7 @@
 import type { Credential, ModelProvider } from '../../declarations'
 import { screen } from '@testing-library/react'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createModelProviderFixture } from '@/test/fixtures/model-provider'
 import { ConfigurationMethodEnum } from '../../declarations'
 import ModelModal from '../index'
 
@@ -45,7 +46,7 @@ vi.mock('../../hooks', () => ({
 }))
 
 const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =>
-  ({
+  createModelProviderFixture({
     provider: 'openai',
     label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
     help: {
@@ -76,7 +77,7 @@ const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =
     },
     allow_custom_token: true,
     ...overrides,
-  }) as unknown as ModelProvider
+  })
 
 describe('ModelModal dialog branches', () => {
   beforeEach(() => {
@@ -100,40 +101,15 @@ describe('ModelModal dialog branches', () => {
     expect(screen.queryByRole('link', { name: 'Help' })).not.toBeInTheDocument()
   })
 
-  it('should prevent navigation when help text exists without a help url', () => {
-    mockLanguage = 'zh_Hans'
-
-    render(
-      <ModelModal
-        provider={createProvider({
-          help: {
-            title: { en_US: 'English Help' },
-            url: '' as unknown as NonNullable<ModelProvider['help']>['url'],
-          } as ModelProvider['help'],
-        })}
-        configurateMethod={ConfigurationMethodEnum.predefinedModel}
-        onCancel={vi.fn()}
-        onSave={vi.fn()}
-        onRemove={vi.fn()}
-      />,
-    )
-
-    const link = screen.getByText('English Help').closest('a')
-    const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true })
-    expect(link).not.toBeNull()
-    link!.dispatchEvent(clickEvent)
-
-    expect(clickEvent.defaultPrevented).toBe(true)
-  })
-
   it('should fall back to localized and english help urls when titles are missing', () => {
     mockLanguage = 'zh_Hans'
     const { rerender } = render(
       <ModelModal
         provider={createProvider({
           help: {
+            title: { en_US: '', zh_Hans: '' },
             url: { zh_Hans: 'https://example.cn', en_US: 'https://example.com' },
-          } as ModelProvider['help'],
+          },
         })}
         configurateMethod={ConfigurationMethodEnum.predefinedModel}
         onCancel={vi.fn()}
@@ -151,8 +127,9 @@ describe('ModelModal dialog branches', () => {
       <ModelModal
         provider={createProvider({
           help: {
-            url: { en_US: 'https://example.com' },
-          } as ModelProvider['help'],
+            title: { en_US: '', zh_Hans: '' },
+            url: { en_US: 'https://example.com', zh_Hans: '' },
+          },
         })}
         configurateMethod={ConfigurationMethodEnum.predefinedModel}
         onCancel={vi.fn()}

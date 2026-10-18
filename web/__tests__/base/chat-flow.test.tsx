@@ -1,6 +1,4 @@
-import type { RefObject } from 'react'
-import type { ChatConfig } from '@/app/components/base/chat/types'
-import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
+import type { AppData } from '@/models/share'
 import { screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import ChatWithHistory from '@/app/components/base/chat/chat-with-history'
@@ -8,6 +6,7 @@ import { useChatWithHistoryContext } from '@/app/components/base/chat/chat-with-
 import { useChatWithHistory } from '@/app/components/base/chat/chat-with-history/hooks'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createChatConfigFixture } from '@/test/fixtures/chat'
 
 vi.mock('@/app/components/base/chat/chat-with-history/hooks', () => ({
   useChatWithHistory: vi.fn(),
@@ -49,9 +48,11 @@ vi.mock('@/next/navigation', () => ({
 
 type HookReturn = ReturnType<typeof useChatWithHistory>
 
-const mockAppData = {
+const mockAppData: AppData = {
+  app_id: 'test-app-id',
+  custom_config: null,
   site: { title: 'Test Chat', chat_color_theme: 'blue', chat_color_theme_inverted: false },
-} as unknown as AppData
+}
 
 const defaultHookReturn: HookReturn = {
   isInstalledApp: false,
@@ -60,31 +61,31 @@ const defaultHookReturn: HookReturn = {
   currentConversationItem: undefined,
   handleConversationIdInfoChange: vi.fn(),
   appData: mockAppData,
-  appParams: {} as ChatConfig,
-  appMeta: {} as AppMeta,
+  appParams: createChatConfigFixture(),
+  appMeta: { tool_icons: {} },
   appPinnedConversationData: {
-    data: [] as ConversationItem[],
+    data: [],
     has_more: false,
     limit: 20,
-  } as AppConversationData,
+  },
   appConversationData: {
-    data: [] as ConversationItem[],
+    data: [],
     has_more: false,
     limit: 20,
-  } as AppConversationData,
+  },
   appConversationDataLoading: false,
   appChatListData: {
-    data: [] as ConversationItem[],
+    data: [],
     has_more: false,
     limit: 20,
-  } as AppConversationData,
+  },
   appChatListDataLoading: false,
   appPrevChatTree: [],
   pinnedConversationList: [],
   conversationList: [],
   setShowNewConversationItemInList: vi.fn(),
   newConversationInputs: {},
-  newConversationInputsRef: { current: {} } as unknown as RefObject<Record<string, unknown>>,
+  newConversationInputsRef: { current: {} },
   handleNewConversationInputsChange: vi.fn(),
   inputsForms: [],
   handleNewConversation: vi.fn(),
