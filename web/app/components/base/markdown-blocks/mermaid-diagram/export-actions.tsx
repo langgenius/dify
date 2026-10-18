@@ -1,5 +1,5 @@
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { downloadBlob } from '@/utils/download'
 import { diagramPng } from './export-diagram'
@@ -12,6 +12,11 @@ type ExportActionsProps = {
 export function ExportActions({ exportSvg, disabled }: ExportActionsProps) {
   const { t } = useTranslation(['common'])
   const [copyState, setCopyState] = useState<'idle' | 'pending' | 'success' | 'error'>('idle')
+  useEffect(() => {
+    if (copyState !== 'success') return
+    const timeout = setTimeout(() => setCopyState('idle'), 2000)
+    return () => clearTimeout(timeout)
+  }, [copyState])
   const copying = copyState === 'pending'
   const status =
     copyState === 'success'

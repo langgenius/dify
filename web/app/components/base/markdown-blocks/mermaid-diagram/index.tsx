@@ -54,7 +54,8 @@ function DiagramPreview({ source }: { source: string }) {
   const diagram = useDiagram({ source: snapshot, mode: 'preview' })
   return (
     <>
-      <DialogBackdrop />
+      {/* Full-screen previews need their own visual scrim inside transparent Drawers too. */}
+      <DialogBackdrop forceRender />
       <DialogViewport className="p-4 sm:p-8">
         <DialogPopup
           aria-label="Mermaid"

@@ -1,3 +1,10 @@
+import {
+  Drawer,
+  DrawerBackdrop,
+  DrawerPopup,
+  DrawerPortal,
+  DrawerViewport,
+} from '@langgenius/dify-ui/drawer'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { MermaidDiagram } from '..'
@@ -264,7 +271,7 @@ it('keeps the preview canvas fixed while the first zoom step enlarges the drawin
   expect(label.element().getBoundingClientRect().width).toBeCloseTo(initialLabel, 0)
 })
 
-it('copies a complete PNG after zooming and reports success on the copy button', async () => {
+it('copies a complete PNG after zooming and resets the success feedback', async () => {
   let copied: Blob | undefined
   const write = vi.spyOn(navigator.clipboard, 'write').mockImplementation(async (items) => {
     copied = await items[0]!.getType('image/png')
@@ -292,6 +299,14 @@ it('copies a complete PNG after zooming and reports success on the copy button',
     context.drawImage(bitmap, 0, 0)
     expect([...context.getImageData(0, 0, 1, 1).data]).toEqual([255, 255, 255, 255])
     bitmap.close()
+    await expect
+      .element(dialog.getByRole('button', { name: 'common.operation.copyImage' }))
+      .toBeEnabled()
+    await expect.element(dialog.getByRole('status')).toBeEmptyDOMElement()
+    await userEvent.click(dialog.getByRole('button', { name: 'common.operation.copyImage' }))
+    await expect
+      .element(dialog.getByRole('button', { name: 'common.operation.imageCopied' }))
+      .toBeEnabled()
     await userEvent.click(dialog.getByRole('button', { name: 'common.operation.close' }))
     await expect.element(dialog).not.toBeInTheDocument()
     await userEvent.click(trigger)
@@ -323,4 +338,39 @@ it('announces a failed image copy and allows retrying', async () => {
   } finally {
     write.mockRestore()
   }
+})
+
+it('shows a visual scrim when previewing from a transparent log-detail drawer and returns focus to it', async () => {
+  await render(
+    <Drawer defaultOpen swipeDirection="right">
+      <DrawerPortal>
+        <DrawerBackdrop className="bg-transparent" />
+        <DrawerViewport>
+          <DrawerPopup aria-label="Conversation details">
+            <MermaidDiagram source={'flowchart TD\n A[Start] --> B[Finish]'} />
+          </DrawerPopup>
+        </DrawerViewport>
+      </DrawerPortal>
+    </Drawer>,
+  )
+  const parent = page.getByRole('dialog', { name: 'Conversation details' })
+  const trigger = parent.getByRole('button', { name: 'app.mermaid.preview' })
+  await expect.element(trigger).toBeEnabled()
+  await userEvent.click(trigger)
+  const preview = page.getByRole('dialog', { name: 'Mermaid' })
+  await expect.element(preview.getByText('Start')).toBeVisible()
+  // The visible scrim is distinct from Base UI's transparent interaction guard.
+  const scrims = [...document.querySelectorAll<HTMLElement>('[role="presentation"]')].filter(
+    (element) => getComputedStyle(element).backgroundColor !== 'rgba(0, 0, 0, 0)',
+  )
+  expect(scrims.length).toBe(1)
+  const scrim = scrims[0]!
+  await expect.poll(() => getComputedStyle(scrim).opacity).toBe('1')
+  const bounds = scrim.getBoundingClientRect()
+  expect(bounds.width).toBeGreaterThanOrEqual(window.innerWidth)
+  expect(bounds.height).toBeGreaterThanOrEqual(window.innerHeight)
+  await userEvent.click(preview.getByRole('button', { name: 'common.operation.close' }))
+  await expect.element(preview).not.toBeInTheDocument()
+  await expect.element(parent).toBeVisible()
+  await expect.element(trigger).toHaveFocus()
 })
