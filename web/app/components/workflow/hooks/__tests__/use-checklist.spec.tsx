@@ -33,6 +33,7 @@ import { HooksStoreContext } from '../../hooks-store/provider'
 import { createHooksStore } from '../../hooks-store/store'
 import { useWorkflowNodeCatalog } from '../../node-catalog'
 import { CodeLanguage } from '../../nodes/code/types'
+import ifElseDefault from '../../nodes/if-else/default'
 import llmDefault from '../../nodes/llm/default'
 import { useStore } from '../../store'
 import { BlockEnum, PromptRole, VarType } from '../../types'
@@ -616,6 +617,61 @@ describe('useChecklist', () => {
     expect(
       secondWarning?.errorMessages.some((message) => message.includes('duplicateOutputVariable')),
     ).toBe(true)
+  })
+
+  it('should allow the same output variable on mutually exclusive IfElse branches', () => {
+    const startNode = createInputNode()
+    const ifElseNode = createNode({
+      id: 'if-else',
+      data: {
+        ...ifElseDefault.defaultValue,
+        type: BlockEnum.IfElse,
+        title: 'If/Else',
+        cases: [
+          {
+            ...ifElseDefault.defaultValue.cases![0]!,
+            conditions: [
+              {
+                id: 'condition-1',
+                varType: VarType.string,
+                variable_selector: ['start', 'query'],
+                comparison_operator: 'contains',
+                value: 'x',
+              },
+            ],
+          },
+        ],
+      },
+    })
+    const firstEndNode = createNode({
+      id: 'end-true',
+      data: {
+        type: BlockEnum.End,
+        title: 'True output',
+        outputs: [{ variable: 'answer', value_selector: ['sys', 'query'] }],
+      },
+    })
+    const secondEndNode = createNode({
+      id: 'end-false',
+      data: {
+        type: BlockEnum.End,
+        title: 'False output',
+        outputs: [{ variable: 'answer', value_selector: ['sys', 'query'] }],
+      },
+    })
+    const edges = [
+      createEdge({ source: 'start', target: 'if-else' }),
+      createEdge({ source: 'if-else', target: 'end-true', sourceHandle: 'true' }),
+      createEdge({ source: 'if-else', target: 'end-false', sourceHandle: 'false' }),
+    ]
+
+    const { result } = renderChecklist([startNode, ifElseNode, firstEndNode, secondEndNode], edges)
+
+    expect(
+      result.current.some((item: ChecklistItem) =>
+        item.errorMessages.some((message) => message.includes('duplicateOutputVariable')),
+      ),
+    ).toBe(false)
   })
 
   it('publishes checklist errors to a sibling store consumer', async () => {
