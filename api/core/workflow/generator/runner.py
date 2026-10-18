@@ -89,6 +89,7 @@ from services.dify_builder.api_tool_output_context import (
     format_api_tool_code_system_rules,
     format_api_tool_output_context,
 )
+from services.dify_builder.native_agent_output_contract import declares_native_agent_output
 from services.dify_builder.native_api_output_contract import (
     collect_native_api_selector_refs,
     declares_native_api_output,
@@ -203,14 +204,16 @@ _MODEL_NODE_TYPES = frozenset(
 # The only node types whose output NAMES are chosen by the node's own config:
 # a code node's ``outputs`` keys, a parameter-extractor's ``parameters[].name``,
 # a human-input's ``inputs[].output_variable_name``, and an llm's
-# ``structured_output`` schema fields. Every other type publishes a fixed set
-# the engine owns, so the planner has nothing to declare for it.
+# ``structured_output`` schema fields, plus a native Agent caller's declared
+# outputs. Plan names remain advisory; actual Agent identity and output schema
+# are validated independently against the built node config.
 _DECLARABLE_OUTPUT_NODE_TYPES = frozenset(
     {
         BuiltinNodeTypes.CODE,
         BuiltinNodeTypes.PARAMETER_EXTRACTOR,
         BuiltinNodeTypes.HUMAN_INPUT,
         BuiltinNodeTypes.LLM,
+        BuiltinNodeTypes.AGENT,
     }
 )
 
@@ -412,7 +415,10 @@ def _parse_node_outputs(raw: Any, plan_nodes: list[dict[str, Any]]) -> dict[str,
     producers' output names).
 
     Declarations are also restricted to ``_DECLARABLE_OUTPUT_NODE_TYPES``.
-    Every other node type publishes fixed engine outputs, so honouring a
+    Agent plans carry only node_type, so their names are advisory promises,
+    never proof of native identity or actual outputs. The built Agent config
+    must pass the native discriminator and public output contract separately.
+    Other node types publish fixed engine outputs, so honouring a
     declaration on one would actively point consumers at a name the engine
     never exposes (an http-request node "declaring" ``response``, say).
     """
@@ -2361,6 +2367,8 @@ class WorkflowGenerator:
             # the only root a dotted reference may address here; how deep the
             # schema goes is the run time's business.
             return root == _STRUCTURED_OUTPUT and not cls._llm_is_schema_less(data)
+        if node_type == BuiltinNodeTypes.AGENT:
+            return declares_native_agent_output(data, var)
         if node_type == BuiltinNodeTypes.CODE:
             return root in (data.get("outputs") or {})
         if node_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
