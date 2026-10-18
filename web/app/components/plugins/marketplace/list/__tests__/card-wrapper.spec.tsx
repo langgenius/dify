@@ -10,22 +10,16 @@ import {
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
+import { disableIframeNavigation } from '@/test/iframe-navigation'
 import CardWrapper from '../card-wrapper'
 
-// Keep the real dialog/iframe while preventing navigation to a remote document.
-vi.mock('../../utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../utils')>()
-  return {
-    ...actual,
-    getPluginLinkInMarketplace: (...args: Parameters<typeof actual.getPluginLinkInMarketplace>) => {
-      const url = new URL(
-        actual.getPluginLinkInMarketplace(...args),
-        'https://marketplace.example.test',
-      )
-      return `about:blank${url.search}`
-    },
-  }
-})
+disableIframeNavigation()
+
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  MARKETPLACE_URL_PREFIX: 'https://marketplace.dify.ai',
+}))
+
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses, withConsoleClientResponses } =
@@ -108,8 +102,11 @@ describe('CardWrapper', () => {
     ).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Plugin A' }))
     expect(await screen.findByRole('dialog', { name: detailTitle })).toBeInTheDocument()
-    const src = screen.getByTitle(detailTitle).getAttribute('src')!
-    expect(new URL(src).searchParams.get('canInstall')).toBe('false')
+    const src = screen.getByTitle<HTMLIFrameElement>(detailTitle).src
+    const url = new URL(src)
+    expect(url.origin).toBe('https://marketplace.dify.ai')
+    expect(url.pathname).toBe('/plugins/dify/plugin-a')
+    expect(url.searchParams.get('canInstall')).toBe('false')
   })
 
   it('links explicitly enabled cards to marketplace details and records their click', async () => {
@@ -148,7 +145,7 @@ describe('CardWrapper', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.detail' }))
     await screen.findByRole('dialog', { name: detailTitle })
-    const src = screen.getByTitle(detailTitle).getAttribute('src')!
+    const src = screen.getByTitle<HTMLIFrameElement>(detailTitle).src
     expect(new URL(src).searchParams.get('installed')).toBe('true')
     expect(screen.queryByRole('dialog', { name: installTitle })).not.toBeInTheDocument()
   })
@@ -180,5 +177,8 @@ describe('CardWrapper', () => {
     renderCardWrapper({ plugin: { ...plugin, type: 'bundle' } }, 'COMMUNITY')
     await user.click(screen.getByRole('button', { name: 'Plugin A' }))
     expect(await screen.findByRole('dialog', { name: detailTitle })).toBeInTheDocument()
+    expect(new URL(screen.getByTitle<HTMLIFrameElement>(detailTitle).src).pathname).toBe(
+      '/bundles/dify/plugin-a',
+    )
   })
 })

@@ -2,8 +2,16 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { disableIframeNavigation } from '@/test/iframe-navigation'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import EmbeddedMarketplaceSearch from '../embedded-marketplace-search'
+
+disableIframeNavigation()
+
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  MARKETPLACE_URL_PREFIX: 'https://marketplace.dify.ai',
+}))
 
 const deploymentState = vi.hoisted(() => ({
   deploymentEdition: 'CLOUD' as 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE',
@@ -80,19 +88,6 @@ vi.mock('@/next/navigation', () => ({
 vi.mock('../../detail-dialog/use-silent-install', () => ({
   useSilentMarketplaceInstall: () => ({ install: vi.fn() }),
 }))
-// Exercise real dialog/frame message handling without loading external documents.
-vi.mock('../../utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../utils')>()
-  return {
-    ...actual,
-    getPluginLinkInMarketplace: (...args: Parameters<typeof actual.getPluginLinkInMarketplace>) =>
-      `about:blank${new URL(actual.getPluginLinkInMarketplace(...args), 'https://marketplace.example.test').search}`,
-    getTemplateLinkInMarketplace: (
-      ...args: Parameters<typeof actual.getTemplateLinkInMarketplace>
-    ) =>
-      `about:blank${new URL(actual.getTemplateLinkInMarketplace(...args), 'https://marketplace.example.test').search}`,
-  }
-})
 const plugin = {
   type: 'plugin',
   org: 'langgenius',
@@ -140,7 +135,10 @@ describe('EmbeddedMarketplaceSearch', () => {
 
     await screen.findByRole('dialog', { name: /Google Search/ })
     const pluginFrame = screen.getByTitle(/^Google Search/)
-    expect(new URL(pluginFrame.getAttribute('src')!).searchParams.get('installed')).toBe('false')
+    const pluginUrl = new URL(pluginFrame.getAttribute('src')!)
+    expect(pluginUrl.origin).toBe('https://marketplace.dify.ai')
+    expect(pluginUrl.pathname).toBe('/plugins/langgenius/google-search')
+    expect(pluginUrl.searchParams.get('installed')).toBe('false')
     expect(onUrlUpdate).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'operation.close' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
@@ -149,11 +147,14 @@ describe('EmbeddedMarketplaceSearch', () => {
     await user.click(await screen.findByRole('option', { name: /Legal Research Agent/ }))
     await screen.findByRole('dialog', { name: /Legal Research Agent/ })
     const frame = screen.getByTitle(/^Legal Research Agent/) as HTMLIFrameElement
+    const templateUrl = new URL(frame.src)
+    expect(templateUrl.origin).toBe('https://marketplace.dify.ai')
+    expect(templateUrl.pathname).toBe('/template/dify/template-1')
     fireEvent(
       window,
       new MessageEvent('message', {
         data: { type: 'dify-marketplace:install-template', templateId: 'template-1' },
-        origin: 'null',
+        origin: 'https://marketplace.dify.ai',
         source: frame.contentWindow,
       }),
     )

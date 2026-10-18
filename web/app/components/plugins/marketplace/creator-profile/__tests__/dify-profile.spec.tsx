@@ -6,8 +6,16 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { disableIframeNavigation } from '@/test/iframe-navigation'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import DifyCreatorProfile from '../dify-profile'
+
+disableIframeNavigation()
+
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  MARKETPLACE_URL_PREFIX: 'https://marketplace.dify.ai',
+}))
 
 const deploymentState = vi.hoisted(() => ({
   deploymentEdition: 'CLOUD' as 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE',
@@ -145,19 +153,6 @@ vi.mock('@/app/components/plugins/install-plugin/hooks/use-check-installed', () 
 vi.mock('../../detail-dialog/use-silent-install', () => ({
   useSilentMarketplaceInstall: () => ({ install: vi.fn() }),
 }))
-// Exercise real dialog/frame message handling without loading external documents.
-vi.mock('../../utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../utils')>()
-  return {
-    ...actual,
-    getPluginLinkInMarketplace: (...args: Parameters<typeof actual.getPluginLinkInMarketplace>) =>
-      `about:blank${new URL(actual.getPluginLinkInMarketplace(...args), 'https://marketplace.example.test').search}`,
-    getTemplateLinkInMarketplace: (
-      ...args: Parameters<typeof actual.getTemplateLinkInMarketplace>
-    ) =>
-      `about:blank${new URL(actual.getTemplateLinkInMarketplace(...args), 'https://marketplace.example.test').search}`,
-  }
-})
 vi.mock('@/service/marketplace', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/marketplace')>()
   return {
@@ -210,7 +205,10 @@ describe('DifyCreatorProfile', () => {
 
     await screen.findByRole('dialog', { name: /Deep Research/ })
     const src = screen.getByTitle(/^Deep Research/).getAttribute('src')!
-    expect(new URL(src).searchParams.get('installed')).toBe('true')
+    const url = new URL(src)
+    expect(url.origin).toBe('https://marketplace.dify.ai')
+    expect(url.pathname).toBe('/plugins/dify/deep_research')
+    expect(url.searchParams.get('installed')).toBe('true')
   })
 
   it('opens a template detail and imports it inside Dify', async () => {
@@ -220,11 +218,12 @@ describe('DifyCreatorProfile', () => {
     await user.click(screen.getByRole('button', { name: 'Research Template' }))
     await screen.findByRole('dialog', { name: /Research Template/ })
     const frame = screen.getByTitle(/^Research Template/) as HTMLIFrameElement
+    expect(new URL(frame.src).pathname).toBe('/template/dify/template-one')
     fireEvent(
       window,
       new MessageEvent('message', {
         data: { type: 'dify-marketplace:install-template', templateId: 'template-one' },
-        origin: 'null',
+        origin: 'https://marketplace.dify.ai',
         source: frame.contentWindow,
       }),
     )

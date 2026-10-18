@@ -11,7 +11,6 @@ const renderHook = <Result, Props = void>(callback: (props: Props) => Result) =>
 const {
   changeLanguageMock,
   fetchSavedMessageMock,
-  getRawInputsFromUrlParamsMock,
   notifyMock,
   removeMessageMock,
   saveMessageMock,
@@ -20,7 +19,6 @@ const {
 } = vi.hoisted(() => ({
   changeLanguageMock: vi.fn(() => Promise.resolve()),
   fetchSavedMessageMock: vi.fn(),
-  getRawInputsFromUrlParamsMock: vi.fn(),
   notifyMock: vi.fn(),
   removeMessageMock: vi.fn(),
   saveMessageMock: vi.fn(),
@@ -50,10 +48,6 @@ vi.mock('@/hooks/use-document-title', () => ({
 
 vi.mock('@/i18n/client', () => ({
   changeLanguage: changeLanguageMock,
-}))
-
-vi.mock('@/app/components/base/chat/utils', () => ({
-  getRawInputsFromUrlParams: getRawInputsFromUrlParamsMock,
 }))
 
 vi.mock('@/service/share', async () => {
@@ -174,6 +168,16 @@ vi.mock('@/context/web-app-context', () => ({
     selector(mockWebAppState),
 }))
 
+const originalUrl = window.location.href
+
+afterEach(() => {
+  window.history.replaceState(null, '', originalUrl)
+})
+
+const setUrlInputs = (inputs: Record<string, string>) => {
+  window.history.replaceState(null, '', `?${new URLSearchParams(inputs)}`)
+}
+
 describe('useTextGenerationAppState', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -183,7 +187,7 @@ describe('useTextGenerationAppState', () => {
     })
     removeMessageMock.mockResolvedValue(undefined)
     saveMessageMock.mockResolvedValue(undefined)
-    getRawInputsFromUrlParamsMock.mockResolvedValue({})
+    window.history.replaceState(null, '', '/workflow/app-123')
   })
 
   it('should initialize app state and fetch saved messages for non-workflow web apps', async () => {
@@ -348,8 +352,8 @@ describe('useTextGenerationAppState', () => {
         },
       ],
     }
-    getRawInputsFromUrlParamsMock.mockResolvedValue({
-      secret: 'prefilled-secret',
+    setUrlInputs({
+      secret: '机密 + / %2F',
     })
 
     const { result } = renderHook(() =>
@@ -369,24 +373,23 @@ describe('useTextGenerationAppState', () => {
           expect.objectContaining({
             key: 'secret',
             hide: true,
-            default: 'prefilled-secret',
+            default: '机密 + / %2F',
           }),
         ]),
       )
     })
 
-    expect(getRawInputsFromUrlParamsMock).toHaveBeenCalled()
     expect(fetchSavedMessageMock).not.toHaveBeenCalled()
   })
 
-  it('should coerce checkbox url defaults from string and boolean values', async () => {
+  it('coerces checkbox URL strings and keeps the configured default for invalid values', async () => {
     mockWebAppState.appParams = {
       ...defaultAppParams,
       user_input_form: [
         {
           checkbox: {
-            label: 'Bool True',
-            variable: 'bool_true',
+            label: 'Uppercase True',
+            variable: 'upper_true',
             required: false,
             default: false,
             hide: true,
@@ -421,8 +424,8 @@ describe('useTextGenerationAppState', () => {
         },
       ],
     }
-    getRawInputsFromUrlParamsMock.mockResolvedValue({
-      bool_true: true,
+    setUrlInputs({
+      upper_true: 'TRUE',
       str_true: 'true',
       str_false: 'false',
       invalid_cb: 'invalid',
@@ -438,7 +441,7 @@ describe('useTextGenerationAppState', () => {
     await waitFor(() => {
       expect(result.current.promptConfig?.prompt_variables).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ key: 'bool_true', default: true }),
+          expect.objectContaining({ key: 'upper_true', default: true }),
           expect.objectContaining({ key: 'str_true', default: true }),
           expect.objectContaining({ key: 'str_false', default: false }),
           expect.objectContaining({ key: 'invalid_cb', default: false }),
@@ -471,7 +474,7 @@ describe('useTextGenerationAppState', () => {
         },
       ],
     }
-    getRawInputsFromUrlParamsMock.mockResolvedValue({
+    setUrlInputs({
       num_valid: '42',
       num_nan: 'not-a-number',
     })
@@ -519,7 +522,7 @@ describe('useTextGenerationAppState', () => {
         },
       ],
     }
-    getRawInputsFromUrlParamsMock.mockResolvedValue({
+    setUrlInputs({
       sel_valid: 'beta',
       sel_invalid: 'gamma',
     })
@@ -541,38 +544,42 @@ describe('useTextGenerationAppState', () => {
     })
   })
 
-  it('should ignore non-string url values for text inputs', async () => {
+  it('truncates URL text to the configured limit', async () => {
     mockWebAppState.appParams = {
       ...defaultAppParams,
       user_input_form: [
         {
           'text-input': {
-            label: 'Text Field',
-            variable: 'text_field',
+            label: 'Text',
+            variable: 'text',
             required: false,
-            max_length: 48,
-            default: 'original',
+            max_length: 5,
+            default: 'old',
             hide: true,
           },
         },
       ],
     }
-    getRawInputsFromUrlParamsMock.mockResolvedValue({
-      text_field: 12345,
-    })
-
+    setUrlInputs({ text: '123456789' })
     const { result } = renderHook(() =>
-      useTextGenerationAppState({
-        isInstalledApp: false,
-        isWorkflow: true,
-      }),
+      useTextGenerationAppState({ isInstalledApp: false, isWorkflow: true }),
     )
-
     await waitFor(() => {
       expect(result.current.promptConfig?.prompt_variables).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ key: 'text_field', default: 'original' }),
-        ]),
+        expect.arrayContaining([expect.objectContaining({ key: 'text', default: '12345' })]),
+      )
+    })
+  })
+
+  it.each([
+    { isInstalledApp: true, isWorkflow: true },
+    { isInstalledApp: false, isWorkflow: false },
+  ])('keeps configured defaults outside public workflows: %j', async (options) => {
+    setUrlInputs({ name: 'URL override' })
+    const { result } = renderHook(() => useTextGenerationAppState(options))
+    await waitFor(() => {
+      expect(result.current.promptConfig?.prompt_variables).toEqual(
+        expect.arrayContaining([expect.objectContaining({ key: 'name', default: 'Alice' })]),
       )
     })
   })

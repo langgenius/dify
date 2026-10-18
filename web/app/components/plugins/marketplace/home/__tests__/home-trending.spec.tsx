@@ -7,8 +7,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { disableIframeNavigation } from '@/test/iframe-navigation'
 import { mockIntersectionObserver } from '@/test/intersection-observer'
 import HomeTrending from '../home-trending'
+
+disableIframeNavigation()
+
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  MARKETPLACE_URL_PREFIX: 'https://marketplace.dify.ai',
+}))
 
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
@@ -34,20 +42,6 @@ vi.mock('@/service/plugins', async (importOriginal) => ({
       },
     })),
 }))
-
-// Keep real dialogs and message handling without loading external documents.
-vi.mock('../../utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../utils')>()
-  return {
-    ...actual,
-    getPluginLinkInMarketplace: (...args: Parameters<typeof actual.getPluginLinkInMarketplace>) =>
-      `about:blank${new URL(actual.getPluginLinkInMarketplace(...args), 'https://marketplace.example.test').search}`,
-    getTemplateLinkInMarketplace: (
-      ...args: Parameters<typeof actual.getTemplateLinkInMarketplace>
-    ) =>
-      `about:blank${new URL(actual.getTemplateLinkInMarketplace(...args), 'https://marketplace.example.test').search}`,
-  }
-})
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -630,6 +624,11 @@ describe('HomeTrending', () => {
     expect(
       screen.getByRole('dialog', { name: 'Dropbox · plugin.detailPanel.operation.detail' }),
     ).toBeInTheDocument()
+    const url = new URL(
+      screen.getByTitle<HTMLIFrameElement>('Dropbox · plugin.detailPanel.operation.detail').src,
+    )
+    expect(url.origin).toBe('https://marketplace.dify.ai')
+    expect(url.pathname).toBe('/plugins/langgenius/dropbox')
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(mockTrackMarketplaceSiteEvent).toHaveBeenCalledWith(
@@ -681,6 +680,11 @@ describe('HomeTrending', () => {
     expect(
       screen.getByRole('dialog', { name: 'Support Bot · plugin.detailPanel.operation.detail' }),
     ).toBeInTheDocument()
+    const url = new URL(
+      screen.getByTitle<HTMLIFrameElement>('Support Bot · plugin.detailPanel.operation.detail').src,
+    )
+    expect(url.origin).toBe('https://marketplace.dify.ai')
+    expect(url.pathname).toBe('/template/aisa-team/tpl-1')
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(mockTrackMarketplaceSiteEvent).toHaveBeenCalledWith(
@@ -723,6 +727,11 @@ describe('HomeTrending', () => {
     expect(
       screen.getByRole('dialog', { name: 'Baserow · plugin.detailPanel.operation.detail' }),
     ).toBeInTheDocument()
+    const url = new URL(
+      screen.getByTitle<HTMLIFrameElement>('Baserow · plugin.detailPanel.operation.detail').src,
+    )
+    expect(url.origin).toBe('https://marketplace.dify.ai')
+    expect(url.pathname).toBe('/plugins/langgenius/baserow')
   })
 
   it('links recommend template cards by ID with the served author or template fallback', () => {

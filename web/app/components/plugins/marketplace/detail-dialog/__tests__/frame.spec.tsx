@@ -1,10 +1,13 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vite-plus/test'
+import { disableIframeNavigation } from '@/test/iframe-navigation'
 import MarketplaceDetailDialogFrame from '../frame'
 
+disableIframeNavigation()
+
 const title = 'Plugin details'
-const src = 'about:blank?plugin=first'
+const src = 'https://marketplace.dify.ai/plugins/dify/first'
 const closeName = 'common.operation.close'
 const previewMessage = { type: 'dify-marketplace:image-preview', open: true }
 
@@ -15,7 +18,7 @@ function sendMessage(data: unknown, options?: MessageEventInit) {
     window,
     new MessageEvent('message', {
       data,
-      origin: 'null',
+      origin: 'https://marketplace.dify.ai',
       source: getFrame().contentWindow,
       ...options,
     }),
@@ -46,6 +49,9 @@ describe('MarketplaceDetailDialogFrame image preview', () => {
     render(<MarketplaceDetailDialogFrame open src={src} title={title} onOpenChange={vi.fn()} />)
 
     sendMessage(previewMessage, { origin: 'https://another-marketplace.example' })
+    expect(screen.getByRole('button', { name: closeName })).toBeInTheDocument()
+
+    sendMessage(previewMessage, { origin: 'null' })
     expect(screen.getByRole('button', { name: closeName })).toBeInTheDocument()
 
     sendMessage(previewMessage, { source: window })
@@ -93,7 +99,7 @@ describe('MarketplaceDetailDialogFrame image preview', () => {
     sendMessage(request)
 
     expect(onMessage).toHaveBeenCalledWith(request, expect.any(Function))
-    expect(postMessage).toHaveBeenCalledWith(response, 'null')
+    expect(postMessage).toHaveBeenCalledWith(response, 'https://marketplace.dify.ai')
   })
 
   it('keeps an active preview above the close button when the iframe load arrives after fallback reveal', async () => {
@@ -125,7 +131,7 @@ describe('MarketplaceDetailDialogFrame image preview', () => {
     rerender(
       <MarketplaceDetailDialogFrame
         open
-        src="about:blank?plugin=second"
+        src="https://marketplace.dify.ai/plugins/dify/second"
         title={title}
         onOpenChange={onOpenChange}
       />,

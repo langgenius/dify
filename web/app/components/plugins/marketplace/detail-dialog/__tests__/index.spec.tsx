@@ -9,21 +9,20 @@ import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
+import { disableIframeNavigation } from '@/test/iframe-navigation'
 import MarketplaceDetailDialog from '../index'
+
+disableIframeNavigation()
+
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  MARKETPLACE_URL_PREFIX: 'https://marketplace.dify.ai',
+}))
 
 const mocks = vi.hoisted(() => ({
   install: vi.fn<typeof consoleClient.workspaces.current.plugin.install.marketplace.post>(),
 }))
 
-// Preserve query construction while keeping the external iframe document local.
-vi.mock('../../utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../utils')>()
-  return {
-    ...actual,
-    getPluginLinkInMarketplace: (...args: Parameters<typeof actual.getPluginLinkInMarketplace>) =>
-      `about:blank${new URL(actual.getPluginLinkInMarketplace(...args), 'https://marketplace.example.test').search}`,
-  }
-})
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleClientResponses, withConsoleResponses } =
@@ -68,7 +67,10 @@ describe('MarketplaceDetailDialog', () => {
     )
 
     const frame = screen.getByTitle('Plugin A · plugin.detailPanel.operation.detail')
-    const params = new URL(frame.getAttribute('src')!).searchParams
+    const url = new URL(frame.getAttribute('src')!)
+    expect(url.origin).toBe('https://marketplace.dify.ai')
+    expect(url.pathname).toBe('/plugins/dify/plugin-a')
+    const params = url.searchParams
     expect(Object.fromEntries(params)).toMatchObject({
       installed: 'true',
       language: 'en-US',
@@ -98,12 +100,22 @@ describe('MarketplaceDetailDialog', () => {
       type: 'dify-marketplace:install-plugin',
       pluginUniqueIdentifier: plugin.latest_package_identifier,
     }
+    for (const origin of ['https://attacker.example', 'null']) {
+      fireEvent(
+        window,
+        new MessageEvent('message', {
+          data: installRequest,
+          origin,
+          source: frame.contentWindow,
+        }),
+      )
+    }
     fireEvent(
       window,
       new MessageEvent('message', {
         data: installRequest,
-        origin: 'https://attacker.example',
-        source: frame.contentWindow,
+        origin: 'https://marketplace.dify.ai',
+        source: window,
       }),
     )
     fireEvent(
@@ -113,7 +125,7 @@ describe('MarketplaceDetailDialog', () => {
           ...installRequest,
           pluginUniqueIdentifier: 'another/plugin:1.0.0',
         },
-        origin: 'null',
+        origin: 'https://marketplace.dify.ai',
         source: frame.contentWindow,
       }),
     )
@@ -123,7 +135,7 @@ describe('MarketplaceDetailDialog', () => {
       window,
       new MessageEvent('message', {
         data: installRequest,
-        origin: 'null',
+        origin: 'https://marketplace.dify.ai',
         source: frame.contentWindow,
       }),
     )
@@ -141,7 +153,7 @@ describe('MarketplaceDetailDialog', () => {
           pluginUniqueIdentifier: plugin.latest_package_identifier,
           status: 'success',
         },
-        'null',
+        'https://marketplace.dify.ai',
       )
     })
   })
@@ -172,7 +184,7 @@ describe('MarketplaceDetailDialog', () => {
           type: 'dify-marketplace:install-plugin',
           pluginUniqueIdentifier: plugin.latest_package_identifier,
         },
-        origin: 'null',
+        origin: 'https://marketplace.dify.ai',
         source: frame.contentWindow,
       }),
     )
@@ -185,7 +197,7 @@ describe('MarketplaceDetailDialog', () => {
           pluginUniqueIdentifier: plugin.latest_package_identifier,
           status: 'failed',
         },
-        'null',
+        'https://marketplace.dify.ai',
       )
     })
   })
@@ -218,7 +230,7 @@ describe('MarketplaceDetailDialog', () => {
             type: 'dify-marketplace:install-plugin',
             pluginUniqueIdentifier: plugin.latest_package_identifier,
           },
-          origin: 'null',
+          origin: 'https://marketplace.dify.ai',
           source: frame.contentWindow,
         }),
       )
@@ -230,7 +242,7 @@ describe('MarketplaceDetailDialog', () => {
           pluginUniqueIdentifier: plugin.latest_package_identifier,
           status: 'timeout',
         },
-        'null',
+        'https://marketplace.dify.ai',
       )
 
       await act(async () => {
