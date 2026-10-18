@@ -549,7 +549,7 @@ def test_declined_terminal_proof_closes_same_builder_attempt_and_returns_editabl
 
 
 @pytest.fixture
-def declining(completed, monkeypatch):
+def declining(completed, monkeypatch, request):
     """Real original SQL owners; private checkpoint reader and backend are bounded ports."""
     from models.dify_builder_native_tests import (
         NativeContinuation,
@@ -562,6 +562,7 @@ def declining(completed, monkeypatch):
     from tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_continuation import saved_state
 
     owner = completed
+    generation = getattr(request, "param", 1)
     saved, execution_id = saved_state(ref=owner.ref, run_id=owner.native_id)
     pause_id = str(uuid4())
     owned = SimpleNamespace(
@@ -586,6 +587,10 @@ def declining(completed, monkeypatch):
         sql.get(DifyBuilderExecutionRequest, owner.request_id).state = "waiting"
         state = sql.scalar(select(NativeInvocationState))
         state.state, state.outcome, state.checkpoint_id = "waiting", None, "checkpoint"
+        state.generation = generation
+        scope = sql.get(NativeTestScope, owner.request_id)
+        scope.generation = generation
+        scope.spent_dispatches = generation
         state.cleanup_complete = False
         sql.scalar(select(NativeEffectOperation)).state = "denied"
         pause = WorkflowPause(
@@ -608,24 +613,25 @@ def declining(completed, monkeypatch):
                 tenant_id=owned.tenant_id, request_id=owner.request_id, invocation_id="root", active=True, bindings={}
             )
         )
-        sql.add(
-            NativeDispatch(
-                id="source",
-                tenant_id=owned.tenant_id,
-                request_id=owner.request_id,
-                invocation_id="root",
-                generation=1,
-                state="completed",
-                checkpoint_id="checkpoint",
-                idempotency_digest="f" * 64,
+        if generation:
+            sql.add(
+                NativeDispatch(
+                    id="source",
+                    tenant_id=owned.tenant_id,
+                    request_id=owner.request_id,
+                    invocation_id="root",
+                    generation=1,
+                    state="completed",
+                    checkpoint_id="checkpoint",
+                    idempotency_digest="f" * 64,
+                )
             )
-        )
         sql.add(
             NativeContinuation(
                 tenant_id=owned.tenant_id,
                 request_id=owner.request_id,
                 invocation_id="root",
-                generation=1,
+                generation=generation,
                 checkpoint_id="checkpoint",
                 payload_ref="checkpoint-storage",
                 payload_digest="d" * 64,
@@ -667,7 +673,7 @@ def declining(completed, monkeypatch):
         load_agent_association=lambda **_: protected,
         read_checkpoint=lambda **_: SimpleNamespace(
             native_run_id=owner.native_id,
-            generation=1,
+            generation=generation,
             agent_associations=(wait,),
             graph_runtime_state_json=saved.serialized_graph_runtime_state,
         ),
@@ -705,7 +711,7 @@ def declining(completed, monkeypatch):
             native = sql.get(WorkflowRun, owner.native_id)
             return NativeTestPublicReceipt(
                 request_id=owner.request_id,
-                generation=1,
+                generation=generation,
                 version=2,
                 status="running",
                 wait_reason=None,
@@ -715,7 +721,7 @@ def declining(completed, monkeypatch):
                 outcome=None,
                 evidence_refs=(owner.native_id,),
                 cancellation=CancellationReceipt(
-                    request_id=owner.request_id, generation=1, status="cancelling", operation_states={}
+                    request_id=owner.request_id, generation=generation, status="cancelling", operation_states={}
                 ),
             )
 
@@ -734,6 +740,112 @@ def declining(completed, monkeypatch):
     )
     owner.paused = paused
     return owner
+
+
+@pytest.mark.parametrize("declining", [0], indirect=True)
+def test_initial_ordinary_run_without_dispatch_settles_same_declined_attempt_once(declining):
+    """The initial ordinary generator owns a generation-zero pause without a dispatch row."""
+    from models.dify_builder_native_tests import NativeDispatch
+    from models.workflow import Workflow, WorkflowPause
+
+    owner = declining
+    with owner.factory() as sql:
+        assert sql.scalars(select(NativeDispatch)).all() == []
+        assert sql.get(NativeTestScope, owner.request_id).generation == 0
+        graph = sql.get(Workflow, owner.case.workflow.id).graph
+    receipt = owner.commands.cancel(
+        actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id, idempotency_key="deny"
+    )
+    assert receipt.status == "terminal"
+    assert receipt.outcome == "cancelled"
+    assert receipt.native_status == "stopped"
+    assert receipt.cancellation.status == "cancelling"
+    with owner.factory() as sql:
+        native = sql.get(WorkflowRun, owner.native_id)
+        assert native.status == "stopped"
+        finished_at = native.finished_at
+        assert finished_at is not None
+        assert sql.scalar(select(WorkflowPause)) is None
+        assert sql.scalars(select(NativeDispatch)).all() == []
+        assert not sql.scalar(select(NativeInvocationState)).cleanup_complete
+        assert sql.get(Workflow, owner.case.workflow.id).graph == graph
+    verify = owner.repo.get_run(owner.verify_id)
+    assert verify.status == "failed"
+    assert verify.dify_run_id == owner.native_id
+    assert verify.inputs_ref == owner.saved_id
+    assert verify.immutable
+    session, _ = owner.repo.get_session(owner.session.id)
+    assert session.current_state == PcState.BUILD_REVIEW
+    assert observe(owner).outcome == "cancelled"
+    assert owner.repo.get_session(owner.session.id)[0].version == session.version
+    with owner.factory() as sql:
+        assert sql.get(WorkflowRun, owner.native_id).finished_at == finished_at
+        assert sql.scalars(select(NativeDispatch)).all() == []
+    assert (
+        len(
+            [
+                item
+                for item in owner.repo.list_conversation_page(owner.session.id, limit=20).data
+                if item.kind == "test_result"
+            ]
+        )
+        == 1
+    )
+
+
+@pytest.mark.parametrize("source", ["missing", "earlier_generation"])
+def test_later_generation_requires_its_completed_source_before_declined_settlement(declining, source):
+    from models.dify_builder_native_tests import NativeDispatch
+
+    owner = declining
+    with owner.factory.begin() as sql:
+        dispatch = sql.get(NativeDispatch, "source")
+        if source == "missing":
+            sql.delete(dispatch)
+        else:
+            dispatch.generation = 0
+    owner.commands.cancel(
+        actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id, idempotency_key="deny"
+    )
+    with owner.factory() as sql:
+        assert sql.get(WorkflowRun, owner.native_id).status == "paused"
+        assert sql.scalar(select(NativeInvocationState)).outcome is None
+    assert owner.repo.get_run(owner.verify_id).status == "running"
+
+
+@pytest.mark.parametrize("declining", [0], indirect=True)
+@pytest.mark.parametrize("dispatch_state", ["completed", "claimed"])
+def test_initial_no_source_proof_refuses_dispatch_added_after_child_cancel(declining, dispatch_state):
+    from models.dify_builder_native_tests import NativeDispatch
+
+    owner = declining
+    original = owner.commands.backend.cancel_run
+
+    def raced(child):
+        original(child)
+        with owner.factory.begin() as sql:
+            sql.add(
+                NativeDispatch(
+                    id="racing-dispatch",
+                    tenant_id=owner.case.actor.tenant_id,
+                    request_id=owner.request_id,
+                    invocation_id=owner.ref.invocation_id,
+                    generation=0,
+                    state=dispatch_state,
+                    checkpoint_id="checkpoint",
+                    idempotency_digest="f" * 64,
+                )
+            )
+
+    owner.commands.backend.cancel_run = raced
+    owner.commands.cancel(
+        actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id, idempotency_key="deny"
+    )
+    with owner.factory() as sql:
+        assert sql.get(WorkflowRun, owner.native_id).status == "paused"
+        assert sql.scalar(select(NativeInvocationState)).outcome is None
+        assert not sql.scalar(select(NativeInvocationState)).cleanup_complete
+    assert owner.repo.get_run(owner.verify_id).status == "running"
 
 
 def test_cancel_settles_original_paused_native_without_claiming_physical_cleanup(declining):

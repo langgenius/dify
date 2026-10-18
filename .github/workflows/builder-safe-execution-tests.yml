@@ -423,6 +423,7 @@ jobs:
           FILES += [path for path in ['api/tests/unit_tests/services/dify_builder/native_testing/test_confirmed_agent_completion.py'] if path not in FILES]
           FILES += [path for path in ['api/tests/unit_tests/services/dify_builder/test_agent_model_result_canonical.py'] if path not in FILES]
           FILES += ['api/tests/unit_tests/services/dify_builder/test_output_evidence.py']
+          FILES += ['api/tests/unit_tests/services/test_workflow_run_service_pause.py']
           SELECTED_GUARDS = [
               "api/tests/unit_tests/controllers/console/app/test_workflow.py::test_sync_draft_workflow_rejects_empty_graph_without_confirmation",
           ]
@@ -736,6 +737,21 @@ jobs:
           a4_expected.setdefault('tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion', {}).update({
               'test_cancel_retry_refuses_missing_forged_stale_or_foreign_retained_proof': 5,
               'test_explicit_cancel_retry_reaches_same_child_after_real_active_reader_refusal': 1,
+          })
+          # Native scheduling waits have no human form and must not become HTTP 500.
+          a4_expected['tests.unit_tests.services.test_workflow_run_service_pause'] = {
+              'test_get_pause_details_keeps_human_form_when_scheduling_also_waits': 2,
+              'test_get_pause_details_maps_human_input_and_token': 1,
+              'test_get_pause_details_preserves_scheduling_pause_without_exposing_private_message': 1,
+              'test_get_pause_details_rejects_unsupported_pause_reason': 1,
+              'test_get_pause_details_returns_empty_details_for_non_paused_run': 1,
+              'test_get_pause_details_returns_none_when_run_is_not_found': 1,
+          }
+          # The ordinary initial Agent run has no continuation dispatch row.
+          a4_expected.setdefault('tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion', {}).update({
+              'test_initial_no_source_proof_refuses_dispatch_added_after_child_cancel': 2,
+              'test_initial_ordinary_run_without_dispatch_settles_same_declined_attempt_once': 1,
+              'test_later_generation_requires_its_completed_source_before_declined_settlement': 2,
           })
           for module, expected in {**a3_expected, **a4_expected}.items():
               actual = {}

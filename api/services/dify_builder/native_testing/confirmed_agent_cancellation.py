@@ -183,8 +183,12 @@ class ConfirmedAgentCancellation:
             and len(continuations) == 1
             and len(states) == 1
             and states[0].invocation_id == ref.invocation_id
-            and bool(sources)
-            and any(source.generation == state.generation for source in sources)
+            # Initial confirmed runs use the ordinary generator directly;
+            # only later native resumes require a durable dispatch source.
+            and (
+                (state.generation == 0 and not sources)
+                or (bool(sources) and any(source.generation == state.generation for source in sources))
+            )
             and all(
                 source.tenant_id == owned.tenant_id
                 and source.invocation_id == ref.invocation_id
