@@ -267,7 +267,7 @@ const usePipelineRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
 
       abortControllerRef.current = null
     },
-    [workflowStore],
+    [pipelineId],
   )
 
   const handleRestoreFromPublishedWorkflow = useCallback(
