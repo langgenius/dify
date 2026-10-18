@@ -359,7 +359,7 @@ def test_prepare_updated_config_reports_decryption_failure_as_processing_error(
         ("weave", "https://wandb.ai/"),
         ("aliyun", "https://arms.console.aliyun.com/"),
         ("tencent", "https://console.cloud.tencent.com/apm"),
-        ("mlflow", "http://localhost:5000/"),
+        ("mlflow", "http://localhost:5000/#/experiments/0/traces"),
         ("databricks", "https://www.databricks.com/"),
     ],
 )
@@ -380,7 +380,11 @@ def test_present_config_uses_provider_fallback_when_project_lookup_fails(
             tracing_config={"encrypted": "config"},
         )
 
-    assert result == {"project_url": fallback_url}
+        assert result == {"project_url": fallback_url}
+        if provider == "mlflow":
+            # OSS defaults produce a pure link; the failing legacy lookup is
+            # deliberately not reached, even when no cached URL is present.
+            manager.get_trace_config_project_url.assert_not_called()
 
 
 def test_present_langfuse_config_builds_project_url() -> None:

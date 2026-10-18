@@ -61,11 +61,12 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
         tracing_config: dict[str, Any],
     ) -> dict[str, Any]:
         provider_config = self._provider_config(tracing_provider)
-        normalized_config = (
-            self._normalize_tencent_config(tracing_config)
-            if tracing_provider == "tencent"
-            else self._normalize_config(provider_config, tracing_config)
-        )
+        if tracing_provider == "tencent":
+            normalized_config = self._normalize_tencent_config(tracing_config)
+        elif tracing_provider == "mlflow":
+            normalized_config = self._normalize_mlflow_config(tracing_config)
+        else:
+            normalized_config = self._normalize_config(provider_config, tracing_config)
         self._verify_config(normalized_config, tracing_provider)
 
         project_url = self._get_project_url(normalized_config, tracing_provider)
@@ -95,6 +96,8 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
             # Check the original URL before the legacy model discards its path
             # and query. Masked tokens are restored by encryption below.
             tracing_config = self._normalize_tencent_config(tracing_config)
+        elif tracing_provider == "mlflow":
+            tracing_config = self._normalize_mlflow_config(tracing_config)
         self._validate_config(provider_config, tracing_config)
         try:
             encrypted_config = OpsTraceManager.encrypt_tracing_config(
@@ -120,6 +123,9 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
             encrypted_config["project"] = decrypted_config["project"]
         elif tracing_provider == "databricks":
             encrypted_config["host"] = decrypted_config["host"]
+            encrypted_config["experiment_id"] = decrypted_config["experiment_id"]
+        elif tracing_provider == "mlflow":
+            encrypted_config["tracking_uri"] = decrypted_config["tracking_uri"]
             encrypted_config["experiment_id"] = decrypted_config["experiment_id"]
         elif tracing_provider == "opik":
             for key in ("url", "workspace", "project"):
@@ -168,6 +174,16 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
                 presented_config["project_url"] = project_url(config) or console_url(config)
             except ValueError:
                 presented_config["project_url"] = _PROJECT_URL_FALLBACKS["opik"]
+        elif tracing_provider == "mlflow":
+            from dify_trace_mlflow.config import MLflowConfig
+            from dify_trace_mlflow.oss_configuration import project_url
+
+            try:
+                presented_config["project_url"] = project_url(MLflowConfig.model_validate(decrypted_config))
+            except ValueError:
+                # OSS deployments have no universal project destination. Never
+                # initialize an SDK or substitute localhost for an invalid URL.
+                presented_config["project_url"] = None
         elif tracing_provider == "databricks":
             from dify_trace_mlflow.config import DatabricksConfig
             from dify_trace_mlflow.configuration import project_url
@@ -235,6 +251,15 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
             raise AppTracingConfigInvalidConfigurationError from error
 
     @staticmethod
+    def _normalize_mlflow_config(tracing_config: dict[str, Any]) -> dict[str, Any]:
+        from dify_trace_mlflow.oss_configuration import normalize_configuration
+
+        try:
+            return normalize_configuration(tracing_config).model_dump()
+        except ValueError as error:
+            raise AppTracingConfigInvalidConfigurationError from error
+
+    @staticmethod
     def _validate_config(
         provider_config: TracingProviderConfigEntry,
         tracing_config: dict[str, Any],
@@ -247,6 +272,18 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
 
     @staticmethod
     def _verify_config(tracing_config: dict[str, Any], tracing_provider: str) -> None:
+        if tracing_provider == "mlflow":
+            from dify_trace_mlflow.config import MLflowConfig
+            from dify_trace_mlflow.oss_configuration import MLflowConfigurationError, verify_configuration
+
+            try:
+                resolved = verify_configuration(MLflowConfig.model_validate(tracing_config))
+            except MLflowConfigurationError as error:
+                logger.warning("MLflow configuration verification failed: error_code=%s", error.code)
+                raise AppTracingConfigVerificationFailedError from error
+            tracing_config["tracking_uri"] = resolved.tracking_uri
+            tracing_config["experiment_id"] = resolved.experiment_id
+            return
         if tracing_provider == "tencent":
             from dify_trace_tencent.config import TencentConfig
             from dify_trace_tencent.configuration import TencentConfigurationError, verify_configuration
@@ -320,6 +357,11 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
                 from dify_trace_mlflow.configuration import project_url
 
                 return project_url(DatabricksConfig.model_validate(tracing_config))
+            if tracing_provider == "mlflow":
+                from dify_trace_mlflow.config import MLflowConfig
+                from dify_trace_mlflow.oss_configuration import project_url
+
+                return project_url(MLflowConfig.model_validate(tracing_config))
             if tracing_provider == "weave":
                 from dify_trace_weave.config import WeaveConfig
                 from dify_trace_weave.configuration import project_url
@@ -330,7 +372,7 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
             if tracing_provider == "langfuse":
                 project_key = OpsTraceManager.get_trace_config_project_key(tracing_config, tracing_provider)
                 return f"{tracing_config.get('host')}/project/{project_key}"
-            if tracing_provider in ("langsmith", "opik", "mlflow"):
+            if tracing_provider in ("langsmith", "opik"):
                 return OpsTraceManager.get_trace_config_project_url(tracing_config, tracing_provider)
         except Exception:
             return None
