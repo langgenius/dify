@@ -6,7 +6,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 
 from controllers.common.fields import BinaryFileResponse
-from controllers.common.file_response import enforce_download_for_html
+from controllers.common.file_response import enforce_download_for_html, requested_byte_range
 from controllers.common.schema import query_params_from_model, register_response_schema_model, register_schema_model
 from controllers.console.wraps import model_validate
 from controllers.service_api import service_api_ns
@@ -136,20 +136,43 @@ class FilePreviewApi(Resource):
             Flask Response object with streaming file content
         """
         file = preview.file
-        response = Response(
-            preview.content,
-            mimetype=file.mime_type,
-            direct_passthrough=True,
-            headers={},
-        )
 
-        # Add Content-Length if known
-        if file.size > 0:
-            response.headers["Content-Length"] = str(file.size)
-
-        # Add Accept-Ranges header for audio/video files to support seeking
-        if file.mime_type in _RANGE_MEDIA_TYPES:
+        # Honor single Range requests for audio/video files so clients can seek
+        byte_range = requested_byte_range(file.mime_type, file.size, _RANGE_MEDIA_TYPES)
+        if byte_range == "unsatisfiable":
+            response = Response(status=416)
+            response.headers["Content-Range"] = f"bytes */{file.size}"
             response.headers["Accept-Ranges"] = "bytes"
+            return response
+        if byte_range:
+            content = preview.content if isinstance(preview.content, bytes) else b"".join(preview.content)
+            start, end = byte_range
+            part = content[start : end + 1]
+            response = Response(
+                part,
+                status=206,
+                mimetype=file.mime_type,
+                direct_passthrough=True,
+                headers={},
+            )
+            response.headers["Content-Range"] = f"bytes {start}-{end}/{file.size}"
+            response.headers["Content-Length"] = str(len(part))
+            response.headers["Accept-Ranges"] = "bytes"
+        else:
+            response = Response(
+                preview.content,
+                mimetype=file.mime_type,
+                direct_passthrough=True,
+                headers={},
+            )
+
+            # Add Content-Length if known
+            if file.size > 0:
+                response.headers["Content-Length"] = str(file.size)
+
+            # Add Accept-Ranges header for audio/video files to support seeking
+            if file.mime_type in _RANGE_MEDIA_TYPES:
+                response.headers["Accept-Ranges"] = "bytes"
 
         # Set Content-Disposition for downloads
         if as_attachment and file.name:
