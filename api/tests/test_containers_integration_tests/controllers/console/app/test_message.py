@@ -10,7 +10,7 @@ from flask.testing import FlaskClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from controllers.console.app.message import ChatMessagesQuery, MessageFeedbackPayload
+from controllers.console.app.message import AppMessageFeedbackPayload, ChatMessagesQuery
 from controllers.console.app.message import attach_message_extra_contents as _attach_message_extra_contents
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from libs.datetime_utils import naive_utc_now
@@ -99,7 +99,7 @@ class TestMessageValidators:
 
     def test_message_feedback_validators(self) -> None:
         assert (
-            MessageFeedbackPayload.validate_message_id("123e4567-e89b-12d3-a456-426614174000")
+            AppMessageFeedbackPayload.validate_message_id("123e4567-e89b-12d3-a456-426614174000")
             == "123e4567-e89b-12d3-a456-426614174000"
         )
 

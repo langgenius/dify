@@ -143,7 +143,6 @@
   "retrieval.full_text_search.title": "Pesquisa de Texto Completo",
   "retrieval.hybrid_search.description": "Execute pesquisas de texto completo e pesquisas vetoriais simultaneamente, reclassifique para selecionar a melhor correspondência para a consulta do usuário. A configuração da API do modelo de reclassificação é necessária.",
   "retrieval.hybrid_search.title": "Pesquisa Híbrida",
-  "retrieval.invertedIndex.title": "Índice Invertido",
   "retrieval.keyword_search.description": "O Índice Invertido é uma estrutura usada para recuperação eficiente. Organizado por termos, cada termo aponta para documentos ou páginas da web que o contêm.",
   "retrieval.keyword_search.title": "Índice invertido",
   "retrieval.semantic_search.description": "Gere incorporações de consulta e pesquise o trecho de texto mais semelhante à sua representação vetorial.",

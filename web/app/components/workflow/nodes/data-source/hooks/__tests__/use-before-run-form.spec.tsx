@@ -1,108 +1,41 @@
+import type { WorkflowRunNodeExecutionResponse } from '@dify/contracts/api/console/rag/types.gen'
+import type { ReactNode } from 'react'
 import type { CustomRunFormProps, DataSourceNodeType } from '../../types'
-import type { NodeRunResult, VarInInspect } from '@/types/workflow'
-import { act } from '@testing-library/react'
-import { useStoreApi } from 'reactflow'
-import {
-  useDataSourceStore,
-  useDataSourceStoreWithSelector,
-} from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
-import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
+import type { DataSourceShape } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { ReactFlowProvider } from 'reactflow'
+import { createDataSourceStore } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
+import { DataSourceContext } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store/provider'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { DatasourceType } from '@/models/pipeline'
-import { useDatasourceSingleRun } from '@/service/use-pipeline'
-import { useInvalidateLastRun } from '@/service/use-workflow'
-import { fetchNodeInspectVars } from '@/service/workflow'
+import { consoleQuery } from '@/service/console'
+import { createDeferred } from '@/test/deferred'
 import { TransferMethod } from '@/types/app'
-import { useNodeDataUpdate } from '../../../../hooks/use-node-data-update'
-import { useNodesSyncDraft } from '../../../../hooks/use-nodes-sync-draft'
 import useBeforeRunForm from '../use-before-run-form'
 
-type DataSourceStoreState = {
-  currentNodeIdRef: { current: string }
-  currentCredentialId: string
-  setCurrentCredentialId: (credentialId: string) => void
-  currentCredentialIdRef: { current: string }
-  localFileList: Array<{
-    file: {
-      id: string
-      name: string
-      type: string
-      size: number
-      extension: string
-      mime_type: string
-    }
-  }>
-  onlineDocuments: Array<Record<string, unknown>>
-  websitePages: Array<Record<string, unknown>>
-  selectedFileIds: string[]
-  onlineDriveFileList: Array<{ id: string; type: string }>
-  bucket?: string
-}
+const mocks = vi.hoisted(() => ({ run: vi.fn(), inspect: vi.fn(), update: vi.fn(), sync: vi.fn() }))
 
-type DatasourceSingleRunOptions = {
-  onError?: () => void
-  onSettled?: (data?: NodeRunResult) => void
-}
-
-const mockHandleNodeDataUpdate = vi.hoisted(() => vi.fn())
-const mockHandleSyncWorkflowDraft = vi.hoisted(() => vi.fn())
-const mockMutateAsync = vi.hoisted(() => vi.fn())
-const mockInvalidLastRun = vi.hoisted(() => vi.fn())
-const mockFetchNodeInspectVars = vi.hoisted(() => vi.fn())
-const mockUseDataSourceStore = vi.hoisted(() => vi.fn())
-const mockUseDataSourceStoreWithSelector = vi.hoisted(() => vi.fn())
-
-vi.mock('reactflow', async () => {
-  const actual = await vi.importActual<typeof import('reactflow')>('reactflow')
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    useStoreApi: vi.fn(),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.byPipelineId.workflows.draft.datasource.variablesInspect.post': mocks.run,
+    }),
   }
 })
-
-vi.mock('../../../../hooks/use-node-data-update', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../../hooks/use-node-data-update')>()
-
-  return {
-    ...actual,
-    useNodeDataUpdate: vi.fn(),
-  }
-})
-
-vi.mock('../../../../hooks/use-nodes-sync-draft', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../../hooks/use-nodes-sync-draft')>()
-
-  return {
-    ...actual,
-    useNodesSyncDraft: vi.fn(),
-  }
-})
-
-vi.mock('@/service/use-pipeline', () => ({
-  useDatasourceSingleRun: vi.fn(),
+vi.mock('@/service/workflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/workflow')>()),
+  fetchNodeInspectVars: mocks.inspect,
 }))
-
-vi.mock('@/service/use-workflow', () => ({
-  useInvalidateLastRun: vi.fn(),
+vi.mock('../../../../hooks/use-node-data-update', () => ({
+  useNodeDataUpdate: () => ({ handleNodeDataUpdate: mocks.update }),
 }))
-
-vi.mock('@/service/workflow', () => ({
-  fetchNodeInspectVars: vi.fn(),
+vi.mock('../../../../hooks/use-nodes-sync-draft', () => ({
+  useNodesSyncDraft: () => ({ handleSyncWorkflowDraft: mocks.sync }),
 }))
-
-vi.mock('@/app/components/datasets/documents/create-from-pipeline/data-source/store', () => ({
-  useDataSourceStore: vi.fn(),
-  useDataSourceStoreWithSelector: vi.fn(),
-}))
-
-const mockUseStoreApi = vi.mocked(useStoreApi)
-const mockUseNodeDataUpdateHook = vi.mocked(useNodeDataUpdate)
-const mockUseNodesSyncDraftHook = vi.mocked(useNodesSyncDraft)
-const mockUseDatasourceSingleRunHook = vi.mocked(useDatasourceSingleRun)
-const mockUseInvalidLastRunHook = vi.mocked(useInvalidateLastRun)
-const mockFetchNodeInspectVarsFn = vi.mocked(fetchNodeInspectVars)
-const mockUseDataSourceStoreHook = vi.mocked(useDataSourceStore)
-const mockUseDataSourceStoreWithSelectorHook = vi.mocked(useDataSourceStoreWithSelector)
 
 const createData = (overrides: Partial<DataSourceNodeType> = {}): DataSourceNodeType => ({
   title: 'Datasource',
@@ -118,11 +51,9 @@ const createData = (overrides: Partial<DataSourceNodeType> = {}): DataSourceNode
   fileExtensions: ['pdf'],
   ...overrides,
 })
-
 const createProps = (overrides: Partial<CustomRunFormProps> = {}): CustomRunFormProps => ({
   nodeId: 'data-source-node',
   resource: { kind: 'knowledge-pipeline', pipelineId: 'flow-id' },
-
   payload: createData(),
   setRunResult: vi.fn(),
   setIsRunAfterSingleRun: vi.fn(),
@@ -133,223 +64,241 @@ const createProps = (overrides: Partial<CustomRunFormProps> = {}): CustomRunForm
   appendNodeInspectVars: vi.fn(),
   ...overrides,
 })
-
-describe('data-source/hooks/use-before-run-form', () => {
-  let dataSourceStoreState: DataSourceStoreState
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-
-    dataSourceStoreState = {
-      currentNodeIdRef: { current: 'data-source-node' },
-      currentCredentialId: 'credential-1',
-      setCurrentCredentialId: vi.fn(),
-      currentCredentialIdRef: { current: 'credential-1' },
-      localFileList: [],
-      onlineDocuments: [],
-      websitePages: [],
-      selectedFileIds: [],
-      onlineDriveFileList: [],
-      bucket: 'drive-bucket',
-    }
-
-    mockUseStoreApi.mockReturnValue({
-      getState: () => ({
-        getNodes: () => [
-          {
-            id: 'data-source-node',
-            data: {
-              title: 'Datasource',
-            },
-          },
-        ],
-      }),
-    } as ReturnType<typeof useStoreApi>)
-
-    mockUseNodeDataUpdateHook.mockReturnValue({
-      handleNodeDataUpdate: mockHandleNodeDataUpdate,
-      handleNodeDataUpdateWithSyncDraft: vi.fn(),
-    } as ReturnType<typeof useNodeDataUpdate>)
-    mockUseNodesSyncDraftHook.mockReturnValue({
-      handleSyncWorkflowDraft: (...args: unknown[]) => {
-        mockHandleSyncWorkflowDraft(...args)
-        const callbacks = args[2] as { onSuccess?: () => void } | undefined
-        callbacks?.onSuccess?.()
+const localFiles: DataSourceShape['localFileList'] = [
+  {
+    fileID: 'upload-1',
+    progress: 100,
+    file: Object.assign(new File(['pdf'], 'doc.pdf', { type: 'application/pdf' }), {
+      id: 'file-1',
+      extension: 'pdf',
+      mime_type: 'application/pdf',
+    }),
+  },
+]
+const document: DataSourceShape['onlineDocuments'][number] = {
+  workspace_id: 'workspace-1',
+  page_id: 'page-1',
+  page_name: 'Guide',
+  page_icon: null,
+  parent_id: '',
+  type: 'page',
+  is_bound: false,
+}
+const website: DataSourceShape['websitePages'][number] = {
+  source_url: 'https://example.com/guide',
+  title: 'Guide',
+  markdown: '# Guide',
+  description: 'A guide',
+}
+const selections = [
+  {
+    type: DatasourceType.localFile,
+    state: { localFileList: localFiles },
+    info: {
+      related_id: 'file-1',
+      name: 'doc.pdf',
+      type: 'application/pdf',
+      size: 3,
+      extension: 'pdf',
+      mime_type: 'application/pdf',
+      url: '',
+      transfer_method: TransferMethod.local_file,
+    },
+  },
+  {
+    type: DatasourceType.onlineDocument,
+    state: { onlineDocuments: [document] },
+    info: {
+      workspace_id: 'workspace-1',
+      page: {
+        page_id: 'page-1',
+        page_name: 'Guide',
+        page_icon: null,
+        parent_id: '',
+        type: 'page',
+        is_bound: false,
       },
-    } as ReturnType<typeof useNodesSyncDraft>)
-    mockUseDatasourceSingleRunHook.mockReturnValue({
-      mutateAsync: (...args: unknown[]) => mockMutateAsync(...args),
-      isPending: false,
-    } as ReturnType<typeof useDatasourceSingleRun>)
-    mockUseInvalidLastRunHook.mockReturnValue(mockInvalidLastRun)
-    mockFetchNodeInspectVarsFn.mockImplementation((...args: unknown[]) =>
-      mockFetchNodeInspectVars(...args),
+      credential_id: 'credential-1',
+    },
+  },
+  {
+    type: DatasourceType.websiteCrawl,
+    state: { websitePages: [website] },
+    info: { ...website, credential_id: 'credential-1' },
+  },
+  {
+    type: DatasourceType.onlineDrive,
+    state: {
+      selectedFileIds: ['drive-1'],
+      onlineDriveFileList: [{ id: 'drive-1', name: 'Guide', type: 'file' as const }],
+      bucket: 'bucket-1',
+    },
+    info: {
+      bucket: 'bucket-1',
+      id: 'drive-1',
+      type: 'file',
+      credential_id: 'credential-1',
+    },
+  },
+] satisfies {
+  type: DatasourceType
+  state: Partial<DataSourceShape>
+  info: Record<string, unknown>
+}[]
+
+function setup(props = createProps(), selection: Partial<DataSourceShape> = {}) {
+  const store = createDataSourceStore()
+  store.setState({ currentCredentialId: 'credential-1', ...selection })
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  })
+  const lastRunKey =
+    consoleQuery.rag.pipelines.byPipelineId.workflows.draft.nodes.byNodeId.lastRun.get.queryKey({
+      input: { params: { pipeline_id: 'flow-id', node_id: props.nodeId } },
+    })
+  client.setQueryData(lastRunKey, { id: 'last-run-1', status: 'succeeded' })
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>
+      <ReactFlowProvider>
+        <DataSourceContext.Provider value={store}>{children}</DataSourceContext.Provider>
+      </ReactFlowProvider>
+    </QueryClientProvider>
+  )
+  return {
+    ...renderHook(useBeforeRunForm, { initialProps: props, wrapper }),
+    store,
+    props,
+    client,
+    lastRunKey,
+  }
+}
+
+beforeEach(() => {
+  vi.resetAllMocks()
+  mocks.run.mockResolvedValue({ id: 'run-1', status: NodeRunningStatus.Succeeded })
+  mocks.inspect.mockResolvedValue([])
+  mocks.sync.mockImplementation((_sync, _skipRefresh, callbacks) => callbacks.onSuccess())
+})
+
+describe('data source single run', () => {
+  it.each(selections)(
+    'reacts to selection changes and sends the $type payload',
+    async ({ type, state, info }) => {
+      const { result, store, props } = setup(
+        createProps({ payload: createData({ provider_type: type }) }),
+      )
+      expect(result.current.startRunBtnDisabled).toBe(true)
+      act(() => store.setState(state))
+      expect(result.current.startRunBtnDisabled).toBe(false)
+
+      act(() => result.current.handleRunWithSyncDraft())
+
+      await waitFor(() => expect(props.onSuccess).toHaveBeenCalledOnce())
+      expect(mocks.run).toHaveBeenCalledExactlyOnceWith({
+        params: { pipeline_id: 'flow-id' },
+        body: {
+          start_node_id: props.nodeId,
+          start_node_title: 'Datasource',
+          datasource_type: type,
+          datasource_info: info,
+        },
+      })
+      expect(mocks.inspect).toHaveBeenCalledWith(props.resource, props.nodeId)
+      expect(props.appendNodeInspectVars).toHaveBeenCalledWith(props.nodeId, [], [])
+      expect(props.setIsRunAfterSingleRun).toHaveBeenCalledWith(true)
+      expect(mocks.update).toHaveBeenNthCalledWith(1, {
+        id: props.nodeId,
+        data: expect.objectContaining({ _singleRunningStatus: NodeRunningStatus.Running }),
+      })
+      expect(mocks.update).toHaveBeenLastCalledWith({
+        id: props.nodeId,
+        data: expect.objectContaining({
+          _singleRunningStatus: NodeRunningStatus.Succeeded,
+          _isSingleRun: false,
+        }),
+      })
+    },
+  )
+
+  it('keeps local uploads disabled until an uploaded file id exists', () => {
+    const { result, store } = setup(createProps(), {
+      localFileList: [{ fileID: 'pending', progress: 20, file: new File(['pdf'], 'doc.pdf') }],
+    })
+    expect(result.current.startRunBtnDisabled).toBe(true)
+    act(() => store.getState().setLocalFileList(localFiles))
+    expect(result.current.startRunBtnDisabled).toBe(false)
+  })
+
+  it('waits for draft synchronization and exposes pending state until the run settles', async () => {
+    const pending = createDeferred<WorkflowRunNodeExecutionResponse>()
+    mocks.run.mockReturnValue(pending.promise)
+    mocks.sync.mockImplementation(() => undefined)
+    const { result, props } = setup(createProps(), { localFileList: localFiles })
+    act(() => result.current.handleRunWithSyncDraft())
+    expect(mocks.run).not.toHaveBeenCalled()
+    act(() => mocks.sync.mock.calls[0]![2].onSuccess())
+    await waitFor(() => expect(result.current.isPending).toBe(true))
+    await act(async () => pending.resolve({ id: 'run-1', status: NodeRunningStatus.Succeeded }))
+    await waitFor(() => expect(props.onSuccess).toHaveBeenCalledOnce())
+    expect(result.current.isPending).toBe(false)
+  })
+
+  it('marks a rejected request failed, invalidates last run and refreshes default error outputs', async () => {
+    mocks.run.mockRejectedValue(new Error('Run failed'))
+    const { result, props, client, lastRunKey } = setup(createProps(), {
+      localFileList: localFiles,
+    })
+    act(() => result.current.handleRunWithSyncDraft())
+    await waitFor(() => expect(props.appendNodeInspectVars).toHaveBeenCalledOnce())
+    expect(client.getQueryState(lastRunKey)?.isInvalidated).toBe(true)
+    expect(mocks.update).toHaveBeenLastCalledWith({
+      id: props.nodeId,
+      data: expect.objectContaining({
+        _singleRunningStatus: NodeRunningStatus.Failed,
+        _isSingleRun: false,
+      }),
+    })
+    expect(props.onSuccess).not.toHaveBeenCalled()
+  })
+
+  it.each(['succeeded', 'failed'] as const)(
+    'ignores a %s completion after the user pauses',
+    async (outcome) => {
+      const pending = createDeferred<WorkflowRunNodeExecutionResponse>()
+      mocks.run.mockReturnValue(pending.promise)
+      const { result, props, rerender, client, lastRunKey } = setup(createProps(), {
+        localFileList: localFiles,
+      })
+      act(() => result.current.handleRunWithSyncDraft())
+      await waitFor(() => expect(result.current.isPending).toBe(true))
+      rerender({ ...props, isPaused: true })
+      await act(async () => {
+        if (outcome === 'failed') pending.reject(new Error('Run failed'))
+        else pending.resolve({ id: 'run-1', status: NodeRunningStatus.Succeeded })
+      })
+      await waitFor(() => expect(result.current.isPending).toBe(false))
+      expect(mocks.update).toHaveBeenCalledTimes(1)
+      expect(mocks.inspect).not.toHaveBeenCalled()
+      expect(props.onSuccess).not.toHaveBeenCalled()
+      expect(client.getQueryState(lastRunKey)?.isInvalidated).toBe(outcome === 'failed')
+    },
+  )
+
+  it('sets the chained run result without refreshing inspector variables', async () => {
+    const { result, props } = setup(
+      createProps({
+        isRunAfterSingleRun: true,
+        payload: createData({ _singleRunningStatus: NodeRunningStatus.Running }),
+      }),
+      { localFileList: localFiles },
     )
-    mockUseDataSourceStoreHook.mockImplementation(() => mockUseDataSourceStore())
-    mockUseDataSourceStoreWithSelectorHook.mockImplementation((selector) =>
-      mockUseDataSourceStoreWithSelector(
-        selector as unknown as (state: DataSourceStoreState) => unknown,
+    act(() => result.current.handleRunWithSyncDraft())
+    await waitFor(() =>
+      expect(props.setRunResult).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'run-1', status: NodeRunningStatus.Succeeded }),
       ),
     )
-
-    mockUseDataSourceStore.mockImplementation(() => ({
-      getState: () => dataSourceStoreState,
-    }))
-    mockUseDataSourceStoreWithSelector.mockImplementation(
-      (selector: (state: DataSourceStoreState) => unknown) => selector(dataSourceStoreState),
-    )
-    mockFetchNodeInspectVars.mockResolvedValue([{ name: 'metadata' }] as VarInInspect[])
-  })
-
-  it('derives the run button disabled state from the selected datasource payload', () => {
-    const { result, rerender } = renderHook(
-      ({ payload }) => useBeforeRunForm(createProps({ payload })),
-      {
-        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
-        initialProps: {
-          payload: createData(),
-        },
-      },
-    )
-
-    expect(result.current.startRunBtnDisabled).toBe(true)
-
-    dataSourceStoreState.localFileList = [
-      {
-        file: {
-          id: 'file-1',
-          name: 'doc.pdf',
-          type: 'document',
-          size: 12,
-          extension: 'pdf',
-          mime_type: 'application/pdf',
-        },
-      },
-    ]
-    rerender({ payload: createData() })
-    expect(result.current.startRunBtnDisabled).toBe(false)
-
-    dataSourceStoreState.selectedFileIds = []
-    rerender({
-      payload: createData({
-        provider_type: DatasourceType.onlineDrive,
-      }),
-    })
-    expect(result.current.startRunBtnDisabled).toBe(true)
-  })
-
-  it('syncs the draft, runs the datasource, and appends inspect vars on success', async () => {
-    dataSourceStoreState.localFileList = [
-      {
-        file: {
-          id: 'file-1',
-          name: 'doc.pdf',
-          type: 'document',
-          size: 12,
-          extension: 'pdf',
-          mime_type: 'application/pdf',
-        },
-      },
-    ]
-
-    mockMutateAsync.mockImplementation((payload: unknown, options: DatasourceSingleRunOptions) => {
-      options.onSettled?.({ status: NodeRunningStatus.Succeeded } as NodeRunResult)
-      return Promise.resolve(payload)
-    })
-
-    const props = createProps()
-    const { result } = renderHook(() => useBeforeRunForm(props), {
-      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
-    })
-
-    await act(async () => {
-      result.current.handleRunWithSyncDraft()
-      await Promise.resolve()
-    })
-
-    expect(props.setIsRunAfterSingleRun).toHaveBeenCalledWith(true)
-    expect(mockHandleNodeDataUpdate).toHaveBeenNthCalledWith(1, {
-      id: 'data-source-node',
-      data: expect.objectContaining({
-        _singleRunningStatus: NodeRunningStatus.Running,
-      }),
-    })
-    expect(mockMutateAsync).toHaveBeenCalledWith(
-      expect.objectContaining({
-        pipeline_id: 'flow-id',
-        start_node_id: 'data-source-node',
-        datasource_type: DatasourceType.localFile,
-        datasource_info: expect.objectContaining({
-          related_id: 'file-1',
-          transfer_method: TransferMethod.local_file,
-        }),
-      }),
-      expect.any(Object),
-    )
-    expect(mockFetchNodeInspectVars).toHaveBeenCalledWith(
-      { kind: 'knowledge-pipeline', pipelineId: 'flow-id' },
-      'data-source-node',
-    )
-    expect(props.appendNodeInspectVars).toHaveBeenCalledWith(
-      'data-source-node',
-      [{ name: 'metadata' }],
-      [
-        {
-          id: 'data-source-node',
-          data: {
-            title: 'Datasource',
-          },
-        },
-      ],
-    )
-    expect(props.onSuccess).toHaveBeenCalled()
-    expect(mockHandleNodeDataUpdate).toHaveBeenLastCalledWith({
-      id: 'data-source-node',
-      data: expect.objectContaining({
-        _isSingleRun: false,
-        _singleRunningStatus: NodeRunningStatus.Succeeded,
-      }),
-    })
-  })
-
-  it('marks the last run invalid and updates the node to failed when the single run errors', async () => {
-    dataSourceStoreState.selectedFileIds = ['drive-file-1']
-    dataSourceStoreState.onlineDriveFileList = [
-      {
-        id: 'drive-file-1',
-        type: 'file',
-      },
-    ]
-
-    mockMutateAsync.mockImplementation((_payload: unknown, options: DatasourceSingleRunOptions) => {
-      options.onError?.()
-      return Promise.resolve(undefined)
-    })
-
-    const { result } = renderHook(
-      () =>
-        useBeforeRunForm(
-          createProps({
-            payload: createData({
-              provider_type: DatasourceType.onlineDrive,
-            }),
-          }),
-        ),
-      { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
-    )
-
-    await act(async () => {
-      result.current.handleRunWithSyncDraft()
-      await Promise.resolve()
-    })
-
-    expect(mockInvalidLastRun).toHaveBeenCalled()
-    expect(mockHandleNodeDataUpdate).toHaveBeenLastCalledWith({
-      id: 'data-source-node',
-      data: expect.objectContaining({
-        _isSingleRun: false,
-        _singleRunningStatus: NodeRunningStatus.Failed,
-      }),
-    })
+    expect(mocks.inspect).not.toHaveBeenCalled()
+    expect(props.onSuccess).not.toHaveBeenCalled()
   })
 })

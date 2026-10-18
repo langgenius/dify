@@ -32,7 +32,7 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
     if (typeof event === 'string') return
 
     if (event?.type === UPDATE_DATASETS_EVENT_EMITTER && Array.isArray(event.payload))
-      setLocalDatasets(event.payload as Dataset[])
+      setLocalDatasets(event.payload)
   })
 
   return (

@@ -1,12 +1,15 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { MultipleRetrievalConfig } from './types'
-import type { DataSet, SelectedDatasetsMode } from '@/models/datasets'
+import type { SelectedDatasetsMode } from '@/models/datasets'
 import { uniq } from 'es-toolkit/array'
 import { xorBy } from 'es-toolkit/compat'
 import { DATASET_DEFAULT } from '@/config'
 import { DEFAULT_WEIGHTED_SCORE, RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 
-export const getSelectedDatasetsMode = (datasets: DataSet[] = []) => {
+export const getSelectedDatasetsMode = (
+  datasets: DatasetDetailWithPartialMembersResponse[] = [],
+) => {
   if (datasets === null) datasets = []
   let allHighQuality = true
   let allHighQualityVectorSearch = true
@@ -75,8 +78,8 @@ export const getSelectedDatasetsMode = (datasets: DataSet[] = []) => {
 
 export const getMultipleRetrievalConfig = (
   multipleRetrievalConfig: MultipleRetrievalConfig,
-  selectedDatasets: DataSet[],
-  originalDatasets: DataSet[],
+  selectedDatasets: DatasetDetailWithPartialMembersResponse[],
+  originalDatasets: DatasetDetailWithPartialMembersResponse[],
   fallbackRerankModel?: { provider?: string; model?: string }, // fallback rerank model
 ) => {
   // Check if the selected datasets are different from the original datasets
@@ -123,8 +126,8 @@ export const getMultipleRetrievalConfig = (
           : allHighQualityFullTextSearch
             ? DEFAULT_WEIGHTED_SCORE.allHighQualityFullTextSearch.semantic
             : DEFAULT_WEIGHTED_SCORE.other.semantic,
-        embedding_provider_name: selectedDatasets[0]!.embedding_model_provider,
-        embedding_model_name: selectedDatasets[0]!.embedding_model,
+        embedding_provider_name: selectedDatasets[0]!.embedding_model_provider ?? '',
+        embedding_model_name: selectedDatasets[0]!.embedding_model ?? '',
       },
       keyword_setting: {
         keyword_weight: allHighQualityVectorSearch
@@ -255,7 +258,7 @@ export const getMultipleRetrievalConfig = (
 }
 
 export const checkoutRerankModelConfiguredInRetrievalSettings = (
-  datasets: DataSet[],
+  datasets: DatasetDetailWithPartialMembersResponse[],
   multipleRetrievalConfig?: MultipleRetrievalConfig,
 ) => {
   if (!multipleRetrievalConfig) return true

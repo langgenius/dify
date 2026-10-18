@@ -6,7 +6,7 @@ import traceback
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Protocol, Union, cast, override
+from typing import Any, Protocol, cast, override
 from urllib.parse import urlparse
 
 from openinference.semconv.trace import (
@@ -188,7 +188,7 @@ def setup_tracer(arize_phoenix_config: ArizeConfig | PhoenixConfig) -> tuple[tra
     """Configure OpenTelemetry tracer with OTLP exporter for Arize/Phoenix."""
     try:
         # Choose the appropriate exporter based on config type
-        exporter: Union[GrpcOTLPSpanExporter, HttpOTLPSpanExporter]
+        exporter: GrpcOTLPSpanExporter | HttpOTLPSpanExporter
 
         # Inspect the provided endpoint to determine its structure
         parsed = urlparse(arize_phoenix_config.endpoint)

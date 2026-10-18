@@ -160,10 +160,10 @@ const VarReferencePickerTrigger: FC<Props> = ({
               </div>
               <div
                 className="mx-0.5 truncate text-xs font-medium text-text-secondary"
-                title={outputVarNode?.title as string | undefined}
+                title={outputVarNode?.title}
                 style={{ maxWidth: maxNodeNameWidth }}
               >
-                {outputVarNode?.title as string | undefined}
+                {outputVarNode?.title}
               </div>
               <span aria-hidden className="mr-0.5 i-custom-public-common-line-3 h-3 w-1.25" />
             </div>

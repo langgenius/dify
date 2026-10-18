@@ -1,4 +1,5 @@
 import type {
+  ToolParameter as ContractToolParameter,
   DatasourceProviderType,
   ToolProviderType,
 } from '@dify/contracts/api/console/workspaces/types.gen'
@@ -109,8 +110,8 @@ export type ToolParameter = {
   llm_description: string
   required: boolean
   multiple: boolean
-  default: string
-  /** Mirrors plugin YAML `dynamic_select_lazy_load`; omitted/false = prefetch, true = load on open. */
+  default?: ContractToolParameter['default']
+  /** Load tool dynamic options when the dropdown opens. */
   dynamic_select_lazy_load?: boolean
   options?: {
     label: LocalizedText
@@ -180,8 +181,7 @@ export type CustomCollectionBackend = {
   schema: string
   privacy_policy: string
   custom_disclaimer: string
-  tools?: ParamItem[]
-  id: string
+  tools?: CustomParamSchema[]
   labels: string[]
 }
 
@@ -193,7 +193,7 @@ type ParamItem = {
   type: string
   form: string
   required: boolean
-  default: string
+  default?: ContractToolParameter['default']
   min?: number
   max?: number
   options?: {
@@ -249,6 +249,7 @@ export type WorkflowToolProviderOutputSchema = {
 
 export type WorkflowToolProviderRequest = {
   name: string
+  label: string
   icon: Emoji
   description: string
   parameters: WorkflowToolProviderParameter[]

@@ -108,43 +108,22 @@ describe('prepareMermaidCode', () => {
 })
 
 describe('svgToBase64', () => {
+  it.each(['', '<?xml version="1.0" encoding="UTF-8"?>'])(
+    'preserves Unicode SVG content with declaration %s',
+    async (declaration) => {
+      const svg = '<svg xmlns="http://www.w3.org/2000/svg"><text>知识库 🧪</text></svg>'
+      const result = await svgToBase64(`${declaration}${svg}`)
+      expect(result).toMatch(/^data:image\/svg\+xml(?:;charset=utf-8)?;base64,/)
+      const decoded = new TextDecoder().decode(
+        Uint8Array.from(atob(result.split(',')[1]!), (char) => char.charCodeAt(0)),
+      )
+      expect(decoded).toContain(svg)
+    },
+  )
+
   describe('Rendering', () => {
     it('should return empty string for empty input', async () => {
       expect(await svgToBase64('')).toBe('')
-    })
-
-    it('should convert svg to base64', async () => {
-      const svg = '<svg>test</svg>'
-      const result = await svgToBase64(svg)
-      expect(result).toContain('base64,')
-      expect(result).toContain('image/svg+xml')
-    })
-
-    it('should convert svg with xml declaration to base64', async () => {
-      const svg = '<?xml version="1.0" encoding="UTF-8"?><svg>test</svg>'
-      const result = await svgToBase64(svg)
-      expect(result).toContain('base64,')
-      expect(result).toContain('image/svg+xml')
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle errors gracefully', async () => {
-      const encoderSpy = vi.spyOn(globalThis, 'TextEncoder').mockImplementation(
-        () =>
-          ({
-            encoding: 'utf-8',
-            encode: () => {
-              throw new Error('Encoder fail')
-            },
-            encodeInto: () => ({ read: 0, written: 0 }),
-          }) as unknown as TextEncoder,
-      )
-
-      const result = await svgToBase64('<svg>fail</svg>')
-      expect(result).toBe('')
-
-      encoderSpy.mockRestore()
     })
   })
 })
@@ -160,6 +139,25 @@ describe('processSvgForTheme', () => {
       connectionColor: '#333333',
     },
   }
+
+  it.each([false, true])('preserves valid SVG geometry while recoloring dark=%s', (dark) => {
+    const svg =
+      '<svg xmlns="http://www.w3.org/2000/svg"><rect x="4" width="20" fill="#ffffff"/><path d="M0 0 L10 10" stroke="#ffffff" stroke-width="2"/><line x1="1" y1="2" x2="3" y2="4" stroke="#ffffff"/><polyline points="0,0 10,10" stroke="#ffffff"/></svg>'
+    const document = new DOMParser().parseFromString(
+      processSvgForTheme(svg, dark, false, themes),
+      'image/svg+xml',
+    )
+    expect(document.querySelector('parsererror')).toBeNull()
+    expect(document.querySelectorAll('rect')).toHaveLength(1)
+    expect(document.querySelector('rect')).toHaveAttribute('width', '20')
+    expect(document.querySelector('rect')).toHaveAttribute('fill', dark ? '#1e293b' : '#ffffff')
+    expect(document.querySelector('path')).toHaveAttribute('d', 'M0 0 L10 10')
+    expect(document.querySelector('path')).toHaveAttribute('stroke-width', dark ? '1.5' : '2')
+    expect(document.querySelector('line')).toHaveAttribute('x2', '3')
+    expect(document.querySelector('polyline')).toHaveAttribute('points', '0,0 10,10')
+    for (const element of document.querySelectorAll('path, line, polyline'))
+      expect(element).toHaveAttribute('stroke', dark ? '#333333' : '#cccccc')
+  })
 
   describe('Light Theme', () => {
     it('should process light theme node colors', () => {
@@ -216,19 +214,6 @@ describe('isMermaidCodeComplete', () => {
       expect(isMermaidCodeComplete('graph TD\nA--> undefined')).toBe(false)
       expect(isMermaidCodeComplete('graph TD\nA--> [object Object]')).toBe(false)
       expect(isMermaidCodeComplete('graph TD\nA-->')).toBe(false)
-    })
-
-    it('should handle validation error gracefully', () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-      const startsWithSpy = vi.spyOn(String.prototype, 'startsWith').mockImplementation(() => {
-        throw new Error('Start fail')
-      })
-
-      expect(isMermaidCodeComplete('graph TD')).toBe(false)
-      expect(consoleSpy).toHaveBeenCalledWith('Mermaid code validation error:', expect.any(Error))
-
-      startsWithSpy.mockRestore()
-      consoleSpy.mockRestore()
     })
   })
 

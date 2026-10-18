@@ -11,8 +11,7 @@ import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { deploymentEditionAtom } from '@/features/system-features/state'
-import { disableModel, enableModel } from '@/service/common'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import { ModelStatusEnum } from '../declarations'
 import { useUpdateModelList } from '../hooks'
@@ -67,15 +66,15 @@ const ModelListItem = ({
   const toggleModelEnablingStatus = useCallback(
     async (enabled: boolean) => {
       if (enabled)
-        await enableModel(
-          `/workspaces/current/model-providers/${provider.provider}/models/enable`,
-          { model: model.model, model_type: model.model_type },
-        )
+        await consoleClient.workspaces.current.modelProviders.byProvider.models.enable.patch({
+          params: { provider: provider.provider },
+          body: { model: model.model, model_type: model.model_type },
+        })
       else
-        await disableModel(
-          `/workspaces/current/model-providers/${provider.provider}/models/disable`,
-          { model: model.model, model_type: model.model_type },
-        )
+        await consoleClient.workspaces.current.modelProviders.byProvider.models.disable.patch({
+          params: { provider: provider.provider },
+          body: { model: model.model, model_type: model.model_type },
+        })
 
       queryClient.invalidateQueries({
         queryKey: modelProviderModelListQueryKey,

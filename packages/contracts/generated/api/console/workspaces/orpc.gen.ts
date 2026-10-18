@@ -93,6 +93,7 @@ import {
   zGetWorkspacesCurrentEndpointsListPluginResponse,
   zGetWorkspacesCurrentEndpointsListQuery,
   zGetWorkspacesCurrentEndpointsListResponse,
+  zGetWorkspacesCurrentMembersQuery,
   zGetWorkspacesCurrentMembersResponse,
   zGetWorkspacesCurrentModelProvidersByProviderCheckoutUrlPath,
   zGetWorkspacesCurrentModelProvidersByProviderCheckoutUrlResponse,
@@ -189,6 +190,7 @@ import {
   zGetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistPath,
   zGetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistResponse,
   zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesPath,
+  zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesQuery,
   zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponse,
   zGetWorkspacesCurrentRbacMyPermissionsResponse,
   zGetWorkspacesCurrentRbacRolePermissionsCatalogAgentResponse,
@@ -196,9 +198,12 @@ import {
   zGetWorkspacesCurrentRbacRolePermissionsCatalogDatasetResponse,
   zGetWorkspacesCurrentRbacRolePermissionsCatalogResponse,
   zGetWorkspacesCurrentRbacRolesByRoleIdMembersPath,
+  zGetWorkspacesCurrentRbacRolesByRoleIdMembersQuery,
   zGetWorkspacesCurrentRbacRolesByRoleIdMembersResponse,
   zGetWorkspacesCurrentRbacRolesByRoleIdPath,
+  zGetWorkspacesCurrentRbacRolesByRoleIdQuery,
   zGetWorkspacesCurrentRbacRolesByRoleIdResponse,
+  zGetWorkspacesCurrentRbacRolesQuery,
   zGetWorkspacesCurrentRbacRolesResponse,
   zGetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdMemberBindingsPath,
   zGetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdMemberBindingsResponse,
@@ -411,8 +416,12 @@ import {
   zPostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyPath,
   zPostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyResponse,
   zPostWorkspacesCurrentRbacAccessPoliciesResponse,
+  zPostWorkspacesCurrentRbacRolesBody,
+  zPostWorkspacesCurrentRbacRolesByRoleIdCopyBody,
   zPostWorkspacesCurrentRbacRolesByRoleIdCopyPath,
+  zPostWorkspacesCurrentRbacRolesByRoleIdCopyQuery,
   zPostWorkspacesCurrentRbacRolesByRoleIdCopyResponse,
+  zPostWorkspacesCurrentRbacRolesQuery,
   zPostWorkspacesCurrentRbacRolesResponse,
   zPostWorkspacesCurrentSkillsBody,
   zPostWorkspacesCurrentSkillsBySkillIdAssistMessagesBody,
@@ -539,7 +548,9 @@ import {
   zPutWorkspacesCurrentRbacMembersByMemberIdRbacRolesBody,
   zPutWorkspacesCurrentRbacMembersByMemberIdRbacRolesPath,
   zPutWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponse,
+  zPutWorkspacesCurrentRbacRolesByRoleIdBody,
   zPutWorkspacesCurrentRbacRolesByRoleIdPath,
+  zPutWorkspacesCurrentRbacRolesByRoleIdQuery,
   zPutWorkspacesCurrentRbacRolesByRoleIdResponse,
   zPutWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdBindingsBody,
   zPutWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdBindingsPath,
@@ -839,7 +850,7 @@ export const get7 = oc
     summary: 'List customized snippets with pagination and search',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentCustomizedSnippetsQuery.optional() }))
+  .input(z.object({ query: zGetWorkspacesCurrentCustomizedSnippetsQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentCustomizedSnippetsResponse)
 
 /**
@@ -1264,6 +1275,7 @@ export const get12 = oc
     path: '/workspaces/current/members',
     tags: ['console'],
   })
+  .input(z.object({ query: zGetWorkspacesCurrentMembersQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentMembersResponse)
 
 export const members = {
@@ -1758,7 +1770,7 @@ export const get20 = oc
     path: '/workspaces/current/model-providers',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentModelProvidersQuery.optional() }))
+  .input(z.object({ query: zGetWorkspacesCurrentModelProvidersQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentModelProvidersResponse)
 
 export const modelProviders = {
@@ -2033,7 +2045,7 @@ export const get29 = oc
     path: '/workspaces/current/plugin/list',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentPluginListQuery.optional() }))
+  .input(z.object({ query: zGetWorkspacesCurrentPluginListQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentPluginListResponse)
   .errors({ plugin_error: { status: 400, data: zPluginError } })
 
@@ -2245,7 +2257,7 @@ export const get36 = oc
     path: '/workspaces/current/plugin/tasks',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentPluginTasksQuery.optional() }))
+  .input(z.object({ query: zGetWorkspacesCurrentPluginTasksQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentPluginTasksResponse)
   .errors({ plugin_error: { status: 400, data: zPluginError } })
 
@@ -3125,7 +3137,12 @@ export const get58 = oc
     path: '/workspaces/current/rbac/members/{member_id}/rbac-roles',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesPath }))
+  .input(
+    z.object({
+      params: zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesPath,
+      query: zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesQuery.optional(),
+    }),
+  )
   .output(zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponse)
 
 export const put14 = oc
@@ -3243,7 +3260,13 @@ export const post46 = oc
     successStatus: 201,
     tags: ['console'],
   })
-  .input(z.object({ params: zPostWorkspacesCurrentRbacRolesByRoleIdCopyPath }))
+  .input(
+    z.object({
+      body: zPostWorkspacesCurrentRbacRolesByRoleIdCopyBody,
+      params: zPostWorkspacesCurrentRbacRolesByRoleIdCopyPath,
+      query: zPostWorkspacesCurrentRbacRolesByRoleIdCopyQuery.optional(),
+    }),
+  )
   .output(zPostWorkspacesCurrentRbacRolesByRoleIdCopyResponse)
 
 export const copy2 = {
@@ -3258,7 +3281,12 @@ export const get64 = oc
     path: '/workspaces/current/rbac/roles/{role_id}/members',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetWorkspacesCurrentRbacRolesByRoleIdMembersPath }))
+  .input(
+    z.object({
+      params: zGetWorkspacesCurrentRbacRolesByRoleIdMembersPath,
+      query: zGetWorkspacesCurrentRbacRolesByRoleIdMembersQuery.optional(),
+    }),
+  )
   .output(zGetWorkspacesCurrentRbacRolesByRoleIdMembersResponse)
 
 export const members3 = {
@@ -3284,7 +3312,12 @@ export const get65 = oc
     path: '/workspaces/current/rbac/roles/{role_id}',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetWorkspacesCurrentRbacRolesByRoleIdPath }))
+  .input(
+    z.object({
+      params: zGetWorkspacesCurrentRbacRolesByRoleIdPath,
+      query: zGetWorkspacesCurrentRbacRolesByRoleIdQuery.optional(),
+    }),
+  )
   .output(zGetWorkspacesCurrentRbacRolesByRoleIdResponse)
 
 export const put15 = oc
@@ -3295,7 +3328,13 @@ export const put15 = oc
     path: '/workspaces/current/rbac/roles/{role_id}',
     tags: ['console'],
   })
-  .input(z.object({ params: zPutWorkspacesCurrentRbacRolesByRoleIdPath }))
+  .input(
+    z.object({
+      body: zPutWorkspacesCurrentRbacRolesByRoleIdBody,
+      params: zPutWorkspacesCurrentRbacRolesByRoleIdPath,
+      query: zPutWorkspacesCurrentRbacRolesByRoleIdQuery.optional(),
+    }),
+  )
   .output(zPutWorkspacesCurrentRbacRolesByRoleIdResponse)
 
 export const byRoleId = {
@@ -3314,6 +3353,7 @@ export const get66 = oc
     path: '/workspaces/current/rbac/roles',
     tags: ['console'],
   })
+  .input(z.object({ query: zGetWorkspacesCurrentRbacRolesQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentRbacRolesResponse)
 
 export const post47 = oc
@@ -3325,6 +3365,12 @@ export const post47 = oc
     successStatus: 201,
     tags: ['console'],
   })
+  .input(
+    z.object({
+      body: zPostWorkspacesCurrentRbacRolesBody,
+      query: zPostWorkspacesCurrentRbacRolesQuery.optional(),
+    }),
+  )
   .output(zPostWorkspacesCurrentRbacRolesResponse)
 
 export const roles = {
@@ -4017,7 +4063,7 @@ export const get84 = oc
     path: '/workspaces/current/skills',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentSkillsQuery.optional() }))
+  .input(z.object({ query: zGetWorkspacesCurrentSkillsQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentSkillsResponse)
 
 export const post55 = oc
@@ -4631,7 +4677,9 @@ export const get101 = oc
     path: '/workspaces/current/tool-provider/workflow/get',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentToolProviderWorkflowGetQuery.optional() }))
+  .input(
+    z.object({ query: zGetWorkspacesCurrentToolProviderWorkflowGetQuery.optional() }).optional(),
+  )
   .output(zGetWorkspacesCurrentToolProviderWorkflowGetResponse)
 
 export const get102 = {
@@ -4697,7 +4745,7 @@ export const get104 = oc
     path: '/workspaces/current/tool-providers',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentToolProvidersQuery.optional() }))
+  .input(z.object({ query: zGetWorkspacesCurrentToolProvidersQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentToolProvidersResponse)
 
 export const toolProviders = {

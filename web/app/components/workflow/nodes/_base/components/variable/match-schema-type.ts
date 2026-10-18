@@ -1,10 +1,10 @@
-export type AnyObj = Record<string, any> | null
+export type AnyObj = object | null
 
-const isObj = (x: any): x is object => x !== null && typeof x === 'object'
+const isObj = (x: unknown): x is Record<string, unknown> => x !== null && typeof x === 'object'
 
 // only compare type in object
 function matchTheSchemaType(scheme: AnyObj, target: AnyObj): boolean {
-  const isMatch = (schema: AnyObj, t: AnyObj): boolean => {
+  const isMatch = (schema: unknown, t: unknown): boolean => {
     const oSchema = isObj(schema)
     const oT = isObj(t)
     if (!oSchema) return true
@@ -13,13 +13,13 @@ function matchTheSchemaType(scheme: AnyObj, target: AnyObj): boolean {
       // deep find oSchema has type
       for (const key in schema) {
         if (key === 'type') return false
-        if (isObj((schema as any)[key]) && !isMatch((schema as any)[key], null)) return false
+        if (isObj(schema[key]) && !isMatch(schema[key], null)) return false
       }
       return true
     }
     // check current `type`
-    const tx = (schema as any).type
-    const ty = (t as any).type
+    const tx = schema.type
+    const ty = t.type
     const isTypeValueObj = isObj(tx)
 
     if (!isTypeValueObj) {
@@ -28,10 +28,10 @@ function matchTheSchemaType(scheme: AnyObj, target: AnyObj): boolean {
     }
 
     // recurse into all keys
-    const keys = new Set([...Object.keys(schema as object), ...Object.keys(t as object)])
+    const keys = new Set([...Object.keys(schema), ...Object.keys(t)])
     for (const k of keys) {
       if (k === 'type' && !isTypeValueObj) continue // already checked
-      if (!isMatch((schema as any)[k], (t as any)[k])) return false
+      if (!isMatch(schema[k], t[k])) return false
     }
     return true
   }

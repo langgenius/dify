@@ -54,7 +54,7 @@ class CompletionMessageExplorePayload(BaseModel):
     retriever_from: str = Field(default="explore_app")
 
 
-class ChatMessagePayload(BaseModel):
+class ChatMessageExplorePayload(BaseModel):
     inputs: dict[str, Any]
     query: str
     files: list[dict[str, Any]] | None = Field(default=None)
@@ -77,7 +77,7 @@ class ChatMessagePayload(BaseModel):
             raise ValueError("must be a valid UUID") from exc
 
 
-register_schema_models(console_ns, CompletionMessageExplorePayload, ChatMessagePayload)
+register_schema_models(console_ns, CompletionMessageExplorePayload, ChatMessageExplorePayload)
 register_response_schema_models(console_ns, SimpleResultResponse)
 
 
@@ -185,14 +185,14 @@ class ChatApi(Resource):
         ProviderNotInitializeError,
         ProviderQuotaExceededError,
     )
-    @console_ns.expect(console_ns.models[ChatMessagePayload.__name__])
+    @console_ns.expect(console_ns.models[ChatMessageExplorePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
     @get_installed_app
-    @model_validate(ChatMessagePayload)
+    @model_validate(ChatMessageExplorePayload)
     def post(
         self,
-        req_data: ChatMessagePayload,
+        req_data: ChatMessageExplorePayload,
         request_context: RequestContext,
         installed_app: InstalledAppRef,
     ) -> Response:

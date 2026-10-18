@@ -6,7 +6,6 @@ import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { consoleQuery } from '@/service/console'
-import { commonQueryKeys } from '@/service/use-common'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { Type } from '../../../types'
@@ -39,6 +38,8 @@ vi.mock('@monaco-editor/react', () => {
     loader: { config: vi.fn() },
   }
 })
+beforeEach(() => vi.restoreAllMocks())
+
 const emptySchema = {
   type: Type.object,
   properties: {},
@@ -66,7 +67,12 @@ function renderOutput({ readOnly = false, onChange = vi.fn() } = {}) {
     }).queryKey,
     { data: [] },
   )
-  client.setQueryData(commonQueryKeys.defaultModel(ModelTypeEnum.textGeneration), { data: null })
+  client.setQueryData(
+    consoleQuery.workspaces.current.defaultModel.get.queryKey({
+      input: { query: { model_type: ModelTypeEnum.textGeneration } },
+    }),
+    { data: null },
+  )
   client.setQueryData(
     consoleQuery.systemFeatures.get.queryOptions().queryKey,
     createSystemFeaturesFixture(),
@@ -142,7 +148,7 @@ async function generate(user: ReturnType<typeof userEvent.setup>) {
     }),
   )
 }
-beforeEach(() => vi.restoreAllMocks())
+afterEach(() => vi.restoreAllMocks())
 
 describe('StructureOutput schema sessions', () => {
   it('moves tab focus without activating a different editor', async () => {

@@ -3,34 +3,24 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
 import { useFetchDynamicOptions, useFetchDynamicTreeOptions } from '../use-plugins'
 
-const { mockGet, mockDynamicTreeGet } = vi.hoisted(() => ({
-  mockGet: vi.fn(),
+const { mockDynamicOptionsGet, mockDynamicTreeGet } = vi.hoisted(() => ({
+  mockDynamicOptionsGet: vi.fn(),
   mockDynamicTreeGet: vi.fn(),
 }))
 
-vi.mock('@/service/base', () => ({
-  get: mockGet,
-  getMarketplace: vi.fn(),
-  post: vi.fn(),
-  postMarketplace: vi.fn(),
-}))
-
-vi.mock('@/service/console', () => ({
-  consoleClient: {
-    workspaces: {
-      current: {
-        plugin: {
-          parameters: {
-            dynamicTreeOptions: {
-              get: mockDynamicTreeGet,
-            },
-          },
-        },
-      },
-    },
-  },
-  consoleQuery: {},
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.plugin.parameters.dynamicOptions.get': (input) =>
+        mockDynamicOptionsGet(input),
+      'workspaces.current.plugin.parameters.dynamicTreeOptions.get': (input) =>
+        mockDynamicTreeGet(input),
+    }),
+  }
+})
 
 vi.mock('@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list', () => ({
   default: () => ({
@@ -57,7 +47,7 @@ describe('dynamic plugin option hooks', () => {
   })
 
   it('should request dynamic options with credential and sibling parameter values', async () => {
-    mockGet.mockResolvedValue({ options: [] })
+    mockDynamicOptionsGet.mockResolvedValue({ options: [] })
     const { result } = renderHook(
       () =>
         useFetchDynamicOptions({
@@ -73,8 +63,8 @@ describe('dynamic plugin option hooks', () => {
 
     await result.current.mutateAsync()
 
-    expect(mockGet).toHaveBeenCalledWith('/workspaces/current/plugin/parameters/dynamic-options', {
-      params: {
+    expect(mockDynamicOptionsGet).toHaveBeenCalledWith({
+      query: {
         plugin_id: 'plugin-1',
         provider: 'provider-1',
         action: 'search',
@@ -87,7 +77,7 @@ describe('dynamic plugin option hooks', () => {
   })
 
   it('should omit empty credential and parameter values from dynamic option requests', async () => {
-    mockGet.mockResolvedValue({ options: [] })
+    mockDynamicOptionsGet.mockResolvedValue({ options: [] })
     const { result } = renderHook(
       () =>
         useFetchDynamicOptions({
@@ -102,8 +92,8 @@ describe('dynamic plugin option hooks', () => {
 
     await result.current.mutateAsync()
 
-    expect(mockGet).toHaveBeenCalledWith('/workspaces/current/plugin/parameters/dynamic-options', {
-      params: {
+    expect(mockDynamicOptionsGet).toHaveBeenCalledWith({
+      query: {
         plugin_id: 'plugin-1',
         provider: 'provider-1',
         action: 'search',

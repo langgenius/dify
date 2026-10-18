@@ -1,55 +1,14 @@
 import type { WebhookTriggerNodeType } from '../types'
-import { renderEditorHook as renderHookWithConsoleQuery } from '@/app/components/workflow/editor-resource/__tests__/render'
+import { act } from '@testing-library/react'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
-import { createNodeCrudModuleMock } from '../../__tests__/use-config-test-utils'
+import { createEdge, createNode } from '../../../__tests__/fixtures'
+import { renderNodeConfig } from '../../__tests__/render-node-config'
 import { useConfig } from '../use-config'
 
-const mockSetInputs = vi.hoisted(() => vi.fn())
-const mockIsVarUsedInNodes = vi.hoisted(() => vi.fn())
-const mockRemoveUsedVarInNodes = vi.hoisted(() => vi.fn())
-const mockUseNodesReadOnly = vi.hoisted(() => vi.fn())
-
-vi.mock('react-i18next', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return {
-    useTranslation: () => ({
-      t: withSelectorKey((key: string, options?: Record<string, unknown>) => options?.key || key),
-    }),
-  }
-})
-
-vi.mock('@/app/notifications', () => ({
-  __esModule: true,
-  toast: {
-    error: vi.fn(),
-  },
-}))
-
-vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
-
-  return {
-    ...actual,
-    useNodesReadOnly: () => mockUseNodesReadOnly(),
-    useWorkflow: () => ({
-      isVarUsedInNodes: (...args: unknown[]) => mockIsVarUsedInNodes(...args),
-      removeUsedVarInNodes: (...args: unknown[]) => mockRemoveUsedVarInNodes(...args),
-    }),
-  }
-})
-
-vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
-  ...createNodeCrudModuleMock<WebhookTriggerNodeType>(mockSetInputs),
-}))
-
 const mockRequest = vi.hoisted(() => vi.fn())
-
-vi.mock('@/service/console/browser', () => ({
-  consoleBrowserLink: { call: mockRequest },
-}))
-const mockedToastError = vi.mocked(toast.error)
-
+vi.mock('@/service/console/browser', () => ({ consoleBrowserLink: { call: mockRequest } }))
+vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 const createPayload = (
   overrides: Partial<WebhookTriggerNodeType> = {},
 ): WebhookTriggerNodeType => ({
@@ -68,186 +27,114 @@ const createPayload = (
   ...overrides,
 })
 
-describe('useConfig', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockRequest.mockReset()
-    mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false })
-    mockIsVarUsedInNodes.mockReturnValue(false)
-  })
-
-  it('should update simple fields and reset body variables when content type changes', () => {
+describe('webhook/use-config', () => {
+  beforeEach(() => mockRequest.mockReset())
+  it('keeps successive edits and removes downstream references when body format changes', () => {
     const payload = createPayload({
-      content_type: 'application/json',
       body: [{ name: 'payload', type: VarType.string, required: true }],
       variables: [
-        {
-          variable: 'payload',
-          label: 'body',
-          required: true,
-          value_selector: [],
-          value_type: VarType.string,
-        },
-        {
-          variable: 'token',
-          label: 'header',
-          required: false,
-          value_selector: [],
-          value_type: VarType.string,
-        },
+        { variable: 'payload', label: 'body', value_selector: [], value_type: VarType.string },
+        { variable: 'token', label: 'header', value_selector: [], value_type: VarType.string },
       ],
     })
-    mockIsVarUsedInNodes.mockImplementation(([_, variable]) => variable === 'payload')
-    const { result } = renderHookWithConsoleQuery(() => useConfig('webhook-node', payload))
-
-    result.current.handleMethodChange('GET')
-    result.current.handleContentTypeChange('text/plain')
-    result.current.handleAsyncModeChange(true)
-    result.current.handleStatusCodeChange(204)
-    result.current.handleResponseBodyChange('ok')
-
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        method: 'GET',
-      }),
-    )
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        content_type: 'text/plain',
-        body: [],
-        variables: [
-          expect.objectContaining({
-            variable: 'token',
-            label: 'header',
-          }),
-        ],
-      }),
-    )
-    expect(mockRemoveUsedVarInNodes).toHaveBeenCalledWith(['webhook-node', 'payload'])
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({ async_mode: true }))
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({ status_code: 204 }))
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({ response_body: 'ok' }))
-  })
-
-  it('should sync params, headers and body variables and reject conflicting names', () => {
-    const payload = createPayload({
-      variables: [
-        {
-          variable: 'existing_header',
-          label: 'header',
-          required: false,
-          value_selector: [],
-          value_type: VarType.string,
-        },
-      ],
+    const consumer = createNode({
+      id: 'consumer',
+      data: {
+        type: BlockEnum.TemplateTransform,
+        variables: [{ variable: 'body', value_selector: ['node', 'payload'] }],
+        template: '{{ body }}',
+      },
     })
-    const { result } = renderHookWithConsoleQuery(() => useConfig('webhook-node', payload))
-
-    result.current.handleParamsChange([{ name: 'page', type: VarType.number, required: true }])
-    result.current.handleHeadersChange([{ name: 'x-request-id', required: false }])
-    result.current.handleBodyChange([{ name: 'body_field', type: VarType.string, required: true }])
-    result.current.handleParamsChange([
-      { name: 'existing_header', type: VarType.string, required: true },
+    const { result } = renderNodeConfig(useConfig, payload, {
+      nodes: [createNode({ id: 'node', data: payload }), consumer],
+      edges: [createEdge({ source: 'node', target: 'consumer' })],
+    })
+    act(() => result.current.config.handleMethodChange('GET'))
+    act(() => result.current.config.handleContentTypeChange('text/plain'))
+    act(() => result.current.config.handleAsyncModeChange(true))
+    act(() => result.current.config.handleStatusCodeChange(204))
+    act(() => result.current.config.handleResponseBodyChange('ok'))
+    expect(result.current.flow.getNode('node')?.data).toMatchObject({
+      method: 'GET',
+      content_type: 'text/plain',
+      body: [],
+      variables: [expect.objectContaining({ variable: 'token', label: 'header' })],
+      async_mode: true,
+      status_code: 204,
+      response_body: 'ok',
+    })
+    expect(result.current.flow.getNode('consumer')?.data.variables).toEqual([
+      { variable: 'body', value_selector: [] },
     ])
-
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        params: [{ name: 'page', type: VarType.number, required: true }],
-        variables: expect.arrayContaining([
-          expect.objectContaining({
-            variable: 'page',
-            label: 'param',
-            value_type: VarType.number,
-          }),
-        ]),
-      }),
-    )
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        headers: [{ name: 'x-request-id', required: false }],
-        variables: expect.arrayContaining([
-          expect.objectContaining({
-            variable: 'x_request_id',
-            label: 'header',
-          }),
-        ]),
-      }),
-    )
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        body: [{ name: 'body_field', type: VarType.string, required: true }],
-        variables: expect.arrayContaining([
-          expect.objectContaining({
-            variable: 'body_field',
-            label: 'body',
-          }),
-        ]),
-      }),
-    )
-    expect(mockedToastError).toHaveBeenCalledTimes(1)
   })
-
-  it('should generate webhook urls once and fall back to empty url on request failure', async () => {
-    mockRequest.mockResolvedValueOnce({
+  it('merges sources and rejects a name conflicting with the current headers', () => {
+    const { result } = renderNodeConfig(useConfig, createPayload())
+    act(() =>
+      result.current.config.handleParamsChange([
+        { name: 'page', type: VarType.number, required: true },
+      ]),
+    )
+    act(() =>
+      result.current.config.handleHeadersChange([{ name: 'x-request-id', required: false }]),
+    )
+    act(() =>
+      result.current.config.handleBodyChange([
+        { name: 'body_field', type: VarType.string, required: true },
+      ]),
+    )
+    const saved = result.current.flow.getNode('node')?.data
+    expect(saved).toMatchObject({
+      params: [{ name: 'page', type: VarType.number, required: true }],
+      headers: [{ name: 'x-request-id', required: false }],
+      body: [{ name: 'body_field', type: VarType.string, required: true }],
+      variables: expect.arrayContaining([
+        expect.objectContaining({ variable: 'page', label: 'param' }),
+        expect.objectContaining({ variable: 'x_request_id', label: 'header' }),
+        expect.objectContaining({ variable: 'body_field', label: 'body' }),
+      ]),
+    })
+    act(() =>
+      result.current.config.handleParamsChange([
+        { name: 'x_request_id', type: VarType.string, required: true },
+      ]),
+    )
+    expect(toast.error).toHaveBeenCalledTimes(1)
+    expect(result.current.flow.getNode('node')?.data.variables).toEqual(saved.variables)
+  })
+  it('persists generated URLs and skips the next request', async () => {
+    mockRequest.mockResolvedValue({
       webhook_url: 'https://example.com/hook',
       webhook_debug_url: 'https://example.com/debug',
-    } as never)
-    mockRequest.mockRejectedValueOnce(new Error('boom'))
-
-    const { result, rerender } = renderHookWithConsoleQuery(
-      ({ payload }) => useConfig('webhook-node', payload),
-      {
-        initialProps: {
-          payload: createPayload(),
-        },
-      },
-    )
-
-    await result.current.generateWebhookUrl()
+    })
+    const { result } = renderNodeConfig(useConfig, createPayload())
+    await act(() => result.current.config.generateWebhookUrl())
     expect(mockRequest).toHaveBeenCalledWith(
       ['apps', 'byAppId', 'workflows', 'triggers', 'webhook', 'get'],
-      { params: { app_id: 'app-1' }, query: { node_id: 'webhook-node' } },
+      { params: { app_id: 'app-1' }, query: { node_id: 'node' } },
       expect.any(Object),
     )
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        webhook_url: 'https://example.com/hook',
-        webhook_debug_url: 'https://example.com/debug',
-      }),
-    )
-
-    rerender({
-      payload: createPayload(),
+    expect(result.current.flow.getNode('node')?.data).toMatchObject({
+      webhook_url: 'https://example.com/hook',
+      webhook_debug_url: 'https://example.com/debug',
     })
-    await result.current.generateWebhookUrl()
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        webhook_url: '',
-      }),
-    )
-
-    rerender({
-      payload: createPayload({ webhook_url: 'https://already-exists' }),
-    })
-    await result.current.generateWebhookUrl()
-    expect(mockRequest).toHaveBeenCalledTimes(2)
+    await act(() => result.current.config.generateWebhookUrl())
+    expect(mockRequest).toHaveBeenCalledTimes(1)
   })
-
-  it('should expose readonly state and skip url generation in a snippet', async () => {
-    mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: true })
-
-    const { result } = renderHookWithConsoleQuery(
-      () => useConfig('webhook-node', createPayload()),
-      {
-        resource: { kind: 'snippet', snippetId: 'snippet-1' },
-      },
-    )
-
-    expect(result.current.readOnly).toBe(true)
-
-    await result.current.generateWebhookUrl()
-
+  it('stores an empty URL after a failed generation', async () => {
+    mockRequest.mockRejectedValueOnce(new Error('Unavailable'))
+    const { result } = renderNodeConfig(useConfig, createPayload())
+    await act(() => result.current.config.generateWebhookUrl())
+    expect(result.current.flow.getNode('node')?.data.webhook_url).toBe('')
+  })
+  it('skips URL generation in a readonly snippet', async () => {
+    const payload = createPayload()
+    const { result } = renderNodeConfig(useConfig, payload, {
+      resource: { kind: 'snippet', snippetId: 's' },
+      initialStoreState: { canvasReadOnly: true },
+    })
+    expect(result.current.config.readOnly).toBe(true)
+    await act(() => result.current.config.generateWebhookUrl())
     expect(mockRequest).not.toHaveBeenCalled()
-    expect(mockSetInputs).not.toHaveBeenCalled()
+    expect(result.current.flow.getNode('node')?.data).toMatchObject(payload)
   })
 })

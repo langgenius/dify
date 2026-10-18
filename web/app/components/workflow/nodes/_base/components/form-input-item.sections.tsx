@@ -111,15 +111,22 @@ export const MultiSelectField: FC<MultiSelectFieldProps> = ({
 }
 
 type JsonEditorFieldProps = {
+  readOnly?: boolean
   onChange: (value: string) => void
   placeholder?: ReactElement | string
   value: string
 }
 
-export const JsonEditorField: FC<JsonEditorFieldProps> = ({ onChange, placeholder, value }) => {
+export const JsonEditorField: FC<JsonEditorFieldProps> = ({
+  onChange,
+  placeholder,
+  value,
+  readOnly,
+}) => {
   return (
     <div className="mt-1 w-full">
       <CodeEditor
+        readOnly={readOnly}
         title="JSON"
         value={value}
         isExpand
