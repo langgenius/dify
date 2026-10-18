@@ -187,6 +187,28 @@ class ConfirmedAgentCommands:
         self._request(actor=actor, session_id=session_id, request_id=request_id)
         receipt = self.api.get(actor=actor, session_id=session_id, request_id=request_id)
         ref = self._root_ref(actor=actor, request_id=request_id)
+        if receipt.cancellation is not None:
+            from services.dify_builder.native_testing.confirmed_agent_cancellation import ConfirmedAgentCancellation
+
+            try:
+                validate_private_read(self.loader, ref)
+                if ConfirmedAgentCancellation(self).settle(ref=ref):
+                    self._complete_builder(ref=ref)
+                    return receipt.model_copy(
+                        update={
+                            "status": "terminal",
+                            "outcome": "cancelled",
+                            "native_status": "stopped",
+                            "wait_reason": None,
+                            "pending": (),
+                        }
+                    )
+            except Exception:
+                logger.warning("Confirmed Agent logical cancellation remains unproven")
+            if receipt.cancellation.status == "cancelled" and receipt.native_status == "paused":
+                # A physical cleanup receipt cannot close the ordinary pause.
+                # Confirmed callers need the separately saved logical stop.
+                return receipt.model_copy(update={"status": "running", "outcome": None})
         if receipt.status == "terminal" and receipt.outcome in {"succeeded", "failed"}:
             self._complete_builder(ref=ref)
         if receipt.status == "waiting":
@@ -663,6 +685,8 @@ class ConfirmedAgentCommands:
             raise BuilderExecutionPolicyError("native_agent_continuation_unknown") from None
 
     def cancel(self, *, actor, session_id, request_id, idempotency_key):
+        from services.dify_builder.native_testing.confirmed_agent_cancellation import ConfirmedAgentCancellation
+
         self._request(actor=actor, session_id=session_id, request_id=request_id)
         ref = self._root_ref(actor=actor, request_id=request_id)
         children = []
@@ -670,8 +694,13 @@ class ConfirmedAgentCommands:
             for wait in self.continuation._stored_waits(ref=ref):
                 protected = self.api.store.load_agent_association(ref=ref, parent_node=wait.parent_node, wait=wait)
                 children.append(protected.association.agent_run_id)
-        except BuilderExecutionPolicyError:
-            pass  # Revocation still commits when checkpoint/cleanup is unknown.
+        except Exception:
+            # Revocation still commits when checkpoint/cleanup is unknown.
+            logger.warning("Confirmed Agent cancellation child discovery unavailable")
+        try:
+            ConfirmedAgentCancellation(self).prepare(ref=ref)
+        except Exception:
+            logger.warning("Confirmed Agent cancellation preparation unavailable")
         self.api.lifecycle.cancel(actor=actor, request_id=request_id, idempotency_key=idempotency_key)
         for child in children:
             try:

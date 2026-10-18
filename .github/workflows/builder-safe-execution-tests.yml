@@ -719,6 +719,19 @@ jobs:
               'test_native_agent_evidence_requires_single_succeeded_complete_row': 5,
               'test_native_agent_offloaded_outputs_do_not_prove_key_absence': 1,
           }
+          # Declined confirmed Agent: original native stop and Builder settlement.
+          a4_expected.setdefault('tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion', {}).update({
+              'test_cancel_rechecks_owned_pause_dispatch_and_effect_facts_after_external_ack': 12,
+              'test_cancel_reconnect_finishes_only_original_preparation_and_projection_once': 1,
+              'test_cancel_settles_original_paused_native_without_claiming_physical_cleanup': 1,
+              'test_clean_physical_receipt_cannot_finish_confirmed_paused_parent_without_logical_proof': 1,
+              'test_declined_builder_cas_race_preserves_newer_user_work': 1,
+              'test_declined_projection_preserves_prior_immutable_terminal_builder_evidence': 2,
+              'test_declined_result_cannot_publish_and_preserves_graph_and_original_ids': 1,
+              'test_declined_terminal_proof_closes_same_builder_attempt_and_returns_editable_review': 1,
+              'test_failed_preparation_still_revokes_without_fabricating_native_stop': 1,
+              'test_unverified_child_never_stops_native_or_projects_declined_result': 5,
+          })
           for module, expected in {**a3_expected, **a4_expected}.items():
               actual = {}
               for classname, name in identities:

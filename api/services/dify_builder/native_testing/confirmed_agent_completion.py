@@ -88,12 +88,20 @@ def _terminal_proof(sql, *, request, ref):
             NativeInvocationState.parent_invocation_id.is_(None),
         )
     )
-    if scope is None or scope.cancelled or state is None or state.state != "completed" or state.outcome is None:
+    if scope is None or state is None or state.outcome is None:
         return None
     outcome = NativeWorkflowOutcome.model_validate(state.outcome)
+    declined = (
+        scope.cancelled
+        and state.state == "cancelled"
+        and outcome.status == "stopped"
+        and outcome.native_status == "stopped"
+        and outcome.reason_code == "effect_denied"
+    )
+    if not declined and (scope.cancelled or state.state != "completed" or outcome.status != "completed"):
+        return None
     if (
         outcome.ref != ref
-        or outcome.status != "completed"
         or outcome.native_run_id != _native_run_id(request)
         or state.generation != scope.generation
         or outcome.pending_operation_ids
@@ -165,7 +173,6 @@ def _project(*, sessions, actor, ref, request):
         or owner.current_state not in {PcState.BUILD_EXECUTION, PcState.BUILD_AWAIT_REPAIR}
         or context.paused
         or context.recovery_class
-        or context.staged_repair
         or context.test_input_ref != test_input_id
         or not context.verify_run_id
     ):
@@ -185,7 +192,11 @@ def _project(*, sessions, actor, ref, request):
             or reservation.kind != "native_test_launch"
         ):
             return False
-        if _terminal_proof(sql, request=request, ref=ref) is None:
+        outcome = _terminal_proof(sql, request=request, ref=ref)
+        if outcome is None:
+            return False
+        declined = outcome.reason_code == "effect_denied" and outcome.status == "stopped"
+        if context.staged_repair and not declined:
             return False
     original = repo.get_run(reservation_id)
     evidence = original.verification
@@ -217,14 +228,19 @@ def _project(*, sessions, actor, ref, request):
         sandbox_profile="native",
         native_run_id=native_run_id,
     )
+    if declined:
+        run.error = "Test declined by the user; continue adjusting to revise the plan."
     card = result_card(run)
     items = append_card(context, card)
     for item in items:
         item.at_version = owner.version + 1
     context.diagnosis, context.staged_repair, context.unknown_outcome_count = None, [], 0
+    if declined:
+        context.confirmed_consent_id, context.confirmed_command_id = "", ""
+        context.effect_confirmation, context.effect_confirmation_form = {}, {}
     next_state = (
         PcState.BUILD_REVIEW
-        if run.status == "succeeded" and not has_output_blocker(run)
+        if declined or run.status == "succeeded" and not has_output_blocker(run)
         else PcState.BUILD_AWAIT_REPAIR
     )
     try:
@@ -268,6 +284,7 @@ def _project(*, sessions, actor, ref, request):
                     for row in (current, reservation)
                 )
                 or current.status != "running"
+                or reservation.status != "running"
             ):
                 return False
             _write_run(current, run)
