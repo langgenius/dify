@@ -65,6 +65,8 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
             normalized_config = self._normalize_tencent_config(tracing_config)
         elif tracing_provider == "mlflow":
             normalized_config = self._normalize_mlflow_config(tracing_config)
+        elif tracing_provider == "phoenix":
+            normalized_config = self._normalize_phoenix_config(tracing_config)
         else:
             normalized_config = self._normalize_config(provider_config, tracing_config)
         self._verify_config(normalized_config, tracing_provider)
@@ -98,6 +100,8 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
             tracing_config = self._normalize_tencent_config(tracing_config)
         elif tracing_provider == "mlflow":
             tracing_config = self._normalize_mlflow_config(tracing_config)
+        elif tracing_provider == "phoenix":
+            tracing_config = self._normalize_phoenix_config(tracing_config)
         self._validate_config(provider_config, tracing_config)
         try:
             encrypted_config = OpsTraceManager.encrypt_tracing_config(
@@ -127,6 +131,9 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
         elif tracing_provider == "mlflow":
             encrypted_config["tracking_uri"] = decrypted_config["tracking_uri"]
             encrypted_config["experiment_id"] = decrypted_config["experiment_id"]
+        elif tracing_provider == "phoenix":
+            encrypted_config["endpoint"] = decrypted_config["endpoint"]
+            encrypted_config["project"] = decrypted_config["project"]
         elif tracing_provider == "opik":
             for key in ("url", "workspace", "project"):
                 encrypted_config[key] = decrypted_config[key]
@@ -174,6 +181,16 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
                 presented_config["project_url"] = project_url(config) or console_url(config)
             except ValueError:
                 presented_config["project_url"] = _PROJECT_URL_FALLBACKS["opik"]
+        elif tracing_provider == "phoenix":
+            from dify_trace_arize_phoenix.config import PhoenixConfig
+            from dify_trace_arize_phoenix.configuration import project_url
+
+            try:
+                presented_config["project_url"] = project_url(PhoenixConfig.model_validate(decrypted_config))
+            except ValueError:
+                # Historical destinations stay readable; never initialize a
+                # legacy exporter or invent a link for an unsafe base URL.
+                presented_config["project_url"] = None
         elif tracing_provider == "mlflow":
             from dify_trace_mlflow.config import MLflowConfig
             from dify_trace_mlflow.oss_configuration import project_url
@@ -260,6 +277,15 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
             raise AppTracingConfigInvalidConfigurationError from error
 
     @staticmethod
+    def _normalize_phoenix_config(tracing_config: dict[str, Any]) -> dict[str, Any]:
+        from dify_trace_arize_phoenix.configuration import normalize_configuration
+
+        try:
+            return normalize_configuration(tracing_config).model_dump()
+        except ValueError as error:
+            raise AppTracingConfigInvalidConfigurationError from error
+
+    @staticmethod
     def _validate_config(
         provider_config: TracingProviderConfigEntry,
         tracing_config: dict[str, Any],
@@ -272,6 +298,18 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
 
     @staticmethod
     def _verify_config(tracing_config: dict[str, Any], tracing_provider: str) -> None:
+        if tracing_provider == "phoenix":
+            from dify_trace_arize_phoenix.config import PhoenixConfig
+            from dify_trace_arize_phoenix.configuration import PhoenixConfigurationError, verify_configuration
+
+            try:
+                resolved = verify_configuration(PhoenixConfig.model_validate(tracing_config))
+            except PhoenixConfigurationError as error:
+                logger.warning("Phoenix configuration verification failed: error_code=%s", error.code)
+                raise AppTracingConfigVerificationFailedError from error
+            tracing_config["endpoint"] = resolved.endpoint
+            tracing_config["project"] = resolved.project
+            return
         if tracing_provider == "mlflow":
             from dify_trace_mlflow.config import MLflowConfig
             from dify_trace_mlflow.oss_configuration import MLflowConfigurationError, verify_configuration
@@ -367,7 +405,12 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
                 from dify_trace_weave.configuration import project_url
 
                 return project_url(WeaveConfig.model_validate(tracing_config))
-            if tracing_provider in ("arize", "phoenix"):
+            if tracing_provider == "phoenix":
+                from dify_trace_arize_phoenix.config import PhoenixConfig
+                from dify_trace_arize_phoenix.configuration import project_url
+
+                return project_url(PhoenixConfig.model_validate(tracing_config))
+            if tracing_provider == "arize":
                 return OpsTraceManager.get_trace_config_project_url(tracing_config, tracing_provider)
             if tracing_provider == "langfuse":
                 project_key = OpsTraceManager.get_trace_config_project_key(tracing_config, tracing_provider)
