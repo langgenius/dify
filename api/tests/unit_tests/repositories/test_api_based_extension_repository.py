@@ -1,7 +1,8 @@
 from datetime import datetime
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.api_based_extension import APIBasedExtension
@@ -183,6 +184,30 @@ def test_update_extension_rejects_a_name_taken_by_another_extension(
         APIBasedExtensionInput(name="taken", api_endpoint="https://kept.example.com", api_key="kept-cipher"),
     )
     assert (kept.name, kept.api_endpoint) == ("taken", "https://kept.example.com")
+
+
+def test_writes_keep_integrity_failures_that_are_not_name_conflicts(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        session.add(_extension("ext-1", workspace_id="workspace-1", name="mine", created_at=datetime(2024, 1, 1)))
+        # Triggers stand in for any integrity rule other than the (tenant_id, name) constraint.
+        for event in ("INSERT", "UPDATE"):
+            session.execute(
+                text(
+                    f"CREATE TRIGGER reject_blocked_endpoint_{event.lower()} BEFORE {event} ON api_based_extensions "
+                    "WHEN NEW.api_endpoint = 'https://blocked.example.com' "
+                    "BEGIN SELECT RAISE(ABORT, 'endpoint is blocked'); END"
+                )
+            )
+
+    repository = APIBasedExtensionRepository(session_factory=sqlite_session_factory)
+    blocked = APIBasedExtensionInput(name="fresh", api_endpoint="https://blocked.example.com", api_key="cipher-text")
+
+    with pytest.raises(IntegrityError, match="endpoint is blocked"):
+        repository.create_extension("workspace-1", blocked)
+    with pytest.raises(IntegrityError, match="endpoint is blocked"):
+        repository.update_extension("workspace-1", "ext-1", blocked)
 
 
 def test_delete_extension_requires_a_scoped_match(sqlite_session_factory: sessionmaker[Session]) -> None:

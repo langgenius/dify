@@ -21,39 +21,68 @@ down_revision = "f1d3c5b7a902"
 branch_labels = None
 depends_on = None
 
-_NAME_MAX_LENGTH = 255
-
-_extensions = sa.table(
-    "api_based_extensions",
-    sa.column("id", sa.String),
-    sa.column("tenant_id", sa.String),
-    sa.column("name", sa.String),
-    sa.column("created_at", sa.DateTime),
-)
+# The renamed value "<name> (<id>)" must still fit the name column's 255 characters.
+_NAME_PREFIX_BUDGET = 255 - len(" ()")
 
 
 def _rename_duplicate_names() -> None:
-    connection = op.get_bind()
-    # Group and match in SQL so names compare exactly as the new constraint will,
-    # e.g. case-insensitively under MySQL's default collations.
-    duplicate_groups = connection.execute(
-        sa.select(_extensions.c.tenant_id, _extensions.c.name)
-        .group_by(_extensions.c.tenant_id, _extensions.c.name)
-        .having(sa.func.count() > 1)
-    ).all()
-    for tenant_id, name in duplicate_groups:
-        extensions = connection.execute(
-            sa.select(_extensions.c.id, _extensions.c.name)
-            .where(_extensions.c.tenant_id == tenant_id, _extensions.c.name == name)
-            .order_by(_extensions.c.created_at, _extensions.c.id)
-        ).all()
-        for extension_id, extension_name in extensions[1:]:
-            suffix = f" ({extension_id})"
-            connection.execute(
-                _extensions.update()
-                .where(_extensions.c.id == extension_id)
-                .values(name=extension_name[: _NAME_MAX_LENGTH - len(suffix)] + suffix)
+    # Statements are static so offline (--sql) migrations work. Names are compared with SQL `=`,
+    # so rows count as duplicates exactly when the new constraint will treat them as equal,
+    # e.g. case-insensitively under MySQL's default collations. The oldest row of a group is
+    # never renamed, so it remains the match for every later row while the update runs.
+    dialect_name = op.get_context().dialect.name
+    if dialect_name == "mysql":
+        # MySQL rejects a subquery on the updated table; DISTINCT materializes the derived table first.
+        op.execute(
+            sa.text(
+                f"""
+                UPDATE api_based_extensions AS duplicate
+                JOIN (
+                    SELECT DISTINCT later.id
+                    FROM api_based_extensions AS later
+                    JOIN api_based_extensions AS original
+                        ON original.tenant_id = later.tenant_id
+                        AND original.name = later.name
+                        AND (
+                            original.created_at < later.created_at
+                            OR (original.created_at = later.created_at AND original.id < later.id)
+                        )
+                ) AS duplicates ON duplicates.id = duplicate.id
+                SET duplicate.name = CONCAT(
+                    LEFT(duplicate.name, {_NAME_PREFIX_BUDGET} - CHAR_LENGTH(duplicate.id)),
+                    ' (', duplicate.id, ')'
+                )
+                """
             )
+        )
+        return
+
+    if dialect_name in {"postgresql", "sqlite"}:
+        op.execute(
+            sa.text(
+                f"""
+                UPDATE api_based_extensions
+                SET name = substr(name, 1, {_NAME_PREFIX_BUDGET} - length(CAST(id AS TEXT)))
+                    || ' (' || CAST(id AS TEXT) || ')'
+                WHERE EXISTS (
+                    SELECT 1
+                    FROM api_based_extensions AS original
+                    WHERE original.tenant_id = api_based_extensions.tenant_id
+                        AND original.name = api_based_extensions.name
+                        AND (
+                            original.created_at < api_based_extensions.created_at
+                            OR (
+                                original.created_at = api_based_extensions.created_at
+                                AND original.id < api_based_extensions.id
+                            )
+                        )
+                )
+                """
+            )
+        )
+        return
+
+    raise RuntimeError(f"Unsupported database dialect for api_based_extensions name migration: {dialect_name}")
 
 
 def upgrade():

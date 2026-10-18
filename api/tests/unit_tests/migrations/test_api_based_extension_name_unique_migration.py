@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 from collections.abc import Callable
 from datetime import datetime
+from io import StringIO
 from pathlib import Path
 from typing import Protocol, cast
 
@@ -131,3 +132,28 @@ def test_downgrade_drops_the_constraint_and_keeps_renamed_names() -> None:
         connection.execute(extensions.insert(), _row("ext-c", "tenant-1", "Docs", datetime(2024, 1, 3)))
         names = connection.execute(sa.select(extensions.c.name).order_by(extensions.c.id)).scalars().all()
     assert names == ["Docs", "Docs (ext-b)", "Docs"]
+
+
+@pytest.mark.parametrize(
+    ("dialect_name", "rename_marker"),
+    [("postgresql", "WHERE EXISTS"), ("mysql", "SELECT DISTINCT later.id")],
+)
+def test_upgrade_and_downgrade_emit_offline_sql(dialect_name: str, rename_marker: str) -> None:
+    module = _load_migration()
+    output = StringIO()
+    original_op = module.op
+    module.op = Operations(
+        MigrationContext.configure(dialect_name=dialect_name, opts={"as_sql": True, "output_buffer": output})
+    )
+    try:
+        module.upgrade()
+        module.downgrade()
+    finally:
+        module.op = original_op
+
+    generated_sql = output.getvalue()
+    assert "UPDATE api_based_extensions" in generated_sql
+    assert rename_marker in generated_sql
+    assert generated_sql.index("UPDATE api_based_extensions") < generated_sql.index(
+        "ADD CONSTRAINT api_based_extension_tenant_name_key UNIQUE (tenant_id, name)"
+    )
