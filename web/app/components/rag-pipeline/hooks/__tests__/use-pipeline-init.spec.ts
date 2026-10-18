@@ -1,5 +1,8 @@
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
+import { createHttpError } from '@/service/http-error'
+import { createDeferred } from '@/test/deferred'
 import { usePipelineInit } from '../use-pipeline-init'
 
 const mockWorkflowStoreGetState = vi.fn()
@@ -45,7 +48,6 @@ describe('usePipelineInit', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.spyOn(console, 'error').mockImplementation(() => {})
 
     mockWorkflowStoreGetState.mockReturnValue({
       setEnvSecrets: mockSetEnvSecrets,
@@ -62,7 +64,7 @@ describe('usePipelineInit', () => {
           dataset: {
             pipeline_id: 'test-pipeline-id',
             name: 'Test Knowledge',
-            icon_info: { icon: 'test-icon' },
+            icon_info: { icon: 'test-icon', icon_type: 'emoji' },
           },
         }
         return selector(state)
@@ -88,105 +90,53 @@ describe('usePipelineInit', () => {
   })
 
   describe('hook initialization', () => {
-    it('should return data and isLoading', async () => {
-      const { result } = renderHook(() => usePipelineInit())
-
-      expect(result.current.isLoading).toBe(true)
-      expect(result.current.data).toBeUndefined()
-    })
-
-    it('should set pipelineId in workflow store on mount', () => {
-      renderHook(() => usePipelineInit())
+    it('should initialize the knowledge presentation metadata', () => {
+      renderHook(() => usePipelineInit(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({
-        pipelineId: 'test-pipeline-id',
         knowledgeName: 'Test Knowledge',
-        knowledgeIcon: { icon: 'test-icon' },
+        knowledgeIcon: {
+          icon: 'test-icon',
+          icon_type: 'emoji',
+          icon_background: undefined,
+          icon_url: undefined,
+        },
       })
     })
   })
 
   describe('data fetching', () => {
-    it('should fetch workflow draft on mount', async () => {
-      renderHook(() => usePipelineInit())
-
-      await waitFor(() => {
-        expect(mockFetchWorkflowDraft).toHaveBeenCalledWith(
-          '/rag/pipelines/test-pipeline-id/workflows/draft',
-        )
+    it('loads the graph and draft metadata only after initialization resolves', async () => {
+      const response = {
+        graph: { nodes: [{ id: 'node-1' }], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+        hash: 'test-hash',
+        updated_at: '2024-01-01T00:00:00Z',
+        tool_published: true,
+        environment_variables: [],
+        rag_pipeline_variables: [],
+      }
+      const pending = createDeferred<typeof response>()
+      mockFetchWorkflowDraft.mockReturnValue(pending.promise)
+      const { result } = renderHook(() => usePipelineInit(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
       })
-    })
-
-    it('should set data after successful fetch', async () => {
-      const { result } = renderHook(() => usePipelineInit())
-
-      await waitFor(() => {
-        expect(result.current.data).toBeDefined()
-      })
-    })
-
-    it('should set isLoading to false after fetch', async () => {
-      const { result } = renderHook(() => usePipelineInit())
-
-      await waitFor(() => {
-        expect(result.current.isLoading).toBe(false)
-      })
-    })
-
-    it('should set draft updated at', async () => {
-      renderHook(() => usePipelineInit())
-
-      await waitFor(() => {
-        expect(mockSetDraftUpdatedAt).toHaveBeenCalledWith('2024-01-01T00:00:00Z')
-      })
-    })
-
-    it('should set tool published status', async () => {
-      renderHook(() => usePipelineInit())
-
-      await waitFor(() => {
-        expect(mockSetToolPublished).toHaveBeenCalledWith(true)
-      })
-    })
-
-    it('should set sync hash', async () => {
-      renderHook(() => usePipelineInit())
-
-      await waitFor(() => {
-        expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('test-hash')
-      })
-    })
-
-    it('should mark workflow data as loaded after a successful fetch', async () => {
-      renderHook(() => usePipelineInit())
-
-      await waitFor(() => {
-        expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ isWorkflowDataLoaded: true })
-      })
+      expect(result.current).toEqual({ data: undefined, isLoading: true })
+      expect(mockFetchWorkflowDraft).toHaveBeenCalledExactlyOnceWith(
+        '/rag/pipelines/test-pipeline-id/workflows/draft',
+      )
+      expect(mockWorkflowStoreSetState).not.toHaveBeenCalledWith({ isWorkflowDataLoaded: true })
+      await act(async () => pending.resolve(response))
+      await waitFor(() => expect(result.current).toEqual({ data: response, isLoading: false }))
+      expect(mockSetDraftUpdatedAt).toHaveBeenCalledWith(response.updated_at)
+      expect(mockSetToolPublished).toHaveBeenCalledWith(true)
+      expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('test-hash')
+      expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ isWorkflowDataLoaded: true })
     })
   })
 
   describe('environment variables handling', () => {
-    it('should extract secret environment variables', async () => {
-      mockFetchWorkflowDraft.mockResolvedValue({
-        graph: { nodes: [], edges: [], viewport: {} },
-        hash: 'test-hash',
-        updated_at: '2024-01-01T00:00:00Z',
-        tool_published: false,
-        environment_variables: [
-          { id: 'env-1', value_type: 'secret', value: 'secret-value' },
-          { id: 'env-2', value_type: 'string', value: 'plain-value' },
-        ],
-        rag_pipeline_variables: [],
-      })
-
-      renderHook(() => usePipelineInit())
-
-      await waitFor(() => {
-        expect(mockSetEnvSecrets).toHaveBeenCalledWith({ 'env-1': 'secret-value' })
-      })
-    })
-
     it('should mask secret values in environment variables', async () => {
       mockFetchWorkflowDraft.mockResolvedValue({
         graph: { nodes: [], edges: [], viewport: {} },
@@ -200,8 +150,13 @@ describe('usePipelineInit', () => {
         rag_pipeline_variables: [],
       })
 
-      renderHook(() => usePipelineInit())
+      renderHook(() => usePipelineInit(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
+      await waitFor(() =>
+        expect(mockSetEnvSecrets).toHaveBeenCalledWith({ 'env-1': 'secret-value' }),
+      )
       await waitFor(() => {
         expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([
           { id: 'env-1', value_type: 'secret', value: '[__HIDDEN__]' },
@@ -220,7 +175,9 @@ describe('usePipelineInit', () => {
         rag_pipeline_variables: [],
       })
 
-      renderHook(() => usePipelineInit())
+      renderHook(() => usePipelineInit(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       await waitFor(() => {
         expect(mockSetEnvSecrets).toHaveBeenCalledWith({})
@@ -240,7 +197,9 @@ describe('usePipelineInit', () => {
         rag_pipeline_variables: [{ variable: 'query', type: 'text-input' }],
       })
 
-      renderHook(() => usePipelineInit())
+      renderHook(() => usePipelineInit(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       await waitFor(() => {
         expect(mockSetRagPipelineVariables).toHaveBeenCalledWith([
@@ -259,7 +218,9 @@ describe('usePipelineInit', () => {
         rag_pipeline_variables: undefined,
       })
 
-      renderHook(() => usePipelineInit())
+      renderHook(() => usePipelineInit(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       await waitFor(() => {
         expect(mockSetRagPipelineVariables).toHaveBeenCalledWith([])
@@ -269,10 +230,11 @@ describe('usePipelineInit', () => {
 
   describe('draft not exist error handling', () => {
     it('should create initial workflow when draft does not exist', async () => {
-      const mockJsonError = {
-        json: vi.fn().mockResolvedValue({ code: 'draft_workflow_not_exist' }),
-        bodyUsed: false,
-      }
+      const mockJsonError = createHttpError(new Response(null, { status: 404 }), {
+        code: 'draft_workflow_not_exist',
+        message: 'Draft workflow not exist.',
+        status: 404,
+      })
       mockFetchWorkflowDraft.mockRejectedValueOnce(mockJsonError)
       mockSyncWorkflowDraft.mockResolvedValue({ updated_at: '2024-01-02T00:00:00Z' })
 
@@ -285,7 +247,9 @@ describe('usePipelineInit', () => {
         rag_pipeline_variables: [],
       })
 
-      renderHook(() => usePipelineInit())
+      const { result } = renderHook(() => usePipelineInit(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       await waitFor(() => {
         expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({
@@ -293,35 +257,21 @@ describe('usePipelineInit', () => {
           shouldAutoOpenStartNodeSelector: true,
         })
       })
-    })
-
-    it('should sync initial workflow with template nodes', async () => {
-      const mockJsonError = {
-        json: vi.fn().mockResolvedValue({ code: 'draft_workflow_not_exist' }),
-        bodyUsed: false,
-      }
-      mockFetchWorkflowDraft.mockRejectedValueOnce(mockJsonError)
-      mockSyncWorkflowDraft.mockResolvedValue({ updated_at: '2024-01-02T00:00:00Z' })
-
-      renderHook(() => usePipelineInit())
-
-      await waitFor(() => {
-        expect(mockSyncWorkflowDraft).toHaveBeenCalledWith({
-          url: '/rag/pipelines/test-pipeline-id/workflows/draft',
-          params: {
-            graph: {
-              nodes: [{ id: 'template-node' }],
-              edges: [],
-            },
-            environment_variables: [],
-          },
-        })
+      await waitFor(() => expect(result.current.isLoading).toBe(false))
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledExactlyOnceWith({
+        url: '/rag/pipelines/test-pipeline-id/workflows/draft',
+        params: {
+          graph: { nodes: [{ id: 'template-node' }], edges: [] },
+          environment_variables: [],
+        },
       })
+      expect(mockFetchWorkflowDraft).toHaveBeenCalledTimes(2)
+      expect(result.current.data?.hash).toBe('new-hash')
     })
   })
 
-  describe('missing datasetId', () => {
-    it('should not fetch when datasetId is missing', async () => {
+  describe('missing presentation metadata', () => {
+    it('loads the editor pipeline when dataset presentation metadata is missing', async () => {
       mockUseDatasetDetailContextWithSelector.mockImplementation(
         (selector: (state: Record<string, unknown>) => unknown) => {
           const state = { dataset: undefined }
@@ -329,10 +279,14 @@ describe('usePipelineInit', () => {
         },
       )
 
-      renderHook(() => usePipelineInit())
+      renderHook(() => usePipelineInit(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       await waitFor(() => {
-        expect(mockFetchWorkflowDraft).toHaveBeenCalled()
+        expect(mockFetchWorkflowDraft).toHaveBeenCalledWith(
+          '/rag/pipelines/test-pipeline-id/workflows/draft',
+        )
       })
     })
   })

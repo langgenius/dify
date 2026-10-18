@@ -310,10 +310,7 @@ func childMode() {
 		home := os.Getenv("HOME")
 		jobDir := filepath.Dir(scriptPath)
 		cfg := landlock.ConfigFromEnv(home, cwd, jobDir)
-		if err := landlock.Restrict(cfg); err != nil {
-			// the landlock is best-effort, so we just log the error whatever it is
-			fmt.Fprintf(os.Stderr, "shellctl-runner: WARNING: %v — running without filesystem isolation\n", err)
-		}
+		cmdutil.HandleError(landlock.Restrict(cfg), 125, "apply Landlock restrictions")
 	}
 
 	// exec replaces the current process.

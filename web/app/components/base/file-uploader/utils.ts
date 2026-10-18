@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next'
 import type { FileEntity, FilePreviewKind } from './types'
 import type { FileResponse } from '@/types/workflow'
+import { ORPCError } from '@orpc/client'
 import mime from 'mime'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
@@ -16,13 +17,13 @@ import { FileAppearanceTypeEnum } from './types'
  * @returns Localized error message
  */
 export const getFileUploadErrorMessage = (
-  error: any,
+  error: unknown,
   defaultMessage: string,
   t: TFunction<['common']>,
 ): string => {
-  const errorCode = error?.response?.code
+  const errorCode = error instanceof ORPCError ? error.code : undefined
 
-  if (errorCode === 'forbidden') return error?.response?.message
+  if (errorCode === 'forbidden') return error instanceof Error ? error.message : defaultMessage
 
   if (errorCode === 'file_extension_blocked')
     return t(($) => $['fileUploader.fileExtensionBlocked'], { ns: 'common' })
@@ -45,7 +46,7 @@ type FileUploadParams = {
   file: File
   onProgressCallback: (progress: number) => void
   onSuccessCallback: (res: FileUploadResponse) => void
-  onErrorCallback: (error?: any) => void
+  onErrorCallback: (error?: unknown) => void
 }
 type FileUpload = (v: FileUploadParams, isPublic?: boolean, url?: string) => void
 export const fileUpload: FileUpload = (
@@ -235,7 +236,12 @@ export const getFilesInLogs = (rawData: any) => {
       ) {
         return {
           varName: key,
-          list: getProcessedFilesFromResponse(rawData[key]),
+          list: getProcessedFilesFromResponse(
+            rawData[key].filter(
+              (item: { dify_model_identity?: string } | null) =>
+                item?.dify_model_identity === '__dify__file__',
+            ),
+          ),
         }
       }
       return undefined
@@ -255,4 +261,15 @@ export const getFilePreviewKind = (file: FileEntity): FilePreviewKind | undefine
   const [category, subtype] = file.type?.split('/') ?? []
   if (category === 'audio' || category === 'video') return category
   return subtype === 'pdf' ? 'pdf' : undefined
+}
+
+/** Add download mode without rewriting signed query values or moving it into the fragment. */
+export const getFileDownloadUrl = (url: string): string => {
+  const hashIndex = url.indexOf('#')
+  const base = hashIndex === -1 ? url : url.slice(0, hashIndex)
+  const hash = hashIndex === -1 ? '' : url.slice(hashIndex)
+  if (/[?&]as_attachment=/.test(base))
+    return base.replace(/([?&])as_attachment=[^&]*/, '$1as_attachment=true') + hash
+  const separator = base.includes('?') ? (/[?&]$/.test(base) ? '' : '&') : '?'
+  return `${base}${separator}as_attachment=true${hash}`
 }

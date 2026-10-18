@@ -2,108 +2,91 @@
 
 from __future__ import annotations
 
-import uuid as _uuid
+from collections.abc import Callable
 from http import HTTPStatus
-from typing import Any
+from typing import Any, Final
 
 from flask_restx import Resource
-from sqlalchemy.orm import Session
+from werkzeug.exceptions import NotFound
 
-from configs import dify_config
 from constants.oauth_bearer import Scope
-from controllers.common.fields import Parameters
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import Example, Kind, endpoint
-from controllers.openapi._input_schema import EMPTY_INPUT_SCHEMA, build_input_schema, resolve_app_config
-from controllers.openapi._models import (
-    SUPPORTED_APP_TYPES,
-    AppDescribeInfo,
-    AppDescribeQuery,
-    AppDescribeResponse,
-    AppListQuery,
-    AppListResponse,
-    AppListRow,
+from controllers.openapi._app_response import app_list_row, build_app_describe_response
+from controllers.openapi._contract import Example, Kind, endpoint, op_of
+from controllers.openapi._models import AppDescribeQuery, AppDescribeResponse, AppListQuery, AppListResponse, Hint
+from controllers.openapi.app_info import (
+    AdvancedChatAppInfoApi,
+    AgentAppInfoApi,
+    AgentChatAppInfoApi,
+    AgentServiceApiApi,
+    ChatAppInfoApi,
+    CompletionAppInfoApi,
+    ServiceApiApi,
+    WorkflowAppInfoApi,
 )
-from controllers.openapi.auth.context import Context
+from controllers.openapi.app_webapp import (
+    AdvancedChatWebAppApi,
+    AgentChatWebAppApi,
+    AgentWebAppAccessApi,
+    AgentWebAppApi,
+    ChatWebAppApi,
+    CompletionWebAppApi,
+    WebAppAccessApi,
+    WorkflowWebAppApi,
+)
 from controllers.openapi.auth.requirements import (
     CheckAppApiEnabled,
     CheckRBACPermission,
     CheckScope,
     CheckSubject,
+    CheckWebAppAuthEnterprise,
     CheckWorkspaceMember,
 )
 from controllers.openapi.auth.subjects import AccountSubject, ResourceAccessSubject
-from controllers.service_api.app.error import AppUnavailableError
-from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from extensions.ext_application_services import application_services
-from models import App
-from models.enums import AppStatus
+from machinery.context import AppRequestContext, RequestContext
 from models.model import AppMode
-from services.app.access import AppAccessFilter, resolve_app_access_filter
-from services.entities.app_entities import AppListParams, AppSummary
+from services.app.query_service import AppDiscoveryQuery
+from services.errors.app import AppDiscoveryNotFoundError
 
-
-def _is_listable(app: AppSummary) -> bool:
-    """Whether the openapi app face exposes this app (curated, listable types only)."""
-    return app.mode in SUPPORTED_APP_TYPES
-
-
-_EMPTY_PARAMETERS: dict[str, Any] = {
-    "opening_statement": None,
-    "suggested_questions": [],
-    "user_input_form": [],
-    "file_upload": None,
-    "system_parameters": {},
+_SETTINGS_VIEWS: Final[dict[AppMode, tuple[Callable[..., object], ...]]] = {
+    AppMode.WORKFLOW: (WorkflowAppInfoApi.get, WorkflowWebAppApi.get, ServiceApiApi.get, WebAppAccessApi.get),
+    AppMode.ADVANCED_CHAT: (
+        AdvancedChatAppInfoApi.get,
+        AdvancedChatWebAppApi.get,
+        ServiceApiApi.get,
+        WebAppAccessApi.get,
+    ),
+    AppMode.CHAT: (ChatAppInfoApi.get, ChatWebAppApi.get, ServiceApiApi.get, WebAppAccessApi.get),
+    AppMode.AGENT_CHAT: (AgentChatAppInfoApi.get, AgentChatWebAppApi.get, ServiceApiApi.get, WebAppAccessApi.get),
+    AppMode.COMPLETION: (CompletionAppInfoApi.get, CompletionWebAppApi.get, ServiceApiApi.get, WebAppAccessApi.get),
+    AppMode.AGENT: (AgentAppInfoApi.get, AgentWebAppApi.get, AgentServiceApiApi.get, AgentWebAppAccessApi.get),
 }
 
 
-def parameters_payload(app: App, *, session: Session) -> dict:
-    """Mirrors service_api/app/app.py::AppParameterApi response body."""
-    features_dict, user_input_form = resolve_app_config(app, session=session)
-    parameters = get_parameters_from_feature_dict(features_dict=features_dict, user_input_form=user_input_form)
-    return Parameters.model_validate(parameters).model_dump(mode="json")
+def _webapp_auth_gated(view: Any) -> bool:
+    return any(isinstance(r, CheckWebAppAuthEnterprise) for r in view.__spec__.requirements)
 
 
-def build_app_describe_response(app: App, fields: set[str] | None, *, session: Session) -> AppDescribeResponse:
-    """Public projection of an app (name / params / input schema) — never internal config."""
-    want_info = fields is None or "info" in fields
-    want_params = fields is None or "parameters" in fields
-    want_schema = fields is None or "input_schema" in fields
-
-    info = (
-        AppDescribeInfo(
-            id=str(app.id),
-            name=app.name,
-            mode=app.mode,
-            description=app.description,
-            updated_at=app.updated_at.isoformat() if app.updated_at else None,
-            service_api_enabled=bool(app.enable_api),
-            is_agent=app.mode in (AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT),
-        )
-        if want_info
-        else None
-    )
-
-    parameters: dict[str, Any] | None = None
-    input_schema: dict[str, Any] | None = None
-    if want_params:
-        try:
-            parameters = parameters_payload(app, session=session)
-        except AppUnavailableError:
-            parameters = dict(_EMPTY_PARAMETERS)
-    if want_schema:
-        try:
-            input_schema = build_input_schema(app, session=session)
-        except AppUnavailableError:
-            input_schema = dict(EMPTY_INPUT_SCHEMA)
-
-    return AppDescribeResponse(info=info, parameters=parameters, input_schema=input_schema)
+def settings_hints(app_id: str, mode: str) -> list[Hint]:
+    """A stored mode this build doesn't know gets no hints, and the web-app access setting only where it exists."""
+    try:
+        app_mode = AppMode(mode)
+    except ValueError:
+        return []
+    webapp_auth = CheckWebAppAuthEnterprise.available()
+    return [
+        Hint(summary="Read this setting", op=op_of(view), input={"app_id": app_id})
+        for view in _SETTINGS_VIEWS.get(app_mode, ())
+        if webapp_auth or not _webapp_auth_gated(view)
+    ]
 
 
 @openapi_ns.route("/apps/<string:app_id>")
 class AppDescribeApi(Resource):
     @endpoint(
+        context="app",
         op="describe.console_app",
         kind=Kind.OBJECT,
         summary="App detail, parameters and runtime input_schema",
@@ -124,14 +107,20 @@ class AppDescribeApi(Resource):
         query=AppDescribeQuery,
         returns=(200, AppDescribeResponse, "App description"),
     )
-    def get(self, ctx: Context, app_id: str, *, query: AppDescribeQuery):
-        # The pipeline has already loaded the app; project it.
-        return build_app_describe_response(ctx.app, query.fields, session=ctx.session)
+    def get(self, ctx: AppRequestContext, app_id: str, *, query: AppDescribeQuery):
+        try:
+            result = application_services().apps.discovery.describe(ctx, query.fields)
+        except AppDiscoveryNotFoundError as exc:
+            raise NotFound(str(exc)) from exc
+        response = build_app_describe_response(result, query.fields)
+        response.hints = settings_hints(result.app.id, result.app.mode)
+        return response
 
 
 @openapi_ns.route("/apps")
 class AppListApi(Resource):
     @endpoint(
+        context="workspace",
         op="get.console_app",
         kind=Kind.LIST,
         summary="List apps in a workspace",
@@ -150,95 +139,13 @@ class AppListApi(Resource):
         query=AppListQuery,
         returns=(HTTPStatus.OK, AppListResponse, "App list"),
     )
-    def get(self, ctx: Context, *, query: AppListQuery):
-        workspace_id = query.workspace_id
-        account_id = str(ctx.subject.account_id or ctx.subject.token_id)
-
-        empty = AppListResponse.build(page=query.page, limit=query.limit, total=0, items=[])
-
-        if query.name:
-            try:
-                parsed_uuid = _uuid.UUID(query.name)
-            except ValueError:
-                parsed_uuid = None
-        else:
-            parsed_uuid = None
-
-        access_filter = (
-            resolve_app_access_filter(workspace_id, account_id, session=ctx.session)
-            if dify_config.RBAC_ENABLED and isinstance(ctx.subject, AccountSubject)
-            else AppAccessFilter.unrestricted()
+    def get(self, ctx: RequestContext, *, query: AppListQuery):
+        result = application_services().apps.discovery.list_apps(
+            ctx, AppDiscoveryQuery(query.page, query.limit, query.mode.value if query.mode else None, query.name)
         )
-
-        if ctx.resource_app_ids is not None:
-            access_filter = AppAccessFilter(set(ctx.resource_app_ids), can_manage_own_apps=False)
-
-        tenant_name: str | None = None
-        if parsed_uuid is not None:
-            app = application_services().apps.queries.get_visible_app_by_id(str(parsed_uuid), workspace_id)
-            if app is None or str(app.tenant_id) != workspace_id:
-                return empty
-            if ctx.resource_app_ids is not None and (
-                str(app.id) not in ctx.resource_app_ids or app.status != AppStatus.NORMAL
-            ):
-                return empty
-            if not _is_listable(app):
-                return empty
-            # Apply RBAC visibility to the UUID fast-path the same way the service
-            # layer does for paginated queries (id in accessible set OR own app).
-            if not access_filter.is_app_accessible(
-                str(app.id), str(app.maintainer) if app.maintainer else None, account_id
-            ):
-                return empty
-            workspace = application_services().workspaces.management.get(workspace_id)
-            tenant_name = workspace.name if workspace else None
-            item = AppListRow(
-                id=str(app.id),
-                name=app.name,
-                description=app.description,
-                mode=app.mode,
-                updated_at=app.updated_at.isoformat() if app.updated_at else None,
-                workspace_id=str(workspace_id),
-                workspace_name=tenant_name,
-            )
-            env = AppListResponse.build(page=1, limit=1, total=1, items=[item])
-            return env
-
-        params = AppListParams(
-            page=query.page,
-            limit=query.limit,
-            mode=query.mode.value if query.mode else "all",  # type:ignore
-            name=query.name,
-            status=AppStatus.NORMAL,
-            # Visibility gate pushed into the query — pagination.total stays
-            # consistent across pages because invisible rows never count.
-            openapi_visible=True,
+        return AppListResponse.build(
+            page=result.page,
+            limit=result.per_page,
+            total=result.total,
+            items=[app_list_row(entry) for entry in result.items],
         )
-
-        access_filter.apply_to_params(params)
-
-        pagination = application_services().apps.queries.get_paginate_apps(account_id, workspace_id, params)
-        if pagination is None:
-            return empty
-
-        tenant_name = None
-        if pagination.items:
-            workspace = application_services().workspaces.management.get(workspace_id)
-            tenant_name = workspace.name if workspace else None
-
-        items = [
-            AppListRow(
-                id=str(r.id),
-                name=r.name,
-                description=r.description,
-                mode=r.mode,
-                updated_at=r.updated_at.isoformat() if r.updated_at else None,
-                workspace_id=str(workspace_id),
-                workspace_name=tenant_name,
-            )
-            for r in pagination.items
-            if _is_listable(r)
-        ]
-
-        env = AppListResponse.build(page=query.page, limit=query.limit, total=pagination.total, items=items)
-        return env

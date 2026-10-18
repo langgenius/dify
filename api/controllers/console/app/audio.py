@@ -9,6 +9,7 @@ from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import HTTPException, InternalServerError
 
 import services
+from controllers.common.fields import AudioTranscriptResponse
 from controllers.common.rbac import AgentId, PlainApp, RBACCheck, enforce_rbac_checks
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
@@ -24,6 +25,7 @@ from controllers.console.app.error import (
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderNotSupportSpeechToTextError,
+    ProviderNotSupportTextToSpeechError,
     ProviderQuotaExceededError,
     SpeechToTextDisabledError,
     UnsupportedAudioTypeError,
@@ -44,6 +46,7 @@ from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotIni
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.errors.invoke import InvokeError
+from libs.external_api import error_responses
 from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 from libs.helper import dump_response
 from libs.login import current_user, login_required
@@ -51,12 +54,14 @@ from models import Account, App, AppMode
 from models.agent import AgentConfigDraftType
 from models.agent_config_entities import AgentSoulConfig
 from services.agent.composer_service import AgentComposerService
+from services.agent.errors import AgentNotFoundError, AgentVersionNotFoundError
 from services.app_ref_service import AppRefService
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
+    ProviderNotSupportTextToSpeechServiceError,
     SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
@@ -73,10 +78,6 @@ class TextToSpeechPayload(BaseModel):
 
 class TextToSpeechVoiceQuery(BaseModel):
     language: str = Field(..., description="Language code")
-
-
-class AudioTranscriptResponse(ResponseModel):
-    text: str = Field(description="Transcribed text from audio")
 
 
 class AgentAudioTranscriptFormPayload(BaseModel):
@@ -184,6 +185,19 @@ def _transcribe_audio_to_text(
 
 @console_ns.route("/apps/<uuid:app_id>/audio-to-text")
 class ChatMessageAudioApi(Resource):
+    @error_responses(
+        AgentVersionNotFoundError,
+        AppUnavailableError,
+        AudioTooLargeError,
+        CompletionRequestError,
+        NoAudioUploadedError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderNotSupportSpeechToTextError,
+        ProviderQuotaExceededError,
+        SpeechToTextDisabledError,
+        UnsupportedAudioTypeError,
+    )
     @console_ns.doc("chat_message_audio_transcript")
     @console_ns.doc(description="Transcript audio to text for chat messages")
     @console_ns.doc(
@@ -211,6 +225,20 @@ class ChatMessageAudioApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/audio-to-text")
 class AgentChatMessageAudioApi(Resource):
+    @error_responses(
+        AgentNotFoundError,
+        AgentVersionNotFoundError,
+        AppUnavailableError,
+        AudioTooLargeError,
+        CompletionRequestError,
+        NoAudioUploadedError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderNotSupportSpeechToTextError,
+        ProviderQuotaExceededError,
+        SpeechToTextDisabledError,
+        UnsupportedAudioTypeError,
+    )
     @console_ns.doc("agent_chat_message_audio_transcript")
     @console_ns.doc(description="Transcribe audio using the current Agent debug configuration")
     @console_ns.doc(
@@ -289,14 +317,8 @@ def _text_to_speech(*, payload: TextToSpeechPayload, app_model: App, session: Se
     except services.errors.app_model_config.AppModelConfigBrokenError:
         logger.exception("App model config broken.")
         raise AppUnavailableError()
-    except NoAudioUploadedServiceError:
-        raise NoAudioUploadedError()
-    except AudioTooLargeServiceError as e:
-        raise AudioTooLargeError(str(e))
-    except UnsupportedAudioTypeServiceError:
-        raise UnsupportedAudioTypeError()
-    except ProviderNotSupportSpeechToTextServiceError:
-        raise ProviderNotSupportSpeechToTextError()
+    except ProviderNotSupportTextToSpeechServiceError:
+        raise ProviderNotSupportTextToSpeechError()
     except ProviderTokenNotInitError as ex:
         raise ProviderNotInitializeError(ex.description)
     except QuotaExceededError:
@@ -316,6 +338,14 @@ def _text_to_speech(*, payload: TextToSpeechPayload, app_model: App, session: Se
 
 @console_ns.route("/apps/<uuid:app_id>/text-to-audio")
 class ChatMessageTextApi(Resource):
+    @error_responses(
+        AppUnavailableError,
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderNotSupportTextToSpeechError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc("chat_message_text_to_speech")
     @console_ns.doc(description="Convert text to speech for chat messages")
     @console_ns.doc(params={"app_id": "App ID"})
@@ -340,6 +370,15 @@ class ChatMessageTextApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/text-to-audio")
 class AgentChatMessageTextApi(Resource):
+    @error_responses(
+        AgentNotFoundError,
+        AppUnavailableError,
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderNotSupportTextToSpeechError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc("agent_chat_message_text_to_speech")
     @console_ns.doc(description="Preview an Agent TTS voice or read an Agent chat message")
     @console_ns.doc(params={"agent_id": "Agent ID"})
@@ -391,16 +430,6 @@ def _get_text_to_speech_voices(*, tenant_id: str, language: str):
         )
 
         return dump_response(TextToSpeechVoiceListResponse, response)
-    except services.errors.audio.ProviderNotSupportTextToSpeechLanageServiceError:
-        raise AppUnavailableError("Text to audio voices language parameter loss.")
-    except NoAudioUploadedServiceError:
-        raise NoAudioUploadedError()
-    except AudioTooLargeServiceError as e:
-        raise AudioTooLargeError(str(e))
-    except UnsupportedAudioTypeServiceError:
-        raise UnsupportedAudioTypeError()
-    except ProviderNotSupportSpeechToTextServiceError:
-        raise ProviderNotSupportSpeechToTextError()
     except ProviderTokenNotInitError as ex:
         raise ProviderNotInitializeError(ex.description)
     except QuotaExceededError:
@@ -418,6 +447,12 @@ def _get_text_to_speech_voices(*, tenant_id: str, language: str):
 
 @console_ns.route("/apps/<uuid:app_id>/text-to-audio/voices")
 class TextModesApi(Resource):
+    @error_responses(
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc("get_text_to_speech_voices")
     @console_ns.doc(description="Get available TTS voices for a specific language")
     @console_ns.doc(params={"app_id": "App ID", **query_params_from_model(TextToSpeechVoiceQuery)})
@@ -439,6 +474,13 @@ class TextModesApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/text-to-audio/voices")
 class AgentTextToSpeechVoicesApi(Resource):
+    @error_responses(
+        AgentNotFoundError,
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc("get_agent_text_to_speech_voices")
     @console_ns.doc(description="Get available TTS voices for an Agent and language")
     @console_ns.doc(params={"agent_id": "Agent ID", **query_params_from_model(TextToSpeechVoiceQuery)})

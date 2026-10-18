@@ -1,5 +1,6 @@
 import type { NoteNodeType } from '../types'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { createNode } from '../../__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 import { CUSTOM_NOTE_NODE } from '../constants'
@@ -8,7 +9,6 @@ import { NoteTheme } from '../types'
 
 const {
   mockHandleEditorChange,
-  mockHandleNodeDataUpdateWithSyncDraft,
   mockHandleNodeDelete,
   mockHandleNodesCopy,
   mockHandleNodesDuplicate,
@@ -16,7 +16,6 @@ const {
   mockHandleThemeChange,
 } = vi.hoisted(() => ({
   mockHandleEditorChange: vi.fn(),
-  mockHandleNodeDataUpdateWithSyncDraft: vi.fn(),
   mockHandleNodeDelete: vi.fn(),
   mockHandleNodesCopy: vi.fn(),
   mockHandleNodesDuplicate: vi.fn(),
@@ -24,15 +23,16 @@ const {
   mockHandleThemeChange: vi.fn(),
 }))
 
-vi.mock('../../hooks/use-node-data-update', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../hooks/use-node-data-update')>()
-  return {
-    ...actual,
-    useNodeDataUpdate: () => ({
-      handleNodeDataUpdateWithSyncDraft: mockHandleNodeDataUpdateWithSyncDraft,
-    }),
-  }
-})
+vi.mock('../../hooks/use-nodes-sync-draft', () => ({
+  useNodesSyncDraft: () => ({ handleSyncWorkflowDraft: vi.fn() }),
+}))
+vi.mock('../../collaboration/core/collaboration-manager', () => ({
+  collaborationManager: {
+    setNodes: vi.fn(),
+    setEdges: vi.fn(),
+    canApplyLocalGraphMutation: () => true,
+  },
+}))
 
 vi.mock('../../hooks/use-nodes-interactions', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../hooks/use-nodes-interactions')>()
@@ -79,7 +79,7 @@ const renderNoteNode = (dataOverrides: Partial<NoteNodeType> = {}) => {
     }),
   ]
 
-  return renderWorkflowFlowComponent(<div />, {
+  return renderWorkflowFlowComponent(<button type="button">Outside note</button>, {
     nodes,
     edges: [],
     reactFlowProps: {
@@ -98,20 +98,6 @@ describe('NoteNode', () => {
     vi.clearAllMocks()
   })
 
-  it('should render the toolbar and author for a selected persistent note', async () => {
-    renderNoteNode()
-
-    expect(screen.getByText('Alice')).toBeInTheDocument()
-
-    await waitFor(() => {
-      expect(screen.getByText('workflow.nodes.note.editor.small')).toBeInTheDocument()
-    })
-
-    expect(
-      screen.getByText('workflow.nodes.note.editor.small').closest('.nodrag.nopan.nowheel'),
-    ).toBeInTheDocument()
-  })
-
   it('should hide the toolbar for temporary notes', () => {
     renderNoteNode({
       _isTempNode: true,
@@ -122,17 +108,15 @@ describe('NoteNode', () => {
   })
 
   it('should clear the selected state when clicking outside the note', async () => {
+    const user = userEvent.setup()
     renderNoteNode()
 
-    fireEvent.click(document.body)
-
-    await waitFor(() => {
-      expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith({
-        id: 'note-1',
-        data: {
-          selected: false,
-        },
-      })
-    })
+    expect(screen.getByText('Alice')).toBeInTheDocument()
+    expect(await screen.findByText('workflow.nodes.note.editor.small')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Outside note' }))
+    await waitFor(() =>
+      expect(screen.queryByText('workflow.nodes.note.editor.small')).not.toBeInTheDocument(),
+    )
+    expect(screen.getByText('Alice')).toBeInTheDocument()
   })
 })

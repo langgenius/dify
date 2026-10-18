@@ -227,6 +227,7 @@ class QdrantVector(BaseVector):
                         group_id or "",  # Ensure group_id is never None
                         Field.GROUP_KEY,
                     ),
+                    strict=False,
                 )
             ]
 

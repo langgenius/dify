@@ -4,6 +4,14 @@ import userEvent from '@testing-library/user-event'
 import { AppToastHost } from '../host'
 
 const copy = vi.fn()
+const clipboardDescriptor = Object.getOwnPropertyDescriptor(navigator, 'clipboard')
+const execCommandDescriptor = Object.getOwnPropertyDescriptor(document, 'execCommand')
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  Object.defineProperty(document, 'execCommand', { configurable: true, value: vi.fn(() => false) })
+  vi.mocked(copy).mockResolvedValue(undefined)
+})
 
 function setup() {
   const manager = createToastManager()
@@ -14,10 +22,11 @@ function setup() {
   return { toast, user }
 }
 
-beforeEach(() => {
-  vi.clearAllMocks()
-  Object.defineProperty(document, 'execCommand', { configurable: true, value: vi.fn(() => false) })
-  vi.mocked(copy).mockResolvedValue(undefined)
+afterEach(() => {
+  if (clipboardDescriptor) Object.defineProperty(navigator, 'clipboard', clipboardDescriptor)
+  else Reflect.deleteProperty(navigator, 'clipboard')
+  if (execCommandDescriptor) Object.defineProperty(document, 'execCommand', execCommandDescriptor)
+  else Reflect.deleteProperty(document, 'execCommand')
 })
 
 it('copies the complete error text and shows feedback in the existing action', async () => {
@@ -55,11 +64,15 @@ it('updates copy content and removes generated actions when the tone changes', a
   act(() => {
     id = toast('First error', { type: 'error' })
   })
+  await user.click(screen.getByRole('button', { name: 'common.operation.copyErrorDetails' }))
   act(() => {
     toast.update(id, { title: 'Updated error' })
   })
-  await user.click(screen.getByRole('button', { name: 'common.operation.copyErrorDetails' }))
-  expect(copy).toHaveBeenCalledWith('Updated error')
+  // Updating the card must not remount the focused copy action.
+  const action = screen.getByRole('button', { name: 'common.operation.copyErrorDetails' })
+  expect(action).toHaveFocus()
+  await user.click(action)
+  expect(copy).toHaveBeenLastCalledWith('Updated error')
   act(() => {
     toast.update(id, { type: 'success', title: 'Recovered' })
   })

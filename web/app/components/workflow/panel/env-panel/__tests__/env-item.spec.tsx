@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import type { Shape } from '@/app/components/workflow/store/workflow'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
@@ -35,73 +35,23 @@ const renderWithProviders = (
 }
 
 describe('EnvItem', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('renders secret env items and triggers edit and delete actions', async () => {
+  it('lets keyboard users edit and delete the identified variable', async () => {
     const user = userEvent.setup()
+    const env = createEnv()
     const onEdit = vi.fn()
     const onDelete = vi.fn()
-    const env = createEnv()
-
-    const { container } = renderWithProviders(
-      <EnvItem env={env} onEdit={onEdit} onDelete={onDelete} />,
-      {
-        storeState: {
-          envSecrets: {
-            [env.id]: 'masked-value',
-          },
-        },
-      },
-    )
-
-    expect(screen.getByText('api_key')).toBeInTheDocument()
-    expect(screen.getByText('Secret')).toBeInTheDocument()
-    expect(screen.getByText('masked-value')).toBeInTheDocument()
-    expect(screen.getByText('secret description')).toBeInTheDocument()
-
-    const actionWrappers = container.querySelectorAll('.cursor-pointer')
-    const editIcon = actionWrappers[0]?.querySelector('svg')
-    const deleteWrapper = actionWrappers[1] as HTMLElement
-    const deleteIcon = deleteWrapper.querySelector('svg')
-
-    fireEvent.mouseOver(deleteWrapper)
-    expect(container.firstElementChild).toHaveClass('border-state-destructive-border')
-
-    await user.click(editIcon as SVGElement)
-    await user.click(deleteIcon as SVGElement)
-
+    renderWithProviders(<EnvItem env={env} onEdit={onEdit} onDelete={onDelete} />)
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'common.operation.edit api_key' })).toHaveFocus()
+    await user.keyboard('{Enter}')
     expect(onEdit).toHaveBeenCalledWith(env)
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'common.operation.delete api_key' })).toHaveFocus()
+    await user.keyboard(' ')
     expect(onDelete).toHaveBeenCalledWith(env)
   })
 
-  it('renders non-secret env values and clears destructive styling on mouse out', () => {
-    const env = createEnv({
-      id: 'env-plain',
-      name: 'public_value',
-      value: 'plain-text',
-      value_type: 'string',
-      description: '',
-    })
-
-    const { container } = renderWithProviders(
-      <EnvItem env={env} onEdit={vi.fn()} onDelete={vi.fn()} />,
-    )
-
-    expect(screen.getByText('public_value')).toBeInTheDocument()
-    expect(screen.getByText('String')).toBeInTheDocument()
-    expect(screen.getByText('plain-text')).toBeInTheDocument()
-    expect(screen.queryByText('secret description')).not.toBeInTheDocument()
-
-    const deleteWrapper = container.querySelectorAll('.cursor-pointer')[1] as HTMLElement
-    fireEvent.mouseOver(deleteWrapper)
-    expect(container.firstElementChild).toHaveClass('border-state-destructive-border')
-    fireEvent.mouseOut(deleteWrapper)
-    expect(container.firstElementChild).not.toHaveClass('border-state-destructive-border')
-  })
-
-  it('renders an LLM environment variable without exposing its object value', () => {
+  it('renders the model name for an LLM environment variable', () => {
     const env = createEnv({
       id: 'env-llm',
       name: 'for_summarize',

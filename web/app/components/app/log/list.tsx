@@ -1,6 +1,15 @@
 'use client'
 
-import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  AppDetailWithSite,
+  Conversation,
+  ConversationDetail,
+  ConversationMessageDetail,
+  ConversationPagination,
+  ConversationWithSummary,
+  ConversationWithSummaryPagination,
+  GetAppsByAppIdChatMessagesData,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
 import type { ChatItemInTree } from '../../base/chat/types'
 import type {
@@ -9,14 +18,7 @@ import type {
   IChatItem,
   SubmitAnnotationFunc,
 } from '@/app/components/base/chat/chat/type'
-import type {
-  ChatConversationGeneralDetail,
-  ChatConversationsResponse,
-  ChatMessagesRequest,
-  CompletionConversationGeneralDetail,
-  CompletionConversationsResponse,
-  LogAnnotation,
-} from '@/models/log'
+import type { LogAnnotation } from '@/models/log'
 import { HandThumbDownIcon, HandThumbUpIcon } from '@heroicons/react/24/outline'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -33,7 +35,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiCloseLine, RiEditFill } from '@remixicon/react'
-import { useQuery } from '@tanstack/react-query'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
@@ -54,24 +56,21 @@ import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
-import {
-  fetchChatMessages,
-  updateLogMessageAnnotations,
-  updateLogMessageFeedbacks,
-} from '@/service/log'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { AppSourceType } from '@/service/share'
-import { useChatConversationDetail, useCompletionConversationDetail } from '@/service/use-log'
-import { AppModeEnum } from '@/types/app'
 import PromptLogModal from '../../base/prompt-log-modal'
 import {
   applyAnnotationAdded,
   applyAnnotationEdited,
   applyAnnotationRemoved,
   buildChatThreadState,
+  getAdminFeedback,
   getCompletionMessageFiles,
   getConversationRowValues,
   getDetailVarList,
   getFormattedChatList,
+  getLogModelInfo,
+  getStringInputs,
   getThreadChatItems,
   isNearTopLoadMore,
   mergePaginatedChatItems,
@@ -79,14 +78,14 @@ import {
 } from './list-utils'
 import VarPanel from './var-panel'
 
-type ConversationListItem = ChatConversationGeneralDetail | CompletionConversationGeneralDetail
+type ConversationListItem = ConversationWithSummary | Conversation
 type ConversationSelection = ConversationListItem | { id: string; isPlaceholder?: true }
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
 
 type IConversationList = {
-  logs?: ChatConversationsResponse | CompletionConversationsResponse
+  logs?: ConversationWithSummaryPagination | ConversationPagination
   appDetail: AppDetailWithSite
   onRefresh: () => void
 }
@@ -157,7 +156,7 @@ const statusTdRender = (statusCount: StatusCount) => {
 
 type IDetailPanel = {
   appDetail: AppDetailWithSite
-  detail: any
+  detail: ConversationDetail | ConversationMessageDetail
   onClose: () => void
   onFeedback: FeedbackFunc
   onSubmitAnnotation: SubmitAnnotationFunc
@@ -202,22 +201,22 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
     try {
       isLoadingRef.current = true
 
-      const params: ChatMessagesRequest = {
+      const params: GetAppsByAppIdChatMessagesData['query'] = {
         conversation_id: detail.id,
         limit: 10,
       }
       // Use ref for pagination anchor to avoid stale closure issues
       if (oldestAnswerIdRef.current) params.first_id = oldestAnswerIdRef.current
 
-      const messageRes = await fetchChatMessages({
-        url: `/apps/${appDetail.id}/chat-messages`,
-        params,
+      const messageRes = await consoleClient.apps.byAppId.chatMessages.get({
+        params: { app_id: appDetail.id },
+        query: params,
       })
 
       // Ignore stale responses
       if (currentRequestId !== requestIdRef.current || controller.signal.aborted) return
       if (messageRes.data.length > 0) {
-        const varValues = messageRes.data.at(-1)!.inputs
+        const varValues = getStringInputs(messageRes.data.at(-1)!.inputs)
         setVarValues(varValues)
       }
       setHasMore(messageRes.has_more)
@@ -247,12 +246,12 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
     const nextThreadState = buildChatThreadState({
       allChatItems,
       hasMore,
-      introduction: detail?.model_config?.configs?.introduction,
+      introduction: 'introduction' in detail ? (detail.introduction ?? undefined) : undefined,
     })
     setChatItemTree(nextThreadState.chatItemTree)
     setThreadChatItems(nextThreadState.threadChatItems)
     if (nextThreadState.oldestAnswerId) oldestAnswerIdRef.current = nextThreadState.oldestAnswerId
-  }, [allChatItems, hasMore, detail?.model_config?.configs?.introduction])
+  }, [allChatItems, hasMore, detail])
 
   const switchSibling = useCallback(
     (siblingMessageId: string) => {
@@ -281,8 +280,9 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
 
       try {
         if (annotation?.id) {
-          const { delAnnotation } = await import('@/service/annotation')
-          await delAnnotation(appDetail.id, annotation.id)
+          await consoleClient.apps.byAppId.annotations.byAnnotationId.delete({
+            params: { app_id: appDetail.id, annotation_id: annotation.id },
+          })
         }
 
         setAllChatItems(applyAnnotationRemoved(allChatItems, index))
@@ -301,12 +301,7 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
 
   // Only load initial messages, don't auto-load more
   useEffect(() => {
-    if (
-      appDetail.id &&
-      detail.id &&
-      appDetail.mode !== AppModeEnum.COMPLETION &&
-      !fetchInitiated.current
-    ) {
+    if (appDetail.id && detail.id && appDetail.mode !== 'completion' && !fetchInitiated.current) {
       // Mark as initialized, but don't auto-load more messages
       fetchInitiated.current = true
       // Still call fetchData to get initial messages
@@ -327,7 +322,7 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
     setIsLoading(true)
 
     try {
-      const params: ChatMessagesRequest = {
+      const params: GetAppsByAppIdChatMessagesData['query'] = {
         conversation_id: detail.id,
         limit: 10,
       }
@@ -337,9 +332,9 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
         params.first_id = oldestAnswerIdRef.current
       }
 
-      const messageRes = await fetchChatMessages({
-        url: `/apps/${appDetail.id}/chat-messages`,
-        params,
+      const messageRes = await consoleClient.apps.byAppId.chatMessages.get({
+        params: { app_id: appDetail.id },
+        query: params,
       })
 
       if (!messageRes.data || messageRes.data.length === 0) {
@@ -349,7 +344,7 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
       }
 
       if (messageRes.data.length > 0) {
-        const varValues = messageRes.data.at(-1)!.inputs
+        const varValues = getStringInputs(messageRes.data.at(-1)!.inputs)
         setVarValues(varValues)
       }
 
@@ -400,8 +395,8 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
     }
   }, [hasMore, isLoading, loadMoreMessages])
 
-  const isChatMode = appDetail.mode !== AppModeEnum.COMPLETION
-  const isAdvanced = appDetail.mode === AppModeEnum.ADVANCED_CHAT
+  const isChatMode = appDetail.mode !== 'completion'
+  const isAdvanced = appDetail.mode === 'advanced-chat'
   const logKind = selectedLogItem?.workflow_run_id
     ? 'workflow'
     : selectedLogItem?.agent_thoughts?.length
@@ -412,6 +407,8 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
 
   const varList = getDetailVarList(detail, varValues)
   const message_files = getCompletionMessageFiles(detail, isChatMode)
+  const completionMessage = 'message' in detail ? detail.message : undefined
+  const modelInfo = getLogModelInfo(detail.model_config?.model)
 
   const [width, setWidth] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
@@ -449,15 +446,17 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
           )}
           {!isChatMode && (
             <div className="system-2xs-regular-uppercase text-text-secondary">
-              {formatTime(
-                detail.created_at,
-                t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
-              )}
+              {detail.created_at
+                ? formatTime(
+                    detail.created_at,
+                    t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
+                  )
+                : defaultValue}
             </div>
           )}
         </div>
         <div className="flex grow flex-wrap items-center justify-end gap-y-1">
-          {!isAdvanced && <ModelInfo model={detail.model_config.model} />}
+          {!isAdvanced && modelInfo && <ModelInfo model={modelInfo} />}
         </div>
         <IconButton
           size="lg"
@@ -477,35 +476,37 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
       </div>
       <div className="mx-1 mb-1 grow overflow-auto rounded-b-xl bg-background-section-burn">
         {!isChatMode ? (
-          <div className="px-6 py-4">
-            <div className="flex h-4.5 items-center space-x-3">
-              <div className="system-xs-semibold-uppercase text-text-tertiary">
-                {t(($) => $['table.header.output'], { ns: 'appLog' })}
+          completionMessage && (
+            <div className="px-6 py-4">
+              <div className="flex h-4.5 items-center space-x-3">
+                <div className="system-xs-semibold-uppercase text-text-tertiary">
+                  {t(($) => $['table.header.output'], { ns: 'appLog' })}
+                </div>
+                <div
+                  className="h-px grow"
+                  style={{
+                    background:
+                      'linear-gradient(270deg, rgba(243, 244, 246, 0) 0%, rgb(243, 244, 246) 100%)',
+                  }}
+                ></div>
               </div>
-              <div
-                className="h-px grow"
-                style={{
-                  background:
-                    'linear-gradient(270deg, rgba(243, 244, 246, 0) 0%, rgb(243, 244, 246) 100%)',
+              <TextGeneration
+                appSourceType={AppSourceType.webApp}
+                className="mt-2"
+                content={completionMessage.answer}
+                messageId={completionMessage.id}
+                isError={false}
+                onRetry={noop}
+                supportFeedback
+                feedback={getAdminFeedback(completionMessage.feedbacks)}
+                onFeedback={(feedback) => {
+                  onFeedback(completionMessage.id, feedback).catch(noop)
                 }}
-              ></div>
+                isShowTextToSpeech
+                siteInfo={null}
+              />
             </div>
-            <TextGeneration
-              appSourceType={AppSourceType.webApp}
-              className="mt-2"
-              content={detail.message.answer}
-              messageId={detail.message.id}
-              isError={false}
-              onRetry={noop}
-              supportFeedback
-              feedback={detail.message.feedbacks.find((item: any) => item.from_source === 'admin')}
-              onFeedback={(feedback) => {
-                onFeedback(detail.message.id, feedback).catch(noop)
-              }}
-              isShowTextToSpeech
-              siteInfo={null}
-            />
-          </div>
+          )
         ) : threadChatItems.length < MIN_ITEMS_FOR_SCROLL_LOADING ? (
           <div className="mb-4 pt-4">
             <Chat
@@ -539,6 +540,8 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
           <div
             className="py-4"
             id="scrollableDiv"
+            role="log"
+            aria-live="off"
             style={{
               display: 'flex',
               flexDirection: 'column-reverse',
@@ -632,23 +635,27 @@ const CompletionConversationDetailComp: FC<ConversationDetailProps> = ({
   onClose,
 }) => {
   // Text Generator App Session Details Including Message List
-  const { data: conversationDetail, refetch: conversationDetailMutate } =
-    useCompletionConversationDetail(appDetail.id, conversationId)
+  const { data: conversationDetail, refetch: conversationDetailMutate } = useQuery(
+    consoleQuery.apps.byAppId.completionConversations.byConversationId.get.queryOptions({
+      input: conversationId
+        ? { params: { app_id: appDetail.id, conversation_id: conversationId } }
+        : skipToken,
+    }),
+  )
   const { t } = useTranslation(['appLog', 'common'])
 
   const handleFeedback = async (mid: string, { rating, content }: FeedbackType) => {
-    await updateLogMessageFeedbacks({
-      url: `/apps/${appDetail.id}/feedbacks`,
+    await consoleClient.apps.byAppId.feedbacks.post({
+      params: { app_id: appDetail.id },
       body: { message_id: mid, rating, content: content ?? undefined },
     })
     conversationDetailMutate()
-    toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
   }
 
   const handleAnnotation = async (mid: string, value: string): Promise<boolean> => {
     try {
-      await updateLogMessageAnnotations({
-        url: `/apps/${appDetail.id}/annotations`,
+      await consoleClient.apps.byAppId.annotations.post({
+        params: { app_id: appDetail.id },
         body: { message_id: mid, content: value },
       })
       conversationDetailMutate()
@@ -688,21 +695,26 @@ const ChatConversationDetailComp: FC<ConversationDetailProps> = ({
   conversationId,
   onClose,
 }) => {
-  const { data: conversationDetail } = useChatConversationDetail(appDetail.id, conversationId)
+  const { data: conversationDetail } = useQuery(
+    consoleQuery.apps.byAppId.chatConversations.byConversationId.get.queryOptions({
+      input: conversationId
+        ? { params: { app_id: appDetail.id, conversation_id: conversationId } }
+        : skipToken,
+    }),
+  )
   const { t } = useTranslation(['appLog', 'common'])
 
   const handleFeedback = async (mid: string, { rating, content }: FeedbackType) => {
-    await updateLogMessageFeedbacks({
-      url: `/apps/${appDetail.id}/feedbacks`,
+    await consoleClient.apps.byAppId.feedbacks.post({
+      params: { app_id: appDetail.id },
       body: { message_id: mid, rating, content: content ?? undefined },
     })
-    toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
   }
 
   const handleAnnotation = async (mid: string, value: string): Promise<boolean> => {
     try {
-      await updateLogMessageAnnotations({
-        url: `/apps/${appDetail.id}/annotations`,
+      await consoleClient.apps.byAppId.annotations.post({
+        params: { app_id: appDetail.id },
         body: { message_id: mid, content: value },
       })
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
@@ -754,8 +766,8 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
   const closingConversationIdRef = useRef<string | null>(null)
   const pendingConversationIdRef = useRef<string | null>(null)
   const pendingConversationCacheRef = useRef<ConversationSelection | undefined>(undefined)
-  const isChatMode = appDetail.mode !== AppModeEnum.COMPLETION // Whether the app is a chat app
-  const isChatflow = appDetail.mode === AppModeEnum.ADVANCED_CHAT // Whether the app is a chatflow app
+  const isChatMode = appDetail.mode !== 'completion' // Whether the app is a chat app
+  const isChatflow = appDetail.mode === 'advanced-chat' // Whether the app is a chatflow app
   const activeConversationId =
     conversationIdInUrl ?? pendingConversationIdRef.current ?? currentConversation?.id
 

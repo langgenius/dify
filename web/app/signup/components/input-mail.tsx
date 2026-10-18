@@ -1,10 +1,9 @@
 'use client'
-import type { MailSendResponse } from '@/service/use-common'
 import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldError, FieldLabel, FieldValidity } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import Split from '@/app/signin/split'
@@ -12,7 +11,7 @@ import { emailRegex } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { useSearchParams } from '@/next/navigation'
-import { useSendMail } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 
 type Props = {
   onSuccess: (email: string, payload: string) => void
@@ -30,13 +29,14 @@ export default function SignupEmailForm({ onSuccess }: Props) {
   const signinHref = queryString ? `/signin?${queryString}` : '/signin'
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
-  const { mutateAsync: submitMail, isPending } = useSendMail()
+  const { mutateAsync: submitMail, isPending } = useMutation(
+    consoleQuery.emailRegister.sendEmail.post.mutationOptions(),
+  )
 
   const handleSubmit = async (email: string) => {
     if (isPending) return
-    const res = await submitMail({ email, language: locale })
-    if ((res as MailSendResponse).result === 'success')
-      onSuccess(email, (res as MailSendResponse).data)
+    const res = await submitMail({ body: { email, language: locale } })
+    if (res.result === 'success') onSuccess(email, res.data ?? '')
   }
 
   return (

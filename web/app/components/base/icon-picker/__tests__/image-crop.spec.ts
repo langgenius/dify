@@ -2,7 +2,6 @@ import getCroppedImg, {
   checkIsAnimatedImage,
   createImage,
   getMimeType,
-  getRadianAngle,
   rotateSize,
 } from '../image-crop'
 
@@ -72,18 +71,35 @@ const createCanvasContextMock = (): CanvasRenderingContext2D =>
     drawImage: vi.fn(),
   }) as unknown as CanvasRenderingContext2D
 
+const createWebP = (chunks: ReadonlyArray<readonly [string, Uint8Array]>) => {
+  const size =
+    12 + chunks.reduce((total, [, payload]) => total + 8 + payload.length + (payload.length % 2), 0)
+  const bytes = new Uint8Array(size)
+  const view = new DataView(bytes.buffer)
+  const encoder = new TextEncoder()
+  bytes.set(encoder.encode('RIFF'), 0)
+  view.setUint32(4, size - 8, true)
+  bytes.set(encoder.encode('WEBP'), 8)
+  let offset = 12
+  for (const [type, payload] of chunks) {
+    bytes.set(encoder.encode(type), offset)
+    view.setUint32(offset + 4, payload.length, true)
+    bytes.set(payload, offset + 8)
+    offset += 8 + payload.length + (payload.length % 2)
+  }
+  return bytes
+}
+
 describe('utils', () => {
   const originalCreateElement = document.createElement.bind(document)
-  let originalImage: typeof Image
 
   beforeEach(() => {
     vi.clearAllMocks()
-    originalImage = globalThis.Image
     MockImageElement.nextEvent = 'load'
   })
 
   afterEach(() => {
-    globalThis.Image = originalImage
+    vi.unstubAllGlobals()
     vi.restoreAllMocks()
   })
 
@@ -102,7 +118,7 @@ describe('utils', () => {
 
   describe('createImage', () => {
     it('should resolve image when load event fires', async () => {
-      globalThis.Image = MockImageElement as unknown as typeof Image
+      vi.stubGlobal('Image', MockImageElement)
 
       const image = await createImage('https://example.com/image.png')
       const mockImage = image as unknown as MockImageElement
@@ -112,100 +128,44 @@ describe('utils', () => {
     })
 
     it('should reject when error event fires', async () => {
-      globalThis.Image = MockImageElement as unknown as typeof Image
+      vi.stubGlobal('Image', MockImageElement)
       MockImageElement.nextEvent = 'error'
 
       await expect(createImage('https://example.com/broken.png')).rejects.toBeInstanceOf(Event)
     })
   })
 
-  describe('getMimeType', () => {
-    it('should return image/png for .png files', () => {
-      expect(getMimeType('photo.png')).toBe('image/png')
-    })
-
-    it('should return image/jpeg for .jpg files', () => {
-      expect(getMimeType('photo.jpg')).toBe('image/jpeg')
-    })
-
-    it('should return image/jpeg for .jpeg files', () => {
-      expect(getMimeType('photo.jpeg')).toBe('image/jpeg')
-    })
-
-    it('should return image/gif for .gif files', () => {
-      expect(getMimeType('animation.gif')).toBe('image/gif')
-    })
-
-    it('should return image/webp for .webp files', () => {
-      expect(getMimeType('photo.webp')).toBe('image/webp')
-    })
-
-    it('should return image/jpeg as default for unknown extensions', () => {
-      expect(getMimeType('file.bmp')).toBe('image/jpeg')
-    })
-
-    it('should return image/jpeg for files with no extension', () => {
-      expect(getMimeType('file')).toBe('image/jpeg')
-    })
-
-    it('should handle uppercase extensions via toLowerCase', () => {
-      expect(getMimeType('photo.PNG')).toBe('image/png')
-    })
+  it.each([
+    ['photo.png', 'image/png'],
+    ['photo.PNG', 'image/png'],
+    ['photo.jpg', 'image/jpeg'],
+    ['photo.jpeg', 'image/jpeg'],
+    ['animation.gif', 'image/gif'],
+    ['photo.webp', 'image/webp'],
+    ['file.bmp', 'image/jpeg'],
+    ['file', 'image/jpeg'],
+  ])('encodes %s as %s', (filename, mime) => {
+    expect(getMimeType(filename)).toBe(mime)
   })
 
-  describe('getRadianAngle', () => {
-    it('should return 0 for 0 degrees', () => {
-      expect(getRadianAngle(0)).toBe(0)
-    })
-
-    it('should return PI/2 for 90 degrees', () => {
-      expect(getRadianAngle(90)).toBeCloseTo(Math.PI / 2)
-    })
-
-    it('should return PI for 180 degrees', () => {
-      expect(getRadianAngle(180)).toBeCloseTo(Math.PI)
-    })
-
-    it('should return 2*PI for 360 degrees', () => {
-      expect(getRadianAngle(360)).toBeCloseTo(2 * Math.PI)
-    })
-
-    it('should handle negative angles', () => {
-      expect(getRadianAngle(-90)).toBeCloseTo(-Math.PI / 2)
-    })
-  })
-
-  describe('rotateSize', () => {
-    it('should return same dimensions for 0 degree rotation', () => {
-      const result = rotateSize(100, 200, 0)
-      expect(result.width).toBeCloseTo(100)
-      expect(result.height).toBeCloseTo(200)
-    })
-
-    it('should swap dimensions for 90 degree rotation', () => {
-      const result = rotateSize(100, 200, 90)
-      expect(result.width).toBeCloseTo(200)
-      expect(result.height).toBeCloseTo(100)
-    })
-
-    it('should return same dimensions for 180 degree rotation', () => {
-      const result = rotateSize(100, 200, 180)
-      expect(result.width).toBeCloseTo(100)
-      expect(result.height).toBeCloseTo(200)
-    })
-
-    it('should handle square dimensions', () => {
-      const result = rotateSize(100, 100, 45)
-      // 45° rotation of a square produces a larger bounding box
-      const expected = Math.abs(Math.cos(Math.PI / 4) * 100) + Math.abs(Math.sin(Math.PI / 4) * 100)
-      expect(result.width).toBeCloseTo(expected)
-      expect(result.height).toBeCloseTo(expected)
-    })
-  })
+  it.each([
+    [100, 200, 0, 100, 200],
+    [100, 200, 90, 200, 100],
+    [100, 200, -90, 200, 100],
+    [100, 200, 180, 100, 200],
+    [100, 100, 45, 141.421356, 141.421356],
+  ])(
+    'bounds a %s × %s image rotated %s degrees',
+    (width, height, angle, expectedWidth, expectedHeight) => {
+      const result = rotateSize(width, height, angle)
+      expect(result.width).toBeCloseTo(expectedWidth)
+      expect(result.height).toBeCloseTo(expectedHeight)
+    },
+  )
 
   describe('getCroppedImg', () => {
     it('should return a blob when canvas operations succeed', async () => {
-      globalThis.Image = MockImageElement as unknown as typeof Image
+      vi.stubGlobal('Image', MockImageElement)
 
       const sourceContext = createCanvasContextMock()
       const croppedContext = createCanvasContextMock()
@@ -224,14 +184,28 @@ describe('utils', () => {
 
       expect(result).toBe(expectedBlob)
       expect(croppedCanvas.toBlobMock).toHaveBeenCalledWith(expect.any(Function), 'image/webp')
-      expect(sourceContext.translate).toHaveBeenCalled()
-      expect(sourceContext.rotate).toHaveBeenCalled()
+      expect(sourceCanvas.element.width).toBeCloseTo(160)
+      expect(sourceCanvas.element.height).toBeCloseTo(320)
+      expect(croppedCanvas.element.width).toBe(50)
+      expect(croppedCanvas.element.height).toBe(40)
+      expect(sourceContext.translate).toHaveBeenLastCalledWith(-160, -80)
+      expect(sourceContext.rotate).toHaveBeenCalledWith(Math.PI / 2)
       expect(sourceContext.scale).toHaveBeenCalledWith(-1, 1)
-      expect(croppedContext.drawImage).toHaveBeenCalled()
+      expect(croppedContext.drawImage).toHaveBeenCalledWith(
+        sourceCanvas.element,
+        10,
+        20,
+        50,
+        40,
+        0,
+        0,
+        50,
+        40,
+      )
     })
 
     it('should apply vertical flip when vertical option is true', async () => {
-      globalThis.Image = MockImageElement as unknown as typeof Image
+      vi.stubGlobal('Image', MockImageElement)
 
       const sourceContext = createCanvasContextMock()
       const croppedContext = createCanvasContextMock()
@@ -251,7 +225,7 @@ describe('utils', () => {
     })
 
     it('should throw when source canvas context is unavailable', async () => {
-      globalThis.Image = MockImageElement as unknown as typeof Image
+      vi.stubGlobal('Image', MockImageElement)
 
       const sourceCanvas = createCanvasMock(null)
       mockCanvasCreation([sourceCanvas.element])
@@ -266,7 +240,7 @@ describe('utils', () => {
     })
 
     it('should throw when cropped canvas context is unavailable', async () => {
-      globalThis.Image = MockImageElement as unknown as typeof Image
+      vi.stubGlobal('Image', MockImageElement)
 
       const sourceCanvas = createCanvasMock(createCanvasContextMock())
       const croppedCanvas = createCanvasMock(null)
@@ -282,7 +256,7 @@ describe('utils', () => {
     })
 
     it('should reject when blob creation fails', async () => {
-      globalThis.Image = MockImageElement as unknown as typeof Image
+      vi.stubGlobal('Image', MockImageElement)
 
       const sourceCanvas = createCanvasMock(createCanvasContextMock())
       const croppedCanvas = createCanvasMock(createCanvasContextMock(), null)
@@ -299,14 +273,6 @@ describe('utils', () => {
   })
 
   describe('checkIsAnimatedImage', () => {
-    let originalFileReader: typeof FileReader
-    beforeEach(() => {
-      originalFileReader = globalThis.FileReader
-    })
-
-    afterEach(() => {
-      globalThis.FileReader = originalFileReader
-    })
     it('should return true for .gif files', async () => {
       const gifFile = new File([new Uint8Array([0x47, 0x49, 0x46])], 'animation.gif', {
         type: 'image/gif',
@@ -323,64 +289,56 @@ describe('utils', () => {
       expect(result).toBe(false)
     })
 
-    it('should return true for animated WebP files with ANIM chunk', async () => {
-      // Build a minimal WebP header with ANIM chunk
-      // RIFF....WEBP....ANIM
-      const bytes = new Uint8Array(20)
-      // RIFF signature
-      bytes[0] = 0x52 // R
-      bytes[1] = 0x49 // I
-      bytes[2] = 0x46 // F
-      bytes[3] = 0x46 // F
-      // WEBP signature
-      bytes[8] = 0x57 // W
-      bytes[9] = 0x45 // E
-      bytes[10] = 0x42 // B
-      bytes[11] = 0x50 // P
-      // ANIM chunk at offset 12
-      bytes[12] = 0x41 // A
-      bytes[13] = 0x4e // N
-      bytes[14] = 0x49 // I
-      bytes[15] = 0x4d // M
-
-      const webpFile = new File([bytes], 'animated.webp', { type: 'image/webp' })
-      const result = await checkIsAnimatedImage(webpFile)
-      expect(result).toBe(true)
+    it.each([
+      { name: 'animation chunk', chunks: [['ANIM', new Uint8Array(6)]] as const, animated: true },
+      {
+        name: 'animation after a padded chunk',
+        chunks: [
+          ['JUNK', new Uint8Array(1)],
+          ['ANIM', new Uint8Array(6)],
+        ] as const,
+        animated: true,
+      },
+      { name: 'static image', chunks: [['VP8L', new Uint8Array(8)]] as const, animated: false },
+      {
+        name: 'ANIM text inside image payload',
+        chunks: [['VP8L', new TextEncoder().encode('imageANIMdata')]] as const,
+        animated: false,
+      },
+    ])('detects $name from chunk boundaries', async ({ chunks, animated }) => {
+      const file = new File([createWebP(chunks)], 'image.webp', { type: 'image/webp' })
+      await expect(checkIsAnimatedImage(file)).resolves.toBe(animated)
     })
 
-    it('should return false for static WebP files without ANIM chunk', async () => {
-      const bytes = new Uint8Array(20)
-      // RIFF signature
-      bytes[0] = 0x52
-      bytes[1] = 0x49
-      bytes[2] = 0x46
-      bytes[3] = 0x46
-      // WEBP signature
-      bytes[8] = 0x57
-      bytes[9] = 0x45
-      bytes[10] = 0x42
-      bytes[11] = 0x50
-      // No ANIM chunk
+    it('ignores data outside the declared RIFF container', async () => {
+      const bytes = createWebP([['ANIM', new Uint8Array(6)]])
+      new DataView(bytes.buffer).setUint32(4, 4, true)
+      await expect(checkIsAnimatedImage(new File([bytes], 'image.webp'))).resolves.toBe(false)
+    })
 
-      const webpFile = new File([bytes], 'static.webp', { type: 'image/webp' })
-      const result = await checkIsAnimatedImage(webpFile)
-      expect(result).toBe(false)
+    it('does not accept a truncated animation chunk', async () => {
+      const bytes = createWebP([['ANIM', new Uint8Array(6)]])
+      new DataView(bytes.buffer).setUint32(16, 100, true)
+      await expect(checkIsAnimatedImage(new File([bytes], 'image.webp'))).resolves.toBe(false)
     })
 
     it('should reject when FileReader encounters an error', async () => {
       const file = new File([], 'test.png', { type: 'image/png' })
 
-      globalThis.FileReader = class {
-        onerror: ((error: ProgressEvent<FileReader>) => void) | null = null
-        onload: ((event: ProgressEvent<FileReader>) => void) | null = null
+      vi.stubGlobal(
+        'FileReader',
+        class {
+          onerror: ((error: ProgressEvent<FileReader>) => void) | null = null
+          onload: ((event: ProgressEvent<FileReader>) => void) | null = null
 
-        readAsArrayBuffer(_blob: Blob) {
-          const errorEvent = new ProgressEvent('error') as ProgressEvent<FileReader>
-          setTimeout(() => {
-            this.onerror?.(errorEvent)
-          }, 0)
-        }
-      } as unknown as typeof FileReader
+          readAsArrayBuffer(_blob: Blob) {
+            const errorEvent = new ProgressEvent('error') as ProgressEvent<FileReader>
+            setTimeout(() => {
+              this.onerror?.(errorEvent)
+            }, 0)
+          }
+        },
+      )
 
       await expect(checkIsAnimatedImage(file)).rejects.toBeInstanceOf(ProgressEvent)
     })

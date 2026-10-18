@@ -8,7 +8,6 @@ import { useRouter } from '@/next/navigation'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { mockEmojiData } from '@/test/emoji-picker'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import CreateAppModal from '../index'
@@ -17,18 +16,8 @@ const mockConsoleState = vi.hoisted(() => ({
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: ['app.create_and_management'] as string[],
 }))
-const mockConsoleStateReader = vi.hoisted(() => vi.fn())
 const mockCreateApp = vi.hoisted(() => vi.fn())
 
-vi.mock('ahooks', () => ({
-  useDebounceFn: <T extends (...args: unknown[]) => unknown>(fn: T) => {
-    const run = (...args: Parameters<T>) => fn(...args)
-    const cancel = vi.fn()
-    const flush = vi.fn()
-    return { run, cancel, flush }
-  },
-  useHover: () => false,
-}))
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(),
   useParams: () => ({}),
@@ -36,32 +25,18 @@ vi.mock('@/next/navigation', () => ({
 vi.mock('@/utils/create-app-tracking', () => ({
   trackCreateApp: vi.fn(),
 }))
+let appQuota = { size: 0, limit: 1 }
+
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { zGetFeaturesResponse } = await import('@dify/contracts/api/console/features/zod.gen')
   return {
     ...actual,
-    consoleQuery: {
-      ...actual.consoleQuery,
-      features: actual.consoleQuery.features,
-      files: actual.consoleQuery.files,
-      account: {
-        profile: {
-          get: {
-            queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
-          },
-        },
-      },
-      systemFeatures: actual.consoleQuery.systemFeatures,
-      apps: {
-        ...actual.consoleQuery.apps,
-        post: {
-          mutationOptions: () => ({
-            mutationFn: ({ body }: { body: Record<string, unknown> }) => mockCreateApp(body),
-          }),
-        },
-      },
-    },
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'features.get': async () => zGetFeaturesResponse.parse({ apps: appQuota }),
+      'apps.post': ({ body }: { body: Record<string, unknown> }) => mockCreateApp(body),
+    }),
   }
 })
 const toastMocks = vi.hoisted(() => ({
@@ -89,17 +64,12 @@ vi.mock('@/context/permission-state', async () => {
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => () => '/guides',
 }))
-vi.mock('@/hooks/use-theme', () => ({
-  default: () => ({ theme: 'light' }),
-}))
 
 const mockUseRouter = vi.mocked(useRouter)
 const mockPush = vi.fn()
 const mockTrackCreateApp = vi.mocked(trackCreateApp)
 const mockGetRedirection = vi.mocked(getRedirection)
-const { mockToastSuccess, mockToastError } = toastMocks
-
-let appQuota = { size: 0, limit: 1 }
+const { mockToastError } = toastMocks
 
 const renderModal = () => {
   const onClose = vi.fn()
@@ -109,7 +79,7 @@ const renderModal = () => {
       show
       onClose={onClose}
       onCreateFromTemplate={onCreateFromTemplate}
-      defaultAppMode={AppModeEnum.ADVANCED_CHAT}
+      defaultAppMode={'advanced-chat'}
     />,
   )
   return { onClose, onCreateFromTemplate }
@@ -119,6 +89,7 @@ function render(ui: ReactElement) {
   return renderWithConsoleQuery(ui, {
     systemFeatures: { deployment_edition: 'CLOUD' },
     features: { apps: appQuota },
+    accountProfile: { id: 'user-1' },
   })
 }
 
@@ -128,25 +99,22 @@ describe('CreateAppModal', () => {
     HotkeyManager.resetInstance()
     mockUseRouter.mockReturnValue({ push: mockPush } as unknown as ReturnType<typeof useRouter>)
     appQuota = { size: 0, limit: 1 }
-    mockConsoleStateReader.mockReturnValue({
-      userProfile: { id: 'user-1' },
-      workspacePermissionKeys: ['app.create_and_management'],
-    })
     mockConsoleState.userProfile = { id: 'user-1' }
     mockConsoleState.workspacePermissionKeys = ['app.create_and_management']
   })
 
-  it('creates an app, notifies success, and fires callbacks', async () => {
+  it('creates an app and fires callbacks', async () => {
+    const user = userEvent.setup()
     const mockApp = createAppDetailFixture({
-      mode: AppModeEnum.ADVANCED_CHAT,
+      mode: 'advanced-chat' as const,
       maintainer: 'user-1',
     })
     mockCreateApp.mockResolvedValue(mockApp)
     const { onClose } = renderModal()
 
     const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
-    fireEvent.change(nameInput, { target: { value: 'My App' } })
-    fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
+    await user.type(nameInput, 'My App')
+    await user.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
 
     await waitFor(() =>
       expect(mockCreateApp).toHaveBeenCalledWith({
@@ -155,15 +123,14 @@ describe('CreateAppModal', () => {
         icon_type: 'emoji',
         icon: '🤖',
         icon_background: '#FFEAD5',
-        mode: AppModeEnum.ADVANCED_CHAT,
+        mode: 'advanced-chat' as const,
       }),
     )
 
     expect(mockTrackCreateApp).toHaveBeenCalledWith({
       source: 'studio_blank',
-      appMode: AppModeEnum.ADVANCED_CHAT,
+      appMode: 'advanced-chat' as const,
     })
-    expect(mockToastSuccess).toHaveBeenCalledWith('app.newApp.appCreated')
     expect(onClose).toHaveBeenCalledTimes(1)
     await waitFor(() =>
       expect(mockGetRedirection).toHaveBeenCalledWith(mockApp, mockPush, {
@@ -176,8 +143,9 @@ describe('CreateAppModal', () => {
   })
 
   it('waits for create_app tracking before redirecting after blank app creation', async () => {
+    const user = userEvent.setup()
     const mockApp = createAppDetailFixture({
-      mode: AppModeEnum.ADVANCED_CHAT,
+      mode: 'advanced-chat' as const,
       maintainer: 'user-1',
     })
     let resolveTracking: (() => void) | undefined
@@ -189,20 +157,18 @@ describe('CreateAppModal', () => {
     )
     renderModal()
 
-    fireEvent.change(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), {
-      target: { value: 'Tracked App' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
+    await user.type(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), 'Tracked App')
+    await user.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
 
     await waitFor(() => {
       expect(mockTrackCreateApp).toHaveBeenCalledWith({
         source: 'studio_blank',
-        appMode: AppModeEnum.ADVANCED_CHAT,
+        appMode: 'advanced-chat' as const,
       })
     })
     const createButton = screen.getByRole('button', { name: /app\.newApp\.Create/ })
     expect(createButton).toHaveAttribute('aria-disabled', 'true')
-    fireEvent.click(createButton)
+    await user.click(createButton)
 
     expect(mockCreateApp).toHaveBeenCalledTimes(1)
     expect(mockGetRedirection).not.toHaveBeenCalled()
@@ -215,12 +181,13 @@ describe('CreateAppModal', () => {
   })
 
   it('shows error toast when creation fails', async () => {
+    const user = userEvent.setup()
     mockCreateApp.mockRejectedValue(new Error('boom'))
     const { onClose } = renderModal()
 
     const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
-    fireEvent.change(nameInput, { target: { value: 'My App' } })
-    fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
+    await user.type(nameInput, 'My App')
+    await user.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
 
     await waitFor(() => expect(mockCreateApp).toHaveBeenCalled())
     expect(mockToastError).toHaveBeenCalledWith('boom')
@@ -236,10 +203,11 @@ describe('CreateAppModal', () => {
     expect(screen.getByRole('button', { name: /app\.newApp\.Create/ })).toBeDisabled()
   })
 
-  it('forwards the create-from-template entry action', () => {
+  it('forwards the create-from-template entry action', async () => {
+    const user = userEvent.setup()
     const { onCreateFromTemplate } = renderModal()
 
-    fireEvent.click(screen.getByText('app.newApp.noIdeaTip'))
+    await user.click(screen.getByText('app.newApp.noIdeaTip'))
 
     expect(onCreateFromTemplate).toHaveBeenCalled()
   })
@@ -250,18 +218,17 @@ describe('CreateAppModal', () => {
   ])(
     'creates a beginner chat app from its scoped $platform shortcut and selected icon style',
     async ({ platform, modifier }) => {
+      const user = userEvent.setup()
       vi.spyOn(navigator, 'platform', 'get').mockReturnValue(platform)
       mockCreateApp.mockResolvedValue(
-        createAppDetailFixture({ id: 'chat-app', mode: AppModeEnum.CHAT }),
+        createAppDetailFixture({ id: 'chat-app', mode: 'chat' as const }),
       )
       renderModal()
 
-      fireEvent.click(screen.getByText('app.newApp.forBeginners'))
-      fireEvent.click(screen.getByText('app.types.chatbot'))
-      fireEvent.change(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), {
-        target: { value: 'Keyboard App' },
-      })
-      fireEvent.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
+      await user.click(screen.getByText('app.newApp.forBeginners'))
+      await user.click(screen.getByText('app.types.chatbot'))
+      await user.type(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), 'Keyboard App')
+      await user.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
       await waitFor(() => {
         expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
       })
@@ -269,14 +236,15 @@ describe('CreateAppModal', () => {
       fireEvent.keyDown(pickerSearch, { key: 'Enter', code: 'Enter', ...modifier })
       fireEvent.keyUp(pickerSearch, { key: 'Enter', code: 'Enter', ...modifier })
       expect(mockCreateApp).not.toHaveBeenCalled()
-      fireEvent.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
-      fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
+      await user.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
+      await user.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
       await waitFor(() => {
         expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
       })
-      fireEvent.change(screen.getByPlaceholderText('app.newApp.appDescriptionPlaceholder'), {
-        target: { value: 'Created from shortcut' },
-      })
+      await user.type(
+        screen.getByPlaceholderText('app.newApp.appDescriptionPlaceholder'),
+        'Created from shortcut',
+      )
 
       const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
       fireEvent.keyDown(nameInput, { key: 'Enter', code: 'Enter', ...modifier })
@@ -289,7 +257,7 @@ describe('CreateAppModal', () => {
           icon_type: 'emoji',
           icon: '🤖',
           icon_background: '#F3FEE7',
-          mode: AppModeEnum.CHAT,
+          mode: 'chat' as const,
         })
       })
     },
@@ -301,9 +269,10 @@ describe('CreateAppModal', () => {
   ])(
     're-registers the $platform shortcut after the outer dialog remounts its content',
     async ({ platform, modifier }) => {
+      const user = userEvent.setup()
       vi.spyOn(navigator, 'platform', 'get').mockReturnValue(platform)
       mockCreateApp.mockResolvedValue(
-        createAppDetailFixture({ id: 'reopened-app', mode: AppModeEnum.ADVANCED_CHAT }),
+        createAppDetailFixture({ id: 'reopened-app', mode: 'advanced-chat' as const }),
       )
       const onClose = vi.fn()
       const modal = (show: boolean) => (
@@ -311,17 +280,17 @@ describe('CreateAppModal', () => {
           show={show}
           onClose={onClose}
           onCreateFromTemplate={vi.fn()}
-          defaultAppMode={AppModeEnum.ADVANCED_CHAT}
+          defaultAppMode={'advanced-chat'}
         />
       )
       const { rerender } = render(modal(true))
-      await userEvent.setup().click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
+      await user.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
       const picker = screen.getByRole('dialog', { name: 'app.iconPicker.title' })
       rerender(modal(false))
       await waitFor(() => expect(picker).not.toBeInTheDocument())
       rerender(modal(true))
       const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
-      fireEvent.change(nameInput, { target: { value: 'Reopened App' } })
+      await user.type(nameInput, 'Reopened App')
       fireEvent.keyDown(nameInput, { key: 'Enter', code: 'Enter', ...modifier })
       fireEvent.keyUp(nameInput, { key: 'Enter', code: 'Enter', ...modifier })
       await waitFor(() => expect(mockCreateApp).toHaveBeenCalledOnce())
@@ -343,15 +312,16 @@ describe('CreateAppModal', () => {
   })
 
   it('ignores the keyboard shortcut when the app quota is exhausted and closes the icon picker', async () => {
+    const user = userEvent.setup()
     appQuota = { size: 1, limit: 1 }
 
     renderModal()
 
-    fireEvent.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
+    await user.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
     await waitFor(() => {
       expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
     })
-    await userEvent.setup().keyboard('{Escape}')
+    await user.keyboard('{Escape}')
     await waitFor(() => {
       expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
     })
@@ -366,33 +336,33 @@ describe('CreateAppModal', () => {
   })
 
   it('should switch between app types before creating a completion app', async () => {
+    const user = userEvent.setup()
     mockCreateApp.mockResolvedValue(
-      createAppDetailFixture({ id: 'completion-app', mode: AppModeEnum.COMPLETION }),
+      createAppDetailFixture({ id: 'completion-app', mode: 'completion' as const }),
     )
     renderModal()
 
-    fireEvent.click(screen.getByText('app.types.workflow'))
-    fireEvent.click(screen.getByText('app.types.advanced'))
-    fireEvent.click(screen.getByText('app.newApp.forBeginners'))
-    fireEvent.click(screen.getByText('app.types.agent'))
-    fireEvent.click(screen.getByText('app.newApp.completeApp'))
-    fireEvent.change(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), {
-      target: { value: 'Completion App' },
-    })
+    await user.click(screen.getByText('app.types.workflow'))
+    await user.click(screen.getByText('app.types.advanced'))
+    await user.click(screen.getByText('app.newApp.forBeginners'))
+    await user.click(screen.getByText('app.types.agent'))
+    await user.click(screen.getByText('app.newApp.completeApp'))
+    await user.type(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), 'Completion App')
 
-    fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
+    await user.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
 
     await waitFor(() => {
       expect(mockCreateApp).toHaveBeenCalledWith(
         expect.objectContaining({
           name: 'Completion App',
-          mode: AppModeEnum.COMPLETION,
+          mode: 'completion' as const,
         }),
       )
     })
   })
 
   it('should ignore duplicate create clicks while a request is in flight', async () => {
+    const user = userEvent.setup()
     let resolveCreate: ((value: AppDetail) => void) | undefined
     mockCreateApp.mockImplementation(
       () =>
@@ -402,24 +372,22 @@ describe('CreateAppModal', () => {
     )
     renderModal()
 
-    fireEvent.change(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), {
-      target: { value: 'Slow App' },
-    })
+    await user.type(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), 'Slow App')
 
     const createButton = screen.getByRole('button', { name: /app\.newApp\.Create/ })
-    fireEvent.click(createButton)
+    await user.click(createButton)
     await waitFor(() => {
       expect(mockCreateApp).toHaveBeenCalledTimes(1)
     })
 
     expect(createButton).toHaveAttribute('aria-disabled', 'true')
-    fireEvent.click(createButton)
+    await user.click(createButton)
 
     expect(mockCreateApp).toHaveBeenCalledTimes(1)
 
-    resolveCreate?.(createAppDetailFixture({ id: 'slow-app', mode: AppModeEnum.ADVANCED_CHAT }))
+    resolveCreate?.(createAppDetailFixture({ id: 'slow-app', mode: 'advanced-chat' as const }))
     await waitFor(() => {
-      expect(mockToastSuccess).toHaveBeenCalledWith('app.newApp.appCreated')
+      expect(mockGetRedirection).toHaveBeenCalledTimes(1)
     })
   })
 })

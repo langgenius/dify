@@ -8,9 +8,11 @@ import type {
 import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import {
-  DialogClose,
+  DialogBody,
+  DialogCloseButton,
   DialogContent,
   DialogDescription,
+  DialogHeader,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -215,9 +217,6 @@ const EmbeddedContent = ({
 
   return (
     <>
-      <DialogDescription className="mt-8 mb-4 system-sm-medium text-text-primary">
-        {t(($) => $[`${prefixEmbedded}.explanation`], { ns: 'appOverview' })}
-      </DialogDescription>
       {supportedHiddenInputs.length > 0 && (
         <Collapsible className="mb-6 rounded-xl border-[0.5px] border-components-panel-border bg-background-section">
           <CollapsibleTrigger className="group flex w-full items-center justify-between gap-3 rounded-xl px-4 py-3 text-left">
@@ -369,22 +368,15 @@ export function EmbeddedDialogContent({
   const { t } = useTranslation(['appOverview', 'common'])
 
   return (
-    <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-160 flex-col overflow-hidden">
-      <DialogTitle className="shrink-0 title-2xl-semi-bold text-text-primary">
-        {t(($) => $[`${prefixEmbedded}.title`], { ns: 'appOverview' })}
-      </DialogTitle>
-      <DialogClose
-        render={
-          <IconButton
-            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-            size="lg"
-            className="absolute inset-e-6 top-6"
-          >
-            <span aria-hidden className="i-ri-close-line size-4" />
-          </IconButton>
-        }
-      />
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+    <DialogContent className="w-160">
+      <DialogHeader>
+        <DialogTitle>{t(($) => $[`${prefixEmbedded}.title`], { ns: 'appOverview' })}</DialogTitle>
+        <DialogDescription>
+          {t(($) => $[`${prefixEmbedded}.explanation`], { ns: 'appOverview' })}
+        </DialogDescription>
+        <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+      </DialogHeader>
+      <DialogBody>
         <Suspense
           fallback={
             <div className="py-8 text-text-tertiary">{t(($) => $.loading, { ns: 'common' })}</div>
@@ -399,7 +391,7 @@ export function EmbeddedDialogContent({
             hiddenInputs={hiddenInputs}
           />
         </Suspense>
-      </div>
+      </DialogBody>
     </DialogContent>
   )
 }

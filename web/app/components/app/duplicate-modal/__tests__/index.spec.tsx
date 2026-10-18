@@ -70,21 +70,6 @@ describe('DuplicateAppModal', () => {
     },
   )
 
-  it('should render a named dialog', () => {
-    render(
-      <DuplicateAppModal
-        appName="Demo App"
-        icon_type="emoji"
-        icon="🤖"
-        show
-        onConfirm={vi.fn()}
-        onHide={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByRole('dialog', { name: /duplicateTitle/ })).toBeInTheDocument()
-  })
-
   it('should validate the name before duplicating and update the input value', async () => {
     const onConfirm = vi.fn()
     const onHide = vi.fn()
@@ -102,6 +87,7 @@ describe('DuplicateAppModal', () => {
       />,
     )
 
+    expect(screen.getByRole('dialog', { name: /duplicateTitle/ })).toBeInTheDocument()
     const input = screen.getByRole('textbox', { name: /appCustomize\.subTitle/ })
     await user.clear(input)
     await user.type(input, 'Updated App')
@@ -255,6 +241,7 @@ describe('DuplicateAppModal', () => {
 })
 
 it('waits for the real Cloud quota and allows an unlimited quota without an upgrade notice', async () => {
+  const user = userEvent.setup()
   const queryClient = createConsoleQueryClient()
   void queryClient.query({
     ...consoleQuery.features.get.queryOptions(),
@@ -279,6 +266,6 @@ it('waits for the real Cloud quota and allows an unlimited quota without an upgr
     seedFeatures(queryClient, { apps: { size: 100, limit: 0 } })
   })
   await waitFor(() => expect(button).toBeEnabled())
-  await userEvent.setup().click(button)
+  await user.click(button)
   expect(onConfirm).toHaveBeenCalledOnce()
 })

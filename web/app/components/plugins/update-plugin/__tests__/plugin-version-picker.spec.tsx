@@ -1,210 +1,118 @@
-import { render, screen } from '@testing-library/react'
+import type { VersionListResponse } from '../../types'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { useState } from 'react'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import PluginVersionPicker from '../plugin-version-picker'
 
-type VersionItem = {
-  version: string
-  unique_identifier: string
-  created_at: string
+const { getVersions } = vi.hoisted(() => ({ getVersions: vi.fn() }))
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  getMarketplace: getVersions,
+}))
+vi.mock('@/hooks/use-timestamp', () => ({
+  default: () => ({ formatDate: (value: string) => value }),
+}))
+
+const response: { data: VersionListResponse } = {
+  data: {
+    versions: ['2.0.0', '1.0.0'].map((version) => ({
+      plugin_org: 'test',
+      plugin_name: 'plugin',
+      version,
+      file_name: 'plugin.difypkg',
+      checksum: `checksum-${version}`,
+      created_at: '2024-01-02T00:00:00Z',
+      unique_identifier: `test/plugin:${version}`,
+    })),
+  },
 }
 
-const mockVersionList = vi.hoisted(() => ({
-  data: {
-    versions: [] as VersionItem[],
+const Picker = ({
+  disabled = false,
+  currentVersion = '2.0.0',
+  onSelect = vi.fn(),
+}: {
+  disabled?: boolean
+  currentVersion?: string
+  onSelect?: (selection: {
+    version: string
+    unique_identifier: string
+    isDowngrade: boolean
+  }) => void
+}) => {
+  const [open, setOpen] = useState(false)
+  return (
+    <PluginVersionPicker
+      disabled={disabled}
+      isShow={open}
+      onShowChange={setOpen}
+      pluginID="test/plugin"
+      currentVersion={currentVersion}
+      trigger={(isOpen) => <span>{isOpen ? 'Close versions' : 'Select version'}</span>}
+      onSelect={onSelect}
+    />
+  )
+}
+
+beforeEach(() => {
+  vi.resetAllMocks()
+  getVersions.mockResolvedValue(response)
+})
+
+it('fetches versions only after opening and replaces loading with the current-version marker', async () => {
+  const user = userEvent.setup()
+  const pending = createDeferred<typeof response>()
+  getVersions.mockReturnValueOnce(pending.promise)
+  render(<Picker />)
+  expect(getVersions).not.toHaveBeenCalled()
+  await user.click(screen.getByRole('button', { name: 'Select version' }))
+
+  expect(await screen.findByRole('status', { name: 'common.loading' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Close versions' })).toBeInTheDocument()
+  expect(getVersions).toHaveBeenCalledExactlyOnceWith('/plugins/test/plugin/versions', {
+    params: { page: 1, page_size: 100 },
+  })
+  await act(async () => pending.resolve(response))
+  expect(await screen.findByRole('button', { name: /2\.0\.0.*CURRENT/ })).toBeDisabled()
+  expect(screen.queryByRole('status', { name: 'common.loading' })).not.toBeInTheDocument()
+})
+
+it.each([
+  { currentVersion: '2.0.0', selectedVersion: '1.0.0', isDowngrade: true },
+  { currentVersion: '1.0.0', selectedVersion: '2.0.0', isDowngrade: false },
+])(
+  'selects $selectedVersion from $currentVersion and closes the picker',
+  async ({ currentVersion, selectedVersion, isDowngrade }) => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn()
+    render(<Picker currentVersion={currentVersion} onSelect={onSelect} />)
+    await user.click(screen.getByRole('button', { name: 'Select version' }))
+    await user.click(
+      await screen.findByRole('button', {
+        name: new RegExp(selectedVersion.replaceAll('.', '\\.')),
+      }),
+    )
+
+    expect(onSelect).toHaveBeenCalledExactlyOnceWith({
+      version: selectedVersion,
+      unique_identifier: `test/plugin:${selectedVersion}`,
+      isDowngrade,
+    })
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: /CURRENT/ })).not.toBeInTheDocument(),
+    )
+    expect(screen.getByRole('button', { name: 'Select version' })).toBeInTheDocument()
   },
-}))
+)
 
-const mockUseVersionListOfPlugin = vi.hoisted(() => vi.fn())
-
-vi.mock('@/hooks/use-timestamp', () => ({
-  default: () => ({
-    formatDate: (value: string, format: string) => `${value}:${format}`,
-  }),
-}))
-
-vi.mock('@/service/use-plugins', () => ({
-  useVersionListOfPlugin: mockUseVersionListOfPlugin.mockImplementation(() => ({
-    data: mockVersionList,
-    isLoading: false,
-  })),
-}))
-
-describe('PluginVersionPicker', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseVersionListOfPlugin.mockReturnValue({
-      data: mockVersionList,
-      isLoading: false,
-    })
-    mockVersionList.data.versions = [
-      {
-        version: '2.0.0',
-        unique_identifier: 'uid-current',
-        created_at: '2024-01-02',
-      },
-      {
-        version: '1.0.0',
-        unique_identifier: 'uid-old',
-        created_at: '2023-12-01',
-      },
-    ]
-  })
-
-  it('loads versions only while the popover is open', () => {
-    const { rerender } = render(
-      <PluginVersionPicker
-        isShow={false}
-        onShowChange={vi.fn()}
-        pluginID="plugin-1"
-        currentVersion="2.0.0"
-        trigger={() => <span>trigger</span>}
-        onSelect={vi.fn()}
-      />,
-    )
-
-    expect(mockUseVersionListOfPlugin).toHaveBeenLastCalledWith('plugin-1', false)
-
-    rerender(
-      <PluginVersionPicker
-        isShow
-        onShowChange={vi.fn()}
-        pluginID="plugin-1"
-        currentVersion="2.0.0"
-        trigger={() => <span>trigger</span>}
-        onSelect={vi.fn()}
-      />,
-    )
-
-    expect(mockUseVersionListOfPlugin).toHaveBeenLastCalledWith('plugin-1', true)
-  })
-
-  it('shows a loading state while versions are loading', () => {
-    mockUseVersionListOfPlugin.mockReturnValue({
-      data: undefined,
-      isLoading: true,
-    })
-
-    render(
-      <PluginVersionPicker
-        isShow
-        onShowChange={vi.fn()}
-        pluginID="plugin-1"
-        currentVersion="2.0.0"
-        trigger={() => <span>trigger</span>}
-        onSelect={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
-    expect(screen.queryByText('2.0.0')).not.toBeInTheDocument()
-  })
-
-  it('renders version options and highlights the current version', () => {
-    render(
-      <PluginVersionPicker
-        isShow
-        onShowChange={vi.fn()}
-        pluginID="plugin-1"
-        currentVersion="2.0.0"
-        trigger={() => <span>trigger</span>}
-        onSelect={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByText('plugin.detailPanel.switchVersion')).toBeInTheDocument()
-    expect(screen.getByText('2.0.0')).toBeInTheDocument()
-    expect(screen.getByText('2024-01-02:appLog.dateTimeFormat')).toBeInTheDocument()
-    expect(screen.getByText('CURRENT')).toBeInTheDocument()
-  })
-
-  it('passes Base trigger state and props through the preserved button root', () => {
-    render(
-      <PluginVersionPicker
-        isShow
-        onShowChange={vi.fn()}
-        pluginID="plugin-1"
-        currentVersion="2.0.0"
-        trigger={(open) => <span>{open ? 'open trigger' : 'closed trigger'}</span>}
-        onSelect={vi.fn()}
-      />,
-    )
-
-    const trigger = screen.getByRole('button', { name: 'open trigger' })
-    expect(trigger).toHaveAttribute('data-popup-open', '')
-    expect(trigger).toHaveClass('cursor-pointer')
-  })
-
-  it('renders figma-aligned version rows', () => {
-    render(
-      <PluginVersionPicker
-        isShow
-        onShowChange={vi.fn()}
-        pluginID="plugin-1"
-        currentVersion="2.0.0"
-        trigger={() => <span>trigger</span>}
-        onSelect={vi.fn()}
-      />,
-    )
-
-    const currentVersion = screen.getByText('2.0.0')
-    const currentBadge = screen.getByText('CURRENT')
-    const oldVersion = screen.getByText('1.0.0')
-
-    expect(screen.getByText('plugin.detailPanel.switchVersion')).toHaveClass(
-      'px-3',
-      'pb-0.5',
-      'pt-1',
-    )
-    expect(currentVersion.closest('.cursor-default')).toHaveClass('px-2', 'py-1', 'opacity-30')
-    expect(oldVersion.closest('.cursor-pointer')).toHaveClass('px-2', 'py-1')
-    expect(currentVersion.parentElement).toHaveClass('min-h-5', 'gap-1', 'px-1')
-    expect(currentBadge).toHaveClass('bg-components-badge-bg-dimm')
-  })
-
-  it('calls onSelect with downgrade metadata and closes the picker', async () => {
-    const onSelect = vi.fn()
-    const onShowChange = vi.fn()
-    const user = userEvent.setup()
-
-    render(
-      <PluginVersionPicker
-        isShow
-        onShowChange={onShowChange}
-        pluginID="plugin-1"
-        currentVersion="2.0.0"
-        trigger={() => <span>trigger</span>}
-        onSelect={onSelect}
-      />,
-    )
-
-    await user.click(screen.getByText('1.0.0'))
-
-    expect(onSelect).toHaveBeenCalledWith({
-      version: '1.0.0',
-      unique_identifier: 'uid-old',
-      isDowngrade: true,
-    })
-    expect(onShowChange).toHaveBeenCalledWith(false)
-  })
-
-  it('does not call onSelect when the current version is clicked', async () => {
-    const onSelect = vi.fn()
-    const user = userEvent.setup()
-
-    render(
-      <PluginVersionPicker
-        isShow
-        onShowChange={vi.fn()}
-        pluginID="plugin-1"
-        currentVersion="2.0.0"
-        trigger={() => <span>trigger</span>}
-        onSelect={onSelect}
-      />,
-    )
-
-    await user.click(screen.getByText('2.0.0'))
-
-    expect(onSelect).not.toHaveBeenCalled()
-  })
+it('does not open or request versions while disabled', async () => {
+  const user = userEvent.setup()
+  render(<Picker disabled />)
+  const trigger = screen.getByRole('button', { name: 'Select version' })
+  expect(trigger).toBeDisabled()
+  await user.click(trigger)
+  expect(getVersions).not.toHaveBeenCalled()
+  expect(screen.queryByText('plugin.detailPanel.switchVersion')).not.toBeInTheDocument()
 })

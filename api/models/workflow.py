@@ -23,7 +23,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
-from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
+from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE, is_trigger_node_type
 from core.workflow.environment_variables import load_environment_variables
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable, dump_environment_variable
@@ -512,6 +512,13 @@ class Workflow(Base):  # bug
             )
         else:
             yield from ((node["id"], node["data"]) for node in graph_dict["nodes"])
+
+    def has_trigger_node(self) -> bool:
+        """Whether the graph has a trigger entry, which rules out Web App, Service API, OpenAPI, and MCP runs."""
+        return any(
+            isinstance(node_type := node_data.get("type"), str) and is_trigger_node_type(node_type)
+            for _, node_data in self.walk_nodes()
+        )
 
     def user_input_form(self, to_old_structure: bool = False) -> list[Any]:
         # get start node from graph
@@ -1468,6 +1475,8 @@ class WorkflowRunArchiveBundle(DefaultFieldsDCMixin, TypeBase):
     row_count: Mapped[int] = mapped_column(sa.BigInteger, nullable=False)
     archive_bytes: Mapped[int] = mapped_column(sa.BigInteger, nullable=False)
     archived_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    # A non-null value is a durable deletion request, including failed requests that may be retried.
+    deletion_status: Mapped[str | None] = mapped_column(String(16), nullable=True, default=None)
 
 
 class ConversationVariable(TypeBase):

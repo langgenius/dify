@@ -71,7 +71,7 @@ export const getPluginIconInMarketplace = (
 }
 
 export const getFormattedPlugin = (payload: MarketplacePluginPayload): Plugin => {
-  const plugin = payload as unknown as Plugin
+  const plugin = payload as Plugin
 
   if (payload.type === 'bundle') {
     return {

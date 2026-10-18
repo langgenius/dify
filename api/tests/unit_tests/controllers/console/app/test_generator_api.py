@@ -67,7 +67,13 @@ def test_rule_generate_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> N
     api = generator_module.RuleGenerateApi()
     method = unwrap(api.post)
 
-    monkeypatch.setattr(generator_module.LLMGenerator, "generate_rule_config", lambda **_kwargs: {"rules": []})
+    rule_config = {
+        "prompt": "You are a helpful assistant.",
+        "variables": ["topic"],
+        "opening_statement": "Hi",
+        "error": "",
+    }
+    monkeypatch.setattr(generator_module.LLMGenerator, "generate_rule_config", lambda **_kwargs: rule_config)
 
     with app.test_request_context(
         "/console/api/rule-generate",
@@ -76,7 +82,7 @@ def test_rule_generate_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> N
     ):
         response = method(api, RuleGeneratePayload.model_validate(request.get_json()), "t1")
 
-    assert response == {"rules": []}
+    assert response == rule_config
 
 
 def test_rule_code_generate_maps_token_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
