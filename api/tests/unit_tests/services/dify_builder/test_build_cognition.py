@@ -1884,3 +1884,21 @@ class TestNativeBuildCapabilityMessages:
         assert (
             "does not establish that the resource is uninstalled, unavailable, or permission denied" in system.content
         )
+
+
+def test_plan_distinguishes_stop_on_error_from_diagnostic_output():
+    """Removing the native-failure rule must not leave a marker-only plan contract."""
+    model = _FakeInstance([_plan_reply(["code node sends the POST and stops on failure"])])
+    requirements = {"error_status_value": 0, "continue_on_post_failure": False, "health_success_status": 404}
+
+    plan = build.propose_plan_v1(model, requirements, goal_text="POST the receipt, then fetch health")
+
+    assert plan is not None
+    messages = model.calls[0][0]
+    user = str(messages[1].content)
+    assert json.loads(user.split("CONFIRMED REQUIREMENTS:\n", 1)[1]) == requirements
+    system = str(messages[0].content)
+    assert "stop-on-error" in system
+    assert "raise" in system
+    assert "diagnostic" in system
+    assert "error_strategy" in system

@@ -20,6 +20,7 @@ from core.app.app_config.entities import ModelConfig
 from core.dify_builder import urls
 from core.dify_builder.contract import ResourceOption
 from core.dify_builder.models import BuildNodesResult, MutationIntent
+from core.workflow.generator.prompts.builder_prompts import CODE_FAILURE_POLICY_RULES
 from core.workflow.generator.tool_catalogue import score_tool_relevance
 from graphon.enums import BUILT_IN_NODE_TYPES
 from services.dify_builder import preflight
@@ -531,6 +532,7 @@ def propose_plan_v1(
         "deferral does not establish API availability, authentication, request schema or response "
         "schema; do not invent any of them. Resource mentions, including optional or negative "
         "mentions, do not alone require using a resource."
+        f"{CODE_FAILURE_POLICY_RULES}\n\n"
         f"{_planner_tool_section(tools)}{_planner_agent_section(agents, agent_source_error)}\n\n"
         f"{PLAN_PRESENTATION_INSTRUCTION}"
     )

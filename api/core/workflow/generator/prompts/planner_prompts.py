@@ -11,6 +11,8 @@ default values) belongs in the builders. The planner commits to the minimum
 topology and node types so every builder gets a tight scaffold.
 """
 
+from core.workflow.generator.prompts.builder_prompts import CODE_FAILURE_POLICY_RULES
+
 PLANNER_SYSTEM_PROMPT = """You are a Dify workflow planner.
 
 Given a user's natural-language description of an automation, you choose the
@@ -167,6 +169,9 @@ minimum set of Dify workflow nodes needed to fulfil it, in execution order.
   "node_outputs": {"<producer node id>": ["<output name>"]}
 }
 """
+
+
+PLANNER_SYSTEM_PROMPT += CODE_FAILURE_POLICY_RULES
 
 
 PLANNER_USER_PROMPT = """# Mode

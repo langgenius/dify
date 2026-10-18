@@ -15,6 +15,7 @@ import json_repair
 from core.dify_builder.errors import ProposalWouldRunWrongError
 from core.dify_builder.models import MutationIntent
 from core.dify_builder.node_defaults import default_config_or_empty
+from core.workflow.generator.prompts.builder_prompts import CODE_FAILURE_POLICY_RULES
 from core.workflow.graph_normalizers import declared_branch_handles
 from graphon.enums import BUILT_IN_NODE_TYPES
 from services.dify_builder import credentials, preflight
@@ -277,6 +278,7 @@ def build_edit_intents(
         "EXISTING nodes. Reference only node ids that exist and use only the listed node types. "
         'Reply with ONLY JSON: {"intents": [{"op": ..., "args": {...}}]}.\n'
         + _OP_SCHEMA
+        + CODE_FAILURE_POLICY_RULES
         + "Allowed node types: "
         + ", ".join(sorted(_ALLOWED_NODE_TYPES))
         + ".\n"

@@ -1567,3 +1567,29 @@ def test_a_repair_that_answers_the_guard_on_the_retry_is_staged_as_normal():
 
     assert len(intents) == 4
     assert risk.level == "high"  # structural, so it goes to the approval gate -- but it IS staged
+
+
+def test_repair_receives_native_failure_rule_without_inventing_a_stop_policy():
+    """Fix only knows diagnosis/config; it must retain known failure and fallback semantics."""
+
+    class RecordingInstance(_FakeInstance):
+        def invoke_llm(self, **kwargs):
+            self.messages = kwargs["prompt_messages"]
+            return super().invoke_llm(**kwargs)
+
+    model = RecordingInstance(['{"intents": [], "risk": {"level": "low"}}'])
+    graph = deepcopy(_RG)
+    graph["nodes"][0]["data"]["error_strategy"] = "default-value"
+    diagnosis = Diagnosis(culprit_node_id="code1", root_cause="repair a missing import", severity="medium")
+
+    intents, _risk = fix.propose_repair(model, diagnosis, graph)
+
+    assert intents == []
+    user = str(model.messages[1].content)
+    config = json.loads(user.split("CULPRIT NODE CONFIG:\n", 1)[1].split("\n\nGRAPH:\n", 1)[0])
+    assert config["error_strategy"] == "default-value"
+    system = str(model.messages[0].content)
+    assert "stop-on-error" in system
+    assert "user or known config" in system
+    assert "Preserve existing error_strategy" in system
+    assert "explicitly requested fallback" in system

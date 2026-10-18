@@ -1058,3 +1058,40 @@ def test_a_first_attempt_the_guards_condemn_surfaces_even_when_the_retry_is_unus
         edit.build_edit_intents(m, {"add": "an excellent branch"}, _TARGET_GRAPH, edit_target_node_ids=["node2"])
 
     assert len(m.calls) >= 2  # the retry was spent before the refusal (invoke_json re-parses once of its own)
+
+
+def test_edit_receives_stop_policy_and_preserves_known_error_strategy():
+    """Editor guidance must not turn an unrelated Code edit into swallowed errors."""
+    model = _RecordingInstance(['{"intents": []}'])
+    graph = {
+        "nodes": [
+            {
+                "id": "code",
+                "data": {
+                    "type": "code",
+                    "title": "POST",
+                    "code_language": "python3",
+                    "code": "def main():\n    raise RuntimeError('POST failed')",
+                    "variables": [],
+                    "outputs": {},
+                    "error_strategy": "fail-branch",
+                },
+            }
+        ],
+        "edges": [],
+    }
+    rules = {"change": "add timeout detail", "continue_on_post_failure": False, "error_status_value": 0}
+
+    assert edit.build_edit_intents(model, rules, graph, edit_target_node_ids=["code"]) == []
+
+    messages = model.calls[0]["prompt_messages"]
+    user = str(messages[1].content)
+    assert "continue_on_post_failure" in user
+    assert "False" in user
+    config = json.loads(user.split("    config: ", 1)[1].split("\nEDGES:", 1)[0])
+    assert config["error_strategy"] == "fail-branch"
+    system = str(messages[0].content)
+    assert "stop-on-error" in system
+    assert "raise" in system
+    assert "Preserve existing error_strategy" in system
+    assert "explicitly requested fallback" in system

@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import datetime
 from unittest.mock import patch
@@ -1894,3 +1895,19 @@ def test_full_build_completeness_accepts_complete_parallel_fanout_only():
     problems = generated_graph_completeness_problems(graph, mode="workflow", current_graph=None)
     assert len(problems) == 1
     assert "'b'" in problems[0]
+
+
+def test_build_nodes_passes_confirmed_failure_policy_to_generator():
+    """A concise approved plan cannot erase authoritative failure/HTTP constraints."""
+    requirements = {"error_status_value": 0, "continue_on_post_failure": False, "health_success_status": 404}
+    trusted_text = "ORIGINAL GOAL:\nPOST then fetch health\nCONFIRMED REQUIREMENTS:\n" + json.dumps(requirements)
+    with (
+        patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")),
+        patch.object(build.WorkflowGeneratorService, "generate_workflow_graph", return_value=_GEN_GRAPH) as generate,
+    ):
+        result = build.build_nodes("tenant", {}, ["code node calls both endpoints"], trusted_text=trusted_text)
+
+    assert result.intents
+    instruction = generate.call_args.kwargs["instruction"]
+    assert trusted_text in instruction
+    assert "follow the original source" in instruction

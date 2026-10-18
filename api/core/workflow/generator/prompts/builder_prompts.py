@@ -1,5 +1,27 @@
 """Compact semantic configuration references for workflow node builders."""
 
+# Shared by planning, per-Code generation, and Builder edits/repairs. A declared
+# output schema says nothing about native execution status or continuation.
+CODE_FAILURE_POLICY_RULES = """
+Code failure policy:
+- When the user or known config requires stop-on-error (including
+  continue_on_post_failure=false), raise a native Code exception on that failure.
+  Do not swallow it with a catch-and-return fallback. Stop subsequent actions
+  inside the same Code call and prevent success-path downstream execution.
+- A normal return is native success, even with diagnostic http_status=0,
+  receipt=0, an error string, or another requested failure marker. Preserve
+  requested diagnostic details in the exception when stopping; do not claim
+  that failed execution delivered normal outputs or completed a later action.
+- Honor the explicit HTTP success contract: expected status codes/ranges and
+  response checks. A received response alone does not prove success. An expected
+  404 can be valid; do not blindly reject every non-2xx response. Distinguish
+  HTTP error responses from transport/timeout failures and retain useful errors.
+- Preserve existing error_strategy and explicitly requested fallback/default-value
+  or fail-branch behavior unless the user requests changing it. Do not add a
+  continuation strategy to defeat required stopping, or infer a stop requirement
+  merely from an output name or value such as 0.
+"""
+
 # Per-node-type configuration cheatsheet.
 #
 # Each entry mirrors the production ``defaultValue`` from
@@ -302,5 +324,6 @@ _NODE_SNIPPETS: dict[str, str] = {
 
 
 def get_node_config_snippet(node_type: str) -> str:
-    """Return the semantic config reference for one leaf node type."""
-    return _NODE_SNIPPETS.get(node_type, "")
+    """Return one leaf schema, including Code's native failure semantics."""
+    snippet = _NODE_SNIPPETS.get(node_type, "")
+    return snippet + CODE_FAILURE_POLICY_RULES if node_type == "code" else snippet

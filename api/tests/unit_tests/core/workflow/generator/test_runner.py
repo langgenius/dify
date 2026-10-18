@@ -7900,3 +7900,81 @@ class TestNativeEndPublicOutputMessages:
             assert dynamic not in system
         end = next(node["data"] for node in graph["nodes"] if node["id"] == "end_public_91")
         assert end["outputs"] == [{"variable": public_name, "value_selector": ["aggregate_public_91", "output"]}]
+
+
+@pytest.mark.parametrize(
+    ("requirements", "code", "error_strategy"),
+    [
+        (
+            {"error_status_value": 0, "continue_on_post_failure": False, "post_success_status": 200},
+            "def main():\n    raise RuntimeError('POST failed; http_status=0')",
+            None,
+        ),
+        (
+            {"health_success_status": 404, "continue_on_post_failure": False},
+            "def main():\n    return {'http_status': 404}",
+            None,
+        ),
+        (
+            {"error_status_value": 0, "continue_on_post_failure": True, "fallback": "return diagnostic"},
+            "def main():\n    return {'http_status': 0}",
+            "default-value",
+        ),
+    ],
+)
+def test_generator_carries_failure_and_http_contract_to_real_code_builder(requirements, code, error_strategy):
+    """Catch lost source/rules at the provider boundary; do not pretend a fake evaluates the prompt."""
+    planner = {
+        "title": "Receipt",
+        "description": "POST receipt then check health",
+        "nodes": [
+            {"id": "start", "label": "Start", "node_type": "start", "purpose": "Start"},
+            {"id": "code", "label": "Calls", "node_type": "code", "purpose": "Call the endpoints"},
+            {"id": "end", "label": "End", "node_type": "end", "purpose": "Return status"},
+        ],
+        "edges": [{"source": "start", "target": "code"}, {"source": "code", "target": "end"}],
+    }
+    code_config = {
+        "code_language": "python3",
+        "code": code,
+        "variables": [],
+        "outputs": {"http_status": {"type": "number", "children": None}},
+    }
+    if error_strategy:
+        code_config["error_strategy"] = error_strategy
+    model = _ParallelBuilderModel(
+        planner,
+        {
+            "start": {"variables": []},
+            "code": code_config,
+            "end": {"outputs": [{"variable": "http_status", "value_selector": ["code", "http_status"]}]},
+        },
+    )
+    source = "ORIGINAL GOAL:\nPOST then fetch health\nCONFIRMED REQUIREMENTS:\n" + json.dumps(requirements)
+
+    result = WorkflowGenerator.generate_workflow_graph(
+        model_instance=model,
+        model_parameters={},
+        provider="openai",
+        model_name="gpt-4o",
+        model_mode="chat",
+        mode="workflow",
+        instruction=source,
+    )
+
+    assert result["error"] == ""
+    messages = model.messages_by_node["code"][0]
+    assert source in str(messages[1].content)
+    system = str(messages[0].content)
+    assert "stop-on-error" in system
+    assert "raise" in system
+    assert "HTTP success contract" in system
+    assert "404" in system
+    assert "Preserve existing error_strategy" in system
+    assert "explicitly requested fallback" in system
+    planner_system = str(model.planner_prompt_messages[0].content)
+    assert "stop-on-error" in planner_system
+    actual_code = next(node["data"] for node in result["graph"]["nodes"] if node["id"] == "code")
+    assert actual_code["code"] == code
+    assert actual_code.get("error_strategy") == error_strategy
+    assert actual_code["outputs"] == {"http_status": {"type": "number", "children": None}}
