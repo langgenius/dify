@@ -1,9 +1,11 @@
+from collections.abc import Iterator
 from urllib.parse import quote
 from uuid import UUID
 
-from flask import Response
+from flask import Response, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from werkzeug.http import parse_range_header
 
 from controllers.common.fields import BinaryFileResponse
 from controllers.common.file_response import enforce_download_for_html
@@ -77,8 +79,10 @@ class FilePreviewApi(Resource):
                 "`as_attachment` is `true`, the file is returned as a download with `Content-Disposition: "
                 "attachment`."
             ),
+            206: "Returns the requested byte range for supported audio/video files.",
             403: "`file_access_denied` : Access to the requested file is denied.",
             404: "`file_not_found` : The requested file was not found.",
+            416: "The requested byte range is not satisfiable.",
         },
     )
     @service_api_ns.doc(params=query_params_from_model(FilePreviewQuery))
@@ -96,12 +100,16 @@ class FilePreviewApi(Resource):
     @service_api_ns.doc(
         responses={
             200: "File retrieved successfully",
+            206: "Partial file content retrieved successfully",
             401: "Unauthorized - invalid API token",
             403: "Forbidden - file access denied",
             404: "File not found",
+            416: "Requested byte range is not satisfiable",
         }
     )
     @service_api_ns.response(200, "File retrieved successfully")
+    @service_api_ns.response(206, "Partial file content retrieved successfully")
+    @service_api_ns.response(416, "Requested byte range is not satisfiable")
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
     @model_validate(FilePreviewQuery)
     def get(self, args: FilePreviewQuery, app_model: App, end_user: EndUser, file_id: UUID) -> Response:
@@ -122,9 +130,19 @@ class FilePreviewApi(Resource):
         except MessageFilePreviewAccessDeniedError as error:
             raise FileAccessDeniedError() from error
 
-        return self._build_file_response(preview=preview, as_attachment=args.as_attachment)
+        return self._build_file_response(
+            preview=preview,
+            as_attachment=args.as_attachment,
+            range_header=request.headers.get("Range"),
+        )
 
-    def _build_file_response(self, *, preview: MessageFilePreview, as_attachment: bool = False) -> Response:
+    def _build_file_response(
+        self,
+        *,
+        preview: MessageFilePreview,
+        as_attachment: bool = False,
+        range_header: str | None = None,
+    ) -> Response:
         """
         Build Flask Response object with appropriate headers for file streaming
 
@@ -136,20 +154,43 @@ class FilePreviewApi(Resource):
             Flask Response object with streaming file content
         """
         file = preview.file
+        content = preview.content
+        status = 200
+        content_range: str | None = None
+        content_length = file.size
+        if file.mime_type in _RANGE_MEDIA_TYPES and range_header:
+            byte_range = parse_range_header(range_header)
+            if byte_range is not None and byte_range.units == "bytes" and len(byte_range.ranges) == 1:
+                resolved_range = byte_range.range_for_length(file.size)
+                if resolved_range is None or resolved_range[0] >= resolved_range[1]:
+                    content = b""
+                    status = 416
+                    content_range = f"bytes */{file.size}"
+                    content_length = 0
+                else:
+                    start, end_exclusive = resolved_range
+                    content = self._slice_content(content, start=start, end_exclusive=end_exclusive)
+                    status = 206
+                    content_range = f"bytes {start}-{end_exclusive - 1}/{file.size}"
+                    content_length = end_exclusive - start
+
         response = Response(
-            preview.content,
+            content,
+            status=status,
             mimetype=file.mime_type,
             direct_passthrough=True,
             headers={},
         )
 
         # Add Content-Length if known
-        if file.size > 0:
-            response.headers["Content-Length"] = str(file.size)
+        if content_length > 0:
+            response.headers["Content-Length"] = str(content_length)
 
         # Add Accept-Ranges header for audio/video files to support seeking
         if file.mime_type in _RANGE_MEDIA_TYPES:
             response.headers["Accept-Ranges"] = "bytes"
+        if content_range is not None:
+            response.headers["Content-Range"] = content_range
 
         # Set Content-Disposition for downloads
         if as_attachment and file.name:
@@ -169,3 +210,21 @@ class FilePreviewApi(Resource):
         response.headers["Cache-Control"] = "public, max-age=3600"  # Cache for 1 hour
 
         return response
+
+    @staticmethod
+    def _slice_content(content: Iterator[bytes], *, start: int, end_exclusive: int) -> Iterator[bytes]:
+        """Stream one resolved byte range without buffering the complete file."""
+        bytes_to_skip = start
+        bytes_to_yield = end_exclusive - start
+        for chunk in content:
+            if bytes_to_skip >= len(chunk):
+                bytes_to_skip -= len(chunk)
+                continue
+            chunk = chunk[bytes_to_skip:]
+            bytes_to_skip = 0
+            selected = chunk[:bytes_to_yield]
+            if selected:
+                yield selected
+                bytes_to_yield -= len(selected)
+            if bytes_to_yield == 0:
+                break
