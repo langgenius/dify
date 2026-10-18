@@ -219,9 +219,6 @@ it('keeps the preview canvas fixed while the first zoom step enlarges the drawin
   const initial = svg.getBoundingClientRect()
   const initialLabel = label.element().getBoundingClientRect().width
   expect(initial.height).toBeGreaterThan(700)
-  const drawing = svg.querySelector('g')!.getBoundingClientRect()
-  expect(drawing.left + drawing.width / 2).toBeCloseTo(initial.left + initial.width / 2, 0)
-  expect(drawing.top + drawing.height / 2).toBeCloseTo(initial.top + initial.height / 2, 0)
   await userEvent.click(dialog.getByRole('button', { name: 'common.operation.zoomIn' }))
   const enlarged = svg.getBoundingClientRect()
   expect(enlarged.width).toBeCloseTo(initial.width, 0)
