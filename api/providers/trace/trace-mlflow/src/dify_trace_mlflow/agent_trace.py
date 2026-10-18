@@ -6,9 +6,10 @@ its UC-only OTLP endpoint is not interchangeable with an experiment ID.
 """
 
 import base64
+import json
 from collections.abc import Mapping
 from typing import Any, override
-from urllib.parse import quote, urlsplit
+from urllib.parse import quote, urlencode, urlsplit
 
 from google.protobuf.json_format import ParseDict, ParseError
 from mlflow.entities import Span, TraceData, TraceInfo, TraceLocation, TraceState
@@ -32,6 +33,41 @@ from services.tracing.provider_common import endpoint, json_value, nanos, reques
 from services.tracing.provider_dispatch import TraceExportRejectedError, TraceExportResult, TraceExportUncertainError
 
 
+def _chat_tools(value: object) -> list[dict[str, Any]] | None:
+    """Map OTel's flat function definitions to MLflow's chat tool UI schema.
+
+    Preserve the original gen_ai attribute separately. An explicit native field
+    prevents MLflow's OTLP translator from copying the incompatible flat shape.
+    Invalid/unsupported entries stay in the source metadata, not in chat tools.
+    """
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except ValueError:
+            return None
+    if not isinstance(value, list):
+        return None
+    tools = []
+    for item in value:
+        if not isinstance(item, dict) or item.get("type") != "function":
+            continue
+        function = item.get("function")
+        if not isinstance(function, dict):
+            function = {key: item[key] for key in ("name", "description", "parameters", "strict") if key in item}
+        name = function.get("name")
+        if not isinstance(name, str) or not name.strip():
+            continue
+        tool = {"type": "function", "function": function}
+        parameters = function.get("parameters")
+        if parameters is not None and not isinstance(parameters, dict):
+            continue
+        # MLflow's Python ChatTool model accepts only a subset of JSON Schema
+        # (e.g. it requires properties and restricts enum values). Preserve the
+        # full schema for the UI instead of silently dropping valid definitions.
+        tools.append(tool)
+    return tools
+
+
 def _spans(trace: CanonicalTrace, experiment_id: str, request_id: str) -> list[Span]:
     result = []
     for span in trace.spans:
@@ -46,6 +82,10 @@ def _spans(trace: CanonicalTrace, experiment_id: str, request_id: str) -> list[S
             attributes[SpanAttributeKey.INPUTS] = span.inputs
         if span.outputs is not None:
             attributes[SpanAttributeKey.OUTPUTS] = span.outputs
+        if SpanAttributeKey.CHAT_TOOLS not in attributes:
+            tools = _chat_tools(span.metadata.get("gen_ai.tool.definitions"))
+            if tools is not None:
+                attributes[SpanAttributeKey.CHAT_TOOLS] = tools
         if usage := token_usage(span):
             attributes[SpanAttributeKey.CHAT_USAGE] = {f"{key}_tokens": value for key, value in usage.items()}
         if (cost := usd_cost(span)) is not None:
@@ -174,7 +214,12 @@ def export_trace(provider: str, config: Mapping[str, Any], trace: CanonicalTrace
         scope = payload.resource_spans.add().scope_spans.add()
         scope.spans.extend(span.to_otel_proto() for span in spans)
         export_http(provider, host + OTLP_TRACES_PATH, {MLFLOW_EXPERIMENT_ID_HEADER: experiment, **headers}, payload)
-        url = f"{host}/#/experiments/{experiment}/traces?selectedTraceId={quote(trace_id, safe='')}"
+        # MLflow 3.4 has classic (selectedTraceId) and GenAI-v3
+        # (selectedEvaluationId) views; 3.17's v4 reads traceId. On close/change,
+        # v4 removes its selectedEvaluationId fallback before updating traceId.
+        # Each older view reads only its own key and ignores the other aliases.
+        query = urlencode({"traceId": trace_id, "selectedTraceId": trace_id, "selectedEvaluationId": trace_id})
+        url = f"{host}/#/experiments/{experiment}/traces?{query}"
     else:
         root = next(span for span in trace.spans if span.id == trace.root_span_id)
         metadata = {TraceMetadataKey.TRACE_SESSION: trace.session_id}

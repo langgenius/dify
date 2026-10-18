@@ -7,13 +7,17 @@ import base64
 import json
 import os
 from collections.abc import Mapping
+from copy import deepcopy
 from datetime import UTC, datetime, timedelta
 from typing import TypedDict, Unpack
+from urllib.parse import parse_qs, urlsplit
 
 import httpx
 import pytest
 from mlflow.entities import Span, TraceData
 from mlflow.tracing.constant import SpanAttributeKey
+from mlflow.tracing.otel.translation import translate_span_when_storing
+from mlflow.types.chat import ChatTool
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
     ExportTraceServiceRequest,
     ExportTraceServiceResponse,
@@ -21,6 +25,7 @@ from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
 
 from core.helper import ssrf_proxy
 from core.ops.unified_trace.entities import CanonicalSpan, CanonicalSpanKind, CanonicalSpanStatus, CanonicalTrace
+from services.tracing.normalization import remap_outer_trace
 from services.tracing.provider_dispatch import TraceExportUncertainError, export_trace
 
 
@@ -141,8 +146,9 @@ def test_weave_partial_tree_is_uncertain_and_not_retried(
     assert len(calls) == 2
 
 
+@pytest.mark.parametrize("tracking_uri", ["https://mlflow.example", "https://mlflow.example/proxy/mlflow"])
 def test_mlflow_sdk_span_roundtrip_and_credential_isolation(
-    monkeypatch: pytest.MonkeyPatch, trace: CanonicalTrace
+    monkeypatch: pytest.MonkeyPatch, trace: CanonicalTrace, tracking_uri: str
 ) -> None:
     calls = []
     before = dict(os.environ)
@@ -156,7 +162,7 @@ def test_mlflow_sdk_span_roundtrip_and_credential_isolation(
         result = export_trace(
             "mlflow",
             {
-                "tracking_uri": "https://mlflow.example",
+                "tracking_uri": tracking_uri,
                 "experiment_id": "42",
                 "username": username,
                 "password": "password",
@@ -164,9 +170,17 @@ def test_mlflow_sdk_span_roundtrip_and_credential_isolation(
             trace,
         )
         assert result.trace_id == "tr-" + trace.trace_id
-        assert result.trace_url == f"https://mlflow.example/#/experiments/42/traces?selectedTraceId=tr-{trace.trace_id}"
+        assert result.trace_url is not None
+        fragment_path, _, query = urlsplit(result.trace_url).fragment.partition("?")
+        assert result.trace_url.startswith(tracking_uri + "/#/")
+        assert fragment_path == "/experiments/42/traces"
+        assert parse_qs(query) == {
+            "traceId": [result.trace_id],
+            "selectedTraceId": [result.trace_id],
+            "selectedEvaluationId": [result.trace_id],
+        }
     for index, (url, options) in enumerate(calls):
-        assert url == "https://mlflow.example/v1/traces"
+        assert url == tracking_uri + "/v1/traces"
         assert options["headers"]["x-mlflow-experiment-id"] == "42"
         assert (
             options["headers"]["Authorization"]
@@ -186,6 +200,132 @@ def test_mlflow_sdk_span_roundtrip_and_credential_isolation(
         assert spans[0].get_attribute(SpanAttributeKey.CHAT_USAGE) is None
         assert spans[0].get_attribute(SpanAttributeKey.SESSION_ID) == "session-1"
     assert dict(os.environ) == before
+
+
+def _tool_definitions() -> list[dict[str, object]]:
+    return [
+        {
+            "type": "function",
+            "name": "calculate",
+            "description": "TOOL_CONTENT_CANARY",
+            "parameters": {
+                "type": "object",
+                "properties": {"value": {"type": "integer"}},
+                "required": ["value"],
+                "additionalProperties": False,
+                "$comment": "Preserve schema extension fields",
+            },
+            "strict": True,
+        },
+        {"type": "function", "function": {"name": "already_nested", "description": "Nested definition"}},
+    ]
+
+
+@pytest.mark.parametrize("serialized", [False, True])
+def test_mlflow_tool_definitions_have_native_chat_schema_without_losing_source(
+    monkeypatch: pytest.MonkeyPatch, trace: CanonicalTrace, serialized: bool
+) -> None:
+    definitions = _tool_definitions()
+    source = json.dumps(definitions) if serialized else definitions
+    trace.spans[1].metadata["gen_ai.tool.definitions"] = source
+    before = deepcopy(trace.model_dump())
+    native: list[Span] = []
+
+    def send(_method: str, url: str, **options: Unpack[TransportOptions]) -> httpx.Response:
+        content = options["content"]
+        assert isinstance(content, bytes)
+        payload = ExportTraceServiceRequest.FromString(content)
+        native.extend(Span.from_otel_proto(item) for item in payload.resource_spans[0].scope_spans[0].spans)
+        return _response(url, content=b"")
+
+    monkeypatch.setattr(ssrf_proxy, "make_request", send)
+    export_trace("mlflow", {"tracking_uri": "https://mlflow.example", "experiment_id": "42"}, trace)
+    tools = native[1].get_attribute(SpanAttributeKey.CHAT_TOOLS)
+    assert tools == [
+        {"type": "function", "function": {key: value for key, value in definitions[0].items() if key != "type"}},
+        definitions[1],
+    ]
+    assert isinstance(tools, list)
+    for tool in tools:
+        ChatTool.model_validate(tool, strict=True)
+    assert native[1].get_attribute("gen_ai.tool.definitions") == source
+    stored = translate_span_when_storing(native[1])
+    assert json.loads(stored["attributes"][SpanAttributeKey.CHAT_TOOLS]) == tools
+    assert trace.model_dump() == before
+
+
+def test_mlflow_redacted_trace_does_not_recreate_tool_definition_content(
+    monkeypatch: pytest.MonkeyPatch, trace: CanonicalTrace
+) -> None:
+    trace.spans[1].metadata["gen_ai.tool.definitions"] = _tool_definitions()
+    trace.spans[1].metadata[SpanAttributeKey.CHAT_TOOLS] = [
+        {"type": "function", "function": {"name": "TOOL_CONTENT_CANARY"}}
+    ]
+    redacted = remap_outer_trace(trace, trace_id=trace.trace_id, capture_content=False, agent_message=False)
+    native: list[Span] = []
+
+    def send(_method: str, url: str, **options: Unpack[TransportOptions]) -> httpx.Response:
+        content = options["content"]
+        assert isinstance(content, bytes)
+        assert b"TOOL_CONTENT_CANARY" not in content
+        payload = ExportTraceServiceRequest.FromString(content)
+        native.extend(Span.from_otel_proto(item) for item in payload.resource_spans[0].scope_spans[0].spans)
+        return _response(url, content=b"")
+
+    monkeypatch.setattr(ssrf_proxy, "make_request", send)
+    export_trace("mlflow", {"tracking_uri": "https://mlflow.example", "experiment_id": "42"}, redacted)
+    for span in native:
+        assert span.get_attribute(SpanAttributeKey.CHAT_TOOLS) is None
+        assert span.get_attribute("gen_ai.tool.definitions") is None
+        assert span.inputs is None
+        assert span.outputs is None
+
+
+@pytest.mark.parametrize("definitions", [[None, 12, {"type": "other"}, {"type": "function"}], "invalid-json"])
+def test_mlflow_unsupported_tool_shapes_remain_in_metadata_without_fake_functions(
+    trace: CanonicalTrace, definitions: object
+) -> None:
+    from dify_trace_mlflow.agent_trace import _spans
+
+    trace.spans[1].metadata["gen_ai.tool.definitions"] = definitions
+    before = deepcopy(trace.model_dump())
+    result = _spans(trace, "42", "tr-" + trace.trace_id)
+    assert result[1].get_attribute("gen_ai.tool.definitions") == definitions
+    assert result[1].get_attribute(SpanAttributeKey.CHAT_TOOLS) == ([] if isinstance(definitions, list) else None)
+    assert trace.model_dump() == before
+
+
+def test_mlflow_existing_native_chat_tools_take_precedence(trace: CanonicalTrace) -> None:
+    from dify_trace_mlflow.agent_trace import _spans
+
+    native_tools = [{"type": "function", "function": {"name": "already_native"}}]
+    trace.spans[1].metadata[SpanAttributeKey.CHAT_TOOLS] = native_tools
+    trace.spans[1].metadata["gen_ai.tool.definitions"] = _tool_definitions()
+    result = _spans(trace, "42", "tr-" + trace.trace_id)
+    assert result[1].get_attribute(SpanAttributeKey.CHAT_TOOLS) == native_tools
+
+
+def test_mlflow_preserves_json_schema_beyond_the_sdk_chat_tool_model(trace: CanonicalTrace) -> None:
+    from dify_trace_mlflow.agent_trace import _spans
+
+    parameters = {
+        "$ref": "#/$defs/Arguments",
+        "$defs": {
+            "Arguments": {
+                "type": "object",
+                "properties": {"choice": {"enum": [None, {"mode": "auto"}]}},
+                "additionalProperties": {"type": "string"},
+            }
+        },
+    }
+    source = [{"type": "function", "name": "schema_extension", "parameters": parameters}]
+    trace.spans[1].metadata["gen_ai.tool.definitions"] = source
+    result = _spans(trace, "42", "tr-" + trace.trace_id)
+    expected = [{"type": "function", "function": {"name": "schema_extension", "parameters": parameters}}]
+    assert result[1].get_attribute(SpanAttributeKey.CHAT_TOOLS) == expected
+    assert result[1].get_attribute("gen_ai.tool.definitions") == source
+    stored = translate_span_when_storing(result[1])
+    assert json.loads(stored["attributes"][SpanAttributeKey.CHAT_TOOLS]) == expected
 
 
 def test_mlflow_partial_otlp_ack_is_uncertain(monkeypatch: pytest.MonkeyPatch, trace: CanonicalTrace) -> None:
@@ -209,6 +349,8 @@ def test_databricks_sdk_v3_metadata_and_native_artifact(
     uploaded: list[TraceData] = []
     before = dict(os.environ)
     server_trace_id = "tr-abcdef0123456789abcdef0123456789"
+    definitions = _tool_definitions()
+    trace.spans[1].metadata["gen_ai.tool.definitions"] = definitions
 
     def send(_method: str, url: str, **kwargs: Unpack[TransportOptions]) -> httpx.Response:
         calls.append((_method, url, kwargs))
@@ -256,6 +398,12 @@ def test_databricks_sdk_v3_metadata_and_native_artifact(
     assert usage is not None
     assert usage["total_tokens"] == 5
     assert data.spans[1].get_attribute(SpanAttributeKey.LLM_COST) == {"total_cost": 0.01}
+    tools = data.spans[1].get_attribute(SpanAttributeKey.CHAT_TOOLS)
+    assert isinstance(tools, list)
+    assert len(tools) == 2
+    for tool in tools:
+        ChatTool.model_validate(tool, strict=True)
+    assert data.spans[1].get_attribute("gen_ai.tool.definitions") == definitions
     assert dict(os.environ) == before
     assert len(calls) == 3 + int(oauth) + int(credential_type == "AZURE_ADLS_GEN2_SAS_URI")
 
