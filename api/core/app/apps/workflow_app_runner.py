@@ -195,7 +195,7 @@ type WorkflowRunDriver = Callable[
 ]
 
 
-class WorkflowBasedAppRunner:  # noqa: B903  # Runtime owner; constructor names differ from private state.
+class WorkflowBasedAppRunner:
     def __init__(
         self,
         *,
