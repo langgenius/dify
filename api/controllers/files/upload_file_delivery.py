@@ -2,14 +2,13 @@ import os
 from urllib.parse import quote
 from uuid import UUID
 
-from flask import Response, request
+from flask import Response
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import NotFound
-from werkzeug.http import parse_range_header
 
 from controllers.common.errors import UnsupportedFileTypeError
-from controllers.common.file_response import enforce_download_for_html
+from controllers.common.file_response import enforce_download_for_html, requested_byte_range
 from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console.wraps import model_validate
 from controllers.files import files_ns
@@ -59,34 +58,6 @@ def _is_svg_content(mime_type: str | None, filename: str | None, extension: str 
         return True
 
     return bool(filename and os.path.splitext(filename)[1].lstrip(".").lower() == "svg")
-
-
-def _requested_byte_range(mime_type: str | None, size: int) -> tuple[int, int] | str | None:
-    """Resolve the request's Range header against the file size.
-
-    Returns (start, end) inclusive for a satisfiable single byte range,
-    "unsatisfiable" when the range cannot be served, or None when there is
-    no usable Range header and the full file should be sent.
-    """
-    if mime_type not in _RANGE_MEDIA_TYPES or size <= 0:
-        return None
-    range_header = request.headers.get("Range")
-    if not range_header:
-        return None
-    parsed = parse_range_header(range_header)
-    if parsed is None or parsed.units != "bytes" or len(parsed.ranges) != 1:
-        return None
-    start, stop = parsed.ranges[0]
-    if start < 0:
-        # suffix form "bytes=-N": the last N bytes; longer than the file means the whole file
-        if start == 0:
-            return "unsatisfiable"
-        start = max(size + start, 0)
-        return (start, size - 1)
-    if start >= size:
-        return "unsatisfiable"
-    end = size - 1 if stop is None else min(stop, size) - 1
-    return (start, end)
 
 
 @files_ns.route("/<uuid:file_id>/image-preview")
@@ -160,7 +131,7 @@ class FilePreviewApi(Resource):
     @staticmethod
     def _build_response(*, delivery: UploadFileDelivery, as_attachment: bool) -> Response:
         file = delivery.file
-        byte_range = _requested_byte_range(file.mime_type, file.size)
+        byte_range = requested_byte_range(file.mime_type, file.size, _RANGE_MEDIA_TYPES)
         if byte_range == "unsatisfiable":
             response = Response(status=416)
             response.headers["Content-Range"] = f"bytes */{file.size}"
