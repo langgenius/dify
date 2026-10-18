@@ -353,7 +353,7 @@ def test_prepare_updated_config_reports_decryption_failure_as_processing_error(
     ("provider", "fallback_url"),
     [
         ("arize", "https://app.arize.com/"),
-        ("phoenix", "https://app.phoenix.arize.com/projects/"),
+        ("phoenix", "https://app.phoenix.arize.com/redirects/projects/default"),
         ("langsmith", "https://smith.langchain.com/"),
         ("opik", "https://www.comet.com/opik/"),
         ("weave", "https://wandb.ai/"),
@@ -381,8 +381,8 @@ def test_present_config_uses_provider_fallback_when_project_lookup_fails(
         )
 
         assert result == {"project_url": fallback_url}
-        if provider == "mlflow":
-            # OSS defaults produce a pure link; the failing legacy lookup is
+        if provider in {"mlflow", "phoenix"}:
+            # Provider defaults produce a pure link; the failing legacy lookup is
             # deliberately not reached, even when no cached URL is present.
             manager.get_trace_config_project_url.assert_not_called()
 
