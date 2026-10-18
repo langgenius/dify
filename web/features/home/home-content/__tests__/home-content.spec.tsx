@@ -1090,7 +1090,7 @@ describe('HomeContent', () => {
         renderHomeContent({ hasEditPermission: true })
         await user.click(screen.getByRole('button', { name: 'Alpha' }))
         const dialog = await screen.findByRole('dialog', { name: /explore.appCustomize.title/ })
-        const name = within(dialog).getByRole('textbox', { name: 'app.newApp.captionName' })
+        const name = within(dialog).getByRole('textbox', { name: 'app.newApp.name' })
         await user.clear(name)
         await user.type(name, 'My imported app')
         const create = within(dialog).getByRole('button', { name: /common.operation.create/ })

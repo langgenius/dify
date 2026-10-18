@@ -694,7 +694,7 @@ describe('AppCard', () => {
       await chooseAction(user, 'app.editApp')
       const dialog = await screen.findByRole('dialog', { name: 'app.editAppTitle' })
       expect(screen.queryByRole('menu')).not.toBeInTheDocument()
-      const name = within(dialog).getByRole('textbox', { name: 'app.newApp.captionName' })
+      const name = within(dialog).getByRole('textbox', { name: 'app.newApp.name' })
       const description = within(dialog).getByRole('textbox', {
         name: 'app.newApp.captionDescription',
       })
@@ -727,29 +727,27 @@ describe('AppCard', () => {
     {
       action: 'app.editApp',
       title: 'app.editAppTitle',
-      label: 'app.newApp.captionName',
       initial: 'Test App',
     },
     {
       action: 'app.duplicate',
       title: 'app.duplicateTitle',
-      label: 'explore.appCustomize.subTitle',
       initial: 'Test App',
     },
   ])(
     'discards unsubmitted name changes when reopening $action',
-    async ({ action, title, label, initial }) => {
+    async ({ action, title, initial }) => {
       const user = userEvent.setup()
       render(<AppCard app={mockApp} />)
       await chooseAction(user, action)
       const dialog = await screen.findByRole('dialog', { name: title })
-      const input = within(dialog).getByRole('textbox', { name: label })
+      const input = within(dialog).getByRole('textbox', { name: 'app.newApp.name' })
       await user.clear(input)
       await user.type(input, 'Unsaved name')
       await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
       await waitFor(() => expect(dialog).not.toBeInTheDocument())
       await chooseAction(user, action)
-      expect(await screen.findByRole('textbox', { name: label })).toHaveValue(initial)
+      expect(await screen.findByRole('textbox', { name: 'app.newApp.name' })).toHaveValue(initial)
       expect(api.update).not.toHaveBeenCalled()
       expect(api.copy).not.toHaveBeenCalled()
     },
@@ -760,7 +758,7 @@ describe('AppCard', () => {
     render(<AppCard app={mockApp} />)
     await chooseAction(user, 'app.duplicate')
     const dialog = await screen.findByRole('dialog', { name: 'app.duplicateTitle' })
-    const name = within(dialog).getByRole('textbox', { name: 'explore.appCustomize.subTitle' })
+    const name = within(dialog).getByRole('textbox', { name: 'app.newApp.name' })
     await user.clear(name)
     await user.type(name, 'Copied App')
     await user.click(within(dialog).getByRole('button', { name: 'app.duplicate' }))
@@ -790,7 +788,7 @@ describe('AppCard', () => {
       render(<AppCard app={createMockApp({ mode })} />)
       await chooseAction(user, 'app.switch')
       const dialog = await screen.findByRole('dialog', { name: 'app.switch' })
-      const name = within(dialog).getByRole('textbox', { name: 'app.switchLabel' })
+      const name = within(dialog).getByRole('textbox', { name: 'app.newApp.name' })
       await user.clear(name)
       await user.type(name, 'Converted App')
       await user.click(within(dialog).getByRole('button', { name: 'app.switchStart' }))
