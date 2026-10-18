@@ -5,7 +5,6 @@ and input structure reach the selected Builder model. Existing diagnostic
 redaction is not a general source declassification proof.
 """
 
-import json
 import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -15,6 +14,7 @@ from urllib.parse import urlsplit, urlunsplit
 from pydantic import Field, ValidationError
 
 from core.dify_builder.models import Run
+from libs.json_in_md_parser import parse_json_markdown
 from services.dify_builder.diagnostic_context import redact_diagnostic_value
 from services.dify_builder.effect_disclosure import _has_upstream_reference, _referenced_start_inputs
 from services.dify_builder.execution_contracts import canonical_digest, canonical_json
@@ -228,9 +228,9 @@ def builder_code_reasoner(*, tenant_id: str, model_config: dict[str, Any]) -> Ca
             stop=stop,
         )
         # invoke_json retries malformed output. Code preparation must be one
-        # provider attempt, so use the same transport with strict JSON decoding.
+        # provider attempt; extract its JSON without repair or another invocation.
         if len(raw.encode("utf-8")) > 32768:
             raise ValueError("Code risk response exceeds reasoning budget")
-        return json.loads(raw)
+        return parse_json_markdown(raw)
 
     return reason

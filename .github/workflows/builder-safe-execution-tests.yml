@@ -775,7 +775,8 @@ jobs:
            'test_oversize_and_failed_reasoning_are_unavailable_without_retry': 1,
            'test_persisted_projection_rejects_extra_source_and_historical_missing_entries': 1,
            'test_same_code_type_uses_prepared_reasoning_for_actual_choice': 5,
-           'test_selected_model_malformed_json_is_not_automatically_retried': 1,
+           'test_selected_model_fenced_json_is_assessed_in_one_attempt': 1,
+           'test_selected_model_malformed_json_is_not_automatically_retried': 5,
            'test_unavailable_reply_is_human_and_actionable_in_session_language': 2}
           a4_expected['tests.unit_tests.services.dify_builder.test_code_risk_preparation'] = {'test_changed_code_input_redisplays_before_accepting_checkbox_and_reuses_shown_snapshot': 1,
            'test_confirmed_code_write_launches_once_and_its_prose_cannot_rebind_target': 1,

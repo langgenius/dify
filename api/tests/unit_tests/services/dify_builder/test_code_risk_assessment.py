@@ -238,7 +238,7 @@ def test_code_upstream_confirmation_survives_canvas_title_and_node_order_only():
     assert "code" not in after.mocked_node_ids(before.confirmation(["code"]))
 
 
-def test_selected_model_malformed_json_is_not_automatically_retried(monkeypatch):
+def test_selected_model_fenced_json_is_assessed_in_one_attempt(monkeypatch: pytest.MonkeyPatch) -> None:
     from types import SimpleNamespace
 
     from services.dify_builder.agent import model_resolver
@@ -246,16 +246,53 @@ def test_selected_model_malformed_json_is_not_automatically_retried(monkeypatch)
 
     calls = []
 
-    def invoke(**kwargs):
+    def invoke(**kwargs: object) -> SimpleNamespace:
         calls.append(kwargs)
-        content = "not JSON" if len(calls) == 1 else '{"classification":"pure","risk_notice":"Parser"}'
+        content = (
+            '```json\n{"classification":"pure","risk_notice":"Parses the supplied JSON without external effects."}\n```'
+        )
         return SimpleNamespace(message=SimpleNamespace(get_text_content=lambda: content))
 
     monkeypatch.setattr(model_resolver, "resolve_model_instance", lambda *_: SimpleNamespace(invoke_llm=invoke))
     risk = assess_code(
         prepare(), reason=builder_code_reasoner(tenant_id="owned-tenant", model_config={"name": "selected"})
     )
-    assert risk.status == "unavailable"
+    assert (risk.status, risk.classification) == ("assessed", "pure")
+    assert risk.risk_notice == "Parses the supplied JSON without external effects."
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        "not JSON",
+        '```json\n{"classification":"pure","risk_notice":"Parser",}\n```',
+        '```json\n[{"classification":"pure","risk_notice":"Parser"}]\n```',
+        '```json\n{"classification":"pure","risk_notice":"Parser","approved":true}\n```',
+        "x" * 32768 + '{"classification":"pure","risk_notice":"Parser"}',
+    ],
+    ids=["not-json", "invalid-json", "array", "extra-field", "oversize-response"],
+)
+def test_selected_model_malformed_json_is_not_automatically_retried(
+    monkeypatch: pytest.MonkeyPatch, response: str
+) -> None:
+    from types import SimpleNamespace
+
+    from services.dify_builder.agent import model_resolver
+    from services.dify_builder.code_risk_assessment import assess_code, builder_code_reasoner
+
+    calls = []
+
+    def invoke(**kwargs: object) -> SimpleNamespace:
+        calls.append(kwargs)
+        content = response if len(calls) == 1 else '{"classification":"pure","risk_notice":"Parser"}'
+        return SimpleNamespace(message=SimpleNamespace(get_text_content=lambda: content))
+
+    monkeypatch.setattr(model_resolver, "resolve_model_instance", lambda *_: SimpleNamespace(invoke_llm=invoke))
+    risk = assess_code(
+        prepare(), reason=builder_code_reasoner(tenant_id="owned-tenant", model_config={"name": "selected"})
+    )
+    assert (risk.status, risk.classification) == ("unavailable", "unknown")
     assert len(calls) == 1
 
 
