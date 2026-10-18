@@ -128,10 +128,10 @@ vi.mock('echarts-for-react', async () => {
   }
 })
 
-vi.mock('@/app/components/base/mermaid', () => ({
+vi.mock('../mermaid-diagram', () => ({
   __esModule: true,
-  default: ({ PrimitiveCode }: { PrimitiveCode: string }) => (
-    <div data-testid="mock-mermaid">{PrimitiveCode}</div>
+  MermaidDiagram: ({ source }: { source: string }) => (
+    <div data-testid="mock-mermaid">{source}</div>
   ),
 }))
 

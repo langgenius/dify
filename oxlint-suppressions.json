@@ -692,22 +692,6 @@
       "count": 5
     }
   },
-  "web/app/components/base/mermaid/index.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    },
-    "regexp/no-super-linear-backtracking": {
-      "count": 3
-    }
-  },
-  "web/app/components/base/mermaid/utils.ts": {
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/base/node-status/index.tsx": {
     "react/only-export-components": {
       "count": 1
