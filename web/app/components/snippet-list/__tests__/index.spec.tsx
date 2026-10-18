@@ -91,10 +91,6 @@ vi.mock('next/dynamic', () => ({
   },
 }))
 
-vi.mock('@/hooks/use-document-title', () => ({
-  default: vi.fn(),
-}))
-
 let intersectionCallback: IntersectionObserverCallback | undefined
 const mockObserve = vi.fn()
 const mockDisconnect = vi.fn()

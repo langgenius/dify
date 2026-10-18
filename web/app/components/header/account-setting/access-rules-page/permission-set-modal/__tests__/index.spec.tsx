@@ -261,6 +261,7 @@ describe('PermissionSetModal', () => {
   })
 
   it('keeps the form open and preserves input after a failed save', async () => {
+    const user = userEvent.setup()
     const close = vi.fn()
     const submit = vi.fn().mockRejectedValue(new Error('Unavailable'))
     renderModal(
@@ -272,11 +273,11 @@ describe('PermissionSetModal', () => {
         onSubmit={submit}
       />,
     )
-    await userEvent.type(
+    await user.type(
       screen.getByRole('textbox', { name: /permissionSet.nameLabel/ }),
       'Agent reviewers',
     )
-    await userEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
     await waitFor(() =>
       expect(screen.getByRole('alert')).toHaveTextContent('common.api.actionFailed'),
     )

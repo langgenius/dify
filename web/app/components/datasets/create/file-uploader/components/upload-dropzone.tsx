@@ -6,7 +6,7 @@ import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 
-export type UploadDropzoneProps = {
+type UploadDropzoneProps = {
   dropRef: RefObject<HTMLDivElement | null>
   dragRef: RefObject<HTMLDivElement | null>
   fileUploaderRef: RefObject<HTMLInputElement | null>
@@ -41,6 +41,7 @@ const UploadDropzone = ({
         id="fileUploader"
         className="hidden"
         type="file"
+        aria-label={t(($) => $['stepOne.uploader.browse'], { ns: 'datasetCreation' })}
         multiple={supportBatchUpload}
         accept={acceptTypes.join(',')}
         onChange={onFileChange}

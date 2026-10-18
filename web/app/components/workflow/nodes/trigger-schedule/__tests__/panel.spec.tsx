@@ -261,6 +261,7 @@ describe('TriggerSchedulePanel', () => {
   )
 
   it('keeps cron expressions read-only when editing is denied', async () => {
+    const user = userEvent.setup()
     mockUseConfig.mockReturnValue({
       ...mockUseConfig('node-1', createData()),
       inputs: createData({ mode: 'cron', cron_expression: '0 0 * * *' }),
@@ -270,7 +271,7 @@ describe('TriggerSchedulePanel', () => {
     const input = screen.getByRole('textbox', {
       name: 'workflow.nodes.triggerSchedule.cronExpression',
     })
-    await userEvent.setup().type(input, '5')
+    await user.type(input, '5')
     expect(input).toHaveValue('0 0 * * *')
     expect(handleCronExpressionChange).not.toHaveBeenCalled()
   })

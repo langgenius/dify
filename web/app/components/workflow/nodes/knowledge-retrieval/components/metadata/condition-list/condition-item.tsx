@@ -140,6 +140,7 @@ const ConditionItem = ({
 
   return (
     <fieldset
+      aria-label={currentMetadata?.name}
       disabled={disabled}
       className={cn('mb-1 flex min-w-0 border-0 p-0 last-of-type:mb-0', className)}
     >

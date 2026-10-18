@@ -180,6 +180,12 @@ const ClassList: FC<Props> = ({
                   return (
                     <div
                       key={item.id}
+                      role="group"
+                      aria-label={
+                        item.label?.trim() ||
+                        labels?.defaultLabel(index + 1) ||
+                        getDefaultClassLabel(t, index + 1)
+                      }
                       className={cn(
                         'group relative -ml-3 min-h-10 rounded-[10px] bg-components-panel-bg px-0 py-0',
                       )}

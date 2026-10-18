@@ -47,6 +47,7 @@ const UploadDropzone = ({
         id="fileUploader"
         className="hidden"
         type="file"
+        aria-label={t(($) => $['stepOne.uploader.browse'], { ns: 'datasetCreation' })}
         multiple={supportBatchUpload}
         accept={acceptTypes.join(',')}
         onChange={onFileChange}

@@ -51,6 +51,8 @@ const ConfirmAddVar: FC<IConfirmAddVarProps> = ({
     >
       <div
         ref={mainContentRef}
+        role="group"
+        aria-label={t(($) => $.autoAddVar, { ns: 'appDebug' })}
         className="w-105 rounded-xl bg-components-panel-bg p-6"
         style={{
           boxShadow:

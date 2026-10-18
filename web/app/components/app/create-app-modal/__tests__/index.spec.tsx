@@ -64,9 +64,6 @@ vi.mock('@/context/permission-state', async () => {
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => () => '/guides',
 }))
-vi.mock('@/hooks/use-theme', () => ({
-  default: () => ({ theme: 'light' }),
-}))
 
 const mockUseRouter = vi.mocked(useRouter)
 const mockPush = vi.fn()

@@ -10,8 +10,10 @@ import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/c
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
+import { consoleQuery } from '@/service/console'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { AgentConfigApiContextProvider } from '../../config-context'
 import {
   AgentOrchestrateReadOnlyContext,
@@ -219,6 +221,11 @@ function renderAgentFiles({
     createSystemFeaturesFixture({ deployment_edition: 'COMMUNITY' }),
   )
 
+  queryClient.setQueryData(
+    consoleQuery.files.upload.get.queryKey(),
+    createFileUploadConfigFixture(mocks.fileUploadConfig),
+  )
+
   return {
     ...render(
       <QueryClientTestProvider queryClient={queryClient}>
@@ -237,13 +244,6 @@ function renderAgentFiles({
     queryClient,
   }
 }
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'files.upload.get': () => ({ data: mocks.fileUploadConfig }),
-  })
-})
 
 describe('AgentFiles', () => {
   beforeEach(() => {

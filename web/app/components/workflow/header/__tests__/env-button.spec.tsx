@@ -5,12 +5,6 @@ import EnvButton from '../env-button'
 
 const mockCloseAllInputFieldPanels = vi.fn()
 
-vi.mock('@/hooks/use-theme', () => ({
-  default: () => ({
-    theme: 'light',
-  }),
-}))
-
 vi.mock('@/app/components/rag-pipeline/hooks/use-input-field-panel', () => ({
   useInputFieldPanel: () => ({
     closeAllInputFieldPanels: mockCloseAllInputFieldPanels,

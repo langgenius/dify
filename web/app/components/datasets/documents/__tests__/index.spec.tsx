@@ -1,577 +1,375 @@
-import type { DocumentWithSegmentsListResponse as DocumentListResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { ReactNode } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import type { DocumentWithSegmentsListResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { UrlUpdateEvent } from 'nuqs/adapters/testing'
+import type { consoleClient } from '@/service/console'
+import { zDocumentWithSegmentsListResponse } from '@dify/contracts/api/console/datasets/zod.gen'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { DataSourceType } from '@/models/datasets'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import DatasetDetailContext from '@/context/dataset-detail'
 import { consoleQuery } from '@/service/console'
-import { createAccountProfileQueryClient } from '@/test/console/account-profile'
-import { render as renderWithConsoleState } from '@/test/console/render'
-import { useDocumentsPageState } from '../hooks/use-documents-page-state'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import Documents from '../index'
 
-const expectDocumentsInvalidated = () => {
-  expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
-    queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
-      input: { params: { dataset_id: 'test-dataset-id' } },
-    }),
-  })
-  expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
-    queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key(),
-  })
-}
-
-let documentData: DocumentListResponse | undefined
-
-const render = (ui: Parameters<typeof renderWithConsoleState>[0]) => {
-  const queryClient = createAccountProfileQueryClient({ id: 'test-user' })
-  queryClient.setQueryDefaults(consoleQuery.datasets.byDatasetId.documents.get.key(), {
-    initialData: documentData,
-  })
-  const rendered = renderWithConsoleState(ui, {
-    wrapper: ({ children }: { children: ReactNode }) => (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    ),
-  })
-  return { ...rendered, queryClient }
-}
-
-// Type for mock selector function - use `as MockState` to bypass strict type checking in tests
-type MockSelector = Parameters<typeof useDatasetDetailContextWithSelector>[0]
-type MockState = Parameters<MockSelector>[0]
-
-// Mock Next.js router
-const mockPush = vi.fn()
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({
-    push: mockPush,
-    replace: vi.fn(),
-    prefetch: vi.fn(),
-  }),
-  usePathname: () => '/datasets/test-dataset-id/documents',
+const api = vi.hoisted(() => ({
+  push: vi.fn(),
+  documents: vi.fn<typeof consoleClient.datasets.byDatasetId.documents.get>(),
+  rename: vi.fn<typeof consoleClient.datasets.byDatasetId.documents.byDocumentId.rename.post>(),
+}))
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useRouter: () => ({ push: api.push }),
+  usePathname: () => '/datasets/dataset-1/documents',
+  useParams: () => ({ datasetId: 'dataset-1' }),
   useSearchParams: () => new URLSearchParams(),
 }))
-
-// Mock context providers
-vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: vi.fn((selector: (state: unknown) => unknown) => {
-    const mockState = {
-      dataset: {
-        id: 'test-dataset-id',
-        name: 'Test Dataset',
-        embedding_available: true,
-        data_source_type: DataSourceType.FILE,
-        runtime_mode: 'rag',
-        created_by: 'test-user',
-        permission_keys: ['dataset.acl.use', 'dataset.acl.edit'],
-      },
-    }
-    return selector(mockState as MockState)
-  }),
-}))
-
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createWorkspaceStateModuleMock(() => ({
-    userProfile: { id: 'test-user' },
-    workspacePermissionKeys: ['dataset.create_and_management'],
-  }))
-})
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createPermissionStateModuleMock(() => ({
-    userProfile: { id: 'test-user' },
-    workspacePermissionKeys: ['dataset.create_and_management'],
-  }))
-})
-vi.mock('@/features/system-features/state', async () => {
-  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createSystemFeaturesStateModuleMock(() => ({
-    userProfile: { id: 'test-user' },
-    workspacePermissionKeys: ['dataset.create_and_management'],
-  }))
-})
-
-const getDocuments = vi.hoisted(() => vi.fn())
-const defaultDocumentData = {
-  data: [
-    {
-      id: 'doc-1',
-      name: 'Document 1',
-      indexing_status: 'completed',
-      data_source_type: 'upload_file',
-      position: 1,
-      enabled: true,
-      data_source_detail_dict: {},
-    },
-    {
-      id: 'doc-2',
-      name: 'Document 2',
-      indexing_status: 'indexing',
-      data_source_type: 'upload_file',
-      position: 2,
-      enabled: true,
-      data_source_detail_dict: {},
-    },
-  ],
-  total: 2,
-  page: 1,
-  limit: 10,
-  has_more: false,
-} satisfies DocumentListResponse
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'datasets.byDatasetId.documents.get': getDocuments,
+      'datasets.byDatasetId.documents.get': api.documents,
+      'datasets.byDatasetId.metadata.get': async () => ({
+        doc_metadata: [],
+        built_in_field_enabled: false,
+      }),
+      'datasets.metadata.builtIn.get': async () => ({ fields: [] }),
+      'datasets.byDatasetId.autoDisableLogs.get': async () => ({ document_ids: [] }),
+      'datasets.byDatasetId.errorDocs.get': async () => ({ data: [], total: 0 }),
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'datasets.byDatasetId.documents.byDocumentId.rename.post': api.rename,
     }),
   }
 })
 
-vi.mock('../../metadata/hooks/use-edit-dataset-metadata', () => ({
-  default: vi.fn(() => ({
-    isShowEditModal: false,
-    showEditModal: vi.fn(),
-    hideEditModal: vi.fn(),
-    datasetMetaData: [],
-    handleAddMetaData: vi.fn(),
-    handleRename: vi.fn(),
-    handleDeleteMetaData: vi.fn(),
-    builtInEnabled: false,
-    setBuiltInEnabled: vi.fn(),
-    builtInMetaData: [],
-  })),
-}))
-
-// Mock page state hook
-const mockSetSelectedIds = vi.fn()
-const mockHandleInputChange = vi.fn()
-const mockHandleStatusFilterChange = vi.fn()
-const mockHandleStatusFilterClear = vi.fn()
-const mockHandleSortChange = vi.fn()
-const mockHandlePageChange = vi.fn()
-const mockHandleLimitChange = vi.fn()
-
-vi.mock('../hooks/use-documents-page-state', () => ({
-  useDocumentsPageState: vi.fn(() => ({
-    inputValue: '',
-    debouncedSearchValue: '',
-    handleInputChange: mockHandleInputChange,
-    statusFilterValue: 'all',
-    sortValue: '-created_at' as const,
-    normalizedStatusFilterValue: 'all',
-    handleStatusFilterChange: mockHandleStatusFilterChange,
-    handleStatusFilterClear: mockHandleStatusFilterClear,
-    handleSortChange: mockHandleSortChange,
-    currPage: 0,
+const dataset = () =>
+  createDatasetFixture({ permission_keys: ['dataset.acl.use', 'dataset.acl.edit'] })
+const documentList = (overrides: Partial<DocumentWithSegmentsListResponse> = {}) =>
+  zDocumentWithSegmentsListResponse.parse({
+    data: ['Guide', 'Reference'].map((name, index) => ({
+      id: `doc-${index}`,
+      name,
+      position: index + 1,
+      data_source_type: 'upload_file',
+      indexing_status: 'completed',
+      enabled: true,
+      archived: false,
+      display_status: 'available',
+      created_at: 1700000000,
+      doc_form: 'text_model',
+      data_source_detail_dict: {
+        upload_file: {
+          id: `file-${index}`,
+          name: `${name}.pdf`,
+          extension: 'pdf',
+          mime_type: 'application/pdf',
+          size: 1024,
+          created_at: 1700000000,
+          created_by: 'user-1',
+        },
+      },
+    })),
+    total: 2,
+    page: 1,
     limit: 10,
-    handlePageChange: mockHandlePageChange,
-    handleLimitChange: mockHandleLimitChange,
-    selectedIds: [] as string[],
-    setSelectedIds: mockSetSelectedIds,
-  })),
-}))
+    has_more: false,
+    ...overrides,
+  })
+async function setup({
+  searchParams = '',
+  currentDataset = dataset(),
+  cached,
+  waitForList = true,
+}: {
+  searchParams?: string
+  currentDataset?: ReturnType<typeof dataset>
+  cached?: ReturnType<typeof documentList>
+  waitForList?: boolean
+} = {}) {
+  const queryClient = createConsoleQueryClient()
+  if (cached)
+    queryClient.setQueryData(
+      consoleQuery.datasets.byDatasetId.documents.get.queryKey({
+        input: {
+          params: { dataset_id: 'dataset-1' },
+          query: { page: 1, limit: 10, keyword: '', sort: '-created_at' },
+        },
+      }),
+      cached,
+    )
+  const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>()
+  await act(async () =>
+    renderWithConsoleQuery(
+      <NuqsTestingAdapter hasMemory searchParams={searchParams} onUrlUpdate={onUrlUpdate}>
+        {/* oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector requires its Provider component. */}
+        <DatasetDetailContext.Provider value={{ dataset: currentDataset }}>
+          <Documents datasetId="dataset-1" />
+        </DatasetDetailContext.Provider>
+      </NuqsTestingAdapter>,
+      { queryClient, accountProfile: { id: 'user-1' }, workspacePermissionKeys: [], features: {} },
+    ),
+  )
+  if (waitForList)
+    await waitFor(() => expect(screen.queryByRole('progressbar')).not.toBeInTheDocument())
+  return { user: userEvent.setup(), queryClient, onUrlUpdate }
+}
+const filter = () =>
+  screen.getByRole('combobox', { name: 'datasetDocuments.list.table.header.status' })
+const search = () => screen.getByRole('searchbox')
+const lastURL = (onUrlUpdate: Awaited<ReturnType<typeof setup>>['onUrlUpdate']) =>
+  onUrlUpdate.mock.lastCall?.[0].searchParams
 
-// Mock child components - these have deep dependency chains (QueryClient, API hooks, contexts)
-// Mocking them allows us to test the Documents component logic in isolation
-vi.mock('../components/documents-header', () => ({
-  default: ({
-    datasetId,
-    embeddingAvailable,
-    onInputChange,
-    onAddDocument,
-    onStatusFilterChange,
-    onStatusFilterClear,
-    onSortChange,
-  }: {
-    datasetId: string
-    dataSourceType?: string
-    embeddingAvailable: boolean
-    statusFilterValue: string
-    sortValue: string
-    inputValue: string
-    onInputChange: (value: string) => void
-    onAddDocument: () => void
-    onStatusFilterChange: (value: string) => void
-    onStatusFilterClear: () => void
-    onSortChange: (value: string) => void
-    isShowEditMetadataModal: boolean
-    showEditMetadataModal: () => void
-    hideEditMetadataModal: () => void
-    datasetMetaData: unknown[]
-    builtInMetaData: unknown[]
-    builtInEnabled: boolean
-    onAddMetaData: () => void
-    onRenameMetaData: () => void
-    onDeleteMetaData: () => void
-    onBuiltInEnabledChange: () => void
-  }) => (
-    <div data-testid="documents-header">
-      <span data-testid="header-dataset-id">{datasetId}</span>
-      <span data-testid="header-embedding-available">{String(embeddingAvailable)}</span>
-      <input
-        data-testid="search-input"
-        onChange={(e) => onInputChange(e.target.value)}
-        placeholder="Search documents"
-      />
-      <button data-testid="add-document-btn" onClick={onAddDocument}>
-        Add Document
-      </button>
-      <button data-testid="status-filter-btn" onClick={() => onStatusFilterChange('completed')}>
-        Filter Status
-      </button>
-      <button data-testid="clear-filter-btn" onClick={onStatusFilterClear}>
-        Clear Filter
-      </button>
-      <button data-testid="sort-btn" onClick={() => onSortChange('-updated_at')}>
-        Sort
-      </button>
-    </div>
-  ),
-}))
+beforeEach(() => {
+  api.documents.mockReset().mockResolvedValue(documentList())
+  api.rename
+    .mockReset()
+    .mockImplementation(async ({ body }) => ({ ...documentList().data[1]!, name: body.name }))
+  api.push.mockReset()
+})
+afterEach(() => vi.useRealTimers())
 
-vi.mock('../components/empty-element', () => ({
-  default: ({
-    canAdd,
-    onClick,
-    type,
-  }: {
-    canAdd: boolean
-    onClick: () => void
-    type: 'sync' | 'upload'
-  }) => (
-    <div data-testid="empty-element">
-      <span data-testid="empty-can-add">{String(canAdd)}</span>
-      <span data-testid="empty-type">{type}</span>
-      <button data-testid="empty-add-btn" onClick={onClick}>
-        Add Document
-      </button>
-    </div>
-  ),
-}))
+it('replaces initial loading with the real document rows', async () => {
+  const request = createDeferred<ReturnType<typeof documentList>>()
+  api.documents.mockReturnValue(request.promise)
+  await setup({ waitForList: false })
+  expect(screen.getByRole('progressbar')).toBeInTheDocument()
+  expect(screen.queryByText('Guide')).not.toBeInTheDocument()
+  await act(async () => request.resolve(documentList()))
+  expect(await screen.findByText('Guide')).toBeInTheDocument()
+  expect(screen.getByText('Reference')).toBeInTheDocument()
+})
 
-vi.mock('../components/list', () => ({
-  default: ({
-    documents,
-    datasetId,
-    onUpdate,
-    selectedIds,
-    onSelectedIdChange,
-    pagination,
-  }: {
-    embeddingAvailable: boolean
-    documents: unknown[]
-    datasetId: string
-    onUpdate: () => void
-    selectedIds: string[]
-    onSelectedIdChange: (ids: string[]) => void
-    statusFilterValue: string
-    remoteSortValue: string
-    pagination: {
-      total: number
-      limit: number
-      current: number
-      onChange: (page: number) => void
-      onLimitChange: (limit: number) => void
+it('keeps cached rows visible until a background refresh returns the changed documents', async () => {
+  const request = createDeferred<ReturnType<typeof documentList>>()
+  const { queryClient } = await setup()
+  api.documents.mockReturnValueOnce(request.promise)
+  act(() => {
+    void queryClient.invalidateQueries({
+      queryKey: consoleQuery.datasets.byDatasetId.documents.get.key(),
+    })
+  })
+  expect(screen.getByText('Guide')).toBeInTheDocument()
+  expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+  await act(async () => request.resolve(documentList({ data: [documentList().data[1]!] })))
+  await waitFor(() => expect(screen.queryByText('Guide')).not.toBeInTheDocument())
+  expect(screen.getByText('Reference')).toBeInTheDocument()
+})
+
+it.each([
+  ['upload_file', 'general', 'addFile', 'create'],
+  ['notion_import', 'general', 'addPages', 'create'],
+  ['website_crawl', 'general', 'addUrl', 'create'],
+  ['upload_file', 'rag_pipeline', 'addFile', 'create-from-pipeline'],
+] as const)(
+  'opens the matching import flow for %s in %s mode',
+  async (data_source_type, runtime_mode, action, route) => {
+    const { user } = await setup({
+      currentDataset: createDatasetFixture({ ...dataset(), data_source_type, runtime_mode }),
+    })
+    await user.click(screen.getByRole('button', { name: `datasetDocuments.list.${action}` }))
+    expect(api.push).toHaveBeenCalledExactlyOnceWith(`/datasets/dataset-1/documents/${route}`)
+  },
+)
+
+it.each(['upload_file', 'notion_import'] as const)(
+  'shows the appropriate empty state for %s',
+  async (data_source_type) => {
+    api.documents.mockResolvedValue(documentList({ data: [], total: 0 }))
+    const { user } = await setup({
+      currentDataset: createDatasetFixture({ ...dataset(), data_source_type }),
+    })
+    expect(
+      screen.getByText(
+        `datasetDocuments.list.empty.${data_source_type === 'upload_file' ? 'upload' : 'sync'}.tip`,
+      ),
+    ).toBeInTheDocument()
+    if (data_source_type === 'upload_file') {
+      await user.click(
+        screen.getAllByRole('button', { name: 'datasetDocuments.list.addFile' }).at(-1)!,
+      )
+      expect(api.push).toHaveBeenCalledWith('/datasets/dataset-1/documents/create')
     }
-    onManageMetadata: () => void
-  }) => (
-    <div data-testid="documents-list">
-      <span data-testid="list-dataset-id">{datasetId}</span>
-      <span data-testid="list-documents-count">{documents.length}</span>
-      <span data-testid="list-selected-count">{selectedIds.length}</span>
-      <span data-testid="list-total">{pagination.total}</span>
-      <span data-testid="list-current-page">{pagination.current}</span>
-      <button data-testid="update-btn" onClick={onUpdate}>
-        Update
-      </button>
-      <button data-testid="select-btn" onClick={() => onSelectedIdChange(['doc-1'])}>
-        Select Doc
-      </button>
-      <button data-testid="page-change-btn" onClick={() => pagination.onChange(1)}>
-        Next Page
-      </button>
-      <button data-testid="limit-change-btn" onClick={() => pagination.onLimitChange(20)}>
-        Change Limit
-      </button>
-    </div>
-  ),
-}))
+  },
+)
 
-describe('Documents', () => {
-  const defaultProps = {
-    datasetId: 'test-dataset-id',
-  }
-
-  beforeEach(() => {
-    vi.spyOn(QueryClient.prototype, 'invalidateQueries')
-    vi.clearAllMocks()
-    documentData = defaultDocumentData
-    getDocuments.mockReset().mockImplementation(() => new Promise(() => {}))
-    mockPush.mockClear()
-    // Reset context mocks to default
-    vi.mocked(useDatasetDetailContextWithSelector).mockImplementation((selector: MockSelector) => {
-      const mockState = {
-        dataset: {
-          id: 'test-dataset-id',
-          name: 'Test Dataset',
-          embedding_available: true,
-          data_source_type: DataSourceType.FILE,
-          runtime_mode: 'rag',
-          created_by: 'test-user',
-          permission_keys: ['dataset.acl.use', 'dataset.acl.edit'],
-        },
-      }
-      return selector(mockState as MockState)
+it.each(['permission', 'embedding'] as const)(
+  'withholds document creation and metadata editing when %s is unavailable',
+  async (reason) => {
+    api.documents.mockResolvedValue(documentList({ data: [], total: 0 }))
+    await setup({
+      currentDataset: createDatasetFixture({
+        ...dataset(),
+        ...(reason === 'permission' ? { permission_keys: [] } : { embedding_available: false }),
+      }),
     })
+    expect(
+      screen.queryByRole('button', { name: 'datasetDocuments.list.addFile' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'dataset.metadata.metadata' }),
+    ).not.toBeInTheDocument()
+    if (reason === 'embedding')
+      expect(screen.getByText('dataset.embeddingModelNotAvailable')).toBeInTheDocument()
+  },
+)
+
+it('restores bookmarked search, pagination, sorting and a legacy status filter in the service request', async () => {
+  await setup({ searchParams: '?page=3&limit=25&keyword=initial&status=enabled&sort=hit_count' })
+  expect(search()).toHaveValue('initial')
+  expect(api.documents).toHaveBeenCalledWith({
+    params: { dataset_id: 'dataset-1' },
+    query: {
+      page: 3,
+      limit: 25,
+      keyword: 'initial',
+      status: 'available',
+      sort: 'hit_count',
+    },
   })
+})
 
-  describe('Rendering', () => {
-    it('shows loading until the initial document request resolves', async () => {
-      documentData = undefined
+it('clears document selection and resets the bookmarked page when the search changes', async () => {
+  const { user, onUrlUpdate } = await setup({ searchParams: '?page=3&keyword=initial' })
+  await user.click(screen.getByRole('checkbox', { name: 'Guide' }))
+  expect(screen.getByRole('button', { name: 'dataset.batchAction.cancel' })).toBeInTheDocument()
+  await user.clear(search())
+  await user.type(search(), 'Reference')
+  await waitFor(() => expect(lastURL(onUrlUpdate)?.get('keyword')).toBe('Reference'))
+  expect(lastURL(onUrlUpdate)?.get('page')).toBeNull()
+  expect(screen.getByRole('checkbox', { name: 'Guide' })).not.toBeChecked()
+  expect(
+    screen.queryByRole('button', { name: 'dataset.batchAction.cancel' }),
+  ).not.toBeInTheDocument()
+  await waitFor(() =>
+    expect(api.documents).toHaveBeenLastCalledWith({
+      params: { dataset_id: 'dataset-1' },
+      query: expect.objectContaining({ page: 1, keyword: 'Reference' }),
+    }),
+  )
+})
 
-      getDocuments.mockResolvedValue(defaultDocumentData)
-      render(<Documents {...defaultProps} />)
-      expect(screen.queryByTestId('documents-list')).not.toBeInTheDocument()
-      expect(await screen.findByTestId('documents-list')).toBeInTheDocument()
-    })
+it('selects document rows and clears selection when the status filter changes', async () => {
+  const { user, onUrlUpdate } = await setup({ searchParams: '?page=3&status=error' })
+  await user.click(screen.getByRole('checkbox', { name: 'common.operation.selectAll' }))
+  expect(screen.getByRole('checkbox', { name: 'Guide' })).toBeChecked()
+  expect(screen.getByRole('checkbox', { name: 'Reference' })).toBeChecked()
+  await user.click(screen.getByRole('button', { name: 'dataset.batchAction.cancel' }))
+  expect(screen.getByRole('checkbox', { name: 'Guide' })).not.toBeChecked()
+  expect(screen.getByRole('checkbox', { name: 'Reference' })).not.toBeChecked()
+  await user.click(screen.getByRole('checkbox', { name: 'common.operation.selectAll' }))
+  await user.click(filter())
+  await user.click(
+    await screen.findByRole('option', { name: 'datasetDocuments.list.status.available' }),
+  )
+  await waitFor(() => expect(lastURL(onUrlUpdate)?.get('status')).toBe('available'))
+  expect(lastURL(onUrlUpdate)?.get('page')).toBeNull()
+  expect(screen.getByRole('checkbox', { name: 'Guide' })).not.toBeChecked()
+  expect(filter()).toHaveTextContent('datasetDocuments.list.status.available')
+  await user.click(filter())
+  await user.click(await screen.findByRole('option', { name: 'datasetDocuments.list.index.all' }))
+  await waitFor(() => expect(lastURL(onUrlUpdate)?.get('status')).toBeNull())
+})
 
-    it('keeps cached documents visible during a background refresh', async () => {
-      documentData = {
-        data: [
-          {
-            id: 'doc-1',
-            name: 'Document 1',
-            indexing_status: 'completed',
-            data_source_type: 'upload_file',
-            position: 1,
-            enabled: true,
-            data_source_detail_dict: {},
-          },
-        ],
-        total: 1,
-        page: 1,
-        limit: 10,
-        has_more: false,
-      } satisfies DocumentListResponse
-
-      const { queryClient } = render(<Documents {...defaultProps} />)
-      act(() => {
-        void queryClient.invalidateQueries({
-          queryKey: consoleQuery.datasets.byDatasetId.documents.get.key(),
-        })
-      })
-      await waitFor(() => expect(getDocuments).toHaveBeenCalledOnce())
-      expect(screen.getByTestId('documents-list')).toBeInTheDocument()
-      expect(screen.getByTestId('list-documents-count')).toHaveTextContent('1')
-    })
-
-    it('should render empty element when no documents exist', () => {
-      documentData = { data: [], total: 0, page: 1, limit: 10, has_more: false }
-
-      render(<Documents {...defaultProps} />)
-      expect(screen.getByTestId('empty-element')).toBeInTheDocument()
-      expect(screen.getByTestId('empty-can-add')).toHaveTextContent('true')
-      expect(screen.getByTestId('empty-type')).toHaveTextContent('upload')
-    })
-
-    it('should render sync type empty element for Notion data source', () => {
-      vi.mocked(useDatasetDetailContextWithSelector).mockImplementation(
-        (selector: MockSelector) => {
-          const mockState = {
-            dataset: {
-              id: 'test-dataset-id',
-              name: 'Test Dataset',
-              embedding_available: true,
-              data_source_type: DataSourceType.NOTION,
-              runtime_mode: 'rag',
-              created_by: 'test-user',
-              permission_keys: ['dataset.acl.use', 'dataset.acl.edit'],
-            },
-          }
-          return selector(mockState as MockState)
-        },
-      )
-      documentData = { data: [], total: 0, page: 1, limit: 10, has_more: false }
-
-      render(<Documents {...defaultProps} />)
-      expect(screen.getByTestId('empty-type')).toHaveTextContent('sync')
-    })
+it('requests the next page and resets the page when changing the page size or sort', async () => {
+  api.documents.mockResolvedValue(documentList({ total: 100, has_more: true }))
+  const { user, onUrlUpdate } = await setup()
+  await user.click(screen.getByRole('button', { name: 'common.pagination.next' }))
+  await waitFor(() => expect(lastURL(onUrlUpdate)?.get('page')).toBe('2'))
+  await user.click(
+    within(screen.getByRole('radiogroup', { name: 'common.pagination.perPage' })).getByRole(
+      'radio',
+      { name: '25' },
+    ),
+  )
+  await waitFor(() => expect(lastURL(onUrlUpdate)?.get('limit')).toBe('25'))
+  expect(lastURL(onUrlUpdate)?.get('page')).toBeNull()
+  await user.click(screen.getByRole('button', { name: 'common.pagination.next' }))
+  await user.click(
+    screen.getByRole('button', { name: 'datasetDocuments.list.table.header.hitCount' }),
+  )
+  await waitFor(() => expect(lastURL(onUrlUpdate)?.get('sort')).toBe('-hit_count'))
+  expect(lastURL(onUrlUpdate)?.get('page')).toBeNull()
+  expect(
+    screen.getByRole('columnheader', { name: 'datasetDocuments.list.table.header.hitCount' }),
+  ).toHaveAttribute('aria-sort', 'descending')
+  await user.click(
+    screen.getByRole('button', { name: 'datasetDocuments.list.table.header.hitCount' }),
+  )
+  await waitFor(() => expect(lastURL(onUrlUpdate)?.get('sort')).toBe('hit_count'))
+  expect(
+    screen.getByRole('columnheader', { name: 'datasetDocuments.list.table.header.hitCount' }),
+  ).toHaveAttribute('aria-sort', 'ascending')
+  expect(api.documents).toHaveBeenLastCalledWith({
+    params: { dataset_id: 'dataset-1' },
+    query: expect.objectContaining({ page: 1, limit: 25, sort: 'hit_count' }),
   })
+})
 
-  describe('Router Navigation', () => {
-    it('should navigate to create page when add document is clicked', async () => {
-      render(<Documents {...defaultProps} />)
-
-      await userEvent
-        .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
-        .click(screen.getByTestId('add-document-btn'))
-
-      expect(mockPush).toHaveBeenCalledWith('/datasets/test-dataset-id/documents/create')
-    })
-
-    it('should navigate to pipeline create page when dataset is rag_pipeline mode', async () => {
-      vi.mocked(useDatasetDetailContextWithSelector).mockImplementation(
-        (selector: MockSelector) => {
-          const mockState = {
-            dataset: {
-              id: 'test-dataset-id',
-              name: 'Test Dataset',
-              embedding_available: true,
-              data_source_type: DataSourceType.FILE,
-              runtime_mode: 'rag_pipeline',
-              created_by: 'test-user',
-              permission_keys: ['dataset.acl.use', 'dataset.acl.edit'],
-            },
-          }
-          return selector(mockState as MockState)
-        },
-      )
-
-      render(<Documents {...defaultProps} />)
-
-      await userEvent
-        .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
-        .click(screen.getByTestId('add-document-btn'))
-
-      expect(mockPush).toHaveBeenCalledWith(
-        '/datasets/test-dataset-id/documents/create-from-pipeline',
-      )
-    })
-
-    it('should navigate from empty element add button', async () => {
-      vi.mocked(useDatasetDetailContextWithSelector).mockImplementation(
-        (selector: MockSelector) => {
-          const mockState = {
-            dataset: {
-              id: 'test-dataset-id',
-              name: 'Test Dataset',
-              embedding_available: true,
-              data_source_type: DataSourceType.FILE,
-              runtime_mode: 'rag',
-              created_by: 'test-user',
-              permission_keys: ['dataset.acl.use', 'dataset.acl.edit'],
-            },
-          }
-          return selector(mockState as MockState)
-        },
-      )
-      documentData = { data: [], total: 0, page: 1, limit: 10, has_more: false }
-
-      render(<Documents {...defaultProps} />)
-
-      await userEvent
-        .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
-        .click(screen.getByTestId('empty-add-btn'))
-
-      expect(mockPush).toHaveBeenCalledWith('/datasets/test-dataset-id/documents/create')
-    })
+it('renames the selected document through its real form and refreshes the row after success', async () => {
+  const { user } = await setup()
+  const row = screen.getByRole('row', { name: /Reference/ })
+  await user.click(within(row).getByRole('button', { name: 'datasetDocuments.list.table.rename' }))
+  const dialog = await screen.findByRole('dialog', { name: 'datasetDocuments.list.table.rename' })
+  const input = within(dialog).getByRole('textbox', { name: 'datasetDocuments.list.table.name' })
+  expect(input).toHaveValue('Reference')
+  await user.clear(input)
+  await user.type(input, 'API Reference')
+  api.documents.mockResolvedValue(
+    documentList({
+      data: documentList().data.map((doc) =>
+        doc.id === 'doc-1' ? { ...doc, name: 'API Reference' } : doc,
+      ),
+    }),
+  )
+  await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+  expect(api.rename).toHaveBeenCalledWith({
+    params: { dataset_id: 'dataset-1', document_id: 'doc-1' },
+    body: { name: 'API Reference' },
   })
+  await waitFor(() => expect(dialog).not.toBeInTheDocument())
+  expect(await screen.findByText('API Reference')).toBeInTheDocument()
+})
 
-  describe('polling', () => {
-    afterEach(() => {
-      vi.useRealTimers()
-    })
-
-    it('polls processing documents and stops after every document reaches a terminal state', async () => {
-      vi.useFakeTimers()
-      const completed = {
-        ...defaultDocumentData,
-        data: defaultDocumentData.data.map((document) => ({
-          ...document,
-          indexing_status: 'completed',
-        })),
-      }
-      getDocuments.mockResolvedValue(completed)
-      render(<Documents {...defaultProps} />)
-      expect(getDocuments).not.toHaveBeenCalled()
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(2500)
-      })
-      expect(getDocuments).toHaveBeenCalledOnce()
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(10000)
-      })
-      expect(getDocuments).toHaveBeenCalledOnce()
-    })
-
-    it('keeps polling a transient status filter even when its current result is empty', async () => {
-      vi.useFakeTimers()
-      const original = vi.mocked(useDocumentsPageState).getMockImplementation()!
-      vi.mocked(useDocumentsPageState).mockImplementation(() => ({
-        ...original(),
-        normalizedStatusFilterValue: 'indexing',
-        statusFilterValue: 'indexing',
-      }))
-      documentData = { data: [], total: 0, page: 1, limit: 10, has_more: false }
-      getDocuments.mockResolvedValue(documentData)
-      try {
-        render(<Documents {...defaultProps} />)
-        await act(async () => {
-          await vi.advanceTimersByTimeAsync(5000)
-        })
-        expect(getDocuments).toHaveBeenCalledTimes(2)
-        expect(getDocuments).toHaveBeenLastCalledWith({
-          params: { dataset_id: 'test-dataset-id' },
-          query: expect.objectContaining({ status: 'indexing' }),
-        })
-      } finally {
-        vi.mocked(useDocumentsPageState).mockImplementation(original)
-      }
-    })
+it('polls processing documents until all documents reach a terminal state', async () => {
+  vi.useFakeTimers()
+  const pending = documentList({
+    data: documentList().data.map((doc) => ({
+      ...doc,
+      indexing_status: 'indexing',
+      display_status: 'indexing',
+    })),
   })
+  api.documents.mockResolvedValue(documentList())
+  await setup({ cached: pending, waitForList: false })
+  expect(api.documents).not.toHaveBeenCalled()
+  await act(async () => vi.advanceTimersByTimeAsync(2500))
+  expect(api.documents).toHaveBeenCalledOnce()
+  await act(async () => vi.advanceTimersByTimeAsync(10000))
+  expect(api.documents).toHaveBeenCalledOnce()
+  expect(screen.getByText('Guide')).toBeInTheDocument()
+})
 
-  describe('Mutation invalidation', () => {
-    it('should handle update with delayed chunk invalidation', async () => {
-      vi.useFakeTimers()
-
-      render(<Documents {...defaultProps} />)
-      act(() => fireEvent.click(screen.getByTestId('update-btn')))
-
-      expectDocumentsInvalidated()
-
-      await act(async () => {
-        vi.advanceTimersByTime(5000)
-      })
-      const documents = consoleQuery.datasets.byDatasetId.documents.byDocumentId
-      const input = { params: { dataset_id: 'test-dataset-id' } }
-      expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
-        queryKey: documents.segments.get.key({ input }),
-      })
-      expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
-        queryKey: documents.segments.bySegmentId.childChunks.get.key({ input }),
-      })
-
-      vi.useRealTimers()
-    })
+it('continues polling an empty indexing filter so newly queued documents can appear', async () => {
+  vi.useFakeTimers()
+  api.documents.mockResolvedValue(documentList({ data: [], total: 0 }))
+  await setup({ searchParams: '?status=indexing', waitForList: false })
+  await act(async () => vi.advanceTimersByTimeAsync(5000))
+  expect(api.documents).toHaveBeenCalledTimes(3)
+  expect(api.documents).toHaveBeenLastCalledWith({
+    params: { dataset_id: 'dataset-1' },
+    query: expect.objectContaining({ status: 'indexing' }),
   })
+})
 
-  describe('Edge Cases and Error Handling', () => {
-    it('should handle embedding not available', () => {
-      vi.mocked(useDatasetDetailContextWithSelector).mockImplementation(
-        (selector: MockSelector) => {
-          const mockState = {
-            dataset: {
-              id: 'test-dataset-id',
-              name: 'Test Dataset',
-              embedding_available: false,
-              data_source_type: DataSourceType.FILE,
-              runtime_mode: 'rag',
-            },
-          }
-          return selector(mockState as MockState)
-        },
-      )
-
-      render(<Documents {...defaultProps} />)
-
-      expect(screen.getByTestId('header-embedding-available')).toHaveTextContent('false')
-    })
-  })
+it('opens real metadata management and returns to the document list', async () => {
+  const { user } = await setup()
+  await user.click(screen.getByRole('button', { name: 'dataset.metadata.metadata' }))
+  const dialog = await screen.findByRole('dialog', { name: 'dataset.metadata.metadata' })
+  await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+  await waitFor(() => expect(dialog).not.toBeInTheDocument())
+  expect(screen.getByText('Guide')).toBeInTheDocument()
 })

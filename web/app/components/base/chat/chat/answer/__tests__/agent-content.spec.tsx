@@ -1,151 +1,104 @@
 import type { ChatItem } from '../../../types'
-import type { ThoughtItem } from '../../type'
-import type { IThoughtProps } from '@/app/components/base/chat/chat/thought'
-import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import type { MarkdownProps } from '@/app/components/base/markdown'
-import { render, screen } from '@testing-library/react'
+import type { FileResponse } from '@/types/workflow'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { addFileInfos } from '@/app/components/tools/utils'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import {
+  createChatAnnotationFixture,
+  createChatFileFixture,
+  createChatThoughtFixture as thought,
+} from '@/test/fixtures/chat'
+import { TransferMethod } from '@/types/app'
 import AgentContent from '../agent-content'
 
-// Markdown, tool details, and file actions have independent suites; this owner chooses their data.
-vi.mock('@/app/components/base/markdown', () => ({
-  Markdown: (props: MarkdownProps & { 'data-testid'?: string }) => (
-    <div data-testid={props['data-testid'] || 'markdown'} data-content={String(props.content)}>
-      {String(props.content)}
-    </div>
-  ),
-}))
+const item: ChatItem = { id: 'answer', content: '', isAnswer: true }
 
-vi.mock('@/app/components/base/chat/chat/thought', () => ({
-  default: ({ thought, isFinished }: IThoughtProps) => (
-    <div data-testid="thought-component" data-finished={isFinished}>
-      {thought.thought}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/base/file-uploader', () => ({
-  FileList: ({ files }: { files: FileEntity[] }) => (
-    <div data-testid="file-list-component">{files.map((f) => f.name).join(', ')}</div>
-  ),
-}))
-
-const thought = (overrides: Partial<ThoughtItem> = {}): ThoughtItem => ({
-  id: 'thought-1',
-  tool: '',
-  thought: '',
-  tool_input: '{}',
-  message_id: 'message-1',
-  conversation_id: 'conversation-1',
-  observation: '',
-  position: 0,
-  ...overrides,
+it('shows saved annotation content instead of the original response', async () => {
+  render(
+    <AgentContent
+      item={{ ...item, annotation: createChatAnnotationFixture('Edited response') }}
+      content="Original response"
+    />,
+  )
+  expect(await screen.findByText('Edited response')).toBeInTheDocument()
+  expect(screen.queryByText('Original response')).not.toBeInTheDocument()
 })
 
-describe('AgentContent', () => {
-  const mockItem: ChatItem = {
-    id: '1',
-    content: '',
-    isAnswer: true,
+it('shows the final response instead of superseded thoughts', async () => {
+  render(
+    <AgentContent
+      item={{ ...item, agent_thoughts: [thought({ thought: 'Superseded thought' })] }}
+      content="Final response"
+    />,
+  )
+  expect(await screen.findByText('Final response')).toBeInTheDocument()
+  expect(screen.queryByText('Superseded thought')).not.toBeInTheDocument()
+})
+
+it('shows tool progress and results alongside thought text until the response finishes', async () => {
+  const user = userEvent.setup()
+  const answer: ChatItem = {
+    ...item,
+    agent_thoughts: [
+      thought({ thought: 'Search documents', tool: 'search', observation: 'Found a document' }),
+      thought({ id: 'thought-2', thought: 'Fetch details', tool: 'fetch', position: 1 }),
+    ],
   }
+  const { rerender } = render(<AgentContent item={answer} responding />)
+  expect(await screen.findByText('Search documents')).toBeInTheDocument()
+  expect(screen.getByText('Fetch details')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'tools.thought.used search' }))
+  expect(screen.getByText('Found a document')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'tools.thought.using fetch' })).toBeInTheDocument()
+  rerender(<AgentContent item={answer} responding={false} />)
+  expect(screen.getByRole('button', { name: 'tools.thought.used fetch' })).toBeInTheDocument()
+})
 
-  it('renders logAnnotation if present', () => {
-    const itemWithAnnotation = {
-      ...mockItem,
-      annotation: {
-        id: 'annotation-1',
-        authorName: 'Editor',
-        logAnnotation: {
-          content: 'Log Annotation Content',
-          id: 'annotation-1',
-          created_at: 1700000000,
-          account: { id: 'user-1', name: 'Editor', email: 'editor@example.com' },
-        },
-      },
-    }
-    render(<AgentContent item={itemWithAnnotation} content="Original response" />)
-    expect(screen.queryByText('Original response')).not.toBeInTheDocument()
-    expect(screen.getByTestId('agent-content-markdown')).toHaveTextContent('Log Annotation Content')
-  })
+it('preserves normalized streaming attachment names and download actions', () => {
+  render(
+    <AgentContent
+      item={{
+        ...item,
+        agent_thoughts: [
+          thought({
+            message_files: [
+              createChatFileFixture({
+                name: 'report.pdf',
+                type: 'application/pdf',
+                url: 'https://example.com/report.pdf',
+              }),
+              createChatFileFixture({
+                id: 'file-2',
+                name: 'notes.txt',
+                url: 'https://example.com/notes.txt',
+              }),
+            ],
+          }),
+        ],
+      }}
+    />,
+  )
+  expect(screen.getByRole('button', { name: 'report.pdf' })).toBeInTheDocument()
+  expect(screen.getByText('notes.txt')).toBeInTheDocument()
+  expect(screen.getAllByRole('button', { name: 'common.operation.download' })).toHaveLength(2)
+})
 
-  it('renders content prop if provided and no annotation', () => {
-    render(
-      <AgentContent
-        item={{ ...mockItem, agent_thoughts: [thought({ thought: 'Superseded thought' })] }}
-        content="Direct Content"
-      />,
-    )
-    expect(screen.queryByText('Superseded thought')).not.toBeInTheDocument()
-    expect(screen.getByTestId('agent-content-markdown')).toHaveTextContent('Direct Content')
-  })
-
-  it('renders agent_thoughts if content is absent', () => {
-    const itemWithThoughts = {
-      ...mockItem,
-      agent_thoughts: [
-        thought({ thought: 'Thought 1', tool: 'tool1' }),
-        thought({ id: 'thought-2', thought: 'Thought 2', position: 1 }),
-      ],
-    }
-    render(<AgentContent item={itemWithThoughts} responding={false} />)
-    const items = screen.getAllByTestId('agent-thought-item')
-    expect(items).toHaveLength(2)
-    const thoughtMarkdowns = screen.getAllByTestId('agent-thought-markdown')
-    expect(thoughtMarkdowns[0]).toHaveTextContent('Thought 1')
-    expect(thoughtMarkdowns[1]).toHaveTextContent('Thought 2')
-    expect(screen.getByTestId('thought-component')).toHaveTextContent('Thought 1')
-  })
-
-  it('passes correct isFinished to Thought component', () => {
-    const itemWithThoughts = {
-      ...mockItem,
-      agent_thoughts: [
-        thought({ thought: 'T1', tool: 'tool1', observation: 'obs1' }), // finished by observation
-        thought({ id: 'thought-2', thought: 'T2', tool: 'tool2', position: 1 }), // finished by responding=false
-      ],
-    }
-    const { rerender } = render(<AgentContent item={itemWithThoughts} responding={true} />)
-    const thoughts = screen.getAllByTestId('thought-component')
-    expect(thoughts[0]).toHaveAttribute('data-finished', 'true')
-    expect(thoughts[1]).toHaveAttribute('data-finished', 'false')
-
-    rerender(<AgentContent item={itemWithThoughts} responding={false} />)
-    expect(screen.getAllByTestId('thought-component')[1]).toHaveAttribute('data-finished', 'true')
-  })
-
-  it('renders FileList if thought has message_files', () => {
-    const itemWithFiles = {
-      ...mockItem,
-      agent_thoughts: [
-        {
-          thought: 'T1',
-          message_files: [
-            {
-              id: 'file1',
-              related_id: 'upload-1',
-              filename: 'report.pdf',
-              mime_type: 'application/pdf',
-              type: 'document',
-              transfer_method: 'local_file',
-            },
-            {
-              id: 'file2',
-              related_id: 'upload-2',
-              filename: 'notes.txt',
-              mime_type: 'text/plain',
-              type: 'document',
-              transfer_method: 'local_file',
-            },
-          ],
-        },
-      ],
-    }
-    // Historical thought responses carry server file metadata before AgentContent normalizes it.
-    render(<AgentContent item={itemWithFiles as unknown as ChatItem} />)
-    expect(screen.getByTestId('file-list-component')).toHaveTextContent('report.pdf, notes.txt')
-  })
-
-  it('renders nothing if no annotation, content, or thoughts', () => {
-    render(<AgentContent item={mockItem} />)
-    expect(screen.getByTestId('agent-content-container')).toBeEmptyDOMElement()
-  })
+it('renders historical attachments resolved from thought file ids', () => {
+  const file = {
+    id: 'history-file',
+    related_id: 'history-file',
+    filename: 'history.pdf',
+    extension: 'pdf',
+    mime_type: 'application/pdf',
+    type: 'document',
+    size: 100,
+    transfer_method: TransferMethod.local_file,
+    upload_file_id: 'uploaded-file',
+    url: 'https://example.com/history.pdf',
+    remote_url: '',
+  } satisfies FileResponse & { id: string }
+  const thoughts = addFileInfos([thought({ files: [file.id] })], [file])
+  render(<AgentContent item={{ ...item, agent_thoughts: thoughts }} />)
+  expect(screen.getByRole('button', { name: 'history.pdf' })).toBeInTheDocument()
 })

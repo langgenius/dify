@@ -1,75 +1,38 @@
-import type { Credential, ModelItem, ModelProvider } from '../../declarations'
+import type { consoleClient } from '@/service/console'
+import { zModelCredentialResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { toast } from '@/app/notifications'
+import { AppToastHost } from '@/app/notifications/host'
+import { ModalContextProvider } from '@/context/modal-context-provider'
 import { consoleQuery } from '@/service/console'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createProviderResponseFixture } from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { ConfigurationMethodEnum } from '../../declarations'
+import {
+  ConfigurationMethodEnum,
+  FormTypeEnum,
+  ModelStatusEnum,
+  ModelTypeEnum,
+} from '../../declarations'
+import { modelProviderDetailsQueryOptions } from '../../utils'
 import ModelLoadBalancingModal from '../model-load-balancing-modal'
 
-const saveConfig = vi.fn()
-const getCredentials = vi.fn()
-const deleteCredential = vi.fn()
-const refreshModels = vi.fn()
-const notifyError = vi.fn()
-let credentialData: {
-  load_balancing: {
-    enabled: boolean
-    configs: Array<{
-      id: string
-      credential_id: string
-      enabled: boolean
-      name: string
-      credentials: { api_key: string }
-    }>
-  }
-  current_credential_id: string
-  current_credential_name: string
-  available_credentials: Array<{ credential_id: string; credential_name: string }>
-}
-
-vi.mock('@/app/notifications', () => ({
-  toast: { success: vi.fn(), error: (...args: unknown[]) => notifyError(...args) },
+const api = vi.hoisted(() => ({
+  save: vi.fn<typeof consoleClient.workspaces.current.modelProviders.byProvider.models.post>(),
+  credentials:
+    vi.fn<
+      typeof consoleClient.workspaces.current.modelProviders.byProvider.models.credentials.get
+    >(),
+  remove:
+    vi.fn<
+      typeof consoleClient.workspaces.current.modelProviders.byProvider.models.credentials.delete
+    >(),
+  create:
+    vi.fn<typeof consoleClient.workspaces.current.modelProviders.byProvider.credentials.post>(),
+  edit: vi.fn<typeof consoleClient.workspaces.current.modelProviders.byProvider.credentials.put>(),
 }))
-vi.mock('../../hooks', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../hooks')>()),
-  useRefreshModel: () => ({ handleRefreshModel: refreshModels }),
-  useModelModalHandler: () => vi.fn(),
-}))
-
-// Isolate credential creation/editing; keep the selection and deletion flow real.
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/model-auth',
-  async (importOriginal) => ({
-    ...(await importOriginal<typeof import('../../model-auth')>()),
-    AddCredentialInLoadBalancing: ({
-      onSelectCredential,
-      onUpdate,
-    }: {
-      onSelectCredential: (credential: Credential) => void
-      onUpdate: (
-        payload?: { credential: { credential_id: string } },
-        values?: Record<string, string>,
-      ) => void
-    }) => (
-      <>
-        <button
-          onClick={() =>
-            onSelectCredential({ credential_id: 'cred-3', credential_name: 'New Key' })
-          }
-        >
-          Select another credential
-        </button>
-        <button onClick={() => onUpdate(undefined, { __authorization_name__: 'New Key' })}>
-          Create credential
-        </button>
-        <button onClick={() => onUpdate({ credential: { credential_id: 'cred-1' } })}>
-          Rename credential
-        </button>
-      </>
-    ),
-  }),
-)
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses, withConsoleClientResponses } =
@@ -77,51 +40,85 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.modelProviders.byProvider.models.credentials.delete': ({ query }) =>
-        deleteCredential(query),
+      'workspaces.current.modelProviders.byProvider.models.credentials.delete': api.remove,
+      'workspaces.current.modelProviders.byProvider.credentials.post': api.create,
+      'workspaces.current.modelProviders.byProvider.credentials.put': api.edit,
     }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.modelProviders.byProvider.models.credentials.get': (...args) =>
-        getCredentials(...args),
-      'workspaces.current.modelProviders.byProvider.models.post': ({ params, body }) =>
-        saveConfig(body, params),
+      'workspaces.current.modelProviders.byProvider.models.credentials.get': api.credentials,
+      'workspaces.current.modelProviders.byProvider.credentials.get': async () => ({
+        credentials: { api_key: 'same-key' },
+      }),
+      'workspaces.current.modelProviders.byProvider.models.post': api.save,
     }),
   }
 })
-
-const mockProvider = {
-  provider: 'test-provider',
-  provider_credential_schema: {
-    credential_form_schemas: [{ type: 'secret-input', variable: 'api_key' }],
-  },
-  model_credential_schema: {
-    credential_form_schemas: [{ type: 'secret-input', variable: 'api_key' }],
-  },
-} as unknown as ModelProvider
-
+const schema = {
+  max_length: 1024,
+  show_on: [],
+  variable: 'api_key',
+  type: FormTypeEnum.secretInput,
+  label: { en_US: 'API Key' },
+  required: true,
+  placeholder: { en_US: 'Enter API key' },
+}
+const mockProvider = modelProviderDetailsQueryOptions().select!({
+  data: [
+    createProviderResponseFixture({
+      provider: 'test-provider',
+      configurate_methods: [
+        ConfigurationMethodEnum.predefinedModel,
+        ConfigurationMethodEnum.customizableModel,
+      ],
+      provider_credential_schema: { credential_form_schemas: [schema] },
+      model_credential_schema: {
+        model: { label: { en_US: 'Model' }, placeholder: { en_US: 'Model name' } },
+        credential_form_schemas: [schema],
+      },
+    }),
+  ],
+}).data[0]!
 const mockModel = {
   model: 'gpt-4',
-  model_type: 'llm',
+  model_type: ModelTypeEnum.textGeneration,
   label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' },
   model_properties: {},
-  fetch_from: 'predefined-model',
-} as unknown as ModelItem
-
+  fetch_from: ConfigurationMethodEnum.predefinedModel,
+  status: ModelStatusEnum.active,
+  deprecated: false,
+  load_balancing_enabled: true,
+  has_invalid_load_balancing_configs: false,
+}
+let credentialData: Awaited<ReturnType<typeof api.credentials>>
 const renderModal = (
-  configurateMethod = ConfigurationMethodEnum.predefinedModel as ConfigurationMethodEnum,
+  configurateMethod: ConfigurationMethodEnum = ConfigurationMethodEnum.predefinedModel,
 ) => {
   const onSave = vi.fn()
   const onClose = vi.fn()
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(consoleQuery.workspaces.current.modelProviders.get.queryKey(), {
+    data: [],
+  })
   const rendered = renderWithConsoleQuery(
-    <ModelLoadBalancingModal
-      provider={mockProvider}
-      model={mockModel}
-      configurateMethod={configurateMethod}
-      open
-      onSave={onSave}
-      onClose={onClose}
-    />,
+    <NuqsTestingAdapter>
+      <ModalContextProvider>
+        <ModelLoadBalancingModal
+          provider={mockProvider}
+          model={{ ...mockModel, fetch_from: configurateMethod }}
+          configurateMethod={configurateMethod}
+          currentCustomConfigurationModelFixedFields={{
+            __model_name: mockModel.model,
+            __model_type: mockModel.model_type,
+          }}
+          open
+          onSave={onSave}
+          onClose={onClose}
+        />
+        <AppToastHost timeout={0} />
+      </ModalContextProvider>
+    </NuqsTestingAdapter>,
     {
+      queryClient,
       features: { model_load_balancing_enabled: true },
       workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
     },
@@ -129,14 +126,17 @@ const renderModal = (
   return { ...rendered, user: userEvent.setup(), onSave, onClose }
 }
 const saveButton = () => screen.getByRole('button', { name: 'common.operation.save' })
-
+const addCredential = () =>
+  screen.getByRole('button', { name: 'modelProvider.modelProvider.auth.addCredential' })
 beforeEach(() => {
-  vi.resetAllMocks()
-  credentialData = {
+  credentialData = zModelCredentialResponse.parse({
+    credentials: {},
     load_balancing: {
       enabled: true,
       configs: [
         {
+          in_cooldown: false,
+          ttl: 0,
           id: 'cfg-1',
           credential_id: 'cred-1',
           enabled: true,
@@ -144,6 +144,8 @@ beforeEach(() => {
           credentials: { api_key: 'same-key' },
         },
         {
+          in_cooldown: false,
+          ttl: 0,
           id: 'cfg-2',
           credential_id: 'cred-2',
           enabled: true,
@@ -153,30 +155,51 @@ beforeEach(() => {
       ],
     },
     current_credential_id: 'cred-1',
+    current_credential_name: 'Default',
     available_credentials: [
       { credential_id: 'cred-1', credential_name: 'Default' },
       { credential_id: 'cred-2', credential_name: 'Backup' },
+      { credential_id: 'cred-3', credential_name: 'New Key' },
     ],
-    current_credential_name: 'Default',
-  }
-
-  getCredentials.mockImplementation(async () => structuredClone(credentialData))
-  saveConfig.mockResolvedValue({ result: 'success' })
-  deleteCredential.mockImplementation(async ({ credential_id }: { credential_id: string }) => {
+  })
+  api.credentials.mockReset().mockImplementation(async () => structuredClone(credentialData))
+  api.save.mockReset().mockResolvedValue({ result: 'success' })
+  api.remove.mockReset().mockImplementation(async ({ query: { credential_id } }) => {
     credentialData.available_credentials = credentialData.available_credentials.filter(
-      (credential) => credential.credential_id !== credential_id,
+      (c) => c.credential_id !== credential_id,
     )
     credentialData.load_balancing.configs = credentialData.load_balancing.configs.filter(
-      (config) => config.credential_id !== credential_id,
+      (c) => c.credential_id !== credential_id,
+    )
+    if (credentialData.current_credential_id === credential_id) {
+      const next = credentialData.available_credentials[0]
+      credentialData.current_credential_id = next?.credential_id
+      credentialData.current_credential_name = next?.credential_name
+    }
+    return { result: 'success' }
+  })
+  api.create.mockReset().mockImplementation(async ({ body }) => {
+    credentialData.available_credentials.push({
+      credential_id: 'cred-new',
+      credential_name: body.name ?? 'Unnamed Key',
+    })
+    return { result: 'success' }
+  })
+  api.edit.mockReset().mockImplementation(async ({ body }) => {
+    credentialData.available_credentials = credentialData.available_credentials.map((c) =>
+      c.credential_id === body.credential_id
+        ? { ...c, credential_name: body.name ?? 'Unnamed Key' }
+        : c,
     )
     return { result: 'success' }
   })
 })
+afterEach(() => act(() => toast.dismiss()))
 
 describe('ModelLoadBalancingModal', () => {
   it('waits for credentials before offering save', async () => {
     const request = createDeferred<typeof credentialData>()
-    getCredentials.mockReturnValue(request.promise)
+    api.credentials.mockReturnValue(request.promise)
     renderModal()
     expect(screen.getByRole('progressbar')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'common.operation.save' })).not.toBeInTheDocument()
@@ -205,8 +228,8 @@ describe('ModelLoadBalancingModal', () => {
     await user.click(saveButton())
     await waitFor(() => expect(onSave).toHaveBeenCalledExactlyOnceWith('test-provider'))
     expect(onClose).toHaveBeenCalledTimes(1)
-    expect(saveConfig).toHaveBeenCalledExactlyOnceWith(
-      {
+    expect(api.save).toHaveBeenCalledExactlyOnceWith({
+      body: {
         credential_id: 'cred-1',
         config_from: 'predefined-model',
         model: 'gpt-4',
@@ -219,10 +242,13 @@ describe('ModelLoadBalancingModal', () => {
           })),
         },
       },
-      { provider: 'test-provider' },
-    )
+      params: { provider: 'test-provider' },
+    })
     expect(queryClient.getQueryData(key)).toEqual(snapshot)
-    expect(refreshModels).toHaveBeenCalledTimes(1)
+    expect(
+      queryClient.getQueryState(consoleQuery.workspaces.current.modelProviders.get.queryKey())
+        ?.isInvalidated,
+    ).toBe(true)
   })
 
   it('requires two enabled entries and saves the actual removal and replacement', async () => {
@@ -232,11 +258,12 @@ describe('ModelLoadBalancingModal', () => {
     expect(saveButton()).toBeDisabled()
     await user.click(screen.getByRole('button', { name: 'common.operation.remove Backup' }))
     expect(screen.queryByRole('switch', { name: 'Backup' })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Select another credential' }))
+    await user.click(addCredential())
+    await user.click(await screen.findByRole('button', { name: 'New Key' }))
     expect(saveButton()).toBeEnabled()
     await user.click(saveButton())
-    await waitFor(() => expect(saveConfig).toHaveBeenCalledTimes(1))
-    expect(saveConfig.mock.calls[0]![0].load_balancing.configs).toEqual([
+    await waitFor(() => expect(api.save).toHaveBeenCalledTimes(1))
+    expect(api.save.mock.calls[0]![0].body.load_balancing?.configs).toEqual([
       { ...credentialData.load_balancing.configs[0], credentials: { api_key: '[__HIDDEN__]' } },
       { credential_id: 'cred-3', name: 'New Key', enabled: true, credentials: {} },
     ])
@@ -248,72 +275,105 @@ describe('ModelLoadBalancingModal', () => {
       const { user } = renderModal()
       await screen.findByRole('switch', { name: 'Default' })
       await user.click(screen.getByRole('switch', { name: 'Backup' }))
-      credentialData = {
-        ...credentialData,
-        available_credentials: [
-          { credential_id: 'cred-1', credential_name: 'Renamed Key' },
-          { credential_id: 'cred-2', credential_name: 'Backup' },
-          { credential_id: 'cred-3', credential_name: 'New Key' },
-        ],
+      await user.click(addCredential())
+      if (action === 'Create credential') {
+        await user.click(await screen.findByText('modelProvider.modelProvider.auth.addApiKey'))
+      } else {
+        await user.click(screen.getAllByRole('button', { name: 'common.operation.edit' })[0]!)
       }
-      await user.click(screen.getByRole('button', { name: action }))
+      const name = await screen.findByRole('textbox', { name: 'plugin.auth.authorizationName' })
+      await user.clear(name)
+      await user.type(name, action === 'Create credential' ? 'Created Key' : 'Renamed Key')
+      if (action === 'Create credential')
+        await user.type(screen.getByPlaceholderText('Enter API key'), 'new-key')
+      await user.click(saveButton())
       await screen.findByRole('switch', {
-        name: action === 'Create credential' ? 'New Key' : 'Renamed Key',
+        name: action === 'Create credential' ? 'Created Key' : 'Renamed Key',
       })
       expect(screen.getByRole('switch', { name: 'Backup' })).not.toBeChecked()
+      expect(
+        action === 'Create credential' ? api.create : api.edit,
+      ).toHaveBeenCalledExactlyOnceWith({
+        params: { provider: mockProvider.provider },
+        body: expect.objectContaining({
+          name: action === 'Create credential' ? 'Created Key' : 'Renamed Key',
+          model: mockModel.model,
+          model_type: mockModel.model_type,
+        }),
+      })
       // Provider-managed mode permits saving even with fewer than two enabled keys.
       await user.click(
         screen.getByRole('button', { name: 'modelProvider.modelProvider.auth.providerManaged' }),
       )
       await user.click(saveButton())
-      await waitFor(() => expect(saveConfig).toHaveBeenCalledTimes(1))
-      const saved = saveConfig.mock.calls[0]![0].load_balancing
-      expect(saved.enabled).toBe(false)
-      expect(
-        saved.configs.find((entry: { credential_id: string }) => entry.credential_id === 'cred-2')
-          .enabled,
-      ).toBe(false)
+      await waitFor(() => expect(api.save).toHaveBeenCalledTimes(1))
+      const saved = api.save.mock.calls[0]![0].body.load_balancing
+      expect(saved?.enabled).toBe(false)
+      expect(saved?.configs?.find((entry) => entry.credential_id === 'cred-2')?.enabled).toBe(false)
       if (action === 'Create credential')
-        expect(saved.configs).toContainEqual({
-          credential_id: 'cred-3',
+        expect(saved?.configs).toContainEqual({
+          credential_id: 'cred-new',
           enabled: true,
-          name: 'New Key',
+          name: 'Created Key',
           credentials: {},
         })
-      else expect(saved.configs[0].name).toBe('Renamed Key')
+      else expect(saved?.configs?.[0]?.name).toBe('Renamed Key')
     },
   )
 
-  it('removes deleted model credentials from the draft while retaining local edits', async () => {
-    const { user } = renderModal(ConfigurationMethodEnum.customizableModel)
-    await screen.findByRole('switch', { name: 'Default' })
-    await user.click(screen.getByRole('switch', { name: 'Default' }))
-    await user.click(screen.getByRole('button', { name: 'Default' }))
-    await user.click(screen.getAllByRole('button', { name: 'common.operation.delete' })[1]!)
-    await user.click(
-      within(screen.getByRole('alertdialog')).getByRole('button', {
-        name: 'common.operation.confirm',
-      }),
-    )
-    await waitFor(() =>
-      expect(deleteCredential).toHaveBeenCalledExactlyOnceWith({
-        credential_id: 'cred-2',
-        model: 'gpt-4',
-        model_type: 'llm',
-      }),
-    )
-    await waitFor(() =>
-      expect(screen.queryByRole('switch', { name: 'Backup' })).not.toBeInTheDocument(),
-    )
-    expect(screen.getByRole('switch', { name: 'Default' })).not.toBeChecked()
-    await user.click(screen.getByRole('button', { name: /specifyModelCredential$/ }))
-    await user.click(saveButton())
-    await waitFor(() => expect(saveConfig).toHaveBeenCalledTimes(1))
-    expect(saveConfig.mock.calls[0]![0].load_balancing).toMatchObject({
-      enabled: false,
-      configs: [{ credential_id: 'cred-1', enabled: false }],
-    })
-  })
+  it.each([
+    {
+      through: 'selection',
+      removeIndex: 1,
+      removed: 'Backup',
+      removedId: 'cred-2',
+      retained: 'Default',
+      retainedId: 'cred-1',
+    },
+    {
+      through: 'addition',
+      removeIndex: 0,
+      removed: 'Default',
+      removedId: 'cred-1',
+      retained: 'Backup',
+      retainedId: 'cred-2',
+    },
+  ])(
+    'removes a credential through the $through menu while retaining local edits',
+    async ({ through, removeIndex, removed, removedId, retained, retainedId }) => {
+      const { user } = renderModal(ConfigurationMethodEnum.customizableModel)
+      await screen.findByRole('switch', { name: 'Default' })
+      await user.click(screen.getByRole('switch', { name: retained }))
+      await user.click(
+        through === 'addition' ? addCredential() : screen.getByRole('button', { name: 'Default' }),
+      )
+      await user.click(
+        screen.getAllByRole('button', { name: 'common.operation.delete' })[removeIndex]!,
+      )
+      await user.click(
+        within(screen.getByRole('alertdialog')).getByRole('button', {
+          name: 'common.operation.confirm',
+        }),
+      )
+      await waitFor(() =>
+        expect(api.remove).toHaveBeenCalledExactlyOnceWith({
+          params: { provider: 'test-provider' },
+          query: { credential_id: removedId, model: 'gpt-4', model_type: 'llm' },
+        }),
+      )
+      await waitFor(() =>
+        expect(screen.queryByRole('switch', { name: removed })).not.toBeInTheDocument(),
+      )
+      expect(screen.getByRole('switch', { name: retained })).not.toBeChecked()
+      await user.click(screen.getByRole('button', { name: /specifyModelCredential$/ }))
+      await user.click(saveButton())
+      await waitFor(() => expect(api.save).toHaveBeenCalledTimes(1))
+      expect(api.save.mock.calls[0]![0].body.load_balancing).toMatchObject({
+        enabled: false,
+        configs: [{ credential_id: retainedId, enabled: false }],
+      })
+    },
+  )
 
   it('saves the selected custom-model credential and provider-managed mode', async () => {
     const { user } = renderModal(ConfigurationMethodEnum.customizableModel)
@@ -322,8 +382,8 @@ describe('ModelLoadBalancingModal', () => {
     await user.click(screen.getByRole('button', { name: 'Backup' }))
     await user.click(screen.getByRole('button', { name: /specifyModelCredential$/ }))
     await user.click(saveButton())
-    await waitFor(() => expect(saveConfig).toHaveBeenCalledTimes(1))
-    expect(saveConfig.mock.calls[0]![0]).toMatchObject({
+    await waitFor(() => expect(api.save).toHaveBeenCalledTimes(1))
+    expect(api.save.mock.calls[0]![0].body).toMatchObject({
       credential_id: 'cred-2',
       config_from: 'custom-model',
       load_balancing: { enabled: false },
@@ -332,20 +392,20 @@ describe('ModelLoadBalancingModal', () => {
 
   it('prevents duplicate submissions and keeps the draft available for retry after failure', async () => {
     const request = createDeferred<{ result: string }>()
-    saveConfig.mockReturnValueOnce(request.promise)
+    api.save.mockReturnValueOnce(request.promise)
     const { user, onClose, onSave } = renderModal()
     await screen.findByRole('switch', { name: 'Default' })
     await user.dblClick(saveButton())
     expect(saveButton()).toBeDisabled()
-    expect(saveConfig).toHaveBeenCalledTimes(1)
+    expect(api.save).toHaveBeenCalledTimes(1)
     await act(async () => request.reject(new Error('Save failed')))
-    expect(notifyError).toHaveBeenCalledWith('Save failed')
+    expect(await screen.findByText('Save failed')).toBeInTheDocument()
     expect(onClose).not.toHaveBeenCalled()
     expect(onSave).not.toHaveBeenCalled()
     expect(saveButton()).toBeEnabled()
     await user.click(saveButton())
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
-    expect(saveConfig.mock.calls[1]![0]).toEqual(saveConfig.mock.calls[0]![0])
+    expect(api.save.mock.calls[1]![0].body).toEqual(api.save.mock.calls[0]![0].body)
   })
 
   it('cancels without saving the edited draft', async () => {
@@ -354,6 +414,6 @@ describe('ModelLoadBalancingModal', () => {
     await user.click(screen.getByRole('switch', { name: 'Backup' }))
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
     expect(onClose).toHaveBeenCalledTimes(1)
-    expect(saveConfig).not.toHaveBeenCalled()
+    expect(api.save).not.toHaveBeenCalled()
   })
 })

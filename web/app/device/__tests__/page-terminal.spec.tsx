@@ -95,11 +95,12 @@ describe('error_sso dedicated view', () => {
   })
 
   it('"Back to login options" re-checks the code and advances to the chooser', async () => {
+    const user = userEvent.setup()
     mockSearchParams = { sso_error: 'sso_failed', user_code: 'ABCD-3456' }
     mockDeviceLookup.mockResolvedValue({ valid: true })
     render(<DevicePage />)
     await screen.findByText(TITLE)
-    await userEvent.setup().click(screen.getByRole('button', { name: BACK_TO_LOGIN }))
+    await user.click(screen.getByRole('button', { name: BACK_TO_LOGIN }))
     await screen.findByText('deviceFlow.chooser.subtitle')
     expect(mockDeviceLookup).toHaveBeenCalledWith('ABCD-3456')
   })

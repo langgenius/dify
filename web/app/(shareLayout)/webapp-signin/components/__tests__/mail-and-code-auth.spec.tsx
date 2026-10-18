@@ -15,11 +15,6 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => searchParams,
 }))
 
-vi.mock('#i18n', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('#i18n')>()),
-  useLocale: () => 'en-US',
-}))
-
 vi.mock('@/app/components/signin/storage', () => ({
   COUNT_DOWN_TIME_MS: 60_000,
   useSetCountdownLeftTime: () => setCountdownLeftTimeMock,

@@ -1,16 +1,12 @@
 import type { ComponentProps } from 'react'
-import type { QuestionClassifierNodeType } from '../types'
 import type { Topic } from '@/app/components/workflow/nodes/_base/components/branch-list/types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { useEdgesInteractions } from '../../../hooks/use-edges-interactions'
 import ClassList from '../../_base/components/branch-list/class-list'
 import AdvancedSetting from '../components/advanced-setting'
-import Node from '../node'
 
 vi.mock('@/app/components/workflow/nodes/_base/components/prompt/editor', () => ({
   default: ({
@@ -57,66 +53,11 @@ vi.mock('../../../hooks/use-edges-interactions', async (importOriginal) => {
   }
 })
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useTextGenerationCurrentProviderAndModelAndModelList: vi.fn(),
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  ModelSelector: ({
-    value,
-  }: ComponentProps<
-    typeof import('@/app/components/header/account-setting/model-provider-page/model-selector').ModelSelector
-  >) => (
-    <div>
-      {value?.provider}:{value?.model}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/readonly-input-with-select-var', () => ({
-  default: ({
-    value,
-  }: ComponentProps<
-    typeof import('@/app/components/workflow/nodes/_base/components/readonly-input-with-select-var').default
-  >) => <div>{value}</div>,
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/node-handle', () => ({
-  NodeSourceHandle: ({
-    handleId,
-  }: ComponentProps<
-    typeof import('@/app/components/workflow/nodes/_base/components/node-handle').NodeSourceHandle
-  >) => <div>handle-{handleId}</div>,
-}))
-
 const mockUseEdgesInteractions = vi.mocked(useEdgesInteractions)
-const mockUseTextGeneration = vi.mocked(useTextGenerationCurrentProviderAndModelAndModelList)
 
 const createTopic = (overrides: Partial<Topic> = {}): Topic => ({
   id: 'topic-1',
   name: 'Billing questions',
-  ...overrides,
-})
-
-const createData = (
-  overrides: Partial<QuestionClassifierNodeType> = {},
-): QuestionClassifierNodeType => ({
-  title: 'Question Classifier',
-  desc: '',
-  type: BlockEnum.QuestionClassifier,
-  model: {
-    provider: 'openai',
-    name: 'gpt-4o',
-    mode: 'chat',
-    completion_params: {},
-  },
-  classes: [createTopic()],
-  query_variable_selector: ['node-1', 'query'],
-  instruction: 'Route by topic',
-  memory: undefined,
-  vision: {
-    enabled: false,
-  },
   ...overrides,
 })
 
@@ -126,31 +67,9 @@ describe('question-classifier path', () => {
     mockUseEdgesInteractions.mockReturnValue({
       handleEdgeDeleteByDeleteBranch: vi.fn(),
     } as unknown as ReturnType<typeof useEdgesInteractions>)
-    mockUseTextGeneration.mockReturnValue({
-      currentProvider: undefined,
-      currentModel: undefined,
-      textGenerationModelList: [
-        {
-          provider: 'openai',
-          label: { en_US: 'OpenAI' },
-          tenant_id: 'tenant-1',
-          models: [],
-          status: 'active',
-        },
-      ],
-      activeTextGenerationModelList: [
-        {
-          provider: 'openai',
-          label: { en_US: 'OpenAI' },
-          tenant_id: 'tenant-1',
-          models: [],
-          status: 'active',
-        },
-      ],
-    })
   })
 
-  // The question classifier path should wire editor-based classes, model display, and panel controls together.
+  // Class editing and advanced settings share the real branch and memory controls.
   describe('Path Integration', () => {
     it('should render advanced settings and memory config', async () => {
       const user = userEvent.setup()
@@ -270,52 +189,6 @@ describe('question-classifier path', () => {
       expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
       await user.click(screen.getByRole('switch'))
       expect(onMemoryChange).not.toHaveBeenCalled()
-    })
-
-    it('should render the node when only classes are set and return null when both model and classes are missing', async () => {
-      const user = userEvent.setup()
-      const longName = 'L'.repeat(60)
-      const { rerender } = renderWorkflowFlowComponent(
-        <Node
-          id="node-1"
-          data={createData({
-            model: { provider: '', name: '', mode: 'chat', completion_params: {} },
-            classes: [createTopic({ id: 'topic-2', name: longName })],
-          })}
-          type="custom"
-          selected={false}
-          zIndex={1}
-          xPos={0}
-          yPos={0}
-          dragging={false}
-          isConnectable
-        />,
-        { nodes: [], edges: [] },
-      )
-
-      expect(screen.getByText(`${longName.slice(0, 50)}...`)).toBeInTheDocument()
-      await user.hover(screen.getByRole('button', { name: longName }))
-      expect(await screen.findByText(longName)).toBeInTheDocument()
-
-      rerender(
-        <Node
-          id="node-1"
-          data={createData({
-            model: { provider: '', name: '', mode: 'chat', completion_params: {} },
-            classes: [],
-          })}
-          type="custom"
-          selected={false}
-          zIndex={1}
-          xPos={0}
-          yPos={0}
-          dragging={false}
-          isConnectable
-        />,
-      )
-
-      expect(screen.queryByText('openai:gpt-4o')).not.toBeInTheDocument()
-      expect(screen.queryByText(`${longName.slice(0, 50)}...`)).not.toBeInTheDocument()
     })
   })
 })

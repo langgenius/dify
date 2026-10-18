@@ -2,6 +2,7 @@ import type { PropsWithChildren } from 'react'
 import type { AgentConfigurePublishResult } from '../use-agent-configure-sync'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
+import { zToolProviderListResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
@@ -171,16 +172,6 @@ vi.mock('@/service/use-plugins', () => ({
   }),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.tools.builtin.get': () => ({ data: toolProviderState.builtInTools }),
-    'workspaces.current.tools.api.get': () => ({ data: toolProviderState.customTools }),
-    'workspaces.current.tools.mcp.get': () => ({ data: toolProviderState.mcpTools }),
-    'workspaces.current.tools.workflow.get': () => ({ data: toolProviderState.workflowTools }),
-  })
-})
-
 vi.mock('@/service/console', async () => {
   const { consoleOperationStub } = await import('@/test/console/operation-hooks')
   return {
@@ -266,6 +257,16 @@ function renderUseAgentConfigureSync({
     consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
     createAgentFixture(),
   )
+  const tools = consoleQuery.workspaces.current.tools
+  for (const [operation, data] of [
+    [tools.builtin.get, toolProviderState.builtInTools],
+    [tools.api.get, toolProviderState.customTools],
+    [tools.mcp.get, toolProviderState.mcpTools],
+    [tools.workflow.get, toolProviderState.workflowTools],
+  ] as const) {
+    queryClient.setQueryDefaults(operation.key(), { staleTime: Infinity })
+    if (data) queryClient.setQueryData(operation.queryKey(), zToolProviderListResponse.parse(data))
+  }
   const store = createStore()
   const initialDraft = currentModel
     ? { ...defaultAgentSoulConfigFormState, model: currentModel }

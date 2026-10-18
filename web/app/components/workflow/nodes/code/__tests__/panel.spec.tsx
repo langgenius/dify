@@ -173,10 +173,9 @@ describe('code panel', () => {
   it.each(['confirm', 'cancel'] as const)(
     'handles removal %s through the real confirmation dialog',
     async (action) => {
+      const user = userEvent.setup()
       const config = renderPanel(createConfig({ isShowRemoveVarConfirm: true }))
-      await userEvent
-        .setup()
-        .click(screen.getByRole('button', { name: `common.operation.${action}` }))
+      await user.click(screen.getByRole('button', { name: `common.operation.${action}` }))
       if (action === 'confirm') expect(config.onRemoveVarConfirm).toHaveBeenCalledOnce()
       else {
         expect(config.hideRemoveVarConfirm).toHaveBeenCalledOnce()

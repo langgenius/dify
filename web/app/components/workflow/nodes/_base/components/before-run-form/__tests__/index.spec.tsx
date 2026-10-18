@@ -64,6 +64,7 @@ describe('BeforeRunForm', () => {
   })
 
   it('should show an error toast when required fields are missing', async () => {
+    const user = userEvent.setup()
     render(
       <BeforeRunForm
         {...createProps({
@@ -88,14 +89,13 @@ describe('BeforeRunForm', () => {
       />,
     )
 
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'workflow.singleRun.startRun' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.singleRun.startRun' }))
 
     expect(mockToastError).toHaveBeenCalled()
   })
 
   it('should generate the human input form instead of running immediately', async () => {
+    const user = userEvent.setup()
     const handleShowGeneratedForm = vi.fn()
 
     render(
@@ -125,7 +125,7 @@ describe('BeforeRunForm', () => {
       />,
     )
 
-    await userEvent.setup().click(
+    await user.click(
       screen.getByRole('button', {
         name: 'workflowHumanInput.nodes.humanInput.singleRun.button',
       }),
@@ -135,6 +135,7 @@ describe('BeforeRunForm', () => {
   })
 
   it('should render the generated human input form and submit it', async () => {
+    const user = userEvent.setup()
     const handleSubmitHumanInputForm = vi.fn().mockResolvedValue(undefined)
     const handleAfterHumanInputStepRun = vi.fn()
     const handleHideGeneratedForm = vi.fn()
@@ -182,22 +183,21 @@ describe('BeforeRunForm', () => {
     )
 
     expect(await screen.findByText('Review this request')).toBeInTheDocument()
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Approve' }))
+    await user.click(screen.getByRole('button', { name: 'Approve' }))
 
     await waitFor(() =>
       expect(handleSubmitHumanInputForm).toHaveBeenCalledWith({ inputs: {}, action: 'approve' }),
     )
     expect(handleAfterHumanInputStepRun).toHaveBeenCalledTimes(1)
 
-    await userEvent
-      .setup()
-      .click(
-        screen.getByRole('button', { name: 'workflowHumanInput.nodes.humanInput.singleRun.back' }),
-      )
+    await user.click(
+      screen.getByRole('button', { name: 'workflowHumanInput.nodes.humanInput.singleRun.back' }),
+    )
     expect(handleHideGeneratedForm).toHaveBeenCalledTimes(1)
   })
 
   it('should run immediately when the form is valid', async () => {
+    const user = userEvent.setup()
     const onRun = vi.fn()
 
     render(
@@ -225,9 +225,7 @@ describe('BeforeRunForm', () => {
       />,
     )
 
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'workflow.singleRun.startRun' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.singleRun.startRun' }))
 
     expect(onRun).toHaveBeenCalledWith({ query: 'hello' })
   })
@@ -251,6 +249,7 @@ describe('BeforeRunForm', () => {
   })
 
   it('should show an error toast when json input is invalid', async () => {
+    const user = userEvent.setup()
     render(
       <BeforeRunForm
         {...createProps({
@@ -275,9 +274,7 @@ describe('BeforeRunForm', () => {
       />,
     )
 
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'workflow.singleRun.startRun' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.singleRun.startRun' }))
 
     expect(mockToastError).toHaveBeenCalled()
   })

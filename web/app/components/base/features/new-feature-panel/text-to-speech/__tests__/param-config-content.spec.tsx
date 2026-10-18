@@ -245,27 +245,30 @@ describe('ParamConfigContent', () => {
     )
 
     it('should call onClose when close button receives Enter key', async () => {
+      const user = userEvent.setup()
       const onClose = vi.fn()
       renderWithProvider({ onClose })
 
       const closeButton = screen.getByRole('button', { name: /close/i })
       closeButton.focus()
-      await userEvent.keyboard('{Enter}')
+      await user.keyboard('{Enter}')
 
       expect(onClose).toHaveBeenCalled()
     })
 
     it('should toggle autoPlay switch and call onChange', async () => {
+      const user = userEvent.setup()
       const onChange = vi.fn()
       renderWithProvider({ onChange })
 
-      await userEvent.click(screen.getByRole('switch'))
+      await user.click(screen.getByRole('switch'))
 
       expect(screen.getByRole('switch')).toBeChecked()
       expect(onChange).toHaveBeenCalledOnce()
     })
 
     it('should set autoPlay to disabled when toggled off from enabled state', async () => {
+      const user = userEvent.setup()
       const onChange = vi.fn()
       renderWithProvider(
         { onChange },
@@ -282,7 +285,7 @@ describe('ParamConfigContent', () => {
       const autoPlaySwitch = screen.getByRole('switch')
       expect(autoPlaySwitch)!.toHaveAttribute('aria-checked', 'true')
 
-      await userEvent.click(autoPlaySwitch)
+      await user.click(autoPlaySwitch)
 
       expect(autoPlaySwitch)!.toHaveAttribute('aria-checked', 'false')
       expect(onChange).toHaveBeenCalled()

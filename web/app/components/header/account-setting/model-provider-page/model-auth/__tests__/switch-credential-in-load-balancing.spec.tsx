@@ -71,6 +71,7 @@ describe('SwitchCredentialInLoadBalancing', () => {
   })
 
   it('should render add credential status when credentials list is empty and create is allowed', async () => {
+    const user = userEvent.setup()
     render(
       <SwitchCredentialInLoadBalancing
         provider={mockProvider}
@@ -81,13 +82,12 @@ describe('SwitchCredentialInLoadBalancing', () => {
       />,
     )
 
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: /modelProvider.auth.addCredential/ }))
+    await user.click(screen.getByRole('button', { name: /modelProvider.auth.addCredential/ }))
     expect(mockHandleOpenModal).toHaveBeenCalledOnce()
   })
 
   it('should call setCustomModelCredential when an item is selected in Authorized', async () => {
+    const user = userEvent.setup()
     render(
       <SwitchCredentialInLoadBalancing
         provider={mockProvider}
@@ -98,14 +98,15 @@ describe('SwitchCredentialInLoadBalancing', () => {
       />,
     )
 
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Key 1' }))
+    await user.click(screen.getByRole('button', { name: 'Key 1' }))
     expect(mockSetCustomModelCredential).not.toHaveBeenCalled()
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Key 2' }))
+    await user.click(screen.getByRole('button', { name: 'Key 2' }))
     expect(mockSetCustomModelCredential).toHaveBeenCalledExactlyOnceWith(mockCredentials[1])
     expect(screen.queryByRole('button', { name: 'Key 2' })).not.toBeInTheDocument()
   })
 
   it('should keep credential menu available for manage-only users without allowing selection', async () => {
+    const user = userEvent.setup()
     mockWorkspacePermissionKeys.value = ['credential.manage']
 
     render(
@@ -118,11 +119,11 @@ describe('SwitchCredentialInLoadBalancing', () => {
       />,
     )
 
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Key 1' }))
+    await user.click(screen.getByRole('button', { name: 'Key 1' }))
     expect(screen.queryByRole('button', { name: 'Key 2' })).not.toBeInTheDocument()
     expect(screen.getByText('Key 2')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /addModelCredential/ })).not.toBeInTheDocument()
-    await userEvent.setup().click(screen.getAllByRole('button', { name: /operation.edit/ })[0]!)
+    await user.click(screen.getAllByRole('button', { name: /operation.edit/ })[0]!)
     expect(mockHandleOpenModal).toHaveBeenCalledWith(mockCredentials[0], mockModel)
 
     expect(mockSetCustomModelCredential).not.toHaveBeenCalled()

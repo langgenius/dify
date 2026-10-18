@@ -1,22 +1,8 @@
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import MemberRow from '../member-row'
-
-const { mockUpdateRolesOfMemberHook } = vi.hoisted(() => ({
-  mockUpdateRolesOfMemberHook: vi.fn(),
-}))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.rbac.members.byMemberId.rbacRoles.put': () => mockUpdateRolesOfMemberHook(),
-  })
-})
-
-vi.mock('@/hooks/use-format-time-from-now')
 
 const member: AccountWithRoleResponse = {
   id: 'member-1',
@@ -53,16 +39,6 @@ const renderMemberRow = (onOpenDetails = vi.fn()) => {
 }
 
 describe('MemberRow details entry points', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    vi.mocked(useFormatTimeFromNow).mockReturnValue({
-      formatTimeFromNow: () => 'just now',
-    })
-    vi.mocked(mockUpdateRolesOfMemberHook).mockReturnValue({
-      mutateAsync: vi.fn(),
-    })
-  })
-
   it.each(['name button', 'email'])('opens details once from the %s', async (target) => {
     const user = userEvent.setup()
     const onOpenDetails = renderMemberRow()

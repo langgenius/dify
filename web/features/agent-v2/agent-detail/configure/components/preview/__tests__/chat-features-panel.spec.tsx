@@ -6,26 +6,12 @@ import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
 import { ModalContextProvider } from '@/context/modal-context-provider'
 import { agentComposerAppFeaturesAtom } from '@/features/agent-v2/agent-composer/store-modules/app-features'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { AgentChatFeaturesPanel } from '../chat-features-panel'
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useDefaultModel: () => ({ data: undefined }),
-}))
 
 vi.mock('@/context/hooks/use-trigger-events-limit-modal', () => ({
   useTriggerEventsLimitModal: () => ({ triggerEventsLimitModal: null }),
-}))
-
-// Lexical's browser editing engine is outside the feature configuration contract.
-vi.mock('@/app/components/base/prompt-editor', () => ({
-  default: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => (
-    <textarea
-      aria-label="Opening statement"
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-    />
-  ),
 }))
 
 function PanelHarness({
@@ -61,7 +47,9 @@ function renderPanel(snapshot: AgentSoulAppFeaturesConfig, draft = snapshot, dis
       </NuqsTestingAdapter>
     </Provider>
   )
-  const rendered = renderWithConsoleQuery(ui(snapshot))
+  const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient)
+  const rendered = renderWithConsoleQuery(ui(snapshot), { queryClient })
   return {
     ...rendered,
     store,
@@ -80,7 +68,8 @@ describe('AgentChatFeaturesPanel', () => {
     await user.hover(screen.getByText('appDebug.feature.conversationOpener.title'))
     await user.click(screen.getByRole('button', { name: 'appDebug.openingStatement.writeOpener' }))
     const editor = await screen.findByRole('textbox')
-    await user.type(editor, 'Hello from the unsaved draft')
+    await user.click(editor)
+    await user.paste('Hello from the unsaved draft')
     updateSnapshot({ opening_statement: '', suggested_questions: [] })
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 

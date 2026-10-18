@@ -1,18 +1,8 @@
 import type { Role } from '@/models/access-control'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import AssignRolesModal from '../index'
-
-const { mockWorkspaceRoleListHook } = vi.hoisted(() => ({
-  mockWorkspaceRoleListHook: vi.fn(),
-}))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.rbac.roles.get': () => mockWorkspaceRoleListHook(),
-  })
-})
 
 const createRole = (overrides: Partial<Role>): Role => ({
   id: 'role-1',
@@ -32,32 +22,21 @@ const roles = [
   createRole({ id: 'role-2', name: 'Second role' }),
 ]
 
-describe('AssignRolesModal', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    vi.mocked(mockWorkspaceRoleListHook).mockReturnValue({
-      data: {
-        pages: [
-          {
-            data: roles,
-            pagination: {
-              total_count: 2,
-              per_page: 20,
-              current_page: 1,
-              total_pages: 1,
-            },
-          },
-        ],
-        pageParams: [1],
-      },
-      isLoading: false,
-      error: null,
-      hasNextPage: false,
-      isFetchingNextPage: false,
-      fetchNextPage: vi.fn(),
-    })
-  })
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.rbac.roles.get': async () => ({
+        data: roles,
+        pagination: { total_count: roles.length, per_page: 20, current_page: 1, total_pages: 1 },
+      }),
+    }),
+  }
+})
 
+describe('AssignRolesModal', () => {
   describe('Role selection', () => {
     it.each([false, true])(
       'submits the selected roles with multiple=%s and closes',
@@ -74,7 +53,9 @@ describe('AssignRolesModal', () => {
           />,
         )
         await user.click(
-          screen.getByRole(allowMultipleRoles ? 'checkbox' : 'radio', { name: /Second role/ }),
+          await screen.findByRole(allowMultipleRoles ? 'checkbox' : 'radio', {
+            name: /Second role/,
+          }),
         )
         expect(
           screen.getByRole(allowMultipleRoles ? 'checkbox' : 'radio', { name: /First role/ }),
@@ -94,7 +75,7 @@ describe('AssignRolesModal', () => {
 
       expect(confirmButton).toBeEnabled()
 
-      await user.click(screen.getByRole('checkbox', { name: /First role/i }))
+      await user.click(await screen.findByRole('checkbox', { name: /First role/i }))
 
       expect(confirmButton).toBeDisabled()
     })

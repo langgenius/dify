@@ -78,12 +78,13 @@ describe('Tracing overview panel', () => {
   })
 
   it('offers retry when tracing cannot load instead of remaining in a loading state', async () => {
+    const user = userEvent.setup()
     request.mockRejectedValue(new Error('Tracing unavailable'))
     renderPanel()
     const retry = await screen.findByRole('button', { name: /common.errorBoundary.tryAgain/ })
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
     mockServer(false)
-    await userEvent.setup().click(retry)
+    await user.click(retry)
     expect(await screen.findByText('app.tracing.title')).toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /common.errorBoundary.tryAgain/ }),

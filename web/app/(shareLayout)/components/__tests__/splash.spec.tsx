@@ -207,6 +207,7 @@ describe('Splash', () => {
   })
 
   it('logs out and returns from the unavailable state through its keyboard action', async () => {
+    const user = userEvent.setup()
     navigationMocks.searchParams = new URLSearchParams({
       code: '404',
       message: 'The Web App is unavailable.',
@@ -219,7 +220,7 @@ describe('Splash', () => {
     )
 
     screen.getByRole('button', { name: 'share.login.backToHome' }).focus()
-    await userEvent.setup().keyboard('{Enter}')
+    await user.keyboard('{Enter}')
     expect(webAppAuthMocks.webAppLogout).toHaveBeenCalledWith({
       kind: 'default',
       code: 'share-app',

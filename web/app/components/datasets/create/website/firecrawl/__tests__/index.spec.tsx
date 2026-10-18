@@ -467,9 +467,10 @@ describe('FireCrawl', () => {
     })
 
     it('should call onCrawlOptionsChange when checkbox changes', async () => {
+      const user = userEvent.setup()
       render(<FireCrawl {...defaultProps} />)
 
-      await userEvent.setup().click(screen.getByRole('checkbox', { name: /crawlSubPage/ }))
+      await user.click(screen.getByRole('checkbox', { name: /crawlSubPage/ }))
 
       expect(mockOnCrawlOptionsChange).toHaveBeenCalledWith(
         expect.objectContaining({ crawl_sub_pages: false }),

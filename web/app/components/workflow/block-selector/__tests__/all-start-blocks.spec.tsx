@@ -7,11 +7,9 @@ import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/quer
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { useGetLanguage } from '@/context/i18n'
-import useTheme from '@/hooks/use-theme'
 import { useFeaturedTriggersRecommendations } from '@/service/use-plugins'
 import { useAllTriggerPlugins, useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { Theme } from '@/types/app'
 import { createNode } from '../../__tests__/fixtures'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
@@ -26,10 +24,6 @@ vi.mock('@/context/i18n', async (importOriginal) => ({
 vi.mock('#i18n', async (importOriginal) => ({
   ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: vi.fn(),
-}))
-
-vi.mock('@/hooks/use-theme', () => ({
-  default: vi.fn(),
 }))
 
 vi.mock('@/app/components/plugins/marketplace/query', () => ({
@@ -62,7 +56,6 @@ vi.mock('@/utils/var', async (importOriginal) => {
 
 const mockUseGetLanguage = vi.mocked(useGetLanguage)
 const mockUseLocale = vi.mocked(useLocale)
-const mockUseTheme = vi.mocked(useTheme)
 const mockUseMarketplacePlugins = vi.mocked(useMarketplacePlugins)
 const mockUseAllTriggerPlugins = vi.mocked(useAllTriggerPlugins)
 const mockUseInvalidateAllTriggerPlugins = vi.mocked(useInvalidateAllTriggerPlugins)
@@ -175,7 +168,6 @@ describe('AllStartBlocks', () => {
     enableMarketplaceForRender = false
     mockUseGetLanguage.mockReturnValue('en_US')
     mockUseLocale.mockReturnValue('en-US')
-    mockUseTheme.mockReturnValue({ theme: Theme.light } as ReturnType<typeof useTheme>)
     mockUseMarketplacePlugins.mockReturnValue(createMarketplacePluginsMock())
     mockUseAllTriggerPlugins.mockReturnValue(
       createTriggerPluginsQueryResult([createTriggerProvider()]),

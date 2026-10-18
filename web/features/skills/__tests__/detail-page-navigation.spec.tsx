@@ -41,13 +41,12 @@ describe('SkillDetailPage navigation', () => {
   beforeEach(resetDetailPageFixture)
 
   it('opens Go to Anything from the sidebar search action', async () => {
+    const user = userEvent.setup()
     renderSkillDetailPage()
     render(<TestGotoAnythingDialog />)
 
     expect(screen.queryByRole('dialog', { name: 'Goto Anything' })).not.toBeInTheDocument()
-    await userEvent
-      .setup()
-      .click(await screen.findByRole('button', { name: 'app.gotoAnything.searchTitle' }))
+    await user.click(await screen.findByRole('button', { name: 'app.gotoAnything.searchTitle' }))
 
     expect(screen.getByRole('dialog', { name: 'Goto Anything' })).toBeInTheDocument()
   })
@@ -70,7 +69,7 @@ describe('SkillDetailPage navigation', () => {
       screen.queryByRole('region', { name: /skillManagement\.detail\.fileCount/ }),
     ).not.toBeInTheDocument()
 
-    await userEvent.setup().click(
+    await user.click(
       screen.getByRole('button', {
         name: 'skill.skillManagement.detail.expandSidebar',
       }),
@@ -386,6 +385,7 @@ describe('SkillDetailPage navigation', () => {
   })
 
   it('shows the full reference path on hover and opens the referenced file in an editor tab', async () => {
+    const user = userEvent.setup()
     const manifestContent =
       '---\nname: github-actions-failure-debugging\ndescription: Guide for debugging failing GitHub Actions workflows.\nmetadata:\n  display-name: Untitled skill\n---\n# Guide\n\nRead [guide.md](<docs/guide.md>) before continuing.\n'
     mocks.skillDetail = createSkillDetail({
@@ -418,7 +418,7 @@ describe('SkillDetailPage navigation', () => {
 
     expect(reference).toHaveAttribute('title', 'docs/guide.md')
 
-    await userEvent.setup().click(reference)
+    await user.click(reference)
     expect(
       await screen.findByRole('button', {
         name: 'skill.skillManagement.detail.closeFileTab:{"name":"docs/guide.md"}',

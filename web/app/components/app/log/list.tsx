@@ -540,6 +540,8 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
           <div
             className="py-4"
             id="scrollableDiv"
+            role="log"
+            aria-live="off"
             style={{
               display: 'flex',
               flexDirection: 'column-reverse',

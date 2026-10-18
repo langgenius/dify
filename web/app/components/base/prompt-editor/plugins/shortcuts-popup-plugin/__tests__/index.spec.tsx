@@ -314,6 +314,7 @@ describe('ShortcutsPopupPlugin', () => {
   })
 
   it('calls close after insert via children render function', async () => {
+    const user = userEvent.setup()
     render(
       <MinimalEditor displayMode="workflow-panel-adjacent-center">
         {(_close: () => void, onInsert: ShortcutPopupInsertHandler) => (
@@ -332,7 +333,7 @@ describe('ShortcutsPopupPlugin', () => {
     focusAndTriggerHotkey('/')
 
     const insertBtn = await screen.findByTestId('insert-btn')
-    await userEvent.setup().click(insertBtn)
+    await user.click(insertBtn)
     await waitFor(() =>
       expect(screen.getByTestId(CONTENT_EDITABLE_ID)).toHaveTextContent('inserted text'),
     )
@@ -344,6 +345,7 @@ describe('ShortcutsPopupPlugin', () => {
   })
 
   it('calls close via children render function close callback', async () => {
+    const user = userEvent.setup()
     render(
       <MinimalEditor displayMode="workflow-panel-adjacent-center">
         {(close: () => void) => (
@@ -356,7 +358,7 @@ describe('ShortcutsPopupPlugin', () => {
     focusAndTriggerHotkey('/')
 
     const closeBtn = await screen.findByTestId('close-via-fn')
-    await userEvent.setup().click(closeBtn)
+    await user.click(closeBtn)
 
     await waitFor(() => {
       expect(screen.queryByTestId('close-via-fn')).not.toBeInTheDocument()

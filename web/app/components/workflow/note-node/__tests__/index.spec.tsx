@@ -108,11 +108,12 @@ describe('NoteNode', () => {
   })
 
   it('should clear the selected state when clicking outside the note', async () => {
+    const user = userEvent.setup()
     renderNoteNode()
 
     expect(screen.getByText('Alice')).toBeInTheDocument()
     expect(await screen.findByText('workflow.nodes.note.editor.small')).toBeInTheDocument()
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Outside note' }))
+    await user.click(screen.getByRole('button', { name: 'Outside note' }))
     await waitFor(() =>
       expect(screen.queryByText('workflow.nodes.note.editor.small')).not.toBeInTheDocument(),
     )

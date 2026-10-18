@@ -48,6 +48,7 @@ describe('AnnotationCtrlButton', () => {
   })
 
   it('should call onEdit when edit button is clicked', async () => {
+    const user = userEvent.setup()
     const onEdit = vi.fn()
     render(
       <AnnotationCtrlButton
@@ -60,9 +61,7 @@ describe('AnnotationCtrlButton', () => {
       />,
     )
 
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'appDebug.feature.annotation.edit' }))
+    await user.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.edit' }))
 
     expect(onEdit).toHaveBeenCalled()
   })
@@ -83,6 +82,7 @@ describe('AnnotationCtrlButton', () => {
   })
 
   it('should call addAnnotation and onAdded when add button is clicked', async () => {
+    const user = userEvent.setup()
     const onAdded = vi.fn()
     render(
       <AnnotationCtrlButton
@@ -96,9 +96,7 @@ describe('AnnotationCtrlButton', () => {
       />,
     )
 
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'appDebug.feature.annotation.add' }))
+    await user.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.add' }))
 
     await waitFor(() => {
       expect(mockAddAnnotation).toHaveBeenCalledWith({
@@ -110,6 +108,7 @@ describe('AnnotationCtrlButton', () => {
   })
 
   it('should show annotation full modal when annotation limit is reached', async () => {
+    const user = userEvent.setup()
     mockAnnotatedResponseUsage = 100
 
     render(
@@ -123,9 +122,7 @@ describe('AnnotationCtrlButton', () => {
       />,
     )
 
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'appDebug.feature.annotation.add' }))
+    await user.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.add' }))
 
     expect(mockSetShowAnnotationFullModal).toHaveBeenCalled()
     expect(mockAddAnnotation).not.toHaveBeenCalled()

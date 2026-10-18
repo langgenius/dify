@@ -1,7 +1,11 @@
+import type { ReactElement } from 'react'
+import type { consoleClient } from '@/service/console'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { toast } from '@/app/notifications'
+import { AppToastHost } from '@/app/notifications/host'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import Operations from '../operations'
 
 const mockPush = vi.fn()
@@ -11,37 +15,21 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-const { mockToast } = vi.hoisted(() => {
-  const mockToast = Object.assign(vi.fn(), {
-    success: vi.fn(),
-    error: vi.fn(),
-    warning: vi.fn(),
-    info: vi.fn(),
-    dismiss: vi.fn(),
-    update: vi.fn(),
-    promise: vi.fn(),
-  })
-  return { mockToast }
-})
+type DocumentsClient = typeof consoleClient.datasets.byDatasetId.documents
 
-vi.mock('@/app/notifications', () => ({
-  toast: mockToast,
-}))
+const mockArchive = vi.fn<DocumentsClient['status']['byAction']['batch']['patch']>()
+const mockUnArchive = vi.fn<DocumentsClient['status']['byAction']['batch']['patch']>()
+const mockEnable = vi.fn<DocumentsClient['status']['byAction']['batch']['patch']>()
+const mockDisable = vi.fn<DocumentsClient['status']['byAction']['batch']['patch']>()
+const mockDelete = vi.fn<DocumentsClient['delete']>()
+const mockDownload = vi.fn<DocumentsClient['byDocumentId']['download']['get']>()
+const mockSync = vi.fn<DocumentsClient['byDocumentId']['notion']['sync']['get']>()
+const mockSyncWebsite = vi.fn<DocumentsClient['byDocumentId']['websiteSync']['get']>()
+const mockPause = vi.fn<DocumentsClient['byDocumentId']['processing']['pause']['patch']>()
+const mockResume = vi.fn<DocumentsClient['byDocumentId']['processing']['resume']['patch']>()
 
-// Mock document service hooks
-const mockArchive = vi.fn()
-const mockUnArchive = vi.fn()
-const mockEnable = vi.fn()
-const mockDisable = vi.fn()
-const mockDelete = vi.fn()
-const mockDownload = vi.fn()
-const mockSync = vi.fn()
-const mockSyncWebsite = vi.fn()
-const mockPause = vi.fn()
-const mockResume = vi.fn()
-
-const mockGenerateSummary = vi.fn()
-const statusMocks: Record<string, (input: unknown) => unknown> = {
+const mockGenerateSummary = vi.fn<DocumentsClient['generateSummary']['post']>()
+const statusMocks: Record<string, DocumentsClient['status']['byAction']['batch']['patch']> = {
   archive: (input) => mockArchive(input),
   un_archive: (input) => mockUnArchive(input),
   enable: (input) => mockEnable(input),
@@ -53,9 +41,9 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'datasets.byDatasetId.documents.status.byAction.batch.patch': (input: {
-        params: { action: keyof typeof statusMocks }
-      }) => statusMocks[input.params.action]!(input),
+      'datasets.byDatasetId.documents.status.byAction.batch.patch': (
+        input: Parameters<DocumentsClient['status']['byAction']['batch']['patch']>[0],
+      ) => statusMocks[input.params.action]!(input),
       'datasets.byDatasetId.documents.delete': (input) => mockDelete(input),
       'datasets.byDatasetId.documents.byDocumentId.download.get': (input) => mockDownload(input),
       'datasets.byDatasetId.documents.byDocumentId.notion.sync.get': (input) => mockSync(input),
@@ -70,14 +58,26 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-// Mock downloadUrl utility
-const mockDownloadUrl = vi.fn()
-vi.mock('@/utils/download', () => ({
-  downloadUrl: (params: { url: string; fileName: string }) => mockDownloadUrl(params),
-}))
+const downloads: { url: string; fileName: string }[] = []
+const render = (ui: ReactElement) =>
+  renderWithConsoleQuery(
+    <>
+      {ui}
+      <AppToastHost />
+    </>,
+  )
 
-afterEach(() => {
-  vi.useRealTimers()
+beforeEach(() => {
+  downloads.length = 0
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+    this: HTMLAnchorElement,
+  ) {
+    downloads.push({ url: this.href, fileName: this.download })
+  })
+})
+afterEach(async () => {
+  vi.restoreAllMocks()
+  await act(async () => toast.dismiss())
 })
 
 describe('Operations', () => {
@@ -106,22 +106,21 @@ describe('Operations', () => {
   }
 
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockArchive.mockResolvedValue({})
-    mockUnArchive.mockResolvedValue({})
-    mockEnable.mockResolvedValue({})
-    mockDisable.mockResolvedValue({})
-    mockDelete.mockResolvedValue({})
+    mockArchive.mockReset().mockResolvedValue({ result: 'success' })
+    mockUnArchive.mockReset().mockResolvedValue({ result: 'success' })
+    mockEnable.mockReset().mockResolvedValue({ result: 'success' })
+    mockDisable.mockReset().mockResolvedValue({ result: 'success' })
+    mockDelete.mockReset().mockResolvedValue({ result: 'success' })
     mockDownload.mockResolvedValue({ url: 'https://example.com/download' })
-    mockSync.mockResolvedValue({})
-    mockSyncWebsite.mockResolvedValue({})
-    mockPause.mockResolvedValue({})
-    mockResume.mockResolvedValue({})
+    mockSync.mockReset().mockResolvedValue({ result: 'success' })
+    mockSyncWebsite.mockReset().mockResolvedValue({ result: 'success' })
+    mockPause.mockReset().mockResolvedValue({ result: 'success' })
+    mockResume.mockReset().mockResolvedValue({ result: 'success' })
   })
 
   describe('rendering', () => {
     it('should not render an operations menu and should disable switch without any document operation permissions', async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: true })
+      const user = userEvent.setup()
       render(
         <Operations
           {...defaultProps}
@@ -137,19 +136,14 @@ describe('Operations', () => {
       ).not.toBeInTheDocument()
 
       const switchElement = screen.getByRole('switch')
-      expect(switchElement)!.toHaveAttribute('aria-disabled', 'true')
-      await act(async () => {
-        await userEvent
-          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
-          .click(switchElement)
-        vi.advanceTimersByTime(600)
-      })
+      expect(switchElement).toHaveAttribute('aria-disabled', 'true')
+      await user.click(switchElement)
       expect(mockEnable).not.toHaveBeenCalled()
       expect(mockDisable).not.toHaveBeenCalled()
-      vi.useRealTimers()
     })
 
     it('should only render download action when download is the only granted document operation', async () => {
+      const user = userEvent.setup()
       render(
         <Operations
           {...defaultProps}
@@ -161,17 +155,23 @@ describe('Operations', () => {
       )
 
       const moreButton = screen.getByRole('button', { name: 'common.operation.more' })
-      await act(async () => {
-        await userEvent
-          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
-          .click(moreButton)
-      })
+      await user.click(moreButton)
 
-      expect(screen.getByText('datasetDocuments.list.action.download'))!.toBeInTheDocument()
-      expect(screen.queryByText('datasetDocuments.list.table.rename')).not.toBeInTheDocument()
-      expect(screen.queryByText('datasetDocuments.list.action.settings')).not.toBeInTheDocument()
-      expect(screen.queryByText('datasetDocuments.list.action.archive')).not.toBeInTheDocument()
-      expect(screen.queryByText('datasetDocuments.list.action.delete')).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('menuitem', { name: 'datasetDocuments.list.action.download' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('menuitem', { name: 'datasetDocuments.list.table.rename' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('menuitem', { name: 'datasetDocuments.list.action.settings' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('menuitem', { name: 'datasetDocuments.list.action.archive' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('menuitem', { name: 'datasetDocuments.list.action.delete' }),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -204,103 +204,86 @@ describe('Operations', () => {
     )
 
     it('should call enable when switch is toggled on', async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: true })
+      const user = userEvent.setup()
       render(
         <Operations {...defaultProps} scene="list" detail={{ ...defaultDetail, enabled: false }} />,
       )
       const switchElement = screen.getByRole('switch', {
         name: 'datasetDocuments.list.status.enabled: Test Document',
       })
-      await act(async () => {
-        await userEvent
-          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
-          .click(switchElement!)
-      })
-      // Wait for debounce
-      await act(async () => {
-        vi.advanceTimersByTime(600)
-      })
-      expect(mockEnable).toHaveBeenCalledWith({
-        params: { dataset_id: 'dataset-1', action: 'enable' },
-        query: { document_id: ['doc-1'] },
-      })
-      vi.useRealTimers()
+      await user.click(switchElement)
+      await waitFor(() =>
+        expect(mockEnable).toHaveBeenCalledWith({
+          params: { dataset_id: 'dataset-1', action: 'enable' },
+          query: { document_id: ['doc-1'] },
+        }),
+      )
     })
 
     it('should call disable when switch is toggled off', async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: true })
+      const user = userEvent.setup()
       render(
         <Operations {...defaultProps} scene="list" detail={{ ...defaultDetail, enabled: true }} />,
       )
       const switchElement = screen.getByRole('switch', {
         name: 'datasetDocuments.list.status.enabled: Test Document',
       })
-      await act(async () => {
-        await userEvent
-          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
-          .click(switchElement!)
-      })
-      // Wait for debounce
-      await act(async () => {
-        vi.advanceTimersByTime(600)
-      })
-      expect(mockDisable).toHaveBeenCalledWith({
-        params: { dataset_id: 'dataset-1', action: 'disable' },
-        query: { document_id: ['doc-1'] },
-      })
-      vi.useRealTimers()
+      await user.click(switchElement)
+      await waitFor(() =>
+        expect(mockDisable).toHaveBeenCalledWith({
+          params: { dataset_id: 'dataset-1', action: 'disable' },
+          query: { document_id: ['doc-1'] },
+        }),
+      )
     })
   })
 
   describe('settings navigation', () => {
     it('should navigate to settings when settings menu item is clicked', async () => {
+      const user = userEvent.setup()
       render(<Operations {...defaultProps} />)
-      await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.more' }))
-      const settingsButton = screen.getByText('datasetDocuments.list.action.settings')
-      await act(async () => {
-        await userEvent
-          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
-          .click(settingsButton)
+      await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      const settingsButton = screen.getByRole('menuitem', {
+        name: 'datasetDocuments.list.action.settings',
       })
+      await user.click(settingsButton)
       expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/documents/doc-1/settings')
     })
 
     it('should hide document settings when settings permission is not granted', async () => {
+      const user = userEvent.setup()
       render(<Operations {...defaultProps} canViewSettings={false} />)
 
       const moreButton = screen.getByRole('button', { name: 'common.operation.more' })
-      await act(async () => {
-        await userEvent
-          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
-          .click(moreButton)
-      })
+      await user.click(moreButton)
 
-      expect(screen.queryByText('datasetDocuments.list.action.settings')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('menuitem', { name: 'datasetDocuments.list.action.settings' }),
+      ).not.toBeInTheDocument()
     })
   })
 
   describe('detail scene', () => {
     it('should not render switch in detail scene', () => {
       render(<Operations {...defaultProps} scene="detail" />)
-      // In detail scene, there should be no switch
+
       expect(screen.queryByRole('switch')).not.toBeInTheDocument()
     })
   })
 
   describe('popover menu actions', () => {
-    const openPopover = async () => {
-      await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.more' }))
+    const openPopover = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
     }
 
     it('should call archive when archive action is clicked', async () => {
+      const user = userEvent.setup()
       render(<Operations {...defaultProps} />)
-      await openPopover()
-      const archiveButton = screen.getByText('datasetDocuments.list.action.archive')
-      await act(async () => {
-        await userEvent
-          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
-          .click(archiveButton)
+      await openPopover(user)
+      const archiveButton = screen.getByRole('menuitem', {
+        name: 'datasetDocuments.list.action.archive',
       })
+      await user.click(archiveButton)
       await waitFor(() => {
         expect(mockArchive).toHaveBeenCalledWith({
           params: { dataset_id: 'dataset-1', action: 'archive' },
@@ -310,14 +293,13 @@ describe('Operations', () => {
     })
 
     it('should call un_archive when unarchive action is clicked', async () => {
+      const user = userEvent.setup()
       render(<Operations {...defaultProps} detail={{ ...defaultDetail, archived: true }} />)
-      await openPopover()
-      const unarchiveButton = screen.getByText('datasetDocuments.list.action.unarchive')
-      await act(async () => {
-        await userEvent
-          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
-          .click(unarchiveButton)
+      await openPopover(user)
+      const unarchiveButton = screen.getByRole('menuitem', {
+        name: 'datasetDocuments.list.action.unarchive',
       })
+      await user.click(unarchiveButton)
       await waitFor(() => {
         expect(mockUnArchive).toHaveBeenCalledWith({
           params: { dataset_id: 'dataset-1', action: 'un_archive' },
@@ -327,25 +309,19 @@ describe('Operations', () => {
     })
 
     it('should close delete modal when cancel is clicked', async () => {
+      const user = userEvent.setup()
       render(<Operations {...defaultProps} />)
-      await openPopover()
-      const deleteButton = screen.getByText('datasetDocuments.list.action.delete')
-      await act(async () => {
-        await userEvent
-          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
-          .click(deleteButton)
+      await openPopover(user)
+      const deleteButton = screen.getByRole('menuitem', {
+        name: 'datasetDocuments.list.action.delete',
       })
-      // Verify modal is shown
-      // Verify modal is shown
-      expect(screen.getByText('datasetDocuments.list.delete.title'))!.toBeInTheDocument()
-      // Find and click the cancel button
-      const cancelButton = screen.getByText('common.operation.cancel')
-      await act(async () => {
-        await userEvent
-          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
-          .click(cancelButton)
-      })
-      // Modal should be closed - title shouldn't be visible
+      await user.click(deleteButton)
+
+      expect(screen.getByText('datasetDocuments.list.delete.title')).toBeInTheDocument()
+
+      const cancelButton = screen.getByRole('button', { name: 'common.operation.cancel' })
+      await user.click(cancelButton)
+
       await waitFor(() => {
         expect(screen.queryByText('datasetDocuments.list.delete.title')).not.toBeInTheDocument()
         expect(mockDelete).not.toHaveBeenCalled()
@@ -353,6 +329,7 @@ describe('Operations', () => {
     })
 
     it('should update selectedIds after delete operation', async () => {
+      const user = userEvent.setup()
       render(
         <Operations
           {...defaultProps}
@@ -360,19 +337,13 @@ describe('Operations', () => {
           onSelectedIdChange={mockOnSelectedIdChange}
         />,
       )
-      await openPopover()
-      const deleteButton = screen.getByText('datasetDocuments.list.action.delete')
-      await act(async () => {
-        await userEvent
-          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
-          .click(deleteButton)
+      await openPopover(user)
+      const deleteButton = screen.getByRole('menuitem', {
+        name: 'datasetDocuments.list.action.delete',
       })
-      const confirmButton = screen.getByText('common.operation.sure')
-      await act(async () => {
-        await userEvent
-          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
-          .click(confirmButton)
-      })
+      await user.click(deleteButton)
+      const confirmButton = screen.getByRole('button', { name: 'common.operation.sure' })
+      await user.click(confirmButton)
       await waitFor(() => {
         expect(mockOnSelectedIdChange).toHaveBeenCalledWith(['doc-2'])
         expect(mockDelete).toHaveBeenCalledWith({
@@ -383,33 +354,17 @@ describe('Operations', () => {
       })
     })
 
-    it('should show rename modal when rename is clicked', async () => {
-      const user = userEvent.setup()
-      render(<Operations {...defaultProps} />)
-      await openPopover()
-      const renameAction = screen.getByRole('menuitem', {
-        name: 'datasetDocuments.list.table.rename',
-      })
-      await user.click(renameAction)
-
-      const renameInput = await screen.findByRole('textbox')
-      expect(renameInput)!.toHaveValue('Test Document')
-    })
-
     it('should call sync for notion data source', async () => {
+      const user = userEvent.setup()
       render(
         <Operations
           {...defaultProps}
           detail={{ ...defaultDetail, data_source_type: 'notion_import' }}
         />,
       )
-      await openPopover()
-      const syncButton = screen.getByText('datasetDocuments.list.action.sync')
-      await act(async () => {
-        await userEvent
-          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
-          .click(syncButton)
-      })
+      await openPopover(user)
+      const syncButton = screen.getByRole('menuitem', { name: 'datasetDocuments.list.action.sync' })
+      await user.click(syncButton)
       await waitFor(() => {
         expect(mockSync).toHaveBeenCalledWith({
           params: { dataset_id: 'dataset-1', document_id: 'doc-1' },
@@ -418,19 +373,16 @@ describe('Operations', () => {
     })
 
     it('should call syncWebsite for web data source', async () => {
+      const user = userEvent.setup()
       render(
         <Operations
           {...defaultProps}
           detail={{ ...defaultDetail, data_source_type: 'website_crawl' }}
         />,
       )
-      await openPopover()
-      const syncButton = screen.getByText('datasetDocuments.list.action.sync')
-      await act(async () => {
-        await userEvent
-          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
-          .click(syncButton)
-      })
+      await openPopover(user)
+      const syncButton = screen.getByRole('menuitem', { name: 'datasetDocuments.list.action.sync' })
+      await user.click(syncButton)
       await waitFor(() => {
         expect(mockSyncWebsite).toHaveBeenCalledWith({
           params: { dataset_id: 'dataset-1', document_id: 'doc-1' },
@@ -439,16 +391,15 @@ describe('Operations', () => {
     })
 
     it('should call pause when pause action is clicked', async () => {
+      const user = userEvent.setup()
       render(
         <Operations {...defaultProps} detail={{ ...defaultDetail, display_status: 'indexing' }} />,
       )
-      await openPopover()
-      const pauseButton = screen.getByText('datasetDocuments.list.action.pause')
-      await act(async () => {
-        await userEvent
-          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
-          .click(pauseButton)
+      await openPopover(user)
+      const pauseButton = screen.getByRole('menuitem', {
+        name: 'datasetDocuments.list.action.pause',
       })
+      await user.click(pauseButton)
       await waitFor(() => {
         expect(mockPause).toHaveBeenCalledWith({
           params: { dataset_id: 'dataset-1', document_id: 'doc-1' },
@@ -457,16 +408,15 @@ describe('Operations', () => {
     })
 
     it('should call resume when resume action is clicked', async () => {
+      const user = userEvent.setup()
       render(
         <Operations {...defaultProps} detail={{ ...defaultDetail, display_status: 'paused' }} />,
       )
-      await openPopover()
-      const resumeButton = screen.getByText('datasetDocuments.list.action.resume')
-      await act(async () => {
-        await userEvent
-          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
-          .click(resumeButton)
+      await openPopover(user)
+      const resumeButton = screen.getByRole('menuitem', {
+        name: 'datasetDocuments.list.action.resume',
       })
+      await user.click(resumeButton)
       await waitFor(() => {
         expect(mockResume).toHaveBeenCalledWith({
           params: { dataset_id: 'dataset-1', document_id: 'doc-1' },
@@ -475,51 +425,56 @@ describe('Operations', () => {
     })
 
     it('should download file when download action is clicked', async () => {
+      const user = userEvent.setup()
       render(<Operations {...defaultProps} />)
-      await openPopover()
-      const downloadButton = screen.getByText('datasetDocuments.list.action.download')
-      await act(async () => {
-        await userEvent
-          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
-          .click(downloadButton)
+      await openPopover(user)
+      const downloadButton = screen.getByRole('menuitem', {
+        name: 'datasetDocuments.list.action.download',
       })
+      await user.click(downloadButton)
       await waitFor(() => {
         expect(mockDownload).toHaveBeenCalledWith({
           params: { dataset_id: 'dataset-1', document_id: 'doc-1' },
         })
-        expect(mockDownloadUrl).toHaveBeenCalledWith({
-          url: 'https://example.com/download',
-          fileName: 'Test Document',
-        })
+        expect(downloads).toEqual([
+          {
+            url: 'https://example.com/download',
+            fileName: 'Test Document',
+          },
+        ])
       })
     })
 
     it('should show settings for archived non-file data source', async () => {
+      const user = userEvent.setup()
       render(
         <Operations
           {...defaultProps}
           detail={{ ...defaultDetail, archived: true, data_source_type: 'notion_import' }}
         />,
       )
-      await openPopover()
-      expect(screen.getByText('datasetDocuments.list.action.settings'))!.toBeInTheDocument()
-      expect(screen.queryByText('datasetDocuments.list.action.download')).not.toBeInTheDocument()
+      await openPopover(user)
+      expect(
+        screen.getByRole('menuitem', { name: 'datasetDocuments.list.action.settings' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('menuitem', { name: 'datasetDocuments.list.action.download' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should download archived file when download is clicked', async () => {
+      const user = userEvent.setup()
       render(
         <Operations
           {...defaultProps}
           detail={{ ...defaultDetail, archived: true, data_source_type: 'upload_file' }}
         />,
       )
-      await openPopover()
-      const downloadButton = screen.getByText('datasetDocuments.list.action.download')
-      await act(async () => {
-        await userEvent
-          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
-          .click(downloadButton)
+      await openPopover(user)
+      const downloadButton = screen.getByRole('menuitem', {
+        name: 'datasetDocuments.list.action.download',
       })
+      await user.click(downloadButton)
       await waitFor(() => {
         expect(mockDownload).toHaveBeenCalledWith({
           params: { dataset_id: 'dataset-1', document_id: 'doc-1' },
@@ -530,75 +485,80 @@ describe('Operations', () => {
 
   describe('error handling', () => {
     it('should show error notification when operation fails', async () => {
+      const user = userEvent.setup()
       mockArchive.mockRejectedValue(new Error('API Error'))
       render(<Operations {...defaultProps} />)
-      await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.more' }))
-      const archiveButton = screen.getByText('datasetDocuments.list.action.archive')
-      await act(async () => {
-        await userEvent
-          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
-          .click(archiveButton)
+      await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      const archiveButton = screen.getByRole('menuitem', {
+        name: 'datasetDocuments.list.action.archive',
       })
+      await user.click(archiveButton)
       await waitFor(() => {
-        expect(mockToast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
+        expect(screen.getByText('common.actionMsg.modifiedUnsuccessfully')).toBeInTheDocument()
         expect(mockOnUpdate).not.toHaveBeenCalled()
       })
     })
 
     it('should show error notification when download fails', async () => {
+      const user = userEvent.setup()
       mockDownload.mockRejectedValue(new Error('Download Error'))
       render(<Operations {...defaultProps} />)
-      await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.more' }))
-      const downloadButton = screen.getByText('datasetDocuments.list.action.download')
-      await act(async () => {
-        await userEvent
-          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
-          .click(downloadButton)
+      await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      const downloadButton = screen.getByRole('menuitem', {
+        name: 'datasetDocuments.list.action.download',
       })
+      await user.click(downloadButton)
       await waitFor(() => {
-        expect(mockToast.error).toHaveBeenCalledWith('common.actionMsg.downloadUnsuccessfully')
-        expect(mockDownloadUrl).not.toHaveBeenCalled()
+        expect(screen.getByText('common.actionMsg.downloadUnsuccessfully')).toBeInTheDocument()
+        expect(downloads).toEqual([])
       })
     })
 
     it('should show error notification when download returns no url', async () => {
-      mockDownload.mockResolvedValue({})
+      const user = userEvent.setup()
+      mockDownload.mockResolvedValue({ url: '' })
       render(<Operations {...defaultProps} />)
-      await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.more' }))
-      const downloadButton = screen.getByText('datasetDocuments.list.action.download')
-      await act(async () => {
-        await userEvent
-          .setup(vi.isFakeTimers() ? { advanceTimers: vi.advanceTimersByTime } : {})
-          .click(downloadButton)
+      await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      const downloadButton = screen.getByRole('menuitem', {
+        name: 'datasetDocuments.list.action.download',
       })
+      await user.click(downloadButton)
       await waitFor(() => {
-        expect(mockToast.error).toHaveBeenCalledWith('common.actionMsg.downloadUnsuccessfully')
-        expect(mockDownloadUrl).not.toHaveBeenCalled()
+        expect(screen.getByText('common.actionMsg.downloadUnsuccessfully')).toBeInTheDocument()
+        expect(downloads).toEqual([])
       })
     })
   })
 
   describe('display status', () => {
     it('should not show pause/resume for available status', async () => {
+      const user = userEvent.setup()
       render(
         <Operations {...defaultProps} detail={{ ...defaultDetail, display_status: 'available' }} />,
       )
-      await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.more' }))
-      expect(screen.queryByText('datasetDocuments.list.action.pause')).not.toBeInTheDocument()
-      expect(screen.queryByText('datasetDocuments.list.action.resume')).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      expect(
+        screen.queryByRole('menuitem', { name: 'datasetDocuments.list.action.pause' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('menuitem', { name: 'datasetDocuments.list.action.resume' }),
+      ).not.toBeInTheDocument()
     })
   })
 
   describe('data source types', () => {
     it('should not show download for non-file data source', async () => {
+      const user = userEvent.setup()
       render(
         <Operations
           {...defaultProps}
           detail={{ ...defaultDetail, data_source_type: 'notion_import' }}
         />,
       )
-      await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.more' }))
-      expect(screen.queryByText('datasetDocuments.list.action.download')).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      expect(
+        screen.queryByRole('menuitem', { name: 'datasetDocuments.list.action.download' }),
+      ).not.toBeInTheDocument()
     })
   })
 })

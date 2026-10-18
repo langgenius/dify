@@ -135,6 +135,7 @@ describe('list-operator path', () => {
   // The list-operator path should expose extract, limit, ordering, and node variable previews.
   describe('Path Integration', () => {
     it('should update the extract input', async () => {
+      const user = userEvent.setup()
       const onChange = vi.fn()
       const { rerender } = render(
         <ExtractInput nodeId="node-1" readOnly={false} value="1" onChange={onChange} />,
@@ -146,7 +147,7 @@ describe('list-operator path', () => {
 
       rerender(<ExtractInput nodeId="node-1" readOnly value="" onChange={onChange} />)
 
-      await userEvent.setup().type(screen.getByRole('textbox'), '3')
+      await user.type(screen.getByRole('textbox'), '3')
       expect(screen.getByRole('textbox')).toHaveValue('')
       expect(onChange).not.toHaveBeenCalled()
     })

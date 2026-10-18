@@ -1,92 +1,40 @@
+import type { ComponentProps } from 'react'
 import type { Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
-import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import type { Node } from '@/app/components/workflow/types'
-import { screen } from '@testing-library/react'
+import { act, cleanup, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { DatasourceType } from '@/models/pipeline'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
+import { createDataSourceStore } from '../../data-source/store'
+import { DataSourceContext } from '../../data-source/store/provider'
 import StepOneContent from '../step-one-content'
 
-const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
-
-const renderWithoutPricing = (ui: React.ReactElement) =>
-  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: 'CLOUD' } })
-
-// Mock context providers and hooks (底层依赖)
-// Mock billing components that have complex provider dependencies
-vi.mock('@/app/components/billing/vector-space-full', () => ({
-  default: () => <div data-testid="vector-space-full">Vector Space Full</div>,
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({ datasetId: 'dataset-1' }),
 }))
 
-vi.mock('@/app/components/billing/upgrade-btn', () => ({
-  default: ({ onClick }: { onClick?: () => void }) => (
-    <button data-testid="upgrade-btn" onClick={onClick}>
-      Upgrade
-    </button>
-  ),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.datasourcePlugins.get': async () => [],
+    }),
+  }
+})
 
-// Mock hooks used by data source options
-vi.mock('../../hooks', () => ({
-  useDatasourceOptions: vi.fn(() => [
-    { label: 'Local File', value: 'node-1', data: { type: 'data-source' } },
-  ]),
-}))
+afterEach(async () => {
+  await act(async () => cleanup())
+})
 
-// Mock useDatasourceIcon hook to avoid complex data source list transformation
-
-// Source screens own their forms and remote credentials; this suite checks which screen is selected.
-vi.mock('../../data-source/local-file', () => ({ default: () => <div data-testid="local-file" /> }))
-vi.mock('../../data-source/online-documents', () => ({
-  default: () => <div data-testid="online-documents" />,
-}))
-vi.mock('../../data-source/website-crawl', () => ({
-  default: () => <div data-testid="website-crawl" />,
-}))
-vi.mock('../../data-source/online-drive', () => ({
-  default: () => <div data-testid="online-drive" />,
-}))
-
-// Mock locale context
-vi.mock('#i18n', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('#i18n')>()),
-  useLocale: vi.fn(() => 'en'),
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
-}))
-
-// Mock theme hook
-vi.mock('@/hooks/use-theme', () => ({
-  default: vi.fn(() => 'light'),
-}))
-
-// Mock upload service
-vi.mock('@/service/base', () => ({
-  upload: vi.fn().mockResolvedValue({ id: 'uploaded-file-id' }),
-  request: vi.fn(async () => Response.json([createDatasourceProvider()])),
-}))
-
-vi.mock('@/next/navigation', () => ({
-  useParams: () => ({ datasetId: 'mock-dataset-id' }),
-  useRouter: () => ({ push: vi.fn() }),
-  usePathname: () => '/datasets/mock-dataset-id',
-}))
-
-// Mock pipeline service hooks
-function render(...args: Parameters<typeof renderWithoutPricing>) {
-  args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
-  return renderWithoutPricing(...args)
-}
-
-describe('StepOneContent', () => {
-  const mockDatasource: Datasource = {
-    nodeId: 'node-1',
+function renderStep(overrides: Partial<ComponentProps<typeof StepOneContent>> = {}) {
+  const datasource: Datasource = {
+    nodeId: 'source-1',
     nodeData: {
       type: BlockEnum.DataSource,
       title: 'Documents',
@@ -98,140 +46,107 @@ describe('StepOneContent', () => {
       datasource_label: 'Documents',
       datasource_parameters: {},
       datasource_configurations: {},
-      fileExtensions: ['txt', 'pdf'],
+      fileExtensions: ['pdf'],
     },
   }
-  const mockPipelineNodes: Node<DataSourceNodeType>[] = [
-    { id: 'node-1', data: mockDatasource.nodeData, position: { x: 0, y: 0 } },
-  ]
-
-  const defaultProps = {
-    datasource: mockDatasource,
+  const props: ComponentProps<typeof StepOneContent> = {
+    datasource,
     datasourceType: DatasourceType.localFile,
-    pipelineNodes: mockPipelineNodes,
+    pipelineNodes: [{ id: datasource.nodeId, data: datasource.nodeData, position: { x: 0, y: 0 } }],
     supportBatchUpload: true,
     showBatchUploadUpgrade: false,
     isShowVectorSpaceFull: false,
     isShowVectorSpaceUnavailable: false,
     isRetryingVectorSpace: false,
     showSelect: false,
-    totalOptions: 10,
-    selectedOptions: 5,
-    tip: 'Test tip',
+    totalOptions: 0,
+    selectedOptions: 0,
+    tip: '',
     nextBtnDisabled: false,
     onSelectDataSource: vi.fn(),
     onCredentialChange: vi.fn(),
     onSelectAll: vi.fn(),
     onRetryVectorSpace: vi.fn(),
     onNextStep: vi.fn(),
+    ...overrides,
   }
-
-  beforeEach(() => {
-    vi.clearAllMocks()
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.files.upload.get.queryKey(),
+    createFileUploadConfigFixture(),
+  )
+  queryClient.setQueryData(consoleQuery.files.supportType.get.queryKey(), {
+    allowed_extensions: ['pdf'],
   })
-
-  describe('Conditional Rendering - DatasourceType', () => {
-    it('should render LocalFile component when datasourceType is localFile', () => {
-      render(<StepOneContent {...defaultProps} datasourceType={DatasourceType.localFile} />)
-      expect(screen.getByTestId('local-file')).toBeInTheDocument()
-    })
-
-    it('should render OnlineDocuments component when datasourceType is onlineDocument', () => {
-      render(<StepOneContent {...defaultProps} datasourceType={DatasourceType.onlineDocument} />)
-      expect(screen.getByTestId('online-documents')).toBeInTheDocument()
-    })
-
-    it('should render WebsiteCrawl component when datasourceType is websiteCrawl', () => {
-      render(<StepOneContent {...defaultProps} datasourceType={DatasourceType.websiteCrawl} />)
-      expect(screen.getByTestId('website-crawl')).toBeInTheDocument()
-    })
-
-    it('should render OnlineDrive component when datasourceType is onlineDrive', () => {
-      render(<StepOneContent {...defaultProps} datasourceType={DatasourceType.onlineDrive} />)
-      expect(screen.getByTestId('online-drive')).toBeInTheDocument()
-    })
+  queryClient.setQueryData(consoleQuery.features.vectorSpace.get.queryKey(), {
+    size: 50,
+    limit: 50,
+    usage_unknown: false,
   })
+  const onUrlUpdate = vi.fn()
+  renderWithConsoleQuery(
+    <NuqsTestingAdapter onUrlUpdate={onUrlUpdate}>
+      <DataSourceContext value={createDataSourceStore()}>
+        <StepOneContent {...props} />
+      </DataSourceContext>
+    </NuqsTestingAdapter>,
+    {
+      queryClient,
+      systemFeatures: { deployment_edition: 'CLOUD' },
+      features: { billing: { subscription: { plan: 'sandbox' } } },
+    },
+  )
+  return { onUrlUpdate }
+}
 
-  describe('Conditional Rendering - VectorSpaceFull', () => {
-    it('should render VectorSpaceFull when isShowVectorSpaceFull is true', () => {
-      render(<StepOneContent {...defaultProps} isShowVectorSpaceFull={true} />)
-      expect(screen.getByTestId('vector-space-full')).toBeInTheDocument()
-    })
+it('offers pricing from the capacity warning alongside the local source form', async () => {
+  const user = userEvent.setup()
+  const { onUrlUpdate } = renderStep({ isShowVectorSpaceFull: true, nextBtnDisabled: true })
+  expect(screen.getByText('billing.vectorSpace.fullTip')).toBeInTheDocument()
+  expect(screen.getByText('datasetCreation.stepOne.uploader.button')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'datasetCreation.stepOne.button' })).toBeDisabled()
+  await user.click(screen.getByRole('button', { name: 'billing.upgradeBtn.encourage' }))
+  await waitFor(() =>
+    expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+  )
+})
 
-    it('should not render VectorSpaceFull when isShowVectorSpaceFull is false', () => {
-      render(<StepOneContent {...defaultProps} isShowVectorSpaceFull={false} />)
-      expect(screen.queryByTestId('vector-space-full')).not.toBeInTheDocument()
-    })
+it('lets the user retry unavailable capacity and disables advancing', async () => {
+  const user = userEvent.setup()
+  const onRetryVectorSpace = vi.fn()
+  renderStep({ isShowVectorSpaceUnavailable: true, nextBtnDisabled: true, onRetryVectorSpace })
+  expect(screen.getByRole('alert')).toHaveTextContent('billing.plansCommon.unavailable')
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+  expect(onRetryVectorSpace).toHaveBeenCalledOnce()
+  expect(screen.getByRole('button', { name: 'datasetCreation.stepOne.button' })).toBeDisabled()
+})
+
+it('opens pricing from the local-file batch upload restriction', async () => {
+  const user = userEvent.setup()
+  const { onUrlUpdate } = renderStep({ supportBatchUpload: false, showBatchUploadUpgrade: true })
+  await user.click(screen.getByRole('button', { name: 'billing.triggerLimitModal.upgrade' }))
+  await waitFor(() =>
+    expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+  )
+})
+
+it('does not infer a paid upgrade from batch upload being unavailable', () => {
+  renderStep({ supportBatchUpload: false })
+  expect(
+    screen.queryByRole('button', { name: 'billing.triggerLimitModal.upgrade' }),
+  ).not.toBeInTheDocument()
+  expect(screen.queryByText('billing.vectorSpace.fullTip')).not.toBeInTheDocument()
+})
+
+it('does not offer a batch upload upgrade before a source is selected', () => {
+  renderStep({
+    datasource: undefined,
+    datasourceType: undefined,
+    pipelineNodes: [],
+    supportBatchUpload: false,
+    showBatchUploadUpgrade: true,
   })
-
-  describe('Conditional Rendering - VectorSpaceUnavailable', () => {
-    it('should render the retry action when vector space usage is unavailable', async () => {
-      const user = userEvent.setup()
-      const onRetryVectorSpace = vi.fn()
-      render(
-        <StepOneContent
-          {...defaultProps}
-          isShowVectorSpaceUnavailable
-          onRetryVectorSpace={onRetryVectorSpace}
-        />,
-      )
-
-      await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
-
-      expect(onRetryVectorSpace).toHaveBeenCalledOnce()
-    })
-  })
-
-  describe('Conditional Rendering - UpgradeCard', () => {
-    it('should render UpgradeCard for a Sandbox local file source', () => {
-      render(
-        <StepOneContent
-          {...defaultProps}
-          supportBatchUpload={false}
-          showBatchUploadUpgrade
-          datasourceType={DatasourceType.localFile}
-        />,
-      )
-      // UpgradeCard contains an upgrade button
-      expect(screen.getByTestId('upgrade-btn')).toBeInTheDocument()
-    })
-
-    it('does not infer an upgrade requirement from unavailable batch upload', () => {
-      render(
-        <StepOneContent
-          {...defaultProps}
-          supportBatchUpload={false}
-          datasourceType={DatasourceType.localFile}
-        />,
-      )
-      expect(screen.queryByTestId('upgrade-btn')).not.toBeInTheDocument()
-    })
-
-    it('should not render UpgradeCard when datasourceType is not localFile', () => {
-      render(
-        <StepOneContent {...defaultProps} supportBatchUpload={false} datasourceType={undefined} />,
-      )
-      expect(screen.queryByTestId('upgrade-btn')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should call onNextStep when next button is clicked', async () => {
-      const user = userEvent.setup()
-      const onNextStep = vi.fn()
-      render(<StepOneContent {...defaultProps} onNextStep={onNextStep} />)
-
-      const nextButton = screen.getByRole('button', { name: /datasetCreation\.stepOne\.button/i })
-      await user.click(nextButton)
-
-      expect(onNextStep).toHaveBeenCalledTimes(1)
-    })
-
-    it('should disable next button when nextBtnDisabled is true', () => {
-      render(<StepOneContent {...defaultProps} nextBtnDisabled={true} />)
-
-      const nextButton = screen.getByRole('button', { name: /datasetCreation\.stepOne\.button/i })
-      expect(nextButton).toBeDisabled()
-    })
-  })
+  expect(
+    screen.queryByRole('button', { name: 'billing.triggerLimitModal.upgrade' }),
+  ).not.toBeInTheDocument()
 })

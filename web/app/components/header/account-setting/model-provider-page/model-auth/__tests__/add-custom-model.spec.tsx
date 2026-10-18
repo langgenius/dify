@@ -62,6 +62,7 @@ describe('AddCustomModel', () => {
   })
 
   it('should call handleOpenModal directly when no models available and allowed', async () => {
+    const user = userEvent.setup()
     mockCanAddedModels = []
     render(
       <AddCustomModel
@@ -70,7 +71,7 @@ describe('AddCustomModel', () => {
       />,
     )
 
-    await userEvent.setup().click(screen.getByRole('button', { name: /modelProvider.addModel/i }))
+    await user.click(screen.getByRole('button', { name: /modelProvider.addModel/i }))
     expect(mockHandleOpenModalForAddNewCustomModel).toHaveBeenCalled()
   })
 

@@ -7,128 +7,150 @@ import type {
   CredentialFormSchemaTextInput,
   FormValue,
 } from '../../declarations'
-import type { AppSelectorValue } from '@/app/components/plugins/plugin-detail-panel/app-selector'
-import { render, screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { MCPToolAvailabilityProvider } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
+import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import { consoleQuery } from '@/service/console'
+import {
+  createCatalogModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import { createConsoleQueryWrapper, seedAppDslVersion } from '@/test/console/query-data'
+import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
+import { seedToolProviders } from '@/test/console/tool-providers'
+import { createAppDetailFixture, createAppModelConfigFixture } from '@/test/fixtures/app'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { FormTypeEnum } from '../../declarations'
 import Form from '../Form'
 
 type CustomSchema = Omit<CredentialFormSchemaBase, 'type'> & { type: 'custom-type' }
 
-type MockVarPayload = { type: string }
-
 const mockLanguageRef = { value: 'en_US' }
-vi.mock('../../hooks', () => ({
+
+const render = createNuqsTestRenderer((ui) => {
+  const { queryClient } = createConsoleQueryWrapper({
+    systemFeatures: { enable_marketplace: false },
+  })
+  seedAppDslVersion(queryClient)
+  seedToolProviders(queryClient, {
+    builtInTools: [
+      createToolProviderFixture({
+        id: 'search-provider',
+        name: 'search',
+        label: { en_US: 'Search provider' },
+        is_team_authorization: true,
+        allow_delete: false,
+        tools: [
+          {
+            name: 'search',
+            author: 'Dify',
+            label: { en_US: 'Search Tool' },
+            description: { en_US: 'Find documents' },
+            parameters: [],
+          },
+        ],
+      }),
+    ],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+  queryClient.setQueryData(
+    consoleQuery.files.upload.get.queryKey(),
+    createFileUploadConfigFixture(),
+  )
+  seedModelProviderQueries(queryClient, [
+    createModelCatalogFixture({
+      models: [
+        createCatalogModelFixture({
+          model: 'gpt-1',
+          label: { en_US: 'gpt-1' },
+          model_properties: { mode: 'chat' },
+        }),
+      ],
+    }),
+  ])
+  return renderWorkflowFlowComponent(
+    <MCPToolAvailabilityProvider versionSupported>{ui}</MCPToolAvailabilityProvider>,
+    {
+      queryClient,
+      nodes: [
+        createNode({
+          id: 'source',
+          data: {
+            type: BlockEnum.Code,
+            title: 'Source',
+            outputs: {
+              text: { type: VarType.string },
+              count: { type: VarType.number },
+              enabled: { type: VarType.boolean },
+            },
+          },
+        }),
+        createNode({ id: 'node-current', data: { type: BlockEnum.Code, title: 'Current' } }),
+      ],
+      edges: [createEdge({ source: 'source', target: 'node-current' })],
+    },
+  )
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.get': async () => ({
+        data: [createAppDetailFixture({ id: 'selected-app', name: 'Support Bot', mode: 'chat' })],
+        page: 1,
+        limit: 20,
+        has_more: false,
+      }),
+      'apps.byAppId.get': async () =>
+        createAppDetailFixture({
+          id: 'selected-app',
+          name: 'Support Bot',
+          mode: 'chat',
+          model_config: createAppModelConfigFixture({ user_input_form: [] }),
+        }),
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.modelProviders.byProvider.models.parameterRules.get': async () => ({
+        data: [
+          {
+            name: 'temperature',
+            label: { en_US: 'Temperature' },
+            type: 'float',
+            min: 0,
+            max: 1,
+            default: 0.7,
+          },
+        ],
+      }),
+    }),
+  }
+})
+vi.mock('../../hooks', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../hooks')>()),
   useLanguage: () => mockLanguageRef.value,
 }))
 
-vi.mock('@/app/components/plugins/plugin-detail-panel/app-selector', () => ({
-  AppSelector: ({
-    onSelect,
-    disabled,
-  }: {
-    disabled?: boolean
-    onSelect: (item: AppSelectorValue) => void
-  }) => (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={() => onSelect({ app_id: 'app-1', inputs: {}, files: [] })}
-    >
-      Select App
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/plugins/plugin-detail-panel/model-selector', () => ({
-  default: (props: {
-    setModel: (model: { model: string; model_type: string }) => void
-    readonly?: boolean
-  }) => {
-    return (
-      <button
-        type="button"
-        disabled={props.readonly}
-        onClick={() => props.setModel({ model: 'gpt-1', model_type: 'llm' })}
-      >
-        Select Model
-      </button>
+async function chooseTool(user: ReturnType<typeof userEvent.setup>, alreadyOpen: boolean) {
+  if (!alreadyOpen)
+    await user.click(
+      screen.getByRole('button', { name: 'plugin.detailPanel.toolSelector.placeholder' }),
     )
-  },
-}))
-
-vi.mock('@/app/components/plugins/plugin-detail-panel/multiple-tool-selector', () => ({
-  default: ({
-    onChange,
-    disabled,
-    label,
-    tooltip,
-    value,
-  }: {
-    onChange: (items: Array<{ id: string }>) => void
-    disabled?: boolean
-    label: string
-    tooltip?: string
-    value: unknown[]
-  }) => (
-    <div>
-      <span>{label}</span>
-      <span>{tooltip}</span>
-      <span>{value.length} tools</span>
-      <button type="button" disabled={disabled} onClick={() => onChange([{ id: 'tool-1' }])}>
-        Select Tools
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/plugins/plugin-detail-panel/tool-selector', () => ({
-  default: (props: {
-    onSelect: (item: { id: string }) => void
-    onDelete: () => void
-    nodeOutputVars?: unknown[]
-    availableNodes?: unknown[]
-    disabled?: boolean
-  }) => {
-    return (
-      <div>
-        <button
-          type="button"
-          disabled={props.disabled}
-          onClick={() => props.onSelect({ id: 'tool-1' })}
-        >
-          Select Tool
-        </button>
-        <button type="button" disabled={props.disabled} onClick={props.onDelete}>
-          Remove Tool
-        </button>
-      </div>
-    )
-  },
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
-  default: ({
-    filterVar,
-    onChange,
-    readonly,
-  }: {
-    filterVar: (payload: MockVarPayload) => boolean
-    onChange: (items: string[]) => void
-    readonly?: boolean
-  }) => (
-    <div>
-      {['text', 'audio', 'image']
-        .filter((type) => filterVar({ type }))
-        .map((type) => (
-          <button key={type} disabled={readonly} onClick={() => onChange(['start', type])}>
-            Pick {type}
-          </button>
-        ))}
-    </div>
-  ),
-}))
+  await user.click(await screen.findByRole('button', { name: /Search provider/ }))
+  await user.click(await screen.findByText('Search Tool'))
+}
 
 const createI18n = (text: string) => ({ en_US: text, zh_Hans: text })
 const createPartialI18n = (text: string) =>
@@ -185,7 +207,12 @@ const createSelectSchema = (overrides: Partial<CredentialFormSchemaSelect>) => (
 })
 
 type Props = React.ComponentProps<typeof Form>
-const defaults = { validating: false, showOnVariableMap: {}, isEditMode: false }
+const defaults = {
+  validating: false,
+  showOnVariableMap: {},
+  isEditMode: false,
+  nodeId: 'node-current',
+}
 function Harness({
   initialValue = {},
   onChange = () => {},
@@ -443,6 +470,25 @@ describe('Form', () => {
           ? createSelectSchema({})
           : createTextSchema({ type })
     render(<Harness {...defaults} readonly onChange={onChange} formSchemas={[schema]} />)
+    if (type === FormTypeEnum.multiToolSelector) {
+      expect(
+        screen.queryByRole('button', { name: 'plugin.detailPanel.toolSelector.title' }),
+      ).not.toBeInTheDocument()
+      expect(screen.getByText('plugin.detailPanel.toolSelector.empty')).toBeInTheDocument()
+      return
+    }
+    if (type === FormTypeEnum.any || type === FormTypeEnum.toolSelector) {
+      await user.click(
+        screen.getByText(
+          type === FormTypeEnum.any
+            ? 'workflow.common.setVarValuePlaceholder'
+            : 'plugin.detailPanel.configureTool',
+        ),
+      )
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(onChange).not.toHaveBeenCalled()
+      return
+    }
     const controls = screen
       .queryAllByRole('radio')
       .concat(
@@ -463,20 +509,36 @@ describe('Form', () => {
   it.each([
     [
       FormTypeEnum.modelSelector,
-      'Select Model',
-      { model: 'gpt-1', model_type: 'llm', type: FormTypeEnum.modelSelector },
+      'plugin.detailPanel.configureModel',
+      {
+        model: 'gpt-1',
+        model_type: 'llm',
+        provider: 'openai',
+        mode: 'chat',
+        completion_params: {},
+        type: FormTypeEnum.modelSelector,
+      },
     ],
-    [FormTypeEnum.toolSelector, 'Select Tool', { id: 'tool-1' }],
-    [FormTypeEnum.multiToolSelector, 'Select Tools', [{ id: 'tool-1' }]],
+    [
+      FormTypeEnum.toolSelector,
+      'plugin.detailPanel.configureTool',
+      expect.objectContaining({ provider_name: 'search-provider', tool_name: 'search' }),
+    ],
+    [
+      FormTypeEnum.multiToolSelector,
+      'plugin.detailPanel.toolSelector.title',
+      [expect.objectContaining({ provider_name: 'search-provider', tool_name: 'search' })],
+    ],
     [
       FormTypeEnum.appSelector,
-      'Select App',
-      { app_id: 'app-1', inputs: {}, files: [], type: FormTypeEnum.appSelector },
+      'app.appSelector.label',
+      { app_id: 'selected-app', inputs: {}, files: [], type: FormTypeEnum.appSelector },
     ],
-    [FormTypeEnum.any, 'Pick text', ['start', 'text']],
+    [FormTypeEnum.any, 'workflow.common.setVarValuePlaceholder', ['source', 'text']],
   ] as const)(
     'accepts %s selection and resets dependent values',
     async (type, button, expected) => {
+      const user = userEvent.setup()
       const onChange = vi.fn()
       render(
         <Harness
@@ -490,39 +552,68 @@ describe('Form', () => {
           ]}
         />,
       )
-      await userEvent.click(screen.getByRole('button', { name: button }))
+      await user.click(
+        screen.getByRole('button', {
+          name: type === FormTypeEnum.any ? /workflow.common.setVarValuePlaceholder/ : button,
+        }),
+      )
+      if (type === FormTypeEnum.toolSelector || type === FormTypeEnum.multiToolSelector)
+        await chooseTool(user, type === FormTypeEnum.multiToolSelector)
+      if (type === FormTypeEnum.any) await user.click(await screen.findByText('text'))
+      if (type === FormTypeEnum.appSelector) {
+        await user.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))
+        await user.click(await screen.findByRole('option', { name: /Support Bot/ }))
+      }
+      if (type === FormTypeEnum.modelSelector)
+        await user.click(
+          within(
+            await screen.findByRole('dialog', { name: 'plugin.detailPanel.configureModel' }),
+          ).getByRole('button', { name: /^gpt-1/ }),
+        )
       expect(onChange).toHaveBeenLastCalledWith({ selected: expected, dependent: 'reset' })
       if (type === FormTypeEnum.toolSelector) {
-        await userEvent.click(screen.getByRole('button', { name: 'Remove Tool' }))
+        await user.keyboard('{Escape}')
+        await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
         expect(onChange).toHaveBeenLastCalledWith({ selected: null, dependent: 'reset' })
       }
     },
   )
 
   it('keeps existing model parameters when selecting another model', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
     render(
       <Harness
         {...defaults}
         onChange={onChange}
-        initialValue={{ model: { temperature: 0.2, model: 'old' } }}
+        initialValue={{
+          model: { completion_params: { temperature: 0.2 }, model: 'old', provider: 'openai' },
+        }}
         formSchemas={[createTextSchema({ variable: 'model', type: FormTypeEnum.modelSelector })]}
       />,
     )
-    await userEvent.click(screen.getByRole('button', { name: 'Select Model' }))
+    await user.click(screen.getByRole('button', { name: /old/ }))
+    await user.click(
+      within(
+        await screen.findByRole('dialog', { name: 'plugin.detailPanel.configureModel' }),
+      ).getByRole('button', { name: /^gpt-1/ }),
+    )
     expect(onChange).toHaveBeenLastCalledWith({
       model: {
-        temperature: 0.2,
         model: 'gpt-1',
         model_type: 'llm',
+        provider: 'openai',
+        mode: 'chat',
+        completion_params: { temperature: 0.2 },
         type: FormTypeEnum.modelSelector,
       },
     })
   })
 
-  it.each(['text&audio', undefined])(
+  it.each(['string&number', undefined])(
     'filters selectable variable types for scope %s',
     async (scope) => {
+      const user = userEvent.setup()
       const onChange = vi.fn()
       render(
         <Harness
@@ -531,15 +622,17 @@ describe('Form', () => {
           formSchemas={[createTextSchema({ variable: 'variable', type: FormTypeEnum.any, scope })]}
         />,
       )
-      expect(screen.queryByRole('button', { name: 'Pick image' }) !== null).toBe(
-        scope === undefined,
+      await user.click(
+        screen.getByRole('button', { name: /workflow.common.setVarValuePlaceholder/ }),
       )
-      await userEvent.click(screen.getByRole('button', { name: 'Pick audio' }))
-      expect(onChange).toHaveBeenLastCalledWith({ variable: ['start', 'audio'] })
+      expect(screen.queryByText('enabled') !== null).toBe(scope === undefined)
+      await user.click(await screen.findByText('count'))
+      expect(onChange).toHaveBeenLastCalledWith({ variable: ['source', 'count'] })
     },
   )
 
   it('falls back to English labels, placeholders and explanatory text', async () => {
+    const user = userEvent.setup()
     mockLanguageRef.value = 'fr_FR'
     render(
       <Harness
@@ -565,11 +658,13 @@ describe('Form', () => {
       'placeholder',
       'Enter key',
     )
-    await userEvent.click(screen.getByRole('button', { name: 'API Key' }))
+    await user.click(screen.getByRole('button', { name: 'API Key' }))
     expect(await screen.findByText('Use a private key')).toBeVisible()
     expect(screen.getByText('Tools')).toBeInTheDocument()
-    expect(screen.getByText('Select tools to expose')).toBeInTheDocument()
-    expect(screen.getByText('0 tools')).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await user.click(screen.getByRole('button', { name: 'Tools', expanded: false }))
+    expect(await screen.findByText('Select tools to expose')).toBeVisible()
+    expect(screen.getByText('plugin.detailPanel.toolSelector.empty')).toBeInTheDocument()
   })
 
   it('renders overrides, falls back for null or unmatched overrides, and supports custom schemas', () => {
@@ -615,11 +710,11 @@ describe('Form', () => {
     [FormTypeEnum.textInput, undefined],
     [FormTypeEnum.radio, 'Option B'],
     [FormTypeEnum.select, undefined],
-    [FormTypeEnum.modelSelector, 'Select Model'],
-    [FormTypeEnum.toolSelector, 'Select Tool'],
-    [FormTypeEnum.multiToolSelector, 'Select Tools'],
-    [FormTypeEnum.appSelector, 'Select App'],
-    [FormTypeEnum.any, 'Pick text'],
+    [FormTypeEnum.modelSelector, 'plugin.detailPanel.configureModel'],
+    [FormTypeEnum.toolSelector, 'plugin.detailPanel.configureTool'],
+    [FormTypeEnum.multiToolSelector, 'plugin.detailPanel.toolSelector.title'],
+    [FormTypeEnum.appSelector, 'app.appSelector.label'],
+    [FormTypeEnum.any, 'workflow.common.setVarValuePlaceholder'],
   ] as const)('shows validation feedback after a %s field changes', async (type, control) => {
     const user = userEvent.setup()
     const schema =
@@ -636,8 +731,23 @@ describe('Form', () => {
       await user.click(screen.getByRole('option', { name: 'Select B' }))
     } else
       await user.click(
-        screen.getByRole(type === FormTypeEnum.radio ? 'radio' : 'button', { name: control! }),
+        screen.getByRole(type === FormTypeEnum.radio ? 'radio' : 'button', {
+          name: type === FormTypeEnum.any ? /workflow.common.setVarValuePlaceholder/ : control!,
+        }),
       )
+    if (type === FormTypeEnum.modelSelector)
+      await user.click(
+        within(
+          await screen.findByRole('dialog', { name: 'plugin.detailPanel.configureModel' }),
+        ).getByRole('button', { name: /^gpt-1/ }),
+      )
+    if (type === FormTypeEnum.toolSelector || type === FormTypeEnum.multiToolSelector)
+      await chooseTool(user, type === FormTypeEnum.multiToolSelector)
+    if (type === FormTypeEnum.any) await user.click(await screen.findByText('text'))
+    if (type === FormTypeEnum.appSelector) {
+      await user.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))
+      await user.click(await screen.findByRole('option', { name: /Support Bot/ }))
+    }
     expect(screen.getByText('common.provider.validating')).toBeInTheDocument()
   })
 })

@@ -1,8 +1,9 @@
-import type { ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { expect, it, vi } from 'vite-plus/test'
 import { LanguagesSupported } from '@/i18n/language'
 import { ChunkingMode } from '@/models/datasets'
+import { captureDownloads } from '@/test/download'
 import CSVDownload from '../csv-downloader'
 
 // Mock useLocale
@@ -12,34 +13,7 @@ vi.mock('#i18n', async (importOriginal) => ({
   useLocale: () => mockLocale,
 }))
 
-// Mock react-papaparse
-const MockCSVDownloader = ({
-  children,
-  data,
-  filename,
-  type,
-}: {
-  children: ReactNode
-  data: unknown
-  filename: string
-  type: string
-}) => (
-  <div
-    data-testid="csv-downloader-link"
-    data-filename={filename}
-    data-type={type}
-    data-data={JSON.stringify(data)}
-  >
-    {children}
-  </div>
-)
-
-vi.mock('react-papaparse', () => ({
-  useCSVDownloader: () => ({
-    CSVDownloader: MockCSVDownloader,
-    Type: { Link: 'link' },
-  }),
-}))
+afterEach(() => vi.restoreAllMocks())
 
 it.each([
   [
@@ -62,12 +36,17 @@ it.each([
     ],
   ],
   [LanguagesSupported[1], ChunkingMode.text, [['分段内容'], ['内容 1'], ['内容 2']]],
-] as const)('exports the %s / %s chunk template', (locale, docForm, expected) => {
+] as const)('exports the %s / %s chunk template', async (locale, docForm, expected) => {
+  const user = userEvent.setup()
+  const downloads = captureDownloads()
   mockLocale = locale
   render(<CSVDownload docForm={docForm} />)
-  const link = screen.getByTestId('csv-downloader-link')
-  expect(JSON.parse(link.getAttribute('data-data')!)).toEqual(expected)
-  expect(link).toHaveAttribute('data-filename', 'template')
+  await user.click(screen.getByText('datasetDocuments.list.batchModal.template'))
+  expect(downloads).toHaveLength(1)
+  expect(downloads[0]!.filename).toBe('template.csv')
+  expect(await downloads[0]!.blob.text()).toBe(
+    `\uFEFF${expected.map((row) => row.join(',')).join('\r\n')}`,
+  )
   const headers = screen.getAllByRole('columnheader')
   expect(headers.map((header) => header.textContent)).toEqual(
     docForm === ChunkingMode.qa

@@ -49,11 +49,6 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-vi.mock('#i18n', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('#i18n')>()),
-  useLocale: () => 'en-US',
-}))
-
 vi.mock('@/config', async () => {
   const actual = await vi.importActual<typeof import('@/config')>('@/config')
   return {

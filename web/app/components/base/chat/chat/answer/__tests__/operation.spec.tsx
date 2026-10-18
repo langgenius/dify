@@ -1,56 +1,45 @@
-import type { ChatConfig, ChatItem } from '../../../types'
+import type { ComponentProps } from 'react'
+import type { ChatItem } from '../../../types'
 import type { ChatContextValue } from '../../context'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
+import { AppToastHost } from '@/app/notifications/host'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
+import {
+  createChatThoughtFixture,
+  createChatConfigFixture as makeChatConfig,
+} from '@/test/fixtures/chat'
 import { ChatContextProvider } from '../../context-provider'
 import Operation from '../operation'
 
-const {
-  mockSetShowAnnotationFullModal,
-  mockAddAnnotation,
-  mockEditAnnotation,
-  mockGetAudioPlayer,
-  mockPlayAudio,
-} = vi.hoisted(() => {
+const { mockAddAnnotation, mockEditAnnotation, mockGetAudioPlayer, mockPlayAudio } = vi.hoisted(
+  () => {
+    return {
+      mockAddAnnotation:
+        vi.fn<typeof import('@/service/console').consoleClient.apps.byAppId.annotations.post>(),
+      mockEditAnnotation:
+        vi.fn<
+          typeof import('@/service/console').consoleClient.apps.byAppId.annotations.byAnnotationId.post
+        >(),
+      mockGetAudioPlayer: vi.fn(),
+      mockPlayAudio: vi.fn(),
+    }
+  },
+)
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
   return {
-    mockAddAnnotation: vi.fn(),
-    mockSetShowAnnotationFullModal: vi.fn(),
-    mockEditAnnotation: vi.fn(),
-    mockGetAudioPlayer: vi.fn(),
-    mockPlayAudio: vi.fn(),
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.annotations.post': mockAddAnnotation,
+      'apps.byAppId.annotations.byAnnotationId.post': mockEditAnnotation,
+    }),
   }
 })
-
-const mockCopy = vi.fn()
-
-vi.mock('foxact/use-clipboard', () => ({
-  useClipboard: () => ({
-    copy: mockCopy,
-    copied: false,
-  }),
-}))
-
-vi.mock('@/app/notifications', () => ({
-  toast: { success: vi.fn() },
-}))
-
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAnnotationFullModal: mockSetShowAnnotationFullModal,
-  }),
-}))
-
-vi.mock('@/service/console', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/console')>()),
-  consoleClient: {
-    apps: {
-      byAppId: {
-        annotations: { post: mockAddAnnotation, byAnnotationId: { post: mockEditAnnotation } },
-      },
-    },
-  },
-}))
 
 vi.mock('@/app/components/base/audio-btn/audio.player.manager', () => ({
   AudioPlayerManager: { getInstance: () => ({ getAudioPlayer: mockGetAudioPlayer }) },
@@ -60,33 +49,6 @@ vi.mock('@/next/navigation', () => ({
   useParams: vi.fn(() => ({ appId: 'test-app' })),
   usePathname: vi.fn(() => '/apps/test-app'),
 }))
-
-const makeChatConfig = (overrides: Partial<ChatConfig> = {}): ChatConfig =>
-  ({
-    opening_statement: '',
-    pre_prompt: '',
-    prompt_type: 'simple' as ChatConfig['prompt_type'],
-    user_input_form: [],
-    dataset_query_variable: '',
-    more_like_this: { enabled: false },
-    suggested_questions_after_answer: { enabled: false },
-    speech_to_text: { enabled: false },
-    text_to_speech: { enabled: false },
-    retriever_resource: { enabled: false },
-    sensitive_word_avoidance: { enabled: false },
-    agent_mode: { enabled: false, tools: [] },
-    dataset_configs: { retrieval_model: 'single' } as ChatConfig['dataset_configs'],
-    system_parameters: {
-      audio_file_size_limit: 10,
-      file_size_limit: 10,
-      image_file_size_limit: 10,
-      video_file_size_limit: 10,
-      workflow_file_upload_limit: 10,
-    },
-    supportFeedback: false,
-    supportAnnotation: false,
-    ...overrides,
-  }) as ChatConfig
 
 const mockContextValue: ChatContextValue = {
   chatList: [],
@@ -100,16 +62,7 @@ const mockContextValue: ChatContextValue = {
   readonly: false,
 }
 
-type OperationProps = {
-  answerActionPosition?: 'auto' | 'below'
-  item: ChatItem
-  question: string
-  index: number
-  maxSize: number
-  contentWidth: number
-  hasWorkflowProcess: boolean
-  noChatInput?: boolean
-}
+type OperationProps = ComponentProps<typeof Operation>
 
 const baseItem: ChatItem = {
   id: 'msg-1',
@@ -118,16 +71,7 @@ const baseItem: ChatItem = {
 }
 
 const createInterruptedItem = (messages: string[]): ChatItem => {
-  const thought = {
-    id: '1',
-    thought: 'internal thought should not be used',
-    tool: '',
-    tool_input: '',
-    observation: '',
-    message_id: '',
-    conversation_id: '',
-    position: 0,
-  }
+  const thought = createChatThoughtFixture({ thought: 'internal thought should not be used' })
 
   return {
     ...baseItem,
@@ -149,6 +93,8 @@ const baseProps: OperationProps = {
   hasWorkflowProcess: false,
 }
 
+afterEach(() => toast.dismiss())
+
 describe('Operation', () => {
   const renderOperation = (props = baseProps) => {
     const { wrapper: QueryWrapper } = createConsoleQueryWrapper()
@@ -160,6 +106,7 @@ describe('Operation', () => {
         wrapper: ({ children }) => (
           <QueryWrapper>
             <ChatContextProvider {...mockContextValue}>{children}</ChatContextProvider>
+            <AppToastHost timeout={0} />
           </QueryWrapper>
         ),
       },
@@ -218,11 +165,8 @@ describe('Operation', () => {
     )
 
     it('keeps one pending submission open and prevents edits or duplicate submissions', async () => {
-      let resolve!: () => void
-      const pending = new Promise<void>((done) => {
-        resolve = done
-      })
-      const onFeedback = vi.fn().mockReturnValue(pending)
+      const pending = createDeferred<void>()
+      const onFeedback = vi.fn().mockReturnValue(pending.promise)
       mockContextValue.onFeedback = onFeedback
       const user = userEvent.setup()
       renderOperation()
@@ -245,8 +189,8 @@ describe('Operation', () => {
       expect(screen.getByRole('dialog')).toBeInTheDocument()
       expect(onFeedback).toHaveBeenCalledTimes(1)
       await act(async () => {
-        resolve()
-        await pending
+        pending.resolve()
+        await pending.promise
       })
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     })
@@ -268,9 +212,7 @@ describe('Operation', () => {
       name: 'legacy public thought answer',
       item: {
         ...createInterruptedItem([]),
-        agent_thoughts: [
-          { ...createInterruptedItem([]).agent_thoughts![0]!, answer: 'Public legacy answer' },
-        ],
+        agent_thoughts: [createChatThoughtFixture({ answer: 'Public legacy answer' })],
       },
       expected: 'Public legacy answer',
     },
@@ -278,7 +220,8 @@ describe('Operation', () => {
     const user = userEvent.setup()
     renderOperation({ ...baseProps, item })
     await user.click(screen.getByRole('button', { name: 'common.operation.copy' }))
-    expect(mockCopy).toHaveBeenCalledExactlyOnceWith(expected)
+    expect(await navigator.clipboard.readText()).toBe(expected)
+    expect(screen.getByRole('button', { name: 'common.operation.copied' })).toBeInTheDocument()
   })
 
   it('routes regenerate and log actions to their answer', async () => {
@@ -324,8 +267,21 @@ describe('Operation', () => {
       name: 'waiting for human input',
       item: {
         ...baseItem,
-        humanInputFormDataList: [{ node_id: 'human', form_token: 'form-1' }],
-      } as ChatItem,
+        humanInputFormDataList: [
+          {
+            form_id: 'form-1',
+            node_id: 'human',
+            node_title: 'Review',
+            form_token: 'form-1',
+            form_content: 'Please review',
+            inputs: [],
+            actions: [],
+            resolved_default_values: {},
+            display_in_ui: true,
+            expiration_time: null,
+          },
+        ],
+      } satisfies ChatItem,
     },
   ])('hides content actions with $name', ({ item }) => {
     mockContextValue.config = makeChatConfig({
@@ -411,6 +367,7 @@ describe('Operation', () => {
     mockContextValue.config = makeChatConfig(annotationConfig)
     renderOperation({ ...baseProps, item: createInterruptedItem(['Public interrupted answer']) })
     await user.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.add' }))
+    expect(await screen.findByText('common.api.actionSuccess')).toBeInTheDocument()
     expect(mockAddAnnotation).toHaveBeenCalledExactlyOnceWith({
       params: { app_id: 'test-app' },
       body: { message_id: 'msg-1', question: 'What is this?', answer: 'Public interrupted answer' },
@@ -432,12 +389,13 @@ describe('Operation', () => {
     renderOperation({ ...baseProps, item: annotatedItem })
     await user.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.edit' }))
     const drawer = await screen.findByRole('dialog', { name: 'appAnnotation.editModal.title' })
-    await user.click(within(drawer).getAllByText('common.operation.edit')[1]!)
+    await user.click(within(drawer).getAllByRole('button', { name: 'common.operation.edit' })[1]!)
     await user.type(
       within(drawer).getByRole('textbox', { name: 'appAnnotation.editModal.yourAnswer' }),
       'Corrected answer',
     )
     await user.click(within(drawer).getByRole('button', { name: 'common.operation.save' }))
+    expect(await screen.findByText('common.api.actionSuccess')).toBeInTheDocument()
     expect(mockEditAnnotation).toHaveBeenCalledExactlyOnceWith({
       params: { app_id: 'test-app', annotation_id: 'ann-1' },
       body: { question: 'What is this?', answer: 'Corrected answer' },
@@ -448,7 +406,11 @@ describe('Operation', () => {
       0,
     )
     await user.click(within(drawer).getByRole('button', { name: 'common.operation.close' }))
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'appAnnotation.editModal.title' }),
+      ).not.toBeInTheDocument(),
+    )
   })
 
   it('only removes an annotation after confirmation', async () => {

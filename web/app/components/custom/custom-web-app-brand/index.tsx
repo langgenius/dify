@@ -35,6 +35,7 @@ const CustomWebAppBrand = () => {
       <div className="mb-2 flex items-center justify-between rounded-xl bg-background-section-burn p-4 system-md-medium text-text-primary">
         {t(($) => $['webapp.removeBrand'], { ns: 'custom' })}
         <Switch
+          aria-label={t(($) => $['webapp.removeBrand'], { ns: 'custom' })}
           size="lg"
           checked={webappBrandRemoved ?? false}
           disabled={isCustomConfigUnavailable || !canReplaceLogo || !canManageCustomBrand}
@@ -75,6 +76,7 @@ const CustomWebAppBrand = () => {
                 ? t(($) => $.change, { ns: 'custom' })
                 : t(($) => $.upload, { ns: 'custom' })}
               <input
+                aria-label={t(($) => $['webapp.changeLogo'], { ns: 'custom' })}
                 className={cn(
                   'absolute inset-0 block w-full text-[0] opacity-0',
                   uploadDisabled ? 'cursor-not-allowed' : 'cursor-pointer',

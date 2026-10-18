@@ -114,6 +114,7 @@ describe('HITLInputComponentUI', () => {
     })
 
     it('should close the edit modal when readonly becomes true', async () => {
+      const user = userEvent.setup()
       let setReadonlyValue: ((readonly: boolean) => void) | undefined
       const Harness = () => {
         const [readonly, setReadonly] = useState(false)
@@ -151,9 +152,7 @@ describe('HITLInputComponentUI', () => {
 
       render(<Harness />)
 
-      await userEvent
-        .setup()
-        .click(await screen.findByRole('button', { name: 'common.operation.edit' }))
+      await user.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
 
       expect(await screen.findByRole('textbox')).toBeInTheDocument()
 
@@ -217,9 +216,10 @@ describe('HITLInputComponentUI', () => {
 
   describe('Remove action', () => {
     it('should call onRemove when remove button is clicked', async () => {
+      const user = userEvent.setup()
       const { onRemove } = renderComponent()
 
-      await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.remove' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
 
       expect(onRemove).toHaveBeenCalledWith(varName)
       expect(onRemove).toHaveBeenCalledTimes(1)
@@ -228,17 +228,14 @@ describe('HITLInputComponentUI', () => {
 
   describe('Edit flow', () => {
     it('should close modal without update when cancel is clicked', async () => {
+      const user = userEvent.setup()
       const { findByRole, queryByRole, onChange, onRename } = renderComponent()
 
-      await userEvent
-        .setup()
-        .click(await screen.findByRole('button', { name: 'common.operation.edit' }))
+      await user.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
 
       await findByRole('textbox')
 
-      await userEvent
-        .setup()
-        .click(await screen.findByRole('button', { name: 'common.operation.cancel' }))
+      await user.click(await screen.findByRole('button', { name: 'common.operation.cancel' }))
 
       expect(onChange).not.toHaveBeenCalled()
       expect(onRename).not.toHaveBeenCalled()
@@ -247,17 +244,16 @@ describe('HITLInputComponentUI', () => {
     })
 
     it('should prevent renaming to an existing variable name', async () => {
+      const user = userEvent.setup()
       const { findByRole, onChange, onRename } = renderComponent({
         unavailableVariableNames: ['existing_name'],
       })
 
-      await userEvent
-        .setup()
-        .click(await screen.findByRole('button', { name: 'common.operation.edit' }))
+      await user.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
 
       const textbox = await findByRole('textbox')
-      await userEvent.setup().clear(textbox)
-      await userEvent.setup().type(textbox, 'existing_name')
+      await user.clear(textbox)
+      await user.type(textbox, 'existing_name')
 
       expect(
         screen.getByText(
@@ -266,7 +262,7 @@ describe('HITLInputComponentUI', () => {
       ).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
 
-      await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.save' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       expect(onChange).not.toHaveBeenCalled()
       expect(onRename).not.toHaveBeenCalled()
@@ -275,13 +271,12 @@ describe('HITLInputComponentUI', () => {
 
   describe('Default formInput', () => {
     it('should open an empty default editor when formInput is undefined', async () => {
+      const user = userEvent.setup()
       const { findByRole } = renderComponent({
         formInput: undefined,
       })
 
-      await userEvent
-        .setup()
-        .click(await screen.findByRole('button', { name: 'common.operation.edit' }))
+      await user.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
 
       const textbox = await findByRole('textbox')
       const saveButton = await screen.findByRole('button', { name: 'common.operation.save' })

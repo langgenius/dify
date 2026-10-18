@@ -158,11 +158,12 @@ describe('prompt-editor/hooks', () => {
     it.each([KEY_DELETE_COMMAND, KEY_BACKSPACE_COMMAND])(
       'selects and deletes the real decorator for keyboard command %s',
       async (keyCommand) => {
+        const user = userEvent.setup()
         const { editor, nodeKey, deleted } = renderEditor(
           () => new QueryBlockNode(),
           DELETE_QUERY_BLOCK_COMMAND,
         )
-        await userEvent.setup().click(screen.getByTestId('block'))
+        await user.click(screen.getByTestId('block'))
         await waitFor(() =>
           expect(screen.getByTestId('block')).toHaveAttribute('data-selected', 'true'),
         )
@@ -184,8 +185,9 @@ describe('prompt-editor/hooks', () => {
     )
 
     it('deletes a selected decorator without an optional domain command', async () => {
+      const user = userEvent.setup()
       const { editor, nodeKey } = renderEditor(() => new QueryBlockNode())
-      await userEvent.setup().click(screen.getByTestId('block'))
+      await user.click(screen.getByTestId('block'))
       await waitFor(() =>
         expect(screen.getByTestId('block')).toHaveAttribute('data-selected', 'true'),
       )
@@ -233,11 +235,12 @@ describe('prompt-editor/hooks', () => {
     })
 
     it('unregisters deletion when the hook is removed', async () => {
+      const user = userEvent.setup()
       const { editor, nodeKey, deleted, detachHook } = renderEditor(
         () => new QueryBlockNode(),
         DELETE_QUERY_BLOCK_COMMAND,
       )
-      await userEvent.setup().click(screen.getByTestId('block'))
+      await user.click(screen.getByTestId('block'))
       await waitFor(() =>
         expect(screen.getByTestId('block')).toHaveAttribute('data-selected', 'true'),
       )

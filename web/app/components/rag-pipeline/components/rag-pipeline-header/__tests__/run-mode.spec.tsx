@@ -58,9 +58,10 @@ describe('RunMode', () => {
 
   describe('Idle state', () => {
     it('should call start run when button clicked', async () => {
+      const user = userEvent.setup()
       render(<RunMode />)
 
-      await userEvent.setup().click(screen.getByRole('button', { name: /pipeline.common.testRun/ }))
+      await user.click(screen.getByRole('button', { name: /pipeline.common.testRun/ }))
 
       expect(mockHandleWorkflowStartRunInWorkflow).toHaveBeenCalled()
     })
@@ -92,13 +93,12 @@ describe('RunMode', () => {
     })
 
     it('should call handleStopRun with task_id when stop clicked', async () => {
+      const user = userEvent.setup()
       render(<RunMode />)
 
-      await userEvent
-        .setup()
-        .click(
-          screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.trigger.stop' }),
-        )
+      await user.click(
+        screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.trigger.stop' }),
+      )
 
       expect(screen.getByRole('button', { name: 'pipeline.common.processing' })).toBeDisabled()
       expect(mockHandleWorkflowStartRunInWorkflow).not.toHaveBeenCalled()
@@ -108,13 +108,14 @@ describe('RunMode', () => {
 
   describe('After run completed', () => {
     it('should show reRun text when previous run data exists', async () => {
+      const user = userEvent.setup()
       mockWorkflowRunningData = {
         task_id: 'task-1',
         result: { status: 'succeeded' },
       }
       render(<RunMode />)
 
-      await userEvent.setup().click(screen.getByRole('button', { name: /pipeline.common.reRun/ }))
+      await user.click(screen.getByRole('button', { name: /pipeline.common.reRun/ }))
       expect(mockHandleWorkflowStartRunInWorkflow).toHaveBeenCalledOnce()
     })
   })
@@ -125,9 +126,10 @@ describe('RunMode', () => {
     })
 
     it('should cancel preparing when close clicked', async () => {
+      const user = userEvent.setup()
       render(<RunMode />)
 
-      await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
       expect(
         screen.getByRole('button', { name: 'pipeline.common.preparingDataSource' }),

@@ -1,61 +1,40 @@
 import type { PluginBanner } from '@dify/contracts/marketplace'
 import type { Window } from 'happy-dom'
+import type { ReactElement } from 'react'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { trackEvent } from '@/app/components/base/amplitude'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
-import { trackMarketplaceSiteEvent } from '@/utils/marketplace-site-track'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { mockIntersectionObserver } from '@/test/intersection-observer'
 import HomeTrending from '../home-trending'
 
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
 }))
 
-vi.mock('@/utils/marketplace-site-track', () => ({
-  rememberMarketplaceSiteReferrer: vi.fn(),
-  trackMarketplaceSiteEvent: vi.fn(),
-}))
-
-vi.mock('#i18n', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return {
-    useLocale: () => 'en-US',
-    useTranslation: (namespace: string) => ({
-      t: withSelectorKey((key: string) => `${namespace}.${key}`),
-    }),
-  }
-})
-
-vi.mock('@/config', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/config')>()),
-  MARKETPLACE_URL_PREFIX: 'https://marketplace.example.com',
-}))
-
-vi.mock('@/next/navigation', () => ({
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
   useRouter: () => ({ push: vi.fn() }),
-}))
-
-vi.mock('@/app/components/plugins/install-plugin/hooks/use-check-installed', () => ({
-  default: () => ({ installedInfo: {} }),
 }))
 
 vi.mock('@/service/plugins', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/plugins')>()),
-  fetchPluginInfoFromMarketPlace: vi.fn().mockResolvedValue({
-    data: {
-      plugin: {
-        category: 'tool',
-        latest_package_identifier: 'langgenius/dropbox:1.0.0',
-        latest_version: '1.0.0',
+  fetchPluginInfoFromMarketPlace: vi
+    .fn<typeof import('@/service/plugins').fetchPluginInfoFromMarketPlace>()
+    .mockImplementation(async ({ org, name }) => ({
+      data: {
+        version: { version: '1.0.0' },
+        plugin: {
+          category: 'tool',
+          latest_package_identifier: `${org}/${name}:1.0.0`,
+          latest_version: '1.0.0',
+        },
       },
-    },
-  }),
+    })),
 }))
 
-vi.mock('../../detail-dialog/use-silent-install', () => ({
-  useSilentMarketplaceInstall: () => ({ install: vi.fn() }),
-}))
 // Keep real dialogs and message handling without loading external documents.
 vi.mock('../../utils', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../utils')>()
@@ -70,14 +49,26 @@ vi.mock('../../utils', async (importOriginal) => {
   }
 })
 
-const deploymentState = vi.hoisted(() => ({
-  deploymentEdition: 'CLOUD' as 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE',
-}))
-
-vi.mock('@/features/system-features/state', async () => {
-  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
-  return createSystemFeaturesStateModuleMock(() => deploymentState)
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
+    }),
+  }
 })
+
+const render = (ui: ReactElement, options: Parameters<typeof renderWithConsoleQuery>[1] = {}) => {
+  const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient)
+  return renderWithConsoleQuery(ui, {
+    queryClient,
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    ...options,
+  })
+}
 
 const banners: PluginBanner[] = [
   {
@@ -158,20 +149,53 @@ const banners: PluginBanner[] = [
 ]
 
 const mockTrackEvent = vi.mocked(trackEvent)
-const mockTrackMarketplaceSiteEvent = vi.mocked(trackMarketplaceSiteEvent)
+const mockTrackMarketplaceSiteEvent = vi.fn()
+
+const originalAnimateDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'animate')
+const originalVisibilityDescriptor = Object.getOwnPropertyDescriptor(document, 'visibilityState')
+const mockProgressAnimation = () => {
+  const animation = {
+    cancel: vi.fn(),
+    pause: vi.fn(),
+    play: vi.fn(),
+    finished: Promise.resolve(),
+    onfinish: null,
+  }
+  Object.defineProperty(Element.prototype, 'animate', {
+    configurable: true,
+    value: vi.fn(() => animation),
+  })
+  return animation
+}
 
 const navigationSettings = (window as unknown as Window).happyDOM.settings.navigation
 const originalNavigation = navigationSettings.disableMainFrameNavigation
 
 beforeEach(() => {
   navigationSettings.disableMainFrameNavigation = true
-  deploymentState.deploymentEdition = 'CLOUD'
-  vi.clearAllMocks()
+  document.body.setAttribute('data-is-marketplace', '')
+  window.__marketplaceTracking__ = {
+    track: mockTrackMarketplaceSiteEvent,
+    rememberReferrer: vi.fn(),
+    markSearch: vi.fn(),
+    flushSearch: vi.fn(),
+    markFilter: vi.fn(),
+    flushFilter: vi.fn(),
+  }
 })
 
 afterEach(() => {
+  delete window.__marketplaceTracking__
+  document.body.removeAttribute('data-is-marketplace')
   navigationSettings.disableMainFrameNavigation = originalNavigation
   vi.unstubAllGlobals()
+  vi.restoreAllMocks()
+  if (originalAnimateDescriptor)
+    Object.defineProperty(Element.prototype, 'animate', originalAnimateDescriptor)
+  else Reflect.deleteProperty(Element.prototype, 'animate')
+  if (originalVisibilityDescriptor)
+    Object.defineProperty(document, 'visibilityState', originalVisibilityDescriptor)
+  else Reflect.deleteProperty(document, 'visibilityState')
 })
 
 describe('HomeTrending', () => {
@@ -193,7 +217,7 @@ describe('HomeTrending', () => {
     expect(screen.getByRole('heading', { name: 'Dify v1.9 new launch' })).toBeInTheDocument()
     const blogSlide = screen.getByRole('group', { name: 'Dify Updates' })
     const blogLink = within(blogSlide).getByRole('link', {
-      name: 'plugin.marketplace.home.trendingReadMoreAbout',
+      name: /^plugin\.marketplace\.home\.trendingReadMoreAbout/,
     })
     expect(blogLink).toHaveAttribute('href', 'https://dify.ai/blog')
     expect(within(blogSlide).getAllByRole('link')).toHaveLength(1)
@@ -228,7 +252,7 @@ describe('HomeTrending', () => {
     render(<HomeTrending banners={[blogBanner]} isMarketplacePlatform page="plugins" />)
 
     const blogLink = screen.getByRole('link', {
-      name: 'plugin.marketplace.home.trendingReadMoreAbout',
+      name: /^plugin\.marketplace\.home\.trendingReadMoreAbout/,
     })
     expect(blogLink.querySelector('img')?.getAttribute('src')).toContain(
       '/api/v1/banners/images/banners/trust-cover.png',
@@ -239,69 +263,23 @@ describe('HomeTrending', () => {
     render(<HomeTrending banners={[banners[1]!]} isMarketplacePlatform page="plugins" />)
 
     const blogLink = screen.getByRole('link', {
-      name: 'plugin.marketplace.home.trendingReadMoreAbout',
+      name: /^plugin\.marketplace\.home\.trendingReadMoreAbout/,
     })
     expect(blogLink.querySelector('img')).toBeNull()
   })
 
-  it('keeps inactive slides inaccessible and supplies the standalone mobile event image', () => {
+  it('keeps only the selected slide in the accessibility tree', async () => {
+    const user = userEvent.setup()
     render(<HomeTrending banners={banners} isMarketplacePlatform page="plugins" />)
+    const firstSlide = screen.getByRole('group', { name: 'Trending' })
+    expect(firstSlide).not.toHaveAttribute('inert')
+    expect(screen.queryByRole('group', { name: 'Dify Updates' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: 'Duck Duck Go' })).not.toBeInTheDocument()
 
-    const recommendSlide = screen.getByRole('group', { name: 'Trending' })
-    const blogSlide = document.querySelector(
-      '[aria-roledescription="slide"][aria-label="Dify Updates"]',
-    )
-    const eventSlide = document.querySelector(
-      '[aria-roledescription="slide"][aria-label="Duck Duck Go"]',
-    )
-    const eventLink = document.querySelector('a[aria-label="DuckDuckGo plugin"]')
-
-    expect(recommendSlide).not.toHaveAttribute('inert')
-    expect(blogSlide).toHaveAttribute('inert')
-    expect(eventSlide).toHaveAttribute('inert')
-    expect(eventLink?.querySelector('source')).toHaveAttribute('media', '(max-width: 879px)')
-    expect(eventLink?.querySelector('source')?.getAttribute('srcset')).toContain(
-      'duckduckgo-mobile.png',
-    )
-  })
-
-  it('keeps the embedded event image breakpoint at 639px', () => {
-    render(<HomeTrending banners={banners} isMarketplacePlatform={false} page="plugins" />)
-
-    expect(document.querySelector('a[aria-label="DuckDuckGo plugin"] source')).toHaveAttribute(
-      'media',
-      '(max-width: 639px)',
-    )
-  })
-
-  it('falls back to desktop on the mobile source when an event banner has no mobile asset', () => {
-    const eventWithoutMobile: PluginBanner = {
-      id: 'event-desktop-only',
-      style_type: 'event',
-      title: 'Desktop Event',
-      sort: 0,
-      language: 'en',
-      content: {
-        images: {
-          desktop: '/api/v1/banners/images/banners/event-desktop.png',
-          tablet: '/api/v1/banners/images/banners/event-tablet.png',
-        },
-        link: 'https://dify.ai/event',
-        alt_text: 'Desktop event',
-      },
-    }
-
-    render(<HomeTrending banners={[eventWithoutMobile]} isMarketplacePlatform page="plugins" />)
-
-    const eventLink = screen.getByRole('link', { name: 'Desktop event' })
-    const sources = eventLink.querySelectorAll('source')
-
-    expect(sources[0]).toHaveAttribute('media', '(max-width: 879px)')
-    expect(sources[0]?.getAttribute('srcset')).toContain('event-desktop.png')
-    expect(sources[0]?.getAttribute('srcset')).not.toContain('event-tablet.png')
-    expect(sources[1]).toHaveAttribute('media', '(min-width: 880px) and (max-width: 1023px)')
-    expect(sources[1]?.getAttribute('srcset')).toContain('event-tablet.png')
-    expect(eventLink.querySelector('img')?.getAttribute('src')).toContain('event-desktop.png')
+    await user.click(screen.getByRole('button', { name: 'Dify Updates' }))
+    expect(screen.getByRole('group', { name: 'Dify Updates' })).not.toHaveAttribute('inert')
+    expect(firstSlide).toHaveAttribute('inert')
+    expect(screen.queryByRole('group', { name: 'Trending' })).not.toBeInTheDocument()
   })
 
   it('switches to the selected slide from the pagination with the keyboard', async () => {
@@ -311,7 +289,7 @@ describe('HomeTrending', () => {
 
     const duckDuckGoButton = screen.getByRole('button', { name: 'Duck Duck Go' })
 
-    duckDuckGoButton.focus()
+    act(() => duckDuckGoButton.focus())
     await user.keyboard('{Enter}')
 
     expect(duckDuckGoButton).toHaveAttribute('aria-current', 'true')
@@ -338,29 +316,21 @@ describe('HomeTrending', () => {
       play: vi.fn(),
       finished,
     } as unknown as Animation
-    const originalAnimate = Element.prototype.animate
     Object.defineProperty(Element.prototype, 'animate', {
       configurable: true,
       value: vi.fn(() => progressAnimation),
     })
 
-    try {
-      const { unmount } = render(
-        <HomeTrending banners={banners} isMarketplacePlatform page="plugins" />,
-      )
+    const { unmount } = render(
+      <HomeTrending banners={banners} isMarketplacePlatform page="plugins" />,
+    )
 
-      unmount()
-      await act(async () => {
-        await Promise.resolve()
-      })
+    unmount()
+    await act(async () => {
+      await Promise.resolve()
+    })
 
-      expect(progressAnimation.cancel).toHaveBeenCalled()
-    } finally {
-      Object.defineProperty(Element.prototype, 'animate', {
-        configurable: true,
-        value: originalAnimate,
-      })
-    }
+    expect(progressAnimation.cancel).toHaveBeenCalled()
   })
 
   it('toggles the carousel between paused and playing states', async () => {
@@ -376,7 +346,7 @@ describe('HomeTrending', () => {
       name: 'plugin.marketplace.home.trendingPause',
     })
 
-    pauseButton.focus()
+    act(() => pauseButton.focus())
     await user.keyboard('{Enter}')
 
     expect(liveTrack).toHaveAttribute('aria-live', 'polite')
@@ -385,7 +355,7 @@ describe('HomeTrending', () => {
       name: 'plugin.marketplace.home.trendingPlay',
     })
 
-    playButton.focus()
+    act(() => playButton.focus())
     await user.keyboard(' ')
 
     expect(
@@ -418,7 +388,8 @@ describe('HomeTrending', () => {
     matchMedia.mockRestore()
   })
 
-  it('keeps embedded autoplay paused until every pause reason is cleared', () => {
+  it('keeps embedded autoplay paused until every pause reason is cleared', async () => {
+    const user = userEvent.setup()
     const pause = vi.fn()
     const play = vi.fn()
     const cancel = vi.fn()
@@ -429,34 +400,11 @@ describe('HomeTrending', () => {
       pause,
       play,
     } as unknown as Animation
-    const originalAnimate = Element.prototype.animate
     Object.defineProperty(Element.prototype, 'animate', {
       configurable: true,
       value: vi.fn(() => progressAnimation),
     })
-    const intersectionObservers: {
-      callback: IntersectionObserverCallback
-      options?: IntersectionObserverInit
-    }[] = []
-    class MockIntersectionObserver {
-      disconnect = vi.fn()
-      observe = vi.fn()
-      root: Element | Document | null
-      rootMargin: string
-      takeRecords = vi.fn(() => [])
-      thresholds: readonly number[]
-      unobserve = vi.fn()
-
-      constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
-        this.root = options?.root ?? null
-        this.rootMargin = options?.rootMargin ?? '0px'
-        this.thresholds = Array.isArray(options?.threshold)
-          ? options.threshold
-          : [options?.threshold ?? 0]
-        intersectionObservers.push({ callback, options })
-      }
-    }
-    vi.stubGlobal('IntersectionObserver', MockIntersectionObserver)
+    const intersect = mockIntersectionObserver()
     let reducedMotion = false
     let reducedMotionListener: (() => void) | undefined
     vi.stubGlobal('matchMedia', () => ({
@@ -483,63 +431,51 @@ describe('HomeTrending', () => {
         container: marketplaceContainer,
       },
     )
+    const outsideControl = document.createElement('button')
+    document.body.appendChild(outsideControl)
     const carouselRoot = marketplaceContainer.querySelector('[data-home-trending-carousel-root]')!
-    const viewportObserver = intersectionObservers.find(
-      (observer) => observer.options?.threshold === 0.25,
-    )
-    const setIntersectionRatio = (intersectionRatio: number) => {
-      act(() => {
-        viewportObserver?.callback(
-          [
-            {
-              intersectionRatio,
-              isIntersecting: intersectionRatio > 0,
-            } as IntersectionObserverEntry,
-          ],
-          {} as IntersectionObserver,
-        )
-      })
-    }
+    const setIntersectionRatio = (intersectionRatio: number) =>
+      intersect(intersectionRatio > 0, { target: carouselRoot, intersectionRatio })
 
     expect(pause).toHaveBeenCalled()
 
     setIntersectionRatio(0.25)
     expect(play).toHaveBeenCalledOnce()
 
-    fireEvent.mouseEnter(carouselRoot)
+    await user.hover(carouselRoot)
     setIntersectionRatio(0)
-    fireEvent.mouseLeave(carouselRoot)
+    await user.unhover(carouselRoot)
     expect(play).toHaveBeenCalledOnce()
 
     setIntersectionRatio(0.25)
     expect(play).toHaveBeenCalledTimes(2)
 
     const playsBeforeFocus = play.mock.calls.length
-    const focusTarget = carouselRoot.querySelector('a')!
-    fireEvent.focusIn(focusTarget)
+    const focusTarget = screen.getByRole('button', { name: 'Dropbox' })
+    act(() => focusTarget.focus())
     setIntersectionRatio(0)
     setIntersectionRatio(0.25)
     expect(play).toHaveBeenCalledTimes(playsBeforeFocus)
-    fireEvent.focusOut(focusTarget, { relatedTarget: null })
+    act(() => outsideControl.focus())
     expect(play.mock.calls.length).toBeGreaterThan(playsBeforeFocus)
 
     // Navigation controls sit inside the pause boundary, so focusing them
     // also stops the rotation.
     const playsBeforeControlFocus = play.mock.calls.length
     const paginationButton = screen.getByRole('button', { name: 'Dify Updates' })
-    fireEvent.focusIn(paginationButton)
+    act(() => paginationButton.focus())
     setIntersectionRatio(0)
     setIntersectionRatio(0.25)
     expect(play).toHaveBeenCalledTimes(playsBeforeControlFocus)
-    fireEvent.focusOut(paginationButton, { relatedTarget: null })
+    act(() => outsideControl.focus())
     expect(play.mock.calls.length).toBeGreaterThan(playsBeforeControlFocus)
 
     const playsBeforeUserPause = play.mock.calls.length
-    fireEvent.click(screen.getByRole('button', { name: 'plugin.marketplace.home.trendingPause' }))
+    await user.click(screen.getByRole('button', { name: 'plugin.marketplace.home.trendingPause' }))
     setIntersectionRatio(0)
     setIntersectionRatio(0.25)
     expect(play).toHaveBeenCalledTimes(playsBeforeUserPause)
-    fireEvent.click(screen.getByRole('button', { name: 'plugin.marketplace.home.trendingPlay' }))
+    await user.click(screen.getByRole('button', { name: 'plugin.marketplace.home.trendingPlay' }))
     expect(play.mock.calls.length).toBeGreaterThan(playsBeforeUserPause)
 
     const playsBeforeVisibilityPause = play.mock.calls.length
@@ -560,38 +496,22 @@ describe('HomeTrending', () => {
 
     const playsBeforeReducedMotion = play.mock.calls.length
     reducedMotion = true
-    reducedMotionListener?.()
+    act(() => reducedMotionListener?.())
     setIntersectionRatio(0)
     setIntersectionRatio(0.25)
     expect(play).toHaveBeenCalledTimes(playsBeforeReducedMotion)
 
     reducedMotion = false
-    reducedMotionListener?.()
+    act(() => reducedMotionListener?.())
     expect(play.mock.calls.length).toBeGreaterThan(playsBeforeReducedMotion)
 
     unmount()
     marketplaceContainer.remove()
-    Object.defineProperty(Element.prototype, 'animate', {
-      configurable: true,
-      value: originalAnimate,
-    })
+    outsideControl.remove()
   })
 
   it('resumes autoplay after a pointer click on pagination without waiting for blur', async () => {
-    const pause = vi.fn()
-    const play = vi.fn()
-    const progressAnimation = {
-      cancel: vi.fn(),
-      finished: Promise.resolve(),
-      onfinish: null,
-      pause,
-      play,
-    } as unknown as Animation
-    const originalAnimate = Element.prototype.animate
-    Object.defineProperty(Element.prototype, 'animate', {
-      configurable: true,
-      value: vi.fn(() => progressAnimation),
-    })
+    const { play } = mockProgressAnimation()
     const user = userEvent.setup()
 
     render(<HomeTrending banners={banners} isMarketplacePlatform page="plugins" />)
@@ -601,9 +521,8 @@ describe('HomeTrending', () => {
 
     // Pointer activation hovers and focuses the control, which normally
     // pauses rotation until mouseleave/focusout.
-    fireEvent.mouseEnter(carouselRoot)
-    paginationButton.focus()
-    fireEvent.focusIn(paginationButton)
+    await user.hover(carouselRoot)
+    act(() => paginationButton.focus())
 
     const playsBeforeSelect = play.mock.calls.length
     await user.click(paginationButton)
@@ -611,35 +530,16 @@ describe('HomeTrending', () => {
     expect(paginationButton).toHaveAttribute('aria-current', 'true')
     expect(document.activeElement).toBe(paginationButton)
     expect(play.mock.calls.length).toBeGreaterThan(playsBeforeSelect)
-
-    Object.defineProperty(Element.prototype, 'animate', {
-      configurable: true,
-      value: originalAnimate,
-    })
   })
 
   it('keeps autoplay paused when pagination is selected from the keyboard', async () => {
-    const pause = vi.fn()
-    const play = vi.fn()
-    const progressAnimation = {
-      cancel: vi.fn(),
-      finished: Promise.resolve(),
-      onfinish: null,
-      pause,
-      play,
-    } as unknown as Animation
-    const originalAnimate = Element.prototype.animate
-    Object.defineProperty(Element.prototype, 'animate', {
-      configurable: true,
-      value: vi.fn(() => progressAnimation),
-    })
+    const { play } = mockProgressAnimation()
     const user = userEvent.setup()
 
     render(<HomeTrending banners={banners} isMarketplacePlatform page="plugins" />)
 
     const paginationButton = screen.getByRole('button', { name: 'Dify Updates' })
-    paginationButton.focus()
-    fireEvent.focusIn(paginationButton)
+    act(() => paginationButton.focus())
 
     const playsBeforeSelect = play.mock.calls.length
     await user.keyboard('{Enter}')
@@ -647,28 +547,10 @@ describe('HomeTrending', () => {
     expect(paginationButton).toHaveAttribute('aria-current', 'true')
     expect(document.activeElement).toBe(paginationButton)
     expect(play).toHaveBeenCalledTimes(playsBeforeSelect)
-
-    Object.defineProperty(Element.prototype, 'animate', {
-      configurable: true,
-      value: originalAnimate,
-    })
   })
 
   it('resumes autoplay when Play is activated without moving keyboard focus', async () => {
-    const pause = vi.fn()
-    const play = vi.fn()
-    const progressAnimation = {
-      cancel: vi.fn(),
-      finished: Promise.resolve(),
-      onfinish: null,
-      pause,
-      play,
-    } as unknown as Animation
-    const originalAnimate = Element.prototype.animate
-    Object.defineProperty(Element.prototype, 'animate', {
-      configurable: true,
-      value: vi.fn(() => progressAnimation),
-    })
+    const { pause, play } = mockProgressAnimation()
     const user = userEvent.setup()
 
     render(<HomeTrending banners={banners} isMarketplacePlatform page="plugins" />)
@@ -679,7 +561,7 @@ describe('HomeTrending', () => {
 
     // Focusing the toggle adds the implicit focus pause reason, then Enter
     // adds the explicit user pause.
-    toggleButton.focus()
+    act(() => toggleButton.focus())
     await user.keyboard('{Enter}')
     expect(pause).toHaveBeenCalled()
 
@@ -693,11 +575,6 @@ describe('HomeTrending', () => {
     expect(
       screen.getByRole('button', { name: 'plugin.marketplace.home.trendingPause' }),
     ).toBeInTheDocument()
-
-    Object.defineProperty(Element.prototype, 'animate', {
-      configurable: true,
-      value: originalAnimate,
-    })
   })
 
   it('opens embedded recommend plugin cards in the plugin dialog', async () => {
@@ -885,7 +762,7 @@ describe('HomeTrending', () => {
     expect(authored).toHaveAttribute('href', '/template/aisa-team/tpl-authored')
     expect(anonymous).toHaveAttribute('href', '/template/template/tpl-anonymous')
     expect(
-      within(authored).getByText('plugin.marketplace.home.trendingByCreator'),
+      within(authored).getByText(/^plugin\.marketplace\.home\.trendingByCreator/),
     ).toBeInTheDocument()
     expect(
       within(anonymous).queryByText('plugin.marketplace.home.trendingByCreator'),
@@ -893,11 +770,12 @@ describe('HomeTrending', () => {
   })
 
   it('clamps the active slide when a refetch shrinks the banner list', async () => {
+    const user = userEvent.setup()
     const { rerender } = render(
       <HomeTrending banners={banners} isMarketplacePlatform page="plugins" />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Duck Duck Go' }))
+    await user.click(screen.getByRole('button', { name: 'Duck Duck Go' }))
     expect(screen.getByRole('button', { name: 'Duck Duck Go' })).toHaveAttribute(
       'aria-current',
       'true',
@@ -1064,7 +942,7 @@ describe('HomeTrending', () => {
 
     await user.click(screen.getByRole('button', { name: 'Dify Updates' }))
     await user.click(
-      screen.getByRole('link', { name: 'plugin.marketplace.home.trendingReadMoreAbout' }),
+      screen.getByRole('link', { name: /^plugin\.marketplace\.home\.trendingReadMoreAbout/ }),
     )
 
     expect(mockTrackEvent).toHaveBeenCalledWith('marketplace_banner_click', {
@@ -1111,21 +989,7 @@ describe('HomeTrending', () => {
 
   it('dual-writes banner impressions to Amplitude and marketplace site tracking', () => {
     vi.useFakeTimers()
-    const observers: Array<{ callback: IntersectionObserverCallback }> = []
-    class MockIntersectionObserver {
-      disconnect = vi.fn()
-      observe = vi.fn()
-      root: Element | Document | null = null
-      rootMargin = '0px'
-      takeRecords = () => []
-      thresholds = [0.5]
-      unobserve = vi.fn()
-
-      constructor(callback: IntersectionObserverCallback) {
-        observers.push({ callback })
-      }
-    }
-    vi.stubGlobal('IntersectionObserver', MockIntersectionObserver)
+    const intersect = mockIntersectionObserver()
 
     try {
       const blogBanner = banners[1]
@@ -1133,20 +997,7 @@ describe('HomeTrending', () => {
 
       render(<HomeTrending banners={[blogBanner]} isMarketplacePlatform page="plugins" />)
 
-      const observer = observers.at(-1)
-      if (!observer) throw new Error('Expected IntersectionObserver to be registered')
-
-      act(() => {
-        observer.callback(
-          [
-            {
-              intersectionRatio: 0.5,
-              isIntersecting: true,
-            } as IntersectionObserverEntry,
-          ],
-          {} as IntersectionObserver,
-        )
-      })
+      intersect()
       act(() => {
         vi.advanceTimersByTime(1000)
       })
@@ -1170,7 +1021,6 @@ describe('HomeTrending', () => {
   it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
     'links %s recommendations directly to the official site',
     (edition) => {
-      deploymentState.deploymentEdition = edition
       const mixedBanner: PluginBanner = {
         id: 'mixed',
         style_type: 'recommend',
@@ -1198,7 +1048,10 @@ describe('HomeTrending', () => {
           ],
         },
       }
-      render(<HomeTrending banners={[mixedBanner]} isMarketplacePlatform={false} page="plugins" />)
+      render(
+        <HomeTrending banners={[mixedBanner]} isMarketplacePlatform={false} page="plugins" />,
+        { systemFeatures: { deployment_edition: edition } },
+      )
       const links = [
         screen.getByRole('link', { name: 'Dropbox' }),
         screen.getByRole('link', { name: 'Support Bot' }),

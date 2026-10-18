@@ -1,6 +1,7 @@
 import type { ChangeEvent, FC } from 'react'
 import type { ImageFile } from '@/types/app'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ALLOW_FILE_EXTENSIONS } from '@/types/app'
 import { useLocalFileUploader } from './hooks'
 
@@ -13,6 +14,7 @@ type UploaderProps = {
 }
 
 const Uploader: FC<UploaderProps> = ({ children, onUpload, closePopover, limit, disabled }) => {
+  const { t } = useTranslation(['common'])
   const [hovering, setHovering] = useState(false)
   const { handleLocalFileUpload } = useLocalFileUploader({
     limit,
@@ -37,6 +39,7 @@ const Uploader: FC<UploaderProps> = ({ children, onUpload, closePopover, limit, 
     >
       {children(hovering)}
       <input
+        aria-label={t(($) => $['imageUploader.uploadFromComputer'], { ns: 'common' })}
         data-testid="local-file-input"
         className="absolute inset-0 block w-full cursor-pointer text-[0] opacity-0 disabled:cursor-not-allowed"
         onClick={(e) => ((e.target as HTMLInputElement).value = '')}

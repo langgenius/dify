@@ -222,6 +222,7 @@ const Authorized = ({
           }
         />
         <PopoverContent
+          aria-label={t(($) => $['auth.authorizations'], { ns: 'plugin' })}
           placement={placement}
           sideOffset={sideOffset}
           className={cn(

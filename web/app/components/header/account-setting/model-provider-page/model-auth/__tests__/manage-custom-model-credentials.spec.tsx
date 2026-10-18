@@ -66,10 +66,9 @@ it('protects the current model credential and opens editing for the chosen crede
 })
 
 it('allows removing an unused credential while retaining its model identity', async () => {
+  const user = userEvent.setup()
   render(<ManageCustomModelCredentials provider={provider} isOpen />)
-  await userEvent
-    .setup()
-    .click(screen.getAllByRole('button', { name: 'common.operation.delete' })[1]!)
+  await user.click(screen.getAllByRole('button', { name: 'common.operation.delete' })[1]!)
   expect(deleteCredential).toHaveBeenCalledWith(credentials[1], model)
 })
 
