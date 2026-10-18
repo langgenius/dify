@@ -120,14 +120,8 @@ class ConversationService:
     @classmethod
     def _build_filter_condition(cls, sort_field: str, sort_direction: Callable, reference_conversation: Conversation):
         sort_column = cls._get_sort_column(sort_field)
-        if sort_field == "created_at":
-            field_value = reference_conversation.created_at
-        elif sort_field == "updated_at":
-            field_value = reference_conversation.updated_at
-        elif sort_field == "name":
-            field_value = reference_conversation.name
-        else:
-            raise ValueError(f"Unsupported conversation sort field: {sort_field}")
+        # _get_sort_column validates the field before it is read from the ORM instance.
+        field_value = getattr(reference_conversation, sort_field)
         if sort_direction is desc:
             field_condition = sort_column < field_value
             id_condition = Conversation.id < reference_conversation.id

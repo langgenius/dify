@@ -464,6 +464,10 @@ def test_legacy_auto_generate_name_reports_missing_first_message(sqlite_session:
 class TestConversationServicePagination:
     """Test conversation pagination operations."""
 
+    def test_get_sort_column_rejects_unsupported_fields(self) -> None:
+        with pytest.raises(ValueError, match="Unsupported conversation sort field: unsupported"):
+            ConversationService._get_sort_column("unsupported")
+
     def test_pagination_preserves_name_sort_with_id_tiebreaker(self, sqlite_session: Session) -> None:
         app_model = ConversationServiceTestDataFactory.create_app()
         user = ConversationServiceTestDataFactory.create_account()
