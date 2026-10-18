@@ -1,6 +1,7 @@
 import type { Topic } from '@/app/components/workflow/nodes/_base/components/branch-list/types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import ClassItem from '../../../_base/components/branch-list/class-item'
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', () => ({
@@ -99,4 +100,38 @@ describe('question-classifier/class-item', () => {
     })
     expect(screen.getByRole('button', { name: 'Billing' })).toBeInTheDocument()
   })
+})
+
+it('preserves the group name during label editing and updates it on save', async () => {
+  const user = userEvent.setup()
+  function NamedClass({ readonly = false }: { readonly?: boolean }) {
+    const [topic, setTopic] = useState(createTopic({ label: 'Billing' }))
+    return (
+      <div role="group" aria-labelledby="class-title">
+        <ClassItem
+          labelId="class-title"
+          nodeId="node-1"
+          payload={topic}
+          onChange={setTopic}
+          onRemove={vi.fn()}
+          index={1}
+          filterVar={() => true}
+          readonly={readonly}
+        />
+      </div>
+    )
+  }
+  const { rerender } = render(<NamedClass />)
+  const group = screen.getByRole('group', { name: 'Billing' })
+  await user.dblClick(screen.getByRole('button', { name: 'Billing' }))
+  const labelInput = screen.getByRole('textbox', {
+    name: 'workflowModels.nodes.questionClassifiers.labelEditorAriaLabel',
+  })
+  await user.clear(labelInput)
+  await user.type(labelInput, 'Refunds')
+  expect(group).toHaveAccessibleName('Billing')
+  await user.keyboard('{Enter}')
+  expect(group).toHaveAccessibleName('Refunds')
+  rerender(<NamedClass readonly />)
+  expect(group).toHaveAccessibleName('Refunds')
 })

@@ -7,7 +7,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import * as React from 'react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import { useKeyboardSortable } from '@/app/components/base/keyboard-sortable/use-keyboard-sortable'
@@ -61,6 +61,7 @@ const ClassList: FC<Props> = ({
   labels,
   handleSortTopic = noop,
 }) => {
+  const labelIdPrefix = useId()
   const { t } = useTranslation(['workflow', 'workflowModels'])
   const { handleEdgeDeleteByDeleteBranch } = useEdgesInteractions()
   const [collapsed, setCollapsed] = useState(false)
@@ -181,11 +182,7 @@ const ClassList: FC<Props> = ({
                     <div
                       key={item.id}
                       role="group"
-                      aria-label={
-                        item.label?.trim() ||
-                        labels?.defaultLabel(index + 1) ||
-                        getDefaultClassLabel(t, index + 1)
-                      }
+                      aria-labelledby={`${labelIdPrefix}-${item.id}`}
                       className={cn(
                         'group relative -ml-3 min-h-10 rounded-[10px] bg-components-panel-bg px-0 py-0',
                       )}
@@ -204,6 +201,7 @@ const ClassList: FC<Props> = ({
                           </IconButton>
                         )}
                         <Item
+                          labelId={`${labelIdPrefix}-${item.id}`}
                           className={cn(canDrag && 'handle')}
                           headerClassName={cn(
                             canDrag && 'cursor-grab group-focus-within:pl-5 group-hover:pl-5',

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ConfirmAddVar from '../index'
 
@@ -15,8 +15,9 @@ describe('ConfirmAddVar', () => {
         onHide={vi.fn()}
       />,
     )
-    expect(screen.getByText('foo')).toBeInTheDocument()
-    expect(screen.getByText('bar')).toBeInTheDocument()
+    const confirmation = screen.getByRole('group', { name: 'appDebug.autoAddVar' })
+    expect(within(confirmation).getByText('foo')).toBeInTheDocument()
+    expect(within(confirmation).getByText('bar')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: `common.operation.${action}` }))
     expect(action === 'add' ? onConfirm : onCancel).toHaveBeenCalledOnce()
     expect(action === 'add' ? onCancel : onConfirm).not.toHaveBeenCalled()

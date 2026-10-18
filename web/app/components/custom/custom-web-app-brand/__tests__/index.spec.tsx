@@ -112,7 +112,7 @@ it('cancels an upload, accepts the same file again, then applies and restores th
 it('removes branding from both previews and restores it when switched back on', async () => {
   const { user } = renderBrand()
   expectPreviewLogo('https://example.com/logo.png')
-  await user.click(removalSwitch())
+  await user.click(screen.getByText('custom.webapp.removeBrand'))
   await waitFor(() => expect(removalSwitch()).toBeChecked())
   expect(updateConfig).toHaveBeenCalledExactlyOnceWith({ body: { remove_webapp_brand: true } })
   expect(screen.queryAllByText('POWERED BY')).toHaveLength(0)

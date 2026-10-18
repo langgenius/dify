@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
-import { useRef } from 'react'
+import { useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import VarHighlight from '../../base/var-highlight'
 
@@ -37,6 +37,7 @@ const ConfirmAddVar: FC<IConfirmAddVarProps> = ({
   // onHide,
 }) => {
   const { t } = useTranslation(['appDebug', 'common'])
+  const titleId = useId()
   const mainContentRef = useRef<HTMLDivElement>(null)
   // new prompt editor blur trigger click...
   // useClickAway(() => {
@@ -52,7 +53,7 @@ const ConfirmAddVar: FC<IConfirmAddVarProps> = ({
       <div
         ref={mainContentRef}
         role="group"
-        aria-label={t(($) => $.autoAddVar, { ns: 'appDebug' })}
+        aria-labelledby={titleId}
         className="w-105 rounded-xl bg-components-panel-bg p-6"
         style={{
           boxShadow:
@@ -64,7 +65,7 @@ const ConfirmAddVar: FC<IConfirmAddVarProps> = ({
             {VarIcon}
           </div>
           <div className="grow">
-            <div className="text-sm font-medium text-text-primary">
+            <div id={titleId} className="text-sm font-medium text-text-primary">
               {t(($) => $.autoAddVar, { ns: 'appDebug' })}
             </div>
             <div className="mt-3.75 flex max-h-16.5 flex-wrap space-x-1 overflow-y-auto px-1">

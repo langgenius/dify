@@ -8,7 +8,7 @@ import type {
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RiDeleteBinLine } from '@remixicon/react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import MetadataIcon from '../metadata-icon'
@@ -50,6 +50,7 @@ const ConditionItem = ({
   availableCommonStringVars = [],
   availableCommonNumberVars = [],
 }: ConditionItemProps) => {
+  const metadataLabelId = useId()
   const { t } = useTranslation(['common'])
   const [isHovered, setIsHovered] = useState(false)
 
@@ -140,7 +141,7 @@ const ConditionItem = ({
 
   return (
     <fieldset
-      aria-label={currentMetadata?.name}
+      aria-labelledby={metadataLabelId}
       disabled={disabled}
       className={cn('mb-1 flex min-w-0 border-0 p-0 last-of-type:mb-0', className)}
     >
@@ -156,7 +157,10 @@ const ConditionItem = ({
               <div className="mr-0.5 p-px">
                 <MetadataIcon type={currentMetadata?.type} className="size-3" />
               </div>
-              <div className="mr-0.5 min-w-0 flex-1 truncate system-xs-medium text-text-secondary">
+              <div
+                id={metadataLabelId}
+                className="mr-0.5 min-w-0 flex-1 truncate system-xs-medium text-text-secondary"
+              >
                 {currentMetadata?.name}
               </div>
               <div className="system-xs-regular text-text-tertiary">{currentMetadata?.type}</div>
