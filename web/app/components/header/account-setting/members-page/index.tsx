@@ -91,12 +91,12 @@ const MembersPage = () => {
       ? roles.map((role) => role.id)
       : roles.slice(0, 1).map((role) => role.id)
 
-    updateRolesOfMember(
+    return updateRolesOfMember(
       { params: { member_id: detailsMember!.id }, body: { role_ids: roleIds } },
       {
-        onSuccess: () => {
+        onSuccess: async () => {
           toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-          refetch()
+          await refetch()
         },
       },
     )

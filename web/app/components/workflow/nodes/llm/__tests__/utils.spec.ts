@@ -161,7 +161,7 @@ describe('llm utils', () => {
       const selector = ['start', 'MODEL_NAME']
 
       expect(isEnvironmentModelSource(selector)).toBe(false)
-      expect(resolveLLMNodeModel(model, selector, environmentVariables)).toBe(model)
+      expect(resolveLLMNodeModel(model, selector, environmentVariables)).toEqual(model)
     })
 
     it('keeps the static model when the persisted selector is null', () => {
@@ -170,7 +170,7 @@ describe('llm utils', () => {
       const selector = null as unknown as ValueSelector
 
       expect(isEnvironmentModelSource(selector)).toBe(false)
-      expect(resolveLLMNodeModel(model, selector, environmentVariables)).toBe(model)
+      expect(resolveLLMNodeModel(model, selector, environmentVariables)).toEqual(model)
     })
   })
 })

@@ -1,4 +1,5 @@
 import type { consoleQuery } from '@/service/console'
+import { skipToken } from '@tanstack/react-query'
 
 type ResponseHandler = (input: never) => unknown
 
@@ -19,6 +20,8 @@ export function withConsoleResponses(
             const originalOptions = (value as (options: unknown) => object)(options)
             if (property === 'mutationOptions')
               return { ...originalOptions, mutationFn: (input: never) => handler(input) }
+            if ('queryFn' in originalOptions && originalOptions.queryFn === skipToken)
+              return originalOptions
             return {
               ...originalOptions,
               queryFn: ({ pageParam }: { pageParam?: unknown }) =>

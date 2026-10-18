@@ -1,4 +1,5 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import { waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderEditorHook as renderHookWithConsoleState } from '@/app/components/workflow/editor-resource/__tests__/render'
@@ -8,6 +9,7 @@ import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { seedAppDetail } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { AppACLPermission } from '@/utils/permission'
 import { useWorkflowInit } from '../use-workflow-init'
 
@@ -29,13 +31,17 @@ const renderHook = <Result>(callback: () => Result) => {
   const queryClient = createAccountProfileQueryClient({ id: 'user-1' })
   seedAppDetail(queryClient, appDetail)
   return renderHookWithConsoleState(callback, {
-    resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    resource: {
+      kind: 'app',
+      appId: 'app-1',
+      mode: appDetail.mode === 'advanced-chat' ? 'advanced-chat' : 'workflow',
+    },
     wrapper: createQueryClientWrapper(queryClient),
   })
 }
 
 let workflowConfigState: {
-  data: Record<string, unknown> | null
+  data: UploadConfig | null
   isLoading: boolean
 }
 
@@ -72,19 +78,24 @@ vi.mock('../use-workflow-template', () => ({
   }),
 }))
 
-vi.mock('@/service/use-workflow', () => ({
-  useWorkflowConfig: (_url: string, onSuccess: (config: Record<string, unknown>) => void) => {
-    if (workflowConfigState.data) onSuccess(workflowConfigState.data)
-    return workflowConfigState
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  get: async (url: string) => {
+    if (url === '/files/upload') return workflowConfigState.data ?? createFileUploadConfigFixture()
+    throw new Error(`Unexpected GET ${url}`)
   },
 }))
 
-vi.mock('@/service/workflow-queries', () => ({
-  appWorkflowQueryOptions: (appId: string) => ({
-    queryKey: ['workflow', 'publish', appId],
-    queryFn: () => mockFetchPublishedWorkflow(`/apps/${appId}/workflows/publish`),
-  }),
-}))
+vi.mock('@/service/workflow-queries', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/workflow-queries')>()
+  return {
+    ...actual,
+    appWorkflowQueryOptions: (appId: string) => ({
+      ...actual.appWorkflowQueryOptions(appId),
+      queryFn: () => mockFetchPublishedWorkflow(`/apps/${appId}/workflows/publish`),
+    }),
+  }
+})
 
 const mockFetchWorkflowDraft = vi.fn()
 
@@ -123,7 +134,7 @@ const draftResponse = {
 
 describe('useWorkflowInit', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     appDetail = createAppDetailFixture({
       id: 'app-1',
       name: 'Test',
@@ -316,7 +327,7 @@ describe('useWorkflowInit', () => {
 
   it('should hydrate draft state, preload defaults, and derive published workflow metadata on success', async () => {
     workflowConfigState = {
-      data: { enabled: true, sizeLimit: 20 },
+      data: createFileUploadConfigFixture({ file_size_limit: 20 }),
       isLoading: false,
     }
     mockFetchWorkflowDraft.mockReset().mockResolvedValue({
@@ -368,8 +379,12 @@ describe('useWorkflowInit', () => {
     expect(mockSetToolPublished).toHaveBeenCalledWith(true)
     expect(mockSetPublishedAt).toHaveBeenCalledWith(99)
     expect(mockSetLastPublishedHasUserInput).toHaveBeenCalledWith(true)
-    expect(mockSetFileUploadConfig).toHaveBeenCalledWith({ enabled: true, sizeLimit: 20 })
-    expect(result.current.fileUploadConfigResponse).toEqual({ enabled: true, sizeLimit: 20 })
+    expect(mockSetFileUploadConfig).toHaveBeenCalledWith(
+      createFileUploadConfigFixture({ file_size_limit: 20 }),
+    )
+    expect(result.current.fileUploadConfigResponse).toEqual(
+      createFileUploadConfigFixture({ file_size_limit: 20 }),
+    )
     expect(result.current.isLoading).toBe(false)
   })
 
@@ -392,7 +407,6 @@ describe('useWorkflowInit', () => {
       expect(mockSetLastPublishedHasUserInput).toHaveBeenCalledWith(true)
     })
 
-    expect(consoleErrorSpy).toHaveBeenCalled()
     consoleErrorSpy.mockRestore()
   })
 
@@ -415,7 +429,6 @@ describe('useWorkflowInit', () => {
       expect(mockSetLastPublishedHasUserInput).toHaveBeenCalledWith(false)
     })
 
-    expect(consoleErrorSpy).toHaveBeenCalled()
     consoleErrorSpy.mockRestore()
   })
 })

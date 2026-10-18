@@ -142,21 +142,6 @@ export const downloadDocumentsZip = ({
   })
 }
 
-export const fetchNotionPagePreview = ({
-  pageID,
-  pageType,
-  credentialID,
-}: {
-  pageID: string
-  pageType: string
-  credentialID: string
-}) => {
-  return consoleClient.notion.pages.byPageId.byPageType.preview.get({
-    params: { page_id: pageID, page_type: pageType },
-    query: { credential_id: credentialID },
-  })
-}
-
 type WebsiteCrawlProvider = 'firecrawl' | 'jinareader' | 'watercrawl'
 
 type WebsiteCrawlTaskBody = {

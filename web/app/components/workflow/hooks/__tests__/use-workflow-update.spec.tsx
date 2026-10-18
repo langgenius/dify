@@ -21,10 +21,6 @@ vi.mock('@/context/event-emitter', () => ({
 }))
 
 describe('useWorkflowUpdate', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('emits initialized data and only sets a valid viewport', () => {
     const { result } = renderWorkflowHook(() => useWorkflowUpdate())
 
@@ -33,7 +29,7 @@ describe('useWorkflowUpdate', () => {
         nodes: [createNode({ id: 'n1' })],
         edges: [],
         viewport: { x: 10, y: 20, zoom: 0.5 },
-      } as never)
+      })
       result.current.handleUpdateWorkflowCanvas({
         nodes: [],
         edges: [],

@@ -197,6 +197,7 @@
   "newApp.foundResult": "{{count}} nəticə",
   "newApp.foundResults": "{{count}} nəticə",
   "newApp.import": "İdxal et",
+  "newApp.name": "Tətbiqin adı",
   "newApp.nameNotEmpty": "Ad boş ola bilməz",
   "newApp.noIdeaTip": "Fikriniz yoxdur? Şablonlarımıza baxın",
   "newApp.noTemplateFound": "Şablon tapılmadı",

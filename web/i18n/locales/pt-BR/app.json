@@ -197,6 +197,7 @@
   "newApp.foundResult": "{{count}} Resultado",
   "newApp.foundResults": "{{count}} Resultados",
   "newApp.import": "Importação",
+  "newApp.name": "Nome do aplicativo",
   "newApp.nameNotEmpty": "O nome não pode estar vazio",
   "newApp.noIdeaTip": "Sem ideias? Confira nossos modelos",
   "newApp.noTemplateFound": "Nenhum modelo encontrado",

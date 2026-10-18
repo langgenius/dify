@@ -1,12 +1,7 @@
 import type { SnippetDetail } from '@/models/snippet'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import SnippetLayout from '../snippet-layout'
-
-const mockUseDocumentTitle = vi.fn()
-
-vi.mock('@/hooks/use-document-title', () => ({
-  default: (title: string) => mockUseDocumentTitle(title),
-}))
 
 const createSnippet = (overrides: Partial<SnippetDetail> = {}): SnippetDetail => ({
   id: 'snippet-1',
@@ -21,21 +16,23 @@ const createSnippet = (overrides: Partial<SnippetDetail> = {}): SnippetDetail =>
 
 describe('SnippetLayout', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    localStorage.clear()
+    document.title = ''
   })
 
-  it('sets the document title and leaves navigation to the parent layout', () => {
-    render(
-      <SnippetLayout snippetId="snippet-1" snippet={createSnippet()} section="orchestrate">
+  it('updates the document title when snippet metadata loads', () => {
+    const { rerender } = render(
+      <SnippetLayout snippetId="snippet-1" section="orchestrate">
         <div>content</div>
       </SnippetLayout>,
     )
 
-    expect(mockUseDocumentTitle).toHaveBeenCalledWith('Snippet Title')
+    expect(document.title).toBe('snippet.typeLabel - Dify')
+    rerender(
+      <SnippetLayout snippetId="snippet-1" snippet={createSnippet()} section="orchestrate">
+        <div>content</div>
+      </SnippetLayout>,
+    )
+    expect(document.title).toBe('Snippet Title - Dify')
     expect(screen.getByText('content')).toBeInTheDocument()
-    expect(
-      screen.queryByRole('link', { name: 'snippet.sectionOrchestrate' }),
-    ).not.toBeInTheDocument()
   })
 })

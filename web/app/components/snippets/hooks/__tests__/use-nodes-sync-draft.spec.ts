@@ -1,7 +1,8 @@
 import type { InputVar } from '@/models/pipeline'
 import { ORPCError } from '@orpc/client'
-import { act, renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { PipelineInputVarType } from '@/models/pipeline'
+import { createDeferred } from '@/test/deferred'
 import { useSnippetDraftStore } from '../../draft-store'
 import { useNodesSyncDraft } from '../use-nodes-sync-draft'
 
@@ -13,8 +14,6 @@ const mockPostWithKeepalive = vi.fn()
 const mockSyncDraftWorkflow = vi.fn()
 const mockSetDraftUpdatedAt = vi.fn()
 const mockSetSyncWorkflowDraftHash = vi.fn()
-let deferSerialCallbacks = false
-let queuedSerialCallbacks: Array<() => Promise<void> | void> = []
 
 let reactFlowState: {
   getNodes: typeof mockGetNodes
@@ -33,25 +32,7 @@ vi.mock('reactflow', () => ({
 }))
 
 vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
-  useNodesReadOnly: () => {
-    throw new Error('Missing HooksStoreContext.Provider in the tree')
-  },
   useNodesReadOnlyByCanEdit: (canEdit: boolean) => mockUseNodesReadOnlyByCanEdit(canEdit),
-}))
-
-vi.mock('@/app/components/workflow/hooks/use-serial-async-callback', () => ({
-  useSerialAsyncCallback:
-    (fn: (...args: unknown[]) => Promise<void>, checkFn?: () => boolean) =>
-    (...args: unknown[]) => {
-      if (checkFn?.()) return
-
-      if (deferSerialCallbacks) {
-        queuedSerialCallbacks.push(() => fn(...args))
-        return Promise.resolve()
-      }
-
-      return fn(...args)
-    },
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
@@ -96,9 +77,8 @@ const createInputField = (variable: string): InputVar => ({
 
 describe('snippet/use-nodes-sync-draft', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    deferSerialCallbacks = false
-    queuedSerialCallbacks = []
+    vi.resetAllMocks()
+    useSnippetDraftStore.getState().reset()
     reactFlowState = {
       getNodes: mockGetNodes,
       edges: [{ id: 'edge-1', source: 'node-1', target: 'node-2', data: { stable: true } }],
@@ -185,56 +165,6 @@ describe('snippet/use-nodes-sync-draft', () => {
         hash: 'draft-hash',
       },
     })
-    expect(mockUseNodesReadOnlyByCanEdit).toHaveBeenCalledWith(true)
-  })
-
-  it('should keep draft input_fields when the navigation store is reset during route leave', () => {
-    const { result } = renderHook(() => useNodesSyncDraft('snippet-1'))
-
-    act(() => {
-      result.current.syncWorkflowDraftWhenPageClose()
-    })
-
-    expect(mockPostWithKeepalive).toHaveBeenCalledWith(
-      '/api/snippets/snippet-1/workflows/draft',
-      expect.objectContaining({
-        input_fields: [createInputField('topic')],
-      }),
-    )
-  })
-
-  it('should snapshot graph before queued draft sync executes', async () => {
-    deferSerialCallbacks = true
-    const { result } = renderHook(() => useNodesSyncDraft('snippet-1'))
-
-    await act(async () => {
-      await result.current.doSyncWorkflowDraft()
-    })
-
-    mockGetNodes.mockReturnValue([
-      { id: 'late-node', position: { x: 9, y: 9 }, data: { title: 'Late' } },
-    ])
-    reactFlowState.edges = [
-      { id: 'late-edge', source: 'late-node', target: 'late-target', data: { stable: false } },
-    ]
-    reactFlowState.transform = [99, 88, 0.5]
-
-    await act(async () => {
-      await Promise.all(queuedSerialCallbacks.map((run) => run()))
-    })
-
-    expect(mockSyncDraftWorkflow).toHaveBeenCalledWith({
-      params: { snippet_id: 'snippet-1' },
-      body: {
-        graph: {
-          nodes: [{ id: 'node-1', position: { x: 0, y: 0 }, data: { title: 'Start' } }],
-          edges: [{ id: 'edge-1', source: 'node-1', target: 'node-2', data: { stable: true } }],
-          viewport: { x: 12, y: 24, zoom: 1.5 },
-        },
-        input_fields: [createInputField('topic')],
-        hash: 'draft-hash',
-      },
-    })
   })
 
   it('should include the latest graph when syncing input fields', async () => {
@@ -259,40 +189,47 @@ describe('snippet/use-nodes-sync-draft', () => {
     })
   })
 
-  it('should serialize draft sync across hook instances and use the latest returned hash', async () => {
+  it('queues saves across hook instances while preserving captured graphs and advancing the hash', async () => {
+    const firstSave = createDeferred<{ hash: string; updated_at: number }>()
+    mockSyncDraftWorkflow.mockReturnValueOnce(firstSave.promise)
     const { result: firstHook } = renderHook(() => useNodesSyncDraft('snippet-1'))
     const { result: secondHook } = renderHook(() => useNodesSyncDraft('snippet-1'))
+    let first!: ReturnType<typeof firstHook.current.doSyncWorkflowDraft>
+    let second!: ReturnType<typeof secondHook.current.doSyncWorkflowDraft>
+    act(() => {
+      first = firstHook.current.doSyncWorkflowDraft()
+    })
+    await waitFor(() => expect(mockSyncDraftWorkflow).toHaveBeenCalledOnce())
 
-    mockSyncDraftWorkflow
-      .mockResolvedValueOnce({
-        hash: 'hash-after-first-sync',
-        updated_at: 123,
-      })
-      .mockResolvedValueOnce({
-        hash: 'hash-after-second-sync',
-        updated_at: 124,
-      })
-
+    const queuedNode = { id: 'queued-node', position: { x: 2, y: 3 }, data: { title: 'Queued' } }
+    mockGetNodes.mockReturnValue([queuedNode])
+    reactFlowState.edges = []
+    reactFlowState.transform = [20, 30, 1.2]
+    act(() => {
+      second = secondHook.current.doSyncWorkflowDraft()
+    })
+    expect(mockSyncDraftWorkflow).toHaveBeenCalledOnce()
+    // Changes made after enqueueing must not replace the captured graph.
+    mockGetNodes.mockReturnValue([])
+    reactFlowState.transform = [0, 0, 1]
     await act(async () => {
-      await Promise.all([
-        firstHook.current.doSyncWorkflowDraft(),
-        secondHook.current.doSyncWorkflowDraft(),
-      ])
+      firstSave.resolve({ hash: 'hash-after-first', updated_at: 123 })
+      await Promise.all([first, second])
     })
 
     expect(mockSyncDraftWorkflow).toHaveBeenNthCalledWith(1, {
       params: { snippet_id: 'snippet-1' },
-      body: expect.objectContaining({
-        hash: 'draft-hash',
-      }),
+      body: expect.objectContaining({ hash: 'draft-hash' }),
     })
     expect(mockSyncDraftWorkflow).toHaveBeenNthCalledWith(2, {
       params: { snippet_id: 'snippet-1' },
-      body: expect.objectContaining({
-        hash: 'hash-after-first-sync',
-      }),
+      body: {
+        graph: { nodes: [queuedNode], edges: [], viewport: { x: 20, y: 30, zoom: 1.2 } },
+        input_fields: [createInputField('topic')],
+        hash: 'hash-after-first',
+      },
     })
-    expect(workflowStoreState.syncWorkflowDraftHash).toBe('hash-after-second-sync')
+    expect(workflowStoreState.syncWorkflowDraftHash).toBe('next-hash')
   })
 
   it('should send input_fields together with graph on page close', () => {

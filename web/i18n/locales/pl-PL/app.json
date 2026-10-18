@@ -197,6 +197,7 @@
   "newApp.foundResult": "{{count}} Wynik",
   "newApp.foundResults": "{{count}} Wyniki",
   "newApp.import": "Import",
+  "newApp.name": "Nazwa aplikacji",
   "newApp.nameNotEmpty": "Nazwa nie może być pusta",
   "newApp.noIdeaTip": "Nie masz pomysłów? Sprawdź nasze szablony",
   "newApp.noTemplateFound": "Nie znaleziono szablonów",

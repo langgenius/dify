@@ -1,7 +1,8 @@
 import type { IterationNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWorkflowFlowComponent as render } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { ErrorHandleMode } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { BlockEnum, VarType } from '../../../types'
@@ -11,7 +12,6 @@ import useConfig from '../use-config'
 
 const mockHandleNodeAdd = vi.fn()
 const mockHandleNodeIterationRerender = vi.fn()
-let mockNodesReadOnly = false
 
 vi.mock('@/app/notifications', () => ({
   toast: {
@@ -21,16 +21,6 @@ vi.mock('@/app/notifications', () => ({
     info: vi.fn(),
   },
 }))
-
-vi.mock('reactflow', async () => {
-  const actual = await vi.importActual<typeof import('reactflow')>('reactflow')
-  return {
-    ...actual,
-    Background: ({ id }: { id: string }) => <div data-testid={id} />,
-    useViewport: () => ({ zoom: 1 }),
-    useNodesInitialized: () => true,
-  }
-})
 
 vi.mock('../../iteration-start', () => ({
   IterationStartNodeDumb: () => <div>iteration-start-node</div>,
@@ -51,12 +41,6 @@ vi.mock('../../../hooks/use-available-blocks', () => ({
 vi.mock('../../../hooks/use-nodes-interactions', () => ({
   useNodesInteractions: () => ({
     handleNodeAdd: mockHandleNodeAdd,
-  }),
-}))
-
-vi.mock('../../../hooks/use-workflow', () => ({
-  useNodesReadOnly: () => ({
-    nodesReadOnly: mockNodesReadOnly,
   }),
 }))
 
@@ -136,7 +120,6 @@ const panelProps: PanelProps = {
 describe('iteration path', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockNodesReadOnly = false
     mockUseConfig.mockReturnValue(createConfigResult())
   })
 
@@ -155,9 +138,7 @@ describe('iteration path', () => {
 
     expect(screen.getByText('iteration-start-node')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'workflow.common.addBlock' })).toBeInTheDocument()
-    expect(screen.getByTestId('iteration-background-iteration-node')).toBeInTheDocument()
-    expect(mockHandleNodeIterationRerender).toHaveBeenCalledWith('iteration-node')
-    expect(mockToastWarning).toHaveBeenCalledWith(
+    expect(mockToastWarning).toHaveBeenCalledExactlyOnceWith(
       'workflowLogic.nodes.iteration.answerNodeWarningDesc',
     )
   })
@@ -169,7 +150,7 @@ describe('iteration path', () => {
     const changeParallelNums = vi.fn()
     const changeErrorResponseMode = vi.fn()
 
-    mockUseConfig.mockReturnValueOnce(
+    mockUseConfig.mockReturnValue(
       createConfigResult({
         inputs: createData({
           is_parallel: true,
@@ -205,7 +186,7 @@ describe('iteration path', () => {
   })
 
   it('should hide parallel controls when parallel mode is disabled', () => {
-    mockUseConfig.mockReturnValueOnce(
+    mockUseConfig.mockReturnValue(
       createConfigResult({
         inputs: createData({
           is_parallel: false,

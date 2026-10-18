@@ -34,7 +34,7 @@ const createData = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
     name: 'gpt-4o',
     mode: 'chat' as const,
     completion_params: {},
-  } as LLMNodeType['model'],
+  },
   prompt_template: [
     {
       edition_type: EditionType.basic,
@@ -72,10 +72,15 @@ describe('llm/use-single-run-form-params', () => {
 
     mockUseConfigVision.mockReturnValue({
       isVisionModel: false,
-    } as ReturnType<typeof useConfigVision>)
+      handleVisionResolutionEnabledChange: vi.fn(),
+      handleVisionResolutionChange: vi.fn(),
+      handleModelChanged: vi.fn(),
+    })
     mockUseAvailableVarList.mockReturnValue({
       availableVars: [],
-    } as unknown as ReturnType<typeof useAvailableVarList>)
+      availableNodes: [],
+      availableNodesWithParent: [],
+    })
   })
 
   it('filters system variables from single-run inputs in snippet flows', () => {

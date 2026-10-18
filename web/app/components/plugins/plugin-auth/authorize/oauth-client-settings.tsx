@@ -22,7 +22,7 @@ import {
   useSetPluginOAuthCustomClientHook,
 } from '../hooks/use-credential'
 
-export type OAuthClientSettingsProps = {
+type OAuthClientSettingsProps = {
   pluginPayload: PluginPayload
   open?: boolean
   onOpenChange?: (open: boolean) => void

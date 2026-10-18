@@ -1,10 +1,13 @@
 import type { FileEntity } from '../../types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { PreviewMode } from '@/app/components/base/features/types'
 import { TransferMethod } from '@/types/app'
+import { downloadUrl } from '@/utils/download'
 import FileInAttachmentItem from '../file-item'
 
-vi.mock('@/utils/download', () => ({
+vi.mock('@/utils/download', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/utils/download')>()),
   downloadUrl: vi.fn(),
 }))
 
@@ -21,487 +24,182 @@ const createFile = (overrides: Partial<FileEntity> = {}): FileEntity => ({
   ...overrides,
 })
 
+const action = (name: string, fileName = 'document.pdf') =>
+  screen.getByRole('button', { name: `common.operation.${name} ${fileName}` })
+
 describe('FileInAttachmentItem', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+  beforeEach(() => vi.clearAllMocks())
+  afterEach(() => vi.restoreAllMocks())
+
+  it('shows file metadata and only enables the requested actions', () => {
+    render(<FileInAttachmentItem file={createFile()} showDownloadAction={false} />)
+    expect(screen.getByText('document.pdf')).toBeInTheDocument()
+    expect(screen.getByText('pdf')).toBeInTheDocument()
+    expect(screen.getByText('2.00 KB')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /operation.remove/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /operation.download/ })).not.toBeInTheDocument()
   })
 
-  it('should render file name and extension', () => {
-    render(<FileInAttachmentItem file={createFile()} />)
-
-    expect(screen.getByText(/document\.pdf/i))!.toBeInTheDocument()
-    expect(screen.getByText(/^pdf$/i))!.toBeInTheDocument()
-  })
-
-  it('should render file size', () => {
-    render(<FileInAttachmentItem file={createFile({ size: 2048 })} />)
-
-    expect(screen.getByText(/2.00 KB/))!.toBeInTheDocument()
-  })
-
-  it('should render FileTypeIcon for non-image files', () => {
-    const { container } = render(<FileInAttachmentItem file={createFile()} />)
-
-    expect(container.querySelector('svg'))!.toBeInTheDocument()
-  })
-
-  it('should render FileImageRender for image files', () => {
-    render(
+  it('transitions from upload progress to retry and then uploaded state', async () => {
+    const user = userEvent.setup()
+    const onReUpload = vi.fn()
+    const { rerender } = render(
       <FileInAttachmentItem
-        file={createFile({
-          supportFileType: 'image',
-          base64Url: 'data:image/png;base64,abc',
-        })}
+        file={createFile({ progress: 50, uploadedId: undefined })}
+        onReUpload={onReUpload}
       />,
     )
-
-    const img = screen.getByRole('img')
-    expect(img)!.toBeInTheDocument()
-    expect(img)!.toHaveAttribute('src', 'data:image/png;base64,abc')
+    expect(screen.getByRole('progressbar', { name: 'custom.uploading' })).toHaveAttribute(
+      'aria-valuenow',
+      '50',
+    )
+    rerender(
+      <FileInAttachmentItem
+        file={createFile({ progress: -1, uploadedId: undefined })}
+        onReUpload={onReUpload}
+      />,
+    )
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+    await user.click(action('retry'))
+    expect(onReUpload).toHaveBeenCalledExactlyOnceWith('file-1')
+    rerender(<FileInAttachmentItem file={createFile()} onReUpload={onReUpload} />)
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /operation.retry/ })).not.toBeInTheDocument()
   })
 
-  it('should render delete button when showDeleteAction is true', () => {
-    render(<FileInAttachmentItem file={createFile()} showDeleteAction />)
-
-    const buttons = screen.getAllByRole('button')
-    expect(buttons.length).toBeGreaterThanOrEqual(1)
-  })
-
-  it('should not render delete button when showDeleteAction is false', () => {
-    render(<FileInAttachmentItem file={createFile()} showDeleteAction={false} />)
-
-    // With showDeleteAction=false, showDownloadAction defaults to true,
-    // so there should be exactly 1 button (the download button)
-    const buttons = screen.getAllByRole('button')
-    expect(buttons).toHaveLength(1)
-  })
-
-  it('should call onRemove when delete button is clicked', () => {
+  it('removes or downloads the file without opening its new-page preview', async () => {
+    const user = userEvent.setup()
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
     const onRemove = vi.fn()
-    // Disable download to isolate the delete button
     render(
       <FileInAttachmentItem
         file={createFile()}
         showDeleteAction
-        showDownloadAction={false}
         onRemove={onRemove}
+        canPreview
+        previewMode={PreviewMode.NewPage}
       />,
     )
-
-    const deleteBtn = screen.getByRole('button')
-    fireEvent.click(deleteBtn)
-
-    expect(onRemove).toHaveBeenCalledWith('file-1')
+    await user.click(action('remove'))
+    expect(onRemove).toHaveBeenCalledExactlyOnceWith('file-1')
+    await user.click(action('download'))
+    expect(downloadUrl).toHaveBeenCalledExactlyOnceWith({
+      url: 'https://example.com/document.pdf',
+      fileName: 'document.pdf',
+      target: '_blank',
+    })
+    expect(open).not.toHaveBeenCalled()
+    await user.click(screen.getByText('document.pdf'))
+    expect(open).toHaveBeenCalledExactlyOnceWith('https://example.com/document.pdf', '_blank')
   })
 
-  it('should render download button when showDownloadAction is true', () => {
-    render(<FileInAttachmentItem file={createFile()} showDownloadAction />)
-
-    const buttons = screen.getAllByRole('button')
-    expect(buttons.length).toBeGreaterThanOrEqual(1)
-  })
-
-  it('should render progress circle when file is uploading', () => {
-    const { container } = render(
-      <FileInAttachmentItem file={createFile({ progress: 50, uploadedId: undefined })} />,
-    )
-
-    // ProgressCircle renders an SVG with a <circle> and <path> element
-    const svg = container.querySelector('svg')
-    expect(svg)!.toBeInTheDocument()
-    const circle = container.querySelector('circle')
-    expect(circle)!.toBeInTheDocument()
-  })
-
-  it('should render retry button when upload failed', () => {
-    render(<FileInAttachmentItem file={createFile({ progress: -1 })} />)
-
-    const retryButton = screen.getByRole('button', { name: 'common.operation.retry document.pdf' })
-    expect(retryButton)!.toBeInTheDocument()
-  })
-
-  it('should call onReUpload when retry button is clicked', () => {
+  it('retries without opening the attachment preview', async () => {
+    const user = userEvent.setup()
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
     const onReUpload = vi.fn()
-    render(<FileInAttachmentItem file={createFile({ progress: -1 })} onReUpload={onReUpload} />)
-
-    const retryButton = screen.getByRole('button', { name: 'common.operation.retry document.pdf' })
-    fireEvent.click(retryButton)
-
-    expect(onReUpload).toHaveBeenCalledWith('file-1')
-  })
-
-  it('should indicate error state when progress is -1', () => {
-    render(<FileInAttachmentItem file={createFile({ progress: -1 })} />)
-
-    const retryButton = screen.getByRole('button', { name: 'common.operation.retry document.pdf' })
-    expect(retryButton)!.toBeInTheDocument()
-  })
-
-  it('should render eye icon for previewable image files', () => {
     render(
       <FileInAttachmentItem
-        file={createFile({
-          supportFileType: 'image',
-          url: 'https://example.com/img.png',
-        })}
-        canPreview
-      />,
-    )
-
-    // canPreview + image renders an extra button for the eye icon
-    const buttons = screen.getAllByRole('button')
-    expect(buttons.length).toBeGreaterThanOrEqual(2)
-  })
-
-  it('should show image preview when eye icon is clicked', () => {
-    render(
-      <FileInAttachmentItem
-        file={createFile({
-          supportFileType: 'image',
-          url: 'https://example.com/img.png',
-        })}
-        canPreview
-      />,
-    )
-
-    // The eye button is rendered before the download button for image files
-    const buttons = screen.getAllByRole('button')
-    // Click the eye button (the first action button for image preview)
-    fireEvent.click(buttons[0]!)
-
-    // ImagePreview renders a portal with an img element
-    const previewImages = document.querySelectorAll('img')
-    // There should be at least 2 images: the file thumbnail + the preview
-    expect(previewImages.length).toBeGreaterThanOrEqual(2)
-  })
-
-  it('should close image preview when close is clicked', () => {
-    render(
-      <FileInAttachmentItem
-        file={createFile({
-          supportFileType: 'image',
-          url: 'https://example.com/img.png',
-        })}
-        canPreview
-      />,
-    )
-
-    const buttons = screen.getAllByRole('button')
-    fireEvent.click(buttons[0]!)
-
-    // ImagePreview renders through Dialog with class "image-preview-container"
-    const previewContainer = document.querySelector('.image-preview-container')!
-    expect(previewContainer)!.toBeInTheDocument()
-
-    // Close button is the last clickable div with an SVG in the preview container
-    const closeIcon = screen.getByRole('button', { name: 'common.operation.cancel' })
-    fireEvent.click(closeIcon)
-
-    // Preview should be removed
-    // Preview should be removed
-    // Preview should be removed
-    // Preview should be removed
-    // Preview should be removed
-    // Preview should be removed
-    // Preview should be removed
-    // Preview should be removed
-    // Preview should be removed
-    // Preview should be removed
-    // Preview should be removed
-    // Preview should be removed
-    // Preview should be removed
-    // Preview should be removed
-    // Preview should be removed
-    // Preview should be removed
-    // Preview should be removed
-    // Preview should be removed
-    // Preview should be removed
-    // Preview should be removed
-    // Preview should be removed
-    // Preview should be removed
-    // Preview should be removed
-    // Preview should be removed
-    // Preview should be removed
-    // Preview should be removed
-    // Preview should be removed
-    // Preview should be removed
-    // Preview should be removed
-    // Preview should be removed
-    // Preview should be removed
-    // Preview should be removed
-    expect(document.querySelector('.image-preview-container')).not.toBeInTheDocument()
-  })
-
-  it('should call downloadUrl when download button is clicked', async () => {
-    const { downloadUrl } = await import('@/utils/download')
-    render(<FileInAttachmentItem file={createFile()} showDownloadAction />)
-
-    // Download button is the only action button when showDeleteAction is not set
-    const downloadBtn = screen.getByRole('button')
-    fireEvent.click(downloadBtn)
-
-    expect(downloadUrl).toHaveBeenCalledWith(
-      expect.objectContaining({
-        fileName: expect.stringMatching(/document\.pdf/i),
-      }),
-    )
-  })
-
-  it('should open new page when previewMode is NewPage and clicked', () => {
-    const windowOpen = vi.spyOn(window, 'open').mockImplementation(() => null)
-    render(
-      <FileInAttachmentItem
-        file={createFile({ url: 'https://example.com/doc.pdf' })}
+        file={createFile({ progress: -1 })}
+        onReUpload={onReUpload}
         canPreview
         previewMode={PreviewMode.NewPage}
       />,
     )
-
-    // Click the file name text to trigger the row click handler
-    fireEvent.click(screen.getByText(/document\.pdf/i))
-
-    expect(windowOpen).toHaveBeenCalledWith('https://example.com/doc.pdf', '_blank')
-    windowOpen.mockRestore()
+    await user.click(action('retry'))
+    expect(onReUpload).toHaveBeenCalledExactlyOnceWith('file-1')
+    expect(open).not.toHaveBeenCalled()
   })
 
-  it('should fallback to base64Url when url is empty for NewPage preview', () => {
-    const windowOpen = vi.spyOn(window, 'open').mockImplementation(() => null)
+  it.each([
+    { url: 'https://example.com/photo.png', base64Url: undefined },
+    { url: undefined, base64Url: 'data:image/png;base64,YWJj' },
+  ])('opens and dismisses an image preview using $url / $base64Url', async ({ url, base64Url }) => {
+    const user = userEvent.setup()
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
     render(
       <FileInAttachmentItem
-        file={createFile({ url: undefined, base64Url: 'data:image/png;base64,abc' })}
+        file={createFile({
+          name: 'photo.png',
+          type: 'image/png',
+          supportFileType: 'image',
+          url,
+          base64Url,
+        })}
         canPreview
         previewMode={PreviewMode.NewPage}
       />,
     )
-
-    fireEvent.click(screen.getByText(/document\.pdf/i))
-
-    expect(windowOpen).toHaveBeenCalledWith('data:image/png;base64,abc', '_blank')
-    windowOpen.mockRestore()
+    expect(screen.getByRole('img')).toHaveAttribute('src', base64Url || url)
+    await user.click(action('view', 'photo.png'))
+    const dialog = await screen.findByRole('dialog', { name: 'photo.png' })
+    expect(within(dialog).getByRole('img', { name: 'photo.png' })).toHaveAttribute(
+      'src',
+      url || base64Url,
+    )
+    expect(open).not.toHaveBeenCalled()
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
-  it('should open empty string when both url and base64Url are empty for NewPage preview', () => {
-    const windowOpen = vi.spyOn(window, 'open').mockImplementation(() => null)
+  it('uses the local image as a fallback for download and new-page preview', async () => {
+    const user = userEvent.setup()
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    const base64Url = 'data:image/png;base64,YWJj'
     render(
       <FileInAttachmentItem
-        file={createFile({ url: undefined, base64Url: undefined })}
+        file={createFile({ url: undefined, base64Url })}
         canPreview
         previewMode={PreviewMode.NewPage}
       />,
     )
-
-    fireEvent.click(screen.getByText(/document\.pdf/i))
-
-    expect(windowOpen).toHaveBeenCalledWith('', '_blank')
-    windowOpen.mockRestore()
+    await user.click(action('download'))
+    expect(downloadUrl).toHaveBeenCalledExactlyOnceWith({
+      url: base64Url,
+      fileName: 'document.pdf',
+      target: '_blank',
+    })
+    await user.click(screen.getByText('document.pdf'))
+    expect(open).toHaveBeenCalledExactlyOnceWith(base64Url, '_blank')
   })
 
-  it('should not open new page when previewMode is not NewPage', () => {
-    const windowOpen = vi.spyOn(window, 'open').mockImplementation(() => null)
-    render(
+  it.each([undefined, ''])(
+    'does not open or download a missing attachment URL (%s)',
+    async (url) => {
+      const user = userEvent.setup()
+      const open = vi.spyOn(window, 'open').mockReturnValue(null)
+      render(
+        <FileInAttachmentItem
+          file={createFile({ supportFileType: 'image', url, base64Url: url })}
+          canPreview
+          previewMode={PreviewMode.NewPage}
+        />,
+      )
+      expect(action('download')).toBeDisabled()
+      expect(action('view')).toBeDisabled()
+      await user.click(action('download'))
+      await user.click(action('view'))
+      await user.click(screen.getByText('document.pdf'))
+      expect(downloadUrl).not.toHaveBeenCalled()
+      expect(open).not.toHaveBeenCalled()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    },
+  )
+
+  it('does not open a new page when preview is disabled or uses the current page', async () => {
+    const user = userEvent.setup()
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    const { rerender } = render(
+      <FileInAttachmentItem
+        file={createFile()}
+        canPreview={false}
+        previewMode={PreviewMode.NewPage}
+      />,
+    )
+    await user.click(screen.getByText('document.pdf'))
+    rerender(
       <FileInAttachmentItem file={createFile()} canPreview previewMode={PreviewMode.CurrentPage} />,
     )
-
-    fireEvent.click(screen.getByText(/document\.pdf/i))
-
-    expect(windowOpen).not.toHaveBeenCalled()
-    windowOpen.mockRestore()
-  })
-
-  it('should use url for image render fallback when base64Url is empty', () => {
-    render(
-      <FileInAttachmentItem
-        file={createFile({
-          supportFileType: 'image',
-          base64Url: undefined,
-          url: 'https://example.com/img.png',
-        })}
-      />,
-    )
-
-    const img = screen.getByRole('img')
-    expect(img)!.toHaveAttribute('src', 'https://example.com/img.png')
-  })
-
-  it('should render image element even when both urls are empty', () => {
-    render(
-      <FileInAttachmentItem
-        file={createFile({
-          supportFileType: 'image',
-          base64Url: undefined,
-          url: undefined,
-        })}
-      />,
-    )
-
-    const img = screen.getByRole('img')
-    expect(img)!.toBeInTheDocument()
-  })
-
-  it('should not render eye icon when canPreview is false for image files', () => {
-    render(
-      <FileInAttachmentItem
-        file={createFile({
-          supportFileType: 'image',
-          url: 'https://example.com/img.png',
-        })}
-        canPreview={false}
-      />,
-    )
-
-    // Without canPreview, only the download button should render
-    const buttons = screen.getAllByRole('button')
-    expect(buttons).toHaveLength(1)
-  })
-
-  it('should download using base64Url when url is not available', async () => {
-    const { downloadUrl } = await import('@/utils/download')
-    render(
-      <FileInAttachmentItem
-        file={createFile({ url: undefined, base64Url: 'data:application/pdf;base64,abc' })}
-        showDownloadAction
-      />,
-    )
-
-    const downloadBtn = screen.getByRole('button')
-    fireEvent.click(downloadBtn)
-
-    expect(downloadUrl).toHaveBeenCalledWith(
-      expect.objectContaining({
-        url: 'data:application/pdf;base64,abc',
-      }),
-    )
-  })
-
-  it('should not render file size when size is 0', () => {
-    render(<FileInAttachmentItem file={createFile({ size: 0 })} />)
-
-    expect(screen.queryByText(/0B/)).not.toBeInTheDocument()
-  })
-
-  it('should not render extension when ext is empty', () => {
-    render(<FileInAttachmentItem file={createFile({ name: 'noext' })} />)
-
-    // The file name should still show
-    // The file name should still show
-    expect(screen.getByText(/noext/))!.toBeInTheDocument()
-  })
-
-  it('should show image preview with empty url when url is undefined', () => {
-    render(
-      <FileInAttachmentItem
-        file={createFile({
-          supportFileType: 'image',
-          url: undefined,
-          base64Url: undefined,
-        })}
-        canPreview
-      />,
-    )
-
-    const buttons = screen.getAllByRole('button')
-    // Click the eye preview button
-    fireEvent.click(buttons[0]!)
-
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    // setImagePreviewUrl(url || '') = setImagePreviewUrl('')
-    // Empty string is falsy, so preview should NOT render
-    expect(document.querySelector('.image-preview-container')).not.toBeInTheDocument()
-  })
-
-  it('should download with empty url when both url and base64Url are undefined', async () => {
-    const { downloadUrl } = await import('@/utils/download')
-    render(
-      <FileInAttachmentItem
-        file={createFile({ url: undefined, base64Url: undefined })}
-        showDownloadAction
-      />,
-    )
-
-    const downloadBtn = screen.getByRole('button')
-    fireEvent.click(downloadBtn)
-
-    expect(downloadUrl).toHaveBeenCalledWith(
-      expect.objectContaining({
-        url: '',
-      }),
-    )
-  })
-
-  it('should call downloadUrl with empty url when both url and base64Url are falsy', async () => {
-    const { downloadUrl } = await import('@/utils/download')
-    render(
-      <FileInAttachmentItem file={createFile({ url: '', base64Url: '' })} showDownloadAction />,
-    )
-
-    const downloadBtn = screen.getByRole('button')
-    fireEvent.click(downloadBtn)
-
-    expect(downloadUrl).toHaveBeenCalledWith(
-      expect.objectContaining({
-        url: '',
-      }),
-    )
+    await user.click(screen.getByText('document.pdf'))
+    expect(open).not.toHaveBeenCalled()
   })
 })

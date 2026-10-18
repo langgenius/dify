@@ -1,5 +1,6 @@
 import type { VarInInspect } from '@/types/workflow'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { VarType } from '@/app/components/workflow/types'
 import { VarInInspectType } from '@/types/workflow'
@@ -8,9 +9,18 @@ import ValueContent from '../value-content'
 vi.mock(
   '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/schema-editor',
   () => ({
-    default: ({ schema, onUpdate }: { schema: string; onUpdate: (value: string) => void }) => (
+    default: ({
+      schema,
+      onUpdate,
+      readonly,
+    }: {
+      schema: string
+      onUpdate: (value: string) => void
+      readonly?: boolean
+    }) => (
       <textarea
         data-testid="json-editor"
+        readOnly={readonly}
         value={schema}
         onChange={(event) => onUpdate(event.target.value)}
       />
@@ -18,40 +28,8 @@ vi.mock(
   }),
 )
 
-vi.mock('../value-content-sections', () => ({
-  TextEditorSection: ({
-    value,
-    onTextChange,
-  }: {
-    value: string
-    onTextChange: (value: string) => void
-  }) => (
-    <textarea
-      aria-label="value-text-editor"
-      value={value ?? ''}
-      onChange={(event) => onTextChange(event.target.value)}
-    />
-  ),
-  BoolArraySection: ({ onChange }: { onChange: (value: boolean[]) => void }) => (
-    <button onClick={() => onChange([true, true])}>bool-array-editor</button>
-  ),
-  JsonEditorSection: ({
-    json,
-    readonly,
-    onChange,
-  }: {
-    json: string
-    readonly: boolean
-    onChange: (value: string) => void
-  }) => (
-    <textarea
-      data-testid="json-editor"
-      readOnly={readonly}
-      value={json}
-      onChange={(event) => onChange(event.target.value)}
-    />
-  ),
-  FileEditorSection: ({
+vi.mock('@/app/components/base/file-uploader', () => ({
+  FileUploaderInAttachmentWrapper: ({
     onChange,
   }: {
     onChange: (files: Array<Record<string, unknown>>) => void
@@ -73,18 +51,6 @@ vi.mock('../value-content-sections', () => ({
       </button>
     </div>
   ),
-  ErrorMessages: ({
-    parseError,
-    validationError,
-  }: {
-    parseError: Error | null
-    validationError: string
-  }) => (
-    <div>
-      {parseError && <div>{parseError.message}</div>}
-      {validationError && <div>{validationError}</div>}
-    </div>
-  ),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -104,6 +70,12 @@ describe('ValueContent', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
   })
 
   it('should debounce text changes for string variables', async () => {
@@ -128,7 +100,7 @@ describe('ValueContent', () => {
       },
     )
 
-    fireEvent.change(screen.getByLabelText('value-text-editor'), { target: { value: 'updated' } })
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'updated' } })
 
     await waitFor(() => {
       expect(handleValueChange).toHaveBeenCalledWith('var-1', 'updated')
@@ -186,12 +158,34 @@ describe('ValueContent', () => {
       },
     )
 
-    fireEvent.change(screen.getByLabelText('value-text-editor'), { target: { value: '24.5' } })
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '24.5' } })
 
     await waitFor(() => {
       expect(handleValueChange).toHaveBeenCalledWith('var-3', 24.5)
     })
     expect(handleValueChange).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps invalid numeric drafts local and cancels a pending numeric change', async () => {
+    vi.useFakeTimers()
+    const handleValueChange = vi.fn()
+    const { unmount } = renderWorkflowComponent(
+      <ValueContent
+        currentVar={createVar({ value_type: VarType.number, value: 1 })}
+        handleValueChange={handleValueChange}
+        isTruncated={false}
+      />,
+    )
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '12' } })
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '-' } })
+    act(() => vi.advanceTimersByTime(500))
+    expect(screen.getByRole('textbox')).toHaveValue('-')
+    expect(handleValueChange).not.toHaveBeenCalled()
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '-2.5' } })
+    act(() => vi.advanceTimersByTime(500))
+    expect(handleValueChange).toHaveBeenCalledExactlyOnceWith('var-default', -2.5)
+    unmount()
+    vi.useRealTimers()
   })
 
   it('should update boolean values', async () => {
@@ -225,6 +219,7 @@ describe('ValueContent', () => {
   })
 
   it('should not emit changes when the content is truncated', async () => {
+    const user = userEvent.setup()
     const handleValueChange = vi.fn()
 
     renderWorkflowComponent(
@@ -246,14 +241,13 @@ describe('ValueContent', () => {
       },
     )
 
-    fireEvent.change(screen.getByLabelText('value-text-editor'), { target: { value: 'updated' } })
-
-    await waitFor(() => {
-      expect(handleValueChange).not.toHaveBeenCalled()
-    })
+    expect(screen.getByRole('textbox')).toBeDisabled()
+    await user.type(screen.getByRole('textbox'), 'updated')
+    expect(handleValueChange).not.toHaveBeenCalled()
   })
 
   it('should update boolean array values', async () => {
+    const user = userEvent.setup()
     const handleValueChange = vi.fn()
 
     renderWorkflowComponent(
@@ -276,7 +270,7 @@ describe('ValueContent', () => {
       },
     )
 
-    fireEvent.click(screen.getByText('bool-array-editor'))
+    await user.click(screen.getAllByRole('button', { name: 'True' })[1]!)
 
     await waitFor(() => {
       expect(handleValueChange).toHaveBeenCalledWith('var-6', [true, true])
@@ -368,9 +362,7 @@ describe('ValueContent', () => {
 
     fireEvent.click(screen.getByText('file-pending'))
 
-    await waitFor(() => {
-      expect(handleValueChange).not.toHaveBeenCalled()
-    })
+    expect(handleValueChange).not.toHaveBeenCalled()
 
     fireEvent.click(screen.getByText('file-uploaded'))
 
@@ -409,7 +401,7 @@ describe('ValueContent', () => {
         this.callback(
           [
             {
-              borderBoxSize: [{ inlineSize: 20 }],
+              borderBoxSize: [{ inlineSize: 300, blockSize: 20 }],
             } as unknown as ResizeObserverEntry,
           ],
           this as unknown as ResizeObserver,
@@ -421,7 +413,7 @@ describe('ValueContent', () => {
 
     vi.stubGlobal('ResizeObserver', MockResizeObserver as unknown as typeof ResizeObserver)
 
-    renderWorkflowComponent(
+    const { unmount } = renderWorkflowComponent(
       <ValueContent
         currentVar={createVar({
           id: 'var-9',
@@ -464,6 +456,7 @@ describe('ValueContent', () => {
     if (originalResizeObserver) vi.stubGlobal('ResizeObserver', originalResizeObserver)
     else vi.unstubAllGlobals()
 
-    expect(disconnect).not.toHaveBeenCalled()
+    unmount()
+    expect(disconnect).toHaveBeenCalledOnce()
   })
 })

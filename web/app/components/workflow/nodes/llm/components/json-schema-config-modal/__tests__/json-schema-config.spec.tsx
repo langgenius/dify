@@ -38,6 +38,8 @@ vi.mock('@monaco-editor/react', () => {
     loader: { config: vi.fn() },
   }
 })
+beforeEach(() => vi.restoreAllMocks())
+
 const emptySchema = {
   type: Type.object,
   properties: {},
@@ -146,7 +148,7 @@ async function generate(user: ReturnType<typeof userEvent.setup>) {
     }),
   )
 }
-beforeEach(() => vi.restoreAllMocks())
+afterEach(() => vi.restoreAllMocks())
 
 describe('StructureOutput schema sessions', () => {
   it('moves tab focus without activating a different editor', async () => {

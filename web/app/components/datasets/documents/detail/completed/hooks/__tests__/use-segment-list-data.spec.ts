@@ -204,38 +204,6 @@ describe('useSegmentListData', () => {
     mockPathname.current = '/datasets/test/documents/test'
   })
 
-  describe('Initial State', () => {
-    it('should return empty segments initially', () => {
-      const { result } = renderHook(() => useSegmentListData(defaultOptions), {
-        wrapper: createWrapper(),
-      })
-
-      expect(result.current.segments).toEqual([])
-      expect(result.current.isLoadingSegmentList).toBe(false)
-    })
-
-    it('should compute isFullDocMode correctly', () => {
-      mockDocForm.current = ChunkingModeEnum.parentChild
-      mockParentMode.current = 'full-doc'
-
-      const { result } = renderHook(() => useSegmentListData(defaultOptions), {
-        wrapper: createWrapper(),
-      })
-
-      expect(result.current.isFullDocMode).toBe(true)
-    })
-
-    it('should compute isFullDocMode as false for text mode', () => {
-      mockDocForm.current = ChunkingModeEnum.text
-
-      const { result } = renderHook(() => useSegmentListData(defaultOptions), {
-        wrapper: createWrapper(),
-      })
-
-      expect(result.current.isFullDocMode).toBe(false)
-    })
-  })
-
   describe('totalText computation', () => {
     it('should show chunks count when not searching', () => {
       mockSegmentListData.current = {
@@ -355,31 +323,6 @@ describe('useSegmentListData', () => {
   })
 
   describe('refreshChunkListWithStatusChanged', () => {
-    it('should mark the other status lists stale when status is all', async () => {
-      mockEnableSegment.mockResolvedValue({ result: 'success' })
-
-      const { result } = renderHook(
-        () =>
-          useSegmentListData({
-            ...defaultOptions,
-            selectedStatus: 'all',
-          }),
-        {
-          wrapper: createWrapper(),
-        },
-      )
-
-      mockQueryClient.invalidateQueries.mockClear()
-      await act(async () => {
-        await result.current.onChangeSwitch(true, 'seg-1')
-      })
-
-      expectOtherStatusListsMarkedStale()
-      expect(mockQueryClient.invalidateQueries).not.toHaveBeenCalledWith({
-        queryKey: segmentListsKey,
-      })
-    })
-
     it('should invalidate segment list when status is not all', async () => {
       mockEnableSegment.mockResolvedValue({ result: 'success' })
 
@@ -415,7 +358,14 @@ describe('useSegmentListData', () => {
         await result.current.onChangeSwitch(true, 'seg-1')
       })
 
-      expect(mockEnableSegment).toHaveBeenCalled()
+      expect(mockEnableSegment).toHaveBeenCalledWith({
+        params: {
+          dataset_id: 'test-dataset-id',
+          document_id: 'test-document-id',
+          action: 'enable',
+        },
+        query: { segment_id: ['seg-1'] },
+      })
       expect(mockNotify).not.toHaveBeenCalled()
     })
 
@@ -430,7 +380,14 @@ describe('useSegmentListData', () => {
         await result.current.onChangeSwitch(false, 'seg-1')
       })
 
-      expect(mockDisableSegment).toHaveBeenCalled()
+      expect(mockDisableSegment).toHaveBeenCalledWith({
+        params: {
+          dataset_id: 'test-dataset-id',
+          document_id: 'test-document-id',
+          action: 'disable',
+        },
+        query: { segment_id: ['seg-1'] },
+      })
     })
 
     it('should use selectedSegmentIds when segId is empty', async () => {
@@ -498,7 +455,11 @@ describe('useSegmentListData', () => {
         await result.current.onDelete('seg-1')
       })
 
-      expect(mockDeleteSegment).toHaveBeenCalled()
+      expect(mockDeleteSegment).toHaveBeenCalledWith({
+        params: { dataset_id: 'test-dataset-id', document_id: 'test-document-id' },
+        query: { segment_id: ['seg-1'] },
+      })
+      expectSegmentListsRefetched()
       expect(mockNotify).toHaveBeenCalledWith({
         type: 'success',
         message: 'common.actionMsg.modifiedSuccessfully',
@@ -525,8 +486,12 @@ describe('useSegmentListData', () => {
         await result.current.onDelete('')
       })
 
-      // clearSelection is called twice: once in resetList, once after
+      expect(mockDeleteSegment).toHaveBeenCalledWith({
+        params: { dataset_id: 'test-dataset-id', document_id: 'test-document-id' },
+        query: { segment_id: ['seg-1', 'seg-2'] },
+      })
       expect(clearSelection).toHaveBeenCalled()
+      expectSegmentListsRefetched()
     })
 
     it('should notify error on failure', async () => {
@@ -638,7 +603,20 @@ describe('useSegmentListData', () => {
         await result.current.handleUpdateSegment('seg-1', 'updated content', '', ['keyword1'], [])
       })
 
-      expect(mockUpdateSegment).toHaveBeenCalled()
+      expect(mockUpdateSegment).toHaveBeenCalledWith({
+        params: {
+          dataset_id: 'test-dataset-id',
+          document_id: 'test-document-id',
+          segment_id: 'seg-1',
+        },
+        body: {
+          content: 'updated content',
+          keywords: ['keyword1'],
+          attachment_ids: [],
+          summary: '',
+        },
+      })
+      expectOtherStatusListsMarkedStale()
       expect(mockNotify).toHaveBeenCalledWith({
         type: 'success',
         message: 'common.actionMsg.modifiedSuccessfully',
@@ -669,6 +647,16 @@ describe('useSegmentListData', () => {
       })
 
       expect(onCloseSegmentDetail).not.toHaveBeenCalled()
+      expect(mockUpdateSegment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: {
+            content: 'content',
+            attachment_ids: [],
+            summary: 'summary',
+            regenerate_child_chunks: true,
+          },
+        }),
+      )
     })
 
     it('should include attachments in params', async () => {
@@ -756,108 +744,37 @@ describe('useSegmentListData', () => {
   })
 
   describe('Effect: pathname change', () => {
-    it('should reset list when pathname changes', async () => {
+    it('clears selection and reloads when navigating to another document', () => {
       const clearSelection = vi.fn()
-
-      renderHook(
-        () =>
-          useSegmentListData({
-            ...defaultOptions,
-            clearSelection,
-          }),
-        {
-          wrapper: createWrapper(),
-        },
+      const { rerender } = renderHook(
+        () => useSegmentListData({ ...defaultOptions, clearSelection }),
+        { wrapper: createWrapper() },
       )
-
-      // Initial call from effect
-      expect(clearSelection).toHaveBeenCalled()
+      clearSelection.mockClear()
+      mockQueryClient.invalidateQueries.mockClear()
+      mockPathname.current = '/datasets/test/documents/another'
+      rerender()
+      expect(clearSelection).toHaveBeenCalledTimes(1)
       expectSegmentListsRefetched()
     })
   })
 
   describe('Effect: import status', () => {
-    it('should reset list when import status is COMPLETED', () => {
+    it('reloads the list when an in-progress import completes', () => {
       const clearSelection = vi.fn()
-
-      renderHook(
-        () =>
-          useSegmentListData({
-            ...defaultOptions,
-            importStatus: segmentImportStatus.completed,
-            clearSelection,
-          }),
+      const { rerender } = renderHook(
+        ({ importStatus }: { importStatus: SegmentImportStatus }) =>
+          useSegmentListData({ ...defaultOptions, clearSelection, importStatus }),
         {
           wrapper: createWrapper(),
+          initialProps: { importStatus: segmentImportStatus.processing as SegmentImportStatus },
         },
       )
-
-      expect(clearSelection).toHaveBeenCalled()
-    })
-  })
-
-  describe('refreshChunkListDataWithDetailChanged', () => {
-    it('should call correct invalidation for status all', async () => {
-      mockUpdateSegment.mockResolvedValue({ data: createMockSegment() })
-
-      const { result } = renderHook(
-        () =>
-          useSegmentListData({
-            ...defaultOptions,
-            selectedStatus: 'all',
-          }),
-        {
-          wrapper: createWrapper(),
-        },
-      )
-
-      await act(async () => {
-        await result.current.handleUpdateSegment('seg-1', 'content', '', [], [])
-      })
-
-      expectOtherStatusListsMarkedStale()
-    })
-
-    it('should call correct invalidation for status true', async () => {
-      mockUpdateSegment.mockResolvedValue({ data: createMockSegment() })
-
-      const { result } = renderHook(
-        () =>
-          useSegmentListData({
-            ...defaultOptions,
-            selectedStatus: true,
-          }),
-        {
-          wrapper: createWrapper(),
-        },
-      )
-
-      await act(async () => {
-        await result.current.handleUpdateSegment('seg-1', 'content', '', [], [])
-      })
-
-      expectOtherStatusListsMarkedStale()
-    })
-
-    it('should call correct invalidation for status false', async () => {
-      mockUpdateSegment.mockResolvedValue({ data: createMockSegment() })
-
-      const { result } = renderHook(
-        () =>
-          useSegmentListData({
-            ...defaultOptions,
-            selectedStatus: false,
-          }),
-        {
-          wrapper: createWrapper(),
-        },
-      )
-
-      await act(async () => {
-        await result.current.handleUpdateSegment('seg-1', 'content', '', [], [])
-      })
-
-      expectOtherStatusListsMarkedStale()
+      clearSelection.mockClear()
+      mockQueryClient.invalidateQueries.mockClear()
+      rerender({ importStatus: segmentImportStatus.completed })
+      expect(clearSelection).toHaveBeenCalledTimes(1)
+      expectSegmentListsRefetched()
     })
   })
 

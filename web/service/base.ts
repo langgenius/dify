@@ -430,8 +430,10 @@ export const handleStream = (
         }
         buffer += decoder.decode(result.value, { stream: true })
         const lines = buffer.split('\n')
+        buffer = lines.pop() ?? ''
         try {
           lines.forEach((message) => {
+            if (hasError) return
             if (message.startsWith('data: ')) {
               // check if it starts with data:
               try {
@@ -553,7 +555,6 @@ export const handleStream = (
               }
             }
           })
-          buffer = lines[lines.length - 1]!
         } catch (e) {
           onData('', false, {
             conversationId: undefined,

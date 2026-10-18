@@ -2,15 +2,15 @@ import type { ScheduleTriggerNodeType } from '../../types'
 import { BlockEnum } from '../../../../types'
 import { getFormattedExecutionTimes, getNextExecutionTime } from '../execution-time-calculator'
 
-const createHourlyData = (): ScheduleTriggerNodeType =>
-  ({
-    type: BlockEnum.TriggerSchedule,
-    title: 'schedule',
-    mode: 'visual',
-    frequency: 'hourly',
-    timezone: 'Asia/Seoul',
-    visual_config: { on_minute: 0 },
-  }) as ScheduleTriggerNodeType
+const createHourlyData = (): ScheduleTriggerNodeType => ({
+  type: BlockEnum.TriggerSchedule,
+  title: 'schedule',
+  desc: '',
+  mode: 'visual',
+  frequency: 'hourly',
+  timezone: 'Asia/Seoul',
+  visual_config: { on_minute: 0 },
+})
 
 describe('hourly runs across the end of a month', () => {
   afterEach(() => {

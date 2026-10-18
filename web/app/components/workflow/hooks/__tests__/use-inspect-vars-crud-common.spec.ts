@@ -2,8 +2,7 @@ import type { SchemaDefinitionItemResponse } from '@dify/contracts/api/console/s
 import type { VarInInspect } from '@/types/workflow'
 import { act, waitFor } from '@testing-library/react'
 import { createNode } from '../../__tests__/fixtures'
-import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
-import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
+import { renderWorkflowFlowHook } from '../../__tests__/workflow-test-env'
 import { BlockEnum, VarType } from '../../types'
 import { useInspectVarsCrudCommon } from '../use-inspect-vars-crud-common'
 
@@ -27,10 +26,6 @@ const schemaTypeDefinitions: SchemaDefinitionItemResponse[] = [
   },
 ]
 
-vi.mock('reactflow', async () =>
-  (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock(),
-)
-
 vi.mock('@/service/use-workflow', () => ({
   useInvalidateConversationVarValues: () => mockInvalidateConversationVarValues,
   useInvalidateSysVarValues: () => mockInvalidateSysVarValues,
@@ -41,12 +36,19 @@ vi.mock('@/service/use-workflow', () => ({
   useEditInspectorVar: () => ({ mutateAsync: vi.fn() }),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) =>
-  (await import('@/test/console/operation-hooks')).mockConsoleOperationHooks(
-    await importOriginal(),
-    (await import('../../__tests__/service-mock-factory')).createToolOperationRoutes(),
-  ),
-)
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.builtin.get': async () => [],
+      'workspaces.current.tools.api.get': async () => [],
+      'workspaces.current.tools.workflow.get': async () => [],
+      'workspaces.current.tools.mcp.get': async () => [],
+    }),
+  }
+})
 
 vi.mock('@/service/workflow', () => ({
   fetchNodeInspectVars: (...args: unknown[]) => mockFetchNodeInspectVars(...args),
@@ -82,25 +84,26 @@ const createInspectVar = (overrides: Partial<VarInInspect> = {}): VarInInspect =
   ...overrides,
 })
 
+const nodes = [
+  createNode({
+    id: 'node-1',
+    data: {
+      type: BlockEnum.Code,
+      title: 'Code',
+      desc: '',
+      outputs: { answer: { type: VarType.string } },
+    },
+  }),
+]
+
 describe('useInspectVarsCrudCommon', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    resetReactFlowMockState()
-    rfState.nodes = [
-      createNode({
-        id: 'node-1',
-        data: {
-          type: BlockEnum.Code,
-          title: 'Code',
-          desc: '',
-          outputs: { answer: { type: VarType.string } },
-        },
-      }),
-    ]
+    vi.resetAllMocks()
   })
 
   it('invalidates cached system vars without refetching node values for system selectors', async () => {
-    const { result } = renderWorkflowHook(() => useInspectVarsCrudCommon(), {
+    const { result } = renderWorkflowFlowHook(() => useInspectVarsCrudCommon(), {
+      nodes,
       initialStoreState: {
         dataSourceList: [],
       },
@@ -117,7 +120,8 @@ describe('useInspectVarsCrudCommon', () => {
   it('fetches node inspect vars, preserves output values, and marks the node as fetched', async () => {
     mockFetchNodeInspectVars.mockResolvedValue([createInspectVar()])
 
-    const { result, store } = renderWorkflowHook(() => useInspectVarsCrudCommon(), {
+    const { result, store } = renderWorkflowFlowHook(() => useInspectVarsCrudCommon(), {
+      nodes,
       initialStoreState: {
         dataSourceList: [],
         nodesWithInspectVars: [
@@ -161,7 +165,8 @@ describe('useInspectVarsCrudCommon', () => {
   it('deletes all inspect vars, invalidates cached values, and clears edge running state', async () => {
     mockDoDeleteAllInspectorVars.mockResolvedValue(undefined)
 
-    const { result, store } = renderWorkflowHook(() => useInspectVarsCrudCommon(), {
+    const { result, store } = renderWorkflowFlowHook(() => useInspectVarsCrudCommon(), {
+      nodes,
       initialStoreState: {
         nodesWithInspectVars: [
           {
@@ -192,7 +197,7 @@ describe('useInspectVarsCrudCommon', () => {
   it.each(['variable', 'node'] as const)(
     'keeps inspected values when %s deletion fails and removes them only after success',
     async (target) => {
-      const { result, store } = renderWorkflowHook(() => useInspectVarsCrudCommon())
+      const { result, store } = renderWorkflowFlowHook(() => useInspectVarsCrudCommon(), { nodes })
       act(() =>
         result.current.appendNodeInspectVars(
           'node-1',
@@ -220,7 +225,7 @@ describe('useInspectVarsCrudCommon', () => {
   )
 
   it('removes a variable reset with no historical value and preserves neighboring schemas', async () => {
-    const { result, store } = renderWorkflowHook(() => useInspectVarsCrudCommon())
+    const { result, store } = renderWorkflowFlowHook(() => useInspectVarsCrudCommon(), { nodes })
     const neighbor = createInspectVar({ id: 'var-2', name: 'other', schemaType: '' })
     act(() =>
       result.current.appendNodeInspectVars(

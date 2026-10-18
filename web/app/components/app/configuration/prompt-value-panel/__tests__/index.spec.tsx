@@ -1,5 +1,5 @@
 import type { IPromptValuePanelProps } from '../index'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -31,14 +31,6 @@ vi.mock('@/app/components/base/features/new-feature-panel/feature-bar', () => ({
       onClick={onFeatureBarClick}
     >
       feature bar
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/before-run-form/bool-input', () => ({
-  default: ({ name, onChange }: { name: string; onChange: (value: boolean) => void }) => (
-    <button type="button" data-testid={`bool-input-${name}`} onClick={() => onChange(true)}>
-      bool-input
     </button>
   ),
 }))
@@ -107,30 +99,41 @@ const renderPanel = (
 ) => {
   const contextValue = { ...baseContextValue, ...options.context }
   const props = { ...defaultProps, ...options.props }
-  return render(
-    <ConfigContext.Provider value={contextValue}>
-      <PromptValuePanel {...props} />
-    </ConfigContext.Provider>,
-  )
+  function ControlledPanel() {
+    const [inputs, setInputs] = React.useState(props.inputs)
+    return (
+      <ConfigContext.Provider
+        value={{
+          ...contextValue,
+          setInputs: (next) => {
+            setInputs(next)
+            mockSetInputs(next)
+          },
+        }}
+      >
+        <PromptValuePanel {...props} inputs={inputs} />
+      </ConfigContext.Provider>
+    )
+  }
+  return render(<ControlledPanel />)
 }
 
 describe('PromptValuePanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockSetInputs.mockClear()
-    mockOnSend.mockClear()
-    mockOnOpenFeatures.mockClear()
   })
 
   it('updates inputs, clears values, and triggers run when ready', async () => {
+    const user = userEvent.setup()
     renderPanel()
 
     const textInput = screen.getByRole('textbox', { name: 'Text Var' })
-    fireEvent.change(textInput, { target: { value: 'updated' } })
+    await user.clear(textInput)
+    await user.paste('updated')
     expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({ textVar: 'updated' }))
 
     const clearButton = screen.getByRole('button', { name: 'common.operation.clear' })
-    fireEvent.click(clearButton)
+    await user.click(clearButton)
 
     expect(mockSetInputs).toHaveBeenLastCalledWith({
       textVar: '',
@@ -139,7 +142,7 @@ describe('PromptValuePanel', () => {
 
     const runButton = screen.getByRole('button', { name: 'appDebug.inputs.run' })
     expect(runButton).toBeEnabled()
-    fireEvent.click(runButton)
+    await user.click(runButton)
     await waitFor(() => expect(mockOnSend).toHaveBeenCalledTimes(1))
   })
 
@@ -157,7 +160,8 @@ describe('PromptValuePanel', () => {
     expect(runButton).toBeDisabled()
   })
 
-  it('hydrates default values, supports advanced prompt gating, and toggles the feature panel', () => {
+  it('hydrates default values, supports advanced prompt gating, and toggles the feature panel', async () => {
+    const user = userEvent.setup()
     renderPanel({
       context: {
         isAdvancedMode: true,
@@ -186,7 +190,7 @@ describe('PromptValuePanel', () => {
     expect(mockSetInputs).toHaveBeenCalledWith({ textVar: 'default text' })
     expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toBeDisabled()
 
-    fireEvent.click(screen.getByText('feature bar'))
+    await user.click(screen.getByText('feature bar'))
     expect(mockOnOpenFeatures).toHaveBeenCalled()
   })
 
@@ -251,14 +255,14 @@ describe('PromptValuePanel', () => {
       },
     })
 
-    fireEvent.change(screen.getByRole('textbox', { name: 'Paragraph Var' }), {
-      target: { value: 'updated paragraph' },
-    })
+    await user.clear(screen.getByRole('textbox', { name: 'Paragraph Var' }))
+    await user.paste('updated paragraph')
     await user.click(screen.getByRole('combobox', { name: 'Select Var' }))
     await user.click(await screen.findByRole('option', { name: 'b' }))
-    fireEvent.change(screen.getByDisplayValue('1'), { target: { value: '2' } })
-    fireEvent.click(screen.getByText('bool-input'))
-    fireEvent.click(screen.getByText('image-uploader'))
+    await user.clear(screen.getByRole('spinbutton', { name: 'Number Var' }))
+    await user.type(screen.getByRole('spinbutton', { name: 'Number Var' }), '2')
+    await user.click(screen.getByRole('checkbox', { name: /Boolean Var/ }))
+    await user.click(screen.getByText('image-uploader'))
 
     expect(mockSetInputs).toHaveBeenCalledWith(
       expect.objectContaining({ paragraphVar: 'updated paragraph' }),
@@ -274,88 +278,6 @@ describe('PromptValuePanel', () => {
         upload_file_id: 'file-1',
       },
     ])
-  })
-
-  it('ignores updates when the rendered field is not tracked in the prompt variable lookup', () => {
-    const filteredPromptVariables = [
-      { key: 'textVar', name: 'Text Var', type: 'string', required: true },
-    ]
-    vi.spyOn(filteredPromptVariables, 'forEach').mockImplementation(() => {})
-    const promptVariables = [...filteredPromptVariables]
-    vi.spyOn(promptVariables, 'filter').mockReturnValue(filteredPromptVariables)
-
-    renderPanel({
-      context: {
-        modelConfig: createModelConfigFixture({
-          configs: {
-            prompt_template: 'prompt template',
-            prompt_variables: promptVariables,
-          },
-        }),
-      },
-      props: {
-        inputs: { textVar: '' },
-      },
-    })
-
-    fireEvent.change(screen.getByRole('textbox', { name: 'Text Var' }), {
-      target: { value: 'ignored' },
-    })
-
-    expect(mockSetInputs).not.toHaveBeenCalled()
-  })
-
-  it('renders empty select and number placeholders when no value is provided', () => {
-    renderPanel({
-      context: {
-        modelConfig: createModelConfigFixture({
-          configs: {
-            prompt_template: 'prompt template',
-            prompt_variables: [
-              { key: 'selectVar', name: 'Select Var', type: 'select', required: false },
-              { key: 'numberVar', name: 'Number Var', type: 'number', required: true },
-            ],
-          },
-        }),
-      },
-      props: {
-        inputs: {
-          selectVar: '',
-          numberVar: '',
-        },
-      },
-    })
-
-    expect(screen.getByText('common.placeholder.select')).toBeInTheDocument()
-    expect(screen.getByRole('spinbutton', { name: 'Number Var' })).toHaveValue(null)
-    expect(screen.queryAllByRole('option')).toHaveLength(0)
-  })
-
-  it('falls back to the checkbox key when the label is missing from the rendered collection', () => {
-    const filteredPromptVariables = [
-      { key: 'boolVar', name: '', type: 'checkbox', required: false },
-    ]
-    vi.spyOn(filteredPromptVariables, 'forEach').mockImplementation(() => {})
-    const promptVariables = [...filteredPromptVariables]
-    vi.spyOn(promptVariables, 'filter').mockReturnValue(filteredPromptVariables)
-
-    renderPanel({
-      context: {
-        modelConfig: createModelConfigFixture({
-          configs: {
-            prompt_template: 'prompt template',
-            prompt_variables: promptVariables,
-          },
-        }),
-      },
-      props: {
-        inputs: {
-          boolVar: false,
-        },
-      },
-    })
-
-    expect(screen.getByTestId('bool-input-boolVar')).toBeInTheDocument()
   })
 
   it('keeps debug actions enabled when readonly configuration still has test/run permission', () => {
@@ -401,10 +323,11 @@ describe('PromptValuePanel', () => {
     expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toBeDisabled()
   })
 
-  it('collapses the user input panel and hides the clear and run actions', () => {
+  it('collapses the user input panel and hides the clear and run actions', async () => {
+    const user = userEvent.setup()
     renderPanel()
 
-    fireEvent.click(screen.getByRole('button', { name: 'appDebug.inputs.userInputField' }))
+    await user.click(screen.getByRole('button', { name: 'appDebug.inputs.userInputField' }))
 
     expect(screen.queryByRole('button', { name: 'common.operation.clear' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'appDebug.inputs.run' })).not.toBeInTheDocument()

@@ -42,6 +42,7 @@ vi.mock('@/service/console', async (importOriginal) => {
 })
 
 beforeEach(() => {
+  vi.resetAllMocks()
   requests.detail.mockImplementation(async ({ params }: { params: { snippet_id: string } }) => ({
     id: params.snippet_id,
     name: 'Tone Rewriter',

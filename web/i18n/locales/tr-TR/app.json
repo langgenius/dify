@@ -197,6 +197,7 @@
   "newApp.foundResult": "{{count}} Sonuç",
   "newApp.foundResults": "{{count}} Sonuç",
   "newApp.import": "İçe Aktar",
+  "newApp.name": "Uygulama adı",
   "newApp.nameNotEmpty": "İsim boş olamaz",
   "newApp.noIdeaTip": "Fikriniz yok mu? Şablonlarımıza göz atın",
   "newApp.noTemplateFound": "Şablon bulunamadı",

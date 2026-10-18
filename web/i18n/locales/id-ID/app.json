@@ -197,6 +197,7 @@
   "newApp.foundResult": "Hasil {{count}}",
   "newApp.foundResults": "Hasil {{count}}",
   "newApp.import": "Mengimpor",
+  "newApp.name": "Nama aplikasi",
   "newApp.nameNotEmpty": "Nama tidak boleh kosong",
   "newApp.noIdeaTip": "Tidak ada ide? Lihat templat kami",
   "newApp.noTemplateFound": "Tidak ada templat yang ditemukan",

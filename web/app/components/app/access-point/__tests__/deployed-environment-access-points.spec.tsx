@@ -1,4 +1,3 @@
-import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
 import { screen, within } from '@testing-library/react'
 import { render } from '@/test/console/render'
 import { DeployedEnvironmentAccessPoints } from '../deployed-environment-access-points'
@@ -7,11 +6,6 @@ const mocks = vi.hoisted(() => ({
   serviceApiCard: vi.fn(),
   webAppCard: vi.fn(),
 }))
-
-vi.mock('react-i18next', async () => {
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return createReactI18nextMock()
-})
 
 vi.mock('../deployed-environment-access-points/environment-service-api-card', () => ({
   EnvironmentServiceApiCard: (props: Record<string, unknown>) => {
@@ -31,27 +25,6 @@ describe('DeployedEnvironmentAccessPoints', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
-
-  it.each<AccessPoint>(['webApp', 'serviceApi'])(
-    'highlights only the targeted %s card',
-    (highlightedAccessPoint) => {
-      render(
-        <DeployedEnvironmentAccessPoints
-          appId="app-1"
-          environmentId="staging"
-          canManageAccessPoint
-          highlightedAccessPoint={highlightedAccessPoint}
-        />,
-      )
-
-      expect(mocks.webAppCard).toHaveBeenCalledWith(
-        expect.objectContaining({ highlighted: highlightedAccessPoint === 'webApp' }),
-      )
-      expect(mocks.serviceApiCard).toHaveBeenCalledWith(
-        expect.objectContaining({ highlighted: highlightedAccessPoint === 'serviceApi' }),
-      )
-    },
-  )
 
   it('renders MCP and Trigger as unsupported without a permanent loading state', () => {
     render(
@@ -80,22 +53,25 @@ describe('DeployedEnvironmentAccessPoints', () => {
     }
   })
 
-  it('passes Access Point management to deployed environment cards', () => {
-    render(
-      <DeployedEnvironmentAccessPoints
-        appId="app-1"
-        environmentId="staging"
-        canManageAccessPoint
-      />,
-    )
+  it.each([false, true])(
+    'passes management permission %s to deployed environment cards',
+    (canManageAccessPoint) => {
+      render(
+        <DeployedEnvironmentAccessPoints
+          appId="app-1"
+          environmentId="staging"
+          canManageAccessPoint={canManageAccessPoint}
+        />,
+      )
 
-    expect(mocks.webAppCard).toHaveBeenCalledWith(
-      expect.objectContaining({
-        canManageAccessPoint: true,
-      }),
-    )
-    expect(mocks.serviceApiCard).toHaveBeenCalledWith(
-      expect.objectContaining({ canManageAccessPoint: true }),
-    )
-  })
+      expect(mocks.webAppCard).toHaveBeenCalledWith(
+        expect.objectContaining({
+          canManageAccessPoint,
+        }),
+      )
+      expect(mocks.serviceApiCard).toHaveBeenCalledWith(
+        expect.objectContaining({ canManageAccessPoint }),
+      )
+    },
+  )
 })

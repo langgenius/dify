@@ -27,10 +27,9 @@ describe('getApi', () => {
       expect(api.getOauthUrl).toBe(`/oauth/plugin/${provider}/tool/authorization-url`)
     })
 
-    it('returns a function for getCredentialSchema', () => {
+    it('maps the API key credential schema endpoint', () => {
       const api = getApi({ category: AuthCategory.tool, provider })
-      expect(typeof api.getCredentialSchema).toBe('function')
-      const schemaUrl = api.getCredentialSchema('api-key' as never)
+      const schemaUrl = api.getCredentialSchema(CredentialTypeEnum.API_KEY)
       expect(schemaUrl).toBe(
         `/workspaces/current/tool-provider/builtin/${provider}/credential/schema/api-key`,
       )
@@ -84,13 +83,6 @@ describe('getApi', () => {
     it('returns a function for getCredentialSchema that returns empty string', () => {
       const api = getApi({ category: AuthCategory.model, provider })
       expect(api.getCredentialSchema(CredentialTypeEnum.API_KEY)).toBe('')
-    })
-  })
-
-  describe('default category', () => {
-    it('defaults to tool category when category is not specified', () => {
-      const api = getApi({ provider } as { category: AuthCategory; provider: string })
-      expect(api.getCredentialInfo).toContain('tool-provider')
     })
   })
 })

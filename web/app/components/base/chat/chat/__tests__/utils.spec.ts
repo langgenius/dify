@@ -2,6 +2,14 @@ import type { InputForm } from '../type'
 import { InputVarType } from '@/app/components/workflow/types'
 import { getProcessedInputs, processInputFileFromServer, processOpeningStatement } from '../utils'
 
+const inputForm = (variable: string, type: InputVarType, label = variable): InputForm => ({
+  variable,
+  type,
+  label,
+  required: false,
+  hide: false,
+})
+
 describe('chat/chat/utils.ts', () => {
   describe('processOpeningStatement', () => {
     it('returns empty string if openingStatement is falsy', () => {
@@ -15,8 +23,8 @@ describe('chat/chat/utils.ts', () => {
 
     it('replaces variables with labels when input value is not available but form has variable', () => {
       const result = processOpeningStatement('Hello {{user_name}}', {}, [
-        { variable: 'user_name', label: 'Name Label', type: InputVarType.textInput },
-      ] as InputForm[])
+        inputForm('user_name', InputVarType.textInput, 'Name Label'),
+      ])
       expect(result).toBe('Hello {{Name Label}}')
     })
 
@@ -48,23 +56,28 @@ describe('chat/chat/utils.ts', () => {
     it('processes checkbox input types to boolean', () => {
       const inputs = { terms: 'true', conds: null }
       const inputsForm = [
-        { variable: 'terms', type: InputVarType.checkbox as string },
-        { variable: 'conds', type: InputVarType.checkbox as string },
+        inputForm('terms', InputVarType.checkbox),
+        inputForm('conds', InputVarType.checkbox),
       ]
-      const result = getProcessedInputs(inputs, inputsForm as InputForm[])
+      const result = getProcessedInputs(inputs, inputsForm)
       expect(result).toEqual({ terms: true, conds: false })
     })
 
     it('ignores null values', () => {
       const inputs = { test: null }
-      const inputsForm = [{ variable: 'test', type: InputVarType.textInput as string }]
-      const result = getProcessedInputs(inputs, inputsForm as InputForm[])
+      const inputsForm = [inputForm('test', InputVarType.textInput)]
+      const result = getProcessedInputs(inputs, inputsForm)
       expect(result).toEqual({ test: null })
     })
 
     it('processes singleFile using transfer_method logic', () => {
       const inputs = {
-        file1: { transfer_method: 'local_file', url: '1' },
+        file1: {
+          type: 'document',
+          transfer_method: 'local_file',
+          remote_url: 'https://example.com/report.pdf',
+          related_id: 'server-1',
+        },
         file2: {
           id: 'file2',
           uploadedId: 'upload-2',
@@ -74,11 +87,16 @@ describe('chat/chat/utils.ts', () => {
         },
       }
       const inputsForm = [
-        { variable: 'file1', type: InputVarType.singleFile as string },
-        { variable: 'file2', type: InputVarType.singleFile as string },
+        inputForm('file1', InputVarType.singleFile),
+        inputForm('file2', InputVarType.singleFile),
       ]
-      const result = getProcessedInputs(inputs, inputsForm as InputForm[])
-      expect(result.file1).toHaveProperty('transfer_method', 'local_file')
+      const result = getProcessedInputs(inputs, inputsForm)
+      expect(result.file1).toEqual({
+        type: 'document',
+        transfer_method: 'local_file',
+        url: 'https://example.com/report.pdf',
+        upload_file_id: 'server-1',
+      })
       expect(result.file2).toEqual({
         type: 'document',
         transfer_method: 'local_file',
@@ -89,7 +107,14 @@ describe('chat/chat/utils.ts', () => {
 
     it('processes multiFiles using transfer_method logic', () => {
       const inputs = {
-        files1: [{ transfer_method: 'local_file', url: '1' }],
+        files1: [
+          {
+            type: 'document',
+            transfer_method: 'local_file',
+            remote_url: 'https://example.com/report.pdf',
+            related_id: 'server-1',
+          },
+        ],
         files2: [
           {
             id: 'file2',
@@ -101,11 +126,18 @@ describe('chat/chat/utils.ts', () => {
         ],
       }
       const inputsForm = [
-        { variable: 'files1', type: InputVarType.multiFiles as string },
-        { variable: 'files2', type: InputVarType.multiFiles as string },
+        inputForm('files1', InputVarType.multiFiles),
+        inputForm('files2', InputVarType.multiFiles),
       ]
-      const result = getProcessedInputs(inputs, inputsForm as InputForm[])
-      expect(result.files1[0]).toHaveProperty('transfer_method', 'local_file')
+      const result = getProcessedInputs(inputs, inputsForm)
+      expect(result.files1).toEqual([
+        {
+          type: 'document',
+          transfer_method: 'local_file',
+          url: 'https://example.com/report.pdf',
+          upload_file_id: 'server-1',
+        },
+      ])
       expect(result.files2[0]).toEqual({
         type: 'document',
         transfer_method: 'local_file',
@@ -118,8 +150,8 @@ describe('chat/chat/utils.ts', () => {
       const inputs = {
         json1: '{"key": "value"}',
       }
-      const inputsForm = [{ variable: 'json1', type: InputVarType.jsonObject as string }]
-      const result = getProcessedInputs(inputs, inputsForm as InputForm[])
+      const inputsForm = [inputForm('json1', InputVarType.jsonObject)]
+      const result = getProcessedInputs(inputs, inputsForm)
       expect(result.json1).toEqual({ key: 'value' })
     })
 
@@ -130,11 +162,11 @@ describe('chat/chat/utils.ts', () => {
         jsonPlainObj: { key: 'value' },
       }
       const inputsForm = [
-        { variable: 'jsonInvalid', type: InputVarType.jsonObject as string },
-        { variable: 'jsonArray', type: InputVarType.jsonObject as string },
-        { variable: 'jsonPlainObj', type: InputVarType.jsonObject as string },
+        inputForm('jsonInvalid', InputVarType.jsonObject),
+        inputForm('jsonArray', InputVarType.jsonObject),
+        inputForm('jsonPlainObj', InputVarType.jsonObject),
       ]
-      const result = getProcessedInputs(inputs, inputsForm as InputForm[])
+      const result = getProcessedInputs(inputs, inputsForm)
       expect(result.jsonInvalid).toBe('invalid json')
       expect(result.jsonArray).toBe('["a", "b"]')
       expect(result.jsonPlainObj).toEqual({ key: 'value' })

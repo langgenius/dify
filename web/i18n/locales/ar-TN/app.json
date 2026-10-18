@@ -197,6 +197,7 @@
   "newApp.foundResult": "{{count}} نتيجة",
   "newApp.foundResults": "{{count}} نتائج",
   "newApp.import": "استيراد",
+  "newApp.name": "اسم التطبيق",
   "newApp.nameNotEmpty": "لا يمكن أن يكون الاسم فارغًا",
   "newApp.noIdeaTip": "لا توجد أفكار؟ تحقق من قوالبنا",
   "newApp.noTemplateFound": "لم يتم العثور على قوالب",

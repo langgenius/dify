@@ -216,7 +216,9 @@ describe('reasoning-config-form helpers', () => {
     )
   })
 
-  it('provides label helpers', () => {
-    expect(getFieldTitle({ en_US: 'Prompt', zh_Hans: 'Prompt' }, 'en_US')).toBe('Prompt')
+  it('uses the selected language and falls back to English for missing translations', () => {
+    const labels = { en_US: 'Prompt', zh_Hans: '提示词' }
+    expect(getFieldTitle(labels, 'zh_Hans')).toBe('提示词')
+    expect(getFieldTitle(labels, 'de_DE')).toBe('Prompt')
   })
 })

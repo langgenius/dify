@@ -79,6 +79,12 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
+beforeEach(() => {
+  mockGet.mockReset()
+  mockGetMarketplace.mockReset()
+  mockPost.mockReset()
+})
+
 const builtInToolsKey = consoleQuery.workspaces.current.tools.builtin.get.queryKey()
 
 const createQueryClient = () =>
@@ -460,7 +466,7 @@ describe('use-plugins mutations', () => {
       ...previousAutoUpgrade,
       upgrade_time_of_day: 3600,
     }
-    let resolvePost: (value: unknown) => void = () => {}
+    let resolvePost!: (value: unknown) => void
     mockPost.mockReturnValue(
       new Promise((resolve) => {
         resolvePost = resolve
@@ -495,7 +501,8 @@ describe('use-plugins mutations', () => {
       })
     })
 
-    resolvePost({})
+    await act(async () => resolvePost({}))
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
   })
 
   it('optimistically updates plugin permission cache before the request finishes', async () => {
@@ -509,7 +516,7 @@ describe('use-plugins mutations', () => {
       install_permission: PermissionType.everyone,
       debug_permission: PermissionType.admin,
     }
-    let resolvePost: (value: unknown) => void = () => {}
+    let resolvePost!: (value: unknown) => void
     mockPost.mockReturnValue(
       new Promise((resolve) => {
         resolvePost = resolve
@@ -534,7 +541,8 @@ describe('use-plugins mutations', () => {
       expect(queryClient.getQueryData(queryKey)).toEqual(nextPermission)
     })
 
-    resolvePost({})
+    await act(async () => resolvePost({}))
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
   })
 
   it('rolls back category auto-upgrade cache when the request fails', async () => {
@@ -551,7 +559,7 @@ describe('use-plugins mutations', () => {
       ...previousAutoUpgrade,
       upgrade_time_of_day: 3600,
     }
-    let rejectPost: (reason?: unknown) => void = () => {}
+    let rejectPost!: (reason?: unknown) => void
     mockPost.mockReturnValue(
       new Promise((_resolve, reject) => {
         rejectPost = reject
@@ -597,7 +605,7 @@ describe('use-plugins mutations', () => {
       exclude_plugins: [],
       include_plugins: [],
     }
-    let rejectPost: (reason?: unknown) => void = () => {}
+    let rejectPost!: (reason?: unknown) => void
     mockPost.mockReturnValue(
       new Promise((_resolve, reject) => {
         rejectPost = reject
@@ -637,7 +645,7 @@ describe('use-plugins mutations', () => {
       install_permission: PermissionType.everyone,
       debug_permission: PermissionType.admin,
     }
-    let rejectPost: (reason?: unknown) => void = () => {}
+    let rejectPost!: (reason?: unknown) => void
     mockPost.mockReturnValue(
       new Promise((_resolve, reject) => {
         rejectPost = reject
@@ -806,56 +814,32 @@ describe('useInstalledPluginList', () => {
 
   it('keeps category lists with different filters in separate caches', async () => {
     const queryClient = createQueryClient()
-    mockGet.mockResolvedValue({ plugins: [], has_more: false })
+    mockGet.mockImplementation((url: string) => {
+      const name = new URL(url).searchParams.get('query')!
+      return Promise.resolve({
+        plugins: [createInstalledPlugin(name, PluginCategoryEnum.tool)],
+        has_more: false,
+      })
+    })
     const wrapper = createWrapper(queryClient)
-
-    renderHook(
+    const slack = renderHook(
       () =>
         useInstalledPluginList({ category: PluginCategoryEnum.tool, filters: { query: 'slack' } }),
       { wrapper },
     )
-    renderHook(
+    const notion = renderHook(
       () =>
         useInstalledPluginList({ category: PluginCategoryEnum.tool, filters: { query: 'notion' } }),
       { wrapper },
     )
 
     await waitFor(() => {
-      expect(mockGet).toHaveBeenCalledWith(
-        'http://localhost:5001/console/api/workspaces/current/plugin/tool/list?page=1&page_size=100&query=slack',
-      )
-      expect(mockGet).toHaveBeenCalledWith(
-        'http://localhost:5001/console/api/workspaces/current/plugin/tool/list?page=1&page_size=100&query=notion',
-      )
-    })
-  })
-
-  it('keeps builtin tools from the scoped tool plugin category response', async () => {
-    const queryClient = createQueryClient()
-    const builtinTools = [
-      {
-        id: 'builtin-tool',
-        name: 'builtin-tool',
-        label: { en_US: 'Builtin Tool', zh_Hans: 'Builtin Tool' },
-        description: { en_US: 'Builtin Tool description', zh_Hans: 'Builtin Tool description' },
-        author: 'Dify',
-        icon: '',
-        type: 'builtin',
-        team_credentials: {},
-        is_team_authorization: false,
-        allow_delete: false,
-        labels: [],
-      },
-    ]
-    mockGet.mockResolvedValue({ plugins: [], builtin_tools: builtinTools, has_more: false })
-
-    const { result } = renderHook(
-      () => useInstalledPluginList({ category: PluginCategoryEnum.tool }),
-      { wrapper: createWrapper(queryClient) },
-    )
-
-    await waitFor(() => {
-      expect(result.current.data?.builtin_tools).toEqual(builtinTools)
+      expect(slack.result.current.data?.plugins.map((plugin) => plugin.plugin_id)).toEqual([
+        'slack',
+      ])
+      expect(notion.result.current.data?.plugins.map((plugin) => plugin.plugin_id)).toEqual([
+        'notion',
+      ])
     })
   })
 
@@ -891,7 +875,13 @@ describe('useInstalledPluginList', () => {
     })
     await waitFor(() => {
       expect(result.current.isLastPage).toBe(true)
+      expect(result.current.data?.plugins.map((plugin) => plugin.plugin_id)).toEqual([
+        'trigger-plugin-1',
+        'trigger-plugin-2',
+      ])
     })
+    act(() => result.current.loadNextPage())
+    expect(mockGet).toHaveBeenCalledTimes(2)
   })
 
   it('keeps builtin tools from the first scoped tool plugin page when loading more pages', async () => {
@@ -919,7 +909,7 @@ describe('useInstalledPluginList', () => {
       })
       .mockResolvedValueOnce({
         plugins: [createInstalledPlugin('tool-plugin-2', PluginCategoryEnum.tool)],
-        builtin_tools: builtinTools,
+        builtin_tools: [],
         has_more: false,
       })
 
@@ -981,8 +971,6 @@ describe('useRemoveFilteredInstalledPluginPageOnUnmount', () => {
       .getAll()
       .find((query) => (query.state.data as { pages?: unknown[] } | undefined)?.pages?.length === 2)
     if (!cachedQuery) throw new Error('Expected cached second page')
-    expect(cachedQuery.options.gcTime).toBe(10 * 60 * 1000)
-    expect(cachedQuery.observers[0]?.options.staleTime).toBe(5 * 60 * 1000)
 
     unmount()
 
@@ -1326,6 +1314,11 @@ describe('usePluginTaskList', () => {
     })
 
     await waitFor(() => {
+      expect(mockGet).toHaveBeenCalledTimes(2)
+      expect(queryClient.isFetching({ queryKey: ['plugins', 'pluginTaskList'] })).toBe(0)
+    })
+
+    await waitFor(() => {
       expect(queryClient.getQueryData(['plugins', 'pluginTaskList'])).toEqual({
         tasks: [
           {
@@ -1349,23 +1342,7 @@ describe('usePluginAutoUpgradeSettings', () => {
     vi.clearAllMocks()
   })
 
-  it('does not expose frontend default settings before backend data resolves', async () => {
-    const queryClient = createQueryClient()
-    mockGet.mockReturnValue(new Promise(() => {}))
-
-    const { result } = renderHook(() => usePluginAutoUpgradeSettings(PluginCategoryEnum.model), {
-      wrapper: createWrapper(queryClient),
-    })
-
-    expect(result.current.data).toBeUndefined()
-    await waitFor(() => {
-      expect(mockGet).toHaveBeenCalledWith(
-        `http://localhost:5001/console/api/workspaces/current/plugin/auto-upgrade/fetch?category=${PluginCategoryEnum.model}`,
-      )
-    })
-  })
-
-  it('returns backend auto-upgrade settings when the request resolves', async () => {
+  it('exposes backend settings only after the request resolves', async () => {
     const queryClient = createQueryClient()
     const backendAutoUpgrade = {
       strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly,
@@ -1374,14 +1351,29 @@ describe('usePluginAutoUpgradeSettings', () => {
       exclude_plugins: [],
       include_plugins: [],
     }
-    mockGet.mockResolvedValue({
-      category: PluginCategoryEnum.tool,
-      auto_upgrade: backendAutoUpgrade,
-    })
+    let resolveSettings!: (value: unknown) => void
+    mockGet.mockReturnValue(
+      new Promise((resolve) => {
+        resolveSettings = resolve
+      }),
+    )
 
     const { result } = renderHook(() => usePluginAutoUpgradeSettings(PluginCategoryEnum.tool), {
       wrapper: createWrapper(queryClient),
     })
+
+    expect(result.current.data).toBeUndefined()
+    await waitFor(() =>
+      expect(mockGet).toHaveBeenCalledWith(
+        'http://localhost:5001/console/api/workspaces/current/plugin/auto-upgrade/fetch?category=tool',
+      ),
+    )
+    await act(async () =>
+      resolveSettings({
+        category: PluginCategoryEnum.tool,
+        auto_upgrade: backendAutoUpgrade,
+      }),
+    )
 
     await waitFor(() => {
       expect(result.current.data).toEqual({

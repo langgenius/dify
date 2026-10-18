@@ -51,25 +51,34 @@ describe('Actions', () => {
     await waitFor(() => expect(button).not.toHaveAttribute('aria-disabled', 'true'))
   })
 
-  it('submits through the supplied form', async () => {
+  it('lets custom actions submit the form and observe pending state', async () => {
     const user = userEvent.setup()
-    const onSubmit = vi.fn(async () => {})
-    render(<TestForm onSubmit={onSubmit} />)
-    await user.click(screen.getByRole('button', { name: 'common.operation.submit' }))
-    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce())
-  })
-
-  it('provides form state to custom actions', () => {
+    let finish!: () => void
+    const onSubmit = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve
+        }),
+    )
     render(
       <TestForm
-        CustomActions={({ isSubmitting, canSubmit }) => (
-          <div>{`custom-${String(isSubmitting)}-${String(canSubmit)}`}</div>
+        onSubmit={onSubmit}
+        CustomActions={({ form, isSubmitting, canSubmit }) => (
+          <button
+            type="button"
+            disabled={!canSubmit || isSubmitting}
+            onClick={() => form.handleSubmit()}
+          >
+            {isSubmitting ? 'Saving' : 'Save'}
+          </button>
         )}
       />,
     )
-    expect(
-      screen.queryByRole('button', { name: 'common.operation.submit' }),
-    ).not.toBeInTheDocument()
-    expect(screen.getByText('custom-false-true')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    expect(await screen.findByRole('button', { name: 'Saving' })).toBeDisabled()
+    expect(onSubmit).toHaveBeenCalledOnce()
+    await act(async () => finish())
+    expect(await screen.findByRole('button', { name: 'Save' })).toBeEnabled()
   })
 })

@@ -395,6 +395,8 @@ describe('useExportAppDsl', () => {
 describe('useExportWorkflowAppDsl', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.exportAppDsl.mockReset()
+    mocks.getEnvironmentVariables.mockReset()
   })
 
   it('keeps dialog feedback inline through checking, failure, reopening and retry', async () => {

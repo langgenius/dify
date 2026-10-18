@@ -1,23 +1,22 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { ChunkingMode } from '@/models/datasets'
 import Result from '../index'
 
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       workflowRunningData: {
-        result: { status: 'succeeded', outputs: { answer: 'done' } },
+        result: {
+          status: 'succeeded',
+          outputs: {
+            chunk_structure: ChunkingMode.text,
+            preview: [{ content: 'Processed document' }],
+          },
+        },
         tracing: [{ id: 'trace-1' }],
       },
     }),
-}))
-
-vi.mock('../result-preview', () => ({
-  default: ({ onSwitchToDetail }: { onSwitchToDetail: () => void }) => (
-    <button type="button" onClick={onSwitchToDetail}>
-      Result preview
-    </button>
-  ),
 }))
 
 vi.mock('@/app/components/workflow/run/result-panel', () => ({
@@ -33,7 +32,7 @@ describe('Result', () => {
     const user = userEvent.setup()
     render(<Result />)
 
-    expect(screen.getByRole('button', { name: 'Result preview' })).toBeInTheDocument()
+    expect(screen.getByText('Processed document')).toBeInTheDocument()
 
     await user.tab()
     expect(screen.getByRole('tab', { name: 'runLog.result', selected: true })).toHaveFocus()

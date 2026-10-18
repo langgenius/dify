@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vite-plus/test'
 import {
@@ -316,38 +316,10 @@ describe('SkillDetailPage file mutations', () => {
     expect(getFileTreeButton('scripts/example.ts')).toBeInTheDocument()
 
     await user.dblClick(folder)
-    expect(document.querySelector('[title="scripts/example.ts"]')).not.toBeInTheDocument()
+    expect(screen.queryByTitle('scripts/example.ts')).not.toBeInTheDocument()
 
     await user.dblClick(folder)
     expect(getFileTreeButton('scripts/example.ts')).toBeInTheDocument()
-  })
-
-  it('uses only the native path tooltip for a file tree item', async () => {
-    mocks.skillDetail = createSkillDetail({
-      files: [
-        ...createSkillDetail().files!,
-        {
-          id: 'file-2',
-          path: 'scripts/example.ts',
-          kind: 'file',
-          storage: 'text',
-          mime_type: 'text/typescript',
-          content: 'export {}\n',
-          tool_file_id: null,
-          size: 10,
-          hash: 'hash-2',
-        },
-      ],
-    })
-    renderSkillDetailPage()
-
-    await waitFor(() => {
-      expect(getFileTreeItem('scripts/example.ts')).toBeInTheDocument()
-    })
-    const fileButton = getFileTreeButton('scripts/example.ts')
-
-    expect(fileButton).toHaveAttribute('title', 'scripts/example.ts')
-    expect(screen.queryByText('scripts/example.ts')).not.toBeInTheDocument()
   })
 
   it('renames a file inline and selects its name without the extension', async () => {
@@ -410,7 +382,7 @@ describe('SkillDetailPage file mutations', () => {
     await user.click(await screen.findByText('common.operation.rename...'))
     const renameInput = await screen.findByDisplayValue('SKILL.md')
 
-    fireEvent.keyDown(renameInput, { key: 'Enter' })
+    await user.keyboard('{Enter}')
 
     await waitFor(() => {
       expect(renameInput).not.toBeInTheDocument()

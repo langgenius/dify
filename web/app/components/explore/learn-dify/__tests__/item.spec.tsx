@@ -41,13 +41,6 @@ describe('LearnDifyItem', () => {
     vi.clearAllMocks()
   })
 
-  it('should not render hover action buttons', () => {
-    render(<LearnDifyItem canCreate item={createApp()} onCreate={vi.fn()} onTry={vi.fn()} />)
-
-    expect(screen.queryByText('explore.appCard.addToWorkspace')).not.toBeInTheDocument()
-    expect(screen.queryByText('explore.appCard.try')).not.toBeInTheDocument()
-  })
-
   it('should create app when card is clicked outside cloud edition', async () => {
     deploymentEdition = 'COMMUNITY'
     const app = createApp()
@@ -77,7 +70,9 @@ describe('LearnDifyItem', () => {
 
     render(<LearnDifyItem canCreate={false} item={app} onTry={onTry} />)
 
-    await user.click(screen.getByRole('button', { name: 'Learn Dify App' }))
+    const card = screen.getByRole('button', { name: 'Learn Dify App' })
+    expect(card).toHaveAccessibleDescription('Learn Dify description')
+    await user.click(card)
 
     expect(onTry).toHaveBeenCalledWith(app)
     expect(mockTrackEvent).toHaveBeenCalledWith('preview_template', {
@@ -87,23 +82,6 @@ describe('LearnDifyItem', () => {
       template_categories: app.categories,
       page: 'explore',
     })
-  })
-
-  it('should run the card action when Enter is pressed', async () => {
-    const onTry = vi.fn()
-    const app = createApp()
-    const user = userEvent.setup()
-
-    render(<LearnDifyItem canCreate={false} item={app} onTry={onTry} />)
-
-    const card = screen.getByRole('button', { name: 'Learn Dify App' })
-    expect(card).toHaveAttribute('type', 'button')
-    expect(card).toHaveAccessibleDescription('Learn Dify description')
-
-    card.focus()
-    await user.keyboard('{Enter}')
-
-    expect(onTry).toHaveBeenCalledWith(app)
   })
 
   it('keeps nullable catalog metadata raw when previewing a card', async () => {

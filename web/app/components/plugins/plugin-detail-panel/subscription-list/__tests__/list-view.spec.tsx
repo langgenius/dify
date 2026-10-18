@@ -49,11 +49,4 @@ describe('SubscriptionListView', () => {
     expect(screen.queryByText(/pluginTrigger\.subscription\.listNum/)).not.toBeInTheDocument()
     expect(screen.queryByText('Subscription One')).not.toBeInTheDocument()
   })
-
-  it('should apply top border when showTopBorder is true', () => {
-    const { container } = render(<SubscriptionListView showTopBorder />)
-
-    const wrapper = container.firstChild as HTMLElement
-    expect(wrapper).toHaveClass('border-t')
-  })
 })

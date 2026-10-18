@@ -43,6 +43,7 @@ const EmailConfigureModal = ({
 }: EmailConfigureModalProps) => {
   const { t } = useTranslation(['common', 'workflow', 'workflowHumanInput'])
   const subjectId = useId()
+  const bodyLabelId = useId()
   const debugModeId = useId()
   const debugDescriptionId = useId()
   const { data: email } = useSuspenseQuery({
@@ -141,12 +142,16 @@ const EmailConfigureModal = ({
             />
           </div>
           <div>
-            <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
+            <div
+              id={bodyLabelId}
+              className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
+            >
               {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.body`], {
                 ns: 'workflowHumanInput',
               })}
             </div>
             <MailBodyInput
+              aria-labelledby={bodyLabelId}
               value={body}
               onChange={setBody}
               nodesOutputVars={nodesOutputVars}

@@ -3,21 +3,13 @@ import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CollectionType } from '@/app/components/tools/types'
-import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import {
   createTool,
   createToolProvider,
 } from '@/app/components/workflow/block-selector/__tests__/factories'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import ImportFromTool from '../import-from-tool'
-
-vi.mock('reactflow', () => ({
-  useStoreApi: () => ({
-    getState: () => ({
-      getNodes: () => [],
-    }),
-  }),
-}))
 
 vi.mock('@/service/use-plugins', () => ({
   useFeaturedToolsRecommendations: () => ({
@@ -79,7 +71,7 @@ const renderImportFromTool = (ui: React.ReactElement) => {
   const { queryClient } = createConsoleQueryWrapper({
     systemFeatures: { enable_marketplace: false },
   })
-  return renderWorkflowComponent(ui, {
+  return renderWorkflowFlowComponent(ui, {
     queryClient,
     hooksStoreProps: {
       availableNodesMetaData: { nodes: [] },

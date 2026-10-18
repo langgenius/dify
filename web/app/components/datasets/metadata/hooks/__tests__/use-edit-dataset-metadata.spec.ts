@@ -1,7 +1,7 @@
 import { act, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { expect, it, vi } from 'vite-plus/test'
 import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
-import { DataType } from '../../types'
+import { DataType, isShowManageMetadataLocalStorageKey } from '../../types'
 import useEditDatasetMetadata from '../use-edit-dataset-metadata'
 
 const mockDoAddMetaData = vi.fn().mockResolvedValue({})
@@ -49,257 +49,77 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-// Mock useCheckMetadataName
+beforeEach(() => localStorage.removeItem(isShowManageMetadataLocalStorageKey))
+afterEach(() => localStorage.removeItem(isShowManageMetadataLocalStorageKey))
 
-// Mock localStorage
-const localStorageMock = {
-  getItem: vi.fn(),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-  clear: vi.fn(),
-}
-Object.defineProperty(window, 'localStorage', { value: localStorageMock })
+it('consumes the management navigation flag once and opens the editor', () => {
+  localStorage.setItem(isShowManageMetadataLocalStorageKey, 'true')
+  const { result, unmount } = renderHook(() =>
+    useEditDatasetMetadata({ datasetId: 'ds-1', onUpdateDocList: vi.fn() }),
+  )
+  expect(result.current.isShowEditModal).toBe(true)
+  expect(localStorage.getItem(isShowManageMetadataLocalStorageKey)).toBeNull()
+  unmount()
+  const next = renderHook(() =>
+    useEditDatasetMetadata({ datasetId: 'ds-1', onUpdateDocList: vi.fn() }),
+  )
+  expect(next.result.current.isShowEditModal).toBe(false)
+})
 
-describe('useEditDatasetMetadata', () => {
-  const defaultProps = {
-    datasetId: 'ds-1',
-    onUpdateDocList: vi.fn(),
-  }
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    localStorageMock.getItem.mockReturnValue(null)
+it('sends dataset metadata mutations with their resource identity and refreshes affected documents', async () => {
+  const onUpdateDocList = vi.fn()
+  const { result } = renderHook(() =>
+    useEditDatasetMetadata({ datasetId: 'ds-1', onUpdateDocList }),
+  )
+  await act(async () =>
+    result.current.handleAddMetaData({ name: 'category', type: DataType.string }),
+  )
+  expect(mockDoAddMetaData).toHaveBeenCalledWith({
+    params: { dataset_id: 'ds-1' },
+    body: { name: 'category', type: DataType.string },
   })
-
-  describe('Hook Initialization', () => {
-    it('should initialize with isShowEditModal as false', () => {
-      const { result } = renderHook(() => useEditDatasetMetadata(defaultProps))
-      expect(result.current.isShowEditModal).toBe(false)
-    })
-
-    it('should return showEditModal function', () => {
-      const { result } = renderHook(() => useEditDatasetMetadata(defaultProps))
-      expect(typeof result.current.showEditModal).toBe('function')
-    })
-
-    it('should return hideEditModal function', () => {
-      const { result } = renderHook(() => useEditDatasetMetadata(defaultProps))
-      expect(typeof result.current.hideEditModal).toBe('function')
-    })
-
-    it('should return datasetMetaData after loading', async () => {
-      const { result } = renderHook(() => useEditDatasetMetadata(defaultProps))
-      await waitFor(() => expect(result.current.datasetMetaData).toBeDefined())
-    })
-
-    it('should return handleAddMetaData function', () => {
-      const { result } = renderHook(() => useEditDatasetMetadata(defaultProps))
-      expect(typeof result.current.handleAddMetaData).toBe('function')
-    })
-
-    it('should return handleRename function', () => {
-      const { result } = renderHook(() => useEditDatasetMetadata(defaultProps))
-      expect(typeof result.current.handleRename).toBe('function')
-    })
-
-    it('should return handleDeleteMetaData function', () => {
-      const { result } = renderHook(() => useEditDatasetMetadata(defaultProps))
-      expect(typeof result.current.handleDeleteMetaData).toBe('function')
-    })
-
-    it('should return builtInMetaData after loading', async () => {
-      const { result } = renderHook(() => useEditDatasetMetadata(defaultProps))
-      await waitFor(() => expect(result.current.builtInMetaData).toBeDefined())
-    })
-
-    it('should return builtInEnabled after loading', async () => {
-      const { result } = renderHook(() => useEditDatasetMetadata(defaultProps))
-      await waitFor(() => expect(typeof result.current.builtInEnabled).toBe('boolean'))
-    })
-
-    it('should return setBuiltInEnabled function', () => {
-      const { result } = renderHook(() => useEditDatasetMetadata(defaultProps))
-      expect(typeof result.current.setBuiltInEnabled).toBe('function')
-    })
+  await act(async () =>
+    result.current.handleRename({ id: '1', name: 'renamed', type: DataType.string, count: 5 }),
+  )
+  expect(mockDoRenameMetaData).toHaveBeenCalledWith({
+    params: { dataset_id: 'ds-1', metadata_id: '1' },
+    body: { name: 'renamed' },
   })
-
-  describe('Modal Control', () => {
-    it('should show modal when showEditModal is called', () => {
-      const { result } = renderHook(() => useEditDatasetMetadata(defaultProps))
-
-      act(() => {
-        result.current.showEditModal()
-      })
-
-      expect(result.current.isShowEditModal).toBe(true)
-    })
-
-    it('should hide modal when hideEditModal is called', () => {
-      const { result } = renderHook(() => useEditDatasetMetadata(defaultProps))
-
-      act(() => {
-        result.current.showEditModal()
-      })
-
-      act(() => {
-        result.current.hideEditModal()
-      })
-
-      expect(result.current.isShowEditModal).toBe(false)
-    })
-
-    it('should handle toggle of modal state', () => {
-      const { result } = renderHook(() => useEditDatasetMetadata(defaultProps))
-
-      // Initially closed
-      expect(result.current.isShowEditModal).toBe(false)
-
-      // Show, hide, show
-      act(() => result.current.showEditModal())
-      expect(result.current.isShowEditModal).toBe(true)
-
-      act(() => result.current.hideEditModal())
-      expect(result.current.isShowEditModal).toBe(false)
-
-      act(() => result.current.showEditModal())
-      expect(result.current.isShowEditModal).toBe(true)
-    })
+  expect(onUpdateDocList).toHaveBeenCalledOnce()
+  await act(async () => result.current.handleDeleteMetaData('1'))
+  expect(mockDoDeleteMetaData).toHaveBeenCalledWith({
+    params: { dataset_id: 'ds-1', metadata_id: '1' },
   })
+  expect(onUpdateDocList).toHaveBeenCalledTimes(2)
+})
 
-  describe('handleAddMetaData', () => {
-    it('should call doAddMetaData with valid name', async () => {
-      const { result } = renderHook(() => useEditDatasetMetadata(defaultProps))
+it('rejects invalid names before creating or renaming metadata', async () => {
+  const { result } = renderHook(() =>
+    useEditDatasetMetadata({ datasetId: 'ds-1', onUpdateDocList: vi.fn() }),
+  )
+  await expect(
+    result.current.handleAddMetaData({ name: '', type: DataType.string }),
+  ).rejects.toThrow()
+  await expect(
+    result.current.handleRename({ id: '1', name: 'Invalid Name', type: DataType.string, count: 5 }),
+  ).rejects.toThrow()
+  expect(mockDoAddMetaData).not.toHaveBeenCalled()
+  expect(mockDoRenameMetaData).not.toHaveBeenCalled()
+})
 
-      await act(async () => {
-        await result.current.handleAddMetaData({
-          name: 'valid_name',
-          type: DataType.string,
-        })
-      })
-
-      expect(mockDoAddMetaData).toHaveBeenCalled()
-    })
-
-    it('should reject invalid name', async () => {
-      const { result } = renderHook(() => useEditDatasetMetadata(defaultProps))
-
-      await expect(
-        act(async () => {
-          await result.current.handleAddMetaData({
-            name: '',
-            type: DataType.string,
-          })
-        }),
-      ).rejects.toThrow()
-    })
+it('updates built-in metadata after the server accepts the requested status', async () => {
+  const { result } = renderHook(() =>
+    useEditDatasetMetadata({ datasetId: 'ds-1', onUpdateDocList: vi.fn() }),
+  )
+  await waitFor(() => expect(result.current.builtInEnabled).toBe(false))
+  await act(async () => result.current.setBuiltInEnabled(true))
+  expect(mockToggleBuiltInStatus).toHaveBeenCalledWith({
+    params: { dataset_id: 'ds-1', action: 'enable' },
   })
-
-  describe('handleRename', () => {
-    it('should call doRenameMetaData with valid name', async () => {
-      const { result } = renderHook(() => useEditDatasetMetadata(defaultProps))
-
-      await act(async () => {
-        await result.current.handleRename({
-          id: '1',
-          name: 'new_valid_name',
-          type: DataType.string,
-          count: 5,
-        })
-      })
-
-      expect(mockDoRenameMetaData).toHaveBeenCalled()
-    })
-
-    it('should call onUpdateDocList after rename', async () => {
-      const onUpdateDocList = vi.fn()
-      const { result } = renderHook(() =>
-        useEditDatasetMetadata({ ...defaultProps, onUpdateDocList }),
-      )
-
-      await act(async () => {
-        await result.current.handleRename({
-          id: '1',
-          name: 'renamed',
-          type: DataType.string,
-          count: 5,
-        })
-      })
-
-      await waitFor(() => {
-        expect(onUpdateDocList).toHaveBeenCalled()
-      })
-    })
-
-    it('should reject invalid name for rename', async () => {
-      const { result } = renderHook(() => useEditDatasetMetadata(defaultProps))
-
-      await expect(
-        act(async () => {
-          await result.current.handleRename({
-            id: '1',
-            name: 'Invalid Name',
-            type: DataType.string,
-            count: 5,
-          })
-        }),
-      ).rejects.toThrow()
-    })
+  expect(result.current.builtInEnabled).toBe(true)
+  await act(async () => result.current.setBuiltInEnabled(false))
+  expect(mockToggleBuiltInStatus).toHaveBeenLastCalledWith({
+    params: { dataset_id: 'ds-1', action: 'disable' },
   })
-
-  describe('handleDeleteMetaData', () => {
-    it('should call doDeleteMetaData', async () => {
-      const { result } = renderHook(() => useEditDatasetMetadata(defaultProps))
-
-      await act(async () => {
-        await result.current.handleDeleteMetaData('1')
-      })
-
-      expect(mockDoDeleteMetaData).toHaveBeenCalledWith({
-        params: { dataset_id: 'ds-1', metadata_id: '1' },
-      })
-    })
-
-    it('should call onUpdateDocList after delete', async () => {
-      const onUpdateDocList = vi.fn()
-      const { result } = renderHook(() =>
-        useEditDatasetMetadata({ ...defaultProps, onUpdateDocList }),
-      )
-
-      await act(async () => {
-        await result.current.handleDeleteMetaData('1')
-      })
-
-      await waitFor(() => {
-        expect(onUpdateDocList).toHaveBeenCalled()
-      })
-    })
-  })
-
-  describe('Built-in Status', () => {
-    it('should toggle built-in status', async () => {
-      const { result } = renderHook(() => useEditDatasetMetadata(defaultProps))
-
-      await act(async () => {
-        await result.current.setBuiltInEnabled(true)
-      })
-
-      expect(mockToggleBuiltInStatus).toHaveBeenCalledWith({
-        params: { dataset_id: 'ds-1', action: 'enable' },
-      })
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle different datasetIds', () => {
-      const { result, rerender } = renderHook((props) => useEditDatasetMetadata(props), {
-        initialProps: defaultProps,
-      })
-
-      expect(result.current).toBeDefined()
-
-      rerender({ ...defaultProps, datasetId: 'ds-2' })
-
-      expect(result.current).toBeDefined()
-    })
-  })
+  expect(result.current.builtInEnabled).toBe(false)
 })
