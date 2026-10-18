@@ -1,4 +1,4 @@
 interface:
   display_name: 'Frontend Test Maintenance'
   short_description: 'Review mock boundaries and low-value test behavior'
-  default_prompt: 'Use $frontend-test-maintenance to review mock boundaries and test behavior value, then propose an evidence-backed cleanup list.'
+  default_prompt: 'Use $frontend-test-maintenance to combine ranked leads with contract tracing, review mock boundaries and test behavior value, then propose an evidence-backed cleanup list.'

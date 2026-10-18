@@ -263,11 +263,12 @@ if (mode === '--help') {
           .split(/\r?\n/)
           .map((line) => line.trim())
           .filter(Boolean)
-      : oldFiles.keys(),
+      : [...oldFiles.keys(), ...newFiles.keys()],
   )
   if (!selected.size) throw new Error('Empty comparison manifest')
   for (const file of selected)
-    if (!oldFiles.has(file)) throw new Error(`File missing from baseline: ${file}`)
+    if (!oldFiles.has(file) && !newFiles.has(file))
+      throw new Error(`File missing from both snapshots: ${file}`)
   const added = [...newFiles.keys()].filter((file) => !oldFiles.has(file))
   const removed = [...oldFiles.keys()].filter((file) => !newFiles.has(file))
   const changed = [...newFiles.keys()].filter(
@@ -294,11 +295,13 @@ if (mode === '--help') {
         outsideSelectionMetrics: delta(before, after, outsideSelection),
         perFile: [...selected].map((file) => ({
           file,
-          status: !newFiles.has(file)
-            ? 'removed'
-            : changed.includes(file)
-              ? 'changed'
-              : 'unchanged',
+          status: !oldFiles.has(file)
+            ? 'added'
+            : !newFiles.has(file)
+              ? 'removed'
+              : changed.includes(file)
+                ? 'changed'
+                : 'unchanged',
           metrics: delta(before, after, new Set([file])),
         })),
         caveat:

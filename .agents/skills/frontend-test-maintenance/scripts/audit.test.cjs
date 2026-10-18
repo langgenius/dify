@@ -216,6 +216,39 @@ it('empty', () => render(<div />))
   assert.equal(findings('snapshots').length, 1)
 })
 
+test('comparison includes selected additions, removals and rejects unknown manifest paths', (t) => {
+  const f = fixture(t)
+  f.write('web/removed.spec.ts', 'const value = {} as never\n')
+  f.scan('before.json')
+  fs.unlinkSync(path.join(f.root, 'web/removed.spec.ts'))
+  f.write('web/test/new.fixture.ts', 'const value = {} as never\n')
+  f.scan('after.json')
+  const args = ['compare', 'before.json', 'after.json', 'comparison.json'].map(
+    (a, i) => (i ? path.join(f.root, a) : a),
+  )
+  const verify = () => {
+    const compared = f.read('comparison.json')
+    assert.equal(compared.selectedMetrics.unsafe_assertion_chains.delta, 0)
+    assert.deepEqual(compared.changedOutsideSelection, [])
+    assert.deepEqual(compared.added, ['web/test/new.fixture.ts'])
+    assert.deepEqual(compared.removed, ['web/removed.spec.ts'])
+    assert.deepEqual(
+      Object.fromEntries(compared.perFile.map(({ file, status }) => [file, status])),
+      { 'web/removed.spec.ts': 'removed', 'web/test/new.fixture.ts': 'added' },
+    )
+  }
+  f.write('selected.txt', 'web/removed.spec.ts\nweb/test/new.fixture.ts\n')
+  f.run('report.cjs', ...args, path.join(f.root, 'selected.txt'))
+  verify()
+  f.run('report.cjs', ...args)
+  verify()
+  f.write('selected.txt', 'web/typo.spec.ts\n')
+  assert.throws(
+    () => f.run('report.cjs', ...args, path.join(f.root, 'selected.txt')),
+    /File missing from both snapshots/,
+  )
+})
+
 test('comparison exposes debt moved to new helpers and rejects policy drift', (t) => {
   const f = fixture(t)
   f.write('web/owner.spec.ts', 'const value = {} as never\n')

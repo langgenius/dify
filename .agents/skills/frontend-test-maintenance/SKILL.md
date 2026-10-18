@@ -9,9 +9,9 @@ Turn test-maintenance signals into a reviewed cleanup queue, then verify authori
 
 ## Select the requested stage
 
-- **Policy update:** synchronize affected guidance, metric interpretations, and executable rules; validate those changes without starting an unrelated test cleanup.
+- **Skill or policy update:** synchronize affected guidance, metric interpretations, and executable rules; validate those changes without starting an unrelated test cleanup. A workflow improvement need not change the owner policy.
 - **Analysis:** collect counts, interpret candidates against current policy, and report limitations. Analysis does not authorize cleanup.
-- **Shortlist:** rank candidates, inspect contracts, and provide the requested number of files with reasons and proposed actions. Preserve any existing user-selected list.
+- **Shortlist:** discover candidates, inspect contracts, and provide the requested number of files with reasons and proposed actions. Preserve any existing user-selected list.
 - **Cleanup:** review every selected file, delete/merge/rewrite low-value cases, and retain valuable coverage with a reason. A selected file need not change if its tests are justified. Include dependent fixture consumers when necessary and disclose this expansion.
 
 Read [frontend-testing](../frontend-testing/SKILL.md), the nearest `AGENTS.md`, and the owner's testing policy before interpreting violations or changing tests. Those documents own test boundaries and validation commands; this skill adds an audit workflow, not another testing policy.
@@ -26,7 +26,7 @@ Reports include hashes of the applicable policy documents. A changed hash invali
 
 ## Establish a reproducible baseline
 
-Record the commit, working-tree changes, selected directories, runner projects, and exact candidate paths. Existing uncommitted changes are part of the baseline, not work to discard. Save reports outside source directories. Freeze a path manifest when a shortlist becomes the cleanup scope.
+Record the commit, working-tree changes, selected directories, runner projects, and exact candidate paths. Existing uncommitted changes are part of the baseline, not work to discard. Save reports outside source directories. Freeze a path manifest when a shortlist becomes the cleanup scope; explicitly record any later addition of helpers or affected consumers instead of silently replacing that scope.
 
 Read [metrics and commands](references/metrics.md) before running the bundled scripts. Inventory unit, browser, Storybook, and support files separately. Include shared fixtures and custom helpers in the audit scope, even when only spec files appear in the requested shortlist. Compare the scanner's filename conventions with the current runner configuration.
 
@@ -38,13 +38,15 @@ Use AST counts rather than raw text matches for mocks, assertions, and calls. Ke
 
 ## Prioritize and inspect
 
-Default to **behavior quality** when the user asks to reduce maintenance cost or find low-value tests. Read [behavior review](references/behavior-review.md) before selecting files. The default ranking alternates independent mock-boundary and behavior-value queues. Type/assertion and test-setup hygiene has a separate opt-in queue; do not let easy type fixes fill a quality shortlist. Scores locate evidence to inspect, not violations. High mock count alone does not justify removal.
+Default to **behavior quality** when the user asks to reduce maintenance cost or find low-value tests. Read [behavior review](references/behavior-review.md) before selecting files. For broad quality searches, combine ranked leads with a bounded trace outside the queues. If the user asks for free search or scanner misses, select from production contracts and dependencies first; use the scanner afterward for inventory and comparison. Do not require a positive score or a fixed file quota for a confirmed finding.
+
+The default ranking alternates independent mock-boundary and behavior-value queues. Type/assertion and test-setup hygiene has a separate opt-in queue; do not let easy type fixes fill a quality shortlist. Scores locate evidence to inspect, not violations. High mock count alone does not justify removal. Distinguish an unranked file from a semantic problem the scanner cannot identify in an otherwise ranked file.
 
 For each shortlisted file, trace **scenario → production behavior owner → replaced dependencies → assertion**, and inspect overlapping owner tests. Explain which realistic production regression would fail the test. Distinguish a useful isolated boundary from a test that only exercises its own replacement. Assign **delete**, **merge**, **rewrite**, or **retain** with source evidence. A callback assertion may protect a public integration contract; it is not automatically low-value. If the user asks for more files, extend the reviewed queue without silently replacing their selections.
 
 Present confirmed findings separately from unresolved candidates and justified mocks. Include the owner, mock/expect evidence, overlap, proposed action, and valuable behavior to preserve. A quality shortlist must not consist of cast fixes with no behavior analysis. Use targeted temporary mutation experiments only when they resolve a material doubt; a surviving mutation proves a gap only for that mutation and the executed tests.
 
-Carry review history **per dimension** (`mock-boundary`, `behavior-value`, `typing`). A typing cleanup never exempts a file from quality review. The ranking checks source, scanner, policy, and review-method hashes; optionally recorded owner/dependency hashes also invalidate stale decisions. Legacy whole-file records are displayed but do not defer anything. Record only dimensions actually reviewed and describe remaining gaps. Never translate an old `cleaned` label or a raw ranking into a quality-review decision.
+Carry review history **per dimension** (`mock-boundary`, `behavior-value`, `typing`). A typing cleanup never exempts a file from quality review. The ranking checks source, scanner, policy, and review-method hashes; optionally recorded owner/dependency hashes also invalidate stale decisions. Legacy whole-file records are displayed but do not defer anything. A review of selected cases belongs in the finding report; only defer a file/dimension when that dimension has been reviewed throughout the file and relevant setup. Never translate an old `cleaned` label or a raw ranking into a quality-review decision.
 
 Common cleanup candidates include empty render checks, unreachable inputs manufactured through casts, private implementation callbacks, incidental CSS assertions, repeated prop passthrough, and duplicated state matrices with no distinct failure mode. Validate this judgment against the actual scenario. Preserve meaningful permissions, message trust, races, caching, lifecycle, errors, keyboard, focus, and data-transformation regressions even when their setup is substantial.
 

@@ -11,7 +11,9 @@ node .agents/skills/frontend-test-maintenance/scripts/audit.cjs "$PWD" /tmp/test
 node .agents/skills/frontend-test-maintenance/scripts/report.cjs compare /tmp/test-before.json /tmp/test-after.json /tmp/test-comparison.json /tmp/test-hotspots.json.files.txt
 ```
 
-`40` is an example, not a required batch size. User-selected paths take precedence over a newly generated ranking. `rank` writes both the JSON queue and `<output>.files.txt`; do not overwrite a frozen manifest by reranking after edits. Omit the manifest argument to compare all baseline files.
+`40` is an example, not a required batch size. User-selected paths take precedence over a newly generated ranking. For free searches, skip `rank`, trace contracts using [behavior review](behavior-review.md), and write the reviewed paths to a manifest yourself; scan the unchanged baseline before cleanup. `rank` writes both the JSON queue and `<output>.files.txt`; do not overwrite a frozen manifest by reranking after edits.
+
+`compare` accepts selected paths present in either snapshot, including new helpers and removed specs; a path absent from both is an error. Omit the manifest to compare the union of both inventories. Preserve the initial manifest and explicitly record scope additions in an extended manifest when new helpers or affected consumers become necessary. This keeps their metrics in the selected totals as well as the whole-scope totals; no derived baseline-only manifest is needed.
 
 Pass `packages/dify-ui` instead of `web` for that package, or pass both to inventory both owners. Extra scope arguments can name custom helper files outside recognized support directories. Include them in both snapshots. The scanner includes tracked and nonignored untracked JS/TS files, excludes declarations and deleted files, and recognizes:
 
@@ -21,6 +23,8 @@ Pass `packages/dify-ui` instead of `web` for that package, or pass both to inven
 
 These are conventions, not execution discovery. Check the owner configuration for exceptions and mention missing/custom helpers. Storybook counts include story setup, not just `play` functions. The report records hashes and local dirty state; its commit alone does not identify all audited source content.
 
+Manual findings include semantic mock changes and unreachable producer outputs that syntax cannot establish. Do not turn a generic utility-module mock count into confirmed violations or raise ranking weights to simulate that judgment. Report discovery method and reviewed behavior separately from file scores.
+
 ## Policy-to-review mapping
 
 This is an index into the current owner policies, not an independent policy. Read their live contents before classifying a finding. When a policy changes, update the affected rows, guidance, and script rules together.
@@ -28,7 +32,7 @@ This is an index into the current owner policies, not an independent policy. Rea
 | Owner policy area                                        | Signals and required judgment                                                                                                                                                                                                                                     |
 | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Web: Testing Mindset / Coverage                          | Weak render checks, duplicate scenarios, and cast-manufactured inputs are candidates. Identify a reachable regression and existing owner coverage. No scanner count or coverage percentage establishes value.                                                     |
-| Web: Choose the Right Boundary / Mock at Real Boundaries | Inspect local/hook/store/UI mocks against the asserted behavior owner. Keep interactive primitives real; preserve fresh query clients, valid builders, and isolation. Service or SDK isolation can be appropriate.                                                |
+| Web: Choose the Right Boundary / Mock at Real Boundaries | Inspect local/hook/store/UI mocks against the asserted behavior owner, including partial mocks that change URL/trust semantics or fabricate unreachable producer outputs. Keep interactive primitives real; preserve fresh query clients, valid builders, and isolation. Service or SDK isolation can be appropriate.                                                |
 | Web: Assert Behavior, Not Implementation                 | Inspect class/CSS queries, snapshots, private callbacks, and referential identity. Protect observable contracts; do not mechanically replace class assertions with computed-style assertions.                                                                     |
 | Web: Queries, Interaction, and Accessibility             | Review test IDs and fireEvent in context; favor semantic queries and RTL setup instances. Browser direct userEvent calls have different semantics. Query choice alone cannot prove accessibility.                                                                 |
 | Web: Async, Time, and Isolation / Dify Test Setup        | Check bare async calls, fixed waits, afterEach resets, shared stores, URL behavior, and timer restoration against current setup defaults. Mock restoration is distinct from resetting the next test's state.                                                      |
@@ -110,7 +114,7 @@ Copy source/scanner/policy hashes from the audit and `reviewMethodSha256` from t
 }
 ```
 
-Use `retain` or `cleaned` only for an inspected dimension. `behavior-value` is absent in this example and remains eligible. Do not mark a known unresolved problem cleaned/retained just to move it out of the queue. Legacy whole-file decisions are listed in `legacyReviewFiles` but never defer files. `deferredReviewed` contains file/dimension pairs, not a count of fully reviewed files.
+Use `retain` or `cleaned` only after inspecting that dimension throughout the file and relevant setup; a few repaired cases do not justify file/dimension deferral. Keep partial findings in a separate report. `behavior-value` is absent in this example and remains eligible. Do not mark a known unresolved problem cleaned/retained just to move it out of the queue. Legacy whole-file decisions are listed in `legacyReviewFiles` but never defer files. `deferredReviewed` contains file/dimension pairs, not a count of fully reviewed files.
 
 The review-method hash includes the ranker, SKILL.md, metrics, and behavior-review guidance. Source, scanner, policy or method changes invalidate decisions; optional recorded owner/dependency hashes are checked against the current filesystem. Record important owner/helper dependencies during manual review. The tool cannot discover all transitive dependencies, so manually invalidate a decision when other relevant behavior changes. Never relabel old hashes to bypass invalidation; re-review under the new method. Raw rankings are rejected as review history. Explicit user-selected scopes always take precedence.
 
@@ -122,7 +126,7 @@ After changing scanner or ranking behavior, run the regression checks from the r
 node --test .agents/skills/frontend-test-maintenance/scripts/audit.test.cjs
 ```
 
-These verify AST candidate boundaries, quality queues independent of type volume, per-dimension review invalidation (including method and owner changes), business-state false positives, and moved debt.
+These verify AST candidate boundaries, quality queues independent of type volume, per-dimension review invalidation (including method and owner changes), business-state false positives, and added/removed manifest paths without hiding moved debt.
 
 `compare` rejects different scopes, metric schemas, scanner hashes, or applicable policy hashes. It reports selected-file totals and whole-scope totals, plus added/removed paths and changes outside the selection. Renames appear as removal plus addition. Relate them manually before interpreting a reduction; moving mocks to a new filename is not elimination. A newly added helper outside the audited scope remains invisible—include helper directories from the start, or regenerate both baselines with the expanded scope using preserved baseline sources. Do not fabricate a missing baseline from post-cleanup contents.
 
