@@ -10,13 +10,11 @@ import { createPluginDeclarationFixture } from '@/test/fixtures/plugin'
 import MarketplaceUpdateDialog from '../from-market-place'
 
 const {
-  mockCheck,
   mockHandleInstallTaskStart,
   mockRemoveAutoUpgrade,
   mockUpdateFromMarketPlace,
   mockToastError,
 } = vi.hoisted(() => ({
-  mockCheck: vi.fn(),
   mockHandleInstallTaskStart: vi.fn(),
   mockRemoveAutoUpgrade: vi.fn(),
   mockUpdateFromMarketPlace: vi.fn(),
@@ -34,10 +32,6 @@ vi.mock('@/app/notifications', () => ({
   toast: {
     error: mockToastError,
   },
-}))
-
-vi.mock('@/service/plugins', () => ({
-  checkTaskStatus: mockCheck,
 }))
 
 vi.mock('@/service/use-plugins', async (importOriginal) => ({
@@ -82,9 +76,6 @@ vi.mock('@/service/console', async (importOriginal) => {
 describe('UpdateFromMarketplace', () => {
   beforeEach(() => {
     vi.resetAllMocks()
-    mockCheck.mockResolvedValue({
-      task: { plugins: [{ plugin_unique_identifier: 'plugin@2.0.0', status: TaskStatus.success }] },
-    })
     mockUpdateFromMarketPlace.mockResolvedValue({
       all_installed: true,
       task_id: 'task-1',
@@ -134,7 +125,6 @@ describe('UpdateFromMarketplace', () => {
     await waitFor(() => {
       expect(mockToastError).toHaveBeenCalledWith('upgrade failed')
     })
-    expect(mockCheck).not.toHaveBeenCalled()
     expect(mockHandleInstallTaskStart).not.toHaveBeenCalled()
     expect(onSave).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'plugin.upgrade.upgrade' }))
@@ -224,48 +214,37 @@ describe('UpdateFromMarketplace', () => {
     expect(mockRemoveAutoUpgrade).not.toHaveBeenCalled()
   })
 
-  it('waits for the upgrade task before reporting success and prevents duplicate submissions', async () => {
+  it('hands an accepted installation to background tasks and closes without claiming completion', async () => {
     const user = userEvent.setup()
-    const pending = createDeferred<{
-      task: { plugins: { plugin_unique_identifier: string; status: TaskStatus }[] }
-    }>()
+    const pending = createDeferred<PluginInstallTaskStartResponse>()
+    mockUpdateFromMarketPlace.mockReturnValueOnce(pending.promise)
+    const onRefresh = vi.fn()
+    const onClose = vi.fn()
+    render(
+      <MarketplaceUpdateDialog
+        open
+        payload={createPayload()}
+        pluginId="plugin-1"
+        onRefresh={onRefresh}
+        onClose={onClose}
+        warnAboutAutoUpdate
+      />,
+    )
+    const submit = screen.getByRole('button', {
+      name: 'plugin.autoUpdate.pluginDowngradeWarning.downgrade',
+    })
+    await user.click(submit)
+    await user.click(submit)
+    expect(mockUpdateFromMarketPlace).toHaveBeenCalledOnce()
+    expect(onClose).not.toHaveBeenCalled()
     const response: PluginInstallTaskStartResponse = {
       all_installed: false,
       task_id: 'upgrade-task',
     }
-    mockUpdateFromMarketPlace.mockResolvedValueOnce(response)
-    mockCheck.mockReturnValueOnce(pending.promise)
-    const onSave = vi.fn()
-    render(
-      <MarketplaceUpdateDialog
-        open
-        onClose={vi.fn()}
-        payload={createPayload()}
-        onRefresh={onSave}
-        pluginId="plugin-1"
-      />,
-    )
-
-    await user.click(screen.getByRole('button', { name: 'plugin.upgrade.upgrade' }))
-    await waitFor(() => expect(mockCheck).toHaveBeenCalledExactlyOnceWith('upgrade-task'))
-    const upgrading = screen.getByRole('button', { name: 'plugin.upgrade.upgrading' })
-    expect(upgrading).toHaveAttribute('aria-disabled', 'true')
-    expect(
-      screen.queryByRole('button', { name: 'common.operation.cancel' }),
-    ).not.toBeInTheDocument()
-    await user.click(upgrading)
-    expect(mockUpdateFromMarketPlace).toHaveBeenCalledOnce()
+    await act(async () => pending.resolve(response))
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
     expect(mockHandleInstallTaskStart).toHaveBeenCalledExactlyOnceWith(response)
-    expect(onSave).not.toHaveBeenCalled()
-
-    await act(async () =>
-      pending.resolve({
-        task: {
-          plugins: [{ plugin_unique_identifier: 'plugin@2.0.0', status: TaskStatus.success }],
-        },
-      }),
-    )
-    await waitFor(() => expect(onSave).toHaveBeenCalledOnce())
+    expect(onRefresh).not.toHaveBeenCalled()
   })
 
   it('allows retrying after an upgrade request rejects', async () => {
@@ -287,41 +266,5 @@ describe('UpdateFromMarketplace', () => {
     await user.click(await screen.findByRole('button', { name: 'plugin.upgrade.upgrade' }))
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce())
     expect(mockUpdateFromMarketPlace).toHaveBeenCalledTimes(2)
-  })
-
-  it('shows a task failure and restores the upgrade action for retry', async () => {
-    const user = userEvent.setup()
-    mockUpdateFromMarketPlace.mockResolvedValueOnce({
-      all_installed: false,
-      task_id: 'failed-task',
-    })
-    mockCheck.mockResolvedValueOnce({
-      task: {
-        plugins: [
-          {
-            plugin_unique_identifier: 'plugin@2.0.0',
-            status: TaskStatus.failed,
-            message: 'Dependency conflict',
-          },
-        ],
-      },
-    })
-    const onSave = vi.fn()
-    render(
-      <MarketplaceUpdateDialog
-        open
-        onClose={vi.fn()}
-        payload={createPayload()}
-        onRefresh={onSave}
-        pluginId="plugin-1"
-      />,
-    )
-
-    await user.click(screen.getByRole('button', { name: 'plugin.upgrade.upgrade' }))
-    await waitFor(() => expect(mockToastError).toHaveBeenCalledWith('Dependency conflict'))
-    expect(onSave).not.toHaveBeenCalled()
-    expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeEnabled()
-    await user.click(screen.getByRole('button', { name: 'plugin.upgrade.upgrade' }))
-    await waitFor(() => expect(onSave).toHaveBeenCalledOnce())
   })
 })

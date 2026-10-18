@@ -17,7 +17,6 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge/index'
 import Card from '@/app/components/plugins/card'
-import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import { pluginManifestToCardPluginProps } from '@/app/components/plugins/install-plugin/utils'
 import { toast } from '@/app/notifications'
 import { consoleClient } from '@/service/console'
@@ -54,13 +53,12 @@ const UpdateFromMarketplaceContent = ({
   const upgradeButtonLabelId = React.useId()
   const { getIconUrl } = useGetIcon()
   const icon = getIconUrl(originalPackageInfo.payload.icon)
-  const { check } = checkTaskStatus()
 
   const { handleInstallTaskStart } = usePluginTaskList(payload.category)
   const exclude = useRemoveAutoUpgrade()
   const upgrade = useMutation({
     mutationKey: updateMutationKey(payload),
-    // One operation owns exclusion, package replacement, and task completion.
+    // Keep exclusion and task creation in one submission. The task list owns installation progress.
     mutationFn: async (excludeFromAutoUpdate: boolean) => {
       if (excludeFromAutoUpdate)
         await exclude.mutateAsync({ plugin_id: pluginId, category: payload.category })
@@ -79,20 +77,12 @@ const UpdateFromMarketplaceContent = ({
         toast.error(message)
         throw new Error(message)
       }
-      if (!response.all_installed) {
-        handleInstallTaskStart(response)
-        const { status, error } = await check({
-          taskId: response.task_id,
-          pluginUniqueIdentifier: targetPackageInfo.id,
-        })
-        if (status === TaskStatus.failed) {
-          const message = error || t(($) => $.error, { ns: 'common' })
-          toast.error(message)
-          throw new Error(message)
-        }
-      }
+      return response
     },
-    onSuccess: onRefresh,
+    onSuccess: async (response) => {
+      if (response.all_installed) await onRefresh()
+      else handleInstallTaskStart(response)
+    },
   })
   const handleConfirm = () => upgrade.mutate(false, { onSuccess })
   const handleExcludeAndDowngrade = () => upgrade.mutate(true, { onSuccess })
