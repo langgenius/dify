@@ -15,8 +15,24 @@ from services.agent.errors import InvalidRosterAgentPackageError, RosterAgentPac
     [
         (" https://example.com/agent.IFPKG?token=secret ", "https://example.com/agent.IFPKG?token=secret"),
         (
+            "https://github.com/user-attachments/files/123/flow.yaml",
+            "https://github.com/user-attachments/files/123/flow.yaml",
+        ),
+        (
             "https://github.com/org/repo/blob/main/agent.ifpkg",
             "https://raw.githubusercontent.com/org/repo/main/agent.ifpkg",
+        ),
+        (
+            "https://github.com/org/repo/blob/main/templates/blob/agent.ifpkg?source=/blob/file",
+            "https://raw.githubusercontent.com/org/repo/main/templates/blob/agent.ifpkg?source=/blob/file",
+        ),
+        (
+            "https://github.com/blob/repo/blob/main/agent.ifpkg",
+            "https://raw.githubusercontent.com/blob/repo/main/agent.ifpkg",
+        ),
+        (
+            "https://github.com/org/repo/raw/main/templates/blob/agent.ifpkg",
+            "https://github.com/org/repo/raw/main/templates/blob/agent.ifpkg",
         ),
     ],
 )

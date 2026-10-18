@@ -49,6 +49,7 @@ from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeDat
 from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
 from graphon.nodes.tool.entities import ToolNodeData
 from libs.datetime_utils import naive_utc_now
+from libs.url_utils import github_blob_to_raw_url
 from models import Account, App, AppMode
 from models.agent import AgentScope, WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.agent_config_entities import WorkflowNodeJobConfig
@@ -200,14 +201,8 @@ class AppDslService:
                 )
             try:
                 parsed_url = urlparse(yaml_url)
-                if (
-                    parsed_url.scheme == "https"
-                    and parsed_url.netloc == "github.com"
-                    and parsed_url.path.endswith((".yml", ".yaml"))
-                    and "/blob/" in parsed_url.path
-                ):
-                    yaml_url = yaml_url.replace("https://github.com", "https://raw.githubusercontent.com")
-                    yaml_url = yaml_url.replace("/blob/", "/")
+                if parsed_url.path.endswith((".yml", ".yaml")):
+                    yaml_url = github_blob_to_raw_url(yaml_url)
                 response = remote_fetcher.make_request("GET", yaml_url.strip(), follow_redirects=True, timeout=(10, 10))
                 response.raise_for_status()
                 raw_content = response.content

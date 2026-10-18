@@ -1,6 +1,7 @@
 from collections.abc import Generator, Mapping
 from contextlib import contextmanager
 
+import httpx
 import pytest
 import yaml
 
@@ -172,3 +173,46 @@ def test_prepare_hands_an_oversized_dsl_to_the_import_unchanged() -> None:
     source = _padded(_dsl("workflow", _START, _END))
 
     assert _prepare(_Store(), source=source, app_id=None) == source
+
+
+@pytest.mark.parametrize(
+    ("url", "download_url"),
+    [
+        (
+            "https://github.com/org/repo/blob/main/templates/blob/flow.yaml?source=/blob/file",
+            "https://raw.githubusercontent.com/org/repo/main/templates/blob/flow.yaml?source=/blob/file",
+        ),
+        (
+            "https://github.com/blob/repo/blob/main/flow.yml",
+            "https://raw.githubusercontent.com/blob/repo/main/flow.yml",
+        ),
+        (
+            "https://github.com/org/repo/raw/main/templates/blob/flow.yaml",
+            "https://github.com/org/repo/raw/main/templates/blob/flow.yaml",
+        ),
+        ("https://example.com/templates/blob/flow.yaml", "https://example.com/templates/blob/flow.yaml"),
+        (
+            "https://github.com/user-attachments/files/123/flow.yaml",
+            "https://github.com/user-attachments/files/123/flow.yaml",
+        ),
+    ],
+)
+def test_prepare_preserves_github_blob_path_components(
+    monkeypatch: pytest.MonkeyPatch, url: str, download_url: str
+) -> None:
+    requested: list[str] = []
+
+    def fetch(method: str, url: str, **_kwargs: object) -> httpx.Response:
+        requested.append(url)
+        return httpx.Response(
+            200 if url == download_url else 404,
+            request=httpx.Request(method, url),
+            content=_dsl("workflow", _START, _END).encode(),
+        )
+
+    monkeypatch.setattr(dsl_import.remote_fetcher, "make_request", fetch)
+    prepared = yaml.safe_load(_prepare(_Store(_TARGET), source=url, draft_hash="token-1"))
+
+    assert requested == [download_url]
+    assert prepared["app"]["mode"] == "workflow"
+    assert [node["id"] for node in prepared["workflow"]["graph"]["nodes"]] == ["start", "end"]
