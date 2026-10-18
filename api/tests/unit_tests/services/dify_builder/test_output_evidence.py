@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from core.dify_builder.models import NodeOutput
+from core.dify_builder.models import Graph, NodeOutput
 from services.dify_builder import run_mapping
 
 
@@ -128,3 +128,175 @@ def test_output_evidence_wfs_reported_tool_reference():
         NodeOutput(node_id="node3", status="succeeded", outputs={"result": None}, outputs_available=True),
     ]
     assert collect_output_findings(g, rows)[0].state == "unresolved"
+
+
+def native_agent_graph(selector: list[str] | None = None) -> Graph:
+    g: Graph = graph(selector or ["tool", "summary"])
+    g["nodes"][0]["data"] = {
+        "type": "agent",
+        "version": "2",
+        "agent_node_kind": "dify_agent",
+        "agent_declared_outputs": [
+            {"name": "risks", "type": "array", "array_item": {"type": "string"}},
+            {"name": "summary", "type": "string"},
+            {"name": "review", "type": "object", "children": [{"name": "approved", "type": "boolean"}]},
+        ],
+    }
+    return g
+
+
+@pytest.mark.parametrize(
+    ("variable", "outputs", "state", "reason"),
+    [
+        ("risks", {"risks": ["synthetic risk"]}, "present", "key_present"),
+        ("summary", {"summary": "synthetic summary"}, "present", "key_present"),
+        ("summary", {"summary": None}, "present", "key_present"),
+        ("summary", {}, "unresolved", "key_absent"),
+    ],
+)
+def test_native_agent_direct_declared_output_evidence(
+    variable: str, outputs: dict[str, object], state: str, reason: str
+) -> None:
+    from services.dify_builder.output_evidence import collect_output_findings
+
+    rows = [
+        NodeOutput(node_id="tool", status="succeeded", outputs=outputs, outputs_available=True),
+        NodeOutput(node_id="end", status="succeeded"),
+    ]
+    finding = collect_output_findings(native_agent_graph(["tool", variable]), rows)[0]
+    assert (finding.state, finding.reason) == (state, reason)
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        {"type": "agent"},
+        {"type": "agent", "version": "1", "agent_node_kind": "dify_agent"},
+        {"type": "agent", "version": "2"},
+        {"type": "agent", "version": "2", "agent_node_kind": "other"},
+        {"type": "custom", "version": "2", "agent_node_kind": "dify_agent"},
+    ],
+)
+def test_native_agent_evidence_requires_native_identity(config: dict[str, object]) -> None:
+    from services.dify_builder.output_evidence import collect_output_findings
+
+    g = native_agent_graph()
+    g["nodes"][0]["data"] = {**config, "agent_declared_outputs": g["nodes"][0]["data"]["agent_declared_outputs"]}
+    rows = [
+        NodeOutput(node_id="tool", status="succeeded", outputs={"summary": "fixture"}, outputs_available=True),
+        NodeOutput(node_id="end", status="succeeded"),
+    ]
+    finding = collect_output_findings(g, rows)[0]
+    assert (finding.state, finding.reason) == ("unknown", "insufficient_provenance")
+
+
+@pytest.mark.parametrize(
+    "declarations",
+    [
+        [],
+        "summary",
+        [{"name": "summary", "type": "invented"}],
+        [{"name": "summary", "type": "string"}, {"name": "text", "type": "string"}],
+        [{"name": "summary", "type": "string"}, {"name": "risks", "type": "array", "items": {"type": "string"}}],
+    ],
+)
+def test_native_agent_evidence_requires_valid_declaration(declarations: object) -> None:
+    from services.dify_builder.output_evidence import collect_output_findings
+
+    g = native_agent_graph()
+    g["nodes"][0]["data"]["agent_declared_outputs"] = declarations
+    rows = [
+        NodeOutput(node_id="tool", status="succeeded", outputs={"summary": "fixture"}, outputs_available=True),
+        NodeOutput(node_id="end", status="succeeded"),
+    ]
+    finding = collect_output_findings(g, rows)[0]
+    assert (finding.state, finding.reason) == ("unknown", "insufficient_provenance")
+
+
+@pytest.mark.parametrize(
+    "selector",
+    [["tool", "missing"], ["tool", "review", "approved"], ["tool", "review.approved"]],
+)
+def test_native_agent_evidence_does_not_infer_undeclared_or_nested_outputs(selector: list[str]) -> None:
+    from services.dify_builder.output_evidence import collect_output_findings
+
+    rows = [
+        NodeOutput(
+            node_id="tool",
+            status="succeeded",
+            outputs={"missing": "fixture", "review": {"approved": True}, "review.approved": True},
+            outputs_available=True,
+        ),
+        NodeOutput(node_id="end", status="succeeded"),
+    ]
+    finding = collect_output_findings(native_agent_graph(selector), rows)[0]
+    assert (finding.state, finding.reason) == ("unknown", "insufficient_provenance")
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        {"parentId": "iteration"},
+        {"parent_id": "loop"},
+        {"data": {"isInIteration": True}},
+        {"data": {"isInLoop": True}},
+        {"data": {"iteration_id": "iteration"}},
+        {"data": {"loop_id": "loop"}},
+        {"data": {"retry_config": {"retry_enabled": True}}},
+        {"data": {"error_strategy": "default-value"}},
+    ],
+)
+def test_native_agent_evidence_keeps_ambiguous_provenance_unknown(extra: dict[str, object]) -> None:
+    from services.dify_builder.output_evidence import collect_output_findings
+
+    g = native_agent_graph()
+    g["nodes"][0]["data"].update(extra.get("data", {}))
+    g["nodes"][0].update({key: value for key, value in extra.items() if key != "data"})
+    rows = [
+        NodeOutput(node_id="tool", status="succeeded", outputs={"summary": "fixture"}, outputs_available=True),
+        NodeOutput(node_id="end", status="succeeded"),
+    ]
+    finding = collect_output_findings(g, rows)[0]
+    assert (finding.state, finding.reason) == ("unknown", "insufficient_provenance")
+
+
+@pytest.mark.parametrize(
+    ("status", "available", "count"),
+    [
+        ("succeeded", True, 0),
+        ("succeeded", True, 2),
+        ("failed", True, 1),
+        ("running", True, 1),
+        ("succeeded", False, 1),
+    ],
+)
+def test_native_agent_evidence_requires_single_succeeded_complete_row(status: str, available: bool, count: int) -> None:
+    from services.dify_builder.output_evidence import collect_output_findings
+
+    rows = [
+        NodeOutput(node_id="tool", status=status, outputs={"summary": "fixture"}, outputs_available=available)
+        for _ in range(count)
+    ]
+    rows.append(NodeOutput(node_id="end", status="succeeded"))
+    finding = collect_output_findings(native_agent_graph(), rows)[0]
+    assert (finding.state, finding.reason) == ("unknown", "insufficient_provenance")
+
+
+def test_native_agent_offloaded_outputs_do_not_prove_key_absence() -> None:
+    from services.dify_builder.output_evidence import collect_output_findings
+
+    native_rows = [
+        SimpleNamespace(
+            node_id="tool",
+            title="",
+            status="succeeded",
+            error=None,
+            inputs_dict={},
+            outputs_dict={},
+            outputs_truncated=True,
+        ),
+        SimpleNamespace(node_id="end", title="", status="succeeded", error=None, inputs_dict={}, outputs_dict={}),
+    ]
+    run = run_mapping.map_run_result({"id": "native", "status": "succeeded"}, native_rows)
+    finding = collect_output_findings(native_agent_graph(), run.per_node)[0]
+    assert (finding.state, finding.reason) == ("unknown", "insufficient_provenance")

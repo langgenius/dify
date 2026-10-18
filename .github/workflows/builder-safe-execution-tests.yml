@@ -422,6 +422,7 @@ jobs:
            'api/tests/unit_tests/services/dify_builder/test_agent_operation_owner.py'] if path not in FILES]
           FILES += [path for path in ['api/tests/unit_tests/services/dify_builder/native_testing/test_confirmed_agent_completion.py'] if path not in FILES]
           FILES += [path for path in ['api/tests/unit_tests/services/dify_builder/test_agent_model_result_canonical.py'] if path not in FILES]
+          FILES += ['api/tests/unit_tests/services/dify_builder/test_output_evidence.py']
           SELECTED_GUARDS = [
               "api/tests/unit_tests/controllers/console/app/test_workflow.py::test_sync_draft_workflow_rejects_empty_graph_without_confirmation",
           ]
@@ -701,6 +702,23 @@ jobs:
           a4_expected.setdefault('tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion', {}).update({'test_actual_terminal_run_can_use_the_protected_context_native_id_without_a_column_ack': 1,
            'test_completion_uses_the_immutable_admitted_revision_basis': 3,
            'test_context_native_identity_never_replaces_the_actual_owned_native_run': 2})
+          # Direct native Agent output evidence; retain the ordinary producer regressions.
+          a4_expected['tests.unit_tests.services.dify_builder.test_output_evidence'] = {
+              'test_verification_terminal_outputs': 4,
+              'test_verification_node_availability_and_inputs': 1,
+              'test_output_evidence': 9,
+              'test_output_evidence_container_and_retry_unknown': 1,
+              'test_verification_offloaded_outputs_are_not_complete': 1,
+              'test_verification_native_missing_outputs_stays_unavailable': 1,
+              'test_output_evidence_wfs_reported_tool_reference': 1,
+              'test_native_agent_direct_declared_output_evidence': 4,
+              'test_native_agent_evidence_requires_native_identity': 5,
+              'test_native_agent_evidence_requires_valid_declaration': 5,
+              'test_native_agent_evidence_does_not_infer_undeclared_or_nested_outputs': 3,
+              'test_native_agent_evidence_keeps_ambiguous_provenance_unknown': 8,
+              'test_native_agent_evidence_requires_single_succeeded_complete_row': 5,
+              'test_native_agent_offloaded_outputs_do_not_prove_key_absence': 1,
+          }
           for module, expected in {**a3_expected, **a4_expected}.items():
               actual = {}
               for classname, name in identities:
