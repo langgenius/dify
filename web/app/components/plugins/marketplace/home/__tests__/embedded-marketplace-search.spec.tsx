@@ -1,8 +1,8 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { renderWithNuqs } from '@/test/nuqs-testing'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import EmbeddedMarketplaceSearch from '../embedded-marketplace-search'
 
 const deploymentState = vi.hoisted(() => ({
@@ -14,10 +14,8 @@ vi.mock('@/features/system-features/state', async () => {
   return createSystemFeaturesStateModuleMock(() => deploymentState)
 })
 
-const { mockPluginSearch, mockTemplateSearch, mockCheckInstalled } = vi.hoisted(() => ({
-  mockCheckInstalled: vi.fn((_options: { pluginIds: string[]; enabled: boolean }) => ({
-    installedInfo: {},
-  })),
+const { mockPluginSearch, mockTemplateSearch, push } = vi.hoisted(() => ({
+  push: vi.fn(),
   mockPluginSearch: vi.fn(),
   mockTemplateSearch: vi.fn(),
 }))
@@ -43,56 +41,85 @@ vi.mock('#i18n', async () => {
   }
 })
 
-vi.mock('@/service/marketplace', () => ({
-  marketplaceQuery: {
-    searchAdvanced: {
-      queryOptions: ({ input }: { input: unknown }) => ({
-        queryKey: ['marketplace', 'plugins', input],
-        queryFn: () => mockPluginSearch(input),
-      }),
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/marketplace')>()
+  return {
+    ...actual,
+    marketplaceQuery: {
+      ...actual.marketplaceQuery,
+      searchAdvanced: {
+        ...actual.marketplaceQuery.searchAdvanced,
+        queryOptions: (
+          options: Parameters<typeof actual.marketplaceQuery.searchAdvanced.queryOptions>[0],
+        ) => ({
+          ...actual.marketplaceQuery.searchAdvanced.queryOptions(options),
+          queryFn: () => mockPluginSearch(),
+        }),
+      },
+      templateSearch: {
+        ...actual.marketplaceQuery.templateSearch,
+        queryOptions: (
+          options: Parameters<typeof actual.marketplaceQuery.templateSearch.queryOptions>[0],
+        ) => ({
+          ...actual.marketplaceQuery.templateSearch.queryOptions(options),
+          queryFn: () => mockTemplateSearch(),
+        }),
+      },
     },
-    templateSearch: {
-      queryOptions: ({ input }: { input: unknown }) => ({
-        queryKey: ['marketplace', 'templates', input],
-        queryFn: () => mockTemplateSearch(input),
-      }),
-    },
-  },
-}))
+  }
+})
 
 vi.mock('@/app/components/plugins/install-plugin/hooks/use-check-installed', () => ({
-  default: mockCheckInstalled,
+  default: () => ({ installedInfo: {} }),
 }))
 
 vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push }),
 }))
 
-vi.mock('../../detail-dialog', () => ({
-  default: ({ plugin }: { plugin: { name: string } }) => (
-    <div role="dialog" aria-label="plugin-detail">
-      {plugin.name}
-    </div>
-  ),
+vi.mock('../../detail-dialog/use-silent-install', () => ({
+  useSilentMarketplaceInstall: () => ({ install: vi.fn() }),
 }))
-
-vi.mock('../../templates/template-detail-dialog', () => ({
-  default: ({ template }: { template: { template_name: string } }) => (
-    <div role="dialog" aria-label="template-detail">
-      {template.template_name}
-    </div>
-  ),
-}))
-
-let queryClient: QueryClient
-
+// Exercise real dialog/frame message handling without loading external documents.
+vi.mock('../../utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../utils')>()
+  return {
+    ...actual,
+    getPluginLinkInMarketplace: (...args: Parameters<typeof actual.getPluginLinkInMarketplace>) =>
+      `about:blank${new URL(actual.getPluginLinkInMarketplace(...args), 'https://marketplace.example.test').search}`,
+    getTemplateLinkInMarketplace: (
+      ...args: Parameters<typeof actual.getTemplateLinkInMarketplace>
+    ) =>
+      `about:blank${new URL(actual.getTemplateLinkInMarketplace(...args), 'https://marketplace.example.test').search}`,
+  }
+})
+const plugin = {
+  type: 'plugin',
+  org: 'langgenius',
+  name: 'google-search',
+  plugin_id: 'langgenius/google-search',
+  label: { 'en-US': 'Google Search' },
+  brief: { 'en-US': 'Search the web from your workflow.' },
+  category: 'tool',
+}
+const template = {
+  id: 'template-1',
+  template_name: 'Legal Research Agent',
+  overview: 'Research legal questions with cited sources.',
+  publisher_unique_handle: 'dify',
+  usage_count: 120,
+  categories: ['knowledge'],
+  icon: '📄',
+  icon_background: '#FFFFFF',
+  icon_file_key: '',
+}
 const renderSearch = () => {
-  const { onUrlUpdate } = renderWithNuqs(
-    <QueryClientProvider client={queryClient}>
+  const { wrapper: UrlState, onUrlUpdate } = createNuqsTestWrapper()
+  renderWithConsoleQuery(
+    <UrlState>
       <EmbeddedMarketplaceSearch />
-    </QueryClientProvider>,
+    </UrlState>,
   )
-
   return { onUrlUpdate }
 }
 
@@ -100,228 +127,97 @@ describe('EmbeddedMarketplaceSearch', () => {
   beforeEach(() => {
     deploymentState.deploymentEdition = 'CLOUD'
     vi.clearAllMocks()
-    queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          gcTime: 0,
-          retry: false,
-        },
-      },
-    })
-    mockPluginSearch.mockResolvedValue({ data: { plugins: [], total: 0 } })
-    mockTemplateSearch.mockResolvedValue({ data: { templates: [], total: 0 } })
-  })
-
-  it('shows mixed plugin and template suggestions in the in-app search popup', async () => {
-    mockTemplateSearch.mockResolvedValue({
-      data: {
-        templates: [
-          {
-            id: 'template-1',
-            template_name: 'Legal Research Agent',
-            overview: 'Research legal questions with cited sources.',
-            publisher_handle: 'dify',
-            usage_count: 120,
-            categories: ['knowledge'],
-            icon: '📄',
-            icon_background: '#FFFFFF',
-            icon_file_key: '',
-          },
-        ],
-        total: 1,
-      },
-    })
-    mockPluginSearch.mockResolvedValue({
-      data: {
-        plugins: [
-          {
-            type: 'plugin',
-            org: 'langgenius',
-            name: 'google-search',
-            label: { en_US: 'Google Search' },
-            brief: { en_US: 'Search the web from your workflow.' },
-            category: 'tool',
-          },
-        ],
-        total: 1,
-      },
-    })
-    const user = userEvent.setup()
-    const { onUrlUpdate } = renderSearch()
-
-    await user.type(screen.getByRole('combobox'), 'search')
-
-    const templateGroup = await screen.findByRole('group', { name: 'Templates' })
-    const pluginGroup = screen.getByRole('group', { name: 'Plugins' })
-    expect(within(templateGroup).getByText('Legal Research Agent')).toBeInTheDocument()
-    expect(within(pluginGroup).getByText('Google Search')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /view more/i })).not.toBeInTheDocument()
-    expect(onUrlUpdate).not.toHaveBeenCalled()
+    mockPluginSearch.mockResolvedValue({ data: { plugins: [plugin], total: 1 } })
+    mockTemplateSearch.mockResolvedValue({ data: { templates: [template], total: 1 } })
   })
 
   it('opens plugin and template details from the popup without filtering the catalog', async () => {
-    mockTemplateSearch.mockResolvedValue({
-      data: {
-        templates: [
-          {
-            id: 'template-1',
-            template_name: 'Legal Research Agent',
-            overview: 'Research legal questions with cited sources.',
-            publisher_handle: 'dify',
-            usage_count: 120,
-            categories: ['knowledge'],
-            icon: '📄',
-            icon_background: '#FFFFFF',
-            icon_file_key: '',
-          },
-        ],
-        total: 1,
-      },
-    })
-    mockPluginSearch.mockResolvedValue({
-      data: {
-        plugins: [
-          {
-            type: 'plugin',
-            org: 'langgenius',
-            name: 'google-search',
-            plugin_id: 'langgenius/google-search',
-            label: { en_US: 'Google Search' },
-            brief: { en_US: 'Search the web from your workflow.' },
-            category: 'tool',
-          },
-        ],
-        total: 1,
-      },
-    })
     const user = userEvent.setup()
     const { onUrlUpdate } = renderSearch()
 
     await user.type(screen.getByRole('combobox'), 'search')
     await user.click(await screen.findByText('Google Search'))
 
-    expect(screen.getByRole('dialog', { name: 'plugin-detail' })).toHaveTextContent('google-search')
+    await screen.findByRole('dialog', { name: /Google Search/ })
+    const pluginFrame = screen.getByTitle(/^Google Search/)
+    expect(new URL(pluginFrame.getAttribute('src')!).searchParams.get('installed')).toBe('false')
     expect(onUrlUpdate).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'operation.close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 
-    await user.type(screen.getByRole('combobox'), 'search')
-    await user.click(await screen.findByText('Legal Research Agent'))
-
-    expect(screen.getByRole('dialog', { name: 'template-detail' })).toHaveTextContent(
-      'Legal Research Agent',
+    await user.type(screen.getByRole('combobox'), 'legal')
+    await user.click(await screen.findByRole('option', { name: /Legal Research Agent/ }))
+    await screen.findByRole('dialog', { name: /Legal Research Agent/ })
+    const frame = screen.getByTitle(/^Legal Research Agent/) as HTMLIFrameElement
+    fireEvent(
+      window,
+      new MessageEvent('message', {
+        data: { type: 'dify-marketplace:install-template', templateId: 'template-1' },
+        origin: 'null',
+        source: frame.contentWindow,
+      }),
     )
-    expect(screen.queryByRole('dialog', { name: 'plugin-detail' })).not.toBeInTheDocument()
+    expect(push).toHaveBeenCalledExactlyOnceWith('/apps?template-id=template-1')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(onUrlUpdate).not.toHaveBeenCalled()
   })
 
   it('filters the current catalog when Enter is pressed instead of opening a result', async () => {
-    mockPluginSearch.mockResolvedValue({
-      data: {
-        plugins: [
-          {
-            type: 'plugin',
-            org: 'langgenius',
-            name: 'google-search',
-            plugin_id: 'langgenius/google-search',
-            label: { en_US: 'Google Search' },
-            brief: { en_US: 'Search the web from your workflow.' },
-            category: 'tool',
-          },
-        ],
-        total: 1,
-      },
-    })
     const user = userEvent.setup()
     const { onUrlUpdate } = renderSearch()
 
     await user.type(screen.getByRole('combobox'), 'google')
     await screen.findByRole('option', { name: /Google Search/ })
-    // Nothing is highlighted, so Enter is left to the browser's implicit form submission;
-    // happy-dom has none, so the form is submitted here.
-    expect(fireEvent.keyDown(screen.getByRole('combobox'), { key: 'Enter' })).toBe(true)
-    fireEvent.submit(screen.getByRole('combobox').closest('form')!)
+    await user.keyboard('{Enter}')
 
     await waitFor(() => {
       expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('q')).toBe('google')
     })
-    expect(screen.queryByRole('dialog', { name: 'plugin-detail' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
   afterEach(() => {
     vi.restoreAllMocks()
   })
 
-  describe.each(['COMMUNITY', 'ENTERPRISE'] as const)('%s external search', (edition) => {
-    it.each([
-      ['plugin', 'mouse'],
-      ['plugin', 'keyboard'],
-      ['template', 'mouse'],
-      ['template', 'keyboard'],
-    ] as const)(
-      'opens one tab for a %s using %s without changing the catalog',
-      async (kind, interaction) => {
-        deploymentState.deploymentEdition = edition
-        const open = vi.spyOn(window, 'open').mockReturnValue(null)
-        mockPluginSearch.mockResolvedValue({
-          data: {
-            plugins:
-              kind === 'plugin'
-                ? [
-                    {
-                      type: 'plugin',
-                      org: 'langgenius',
-                      name: 'google-search',
-                      plugin_id: 'langgenius/google-search',
-                      label: { en_US: 'Google Search' },
-                      brief: {},
-                      category: 'tool',
-                    },
-                  ]
-                : [],
-            total: 1,
-          },
-        })
-        mockTemplateSearch.mockResolvedValue({
-          data: {
-            templates:
-              kind === 'template'
-                ? [
-                    {
-                      id: 'template-1',
-                      template_name: 'Legal Research Agent',
-                      publisher_unique_handle: 'dify',
-                      overview: '',
-                      usage_count: 1,
-                      categories: [],
-                      icon: '',
-                      icon_background: '',
-                      icon_file_key: '',
-                    },
-                  ]
-                : [],
-            total: 1,
-          },
-        })
-        const user = userEvent.setup()
-        const { onUrlUpdate } = renderSearch()
-        const input = screen.getByRole('combobox')
-        await user.type(input, 'search')
-        const option = await screen.findByRole('option')
-        if (interaction === 'mouse') await user.click(option)
-        else await user.keyboard('{ArrowDown}{Enter}')
-        expect(open).toHaveBeenCalledTimes(1)
-        const [href, target, features] = open.mock.calls[0]!
-        const url = new URL(String(href))
-        expect(url.origin).toBe('https://marketplace.dify.ai')
-        expect(url.pathname).toBe(
-          kind === 'plugin' ? '/plugin/langgenius/google-search' : '/template/dify/template-1',
-        )
-        expect(url.searchParams.get('source')).toBe(window.location.origin)
-        expect(target).toBe('_blank')
-        expect(features).toBe('noopener,noreferrer')
-        expect(input).toHaveValue('search')
-
-        expect(onUrlUpdate).not.toHaveBeenCalled()
-        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-        expect(mockCheckInstalled.mock.calls.every(([options]) => !options.enabled)).toBe(true)
-      },
-    )
-  })
+  it.each([
+    ['COMMUNITY', 'plugin', 'mouse'],
+    ['COMMUNITY', 'template', 'keyboard'],
+    ['ENTERPRISE', 'plugin', 'keyboard'],
+    ['ENTERPRISE', 'template', 'mouse'],
+  ] as const)(
+    'opens a %s %s result using %s without changing the catalog',
+    async (edition, kind, interaction) => {
+      deploymentState.deploymentEdition = edition
+      const open = vi.spyOn(window, 'open').mockReturnValue(null)
+      mockPluginSearch.mockResolvedValue({
+        data: { plugins: kind === 'plugin' ? [plugin] : [], total: kind === 'plugin' ? 1 : 0 },
+      })
+      mockTemplateSearch.mockResolvedValue({
+        data: {
+          templates: kind === 'template' ? [template] : [],
+          total: kind === 'template' ? 1 : 0,
+        },
+      })
+      const user = userEvent.setup()
+      const { onUrlUpdate } = renderSearch()
+      const input = screen.getByRole('combobox')
+      await user.type(input, 'search')
+      const option = await screen.findByRole('option')
+      if (interaction === 'mouse') await user.click(option)
+      else await user.keyboard('{ArrowDown}{Enter}')
+      expect(open).toHaveBeenCalledTimes(1)
+      const [href, target, features] = open.mock.calls[0]!
+      const url = new URL(String(href))
+      expect(url.origin).toBe('https://marketplace.dify.ai')
+      expect(url.pathname).toBe(
+        kind === 'plugin' ? '/plugin/langgenius/google-search' : '/template/dify/template-1',
+      )
+      expect(url.searchParams.get('source')).toBe(window.location.origin)
+      expect(target).toBe('_blank')
+      expect(features).toBe('noopener,noreferrer')
+      expect(input).toHaveValue('search')
+      expect(onUrlUpdate).not.toHaveBeenCalled()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    },
+  )
 })

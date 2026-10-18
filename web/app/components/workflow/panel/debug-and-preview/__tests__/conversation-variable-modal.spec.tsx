@@ -64,6 +64,7 @@ describe('ConversationVariableModal', () => {
   })
 
   afterEach(() => {
+    vi.clearAllTimers()
     vi.useRealTimers()
   })
 

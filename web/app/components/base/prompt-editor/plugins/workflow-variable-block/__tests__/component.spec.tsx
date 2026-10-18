@@ -1,530 +1,214 @@
 import type { LexicalEditor } from 'lexical'
-import type { UpdateWorkflowNodesMapPayload } from '../index'
-import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import type { ComponentProps } from 'react'
+import type WorkflowVariableBlockComponent from '../component'
+import type { WorkflowNodesMap } from '../node'
+import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { mergeRegister } from '@lexical/utils'
-import { act, screen } from '@testing-library/react'
+import { ContentEditable } from '@lexical/react/LexicalContentEditable'
+import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
+import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useReactFlow, useStoreApi } from 'reactflow'
+import { $createParagraphNode, $getRoot } from 'lexical'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
-import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
-import { useSelectOrDelete } from '../../../hooks'
-import WorkflowVariableBlockComponent from '../component'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { UPDATE_WORKFLOW_NODES_MAP } from '../index'
-import { WorkflowVariableBlockNode } from '../node'
+import { $createWorkflowVariableBlockNode, WorkflowVariableBlockNode } from '../node'
 
-const render: typeof renderWithConsoleQuery = (ui, options) => {
-  const queryClient = createConsoleQueryClient()
+// The editor owns the jump coordinates; ReactFlow owns applying them to its canvas.
+const setViewport = vi.hoisted(() => vi.fn())
+vi.mock('reactflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('reactflow')>()
+  return { ...actual, useReactFlow: () => ({ ...actual.useReactFlow(), setViewport }) }
+})
+
+type Props = Omit<ComponentProps<typeof WorkflowVariableBlockComponent>, 'nodeKey'>
+const nodeMap: WorkflowNodesMap = {
+  'node-1': {
+    title: 'Node A',
+    type: BlockEnum.LLM,
+    width: 200,
+    height: 100,
+    position: { x: 50, y: 80 },
+  },
+}
+const availableVariables = [
+  { nodeId: 'node-1', title: 'Node A', vars: [{ variable: 'output', type: VarType.string }] },
+]
+
+function renderVariables(props: Props[], hasContainer = true) {
+  let editor: LexicalEditor
+  function Capture() {
+    ;[editor] = useLexicalComposerContext()
+    return null
+  }
+  const { queryClient } = createConsoleQueryWrapper()
   queryClient.setQueryData(consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(), {
     data: [],
     plugins: {},
   })
-  return renderWithConsoleQuery(ui, { ...options, queryClient })
+  const view = renderWorkflowFlowComponent(
+    <div id={hasContainer ? 'workflow-container' : undefined}>
+      <LexicalComposer
+        initialConfig={{
+          namespace: 'workflow-variable-test',
+          nodes: [WorkflowVariableBlockNode],
+          onError: (error: Error) => {
+            throw error
+          },
+          editorState: () => {
+            $getRoot().append(
+              $createParagraphNode().append(
+                ...props.map((props) =>
+                  $createWorkflowVariableBlockNode(
+                    props.variables,
+                    props.workflowNodesMap,
+                    props.getVarType,
+                    props.availableVariables,
+                  ),
+                ),
+              ),
+            )
+          },
+        }}
+      >
+        <RichTextPlugin
+          contentEditable={<ContentEditable aria-label="Prompt" />}
+          ErrorBoundary={LexicalErrorBoundary}
+        />
+        <Capture />
+      </LexicalComposer>
+    </div>,
+    { queryClient, reactFlowProps: { fitView: false, defaultViewport: { x: 0, y: 0, zoom: 2 } } },
+  )
+  const container = document.getElementById('workflow-container')
+  if (container) {
+    Object.defineProperty(container, 'clientWidth', { value: 1000, configurable: true })
+    Object.defineProperty(container, 'clientHeight', { value: 800, configurable: true })
+  }
+  return { ...view, editor: editor! }
 }
 
-const { mockVarLabel } = vi.hoisted(() => ({
-  mockVarLabel: vi.fn(),
-}))
-
-vi.mock('@lexical/react/LexicalComposerContext')
-vi.mock('@lexical/utils')
-vi.mock('reactflow')
-vi.mock('../../../hooks')
-
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/variable-label', () => ({
-  VariableLabelInEditor: (props: {
-    onClick: (e: React.MouseEvent) => void
-    errorMsg?: string
-    nodeTitle?: string
-    nodeType?: BlockEnum
-    notShowFullPath?: boolean
-  }) => {
-    mockVarLabel(props)
-    return (
-      <button type="button" onClick={props.onClick}>
-        label
-      </button>
-    )
-  },
-}))
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-full-path-panel', () => ({
-  default: (props: { nodeName: string; path: string[]; varType: Type; nodeType?: BlockEnum }) => (
-    <div data-testid="var-full-path-panel">{props.nodeName}</div>
-  ),
-}))
-
-const mockRegisterCommand = vi.fn()
-const mockHasNodes = vi.fn()
-const mockSetViewport = vi.fn()
-const mockGetState = vi.fn()
-
-const mockEditor = {
-  registerCommand: mockRegisterCommand,
-  hasNodes: mockHasNodes,
-} as unknown as LexicalEditor
-
 describe('WorkflowVariableBlockComponent', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockHasNodes.mockReturnValue(true)
-    mockRegisterCommand.mockReturnValue(vi.fn())
-    mockGetState.mockReturnValue({ transform: [0, 0, 2] })
-
-    vi.mocked(useLexicalComposerContext).mockReturnValue([mockEditor, {}] as unknown as ReturnType<
-      typeof useLexicalComposerContext
-    >)
-    vi.mocked(mergeRegister).mockImplementation(
-      (...cleanups) =>
-        () =>
-          cleanups.forEach((cleanup) => cleanup()),
-    )
-    vi.mocked(useSelectOrDelete).mockReturnValue([{ current: null }, false])
-    vi.mocked(useReactFlow).mockReturnValue({
-      setViewport: mockSetViewport,
-    } as unknown as ReturnType<typeof useReactFlow>)
-    vi.mocked(useStoreApi).mockReturnValue({
-      getState: mockGetState,
-    } as unknown as ReturnType<typeof useStoreApi>)
-  })
-
-  it('should throw when WorkflowVariableBlockNode is not registered', () => {
-    mockHasNodes.mockReturnValue(false)
-
-    expect(() =>
-      render(
-        <WorkflowVariableBlockComponent
-          nodeKey="k"
-          variables={['node-1', 'output']}
-          workflowNodesMap={{}}
-        />,
-      ),
-    ).toThrow('WorkflowVariableBlockPlugin: WorkflowVariableBlock not registered on editor')
-  })
-
-  it('should render variable label and register update command', () => {
-    render(
-      <WorkflowVariableBlockComponent
-        nodeKey="k"
-        variables={['node-1', 'output']}
-        workflowNodesMap={{}}
-      />,
-    )
-
-    expect(screen.getByRole('button', { name: 'label' }))!.toBeInTheDocument()
-    expect(mockHasNodes).toHaveBeenCalledWith([WorkflowVariableBlockNode])
-    expect(mockRegisterCommand).toHaveBeenCalledWith(
-      UPDATE_WORKFLOW_NODES_MAP,
-      expect.any(Function),
-      expect.any(Number),
-    )
-  })
-
-  it('should call setViewport when label is clicked and node exists', async () => {
+  it('requests a canvas jump to the referenced node while preserving zoom', async () => {
     const user = userEvent.setup()
-    const workflowContainer = document.createElement('div')
-    workflowContainer.id = 'workflow-container'
-    Object.defineProperty(workflowContainer, 'clientWidth', { value: 1000, configurable: true })
-    Object.defineProperty(workflowContainer, 'clientHeight', { value: 800, configurable: true })
-    document.body.appendChild(workflowContainer)
-
-    render(
-      <WorkflowVariableBlockComponent
-        nodeKey="k"
-        variables={['node-1', 'group', 'field']}
-        workflowNodesMap={{
-          'node-1': {
-            title: 'Node A',
-            type: BlockEnum.LLM,
-            width: 200,
-            height: 100,
-            position: { x: 50, y: 80 },
-          },
-        }}
-      />,
-    )
-
-    await user.click(screen.getByRole('button', { name: 'label' }))
-
-    expect(mockSetViewport).toHaveBeenCalledWith({
-      x: (1000 - 400 - 200 * 2) / 2 - 50 * 2,
-      y: (800 - 100 * 2) / 2 - 80 * 2,
-      zoom: 2,
-    })
-  })
-
-  it('should render safely when node exists and getVarType is not provided', () => {
-    render(
-      <WorkflowVariableBlockComponent
-        nodeKey="k"
-        variables={['node-1', 'group', 'field']}
-        workflowNodesMap={{
-          'node-1': {
-            title: 'Node A',
-            type: BlockEnum.LLM,
-            width: 200,
-            height: 100,
-            position: { x: 0, y: 0 },
-          },
-        }}
-      />,
-    )
-
-    expect(screen.getByRole('button', { name: 'label' }))!.toBeInTheDocument()
-  })
-
-  it('should pass computed varType when getVarType is provided', () => {
-    const getVarType = vi.fn(() => Type.number)
-
-    render(
-      <WorkflowVariableBlockComponent
-        nodeKey="k"
-        variables={['node-1', 'group', 'field']}
-        workflowNodesMap={{
-          'node-1': {
-            title: 'Node A',
-            type: BlockEnum.LLM,
-            width: 200,
-            height: 100,
-            position: { x: 0, y: 0 },
-          },
-        }}
-        getVarType={getVarType}
-      />,
-    )
-
-    expect(getVarType).toHaveBeenCalledWith({
-      nodeId: 'node-1',
-      valueSelector: ['node-1', 'group', 'field'] as ValueSelector,
-    })
-  })
-
-  it('should treat env variable as valid regardless of environmentVariables contents', () => {
-    const environmentVariables: Var[] = [{ variable: 'env.valid_key', type: VarType.string }]
-
-    render(
-      <WorkflowVariableBlockComponent
-        nodeKey="k"
-        variables={['env', 'missing_key']}
-        workflowNodesMap={{}}
-        environmentVariables={environmentVariables}
-      />,
-    )
-
-    expect(mockVarLabel).toHaveBeenCalledWith(
-      expect.objectContaining({
-        errorMsg: undefined,
-      }),
+    renderVariables([
+      { variables: ['node-1', 'output'], workflowNodesMap: nodeMap, availableVariables },
+    ])
+    await user.click(await screen.findByText('output'))
+    await waitFor(() =>
+      expect(setViewport).toHaveBeenCalledExactlyOnceWith({ x: 0, y: 140, zoom: 2 }),
     )
   })
 
-  it('should keep env variable valid when environmentVariables is omitted', () => {
-    render(
-      <WorkflowVariableBlockComponent
-        nodeKey="k"
-        variables={['env', 'missing_key']}
-        workflowNodesMap={{}}
-      />,
-    )
-
-    expect(mockVarLabel).toHaveBeenCalledWith(
-      expect.objectContaining({
-        errorMsg: undefined,
-      }),
-    )
-  })
-
-  it('should treat env variable as valid when it exists in environmentVariables', () => {
-    const environmentVariables: Var[] = [{ variable: 'env.valid_key', type: VarType.string }]
-
-    render(
-      <WorkflowVariableBlockComponent
-        nodeKey="k"
-        variables={['env', 'valid_key']}
-        workflowNodesMap={{}}
-        environmentVariables={environmentVariables}
-      />,
-    )
-
-    expect(mockVarLabel).toHaveBeenCalledWith(
-      expect.objectContaining({
-        errorMsg: undefined,
-      }),
-    )
-  })
-
-  it('should handle env selector with missing segment when environmentVariables are provided', () => {
-    const environmentVariables: Var[] = [{ variable: 'env.', type: VarType.string }]
-
-    render(
-      <WorkflowVariableBlockComponent
-        nodeKey="k"
-        variables={['env']}
-        workflowNodesMap={{}}
-        environmentVariables={environmentVariables}
-      />,
-    )
-
-    expect(mockVarLabel).toHaveBeenCalledWith(
-      expect.objectContaining({
-        errorMsg: undefined,
-      }),
-    )
-  })
-
-  it('should treat conversation variable as valid when found in conversationVariables', () => {
-    const conversationVariables: Var[] = [{ variable: 'conversation.topic', type: VarType.string }]
-
-    render(
-      <WorkflowVariableBlockComponent
-        nodeKey="k"
-        variables={['conversation', 'topic']}
-        workflowNodesMap={{}}
-        conversationVariables={conversationVariables}
-      />,
-    )
-
-    expect(mockVarLabel).toHaveBeenCalledWith(
-      expect.objectContaining({
-        errorMsg: undefined,
-      }),
-    )
-  })
-
-  it('should keep conversation variable valid when conversationVariables is omitted', () => {
-    render(
-      <WorkflowVariableBlockComponent
-        nodeKey="k"
-        variables={['conversation', 'topic']}
-        workflowNodesMap={{}}
-      />,
-    )
-
-    expect(mockVarLabel).toHaveBeenCalledWith(
-      expect.objectContaining({
-        errorMsg: undefined,
-      }),
-    )
-  })
-
-  it('should treat conversation variable as valid regardless of conversationVariables contents', () => {
-    const conversationVariables: Var[] = [{ variable: 'conversation.other', type: VarType.string }]
-
-    render(
-      <WorkflowVariableBlockComponent
-        nodeKey="k"
-        variables={['conversation', 'topic']}
-        workflowNodesMap={{}}
-        conversationVariables={conversationVariables}
-      />,
-    )
-
-    expect(mockVarLabel).toHaveBeenCalledWith(
-      expect.objectContaining({
-        errorMsg: undefined,
-      }),
-    )
-  })
-
-  it('should handle conversation selector with missing segment when conversationVariables are provided', () => {
-    const conversationVariables: Var[] = [{ variable: 'conversation.', type: VarType.string }]
-
-    render(
-      <WorkflowVariableBlockComponent
-        nodeKey="k"
-        variables={['conversation']}
-        workflowNodesMap={{}}
-        conversationVariables={conversationVariables}
-      />,
-    )
-
-    expect(mockVarLabel).toHaveBeenCalledWith(
-      expect.objectContaining({
-        errorMsg: undefined,
-      }),
-    )
-  })
-
-  it('should treat global variable as valid without node', () => {
-    render(
-      <WorkflowVariableBlockComponent
-        nodeKey="k"
-        variables={['sys', 'user_id']}
-        workflowNodesMap={{}}
-      />,
-    )
-
-    expect(mockVarLabel).toHaveBeenCalledWith(
-      expect.objectContaining({
-        errorMsg: undefined,
-      }),
-    )
-  })
-
-  it('should use rag variable validation path', () => {
-    const ragVariables: Var[] = [{ variable: 'rag.shared.answer', type: VarType.string }]
-
-    render(
-      <WorkflowVariableBlockComponent
-        nodeKey="k"
-        variables={['rag', 'shared', 'answer']}
-        workflowNodesMap={{ rag: { title: 'Rag', type: BlockEnum.Tool } as never }}
-        ragVariables={ragVariables}
-      />,
-    )
-
-    expect(mockVarLabel).toHaveBeenCalledWith(
-      expect.objectContaining({
-        errorMsg: undefined,
-      }),
-    )
-  })
-
-  it('should keep rag variable valid when ragVariables is omitted', () => {
-    render(
-      <WorkflowVariableBlockComponent
-        nodeKey="k"
-        variables={['rag', 'shared', 'answer']}
-        workflowNodesMap={{ rag: { title: 'Rag', type: BlockEnum.Tool } as never }}
-      />,
-    )
-
-    expect(mockVarLabel).toHaveBeenCalledWith(
-      expect.objectContaining({
-        errorMsg: undefined,
-      }),
-    )
-  })
-
-  it('should treat rag variable as valid regardless of ragVariables contents', () => {
-    const ragVariables: Var[] = [{ variable: 'rag.shared.other', type: VarType.string }]
-
-    render(
-      <WorkflowVariableBlockComponent
-        nodeKey="k"
-        variables={['rag', 'shared', 'answer']}
-        workflowNodesMap={{ rag: { title: 'Rag', type: BlockEnum.Tool } as never }}
-        ragVariables={ragVariables}
-      />,
-    )
-
-    expect(mockVarLabel).toHaveBeenCalledWith(
-      expect.objectContaining({
-        errorMsg: undefined,
-      }),
-    )
-  })
-
-  it('should handle rag selector with missing segment when ragVariables are provided', () => {
-    const ragVariables: Var[] = [{ variable: 'rag.shared.', type: VarType.string }]
-
-    render(
-      <WorkflowVariableBlockComponent
-        nodeKey="k"
-        variables={['rag', 'shared']}
-        workflowNodesMap={{ shared: { title: 'Rag', type: BlockEnum.Tool } as never }}
-        ragVariables={ragVariables}
-      />,
-    )
-
-    expect(mockVarLabel).toHaveBeenCalledWith(
-      expect.objectContaining({
-        errorMsg: undefined,
-      }),
-    )
-  })
-
-  it('should apply workflow node map updates through command handler', () => {
-    render(
-      <WorkflowVariableBlockComponent
-        nodeKey="k"
-        variables={['node-1', 'field']}
-        workflowNodesMap={{}}
-      />,
-    )
-
-    const updateHandler = mockRegisterCommand.mock.calls[0]![1] as (
-      payload: UpdateWorkflowNodesMapPayload,
-    ) => boolean
-    let result = false
-    act(() => {
-      result = updateHandler({
-        workflowNodesMap: {
-          'node-1': {
-            title: 'Updated',
-            type: BlockEnum.LLM,
-            width: 100,
-            height: 50,
-            position: { x: 0, y: 0 },
-          },
-        },
+  it('updates every rendered variable after a workflow node-map broadcast', async () => {
+    const user = userEvent.setup()
+    const { editor } = renderVariables([
+      { variables: ['node-1', 'output'], workflowNodesMap: nodeMap, availableVariables },
+      {
+        variables: ['node-2', 'result'],
+        workflowNodesMap: { 'node-2': { ...nodeMap['node-1']!, title: 'Node B' } },
         availableVariables: [],
+      },
+    ])
+    expect(await screen.findByText('Node A')).toBeInTheDocument()
+    expect(screen.getByText('Node B')).toBeInTheDocument()
+    act(() => {
+      editor.dispatchCommand(UPDATE_WORKFLOW_NODES_MAP, {
+        workflowNodesMap: {
+          'node-1': { ...nodeMap['node-1']!, title: 'Renamed A' },
+          'node-2': { ...nodeMap['node-1']!, title: 'Renamed B' },
+        },
+        availableVariables: [
+          {
+            nodeId: 'node-2',
+            title: 'Renamed B',
+            vars: [{ variable: 'result', type: VarType.string }],
+          },
+        ],
       })
     })
-
-    expect(result).toBe(true)
+    expect(await screen.findByText('Renamed A')).toBeInTheDocument()
+    expect(screen.getByText('Renamed B')).toBeInTheDocument()
+    expect(screen.queryByText('Node A')).not.toBeInTheDocument()
+    expect(screen.queryByText('Node B')).not.toBeInTheDocument()
+    await user.hover(screen.getByText('output').closest('[data-base-ui-tooltip-trigger]')!)
+    expect(await screen.findByText('workflow.errorMsg.invalidVariable')).toBeInTheDocument()
   })
 
-  it('should mark non-special variable invalid when source key is missing in availableVariables', () => {
-    render(
-      <WorkflowVariableBlockComponent
-        nodeKey="k"
-        variables={['node-1', 'missing_key']}
-        workflowNodesMap={{
-          'node-1': {
-            title: 'Node A',
-            type: BlockEnum.LLM,
-            width: 200,
-            height: 100,
-            position: { x: 0, y: 0 },
-          },
-        }}
-        availableVariables={[
-          {
-            nodeId: 'node-1',
-            title: 'Node A',
-            vars: [{ variable: 'existing_key', type: VarType.string }],
-          },
-        ]}
-      />,
+  it('shows an invalid variable warning when the referenced output is unavailable', async () => {
+    const user = userEvent.setup()
+    renderVariables([
+      { variables: ['node-1', 'missing'], workflowNodesMap: nodeMap, availableVariables },
+    ])
+    await user.hover(
+      (await screen.findByText('missing')).closest('[data-base-ui-tooltip-trigger]')!,
     )
-
-    expect(mockVarLabel).toHaveBeenCalledWith(
-      expect.objectContaining({
-        errorMsg: expect.any(String),
-      }),
-    )
+    expect(await screen.findByText('workflow.errorMsg.invalidVariable')).toBeInTheDocument()
   })
 
-  it('should keep non-special variable valid when source key exists in availableVariables', () => {
-    render(
-      <WorkflowVariableBlockComponent
-        nodeKey="k"
-        variables={['node-1', 'existing_key']}
-        workflowNodesMap={{
-          'node-1': {
-            title: 'Node A',
-            type: BlockEnum.LLM,
-            width: 200,
-            height: 100,
-            position: { x: 0, y: 0 },
-          },
-        }}
-        availableVariables={[
-          {
-            nodeId: 'node-1',
-            title: 'Node A',
-            vars: [{ variable: 'existing_key', type: VarType.string }],
-          },
-        ]}
-      />,
-    )
-
-    expect(mockVarLabel).toHaveBeenCalledWith(
-      expect.objectContaining({
-        errorMsg: undefined,
+  it('shows the nested path and computed type in the real preview', async () => {
+    const user = userEvent.setup()
+    const getVarType = vi.fn(() => Type.number)
+    renderVariables([
+      {
+        variables: ['node-1', 'output', 'field'],
+        workflowNodesMap: nodeMap,
+        availableVariables,
+        getVarType,
+      },
+    ])
+    await user.hover(await screen.findByText('field'))
+    await waitFor(() =>
+      expect(getVarType).toHaveBeenCalledWith({
+        nodeId: 'node-1',
+        valueSelector: ['node-1', 'output', 'field'],
       }),
+    )
+    expect(await screen.findByText('output')).toBeInTheDocument()
+    expect(screen.getByText('number')).toBeInTheDocument()
+  })
+
+  it.each(['env', 'conversation', 'sys', 'rag'])(
+    'renders a %s variable without a source node and does not jump to the canvas',
+    async (namespace) => {
+      const user = userEvent.setup()
+      const variables = namespace === 'rag' ? ['rag', 'shared', 'answer'] : [namespace, 'answer']
+      renderVariables([{ variables, workflowNodesMap: {} }])
+      const label = await screen.findByText(namespace === 'sys' ? 'sys.answer' : 'answer')
+      await user.click(label)
+      expect(setViewport).not.toHaveBeenCalled()
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+    },
+  )
+
+  it('does not jump when the canvas container is absent', async () => {
+    const user = userEvent.setup()
+    renderVariables(
+      [{ variables: ['node-1', 'output'], workflowNodesMap: nodeMap, availableVariables }],
+      false,
+    )
+    await user.click(await screen.findByText('output'))
+    expect(setViewport).not.toHaveBeenCalled()
+  })
+
+  it('keeps the viewport finite when a source node has not been measured', async () => {
+    const user = userEvent.setup()
+    renderVariables([
+      {
+        variables: ['node-1', 'output'],
+        workflowNodesMap: {
+          'node-1': { ...nodeMap['node-1']!, width: undefined, height: undefined },
+        },
+        availableVariables,
+      },
+    ])
+    await user.click(await screen.findByText('output'))
+    await waitFor(() =>
+      expect(setViewport).toHaveBeenCalledExactlyOnceWith({ x: 200, y: 240, zoom: 2 }),
     )
   })
 })

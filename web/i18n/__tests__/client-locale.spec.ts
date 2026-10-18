@@ -8,7 +8,6 @@ vi.mock('react-i18next', () => ({ getI18n: () => ({ changeLanguage: mocks.change
 
 describe('client locale inputs', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     mocks.changeLanguage.mockResolvedValue(undefined)
   })
 

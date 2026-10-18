@@ -261,7 +261,8 @@ describe('app-publisher sections', () => {
     expect(handlePublish).toHaveBeenCalledWith({ model: 'gpt-4o' })
   })
 
-  it('should render restore controls for published chat apps', () => {
+  it('should render restore controls for published chat apps', async () => {
+    const user = userEvent.setup()
     const handleRestore = vi.fn()
 
     render(
@@ -283,7 +284,7 @@ describe('app-publisher sections', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText(/(?:^|\.)common\.restore(?=$|:)/))
+    await user.click(screen.getByText(/(?:^|\.)common\.restore(?=$|:)/))
     expect(handleRestore).toHaveBeenCalled()
     expect(screen.getByRole('status').textContent).toMatch(/common\.currentDraft\b/)
   })
@@ -347,7 +348,8 @@ describe('app-publisher sections', () => {
     expect(screen.getByRole('status').textContent).toMatch(/common\.currentDraft\b/)
   })
 
-  it('should expose naming and keep publishing available for an unnamed published workflow', () => {
+  it('should expose naming and keep publishing available for an unnamed published workflow', async () => {
+    const user = userEvent.setup()
     const onEditVersion = vi.fn()
 
     render(
@@ -377,7 +379,7 @@ describe('app-publisher sections', () => {
     const nameButton = screen.getByRole('button', {
       name: /versionHistory\.nameIt\b/,
     })
-    fireEvent.click(nameButton)
+    await user.click(nameButton)
     expect(onEditVersion).toHaveBeenCalledTimes(1)
     const publishButton = screen.getByRole('button', { name: /common\.publishUpdate\b/ })
     expect(publishButton).toBeEnabled()
@@ -385,7 +387,8 @@ describe('app-publisher sections', () => {
     expect(screen.getByText(/common\.autoSaved\b/)).toBeInTheDocument()
   })
 
-  it('should show named workflow metadata and keep publish update available', () => {
+  it('should show named workflow metadata and keep publish update available', async () => {
+    const user = userEvent.setup()
     const onEditVersion = vi.fn()
 
     render(
@@ -415,7 +418,7 @@ describe('app-publisher sections', () => {
 
     expect(screen.getByText('Sprint-42')).toBeInTheDocument()
     expect(screen.getByText('Fixed data synchronization and page loading.')).toBeInTheDocument()
-    fireEvent.click(
+    await user.click(
       screen.getByRole('button', {
         name: /versionHistory\.editVersionInfo\b/,
       }),
@@ -452,33 +455,6 @@ describe('app-publisher sections', () => {
     expect(screen.queryByText(/versionHistory\.nameIt\b/)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /common\.publishUpdate\b/ })).toBeEnabled()
     expect(screen.getByRole('status').textContent).toMatch(/common\.currentDraft\b/)
-  })
-
-  it('should keep multiple-model publishing available without publish config changes', () => {
-    const handlePublish = vi.fn()
-
-    render(
-      <PublisherPopup
-        defaultOpen
-        debugWithMultipleModel
-        draftUpdatedAt={Date.now()}
-        formatTimeFromNow={() => '1 minute ago'}
-        handlePublish={handlePublish}
-        handleRestore={vi.fn()}
-        isChatApp={false}
-        isPublishing={false}
-        multipleModelConfigs={[]}
-        publishDisabled={false}
-        published={false}
-        publishedAt={Date.now()}
-        startNodeLimitExceeded={false}
-        upgradeHighlightStyle={{}}
-      />,
-    )
-
-    fireEvent.click(screen.getByText('publish-multiple-model'))
-
-    expect(handlePublish).toHaveBeenCalledWith({ model: 'gpt-4o' })
   })
 
   it('should disable multiple-model publishing when publishing is unavailable', () => {
@@ -559,7 +535,7 @@ describe('app-publisher sections', () => {
       'href',
       'https://example.com/app',
     )
-    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.config(?=$|:)/ }))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.config(?=$|:)/ }))
     expect(handleOpenRunConfig).toHaveBeenCalledWith('https://example.com/app')
     expect(screen.getByRole('link', { name: /appMenus\.accessPoint\b/ })).toHaveAttribute(
       'href',

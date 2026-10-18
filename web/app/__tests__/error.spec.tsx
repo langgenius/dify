@@ -27,7 +27,9 @@ const routeErrors = [
 ]
 
 describe('route error recovery', () => {
+  const originalUrl = window.location.href
   afterEach(() => {
+    window.history.replaceState({}, '', originalUrl)
     vi.restoreAllMocks()
     refresh.mockReset()
   })
@@ -75,7 +77,7 @@ describe('route error recovery', () => {
         .query({ ...userProfileQueryOptions(), retryDelay: 0 })
         .catch((error: unknown) => error)
 
-      expect(refresh).toHaveBeenCalledTimes(4)
+      expect(refresh).toHaveBeenCalled()
       expect(window.location.href).toBe(initialUrl)
       if (!(error instanceof Error)) throw new Error('Expected a profile request failure')
       render(

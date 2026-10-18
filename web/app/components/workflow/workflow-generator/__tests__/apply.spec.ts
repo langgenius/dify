@@ -37,8 +37,8 @@ const makeGraph = (): GeneratedGraph => ({
       id: 'node-1',
       type: 'custom',
       position: { x: 0, y: 0 },
-      data: { type: 'start', title: 'Start' },
-    } as never,
+      data: { type: BlockEnum.Start, title: 'Start', desc: '' },
+    },
   ],
   edges: [],
   viewport: { x: 0, y: 0, zoom: 0.7 },
@@ -66,7 +66,8 @@ const makeGraphWithMemory = (): GeneratedGraph => {
 
 describe('applyToNewApp', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
+    mockFetchWorkflowDraft.mockResolvedValue(undefined)
     mockCreateApp.mockResolvedValue(
       createAppDetailFixture({ id: 'new-app-1', mode: 'workflow' as const }),
     )
@@ -162,8 +163,6 @@ describe('applyToNewApp', () => {
     )
   })
 
-  // Instruction-only-of-punctuation must still produce a usable, non-empty
-  // app name so create-app doesn't fail validation.
   it('should reject an empty instruction before creating an app', async () => {
     await expect(
       applyToNewApp({ mode: 'workflow', graph: makeGraph(), instruction: '   ' }),
@@ -258,7 +257,8 @@ describe('applyToNewApp', () => {
 
 describe('applyToCurrentApp', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
+    mockFetchWorkflowDraft.mockResolvedValue(undefined)
     mockSyncWorkflowDraft.mockResolvedValue({})
   })
 
@@ -313,7 +313,9 @@ describe('applyToCurrentApp', () => {
     // must still be forwarded verbatim.
     const params = mockSyncWorkflowDraft.mock.calls[0]![0].params
     expect(params).not.toHaveProperty('environment_variables')
-    expect(params.conversation_variables).toHaveLength(1)
+    expect(params.conversation_variables).toEqual([
+      { id: 'c1', name: 'memory', value_type: 'string', value: '' },
+    ])
   })
 
   // First-apply path: a freshly created Workflow app has no draft yet, so the

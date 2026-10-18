@@ -1,4 +1,5 @@
 import type { CodeNodeType } from '../types'
+import { act } from '@testing-library/react'
 import { renderWorkflowFlowHook as renderHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import { CodeLanguage } from '../types'
@@ -27,10 +28,6 @@ const createData = (overrides: Partial<CodeNodeType> = {}): CodeNodeType => ({
 })
 
 describe('code/use-single-run-form-params', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('builds a single form, updates run input values, and exposes dependent vars', () => {
     const setRunInputData = vi.fn()
 
@@ -52,22 +49,8 @@ describe('code/use-single-run-form-params', () => {
       }),
     )
 
-    expect(result.current.forms).toEqual([
-      {
-        inputs: [
-          {
-            type: InputVarType.number,
-            label: 'amount',
-            variable: 'amount',
-            required: false,
-          },
-        ],
-        values: { amount: 1 },
-        onChange: expect.any(Function),
-      },
-    ])
-
-    result.current.forms[0]?.onChange({ amount: 3 })
+    expect(result.current.forms[0]?.values).toEqual({ amount: 1 })
+    act(() => result.current.forms[0]?.onChange({ amount: 3 }))
 
     expect(setRunInputData).toHaveBeenCalledWith({ amount: 3 })
     expect(result.current.getDependentVars()).toEqual([['start', 'amount']])

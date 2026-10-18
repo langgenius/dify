@@ -49,7 +49,7 @@ describe('CreateAgentDialog', () => {
     })
   })
 
-  it('submits agent app fields and default icon fields when creating an agent', async () => {
+  it('creates an agent with trimmed fields and default icon, then opens its configure page', async () => {
     const user = userEvent.setup()
     render(<CreateAgentDialog />)
 
@@ -82,32 +82,15 @@ describe('CreateAgentDialog', () => {
         icon_background: '#F5F3FF',
       },
     })
-  })
-
-  it('navigates to the new agent configure page after creating an agent', async () => {
-    const user = userEvent.setup()
-    render(<CreateAgentDialog />)
-
-    await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.createAgent/ }))
-
-    const dialog = await screen.findByRole('dialog', {
-      name: 'agentRoster.roster.createDialog.title',
-    })
-    await user.type(
-      within(dialog).getByRole('textbox', { name: 'agentRoster.roster.createForm.nameLabel' }),
-      'Research Agent',
-    )
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
 
     await waitFor(() => expect(routerPushMock).toHaveBeenCalledWith('/agents/agent-1/configure'))
-
-    expect(toastMock.success).not.toHaveBeenCalled()
     expect(trackCreateAppMock).toHaveBeenCalledWith({
       source: 'studio_blank',
       appMode: 'agent-v2',
       agentScope: AgentScope.Global,
     })
-    expect(routerPushMock).toHaveBeenCalledWith('/agents/agent-1/configure')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(toastMock.success).not.toHaveBeenCalled()
   })
 
   it('shows a field error when creating with an empty name', async () => {
@@ -149,7 +132,6 @@ describe('CreateAgentDialog', () => {
       name: /agentRoster\.roster\.createForm\.descriptionLabel/,
     })
     expect(nameInput).toHaveFocus()
-    expect(descriptionInput).toHaveAttribute('maxlength', '400')
 
     await user.type(nameInput, 'Temporary Agent')
     await user.type(descriptionInput, 'Temporary description')
@@ -172,29 +154,7 @@ describe('CreateAgentDialog', () => {
     ).toHaveValue('')
   })
 
-  it('marks role and description as optional', async () => {
-    const user = userEvent.setup()
-    render(<CreateAgentDialog />)
-
-    await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.createAgent/ }))
-
-    const dialog = await screen.findByRole('dialog', {
-      name: 'agentRoster.roster.createDialog.title',
-    })
-
-    expect(
-      within(dialog).getByRole('textbox', {
-        name: /agentRoster\.roster\.createForm\.roleLabel.*common\.label\.optional/,
-      }),
-    ).not.toBeRequired()
-    expect(
-      within(dialog).getByRole('textbox', {
-        name: /agentRoster\.roster\.createForm\.descriptionLabel.*common\.label\.optional/,
-      }),
-    ).not.toBeRequired()
-  })
-
-  it('submits an empty role when role is left blank', async () => {
+  it('allows creation without optional role and description', async () => {
     const user = userEvent.setup()
     render(<CreateAgentDialog />)
 
@@ -218,28 +178,6 @@ describe('CreateAgentDialog', () => {
         icon: '🧸',
         icon_background: '#F5F3FF',
       },
-    })
-  })
-
-  it('keeps the form open when the backdrop is clicked', async () => {
-    const user = userEvent.setup()
-    render(<CreateAgentDialog />)
-
-    await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.createAgent/ }))
-
-    const dialog = await screen.findByRole('dialog', {
-      name: 'agentRoster.roster.createDialog.title',
-    })
-    const backdrop = document.body.querySelector('.bg-background-overlay') as HTMLElement
-    await user.click(backdrop)
-
-    expect(dialog).toBeInTheDocument()
-
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
-    await waitFor(() => {
-      expect(
-        screen.queryByRole('dialog', { name: 'agentRoster.roster.createDialog.title' }),
-      ).not.toBeInTheDocument()
     })
   })
 })

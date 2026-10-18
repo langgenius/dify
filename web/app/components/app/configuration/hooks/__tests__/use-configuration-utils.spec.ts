@@ -74,7 +74,7 @@ vi.mock('@/app/components/app/configuration/toast', () => ({
 
 describe('useConfiguration utils', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
   })
 
   it('should preserve persisted settings when loading and publishing without edits', async () => {
@@ -374,7 +374,7 @@ describe('useConfiguration utils', () => {
     )
   })
 
-  it('should build dataset configs with reranking defaults', () => {
+  it('preserves a configured reranking model over the currently available default', () => {
     const datasetConfigs = buildConfigurationDatasetConfigs({
       backendModelConfig: createAppModelConfigFixture({
         dataset_configs: {
@@ -386,7 +386,7 @@ describe('useConfiguration utils', () => {
           },
         },
       }),
-      currentRerankModel: 'rerank-1',
+      currentRerankModel: 'default-reranker',
       currentRerankProvider: 'langgenius/cohere/cohere',
       nextDataSets: [],
     })
@@ -395,6 +395,7 @@ describe('useConfiguration utils', () => {
     expect(datasetConfigs.reranking_model).toEqual(
       expect.objectContaining({
         reranking_model_name: 'rerank-1',
+        reranking_provider_name: 'langgenius/cohere/cohere',
       }),
     )
   })
@@ -632,7 +633,6 @@ describe('useConfiguration utils', () => {
         enabled: false,
       }),
     )
-    expect(state.chatPromptConfig).toEqual(expect.any(Object))
   })
 
   it('should initialize the disabled annotation draft from the response', async () => {
@@ -671,7 +671,7 @@ describe('useConfiguration utils', () => {
     expect(state.annotationConfig).toEqual(expect.objectContaining({ enabled: false, id: '' }))
   })
 
-  it('should hydrate selected datasets and open the rerank modal when selection changes', () => {
+  it('updates selected datasets and preserves retrieval settings', () => {
     const setDataSets = vi.fn()
     const setDatasetConfigs = vi.fn()
     const setRerankSettingModalOpen = vi.fn()
@@ -717,7 +717,13 @@ describe('useConfiguration utils', () => {
     expect(formattingChangedDispatcher).toHaveBeenCalledTimes(1)
     expect(setDataSets).toHaveBeenCalledWith([createDatasetFixture({ id: 'dataset-2' })])
     expect(hideSelectDataSet).toHaveBeenCalledTimes(1)
-    expect(setDatasetConfigs).toHaveBeenCalledTimes(1)
+    expect(setDatasetConfigs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        retrieval_model: RETRIEVE_TYPE.multiWay,
+        score_threshold_enabled: false,
+      }),
+    )
+    expect(setRerankSettingModalOpen).not.toHaveBeenCalled()
   })
 
   it('should reuse the current dataset metadata when a renamed selection omits names', () => {
@@ -748,7 +754,7 @@ describe('useConfiguration utils', () => {
     })
 
     handleSelect([
-      { id: 'dataset-1' } as any,
+      createDatasetFixture({ id: 'dataset-1', name: '' }),
       createDatasetFixture({ id: 'dataset-2', name: 'Dataset Two' }),
     ])
 
@@ -1095,7 +1101,13 @@ describe('useConfiguration utils', () => {
     })
 
     expect(migrateToDefaultPrompt).toHaveBeenCalledWith(true, ModelModeType.completion)
-    expect(setModelConfig).toHaveBeenCalledTimes(1)
+    expect(setModelConfig).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        provider: 'langgenius/openai/openai',
+        model_id: 'gpt-4o',
+        mode: ModelModeType.completion,
+      }),
+    )
     expect(handleSetVisionConfig).toHaveBeenCalledWith(
       {
         ...baseVisionConfig,

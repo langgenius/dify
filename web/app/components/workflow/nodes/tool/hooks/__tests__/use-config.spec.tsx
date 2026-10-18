@@ -1,56 +1,13 @@
 import type { ToolNodeType } from '../../types'
-import { renderHook } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { CollectionType } from '@/app/components/tools/types'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { createQueryClientWrapper } from '@/test/console/query-client'
-import { createTestQueryClient } from '@/test/query-client'
+import { renderNodeConfig } from '../../../__tests__/render-node-config'
 import useConfig from '../use-config'
 
-const queryClient = createTestQueryClient()
-const queryClientWrapper = createQueryClientWrapper(queryClient)
-
-const mockSetInputs = vi.hoisted(() => vi.fn())
-const mockSetControlPromptEditorRerenderKey = vi.hoisted(() => vi.fn())
 const mockUseCurrentToolCollection = vi.hoisted(() => vi.fn())
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useLanguage: () => 'en_US',
-}))
-
-vi.mock('../../../../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../../hooks/use-workflow')>()
-
-  return {
-    ...actual,
-    useNodesReadOnly: () => ({ nodesReadOnly: false }),
-  }
-})
-
-vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
-  __esModule: true,
-  default: (_id: string, data: ToolNodeType) => ({
-    inputs: data,
-    setInputs: mockSetInputs,
-  }),
-}))
-
-vi.mock('@/service/tools', () => ({
-  updateBuiltInToolCredential: vi.fn(),
-}))
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useWorkflowStore: () => ({
-    getState: () => ({
-      setControlPromptEditorRerenderKey: mockSetControlPromptEditorRerenderKey,
-    }),
-  }),
-}))
-
-vi.mock('../use-current-tool-collection', () => ({
-  __esModule: true,
-  default: (...args: unknown[]) => mockUseCurrentToolCollection(...args),
-}))
+vi.mock('../use-current-tool-collection', () => ({ default: () => mockUseCurrentToolCollection() }))
 
 const createNodeData = (overrides: Partial<ToolNodeType> = {}): ToolNodeType => ({
   title: 'Google Search',
@@ -113,11 +70,8 @@ const createToolVarInput = (value: string) => ({
   value,
 })
 
-describe('useConfig', () => {
+describe('tool default configuration', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    vi.useFakeTimers()
-
     mockUseCurrentToolCollection.mockReturnValue({
       currCollection: {
         name: 'google_search',
@@ -128,66 +82,43 @@ describe('useConfig', () => {
     })
   })
 
-  afterEach(() => {
-    vi.runOnlyPendingTimers()
-    vi.useRealTimers()
-  })
-
-  describe('Default Value Sync', () => {
-    it('should apply default values only once when the current payload is initially empty', () => {
-      const emptyPayload = createNodeData()
-      const syncedPayload = createNodeData({
+  it('persists defaults to the graph and preserves subsequent user edits', async () => {
+    const { result } = renderNodeConfig(useConfig, createNodeData())
+    await waitFor(() =>
+      expect(result.current.flow.getNode('node')?.data).toMatchObject({
         tool_parameters: { query: createToolVarInput('default query') },
         tool_configurations: { api_key: createToolVarInput('default secret') },
-      })
-
-      const { rerender } = renderHook(({ payload }) => useConfig('tool-node-1', payload), {
-        initialProps: { payload: emptyPayload },
-        wrapper: queryClientWrapper,
-      })
-
-      expect(mockSetInputs).toHaveBeenCalledTimes(1)
-      expect(mockSetInputs).toHaveBeenCalledWith(
-        expect.objectContaining({
-          tool_parameters: { query: createToolVarInput('default query') },
-          tool_configurations: { api_key: createToolVarInput('default secret') },
-        }),
-      )
-
-      rerender({ payload: syncedPayload })
-
-      expect(mockSetInputs).toHaveBeenCalledTimes(1)
+      }),
+    )
+    act(() => result.current.config.setInputVar({ query: createToolVarInput('Edited query') }))
+    expect(result.current.flow.getNode('node')?.data).toMatchObject({
+      tool_parameters: { query: createToolVarInput('Edited query') },
+      tool_configurations: { api_key: createToolVarInput('default secret') },
     })
+  })
 
-    it('should not update inputs when tool values are already populated on first render', () => {
-      renderHook(
-        () =>
-          useConfig(
-            'tool-node-1',
-            createNodeData({
-              tool_parameters: { query: createToolVarInput('existing query') },
-              tool_configurations: { api_key: createToolVarInput('existing secret') },
-            }),
-          ),
-        { wrapper: queryClientWrapper },
-      )
-
-      expect(mockSetInputs).not.toHaveBeenCalled()
+  it('preserves existing values when opening configuration', () => {
+    const payload = createNodeData({
+      tool_parameters: { query: createToolVarInput('existing query') },
+      tool_configurations: { api_key: createToolVarInput('existing secret') },
     })
+    const { result } = renderNodeConfig(useConfig, payload)
+    expect(result.current.flow.getNode('node')?.data).toMatchObject(payload)
+  })
 
-    it('should not update inputs when empty schemas do not provide any default values', () => {
-      mockUseCurrentToolCollection.mockReturnValue({
-        currCollection: {
-          name: 'google_search',
-          allow_delete: true,
-          is_team_authorization: false,
-          tools: [currentToolWithoutDefaults],
-        },
-      })
-
-      renderHook(() => useConfig('tool-node-1', createNodeData()), { wrapper: queryClientWrapper })
-
-      expect(mockSetInputs).not.toHaveBeenCalled()
+  it('leaves empty parameters unconfigured when the tool supplies no defaults', () => {
+    mockUseCurrentToolCollection.mockReturnValue({
+      currCollection: {
+        name: 'google_search',
+        allow_delete: true,
+        is_team_authorization: false,
+        tools: [currentToolWithoutDefaults],
+      },
+    })
+    const { result } = renderNodeConfig(useConfig, createNodeData())
+    expect(result.current.flow.getNode('node')?.data).toMatchObject({
+      tool_parameters: {},
+      tool_configurations: {},
     })
   })
 })

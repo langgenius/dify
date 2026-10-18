@@ -34,31 +34,17 @@ const tagMocks = vi.hoisted(() => {
   }
 })
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    tags: {
-      byTagId: {
-        patch: {
-          mutationOptions: () => ({
-            mutationFn: ({
-              params,
-              body,
-            }: {
-              params: { tag_id: string }
-              body: { name: string }
-            }) => tagMocks.updateTag(params.tag_id, body.name),
-          }),
-        },
-        delete: {
-          mutationOptions: () => ({
-            mutationFn: ({ params }: { params: { tag_id: string } }) =>
-              tagMocks.deleteTag(params.tag_id),
-          }),
-        },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'tags.byTagId.patch': tagMocks.updateTag,
+      'tags.byTagId.delete': tagMocks.deleteTag,
+    }),
+  }
+})
 
 vi.mock('@/app/notifications', () => ({
   toast: tagMocks.api,
@@ -101,17 +87,6 @@ describe('TagItemEditor', () => {
 
   // Edit flow behavior: enter editing, save, and validation/error cases.
   describe('Edit Flow', () => {
-    it('should enter editing mode when edit icon is clicked', async () => {
-      const user = userEvent.setup()
-      render(<TagItemEditor tag={baseTag} />)
-
-      const editButton = screen.getByRole('button', { name: i18n.editTag })
-      expect(editButton).toBeInTheDocument()
-      await user.click(editButton)
-
-      expect(screen.getByRole('textbox', { name: i18n.renameTag })).toHaveValue('Frontend')
-    })
-
     it('should update tag and leave edit mode when submitting a new name', async () => {
       const user = userEvent.setup()
       render(<TagItemEditor tag={baseTag} />)
@@ -119,13 +94,17 @@ describe('TagItemEditor', () => {
       const editButton = screen.getByRole('button', { name: i18n.editTag })
       await user.click(editButton)
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('textbox', { name: i18n.renameTag })
+      expect(input).toHaveValue('Frontend')
       await user.clear(input)
       await user.type(input, 'Frontend V2')
       await user.keyboard('{Enter}')
 
       await waitFor(() => {
-        expect(tagMocks.updateTag).toHaveBeenCalledWith('tag-1', 'Frontend V2')
+        expect(tagMocks.updateTag).toHaveBeenCalledWith({
+          params: { tag_id: 'tag-1' },
+          body: { name: 'Frontend V2' },
+        })
       })
       await waitFor(() => expect(screen.queryByRole('textbox')).not.toBeInTheDocument())
     })
@@ -177,7 +156,10 @@ describe('TagItemEditor', () => {
       await user.keyboard('{Enter}')
 
       await waitFor(() => {
-        expect(tagMocks.updateTag).toHaveBeenCalledWith('tag-1', 'Broken Name')
+        expect(tagMocks.updateTag).toHaveBeenCalledWith({
+          params: { tag_id: 'tag-1' },
+          body: { name: 'Broken Name' },
+        })
       })
       await waitFor(() =>
         expect(tagMocks.record).toHaveBeenCalledWith({
@@ -200,7 +182,7 @@ describe('TagItemEditor', () => {
       await user.click(removeButton)
 
       await waitFor(() => {
-        expect(tagMocks.deleteTag).toHaveBeenCalledWith('tag-1')
+        expect(tagMocks.deleteTag).toHaveBeenCalledWith({ params: { tag_id: 'tag-1' } })
       })
       await waitFor(() =>
         expect(tagMocks.record).toHaveBeenCalledWith({
@@ -258,7 +240,7 @@ describe('TagItemEditor', () => {
       await user.click(screen.getByText('common.operation.confirm'))
 
       await waitFor(() => {
-        expect(tagMocks.deleteTag).toHaveBeenCalledWith('tag-1')
+        expect(tagMocks.deleteTag).toHaveBeenCalledWith({ params: { tag_id: 'tag-1' } })
       })
       await waitFor(() => {
         expect(screen.queryByText('common.tag.delete "Frontend"')).not.toBeInTheDocument()
@@ -291,7 +273,7 @@ describe('TagItemEditor', () => {
       await user.click(removeButton)
 
       await waitFor(() => {
-        expect(tagMocks.deleteTag).toHaveBeenCalledWith('tag-1')
+        expect(tagMocks.deleteTag).toHaveBeenCalledWith({ params: { tag_id: 'tag-1' } })
       })
       await waitFor(() =>
         expect(tagMocks.record).toHaveBeenCalledWith({

@@ -8,23 +8,11 @@ import { renderWorkflowFlowHook as renderHookWithConsoleQuery } from '@/app/comp
 import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { createConsoleQueryClient, seedAppDetail } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { withSelectorKey } from '@/test/i18n-mock'
 import { TransferMethod } from '@/types/app'
 import useSingleRunFormParams from '../use-single-run-form-params'
 
-const mockUseTranslation = vi.hoisted(() => vi.fn())
-const mockUseParams = vi.hoisted(() => vi.fn())
 const mockFetchHumanInputNodeStepRunForm = vi.hoisted(() => vi.fn())
 const mockSubmitHumanInputNodeStepRunForm = vi.hoisted(() => vi.fn())
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => mockUseTranslation(),
-}))
-
-vi.mock('@/next/navigation', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/next/navigation')>()),
-  useParams: () => mockUseParams(),
-}))
 
 vi.mock('@/service/workflow', () => ({
   fetchHumanInputNodeStepRunForm: (...args: unknown[]) =>
@@ -107,10 +95,6 @@ describe('human-input/hooks/use-single-run-form-params', () => {
       mode: 'workflow' as const,
     }
 
-    mockUseTranslation.mockReturnValue({
-      t: withSelectorKey((key: string) => key),
-    })
-    mockUseParams.mockImplementation(() => ({ appId: appDetail?.id }))
     getInputVars.mockReturnValue([
       createInputVar(),
       createInputVar({
@@ -166,7 +150,7 @@ describe('human-input/hooks/use-single-run-form-params', () => {
     expect(result.current.forms).toHaveLength(1)
     expect(result.current.forms[0]).toEqual(
       expect.objectContaining({
-        label: 'nodes.humanInput.singleRun.label',
+        label: 'workflowHumanInput.nodes.humanInput.singleRun.label',
         values: { topic: 'AI' },
         inputs: [
           expect.objectContaining({ variable: '#start.topic#' }),
@@ -282,12 +266,11 @@ describe('human-input/hooks/use-single-run-form-params', () => {
       }),
     )
 
+    const previewInputs = Object.freeze({ topic: 'AI', ignored: undefined as unknown as string })
     await act(async () => {
-      await result.current.handleShowGeneratedForm({
-        topic: 'AI',
-        ignored: undefined as unknown as string,
-      })
+      await result.current.handleShowGeneratedForm(previewInputs)
     })
+    expect(previewInputs).toHaveProperty('ignored', undefined)
 
     expect(result.current.showGeneratedForm).toBe(true)
     expect(mockFetchHumanInputNodeStepRunForm).toHaveBeenCalledWith(

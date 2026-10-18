@@ -31,4 +31,7 @@ it('fills a missing display name on variable blur and preserves a custom display
   await user.type(variable, 'renamed')
   await user.tab()
   expect(label).toHaveValue('Custom source')
+  await user.clear(label)
+  await user.tab()
+  expect(label).toHaveValue('renamed')
 })

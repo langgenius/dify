@@ -1,5 +1,6 @@
 import type { ToolProviderApiEntityResponse as ToolProvider } from '@dify/contracts/api/console/workspaces/types.gen'
 import { fireEvent, screen } from '@testing-library/react'
+import { MARKETPLACE_API_PREFIX } from '@/config'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
 import { ToolIcon } from '../tool-icon'
@@ -8,7 +9,6 @@ let mockBuiltInTools: ToolProvider[] | undefined
 let mockCustomTools: ToolProvider[] | undefined
 let mockWorkflowTools: ToolProvider[] | undefined
 let mockMcpTools: ToolProvider[] | undefined
-let mockMarketplaceIcon: string | { content: string; background: string } | undefined
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -25,10 +25,6 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-vi.mock('@/utils/get-icon', () => ({
-  getIconFromMarketPlace: () => mockMarketplaceIcon,
-}))
-
 describe('agent/tool-icon', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -36,7 +32,6 @@ describe('agent/tool-icon', () => {
     mockCustomTools = []
     mockWorkflowTools = []
     mockMcpTools = []
-    mockMarketplaceIcon = undefined
   })
 
   it('should render a string icon, recover from fetch errors, and keep installed tools warning-free', async () => {
@@ -53,8 +48,7 @@ describe('agent/tool-icon', () => {
     const icon = await screen.findByRole('img', { name: 'tool icon' })
     expect(icon).toHaveAttribute('src', 'https://example.com/tool-a.png')
 
-    fireEvent.mouseEnter(icon)
-    expect(screen.queryByText('workflow.nodes.agent.toolNotInstallTooltip')).not.toBeInTheDocument()
+    expect(screen.queryByText(/toolNot(?:Install|Authorized)Tooltip/)).not.toBeInTheDocument()
 
     fireEvent.error(icon)
     expect(screen.queryByRole('img', { name: 'tool icon' })).not.toBeInTheDocument()
@@ -79,11 +73,13 @@ describe('agent/tool-icon', () => {
     ).toBeInTheDocument()
 
     mockWorkflowTools = []
-    mockMarketplaceIcon = 'https://example.com/market-tool.png'
     rerender(<ToolIcon id="tool-3" providerName="market/tool-c" />)
 
     const marketplaceIcon = await screen.findByRole('img', { name: 'tool icon' })
-    expect(marketplaceIcon).toHaveAttribute('src', 'https://example.com/market-tool.png')
+    expect(marketplaceIcon).toHaveAttribute(
+      'src',
+      `${MARKETPLACE_API_PREFIX}/plugins/market/tool-c/icon`,
+    )
     expect(
       screen.getByText('workflow.nodes.agent.toolNotInstallTooltip:{"tool":"tool-c"}'),
     ).toBeInTheDocument()
@@ -93,6 +89,7 @@ describe('agent/tool-icon', () => {
     mockBuiltInTools = undefined
 
     render(<ToolIcon id="tool-4" providerName="author/tool-d" />)
+    expect(screen.queryByText(/toolNot(?:Install|Authorized)Tooltip/)).not.toBeInTheDocument()
 
     expect(screen.queryByRole('img', { name: 'tool icon' })).not.toBeInTheDocument()
   })

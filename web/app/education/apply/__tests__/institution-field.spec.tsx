@@ -11,25 +11,12 @@ const mockAutocomplete = vi.hoisted(() => vi.fn())
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const operation = actual.consoleQuery.account.education.autocomplete.get
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
-    consoleQuery: {
-      account: {
-        education: {
-          autocomplete: {
-            get: {
-              infiniteOptions: (...args: Parameters<typeof operation.infiniteOptions>) => ({
-                ...operation.infiniteOptions(...args),
-                queryFn: ({ pageParam }: { pageParam: unknown }) => {
-                  const input = args[0].input
-                  return mockAutocomplete(typeof input === 'function' ? input(pageParam) : input)
-                },
-              }),
-            },
-          },
-        },
-      },
-    },
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'account.education.autocomplete.get': mockAutocomplete,
+    }),
   }
 })
 

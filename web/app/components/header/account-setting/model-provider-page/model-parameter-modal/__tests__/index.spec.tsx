@@ -1,7 +1,15 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import type { FormValue } from '../../declarations'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { consoleQuery } from '@/service/console'
+import {
+  createCatalogModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import ModelParameterModal from '../index'
 
 let parameterRules: Array<Record<string, unknown>> | undefined = [
@@ -17,111 +25,7 @@ let parameterRules: Array<Record<string, unknown>> | undefined = [
 ]
 let seedRules = true
 const getRules = vi.fn()
-let currentProvider: Record<string, unknown> | undefined = {
-  provider: 'openai',
-  label: { en_US: 'OpenAI' },
-}
-let currentModel: Record<string, unknown> | undefined = {
-  model: 'gpt-3.5-turbo',
-  status: 'active',
-  model_properties: { mode: 'chat' },
-}
-let activeTextGenerationModelList: Array<Record<string, unknown>> = [
-  {
-    provider: 'openai',
-    models: [
-      {
-        model: 'gpt-3.5-turbo',
-        model_properties: { mode: 'chat' },
-        features: ['vision'],
-      },
-      {
-        model: 'gpt-4.1',
-        model_properties: { mode: 'chat' },
-        features: ['vision', 'tool-call'],
-      },
-    ],
-  },
-]
-
-vi.mock('../../hooks', () => ({
-  useTextGenerationCurrentProviderAndModelAndModelList: () => ({
-    currentProvider,
-    currentModel,
-    activeTextGenerationModelList,
-  }),
-}))
-
-vi.mock('../parameter-item', () => ({
-  default: ({
-    parameterRule,
-    onChange,
-    onSwitch,
-    nodesOutputVars,
-    availableNodes,
-  }: {
-    parameterRule: { name: string; label: { en_US: string } }
-    onChange: (v: number) => void
-    onSwitch: (checked: boolean, val: unknown) => void
-    nodesOutputVars?: unknown[]
-    availableNodes?: unknown[]
-  }) => (
-    <div
-      data-testid={`param-${parameterRule.name}`}
-      data-has-nodes-output-vars={!!nodesOutputVars}
-      data-has-available-nodes={!!availableNodes}
-    >
-      {parameterRule.label.en_US}
-      <button onClick={() => onChange(0.9)}>Change</button>
-      <button onClick={() => onSwitch(false, undefined)}>Remove</button>
-      <button onClick={() => onSwitch(true, 'assigned')}>Add</button>
-    </div>
-  ),
-}))
-
-vi.mock('../../model-selector', () => {
-  const ModelSelector = ({
-    onHide,
-    onValueChange,
-  }: {
-    onHide?: () => void
-    onValueChange: (value: { provider: string; model: string; plugin_id?: string }) => void
-  }) => (
-    <div data-testid="model-selector">
-      <button
-        onClick={() =>
-          onValueChange({
-            provider: 'openai',
-            model: 'gpt-4.1',
-            plugin_id: 'langgenius/openai',
-          })
-        }
-      >
-        Select GPT-4.1
-      </button>
-      {onHide && <button onClick={onHide}>hide</button>}
-    </div>
-  )
-
-  return {
-    ModelSelector,
-    SplitModelSelector: ModelSelector,
-  }
-})
-
-vi.mock('../presets-parameter', () => ({
-  default: ({
-    onSelect,
-    supportedParameterNames,
-  }: {
-    onSelect: (id: number) => void
-    supportedParameterNames?: string[]
-  }) => {
-    if (supportedParameterNames && !supportedParameterNames.includes('temperature')) return null
-
-    return <button onClick={() => onSelect(1)}>Preset 1</button>
-  },
-}))
+let modelStatus: 'active' | 'disabled' = 'active'
 
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
@@ -131,15 +35,34 @@ vi.mock('@/config', async (importOriginal) => {
   }
 })
 
-const render = (ui: React.ReactElement) => {
+const render = createNuqsTestRenderer((ui) => {
   const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient, [
+    createModelCatalogFixture({
+      models: [
+        createCatalogModelFixture({
+          model: 'gpt-3.5-turbo',
+          label: { en_US: 'GPT-3.5 Turbo' },
+          status: modelStatus,
+          model_properties: { mode: 'chat' },
+          features: ['vision'],
+        }),
+        createCatalogModelFixture({
+          model: 'gpt-4.1',
+          label: { en_US: 'GPT-4.1' },
+          model_properties: { mode: 'chat' },
+          features: ['vision', 'tool-call'],
+        }),
+      ],
+    }),
+  ])
   if (seedRules)
     queryClient.setQueryDefaults(
       consoleQuery.workspaces.current.modelProviders.byProvider.models.parameterRules.get.key(),
       { initialData: { data: parameterRules ?? [] } },
     )
   return renderWithConsoleQuery(ui, { queryClient })
-}
+})
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -154,8 +77,8 @@ vi.mock('@/service/console', async (importOriginal) => {
 })
 
 describe('ModelParameterModal', () => {
-  const openSettings = () =>
-    fireEvent.click(screen.getByRole('button', { name: /modelProvider\.modelSettings/i }))
+  const openSettings = (user: ReturnType<typeof userEvent.setup>) =>
+    user.click(screen.getByRole('button', { name: /modelProvider\.modelSettings/i }))
   const defaultProps = {
     isAdvancedMode: false,
     modelId: 'gpt-3.5-turbo',
@@ -184,29 +107,7 @@ describe('ModelParameterModal', () => {
         help: { en_US: 'Control randomness' },
       },
     ]
-    currentProvider = { provider: 'openai', label: { en_US: 'OpenAI' } }
-    currentModel = {
-      model: 'gpt-3.5-turbo',
-      status: 'active',
-      model_properties: { mode: 'chat' },
-    }
-    activeTextGenerationModelList = [
-      {
-        provider: 'openai',
-        models: [
-          {
-            model: 'gpt-3.5-turbo',
-            model_properties: { mode: 'chat' },
-            features: ['vision'],
-          },
-          {
-            model: 'gpt-4.1',
-            model_properties: { mode: 'chat' },
-            features: ['vision', 'tool-call'],
-          },
-        ],
-      },
-    ]
+    modelStatus = 'active'
   })
 
   it('should open settings with the visible title as its accessible name', async () => {
@@ -219,17 +120,31 @@ describe('ModelParameterModal', () => {
     expect(
       screen.getByRole('dialog', { name: 'modelProvider.modelProvider.modelSettings' }),
     ).toBeInTheDocument()
-    expect(screen.getByTestId('model-selector')).toBeInTheDocument()
-    expect(screen.getByTestId('param-temperature')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: /GPT-3.5 Turbo|gpt-3.5-turbo|plugin.detailPanel.configureModel/,
+      }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('spinbutton', { name: 'Temperature' })).toBeInTheDocument()
   })
 
-  it('should keep model selection and model settings as separate actions', () => {
+  it('should keep model selection and model settings as separate actions', async () => {
+    const user = userEvent.setup()
     render(<ModelParameterModal {...defaultProps} />)
 
-    expect(screen.getByTestId('model-selector')).toBeInTheDocument()
-    expect(screen.queryByTestId('param-temperature')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: /GPT-3.5 Turbo|gpt-3.5-turbo|plugin.detailPanel.configureModel/,
+      }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('spinbutton', { name: 'Temperature' })).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('Select GPT-4.1'))
+    await user.click(screen.getByRole('button', { name: /GPT-3.5 Turbo/ }))
+    await user.click(
+      within(
+        await screen.findByRole('dialog', { name: 'plugin.detailPanel.configureModel' }),
+      ).getByRole('button', { name: /^GPT-4.1/ }),
+    )
 
     expect(defaultProps.setModel).toHaveBeenCalledWith({
       modelId: 'gpt-4.1',
@@ -238,66 +153,87 @@ describe('ModelParameterModal', () => {
       mode: 'chat',
       features: ['vision', 'tool-call'],
     })
-    expect(screen.queryByTestId('param-temperature')).not.toBeInTheDocument()
+    expect(screen.queryByRole('spinbutton', { name: 'Temperature' })).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: /modelProvider\.modelSettings/i }))
+    await user.click(screen.getByRole('button', { name: /modelProvider\.modelSettings/i }))
 
-    expect(screen.getByTestId('param-temperature')).toBeInTheDocument()
+    expect(screen.getByRole('spinbutton', { name: 'Temperature' })).toBeInTheDocument()
   })
 
   it('should disable model settings when no model is selected', () => {
     render(<ModelParameterModal {...defaultProps} provider="" modelId="" />)
 
-    expect(screen.getByTestId('model-selector')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: /GPT-3.5 Turbo|gpt-3.5-turbo|plugin.detailPanel.configureModel/,
+      }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /modelProvider\.modelSettings/i })).toBeDisabled()
   })
 
   it('should disable model settings for an incompatible model without disabling selection', () => {
     render(<ModelParameterModal {...defaultProps} modelPredicate={() => false} />)
 
-    expect(screen.getByTestId('model-selector')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: /GPT-3.5 Turbo|gpt-3.5-turbo|plugin.detailPanel.configureModel/,
+      }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /modelProvider\.modelSettings/i })).toBeDisabled()
   })
 
   it('should disable model settings when the selected model is inactive', () => {
-    currentModel = { ...currentModel!, status: 'disabled' }
+    modelStatus = 'disabled'
     render(<ModelParameterModal {...defaultProps} />)
 
-    expect(screen.getByTestId('model-selector')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: /GPT-3.5 Turbo|gpt-3.5-turbo|plugin.detailPanel.configureModel/,
+      }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /modelProvider\.modelSettings/i })).toBeDisabled()
   })
 
-  it('should call onCompletionParamsChange when parameter changes and switch actions happen', () => {
-    render(<ModelParameterModal {...defaultProps} />)
-    openSettings()
-
-    fireEvent.click(screen.getByText('Change'))
-    expect(defaultProps.onCompletionParamsChange).toHaveBeenCalledWith({
-      ...defaultProps.completionParams,
-      temperature: 0.9,
-    })
-
-    fireEvent.click(screen.getByText('Remove'))
-    expect(defaultProps.onCompletionParamsChange).toHaveBeenCalledWith({})
-
-    fireEvent.click(screen.getByText('Add'))
-    expect(defaultProps.onCompletionParamsChange).toHaveBeenCalledWith({
-      ...defaultProps.completionParams,
-      temperature: 'assigned',
-    })
+  it('edits, removes and restores a numeric parameter through the real controls', async () => {
+    const user = userEvent.setup()
+    const Harness = () => {
+      const [params, setParams] = useState<FormValue>({ temperature: 0.7 })
+      return (
+        <ModelParameterModal
+          {...defaultProps}
+          completionParams={params}
+          onCompletionParamsChange={(next) => {
+            defaultProps.onCompletionParamsChange(next)
+            setParams(next)
+          }}
+        />
+      )
+    }
+    render(<Harness />)
+    await openSettings(user)
+    await user.clear(screen.getByRole('spinbutton', { name: 'Temperature' }))
+    await user.type(screen.getByRole('spinbutton', { name: 'Temperature' }), '0.9')
+    expect(defaultProps.onCompletionParamsChange).toHaveBeenLastCalledWith({ temperature: 0.9 })
+    await user.click(screen.getByRole('switch', { name: 'Temperature' }))
+    expect(defaultProps.onCompletionParamsChange).toHaveBeenLastCalledWith({})
+    await user.click(screen.getByRole('switch', { name: 'Temperature' }))
+    expect(defaultProps.onCompletionParamsChange).toHaveBeenLastCalledWith({ temperature: 0.9 })
   })
 
-  it('should call onCompletionParamsChange when preset is selected', () => {
+  it('should call onCompletionParamsChange when preset is selected', async () => {
+    const user = userEvent.setup()
     render(<ModelParameterModal {...defaultProps} />)
-    openSettings()
-    fireEvent.click(screen.getByText('Preset 1'))
+    await openSettings(user)
+    await user.click(screen.getByRole('button', { name: /loadPresets/ }))
+    await user.click(screen.getByRole('menuitem', { name: /Creative/ }))
     expect(defaultProps.onCompletionParamsChange).toHaveBeenCalledWith({
       ...defaultProps.completionParams,
       temperature: 0.8,
     })
   })
 
-  it('should not render preset control when visible parameters do not support preset keys', () => {
+  it('should not render preset control when visible parameters do not support preset keys', async () => {
+    const user = userEvent.setup()
     parameterRules = [
       {
         name: 'max_tokens',
@@ -310,58 +246,51 @@ describe('ModelParameterModal', () => {
     ]
 
     render(<ModelParameterModal {...defaultProps} />)
-    openSettings()
+    await openSettings(user)
 
-    expect(screen.queryByText('Preset 1')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /loadPresets/ })).not.toBeInTheDocument()
   })
 
-  it('should call setModel when model selector picks another model', () => {
+  it('should toggle debug mode when debug footer is clicked', async () => {
+    const user = userEvent.setup()
     render(<ModelParameterModal {...defaultProps} />)
-    openSettings()
-    fireEvent.click(screen.getByText('Select GPT-4.1'))
-
-    expect(defaultProps.setModel).toHaveBeenCalledWith({
-      modelId: 'gpt-4.1',
-      provider: 'openai',
-      plugin_id: 'langgenius/openai',
-      mode: 'chat',
-      features: ['vision', 'tool-call'],
-    })
+    await openSettings(user)
+    await user.click(screen.getByText(/debugAsMultipleModel/i))
+    expect(defaultProps.onDebugWithMultipleModelChange).toHaveBeenCalledOnce()
   })
 
-  it('should toggle debug mode when debug footer is clicked', () => {
-    render(<ModelParameterModal {...defaultProps} />)
-    openSettings()
-    fireEvent.click(screen.getByText(/debugAsMultipleModel/i))
-    expect(defaultProps.onDebugWithMultipleModelChange).toHaveBeenCalled()
-  })
-
-  it('should render loading state when parameter rules are loading', () => {
+  it('should render loading state when parameter rules are loading', async () => {
+    const user = userEvent.setup()
     seedRules = false
     render(<ModelParameterModal {...defaultProps} />)
-    openSettings()
+    await openSettings(user)
     expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 
-  it('should not render parameter loading when model is not configured and parameter rules query is pending but disabled', () => {
+  it('should not render parameter loading when model is not configured and parameter rules query is pending but disabled', async () => {
+    const user = userEvent.setup()
     seedRules = false
     parameterRules = []
 
     render(<ModelParameterModal {...defaultProps} provider="" modelId="" />)
-    openSettings()
+    await openSettings(user)
 
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
     expect(getRules).not.toHaveBeenCalled()
-    expect(screen.getByTestId('model-selector')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: /GPT-3.5 Turbo|gpt-3.5-turbo|plugin.detailPanel.configureModel/,
+      }),
+    ).toBeInTheDocument()
   })
 
   it('exposes popup state on the settings button and restores focus after Escape', async () => {
     const user = userEvent.setup()
     render(<ModelParameterModal {...defaultProps} />)
     const trigger = screen.getByRole('button', { name: /modelProvider\.modelSettings/i })
-    expect(trigger).not.toHaveAttribute('data-popup-open')
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
     await user.click(trigger)
-    expect(trigger).toHaveAttribute('data-popup-open', '')
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
     await user.keyboard('{Escape}')
     await waitFor(() => {
       expect(trigger).toHaveAttribute('aria-expanded', 'false')
@@ -372,38 +301,24 @@ describe('ModelParameterModal', () => {
   it('should not open content when readonly is true', () => {
     render(<ModelParameterModal {...defaultProps} readonly />)
     expect(screen.getByRole('button', { name: /modelProvider\.modelSettings/i })).toBeDisabled()
-    expect(screen.queryByTestId('param-temperature')).not.toBeInTheDocument()
+    expect(screen.queryByRole('spinbutton', { name: 'Temperature' })).not.toBeInTheDocument()
   })
 
-  it('should render no parameter items when rules are undefined', () => {
+  it('should render no parameter items when rules are undefined', async () => {
+    const user = userEvent.setup()
     parameterRules = undefined
     render(<ModelParameterModal {...defaultProps} />)
-    openSettings()
-    expect(screen.queryByTestId('param-temperature')).not.toBeInTheDocument()
-    expect(screen.getByTestId('model-selector')).toBeInTheDocument()
-  })
-
-  it('should pass nodesOutputVars and availableNodes to ParameterItem', () => {
-    const mockNodesOutputVars = [{ nodeId: 'n1', title: 'Node', vars: [] }]
-    const mockAvailableNodes = [{ id: 'n1', data: { title: 'Node', type: 'llm' } }]
-
-    render(
-      <ModelParameterModal
-        {...defaultProps}
-        isInWorkflow
-        nodesOutputVars={mockNodesOutputVars as never}
-        availableNodes={mockAvailableNodes as never}
-      />,
-    )
-
-    openSettings()
-
-    const paramEl = screen.getByTestId('param-temperature')
-    expect(paramEl).toHaveAttribute('data-has-nodes-output-vars', 'true')
-    expect(paramEl).toHaveAttribute('data-has-available-nodes', 'true')
+    await openSettings(user)
+    expect(screen.queryByRole('spinbutton', { name: 'Temperature' })).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: /GPT-3.5 Turbo|gpt-3.5-turbo|plugin.detailPanel.configureModel/,
+      }),
+    ).toBeInTheDocument()
   })
 
   it('should support a custom trigger element and missing default model values', async () => {
+    const user = userEvent.setup()
     render(
       <ModelParameterModal
         {...defaultProps}
@@ -415,50 +330,42 @@ describe('ModelParameterModal', () => {
     )
 
     const trigger = screen.getByText('Custom Trigger').closest('button')
-    expect(trigger).not.toHaveAttribute('data-popup-open')
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
 
-    fireEvent.click(screen.getByText('Custom Trigger'))
+    await user.click(screen.getByText('Custom Trigger'))
 
-    expect(trigger).toHaveAttribute('data-popup-open', '')
-    expect(screen.getByTestId('model-selector')).toBeInTheDocument()
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    expect(
+      screen.getByRole('button', {
+        name: /GPT-3.5 Turbo|gpt-3.5-turbo|plugin.detailPanel.configureModel/,
+      }),
+    ).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('hide'))
+    await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }))
+    await user.click(
+      within(
+        await screen.findByRole('dialog', { name: 'plugin.detailPanel.configureModel' }),
+      ).getByRole('button', { name: /^GPT-4.1/ }),
+    )
 
+    expect(defaultProps.setModel).toHaveBeenCalledWith(
+      expect.objectContaining({ modelId: 'gpt-4.1' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
     await waitFor(() => {
-      expect(screen.queryByTestId('model-selector')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('dialog', { name: 'modelProvider.modelProvider.modelSettings' }),
+      ).not.toBeInTheDocument()
     })
   })
 
-  it('should append the stop parameter in advanced mode and show the single-model debug label', () => {
+  it('should append the stop parameter in advanced mode and show the single-model debug label', async () => {
+    const user = userEvent.setup()
     render(<ModelParameterModal {...defaultProps} isAdvancedMode debugWithMultipleModel />)
 
-    openSettings()
+    await openSettings(user)
 
-    expect(screen.getByTestId('param-stop')).toBeInTheDocument()
+    expect(screen.getByText('Stop sequences')).toBeInTheDocument()
     expect(screen.getByText(/debugAsSingleModel/i)).toBeInTheDocument()
-  })
-
-  it('should render the empty loading fallback when rules resolve to an empty list', () => {
-    parameterRules = []
-    seedRules = false
-
-    render(<ModelParameterModal {...defaultProps} />)
-    openSettings()
-
-    expect(screen.getByRole('progressbar')).toBeInTheDocument()
-    expect(screen.queryByTestId('param-temperature')).not.toBeInTheDocument()
-  })
-
-  it('should support custom trigger placement outside workflow mode', () => {
-    render(
-      <ModelParameterModal
-        {...defaultProps}
-        trigger={<button type="button">Custom Trigger</button>}
-      />,
-    )
-
-    fireEvent.click(screen.getByText('Custom Trigger'))
-
-    expect(screen.getByTestId('model-selector')).toBeInTheDocument()
   })
 })

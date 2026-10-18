@@ -1,4 +1,4 @@
-import { act, screen } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
@@ -21,6 +21,7 @@ vi.mock('@/context/permission-state', async () => {
 
 vi.mock('@/next/navigation', () => ({
   usePathname: () => pathname,
+  useSelectedLayoutSegment: () => pathname.split('/').at(-1),
   useRouter: () => ({ replace: vi.fn() }),
 }))
 
@@ -33,29 +34,13 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
   collaborationManager: { onAppMetaUpdate: () => () => {} },
 }))
 
-vi.mock('../app-info-trigger', () => ({
-  default: ({
-    appDetail,
-    openModal,
-  }: {
-    appDetail: { name: string }
-    openModal: (modal: 'edit') => void
-  }) => <button onClick={() => openModal('edit')}>Open {appDetail.name}</button>,
-}))
-
-vi.mock('../app-info-modals', () => ({
-  default: ({
-    appDetail,
-    activeModal,
-  }: {
-    appDetail: { name: string }
-    activeModal: string | null
-  }) => <p>{`${appDetail.name}: ${activeModal ?? 'closed'}`}</p>,
-}))
-
 describe('AppInfoView identity in the app detail sidebar', () => {
   beforeEach(() => {
-    currentApp = createAppDetailFixture({ name: 'First app' })
+    pathname = '/app/app-1/configuration'
+    currentApp = createAppDetailFixture({
+      name: 'First app',
+      permission_keys: ['app.acl.edit', 'app.acl.view_layout'],
+    })
   })
 
   it('keeps transient state for the same app and clears it when the app changes', async () => {
@@ -72,23 +57,26 @@ describe('AppInfoView identity in the app detail sidebar', () => {
       systemFeatures: { rbac_enabled: false, enable_app_deploy: false },
     })
 
-    await user.click(screen.getByRole('button', { name: 'Open First app' }))
-    expect(screen.getByText('First app: edit')).toBeInTheDocument()
-    screen.getByRole('button', { name: 'Open First app' }).focus()
+    await user.click(screen.getByRole('button', { name: /moreActionsFor/ }))
+    await user.click(await screen.findByRole('menuitem', { name: 'app.editApp' }))
+    const name = await screen.findByRole('textbox', { name: 'app.newApp.captionName' })
+    await user.clear(name)
+    await user.type(name, 'Unsaved draft')
 
-    currentApp = createAppDetailFixture({ name: 'Renamed app' })
+    currentApp = { ...currentApp, name: 'Renamed app' }
     await act(async () => {
       seed()
     })
     view.rerender(<AppDetailSection />)
-    expect(screen.getByText('Renamed app: edit')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Open Renamed app' })).toHaveFocus()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(name).toHaveValue('Unsaved draft')
+    expect(name).toHaveFocus()
 
     currentApp = createAppDetailFixture({ id: 'app-2', name: 'Second app' })
     pathname = '/app/app-2/configuration'
     seed()
     view.rerender(<AppDetailSection />)
-    expect(screen.getByRole('button', { name: 'Open Second app' })).toBeInTheDocument()
-    expect(screen.getByText('Second app: closed')).toBeInTheDocument()
+    expect(screen.getByText('Second app')).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 })

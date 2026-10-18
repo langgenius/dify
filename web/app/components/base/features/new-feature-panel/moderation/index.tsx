@@ -30,11 +30,11 @@ const Moderation = ({ disabled, onChange }: Props) => {
     /* v8 ignore next -- guarded path is not reachable in tests with a real disabled button because click is prevented at DOM level. @preserve */
     if (disabled) return
 
-    const { features, setFeatures } = featuresStore!.getState()
+    const { setFeatures } = featuresStore!.getState()
     setShowModerationSettingModal({
       payload: moderation as any,
       onSaveCallback: (newModeration) => {
-        const newFeatures = produce(features, (draft) => {
+        const newFeatures = produce(featuresStore!.getState().features, (draft) => {
           draft.moderation = newModeration
         })
         setFeatures(newFeatures)
@@ -64,14 +64,14 @@ const Moderation = ({ disabled, onChange }: Props) => {
             },
           },
           onSaveCallback: (newModeration) => {
-            const newFeatures = produce(features, (draft) => {
+            const newFeatures = produce(featuresStore!.getState().features, (draft) => {
               draft.moderation = newModeration
             })
             setFeatures(newFeatures)
             if (onChange) onChange(newFeatures)
           },
           onCancelCallback: () => {
-            const newFeatures = produce(features, (draft) => {
+            const newFeatures = produce(featuresStore!.getState().features, (draft) => {
               draft.moderation = { enabled: false }
             })
             setFeatures(newFeatures)
@@ -80,8 +80,16 @@ const Moderation = ({ disabled, onChange }: Props) => {
         })
       }
 
+      if (enabled && features.moderation?.type) {
+        const newFeatures = produce(featuresStore!.getState().features, (draft) => {
+          draft.moderation!.enabled = true
+        })
+        setFeatures(newFeatures)
+        onChange?.(newFeatures)
+      }
+
       if (!enabled) {
-        const newFeatures = produce(features, (draft) => {
+        const newFeatures = produce(featuresStore!.getState().features, (draft) => {
           draft.moderation = { enabled: false }
         })
         setFeatures(newFeatures)

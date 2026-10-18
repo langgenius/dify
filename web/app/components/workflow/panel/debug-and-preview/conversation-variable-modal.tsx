@@ -10,7 +10,7 @@ import copy from 'copy-to-clipboard'
 import { capitalize } from 'es-toolkit/string'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { useCallback } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
@@ -57,14 +57,18 @@ const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
     }
   }, [appID, conversationID, varList.length])
 
+  const currentValue = latestValueMap[currentVar.id] ?? currentVar.value
+  const copyResetTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  useEffect(() => () => clearTimeout(copyResetTimer.current), [])
   const [isCopied, setIsCopied] = React.useState(false)
   const handleCopy = useCallback(() => {
-    copy(currentVar.value)
+    copy(currentValue)
     setIsCopied(true)
-    setTimeout(() => {
+    clearTimeout(copyResetTimer.current)
+    copyResetTimer.current = setTimeout(() => {
       setIsCopied(false)
     }, 2000)
-  }, [currentVar.value])
+  }, [currentValue])
 
   useMount(() => {
     getChatVarLatestValues()
@@ -96,7 +100,11 @@ const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
                     'group mb-0.5 flex w-full cursor-pointer items-center rounded-lg border-none bg-transparent p-2 text-left hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
                     currentVar.id === chatVar.id && 'bg-state-base-hover',
                   )}
-                  onClick={() => setCurrentVar(chatVar)}
+                  onClick={() => {
+                    clearTimeout(copyResetTimer.current)
+                    setIsCopied(false)
+                    setCurrentVar(chatVar)
+                  }}
                 >
                   <span
                     aria-hidden="true"
@@ -188,7 +196,7 @@ const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
                           noWrapper
                           isExpand
                           language={CodeLanguage.json}
-                          value={latestValueMap[currentVar.id] || ''}
+                          value={currentValue}
                           isJSONStringifyBeauty
                         />
                       </div>
@@ -197,7 +205,7 @@ const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
                 {(currentVar.value_type === ChatVarType.Number ||
                   currentVar.value_type === ChatVarType.String) && (
                   <div className="h-full overflow-x-hidden overflow-y-auto rounded-lg bg-components-input-bg-normal px-4 py-3 system-md-regular text-components-input-text-filled">
-                    {latestValueMap[currentVar.id] || ''}
+                    {currentValue}
                   </div>
                 )}
               </div>

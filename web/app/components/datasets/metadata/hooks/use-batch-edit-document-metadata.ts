@@ -131,7 +131,7 @@ const useBatchEditDocumentMetadata = ({
     consoleQuery.datasets.byDatasetId.documents.metadata.post.mutationOptions(),
   )
   const handleSave = async (
-    editedList: MetadataItemInBatchEdit[],
+    editedList: MetadataItemWithEdit[],
     addedList: MetadataItemInBatchEdit[],
     isApplyToAllSelectDocument: boolean,
   ) => {

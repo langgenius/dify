@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createHttpError } from './http-error'
 
 const getMock = vi.hoisted(() => vi.fn())
@@ -24,9 +24,12 @@ vi.mock('./webapp-auth', () => ({
 const { fetchAccessToken } = await import('./share')
 
 describe('fetchAccessToken', () => {
+  const originalUrl = window.location.href
   beforeEach(() => {
     getMock.mockReset()
   })
+
+  afterEach(() => window.history.replaceState({}, '', originalUrl))
 
   it('shares an in-flight passport request for the same environment', async () => {
     window.history.replaceState({}, '', '/environment/workflow/environment-app')

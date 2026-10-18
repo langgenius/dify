@@ -4,7 +4,9 @@ import { Position } from 'reactflow'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { seedToolProviders } from '@/test/console/tool-providers'
 import CustomEdge from '../custom-edge'
+import codeDefault from '../nodes/code/default'
 import llmDefault from '../nodes/llm/default'
+import toolDefault from '../nodes/tool/default'
 import { BlockEnum } from '../types'
 import { renderWorkflowFlowComponent } from './workflow-test-env'
 
@@ -69,19 +71,24 @@ describe('CustomEdge insertion', () => {
         hooksStoreProps: {
           availableNodesMetaData: {
             nodes: [
-              {
-                defaultValue: {},
-                metaData: { ...llmDefault.metaData, title: 'LLM' },
-                checkValid: () => ({ isValid: true }),
-              },
-            ],
+              { metadata: llmDefault.metaData, title: 'LLM' },
+              { metadata: codeDefault.metaData, title: 'Code' },
+              { metadata: toolDefault.metaData, title: 'Tool' },
+            ].map(({ metadata, title }) => ({
+              defaultValue: {},
+              metaData: { ...metadata, title },
+              checkValid: () => ({ isValid: true }),
+            })),
           },
         },
       },
     )
     await user.click(screen.getByRole('button', { name: 'workflow.common.addBlock' }))
     expect(screen.queryByRole('tab', { name: 'workflow.tabs.start' })).not.toBeInTheDocument()
-    await user.click(await screen.findByRole('button', { name: 'LLM' }))
+    const compatible = await screen.findByRole('button', { name: 'LLM' })
+    expect(screen.queryByRole('button', { name: 'Code' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Tool' })).not.toBeInTheDocument()
+    await user.click(compatible)
     expect(handleNodeAdd).toHaveBeenCalledWith(
       expect.objectContaining({ nodeType: BlockEnum.LLM }),
       {

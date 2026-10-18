@@ -1,15 +1,13 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import type { ReactElement, ReactNode } from 'react'
+import { fireEvent, render as renderComponent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useRef, useState } from 'react'
 import { InputVarType } from '@/app/components/workflow/types'
 import { PromptMode } from '@/models/debug'
 import { createDatasetConfigsFixture } from '@/test/fixtures/debug-configuration'
 import { createEmbeddedChatbotContextFixture } from '@/test/fixtures/embedded-chatbot'
-import { useEmbeddedChatbotContext } from '../../context'
+import { EmbeddedChatbotContext } from '../../context'
 import InputsFormContent from '../content'
-
-vi.mock('../../context', () => ({
-  useEmbeddedChatbotContext: vi.fn(),
-}))
 
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ token: 'test-token' }),
@@ -17,8 +15,6 @@ vi.mock('@/next/navigation', () => ({
   usePathname: () => '/',
   useSearchParams: () => new URLSearchParams(),
 }))
-
-vi.mock('@/app/notifications', () => ({}))
 
 // Mock CodeEditor to trigger onChange easily
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
@@ -153,13 +149,45 @@ const mockContextValue = createEmbeddedChatbotContextFixture({
   handleNewConversationInputsChange: vi.fn(),
 })
 
+let context = mockContextValue
+function render(ui: ReactElement) {
+  function Wrapper({ children }: { children: ReactNode }) {
+    const [currentInputs, setCurrentInputs] = useState(context.currentConversationInputs)
+    const [newInputs, setNewInputs] = useState(context.newConversationInputs)
+    const newInputsRef = useRef(newInputs)
+    return (
+      <EmbeddedChatbotContext.Provider
+        value={{
+          ...context,
+          currentConversationInputs: currentInputs,
+          newConversationInputs: newInputs,
+          newConversationInputsRef: newInputsRef,
+          setCurrentConversationInputs: (value) => {
+            context.setCurrentConversationInputs(value)
+            setCurrentInputs(value)
+          },
+          handleNewConversationInputsChange: (value) => {
+            context.handleNewConversationInputsChange(value)
+            newInputsRef.current = value
+            setNewInputs(value)
+          },
+        }}
+      >
+        {children}
+      </EmbeddedChatbotContext.Provider>
+    )
+  }
+  return renderComponent(ui, { wrapper: Wrapper })
+}
+
 describe('InputsFormContent', () => {
-  const user = userEvent.setup()
+  let user: ReturnType<typeof userEvent.setup>
 
   beforeEach(() => {
     vi.clearAllMocks()
 
-    vi.mocked(useEmbeddedChatbotContext).mockReturnValue(mockContextValue)
+    user = userEvent.setup()
+    context = mockContextValue
   })
 
   it('should render visible input forms', () => {
@@ -174,11 +202,9 @@ describe('InputsFormContent', () => {
     expect(screen.getAllByText(/Multi File Label/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/JSON Label/i).length).toBeGreaterThan(0)
     expect(screen.queryByText('Hidden Label')).not.toBeInTheDocument()
-  })
-
-  it('should render optional label for non-required fields', () => {
-    render(<InputsFormContent />)
-    expect(screen.queryAllByText(/panel.optional/i).length).toBeGreaterThan(0)
+    expect(
+      within(screen.getByTestId('inputs-form-item-num_var')).getByText(/panel.optional/),
+    ).toBeInTheDocument()
   })
 
   it('should handle text input changes', async () => {
@@ -186,8 +212,12 @@ describe('InputsFormContent', () => {
     const input = screen.getByRole('textbox', { name: 'Text Label' })
     await user.type(input, 'hello')
 
-    expect(mockContextValue.setCurrentConversationInputs).toHaveBeenCalled()
-    expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenCalled()
+    expect(mockContextValue.setCurrentConversationInputs).toHaveBeenLastCalledWith({
+      text_var: 'hello',
+    })
+    expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenLastCalledWith({
+      text_var: 'hello',
+    })
   })
 
   it('should handle number input changes', async () => {
@@ -195,8 +225,12 @@ describe('InputsFormContent', () => {
     const input = screen.getByRole('spinbutton', { name: 'Number Label' })
     await user.type(input, '123')
 
-    expect(mockContextValue.setCurrentConversationInputs).toHaveBeenCalled()
-    expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenCalled()
+    expect(mockContextValue.setCurrentConversationInputs).toHaveBeenLastCalledWith({
+      num_var: '123',
+    })
+    expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenLastCalledWith({
+      num_var: '123',
+    })
   })
 
   it('should handle paragraph input changes', async () => {
@@ -204,8 +238,12 @@ describe('InputsFormContent', () => {
     const input = screen.getByRole('textbox', { name: 'Paragraph Label' })
     await user.type(input, 'long text')
 
-    expect(mockContextValue.setCurrentConversationInputs).toHaveBeenCalled()
-    expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenCalled()
+    expect(mockContextValue.setCurrentConversationInputs).toHaveBeenLastCalledWith({
+      para_var: 'long text',
+    })
+    expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenLastCalledWith({
+      para_var: 'long text',
+    })
   })
 
   it('should handle bool input changes', async () => {
@@ -213,39 +251,60 @@ describe('InputsFormContent', () => {
     const checkbox = screen.getByRole('checkbox', { name: 'Bool Label' })
     await user.click(checkbox)
 
-    expect(mockContextValue.setCurrentConversationInputs).toHaveBeenCalled()
-    expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenCalled()
+    expect(mockContextValue.setCurrentConversationInputs).toHaveBeenLastCalledWith({
+      bool_var: true,
+    })
+    expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenLastCalledWith({
+      bool_var: true,
+    })
   })
 
   it('should handle select input changes', async () => {
     render(<InputsFormContent />)
-    const selectTrigger = screen.getAllByText(/Select Label/i).find((el) => el.tagName === 'SPAN')
-    if (!selectTrigger) throw new Error('Select trigger not found')
+    const selectTrigger = screen.getByRole('combobox', { name: 'Select Label' })
 
     await user.click(selectTrigger)
     const option = screen.getByText('Option 1')
     await user.click(option)
 
-    expect(mockContextValue.setCurrentConversationInputs).toHaveBeenCalled()
-    expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenCalled()
+    expect(mockContextValue.setCurrentConversationInputs).toHaveBeenLastCalledWith({
+      select_var: 'Option 1',
+    })
+    expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenLastCalledWith({
+      select_var: 'Option 1',
+    })
   })
 
   it('should handle single file upload change', async () => {
     render(<InputsFormContent />)
-    const uploadButtons = screen.getAllByText('Upload')
-    await user.click(uploadButtons[0]!) // First one is single file
+    await user.click(
+      within(screen.getByTestId('inputs-form-item-file_var')).getByRole('button', {
+        name: 'Upload',
+      }),
+    )
 
-    expect(mockContextValue.setCurrentConversationInputs).toHaveBeenCalled()
-    expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenCalled()
+    expect(mockContextValue.setCurrentConversationInputs).toHaveBeenLastCalledWith({
+      file_var: expect.objectContaining({ name: 'test.png' }),
+    })
+    expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenLastCalledWith({
+      file_var: expect.objectContaining({ name: 'test.png' }),
+    })
   })
 
   it('should handle multi files upload change', async () => {
     render(<InputsFormContent />)
-    const uploadButtons = screen.getAllByText('Upload')
-    await user.click(uploadButtons[1]!) // Second one is multi files
+    await user.click(
+      within(screen.getByTestId('inputs-form-item-multi_file_var')).getByRole('button', {
+        name: 'Upload',
+      }),
+    )
 
-    expect(mockContextValue.setCurrentConversationInputs).toHaveBeenCalled()
-    expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenCalled()
+    expect(mockContextValue.setCurrentConversationInputs).toHaveBeenLastCalledWith({
+      multi_file_var: [expect.objectContaining({ name: 'test.png' })],
+    })
+    expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenLastCalledWith({
+      multi_file_var: [expect.objectContaining({ name: 'test.png' })],
+    })
   })
 
   it('should handle JSON object change', async () => {
@@ -253,13 +312,17 @@ describe('InputsFormContent', () => {
     const jsonEditor = screen.getByTestId('mock-code-editor')
     fireEvent.change(jsonEditor, { target: { value: '{ "a": 1 }' } })
 
-    expect(mockContextValue.setCurrentConversationInputs).toHaveBeenCalled()
-    expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenCalled()
+    expect(mockContextValue.setCurrentConversationInputs).toHaveBeenLastCalledWith({
+      json_var: '{ "a": 1 }',
+    })
+    expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenLastCalledWith({
+      json_var: '{ "a": 1 }',
+    })
   })
 
   it('should show tip when showTip is true', () => {
     render(<InputsFormContent showTip />)
-    expect(screen.getByText(/chat.chatFormTip/i))!.toBeInTheDocument()
+    expect(screen.getByText(/chat.chatFormTip/i)).toBeInTheDocument()
   })
 
   it('should set initial values from context', () => {
@@ -270,10 +333,10 @@ describe('InputsFormContent', () => {
       },
     }
 
-    vi.mocked(useEmbeddedChatbotContext).mockReturnValue(contextWithValues)
+    context = contextWithValues
 
     render(<InputsFormContent />)
-    expect(screen.getByDisplayValue('initial value'))!.toBeInTheDocument()
+    expect(screen.getByDisplayValue('initial value')).toBeInTheDocument()
   })
 
   it('should use currentConversationInputs when currentConversationId exists', () => {
@@ -285,10 +348,10 @@ describe('InputsFormContent', () => {
       },
     }
 
-    vi.mocked(useEmbeddedChatbotContext).mockReturnValue(contextWithConv)
+    context = contextWithConv
 
     render(<InputsFormContent />)
-    expect(screen.getByDisplayValue('conv value'))!.toBeInTheDocument()
+    expect(screen.getByDisplayValue('conv value')).toBeInTheDocument()
   })
 
   it('should render numeric zero from context as zero', () => {
@@ -299,9 +362,7 @@ describe('InputsFormContent', () => {
       },
     }
 
-    vi.mocked(useEmbeddedChatbotContext).mockReturnValue(
-      contextWithZero as ReturnType<typeof useEmbeddedChatbotContext>,
-    )
+    context = contextWithZero
 
     render(<InputsFormContent />)
     expect(screen.getByRole('spinbutton', { name: 'Number Label' })).toHaveValue(0)

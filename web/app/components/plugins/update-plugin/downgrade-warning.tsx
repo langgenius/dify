@@ -1,4 +1,5 @@
 import { Button } from '@langgenius/dify-ui/button'
+import { DialogTitle } from '@langgenius/dify-ui/dialog'
 import { useTranslation } from 'react-i18next'
 
 const i18nPrefix = 'autoUpdate.pluginDowngradeWarning'
@@ -14,9 +15,7 @@ const DowngradeWarningModal = ({ onCancel, onJustDowngrade, onExcludeAndDowngrad
   return (
     <>
       <div className="flex flex-col items-start gap-2 self-stretch">
-        <div className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $[`${i18nPrefix}.title`], { ns: 'plugin' })}
-        </div>
+        <DialogTitle>{t(($) => $[`${i18nPrefix}.title`], { ns: 'plugin' })}</DialogTitle>
         <div className="system-md-regular text-text-secondary">
           {t(($) => $[`${i18nPrefix}.description`], { ns: 'plugin' })}
         </div>

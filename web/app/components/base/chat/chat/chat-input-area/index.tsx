@@ -8,7 +8,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { noop } from 'es-toolkit/function'
 import { decode } from 'html-entities'
-import { useCallback, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
 import FeatureBar from '@/app/components/base/features/new-feature-panel/feature-bar'
@@ -71,7 +71,7 @@ const ChatInputArea = ({
   featureBarReadonly = readonly,
   featureBarDisabled,
   onFeatureBarClick,
-  visionConfig,
+  visionConfig = { enabled: false },
   speechToTextConfig = { enabled: true },
   speechToTextTarget,
   onBeforeSpeechToText,
@@ -101,7 +101,7 @@ const ChatInputArea = ({
     isMultipleLine,
   } = useTextAreaHeight()
   const [query, setQuery] = useState('')
-  const canSend = !!query.trim()
+  const canSend = !disabled && !readonly && !!query.trim()
   const [showVoiceInput, setShowVoiceInput] = useState(false)
   const filesStore = useFileStore()
   const {
@@ -111,11 +111,17 @@ const ChatInputArea = ({
     handleDropFile,
     handleClipboardPasteFile,
     isDragActive,
-  } = useFile(visionConfig!, false)
+  } = useFile(visionConfig, false)
   const { checkInputsForm } = useCheckInputsForms()
   const historyRef = useRef([''])
   const [currentIndex, setCurrentIndex] = useState(-1)
   const isComposingRef = useRef(false)
+  const compositionEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const clearCompositionEndTimer = useCallback(() => {
+    if (compositionEndTimerRef.current !== null) clearTimeout(compositionEndTimerRef.current)
+    compositionEndTimerRef.current = null
+  }, [])
+  useEffect(() => clearCompositionEndTimer, [clearCompositionEndTimer])
   const queryRef = useRef('')
   const voiceInputRef = useRef<HTMLDivElement>(null)
   const voiceInputReturnFocusRef = useRef<HTMLElement | null>(null)
@@ -167,14 +173,16 @@ const ChatInputArea = ({
     }
   }
   const handleCompositionStart = () => {
-    // e: React.CompositionEvent<HTMLTextAreaElement>
+    clearCompositionEndTimer()
     isComposingRef.current = true
   }
   const handleCompositionEnd = () => {
     // safari or some browsers will trigger compositionend before keydown.
     // delay 50ms for safari.
-    setTimeout(() => {
+    clearCompositionEndTimer()
+    compositionEndTimerRef.current = setTimeout(() => {
       isComposingRef.current = false
+      compositionEndTimerRef.current = null
     }, 50)
   }
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -374,6 +382,7 @@ const ChatInputArea = ({
                 onDragOver={handleDragFileOver}
                 onDrop={handleDropFile}
                 readOnly={readonly}
+                disabled={disabled}
               />
             </div>
             {!isMultipleLine &&
