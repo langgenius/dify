@@ -4,7 +4,7 @@ from dataclasses import replace
 from datetime import datetime
 from typing import cast, override
 
-from sqlalchemy import Select, exists, or_, select
+from sqlalchemy import Select, and_, exists, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -66,12 +66,35 @@ class SQLAlchemyInstalledAppConversationRepository(InstalledAppConversationStore
                 last_conversation = session.scalar(statement.where(Conversation.id == last_id))
                 if last_conversation is None:
                     raise LastConversationNotExistsError("The last_id cursor does not belong to these conversations.")
-                statement = statement.where(Conversation.updated_at < last_conversation.updated_at)
+                statement = statement.where(
+                    or_(
+                        Conversation.updated_at < last_conversation.updated_at,
+                        and_(
+                            Conversation.updated_at == last_conversation.updated_at,
+                            Conversation.id < last_conversation.id,
+                        ),
+                    )
+                )
 
-            conversations = session.scalars(statement.order_by(Conversation.updated_at.desc()).limit(limit)).all()
-            # Keep the existing strict timestamp cursor, including tied timestamps.
+            conversations = session.scalars(
+                statement.order_by(Conversation.updated_at.desc(), Conversation.id.desc()).limit(limit)
+            ).all()
             has_more = len(conversations) == limit and bool(
-                session.scalar(select(exists(statement.where(Conversation.updated_at < conversations[-1].updated_at))))
+                session.scalar(
+                    select(
+                        exists(
+                            statement.where(
+                                or_(
+                                    Conversation.updated_at < conversations[-1].updated_at,
+                                    and_(
+                                        Conversation.updated_at == conversations[-1].updated_at,
+                                        Conversation.id < conversations[-1].id,
+                                    ),
+                                )
+                            )
+                        )
+                    )
+                )
             )
             return ConversationPage(
                 limit=limit,

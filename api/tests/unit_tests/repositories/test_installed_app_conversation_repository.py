@@ -154,22 +154,26 @@ def test_page_keeps_updated_order_cursor_and_detached_inputs(
     assert record.updated_at == newest.updated_at
 
 
-def test_page_keeps_existing_strict_timestamp_behavior_for_ties(
+def test_page_returns_conversations_with_tied_updated_at_across_pages(
     sqlite_session_factory: sessionmaker[Session], installation: InstalledAppRef
 ) -> None:
     with sqlite_session_factory.begin() as session:
-        _conversation(session, installation)
-        _conversation(session, installation)
+        conversations = [_conversation(session, installation) for _ in range(3)]
     repository = SQLAlchemyInstalledAppConversationRepository(session_factory=sqlite_session_factory)
-    page = repository.get_page(installed_app=installation, account_id=_ACCOUNT_ID, last_id=None, limit=1, pinned=None)
-    assert len(page.data) == 1
-    assert page.has_more is False
-    assert (
-        repository.get_page(
-            installed_app=installation, account_id=_ACCOUNT_ID, last_id=page.data[0].id, limit=1, pinned=None
-        ).data
-        == ()
-    )
+
+    cursor = None
+    actual_ids: list[str] = []
+    while True:
+        page = repository.get_page(
+            installed_app=installation, account_id=_ACCOUNT_ID, last_id=cursor, limit=1, pinned=None
+        )
+        actual_ids.extend(item.id for item in page.data)
+        if not page.has_more:
+            break
+        cursor = page.data[-1].id
+
+    assert len(actual_ids) == len(conversations)
+    assert set(actual_ids) == {item.id for item in conversations}
 
 
 def test_page_filters_invoke_source_and_scopes_pins_to_account_role_and_owner(
