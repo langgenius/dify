@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+from contextlib import asynccontextmanager
 
 import httpx
 import pytest
@@ -231,3 +232,105 @@ def test_protected_config_adapter_checks_current_parent_digest_and_actual_byte_c
 
     asyncio.run(exercise())
     assert len(calls) == 1
+
+
+@asynccontextmanager
+async def _real_preparation_endpoint(*, delay=0.0, close_connection=False):
+    """Only this disposable loopback peer replaces the external API service."""
+    requests = []
+    active = set()
+
+    async def receive(reader, writer):
+        task = asyncio.current_task()
+        active.add(task)
+        try:
+            header = await reader.readuntil(b"\r\n\r\n")
+            lines = header.decode().split("\r\n")
+            headers = dict(line.split(": ", 1) for line in lines[1:] if line)
+            body = await reader.readexactly(int(headers["Content-Length"]))
+            requests.append((lines[0], {name.lower(): value for name, value in headers.items()}, json.loads(body)))
+            if close_connection:
+                return
+            await asyncio.sleep(delay)
+            payload = json.dumps(
+                {"config_ref": "cfg", "config_digest": "c" * 64, "association_object_ref": "association"}
+            ).encode()
+            writer.write(
+                b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: "
+                + str(len(payload)).encode()
+                + b"\r\nConnection: close\r\n\r\n"
+                + payload
+            )
+            await writer.drain()
+        finally:
+            writer.close()
+            try:
+                await writer.wait_closed()
+            except ConnectionError:
+                pass
+            active.discard(task)
+
+    server = await asyncio.start_server(receive, "127.0.0.1", 0)
+    try:
+        yield f"http://127.0.0.1:{server.sockets[0].getsockname()[1]}", requests
+    finally:
+        server.close()
+        await server.wait_closed()
+        remaining = tuple(active)
+        for task in remaining:
+            task.cancel()
+        await asyncio.gather(*remaining, return_exceptions=True)
+
+
+def test_prepare_callback_accepts_real_delayed_metadata_without_replay():
+    from dify_agent.adapters.native_testing.client import HttpAgentPolicyClient
+    from dify_agent.adapters.native_testing.transport import AgentRuntimeHTTPClient, bind_runtime_identity
+
+    async def exercise():
+        payload = wire.AgentPrepareRunPayload(parent_node=PARENT, agent_run_id="run", request_digest="c" * 64)
+        identity = wire.AgentRuntimeIdentity(
+            run_id="run", execution_mode="builder_test", parent_node=PARENT, request_digest="c" * 64, agent_generation=0
+        )
+        async with _real_preparation_endpoint(delay=11.0) as (url, requests):
+            async with AgentRuntimeHTTPClient(
+                api_url=url, api_token="synthetic", transport=httpx.AsyncHTTPTransport(retries=0)
+            ) as http:
+                policy = HttpAgentPolicyClient(base_url=url, api_key="", http_client=http)
+                with bind_runtime_identity(identity):
+                    actual = await policy.prepare_run(payload=payload)
+                assert actual.association_object_ref == "association"
+                assert actual.config_digest == "c" * 64
+            assert len(requests) == 1
+            line, headers, body = requests[0]
+            assert line == "POST /inner/api/agent/runtime/native-testing/prepare-run HTTP/1.1"
+            assert headers["authorization"] == "Bearer synthetic"
+            assert "x-inner-api-key" not in headers
+            assert headers["accept-encoding"] == "identity"
+            assert body == payload.model_dump(mode="json")
+
+    asyncio.run(exercise())
+
+
+def test_prepare_callback_connection_failure_is_single_attempt():
+    from dify_agent.adapters.native_testing.client import AgentPolicyTransportUnavailable, HttpAgentPolicyClient
+    from dify_agent.adapters.native_testing.transport import AgentRuntimeHTTPClient, bind_runtime_identity
+
+    async def exercise():
+        payload = wire.AgentPrepareRunPayload(parent_node=PARENT, agent_run_id="run", request_digest="c" * 64)
+        identity = wire.AgentRuntimeIdentity(
+            run_id="run", execution_mode="builder_test", parent_node=PARENT, request_digest="c" * 64, agent_generation=0
+        )
+        async with _real_preparation_endpoint(close_connection=True) as (url, requests):
+            async with AgentRuntimeHTTPClient(
+                api_url=url, api_token="synthetic", transport=httpx.AsyncHTTPTransport(retries=0)
+            ) as http:
+                policy = HttpAgentPolicyClient(base_url=url, api_key="", http_client=http)
+                with (
+                    bind_runtime_identity(identity),
+                    pytest.raises(AgentPolicyTransportUnavailable, match="^native_preparation_unavailable$"),
+                ):
+                    await policy.prepare_run(payload=payload)
+            assert len(requests) == 1
+            assert requests[0][0] == "POST /inner/api/agent/runtime/native-testing/prepare-run HTTP/1.1"
+
+    asyncio.run(exercise())

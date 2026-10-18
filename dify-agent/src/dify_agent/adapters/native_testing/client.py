@@ -134,7 +134,8 @@ class HttpAgentPolicyClient:
                     "Accept-Encoding": "identity",
                 },
                 content=body,
-                timeout=httpx.Timeout(10.0),
+                # Allow finite metadata/storage readbacks without retrying preparation.
+                timeout=httpx.Timeout(30.0),
                 follow_redirects=False,
             ) as response:
                 if response.status_code != 200 or response.headers.get("content-encoding", "identity") != "identity":
