@@ -7,7 +7,7 @@ import { PluginCategoryEnum, TaskStatus } from '@/app/components/plugins/types'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createPluginDeclarationFixture } from '@/test/fixtures/plugin'
-import UpdateFromMarketplace from '../from-market-place'
+import MarketplaceUpdateDialog from '../from-market-place'
 
 const {
   mockCheck,
@@ -37,7 +37,6 @@ vi.mock('@/app/notifications', () => ({
 }))
 
 vi.mock('@/service/plugins', () => ({
-  updateFromMarketPlace: mockUpdateFromMarketPlace,
   checkTaskStatus: mockCheck,
 }))
 
@@ -71,7 +70,9 @@ vi.mock('@/service/console', async (importOriginal) => {
   const { withConsoleClientResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
+
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.plugin.upgrade.marketplace.post': mockUpdateFromMarketPlace,
       'workspaces.current.plugin.autoUpgrade.exclude.post': (...args: unknown[]) =>
         mockRemoveAutoUpgrade(...args),
     }),
@@ -118,7 +119,15 @@ describe('UpdateFromMarketplace', () => {
     }
     mockUpdateFromMarketPlace.mockResolvedValueOnce(failedResponse)
 
-    render(<UpdateFromMarketplace payload={createPayload()} onSave={onSave} onCancel={vi.fn()} />)
+    render(
+      <MarketplaceUpdateDialog
+        open
+        onClose={vi.fn()}
+        payload={createPayload()}
+        onRefresh={onSave}
+        pluginId="plugin-1"
+      />,
+    )
 
     await user.click(screen.getByRole('button', { name: 'plugin.upgrade.upgrade' }))
 
@@ -137,13 +146,17 @@ describe('UpdateFromMarketplace', () => {
     const exclusion = createDeferred<object>()
     mockRemoveAutoUpgrade.mockReturnValueOnce(exclusion.promise)
     const onSave = vi.fn()
+    const onClose = vi.fn()
+    const upgrade = createDeferred<PluginInstallTaskStartResponse>()
+    mockUpdateFromMarketPlace.mockReturnValueOnce(upgrade.promise)
     render(
-      <UpdateFromMarketplace
+      <MarketplaceUpdateDialog
+        open
+        onClose={onClose}
         payload={createPayload({ targetPackageInfo: { id: 'plugin@0.9.0', version: '0.9.0' } })}
         pluginId="plugin-1"
-        onSave={onSave}
-        onCancel={vi.fn()}
-        isShowDowngradeWarningModal
+        onRefresh={onSave}
+        warnAboutAutoUpdate
       />,
     )
 
@@ -160,25 +173,41 @@ describe('UpdateFromMarketplace', () => {
       })
     })
     expect(mockUpdateFromMarketPlace).not.toHaveBeenCalled()
+    expect(screen.getByRole('alertdialog')).toHaveAccessibleDescription(
+      'plugin.autoUpdate.pluginDowngradeWarning.description',
+    )
+    await user.keyboard('{Escape}')
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'app.newApp.Cancel' })).toBeDisabled()
 
     await act(async () => exclusion.resolve({}))
 
+    await waitFor(() => expect(mockUpdateFromMarketPlace).toHaveBeenCalledOnce())
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    expect(onClose).not.toHaveBeenCalled()
+    await act(async () => upgrade.resolve({ all_installed: true, task_id: '' }))
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce())
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
     expect(mockUpdateFromMarketPlace).toHaveBeenCalledWith({
-      original_plugin_unique_identifier: 'plugin@1.0.0',
-      new_plugin_unique_identifier: 'plugin@0.9.0',
+      body: {
+        original_plugin_unique_identifier: 'plugin@1.0.0',
+        new_plugin_unique_identifier: 'plugin@0.9.0',
+      },
     })
   })
   it('downgrades without excluding future automatic upgrades when that action is chosen', async () => {
     const user = userEvent.setup()
     const onSave = vi.fn()
     render(
-      <UpdateFromMarketplace
+      <MarketplaceUpdateDialog
+        open
+        onClose={vi.fn()}
         payload={createPayload({ targetPackageInfo: { id: 'plugin@0.9.0', version: '0.9.0' } })}
         pluginId="plugin-1"
-        onSave={onSave}
-        onCancel={vi.fn()}
-        isShowDowngradeWarningModal
+        onRefresh={onSave}
+        warnAboutAutoUpdate
       />,
     )
 
@@ -187,8 +216,10 @@ describe('UpdateFromMarketplace', () => {
     )
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce())
     expect(mockUpdateFromMarketPlace).toHaveBeenCalledExactlyOnceWith({
-      original_plugin_unique_identifier: 'plugin@1.0.0',
-      new_plugin_unique_identifier: 'plugin@0.9.0',
+      body: {
+        original_plugin_unique_identifier: 'plugin@1.0.0',
+        new_plugin_unique_identifier: 'plugin@0.9.0',
+      },
     })
     expect(mockRemoveAutoUpgrade).not.toHaveBeenCalled()
   })
@@ -205,7 +236,15 @@ describe('UpdateFromMarketplace', () => {
     mockUpdateFromMarketPlace.mockResolvedValueOnce(response)
     mockCheck.mockReturnValueOnce(pending.promise)
     const onSave = vi.fn()
-    render(<UpdateFromMarketplace payload={createPayload()} onSave={onSave} onCancel={vi.fn()} />)
+    render(
+      <MarketplaceUpdateDialog
+        open
+        onClose={vi.fn()}
+        payload={createPayload()}
+        onRefresh={onSave}
+        pluginId="plugin-1"
+      />,
+    )
 
     await user.click(screen.getByRole('button', { name: 'plugin.upgrade.upgrade' }))
     await waitFor(() => expect(mockCheck).toHaveBeenCalledExactlyOnceWith('upgrade-task'))
@@ -233,7 +272,15 @@ describe('UpdateFromMarketplace', () => {
     const user = userEvent.setup()
     mockUpdateFromMarketPlace.mockRejectedValueOnce(new Error('Upgrade request failed'))
     const onSave = vi.fn()
-    render(<UpdateFromMarketplace payload={createPayload()} onSave={onSave} onCancel={vi.fn()} />)
+    render(
+      <MarketplaceUpdateDialog
+        open
+        onClose={vi.fn()}
+        payload={createPayload()}
+        onRefresh={onSave}
+        pluginId="plugin-1"
+      />,
+    )
 
     await user.click(screen.getByRole('button', { name: 'plugin.upgrade.upgrade' }))
     expect(onSave).not.toHaveBeenCalled()
@@ -260,7 +307,15 @@ describe('UpdateFromMarketplace', () => {
       },
     })
     const onSave = vi.fn()
-    render(<UpdateFromMarketplace payload={createPayload()} onSave={onSave} onCancel={vi.fn()} />)
+    render(
+      <MarketplaceUpdateDialog
+        open
+        onClose={vi.fn()}
+        payload={createPayload()}
+        onRefresh={onSave}
+        pluginId="plugin-1"
+      />,
+    )
 
     await user.click(screen.getByRole('button', { name: 'plugin.upgrade.upgrade' }))
     await waitFor(() => expect(mockToastError).toHaveBeenCalledWith('Dependency conflict'))
@@ -269,30 +324,4 @@ describe('UpdateFromMarketplace', () => {
     await user.click(screen.getByRole('button', { name: 'plugin.upgrade.upgrade' }))
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce())
   })
-
-  it.each([
-    { warning: false, button: 'common.operation.cancel' },
-    { warning: true, button: 'app.newApp.Cancel' },
-    { warning: false, button: 'common.operation.close' },
-    { warning: true, button: 'common.operation.close' },
-  ])(
-    'cancels via $button before any update or exclusion request (warning=$warning)',
-    async ({ warning, button }) => {
-      const user = userEvent.setup()
-      const onCancel = vi.fn()
-      render(
-        <UpdateFromMarketplace
-          payload={createPayload()}
-          pluginId="plugin-1"
-          onSave={vi.fn()}
-          onCancel={onCancel}
-          isShowDowngradeWarningModal={warning}
-        />,
-      )
-      await user.click(screen.getByRole('button', { name: button }))
-      expect(onCancel).toHaveBeenCalledOnce()
-      expect(mockUpdateFromMarketPlace).not.toHaveBeenCalled()
-      expect(mockRemoveAutoUpgrade).not.toHaveBeenCalled()
-    },
-  )
 })
