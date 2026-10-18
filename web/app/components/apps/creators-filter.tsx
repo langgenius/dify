@@ -1,6 +1,12 @@
 'use client'
 
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarGroup,
+  AvatarGroupCount,
+  AvatarImage,
+} from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Combobox,
@@ -19,11 +25,12 @@ import {
   createComboboxItems,
 } from '@langgenius/dify-ui/combobox'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { useMembers } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
+import { getAvatarInitial } from '@/utils/avatar'
 
 type CreatorsFilterProps = {
   value: string[]
@@ -46,7 +53,9 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
   })
-  const { data: membersData } = useMembers()
+  const { data: membersData } = useQuery(
+    consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }),
+  )
   const triggerRef = useRef<HTMLButtonElement>(null)
 
   const creatorOptions = useMemo<CreatorOption[]>(() => {
@@ -92,6 +101,7 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
 
   const selectedCount = value.length
   const selectedAvatarCreators = selectedCreators.slice(0, 3)
+  const remainingCount = selectedCount - selectedAvatarCreators.length
   const creatorFilterLabel = t(($) => $['studio.filters.creators'], { ns: 'app' })
   const resetLabel = t(($) => $['studio.filters.reset'], { ns: 'app' })
   const selectedCountLabel =
@@ -116,7 +126,7 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
           aria-label={creatorFilterLabel}
           className={cn(
             baseChipClassName,
-            'group/creators-trigger peer/creators-trigger w-auto min-w-0 gap-0.5 border-components-button-secondary-border bg-components-button-secondary-bg py-2 pr-8 text-start system-sm-regular shadow-xs hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-placeholder:border-transparent data-placeholder:bg-components-input-bg-normal data-placeholder:pr-2 data-placeholder:text-text-tertiary data-placeholder:shadow-none data-placeholder:hover:bg-components-input-bg-hover data-popup-open:bg-state-base-hover-alt',
+            'group/creators-trigger peer/creators-trigger w-auto min-w-0 gap-0.5 border-components-button-secondary-border bg-components-button-secondary-bg py-2 pr-7 text-start system-sm-regular shadow-xs hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-placeholder:border-transparent data-placeholder:bg-components-input-bg-normal data-placeholder:pr-2 data-placeholder:text-text-tertiary data-placeholder:shadow-none data-placeholder:hover:bg-components-input-bg-hover data-popup-open:bg-state-base-hover-alt',
           )}
         >
           <ComboboxValue<string, true>>
@@ -125,20 +135,19 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
                 {creatorFilterLabel}
               </span>
               {selectedCount > 0 ? (
-                <>
-                  <span className="flex items-center pr-1">
-                    {selectedAvatarCreators.map((creator, index) => (
-                      <Avatar
-                        key={creator.id}
-                        avatar={creator.avatarUrl}
-                        name={creator.name}
-                        size="xs"
-                        className={cn('border border-components-panel-bg', index > 0 && '-ml-1')}
-                      />
-                    ))}
-                  </span>
-                  <span className="text-xs leading-4 font-medium text-text-tertiary group-data-popup-open/creators-trigger:text-text-secondary">{`+${selectedCount}`}</span>
-                </>
+                <AvatarGroup size="xs">
+                  {selectedAvatarCreators.map((creator, index) => (
+                    <Avatar
+                      key={creator.id}
+                      aria-hidden="true"
+                      style={{ zIndex: selectedAvatarCreators.length - index }}
+                    >
+                      <AvatarFallback>{getAvatarInitial(creator.name)}</AvatarFallback>
+                      <AvatarImage src={creator.avatarUrl || undefined} alt="" />
+                    </Avatar>
+                  ))}
+                  {remainingCount > 0 && <AvatarGroupCount>+{remainingCount}</AvatarGroupCount>}
+                </AvatarGroup>
               ) : (
                 <span className="i-ri-arrow-down-s-line h-4 w-4 shrink-0 text-text-tertiary group-data-popup-open/creators-trigger:text-text-secondary" />
               )}
@@ -190,14 +199,10 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
                     <ComboboxItemIndicator className="ms-0 size-3 text-components-checkbox-icon" />
                   </span>
                   <ComboboxItemText className="flex items-center gap-2 px-1 font-normal">
-                    <span aria-hidden>
-                      <Avatar
-                        avatar={creator.avatarUrl}
-                        name={creator.name}
-                        size="xs"
-                        className="border-[0.5px] border-divider-regular"
-                      />
-                    </span>
+                    <Avatar size="xs" aria-hidden="true">
+                      <AvatarFallback>{getAvatarInitial(creator.name)}</AvatarFallback>
+                      <AvatarImage src={creator.avatarUrl || undefined} alt="" />
+                    </Avatar>
                     <span className="flex min-w-0 grow items-center justify-between gap-2">
                       <span className="truncate text-sm text-text-secondary">{creator.name}</span>
                       {creator.isYou && (

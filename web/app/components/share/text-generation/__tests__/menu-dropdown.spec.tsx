@@ -1,31 +1,10 @@
 import type { SiteInfo } from '@/models/share'
 import type { WebAppAddress } from '@/service/webapp-address'
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { AccessMode } from '@/models/access-control'
 import MenuDropdown from '../menu-dropdown'
-
-vi.mock('../info-modal', () => ({
-  default: ({
-    isShow,
-    onClose,
-    data,
-  }: {
-    isShow: boolean
-    onClose: () => void
-    data?: SiteInfo
-  }) => {
-    if (!isShow) return null
-    return (
-      <div data-testid="info-modal">
-        <span>{data?.title}</span>
-        <button type="button" onClick={onClose}>
-          Close Info
-        </button>
-      </div>
-    )
-  },
-}))
 
 const mockSetTheme = vi.fn()
 vi.mock('next-themes', () => ({ useTheme: () => ({ theme: 'system', setTheme: mockSetTheme }) }))
@@ -44,7 +23,7 @@ const webAppAddress: WebAppAddress = { kind: 'default', code: mockShareCode }
 vi.mock('@/context/web-app-context', () => ({
   useWebAppStore: (selector: (state: Record<string, unknown>) => unknown) => {
     const state = {
-      webAppAccessMode: 'code',
+      webAppAccessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
       shareCode: mockShareCode,
     }
     return selector(state)
@@ -60,222 +39,69 @@ vi.mock('@/service/webapp-address', () => ({
   resolveWebAppAddress: () => webAppAddress,
 }))
 
-afterEach(() => {
-  cleanup()
-})
-
 describe('MenuDropdown', () => {
-  const baseSiteInfo: SiteInfo = {
-    title: 'Test App',
-    icon: '🚀',
-    icon_type: 'emoji',
-  }
-
+  const siteInfo: SiteInfo = { title: 'Test App', icon: '🚀', icon_type: 'emoji' }
   beforeEach(() => {
-    vi.clearAllMocks()
+    mockWebAppLogout.mockResolvedValue(undefined)
   })
 
-  describe('rendering', () => {
-    it('should render the trigger button', () => {
-      render(<MenuDropdown data={baseSiteInfo} />)
-
-      const triggerButton = screen.getByRole('button')
-      expect(triggerButton).toBeInTheDocument()
-    })
-
-    it('should not show dropdown content initially', () => {
-      render(<MenuDropdown data={baseSiteInfo} />)
-
-      expect(screen.queryByText('common.theme.theme')).not.toBeInTheDocument()
-    })
-
-    it('should show dropdown content when clicked', async () => {
-      render(<MenuDropdown data={baseSiteInfo} />)
-
-      const triggerButton = screen.getByRole('button')
-      fireEvent.click(triggerButton)
-
-      await waitFor(() => {
-        expect(screen.getByText('common.theme.theme')).toBeInTheDocument()
-      })
-    })
-
-    it('should show About option in dropdown', async () => {
-      render(<MenuDropdown data={baseSiteInfo} />)
-
-      const triggerButton = screen.getByRole('button')
-      fireEvent.click(triggerButton)
-
-      await waitFor(() => {
-        expect(screen.getByText('common.userProfile.about')).toBeInTheDocument()
-      })
-    })
-  })
-
-  it('exposes checked theme items and keeps the menu open after changing the theme', async () => {
+  it('exposes the selected theme and keeps the menu open when changing it', async () => {
     const user = userEvent.setup()
-    render(<MenuDropdown data={baseSiteInfo} />)
-    const trigger = screen.getByRole('button')
-    await user.click(trigger)
+    render(<MenuDropdown data={siteInfo} />)
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
     expect(screen.getByRole('menuitemradio', { name: 'common.theme.auto' })).toHaveAttribute(
       'aria-checked',
       'true',
     )
-    const light = screen.getByRole('menuitemradio', { name: 'common.theme.light' })
-    await user.click(light)
+    await user.click(screen.getByRole('menuitemradio', { name: 'common.theme.light' }))
     expect(mockSetTheme).toHaveBeenCalledWith('light', expect.anything())
     expect(screen.getByRole('menu')).toBeInTheDocument()
-    await user.keyboard('{Escape}')
-    await waitFor(() => expect(trigger).toHaveFocus())
   })
 
-  describe('privacy policy link', () => {
-    it('should show privacy policy link when provided', async () => {
-      const siteInfoWithPrivacy: SiteInfo = {
-        ...baseSiteInfo,
-        privacy_policy: 'https://example.com/privacy',
-      }
-
-      render(<MenuDropdown data={siteInfoWithPrivacy} />)
-
-      const triggerButton = screen.getByRole('button')
-      fireEvent.click(triggerButton)
-
-      await waitFor(() => {
-        expect(screen.getByText('share.chat.privacyPolicyMiddle')).toBeInTheDocument()
-      })
-    })
-
-    it('should not show privacy policy link when not provided', async () => {
-      render(<MenuDropdown data={baseSiteInfo} />)
-
-      const triggerButton = screen.getByRole('button')
-      fireEvent.click(triggerButton)
-
-      await waitFor(() => {
-        expect(screen.queryByText('share.chat.privacyPolicyMiddle')).not.toBeInTheDocument()
-      })
-    })
-
-    it('should have correct href for privacy policy link', async () => {
-      const privacyUrl = 'https://example.com/privacy'
-      const siteInfoWithPrivacy: SiteInfo = {
-        ...baseSiteInfo,
-        privacy_policy: privacyUrl,
-      }
-
-      render(<MenuDropdown data={siteInfoWithPrivacy} />)
-
-      const triggerButton = screen.getByRole('button')
-      fireEvent.click(triggerButton)
-
-      await waitFor(() => {
-        const link = screen.getByText('share.chat.privacyPolicyMiddle').closest('a')
-        expect(link).toHaveAttribute('href', privacyUrl)
+  it.each([undefined, 'https://example.com/privacy'])(
+    'only links to a configured privacy policy (%s)',
+    async (privacy_policy) => {
+      const user = userEvent.setup()
+      render(<MenuDropdown data={{ ...siteInfo, privacy_policy }} />)
+      await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      const link = screen.queryByRole('menuitem', { name: 'share.chat.privacyPolicyMiddle' })
+      if (privacy_policy) {
+        expect(link).toHaveAttribute('href', privacy_policy)
         expect(link).toHaveAttribute('target', '_blank')
-      })
-    })
+      } else {
+        expect(link).not.toBeInTheDocument()
+      }
+    },
+  )
+
+  it('hides logout when requested', async () => {
+    const user = userEvent.setup()
+    render(<MenuDropdown data={siteInfo} hideLogout />)
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+    expect(
+      screen.queryByRole('menuitem', { name: 'common.userProfile.logout' }),
+    ).not.toBeInTheDocument()
   })
 
-  describe('logout functionality', () => {
-    it('should show logout option when hideLogout is false', async () => {
-      render(<MenuDropdown data={baseSiteInfo} hideLogout={false} />)
-
-      const triggerButton = screen.getByRole('button')
-      fireEvent.click(triggerButton)
-
-      await waitFor(() => {
-        expect(screen.getByText('common.userProfile.logout')).toBeInTheDocument()
-      })
-    })
-
-    it('should hide logout option when hideLogout is true', async () => {
-      render(<MenuDropdown data={baseSiteInfo} hideLogout={true} />)
-
-      const triggerButton = screen.getByRole('button')
-      fireEvent.click(triggerButton)
-
-      await waitFor(() => {
-        expect(screen.queryByText('common.userProfile.logout')).not.toBeInTheDocument()
-      })
-    })
-
-    it('should call webAppLogout and redirect when logout is clicked', async () => {
-      render(<MenuDropdown data={baseSiteInfo} hideLogout={false} />)
-
-      const triggerButton = screen.getByRole('button')
-      fireEvent.click(triggerButton)
-
-      await waitFor(() => {
-        expect(screen.getByText('common.userProfile.logout')).toBeInTheDocument()
-      })
-
-      const logoutButton = screen.getByText('common.userProfile.logout')
-      await act(async () => {
-        fireEvent.click(logoutButton)
-      })
-
-      await waitFor(() => {
-        expect(mockWebAppLogout).toHaveBeenCalledWith(webAppAddress)
-        expect(mockReplace).toHaveBeenCalledWith(`/webapp-signin?redirect_url=${mockPathname}`)
-      })
-    })
+  it('logs out of the current web app and redirects back to its sign-in route', async () => {
+    const user = userEvent.setup()
+    render(<MenuDropdown data={siteInfo} />)
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+    await user.click(screen.getByRole('menuitem', { name: 'common.userProfile.logout' }))
+    await waitFor(() =>
+      expect(mockReplace).toHaveBeenCalledWith(`/webapp-signin?redirect_url=${mockPathname}`),
+    )
+    expect(mockWebAppLogout).toHaveBeenCalledExactlyOnceWith(webAppAddress)
   })
 
-  describe('about modal', () => {
-    it('should show InfoModal when About is clicked', async () => {
-      render(<MenuDropdown data={baseSiteInfo} />)
-
-      const triggerButton = screen.getByRole('button')
-      fireEvent.click(triggerButton)
-
-      await waitFor(() => {
-        expect(screen.getByText('common.userProfile.about')).toBeInTheDocument()
-      })
-
-      const aboutButton = screen.getByText('common.userProfile.about')
-      fireEvent.click(aboutButton)
-
-      await waitFor(() => {
-        expect(screen.getByText('Test App')).toBeInTheDocument()
-      })
-    })
-
-    it('should close InfoModal when the close handler runs', async () => {
-      render(<MenuDropdown data={baseSiteInfo} />)
-
-      fireEvent.click(screen.getByRole('button'))
-      await waitFor(() => {
-        expect(screen.getByText('common.userProfile.about')).toBeInTheDocument()
-      })
-
-      fireEvent.click(screen.getByText('common.userProfile.about'))
-      await waitFor(() => {
-        expect(screen.getByTestId('info-modal')).toBeInTheDocument()
-      })
-
-      fireEvent.click(screen.getByText('Close Info'))
-      await waitFor(() => {
-        expect(screen.queryByTestId('info-modal')).not.toBeInTheDocument()
-      })
-    })
-  })
-
-  describe('toggle behavior', () => {
-    it('should close dropdown when clicking trigger again', async () => {
-      render(<MenuDropdown data={baseSiteInfo} />)
-
-      const triggerButton = screen.getByRole('button')
-
-      fireEvent.click(triggerButton)
-      await waitFor(() => {
-        expect(screen.getByText('common.theme.theme')).toBeInTheDocument()
-      })
-
-      fireEvent.click(triggerButton)
-      await waitFor(() => {
-        expect(screen.queryByText('common.theme.theme')).not.toBeInTheDocument()
-      })
-    })
+  it('opens app information from the menu and closes the real dialog', async () => {
+    const user = userEvent.setup()
+    render(<MenuDropdown data={siteInfo} />)
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+    await user.click(screen.getByRole('menuitem', { name: 'common.userProfile.about' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Test App' })
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 })

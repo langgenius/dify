@@ -1,5 +1,5 @@
 import type { CredentialPermission } from '@/models/permission'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -13,6 +13,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { PermissionLevel } from '@/models/permission'
+import { getAvatarInitial } from '@/utils/avatar'
 
 type PermissionSelectorProps = {
   disabled?: boolean
@@ -48,7 +49,10 @@ const PermissionSelector = ({ disabled, permission, onChange }: PermissionSelect
         {isOnlyMe && (
           <>
             <div className="flex size-6 shrink-0 items-center justify-center">
-              <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="xs" />
+              <Avatar size="xs" aria-hidden="true">
+                <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
+                <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
+              </Avatar>
             </div>
             <div className="grow p-1 system-sm-regular text-components-input-text-filled">
               {onlyMeLabel}
@@ -86,12 +90,10 @@ const PermissionSelector = ({ disabled, permission, onChange }: PermissionSelect
             closeOnClick
             className="touch-manipulation"
           >
-            <Avatar
-              avatar={userProfile.avatar_url}
-              name={userProfile.name}
-              className="shrink-0"
-              size="sm"
-            />
+            <Avatar className="shrink-0" size="sm" aria-hidden="true">
+              <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
+              <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
+            </Avatar>
             <div className="min-w-0 grow px-1 system-md-regular text-text-secondary">
               {onlyMeLabel}
             </div>

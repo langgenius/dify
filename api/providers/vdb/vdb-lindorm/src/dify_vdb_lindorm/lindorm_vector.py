@@ -146,8 +146,7 @@ class LindormVectorStore(BaseVector):
                     action_header["index"]["routing"] = self._routing
                     action_values[ROUTING_FIELD] = self._routing
 
-                actions.append(action_header)
-                actions.append(action_values)
+                actions.extend((action_header, action_values))
 
             try:
                 _bulk_with_retry(actions)

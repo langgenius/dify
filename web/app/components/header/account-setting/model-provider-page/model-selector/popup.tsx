@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
-import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { PluginCategoryEnum, TaskStatus } from '@/app/components/plugins/types'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { renderI18nObject } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
@@ -157,7 +157,11 @@ function Popup({
         const { all_installed, task_id } = await installPackageFromMarketPlace(uniqueIdentifier)
         if (!all_installed) {
           const { check } = checkTaskStatus()
-          await check({ taskId: task_id, pluginUniqueIdentifier: uniqueIdentifier })
+          const { status } = await check({
+            taskId: task_id,
+            pluginUniqueIdentifier: uniqueIdentifier,
+          })
+          if (status !== TaskStatus.success) return
         }
         refreshPluginList({ category: PluginCategoryEnum.model })
       } catch {
@@ -327,7 +331,7 @@ function Popup({
           <ModelSelectorPreviewCard
             capabilitiesLabel={t(($) => $['model.capabilities'], { ns: 'common' })}
             language={language}
-            payload={payload as ModelSelectorPreviewPayload | undefined}
+            payload={payload}
           />
         )}
       </PreviewCard>

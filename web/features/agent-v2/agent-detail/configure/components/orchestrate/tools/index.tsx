@@ -12,6 +12,7 @@ import type {
 import type { AgentProviderToolDefaultValue } from '@/features/agent-v2/agent-composer/store-modules/tools'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { memo, useCallback, useId, useMemo, useRef, useState } from 'react'
@@ -19,6 +20,7 @@ import { useTranslation } from 'react-i18next'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { parseToolProviderType } from '@/app/components/tools/provider-type'
 import { CollectionType } from '@/app/components/tools/types'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import { ToolPickerContent } from '@/app/components/workflow/block-selector/tool-picker'
 import { useGetLanguage } from '@/context/i18n'
 import {
@@ -27,14 +29,8 @@ import {
   setProviderToolCredentialAtom,
 } from '@/features/agent-v2/agent-composer/store-modules/tools'
 import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
+import { consoleQuery } from '@/service/console'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-  useInvalidateAllBuiltInTools,
-} from '@/service/use-tools'
 import {
   createAgentToolProviderCatalog,
   getAgentProviderPluginId,
@@ -398,7 +394,7 @@ export function AgentTools() {
   const { t } = useTranslation(['agentV2'])
   const readOnly = useAgentOrchestrateReadOnly()
   const setProviderToolCredential = useSetAtom(setProviderToolCredentialAtom)
-  const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
+  const queryClient = useQueryClient()
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const { providerById, resolvedProviderTypes } = useAgentToolProviderCatalog()
   const tools = useAtomValue(agentComposerToolsAtom)
@@ -432,10 +428,12 @@ export function AgentTools() {
   )
   const handlePluginInstalled = useCallback(() => {
     void Promise.allSettled([
-      invalidateAllBuiltInTools(),
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.tools.builtin.get.queryKey(),
+      }),
       invalidateInstalledPluginList(PluginCategoryEnum.tool),
     ])
-  }, [invalidateAllBuiltInTools, invalidateInstalledPluginList])
+  }, [invalidateInstalledPluginList, queryClient])
   const visibleTools = useMemo(
     () => (ENABLE_AGENT_CLI_TOOLS ? tools : tools.filter((tool) => tool.kind !== 'cli')),
     [tools],
@@ -603,12 +601,30 @@ export function AgentTemplateTools() {
   const providerTypes = new Set(
     visibleTools.filter((tool) => tool.kind === 'provider').map((tool) => tool.providerType),
   )
-  const { data: buildInTools } = useAllBuiltInTools(
-    providerTypes.has(CollectionType.builtIn) || providerTypes.has('plugin'),
+  const { data: buildInTools } = useQuery(
+    consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+      enabled: providerTypes.has(CollectionType.builtIn) || providerTypes.has('plugin'),
+      select: selectToolsWithProvider,
+    }),
   )
-  const { data: customTools } = useAllCustomTools(providerTypes.has(CollectionType.custom))
-  const { data: workflowTools } = useAllWorkflowTools(providerTypes.has(CollectionType.workflow))
-  const { data: mcpTools } = useAllMCPTools(providerTypes.has(CollectionType.mcp))
+  const { data: customTools } = useQuery(
+    consoleQuery.workspaces.current.tools.api.get.queryOptions({
+      enabled: providerTypes.has(CollectionType.custom),
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: workflowTools } = useQuery(
+    consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+      enabled: providerTypes.has(CollectionType.workflow),
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: mcpTools } = useQuery(
+    consoleQuery.workspaces.current.tools.mcp.get.queryOptions({
+      enabled: providerTypes.has(CollectionType.mcp),
+      select: selectToolsWithProvider,
+    }),
+  )
   const catalog = useMemo(
     () => createAgentToolProviderCatalog({ buildInTools, customTools, workflowTools, mcpTools }),
     [buildInTools, customTools, workflowTools, mcpTools],

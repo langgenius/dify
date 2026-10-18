@@ -71,7 +71,7 @@ def test_prompt_tool_category_marks_auto_discovered_tools(monkeypatch: pytest.Mo
     output_lines: list[str] = []
 
     monkeypatch.setattr("commands.data_migration.click.echo", output_lines.append)
-    monkeypatch.setattr("commands.data_migration.click.prompt", lambda *args, **kwargs: "")
+    monkeypatch.setattr("commands.data_migration.click.prompt", lambda *_args, **_kwargs: "")
 
     selected = _prompt_tool_category(
         "Custom API tools",
@@ -126,7 +126,7 @@ def test_prompt_output_file_shows_default(monkeypatch: pytest.MonkeyPatch) -> No
 
 def test_prompt_tool_category_marks_auto_by_detail_and_supports_multi_select(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("commands.data_migration.click.echo", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr("commands.data_migration.click.prompt", lambda *args, **kwargs: "1,2")
+    monkeypatch.setattr("commands.data_migration.click.prompt", lambda *_args, **_kwargs: "1,2")
 
     selected = _prompt_tool_category(
         "Workflow tools",
@@ -145,7 +145,7 @@ def test_prompt_tool_category_marks_auto_by_value() -> None:
     original_echo = data_migration.click.echo
     original_prompt = data_migration.click.prompt
     data_migration.click.echo = output_lines.append  # pyrefly: ignore[bad-assignment]
-    data_migration.click.prompt = lambda *args, **kwargs: ""
+    data_migration.click.prompt = lambda *_args, **_kwargs: ""
     try:
         _prompt_tool_category(
             "Workflow tools",
@@ -263,7 +263,7 @@ def test_prompt_output_file_rejects_yes_no_typo(monkeypatch: pytest.MonkeyPatch)
     import click
     import pytest
 
-    monkeypatch.setattr("commands.data_migration.click.prompt", lambda *args, **kwargs: "y")
+    monkeypatch.setattr("commands.data_migration.click.prompt", lambda *_args, **_kwargs: "y")
 
     with pytest.raises(click.ClickException, match="Output path must be a file path"):
         _prompt_output_file()
@@ -302,7 +302,7 @@ def test_confirm_wizard_summary_shows_final_deduplicated_tool_selection(monkeypa
     output_lines: list[str] = []
 
     monkeypatch.setattr("commands.data_migration.click.echo", output_lines.append)
-    monkeypatch.setattr("commands.data_migration.click.confirm", lambda *args, **kwargs: True)
+    monkeypatch.setattr("commands.data_migration.click.confirm", lambda *_args, **_kwargs: True)
 
     _confirm_wizard_summary(
         tenant_name="admin's Workspace",

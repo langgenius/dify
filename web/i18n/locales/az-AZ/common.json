@@ -167,7 +167,6 @@
   "operation.create": "Yarat",
   "operation.deSelectAll": "Bütün seçimləri ləğv et",
   "operation.delete": "Sil",
-  "operation.deleteConfirmTitle": "Silinsin?",
   "operation.download": "Yüklə",
   "operation.downloadFailed": "Yükləmə uğursuz oldu. Daha sonra yenidən cəhd et.",
   "operation.downloadSuccess": "Yükləmə tamamlandı.",

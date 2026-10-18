@@ -1,13 +1,14 @@
 import type { GeneratedGraph, WorkflowGeneratorMode } from './types'
-import type { AppModeEnum } from '@/types/app'
+import type { WorkflowAppMode } from '@/app/components/apps/app-type'
 import { normalizeWorkflowNodes } from '@/app/components/workflow/utils/normalize-workflow-nodes'
 import { consoleClient } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { fetchWorkflowDraft, syncWorkflowDraft } from '@/service/workflow'
 
 const MODE_TO_APP_MODE = {
   workflow: 'workflow',
   'advanced-chat': 'advanced-chat',
-} as const satisfies Record<WorkflowGeneratorMode, AppModeEnum>
+} as const satisfies Record<WorkflowGeneratorMode, WorkflowAppMode>
 
 /**
  * Thrown by ``applyToCurrentApp`` when the backend rejects the sync because
@@ -44,14 +45,6 @@ export class WorkflowApplyOrphanError extends Error {
     this.name = 'WorkflowApplyOrphanError'
     this.orphanAppId = orphanAppId
   }
-}
-
-const isHashCollisionResponse = (e: unknown): boolean => {
-  // The shared ``post()`` wrapper rejects with the raw ``Response`` for non-401
-  // failures (see ``service/base.ts::request`` catch branch). At this layer the
-  // only reliable signal is the HTTP status.
-  if (!e || typeof e !== 'object') return false
-  return (e as { status?: number }).status === 409
 }
 
 // Derive a sane App name from the user's instruction: trim, cap at 40 chars,
@@ -93,7 +86,7 @@ export const applyToNewApp = async ({
   icon,
 }: ApplyToNewAppParams): Promise<{
   appId: string
-  appMode: AppModeEnum
+  appMode: WorkflowAppMode
   permissionKeys?: string[]
 }> => {
   const appMode = MODE_TO_APP_MODE[mode]
@@ -141,7 +134,7 @@ export const applyToNewApp = async ({
 
 type ApplyToCurrentAppParams = {
   appId: string
-  appMode?: AppModeEnum
+  appMode?: WorkflowAppMode
   graph: GeneratedGraph
 }
 
@@ -190,9 +183,9 @@ export const applyToCurrentApp = async ({
     })
   } catch (e) {
     // 409 → draft was edited in another tab between our fetch and sync.
-    // Translate the raw Response rejection into a typed error so the caller
+    // Translate the HTTP error into a domain error so the caller
     // can show a Reload affordance instead of a generic "apply failed" toast.
-    if (isHashCollisionResponse(e)) throw new WorkflowApplyHashCollisionError()
+    if (getHttpErrorStatus(e) === 409) throw new WorkflowApplyHashCollisionError()
     throw e
   }
 }

@@ -8,6 +8,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import {
@@ -44,7 +45,6 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
   const { t } = useTranslation(['snippet', 'common'])
   const { replace } = useRouter()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const [open, setOpen] = React.useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
   const updateSnippetMutation = useUpdateSnippetMutation()
@@ -63,14 +63,12 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
   )
 
   const handleOpenEditDialog = React.useCallback(() => {
-    setOpen(false)
     setIsEditDialogOpen(true)
   }, [])
 
   const handleExportSnippet = React.useCallback(async () => {
     if (!canCreateAndModifySnippet) return
 
-    setOpen(false)
     try {
       const data = await exportSnippetMutation.mutateAsync({ snippetId: snippet.id })
       const file = new Blob([data], { type: 'application/yaml' })
@@ -125,7 +123,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
 
   return (
     <>
-      <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenu>
         <DropdownMenuTrigger
           render={
             <IconButton
@@ -160,10 +158,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
               <DropdownMenuItem
                 className="mx-0 gap-2"
                 variant="destructive"
-                onClick={() => {
-                  setOpen(false)
-                  setIsDeleteDialogOpen(true)
-                }}
+                onClick={() => setIsDeleteDialogOpen(true)}
               >
                 <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
                 <span className="grow">{t(($) => $['menu.deleteSnippet'])}</span>
@@ -186,16 +181,12 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
       )}
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent className="w-100">
-          <div className="space-y-2 p-6">
-            <AlertDialogTitle className="title-md-semi-bold text-text-primary">
-              {t(($) => $.deleteConfirmTitle)}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="system-sm-regular text-text-tertiary">
-              {t(($) => $.deleteConfirmContent)}
-            </AlertDialogDescription>
-          </div>
-          <AlertDialogFooter className="pt-0">
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t(($) => $.deleteConfirmTitle)}</AlertDialogTitle>
+            <AlertDialogDescription>{t(($) => $.deleteConfirmContent)}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>

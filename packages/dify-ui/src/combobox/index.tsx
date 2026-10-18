@@ -2,20 +2,21 @@
 
 import type { VariantProps } from 'class-variance-authority'
 import type * as React from 'react'
-import type { Placement } from '../placement'
+import type { Placement } from '../internal/placement'
 import { Combobox as BaseCombobox } from '@base-ui/react/combobox'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
-import { formLabelClassName, textControlGroupClassName } from '../form-control-shared'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { focusRingClassName, insetFocusRingClassName } from '../internal/focus'
+import { formLabelClassName, textControlGroupClassName } from '../internal/form-control'
 import {
   floatingGroupLabelClassName,
   floatingItemIndicatorClassName,
   floatingPopupAnimationClassName,
   floatingSeparatorClassName,
-  triggerFocusClassName,
-} from '../overlay-shared'
-import { parsePlacement } from '../placement'
+  positionerClassName,
+} from '../internal/overlay'
+import { parsePlacement } from '../internal/placement'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 type ComboboxActions = BaseCombobox.Root.Actions
 
@@ -81,17 +82,19 @@ type ComboboxRowProps = BaseCombobox.Row.Props
 
 // The popup is limited to the available height and lays its parts out in a column, so an input or status
 // sharing it with the list leaves the list to shrink. The popup scrolls only when nothing can.
+// Same layout as `AutocompletePopup`; keep the two local definitions aligned.
 const comboboxPopupClassName = [
   'flex max-h-(--available-height) w-(--anchor-width) max-w-[min(28rem,var(--available-width))] flex-col overflow-x-hidden overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg outline-hidden',
 ]
 
+// Same layout as `AutocompleteList`; keep the two local definitions aligned.
 const comboboxListClassName = [
   'max-h-[min(20rem,var(--available-height))] overflow-y-auto overflow-x-hidden overscroll-contain p-1 outline-hidden scroll-py-1',
   'data-empty:max-h-none data-empty:p-0',
 ]
 
 const comboboxItemClassName = [
-  'grid min-h-8 cursor-pointer select-none grid-cols-[1fr_auto] items-center gap-2 rounded-lg px-2 py-1.5 text-text-secondary outline-hidden',
+  'grid min-h-8 select-none grid-cols-[1fr_auto] items-center gap-2 rounded-lg px-2 py-1.5 text-text-secondary outline-hidden',
   'hover:bg-state-base-hover-alt hover:text-text-primary',
   'data-highlighted:bg-state-base-hover data-highlighted:text-text-primary',
   'data-selected:text-text-primary',
@@ -105,7 +108,7 @@ function ComboboxTrigger({ className, type = 'button', ...props }: ComboboxTrigg
   return (
     <BaseCombobox.Trigger
       type={type}
-      className={(state) => cn(triggerFocusClassName, resolveClassName(className, state))}
+      className={(state) => cn(focusRingClassName, resolveClassName(className, state))}
       {...props}
     />
   )
@@ -193,13 +196,12 @@ function ComboboxInput({
 
 const comboboxControlVariants = cva(
   [
-    'flex shrink-0 touch-manipulation items-center justify-center rounded-md text-text-tertiary outline-hidden transition-colors',
+    'flex shrink-0 touch-manipulation items-center justify-center rounded-md text-text-tertiary',
     'hover:bg-components-input-bg-hover hover:text-text-secondary focus-visible:bg-components-input-bg-hover focus-visible:text-text-secondary',
-    'focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
-    'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-tertiary disabled:focus-visible:bg-transparent disabled:focus-visible:ring-0',
-    'group-data-disabled/combobox:cursor-not-allowed group-data-disabled/combobox:hover:bg-transparent group-data-disabled/combobox:focus-visible:bg-transparent group-data-disabled/combobox:focus-visible:ring-0',
+    insetFocusRingClassName,
+    'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-tertiary disabled:focus-visible:bg-transparent',
+    'group-data-disabled/combobox:cursor-not-allowed group-data-disabled/combobox:hover:bg-transparent group-data-disabled/combobox:focus-visible:bg-transparent',
     'group-data-readonly/combobox:hidden',
-    'motion-reduce:transition-none',
   ],
   {
     variants: {
@@ -304,7 +306,7 @@ function ComboboxPositioner({
       side={side}
       align={align}
       sideOffset={sideOffset}
-      className={(state) => cn('z-50 outline-hidden', resolveClassName(className, state))}
+      className={(state) => cn(positionerClassName, resolveClassName(className, state))}
       {...props}
     />
   )
@@ -488,7 +490,8 @@ function ComboboxChipRemove({
       }
       className={(state) =>
         cn(
-          'flex size-3.5 shrink-0 items-center justify-center rounded-sm text-text-tertiary outline-hidden hover:bg-state-base-hover-alt hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+          'flex size-3.5 shrink-0 items-center justify-center rounded-sm text-text-tertiary hover:bg-state-base-hover-alt hover:text-text-secondary',
+          focusRingClassName,
           resolveClassName(className, state),
         )
       }

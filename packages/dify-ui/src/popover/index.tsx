@@ -1,12 +1,13 @@
 'use client'
 
 import type * as React from 'react'
-import type { Placement } from '../placement'
+import type { Placement } from '../internal/placement'
 import { Popover as BasePopover } from '@base-ui/react/popover'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
-import { floatingPopupAnimationClassName, triggerFocusClassName } from '../overlay-shared'
-import { parsePlacement } from '../placement'
+import { focusRingClassName } from '../internal/focus'
+import { floatingPopupAnimationClassName, positionerClassName } from '../internal/overlay'
+import { parsePlacement } from '../internal/placement'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const Popover = BasePopover.Root
 const PopoverArrow = BasePopover.Arrow
@@ -31,7 +32,7 @@ type PopoverTriggerProps<Payload = unknown> = BasePopover.Trigger.Props<Payload>
 function PopoverTrigger<Payload = unknown>({ className, ...props }: PopoverTriggerProps<Payload>) {
   return (
     <BasePopover.Trigger
-      className={(state) => cn(triggerFocusClassName, resolveClassName(className, state))}
+      className={(state) => cn(focusRingClassName, resolveClassName(className, state))}
       {...props}
     />
   )
@@ -46,7 +47,7 @@ type PopoverBackdropProps = BasePopover.Backdrop.Props
 function PopoverBackdrop({ className, ...props }: PopoverBackdropProps) {
   return (
     <BasePopover.Backdrop
-      className={(state) => cn('fixed inset-0 z-50', resolveClassName(className, state))}
+      className={(state) => cn('fixed inset-0', resolveClassName(className, state))}
       {...props}
     />
   )
@@ -71,7 +72,7 @@ function PopoverPositioner({
       align={align}
       sideOffset={sideOffset}
       alignOffset={alignOffset}
-      className={(state) => cn('z-50 outline-hidden', resolveClassName(className, state))}
+      className={(state) => cn(positionerClassName, resolveClassName(className, state))}
       {...props}
     />
   )

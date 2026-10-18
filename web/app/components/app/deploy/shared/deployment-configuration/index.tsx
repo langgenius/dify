@@ -86,7 +86,7 @@ export function DeploymentConfiguration({
             {t(($) => $['studio.deployConfiguration'])}
           </h2>
         ) : (
-          <DialogTitle className="mt-0.5 px-1 title-2xl-semi-bold text-text-primary">
+          <DialogTitle className="mt-0.5 px-1">
             {t(($) => $['studio.deployConfiguration'])}
           </DialogTitle>
         )}

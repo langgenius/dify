@@ -6,6 +6,7 @@ import {
   getServerConsoleRequestHeaders,
   resolveServerConsoleApiUrl,
 } from '@/service/console/server'
+import { httpErrorFromResponse } from '@/service/http-error'
 
 const ACCOUNT_PROFILE_PATH = '/account/profile'
 
@@ -22,7 +23,7 @@ export const serverUserProfileQueryOptions = () =>
         cache: 'no-store',
       })
 
-      if (!response.ok) throw response
+      if (!response.ok) throw await httpErrorFromResponse(response)
 
       const profile: GetAccountProfileResponse = await response.clone().json()
       return {

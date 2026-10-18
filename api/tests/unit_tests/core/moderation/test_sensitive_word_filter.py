@@ -1011,7 +1011,7 @@ class TestComplexInputTypes:
         moderation = self._create_moderation("3.14")
 
         # Float should be converted to string for matching
-        result = moderation.moderation_for_inputs({"pi": 3.14159})
+        result = moderation.moderation_for_inputs({"pi": float("3.14159")})
         assert result.flagged is True
 
     def test_negative_numbers(self) -> None:

@@ -1,21 +1,25 @@
 'use client'
 
 import type * as React from 'react'
-import type { MenuItemVariant } from '../overlay-shared'
-import type { Placement } from '../placement'
+import type { MenuItemVariant } from '../internal/menu'
+import type { Placement } from '../internal/placement'
 import { ContextMenu as BaseContextMenu } from '@base-ui/react/context-menu'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
+import {
+  menuItemClassName,
+  menuItemDestructiveClassName,
+  menuPopupBaseClassName,
+  menuPopupSurfaceClassName,
+} from '../internal/menu'
 import {
   floatingGroupLabelClassName,
   floatingItemIndicatorClassName,
   floatingPopupAnimationClassName,
   floatingSeparatorClassName,
-  menuItemClassName,
-  menuItemDestructiveClassName,
-  menuPopupClassName,
-} from '../overlay-shared'
-import { parsePlacement } from '../placement'
+  positionerClassName,
+} from '../internal/overlay'
+import { parsePlacement } from '../internal/placement'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const ContextMenu = BaseContextMenu.Root
 const ContextMenuTrigger = BaseContextMenu.Trigger
@@ -72,12 +76,13 @@ function ContextMenuContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className="z-50 outline-hidden"
+        className={positionerClassName}
       >
         <BaseContextMenu.Popup
           className={(state) =>
             cn(
-              menuPopupClassName,
+              menuPopupBaseClassName,
+              menuPopupSurfaceClassName,
               floatingPopupAnimationClassName,
               resolveClassName(className, state),
             )
@@ -240,12 +245,13 @@ function ContextMenuSubContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className="z-50 outline-hidden"
+        className={positionerClassName}
       >
         <BaseContextMenu.Popup
           className={(state) =>
             cn(
-              menuPopupClassName,
+              menuPopupBaseClassName,
+              menuPopupSurfaceClassName,
               floatingPopupAnimationClassName,
               resolveClassName(className, state),
             )

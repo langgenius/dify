@@ -3,6 +3,34 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zAccountNotLinkTenantError,
+  zCannotOperateSelfError,
+  zCannotTransferOwnerToSelfError,
+  zCurrentWorkspaceArchivedError,
+  zEmailCodeError,
+  zEmailSendIpLimitError,
+  zFileTooLargeError,
+  zFilenameMissingError,
+  zFilenameNotExistsError,
+  zForbiddenError,
+  zInvalidEmailError,
+  zInvalidOrExpiredTokenError,
+  zInvalidRequestError,
+  zInvalidRoleError,
+  zLimitExceededError,
+  zMemberNotFoundError,
+  zMemberNotInTenantError,
+  zNoFileUploadedError,
+  zNotOwnerError,
+  zOwnerTransferLimitError,
+  zOwnerTransferRateLimitExceededError,
+  zPluginError,
+  zRoleAlreadyAssignedError,
+  zTooManyFilesError,
+  zUnsupportedFileTypeError,
+  zWorkflowToolHumanInputNotSupportedError,
+} from './zod.gen.ts'
+import {
   zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdPath,
   zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse,
   zDeleteWorkspacesCurrentEndpointsByIdPath,
@@ -65,6 +93,7 @@ import {
   zGetWorkspacesCurrentEndpointsListPluginResponse,
   zGetWorkspacesCurrentEndpointsListQuery,
   zGetWorkspacesCurrentEndpointsListResponse,
+  zGetWorkspacesCurrentMembersQuery,
   zGetWorkspacesCurrentMembersResponse,
   zGetWorkspacesCurrentModelProvidersByProviderCheckoutUrlPath,
   zGetWorkspacesCurrentModelProvidersByProviderCheckoutUrlResponse,
@@ -159,6 +188,7 @@ import {
   zGetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistPath,
   zGetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistResponse,
   zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesPath,
+  zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesQuery,
   zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponse,
   zGetWorkspacesCurrentRbacMyPermissionsResponse,
   zGetWorkspacesCurrentRbacRolePermissionsCatalogAgentResponse,
@@ -166,9 +196,12 @@ import {
   zGetWorkspacesCurrentRbacRolePermissionsCatalogDatasetResponse,
   zGetWorkspacesCurrentRbacRolePermissionsCatalogResponse,
   zGetWorkspacesCurrentRbacRolesByRoleIdMembersPath,
+  zGetWorkspacesCurrentRbacRolesByRoleIdMembersQuery,
   zGetWorkspacesCurrentRbacRolesByRoleIdMembersResponse,
   zGetWorkspacesCurrentRbacRolesByRoleIdPath,
+  zGetWorkspacesCurrentRbacRolesByRoleIdQuery,
   zGetWorkspacesCurrentRbacRolesByRoleIdResponse,
+  zGetWorkspacesCurrentRbacRolesQuery,
   zGetWorkspacesCurrentRbacRolesResponse,
   zGetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdMemberBindingsPath,
   zGetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdMemberBindingsResponse,
@@ -381,8 +414,12 @@ import {
   zPostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyPath,
   zPostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyResponse,
   zPostWorkspacesCurrentRbacAccessPoliciesResponse,
+  zPostWorkspacesCurrentRbacRolesBody,
+  zPostWorkspacesCurrentRbacRolesByRoleIdCopyBody,
   zPostWorkspacesCurrentRbacRolesByRoleIdCopyPath,
+  zPostWorkspacesCurrentRbacRolesByRoleIdCopyQuery,
   zPostWorkspacesCurrentRbacRolesByRoleIdCopyResponse,
+  zPostWorkspacesCurrentRbacRolesQuery,
   zPostWorkspacesCurrentRbacRolesResponse,
   zPostWorkspacesCurrentSettingsBody,
   zPostWorkspacesCurrentSettingsResponse,
@@ -511,7 +548,9 @@ import {
   zPutWorkspacesCurrentRbacMembersByMemberIdRbacRolesBody,
   zPutWorkspacesCurrentRbacMembersByMemberIdRbacRolesPath,
   zPutWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponse,
+  zPutWorkspacesCurrentRbacRolesByRoleIdBody,
   zPutWorkspacesCurrentRbacRolesByRoleIdPath,
+  zPutWorkspacesCurrentRbacRolesByRoleIdQuery,
   zPutWorkspacesCurrentRbacRolesByRoleIdResponse,
   zPutWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdBindingsBody,
   zPutWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdBindingsPath,
@@ -596,6 +635,7 @@ export const put = oc
     }),
   )
   .output(zPutWorkspacesCurrentAgentsByAgentIdSkillsResponse)
+  .errors({ invalid_request: { status: 400, data: zInvalidRequestError } })
 
 export const skills = {
   get: get3,
@@ -810,7 +850,7 @@ export const get7 = oc
     summary: 'List customized snippets with pagination and search',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentCustomizedSnippetsQuery.optional() }))
+  .input(z.object({ query: zGetWorkspacesCurrentCustomizedSnippetsQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentCustomizedSnippetsResponse)
 
 /**
@@ -1100,6 +1140,10 @@ export const post12 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentMembersInviteEmailBody }))
   .output(zPostWorkspacesCurrentMembersInviteEmailResponse)
+  .errors({
+    invalid_role: { status: 400, data: zInvalidRoleError },
+    limit_exceeded: { status: 400, data: zLimitExceededError },
+  })
 
 export const inviteEmail = {
   post: post12,
@@ -1115,6 +1159,13 @@ export const post13 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentMembersOwnerTransferCheckBody }))
   .output(zPostWorkspacesCurrentMembersOwnerTransferCheckResponse)
+  .errors({
+    email_code_error: { status: 400, data: zEmailCodeError },
+    invalid_email: { status: 400, data: zInvalidEmailError },
+    invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
+    not_owner: { status: 400, data: zNotOwnerError },
+    owner_transfer_limit: { status: 429, data: zOwnerTransferLimitError },
+  })
 
 export const ownerTransferCheck = {
   post: post13,
@@ -1130,6 +1181,11 @@ export const post14 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailBody }))
   .output(zPostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailResponse)
+  .errors({
+    email_send_ip_limit: { status: 429, data: zEmailSendIpLimitError },
+    not_owner: { status: 400, data: zNotOwnerError },
+    owner_transfer_rate_limit_exceeded: { status: 429, data: zOwnerTransferRateLimitExceededError },
+  })
 
 export const sendOwnerTransferConfirmEmail = {
   post: post14,
@@ -1150,6 +1206,13 @@ export const post15 = oc
     }),
   )
   .output(zPostWorkspacesCurrentMembersByMemberIdOwnerTransferResponse)
+  .errors({
+    cannot_transfer_owner_to_self: { status: 400, data: zCannotTransferOwnerToSelfError },
+    invalid_email: { status: 400, data: zInvalidEmailError },
+    invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
+    member_not_in_tenant: { status: 400, data: zMemberNotInTenantError },
+    not_owner: { status: 400, data: zNotOwnerError },
+  })
 
 export const ownerTransfer = {
   post: post15,
@@ -1170,6 +1233,13 @@ export const put2 = oc
     }),
   )
   .output(zPutWorkspacesCurrentMembersByMemberIdUpdateRoleResponse)
+  .errors({
+    cannot_operate_self: { status: 400, data: zCannotOperateSelfError },
+    forbidden: { status: 403, data: zForbiddenError },
+    invalid_role: { status: 400, data: zInvalidRoleError },
+    member_not_found: { status: 404, data: zMemberNotFoundError },
+    role_already_assigned: { status: 400, data: zRoleAlreadyAssignedError },
+  })
 
 export const updateRole = {
   put: put2,
@@ -1185,6 +1255,11 @@ export const delete4 = oc
   })
   .input(z.object({ params: zDeleteWorkspacesCurrentMembersByMemberIdPath }))
   .output(zDeleteWorkspacesCurrentMembersByMemberIdResponse)
+  .errors({
+    cannot_operate_self: { status: 400, data: zCannotOperateSelfError },
+    forbidden: { status: 403, data: zForbiddenError },
+    member_not_found: { status: 404, data: zMemberNotFoundError },
+  })
 
 export const byMemberId = {
   delete: delete4,
@@ -1200,6 +1275,7 @@ export const get12 = oc
     path: '/workspaces/current/members',
     tags: ['console'],
   })
+  .input(z.object({ query: zGetWorkspacesCurrentMembersQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentMembersResponse)
 
 export const members = {
@@ -1694,7 +1770,7 @@ export const get20 = oc
     path: '/workspaces/current/model-providers',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentModelProvidersQuery.optional() }))
+  .input(z.object({ query: zGetWorkspacesCurrentModelProvidersQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentModelProvidersResponse)
 
 export const modelProviders = {
@@ -1751,6 +1827,7 @@ export const get23 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentPluginAssetQuery }))
   .output(zGetWorkspacesCurrentPluginAssetResponse)
+  .errors({ plugin_error: { status: 400, data: zPluginError } })
 
 export const asset = {
   get: get23,
@@ -1816,6 +1893,7 @@ export const get25 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentPluginDebuggingKeyResponse)
+  .errors({ plugin_error: { status: 400, data: zPluginError } })
 
 export const debuggingKey = {
   get: get25,
@@ -1831,6 +1909,7 @@ export const get26 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentPluginFetchManifestQuery }))
   .output(zGetWorkspacesCurrentPluginFetchManifestResponse)
+  .errors({ plugin_error: { status: 400, data: zPluginError } })
 
 export const fetchManifest = {
   get: get26,
@@ -1846,6 +1925,7 @@ export const get27 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentPluginIconQuery }))
   .output(zGetWorkspacesCurrentPluginIconResponse)
+  .errors({ plugin_error: { status: 400, data: zPluginError } })
 
 export const icon = {
   get: get27,
@@ -1861,6 +1941,7 @@ export const post28 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginInstallGithubBody }))
   .output(zPostWorkspacesCurrentPluginInstallGithubResponse)
+  .errors({ plugin_error: { status: 400, data: zPluginError } })
 
 export const github = {
   post: post28,
@@ -1876,6 +1957,7 @@ export const post29 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginInstallMarketplaceBody }))
   .output(zPostWorkspacesCurrentPluginInstallMarketplaceResponse)
+  .errors({ plugin_error: { status: 400, data: zPluginError } })
 
 export const marketplace = {
   post: post29,
@@ -1891,6 +1973,7 @@ export const post30 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginInstallPkgBody }))
   .output(zPostWorkspacesCurrentPluginInstallPkgResponse)
+  .errors({ plugin_error: { status: 400, data: zPluginError } })
 
 export const pkg = {
   post: post30,
@@ -1912,6 +1995,7 @@ export const get28 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentPluginInstalledIdsQuery }))
   .output(zGetWorkspacesCurrentPluginInstalledIdsResponse)
+  .errors({ plugin_error: { status: 400, data: zPluginError } })
 
 export const installedIds = {
   get: get28,
@@ -1927,6 +2011,7 @@ export const post31 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginListInstallationsIdsBody }))
   .output(zPostWorkspacesCurrentPluginListInstallationsIdsResponse)
+  .errors({ plugin_error: { status: 400, data: zPluginError } })
 
 export const ids = {
   post: post31,
@@ -1946,6 +2031,7 @@ export const post32 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginListLatestVersionsBody }))
   .output(zPostWorkspacesCurrentPluginListLatestVersionsResponse)
+  .errors({ plugin_error: { status: 400, data: zPluginError } })
 
 export const latestVersions = {
   post: post32,
@@ -1959,8 +2045,9 @@ export const get29 = oc
     path: '/workspaces/current/plugin/list',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentPluginListQuery.optional() }))
+  .input(z.object({ query: zGetWorkspacesCurrentPluginListQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentPluginListResponse)
+  .errors({ plugin_error: { status: 400, data: zPluginError } })
 
 export const list2 = {
   get: get29,
@@ -1978,6 +2065,7 @@ export const get30 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentPluginMarketplacePkgQuery }))
   .output(zGetWorkspacesCurrentPluginMarketplacePkgResponse)
+  .errors({ plugin_error: { status: 400, data: zPluginError } })
 
 export const pkg2 = {
   get: get30,
@@ -1997,6 +2085,7 @@ export const get31 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentPluginParametersDynamicOptionsQuery }))
   .output(zGetWorkspacesCurrentPluginParametersDynamicOptionsResponse)
+  .errors({ plugin_error: { status: 400, data: zPluginError } })
 
 export const dynamicOptions = {
   get: get31,
@@ -2018,6 +2107,7 @@ export const post33 = oc
     z.object({ body: zPostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsBody }),
   )
   .output(zPostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsResponse)
+  .errors({ plugin_error: { status: 400, data: zPluginError } })
 
 export const dynamicOptionsWithCredentials = {
   post: post33,
@@ -2086,6 +2176,7 @@ export const post35 = oc
     tags: ['console'],
   })
   .output(zPostWorkspacesCurrentPluginTasksDeleteAllResponse)
+  .errors({ plugin_error: { status: 400, data: zPluginError } })
 
 export const deleteAll = {
   post: post35,
@@ -2101,6 +2192,7 @@ export const post36 = oc
   })
   .input(z.object({ params: zPostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierPath }))
   .output(zPostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierResponse)
+  .errors({ plugin_error: { status: 400, data: zPluginError } })
 
 export const byIdentifier = {
   post: post36,
@@ -2116,6 +2208,7 @@ export const post37 = oc
   })
   .input(z.object({ params: zPostWorkspacesCurrentPluginTasksByTaskIdDeletePath }))
   .output(zPostWorkspacesCurrentPluginTasksByTaskIdDeleteResponse)
+  .errors({ plugin_error: { status: 400, data: zPluginError } })
 
 export const delete8 = {
   post: post37,
@@ -2132,6 +2225,7 @@ export const get34 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentPluginTasksByTaskIdPath }))
   .output(zGetWorkspacesCurrentPluginTasksByTaskIdResponse)
+  .errors({ plugin_error: { status: 400, data: zPluginError } })
 
 export const byTaskId = {
   get: get34,
@@ -2146,8 +2240,9 @@ export const get35 = oc
     path: '/workspaces/current/plugin/tasks',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentPluginTasksQuery.optional() }))
+  .input(z.object({ query: zGetWorkspacesCurrentPluginTasksQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentPluginTasksResponse)
+  .errors({ plugin_error: { status: 400, data: zPluginError } })
 
 export const tasks = {
   get: get35,
@@ -2165,6 +2260,7 @@ export const post38 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginUninstallBody }))
   .output(zPostWorkspacesCurrentPluginUninstallResponse)
+  .errors({ plugin_error: { status: 400, data: zPluginError } })
 
 export const uninstall = {
   post: post38,
@@ -2180,6 +2276,7 @@ export const post39 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginUpgradeGithubBody }))
   .output(zPostWorkspacesCurrentPluginUpgradeGithubResponse)
+  .errors({ plugin_error: { status: 400, data: zPluginError } })
 
 export const github2 = {
   post: post39,
@@ -2195,6 +2292,7 @@ export const post40 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginUpgradeMarketplaceBody }))
   .output(zPostWorkspacesCurrentPluginUpgradeMarketplaceResponse)
+  .errors({ plugin_error: { status: 400, data: zPluginError } })
 
 export const marketplace3 = {
   post: post40,
@@ -2229,6 +2327,7 @@ export const post42 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginUploadGithubBody }))
   .output(zPostWorkspacesCurrentPluginUploadGithubResponse)
+  .errors({ plugin_error: { status: 400, data: zPluginError } })
 
 export const github3 = {
   post: post42,
@@ -2244,6 +2343,7 @@ export const post43 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginUploadPkgBody }))
   .output(zPostWorkspacesCurrentPluginUploadPkgResponse)
+  .errors({ plugin_error: { status: 400, data: zPluginError } })
 
 export const pkg3 = {
   post: post43,
@@ -2270,6 +2370,7 @@ export const get36 = oc
     }),
   )
   .output(zGetWorkspacesCurrentPluginByCategoryListResponse)
+  .errors({ plugin_error: { status: 400, data: zPluginError } })
 
 export const list3 = {
   get: get36,
@@ -3019,7 +3120,12 @@ export const get57 = oc
     path: '/workspaces/current/rbac/members/{member_id}/rbac-roles',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesPath }))
+  .input(
+    z.object({
+      params: zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesPath,
+      query: zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesQuery.optional(),
+    }),
+  )
   .output(zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponse)
 
 export const put14 = oc
@@ -3137,7 +3243,13 @@ export const post46 = oc
     successStatus: 201,
     tags: ['console'],
   })
-  .input(z.object({ params: zPostWorkspacesCurrentRbacRolesByRoleIdCopyPath }))
+  .input(
+    z.object({
+      body: zPostWorkspacesCurrentRbacRolesByRoleIdCopyBody,
+      params: zPostWorkspacesCurrentRbacRolesByRoleIdCopyPath,
+      query: zPostWorkspacesCurrentRbacRolesByRoleIdCopyQuery.optional(),
+    }),
+  )
   .output(zPostWorkspacesCurrentRbacRolesByRoleIdCopyResponse)
 
 export const copy2 = {
@@ -3152,7 +3264,12 @@ export const get63 = oc
     path: '/workspaces/current/rbac/roles/{role_id}/members',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetWorkspacesCurrentRbacRolesByRoleIdMembersPath }))
+  .input(
+    z.object({
+      params: zGetWorkspacesCurrentRbacRolesByRoleIdMembersPath,
+      query: zGetWorkspacesCurrentRbacRolesByRoleIdMembersQuery.optional(),
+    }),
+  )
   .output(zGetWorkspacesCurrentRbacRolesByRoleIdMembersResponse)
 
 export const members3 = {
@@ -3178,7 +3295,12 @@ export const get64 = oc
     path: '/workspaces/current/rbac/roles/{role_id}',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetWorkspacesCurrentRbacRolesByRoleIdPath }))
+  .input(
+    z.object({
+      params: zGetWorkspacesCurrentRbacRolesByRoleIdPath,
+      query: zGetWorkspacesCurrentRbacRolesByRoleIdQuery.optional(),
+    }),
+  )
   .output(zGetWorkspacesCurrentRbacRolesByRoleIdResponse)
 
 export const put15 = oc
@@ -3189,7 +3311,13 @@ export const put15 = oc
     path: '/workspaces/current/rbac/roles/{role_id}',
     tags: ['console'],
   })
-  .input(z.object({ params: zPutWorkspacesCurrentRbacRolesByRoleIdPath }))
+  .input(
+    z.object({
+      body: zPutWorkspacesCurrentRbacRolesByRoleIdBody,
+      params: zPutWorkspacesCurrentRbacRolesByRoleIdPath,
+      query: zPutWorkspacesCurrentRbacRolesByRoleIdQuery.optional(),
+    }),
+  )
   .output(zPutWorkspacesCurrentRbacRolesByRoleIdResponse)
 
 export const byRoleId = {
@@ -3208,6 +3336,7 @@ export const get65 = oc
     path: '/workspaces/current/rbac/roles',
     tags: ['console'],
   })
+  .input(z.object({ query: zGetWorkspacesCurrentRbacRolesQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentRbacRolesResponse)
 
 export const post47 = oc
@@ -3219,6 +3348,12 @@ export const post47 = oc
     successStatus: 201,
     tags: ['console'],
   })
+  .input(
+    z.object({
+      body: zPostWorkspacesCurrentRbacRolesBody,
+      query: zPostWorkspacesCurrentRbacRolesQuery.optional(),
+    }),
+  )
   .output(zPostWorkspacesCurrentRbacRolesResponse)
 
 export const roles = {
@@ -3533,6 +3668,10 @@ export const post49 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentSkillsFilesUploadBody }))
   .output(zPostWorkspacesCurrentSkillsFilesUploadResponse)
+  .errors({
+    filename_missing: { status: 400, data: zFilenameMissingError },
+    no_file_uploaded: { status: 400, data: zNoFileUploadedError },
+  })
 
 export const upload2 = {
   post: post49,
@@ -3556,6 +3695,7 @@ export const post50 = oc
     tags: ['console'],
   })
   .output(zPostWorkspacesCurrentSkillsImportResponse)
+  .errors({ invalid_request: { status: 400, data: zInvalidRequestError } })
 
 export const import_ = {
   post: post50,
@@ -3590,6 +3730,7 @@ export const post51 = oc
     }),
   )
   .output(zPostWorkspacesCurrentSkillsBySkillIdAssistMessagesResponse)
+  .errors({ invalid_request: { status: 400, data: zInvalidRequestError } })
 
 export const messages = {
   post: post51,
@@ -3645,6 +3786,7 @@ export const post53 = oc
     }),
   )
   .output(zPostWorkspacesCurrentSkillsBySkillIdFilesCheckResponse)
+  .errors({ invalid_request: { status: 400, data: zInvalidRequestError } })
 
 export const check = {
   post: post53,
@@ -3665,6 +3807,7 @@ export const get77 = oc
     }),
   )
   .output(zGetWorkspacesCurrentSkillsBySkillIdFilesContentResponse)
+  .errors({ invalid_request: { status: 400, data: zInvalidRequestError } })
 
 export const content = {
   get: get77,
@@ -3685,6 +3828,7 @@ export const get78 = oc
     }),
   )
   .output(zGetWorkspacesCurrentSkillsBySkillIdFilesPreviewResponse)
+  .errors({ invalid_request: { status: 400, data: zInvalidRequestError } })
 
 export const preview = {
   get: get78,
@@ -3705,6 +3849,7 @@ export const patch5 = oc
     }),
   )
   .output(zPatchWorkspacesCurrentSkillsBySkillIdFilesResponse)
+  .errors({ invalid_request: { status: 400, data: zInvalidRequestError } })
 
 export const put19 = oc
   .route({
@@ -3721,6 +3866,7 @@ export const put19 = oc
     }),
   )
   .output(zPutWorkspacesCurrentSkillsBySkillIdFilesResponse)
+  .errors({ invalid_request: { status: 400, data: zInvalidRequestError } })
 
 export const files2 = {
   patch: patch5,
@@ -3745,6 +3891,7 @@ export const post54 = oc
     }),
   )
   .output(zPostWorkspacesCurrentSkillsBySkillIdPublishResponse)
+  .errors({ invalid_request: { status: 400, data: zInvalidRequestError } })
 
 export const publish = {
   post: post54,
@@ -3780,6 +3927,7 @@ export const post55 = oc
     }),
   )
   .output(zPostWorkspacesCurrentSkillsBySkillIdRestoreResponse)
+  .errors({ invalid_request: { status: 400, data: zInvalidRequestError } })
 
 export const restore = {
   post: post55,
@@ -3822,6 +3970,7 @@ export const patch6 = oc
     }),
   )
   .output(zPatchWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdResponse)
+  .errors({ invalid_request: { status: 400, data: zInvalidRequestError } })
 
 export const byVersionId = {
   delete: delete14,
@@ -3860,6 +4009,7 @@ export const delete15 = oc
     }),
   )
   .output(zDeleteWorkspacesCurrentSkillsBySkillIdResponse)
+  .errors({ invalid_request: { status: 400, data: zInvalidRequestError } })
 
 export const get82 = oc
   .route({
@@ -3887,6 +4037,7 @@ export const patch7 = oc
     }),
   )
   .output(zPatchWorkspacesCurrentSkillsBySkillIdResponse)
+  .errors({ invalid_request: { status: 400, data: zInvalidRequestError } })
 
 export const bySkillId = {
   delete: delete15,
@@ -3910,7 +4061,7 @@ export const get83 = oc
     path: '/workspaces/current/skills',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentSkillsQuery.optional() }))
+  .input(z.object({ query: zGetWorkspacesCurrentSkillsQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentSkillsResponse)
 
 export const post56 = oc
@@ -3924,6 +4075,7 @@ export const post56 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentSkillsBody }))
   .output(zPostWorkspacesCurrentSkillsResponse)
+  .errors({ invalid_request: { status: 400, data: zInvalidRequestError } })
 
 export const skills2 = {
   get: get83,
@@ -3943,6 +4095,7 @@ export const get84 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentSummaryResponse)
+  .errors({ current_workspace_archived: { status: 409, data: zCurrentWorkspaceArchivedError } })
 
 export const summary2 = {
   get: get84,
@@ -4488,6 +4641,12 @@ export const post69 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentToolProviderWorkflowCreateBody }))
   .output(zPostWorkspacesCurrentToolProviderWorkflowCreateResponse)
+  .errors({
+    workflow_tool_human_input_not_supported: {
+      status: 400,
+      data: zWorkflowToolHumanInputNotSupportedError,
+    },
+  })
 
 export const create2 = {
   post: post69,
@@ -4516,7 +4675,9 @@ export const get100 = oc
     path: '/workspaces/current/tool-provider/workflow/get',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentToolProviderWorkflowGetQuery.optional() }))
+  .input(
+    z.object({ query: zGetWorkspacesCurrentToolProviderWorkflowGetQuery.optional() }).optional(),
+  )
   .output(zGetWorkspacesCurrentToolProviderWorkflowGetResponse)
 
 export const get101 = {
@@ -4548,6 +4709,12 @@ export const post71 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentToolProviderWorkflowUpdateBody }))
   .output(zPostWorkspacesCurrentToolProviderWorkflowUpdateResponse)
+  .errors({
+    workflow_tool_human_input_not_supported: {
+      status: 400,
+      data: zWorkflowToolHumanInputNotSupportedError,
+    },
+  })
 
 export const update5 = {
   post: post71,
@@ -4576,7 +4743,7 @@ export const get103 = oc
     path: '/workspaces/current/tool-providers',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentToolProvidersQuery.optional() }))
+  .input(z.object({ query: zGetWorkspacesCurrentToolProvidersQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentToolProvidersResponse)
 
 export const toolProviders = {
@@ -5134,6 +5301,13 @@ export const post80 = oc
   })
   .input(z.object({ body: zPostWorkspacesCustomConfigWebappLogoUploadBody }))
   .output(zPostWorkspacesCustomConfigWebappLogoUploadResponse)
+  .errors({
+    file_too_large: { status: 413, data: zFileTooLargeError },
+    filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+    no_file_uploaded: { status: 400, data: zNoFileUploadedError },
+    too_many_files: { status: 400, data: zTooManyFilesError },
+    unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
+  })
 
 export const upload3 = {
   post: post80,
@@ -5195,6 +5369,7 @@ export const post83 = oc
   })
   .input(z.object({ body: zPostWorkspacesSwitchBody }))
   .output(zPostWorkspacesSwitchResponse)
+  .errors({ account_not_link_tenant: { status: 403, data: zAccountNotLinkTenantError } })
 
 export const switch3 = {
   post: post83,

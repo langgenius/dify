@@ -9,7 +9,7 @@ type ResultItemMetaProps = {
   readonly labelPrefix: string
   readonly positionId: number
   readonly wordCount: number
-  readonly score: number
+  readonly score: number | null
   readonly className?: string
 }
 

@@ -4,7 +4,7 @@ import time
 import uuid
 from collections.abc import Generator, Mapping
 from datetime import timedelta
-from typing import Any, Union
+from typing import Any
 
 from core.errors.error import AppInvokeQuotaExceededError
 from extensions.ext_redis import redis_client
@@ -99,7 +99,7 @@ class RateLimit:
     def gen_request_key() -> str:
         return str(uuid.uuid4())
 
-    def generate(self, generator: Union[Generator[str], Mapping[str, Any]], request_id: str):
+    def generate(self, generator: Generator[str] | Mapping[str, Any], request_id: str):
         if isinstance(generator, Mapping):
             return generator
         else:
@@ -163,7 +163,7 @@ class RateLimitLease:
         for rate_limit, request_id in reversed(self.items):
             rate_limit.exit(request_id)
 
-    def generate(self, generator: Union[Generator[str], Mapping[str, Any]]):
+    def generate(self, generator: Generator[str] | Mapping[str, Any]):
         if isinstance(generator, Mapping):
             self.close()
             return generator

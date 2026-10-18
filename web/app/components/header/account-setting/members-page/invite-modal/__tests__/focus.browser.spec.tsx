@@ -3,23 +3,11 @@ import type { QueryClient } from '@tanstack/react-query'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { consoleQuery } from '@/service/console'
-import { commonQueryKeys } from '@/service/use-common'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import MembersPage from '../../index'
 
 const { inviteMember } = vi.hoisted(() => ({ inviteMember: vi.fn() }))
-vi.mock('#i18n', () => ({ useLocale: () => 'en-US' }))
-vi.mock('@/service/access-control/use-workspace-roles', () => ({
-  useWorkspaceRoleList: () => ({
-    data: { pages: [{ data: [{ id: 'admin', name: 'Admin', description: 'Manage members' }] }] },
-    isLoading: false,
-    error: null,
-    hasNextPage: false,
-    isFetchingNextPage: false,
-    fetchNextPage: vi.fn(),
-  }),
-}))
 
 let queryClient: QueryClient
 
@@ -31,7 +19,12 @@ beforeEach(() => {
     workspacePermissionKeys: ['workspace.member.manage'],
     features: { workspace_members: { enabled: true, size: 1, limit: 10 } },
   }).queryClient
-  queryClient.setQueryData([...commonQueryKeys.members, 'en'], { accounts: [] })
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.members.get.queryOptions({
+      input: { query: { language: 'en' } },
+    }).queryKey,
+    { accounts: [] },
+  )
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: RequestInfo | URL) => {
@@ -39,6 +32,11 @@ beforeEach(() => {
       if (pathname.endsWith('/workspaces/current/members/invite-email'))
         return Response.json(await inviteMember())
       // A successful invitation refreshes seats and members in the background.
+      if (pathname.endsWith('/workspaces/current/rbac/roles'))
+        return Response.json({
+          data: [{ id: 'admin', name: 'Admin', description: 'Manage members' }],
+          pagination: { total_count: 1, per_page: 20, current_page: 1, total_pages: 1 },
+        })
       if (pathname.endsWith('/features'))
         return Response.json(queryClient.getQueryData(consoleQuery.features.get.queryKey()))
       if (pathname.endsWith('/workspaces/current/members')) return Response.json({ accounts: [] })

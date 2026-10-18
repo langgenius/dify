@@ -4,7 +4,10 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import event, inspect
+from sqlalchemy.dialects import mysql, postgresql
+from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
+from sqlalchemy.sql import Select
 
 from models.model import App, AppMode, AppModelConfig, IconType, InstalledApp
 from models.workflow import Workflow, WorkflowKind, WorkflowType
@@ -384,6 +387,25 @@ def test_candidates_order_and_cursor_cover_pin_groups_ties_and_null_dates(
         repository.get_candidates(tenant_id=_VIEWER_TENANT_ID, cursor=None, limit=2, app_id=None, name=None)
         == all_rows[:2]
     )
+
+
+@pytest.mark.parametrize("dialect", [mysql.dialect(), postgresql.dialect()], ids=["mysql", "postgresql"])
+def test_candidates_order_compiles_without_nulls_last_for_every_dialect(
+    sqlite_session_factory: sessionmaker[Session], dialect: Dialect
+) -> None:
+    statements: list[Select[tuple[InstalledApp, App]]] = []
+
+    @event.listens_for(sqlite_session_factory, "do_orm_execute")
+    def capture(state: ORMExecuteState) -> None:
+        if isinstance(state.statement, Select):
+            statements.append(state.statement)
+
+    repository = SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory)
+    repository.get_candidates(tenant_id=_VIEWER_TENANT_ID, cursor=None, limit=20, app_id=None, name=None)
+
+    assert len(statements) == 1
+    # MySQL rejects NULLS LAST, so null dates must sort last through a portable key.
+    assert "NULLS" not in str(statements[0].compile(dialect=dialect)).upper()
 
 
 @pytest.mark.parametrize("search", ["  50%_\\  ", "50%_\\", "literal"])

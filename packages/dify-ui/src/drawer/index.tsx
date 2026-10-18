@@ -2,8 +2,8 @@
 
 import { Drawer as BaseDrawer } from '@base-ui/react/drawer'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
-import { triggerFocusClassName } from '../overlay-shared'
+import { focusRingClassName } from '../internal/focus'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const Drawer = BaseDrawer.Root
 const DrawerProvider = BaseDrawer.Provider
@@ -17,6 +17,7 @@ const DrawerClose = BaseDrawer.Close
 const createDrawerHandle = BaseDrawer.createHandle
 
 type DrawerActions = BaseDrawer.Root.Actions
+type DrawerSnapPoint = BaseDrawer.Root.SnapPoint
 type DrawerChangeEventReason = BaseDrawer.Root.ChangeEventReason
 type DrawerChangeEventDetails = BaseDrawer.Root.ChangeEventDetails
 type DrawerSnapPointChangeEventReason = BaseDrawer.Root.SnapPointChangeEventReason
@@ -32,7 +33,7 @@ type DrawerTriggerProps<Payload = unknown> = BaseDrawer.Trigger.Props<Payload>
 function DrawerTrigger<Payload = unknown>({ className, ...props }: DrawerTriggerProps<Payload>) {
   return (
     <BaseDrawer.Trigger
-      className={(state) => cn(triggerFocusClassName, resolveClassName(className, state))}
+      className={(state) => cn(focusRingClassName, resolveClassName(className, state))}
       {...props}
     />
   )
@@ -50,7 +51,7 @@ function DrawerBackdrop({ className, ...props }: DrawerBackdropProps) {
     <BaseDrawer.Backdrop
       className={(state) =>
         cn(
-          'absolute inset-0 z-50 bg-background-overlay opacity-[calc(1-var(--drawer-swipe-progress,0))]',
+          'absolute inset-0 bg-background-overlay opacity-[calc(1-var(--drawer-swipe-progress,0))]',
           'transition-opacity duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0 data-swiping:duration-0 motion-reduce:transition-none',
           resolveClassName(className, state),
         )
@@ -67,7 +68,7 @@ function DrawerViewport({ className, ...props }: DrawerViewportProps) {
     <BaseDrawer.Viewport
       className={(state) =>
         cn(
-          'fixed inset-0 z-50 touch-none overflow-hidden overscroll-contain outline-hidden',
+          'fixed inset-0 touch-none overflow-hidden overscroll-contain outline-hidden',
           resolveClassName(className, state),
         )
       }
@@ -83,7 +84,7 @@ function DrawerPopup({ className, ...props }: DrawerPopupProps) {
     <BaseDrawer.Popup
       className={(state) =>
         cn(
-          'fixed z-50 flex min-h-0 touch-none flex-col overflow-hidden border-[0.5px] border-components-panel-border bg-components-panel-bg text-text-primary shadow-xl outline-hidden',
+          'fixed flex min-h-0 touch-none flex-col overflow-hidden border-[0.5px] border-components-panel-border bg-components-panel-bg text-text-primary shadow-xl outline-hidden',
           'transition-[transform,opacity,box-shadow] duration-200 data-swiping:duration-0 data-swiping:select-none motion-reduce:transition-none',
           'data-[swipe-direction=right]:inset-y-0 data-[swipe-direction=right]:right-0 data-[swipe-direction=right]:h-dvh data-[swipe-direction=right]:w-120 data-[swipe-direction=right]:max-w-[calc(100vw-2rem)] data-[swipe-direction=right]:transform-[translateX(var(--drawer-swipe-movement-x,0px))] data-[swipe-direction=right]:rounded-l-2xl data-[swipe-direction=right]:border-r-0',
           'data-ending-style:data-[swipe-direction=right]:transform-[translateX(calc(100%+2px))] data-starting-style:data-[swipe-direction=right]:transform-[translateX(calc(100%+2px))]',
@@ -150,6 +151,7 @@ export type {
   DrawerPortalProps,
   DrawerProps,
   DrawerProviderProps,
+  DrawerSnapPoint,
   DrawerSnapPointChangeEventDetails,
   DrawerSnapPointChangeEventReason,
   DrawerSwipeAreaProps,

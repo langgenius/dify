@@ -7,13 +7,12 @@ import { useTranslation } from 'react-i18next'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { PublisherContent } from './publisher-content'
 import { appPublisherOpenAtom, AppPublisherStateBoundary } from './state'
 
 export function AppPublisher(props: AppPublisherProps) {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow'] as const)
   return (
     <Suspense
       fallback={
@@ -45,8 +44,7 @@ function AppPublisherContent(props: AppPublisherProps) {
     workspacePermissionKeys,
   })
   const supportsMultiEnvironment =
-    (appDetail.mode === AppModeEnum.WORKFLOW || appDetail.mode === AppModeEnum.ADVANCED_CHAT) &&
-    canDeploy
+    (appDetail.mode === 'workflow' || appDetail.mode === 'advanced-chat') && canDeploy
 
   return (
     <AppPublisherStateBoundary

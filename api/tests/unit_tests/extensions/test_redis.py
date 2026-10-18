@@ -59,6 +59,9 @@ class _RecordingRedisClient:
     def zadd(self, name: str | bytes, mapping: Mapping[object, object], **kwargs: object) -> None:
         self._record("zadd", name, mapping, **kwargs)
 
+    def zrem(self, name: str | bytes, *values: str | bytes) -> None:
+        self._record("zrem", name, *values)
+
 
 @pytest.fixture(autouse=True)
 def _redis_config(config_overrides: Callable[..., None]) -> None:
@@ -154,18 +157,26 @@ class TestRedisFallback:
         assert test_func() is None
 
     def test_redis_fallback_with_args(self) -> None:
+        received: list[tuple[int, int]] = []
+
         @redis_fallback(default_return=0)
         def test_func(x: int, y: int) -> None:
+            received.append((x, y))
             raise RedisError("Redis error")
 
         assert test_func(1, 2) == 0
+        assert received == [(1, 2)]
 
     def test_redis_fallback_with_kwargs(self) -> None:
+        received: list[tuple[int | None, int | None]] = []
+
         @redis_fallback(default_return=dict[str, object]())
         def test_func(x: int | None = None, y: int | None = None) -> None:
+            received.append((x, y))
             raise RedisError("Redis error")
 
         assert test_func(x=1, y=2) == {}
+        assert received == [(1, 2)]
 
     def test_redis_fallback_preserves_function_metadata(self) -> None:
         @redis_fallback(default_return=None)
@@ -192,6 +203,16 @@ class TestRedisKeyPrefixHelpers:
 
 
 class TestRedisClientWrapperKeyPrefix:
+    def test_wrapper_zrem_prefixes_key_but_not_members(self, config_overrides: Callable[..., None]) -> None:
+        client = _RecordingRedisClient()
+        wrapper = RedisClientWrapper()
+        wrapper.initialize(client)  # type: ignore[arg-type]
+        config_overrides(REDIS_KEY_PREFIX="enterprise-a")
+
+        wrapper.zrem("reset:user@example.com", "reservation")
+
+        assert client.calls == [("zrem", ("enterprise-a:reset:user@example.com", "reservation"), {})]
+
     def test_wrapper_registered_script_prefixes_key_arguments(self, config_overrides: Callable[..., None]) -> None:
         raw_client = _RecordingRedisClient()
         wrapper = RedisClientWrapper()

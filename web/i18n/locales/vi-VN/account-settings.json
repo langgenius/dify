@@ -55,6 +55,8 @@
   "account.sendVerificationButton": "Gửi mã xác minh",
   "account.setPassword": "Đặt mật khẩu",
   "account.showAppLength": "Hiển thị {{length}} ứng dụng",
+  "account.timezoneNoResults": "Không tìm thấy múi giờ phù hợp",
+  "account.timezoneSearchPlaceholder": "Tìm thành phố hoặc múi giờ...",
   "account.verificationLabel": "Mã xác minh",
   "account.verificationPlaceholder": "Dán mã gồm 6 chữ số",
   "account.workspaceName": "Tên không gian làm việc",

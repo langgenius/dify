@@ -1,7 +1,7 @@
 import type { FileEntity } from '../../file-uploader/types'
 import type { HumanInputFormSubmitData } from '../chat/answer/human-input-content/type'
 import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '../types'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -23,6 +23,7 @@ import {
 } from '@/service/share'
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
+import { getAvatarInitial } from '@/utils/avatar'
 import Chat from '../chat'
 import { useChat } from '../chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '../utils'
@@ -122,7 +123,12 @@ const ChatWrapper = () => {
         if (fileIsUploading) return
 
         const inputValue = inputsFormValue?.[variable]
-        if (inputValue === undefined || inputValue === null || inputValue === '')
+        if (
+          inputValue === undefined ||
+          inputValue === null ||
+          inputValue === '' ||
+          (Array.isArray(inputValue) && inputValue.length === 0)
+        )
           hasEmptyInput = label as string
 
         if (
@@ -153,7 +159,8 @@ const ChatWrapper = () => {
     setIsResponding(respondingState)
   }, [respondingState, setIsResponding])
 
-  // Resume paused workflows when chat history is loaded
+  // Resume once when history arrives, including histories loaded after the initial render.
+  const resumedWorkflow = useRef<string | undefined>(undefined)
   useEffect(() => {
     if (!appPrevChatList || appPrevChatList.length === 0) return
 
@@ -161,9 +168,6 @@ const ChatWrapper = () => {
     let lastPausedNode: ChatItemInTree | undefined
     const findLastPausedWorkflow = (nodes: ChatItemInTree[]) => {
       nodes.forEach((node) => {
-        // DFS: recurse to children first
-        if (node.children && node.children.length > 0) findLastPausedWorkflow(node.children)
-
         // Track the last node with humanInputFormDataList
         if (
           node.isAnswer &&
@@ -172,6 +176,8 @@ const ChatWrapper = () => {
           node.humanInputFormDataList.length > 0
         )
           lastPausedNode = node
+        // Visit children last so a paused descendant takes precedence over its parent.
+        if (node.children?.length) findLastPausedWorkflow(node.children)
       })
     }
 
@@ -179,6 +185,13 @@ const ChatWrapper = () => {
 
     // Only resume the last paused workflow
     if (lastPausedNode) {
+      const key = JSON.stringify([
+        currentConversationId,
+        lastPausedNode.id,
+        lastPausedNode.workflow_run_id,
+      ])
+      if (resumedWorkflow.current === key) return
+      resumedWorkflow.current = key
       handleSwitchSibling(lastPausedNode.id, {
         onGetSuggestedQuestions: (responseItemId) =>
           fetchSuggestedQuestions(responseItemId, appSourceType, appId),
@@ -186,7 +199,14 @@ const ChatWrapper = () => {
         isPublicAPI: appSourceType === AppSourceType.webApp,
       })
     }
-  }, [])
+  }, [
+    appPrevChatList,
+    currentConversationId,
+    handleSwitchSibling,
+    appSourceType,
+    appId,
+    handleNewConversationCompleted,
+  ])
 
   const [hasSent, setHasSent] = useState(false)
   const [prevConversationId, setPrevConversationId] = useState(currentConversationId)
@@ -371,13 +391,7 @@ const ChatWrapper = () => {
           )}
         >
           <div className="flex max-w-180 grow gap-4">
-            <AppIcon
-              size="xl"
-              iconType={appData?.site.icon_type}
-              icon={appData?.site.icon}
-              background={appData?.site.icon_background}
-              imageUrl={appData?.site.icon_url}
-            />
+            <AppIcon size="xl" icon={appData?.site} />
             <div className="grow rounded-2xl bg-chat-bubble-bg px-4 py-3 body-lg-regular text-text-primary">
               <Markdown content={welcomeMessage.content} />
               <SuggestedQuestions item={welcomeMessage} />
@@ -393,13 +407,7 @@ const ChatWrapper = () => {
           isMobile ? 'min-h-[30vh] py-0' : 'h-[50vh]',
         )}
       >
-        <AppIcon
-          size="xl"
-          iconType={appData?.site.icon_type}
-          icon={appData?.site.icon}
-          background={appData?.site.icon_background}
-          imageUrl={appData?.site.icon_url}
-        />
+        <AppIcon size="xl" icon={appData?.site} />
         <div className="max-w-3xl px-4">
           <Markdown
             className="body-2xl-regular! text-text-tertiary!"
@@ -475,11 +483,10 @@ const ChatWrapper = () => {
       sendOnEnter={sendOnEnter}
       questionIcon={
         initUserVariables?.avatar_url ? (
-          <Avatar
-            avatar={initUserVariables.avatar_url}
-            name={initUserVariables.name || 'user'}
-            size="xl"
-          />
+          <Avatar size="xl" role="img" aria-label={initUserVariables.name || 'user'}>
+            <AvatarFallback>{getAvatarInitial(initUserVariables.name || 'user')}</AvatarFallback>
+            <AvatarImage src={initUserVariables.avatar_url} alt="" />
+          </Avatar>
         ) : undefined
       }
     />

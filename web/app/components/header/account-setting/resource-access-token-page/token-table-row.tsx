@@ -1,12 +1,18 @@
 'use client'
 
 import type { ResourceAccessTokenRowResponse } from '@dify/contracts/api/console/resource-access-tokens/types.gen'
+import type { AlertDialogActions } from '@langgenius/dify-ui/alert-dialog'
 import type { TFunction } from 'i18next'
 import type { TokenTableRow } from './types'
+import { AlertDialog, AlertDialogTrigger } from '@langgenius/dify-ui/alert-dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { useMutation } from '@tanstack/react-query'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import useTimestamp from '@/hooks/use-timestamp'
+import { consoleQuery } from '@/service/console'
+import { DeleteTokenDialogContent } from './delete-token-dialog'
 
 const getResourceSummary = (
   relations: ResourceAccessTokenRowResponse[],
@@ -44,14 +50,18 @@ const getResourceSummary = (
 export default function ResourceAccessTokenRow({
   row,
   onEdit,
-  onDelete,
 }: {
   row: TokenTableRow
   onEdit: (row: TokenTableRow) => void
-  onDelete: (row: ResourceAccessTokenRowResponse) => void
 }) {
   const { t } = useTranslation(['common', 'accountSettings', 'time'])
   const { formatTime } = useTimestamp()
+  const deleteDialogActionsRef = useRef<AlertDialogActions>(null)
+  const deleteMutation = useMutation(
+    consoleQuery.resourceAccessTokens.byTokenId.relations.byRelationId.delete.mutationOptions({
+      onSuccess: () => deleteDialogActionsRef.current?.close(),
+    }),
+  )
   const editRow = row.relations[0]
   const resourceSummary = getResourceSummary(row.relations, t)
 
@@ -135,15 +145,37 @@ export default function ResourceAccessTokenRow({
           >
             <span aria-hidden className="i-ri-edit-line size-4" />
           </IconButton>
-          <IconButton
-            size="sm"
-            variant="ghost"
-            tone="destructive"
-            aria-label={t(($) => $['operation.delete'], { ns: 'common' })}
-            onClick={() => onDelete(editRow)}
+          <AlertDialog
+            actionsRef={deleteDialogActionsRef}
+            onOpenChange={(open, details) => {
+              if (!open && deleteMutation.isPending && details.reason !== 'imperative-action')
+                details.cancel()
+            }}
           >
-            <span aria-hidden className="i-ri-delete-bin-line size-4" />
-          </IconButton>
+            <AlertDialogTrigger
+              render={
+                <IconButton
+                  size="sm"
+                  variant="ghost"
+                  tone="destructive"
+                  aria-label={t(($) => $['operation.delete'], { ns: 'common' })}
+                >
+                  <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                </IconButton>
+              }
+            />
+            <DeleteTokenDialogContent
+              isPending={deleteMutation.isPending}
+              onConfirm={() =>
+                deleteMutation.mutate({
+                  params: {
+                    relation_id: editRow.relation_id,
+                    token_id: editRow.token_id,
+                  },
+                })
+              }
+            />
+          </AlertDialog>
         </div>
       </td>
     </tr>

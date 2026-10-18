@@ -28,8 +28,7 @@ vi.mock('@/service/console', () => ({
 
 describe('uninstallPlugin', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockUninstallPost.mockResolvedValue({ success: true })
+    mockUninstallPost.mockReset().mockResolvedValue({ success: true })
   })
 
   it('should delete credentials for an ordinary uninstall by default', async () => {

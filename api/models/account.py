@@ -316,7 +316,7 @@ class TenantPluginPermission(TypeBase):
     install_permission: Mapped[TenantPluginInstallPermission] = mapped_column(
         EnumText(TenantPluginInstallPermission, length=16),
         nullable=False,
-        default=TenantPluginInstallPermission.EVERYONE,
+        default=TenantPluginInstallPermission.ADMINS,
     )
     debug_permission: Mapped[TenantPluginDebugPermission] = mapped_column(
         EnumText(TenantPluginDebugPermission, length=16),

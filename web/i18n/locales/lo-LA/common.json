@@ -167,7 +167,6 @@
   "operation.create": "ສ້າງ",
   "operation.deSelectAll": "ຍົກເລີກການເລືອກທັງໝົດ",
   "operation.delete": "ລຶບ",
-  "operation.deleteConfirmTitle": "ລຶບບໍ?",
   "operation.download": "ດາວໂຫຼດ",
   "operation.downloadFailed": "ດາວໂຫຼດບໍ່ສຳເລັດ. ກະລຸນາລອງໃໝ່ພາຍຫຼັງ.",
   "operation.downloadSuccess": "ດາວໂຫຼດສຳເລັດແລ້ວ.",

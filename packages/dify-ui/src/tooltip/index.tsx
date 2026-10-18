@@ -1,12 +1,12 @@
 'use client'
 
 import type * as React from 'react'
-import type { Placement } from '../placement'
+import type { Placement } from '../internal/placement'
 import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
-import { hintPopupClassName } from '../overlay-shared'
-import { parsePlacement } from '../placement'
+import { hintPopupClassName, positionerClassName } from '../internal/overlay'
+import { parsePlacement } from '../internal/placement'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const TooltipProvider = BaseTooltip.Provider
 const Tooltip = BaseTooltip.Root
@@ -43,7 +43,7 @@ function TooltipContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className="z-50 outline-hidden"
+        className={positionerClassName}
       >
         <BaseTooltip.Popup
           className={(state) => cn(hintPopupClassName, resolveClassName(className, state))}

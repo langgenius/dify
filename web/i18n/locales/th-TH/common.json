@@ -167,7 +167,6 @@
   "operation.create": "สร้าง",
   "operation.deSelectAll": "ยกเลิกการเลือกทั้งหมด",
   "operation.delete": "ลบ",
-  "operation.deleteConfirmTitle": "ลบหรือไม่?",
   "operation.download": "ดาวน์โหลด",
   "operation.downloadFailed": "ดาวน์โหลดล้มเหลว กรุณาลองอีกครั้งในภายหลัง.",
   "operation.downloadSuccess": "ดาวน์โหลดเสร็จสิ้นแล้ว.",

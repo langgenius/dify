@@ -9,7 +9,8 @@ import type {
 import type * as React from 'react'
 import { Toast as BaseToast } from '@base-ui/react/toast'
 import { cn } from '../cn'
-import { iconButtonVariants } from '../icon-button/variants'
+import { iconButtonVariants } from '../icon-button'
+import { focusRingClassName } from '../internal/focus'
 
 type ToastData = Record<string, never>
 // `loading` is reserved for `promise`, which resolves it into `success` or `error`.
@@ -149,7 +150,8 @@ function ToastCard({ toast: toastItem, children }: ToastCardProps) {
       toast={toastItem}
       swipeDirection={['up', 'right']}
       className={cn(
-        'group/toast pointer-events-auto absolute top-0 right-0 w-full origin-top cursor-default rounded-xl select-none focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+        focusRingClassName,
+        'group/toast pointer-events-auto absolute top-0 right-0 w-full origin-top cursor-default rounded-xl select-none',
         '[--toast-current-height:var(--toast-frontmost-height,var(--toast-height))] [--toast-expanded-offset-y:calc(var(--toast-offset-y)+var(--toast-swipe-movement-y)+(var(--toast-index)*var(--toast-gap)))] [--toast-gap:8px] [--toast-peek:5px] [--toast-scale:calc(1-(var(--toast-index)*0.0225))] [--toast-shrink:calc(1-var(--toast-scale))]',
         'z-[calc(100-var(--toast-index))] h-(--toast-current-height)',
         '[transition:transform_500ms_cubic-bezier(0.22,1,0.36,1),opacity_500ms,height_150ms] motion-reduce:transition-none',
@@ -195,7 +197,8 @@ function ToastCard({ toast: toastItem, children }: ToastCardProps) {
             <BaseToast.Action
               className={cn(
                 'mt-2 mb-1 flex w-fit items-center justify-center overflow-hidden rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 py-2 system-sm-medium text-components-button-secondary-text shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]',
-                'hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+                focusRingClassName,
+                'hover:bg-state-base-hover focus-visible:bg-state-base-hover',
               )}
             />
           </div>
@@ -237,7 +240,7 @@ function Toaster({
     <BaseToast.Provider toastManager={toastManager} timeout={timeout} limit={limit}>
       <BaseToast.Portal>
         <BaseToast.Viewport
-          className="pointer-events-none fixed top-4 right-4 z-60 w-90 max-w-[calc(100vw-2rem)] overflow-visible sm:right-8"
+          className="pointer-events-none fixed top-4 right-4 z-50 w-90 max-w-[calc(100vw-2rem)] overflow-visible sm:right-8"
           style={offset}
         >
           {children}
