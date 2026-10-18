@@ -38,7 +38,9 @@ Use AST counts rather than raw text matches for mocks, assertions, and calls. Ke
 
 ## Prioritize and inspect
 
-The ranking script provides a transparent, weighted review queue. Scores are ordering aids, not quality grades. Prefer actionable clusters and consider shared-fixture fanout; a large file or high mock count alone does not justify deletion.
+The ranking script orders specific action candidates before setup-volume context. Mock and selector counts are capped per metric and only break ties after the action score; file length adds no priority. Scores are ordering aids, not quality grades. Consider shared-fixture fanout, but do not treat a large file or high mock count alone as a reason for deletion.
+
+Carry forward explicit retain/cleaned decisions with reasons and the reviewed file hash, scanner hash, and policy hashes using the optional review-history input. Unchanged reviewed files are shown separately rather than repeatedly filling the next shortlist. Changed files or rules re-enter the queue. Never convert a raw ranking or an unreviewed path list into retain decisions, and re-review when a changed behavior owner or dependency invalidates an earlier decision even if the test file itself is unchanged.
 
 For each shortlisted file, inspect the tests, behavior owner, relevant fixture dependencies, and overlapping owner tests. Identify the failure each case would catch. Assign **delete**, **merge**, **rewrite**, or **retain**, with a concrete reason. Present a compact table of path, leading metrics, protected contract, and proposed action. If the user requests more files, extend the queue without silently replacing already selected files.
 

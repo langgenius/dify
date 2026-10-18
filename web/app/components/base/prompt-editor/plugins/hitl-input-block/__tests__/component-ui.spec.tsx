@@ -6,7 +6,7 @@ import type {
 } from '@/app/components/workflow/nodes/human-input/types'
 import type { ValueSelector } from '@/app/components/workflow/types'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useEffect, useState } from 'react'
 import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
@@ -74,15 +74,6 @@ const renderComponent = (props: Partial<ComponentProps<typeof HITLInputComponent
 
 describe('HITLInputComponentUI', () => {
   const varName = 'customer_name'
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  afterEach(() => {
-    cleanup()
-    vi.clearAllMocks()
-  })
 
   describe('Rendering', () => {
     it('should render variable block when default type is variable', () => {

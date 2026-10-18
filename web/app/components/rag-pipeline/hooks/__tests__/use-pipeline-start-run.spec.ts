@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react'
 import { act } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { createDeferred } from '@/test/deferred'
 import { usePipelineStartRunByCanEdit } from '../use-pipeline-start-run'
@@ -40,8 +40,6 @@ describe('usePipelineStartRunByCanEdit', () => {
   const mockSetShowDebugAndPreviewPanel = vi.fn()
 
   beforeEach(() => {
-    vi.clearAllMocks()
-
     mockWorkflowStoreGetState.mockReturnValue({
       workflowRunningData: undefined,
       isPreparingDataSource: false,
@@ -52,10 +50,6 @@ describe('usePipelineStartRunByCanEdit', () => {
     })
 
     mockDoSyncWorkflowDraft.mockResolvedValue(undefined)
-  })
-
-  afterEach(() => {
-    vi.clearAllMocks()
   })
 
   describe('handleWorkflowStartRunInWorkflow', () => {

@@ -56,18 +56,53 @@ Each finding has file, line, column, scope, and metric. Aggregate metrics have *
 | `fireEvent_calls`, `direct_userEvent_call` | Interaction inventory. Low-level event contracts and Browser Mode APIs require different judgments from RTL defaults. |
 | `afterEach_mock_reset_candidate` | Reset/clear calls inside `afterEach`; compare with setup and runner defaults before removing. |
 | `afterEach_mock_restore` | Restoration, intentionally separate from preparation of the next test. Not included in ranking. |
-| `render_existence_assertion_candidate` | Weak defined/truthy checks whose expression mentions render/container/baseElement. Inspect before labeling low-value. |
+| `render_existence_assertion_candidate` | Defined/truthy checks of a render call, its result, or container/baseElement bindings from that call. Inspect only the expect subject: business expressions such as renderedStore.getState().backupDraft and DOM queries are excluded. Still a candidate, not proof of low value. |
 | `bare_async_call_candidate` | A standalone findBy/waitFor/user-event call with no surrounding await/return. Not full promise dataflow analysis. |
 | `fixed_wait_candidate`, `promise_timer_candidate` | Delay helpers or promise timers. Distinguish incorrect synchronization from a timer contract. |
 | `snapshots`, `visual_snapshots`, `browser_force_true` | Evidence to evaluate against serialization/visual/browser admission rules. |
 | `ts_ignore`, `ts_nocheck`, `ts_expect_error` | Comment directives, excluding text inside fixture strings. Intentional compile-only API errors can be valuable. |
 | `test_execution_modifier` | Skip/todo/only and conditional execution candidates; inspect intent. |
 
-The scanner recognizes common imported aliases for `vi` and `userEvent`, but not all destructuring, re-exports, wrappers, computed access, or shadowed names. Some call-name heuristics can match unrelated APIs. It fails on parse errors rather than silently undercounting. It does not determine whether a test is low-value.
+The scanner recognizes common imported aliases for `vi`, `userEvent`, and `render`, but not all destructuring, re-exports, wrappers, computed access, or shadowed names. Some call-name heuristics can match unrelated APIs. It fails on parse errors rather than silently undercounting. It does not determine whether a test is low-value.
 
 ## Ranking and comparison
 
-`rank` emits its weights with each queue. The heuristic weights unsafe chains, weak render assertions, bare async calls, fixed waits, and ignore/nocheck comments at 3; module mocks, afterEach resets, and promise timers at 2; mock functions/spies and test-ID/CSS/class coupling at 1. Remaining metrics have weight 0. Ordinary type assertions and restore calls are context, not scoring penalties. Ties use file length then path. Review the leading files before presenting a cleanup recommendation; scores are neither violations nor a quality scale.
+`rank` emits separate `actionScore` and `contextScore` values. Unsafe chains, class assertions, weak render checks, bare async calls, fixed waits, and ignore/nocheck comments weigh 3; afterEach resets weigh 2. These specific candidates always sort before files with only setup-volume context. Module mocks, mock functions/spies, test-ID/CSS queries, and promise timers each contribute at most 10 context points per metric. Context only breaks action-score ties; the final tie-breaker is path, not file length. A promise timer may flush intentional scheduled work and does not receive action points by itself. Other metrics remain visible without adding priority.
+
+To avoid repeatedly selecting unchanged files already reviewed, pass an optional history file:
+
+```bash
+node .agents/skills/frontend-test-maintenance/scripts/report.cjs rank /tmp/test-after.json 40 /tmp/next-hotspots.json /tmp/reviewed.json
+```
+
+The history has this structure (copy hashes from the audit snapshot used for the review):
+
+```json
+{
+  "scannerSha256": "<audit scanner hash>",
+  "policies": [{ "file": "web/docs/test.md", "sha256": "<policy hash>" }],
+  "files": [
+    {
+      "file": "web/path/owner.spec.tsx",
+      "sha256": "<reviewed source hash>",
+      "decision": "retain",
+      "reason": "Protects a reviewed external boundary contract."
+    }
+  ]
+}
+```
+
+Use `retain` or `cleaned` only after manual review or validated cleanup. The ranking emits matching entries under `deferredReviewed`; they stay visible but do not fill the requested next batch. A changed file, scanner, or policy makes the decision stale and returns the file to the queue. Remove a decision when a changed production owner or dependency warrants re-review: the scanner does not track dependency hashes. A shortlist alone is not a review record. Explicit user-selected scopes still take precedence.
+
+Render-result bindings are recognized syntactically, including imported aliases and destructuring aliases. Custom wrapper names, reassignment, and lexical shadowing need manual review; this is not semantic dataflow analysis. The rule deliberately avoids substring matching on business-state identifiers.
+
+After changing scanner or ranking behavior, run the regression checks from the repository root:
+
+```bash
+node --test .agents/skills/frontend-test-maintenance/scripts/audit.test.cjs
+```
+
+These verify business-state false positives, real render-smoke candidates, action-before-volume ranking, review invalidation, and moved debt.
 
 `compare` rejects different scopes, metric schemas, scanner hashes, or applicable policy hashes. It reports selected-file totals and whole-scope totals, plus added/removed paths and changes outside the selection. Renames appear as removal plus addition. Relate them manually before interpreting a reduction; moving mocks to a new filename is not elimination. A newly added helper outside the audited scope remains invisible—include helper directories from the start, or regenerate both baselines with the expanded scope using preserved baseline sources. Do not fabricate a missing baseline from post-cleanup contents.
 

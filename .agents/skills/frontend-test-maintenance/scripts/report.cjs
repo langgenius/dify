@@ -1,28 +1,30 @@
-// Usage: node report.cjs rank AUDIT.json COUNT OUTPUT.json
+// Usage: node report.cjs rank AUDIT.json COUNT OUTPUT.json [REVIEWED.json]
 //        node report.cjs compare BEFORE.json AFTER.json OUTPUT.json [FILES.txt]
 const fs = require('node:fs')
 
-// Review priority only. Ordinary assertions, restore calls and browser direct
-// userEvent calls intentionally contribute no points.
-const weights = {
+// Specific candidates outrank setup volume. Neither score confirms violations.
+const actionWeights = {
   unsafe_assertion_chains: 3,
-  module_mock: 2,
-  vi_fn: 1,
-  vi_spyOn: 1,
-  testid_queries: 1,
-  css_dom_queries: 1,
-  class_assertions: 1,
+  class_assertions: 3,
   render_existence_assertion_candidate: 3,
   afterEach_mock_reset_candidate: 2,
   bare_async_call_candidate: 3,
   fixed_wait_candidate: 3,
-  promise_timer_candidate: 2,
   ts_ignore: 3,
   ts_nocheck: 3,
 }
+const contextWeights = {
+  module_mock: 1,
+  vi_fn: 1,
+  vi_spyOn: 1,
+  testid_queries: 1,
+  css_dom_queries: 1,
+  promise_timer_candidate: 1,
+}
+const contextMetricCap = 10
 function read(file) {
   const report = JSON.parse(fs.readFileSync(file, 'utf8'))
-  if (report.metricSchema !== 'frontend-test-maintenance-v2' || !Array.isArray(report.policies))
+  if (report.metricSchema !== 'frontend-test-maintenance-v3' || !Array.isArray(report.policies))
     throw new Error(`Unsupported audit schema in ${file}; regenerate both snapshots with audit.cjs`)
   return report
 }
@@ -37,39 +39,84 @@ function delta(before, after, files) {
   const a = totals(before, files)
   const b = totals(after, files)
   return Object.fromEntries(
-    [...new Set([...Object.keys(a), ...Object.keys(b)])]
-      .sort()
-      .map((metric) => [
-        metric,
-        {
-          before: a[metric] || 0,
-          after: b[metric] || 0,
-          delta: (b[metric] || 0) - (a[metric] || 0),
-        },
-      ]),
+    [...new Set([...Object.keys(a), ...Object.keys(b)])].sort().map((metric) => [
+      metric,
+      {
+        before: a[metric] || 0,
+        after: b[metric] || 0,
+        delta: (b[metric] || 0) - (a[metric] || 0),
+      },
+    ]),
   )
 }
 const [mode, ...args] = process.argv.slice(2)
 if (mode === '--help') {
   console.log(
-    'Usage: node report.cjs rank AUDIT.json COUNT OUTPUT.json\n       node report.cjs compare BEFORE.json AFTER.json OUTPUT.json [FILES.txt]',
+    'Usage: node report.cjs rank AUDIT.json COUNT OUTPUT.json [REVIEWED.json]\n       node report.cjs compare BEFORE.json AFTER.json OUTPUT.json [FILES.txt]',
   )
 } else if (mode === 'rank') {
-  const [input, countText, output] = args
+  const [input, countText, output, reviewedPath] = args
   const count = Number(countText)
   if (!input || !output || !Number.isInteger(count) || count < 1)
     throw new Error('rank requires AUDIT.json, positive COUNT and OUTPUT.json')
   const report = read(input)
+  const reviews = new Map()
+  let reviewHistoryApplicable = false
+  if (reviewedPath) {
+    const history = JSON.parse(fs.readFileSync(reviewedPath, 'utf8'))
+    if (!Array.isArray(history.files) || !Array.isArray(history.policies) || !history.scannerSha256)
+      throw new Error(
+        'Review history requires files, policies and scannerSha256; a ranked list is not a review record',
+      )
+    for (const entry of history.files) {
+      if (
+        !entry.file ||
+        !entry.sha256 ||
+        !['retain', 'cleaned'].includes(entry.decision) ||
+        !entry.reason?.trim()
+      )
+        throw new Error(
+          'Each reviewed file requires file, sha256, retain/cleaned decision and a reason',
+        )
+      reviews.set(entry.file, entry)
+    }
+    reviewHistoryApplicable =
+      history.scannerSha256 === report.scannerSha256 &&
+      JSON.stringify(history.policies) === JSON.stringify(report.policies)
+  }
   const perFile = new Map(
-    report.inventory.map((file) => [file.file, { ...file, score: 0, metrics: {} }]),
+    report.inventory.map((file) => [
+      file.file,
+      { ...file, actionScore: 0, contextScore: 0, metrics: {} },
+    ]),
   )
   for (const finding of report.findings) {
     const row = perFile.get(finding.file)
     row.metrics[finding.metric] = (row.metrics[finding.metric] || 0) + 1
-    row.score += weights[finding.metric] || 0
+    row.actionScore += actionWeights[finding.metric] || 0
+  }
+  const deferredReviewed = []
+  const staleReviewFiles = []
+  for (const row of perFile.values()) {
+    row.contextScore = Object.entries(contextWeights).reduce(
+      (sum, [metric, weight]) =>
+        sum + Math.min(row.metrics[metric] || 0, contextMetricCap) * weight,
+      0,
+    )
+    row.priority = row.actionScore ? 'action-candidate' : 'context-only'
+    const review = reviews.get(row.file)
+    if (review && reviewHistoryApplicable && review.sha256 === row.sha256) {
+      deferredReviewed.push({ ...row, decision: review.decision, reason: review.reason })
+      perFile.delete(row.file)
+    } else if (review) staleReviewFiles.push(row.file)
   }
   const candidates = [...perFile.values()]
-    .sort((a, b) => b.score - a.score || b.lines - a.lines || a.file.localeCompare(b.file))
+    .sort(
+      (a, b) =>
+        b.actionScore - a.actionScore ||
+        b.contextScore - a.contextScore ||
+        a.file.localeCompare(b.file),
+    )
     .slice(0, count)
   fs.writeFileSync(
     output,
@@ -80,7 +127,16 @@ if (mode === '--help') {
         commit: report.commit,
         requestedScopes: report.requestedScopes,
         policies: report.policies,
-        weights,
+        scannerSha256: report.scannerSha256,
+        ranking: {
+          actionWeights,
+          contextWeights,
+          contextMetricCap,
+          order: ['actionScore descending', 'contextScore descending', 'file path'],
+        },
+        reviewHistoryApplicable,
+        staleReviewFiles,
+        deferredReviewed,
         candidates,
       },
       null,

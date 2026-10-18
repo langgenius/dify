@@ -6,6 +6,7 @@ import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useEventEmitter } from 'ahooks'
 import copy from 'copy-to-clipboard'
+import { createRef } from 'react'
 import { FeaturesProvider } from '@/app/components/base/features/context'
 import { createStartNode } from '@/app/components/workflow/__tests__/fixtures'
 import {
@@ -189,9 +190,6 @@ const createConversationVariableResponse = (
   page: 1,
 })
 
-const createChatWrapperRef = () =>
-  ({ current: null }) as unknown as React.RefObject<ChatWrapperRefType>
-
 describe('debug-and-preview components', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -324,7 +322,7 @@ describe('debug-and-preview components', () => {
     it('should seed start defaults into workflow inputs and expose restart through the ref handle', async () => {
       const chatState = createChatState()
       mockUseChat.mockReturnValue(chatState)
-      const chatRef = createChatWrapperRef()
+      const chatRef = createRef<ChatWrapperRefType>()
 
       const { store } = renderWorkflowFlowComponent(
         <ChatWrapper
@@ -378,7 +376,7 @@ describe('debug-and-preview components', () => {
     })
 
     it('preserves zero and false start defaults when initializing and restarting', async () => {
-      const chatRef = createChatWrapperRef()
+      const chatRef = createRef<ChatWrapperRefType>()
       const { store } = renderWorkflowFlowComponent(
         <ChatWrapper
           ref={chatRef}
@@ -426,7 +424,7 @@ describe('debug-and-preview components', () => {
       mockUseChat.mockReturnValue(chatState)
       renderWorkflowFlowComponent(
         <ChatWrapper
-          ref={createChatWrapperRef()}
+          ref={createRef<ChatWrapperRefType>()}
           showConversationVariableModal={false}
           onConversationModalHide={vi.fn()}
           showInputsFieldsPanel={false}
@@ -461,7 +459,7 @@ describe('debug-and-preview components', () => {
 
       renderWorkflowFlowComponent(
         <ChatWrapper
-          ref={createChatWrapperRef()}
+          ref={createRef<ChatWrapperRefType>()}
           showConversationVariableModal
           onConversationModalHide={vi.fn()}
           showInputsFieldsPanel={false}
@@ -530,7 +528,7 @@ describe('debug-and-preview components', () => {
 
       const { store } = renderWorkflowFlowComponent(
         <ChatWrapper
-          ref={createChatWrapperRef()}
+          ref={createRef<ChatWrapperRefType>()}
           showConversationVariableModal={false}
           onConversationModalHide={vi.fn()}
           showInputsFieldsPanel={false}

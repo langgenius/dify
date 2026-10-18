@@ -1,6 +1,6 @@
 import { waitFor } from '@testing-library/react'
 import { act } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -34,8 +34,6 @@ describe('usePipelineRefreshDraft', () => {
   const mockSetRagPipelineVariables = vi.fn()
 
   beforeEach(() => {
-    vi.clearAllMocks()
-
     mockWorkflowStoreGetState.mockReturnValue({
       pipelineId: 'test-pipeline-id',
       setSyncWorkflowDraftHash: mockSetSyncWorkflowDraftHash,
@@ -55,10 +53,6 @@ describe('usePipelineRefreshDraft', () => {
       environment_variables: [],
       rag_pipeline_variables: [],
     })
-  })
-
-  afterEach(() => {
-    vi.clearAllMocks()
   })
 
   describe('handleRefreshWorkflowDraft', () => {

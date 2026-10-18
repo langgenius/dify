@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { findRagPipelineNodes } from '../../goto-anything-search'
 import { useRagPipelineSearch } from '../use-rag-pipeline-search'
@@ -31,12 +31,7 @@ vi.mock('@/app/components/workflow/utils/node-navigation', () => ({
 
 describe('useRagPipelineSearch', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     mockNodes.length = 0
-  })
-
-  afterEach(() => {
-    vi.clearAllMocks()
   })
 
   describe('hook lifecycle', () => {

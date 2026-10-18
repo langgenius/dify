@@ -8,7 +8,6 @@ import { useLink, useOpenLink } from '../hooks'
 vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 afterEach(() => {
   vi.restoreAllMocks()
-  vi.clearAllMocks()
   vi.useRealTimers()
 })
 

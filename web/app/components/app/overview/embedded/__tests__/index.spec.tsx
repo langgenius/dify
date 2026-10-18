@@ -6,7 +6,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
-import { afterAll, afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterAll, describe, expect, it, vi } from 'vite-plus/test'
 import { InputVarType } from '@/app/components/workflow/types'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { EmbeddedDialogContent } from '../index'
@@ -41,11 +41,6 @@ function EmbeddedDialog(props: ComponentProps<typeof EmbeddedDialogContent>) {
 const getCopyButton = () => screen.getByRole('button', { name: /copy/i })
 
 describe('EmbeddedDialog', () => {
-  afterEach(() => {
-    vi.clearAllMocks()
-    mockWindowOpen.mockClear()
-  })
-
   afterAll(() => {
     mockWindowOpen.mockRestore()
   })

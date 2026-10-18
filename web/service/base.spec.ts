@@ -153,7 +153,6 @@ describe('handleStream', () => {
 describe('ssePost and sseGet', () => {
   afterEach(() => {
     vi.restoreAllMocks()
-    vi.clearAllMocks()
     window.history.replaceState({}, '', '/')
   })
 

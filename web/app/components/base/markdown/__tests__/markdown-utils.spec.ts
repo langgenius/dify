@@ -120,7 +120,6 @@ describe('preprocessThinkTag', () => {
 
 describe('customUrlTransform', () => {
   afterEach(() => {
-    vi.resetAllMocks()
     vi.resetModules()
   })
 

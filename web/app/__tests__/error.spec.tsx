@@ -2,7 +2,7 @@ import { ORPCError } from '@orpc/client'
 import { QueryClient, QueryErrorResetBoundary } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import CommonLayoutError from '@/app/(commonLayout)/error'
 import AppError from '@/app/error'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -28,10 +28,13 @@ const routeErrors = [
 
 describe('route error recovery', () => {
   const originalUrl = window.location.href
+  beforeEach(() => {
+    refresh.mockReset()
+  })
+
   afterEach(() => {
     window.history.replaceState({}, '', originalUrl)
     vi.restoreAllMocks()
-    refresh.mockReset()
   })
 
   it.each(routeErrors)(

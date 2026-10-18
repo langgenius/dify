@@ -122,6 +122,9 @@ for (const file of files) {
   const vitestNames = new Set(['vi', 'vitest'])
   const users = new Set()
   const userApis = new Set(['userEvent'])
+  const renderApis = new Set(['render'])
+  const renderResults = new Set()
+  const renderRoots = new Set()
   for (const stmt of sf.statements) {
     if (!ts.isImportDeclaration(stmt) || !stmt.importClause) continue
     const mod = stmt.moduleSpecifier.text
@@ -134,7 +137,45 @@ for (const file of files) {
         if (/vitest|vite-plus\/test/.test(mod) && ['vi', 'vitest'].includes(original))
           vitestNames.add(el.name.text)
         if (original === 'userEvent') userApis.add(el.name.text)
+        if (original === 'render') renderApis.add(el.name.text)
       }
+  }
+  function isRenderCall(node) {
+    return node && ts.isCallExpression(node) && renderApis.has(name(node.expression))
+  }
+  function collectRenderBindings(node) {
+    if (ts.isVariableDeclaration(node) && isRenderCall(unwrap(node.initializer))) {
+      if (ts.isIdentifier(node.name)) renderResults.add(node.name.text)
+      if (ts.isObjectBindingPattern(node.name)) {
+        for (const binding of node.name.elements) {
+          if (
+            ts.isIdentifier(binding.name) &&
+            ['container', 'baseElement'].includes(name(binding.propertyName || binding.name))
+          )
+            renderRoots.add(binding.name.text)
+        }
+      }
+    }
+    ts.forEachChild(node, collectRenderBindings)
+  }
+  collectRenderBindings(sf)
+  function isRenderExistenceAssertion(expression) {
+    // Inspect only expect's subject, not identifiers inside a larger business assertion.
+    let receiver = expression.expression
+    while (receiver && ts.isPropertyAccessExpression(receiver)) receiver = receiver.expression
+    if (!receiver || !ts.isCallExpression(receiver) || name(receiver.expression) !== 'expect')
+      return false
+    const subject = unwrap(receiver.arguments[0])
+    if (!subject) return false
+    if (isRenderCall(subject)) return true
+    if (ts.isIdentifier(subject))
+      return renderRoots.has(subject.text) || renderResults.has(subject.text)
+    return (
+      ts.isPropertyAccessExpression(subject) &&
+      ['container', 'baseElement'].includes(subject.name.text) &&
+      (isRenderCall(subject.expression) ||
+        (ts.isIdentifier(subject.expression) && renderResults.has(subject.expression.text)))
+    )
   }
   function emit(metric, node, detail = '') {
     const pos = sf.getLineAndCharacterOfPosition(node.getStart(sf))
@@ -229,9 +270,8 @@ for (const file of files) {
       if (['toMatchImageSnapshot', 'toMatchScreenshot', 'toHaveScreenshot'].includes(method))
         emit('visual_snapshots', n)
       if (method === 'toBeDefined' || method === 'toBeTruthy') {
-        const t = n.expression.getText(sf)
-        if (/container|baseElement|render/.test(t))
-          emit('render_existence_assertion_candidate', n, t.slice(0, 160))
+        if (isRenderExistenceAssertion(n.expression))
+          emit('render_existence_assertion_candidate', n, n.expression.getText(sf).slice(0, 160))
       }
       if (
         ['it', 'test', 'describe'].includes(parts[0]) &&
@@ -343,7 +383,7 @@ const policies = policyPaths.map((file) => ({
 const report = {
   policies,
   version: 2,
-  metricSchema: 'frontend-test-maintenance-v2',
+  metricSchema: 'frontend-test-maintenance-v3',
   scannerSha256: crypto.createHash('sha256').update(fs.readFileSync(__filename)).digest('hex'),
   root,
   requestedScopes: scopes,

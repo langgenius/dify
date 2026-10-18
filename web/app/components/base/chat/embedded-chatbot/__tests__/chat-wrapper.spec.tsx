@@ -7,6 +7,7 @@ import { InputVarType } from '@/app/components/workflow/types'
 import { AppSourceType, fetchSuggestedQuestions, submitHumanInputForm } from '@/service/share'
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { createDeferred } from '@/test/deferred'
+import { createHumanInputFormFixture } from '@/test/fixtures/workflow-process'
 import { useChat } from '../../chat/hooks'
 import ChatWrapper from '../chat-wrapper'
 import { EmbeddedChatbotContext } from '../context'
@@ -419,17 +420,15 @@ describe('Embedded chatbot orchestration', () => {
 
   it('resumes the deepest paused workflow after history arrives, only once per conversation', async () => {
     const { updateContext, chat } = renderSubject()
-    const pausedChild = {
+    const pausedChild: ChatItemInTree = {
       id: 'child',
       isAnswer: true,
       content: '',
       workflow_run_id: 'run-1',
-      humanInputFormDataList: [{ label: 'Need info' }],
+      humanInputFormDataList: [createHumanInputFormFixture({ node_title: 'Need info' })],
       children: [],
     }
-    const history = [
-      { ...pausedChild, id: 'parent', children: [pausedChild] },
-    ] as unknown as ChatItemInTree[]
+    const history: ChatItemInTree[] = [{ ...pausedChild, id: 'parent', children: [pausedChild] }]
     expect(chat.handleSwitchSibling).not.toHaveBeenCalled()
     updateContext({ appPrevChatList: history, currentConversationId: 'conversation-1' })
     await waitFor(() =>
