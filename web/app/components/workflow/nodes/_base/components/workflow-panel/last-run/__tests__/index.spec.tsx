@@ -94,6 +94,7 @@ describe('LastRun', () => {
   })
 
   it('should render the no-data state for 404 last-run responses and forward single-run clicks', async () => {
+    const user = userEvent.setup()
     mockUseLastRun.mockReturnValue({
       data: undefined,
       isFetching: false,
@@ -111,9 +112,7 @@ describe('LastRun', () => {
       { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
     )
 
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'workflowDebug.debug.noData.runThisNode' }))
+    await user.click(screen.getByRole('button', { name: 'workflowDebug.debug.noData.runThisNode' }))
 
     expect(onSingleRunClicked).toHaveBeenCalledTimes(1)
   })

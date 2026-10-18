@@ -176,6 +176,12 @@ const renderModelProviderPage = (
 ) => {
   const { searchText = '', enableMarketplace = true, stickyToolbar = true } = props
   const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+      input: { params: { model_type: 'llm' } },
+    }),
+    { data: [] },
+  )
   if (mockPluginSettingsAccess.canSetPluginPreferences) {
     for (const [type, state] of Object.entries(mockDefaultModels)) {
       if (!state.isLoading)
@@ -264,16 +270,6 @@ vi.mock('../provider-added-card', () => ({
 
 vi.mock('../provider-added-card/quota-panel', () => ({
   default: () => <div data-testid="quota-panel" />,
-}))
-
-vi.mock('../system-model-selector', () => ({
-  default: ({ className, notConfigured }: { className?: string; notConfigured?: boolean }) => (
-    <div
-      data-testid="system-model-selector"
-      data-not-configured={String(notConfigured)}
-      className={className}
-    />
-  ),
 }))
 
 vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
@@ -381,7 +377,9 @@ describe('ModelProviderPage', () => {
       screen.getByPlaceholderText('modelProvider.modelProvider.searchModels'),
     ).toBeInTheDocument()
     const autoUpdateButton = screen.getByRole('button', { name: /plugin\.autoUpdate\.autoUpdate/ })
-    const systemModelSelector = screen.getByTestId('system-model-selector')
+    const systemModelSelector = screen.getByRole('button', {
+      name: /modelProvider.systemModelSettings/,
+    })
     expect(autoUpdateButton).toBeInTheDocument()
     expect(systemModelSelector).toBeInTheDocument()
     expect(screen.getByTestId('install-from-marketplace')).toBeInTheDocument()
@@ -393,7 +391,9 @@ describe('ModelProviderPage', () => {
     renderModelProviderPage()
 
     expect(mockDefaultModelQuery).not.toHaveBeenCalled()
-    expect(screen.queryByTestId('system-model-selector')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /modelProvider.systemModelSettings/ }),
+    ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /plugin\.autoUpdate\.autoUpdate/ }),
     ).not.toBeInTheDocument()

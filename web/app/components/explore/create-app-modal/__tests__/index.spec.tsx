@@ -559,6 +559,7 @@ describe('CreateAppModal', () => {
 })
 
 it('edits an existing app without waiting for application quota data', async () => {
+  const user = userEvent.setup()
   const onConfirm = vi.fn()
   renderWithConsoleQuery(
     <CreateAppModal
@@ -575,7 +576,7 @@ it('edits an existing app without waiting for application quota data', async () 
   )
   const save = screen.getByRole('button', { name: /operation.save/ })
   expect(save).toBeEnabled()
-  await userEvent.setup().click(save)
+  await user.click(save)
   await waitFor(() => expect(onConfirm).toHaveBeenCalledOnce())
 })
 

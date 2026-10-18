@@ -84,6 +84,7 @@ describe('MainNavLayout', () => {
   })
 
   it('keeps an interactive change when a cached layout supplies the earlier initial value', async () => {
+    const user = userEvent.setup()
     ;(usePathname as Mock).mockReturnValue('/datasets/dataset-1/documents')
 
     const { rerender } = render(
@@ -92,7 +93,7 @@ describe('MainNavLayout', () => {
       </MainNavLayout>,
     )
 
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Collapse sidebar' }))
+    await user.click(screen.getByRole('button', { name: 'Collapse sidebar' }))
     expect(screen.getByText('Collapse sidebar').parentElement).toHaveAttribute(
       'data-mode',
       'collapse',

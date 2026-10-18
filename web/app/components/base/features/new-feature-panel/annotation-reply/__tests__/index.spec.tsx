@@ -1,8 +1,16 @@
 import type { Features, OnFeaturesChange } from '../../../types'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { toast } from '@/app/notifications'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import {
+  createCatalogModelFixture,
+  createDefaultModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { FeaturesProvider } from '../../../context'
 import AnnotationReply from '../index'
@@ -23,30 +31,6 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
   }
 })
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/hooks',
-  async (importOriginal) => ({
-    ...(await importOriginal<
-      typeof import('@/app/components/header/account-setting/model-provider-page/hooks')
-    >()),
-    useModelListAndDefaultModelAndCurrentProviderAndModel: () => ({
-      modelList: [],
-      defaultModel: { provider: { provider: 'openai' }, model: 'embedding-model' },
-      currentModel: true,
-    }),
-  }),
-)
-// Model selection and billing purchase flows have separate integration suites.
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  ModelSelector: () => null,
-}))
-vi.mock('@/app/components/billing/annotation-full/modal', () => ({
-  default: ({ onHide }: { onHide: () => void }) => (
-    <div role="dialog" aria-label="Annotation limit">
-      <button onClick={onHide}>Close limit</button>
-    </div>
-  ),
-}))
 
 const embeddingModel = {
   embedding_provider_name: 'openai',
@@ -76,16 +60,39 @@ function renderFeature({
   onChange?: OnFeaturesChange
   full?: boolean
 } = {}) {
-  return renderWithConsoleQuery(
-    <FeaturesProvider
-      features={{
-        ...defaultFeatures,
-        annotationReply: { enabled, score_threshold: score, embedding_model: embeddingModel },
-      }}
-    >
-      <AnnotationReply disabled={disabled} onChange={onChange} />
-    </FeaturesProvider>,
+  const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient, [
+    createModelCatalogFixture({
+      models: [
+        createCatalogModelFixture({
+          model: 'embedding-model',
+          label: { en_US: 'embedding-model' },
+          model_type: 'text-embedding',
+        }),
+      ],
+    }),
+  ])
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.defaultModel.get.queryKey({
+      input: { query: { model_type: 'text-embedding' } },
+    }),
     {
+      data: createDefaultModelFixture({ model: 'embedding-model', model_type: 'text-embedding' }),
+    },
+  )
+  return renderWithConsoleQuery(
+    <NuqsTestingAdapter>
+      <FeaturesProvider
+        features={{
+          ...defaultFeatures,
+          annotationReply: { enabled, score_threshold: score, embedding_model: embeddingModel },
+        }}
+      >
+        <AnnotationReply disabled={disabled} onChange={onChange} />
+      </FeaturesProvider>
+    </NuqsTestingAdapter>,
+    {
+      queryClient,
       systemFeatures: { deployment_edition: 'CLOUD' },
       features: { annotation_quota_limit: { size: full ? 10 : 0, limit: 10 } },
     },
@@ -205,18 +212,21 @@ describe('AnnotationReply', () => {
     const user = userEvent.setup({ skipHover: true })
     renderFeature({ full: true })
     await user.click(screen.getByRole('switch'))
-    expect(screen.getByRole('dialog', { name: 'Annotation limit' })).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('dialog')).getByText('billing.annotatedResponse.fullTipLine1'),
+    ).toBeVisible()
     expect(screen.queryByRole('dialog', { name: /initSetup.title/ })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Close limit' }))
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(updateStatus).not.toHaveBeenCalled()
   })
 
   it('does not allow configuration when the feature is disabled by its owner', async () => {
+    const user = userEvent.setup({ skipHover: true })
     renderFeature({ disabled: true })
     const toggle = screen.getByRole('switch')
     expect(toggle).toHaveAttribute('aria-disabled', 'true')
-    await userEvent.setup({ skipHover: true }).click(toggle)
+    await user.click(toggle)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(updateStatus).not.toHaveBeenCalled()
   })

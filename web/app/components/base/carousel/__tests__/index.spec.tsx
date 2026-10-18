@@ -142,23 +142,25 @@ describe('Carousel', () => {
   // Users can move slides through previous and next controls.
   describe('User interactions', () => {
     it('should call scroll handlers when previous and next buttons are clicked', async () => {
+      const user = userEvent.setup()
       mockCanScrollPrev = true
       mockCanScrollNext = true
 
       renderCarouselWithControls()
 
-      await userEvent.setup().click(screen.getByRole('button', { name: 'Prev' }))
-      await userEvent.setup().click(screen.getByRole('button', { name: 'Next' }))
+      await user.click(screen.getByRole('button', { name: 'Prev' }))
+      await user.click(screen.getByRole('button', { name: 'Next' }))
 
       expect(mockApi.scrollPrev).toHaveBeenCalledTimes(1)
       expect(mockApi.scrollNext).toHaveBeenCalledTimes(1)
     })
 
     it('should call scrollTo with clicked index when a dot is clicked', async () => {
+      const user = userEvent.setup()
       renderCarouselWithControls()
       const dots = screen.getAllByRole('button', { name: 'Dot' })
 
-      await userEvent.setup().click(dots[2]!)
+      await user.click(dots[2]!)
 
       expect(mockApi.scrollTo).toHaveBeenCalledWith(2)
     })

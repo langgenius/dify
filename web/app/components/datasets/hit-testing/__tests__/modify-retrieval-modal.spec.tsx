@@ -1,37 +1,18 @@
 import type { RetrievalConfig } from '@/types/app'
 import { Drawer } from '@langgenius/dify-ui/drawer'
-import { screen } from '@testing-library/react'
+import { act, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { toast } from '@/app/notifications'
+import { AppToastHost } from '@/app/notifications/host'
+import DatasetDetailContext from '@/context/dataset-detail'
+import { consoleQuery } from '@/service/console'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import ModifyRetrievalModal from '../modify-retrieval-modal'
 
-const toastError = vi.hoisted(() => vi.fn())
-vi.mock('@/app/notifications', () => ({ toast: { error: toastError } }))
-vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (
-    selector: (state: {
-      dataset: { embedding_model: string; embedding_model_provider: string }
-    }) => unknown,
-  ) => selector({ dataset: { embedding_model: '', embedding_model_provider: '' } }),
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { createModelCreditsFixture } = await import('@/test/console/model-provider')
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.models.modelTypes.byModelType.get': async () => ({ data: [] }),
-      'workspaces.current.modelProviders.credits.get': async () => createModelCreditsFixture(),
-      'workspaces.current.defaultModel.get': async () => ({ data: null }),
-      'datasets.retrievalSetting.get': async () => ({
-        retrieval_method: ['semantic_search', 'full_text_search', 'hybrid_search'],
-      }),
-    }),
-  }
-})
 const value: RetrievalConfig = {
   search_method: RETRIEVE_METHOD.semantic,
   reranking_enable: false,
@@ -49,17 +30,31 @@ const show = (overrides: Partial<Parameters<typeof ModifyRetrievalModal>[0]> = {
     onSave: vi.fn(),
     ...overrides,
   }
+  const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient)
+  queryClient.setQueryData(consoleQuery.datasets.retrievalSetting.get.queryKey(), {
+    retrieval_method: ['semantic_search', 'full_text_search', 'hybrid_search'],
+  })
   return {
     ...props,
     ...renderWithConsoleQuery(
       <NuqsTestingAdapter>
-        <Drawer open>
-          <ModifyRetrievalModal {...props} />
-        </Drawer>
+        {/* oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector requires its Provider component. */}
+        <DatasetDetailContext.Provider value={{ dataset: createDatasetFixture() }}>
+          <Drawer open>
+            <ModifyRetrievalModal {...props} />
+          </Drawer>
+          <AppToastHost />
+        </DatasetDetailContext.Provider>
       </NuqsTestingAdapter>,
+      { queryClient },
     ),
   }
 }
+
+afterEach(async () => {
+  await act(async () => toast.dismiss())
+})
 
 it.each(['high_quality', 'economy'])(
   'saves edited retrieval parameters for %s',
@@ -88,6 +83,6 @@ it('rejects saving reranking without an available model', async () => {
   const user = userEvent.setup()
   const { onSave } = show({ value: { ...value, reranking_enable: true } })
   await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
-  expect(toastError).toHaveBeenCalledWith('appDebug.datasetConfig.rerankModelRequired')
+  expect(await screen.findByText('appDebug.datasetConfig.rerankModelRequired')).toBeInTheDocument()
   expect(onSave).not.toHaveBeenCalled()
 })

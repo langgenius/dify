@@ -269,6 +269,7 @@ describe('SegmentCard', () => {
 
   describe('State Management', () => {
     it('should close delete confirmation modal when cancel is clicked', async () => {
+      const user = userEvent.setup()
       const detail = createMockSegmentDetail()
       const onDelete = vi.fn()
 
@@ -283,13 +284,13 @@ describe('SegmentCard', () => {
       )
 
       const deleteButton = screen.getByRole('button', { name: 'common.operation.delete' })
-      await userEvent.setup().click(deleteButton)
+      await user.click(deleteButton)
 
       await waitFor(() => {
         expect(screen.getByText('datasetDocuments.segment.delete')).toBeInTheDocument()
       })
 
-      await userEvent.setup().click(screen.getByText('common.operation.cancel'))
+      await user.click(screen.getByText('common.operation.cancel'))
 
       await waitFor(() => {
         expect(screen.queryByText('datasetDocuments.segment.delete')).not.toBeInTheDocument()
@@ -322,6 +323,7 @@ describe('SegmentCard', () => {
     })
 
     it('should call onClick when card is clicked in general mode', async () => {
+      const user = userEvent.setup()
       const onClick = vi.fn()
       const detail = createMockSegmentDetail()
       mockDocForm.current = ChunkingMode.text
@@ -331,12 +333,13 @@ describe('SegmentCard', () => {
       )
 
       const card = screen.getByTestId('segment-card')
-      await userEvent.setup().click(card)
+      await user.click(card)
 
       expect(onClick).toHaveBeenCalledTimes(1)
     })
 
     it('should not call onClick when card is clicked in full-doc mode', async () => {
+      const user = userEvent.setup()
       const onClick = vi.fn()
       const detail = createMockSegmentDetail()
       mockDocForm.current = ChunkingMode.parentChild
@@ -347,12 +350,13 @@ describe('SegmentCard', () => {
       )
 
       const card = screen.getByTestId('segment-card')
-      await userEvent.setup().click(card)
+      await user.click(card)
 
       expect(onClick).not.toHaveBeenCalled()
     })
 
     it('should call onClick when view more button is clicked in full-doc mode', async () => {
+      const user = userEvent.setup()
       const onClick = vi.fn()
       const detail = createMockSegmentDetail()
       mockDocForm.current = ChunkingMode.parentChild
@@ -363,12 +367,13 @@ describe('SegmentCard', () => {
       )
 
       const viewMoreButton = screen.getByRole('button', { name: /viewMore/i })
-      await userEvent.setup().click(viewMoreButton)
+      await user.click(viewMoreButton)
 
       expect(onClick).toHaveBeenCalledTimes(1)
     })
 
     it('should call onDelete when confirm delete is clicked', async () => {
+      const user = userEvent.setup()
       const onDelete = vi.fn().mockResolvedValue(undefined)
       const detail = createMockSegmentDetail({ id: 'test-segment-id' })
 
@@ -383,13 +388,13 @@ describe('SegmentCard', () => {
       )
 
       const deleteButton = screen.getByRole('button', { name: 'common.operation.delete' })
-      await userEvent.setup().click(deleteButton)
+      await user.click(deleteButton)
 
       await waitFor(() => {
         expect(screen.getByText('datasetDocuments.segment.delete')).toBeInTheDocument()
       })
 
-      await userEvent.setup().click(screen.getByText('common.operation.sure'))
+      await user.click(screen.getByText('common.operation.sure'))
 
       await waitFor(() => {
         expect(onDelete).toHaveBeenCalledWith('test-segment-id')
@@ -397,6 +402,7 @@ describe('SegmentCard', () => {
     })
 
     it('should call onChangeSwitch when switch is toggled', async () => {
+      const user = userEvent.setup()
       const onChangeSwitch = vi.fn().mockResolvedValue(undefined)
       const onClick = vi.fn()
       const detail = createMockSegmentDetail({
@@ -418,7 +424,7 @@ describe('SegmentCard', () => {
 
       const switchElement = screen.getByRole('switch')
       expect(switchElement).toBeChecked()
-      await userEvent.setup().click(switchElement)
+      await user.click(switchElement)
       expect(onClick).not.toHaveBeenCalled()
 
       await waitFor(() => {
@@ -427,6 +433,7 @@ describe('SegmentCard', () => {
     })
 
     it('should stop propagation when edit button is clicked', async () => {
+      const user = userEvent.setup()
       const onClick = vi.fn()
       const onClickEdit = vi.fn()
       const detail = createMockSegmentDetail()
@@ -443,7 +450,7 @@ describe('SegmentCard', () => {
       )
 
       const editButton = screen.getByRole('button', { name: 'common.operation.edit' })
-      await userEvent.setup().click(editButton)
+      await user.click(editButton)
 
       expect(onClickEdit).toHaveBeenCalledTimes(1)
       expect(onClick).not.toHaveBeenCalled()
@@ -552,6 +559,7 @@ describe('SegmentCard', () => {
     })
 
     it('should call handleAddNewChildChunk when add button is clicked', async () => {
+      const user = userEvent.setup()
       mockDocForm.current = ChunkingMode.parentChild
       mockParentMode.current = 'paragraph'
       const handleAddNewChildChunk = vi.fn()
@@ -568,7 +576,7 @@ describe('SegmentCard', () => {
       )
 
       const addButton = screen.getByText('common.operation.add')
-      await userEvent.setup().click(addButton)
+      await user.click(addButton)
 
       expect(handleAddNewChildChunk).toHaveBeenCalledWith('parent-id')
     })

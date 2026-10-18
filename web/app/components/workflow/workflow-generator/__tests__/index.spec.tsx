@@ -2,9 +2,43 @@ import type { WorkflowGenerateErrorResponse } from '@dify/contracts/api/console/
 import type { GenerateWorkflowStreamCallbacks } from '@/service/workflow-generator'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import {
+  createCatalogModelFixture,
+  createDefaultModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import WorkflowGeneratorModal from '../index'
 import { useWorkflowGeneratorStore } from '../store'
+
+const render = createNuqsTestRenderer((ui) => {
+  const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient, [
+    createModelCatalogFixture({
+      models: [
+        createCatalogModelFixture({
+          model: 'gpt-4o',
+          label: { en_US: 'GPT-4o' },
+          model_properties: { mode: 'chat' },
+        }),
+      ],
+    }),
+  ])
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.defaultModel.get.queryKey({
+      input: { query: { model_type: 'llm' } },
+    }),
+    { data: createDefaultModelFixture({ model: 'gpt-4o' }) },
+  )
+  queryClient.setQueryDefaults(
+    consoleQuery.workspaces.current.modelProviders.byProvider.models.parameterRules.get.key(),
+    { initialData: { data: [] } },
+  )
+  return renderWithConsoleQuery(ui, { queryClient })
+})
 
 const mockGenerateWorkflow = vi.fn()
 const mockGenerateWorkflowStream = vi.fn()
@@ -14,22 +48,6 @@ const mockFetchWorkflowDraft = vi.fn()
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelListAndDefaultModelAndCurrentProviderAndModel: () => ({
-    defaultModel: {
-      model: 'gpt-4o',
-      provider: { provider: 'openai' },
-    },
-  }),
-}))
-
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
-  () => ({
-    default: () => <div>model selector</div>,
-  }),
-)
 
 vi.mock('@/app/components/workflow/workflow-preview', () => ({
   default: () => <div>workflow preview</div>,
@@ -109,7 +127,7 @@ describe('WorkflowGeneratorModal', () => {
         name: /workflowGenerator\.instruction/i,
       })
       await user.type(instruction, 'Summarize a URL')
-      fireEvent.keyDown(instruction, { key: 'Enter', ctrlKey: true })
+      await user.keyboard('{Control>}{Enter}{/Control}')
 
       await waitFor(() => expect(mockGenerateWorkflowStream).toHaveBeenCalledOnce())
     })

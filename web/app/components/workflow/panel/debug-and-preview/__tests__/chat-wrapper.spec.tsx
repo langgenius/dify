@@ -163,6 +163,7 @@ describe('ChatWrapper', () => {
   })
 
   it('seeds start defaults into workflow inputs and exposes restart through the ref handle', async () => {
+    const user = userEvent.setup()
     const chatState = createChatState()
     mockUseChat.mockReturnValue(chatState)
     const chatRef = createChatWrapperRef()
@@ -206,7 +207,7 @@ describe('ChatWrapper', () => {
       })
     })
 
-    await userEvent.click(screen.getByRole('button', { name: 'open-log' }))
+    await user.click(screen.getByRole('button', { name: 'open-log' }))
     expect(store.getState().messageLogItem?.workflow_run_id).toBe('run-1')
 
     act(() => {
@@ -371,6 +372,7 @@ describe('ChatWrapper', () => {
   })
 
   it('disables sending while the latest workflow run is paused', async () => {
+    const user = userEvent.setup()
     const chatState = createChatState({
       chatList: [
         { id: 'answer-1', isAnswer: true, content: '', workflowProcess: { status: 'paused' } },
@@ -389,7 +391,7 @@ describe('ChatWrapper', () => {
     )
     const send = screen.getByRole('button', { name: 'send-chat' })
     expect(send).toBeDisabled()
-    await userEvent.setup().click(send)
+    await user.click(send)
     expect(chatState.handleSend).not.toHaveBeenCalled()
   })
 

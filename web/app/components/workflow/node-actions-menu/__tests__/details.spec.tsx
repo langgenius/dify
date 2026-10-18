@@ -1,8 +1,12 @@
+import type { ToolProviderListResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { detectPlatform } from '@tanstack/react-hotkeys'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { renderWorkflowFlowComponent as renderWorkflowFlow } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import { BlockClassification } from '../../block-selector/types'
 import { useAvailableBlocks } from '../../hooks/use-available-blocks'
 import { useNodesInteractions } from '../../hooks/use-nodes-interactions'
@@ -36,17 +40,13 @@ vi.mock('../../hooks/use-nodes-meta-data', async (importOriginal) => {
   }
 })
 
-const { mockUseAllWorkflowTools } = vi.hoisted(() => ({ mockUseAllWorkflowTools: vi.fn() }))
+let workflowTools: ToolProviderListResponse = []
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.tools.workflow.get': () => mockUseAllWorkflowTools(),
-    'workspaces.current.tools.builtin.get': () => ({ data: [] }),
-    'workspaces.current.tools.api.get': () => ({ data: [] }),
-    'workspaces.current.tools.mcp.get': () => ({ data: [] }),
-  })
-})
+const renderWorkflowFlowComponent: typeof renderWorkflowFlow = (ui, options) => {
+  const { queryClient } = createConsoleQueryWrapper()
+  seedToolProviders(queryClient, { builtInTools: [], customTools: [], workflowTools, mcpTools: [] })
+  return renderWorkflowFlow(ui, { ...options, queryClient })
+}
 
 vi.mock('@/service/use-plugins', () => ({
   useFeaturedToolsRecommendations: () => ({ plugins: [], isLoading: false }),
@@ -64,15 +64,18 @@ const mockUseAvailableBlocks = vi.mocked(useAvailableBlocks)
 const mockUseNodeMetaData = vi.mocked(useNodeMetaData)
 const mockUseNodesInteractions = vi.mocked(useNodesInteractions)
 
-async function renderDropdownContent({
-  showHelpLink = true,
-  onClose = vi.fn(),
-  data = {},
-}: {
-  showHelpLink?: boolean
-  onClose?: () => void
-  data?: Record<string, unknown>
-} = {}) {
+async function renderDropdownContent(
+  user: ReturnType<typeof userEvent.setup>,
+  {
+    showHelpLink = true,
+    onClose = vi.fn(),
+    data = {},
+  }: {
+    showHelpLink?: boolean
+    onClose?: () => void
+    data?: Record<string, unknown>
+  } = {},
+) {
   const result = renderWorkflowFlowComponent(
     <NodeActionsDropdown
       id="node-1"
@@ -116,7 +119,7 @@ async function renderDropdownContent({
       edges: [{ id: 'edge-1', source: 'node-0', target: 'node-1', sourceHandle: 'branch-a' }],
     },
   )
-  await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.more' }))
+  await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
   return result
 }
 
@@ -152,7 +155,7 @@ describe('node actions menu details', () => {
       handleNodeSelect,
       handleNodesCopy,
     } as unknown as ReturnType<typeof useNodesInteractions>)
-    mockUseAllWorkflowTools.mockReturnValue({ data: [] })
+    workflowTools = []
   })
 
   it('keeps the menu after Escape and closes both surfaces after changing a node', async () => {
@@ -242,7 +245,7 @@ describe('node actions menu details', () => {
 
   it('should run, copy, duplicate, delete, and expose the help link', async () => {
     const user = userEvent.setup()
-    const { store } = await renderDropdownContent()
+    const { store } = await renderDropdownContent(user)
 
     await user.click(screen.getByText('workflow.panel.runThisStep'))
     await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
@@ -267,7 +270,7 @@ describe('node actions menu details', () => {
 
   it('should stop the current single run from the run action when the node is running', async () => {
     const user = userEvent.setup()
-    const { store } = await renderDropdownContent({
+    const { store } = await renderDropdownContent(user, {
       data: {
         _singleRunningStatus: NodeRunningStatus.Running,
       },
@@ -281,6 +284,7 @@ describe('node actions menu details', () => {
   })
 
   it('should hide change action when node is undeletable', async () => {
+    const user = userEvent.setup()
     mockUseNodeMetaData.mockReturnValue({
       isTypeFixed: false,
       isSingleton: true,
@@ -289,7 +293,7 @@ describe('node actions menu details', () => {
       author: 'Dify',
     } as ReturnType<typeof useNodeMetaData>)
 
-    await renderDropdownContent({ showHelpLink: false })
+    await renderDropdownContent(user, { showHelpLink: false })
 
     expect(screen.getByText('workflow.panel.runThisStep')).toBeInTheDocument()
     expect(
@@ -299,9 +303,14 @@ describe('node actions menu details', () => {
   })
 
   it('links workflow tools to their app', async () => {
-    mockUseAllWorkflowTools.mockReturnValue({
-      data: [{ id: 'workflow-tool', workflow_app_id: 'app-123' }],
-    })
+    const user = userEvent.setup()
+    workflowTools = [
+      createToolProviderFixture({
+        id: 'workflow-tool',
+        type: 'workflow',
+        workflow_app_id: 'app-123',
+      }),
+    ]
 
     renderWorkflowFlowComponent(
       <NodeActionsDropdown
@@ -356,7 +365,7 @@ describe('node actions menu details', () => {
       },
     )
 
-    await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.more' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
     expect(screen.getByRole('menuitem', { name: 'workflow.panel.openWorkflow' })).toHaveAttribute(
       'href',
       '/app/app-123/workflow',
@@ -364,7 +373,8 @@ describe('node actions menu details', () => {
   })
 
   it('removes editing and run actions when the canvas becomes readonly', async () => {
-    const { store } = await renderDropdownContent()
+    const user = userEvent.setup()
+    const { store } = await renderDropdownContent(user)
     expect(screen.getByRole('menuitem', { name: 'workflow.panel.runThisStep' })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: /workflow.common.copy/ })).toBeInTheDocument()
 

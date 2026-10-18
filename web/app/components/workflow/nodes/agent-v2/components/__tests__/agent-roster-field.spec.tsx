@@ -4,11 +4,10 @@ import { useRef } from 'react'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AgentRosterField } from '../agent-roster-field'
 
-vi.mock('@/features/agent-v2/permissions', () => ({
-  useCanCreateAgents: () => true,
-}))
-
-function renderDetailRosterField(permissionKeys = ['agent.acl.edit']) {
+function renderDetailRosterField(
+  permissionKeys = ['agent.acl.edit'],
+  role = 'Shared roster agent',
+) {
   const onMakeCopy = vi.fn()
   function Harness() {
     const portalContainerRef = useRef<HTMLDivElement>(null)
@@ -20,7 +19,8 @@ function renderDetailRosterField(permissionKeys = ['agent.acl.edit']) {
             id: 'roster-agent-1',
             name: 'Roster Agent',
             permission_keys: permissionKeys,
-            role: 'Shared roster agent',
+            role,
+            description: 'Agent description',
           }}
           portalContainerRef={portalContainerRef}
           onChange={vi.fn()}
@@ -50,6 +50,16 @@ describe('AgentRosterField', () => {
     expect(
       screen.getByRole('link', { name: 'workflowAgent.nodes.agent.roster.editInConsole' }),
     ).toHaveAttribute('href', expect.stringContaining('roster-agent-1'))
+  })
+
+  it('does not substitute the agent description for an empty role', async () => {
+    const user = userEvent.setup()
+    renderDetailRosterField(['agent.acl.edit'], '')
+    expect(screen.queryByText('Agent description')).not.toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', { name: /^workflowAgent\.nodes\.agent\.roster\.openPanel/ }),
+    )
+    expect(screen.queryByText('Agent description')).not.toBeInTheDocument()
   })
 
   it('does not offer editing for a preview-only Agent', async () => {

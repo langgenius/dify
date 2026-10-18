@@ -1,81 +1,26 @@
 import { ORPCError } from '@orpc/client'
-import { act } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
+import { createElement } from 'react'
+import {
+  createEdge,
+  createNode,
+  createStartNode,
+} from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowHook as renderHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
+import { AppToastHost } from '@/app/notifications/host'
 import { consoleClient } from '@/service/console'
 import useOneStepRun from '../use-one-step-run'
-
-vi.mock('@/app/notifications', () => ({
-  toast: {
-    error: vi.fn(),
-  },
-}))
 
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
 }))
 
-vi.mock('../../../../hooks/use-node-data-update', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../../hooks/use-node-data-update')>()
-
-  return {
-    ...actual,
-    useNodeDataUpdate: () => ({
-      handleNodeDataUpdate: vi.fn(),
-    }),
-  }
-})
-
-vi.mock('../../../../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../../hooks/use-workflow')>()
-
-  return {
-    ...actual,
-
-    useWorkflow: () => ({
-      getBeforeNodesInSameBranch: () => [
-        {
-          id: 'start',
-          data: {
-            type: 'start',
-            title: 'Start',
-            variables: [],
-          },
-        },
-      ],
-      getBeforeNodesInSameBranchIncludeParent: () => [
-        {
-          id: 'start',
-          data: {
-            type: 'start',
-            title: 'Start',
-            variables: [],
-          },
-        },
-      ],
-    }),
-  }
-})
-
-vi.mock('../../../../hooks/use-inspect-vars-crud', () => ({
-  default: () => ({
-    appendNodeInspectVars: vi.fn(),
-    invalidateSysVarValues: vi.fn(),
-    invalidateConversationVarValues: vi.fn(),
-  }),
+const { runTrigger } = vi.hoisted(() => ({
+  runTrigger:
+    vi.fn<typeof consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post>(),
 }))
-
-vi.mock('@/service/use-workflow', () => ({
-  useInvalidateLastRun: () => vi.fn(),
-}))
-
-vi.mock('@/service/workflow', () => ({
-  fetchNodeInspectVars: vi.fn(),
-  singleNodeRun: vi.fn(),
-}))
-
-const { runTrigger } = vi.hoisted(() => ({ runTrigger: vi.fn() }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses, withConsoleClientResponses } =
@@ -84,8 +29,12 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post': runTrigger,
+      'apps.byAppId.workflows.draft.nodes.byNodeId.variables.get': async () => ({ items: [] }),
     }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'spec.schemaDefinitions.get': async () => [],
+      'apps.byAppId.workflows.draft.systemVariables.get': async () => ({ items: [] }),
+      'apps.byAppId.workflows.draft.conversationVariables.get': async () => ({ items: [] }),
       'workspaces.current.tools.builtin.get': async () => [],
       'workspaces.current.tools.api.get': async () => [],
       'workspaces.current.tools.workflow.get': async () => [],
@@ -94,19 +43,14 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  ssePost: vi.fn(),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/use-match-schema-type', () => ({
-  default: () => ({
-    schemaTypeDefinitions: [],
-  }),
-}))
-
-const renderUseOneStepRun = (type: BlockEnum = BlockEnum.IfElse) =>
-  renderHook(
+const renderUseOneStepRun = (type: BlockEnum = BlockEnum.IfElse) => {
+  render(createElement(AppToastHost))
+  const nodes = [
+    createStartNode({ id: 'start', data: { variables: [] } }),
+    createNode({ id: 'if-else-node', data: { type, title: 'Test node' } }),
+  ]
+  const edges = [createEdge({ source: 'start', target: 'if-else-node' })]
+  return renderHook(
     () =>
       useOneStepRun({
         id: 'if-else-node',
@@ -121,18 +65,26 @@ const renderUseOneStepRun = (type: BlockEnum = BlockEnum.IfElse) =>
         isRunAfterSingleRun: false,
         isPaused: false,
       }),
-    { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
+    {
+      resource: { kind: 'app', appId: 'app-id', mode: 'workflow' },
+      nodes,
+      edges,
+      historyStore: { nodes, edges },
+    },
   )
+}
+
+const originalUrl = window.location.href
 
 describe('useOneStepRun single-run input vars', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     runTrigger.mockReset()
-    window.history.replaceState(null, '', '/app/test-app/workflow')
+    window.history.replaceState(null, '', '/app/app-id/workflow')
   })
-  afterEach(() => {
-    window.history.replaceState(null, '', '/')
+  afterEach(async () => {
+    window.history.replaceState(null, '', originalUrl)
     vi.restoreAllMocks()
+    await act(async () => toast.dismiss())
   })
 
   it('uses value_type when the variable cannot be resolved from output vars', () => {
@@ -154,17 +106,13 @@ describe('useOneStepRun single-run input vars', () => {
     ])
   })
 
-  it('resolves global system vars by full variable name', () => {
+  it('resolves global system vars by full variable name', async () => {
     const { result } = renderUseOneStepRun()
-
-    const inputs = result.current.varSelectorsToVarInputs([['sys', 'timestamp']])
-
-    expect(inputs).toMatchObject([
-      {
-        variable: '#sys.timestamp#',
-        type: InputVarType.number,
-      },
-    ])
+    await waitFor(() =>
+      expect(result.current.varSelectorsToVarInputs([['sys', 'timestamp']])).toMatchObject([
+        { variable: '#sys.timestamp#', type: InputVarType.number },
+      ]),
+    )
   })
 
   it.each([BlockEnum.TriggerSchedule, BlockEnum.TriggerWebhook, BlockEnum.TriggerPlugin])(
@@ -183,7 +131,7 @@ describe('useOneStepRun single-run input vars', () => {
       })
       if (type !== BlockEnum.TriggerSchedule)
         expect(run.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal)
-      expect(toast.error).not.toHaveBeenCalled()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     },
   )
 
@@ -215,7 +163,7 @@ describe('useOneStepRun single-run input vars', () => {
         listeningTriggerNodeId: null,
         listeningTriggerNodeIds: [],
       })
-      expect(toast.error).not.toHaveBeenCalled()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     },
   )
 
@@ -236,8 +184,7 @@ describe('useOneStepRun single-run input vars', () => {
       expect(await result.current.handleRun({})).toBe(false)
     })
 
-    expect(toast.error).toHaveBeenCalledWith('Plugin access denied')
+    expect(await screen.findByText('Plugin access denied')).toBeInTheDocument()
     expect(reportError).toHaveBeenCalledWith(error)
-    expect(reportError.mock.calls[0]?.[0]).toBe(error)
   })
 })

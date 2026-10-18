@@ -241,6 +241,7 @@ describe('DuplicateAppModal', () => {
 })
 
 it('waits for the real Cloud quota and allows an unlimited quota without an upgrade notice', async () => {
+  const user = userEvent.setup()
   const queryClient = createConsoleQueryClient()
   void queryClient.query({
     ...consoleQuery.features.get.queryOptions(),
@@ -265,6 +266,6 @@ it('waits for the real Cloud quota and allows an unlimited quota without an upgr
     seedFeatures(queryClient, { apps: { size: 100, limit: 0 } })
   })
   await waitFor(() => expect(button).toBeEnabled())
-  await userEvent.setup().click(button)
+  await user.click(button)
   expect(onConfirm).toHaveBeenCalledOnce()
 })

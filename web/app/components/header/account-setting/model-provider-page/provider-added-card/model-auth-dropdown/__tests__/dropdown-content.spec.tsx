@@ -297,6 +297,7 @@ describe('DropdownContent', () => {
     })
 
     it('should call activate without closing on credential item click', async () => {
+      const user = userEvent.setup()
       const pending = createDeferred<{ result: string }>()
       mockSwitchCredential.mockReturnValueOnce(pending.promise)
       render(
@@ -309,7 +310,7 @@ describe('DropdownContent', () => {
         />,
       )
 
-      await userEvent.setup().click(screen.getByRole('button', { name: 'Other Key' }))
+      await user.click(screen.getByRole('button', { name: 'Other Key' }))
 
       expect(mockSwitchCredential).toHaveBeenCalledExactlyOnceWith({
         params: { provider: 'test' },
@@ -328,6 +329,7 @@ describe('DropdownContent', () => {
     })
 
     it('should call handleOpenModal and close on edit credential', async () => {
+      const user = userEvent.setup()
       render(
         <DropdownContent
           provider={createProvider()}
@@ -338,7 +340,7 @@ describe('DropdownContent', () => {
         />,
       )
 
-      await userEvent.setup().click(
+      await user.click(
         within(screen.getByText('Other Key').closest('.group')!).getByRole('button', {
           name: 'common.operation.edit',
         }),
@@ -351,6 +353,7 @@ describe('DropdownContent', () => {
     })
 
     it('should call openConfirmDelete on delete credential', async () => {
+      const user = userEvent.setup()
       render(
         <DropdownContent
           provider={createProvider()}
@@ -361,7 +364,7 @@ describe('DropdownContent', () => {
         />,
       )
 
-      await userEvent.setup().click(
+      await user.click(
         within(screen.getByText('Other Key').closest('.group')!).getByRole('button', {
           name: 'common.operation.delete',
         }),
@@ -373,6 +376,7 @@ describe('DropdownContent', () => {
     })
 
     it('should allow use-only users to switch credentials but not edit or delete them', async () => {
+      const user = userEvent.setup()
       mockWorkspacePermissionKeys = ['credential.use']
 
       render(
@@ -385,7 +389,7 @@ describe('DropdownContent', () => {
         />,
       )
 
-      await userEvent.setup().click(screen.getByRole('button', { name: 'Other Key' }))
+      await user.click(screen.getByRole('button', { name: 'Other Key' }))
       expect(
         screen.queryByRole('button', { name: 'common.operation.edit' }),
       ).not.toBeInTheDocument()
@@ -402,6 +406,7 @@ describe('DropdownContent', () => {
     })
 
     it('should allow create-only users to add credentials but not switch, edit, or delete existing credentials', async () => {
+      const user = userEvent.setup()
       mockWorkspacePermissionKeys = ['credential.create']
 
       render(
@@ -421,7 +426,7 @@ describe('DropdownContent', () => {
       expect(
         screen.queryByRole('button', { name: 'common.operation.delete' }),
       ).not.toBeInTheDocument()
-      await userEvent.setup().click(screen.getByRole('button', { name: /addApiKey/ }))
+      await user.click(screen.getByRole('button', { name: /addApiKey/ }))
 
       expect(mockSwitchCredential).not.toHaveBeenCalled()
       expect(mockOpenConfirmDelete).not.toHaveBeenCalled()
@@ -431,6 +436,7 @@ describe('DropdownContent', () => {
     })
 
     it('should allow manage-only users to edit and delete credentials but not switch or add them', async () => {
+      const user = userEvent.setup()
       mockWorkspacePermissionKeys = ['credential.manage']
 
       render(
@@ -444,12 +450,12 @@ describe('DropdownContent', () => {
       )
 
       expect(screen.queryByRole('button', { name: 'Other Key' })).not.toBeInTheDocument()
-      await userEvent.setup().click(
+      await user.click(
         within(screen.getByText('Other Key').closest('.group')!).getByRole('button', {
           name: 'common.operation.edit',
         }),
       )
-      await userEvent.setup().click(
+      await user.click(
         within(screen.getByText('Other Key').closest('.group')!).getByRole('button', {
           name: 'common.operation.delete',
         }),
@@ -469,6 +475,7 @@ describe('DropdownContent', () => {
   it.each(['cancel', 'delete'] as const)(
     'routes the delete confirmation %s action',
     async (action) => {
+      const user = userEvent.setup()
       mockDeleteCredentialId = 'cred-2'
       render(
         <DropdownContent
@@ -480,9 +487,7 @@ describe('DropdownContent', () => {
         />,
       )
       const dialog = screen.getByRole('alertdialog')
-      await userEvent
-        .setup()
-        .click(within(dialog).getByRole('button', { name: `common.operation.${action}` }))
+      await user.click(within(dialog).getByRole('button', { name: `common.operation.${action}` }))
       expect(
         action === 'cancel' ? mockCloseConfirmDelete : mockHandleConfirmDelete,
       ).toHaveBeenCalledTimes(1)
@@ -494,6 +499,7 @@ describe('DropdownContent', () => {
 
   describe('Add API Key', () => {
     it('should call handleOpenModal with no args and close on add', async () => {
+      const user = userEvent.setup()
       render(
         <DropdownContent
           provider={createProvider({
@@ -509,7 +515,7 @@ describe('DropdownContent', () => {
         />,
       )
 
-      await userEvent.setup().click(screen.getByRole('button', { name: /addApiKey/ }))
+      await user.click(screen.getByRole('button', { name: /addApiKey/ }))
 
       expect(mockHandleOpenModal).toHaveBeenCalledWith()
       expect(onClose).toHaveBeenCalled()

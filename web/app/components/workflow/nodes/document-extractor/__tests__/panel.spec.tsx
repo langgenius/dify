@@ -20,6 +20,7 @@ it.each([
 ])(
   'discloses $outputType output for the configured file input',
   async ({ isArray, outputType }) => {
+    const user = userEvent.setup()
     const data: DocExtractorNodeType = {
       title: 'Document Extractor',
       desc: '',
@@ -57,7 +58,7 @@ it.each([
       },
     )
 
-    await userEvent.setup().click(screen.getByRole('button', { name: /outputVars/ }))
+    await user.click(screen.getByRole('button', { name: /outputVars/ }))
     expect(screen.getByText('text')).toBeInTheDocument()
     expect(screen.getByText(outputType)).toBeInTheDocument()
   },

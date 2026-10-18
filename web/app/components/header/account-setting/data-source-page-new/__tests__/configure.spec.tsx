@@ -100,6 +100,7 @@ describe('Configure Component', () => {
 
   describe('Open State Management', () => {
     it('should toggle and manage the open state correctly', async () => {
+      const user = userEvent.setup()
       const itemWithApiKey: DatasourceProviderAuthResponse = {
         ...mockItemBase,
         credential_schema: [mockFormSchema],
@@ -110,11 +111,11 @@ describe('Configure Component', () => {
 
       expect(screen.queryByRole('button', { name: 'plugin.auth.addApi' })).not.toBeInTheDocument()
 
-      await userEvent.setup().click(trigger)
+      await user.click(trigger)
 
       expect(screen.getByRole('button', { name: 'plugin.auth.addApi' })).toBeInTheDocument()
 
-      await userEvent.setup().click(trigger)
+      await user.click(trigger)
 
       expect(screen.queryByRole('button', { name: 'plugin.auth.addApi' })).not.toBeInTheDocument()
     })
@@ -122,19 +123,21 @@ describe('Configure Component', () => {
 
   describe('Conditional Rendering', () => {
     it('should render AddApiKeyButton when credential_schema is non-empty', async () => {
+      const user = userEvent.setup()
       const itemWithApiKey: DatasourceProviderAuthResponse = {
         ...mockItemBase,
         credential_schema: [mockFormSchema],
       }
 
       render(<Configure item={itemWithApiKey} pluginPayload={mockPluginPayload} />)
-      await userEvent.setup().click(screen.getByRole('button', { name: /dataSource.configure/i }))
+      await user.click(screen.getByRole('button', { name: /dataSource.configure/i }))
 
       expect(screen.getByRole('button', { name: 'plugin.auth.addApi' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'plugin.auth.addOAuth' })).not.toBeInTheDocument()
     })
 
     it('should render AddOAuthButton when oauth_schema with client_schema is non-empty', async () => {
+      const user = userEvent.setup()
       const itemWithOAuth: DatasourceProviderAuthResponse = {
         ...mockItemBase,
         oauth_schema: createOAuthSchema({
@@ -143,13 +146,14 @@ describe('Configure Component', () => {
       }
 
       render(<Configure item={itemWithOAuth} pluginPayload={mockPluginPayload} />)
-      await userEvent.setup().click(screen.getByRole('button', { name: /dataSource.configure/i }))
+      await user.click(screen.getByRole('button', { name: /dataSource.configure/i }))
 
       expect(screen.getByRole('button', { name: 'plugin.auth.addOAuth' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'plugin.auth.addApi' })).not.toBeInTheDocument()
     })
 
     it('should render both buttons and the OR divider when both schemes are available', async () => {
+      const user = userEvent.setup()
       const itemWithBoth: DatasourceProviderAuthResponse = {
         ...mockItemBase,
         credential_schema: [mockFormSchema],
@@ -159,7 +163,7 @@ describe('Configure Component', () => {
       }
 
       render(<Configure item={itemWithBoth} pluginPayload={mockPluginPayload} />)
-      await userEvent.setup().click(screen.getByRole('button', { name: /dataSource.configure/i }))
+      await user.click(screen.getByRole('button', { name: /dataSource.configure/i }))
 
       expect(screen.getByRole('button', { name: 'plugin.auth.addApi' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'plugin.auth.addOAuth' })).toBeInTheDocument()
@@ -169,6 +173,7 @@ describe('Configure Component', () => {
 
   describe('Update Handling', () => {
     it('should keep the permission dialog mounted after the OAuth menu closes', async () => {
+      const user = userEvent.setup()
       const itemWithOAuth: DatasourceProviderAuthResponse = {
         ...mockItemBase,
         oauth_schema: createOAuthSchema({
@@ -183,8 +188,8 @@ describe('Configure Component', () => {
         />,
       )
 
-      await userEvent.setup().click(screen.getByRole('button', { name: /dataSource.configure/i }))
-      await userEvent.setup().click(screen.getByRole('button', { name: 'plugin.auth.addOAuth' }))
+      await user.click(screen.getByRole('button', { name: /dataSource.configure/i }))
+      await user.click(screen.getByRole('button', { name: 'plugin.auth.addOAuth' }))
 
       expect(mockOnUpdate).toHaveBeenCalledOnce()
       expect(screen.queryByRole('button', { name: 'plugin.auth.addOAuth' })).not.toBeInTheDocument()
@@ -192,6 +197,7 @@ describe('Configure Component', () => {
     })
 
     it('should call onUpdate and close the portal when an update is triggered', async () => {
+      const user = userEvent.setup()
       const itemWithApiKey: DatasourceProviderAuthResponse = {
         ...mockItemBase,
         credential_schema: [mockFormSchema],
@@ -204,8 +210,8 @@ describe('Configure Component', () => {
         />,
       )
 
-      await userEvent.setup().click(screen.getByRole('button', { name: /dataSource.configure/i }))
-      await userEvent.setup().click(screen.getByRole('button', { name: 'plugin.auth.addApi' }))
+      await user.click(screen.getByRole('button', { name: /dataSource.configure/i }))
+      await user.click(screen.getByRole('button', { name: 'plugin.auth.addApi' }))
 
       expect(mockOnUpdate).toHaveBeenCalledTimes(1)
       expect(screen.queryByRole('button', { name: 'plugin.auth.addApi' })).not.toBeInTheDocument()
@@ -214,6 +220,7 @@ describe('Configure Component', () => {
 
   describe('Props and Edge Cases', () => {
     it('should pass the disabled prop to both configuration buttons', async () => {
+      const user = userEvent.setup()
       const itemWithBoth: DatasourceProviderAuthResponse = {
         ...mockItemBase,
         credential_schema: [mockFormSchema],
@@ -223,17 +230,18 @@ describe('Configure Component', () => {
       }
 
       render(<Configure item={itemWithBoth} pluginPayload={mockPluginPayload} disabled={true} />)
-      await userEvent.setup().click(screen.getByRole('button', { name: /dataSource.configure/i }))
+      await user.click(screen.getByRole('button', { name: /dataSource.configure/i }))
 
       expect(screen.getByRole('button', { name: 'plugin.auth.addApi' })).toBeDisabled()
       expect(screen.getByRole('button', { name: 'plugin.auth.addOAuth' })).toBeDisabled()
     })
 
     it('should handle edge cases for missing, empty, or partial item data', async () => {
+      const user = userEvent.setup()
       const { rerender } = render(
         <Configure item={mockItemBase} pluginPayload={mockPluginPayload} />,
       )
-      await userEvent.setup().click(screen.getByRole('button', { name: /dataSource.configure/i }))
+      await user.click(screen.getByRole('button', { name: /dataSource.configure/i }))
       expect(screen.queryByRole('button', { name: 'plugin.auth.addApi' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'plugin.auth.addOAuth' })).not.toBeInTheDocument()
 

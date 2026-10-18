@@ -1,13 +1,11 @@
-import type { ReactElement } from 'react'
 import type { EmailConfig } from '../../../types'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { useState } from 'react'
+import { renderWorkflowEditor as render } from '@/test/workflow-editor'
 import EmailConfigureModal from '../email-configure-modal'
 
 const mockToastError = vi.hoisted(() => vi.fn())
-const render = (ui: ReactElement) =>
-  renderWithConsoleQuery(ui, { accountProfile: { email: 'owner@example.com' } })
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -21,19 +19,7 @@ vi.mock('@/service/console', async (importOriginal) => {
 })
 
 vi.mock('@/app/notifications', () => ({
-  toast: {
-    error: (message: string) => mockToastError(message),
-  },
-}))
-
-vi.mock('../mail-body-input', () => ({
-  default: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => (
-    <textarea
-      aria-label="mail-body-input"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-    />
-  ),
+  toast: { error: mockToastError },
 }))
 
 const createEmailConfig = (overrides: Partial<EmailConfig> = {}): EmailConfig => ({
@@ -47,121 +33,95 @@ const createEmailConfig = (overrides: Partial<EmailConfig> = {}): EmailConfig =>
   ...overrides,
 })
 
-describe('human-input/delivery-method/email-configure-modal', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+const prefix = 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigure'
 
-  it('should save a valid email configuration with updated values', () => {
-    const handleConfirm = vi.fn()
+it('saves edited email content with an inserted request URL token', async () => {
+  const user = userEvent.setup()
+  const handleConfirm = vi.fn()
+  render(
+    <EmailConfigureModal
+      open
+      config={createEmailConfig({
+        body: 'Draft email body',
+        recipients: { whole_workspace: false, items: [] },
+      })}
+      onOpenChange={vi.fn()}
+      onConfirm={handleConfirm}
+    />,
+  )
 
-    render(
-      <EmailConfigureModal
-        open
-        config={createEmailConfig({ recipients: { whole_workspace: false, items: [] } })}
-        onOpenChange={vi.fn()}
-        onConfirm={handleConfirm}
-      />,
-    )
+  const subject = screen.getByRole('textbox', { name: `${prefix}.subject` })
+  await user.clear(subject)
+  await user.type(subject, 'Budget alert')
+  const body = screen.getByRole('textbox', { name: `${prefix}.body` })
+  await user.clear(body)
+  await user.paste('Please review {{#url#}} now')
+  await waitFor(() => expect(body).toHaveTextContent('Please review'))
+  await user.click(screen.getByRole('switch', { name: /emailConfigure.allMembers/ }))
+  await user.click(screen.getByRole('switch', { name: `${prefix}.debugMode` }))
+  await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-    expect(screen.getByRole('dialog')).toHaveTextContent(
-      'nodes.humanInput.deliveryMethod.emailConfigure.debugModeTip1',
-    )
-
-    fireEvent.change(
-      screen.getByRole('textbox', {
-        name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigure.subject',
-      }),
-      {
-        target: { value: 'Budget alert' },
-      },
-    )
-    fireEvent.change(screen.getByLabelText('mail-body-input'), {
-      target: { value: 'Please review {{#url#}} now' },
-    })
-    fireEvent.click(screen.getByRole('switch', { name: /emailConfigure.allMembers/ }))
-    fireEvent.click(
-      screen.getByRole('switch', {
-        name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigure.debugMode',
-      }),
-    )
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
-
-    expect(handleConfirm).toHaveBeenCalledWith({
-      recipients: {
-        whole_workspace: true,
-        items: [],
-      },
-      subject: 'Budget alert',
-      body: 'Please review {{#url#}} now',
-      debug_mode: true,
-    })
-  })
-
-  it('should validate subject, body, request url placeholder, and recipients before saving', () => {
-    const handleConfirm = vi.fn()
-
-    render(<EmailConfigureModal open onOpenChange={vi.fn()} onConfirm={handleConfirm} />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
-    expect(mockToastError).toHaveBeenCalledWith(
-      'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigure.subjectRequired',
-    )
-
-    fireEvent.change(
-      screen.getByRole('textbox', {
-        name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigure.subject',
-      }),
-      {
-        target: { value: 'Subject ready' },
-      },
-    )
-    fireEvent.change(screen.getByLabelText('mail-body-input'), {
-      target: { value: '   ' },
-    })
-    fireEvent.click(screen.getByRole('switch', { name: /emailConfigure.allMembers/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
-    expect(mockToastError).toHaveBeenCalledWith(
-      'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigure.bodyRequired',
-    )
-
-    fireEvent.change(screen.getByLabelText('mail-body-input'), {
-      target: { value: 'Missing placeholder' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
-    expect(mockToastError).toHaveBeenCalledWith(
-      expect.stringContaining(
-        'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigure.bodyMustContainRequestURL',
-      ),
-    )
-
-    fireEvent.change(screen.getByLabelText('mail-body-input'), {
-      target: { value: 'Ready {{#url#}}' },
-    })
-    fireEvent.click(screen.getByRole('switch', { name: /emailConfigure.allMembers/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
-    expect(mockToastError).toHaveBeenCalledWith(
-      'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigure.recipientsRequired',
-    )
-    expect(handleConfirm).not.toHaveBeenCalled()
-  })
-
-  it('should close from both the icon trigger and the cancel button', async () => {
-    const handleOpenChange = vi.fn()
-    render(
-      <EmailConfigureModal
-        open
-        config={createEmailConfig()}
-        onOpenChange={handleOpenChange}
-        onConfirm={vi.fn()}
-      />,
-    )
-
-    const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
-    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
-
-    expect(handleOpenChange).toHaveBeenCalledTimes(2)
-    expect(handleOpenChange).toHaveBeenCalledWith(false)
+  expect(handleConfirm).toHaveBeenCalledExactlyOnceWith({
+    recipients: { whole_workspace: true, items: [] },
+    subject: 'Budget alert',
+    body: 'Please review {{#url#}} now',
+    debug_mode: true,
   })
 })
+
+it.each<{
+  scenario: string
+  config: Partial<EmailConfig>
+  error: string
+}>([
+  { scenario: 'an empty subject', config: { subject: '' }, error: 'subjectRequired' },
+  { scenario: 'a blank body', config: { body: '   ' }, error: 'bodyRequired' },
+  {
+    scenario: 'a missing request URL',
+    config: { body: 'Please review' },
+    error: 'bodyMustContainRequestURL',
+  },
+  {
+    scenario: 'no recipients',
+    config: { recipients: { whole_workspace: false, items: [] } },
+    error: 'recipientsRequired',
+  },
+])('rejects $scenario without saving', async ({ config, error }) => {
+  const user = userEvent.setup()
+  const handleConfirm = vi.fn()
+  render(
+    <EmailConfigureModal
+      open
+      config={createEmailConfig(config)}
+      onOpenChange={vi.fn()}
+      onConfirm={handleConfirm}
+    />,
+  )
+  await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+  expect(mockToastError).toHaveBeenCalledExactlyOnceWith(
+    expect.stringContaining(`${prefix}.${error}`),
+  )
+  expect(handleConfirm).not.toHaveBeenCalled()
+})
+
+function DismissibleEmailConfig() {
+  const [open, setOpen] = useState(true)
+  return (
+    <EmailConfigureModal
+      open={open}
+      config={createEmailConfig()}
+      onOpenChange={setOpen}
+      onConfirm={vi.fn()}
+    />
+  )
+}
+
+it.each(['common.operation.close', 'common.operation.cancel'])(
+  'dismisses email configuration through %s',
+  async (name) => {
+    const user = userEvent.setup()
+    render(<DismissibleEmailConfig />)
+    await user.click(screen.getByRole('button', { name }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  },
+)

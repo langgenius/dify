@@ -200,13 +200,14 @@ describe('VersionHistoryPanel', () => {
     })
 
     it('should call handleRestoreFromPublishedWorkflow when clicking published version', async () => {
+      const user = userEvent.setup()
       const { VersionHistoryPanel } = await import('../index')
 
       render(<VersionHistoryPanel latestVersionId="published-version-id" />)
 
       vi.clearAllMocks()
 
-      await userEvent.setup().click(screen.getByRole('button', { name: 'v1.0' }))
+      await user.click(screen.getByRole('button', { name: 'v1.0' }))
 
       expect(mockHandleRestoreFromPublishedWorkflow).toHaveBeenCalled()
       expect(mockHandleLoadBackupDraft).not.toHaveBeenCalled()
@@ -214,6 +215,7 @@ describe('VersionHistoryPanel', () => {
   })
 
   it('should set current version before confirming restore from context menu', async () => {
+    const user = userEvent.setup()
     const { VersionHistoryPanel } = await import('../index')
 
     render(<VersionHistoryPanel latestVersionId="published-version-id" />)
@@ -224,7 +226,7 @@ describe('VersionHistoryPanel', () => {
     vi.clearAllMocks()
 
     await selectAction(/common\.restore/)
-    await userEvent.setup().click(screen.getByRole('button', { name: 'workflow.common.restore' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.common.restore' }))
 
     await waitFor(() => {
       expect(renderedStore.getState().currentVersion?.id).toBe('published-version-id')
@@ -292,6 +294,7 @@ describe('VersionHistoryPanel', () => {
   })
 
   it('should keep restore mode backup state when restore request fails', async () => {
+    const user = userEvent.setup()
     const { VersionHistoryPanel } = await import('../index')
     mockCurrentVersion = createVersionHistory({
       id: 'draft-version-id',
@@ -304,7 +307,7 @@ describe('VersionHistoryPanel', () => {
     mockRestoreWorkflow.mockRejectedValueOnce(new Error('restore failed'))
 
     await selectAction(/common\.restore/)
-    await userEvent.setup().click(screen.getByRole('button', { name: 'workflow.common.restore' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.common.restore' }))
 
     await waitFor(() => {
       expect(mockEmitRestoreComplete).toHaveBeenCalledWith({
@@ -321,6 +324,7 @@ describe('VersionHistoryPanel', () => {
   })
 
   it('should refresh the published workflow after editing the latest app version', async () => {
+    const user = userEvent.setup()
     mockUpdateWorkflow.mockResolvedValue({
       id: 'published-version-id',
       marked_name: 'Updated release',
@@ -336,7 +340,7 @@ describe('VersionHistoryPanel', () => {
     )
 
     await selectAction(/editVersionInfo/)
-    await userEvent.setup().click(screen.getByRole('button', { name: 'submit version info' }))
+    await user.click(screen.getByRole('button', { name: 'submit version info' }))
 
     await waitFor(() => {
       expect(mockUpdateWorkflow).toHaveBeenCalledWith(

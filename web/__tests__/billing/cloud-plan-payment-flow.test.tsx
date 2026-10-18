@@ -88,13 +88,12 @@ describe('Cloud plan payment flow', () => {
   ] as const)(
     'displays $plan pricing and redirects to its $interval checkout',
     async ({ plan, interval, label }) => {
+      const user = userEvent.setup()
       renderPlan({ plan, billingInterval: interval })
       const price = ALL_PLANS[plan].price
       expect(screen.getByText(`$${price * (interval === 'year' ? 10 : 1)}`)).toBeInTheDocument()
       if (interval === 'year') expect(screen.getByText(`$${price * 12}`)).toBeInTheDocument()
-      await userEvent
-        .setup()
-        .click(screen.getByRole('button', { name: `billing.plansCommon.${label}` }))
+      await user.click(screen.getByRole('button', { name: `billing.plansCommon.${label}` }))
       await waitFor(() => expect(window.location.href).toBe('https://pay.example.com/checkout'))
       expect(mockGetSubscription).toHaveBeenCalledExactlyOnceWith({ query: { plan, interval } })
       expect(mockGetInvoices).not.toHaveBeenCalled()
@@ -109,10 +108,11 @@ describe('Cloud plan payment flow', () => {
   ] as const)(
     'prevents purchasing $plan from $currentPlan',
     async ({ currentPlan, plan, label }) => {
+      const user = userEvent.setup()
       renderPlan({ currentPlan, plan })
       const button = screen.getByRole('button', { name: `billing.plansCommon.${label}` })
       expect(button).toBeDisabled()
-      await userEvent.setup().click(button)
+      await user.click(button)
       expect(mockGetSubscription).not.toHaveBeenCalled()
       expect(mockGetInvoices).not.toHaveBeenCalled()
       expect(window.open).not.toHaveBeenCalled()
@@ -120,12 +120,11 @@ describe('Cloud plan payment flow', () => {
   )
 
   it('opens the billing portal for the current paid subscription after resolving its URL', async () => {
+    const user = userEvent.setup()
     const request = createDeferred<{ url: string }>()
     mockGetInvoices.mockReturnValue(request.promise)
     renderPlan({ currentPlan: 'professional', plan: 'professional' })
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
+    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
     expect(window.open).toHaveBeenCalledWith('about:blank', '_blank', undefined)
     expect(popup.opener).toBeNull()
     expect(popup.location.href).toBe('')
@@ -136,11 +135,10 @@ describe('Cloud plan payment flow', () => {
   })
 
   it('closes the pending portal and reports its URL request failure', async () => {
+    const user = userEvent.setup()
     mockGetInvoices.mockRejectedValueOnce(new Error('Billing unavailable'))
     renderPlan({ currentPlan: 'professional', plan: 'professional' })
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
+    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
     expect(await screen.findByText('Billing unavailable')).toBeInTheDocument()
     expect(popup.close).toHaveBeenCalledOnce()
     expect(popup.location.href).toBe('')
@@ -165,11 +163,10 @@ describe('Cloud plan payment flow', () => {
   ] as const)(
     'blocks the $label action without billing permission',
     async ({ currentPlan, label }) => {
+      const user = userEvent.setup()
       canManageBilling = false
       renderPlan({ currentPlan })
-      await userEvent
-        .setup()
-        .click(screen.getByRole('button', { name: `billing.plansCommon.${label}` }))
+      await user.click(screen.getByRole('button', { name: `billing.plansCommon.${label}` }))
       expect(await screen.findByText('billing.buyPermissionDeniedTip')).toBeInTheDocument()
       expect(mockGetSubscription).not.toHaveBeenCalled()
       expect(mockGetInvoices).not.toHaveBeenCalled()

@@ -102,10 +102,11 @@ describe('EditPipelineInfo', () => {
     })
 
     it('should call onClose when cancel button is clicked', async () => {
+      const user = userEvent.setup()
       render(<EditPipelineInfo {...defaultProps} />)
 
       const cancelButton = screen.getByText(/operation\.cancel/i)
-      await userEvent.setup().click(cancelButton)
+      await user.click(cancelButton)
 
       expect(defaultProps.onClose).toHaveBeenCalledTimes(1)
     })
@@ -132,12 +133,13 @@ describe('EditPipelineInfo', () => {
     })
 
     it('should invalidate template list on successful save', async () => {
+      const user = userEvent.setup()
       mockUpdatePipeline.mockResolvedValue(undefined)
 
       render(<EditPipelineInfo {...defaultProps} />)
 
       const saveButton = screen.getByText(/operation\.save/i)
-      await userEvent.setup().click(saveButton)
+      await user.click(saveButton)
 
       await waitFor(() => {
         expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
@@ -147,12 +149,13 @@ describe('EditPipelineInfo', () => {
     })
 
     it('should call onClose on successful save', async () => {
+      const user = userEvent.setup()
       mockUpdatePipeline.mockResolvedValue(undefined)
 
       render(<EditPipelineInfo {...defaultProps} />)
 
       const saveButton = screen.getByText(/operation\.save/i)
-      await userEvent.setup().click(saveButton)
+      await user.click(saveButton)
 
       await waitFor(() => {
         expect(defaultProps.onClose).toHaveBeenCalled()
@@ -162,13 +165,14 @@ describe('EditPipelineInfo', () => {
 
   describe('Validation', () => {
     it('should show error toast when name is empty', async () => {
+      const user = userEvent.setup()
       render(<EditPipelineInfo {...defaultProps} />)
 
       const input = screen.getByDisplayValue('Test Pipeline')
       fireEvent.change(input, { target: { value: '' } })
 
       const saveButton = screen.getByText(/operation\.save/i)
-      await userEvent.setup().click(saveButton)
+      await user.click(saveButton)
 
       await waitFor(() => {
         expect(mockToastError).toHaveBeenCalledWith('datasetPipeline.editPipelineInfoNameRequired')
@@ -180,6 +184,7 @@ describe('EditPipelineInfo', () => {
   // Icon Types Tests (Branch Coverage for lines 29-30, 36-37)
   describe('Icon Types', () => {
     it('should save correct icon_info when starting with image icon type', async () => {
+      const user = userEvent.setup()
       mockUpdatePipeline.mockResolvedValue(undefined)
 
       const props = {
@@ -189,7 +194,7 @@ describe('EditPipelineInfo', () => {
       render(<EditPipelineInfo {...props} />)
 
       const saveButton = screen.getByText(/operation\.save/i)
-      await userEvent.setup().click(saveButton)
+      await user.click(saveButton)
 
       await waitFor(() => {
         expect(mockUpdatePipeline).toHaveBeenCalledWith(
@@ -206,12 +211,13 @@ describe('EditPipelineInfo', () => {
     })
 
     it('should save correct icon_info when starting with emoji icon type', async () => {
+      const user = userEvent.setup()
       mockUpdatePipeline.mockResolvedValue(undefined)
 
       render(<EditPipelineInfo {...defaultProps} />)
 
       const saveButton = screen.getByText(/operation\.save/i)
-      await userEvent.setup().click(saveButton)
+      await user.click(saveButton)
 
       await waitFor(() => {
         expect(mockUpdatePipeline).toHaveBeenCalledWith(
@@ -228,6 +234,7 @@ describe('EditPipelineInfo', () => {
     })
 
     it('should revert to initial image icon when picker is closed without selection', async () => {
+      const user = userEvent.setup()
       const props = {
         ...defaultProps,
         pipeline: createImagePipelineTemplate(),
@@ -235,16 +242,16 @@ describe('EditPipelineInfo', () => {
       render(<EditPipelineInfo {...props} />)
 
       // Open picker
-      await userEvent.setup().click(getIconButton())
+      await user.click(getIconButton())
       expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
 
       // Close without selection - should revert to original image icon
-      await userEvent.setup().keyboard('{Escape}')
+      await user.keyboard('{Escape}')
 
       await waitFor(() => {
         expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
       })
-      await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.save' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
       await waitFor(() =>
         expect(mockUpdatePipeline).toHaveBeenCalledWith(
           expect.objectContaining({
@@ -260,19 +267,18 @@ describe('EditPipelineInfo', () => {
   // IconPickerDialog Tests (Branch Coverage)
   describe('IconPickerDialog', () => {
     it('should save with new emoji icon selection', async () => {
+      const user = userEvent.setup()
       mockUpdatePipeline.mockResolvedValue(undefined)
 
       render(<EditPipelineInfo {...defaultProps} />)
 
       // Open picker and select new emoji
-      await userEvent.setup().click(getIconButton())
-      await userEvent
-        .setup()
-        .click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
-      await userEvent.setup().click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
+      await user.click(getIconButton())
+      await user.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
+      await user.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
 
       const saveButton = screen.getByText(/operation\.save/i)
-      await userEvent.setup().click(saveButton)
+      await user.click(saveButton)
 
       await waitFor(() => {
         expect(mockUpdatePipeline).toHaveBeenCalledWith(
@@ -290,21 +296,20 @@ describe('EditPipelineInfo', () => {
     })
 
     it('should save after confirming a real emoji selection from an image icon', async () => {
+      const user = userEvent.setup()
       mockUpdatePipeline.mockResolvedValue(undefined)
 
       render(<EditPipelineInfo {...defaultProps} pipeline={createImagePipelineTemplate()} />)
 
-      await userEvent.setup().click(getIconButton())
-      await userEvent.setup().click(screen.getByRole('tab', { name: 'app.iconPicker.emoji' }))
+      await user.click(getIconButton())
+      await user.click(screen.getByRole('tab', { name: 'app.iconPicker.emoji' }))
       const emojiButton = await screen.findByRole('gridcell', { name: 'Grinning face' })
-      await userEvent.setup().click(emojiButton)
-      await userEvent
-        .setup()
-        .click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
-      await userEvent.setup().click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
+      await user.click(emojiButton)
+      await user.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
+      await user.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
 
       const saveButton = screen.getByText(/operation\.save/i)
-      await userEvent.setup().click(saveButton)
+      await user.click(saveButton)
 
       await waitFor(() => {
         expect(mockUpdatePipeline).toHaveBeenCalledWith(

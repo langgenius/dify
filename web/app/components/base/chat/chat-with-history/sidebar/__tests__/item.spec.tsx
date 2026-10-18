@@ -98,10 +98,11 @@ describe('Conversation sidebar item', () => {
   })
 
   it('omits operations for an unsaved conversation but still allows selecting it', async () => {
+    const user = userEvent.setup()
     const props = createProps()
     render(<Item {...props} item={{ ...item, id: '' }} />)
     expect(screen.queryByRole('button', { name: 'common.operation.more' })).not.toBeInTheDocument()
-    await userEvent.setup().click(screen.getByRole('button', { name: item.name }))
+    await user.click(screen.getByRole('button', { name: item.name }))
     expect(props.onChangeConversation).toHaveBeenCalledExactlyOnceWith('')
   })
 

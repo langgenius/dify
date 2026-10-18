@@ -118,13 +118,12 @@ describe('ModelSelector', () => {
   )
 
   it('should call onValueChange when provided', async () => {
+    const user = userEvent.setup()
     const onValueChange = vi.fn()
     renderWithQueryClient(<ModelSelector models={[makeModel()]} onValueChange={onValueChange} />)
 
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }))
-    await userEvent.setup().click(screen.getByRole('button', { name: /GPT-4/ }))
+    await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }))
+    await user.click(screen.getByRole('button', { name: /GPT-4/ }))
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(onValueChange).toHaveBeenCalledWith({
@@ -135,28 +134,30 @@ describe('ModelSelector', () => {
   })
 
   it('should close popup with Escape', async () => {
+    const user = userEvent.setup()
     renderWithQueryClient(<ModelSelector models={[makeModel()]} />)
 
     const triggerButton = screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' })
-    await userEvent.setup().click(triggerButton)
+    await user.click(triggerButton)
     expect(triggerButton).toHaveAttribute('aria-expanded', 'true')
-    await userEvent.setup().keyboard('{Escape}')
+    await user.keyboard('{Escape}')
     expect(triggerButton).toHaveAttribute('aria-expanded', 'false')
   })
 
   it('should close popup before running the empty-state configure action', async () => {
+    const user = userEvent.setup()
     const onConfigureEmptyState = vi.fn()
     renderWithQueryClient(
       <ModelSelector models={[]} onConfigureEmptyState={onConfigureEmptyState} />,
     )
 
     const triggerButton = screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' })
-    await userEvent.setup().click(triggerButton)
+    await user.click(triggerButton)
     expect(triggerButton).toHaveAttribute('aria-expanded', 'true')
 
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'modelProvider.modelProvider.selector.configure' }))
+    await user.click(
+      screen.getByRole('button', { name: 'modelProvider.modelProvider.selector.configure' }),
+    )
 
     expect(triggerButton).toHaveAttribute('aria-expanded', 'false')
     expect(onConfigureEmptyState).toHaveBeenCalledTimes(1)
@@ -183,15 +184,15 @@ describe('ModelSelector', () => {
   })
 
   it('should not open popup when disabled', async () => {
+    const user = userEvent.setup()
     renderWithQueryClient(<ModelSelector models={[makeModel()]} disabled />)
 
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }))
+    await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('should open and select a model from the split trigger with the keyboard', async () => {
+    const user = userEvent.setup()
     const onValueChange = vi.fn()
     renderWithQueryClient(
       <SplitModelSelector models={[makeModel()]} onValueChange={onValueChange} />,
@@ -199,10 +200,10 @@ describe('ModelSelector', () => {
 
     const trigger = screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' })
     trigger.focus()
-    await userEvent.setup().keyboard('{Enter}')
+    await user.keyboard('{Enter}')
     const model = screen.getByRole('button', { name: /GPT-4/ })
     model.focus()
-    await userEvent.setup().keyboard('{Enter}')
+    await user.keyboard('{Enter}')
     expect(onValueChange).toHaveBeenCalledWith({
       provider: 'openai',
       model: 'gpt-4',

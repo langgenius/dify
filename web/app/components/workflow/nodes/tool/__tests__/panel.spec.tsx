@@ -153,6 +153,7 @@ describe('ToolPanel', () => {
     })
 
     it('should hide editable forms when the auth button is shown but keep output variables visible', async () => {
+      const user = userEvent.setup()
       mockUseConfig.mockReturnValue(
         createConfigResult({
           isShowAuthBtn: true,
@@ -163,9 +164,7 @@ describe('ToolPanel', () => {
 
       renderPanel()
 
-      await userEvent
-        .setup()
-        .click(screen.getByRole('button', { name: 'workflow.nodes.common.outputVars' }))
+      await user.click(screen.getByRole('button', { name: 'workflow.nodes.common.outputVars' }))
 
       expect(screen.queryByText('workflow.nodes.tool.inputVars')).not.toBeInTheDocument()
       expect(screen.queryByText('workflow.nodes.tool.settings')).not.toBeInTheDocument()
@@ -178,6 +177,7 @@ describe('ToolPanel', () => {
 
   describe('Output Schema', () => {
     it('should render scalar and structured outputs with matched schema types', async () => {
+      const user = userEvent.setup()
       mockUseConfig.mockReturnValue(
         createConfigResult({
           hasObjectOutput: true,
@@ -203,9 +203,7 @@ describe('ToolPanel', () => {
         { name: 'object_structured', schema: { type: 'object', properties: {} } },
       ])
 
-      await userEvent
-        .setup()
-        .click(screen.getByRole('button', { name: 'workflow.nodes.common.outputVars' }))
+      await user.click(screen.getByRole('button', { name: 'workflow.nodes.common.outputVars' }))
 
       expect(screen.getByText('summary')).toBeInTheDocument()
       expect(screen.getByText('string (qa_structured)')).toBeInTheDocument()
@@ -215,6 +213,7 @@ describe('ToolPanel', () => {
     })
 
     it('should render scalar outputs without a schema suffix when no schema type matches', async () => {
+      const user = userEvent.setup()
       mockUseConfig.mockReturnValue(
         createConfigResult({
           outputSchema: [
@@ -230,9 +229,7 @@ describe('ToolPanel', () => {
 
       renderPanel()
 
-      await userEvent
-        .setup()
-        .click(screen.getByRole('button', { name: 'workflow.nodes.common.outputVars' }))
+      await user.click(screen.getByRole('button', { name: 'workflow.nodes.common.outputVars' }))
 
       expect(screen.getByText('summary')).toBeInTheDocument()
       expect(screen.queryByText(/qa_structured/)).not.toBeInTheDocument()

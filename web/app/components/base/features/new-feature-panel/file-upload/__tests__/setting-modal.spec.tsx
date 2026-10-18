@@ -84,8 +84,9 @@ it('discards cancelled edits and saves the next edit to feature state before clo
 })
 
 it('keeps settings closed when editing is disabled', async () => {
+  const user = userEvent.setup()
   const onChange = setup(true)
-  await userEvent.setup().click(screen.getByRole('button', { name: 'Upload Settings' }))
+  await user.click(screen.getByRole('button', { name: 'Upload Settings' }))
   expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument()
   expect(onChange).not.toHaveBeenCalled()
 })

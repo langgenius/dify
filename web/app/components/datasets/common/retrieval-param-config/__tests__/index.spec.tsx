@@ -1,7 +1,14 @@
 import type { RetrievalConfig } from '@/types/app'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { DEFAULT_WEIGHTED_SCORE, RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
+import {
+  createCatalogModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { RETRIEVE_METHOD } from '@/types/app'
 import RetrievalParamConfig from '../index'
 
@@ -12,45 +19,38 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-let mockCurrentModel: { model: string; provider: string } | null = {
-  model: 'rerank-model',
-  provider: 'rerank-provider',
-}
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelListAndDefaultModel: () => ({
-    modelList: [
-      {
-        provider: 'rerank-provider',
-        models: [{ model: 'rerank-model', label: { en_US: 'Rerank Model' } }],
-      },
-    ],
-    defaultModel: { provider: 'rerank-provider', model: 'rerank-model' },
-  }),
-  useCurrentProviderAndModel: () => ({
-    currentModel: mockCurrentModel,
-    currentProvider: mockCurrentModel ? { provider: 'rerank-provider' } : null,
-  }),
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  ModelSelector: ({
-    onValueChange,
-    value,
-  }: {
-    onValueChange: (v: { provider: string; model: string }) => void
-    value?: { provider: string; model: string }
-  }) => (
-    <div data-testid="model-selector" data-value={value ? JSON.stringify(value) : ''}>
-      <button
-        data-testid="select-model-btn"
-        onClick={() => onValueChange({ provider: 'new-provider', model: 'new-model' })}
-      >
-        Select Model
-      </button>
-    </div>
-  ),
-}))
+let modelAvailable = true
+const render = createNuqsTestRenderer((ui) => {
+  const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(
+    queryClient,
+    modelAvailable
+      ? [
+          createModelCatalogFixture({
+            provider: 'rerank-provider',
+            models: [
+              createCatalogModelFixture({
+                model: 'rerank-model',
+                label: { en_US: 'Rerank Model' },
+                model_type: 'rerank',
+              }),
+            ],
+          }),
+          createModelCatalogFixture({
+            provider: 'new-provider',
+            models: [
+              createCatalogModelFixture({
+                model: 'new-model',
+                label: { en_US: 'New Model' },
+                model_type: 'rerank',
+              }),
+            ],
+          }),
+        ]
+      : [],
+  )
+  return renderWithConsoleQuery(ui, { queryClient })
+})
 
 describe('RetrievalParamConfig', () => {
   const createDefaultConfig = (overrides?: Partial<RetrievalConfig>): RetrievalConfig => ({
@@ -71,7 +71,7 @@ describe('RetrievalParamConfig', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockCurrentModel = { model: 'rerank-model', provider: 'rerank-provider' }
+    modelAvailable = true
   })
 
   describe('Semantic Search Mode', () => {
@@ -85,7 +85,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByTestId('model-selector'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Rerank Model/ }))!.toBeInTheDocument()
     })
 
     it('should not render model selector when reranking is disabled', () => {
@@ -98,10 +98,11 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.queryByTestId('model-selector')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /Rerank Model/ })).not.toBeInTheDocument()
     })
 
     it('should toggle reranking enable', async () => {
+      const user = userEvent.setup()
       const config = createDefaultConfig({ reranking_enable: true })
       render(
         <RetrievalParamConfig
@@ -111,9 +112,9 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      await userEvent
-        .setup()
-        .click(screen.getByRole('switch', { name: 'modelProvider.modelProvider.rerankModel.key' }))
+      await user.click(
+        screen.getByRole('switch', { name: 'modelProvider.modelProvider.rerankModel.key' }),
+      )
 
       expect(mockOnChange).toHaveBeenCalledWith({
         ...config,
@@ -122,7 +123,8 @@ describe('RetrievalParamConfig', () => {
     })
 
     it('should show error toast when enabling rerank without model', async () => {
-      mockCurrentModel = null
+      const user = userEvent.setup()
+      modelAvailable = false
       const config = createDefaultConfig({ reranking_enable: false })
       render(
         <RetrievalParamConfig
@@ -132,9 +134,9 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      await userEvent
-        .setup()
-        .click(screen.getByRole('switch', { name: 'modelProvider.modelProvider.rerankModel.key' }))
+      await user.click(
+        screen.getByRole('switch', { name: 'modelProvider.modelProvider.rerankModel.key' }),
+      )
 
       expect(mockNotify).toHaveBeenCalledWith('workflow.errorMsg.rerankModelRequired')
     })
@@ -149,7 +151,9 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      await userEvent.setup().click(screen.getByTestId('select-model-btn'))
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: /Rerank Model/ }))
+      await user.click(await screen.findByRole('button', { name: /New Model/ }))
 
       expect(mockOnChange).toHaveBeenCalledWith({
         ...config,
@@ -203,6 +207,7 @@ describe('RetrievalParamConfig', () => {
     })
 
     it('should toggle score threshold enabled', async () => {
+      const user = userEvent.setup()
       const config = createDefaultConfig({ reranking_enable: true, score_threshold_enabled: true })
       render(
         <RetrievalParamConfig
@@ -212,9 +217,9 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      await userEvent
-        .setup()
-        .click(screen.getByRole('switch', { name: 'appDebug.datasetConfig.score_threshold' }))
+      await user.click(
+        screen.getByRole('switch', { name: 'appDebug.datasetConfig.score_threshold' }),
+      )
 
       expect(mockOnChange).toHaveBeenCalledWith({
         ...config,
@@ -340,7 +345,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByTestId('model-selector'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Rerank Model/ }))!.toBeInTheDocument()
     })
 
     it('should show WeightedScore component when WeightedScore mode is selected', () => {
@@ -370,11 +375,12 @@ describe('RetrievalParamConfig', () => {
       expect(
         screen.getByRole('slider', { name: 'dataset.weightedScore.semantic' }),
       )!.toBeInTheDocument()
-      expect(screen.queryByTestId('model-selector')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /Rerank Model/ })).not.toBeInTheDocument()
     })
 
     it('should show error toast when switching to RerankingModel without model', async () => {
-      mockCurrentModel = null
+      const user = userEvent.setup()
+      modelAvailable = false
       const weightedConfig = createDefaultConfig({
         search_method: RETRIEVE_METHOD.hybrid,
         reranking_mode: RerankingModeEnum.WeightedScore,
@@ -398,11 +404,9 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      await userEvent
-        .setup()
-        .click(
-          screen.getByRole('radio', { name: /modelProvider\.modelProvider\.rerankModel\.key/ }),
-        )
+      await user.click(
+        screen.getByRole('radio', { name: /modelProvider\.modelProvider\.rerankModel\.key/ }),
+      )
 
       expect(mockNotify).toHaveBeenCalledWith('workflow.errorMsg.rerankModelRequired')
     })
@@ -482,6 +486,7 @@ describe('RetrievalParamConfig', () => {
     })
 
     it('should toggle score threshold enabled for hybrid search', async () => {
+      const user = userEvent.setup()
       render(
         <RetrievalParamConfig
           type={RETRIEVE_METHOD.hybrid}
@@ -490,9 +495,9 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      await userEvent
-        .setup()
-        .click(screen.getByRole('switch', { name: 'appDebug.datasetConfig.score_threshold' }))
+      await user.click(
+        screen.getByRole('switch', { name: 'appDebug.datasetConfig.score_threshold' }),
+      )
 
       expect(mockOnChange).toHaveBeenCalledWith({
         ...hybridConfig,
@@ -568,7 +573,9 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      await userEvent.setup().click(screen.getByTestId('select-model-btn'))
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: /Rerank Model/ }))
+      await user.click(await screen.findByRole('button', { name: /New Model/ }))
 
       expect(mockOnChange).toHaveBeenCalledWith({
         ...hybridConfig,
@@ -582,6 +589,7 @@ describe('RetrievalParamConfig', () => {
 
   describe('Default weights initialization', () => {
     it('should initialize default weights when switching to WeightedScore without existing weights', async () => {
+      const user = userEvent.setup()
       const configWithoutWeights = createDefaultConfig({
         search_method: RETRIEVE_METHOD.hybrid,
         reranking_mode: RerankingModeEnum.RerankingModel,
@@ -595,9 +603,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      await userEvent
-        .setup()
-        .click(screen.getByRole('radio', { name: /dataset\.weightedScore\.title/ }))
+      await user.click(screen.getByRole('radio', { name: /dataset\.weightedScore\.title/ }))
 
       expect(mockOnChange).toHaveBeenCalled()
       const calledWith = mockOnChange.mock.calls[0]![0]
@@ -617,6 +623,7 @@ describe('RetrievalParamConfig', () => {
     })
 
     it('should preserve existing weights when switching to WeightedScore', async () => {
+      const user = userEvent.setup()
       const configWithWeights = createDefaultConfig({
         search_method: RETRIEVE_METHOD.hybrid,
         reranking_mode: RerankingModeEnum.RerankingModel,
@@ -640,9 +647,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      await userEvent
-        .setup()
-        .click(screen.getByRole('radio', { name: /dataset\.weightedScore\.title/ }))
+      await user.click(screen.getByRole('radio', { name: /dataset\.weightedScore\.title/ }))
 
       expect(mockOnChange).toHaveBeenCalled()
       const calledWith = mockOnChange.mock.calls[0]![0]

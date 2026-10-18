@@ -1,18 +1,7 @@
 import { createPreviewCardHandle } from '@langgenius/dify-ui/preview-card'
 import { render, screen } from '@testing-library/react'
-import { useGetLanguage } from '@/context/i18n'
-import useTheme from '@/hooks/use-theme'
-import { Theme } from '@/types/app'
 import { createToolProvider } from '../../../__tests__/factories'
 import List from '../list'
-
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: vi.fn(),
-}))
-
-vi.mock('@/hooks/use-theme', () => ({
-  default: vi.fn(),
-}))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/mcp-tool-availability', () => ({
   useMCPToolAvailability: () => ({
@@ -20,14 +9,8 @@ vi.mock('@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
   }),
 }))
 
-const mockUseGetLanguage = vi.mocked(useGetLanguage)
-const mockUseTheme = vi.mocked(useTheme)
-
 describe('ToolListFlatView', () => {
-  beforeEach(() => {
-    mockUseGetLanguage.mockReturnValue('en_US')
-    mockUseTheme.mockReturnValue({ theme: Theme.light } as ReturnType<typeof useTheme>)
-  })
+  beforeEach(() => {})
 
   it('targets the first provider of each letter for index navigation', () => {
     const toolRefs = {

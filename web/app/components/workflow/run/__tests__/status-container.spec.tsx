@@ -2,8 +2,6 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import StatusContainer from '../status-container'
 
-vi.mock('@/hooks/use-theme', () => ({ default: () => ({ theme: 'light' }) }))
-
 describe('StatusContainer', () => {
   it('copies the supplied failure details from the status action', async () => {
     const user = userEvent.setup()

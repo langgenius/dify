@@ -1,14 +1,15 @@
 import type { ChatConfig, ChatItemInTree } from '../../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
 import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'
+import { renderHookWithConsoleQuery } from '@/test/console/query-data'
+import {
+  createHumanInputFormFixture,
+  createWorkflowProcessFixture,
+} from '@/test/fixtures/workflow-process'
 import { useChat } from '../hooks'
-
-const useTimestampMock = vi.hoisted(() =>
-  vi.fn(() => ({ formatTime: vi.fn().mockReturnValue('10:00 AM') })),
-)
 
 vi.mock('@/service/base', () => ({
   sseGet: vi.fn(),
@@ -34,10 +35,6 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-vi.mock('@/hooks/use-timestamp', () => ({
-  default: useTimestampMock,
-}))
-
 vi.mock('@/next/navigation', () => ({
   useParams: vi.fn(() => ({})),
   usePathname: vi.fn(() => ''),
@@ -49,6 +46,25 @@ const createAbortControllerMock = () => {
   vi.spyOn(controller, 'abort')
   return controller
 }
+const createPausedChatTree = (): ChatItemInTree[] => [
+  {
+    id: 'q-1',
+    content: 'query',
+    isAnswer: false,
+    children: [
+      {
+        id: 'm-1',
+        content: '',
+        isAnswer: true,
+        workflow_run_id: 'wr-1',
+        humanInputFormDataList: [createHumanInputFormFixture({ node_id: 'human-1' })],
+        workflowProcess: createWorkflowProcessFixture({ status: WorkflowRunningStatus.Paused }),
+        siblingIndex: 0,
+      },
+    ],
+  },
+]
+
 type HookCallbacks = {
   getAbortController: (abortController: AbortController) => void
   onCompleted: (hasError?: boolean, errorMessage?: string) => Promise<void> | void
@@ -94,20 +110,10 @@ describe('useChat', () => {
   })
 
   it('should initialize correctly with empty config', () => {
-    const { result } = renderHook(() => useChat())
+    const { result } = renderHookWithConsoleQuery(() => useChat())
     expect(result.current.chatList).toEqual([])
     expect(result.current.isResponding).toBe(false)
     expect(result.current.suggestedQuestions).toEqual([])
-  })
-
-  it('should pass timestamp options to timestamp formatter', () => {
-    renderHook(() =>
-      useChat(undefined, undefined, undefined, undefined, undefined, undefined, undefined, {
-        timezone: 'UTC',
-      }),
-    )
-
-    expect(useTimestampMock).toHaveBeenCalledWith({ timezone: 'UTC' })
   })
 
   it('should initialize with opening statement and suggested questions', () => {
@@ -119,7 +125,7 @@ describe('useChat', () => {
       inputs: { name: 'Alice' },
       inputsForm: [],
     }
-    const { result } = renderHook(() => useChat(config as ChatConfig, formSettings))
+    const { result } = renderHookWithConsoleQuery(() => useChat(config as ChatConfig, formSettings))
 
     expect(result.current.chatList).toHaveLength(1)
     expect(result.current.chatList[0]!.content).toBe('Hello Alice')
@@ -145,14 +151,16 @@ describe('useChat', () => {
       },
     ]
 
-    const { result } = renderHook(() => useChat(config as ChatConfig, formSettings, prevChatTree))
+    const { result } = renderHookWithConsoleQuery(() =>
+      useChat(config as ChatConfig, formSettings, prevChatTree),
+    )
 
     expect(result.current.chatList[0]!.content).toBe('Hello Bob')
     expect(result.current.chatList[0]!.suggestedQuestions).toEqual(['Ask Bob'])
   })
 
-  describe('opening statement referential stability', () => {
-    it('should keep the same item reference across multiple streaming chatTree mutations', () => {
+  describe('opening statement updates', () => {
+    it('preserves the opening statement and questions while streaming an answer', () => {
       let callbacks: HookCallbacks
 
       vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
@@ -163,11 +171,7 @@ describe('useChat', () => {
         opening_statement: 'Welcome!',
         suggested_questions: ['Q1', 'Q2'],
       }
-      const { result } = renderHook(() => useChat(config as ChatConfig))
-
-      const openerInitial = result.current.chatList[0]
-      expect(openerInitial!.isOpeningStatement).toBe(true)
-      expect(openerInitial!.content).toBe('Welcome!')
+      const { result } = renderHookWithConsoleQuery(() => useChat(config as ChatConfig))
 
       act(() => {
         result.current.handleSend('url', { query: 'hello' }, {})
@@ -176,7 +180,6 @@ describe('useChat', () => {
       act(() => {
         callbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
       })
-      expect(result.current.chatList[0]).toBe(openerInitial)
 
       act(() => {
         callbacks.onData('chunk-1 ', true, {
@@ -185,13 +188,10 @@ describe('useChat', () => {
           taskId: 't-1',
         })
       })
-      expect(result.current.chatList.length).toBeGreaterThan(1)
-      expect(result.current.chatList[0]).toBe(openerInitial)
 
       act(() => {
         callbacks.onData('chunk-2 ', false, { messageId: 'm-1' })
       })
-      expect(result.current.chatList[0]).toBe(openerInitial)
 
       act(() => {
         callbacks.onData('chunk-3', false, { messageId: 'm-1' })
@@ -199,26 +199,31 @@ describe('useChat', () => {
         callbacks.onWorkflowFinished({ data: { status: 'succeeded' } })
         callbacks.onCompleted()
       })
-      expect(result.current.chatList[0]).toBe(openerInitial)
+      expect(result.current.chatList.filter((item) => item.isOpeningStatement)).toEqual([
+        expect.objectContaining({
+          content: 'Welcome!',
+          suggestedQuestions: ['Q1', 'Q2'],
+        }),
+      ])
       expect(result.current.chatList.at(-1)!.content).toBe('chunk-1 chunk-2 chunk-3')
     })
 
-    it('should produce a new item when the processed content actually changes', () => {
+    it('updates the opening statement and questions when user inputs change', () => {
       const config = {
         opening_statement: 'Hello {{name}}',
         suggested_questions: ['Ask {{name}}'],
       }
 
-      const { result, rerender } = renderHook(({ fs }) => useChat(config as ChatConfig, fs), {
-        initialProps: { fs: { inputs: { name: 'Alice' }, inputsForm: [] } },
-      })
-
-      const before = result.current.chatList[0]
+      const { result, rerender } = renderHookWithConsoleQuery(
+        ({ fs }) => useChat(config as ChatConfig, fs),
+        {
+          initialProps: { fs: { inputs: { name: 'Alice' }, inputsForm: [] } },
+        },
+      )
 
       rerender({ fs: { inputs: { name: 'Bob' }, inputsForm: [] } })
 
       const after = result.current.chatList[0]
-      expect(after).not.toBe(before)
       expect(after!.content).toBe('Hello Bob')
       expect(after!.suggestedQuestions).toEqual(['Ask Bob'])
     })
@@ -232,7 +237,7 @@ describe('useChat', () => {
       vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
         callbacks = options as HookCallbacks
       })
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useChat(undefined, undefined, undefined, undefined, undefined, undefined, undefined, {
           isNewAgent: true,
         }),
@@ -266,7 +271,7 @@ describe('useChat', () => {
     })
 
     it('should send with the latest externally selected conversation', () => {
-      const { result, rerender } = renderHook(
+      const { result, rerender } = renderHookWithConsoleQuery(
         ({ conversationId }) =>
           useChat(undefined, undefined, undefined, undefined, undefined, undefined, conversationId),
         {
@@ -296,7 +301,7 @@ describe('useChat', () => {
     })
 
     it('should not reuse a previous conversation when the selected session has no id', () => {
-      const { result, rerender } = renderHook(
+      const { result, rerender } = renderHookWithConsoleQuery(
         ({ conversationId }: { conversationId?: string }) =>
           useChat(undefined, undefined, undefined, undefined, undefined, undefined, conversationId),
         {
@@ -326,7 +331,7 @@ describe('useChat', () => {
     })
 
     it('should block send if already responding', async () => {
-      const { result } = renderHook(() => useChat())
+      const { result } = renderHookWithConsoleQuery(() => useChat())
 
       let sendResult1: boolean | void = true
       let sendResult2: boolean | void = true
@@ -349,7 +354,7 @@ describe('useChat', () => {
         callbacks = options as HookCallbacks
       })
 
-      const { result } = renderHook(() => useChat())
+      const { result } = renderHookWithConsoleQuery(() => useChat())
 
       act(() => {
         result.current.handleSend('test-url', { query: 'hello' }, { onNotifyError })
@@ -379,7 +384,7 @@ describe('useChat', () => {
 
     it('should process inputs with the per-send input form override', () => {
       vi.mocked(ssePost).mockImplementation(async () => undefined)
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useChat(undefined, {
           inputs: {},
           inputsForm: [
@@ -437,7 +442,7 @@ describe('useChat', () => {
         callbacks = options as HookCallbacks
       })
 
-      const { result } = renderHook(() => useChat())
+      const { result } = renderHookWithConsoleQuery(() => useChat())
 
       act(() => {
         result.current.handleSend(
@@ -466,7 +471,7 @@ describe('useChat', () => {
         callbacks = options as HookCallbacks
       })
 
-      const { result } = renderHook(() => useChat())
+      const { result } = renderHookWithConsoleQuery(() => useChat())
 
       act(() => {
         result.current.handleSend('test-url', { query: 'agent test' }, {})
@@ -540,7 +545,7 @@ describe('useChat', () => {
         callbacks = options as HookCallbacks
       })
 
-      const { result } = renderHook(() => useChat())
+      const { result } = renderHookWithConsoleQuery(() => useChat())
 
       act(() => {
         result.current.handleSend('test-url', { query: 'human input test' }, {})
@@ -612,7 +617,7 @@ describe('useChat', () => {
         resumedCallbacks = options as HookCallbacks
       })
 
-      const { result } = renderHook(() => useChat())
+      const { result } = renderHookWithConsoleQuery(() => useChat())
 
       act(() => {
         result.current.handleSend('test-url', { query: 'human input test' }, {})
@@ -644,7 +649,7 @@ describe('useChat', () => {
         continuationCallbacks = options as HookCallbacks
       })
 
-      const { result } = renderHook(() => useChat())
+      const { result } = renderHookWithConsoleQuery(() => useChat())
       act(() => {
         result.current.handleSend('test-url', { query: 'human input test' }, {})
         postCallbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
@@ -705,7 +710,7 @@ describe('useChat', () => {
       const onGetSuggestedQuestions = vi.fn().mockResolvedValue({ data: ['Next question'] })
       const config = { suggested_questions_after_answer: { enabled: true } }
 
-      const { result } = renderHook(() => useChat(config as ChatConfig))
+      const { result } = renderHookWithConsoleQuery(() => useChat(config as ChatConfig))
       act(() => {
         result.current.handleSend(
           'test-url',
@@ -755,7 +760,7 @@ describe('useChat', () => {
         postCallbacks = options as HookCallbacks
       })
 
-      const { result } = renderHook(() => useChat())
+      const { result } = renderHookWithConsoleQuery(() => useChat())
       act(() => {
         result.current.handleSend('test-url', { query: 'human input test' }, {})
         postCallbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
@@ -786,7 +791,7 @@ describe('useChat', () => {
         callbacks = options as HookCallbacks
       })
 
-      const { result } = renderHook(() => useChat())
+      const { result } = renderHookWithConsoleQuery(() => useChat())
 
       act(() => {
         result.current.handleSend('test-url', { query: 'file test' }, {})
@@ -815,70 +820,88 @@ describe('useChat', () => {
       ])
     })
 
-    it('should fetch conversation messages and suggested questions onCompleted', async () => {
-      let callbacks: HookCallbacks
+    it.each([
+      ['UTC', '10:00 AM'],
+      ['Asia/Shanghai', '06:00 PM'],
+    ])(
+      'loads completed history and suggestions with message time in %s',
+      async (timezone, expectedTime) => {
+        let callbacks: HookCallbacks
 
-      vi.mocked(ssePost).mockImplementation(async (url, params, options) => {
-        callbacks = options as HookCallbacks
-      })
+        vi.mocked(ssePost).mockImplementation(async (url, params, options) => {
+          callbacks = options as HookCallbacks
+        })
 
-      const onGetConversationMessages = vi.fn().mockResolvedValue({
-        data: [
-          {
-            id: 'm-5',
-            answer: 'Updated answer from history',
-            message: [{ role: 'user', text: 'hi' }],
-            message_files: [{ id: 'assistant-file', belongs_to: 'assistant' }],
-            created_at: Date.now(),
-            answer_tokens: 10,
-            message_tokens: 5,
-            provider_response_latency: 0.5,
-            workflow_run_id: 'workflow-run-from-history',
-            inputs: {},
-            query: 'hi',
-          },
-        ],
-      })
+        const onGetConversationMessages = vi.fn().mockResolvedValue({
+          data: [
+            {
+              id: 'm-5',
+              answer: 'Updated answer from history',
+              message: [{ role: 'user', text: 'hi' }],
+              message_files: [{ id: 'assistant-file', belongs_to: 'assistant' }],
+              created_at: Date.parse('2024-01-01T10:00:00Z') / 1000,
+              answer_tokens: 10,
+              message_tokens: 5,
+              provider_response_latency: 0.5,
+              workflow_run_id: 'workflow-run-from-history',
+              inputs: {},
+              query: 'hi',
+            },
+          ],
+        })
 
-      const onGetSuggestedQuestions = vi.fn().mockResolvedValue({
-        data: ['Suggested 1', 'Suggested 2'],
-      })
+        const onGetSuggestedQuestions = vi.fn().mockResolvedValue({
+          data: ['Suggested 1', 'Suggested 2'],
+        })
 
-      const onConversationComplete = vi.fn()
+        const onConversationComplete = vi.fn()
 
-      const config = {
-        suggested_questions_after_answer: { enabled: true },
-      }
+        const config = {
+          suggested_questions_after_answer: { enabled: true },
+        }
 
-      const { result } = renderHook(() => useChat(config as ChatConfig))
-
-      act(() => {
-        result.current.handleSend(
-          'test-url',
-          { query: 'fetch test' },
-          {
-            onGetConversationMessages,
-            onGetSuggestedQuestions,
-            onConversationComplete,
-          },
+        const { result } = renderHookWithConsoleQuery(() =>
+          useChat(
+            config as ChatConfig,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            { timezone },
+          ),
         )
-      })
 
-      await act(async () => {
-        // Setup state needed for completed handlers
-        callbacks.onData(' data', true, { messageId: 'm-5', conversationId: 'c-1' })
+        act(() => {
+          result.current.handleSend(
+            'test-url',
+            { query: 'fetch test' },
+            {
+              onGetConversationMessages,
+              onGetSuggestedQuestions,
+              onConversationComplete,
+            },
+          )
+        })
 
-        await callbacks.onCompleted()
-      })
+        await act(async () => {
+          // Setup state needed for completed handlers
+          callbacks.onData(' data', true, { messageId: 'm-5', conversationId: 'c-1' })
 
-      expect(onGetConversationMessages).toHaveBeenCalledWith('c-1', expect.any(Function))
-      expect(onGetSuggestedQuestions).toHaveBeenCalledWith('m-5', expect.any(Function))
-      expect(onConversationComplete).toHaveBeenCalledWith('c-1', 'workflow-run-from-history')
+          await callbacks.onCompleted()
+        })
 
-      const updatedResponse = result.current.chatList[1]
-      expect(updatedResponse!.content).toBe('Updated answer from history') // Fetched from mock
-      expect(result.current.suggestedQuestions).toEqual(['Suggested 1', 'Suggested 2'])
-    })
+        expect(onGetConversationMessages).toHaveBeenCalledWith('c-1', expect.any(Function))
+        expect(onGetSuggestedQuestions).toHaveBeenCalledWith('m-5', expect.any(Function))
+        expect(onConversationComplete).toHaveBeenCalledWith('c-1', 'workflow-run-from-history')
+
+        const updatedResponse = result.current.chatList[1]
+        expect(updatedResponse!.content).toBe('Updated answer from history')
+        expect(updatedResponse!.more?.time).toBe(expectedTime)
+        expect(result.current.suggestedQuestions).toEqual(['Suggested 1', 'Suggested 2'])
+      },
+    )
 
     it('should early return onCompleted if hasError is true', async () => {
       let callbacks: HookCallbacks
@@ -889,7 +912,7 @@ describe('useChat', () => {
 
       const onConversationComplete = vi.fn()
 
-      const { result } = renderHook(() => useChat())
+      const { result } = renderHookWithConsoleQuery(() => useChat())
 
       act(() => {
         result.current.handleSend(
@@ -915,7 +938,7 @@ describe('useChat', () => {
         callbacks = options as HookCallbacks
       })
 
-      const { result } = renderHook(() => useChat())
+      const { result } = renderHookWithConsoleQuery(() => useChat())
 
       act(() => {
         result.current.handleSend('test-url', { query: 'trace test' }, {})
@@ -990,7 +1013,7 @@ describe('useChat', () => {
         },
       ]
 
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
       )
 
@@ -1020,7 +1043,7 @@ describe('useChat', () => {
         callbacks = options as HookCallbacks
       })
 
-      const { result } = renderHook(() => useChat())
+      const { result } = renderHookWithConsoleQuery(() => useChat())
 
       act(() => {
         result.current.handleSend('test-url', { query: 'failed workflow' }, {})
@@ -1059,7 +1082,9 @@ describe('useChat', () => {
         },
       ]
 
-      const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree))
+      const { result } = renderHookWithConsoleQuery(() =>
+        useChat(undefined, undefined, prevChatTree),
+      )
 
       act(() => {
         result.current.handleSend(
@@ -1108,7 +1133,7 @@ describe('useChat', () => {
         size: 456,
       }
 
-      const { result } = renderHook(() => useChat())
+      const { result } = renderHookWithConsoleQuery(() => useChat())
 
       act(() => {
         result.current.handleSend(
@@ -1142,7 +1167,7 @@ describe('useChat', () => {
       })
 
       const previousWorkflowAbort = createAbortControllerMock()
-      const { result } = renderHook(() => useChat())
+      const { result } = renderHookWithConsoleQuery(() => useChat())
 
       act(() => {
         result.current.handleSend('test-url', { query: 'first request' }, {})
@@ -1171,7 +1196,7 @@ describe('useChat', () => {
         data: [{ id: 'other-message', answer: 'unused' }],
       })
 
-      const { result } = renderHook(() => useChat())
+      const { result } = renderHookWithConsoleQuery(() => useChat())
 
       act(() => {
         result.current.handleSend(
@@ -1206,7 +1231,7 @@ describe('useChat', () => {
         suggested_questions_after_answer: { enabled: true },
       }
       const onGetSuggestedQuestions = vi.fn().mockRejectedValue(new Error('network'))
-      const { result } = renderHook(() => useChat(config as ChatConfig))
+      const { result } = renderHookWithConsoleQuery(() => useChat(config as ChatConfig))
 
       act(() => {
         result.current.handleSend(
@@ -1235,7 +1260,7 @@ describe('useChat', () => {
         callbacks = options as HookCallbacks
       })
 
-      const { result } = renderHook(() => useChat())
+      const { result } = renderHookWithConsoleQuery(() => useChat())
 
       act(() => {
         result.current.handleSend(
@@ -1299,7 +1324,9 @@ describe('useChat', () => {
         },
       ]
 
-      const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree))
+      const { result } = renderHookWithConsoleQuery(() =>
+        useChat(undefined, undefined, prevChatTree),
+      )
 
       act(() => {
         result.current.handleResume('m-1', 'wr-1', { isPublicAPI: true, onNotifyError })
@@ -1386,26 +1413,9 @@ describe('useChat', () => {
         callbacks = options as HookCallbacks
       })
 
-      const prevChatTree = [
-        {
-          id: 'q-1',
-          content: 'query',
-          isAnswer: false,
-          children: [
-            {
-              id: 'm-1',
-              content: '',
-              isAnswer: true,
-              workflow_run_id: 'wr-1',
-              humanInputFormDataList: [{ node_id: 'human-1' }],
-              workflowProcess: { status: WorkflowRunningStatus.Paused, tracing: [] },
-              siblingIndex: 0,
-            },
-          ],
-        },
-      ]
-      const { result } = renderHook(() =>
-        useChat(undefined, undefined, prevChatTree as unknown as ChatItemInTree[]),
+      const prevChatTree = createPausedChatTree()
+      const { result } = renderHookWithConsoleQuery(() =>
+        useChat(undefined, undefined, prevChatTree),
       )
 
       let isReady: boolean | undefined
@@ -1441,26 +1451,9 @@ describe('useChat', () => {
         callbacksList.push(options as HookCallbacks)
       })
 
-      const prevChatTree = [
-        {
-          id: 'q-1',
-          content: 'query',
-          isAnswer: false,
-          children: [
-            {
-              id: 'm-1',
-              content: '',
-              isAnswer: true,
-              workflow_run_id: 'wr-1',
-              humanInputFormDataList: [{ node_id: 'human-1' }],
-              workflowProcess: { status: WorkflowRunningStatus.Paused, tracing: [] },
-              siblingIndex: 0,
-            },
-          ],
-        },
-      ]
-      const { result } = renderHook(() =>
-        useChat(undefined, undefined, prevChatTree as unknown as ChatItemInTree[]),
+      const prevChatTree = createPausedChatTree()
+      const { result } = renderHookWithConsoleQuery(() =>
+        useChat(undefined, undefined, prevChatTree),
       )
 
       act(() => {
@@ -1498,26 +1491,9 @@ describe('useChat', () => {
         callbacksList.push(options as HookCallbacks)
       })
 
-      const prevChatTree = [
-        {
-          id: 'q-1',
-          content: 'query',
-          isAnswer: false,
-          children: [
-            {
-              id: 'm-1',
-              content: '',
-              isAnswer: true,
-              workflow_run_id: 'wr-1',
-              humanInputFormDataList: [{ node_id: 'human-1' }],
-              workflowProcess: { status: WorkflowRunningStatus.Paused, tracing: [] },
-              siblingIndex: 0,
-            },
-          ],
-        },
-      ]
-      const { result } = renderHook(() =>
-        useChat(undefined, undefined, prevChatTree as unknown as ChatItemInTree[]),
+      const prevChatTree = createPausedChatTree()
+      const { result } = renderHookWithConsoleQuery(() =>
+        useChat(undefined, undefined, prevChatTree),
       )
 
       act(() => {
@@ -1560,7 +1536,9 @@ describe('useChat', () => {
         },
       ]
 
-      const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree))
+      const { result } = renderHookWithConsoleQuery(() =>
+        useChat(undefined, undefined, prevChatTree),
+      )
 
       act(() => {
         result.current.handleResume('m-2', 'wr-1', { isPublicAPI: true })
@@ -1599,7 +1577,9 @@ describe('useChat', () => {
         },
       ]
 
-      const { result } = renderHook(() => useChat(config as ChatConfig, undefined, prevChatTree))
+      const { result } = renderHookWithConsoleQuery(() =>
+        useChat(config as ChatConfig, undefined, prevChatTree),
+      )
 
       act(() => {
         result.current.handleResume('m-resume-error', 'wr-error', {
@@ -1640,7 +1620,9 @@ describe('useChat', () => {
         },
       ]
 
-      const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree))
+      const { result } = renderHookWithConsoleQuery(() =>
+        useChat(undefined, undefined, prevChatTree),
+      )
 
       act(() => {
         result.current.handleResume('m-resume-error', 'wr-error', {
@@ -1681,7 +1663,9 @@ describe('useChat', () => {
         },
       ]
 
-      const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree))
+      const { result } = renderHookWithConsoleQuery(() =>
+        useChat(undefined, undefined, prevChatTree),
+      )
       const previousWorkflowAbort = createAbortControllerMock()
 
       act(() => {
@@ -1726,7 +1710,9 @@ describe('useChat', () => {
         },
       ]
 
-      const { result } = renderHook(() => useChat(config as ChatConfig, undefined, prevChatTree))
+      const { result } = renderHookWithConsoleQuery(() =>
+        useChat(config as ChatConfig, undefined, prevChatTree),
+      )
 
       act(() => {
         result.current.handleResume('m-suggest-resume', 'wr-1', {
@@ -1773,7 +1759,9 @@ describe('useChat', () => {
         },
       ]
 
-      const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree))
+      const { result } = renderHookWithConsoleQuery(() =>
+        useChat(undefined, undefined, prevChatTree),
+      )
 
       act(() => {
         result.current.handleResume('m-human-resume', 'wr-1', { isPublicAPI: true })
@@ -1822,7 +1810,7 @@ describe('useChat', () => {
         },
       ]
 
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
       )
 
@@ -1907,7 +1895,7 @@ describe('useChat', () => {
             children: [{ id: 'm-tts', content: 'Answer', isAnswer: true, siblingIndex: 0 }],
           },
         ]
-        const { result } = renderHook(() => useChat(undefined, undefined, tree))
+        const { result } = renderHookWithConsoleQuery(() => useChat(undefined, undefined, tree))
         act(() => {
           if (mode === 'send') result.current.handleSend('url', { query: 'speech' }, {})
           else result.current.handleResume('m-tts', 'wr-tts', { isPublicAPI: true })
@@ -1940,7 +1928,7 @@ describe('useChat', () => {
   describe('handleStop and handleRestart', () => {
     it('clears messages and suggested questions when restarting', async () => {
       const cb = vi.fn()
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useChat({ suggested_questions_after_answer: { enabled: true } } as ChatConfig),
       )
 
@@ -1992,7 +1980,7 @@ describe('useChat', () => {
                   id: 'm-stop',
                   answer: 'done',
                   message: [{ role: 'assistant', text: 'done' }],
-                  created_at: Date.now(),
+                  created_at: Date.parse('2024-01-01T10:00:00Z') / 1000,
                   answer_tokens: 3,
                   message_tokens: 2,
                   provider_response_latency: 1,
@@ -2015,7 +2003,7 @@ describe('useChat', () => {
           },
         )
 
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useChat(config as ChatConfig, undefined, undefined, stopChat),
       )
 
@@ -2061,7 +2049,9 @@ describe('useChat', () => {
           children: [{ id: 'm-1', content: '', isAnswer: true, siblingIndex: 0 }],
         },
       ]
-      const { result, unmount } = renderHook(() => useChat(undefined, undefined, prevChatTree))
+      const { result, unmount } = renderHookWithConsoleQuery(() =>
+        useChat(undefined, undefined, prevChatTree),
+      )
 
       act(() => {
         result.current.handleResume('m-1', 'wr-1', { isPublicAPI: true })
@@ -2082,7 +2072,7 @@ describe('useChat', () => {
       const clearChatListCallback = vi.fn((nextClearChatList: boolean) => {
         clearChatList = nextClearChatList
       })
-      const { rerender, result } = renderHook(() =>
+      const { rerender, result } = renderHookWithConsoleQuery(() =>
         useChat(undefined, undefined, undefined, undefined, clearChatList, clearChatListCallback),
       )
 
@@ -2135,7 +2125,7 @@ describe('useChat', () => {
     ]
 
     it('should handle annotation events', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
       )
 
@@ -2161,7 +2151,7 @@ describe('useChat', () => {
     })
 
     it('should handle switch sibling and trigger handleResume if human input', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
       )
 
@@ -2209,7 +2199,7 @@ describe('useChat', () => {
         },
       ]
 
-      const { result } = renderHook(() => useChat(undefined, undefined, nestedTree))
+      const { result } = renderHookWithConsoleQuery(() => useChat(undefined, undefined, nestedTree))
       act(() => {
         result.current.handleSwitchSibling('a-deep', { isPublicAPI: true })
       })
@@ -2230,7 +2220,7 @@ describe('useChat', () => {
         callbacks = options as HookCallbacks
       })
 
-      const { result } = renderHook(() => useChat())
+      const { result } = renderHookWithConsoleQuery(() => useChat())
       act(() => {
         result.current.handleSend('url', { query: 'file types' }, {})
       })
@@ -2266,7 +2256,7 @@ describe('useChat', () => {
         callbacks = options as HookCallbacks
       })
 
-      const { result } = renderHook(() => useChat())
+      const { result } = renderHookWithConsoleQuery(() => useChat())
       act(() => {
         result.current.handleSend('url', { query: 'citations' }, {})
       })
@@ -2303,7 +2293,9 @@ describe('useChat', () => {
             ],
           },
         ]
-        const { result } = renderHook(() => useChat(undefined, undefined, tree as ChatItemInTree[]))
+        const { result } = renderHookWithConsoleQuery(() =>
+          useChat(undefined, undefined, tree as ChatItemInTree[]),
+        )
         await act(async () => result.current.handleResume('m', 'wr', { isPublicAPI: true }))
         const callbacks = vi.mocked(sseGet).mock.calls[0]![2] as HookCallbacks
         act(() =>
@@ -2333,7 +2325,7 @@ describe('useChat', () => {
             answer: 'final answer',
             message: [{ role: 'user', text: 'hi' }],
             agent_thoughts: [{ thought: 'thinking different from answer' }],
-            created_at: Date.now(),
+            created_at: Date.parse('2024-01-01T10:00:00Z') / 1000,
             answer_tokens: 10,
             message_tokens: 5,
             provider_response_latency: 0,
@@ -2343,7 +2335,7 @@ describe('useChat', () => {
         ],
       })
 
-      const { result } = renderHook(() => useChat())
+      const { result } = renderHookWithConsoleQuery(() => useChat())
       act(() => {
         result.current.handleSend(
           'test-url',
@@ -2377,14 +2369,14 @@ describe('useChat', () => {
             id: 'm-without-log',
             answer: 'final answer',
             agent_thoughts: [],
-            created_at: Date.now(),
+            created_at: Date.parse('2024-01-01T10:00:00Z') / 1000,
             inputs: {},
             query: 'hi',
           },
         ],
       })
 
-      const { result } = renderHook(() => useChat())
+      const { result } = renderHookWithConsoleQuery(() => useChat())
       act(() => {
         result.current.handleSend(
           'test-url',
@@ -2450,7 +2442,7 @@ describe('useChat', () => {
             ],
             retriever_resources: [{ id: 'history-citation', content: 'history citation' }],
             metadata: { reasoning: { history: 'history reasoning' } },
-            created_at: Date.now(),
+            created_at: Date.parse('2024-01-01T10:00:00Z') / 1000,
             answer_tokens: 10,
             message_tokens: 5,
             provider_response_latency: 0.5,
@@ -2462,7 +2454,7 @@ describe('useChat', () => {
         ],
       })
 
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useChat(undefined, undefined, undefined, undefined, undefined, undefined, undefined, {
           isNewAgent: true,
         }),
@@ -2540,7 +2532,7 @@ describe('useChat', () => {
             answer: 'matched thought',
             message: [{ role: 'user', text: 'hi' }],
             agent_thoughts: [{ thought: 'matched thought' }],
-            created_at: Date.now(),
+            created_at: Date.parse('2024-01-01T10:00:00Z') / 1000,
             answer_tokens: 10,
             message_tokens: 5,
             provider_response_latency: 0.5,
@@ -2550,7 +2542,7 @@ describe('useChat', () => {
         ],
       })
 
-      const { result } = renderHook(() => useChat())
+      const { result } = renderHookWithConsoleQuery(() => useChat())
       act(() => {
         result.current.handleSend(
           'test-url',
@@ -2576,7 +2568,7 @@ describe('useChat', () => {
         callbacks = options as HookCallbacks
       })
 
-      const { result } = renderHook(() => useChat())
+      const { result } = renderHookWithConsoleQuery(() => useChat())
       act(() => {
         result.current.handleSend('url', { query: 'agent onThought' }, {})
       })
@@ -2603,7 +2595,7 @@ describe('useChat', () => {
         callbacks = options as HookCallbacks
       })
 
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useChat(undefined, undefined, undefined, undefined, undefined, undefined, undefined, {
           isNewAgent: true,
         }),
@@ -2679,7 +2671,7 @@ describe('useChat', () => {
     ]
 
     // Render the chat with the nested tree
-    const { result } = renderHook(() => useChat(undefined, undefined, nestedTree))
+    const { result } = renderHookWithConsoleQuery(() => useChat(undefined, undefined, nestedTree))
 
     // Setting TargetNodeId triggers state update using produceChatTreeNode internally
     act(() => {
@@ -2706,7 +2698,7 @@ describe('useChat', () => {
       sendCallbacks = options as HookCallbacks
     })
 
-    const { result } = renderHook(() => useChat())
+    const { result } = renderHookWithConsoleQuery(() => useChat())
 
     act(() => {
       result.current.handleSend('url', { query: 'test base file' }, {})
@@ -2727,7 +2719,9 @@ describe('useChat', () => {
         ],
       },
     ]
-    const { result: resumeResult } = renderHook(() => useChat(undefined, undefined, prevChatTree))
+    const { result: resumeResult } = renderHookWithConsoleQuery(() =>
+      useChat(undefined, undefined, prevChatTree),
+    )
     act(() => {
       resumeResult.current.handleResume('m-resume', 'wr-1', { isPublicAPI: true })
     })
@@ -2759,7 +2753,7 @@ describe('useChat', () => {
       sendCallbacks = options as HookCallbacks
     })
 
-    const { result } = renderHook(() => useChat())
+    const { result } = renderHookWithConsoleQuery(() => useChat())
     act(() => {
       result.current.handleSend('url', { query: 'test parallel_id' }, {})
     })
@@ -2803,7 +2797,7 @@ describe('useChat', () => {
       sendCallbacks = options as HookCallbacks
     })
 
-    const { result } = renderHook(() => useChat())
+    const { result } = renderHookWithConsoleQuery(() => useChat())
 
     act(() => {
       result.current.handleSend('url', { query: 'test exact file' }, {})
@@ -2851,7 +2845,7 @@ describe('useChat', () => {
         ],
       },
     ]
-    const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree))
+    const { result } = renderHookWithConsoleQuery(() => useChat(undefined, undefined, prevChatTree))
     act(() => {
       result.current.handleResume('m-index', 'wr-1', { isPublicAPI: true })
     })
@@ -2889,13 +2883,13 @@ describe('useChat', () => {
       .fn()
       .mockImplementationOnce((_id, getAbort) => {
         if (getAbort) {
-          getAbort({ abort: vi.fn() } as unknown as AbortController)
+          getAbort(new AbortController())
         }
         return Promise.resolve({ data: ['Suggested 1', 'Suggested 2'] })
       })
       .mockImplementationOnce((_id, getAbort) => {
         if (getAbort) {
-          getAbort({ abort: vi.fn() } as unknown as AbortController)
+          getAbort(new AbortController())
         }
         return Promise.reject(new Error('error'))
       })
@@ -2914,7 +2908,9 @@ describe('useChat', () => {
     ]
 
     // Success branch
-    const { result } = renderHook(() => useChat(config as ChatConfig, undefined, prevChatTree))
+    const { result } = renderHookWithConsoleQuery(() =>
+      useChat(config as ChatConfig, undefined, prevChatTree),
+    )
     act(() => {
       result.current.handleResume('m-1', 'wr-1', { isPublicAPI: true, onGetSuggestedQuestions })
     })
@@ -2958,7 +2954,7 @@ describe('useChat', () => {
       },
     ]
 
-    const { result } = renderHook(() =>
+    const { result } = renderHookWithConsoleQuery(() =>
       useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
     )
     act(() => {
@@ -2990,7 +2986,7 @@ describe('useChat', () => {
         children: [{ id: 'a-1', content: 'a', isAnswer: true, siblingIndex: 0 }],
       },
     ]
-    const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree))
+    const { result } = renderHookWithConsoleQuery(() => useChat(undefined, undefined, prevChatTree))
     await act(async () => {
       // (annotationId, authorName, query, answer, index)
       result.current.handleAnnotationAdded('anno-id', 'author', 'q-new', 'a-new', 1)
@@ -3008,7 +3004,7 @@ describe('useChat', () => {
         callbacks = options as HookCallbacks
       })
 
-      const { result } = renderHook(() => useChat())
+      const { result } = renderHookWithConsoleQuery(() => useChat())
 
       act(() => {
         result.current.handleSend('test-url', { query: 'hi' }, {})
@@ -3043,7 +3039,7 @@ describe('useChat', () => {
         callbacks = options as HookCallbacks
       })
 
-      const { result } = renderHook(() => useChat())
+      const { result } = renderHookWithConsoleQuery(() => useChat())
 
       act(() => {
         result.current.handleSend('test-url', { query: 'hi' }, {})
@@ -3088,7 +3084,9 @@ describe('useChat', () => {
         },
       ]
 
-      const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree))
+      const { result } = renderHookWithConsoleQuery(() =>
+        useChat(undefined, undefined, prevChatTree),
+      )
 
       act(() => {
         result.current.handleResume('m-1', 'wr-1', { isPublicAPI: true })

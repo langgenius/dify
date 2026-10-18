@@ -1,108 +1,50 @@
 import type {
   DatasetQueryDetailResponse,
-  HitTestingRecord,
   HitTestingResponse,
 } from '@dify/contracts/api/console/datasets/types.gen'
-import type { ReactNode } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { ReactElement } from 'react'
+import type { consoleClient } from '@/service/console'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useState } from 'react'
-import { describe, expect, it, vi } from 'vite-plus/test'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { consoleQuery } from '@/service/console'
-import { seedAccountProfileQuery } from '@/test/console/account-profile'
-import { render } from '@/test/console/render'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { createHitTestingRecordFixture } from '@/test/fixtures/hit-testing'
 import { RETRIEVE_METHOD } from '@/types/app'
 import HitTestingPage from '../index'
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return createReactI18nextMock({
-    'datasetHitTesting.hit.title': '{{num}} Retrieved Chunks',
-  })
+  return createReactI18nextMock({ 'datasetHitTesting.hit.title': '{{num}} Retrieved Chunks' })
 })
-
-// Mock Setup
-
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({
-    push: vi.fn(),
-    replace: vi.fn(),
-  }),
-  usePathname: () => '/test',
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useParams: () => ({}),
+  usePathname: () => '/datasets/dataset-1/hit-testing',
   useSearchParams: () => new URLSearchParams(),
 }))
-
-const mockDataset = createDatasetFixture({
-  id: 'dataset-1',
-  name: 'Test Dataset',
-  provider: 'vendor',
-  indexing_technique: 'high_quality' as const,
-  retrieval_model_dict: {
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_mode: undefined,
-    reranking_model: {
-      reranking_provider_name: '',
-      reranking_model_name: '',
-    },
-    weights: undefined,
-    top_k: 10,
-    score_threshold_enabled: false,
-    score_threshold: 0.5,
-  },
-  is_multimodal: false,
-  permission_keys: ['dataset.acl.retrieval_recall'],
-})
-
-let mockConsoleState = {
-  userProfile: { id: 'user-1' },
-  workspacePermissionKeys: [] as string[],
-}
-
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createWorkspaceStateModuleMock(() => mockConsoleState)
-})
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createPermissionStateModuleMock(() => mockConsoleState)
-})
-vi.mock('@/features/system-features/state', async () => {
-  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createSystemFeaturesStateModuleMock(() => mockConsoleState)
-})
-
 const { getRecords, mockHitTestingMutateAsync, mockExternalHitTestingMutateAsync } = vi.hoisted(
   () => ({
-    getRecords: vi.fn(),
-    mockHitTestingMutateAsync: vi.fn(),
-    mockExternalHitTestingMutateAsync: vi.fn(),
+    getRecords: vi.fn<typeof consoleClient.datasets.byDatasetId.queries.get>(),
+    mockHitTestingMutateAsync: vi.fn<typeof consoleClient.datasets.byDatasetId.hitTesting.post>(),
+    mockExternalHitTestingMutateAsync:
+      vi.fn<typeof consoleClient.datasets.byDatasetId.externalHitTesting.post>(),
   }),
 )
-let recordsData:
-  | {
-      data: DatasetQueryDetailResponse[]
-      total: number
-      page: number
-      limit: number
-      has_more: boolean
-    }
-  | undefined
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'datasets.byDatasetId.queries.get': getRecords,
+      'files.upload.get': async () => createFileUploadConfigFixture(),
       'datasets.retrievalSetting.get': async () => ({
         retrieval_method: [
           RETRIEVE_METHOD.semantic,
@@ -110,148 +52,68 @@ vi.mock('@/service/console', async (importOriginal) => {
           RETRIEVE_METHOD.hybrid,
         ],
       }),
-      'workspaces.current.models.modelTypes.byModelType.get': async () => ({ data: [] }),
     }),
-    consoleClient: {
-      datasets: {
-        byDatasetId: {
-          hitTesting: { post: mockHitTestingMutateAsync },
-          externalHitTesting: { post: mockExternalHitTestingMutateAsync },
-        },
-      },
-    },
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'datasets.byDatasetId.hitTesting.post': mockHitTestingMutateAsync,
+      'datasets.byDatasetId.externalHitTesting.post': mockExternalHitTestingMutateAsync,
+    }),
   }
 })
-// Mock breakpoints hook
-vi.mock('@/hooks/use-breakpoints', () => ({
-  default: vi.fn(() => 'pc'),
-  MediaType: {
-    mobile: 'mobile',
-    pc: 'pc',
-  },
-}))
 
-// Mock timestamp hook
-vi.mock('@/hooks/use-timestamp', () => ({
-  default: vi.fn(() => ({
-    formatTime: vi.fn((timestamp: number, _format: string) =>
-      new Date(timestamp * 1000).toISOString(),
-    ),
-  })),
-}))
-
-// Mock use-common to avoid QueryClient issues in nested hooks
-
-// The uploader owns image transport; keep the query form and submit controls real.
-vi.mock(
-  '@/app/components/datasets/common/image-uploader/image-uploader-in-retrieval-testing',
-  () => ({
-    default: ({ textArea, actionButton }: { textArea: ReactNode; actionButton: ReactNode }) => (
-      <>
-        {textArea}
-        {actionButton}
-      </>
-    ),
-  }),
-)
-
-// Mock docLink hook
-vi.mock('@/context/i18n', () => ({
-  useDocLink: vi.fn(() => () => 'https://docs.example.com'),
-}))
-
-// Mock model list hook - include all exports used by child components
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelListAndDefaultModelAndCurrentProviderAndModel: vi.fn(() => ({
-    modelList: [],
-    defaultModel: undefined,
-    currentProvider: undefined,
-    currentModel: undefined,
-  })),
-  useModelListAndDefaultModel: vi.fn(() => ({
-    modelList: [],
-    defaultModel: undefined,
-  })),
-  useCurrentProviderAndModel: vi.fn(() => ({
-    currentProvider: undefined,
-    currentModel: undefined,
-  })),
-  useDefaultModel: vi.fn(() => ({
-    defaultModel: undefined,
-  })),
-}))
-
-// Test Wrapper with QueryClientProvider
-
-const createConsoleQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-        gcTime: 0,
-        staleTime: Infinity,
+const createDataset = () =>
+  createDatasetFixture({
+    id: 'dataset-1',
+    name: 'Test Dataset',
+    provider: 'vendor',
+    indexing_technique: 'high_quality' as const,
+    retrieval_model_dict: {
+      search_method: RETRIEVE_METHOD.semantic,
+      reranking_enable: false,
+      reranking_mode: undefined,
+      reranking_model: {
+        reranking_provider_name: '',
+        reranking_model_name: '',
       },
-      mutations: {
-        retry: false,
-      },
+      weights: undefined,
+      top_k: 10,
+      score_threshold_enabled: false,
+      score_threshold: 0.5,
+    },
+    is_multimodal: false,
+    permission_keys: ['dataset.acl.retrieval_recall'],
+  })
+
+let mockDataset = createDataset()
+let recordsData: Awaited<ReturnType<typeof getRecords>> | undefined
+function renderWithProviders(ui: ReactElement) {
+  const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient)
+  if (recordsData)
+    queryClient.setQueryData(
+      consoleQuery.datasets.byDatasetId.queries.get.queryKey({
+        input: { params: { dataset_id: 'dataset-1' }, query: { limit: 10, page: 1 } },
+      }),
+      recordsData,
+    )
+  return renderWithConsoleQuery(
+    // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector requires its Provider component.
+    <DatasetDetailContext.Provider value={{ dataset: mockDataset }}>
+      {ui}
+    </DatasetDetailContext.Provider>,
+    { queryClient, accountProfile: { id: 'user-1' }, workspacePermissionKeys: [], features: {} },
+  )
+}
+const createMockHitTesting = () =>
+  createHitTestingRecordFixture({
+    segment: {
+      content: 'Test segment content',
+      document: { id: 'doc-1', name: 'test-document.pdf' },
     },
   })
 
-const TestWrapper = ({ children }: { children: ReactNode }) => {
-  const [queryClient] = useState(() => {
-    const client = createConsoleQueryClient()
-    if (recordsData)
-      client.setQueryData(
-        consoleQuery.datasets.byDatasetId.queries.get.queryKey({
-          input: { params: { dataset_id: 'dataset-1' }, query: { limit: 10, page: 1 } },
-        }),
-        recordsData,
-      )
-    return client
-  })
-  seedAccountProfileQuery(queryClient, mockConsoleState.userProfile)
-  return (
-    <QueryClientProvider client={queryClient}>
-      <DatasetDetailContext.Provider value={{ dataset: mockDataset }}>
-        {children}
-      </DatasetDetailContext.Provider>
-    </QueryClientProvider>
-  )
-}
-
-const renderWithProviders = (ui: React.ReactElement) => {
-  return render(ui, { wrapper: TestWrapper })
-}
-
-// Test Factories
-
-const createMockSegment = (overrides = {}) => ({
-  id: 'segment-1',
-  document: {
-    id: 'doc-1',
-    data_source_type: 'upload_file',
-    name: 'test-document.pdf',
-    doc_type: 'book' as const,
-  },
-  content: 'Test segment content',
-  sign_content: 'Test signed content',
-  position: 1,
-  word_count: 100,
-  tokens: 50,
-  keywords: ['test', 'keyword'],
-  hit_count: 5,
-  index_node_hash: 'hash-123',
-  answer: '',
-  ...overrides,
-})
-
-const createMockHitTesting = (overrides = {}): HitTestingRecord => ({
-  ...createHitTestingRecordFixture(),
-  segment: createMockSegment() as HitTestingRecord['segment'],
-  ...overrides,
-})
-
-const createMockRecord = (overrides = {}): DatasetQueryDetailResponse => ({
+const createMockRecord = (
+  overrides: Partial<DatasetQueryDetailResponse> = {},
+): DatasetQueryDetailResponse => ({
   id: 'record-1',
   source: 'hit_testing',
   source_app_id: 'app-1',
@@ -262,32 +124,16 @@ const createMockRecord = (overrides = {}): DatasetQueryDetailResponse => ({
   ...overrides,
 })
 
-// HitTestingPage integration tests
-
 describe('HitTestingPage', () => {
-  beforeEach(async () => {
-    vi.clearAllMocks()
-    getRecords.mockReset()
+  beforeEach(() => {
+    mockDataset = createDataset()
+    recordsData = { data: [], total: 0, page: 1, limit: 10, has_more: false }
+    getRecords.mockReset().mockImplementation(async () => recordsData!)
     mockHitTestingMutateAsync.mockReset()
     mockExternalHitTestingMutateAsync.mockReset()
-    Object.assign(mockDataset, {
-      provider: 'vendor',
-      indexing_technique: 'high_quality',
-      is_multimodal: false,
-      permission_keys: ['dataset.acl.retrieval_recall'],
-    })
-    mockConsoleState = {
-      userProfile: { id: 'user-1' },
-      workspacePermissionKeys: [],
-    }
-    recordsData = { data: [], total: 0, page: 1, limit: 10, has_more: false }
-    getRecords.mockImplementation(() => Promise.resolve(recordsData))
-
-    const useBreakpoints = await import('@/hooks/use-breakpoints')
-    vi.mocked(useBreakpoints.default).mockReturnValue(
-      'pc' as unknown as ReturnType<typeof useBreakpoints.default>,
-    )
+    vi.stubGlobal('innerWidth', 1024)
   })
+  afterEach(() => vi.unstubAllGlobals())
 
   it('disables record loading and query input without retrieval recall permission', async () => {
     mockDataset.permission_keys = []
@@ -320,7 +166,7 @@ describe('HitTestingPage', () => {
     'announces loading and failure in the same status region for %s retrieval',
     async (provider) => {
       mockDataset.provider = provider
-      const response = createDeferred<HitTestingResponse>()
+      const response = createDeferred<never>()
       const request =
         provider === 'external' ? mockExternalHitTestingMutateAsync : mockHitTestingMutateAsync
       request.mockReturnValue(response.promise)
@@ -339,8 +185,7 @@ describe('HitTestingPage', () => {
 
   it('removes stale mobile result counts while pending or failed and restores the latest successful count', async () => {
     const user = userEvent.setup()
-    const { default: useBreakpoints } = await import('@/hooks/use-breakpoints')
-    vi.mocked(useBreakpoints).mockReturnValue('mobile' as ReturnType<typeof useBreakpoints>)
+    vi.stubGlobal('innerWidth', 390)
     const response: HitTestingResponse = {
       query: { content: 'Test query' },
       records: [createMockHitTesting()],

@@ -178,6 +178,7 @@ describe('SelectionContextmenu', () => {
   })
 
   it('should render and execute copy/duplicate/delete operations', async () => {
+    const user = userEvent.setup()
     const nodes = [
       createNode({ id: 'n1', selected: true, width: 80, height: 40 }),
       createNode({ id: 'n2', selected: true, position: { x: 140, y: 0 }, width: 80, height: 40 }),
@@ -192,26 +193,27 @@ describe('SelectionContextmenu', () => {
       expect(screen.getByRole('menuitem', { name: /common.copy/ })).toBeInTheDocument()
     })
 
-    await userEvent.setup().click(screen.getByRole('menuitem', { name: /common.copy/ }))
+    await user.click(screen.getByRole('menuitem', { name: /common.copy/ }))
     expect(mockHandleNodesCopy).toHaveBeenCalledTimes(1)
     expect(store.getState().contextMenuTarget).toBeUndefined()
 
     act(() => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
-    await userEvent.setup().click(screen.getByRole('menuitem', { name: /common.duplicate/ }))
+    await user.click(screen.getByRole('menuitem', { name: /common.duplicate/ }))
     expect(mockHandleNodesDuplicate).toHaveBeenCalledTimes(1)
     expect(store.getState().contextMenuTarget).toBeUndefined()
 
     act(() => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
-    await userEvent.setup().click(screen.getByRole('menuitem', { name: /operation.delete/ }))
+    await user.click(screen.getByRole('menuitem', { name: /operation.delete/ }))
     expect(mockHandleNodesDelete).toHaveBeenCalledTimes(1)
     expect(store.getState().contextMenuTarget).toBeUndefined()
   })
 
   it('should open create snippet dialog with selected graph from the top menu item', async () => {
+    const user = userEvent.setup()
     const nodes = [
       createNode({ id: 'n1', selected: true, width: 80, height: 40 }),
       createNode({ id: 'n2', selected: true, position: { x: 140, y: 0 }, width: 80, height: 40 }),
@@ -227,11 +229,9 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    await userEvent
-      .setup()
-      .click(
-        await screen.findByRole('menuitem', { name: /Create Snippet|snippet\.createDialogTitle/ }),
-      )
+    await user.click(
+      await screen.findByRole('menuitem', { name: /Create Snippet|snippet\.createDialogTitle/ }),
+    )
 
     expect(screen.getByTestId('create-snippet-dialog')).toBeInTheDocument()
     expect(store.getState().contextMenuTarget).toBeUndefined()
@@ -273,6 +273,7 @@ describe('SelectionContextmenu', () => {
   })
 
   it('should add input fields for variable references outside of the selected graph', async () => {
+    const user = userEvent.setup()
     const nodes = [
       createNode({
         id: 'n1',
@@ -299,11 +300,9 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    await userEvent
-      .setup()
-      .click(
-        await screen.findByRole('menuitem', { name: /Create Snippet|snippet\.createDialogTitle/ }),
-      )
+    await user.click(
+      await screen.findByRole('menuitem', { name: /Create Snippet|snippet\.createDialogTitle/ }),
+    )
 
     const dialogProps = mockCreateSnippetDialogRender.mock.calls.at(-1)?.[0]
     expect(dialogProps.inputFields).toEqual([
@@ -405,6 +404,7 @@ describe('SelectionContextmenu', () => {
   })
 
   it('should distribute selected nodes horizontally', async () => {
+    const user = userEvent.setup()
     const nodes = [
       createNode({ id: 'n1', selected: true, position: { x: 0, y: 10 }, width: 20, height: 20 }),
       createNode({ id: 'n2', selected: true, position: { x: 100, y: 20 }, width: 20, height: 20 }),
@@ -419,14 +419,13 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    await userEvent
-      .setup()
-      .click(screen.getByRole('menuitem', { name: /operator.distributeHorizontal/ }))
+    await user.click(screen.getByRole('menuitem', { name: /operator.distributeHorizontal/ }))
 
     expect(latestNodes.find((node) => node.id === 'n2')?.position.x).toBe(150)
   })
 
   it('should ignore child nodes when the selected container is aligned', async () => {
+    const user = userEvent.setup()
     const nodes = [
       createNode({
         id: 'container',
@@ -460,7 +459,7 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    await userEvent.setup().click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
+    await user.click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
 
     expect(latestNodes.find((node) => node.id === 'container')?.position.x).toBe(40)
     expect(latestNodes.find((node) => node.id === 'other')?.position.x).toBe(40)
@@ -468,6 +467,7 @@ describe('SelectionContextmenu', () => {
   })
 
   it('should cancel when align bounds cannot be resolved', async () => {
+    const user = userEvent.setup()
     const nodes = [
       createNode({ id: 'n1', selected: true }),
       createNode({ id: 'n2', selected: true, position: { x: 80, y: 20 } }),
@@ -479,7 +479,7 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    await userEvent.setup().click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
+    await user.click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
 
     expect(store.getState().contextMenuTarget).toBeUndefined()
     expect(latestNodes.map(({ id, position }) => ({ id, position }))).toEqual(
@@ -488,6 +488,7 @@ describe('SelectionContextmenu', () => {
   })
 
   it('should cancel without aligning when nodes are read only', async () => {
+    const user = userEvent.setup()
     const nodes = [
       createNode({ id: 'n1', selected: true, width: 40, height: 20 }),
       createNode({ id: 'n2', selected: true, position: { x: 80, y: 20 }, width: 40, height: 20 }),
@@ -499,7 +500,7 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    await userEvent.setup().click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
+    await user.click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
 
     expect(store.getState().contextMenuTarget).toBeUndefined()
     expect(latestNodes.find((node) => node.id === 'n1')?.position.x).toBe(0)
@@ -507,6 +508,7 @@ describe('SelectionContextmenu', () => {
   })
 
   it('should cancel when alignable nodes shrink to one item', async () => {
+    const user = userEvent.setup()
     const nodes = [
       createNode({
         id: 'container',
@@ -530,7 +532,7 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    await userEvent.setup().click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
+    await user.click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
 
     expect(store.getState().contextMenuTarget).toBeUndefined()
     expect(latestNodes.find((node) => node.id === 'container')?.position.x).toBe(0)

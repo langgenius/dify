@@ -18,10 +18,6 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-vi.mock('@/hooks/use-document-title', () => ({
-  default: vi.fn(),
-}))
-
 // Mock useDocLink hook
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path?: string) => `https://docs.dify.ai/en${path || ''}`,

@@ -168,6 +168,7 @@ describe('HeaderInMobile', () => {
   })
 
   it('should hide chat settings option when no input forms', async () => {
+    const user = userEvent.setup()
     setContext({
       ...defaultContextValue,
       inputsForms: [],
@@ -175,9 +176,7 @@ describe('HeaderInMobile', () => {
 
     render(<HeaderInMobile />)
 
-    await userEvent
-      .setup()
-      .click(await screen.findByRole('button', { name: 'common.operation.more' }))
+    await user.click(await screen.findByRole('button', { name: 'common.operation.more' }))
 
     await waitFor(() => {
       expect(screen.queryByText(/share\.chat\.viewChatSettings/i)).not.toBeInTheDocument()
@@ -185,6 +184,7 @@ describe('HeaderInMobile', () => {
   })
 
   it('should handle new conversation', async () => {
+    const user = userEvent.setup()
     const handleNewConversation = vi.fn()
     setContext({
       ...defaultContextValue,
@@ -193,14 +193,12 @@ describe('HeaderInMobile', () => {
 
     render(<HeaderInMobile />)
 
-    await userEvent
-      .setup()
-      .click(await screen.findByRole('button', { name: 'common.operation.more' }))
+    await user.click(await screen.findByRole('button', { name: 'common.operation.more' }))
 
     await waitFor(() => {
       expect(screen.getByText(/share\.chat\.resetChat/i))!.toBeInTheDocument()
     })
-    await userEvent.setup().click(screen.getByText(/share\.chat\.resetChat/i))
+    await user.click(screen.getByText(/share\.chat\.resetChat/i))
 
     await waitFor(() => {
       expect(handleNewConversation).toHaveBeenCalled()
@@ -208,6 +206,7 @@ describe('HeaderInMobile', () => {
   })
 
   it('should handle pin conversation', async () => {
+    const user = userEvent.setup()
     const handlePin = vi.fn()
     setContext({
       ...defaultContextValue,
@@ -219,16 +218,17 @@ describe('HeaderInMobile', () => {
 
     render(<HeaderInMobile />)
 
-    await userEvent.setup().click(await screen.findByText('Conv 1'))
+    await user.click(await screen.findByText('Conv 1'))
 
     await waitFor(() => {
       expect(screen.getByText(/explore\.sidebar\.action\.pin/i))!.toBeInTheDocument()
     })
-    await userEvent.setup().click(screen.getByText(/explore\.sidebar\.action\.pin/i))
+    await user.click(screen.getByText(/explore\.sidebar\.action\.pin/i))
     expect(handlePin).toHaveBeenCalledWith('1')
   })
 
   it('should handle unpin conversation', async () => {
+    const user = userEvent.setup()
     const handleUnpin = vi.fn()
     setContext({
       ...defaultContextValue,
@@ -240,16 +240,17 @@ describe('HeaderInMobile', () => {
 
     render(<HeaderInMobile />)
 
-    await userEvent.setup().click(await screen.findByText('Conv 1'))
+    await user.click(await screen.findByText('Conv 1'))
 
     await waitFor(() => {
       expect(screen.getByText(/explore\.sidebar\.action\.unpin/i))!.toBeInTheDocument()
     })
-    await userEvent.setup().click(screen.getByText(/explore\.sidebar\.action\.unpin/i))
+    await user.click(screen.getByText(/explore\.sidebar\.action\.unpin/i))
     expect(handleUnpin).toHaveBeenCalledWith('1')
   })
 
   it('should handle rename conversation', async () => {
+    const user = userEvent.setup()
     const handleRename = vi.fn()
     setContext({
       ...defaultContextValue,
@@ -260,24 +261,25 @@ describe('HeaderInMobile', () => {
     })
 
     render(<HeaderInMobile />)
-    await userEvent.setup().click(await screen.findByText('Conv 1'))
+    await user.click(await screen.findByText('Conv 1'))
 
     await waitFor(() => {
       expect(screen.getByText(/explore\.sidebar\.action\.rename/i))!.toBeInTheDocument()
     })
-    await userEvent.setup().click(screen.getByText(/explore\.sidebar\.action\.rename/i))
+    await user.click(screen.getByText(/explore\.sidebar\.action\.rename/i))
 
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
     const input = screen.getByDisplayValue('Conv 1')
-    await userEvent.setup().clear(input)
-    await userEvent.setup().type(input, 'New Name')
+    await user.clear(input)
+    await user.type(input, 'New Name')
 
     const saveButton = screen.getByRole('button', { name: /common\.operation\.save/i })
-    await userEvent.setup().click(saveButton)
+    await user.click(saveButton)
     expect(handleRename).toHaveBeenCalledWith('1', 'New Name', expect.any(Object))
   })
 
   it('should cancel rename conversation', async () => {
+    const user = userEvent.setup()
     const handleRename = vi.fn()
     setContext({
       ...defaultContextValue,
@@ -288,17 +290,17 @@ describe('HeaderInMobile', () => {
     })
 
     render(<HeaderInMobile />)
-    await userEvent.setup().click(await screen.findByText('Conv 1'))
+    await user.click(await screen.findByText('Conv 1'))
 
     await waitFor(() => {
       expect(screen.getByText(/explore\.sidebar\.action\.rename/i))!.toBeInTheDocument()
     })
-    await userEvent.setup().click(screen.getByText(/explore\.sidebar\.action\.rename/i))
+    await user.click(screen.getByText(/explore\.sidebar\.action\.rename/i))
 
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
 
     const cancelButton = screen.getByRole('button', { name: /common\.operation\.cancel/i })
-    await userEvent.setup().click(cancelButton)
+    await user.click(cancelButton)
 
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -307,6 +309,7 @@ describe('HeaderInMobile', () => {
   })
 
   it('should show loading state while renaming', async () => {
+    const user = userEvent.setup()
     setContext({
       ...defaultContextValue,
       currentConversationId: '1',
@@ -317,21 +320,22 @@ describe('HeaderInMobile', () => {
     })
 
     render(<HeaderInMobile />)
-    await userEvent.setup().click(await screen.findByText('Conv 1'))
+    await user.click(await screen.findByText('Conv 1'))
 
     await waitFor(() => {
       expect(screen.getByText(/explore\.sidebar\.action\.rename/i))!.toBeInTheDocument()
     })
-    await userEvent.setup().click(screen.getByText(/explore\.sidebar\.action\.rename/i))
+    await user.click(screen.getByText(/explore\.sidebar\.action\.rename/i))
 
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
     const save = screen.getByRole('button', { name: /common\.operation\.save/i })
     expect(save).toHaveAttribute('aria-disabled', 'true')
-    await userEvent.setup().click(save)
+    await user.click(save)
     expect(context.handleRenameConversation).not.toHaveBeenCalled()
   })
 
   it('should handle delete conversation', async () => {
+    const user = userEvent.setup()
     const handleDelete = vi.fn()
     setContext({
       ...defaultContextValue,
@@ -342,23 +346,22 @@ describe('HeaderInMobile', () => {
     })
 
     render(<HeaderInMobile />)
-    await userEvent.setup().click(await screen.findByText('Conv 1'))
+    await user.click(await screen.findByText('Conv 1'))
 
     await waitFor(() => {
       expect(screen.getByText(/explore\.sidebar\.action\.delete/i))!.toBeInTheDocument()
     })
-    await userEvent.setup().click(screen.getByText(/explore\.sidebar\.action\.delete/i))
+    await user.click(screen.getByText(/explore\.sidebar\.action\.delete/i))
 
     await waitFor(() => {
       expect(screen.getAllByText(/share\.chat\.deleteConversation\.title/i)[0])!.toBeInTheDocument()
     })
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: /common\.operation\.confirm/i }))
+    await user.click(screen.getByRole('button', { name: /common\.operation\.confirm/i }))
     expect(handleDelete).toHaveBeenCalledWith('1', expect.any(Object))
   })
 
   it('should cancel delete conversation', async () => {
+    const user = userEvent.setup()
     const handleDelete = vi.fn()
     setContext({
       ...defaultContextValue,
@@ -369,20 +372,18 @@ describe('HeaderInMobile', () => {
     })
 
     render(<HeaderInMobile />)
-    await userEvent.setup().click(await screen.findByText('Conv 1'))
+    await user.click(await screen.findByText('Conv 1'))
 
     await waitFor(() => {
       expect(screen.getByText(/explore\.sidebar\.action\.delete/i))!.toBeInTheDocument()
     })
-    await userEvent.setup().click(screen.getByText(/explore\.sidebar\.action\.delete/i))
+    await user.click(screen.getByText(/explore\.sidebar\.action\.delete/i))
 
     await waitFor(() => {
       expect(screen.getAllByText(/share\.chat\.deleteConversation\.title/i)[0])!.toBeInTheDocument()
     })
 
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: /common\.operation\.cancel/i }))
+    await user.click(screen.getByRole('button', { name: /common\.operation\.cancel/i }))
 
     await waitFor(() => {
       expect(screen.queryByText(/share\.chat\.deleteConversation\.title/i)).not.toBeInTheDocument()
@@ -391,6 +392,7 @@ describe('HeaderInMobile', () => {
   })
 
   it('should use empty string fallback for rename modal name', async () => {
+    const user = userEvent.setup()
     const handleRename = vi.fn()
     setContext({
       ...defaultContextValue,
@@ -406,16 +408,16 @@ describe('HeaderInMobile', () => {
       .find(
         (button) => button.getAttribute('aria-haspopup') === 'menu' && button.textContent === '',
       )!
-    await userEvent.setup().click(operationTrigger)
-    await userEvent
-      .setup()
-      .click(await screen.findByText(/explore\.sidebar\.action\.rename|sidebar\.action\.rename/i))
+    await user.click(operationTrigger)
+    await user.click(
+      await screen.findByText(/explore\.sidebar\.action\.rename|sidebar\.action\.rename/i),
+    )
 
     const input = await screen.findByRole('textbox')
     expect(input)!.toHaveValue('')
 
-    await userEvent.setup().type(input, 'Renamed from empty')
-    await userEvent.setup().click(screen.getByRole('button', { name: /common\.operation\.save/i }))
+    await user.type(input, 'Renamed from empty')
+    await user.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
     expect(handleRename).toHaveBeenCalledWith('1', 'Renamed from empty', expect.any(Object))
   })
 })

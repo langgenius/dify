@@ -64,10 +64,11 @@ describe('Moderation', () => {
   })
 
   it('opens initial configuration and enables moderation only after saving', async () => {
+    const user = userEvent.setup({ skipHover: true })
     const onChange = vi.fn()
     const { store } = renderModeration(undefined, { onChange })
     const toggle = screen.getByRole('switch')
-    await userEvent.setup({ skipHover: true }).click(toggle)
+    await user.click(toggle)
     expect(getModal().payload).toMatchObject({
       enabled: true,
       type: 'keywords',
@@ -82,9 +83,10 @@ describe('Moderation', () => {
   })
 
   it('keeps moderation disabled when initial configuration is cancelled', async () => {
+    const user = userEvent.setup({ skipHover: true })
     const onChange = vi.fn()
     const { store } = renderModeration(undefined, { onChange })
-    await userEvent.setup({ skipHover: true }).click(screen.getByRole('switch'))
+    await user.click(screen.getByRole('switch'))
     act(() => getModal().onCancelCallback())
     expect(screen.getByRole('switch')).not.toBeChecked()
     expect(store.getState().features.moderation).toEqual({ enabled: false })
@@ -92,9 +94,10 @@ describe('Moderation', () => {
   })
 
   it('re-enables an existing configuration without reopening setup', async () => {
+    const user = userEvent.setup({ skipHover: true })
     const onChange = vi.fn()
     const { store } = renderModeration({ ...configured, enabled: false }, { onChange })
-    await userEvent.setup({ skipHover: true }).click(screen.getByRole('switch'))
+    await user.click(screen.getByRole('switch'))
     expect(screen.getByRole('switch')).toBeChecked()
     expect(store.getState().features.moderation).toEqual(configured)
     expect(mockSetShowModerationSettingModal).not.toHaveBeenCalled()
@@ -102,9 +105,10 @@ describe('Moderation', () => {
   })
 
   it('disables moderation and publishes the saved feature state', async () => {
+    const user = userEvent.setup({ skipHover: true })
     const onChange = vi.fn()
     const { store } = renderModeration(configured, { onChange })
-    await userEvent.setup({ skipHover: true }).click(screen.getByRole('switch'))
+    await user.click(screen.getByRole('switch'))
     expect(screen.getByRole('switch')).not.toBeChecked()
     expect(store.getState().features.moderation).toEqual({ enabled: false })
     expect(onChange).toHaveBeenCalledExactlyOnceWith(store.getState().features)
@@ -113,9 +117,10 @@ describe('Moderation', () => {
   it.each([false, true])(
     'preserves other feature changes made while the modal is open (existing=%s)',
     async (existing) => {
+      const user = userEvent.setup({ skipHover: true })
       const { store } = renderModeration(existing ? configured : undefined)
       if (existing) await openSettings()
-      else await userEvent.setup({ skipHover: true }).click(screen.getByRole('switch'))
+      else await user.click(screen.getByRole('switch'))
       act(() =>
         store
           .getState()

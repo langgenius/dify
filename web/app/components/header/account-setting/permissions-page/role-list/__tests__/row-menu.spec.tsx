@@ -241,6 +241,7 @@ describe('RowMenu', () => {
     })
 
     it('should ignore role management actions without manage permission', async () => {
+      const user = userEvent.setup()
       mockWorkspacePermissionKeys.value = []
       const onEdit = vi.fn()
       const role = createRole({
@@ -253,15 +254,11 @@ describe('RowMenu', () => {
 
       const { menu } = await openMenu()
 
-      await userEvent
-        .setup()
-        .click(within(menu).getByRole('menuitem', { name: 'common.operation.edit' }))
-      await userEvent
-        .setup()
-        .click(within(menu).getByRole('menuitem', { name: 'permission.common.duplicateAction' }))
-      await userEvent
-        .setup()
-        .click(within(menu).getByRole('menuitem', { name: 'common.operation.delete' }))
+      await user.click(within(menu).getByRole('menuitem', { name: 'common.operation.edit' }))
+      await user.click(
+        within(menu).getByRole('menuitem', { name: 'permission.common.duplicateAction' }),
+      )
+      await user.click(within(menu).getByRole('menuitem', { name: 'common.operation.delete' }))
 
       expect(onEdit).not.toHaveBeenCalled()
       expect(mockCopyRole).not.toHaveBeenCalled()

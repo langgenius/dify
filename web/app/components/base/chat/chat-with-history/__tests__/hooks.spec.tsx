@@ -5,6 +5,7 @@ import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { AppToastHost } from '@/app/notifications/host'
+import { useWebAppStore } from '@/context/web-app-context'
 import { httpErrorFromResponse } from '@/service/http-error'
 import {
   AppSourceType,
@@ -17,23 +18,15 @@ import {
   unpinConversation,
   updateFeedback,
 } from '@/service/share'
+import { createChatConfigFixture as createChatConfig } from '@/test/fixtures/chat'
 import { CONVERSATION_ID_INFO, TAB_CONVERSATION_ID_INFO } from '../../constants'
-import {
-  getProcessedSystemVariablesFromUrlParams,
-  getRawInputsFromUrlParams,
-  getRawUserVariablesFromUrlParams,
-} from '../../utils'
 import { useChatWithHistory } from '../hooks'
-
-vi.mock('@/hooks/use-app-favicon', () => ({
-  useAppFavicon: vi.fn(),
-}))
 
 vi.mock('@/i18n/client', () => ({
   changeLanguage: vi.fn().mockResolvedValue(undefined),
 }))
 
-const mockStoreState: {
+const initialAppState: {
   appInfo: AppData | null
   appMeta: AppMeta | null
   appParams: ChatConfig | null
@@ -42,25 +35,6 @@ const mockStoreState: {
   appMeta: null,
   appParams: null,
 }
-
-const useWebAppStoreMock = vi.fn((selector?: (state: typeof mockStoreState) => unknown) => {
-  return selector ? selector(mockStoreState) : mockStoreState
-})
-
-vi.mock('@/context/web-app-context', () => ({
-  useWebAppStore: (selector?: (state: typeof mockStoreState) => unknown) =>
-    useWebAppStoreMock(selector),
-}))
-
-vi.mock('../../utils', async () => {
-  const actual = await vi.importActual<typeof import('../../utils')>('../../utils')
-  return {
-    ...actual,
-    getProcessedSystemVariablesFromUrlParams: vi.fn().mockResolvedValue({ user_id: 'user-1' }),
-    getRawInputsFromUrlParams: vi.fn().mockResolvedValue({}),
-    getRawUserVariablesFromUrlParams: vi.fn().mockResolvedValue({}),
-  }
-})
 
 vi.mock('@/service/share', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/share')>()
@@ -115,19 +89,15 @@ const createWrapper = (queryClient: QueryClient) => {
 }
 
 const renderWithClient = async <T,>(hook: () => T) => {
+  useWebAppStore.setState(initialAppState)
   const queryClient = createQueryClient()
-  const wrapper = createWrapper(queryClient)
-  let result: ReturnType<typeof renderHook<T, unknown>> | undefined
-  // Use act to flush any initial state updates (like from useQuery fetching in the background)
-  await act(async () => {
-    result = renderHook(hook, { wrapper })
-    // Wait for the microtasks queue to empty out the initial query settling
-    await new Promise((resolve) => setTimeout(resolve, 0))
-  })
-  return {
-    queryClient,
-    ...result,
-  }
+  const rendered = renderHook(hook, { wrapper: createWrapper(queryClient) })
+  await waitFor(() => expect(queryClient.isFetching()).toBe(0))
+  return { queryClient, ...rendered }
+}
+
+const setInputUrl = (inputs: Record<string, string>) => {
+  window.history.replaceState({}, '', `/?${new URLSearchParams(inputs)}`)
 }
 
 const createConversationItem = (overrides: Partial<ConversationItem> = {}): ConversationItem => ({
@@ -171,16 +141,13 @@ describe('useChatWithHistory', () => {
       mockUpdateFeedback,
     ])
       service.mockReset()
-    vi.mocked(getProcessedSystemVariablesFromUrlParams).mockResolvedValue({ user_id: 'user-1' })
-    vi.mocked(getRawInputsFromUrlParams).mockResolvedValue({})
-    vi.mocked(getRawUserVariablesFromUrlParams).mockResolvedValue({})
     mockFetchConversations.mockResolvedValue(createConversationData())
     mockFetchChatList.mockResolvedValue({ data: [] })
     window.history.replaceState({}, '', '/')
     localStorage.removeItem(CONVERSATION_ID_INFO)
     sessionStorage.removeItem(TAB_CONVERSATION_ID_INFO)
     localStorage.removeItem('webappSidebarCollapse')
-    mockStoreState.appInfo = {
+    initialAppState.appInfo = {
       app_id: 'app-1',
       end_user_id: 'user-1',
       custom_config: null,
@@ -189,10 +156,10 @@ describe('useChatWithHistory', () => {
         default_language: 'en-US',
       },
     }
-    mockStoreState.appMeta = {
+    initialAppState.appMeta = {
       tool_icons: {},
     }
-    mockStoreState.appParams = null
+    initialAppState.appParams = null
     setConversationIdInfo('app-1', 'conversation-1')
   })
 
@@ -250,10 +217,10 @@ describe('useChatWithHistory', () => {
         )
       })
       await waitFor(() => {
-        expect(result!.current.pinnedConversationList).toEqual(pinnedData.data)
+        expect(result.current.pinnedConversationList).toEqual(pinnedData.data)
       })
       await waitFor(() => {
-        expect(result!.current.conversationList).toEqual(listData.data)
+        expect(result.current.conversationList).toEqual(listData.data)
       })
     })
   })
@@ -276,7 +243,7 @@ describe('useChatWithHistory', () => {
 
       // Act
       act(() => {
-        result!.current.handleNewConversationCompleted('conversation-new')
+        result.current.handleNewConversationCompleted('conversation-new')
       })
 
       // Assert
@@ -288,9 +255,9 @@ describe('useChatWithHistory', () => {
         )
       })
       await waitFor(() => {
-        expect(result!.current.conversationList[0]).toEqual(generatedConversation)
+        expect(result.current.conversationList[0]).toEqual(generatedConversation)
       })
-      expect(result!.current.currentConversationId).toBe('conversation-new')
+      expect(result.current.currentConversationId).toBe('conversation-new')
       expect(JSON.parse(localStorage.getItem(CONVERSATION_ID_INFO)!)['app-1']['user-1']).toBe(
         'conversation-new',
       )
@@ -320,12 +287,12 @@ describe('useChatWithHistory', () => {
 
       // Act
       act(() => {
-        result!.current.handleNewConversationCompleted('conversation-1')
+        result.current.handleNewConversationCompleted('conversation-1')
       })
 
       // Assert
       await waitFor(() => {
-        expect(result!.current.chatShouldReloadKey).toBe('')
+        expect(result.current.chatShouldReloadKey).toBe('')
       })
       expect(mockFetchChatList).toHaveBeenCalledTimes(1)
     })
@@ -348,9 +315,9 @@ describe('useChatWithHistory', () => {
         expect(mockFetchChatList).toHaveBeenCalledTimes(1)
       })
       await waitFor(() => {
-        expect(result!.current.currentConversationId).toBe('')
+        expect(result.current.currentConversationId).toBe('')
       })
-      expect(result!.current.clearChatList).toBe(true)
+      expect(result.current.clearChatList).toBe(true)
       const storedSelections = JSON.parse(localStorage.getItem(CONVERSATION_ID_INFO)!)
       expect(storedSelections['environment:environment-code']['user-1']).toBe('')
     })
@@ -367,8 +334,8 @@ describe('useChatWithHistory', () => {
       await waitFor(() => {
         expect(mockFetchChatList).toHaveBeenCalledTimes(1)
       })
-      expect(result!.current.currentConversationId).toBe('conversation-1')
-      expect(result!.current.clearChatList).toBe(false)
+      expect(result.current.currentConversationId).toBe('conversation-1')
+      expect(result.current.clearChatList).toBe(false)
       expect(localStorage.getItem(CONVERSATION_ID_INFO)).toContain('conversation-1')
     })
   })
@@ -392,7 +359,7 @@ describe('useChatWithHistory', () => {
       const { result } = await renderWithClient(() => useChatWithHistory())
 
       // Assert
-      expect(result!.current.currentConversationId).toBe('conversation-in-this-tab')
+      expect(result.current.currentConversationId).toBe('conversation-in-this-tab')
       expect(mockFetchChatList).toHaveBeenCalledWith(
         'conversation-in-this-tab',
         AppSourceType.webApp,
@@ -418,7 +385,7 @@ describe('useChatWithHistory', () => {
       const { result } = await renderWithClient(() => useChatWithHistory())
 
       // Assert
-      expect(result!.current.currentConversationId).toBe('')
+      expect(result.current.currentConversationId).toBe('')
       expect(mockFetchChatList).not.toHaveBeenCalled()
     })
 
@@ -436,7 +403,7 @@ describe('useChatWithHistory', () => {
 
       const { result } = await renderWithClient(() => useChatWithHistory())
 
-      expect(result!.current.currentConversationId).toBe('environment-conversation')
+      expect(result.current.currentConversationId).toBe('environment-conversation')
       expect(mockFetchChatList).toHaveBeenCalledWith(
         'environment-conversation',
         AppSourceType.webApp,
@@ -451,8 +418,8 @@ describe('useChatWithHistory', () => {
 
     it('should select by the current EndUser after access mode changes', async () => {
       window.history.replaceState({}, '', '/environment/chat/environment-code')
-      mockStoreState.appInfo = {
-        ...mockStoreState.appInfo!,
+      initialAppState.appInfo = {
+        ...initialAppState.appInfo!,
         end_user_id: 'authenticated-end-user',
       }
       localStorage.setItem(
@@ -469,7 +436,7 @@ describe('useChatWithHistory', () => {
 
       const { result } = await renderWithClient(() => useChatWithHistory())
 
-      expect(result!.current.currentConversationId).toBe('authenticated-conversation')
+      expect(result.current.currentConversationId).toBe('authenticated-conversation')
       expect(mockFetchChatList).not.toHaveBeenCalledWith(
         'anonymous-conversation',
         AppSourceType.webApp,
@@ -477,19 +444,42 @@ describe('useChatWithHistory', () => {
       )
     })
 
-    it('should not initialize WebApp selection before EndUser is known', async () => {
-      mockStoreState.appInfo = { ...mockStoreState.appInfo!, end_user_id: undefined }
+    it('waits for the EndUser and then restores only that user’s conversation', async () => {
+      initialAppState.appInfo = { ...initialAppState.appInfo!, end_user_id: undefined }
       localStorage.setItem(
         CONVERSATION_ID_INFO,
-        JSON.stringify({ 'app-1': { DEFAULT: 'stale-conversation' } }),
+        JSON.stringify({
+          'app-1': { DEFAULT: 'stale-conversation', 'user-1': 'personal-conversation' },
+        }),
       )
       mockFetchConversations.mockResolvedValue(createConversationData())
       mockFetchChatList.mockResolvedValue({ data: [] })
 
       const { result } = await renderWithClient(() => useChatWithHistory())
 
-      expect(result!.current.currentConversationId).toBe('')
+      expect(result.current.currentConversationId).toBe('')
       expect(mockFetchChatList).not.toHaveBeenCalled()
+
+      act(() => {
+        useWebAppStore
+          .getState()
+          .updateAppInfo({ ...initialAppState.appInfo!, end_user_id: 'user-1' })
+      })
+      await waitFor(() =>
+        expect(result.current.currentConversationId).toBe('personal-conversation'),
+      )
+      await waitFor(() =>
+        expect(mockFetchChatList).toHaveBeenCalledWith(
+          'personal-conversation',
+          AppSourceType.webApp,
+          'app-1',
+        ),
+      )
+      expect(mockFetchChatList).not.toHaveBeenCalledWith(
+        'stale-conversation',
+        AppSourceType.webApp,
+        'app-1',
+      )
     })
 
     it('should ignore last conversation updates from another tab', async () => {
@@ -499,7 +489,7 @@ describe('useChatWithHistory', () => {
       const { result } = await renderWithClient(() => useChatWithHistory())
 
       await waitFor(() => {
-        expect(result!.current.currentConversationId).toBe('conversation-1')
+        expect(result.current.currentConversationId).toBe('conversation-1')
       })
 
       // Act: storage events are delivered to the other tabs, not the tab that made the write.
@@ -513,7 +503,7 @@ describe('useChatWithHistory', () => {
       })
 
       // Assert
-      expect(result!.current.currentConversationId).toBe('conversation-1')
+      expect(result.current.currentConversationId).toBe('conversation-1')
       expect(mockFetchChatList).not.toHaveBeenCalledWith(
         'conversation-from-another-tab',
         AppSourceType.webApp,
@@ -525,16 +515,16 @@ describe('useChatWithHistory', () => {
   describe('Sidebar collapse', () => {
     it('persists collapse and expansion across remounts', async () => {
       const first = await renderWithClient(() => useChatWithHistory())
-      act(() => first.result!.current.handleSidebarCollapse(true))
+      act(() => first.result.current.handleSidebarCollapse(true))
       expect(localStorage.getItem('webappSidebarCollapse')).toBe('collapsed')
       first.unmount!()
       const second = await renderWithClient(() => useChatWithHistory())
-      expect(second.result!.current.sidebarCollapseState).toBe(true)
-      act(() => second.result!.current.handleSidebarCollapse(false))
+      expect(second.result.current.sidebarCollapseState).toBe(true)
+      act(() => second.result.current.handleSidebarCollapse(false))
       expect(localStorage.getItem('webappSidebarCollapse')).toBe('expanded')
       second.unmount!()
       const third = await renderWithClient(() => useChatWithHistory())
-      expect(third.result!.current.sidebarCollapseState).toBe(false)
+      expect(third.result.current.sidebarCollapseState).toBe(false)
     })
   })
 
@@ -552,9 +542,9 @@ describe('useChatWithHistory', () => {
         pinned = false
       })
       const { result } = await renderWithClient(() => useChatWithHistory())
-      await waitFor(() => expect(result!.current.conversationList).toEqual([conversation]))
+      await waitFor(() => expect(result.current.conversationList).toEqual([conversation]))
       await act(async () => {
-        await result!.current.handlePinConversation(conversation.id)
+        await result.current.handlePinConversation(conversation.id)
       })
       expect(mockPinConversation).toHaveBeenCalledWith(
         AppSourceType.webApp,
@@ -562,11 +552,11 @@ describe('useChatWithHistory', () => {
         conversation.id,
       )
       await waitFor(() => {
-        expect(result!.current.pinnedConversationList).toEqual([conversation])
-        expect(result!.current.conversationList).toEqual([])
+        expect(result.current.pinnedConversationList).toEqual([conversation])
+        expect(result.current.conversationList).toEqual([])
       })
       await act(async () => {
-        await result!.current.handleUnpinConversation(conversation.id)
+        await result.current.handleUnpinConversation(conversation.id)
       })
       expect(mockUnpinConversation).toHaveBeenCalledWith(
         AppSourceType.webApp,
@@ -574,8 +564,8 @@ describe('useChatWithHistory', () => {
         conversation.id,
       )
       await waitFor(() => {
-        expect(result!.current.pinnedConversationList).toEqual([])
-        expect(result!.current.conversationList).toEqual([conversation])
+        expect(result.current.pinnedConversationList).toEqual([])
+        expect(result.current.conversationList).toEqual([conversation])
       })
     })
   })
@@ -592,7 +582,7 @@ describe('useChatWithHistory', () => {
 
       // Act
       await act(async () => {
-        await result!.current.handleDeleteConversation('other-conversation', { onSuccess })
+        await result.current.handleDeleteConversation('other-conversation', { onSuccess })
       })
 
       // Assert
@@ -620,12 +610,12 @@ describe('useChatWithHistory', () => {
 
       // Act: start first delete (does not immediately resolve, sets conversationDeleting=true)
       act(() => {
-        result!.current.handleDeleteConversation('other-conversation', { onSuccess })
+        result.current.handleDeleteConversation('other-conversation', { onSuccess })
       })
 
       // conversationDeleting is now true; second call should be skipped by guard
       await act(async () => {
-        result!.current.handleDeleteConversation('other-conversation', { onSuccess })
+        result.current.handleDeleteConversation('other-conversation', { onSuccess })
         resolveDelete()
       })
 
@@ -644,17 +634,17 @@ describe('useChatWithHistory', () => {
 
       // Assert current conversation is set
       await waitFor(() => {
-        expect(result!.current.currentConversationId).toBe('conversation-1')
+        expect(result.current.currentConversationId).toBe('conversation-1')
       })
 
       // Act: delete the current conversation
       await act(async () => {
-        await result!.current.handleDeleteConversation('conversation-1', { onSuccess })
+        await result.current.handleDeleteConversation('conversation-1', { onSuccess })
       })
 
       // Assert: handleNewConversation side-effect: clearChatList set to true
       await waitFor(() => {
-        expect(result!.current.clearChatList).toBe(true)
+        expect(result.current.clearChatList).toBe(true)
       })
     })
   })
@@ -673,12 +663,12 @@ describe('useChatWithHistory', () => {
       const { result } = await renderWithClient(() => useChatWithHistory())
 
       await waitFor(() => {
-        expect(result!.current.conversationList).toHaveLength(1)
+        expect(result.current.conversationList).toHaveLength(1)
       })
 
       // Act
       await act(async () => {
-        await result!.current.handleRenameConversation('conversation-1', 'New Name', { onSuccess })
+        await result.current.handleRenameConversation('conversation-1', 'New Name', { onSuccess })
       })
 
       // Assert
@@ -690,7 +680,7 @@ describe('useChatWithHistory', () => {
       )
       expect(onSuccess).toHaveBeenCalledTimes(1)
       await waitFor(() => {
-        expect(result!.current.conversationList[0]!.name).toBe('New Name')
+        expect(result.current.conversationList[0]!.name).toBe('New Name')
       })
     })
 
@@ -704,7 +694,7 @@ describe('useChatWithHistory', () => {
 
       // Act
       await act(async () => {
-        await result!.current.handleRenameConversation('conversation-1', '   ', { onSuccess })
+        await result.current.handleRenameConversation('conversation-1', '   ', { onSuccess })
       })
 
       // Assert
@@ -727,12 +717,12 @@ describe('useChatWithHistory', () => {
 
       // Act: start first rename (does not immediately resolve, sets conversationRenaming=true)
       act(() => {
-        result!.current.handleRenameConversation('conversation-1', 'Name A', { onSuccess })
+        result.current.handleRenameConversation('conversation-1', 'Name A', { onSuccess })
       })
 
       // conversationRenaming is now true; second call should be skipped by guard
       await act(async () => {
-        result!.current.handleRenameConversation('conversation-1', 'Name B', { onSuccess })
+        result.current.handleRenameConversation('conversation-1', 'Name B', { onSuccess })
         resolveRename()
       })
 
@@ -754,7 +744,7 @@ describe('useChatWithHistory', () => {
 
       // Act
       await act(async () => {
-        await result!.current.handleFeedback('message-1', feedback)
+        await result.current.handleFeedback('message-1', feedback)
       })
 
       // Assert
@@ -776,16 +766,16 @@ describe('useChatWithHistory', () => {
 
       // Act
       act(() => {
-        result!.current.handleNewConversation()
+        result.current.handleNewConversation()
       })
 
       // Assert
       await waitFor(() => {
-        expect(result!.current.currentConversationId).toBe('')
+        expect(result.current.currentConversationId).toBe('')
       })
-      expect(result!.current.clearChatList).toBe(true)
-      expect(result!.current.conversationList[0]!.id).toBe('')
-      expect(result!.current.appPrevChatTree).toEqual([])
+      expect(result.current.clearChatList).toBe(true)
+      expect(result.current.conversationList[0]!.id).toBe('')
+      expect(result.current.appPrevChatTree).toEqual([])
     })
   })
 
@@ -802,78 +792,69 @@ describe('useChatWithHistory', () => {
 
       // Set a newConversationId first
       act(() => {
-        result!.current.handleNewConversationCompleted('conversation-new')
+        result.current.handleNewConversationCompleted('conversation-new')
       })
 
       await waitFor(() => {
-        expect(result!.current.newConversationId).toBe('conversation-new')
+        expect(result.current.newConversationId).toBe('conversation-new')
       })
 
       // Act
       act(() => {
-        result!.current.handleChangeConversation('conversation-1')
+        result.current.handleChangeConversation('conversation-1')
       })
 
       // Assert
       await waitFor(() => {
-        expect(result!.current.newConversationId).toBe('')
+        expect(result.current.newConversationId).toBe('')
       })
-      expect(result!.current.clearChatList).toBe(false)
+      expect(result.current.clearChatList).toBe(false)
     })
   })
 
   describe('inputsForms', () => {
+    const input = { variable: 'input', label: 'Input', required: false }
     it.each([
-      ['paragraph', 'Draft'],
-      ['number', 42],
-      ['checkbox', false],
-      ['select', 'a'],
-      ['file-list', undefined],
-      ['file', undefined],
-      ['json_object', undefined],
-      ['text-input', 'Name'],
-    ])(
+      ['paragraph', { paragraph: { ...input, default: 'Draft' } }, 'Draft'],
+      ['number', { number: { ...input, default: 42 } }, 42],
+      ['checkbox', { checkbox: { ...input, default: false } }, false],
+      ['select', { select: { ...input, default: 'a', options: ['a', 'b'] } }, 'a'],
+      ['file-list', { 'file-list': input }, undefined],
+      ['file', { file: input }, undefined],
+      ['json_object', { json_object: input }, undefined],
+      ['text-input', { 'text-input': { ...input, default: 'Name' } }, 'Name'],
+    ] satisfies Array<[string, ChatConfig['user_input_form'][number], unknown]>)(
       'preserves %s schema and seeds its default into new chat inputs',
-      async (type, defaultValue) => {
-        const schema = {
-          variable: 'input',
-          label: 'Input',
-          required: false,
-          default: defaultValue,
-          options: ['a', 'b'],
-        }
-        mockStoreState.appParams = {
-          user_input_form: [{ [type as string]: schema }],
-        } as unknown as ChatConfig
+      async (type, form, defaultValue) => {
+        initialAppState.appParams = createChatConfig({ user_input_form: [form] })
         const { result } = await renderWithClient(() => useChatWithHistory())
         await waitFor(() => {
-          expect(result!.current.inputsForms).toEqual([{ ...schema, type }])
-          expect(result!.current.newConversationInputs).toEqual({ input: defaultValue ?? null })
+          expect(result.current.inputsForms).toEqual([{ ...Object.values(form)[0], type }])
+          expect(result.current.newConversationInputs).toEqual({ input: defaultValue ?? null })
         })
       },
     )
 
     it('should skip items with external_data_tool set', async () => {
       // Arrange
-      mockStoreState.appParams = {
+      initialAppState.appParams = createChatConfig({
         user_input_form: [
           {
-            external_data_tool: true,
-            'text-input': {
+            external_data_tool: {
               variable: 'text_var',
               label: 'Text',
               required: true,
             },
           },
         ],
-      } as unknown as ChatConfig
+      })
       mockFetchConversations.mockResolvedValue(createConversationData())
       mockFetchChatList.mockResolvedValue({ data: [] })
 
       const { result } = await renderWithClient(() => useChatWithHistory())
 
       await waitFor(() => {
-        expect(result!.current.inputsForms).toHaveLength(0)
+        expect(result.current.inputsForms).toHaveLength(0)
       })
     })
   })
@@ -889,7 +870,7 @@ describe('useChatWithHistory', () => {
 
       // Act
       act(() => {
-        result!.current.handleStartChat(callback)
+        result.current.handleStartChat(callback)
       })
 
       // Assert
@@ -898,7 +879,7 @@ describe('useChatWithHistory', () => {
 
     it('should not invoke callback when required text input is missing', async () => {
       // Arrange
-      mockStoreState.appParams = {
+      initialAppState.appParams = createChatConfig({
         user_input_form: [
           {
             'text-input': {
@@ -910,7 +891,7 @@ describe('useChatWithHistory', () => {
             },
           },
         ],
-      } as unknown as ChatConfig
+      })
       mockFetchConversations.mockResolvedValue(createConversationData())
       mockFetchChatList.mockResolvedValue({ data: [] })
 
@@ -919,7 +900,7 @@ describe('useChatWithHistory', () => {
 
       // Act (inputs are empty, required field not filled)
       act(() => {
-        result!.current.handleStartChat(callback)
+        result.current.handleStartChat(callback)
       })
 
       // Assert
@@ -927,7 +908,7 @@ describe('useChatWithHistory', () => {
     })
 
     it('should invoke callback when a required number input is zero', async () => {
-      mockStoreState.appParams = {
+      initialAppState.appParams = createChatConfig({
         user_input_form: [
           {
             number: {
@@ -938,19 +919,19 @@ describe('useChatWithHistory', () => {
             },
           },
         ],
-      } as unknown as ChatConfig
+      })
       mockFetchConversations.mockResolvedValue(createConversationData())
       mockFetchChatList.mockResolvedValue({ data: [] })
 
       const { result } = await renderWithClient(() => useChatWithHistory())
 
       await waitFor(() => {
-        expect(result!.current.newConversationInputsRef.current.required_number).toBe(0)
+        expect(result.current.newConversationInputsRef.current.required_number).toBe(0)
       })
       const callback = vi.fn()
 
       act(() => {
-        result!.current.handleStartChat(callback)
+        result.current.handleStartChat(callback)
       })
 
       expect(callback).toHaveBeenCalledTimes(1)
@@ -958,7 +939,7 @@ describe('useChatWithHistory', () => {
 
     it('should invoke callback when allInputsHidden is true regardless of required fields', async () => {
       // Arrange
-      mockStoreState.appParams = {
+      initialAppState.appParams = createChatConfig({
         user_input_form: [
           {
             'text-input': {
@@ -971,7 +952,7 @@ describe('useChatWithHistory', () => {
             },
           },
         ],
-      } as unknown as ChatConfig
+      })
       mockFetchConversations.mockResolvedValue(createConversationData())
       mockFetchChatList.mockResolvedValue({ data: [] })
 
@@ -980,12 +961,12 @@ describe('useChatWithHistory', () => {
 
       // Assert allInputsHidden is true
       await waitFor(() => {
-        expect(result!.current.allInputsHidden).toBe(true)
+        expect(result.current.allInputsHidden).toBe(true)
       })
 
       // Act
       act(() => {
-        result!.current.handleStartChat(callback)
+        result.current.handleStartChat(callback)
       })
 
       // Assert
@@ -1021,9 +1002,9 @@ describe('useChatWithHistory', () => {
       const { result } = await renderWithClient(() => useChatWithHistory(installedAppInfo))
 
       // Assert
-      expect(result!.current.isInstalledApp).toBe(true)
-      expect(result!.current.appId).toBe('installed-app-id')
-      expect(result!.current.appData?.site.title).toBe('Installed App')
+      expect(result.current.isInstalledApp).toBe(true)
+      expect(result.current.appId).toBe('installed-app-id')
+      expect(result.current.appData?.site.title).toBe('Installed App')
       expect(mockFetchConversations).toHaveBeenCalledWith(
         AppSourceType.installedApp,
         'installed-app-id',
@@ -1065,7 +1046,7 @@ describe('useChatWithHistory', () => {
 
       // Assert
       await waitFor(() => {
-        expect(result!.current.appPrevChatTree).toEqual([
+        expect(result.current.appPrevChatTree).toEqual([
           expect.objectContaining({
             id: 'question-msg-1',
             content: 'Hello',
@@ -1118,10 +1099,10 @@ describe('useChatWithHistory', () => {
       const { result } = await renderWithClient(() => useChatWithHistory())
 
       await waitFor(() => {
-        expect(result!.current.appPrevChatTree.length).toBeGreaterThan(0)
+        expect(result.current.appPrevChatTree.length).toBeGreaterThan(0)
       })
 
-      const answerNode = result!.current.appPrevChatTree[0]?.children?.[0]
+      const answerNode = result.current.appPrevChatTree[0]?.children?.[0]
       expect(answerNode?.humanInputFormDataList).toHaveLength(1)
       expect(answerNode?.workflow_run_id).toBe('wf-run-1')
     })
@@ -1181,10 +1162,10 @@ describe('useChatWithHistory', () => {
       const { result } = await renderWithClient(() => useChatWithHistory())
 
       await waitFor(() => {
-        expect(result!.current.appPrevChatTree.length).toBeGreaterThan(0)
+        expect(result.current.appPrevChatTree.length).toBeGreaterThan(0)
       })
 
-      const answerNode = result!.current.appPrevChatTree[0]?.children?.[0]
+      const answerNode = result.current.appPrevChatTree[0]?.children?.[0]
       expect(answerNode?.humanInputFormDataList).toHaveLength(0)
       expect(answerNode?.humanInputFilledFormDataList).toHaveLength(1)
       expect(answerNode?.humanInputFilledFormDataList?.[0]?.form_content).toBe(
@@ -1203,7 +1184,7 @@ describe('useChatWithHistory', () => {
       const { result } = await renderWithClient(() => useChatWithHistory())
 
       // Assert
-      expect(result!.current.appPrevChatTree).toEqual([])
+      expect(result.current.appPrevChatTree).toEqual([])
     })
   })
 
@@ -1228,7 +1209,7 @@ describe('useChatWithHistory', () => {
 
       // Assert
       await waitFor(() => {
-        expect(result!.current.currentConversationItem?.id).toBe('pinned-1')
+        expect(result.current.currentConversationItem?.id).toBe('pinned-1')
       })
     })
   })
@@ -1236,20 +1217,20 @@ describe('useChatWithHistory', () => {
   describe('handleSidebarCollapse without appId', () => {
     it('should not update state when appId is absent', async () => {
       // Arrange
-      mockStoreState.appInfo = null // no app_id -> no appId
+      initialAppState.appInfo = null // no app_id -> no appId
       mockFetchConversations.mockResolvedValue(createConversationData())
       mockFetchChatList.mockResolvedValue({ data: [] })
 
       const { result } = await renderWithClient(() => useChatWithHistory())
-      const initialState = result!.current.sidebarCollapseState
+      const initialState = result.current.sidebarCollapseState
 
       // Act
       act(() => {
-        result!.current.handleSidebarCollapse(true)
+        result.current.handleSidebarCollapse(true)
       })
 
       // Assert: state unchanged since appId is absent
-      expect(result!.current.sidebarCollapseState).toBe(initialState)
+      expect(result.current.sidebarCollapseState).toBe(initialState)
     })
   })
 
@@ -1265,7 +1246,7 @@ describe('useChatWithHistory', () => {
 
       // Act
       act(() => {
-        result!.current.handleConversationIdInfoChange('new-conversation')
+        result.current.handleConversationIdInfoChange('new-conversation')
       })
 
       // Assert: stored correctly without crash
@@ -1279,11 +1260,10 @@ describe('useChatWithHistory', () => {
 
   describe('inputsForms value truncation', () => {
     it('should truncate paragraph value that exceeds max_length', async () => {
-      // Arrange: mock getRawInputsFromUrlParams to return a long value
-      const { getRawInputsFromUrlParams } = await import('../../utils')
-      vi.mocked(getRawInputsFromUrlParams).mockResolvedValue({ para_var: 'toolong_value_over_5' })
+      // URL text values are bounded by the configured input length.
+      setInputUrl({ para_var: 'toolong_value_over_5' })
 
-      mockStoreState.appParams = {
+      initialAppState.appParams = createChatConfig({
         user_input_form: [
           {
             paragraph: {
@@ -1295,31 +1275,27 @@ describe('useChatWithHistory', () => {
             },
           },
         ],
-      } as unknown as ChatConfig
+      })
       mockFetchConversations.mockResolvedValue(createConversationData())
       mockFetchChatList.mockResolvedValue({ data: [] })
 
       const { result } = await renderWithClient(() => useChatWithHistory())
 
       await waitFor(() => {
-        const form = result!.current.inputsForms[0]
+        const form = result.current.inputsForms[0]
         // default should be the truncated value
         expect(form.default).toBe('toolo')
-        expect(result!.current.newConversationInputs.para_var).toBe('toolo')
+        expect(result.current.newConversationInputs.para_var).toBe('toolo')
       })
-
-      // Restore
-      vi.mocked(getRawInputsFromUrlParams).mockResolvedValue({})
     })
 
     it('should truncate text-input value that exceeds max_length', async () => {
       // Arrange
-      const { getRawInputsFromUrlParams } = await import('../../utils')
-      vi.mocked(getRawInputsFromUrlParams).mockResolvedValue({
+      setInputUrl({
         text_var: 'exceeds_max_length_value',
       })
 
-      mockStoreState.appParams = {
+      initialAppState.appParams = createChatConfig({
         user_input_form: [
           {
             'text-input': {
@@ -1331,27 +1307,24 @@ describe('useChatWithHistory', () => {
             },
           },
         ],
-      } as unknown as ChatConfig
+      })
       mockFetchConversations.mockResolvedValue(createConversationData())
       mockFetchChatList.mockResolvedValue({ data: [] })
 
       const { result } = await renderWithClient(() => useChatWithHistory())
 
       await waitFor(() => {
-        const form = result!.current.inputsForms[0]
+        const form = result.current.inputsForms[0]
         expect(form.default).toBe('exceeds')
-        expect(result!.current.newConversationInputs.text_var).toBe('exceeds')
+        expect(result.current.newConversationInputs.text_var).toBe('exceeds')
       })
-
-      // Restore
-      vi.mocked(getRawInputsFromUrlParams).mockResolvedValue({})
     })
   })
 
   describe('handleNewConversation with inputsForms', () => {
     it('should reset new conversation inputs to form defaults', async () => {
       // Arrange
-      mockStoreState.appParams = {
+      initialAppState.appParams = createChatConfig({
         user_input_form: [
           {
             'text-input': {
@@ -1363,7 +1336,7 @@ describe('useChatWithHistory', () => {
             },
           },
         ],
-      } as unknown as ChatConfig
+      })
       mockFetchConversations.mockResolvedValue(createConversationData())
       mockFetchChatList.mockResolvedValue({ data: [] })
 
@@ -1371,19 +1344,19 @@ describe('useChatWithHistory', () => {
 
       // Manually change inputs to something else
       act(() => {
-        result!.current.handleNewConversationInputsChange({ my_var: 'changed' })
+        result.current.handleNewConversationInputsChange({ my_var: 'changed' })
       })
 
-      expect(result!.current.newConversationInputs).toEqual({ my_var: 'changed' })
-      expect(result!.current.newConversationInputsRef.current).toEqual({ my_var: 'changed' })
+      expect(result.current.newConversationInputs).toEqual({ my_var: 'changed' })
+      expect(result.current.newConversationInputsRef.current).toEqual({ my_var: 'changed' })
       // Act
       act(() => {
-        result!.current.handleNewConversation()
+        result.current.handleNewConversation()
       })
 
       // Assert: inputs reset to form defaults
       await waitFor(() => {
-        expect(result!.current.newConversationInputs.my_var).toBe('default_val')
+        expect(result.current.newConversationInputs.my_var).toBe('default_val')
       })
     })
   })
@@ -1391,10 +1364,9 @@ describe('useChatWithHistory', () => {
   describe('inputsForms select option matching', () => {
     it('should use select default when initInput value is not in options', async () => {
       // Arrange
-      const { getRawInputsFromUrlParams } = await import('../../utils')
-      vi.mocked(getRawInputsFromUrlParams).mockResolvedValue({ sel_var: 'not_an_option' })
+      setInputUrl({ sel_var: 'not_an_option' })
 
-      mockStoreState.appParams = {
+      initialAppState.appParams = createChatConfig({
         user_input_form: [
           {
             select: {
@@ -1406,27 +1378,24 @@ describe('useChatWithHistory', () => {
             },
           },
         ],
-      } as unknown as ChatConfig
+      })
       mockFetchConversations.mockResolvedValue(createConversationData())
       mockFetchChatList.mockResolvedValue({ data: [] })
 
       const { result } = await renderWithClient(() => useChatWithHistory())
 
       await waitFor(() => {
-        const form = result!.current.inputsForms[0]
+        const form = result.current.inputsForms[0]
         // not_an_option is not in options, so falls back to select.default
         expect(form.default).toBe('a')
       })
-
-      vi.mocked(getRawInputsFromUrlParams).mockResolvedValue({})
     })
 
     it('should use initInput value for select when it IS in options', async () => {
       // Arrange
-      const { getRawInputsFromUrlParams } = await import('../../utils')
-      vi.mocked(getRawInputsFromUrlParams).mockResolvedValue({ sel_var: 'b' })
+      setInputUrl({ sel_var: 'b' })
 
-      mockStoreState.appParams = {
+      initialAppState.appParams = createChatConfig({
         user_input_form: [
           {
             select: {
@@ -1438,65 +1407,26 @@ describe('useChatWithHistory', () => {
             },
           },
         ],
-      } as unknown as ChatConfig
+      })
       mockFetchConversations.mockResolvedValue(createConversationData())
       mockFetchChatList.mockResolvedValue({ data: [] })
 
       const { result } = await renderWithClient(() => useChatWithHistory())
 
       await waitFor(() => {
-        const form = result!.current.inputsForms[0]
+        const form = result.current.inputsForms[0]
         // 'b' is in options so it's used as default
         expect(form.default).toBe('b')
       })
-
-      vi.mocked(getRawInputsFromUrlParams).mockResolvedValue({})
     })
-  })
-
-  describe('inputsForms checkbox with initInputs', () => {
-    it.each([true, false])(
-      'preserves the URL checkbox value %s over the opposite default',
-      async (preset) => {
-        // Arrange
-        const { getRawInputsFromUrlParams } = await import('../../utils')
-        vi.mocked(getRawInputsFromUrlParams).mockResolvedValue({ check_var: preset })
-
-        mockStoreState.appParams = {
-          user_input_form: [
-            {
-              checkbox: {
-                variable: 'check_var',
-                label: 'Check',
-                required: false,
-                default: !preset,
-              },
-            },
-          ],
-        } as unknown as ChatConfig
-        mockFetchConversations.mockResolvedValue(createConversationData())
-        mockFetchChatList.mockResolvedValue({ data: [] })
-
-        const { result } = await renderWithClient(() => useChatWithHistory())
-
-        await waitFor(() => {
-          const form = result!.current.inputsForms[0]
-          expect(form.default).toBe(preset)
-          expect(result!.current.newConversationInputs.check_var).toBe(preset)
-        })
-
-        vi.mocked(getRawInputsFromUrlParams).mockResolvedValue({})
-      },
-    )
   })
 
   describe('inputsForms number with initInputs', () => {
     it('should use converted number from initInputs', async () => {
       // Arrange
-      const { getRawInputsFromUrlParams } = await import('../../utils')
-      vi.mocked(getRawInputsFromUrlParams).mockResolvedValue({ num_var: '99' })
+      setInputUrl({ num_var: '99' })
 
-      mockStoreState.appParams = {
+      initialAppState.appParams = createChatConfig({
         user_input_form: [
           {
             number: {
@@ -1507,27 +1437,24 @@ describe('useChatWithHistory', () => {
             },
           },
         ],
-      } as unknown as ChatConfig
+      })
       mockFetchConversations.mockResolvedValue(createConversationData())
       mockFetchChatList.mockResolvedValue({ data: [] })
 
       const { result } = await renderWithClient(() => useChatWithHistory())
 
       await waitFor(() => {
-        const form = result!.current.inputsForms[0]
+        const form = result.current.inputsForms[0]
         expect(form.default).toBe(99)
       })
-
-      vi.mocked(getRawInputsFromUrlParams).mockResolvedValue({})
     })
   })
 
   describe('inputsForms number numeric zero', () => {
     it('should preserve zero from URL params and seed it into new conversation inputs', async () => {
-      const { getRawInputsFromUrlParams } = await import('../../utils')
-      vi.mocked(getRawInputsFromUrlParams).mockResolvedValue({ num_var: '0' })
+      setInputUrl({ num_var: '0' })
 
-      mockStoreState.appParams = {
+      initialAppState.appParams = createChatConfig({
         user_input_form: [
           {
             number: {
@@ -1538,18 +1465,16 @@ describe('useChatWithHistory', () => {
             },
           },
         ],
-      } as unknown as ChatConfig
+      })
       mockFetchConversations.mockResolvedValue(createConversationData())
       mockFetchChatList.mockResolvedValue({ data: [] })
 
       const { result } = await renderWithClient(() => useChatWithHistory())
 
       await waitFor(() => {
-        expect(result!.current.inputsForms[0].default).toBe(0)
-        expect(result!.current.newConversationInputsRef.current.num_var).toBe(0)
+        expect(result.current.inputsForms[0].default).toBe(0)
+        expect(result.current.newConversationInputsRef.current.num_var).toBe(0)
       })
-
-      vi.mocked(getRawInputsFromUrlParams).mockResolvedValue({})
     })
   })
 
@@ -1562,20 +1487,22 @@ describe('useChatWithHistory', () => {
       ['file', { transferMethod: 'local_file', uploadedId: 'uploaded-1' }, true],
       ['file', { transferMethod: 'remote_url', url: 'https://example.com/file.txt' }, true],
     ])('validates %s value %j before starting chat', async (type, value, ready) => {
-      mockStoreState.appParams = {
+      initialAppState.appParams = createChatConfig({
         user_input_form: [
-          { [type as string]: { variable: 'upload', label: 'Upload', required: true } },
+          type === 'file-list'
+            ? { 'file-list': { variable: 'upload', label: 'Upload', required: true } }
+            : { file: { variable: 'upload', label: 'Upload', required: true } },
         ],
-      } as unknown as ChatConfig
+      })
       const { result } = await renderWithClient(() => useChatWithHistory())
       const callback = vi.fn()
       act(() => {
-        result!.current.handleNewConversationInputsChange({ upload: value })
-        result!.current.handleStartChat(callback)
+        result.current.handleNewConversationInputsChange({ upload: value })
+        result.current.handleStartChat(callback)
       })
       expect(callback).toHaveBeenCalledTimes(ready ? 1 : 0)
-      if (ready) expect(result!.current.conversationList[0]!.id).toBe('')
-      else expect(result!.current.conversationList.every((item) => item.id !== '')).toBe(true)
+      if (ready) expect(result.current.conversationList[0]!.id).toBe('')
+      else expect(result.current.conversationList.every((item) => item.id !== '')).toBe(true)
     })
   })
 
@@ -1682,9 +1609,9 @@ describe('useChatWithHistory', () => {
 
       // Assert
       await waitFor(() => {
-        expect(result!.current.appPrevChatTree.length).toBeGreaterThan(0)
+        expect(result.current.appPrevChatTree.length).toBeGreaterThan(0)
       })
-      const messageWithFiles = result!.current.appPrevChatTree.find(
+      const messageWithFiles = result.current.appPrevChatTree.find(
         (item) => item.id === 'question-msg-files',
       )
       expect(messageWithFiles?.message_files).toHaveLength(1)
@@ -1698,7 +1625,7 @@ describe('useChatWithHistory', () => {
         latency: '66.00',
         tokens_per_second: '0.15',
       })
-      const pausedAnswerNode = result!.current.appPrevChatTree.find(
+      const pausedAnswerNode = result.current.appPrevChatTree.find(
         (item) => item.id === 'question-msg-paused-branch',
       )?.children?.[0]
 
@@ -1727,12 +1654,12 @@ describe('useChatWithHistory', () => {
 
       // Act
       act(() => {
-        result!.current.handleNewConversationCompleted('conversation-new')
+        result.current.handleNewConversationCompleted('conversation-new')
       })
 
       // Assert
       await waitFor(() => {
-        expect(result!.current.conversationList[0]!.name).toBe('Updated Name')
+        expect(result.current.conversationList[0]!.name).toBe('Updated Name')
       })
     })
   })
@@ -1740,7 +1667,7 @@ describe('useChatWithHistory', () => {
   describe('handleConversationIdInfoChange fallback branches', () => {
     it('should no-op when appId is absent', async () => {
       // Arrange
-      mockStoreState.appInfo = null
+      initialAppState.appInfo = null
       mockFetchConversations.mockResolvedValue(createConversationData())
       mockFetchChatList.mockResolvedValue({ data: [] })
       const original = localStorage.getItem(CONVERSATION_ID_INFO)
@@ -1749,7 +1676,7 @@ describe('useChatWithHistory', () => {
 
       // Act
       act(() => {
-        result!.current.handleConversationIdInfoChange('unused-conversation-id')
+        result.current.handleConversationIdInfoChange('unused-conversation-id')
       })
 
       // Assert
@@ -1758,10 +1685,7 @@ describe('useChatWithHistory', () => {
 
     it('should use the site EndUser when the URL user id is missing', async () => {
       // Arrange
-      const { getProcessedSystemVariablesFromUrlParams } = await import('../../utils')
-      vi.mocked(getProcessedSystemVariablesFromUrlParams).mockResolvedValueOnce({
-        user_id: undefined as unknown as string,
-      })
+      window.history.replaceState({}, '', '/')
       mockFetchConversations.mockResolvedValue(createConversationData())
       mockFetchChatList.mockResolvedValue({ data: [] })
 
@@ -1769,7 +1693,7 @@ describe('useChatWithHistory', () => {
 
       // Act
       act(() => {
-        result!.current.handleConversationIdInfoChange('conversation-default-user')
+        result.current.handleConversationIdInfoChange('conversation-default-user')
       })
 
       // Assert
@@ -1807,7 +1731,7 @@ describe('useChatWithHistory', () => {
 
       // Assert
       await waitFor(() => {
-        expect(result!.current.currentConversationInputs).toEqual({})
+        expect(result.current.currentConversationInputs).toEqual({})
       })
     })
   })
@@ -1815,7 +1739,7 @@ describe('useChatWithHistory', () => {
   describe('handleNewConversation default normalization', () => {
     it('should assign null for input defaults that are empty strings', async () => {
       // Arrange
-      mockStoreState.appParams = {
+      initialAppState.appParams = createChatConfig({
         user_input_form: [
           {
             'text-input': {
@@ -1827,19 +1751,19 @@ describe('useChatWithHistory', () => {
             },
           },
         ],
-      } as unknown as ChatConfig
+      })
       mockFetchConversations.mockResolvedValue(createConversationData())
       mockFetchChatList.mockResolvedValue({ data: [] })
       const { result } = await renderWithClient(() => useChatWithHistory())
 
       // Act
       act(() => {
-        result!.current.handleNewConversation()
+        result.current.handleNewConversation()
       })
 
       // Assert
       await waitFor(() => {
-        expect(result!.current.newConversationInputs.empty_default_var).toBeNull()
+        expect(result.current.newConversationInputs.empty_default_var).toBeNull()
       })
     })
   })

@@ -88,26 +88,29 @@ describe('Header Component', () => {
 
   describe('Interactions', () => {
     it('should handle new conversation', async () => {
+      const user = userEvent.setup()
       const handleNewConversation = vi.fn()
       setup({ handleNewConversation, sidebarCollapseState: true, currentConversationId: 'conv-1' })
 
       const resetChatBtn = screen.getByRole('button', { name: 'share.chat.resetChat' })
-      await userEvent.setup().click(resetChatBtn)
+      await user.click(resetChatBtn)
 
       expect(handleNewConversation).toHaveBeenCalled()
     })
 
     it('should handle sidebar toggle', async () => {
+      const user = userEvent.setup()
       const handleSidebarCollapse = vi.fn()
       setup({ handleSidebarCollapse, sidebarCollapseState: true })
 
       const sidebarBtn = screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' })
-      await userEvent.setup().click(sidebarBtn)
+      await user.click(sidebarBtn)
 
       expect(handleSidebarCollapse).toHaveBeenCalledWith(false)
     })
 
     it('should render operation menu and handle pin', async () => {
+      const user = userEvent.setup()
       const handlePinConversation = vi.fn()
       const mockConv = conversation()
       setup({
@@ -118,17 +121,18 @@ describe('Header Component', () => {
       })
 
       const trigger = screen.getByText('My Chat')
-      await userEvent.setup().click(trigger)
+      await user.click(trigger)
 
       const pinBtn = await screen.findByText('explore.sidebar.action.pin')
       expect(pinBtn)!.toBeInTheDocument()
 
-      await userEvent.setup().click(pinBtn)
+      await user.click(pinBtn)
 
       expect(handlePinConversation).toHaveBeenCalledWith('conv-1')
     })
 
     it('should handle unpin', async () => {
+      const user = userEvent.setup()
       const handleUnpinConversation = vi.fn()
       const mockConv = conversation()
       setup({
@@ -139,15 +143,16 @@ describe('Header Component', () => {
         sidebarCollapseState: true,
       })
 
-      await userEvent.setup().click(screen.getByText('My Chat'))
+      await user.click(screen.getByText('My Chat'))
 
       const unpinBtn = await screen.findByText('explore.sidebar.action.unpin')
-      await userEvent.setup().click(unpinBtn)
+      await user.click(unpinBtn)
 
       expect(handleUnpinConversation).toHaveBeenCalledWith('conv-1')
     })
 
     it('should handle rename cancellation', async () => {
+      const user = userEvent.setup()
       const mockConv = conversation()
       setup({
         currentConversationId: 'conv-1',
@@ -155,13 +160,13 @@ describe('Header Component', () => {
         sidebarCollapseState: true,
       })
 
-      await userEvent.setup().click(screen.getByText('My Chat'))
+      await user.click(screen.getByText('My Chat'))
 
       const renameMenuBtn = await screen.findByText('explore.sidebar.action.rename')
-      await userEvent.setup().click(renameMenuBtn)
+      await user.click(renameMenuBtn)
 
       const cancelBtn = await screen.findByText('common.operation.cancel')
-      await userEvent.setup().click(cancelBtn)
+      await user.click(cancelBtn)
 
       await waitFor(() => {
         expect(screen.queryByText('common.chat.renameConversation')).not.toBeInTheDocument()
@@ -170,6 +175,7 @@ describe('Header Component', () => {
     })
 
     it('should handle rename success flow', async () => {
+      const user = userEvent.setup()
       const handleRenameConversation = vi.fn()
       const mockConv = conversation()
       setup({
@@ -179,19 +185,19 @@ describe('Header Component', () => {
         sidebarCollapseState: true,
       })
 
-      await userEvent.setup().click(screen.getByText('My Chat'))
+      await user.click(screen.getByText('My Chat'))
 
       const renameMenuBtn = await screen.findByText('explore.sidebar.action.rename')
-      await userEvent.setup().click(renameMenuBtn)
+      await user.click(renameMenuBtn)
 
       expect(await screen.findByText('common.chat.renameConversation'))!.toBeInTheDocument()
 
       const input = screen.getByDisplayValue('My Chat')
-      await userEvent.setup().clear(input)
-      await userEvent.setup().type(input, 'New Name')
+      await user.clear(input)
+      await user.type(input, 'New Name')
 
       const saveBtn = await screen.findByText('common.operation.save')
-      await userEvent.setup().click(saveBtn)
+      await user.click(saveBtn)
 
       expect(handleRenameConversation).toHaveBeenCalledWith(
         'conv-1',
@@ -210,6 +216,7 @@ describe('Header Component', () => {
     })
 
     it('should handle delete flow', async () => {
+      const user = userEvent.setup()
       const handleDeleteConversation = vi.fn()
       const mockConv = conversation()
       setup({
@@ -219,16 +226,16 @@ describe('Header Component', () => {
         sidebarCollapseState: true,
       })
 
-      await userEvent.setup().click(screen.getByText('My Chat'))
+      await user.click(screen.getByText('My Chat'))
 
       const deleteMenuBtn = await screen.findByText('explore.sidebar.action.delete')
-      await userEvent.setup().click(deleteMenuBtn)
+      await user.click(deleteMenuBtn)
 
       expect(handleDeleteConversation).not.toHaveBeenCalled()
       expect(await screen.findByText('share.chat.deleteConversation.title'))!.toBeInTheDocument()
 
       const confirmBtn = await screen.findByText('common.operation.confirm')
-      await userEvent.setup().click(confirmBtn)
+      await user.click(confirmBtn)
 
       expect(handleDeleteConversation).toHaveBeenCalledWith('conv-1', expect.any(Object))
 
@@ -243,6 +250,7 @@ describe('Header Component', () => {
     })
 
     it('should handle delete cancellation', async () => {
+      const user = userEvent.setup()
       const mockConv = conversation()
       setup({
         currentConversationId: 'conv-1',
@@ -250,13 +258,13 @@ describe('Header Component', () => {
         sidebarCollapseState: true,
       })
 
-      await userEvent.setup().click(screen.getByText('My Chat'))
+      await user.click(screen.getByText('My Chat'))
 
       const deleteMenuBtn = await screen.findByText('explore.sidebar.action.delete')
-      await userEvent.setup().click(deleteMenuBtn)
+      await user.click(deleteMenuBtn)
 
       const cancelBtn = await screen.findByText('common.operation.cancel')
-      await userEvent.setup().click(cancelBtn)
+      await user.click(cancelBtn)
 
       await waitFor(() => {
         expect(screen.queryByText('share.chat.deleteConversation.title')).not.toBeInTheDocument()

@@ -65,6 +65,7 @@ describe('AccessRuleSection', () => {
   afterEach(() => vi.unstubAllGlobals())
 
   it('should render a collapsed group and expand it when the header is clicked', async () => {
+    const user = userEvent.setup()
     render(
       <AccessRuleSection
         title="App Access Rules"
@@ -76,7 +77,7 @@ describe('AccessRuleSection', () => {
 
     expect(screen.queryByText('Full Control')).not.toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: /^App Access Rules/ }))
+    await user.click(screen.getByRole('button', { name: /^App Access Rules/ }))
 
     expect(screen.getByText('Full Control')).toBeInTheDocument()
   })
@@ -165,6 +166,7 @@ describe('AccessRuleSection', () => {
   })
 
   it('should expose create action when workspace role management is allowed', async () => {
+    const user = userEvent.setup()
     workspacePermissionKeys = ['workspace.role.manage']
     const onCreate = vi.fn()
 
@@ -178,7 +180,7 @@ describe('AccessRuleSection', () => {
       />,
     )
 
-    await userEvent.click(
+    await user.click(
       screen.getByRole('button', { name: /permission\.accessRule\.newPermissionSet/ }),
     )
 
@@ -186,6 +188,7 @@ describe('AccessRuleSection', () => {
   })
 
   it('opens the built-in rule through its authorized row action', async () => {
+    const user = userEvent.setup()
     const onViewRule = vi.fn()
     workspacePermissionKeys = ['workspace.role.manage']
 
@@ -202,9 +205,9 @@ describe('AccessRuleSection', () => {
 
     const trigger = screen.getByRole('button', { name: 'common.operation.moreActions' })
 
-    await userEvent.click(trigger)
+    await user.click(trigger)
 
-    await userEvent.click(screen.getByRole('menuitem', { name: 'common.operation.view' }))
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.view' }))
     expect(onViewRule).toHaveBeenCalledExactlyOnceWith(rule)
   })
 

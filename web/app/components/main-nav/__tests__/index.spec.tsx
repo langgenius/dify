@@ -1,8 +1,4 @@
 import type { InstalledAppResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
-import type {
-  StepByStepTourStatePatchPayload,
-  StepByStepTourStateResponse,
-} from '@dify/contracts/api/console/onboarding/types.gen'
 import type { GetVersionResponse } from '@dify/contracts/api/console/version/types.gen'
 import type {
   GetWorkspacesCurrentSummaryResponse,
@@ -10,10 +6,8 @@ import type {
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
 import type { Mock } from 'vite-plus/test'
-import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
 import type { UserProfileWithMeta } from '@/features/account-profile/client'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
@@ -22,13 +16,14 @@ import Cookies from 'js-cookie'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { DETAIL_SIDEBAR_COOKIE_NAME } from '@/app/components/detail-sidebar/cookie'
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '@/app/components/explore/learn-dify/storage'
-import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
+import { GotoAnything } from '@/app/components/goto-anything'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import {
   stepByStepTourSessionAtom,
   stepByStepTourSkipRecoveryVisibleAtom,
 } from '@/app/components/step-by-step-tour/state'
 import { STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY } from '@/app/components/step-by-step-tour/storage'
+import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { usePathname, useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
@@ -36,125 +31,22 @@ import {
   createConsoleQueryClient,
   renderWithConsoleQuery as renderWithoutPricing,
 } from '@/test/console/query-data'
+import { createStepByStepTourService } from '@/test/fixtures/onboarding'
 import { MainNav } from '../index'
 
 const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
 
-type StepByStepTourTestUiState = StepByStepTourSessionState & { minimized: boolean }
-
 const mockTrackEvent = vi.hoisted(() => vi.fn())
 
-const {
-  mockInstalledAppsRequest,
-  mockIsAgentV2Enabled,
-  mockSwitchWorkspace,
-  mockToastSuccess,
-  mockUpdatePinStatus,
-} = vi.hoisted(() => ({
-  mockInstalledAppsRequest: vi.fn(),
-  mockIsAgentV2Enabled: vi.fn(() => true),
-  mockSwitchWorkspace: vi.fn(),
-  mockToastSuccess: vi.fn(),
-  mockUpdatePinStatus: vi.fn(),
-}))
-const mockStepByStepTour = vi.hoisted(() => {
-  const stateQueryKey = ['console', 'onboarding', 'step-by-step-tour', 'state'] as const
-  const createState = (
-    overrides: Partial<StepByStepTourStateResponse> = {},
-  ): StepByStepTourStateResponse => ({
-    first_workspace_id: 'workspace-1',
-    skipped: false,
-    completed_task_ids: [],
-    manually_enabled_workspace_ids: [],
-    manually_disabled_workspace_ids: [],
-    updated_at: '2026-07-01T00:00:00Z',
-    ...overrides,
-  })
-  const createUiState = (
-    overrides: Partial<StepByStepTourTestUiState> = {},
-  ): StepByStepTourTestUiState => ({
-    activeGuideGroup: undefined,
-    activeGuideIndex: undefined,
-    activeGuideIndexes: undefined,
-    activeTaskId: undefined,
-    minimized: false,
-    ...overrides,
-  })
-  let state = createState()
-  let uiState = createUiState()
-  const patchState = vi.fn(
-    async ({
-      body,
-    }: {
-      body: StepByStepTourStatePatchPayload
-    }): Promise<StepByStepTourStateResponse> => {
-      switch (body.action) {
-        case 'enable_current_workspace':
-          state = {
-            ...state,
-            skipped: false,
-            manually_enabled_workspace_ids: Array.from(
-              new Set([...(state.manually_enabled_workspace_ids ?? []), 'workspace-1']),
-            ),
-            manually_disabled_workspace_ids: (state.manually_disabled_workspace_ids ?? []).filter(
-              (id) => id !== 'workspace-1',
-            ),
-          }
-          break
-        case 'disable_current_workspace':
-          state = {
-            ...state,
-            manually_enabled_workspace_ids: (state.manually_enabled_workspace_ids ?? []).filter(
-              (id) => id !== 'workspace-1',
-            ),
-            manually_disabled_workspace_ids: Array.from(
-              new Set([...(state.manually_disabled_workspace_ids ?? []), 'workspace-1']),
-            ),
-          }
-          break
-        case 'skip':
-          state = {
-            ...state,
-            skipped: true,
-            manually_enabled_workspace_ids: (state.manually_enabled_workspace_ids ?? []).filter(
-              (id) => id !== 'workspace-1',
-            ),
-          }
-          break
-      }
+const { mockInstalledAppsRequest, mockIsAgentV2Enabled, mockSwitchWorkspace, mockUpdatePinStatus } =
+  vi.hoisted(() => ({
+    mockInstalledAppsRequest: vi.fn(),
+    mockIsAgentV2Enabled: vi.fn(() => true),
+    mockSwitchWorkspace: vi.fn(),
+    mockUpdatePinStatus: vi.fn(),
+  }))
+const mockStepByStepTour = createStepByStepTourService()
 
-      return state
-    },
-  )
-
-  return {
-    get state() {
-      return state
-    },
-    get uiState() {
-      return uiState
-    },
-    patchState,
-    reset() {
-      state = createState()
-      uiState = createUiState()
-      patchState.mockClear()
-    },
-    setState(overrides: Partial<StepByStepTourStateResponse> = {}) {
-      state = createState(overrides)
-    },
-    setUiState(overrides: Partial<StepByStepTourTestUiState> = {}) {
-      uiState = createUiState(overrides)
-      if (overrides.minimized !== undefined) {
-        localStorage.setItem(
-          STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY,
-          overrides.minimized ? 'collapsed' : 'expanded',
-        )
-      }
-    },
-    stateQueryKey,
-  }
-})
 type MainNavConsoleState = ConsoleStateFixture & {
   profileMeta: UserProfileWithMeta['meta']
   versionData: GetVersionResponse
@@ -176,20 +68,13 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: mockTrackEvent,
 }))
 
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: vi.fn(),
-  useModalContextSelector: <T,>(selector: (state: { hasBlockingModalOpen: boolean }) => T) =>
-    selector({
-      hasBlockingModalOpen: false,
-    }),
-}))
-
 vi.mock('@/next/navigation', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/next/navigation')>()
   return {
     ...actual,
     usePathname: vi.fn(),
     useRouter: vi.fn(),
+    useParams: () => ({}),
   }
 })
 
@@ -232,106 +117,18 @@ vi.mock('react-i18next', async () => {
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const consoleQuery = new Proxy(actual.consoleQuery, {
-    get(target, prop, receiver) {
-      if (prop === 'workspaces') {
-        return {
-          get: actual.consoleQuery.workspaces.get,
-          current: actual.consoleQuery.workspaces.current,
-          switch: {
-            post: {
-              mutationOptions: () => ({
-                mutationFn: (variables: unknown) => mockSwitchWorkspace(variables),
-              }),
-            },
-          },
-        }
-      }
-      if (prop === 'onboarding') {
-        return {
-          stepByStepTour: {
-            state: {
-              get: {
-                queryKey: () => mockStepByStepTour.stateQueryKey,
-                queryOptions: () => ({
-                  queryKey: mockStepByStepTour.stateQueryKey,
-                  queryFn: async () => mockStepByStepTour.state,
-                }),
-              },
-              patch: {
-                mutationOptions: (options = {}) => ({
-                  mutationFn: mockStepByStepTour.patchState,
-                  ...options,
-                }),
-              },
-            },
-          },
-        }
-      }
-      if (prop === 'installedApps') {
-        return {
-          get: {
-            infiniteOptions: (options: {
-              getNextPageParam: (page: {
-                has_more: boolean
-                next_cursor: string | null
-              }) => string | undefined
-              initialPageParam: undefined
-              input: (pageParam: string | undefined) => {
-                query: { cursor?: string; limit: number; name?: string }
-              }
-              placeholderData?: unknown
-              select?: (data: unknown) => unknown
-            }) => ({
-              ...options,
-              queryKey: ['installed-apps', options.input(undefined).query.name ?? ''],
-              queryFn: ({ pageParam }: { pageParam: string | undefined }) =>
-                mockInstalledAppsRequest(options.input(pageParam)),
-            }),
-          },
-          byInstalledAppId: {
-            patch: {
-              mutationOptions: () => ({
-                mutationFn: (input: unknown) => mockUpdatePinStatus(input),
-              }),
-            },
-          },
-        }
-      }
-
-      return Reflect.get(target, prop, receiver)
-    },
-  })
-
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleQuery,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.switch.post': mockSwitchWorkspace,
+      'onboarding.stepByStepTour.state.get': async () => mockStepByStepTour.state,
+      'onboarding.stepByStepTour.state.patch': (input) => mockStepByStepTour.patchState(input),
+      'installedApps.get': mockInstalledAppsRequest,
+      'installedApps.byInstalledAppId.patch': mockUpdatePinStatus,
+    }),
   }
 })
-
-vi.mock('@/app/notifications', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/notifications')>()
-  return {
-    ...actual,
-    toast: {
-      ...actual.toast,
-      success: mockToastSuccess,
-    },
-  }
-})
-
-vi.mock('@/app/components/header/github-star', () => ({
-  default: ({ className }: { className?: string }) => <span className={className}>1,234</span>,
-}))
-
-vi.mock('#i18n', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('#i18n')>()),
-  useLocale: () => 'en-US',
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
-}))
 
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
@@ -509,10 +306,14 @@ const renderMainNav = (
     )
   }
   queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })
-  queryClient.setQueryData(mockStepByStepTour.stateQueryKey, mockStepByStepTour.state)
+  queryClient.setQueryData(
+    consoleQuery.onboarding.stepByStepTour.state.get.queryKey(),
+    mockStepByStepTour.state,
+  )
+  queryClient.setQueryData(['github-star'], { repo: { stars: 1234 } })
   const store = options.store ?? createStore()
   store.set(queryClientAtom, queryClient)
-  store.set(stepByStepTourSessionAtom, mockStepByStepTour.uiState)
+  store.set(stepByStepTourSessionAtom, {})
   if (options.skipRecoveryVisible !== undefined)
     store.set(stepByStepTourSkipRecoveryVisibleAtom, options.skipRecoveryVisible)
   const resolvedSystemFeatures = {
@@ -553,7 +354,6 @@ describe('MainNav', () => {
     mockInstalledAppsRequest.mockReset()
     mockUpdatePinStatus.mockReset()
     mockSwitchWorkspace.mockReset()
-    gotoAnythingDialogHandle.close()
     localStorage.clear()
     Cookies.remove(DETAIL_SIDEBAR_COOKIE_NAME)
     mockPathname = '/apps'
@@ -619,6 +419,7 @@ describe('MainNav', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    act(() => toast.dismiss())
   })
 
   it('renders primary navigation with the planned routes', () => {
@@ -725,13 +526,14 @@ describe('MainNav', () => {
   })
 
   it('shows the user education badge in the account popup without adding the workspace plan there', async () => {
+    const user = userEvent.setup()
     educationEnabled = true
 
     renderMainNav(defaultMainNavSystemFeatures, {
       educationStatus: { is_student: true },
     })
 
-    await userEvent.click(screen.getByRole('button', { name: accountMenuAccessibleName }))
+    await user.click(screen.getByRole('button', { name: accountMenuAccessibleName }))
 
     expect(await screen.findByText('EDU')).toBeInTheDocument()
     expect(screen.getByText('evan@example.com')).toBeInTheDocument()
@@ -902,22 +704,20 @@ describe('MainNav', () => {
   })
 
   it('opens goto anything from the search button', async () => {
+    const user = userEvent.setup()
     renderMainNav(undefined, {
-      extra: (
-        <Dialog handle={gotoAnythingDialogHandle}>
-          <DialogContent>
-            <DialogTitle>Goto Anything</DialogTitle>
-          </DialogContent>
-        </Dialog>
-      ),
+      extra: <GotoAnything />,
     })
 
-    await userEvent.click(screen.getByRole('button', { name: 'app.gotoAnything.searchTitle' }))
+    await user.click(screen.getByRole('button', { name: 'app.gotoAnything.searchTitle' }))
 
-    expect(await screen.findByRole('dialog', { name: 'Goto Anything' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('dialog', { name: 'app.gotoAnything.searchTitle' }),
+    ).toBeInTheDocument()
   })
 
   it('shows Learn Dify switch in help menu and restores it from localStorage', async () => {
+    const user = userEvent.setup()
     localStorage.setItem(LEARN_DIFY_HIDDEN_STORAGE_KEY, 'true')
 
     renderMainNav({ enable_learn_app: true })
@@ -925,7 +725,7 @@ describe('MainNav', () => {
     const helpTrigger = screen.getByRole('button', { name: 'navigation.mainNav.help.openMenu' })
     expect(helpTrigger).not.toHaveAttribute('data-popup-open')
 
-    await userEvent.click(helpTrigger)
+    await user.click(helpTrigger)
 
     expect(helpTrigger).toHaveAttribute('data-popup-open', '')
     const learnDifyItem = await screen.findByRole('menuitemcheckbox', {
@@ -933,7 +733,7 @@ describe('MainNav', () => {
     })
     expect(learnDifyItem).toHaveAttribute('aria-checked', 'false')
 
-    await userEvent.click(learnDifyItem)
+    await user.click(learnDifyItem)
 
     await waitFor(() => {
       expect(localStorage.getItem(LEARN_DIFY_HIDDEN_STORAGE_KEY)).toBe('false')
@@ -1040,9 +840,10 @@ describe('MainNav', () => {
   })
 
   it('hides Learn Dify switch in help menu when learn app is disabled', async () => {
+    const user = userEvent.setup()
     renderMainNav({ enable_learn_app: false })
 
-    await userEvent.click(screen.getByRole('button', { name: 'navigation.mainNav.help.openMenu' }))
+    await user.click(screen.getByRole('button', { name: 'navigation.mainNav.help.openMenu' }))
 
     await screen.findByText('navigation.mainNav.help.docs')
     expect(
@@ -1051,9 +852,10 @@ describe('MainNav', () => {
   })
 
   it('opens Creator Center from the help menu above GitHub', async () => {
+    const user = userEvent.setup()
     renderMainNav()
 
-    await userEvent.click(screen.getByRole('button', { name: 'navigation.mainNav.help.openMenu' }))
+    await user.click(screen.getByRole('button', { name: 'navigation.mainNav.help.openMenu' }))
 
     const creatorCenter = await screen.findByRole('menuitem', {
       name: 'navigation.mainNav.help.creatorCenter',
@@ -1125,9 +927,10 @@ describe('MainNav', () => {
   })
 
   it('closes the help menu from the support upgrade action', async () => {
+    const user = userEvent.setup()
     renderMainNav()
 
-    await userEvent.click(screen.getByRole('button', { name: 'navigation.mainNav.help.openMenu' }))
+    await user.click(screen.getByRole('button', { name: 'navigation.mainNav.help.openMenu' }))
     const contactUsItem = await screen.findByRole('menuitem', {
       name: 'common.userProfile.contactUs billing.upgradeBtn.encourageShort',
     })
@@ -1135,7 +938,7 @@ describe('MainNav', () => {
       screen.queryByRole('button', { name: 'billing.upgradeBtn.encourageShort' }),
     ).not.toBeInTheDocument()
 
-    await userEvent.click(contactUsItem)
+    await user.click(contactUsItem)
 
     await waitFor(() => {
       expect(screen.queryByText('common.userProfile.discord')).not.toBeInTheDocument()
@@ -1157,6 +960,7 @@ describe('MainNav', () => {
   })
 
   it('opens workspace settings, members, plan, and workspace switching actions', async () => {
+    const user = userEvent.setup()
     renderMainNav()
 
     expect(
@@ -1168,29 +972,29 @@ describe('MainNav', () => {
       ),
     ).toBe(false)
 
-    await userEvent.click(screen.getByText('billing.upgradeBtn.plain'))
+    await user.click(screen.getByText('billing.upgradeBtn.plain'))
     await waitFor(() =>
       expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
     )
 
-    await userEvent.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
-    await userEvent.click(await screen.findByText('navigation.mainNav.workspace.settings'))
+    await user.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
+    await user.click(await screen.findByText('navigation.mainNav.workspace.settings'))
     await waitFor(() =>
       expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe(
         ACCOUNT_SETTING_TAB.BILLING,
       ),
     )
 
-    await userEvent.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
-    await userEvent.click(await screen.findByText('navigation.mainNav.workspace.inviteMembers'))
+    await user.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
+    await user.click(await screen.findByText('navigation.mainNav.workspace.inviteMembers'))
     await waitFor(() =>
       expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe(
         ACCOUNT_SETTING_TAB.MEMBERS,
       ),
     )
 
-    await userEvent.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
-    await userEvent.click(await screen.findByText('Evan Workspace'))
+    await user.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
+    await user.click(await screen.findByText('Evan Workspace'))
     await waitFor(() => {
       expect(mockSwitchWorkspace).toHaveBeenCalledWith({ body: { tenant_id: 'workspace-2' } })
     })
@@ -1212,6 +1016,7 @@ describe('MainNav', () => {
   })
 
   it('shows the view plan shortcut for paid workspaces', async () => {
+    const user = userEvent.setup()
     mockConsoleState.current = {
       ...consoleState,
       currentWorkspace: {
@@ -1223,7 +1028,7 @@ describe('MainNav', () => {
     renderMainNav()
 
     expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
-    await userEvent.click(screen.getByText('billing.upgradeBtn.plain'))
+    await user.click(screen.getByText('billing.upgradeBtn.plain'))
     await waitFor(() =>
       expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
     )
@@ -1235,6 +1040,7 @@ describe('MainNav', () => {
   })
 
   it('limits invite members by member management permission', async () => {
+    const user = userEvent.setup()
     mockConsoleState.current = {
       ...consoleState,
       currentWorkspace: {
@@ -1250,13 +1056,14 @@ describe('MainNav', () => {
 
     renderMainNav()
 
-    await userEvent.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
+    await user.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
 
     expect(await screen.findByText('navigation.mainNav.workspace.settings')).toBeInTheDocument()
     expect(screen.queryByText('navigation.mainNav.workspace.inviteMembers')).not.toBeInTheDocument()
   })
 
   it('keeps workspace settings visible and hides invite members without member management permission', async () => {
+    const user = userEvent.setup()
     mockConsoleState.current = {
       ...consoleState,
       currentWorkspace: {
@@ -1271,7 +1078,7 @@ describe('MainNav', () => {
 
     renderMainNav()
 
-    await userEvent.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
+    await user.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
 
     expect(screen.getByText('navigation.mainNav.workspace.settings')).toBeInTheDocument()
     expect(screen.queryByText('navigation.mainNav.workspace.inviteMembers')).not.toBeInTheDocument()

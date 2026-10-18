@@ -221,9 +221,10 @@ describe('QueryInput', () => {
 
   describe('Permission Guarding', () => {
     it('should not run hit testing mutation when retrieval recall permission is missing', async () => {
+      const user = userEvent.setup()
       render(<QueryInput {...defaultProps} canRunRetrievalRecall={false} />)
 
-      await userEvent.setup().click(screen.getByRole('button', { name: /input\.testing/ }))
+      await user.click(screen.getByRole('button', { name: /input\.testing/ }))
 
       expect(defaultProps.hitTestingMutation).not.toHaveBeenCalled()
     })
@@ -345,6 +346,7 @@ describe('QueryInput', () => {
 
   describe('Submit Handlers', () => {
     it('should call hitTestingMutation on submit for non-external mode', async () => {
+      const user = userEvent.setup()
       const mockMutation = vi.fn(async (_req, opts) => {
         const response = { query: { content: '', tsne_position: { x: 0, y: 0 } }, records: [] }
         opts?.onSuccess?.(response)
@@ -354,7 +356,7 @@ describe('QueryInput', () => {
       const onSubmit = vi.fn()
       render(<QueryInput {...defaultProps} hitTestingMutation={mockMutation} onSubmit={onSubmit} />)
 
-      await userEvent.setup().click(screen.getByRole('button', { name: /input\.testing/ }))
+      await user.click(screen.getByRole('button', { name: /input\.testing/ }))
 
       await waitFor(() => {
         expect(mockMutation).toHaveBeenCalledWith(
@@ -374,6 +376,7 @@ describe('QueryInput', () => {
     })
 
     it('should use keywordSearch when isEconomy is true', async () => {
+      const user = userEvent.setup()
       const mockResponse = { query: { content: '', tsne_position: { x: 0, y: 0 } }, records: [] }
       const mockMutation = vi.fn(async (_req, opts) => {
         opts?.onSuccess?.(mockResponse)
@@ -382,7 +385,7 @@ describe('QueryInput', () => {
 
       render(<QueryInput {...defaultProps} hitTestingMutation={mockMutation} isEconomy={true} />)
 
-      await userEvent.setup().click(screen.getByRole('button', { name: /input\.testing/ }))
+      await user.click(screen.getByRole('button', { name: /input\.testing/ }))
 
       await waitFor(() => {
         expect(mockMutation).toHaveBeenCalledWith(
@@ -395,6 +398,7 @@ describe('QueryInput', () => {
     })
 
     it('should call externalKnowledgeBaseHitTestingMutation for external mode', async () => {
+      const user = userEvent.setup()
       const mockExternalMutation = vi.fn(async (_req, opts) => {
         const response = { query: { content: '' }, records: [] }
         opts?.onSuccess?.(response)
@@ -409,7 +413,7 @@ describe('QueryInput', () => {
         />,
       )
 
-      await userEvent.setup().click(screen.getByRole('button', { name: /input\.testing/ }))
+      await user.click(screen.getByRole('button', { name: /input\.testing/ }))
 
       await waitFor(() => {
         expect(mockExternalMutation).toHaveBeenCalledWith(
@@ -432,6 +436,7 @@ describe('QueryInput', () => {
     })
 
     it('should include image attachment_ids in submit request', async () => {
+      const user = userEvent.setup()
       const queries: DatasetQueryContentResponse[] = [
         { content: 'test', content_type: 'text_query', file_info: null },
         {
@@ -455,7 +460,7 @@ describe('QueryInput', () => {
 
       render(<QueryInput {...defaultProps} queries={queries} hitTestingMutation={mockMutation} />)
 
-      await userEvent.setup().click(screen.getByRole('button', { name: /input\.testing/ }))
+      await user.click(screen.getByRole('button', { name: /input\.testing/ }))
 
       await waitFor(() => {
         expect(mockMutation).toHaveBeenCalledWith(

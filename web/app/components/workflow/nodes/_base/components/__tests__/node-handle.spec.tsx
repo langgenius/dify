@@ -216,11 +216,12 @@ describe('node-handle', () => {
     })
 
     it('should not render the target add trigger when the handle is already connected', async () => {
+      const user = userEvent.setup()
       renderTargetHandle({
         _connectedTargetHandleIds: ['target-handle'],
       })
 
-      await userEvent.setup().click(screen.getByTestId('handle-target-handle'))
+      await user.click(screen.getByTestId('handle-target-handle'))
 
       expect(queryAddNodeButton()).not.toBeInTheDocument()
     })
@@ -309,10 +310,11 @@ describe('node-handle', () => {
     })
   })
   it('does not offer insertion controls on a readonly canvas', async () => {
+    const user = userEvent.setup()
     mockHooksState.isReadOnly = true
     autoOpen = true
     renderSourceHandle({ type: BlockEnum.Start })
-    await userEvent.setup().click(screen.getByTestId('handle-source-handle'))
+    await user.click(screen.getByTestId('handle-source-handle'))
     expect(queryAddNodeButton()).not.toBeInTheDocument()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(mockHandleNodeAdd).not.toHaveBeenCalled()

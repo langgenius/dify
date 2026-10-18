@@ -1,283 +1,380 @@
-import type { DatasourceProviderEntity } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ComponentProps, ReactElement } from 'react'
+import type { Credential } from '@/app/components/plugins/plugin-auth/types'
 import type { PluginDeclaration, PluginDetail } from '@/app/components/plugins/types'
-import { screen, waitFor, within } from '@testing-library/react'
+import {
+  zToolApiEntity,
+  zTriggerProviderApiEntity,
+} from '@dify/contracts/api/console/workspaces/zod.gen'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { useState } from 'react'
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
+import { createDeferred } from '@/test/deferred'
+import { createPluginDeclarationFixture } from '@/test/fixtures/plugin'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import PluginDetailPanel from '../index'
-import { usePluginStore } from '../store'
 
-const { uninstall, upgrade } = vi.hoisted(() => ({ uninstall: vi.fn(), upgrade: vi.fn() }))
+const api = vi.hoisted(() => ({
+  uninstall: vi.fn<typeof import('@/service/plugins').uninstallPlugin>(),
+  upgrade: vi.fn<typeof import('@/service/plugins').updateFromMarketPlace>(),
+  tools:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.builtin.byProvider.tools.get
+    >(),
+  providers:
+    vi.fn<typeof import('@/service/console').consoleClient.workspaces.current.toolProviders.get>(),
+  trigger:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.workspaces.current.triggerProvider.byProvider.info.get
+    >(),
+  subscriptions:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.list.get
+    >(),
+  credentials: vi.fn<
+    (url: string) => Promise<{
+      supported_credential_types: string[]
+      credentials: Credential[]
+      is_oauth_custom_client_enabled: boolean
+    }>
+  >(),
+}))
 vi.mock('@/service/plugins', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/plugins')>()),
-  uninstallPlugin: uninstall,
-  updateFromMarketPlace: upgrade,
+  uninstallPlugin: api.uninstall,
+  updateFromMarketPlace: api.upgrade,
 }))
-vi.mock('../../plugin-page/use-reference-setting', () => ({
-  default: () => ({ referenceSetting: undefined }),
-}))
-vi.mock('../../install-plugin/hooks/use-refresh-plugin-list', () => ({
-  default: () => ({ refreshPluginList: vi.fn() }),
-}))
-vi.mock('../../plugin-auth', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../plugin-auth')>()),
-  PluginAuth: ({ pluginPayload }: { pluginPayload: { provider: string } }) => (
-    <output data-testid="auth-provider">{pluginPayload.provider}</output>
-  ),
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  get: api.credentials,
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { createToolProviderFixture } = await import('@/test/console/tool-provider-fixture')
   const { withConsoleResponses, withConsoleClientResponses } =
     await import('@/test/console/service-responses')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.toolProviders.get': async () => [
-        createToolProviderFixture({
-          name: 'test-plugin-id/provider-a',
-          type: 'builtin',
-          allow_delete: true,
-        }),
-      ],
+      'workspaces.current.toolProviders.get': api.providers,
+      'workspaces.current.toolProvider.builtin.byProvider.tools.get': api.tools,
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.toolProvider.builtin.byProvider.tools.get': api.tools,
+      'workspaces.current.triggerProvider.byProvider.info.get': api.trigger,
+      'workspaces.current.triggerProvider.byProvider.subscriptions.list.get': api.subscriptions,
       'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
+      'workspaces.current.plugin.permission.fetch.get': async () => ({
+        install_permission: 'everyone',
+        debug_permission: 'everyone',
+      }),
+      'workspaces.current.plugin.autoUpgrade.fetch.get': async () => ({
+        auto_upgrade: {
+          strategy_setting: 'disabled',
+          upgrade_mode: 'all',
+          upgrade_time_of_day: 0,
+          include_plugins: [],
+          exclude_plugins: [],
+        },
+      }),
     }),
   }
 })
 
-vi.mock('../action-list', () => ({ default: () => <div>Actions</div> }))
-vi.mock('../agent-strategy-list', () => ({ default: () => <div>Agent strategies</div> }))
-vi.mock('../endpoint-list', () => ({ default: () => <div>Endpoints</div> }))
-vi.mock('../model-list', () => ({ default: () => <div>Models</div> }))
-vi.mock('../datasource-action-list', () => ({ default: () => <div>Data sources</div> }))
-vi.mock('../subscription-list', () => ({
-  SubscriptionList: () => <div>Subscriptions</div>,
-}))
-vi.mock('../trigger/event-list', () => ({
-  TriggerEventsList: () => <div>Trigger events</div>,
-}))
-const createPluginDetail = (
-  declarationOverrides: Partial<PluginDeclaration> = {},
-): PluginDetail => {
-  const declaration = {
-    plugin_unique_identifier: 'test-plugin-uid',
-    version: '1.0.0',
-    author: 'test-author',
-    icon: 'test-icon.png',
+const baseDeclaration = createPluginDeclarationFixture()
+const identity = {
+  author: 'test-author',
+  name: 'provider-a',
+  icon: 'icon.svg',
+  tags: [],
+  label: baseDeclaration.label,
+  description: baseDeclaration.description,
+}
+const createPluginDetail = (overrides: Partial<PluginDeclaration> = {}): PluginDetail => ({
+  id: 'test-plugin-id',
+  created_at: '2024-01-01T00:00:00Z',
+  updated_at: '2024-01-02T00:00:00Z',
+  name: 'Test Plugin',
+  plugin_id: 'test-plugin-id',
+  plugin_unique_identifier: 'test-plugin-uid',
+  declaration: {
+    ...baseDeclaration,
     name: 'test-plugin',
-    category: PluginCategoryEnum.tool,
-    label: { en_US: 'Test Plugin' },
-    description: { en_US: 'Test plugin description' },
-    created_at: '2024-01-01T00:00:00Z',
-    resource: null,
-    plugins: null,
-    verified: true,
-    endpoint: undefined,
-    tool: undefined,
-    model: null,
-    tags: [],
-    agent_strategy: null,
-    meta: { version: '1.0.0' },
-    trigger: null,
-    datasource: null,
-    ...declarationOverrides,
-  } as unknown as PluginDeclaration
-
-  return {
-    id: 'test-plugin-id',
-    created_at: '2024-01-01T00:00:00Z',
-    updated_at: '2024-01-02T00:00:00Z',
-    name: 'Test Plugin',
-    plugin_id: 'test-plugin-id',
-    plugin_unique_identifier: 'test-plugin-uid',
-    declaration,
-    installation_id: 'install-1',
-    tenant_id: 'tenant-1',
-    endpoints_setups: 0,
-    endpoints_active: 0,
-    version: '1.0.0',
-    latest_version: '1.0.0',
-    latest_unique_identifier: 'test-plugin-uid',
-    source: PluginSource.marketplace,
-    meta: undefined,
-    status: 'active',
-    deprecated_reason: '',
-    alternative_plugin_id: '',
-  }
+    endpoint: null,
+    tool: { identity, credentials_schema: [] },
+    trigger: {
+      identity,
+      events: [],
+      subscription_schema: [],
+      subscription_constructor: {
+        credentials_schema: [],
+        oauth_schema: { client_schema: [], credentials_schema: [] },
+        parameters: [],
+      },
+    },
+    ...overrides,
+  },
+  installation_id: 'install-1',
+  tenant_id: 'tenant-1',
+  endpoints_setups: 0,
+  endpoints_active: 0,
+  version: '1.0.0',
+  latest_version: '2.0.0',
+  latest_unique_identifier: 'new-plugin-uid',
+  source: PluginSource.marketplace,
+  status: 'active',
+  deprecated_reason: '',
+  alternative_plugin_id: '',
+})
+const tool = zToolApiEntity.parse({
+  name: 'search',
+  author: 'Team',
+  label: { en_US: 'Search' },
+  description: { en_US: 'Search documents' },
+  parameters: [
+    {
+      name: 'query',
+      type: 'string',
+      form: 'llm',
+      required: true,
+      label: { en_US: 'Query' },
+      llm_description: 'Search query',
+    },
+  ],
+})
+const provider = createToolProviderFixture({
+  name: 'test-plugin-id/provider-a',
+  type: 'builtin',
+  allow_delete: true,
+})
+function triggerProvider(name: string) {
+  return zTriggerProviderApiEntity.parse({
+    name,
+    author: 'Team',
+    label: { en_US: name },
+    description: { en_US: 'Mail events' },
+    supported_creation_methods: ['MANUAL'],
+    events: [
+      {
+        name: 'received',
+        identity: { author: 'Team', name: 'received', label: { en_US: `Message from ${name}` } },
+        description: { en_US: 'A new message has arrived' },
+        parameters: [],
+        output_schema: { type: 'object', properties: { message: { type: 'string' } } },
+      },
+    ],
+  })
+}
+const render = createNuqsTestRenderer((ui: ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient)
+  return renderWithConsoleQuery(ui, {
+    queryClient,
+    workspacePermissionKeys: ['credential.use', 'credential.manage'],
+    systemFeatures: { enable_marketplace: true },
+  })
+})
+const onUpdate = vi.fn()
+function Panel({
+  detail: initial = createPluginDetail(),
+  ...props
+}: Partial<ComponentProps<typeof PluginDetailPanel>>) {
+  const [detail, setDetail] = useState<PluginDetail | undefined>(initial)
+  return (
+    <PluginDetailPanel
+      detail={detail}
+      onHide={() => setDetail(undefined)}
+      onUpdate={onUpdate}
+      {...props}
+    />
+  )
+}
+async function openRemoval(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }))
+  await user.click(
+    await screen.findByRole('menuitem', { name: 'plugin.detailPanel.operation.remove' }),
+  )
+  return screen.findByRole('alertdialog')
 }
 
-describe('PluginDetailPanel', () => {
-  const onUpdate = vi.fn()
-  const onHide = vi.fn()
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('publishes the selected plugin to descendants and clears it when the panel is removed', async () => {
-    const ContextConsumer = () => {
-      const detail = usePluginStore((state) => state.detail)
-      return (
-        <output data-testid="plugin-context">
-          {detail ? `${detail.provider}:${detail.plugin_unique_identifier}` : 'empty'}
-        </output>
-      )
+beforeEach(() => {
+  api.uninstall.mockReset().mockResolvedValue({ success: true })
+  api.upgrade.mockReset().mockResolvedValue({ all_installed: true, task_id: '' })
+  api.tools.mockReset().mockResolvedValue([tool])
+  api.providers.mockReset().mockResolvedValue([provider])
+  api.trigger.mockReset().mockImplementation(async ({ params }) => triggerProvider(params.provider))
+  api.subscriptions.mockReset().mockResolvedValue([])
+  api.credentials.mockReset().mockImplementation(async (url) => {
+    if (!url.endsWith('/credential/info')) throw new Error(`Unexpected credential request: ${url}`)
+    return {
+      supported_credential_types: ['api-key'],
+      is_oauth_custom_client_enabled: false,
+      credentials: [
+        {
+          id: 'key-1',
+          name: 'Workspace key',
+          provider: provider.name,
+          credential_type: 'api-key',
+          is_default: true,
+        },
+      ],
     }
-    const detail = createPluginDetail()
-    const { rerender } = render(
-      <>
-        <ContextConsumer />
-        <PluginDetailPanel detail={detail} onUpdate={onUpdate} onHide={onHide} />
-      </>,
-    )
-    await waitFor(() =>
-      expect(screen.getByTestId('plugin-context')).toHaveTextContent(
-        'test-plugin-id/test-plugin:test-plugin-uid',
-      ),
-    )
-    rerender(
-      <>
-        <ContextConsumer />
-        <PluginDetailPanel onUpdate={onUpdate} onHide={onHide} />
-      </>,
-    )
-    await waitFor(() => expect(screen.getByTestId('plugin-context')).toHaveTextContent('empty'))
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
+})
 
-  it.each([
-    ['tool', { tool: {} }, 'Actions'],
-    ['agent strategy', { agent_strategy: {} }, 'Agent strategies'],
-    ['endpoint', { endpoint: {} }, 'Endpoints'],
-    ['model', { model: {} }, 'Models'],
-  ] as const)('renders the %s section declared by the plugin', (_, declaration, section) => {
-    render(
-      <PluginDetailPanel
-        detail={createPluginDetail(declaration as Partial<PluginDeclaration>)}
-        onUpdate={onUpdate}
-        onHide={onHide}
-      />,
-    )
+it('loads the selected tool provider, opens its real read-only settings, and preserves the plugin panel on return', async () => {
+  const user = userEvent.setup()
+  render(<Panel />)
+  await user.click(await screen.findByRole('button', { name: /plugin.auth.authorization/ }))
+  const credentials = await screen.findByRole('dialog', { name: 'plugin.auth.authorizations' })
+  expect(within(credentials).getByText('Workspace key')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: /plugin.auth.authorization/ }))
+  await waitFor(() => expect(credentials).not.toBeInTheDocument())
+  await user.click(await screen.findByRole('button', { name: 'Search' }))
+  expect(await screen.findByText('Query')).toBeInTheDocument()
+  expect(api.tools).toHaveBeenCalledWith({ params: { provider: provider.name } })
+  expect(api.credentials).toHaveBeenCalledWith(
+    `/workspaces/current/tool-provider/builtin/${provider.name}/credential/info`,
+  )
+  expect(screen.queryByRole('button', { name: 'common.operation.save' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.back' }))
+  await waitFor(() => expect(screen.queryByText('Query')).not.toBeInTheDocument())
+  expect(screen.getByRole('button', { name: 'Search' })).toBeInTheDocument()
+})
 
-    expect(screen.getByText(section)).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'plugin.readmeInfo.needHelpCheckReadme' }),
-    ).toBeInTheDocument()
+it('links to the plugin marketplace entry and closes the panel from its header', async () => {
+  const user = userEvent.setup()
+  render(<Panel />)
+  await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }))
+  const link = await screen.findByRole('menuitem', {
+    name: 'plugin.detailPanel.operation.viewDetail',
   })
+  expect(new URL(link.getAttribute('href')!, 'https://marketplace.example.test').pathname).toBe(
+    '/plugins/test-author/test-plugin',
+  )
+  await user.keyboard('{Escape}')
+  await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+})
 
-  it('renders the datasource section only for a present generated declaration', () => {
-    const datasource = {
-      provider_type: 'local_file',
-      identity: {
-        author: 'Dify',
-        name: 'file',
-        icon: 'file.svg',
-        label: { en_US: 'Local File' },
-        description: { en_US: 'Read local files' },
-        tags: [],
-      },
-      oauth_schema: null,
-    } satisfies DatasourceProviderEntity
-    const { rerender } = render(
-      <PluginDetailPanel
-        detail={createPluginDetail({ datasource })}
-        onUpdate={onUpdate}
-        onHide={onHide}
-      />,
-    )
-    expect(screen.getByText('Data sources')).toBeInTheDocument()
-
-    rerender(
-      <PluginDetailPanel
-        detail={createPluginDetail({ datasource: null })}
-        onUpdate={onUpdate}
-        onHide={onHide}
-      />,
-    )
-    expect(screen.queryByText('Data sources')).not.toBeInTheDocument()
+it('upgrades through the confirmation dialog and refreshes its consumer without closing the panel', async () => {
+  const user = userEvent.setup()
+  const pending = createDeferred<Awaited<ReturnType<typeof api.upgrade>>>()
+  api.upgrade.mockReturnValueOnce(pending.promise)
+  render(<Panel />)
+  await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.update' }))
+  const dialog = await screen.findByRole('dialog', { name: 'plugin.upgrade.title' })
+  expect(api.upgrade).not.toHaveBeenCalled()
+  await user.click(within(dialog).getByRole('button', { name: 'plugin.upgrade.upgrade' }))
+  expect(onUpdate).not.toHaveBeenCalled()
+  expect(api.upgrade).toHaveBeenCalledWith({
+    original_plugin_unique_identifier: 'test-plugin-uid',
+    new_plugin_unique_identifier: 'new-plugin-uid',
   })
+  await act(async () => pending.resolve({ all_installed: true, task_id: '' }))
+  await waitFor(() => expect(dialog).not.toBeInTheDocument())
+  expect(onUpdate).toHaveBeenCalledOnce()
+  expect(screen.getByRole('button', { name: 'Search' })).toBeInTheDocument()
+})
 
-  it('renders subscription and event sections for trigger plugins', () => {
-    render(
-      <PluginDetailPanel
-        detail={createPluginDetail({ category: PluginCategoryEnum.trigger })}
-        onUpdate={onUpdate}
-        onHide={onHide}
-      />,
-    )
+it('allows retrying a failed upgrade without discarding the plugin panel', async () => {
+  const user = userEvent.setup()
+  api.upgrade.mockRejectedValueOnce(new Error('Upgrade failed'))
+  render(<Panel />)
+  await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.update' }))
+  const dialog = await screen.findByRole('dialog', { name: 'plugin.upgrade.title' })
+  await user.click(within(dialog).getByRole('button', { name: 'plugin.upgrade.upgrade' }))
+  expect(onUpdate).not.toHaveBeenCalled()
+  await user.click(await within(dialog).findByRole('button', { name: 'plugin.upgrade.upgrade' }))
+  await waitFor(() => expect(dialog).not.toBeInTheDocument())
+  expect(api.upgrade).toHaveBeenCalledTimes(2)
+  expect(onUpdate).toHaveBeenCalledOnce()
+})
 
-    expect(screen.getByText('Subscriptions')).toBeInTheDocument()
-    expect(screen.getByText('Trigger events')).toBeInTheDocument()
-  })
+it('requires confirmation before uninstalling, disables cancellation while pending, and closes after success', async () => {
+  const user = userEvent.setup()
+  const pending = createDeferred<{ success: boolean }>()
+  api.uninstall.mockReturnValueOnce(pending.promise)
+  render(<Panel />)
+  const dialog = await openRemoval(user)
+  expect(api.uninstall).not.toHaveBeenCalled()
+  await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
+  expect(within(dialog).getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
+  expect(onUpdate).not.toHaveBeenCalled()
+  await act(async () => pending.resolve({ success: true }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  expect(api.uninstall).toHaveBeenCalledExactlyOnceWith('test-plugin-id')
+  expect(onUpdate).toHaveBeenCalledOnce()
+})
 
-  it('updates through the real confirmation dialog without closing the detail panel', async () => {
-    const user = userEvent.setup()
-    upgrade.mockResolvedValueOnce({ all_installed: true, task_id: '' })
-    const detail = {
-      ...createPluginDetail(),
-      latest_version: '2.0.0',
-      latest_unique_identifier: 'new-plugin-uid',
-    }
-    render(<PluginDetailPanel detail={detail} onUpdate={onUpdate} onHide={onHide} />)
-    await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.update' }))
-    const dialog = await screen.findByRole('dialog', { name: 'plugin.upgrade.title' })
-    await user.click(within(dialog).getByRole('button', { name: 'plugin.upgrade.upgrade' }))
-    await waitFor(() => expect(onUpdate).toHaveBeenCalledOnce())
-    expect(upgrade).toHaveBeenCalledWith({
-      original_plugin_unique_identifier: 'test-plugin-uid',
-      new_plugin_unique_identifier: 'new-plugin-uid',
-    })
-    expect(onHide).not.toHaveBeenCalled()
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('dialog', { name: 'plugin.upgrade.title' }),
-      ).not.toBeInTheDocument(),
-    )
-  })
+it('keeps the uninstall confirmation available when the service declines removal', async () => {
+  const user = userEvent.setup()
+  api.uninstall.mockResolvedValueOnce({ success: false })
+  render(<Panel />)
+  const dialog = await openRemoval(user)
+  await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
+  await waitFor(() =>
+    expect(within(dialog).getByRole('button', { name: 'common.operation.cancel' })).toBeEnabled(),
+  )
+  expect(onUpdate).not.toHaveBeenCalled()
+  await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+  await waitFor(() => expect(dialog).not.toBeInTheDocument())
+  expect(screen.getByRole('button', { name: 'Search' })).toBeInTheDocument()
+})
 
-  it('closes before notifying consumers after confirmed plugin deletion', async () => {
-    const user = userEvent.setup()
-    uninstall.mockResolvedValueOnce({ success: true })
-    render(<PluginDetailPanel detail={createPluginDetail()} onUpdate={onUpdate} onHide={onHide} />)
-    await user.click(
-      screen.getByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }),
-    )
-    await user.click(
-      await screen.findByRole('menuitem', { name: 'plugin.detailPanel.operation.remove' }),
-    )
-    const confirm = await screen.findByRole('alertdialog')
-    expect(uninstall).not.toHaveBeenCalled()
-    await user.click(within(confirm).getByRole('button', { name: 'common.operation.confirm' }))
-    await waitFor(() => expect(onUpdate).toHaveBeenCalledOnce())
-    expect(uninstall).toHaveBeenCalledExactlyOnceWith('test-plugin-id')
-    expect(onHide).toHaveBeenCalledOnce()
-    expect(onHide.mock.invocationCallOrder[0]!).toBeLessThan(onUpdate.mock.invocationCallOrder[0]!)
+it.each([
+  { canUpdatePlugin: false, canDeletePlugin: true },
+  { canUpdatePlugin: true, canDeletePlugin: false },
+])('respects independent update and deletion capabilities: %j', async (permissions) => {
+  const user = userEvent.setup()
+  render(<Panel {...permissions} />)
+  const update = screen.queryByRole('button', { name: 'plugin.detailPanel.operation.update' })
+  if (permissions.canUpdatePlugin) expect(update).toBeInTheDocument()
+  else expect(update).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }))
+  const menu = await screen.findByRole('menu')
+  const remove = within(menu).queryByRole('menuitem', {
+    name: 'plugin.detailPanel.operation.remove',
   })
-  it('connects tool authorization to its provider and links to the matching marketplace entry', async () => {
-    const user = userEvent.setup()
-    const detail = createPluginDetail({
-      tool: { identity: { name: 'provider-a' } } as PluginDeclaration['tool'],
-    })
-    render(<PluginDetailPanel detail={detail} onUpdate={onUpdate} onHide={onHide} />, {
-      systemFeatures: { enable_marketplace: true },
-    })
-    await waitFor(() =>
-      expect(screen.getByTestId('auth-provider')).toHaveTextContent('test-plugin-id/provider-a'),
-    )
-    await user.click(
-      screen.getByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }),
-    )
-    const link = await screen.findByRole('menuitem', {
-      name: 'plugin.detailPanel.operation.viewDetail',
-    })
-    expect(new URL(link.getAttribute('href')!, 'https://marketplace.example.test').pathname).toBe(
-      '/plugins/test-author/test-plugin',
-    )
-    await user.keyboard('{Escape}')
-    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
-    expect(onHide).toHaveBeenCalledOnce()
+  if (permissions.canDeletePlugin) expect(remove).toBeInTheDocument()
+  else expect(remove).not.toBeInTheDocument()
+})
+
+it('switches the trigger provider with the selected plugin and opens the matching event details', async () => {
+  const user = userEvent.setup()
+  const first = createPluginDetail({
+    category: PluginCategoryEnum.trigger,
+    tool: undefined,
+    name: 'mail',
   })
+  const second = {
+    ...first,
+    plugin_id: 'second-plugin',
+    declaration: { ...first.declaration, name: 'calendar' },
+  }
+  const { rerender } = render(
+    <PluginDetailPanel detail={first} onUpdate={onUpdate} onHide={vi.fn()} />,
+  )
+  expect(
+    await screen.findByRole('button', { name: 'Message from test-plugin-id/mail' }),
+  ).toHaveAccessibleDescription('A new message has arrived')
+  expect(api.subscriptions).toHaveBeenCalledWith({ params: { provider: 'test-plugin-id/mail' } })
+  rerender(<PluginDetailPanel detail={second} onUpdate={onUpdate} onHide={vi.fn()} />)
+  const event = await screen.findByRole('button', { name: 'Message from second-plugin/calendar' })
+  expect(
+    screen.queryByRole('button', { name: 'Message from test-plugin-id/mail' }),
+  ).not.toBeInTheDocument()
+  expect(api.trigger).toHaveBeenCalledWith({ params: { provider: 'second-plugin/calendar' } })
+  event.focus()
+  await user.keyboard('{Enter}')
+  expect(await screen.findByText('message')).toBeInTheDocument()
+  expect(within(screen.getByRole('dialog')).getByText('calendar')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.back' }))
+  await waitFor(() => expect(screen.queryByText('message')).not.toBeInTheDocument())
+  expect(event).toBeInTheDocument()
+  rerender(<PluginDetailPanel onUpdate={onUpdate} onHide={vi.fn()} />)
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 })

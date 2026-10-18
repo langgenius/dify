@@ -91,6 +91,7 @@ describe('Conversion', () => {
   })
 
   it('should disable convert button when dataset lacks edit ACL', async () => {
+    const user = userEvent.setup()
     mockDatasetDetailState = {
       dataset: {
         permission_keys: ['dataset.acl.readonly'],
@@ -103,21 +104,20 @@ describe('Conversion', () => {
     const convertButton = screen.getByRole('button', { name: 'datasetPipeline.operations.convert' })
     expect(convertButton).toBeDisabled()
 
-    await userEvent.setup().click(convertButton)
+    await user.click(convertButton)
 
     expect(screen.queryByText('datasetPipeline.conversion.confirm.title')).not.toBeInTheDocument()
     expect(mockConvert).not.toHaveBeenCalled()
   })
 
   it('should hide confirm modal when cancel is clicked', async () => {
+    const user = userEvent.setup()
     render(<Conversion />)
 
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'datasetPipeline.operations.convert' }))
+    await user.click(screen.getByRole('button', { name: 'datasetPipeline.operations.convert' }))
     expect(screen.getByText('datasetPipeline.conversion.confirm.title')).toBeInTheDocument()
 
-    await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
     expect(mockConvert).not.toHaveBeenCalled()
     await waitFor(() => {
       expect(screen.queryByText('datasetPipeline.conversion.confirm.title')).not.toBeInTheDocument()
@@ -125,14 +125,13 @@ describe('Conversion', () => {
   })
 
   it('should handle successful conversion', async () => {
+    const user = userEvent.setup()
     mockConvert.mockResolvedValue({ status: 'success' })
 
     render(<Conversion />)
 
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'datasetPipeline.operations.convert' }))
-    await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await user.click(screen.getByRole('button', { name: 'datasetPipeline.operations.convert' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     await waitFor(() =>
       expect(mockToast.success).toHaveBeenCalledWith('datasetPipeline.conversion.successMessage'),
@@ -145,14 +144,13 @@ describe('Conversion', () => {
   })
 
   it('should handle failed conversion', async () => {
+    const user = userEvent.setup()
     mockConvert.mockResolvedValue({ status: 'failed' })
 
     render(<Conversion />)
 
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'datasetPipeline.operations.convert' }))
-    await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await user.click(screen.getByRole('button', { name: 'datasetPipeline.operations.convert' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     await waitFor(() =>
       expect(mockToast.error).toHaveBeenCalledWith('datasetPipeline.conversion.errorMessage'),
@@ -162,14 +160,13 @@ describe('Conversion', () => {
   })
 
   it('should handle conversion error', async () => {
+    const user = userEvent.setup()
     mockConvert.mockRejectedValue(new Error('Request failed'))
 
     render(<Conversion />)
 
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'datasetPipeline.operations.convert' }))
-    await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await user.click(screen.getByRole('button', { name: 'datasetPipeline.operations.convert' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     await waitFor(() =>
       expect(mockToast.error).toHaveBeenCalledWith('datasetPipeline.conversion.errorMessage'),

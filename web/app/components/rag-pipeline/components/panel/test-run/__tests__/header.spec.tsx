@@ -34,9 +34,10 @@ describe('TestRun header', () => {
   })
 
   it('should render the title and reset preparing state on close', async () => {
+    const user = userEvent.setup()
     render(<Header />)
 
-    await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(screen.getByText('datasetPipeline.testRun.title')).toBeInTheDocument()
     expect(mockSetIsPreparingDataSource).toHaveBeenCalledWith(false)
@@ -44,13 +45,14 @@ describe('TestRun header', () => {
   })
 
   it('should only cancel the panel when the datasource preparation flag is false', async () => {
+    const user = userEvent.setup()
     mockWorkflowStore.getState.mockReturnValue({
       isPreparingDataSource: false,
       setIsPreparingDataSource: mockSetIsPreparingDataSource,
     })
 
     render(<Header />)
-    await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(mockSetIsPreparingDataSource).not.toHaveBeenCalled()
     expect(mockHandleCancelDebugAndPreviewPanel).toHaveBeenCalledTimes(1)

@@ -1,7 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentPermission } from '@/features/agent-v2/acl'
-import useDocumentTitle from '@/hooks/use-document-title'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -14,7 +13,7 @@ vi.mock('@/next/navigation', () => ({
   usePathname: () => location.pathname,
   useRouter: () => router,
 }))
-vi.mock('@/hooks/use-document-title', () => ({ default: vi.fn() }))
+
 const detailRequest = vi.hoisted(() => vi.fn())
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -57,9 +56,7 @@ describe('AgentDetailLayout', () => {
       location.pathname = `/agents/agent-1/${section}`
       render(content, setup())
       expect(screen.getByText('Agent detail content')).toBeInTheDocument()
-      expect(useDocumentTitle).toHaveBeenLastCalledWith(
-        `agentV2.agentDetail.sections.${section} · Agent`,
-      )
+      expect(document.title).toContain(`agentV2.agentDetail.sections.${section} · Agent`)
     },
   )
 

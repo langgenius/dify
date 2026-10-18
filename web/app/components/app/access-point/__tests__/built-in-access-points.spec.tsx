@@ -29,11 +29,6 @@ const mocks = vi.hoisted(() => ({
   useAppWorkflow: vi.fn(),
 }))
 
-vi.mock('react-i18next', async () => {
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return createReactI18nextMock()
-})
-
 vi.mock('@/features/system-features/client', () => ({
   systemFeaturesQueryOptions: () => ({ queryKey: ['system-features'] }),
 }))

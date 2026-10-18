@@ -12,8 +12,10 @@ import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/c
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
+import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
 import { seedFeatures } from '@/test/console/query-data'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { AgentOrchestrateAddActionsProvider } from '../../add-actions'
 import { useAgentOrchestrateAddActions } from '../../add-actions-context'
 import { AgentConfigApiContextProvider } from '../../config-context'
@@ -256,6 +258,17 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
+async function openWorkspaceSkills(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(
+    screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
+  )
+  await user.click(
+    screen.getByRole('button', {
+      name: /agentV2\.agentDetail\.configure\.skills\.addMenu\.workspace\.label/i,
+    }),
+  )
+}
+
 async function openUploadSkillDialog(user: ReturnType<typeof userEvent.setup>) {
   await user.click(
     screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
@@ -348,6 +361,11 @@ function renderAgentSkills({
 
   seedFeatures(queryClient, { enable_skill: mocks.skillEnabled })
 
+  queryClient.setQueryData(
+    consoleQuery.files.upload.get.queryKey(),
+    createFileUploadConfigFixture(mocks.fileUploadConfig),
+  )
+
   return {
     ...render(
       <QueryClientProvider client={queryClient}>
@@ -369,13 +387,6 @@ function renderAgentSkills({
     queryClient,
   }
 }
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'files.upload.get': () => ({ data: mocks.fileUploadConfig }),
-  })
-})
 
 describe('AgentSkills', () => {
   beforeEach(() => {
@@ -843,14 +854,7 @@ describe('AgentSkills', () => {
     })
     renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
 
-    await user.click(
-      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
-    )
-    await user.click(
-      screen.getByRole('button', {
-        name: /agentV2\.agentDetail\.configure\.skills\.addMenu\.workspace\.label/i,
-      }),
-    )
+    await openWorkspaceSkills(user)
 
     const workspaceSkillButton = await screen.findByRole('button', { name: /Refund approval/ })
     expect(workspaceSkillButton).toHaveAttribute('aria-disabled', 'true')
@@ -910,14 +914,7 @@ describe('AgentSkills', () => {
     })
     renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
 
-    await user.click(
-      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
-    )
-    await user.click(
-      screen.getByRole('button', {
-        name: /agentV2\.agentDetail\.configure\.skills\.addMenu\.workspace\.label/i,
-      }),
-    )
+    await openWorkspaceSkills(user)
     await user.click(await screen.findByRole('button', { name: /Refund approval/ }))
 
     await waitFor(() => {
@@ -976,14 +973,7 @@ describe('AgentSkills', () => {
     })
     renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
 
-    await user.click(
-      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
-    )
-    await user.click(
-      screen.getByRole('button', {
-        name: /agentV2\.agentDetail\.configure\.skills\.addMenu\.workspace\.label/i,
-      }),
-    )
+    await openWorkspaceSkills(user)
     await user.click(await screen.findByRole('button', { name: /Refund approval/ }))
 
     expect(toast.error).toHaveBeenCalledWith(
@@ -996,14 +986,7 @@ describe('AgentSkills', () => {
     const user = userEvent.setup()
     renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
 
-    await user.click(
-      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
-    )
-    await user.click(
-      screen.getByRole('button', {
-        name: /agentV2\.agentDetail\.configure\.skills\.addMenu\.workspace\.label/i,
-      }),
-    )
+    await openWorkspaceSkills(user)
 
     const tagFilter = await screen.findByRole('combobox', { name: 'common.tag.placeholder' })
     await user.click(tagFilter)
@@ -1172,14 +1155,7 @@ describe('AgentSkills', () => {
     })
     renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
 
-    await user.click(
-      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
-    )
-    await user.click(
-      screen.getByRole('button', {
-        name: /agentV2\.agentDetail\.configure\.skills\.addMenu\.workspace\.label/i,
-      }),
-    )
+    await openWorkspaceSkills(user)
 
     expect(
       await screen.findByText('agentV2.agentDetail.configure.skills.workspaceSelector.added'),
@@ -1233,14 +1209,7 @@ describe('AgentSkills', () => {
     })
     renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
 
-    await user.click(
-      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
-    )
-    await user.click(
-      screen.getByRole('button', {
-        name: /agentV2\.agentDetail\.configure\.skills\.addMenu\.workspace\.label/i,
-      }),
-    )
+    await openWorkspaceSkills(user)
     await waitFor(() => {
       expect(screen.getAllByText('Refund approval').length).toBeGreaterThan(1)
     })

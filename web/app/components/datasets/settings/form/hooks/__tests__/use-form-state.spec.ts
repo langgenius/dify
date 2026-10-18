@@ -1,9 +1,9 @@
 import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { OperationKey } from '@orpc/tanstack-query'
 import type { RetrievalConfig } from '@/types/app'
+import { zProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { QueryClient } from '@tanstack/react-query'
 import { act } from '@testing-library/react'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   ChunkingMode,
   DataSourceType,
@@ -13,7 +13,8 @@ import {
 import { PermissionLevel } from '@/models/permission'
 import { consoleQuery } from '@/service/console'
 import { updateDatasetSetting } from '@/service/datasets'
-import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { createCatalogModelFixture, createModelCatalogFixture } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderHook as renderHookWithConsoleState } from '@/test/console/render'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
@@ -32,10 +33,59 @@ const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
 // Mock contexts
 const mockMutateDatasets = vi.fn()
 
-const renderHook = (callback: () => ReturnType<typeof useFormState>) =>
-  renderHookWithConsoleState(callback, {
-    wrapper: createAccountProfileQueryWrapper({ id: 'user-1' }),
+const renderHook = (callback: () => ReturnType<typeof useFormState>) => {
+  const { queryClient, wrapper } = createConsoleQueryWrapper({ accountProfile: { id: 'user-1' } })
+  for (const modelType of [ModelTypeEnum.rerank, ModelTypeEnum.textEmbedding]) {
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+        input: { params: { model_type: modelType } },
+      }),
+      {
+        data: [
+          zProviderWithModelsResponse.parse(
+            createModelCatalogFixture({
+              provider: 'langgenius/xinference/xinference',
+              models: [
+                createCatalogModelFixture({
+                  model: 'bge-reranker-v2-m3',
+                  model_type: modelType,
+                  features: [],
+                }),
+              ],
+            }),
+          ),
+        ],
+      },
+    )
+  }
+  queryClient.setQueryData(consoleQuery.workspaces.current.members.get.queryKey({ input: {} }), {
+    accounts: [
+      {
+        id: 'user-1',
+        name: 'User 1',
+        email: 'user1@example.com',
+        role: 'owner',
+        avatar: '',
+        avatar_url: '',
+        last_login_at: 0,
+        created_at: 0,
+        status: 'active',
+      },
+      {
+        id: 'user-2',
+        name: 'User 2',
+        email: 'user2@example.com',
+        role: 'admin',
+        avatar: '',
+        avatar_url: '',
+        last_login_at: 0,
+        created_at: 0,
+        status: 'active',
+      },
+    ],
   })
+  return renderHookWithConsoleState(callback, { wrapper })
+}
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -582,56 +632,4 @@ describe('useFormState', () => {
       })
     })
   })
-})
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useQuery: (options: {
-      queryKey: OperationKey<
-        'query',
-        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
-      >
-    }) => {
-      if (options.queryKey[0].join('.') === 'console.workspaces.current.members.get')
-        return (() => ({
-          data: {
-            accounts: [
-              {
-                id: 'user-1',
-                name: 'User 1',
-                email: 'user1@example.com',
-                role: 'owner',
-                avatar: '',
-                avatar_url: '',
-                last_login_at: '',
-                created_at: '',
-                status: 'active',
-              },
-              {
-                id: 'user-2',
-                name: 'User 2',
-                email: 'user2@example.com',
-                role: 'admin',
-                avatar: '',
-                avatar_url: '',
-                last_login_at: '',
-                created_at: '',
-                status: 'active',
-              },
-            ],
-          },
-        }))()
-      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
-      return {
-        data: [
-          {
-            provider: 'langgenius/xinference/xinference',
-            models: [{ model: 'bge-reranker-v2-m3', features: [] }],
-          },
-        ],
-      }
-    },
-  }
 })

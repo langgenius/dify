@@ -74,38 +74,41 @@ describe('ProcessDocuments', () => {
   // User Interactions Testing
   describe('User Interactions', () => {
     it('should call onProcess when Actions process button is clicked', async () => {
+      const user = userEvent.setup()
       const onProcess = vi.fn()
       const props = createDefaultProps({ onProcess })
 
       render(<ProcessDocuments {...props} />)
 
-      await userEvent
-        .setup()
-        .click(screen.getByRole('button', { name: /datasetPipeline.operations.saveAndProcess/i }))
+      await user.click(
+        screen.getByRole('button', { name: /datasetPipeline.operations.saveAndProcess/i }),
+      )
 
       expect(onProcess).toHaveBeenCalledTimes(1)
     })
 
     it('should call onBack when Actions back button is clicked', async () => {
+      const user = userEvent.setup()
       const onBack = vi.fn()
       const props = createDefaultProps({ onBack })
 
       render(<ProcessDocuments {...props} />)
 
-      await userEvent
-        .setup()
-        .click(screen.getByRole('button', { name: /datasetPipeline.operations.dataSource/i }))
+      await user.click(
+        screen.getByRole('button', { name: /datasetPipeline.operations.dataSource/i }),
+      )
 
       expect(onBack).toHaveBeenCalledTimes(1)
     })
 
     it('should call onPreview when preview button is clicked', async () => {
+      const user = userEvent.setup()
       const onPreview = vi.fn()
       const props = createDefaultProps({ onPreview })
 
       render(<ProcessDocuments {...props} />)
 
-      await userEvent.setup().click(
+      await user.click(
         screen.getByRole('button', {
           name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i,
         }),

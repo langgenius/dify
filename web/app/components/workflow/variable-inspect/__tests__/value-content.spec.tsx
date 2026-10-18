@@ -219,6 +219,7 @@ describe('ValueContent', () => {
   })
 
   it('should not emit changes when the content is truncated', async () => {
+    const user = userEvent.setup()
     const handleValueChange = vi.fn()
 
     renderWorkflowComponent(
@@ -241,11 +242,12 @@ describe('ValueContent', () => {
     )
 
     expect(screen.getByRole('textbox')).toBeDisabled()
-    await userEvent.setup().type(screen.getByRole('textbox'), 'updated')
+    await user.type(screen.getByRole('textbox'), 'updated')
     expect(handleValueChange).not.toHaveBeenCalled()
   })
 
   it('should update boolean array values', async () => {
+    const user = userEvent.setup()
     const handleValueChange = vi.fn()
 
     renderWorkflowComponent(
@@ -268,7 +270,7 @@ describe('ValueContent', () => {
       },
     )
 
-    await userEvent.setup().click(screen.getAllByRole('button', { name: 'True' })[1]!)
+    await user.click(screen.getAllByRole('button', { name: 'True' })[1]!)
 
     await waitFor(() => {
       expect(handleValueChange).toHaveBeenCalledWith('var-6', [true, true])

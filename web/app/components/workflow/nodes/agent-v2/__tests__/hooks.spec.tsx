@@ -1,30 +1,20 @@
 import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
-import { zDefaultModelResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
-import { QueryClient } from '@tanstack/react-query'
 import { act, waitFor } from '@testing-library/react'
 import { useSetAtom } from 'jotai'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { AgentScope } from '@/features/agent-v2/analytics'
 import { consoleQuery } from '@/service/console'
+import { createDefaultModelFixture } from '@/test/console/model-provider'
 import { createConsoleQueryClient, seedAppDetail } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createTestQueryClient } from '@/test/query-client'
 import { renderWorkflowHook } from '../../../__tests__/workflow-test-env'
 import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
 import { useCreateInlineAgentBinding, useWorkflowInlineAgentDetail } from '../hooks'
 
 const mockDefaultModel = vi.hoisted(() => ({
-  value: {
-    model: 'gpt-4o-mini',
-    model_type: 'llm',
-    provider: {
-      provider: 'langgenius/openai/openai',
-      icon_small: {
-        en_US: 'openai',
-        zh_Hans: 'openai',
-      },
-    },
-  },
+  value: undefined as ReturnType<typeof createDefaultModelFixture> | undefined,
 }))
 const mockComposerMutationFn = vi.hoisted(() =>
   vi.fn(async (variables: unknown) => ({
@@ -68,7 +58,7 @@ const mockAppComposerQueryFn = vi.hoisted(() =>
 const mockSnippetComposerQueryFn = vi.hoisted(() =>
   vi.fn(async (_input: unknown) => ({ agent: { id: 'snippet-agent' } })),
 )
-const trackCreateAppMock = vi.hoisted(() => vi.fn())
+const trackEventMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@/app/notifications', () => ({
   toast: {
@@ -76,8 +66,10 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-vi.mock('@/utils/create-app-tracking', () => ({
-  trackCreateApp: trackCreateAppMock,
+vi.mock('@/app/components/base/amplitude/utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/app/components/base/amplitude/utils')>()),
+  trackEvent: trackEventMock,
+  flushEvents: vi.fn(),
 }))
 
 vi.mock('@/next/navigation', async (importOriginal) => ({
@@ -123,15 +115,7 @@ const createInlineAgentBindingQueryClient = (appMode: AppMode = 'workflow') => {
         input: { query: { model_type: 'llm' } },
       }),
       {
-        data: zDefaultModelResponse.parse({
-          ...mockDefaultModel.value,
-          provider: {
-            label: { en_US: 'OpenAI' },
-            tenant_id: 'workspace-1',
-            supported_model_types: ['llm'],
-            ...mockDefaultModel.value.provider,
-          },
-        }),
+        data: mockDefaultModel.value,
       },
     )
   }
@@ -139,6 +123,7 @@ const createInlineAgentBindingQueryClient = (appMode: AppMode = 'workflow') => {
 }
 
 describe('useWorkflowInlineAgentDetail', () => {
+  afterEach(() => vi.useRealTimers())
   it.each([
     [undefined, 'agent-1'],
     ['node-1', undefined],
@@ -160,21 +145,12 @@ describe('useWorkflowInlineAgentDetail', () => {
   })
 
   it('loads inline agent detail through the snippet composer API', async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
-    })
+    const queryClient = createTestQueryClient()
     const { result } = renderWorkflowHook(
       () => useWorkflowInlineAgentDetail('node-1', 'snippet-agent'),
       {
         queryClient,
-        resource: { kind: 'snippet' as const, snippetId: 'snippet-1' },
-        hooksStoreProps: {
-          fileSettings: {} as never,
-        },
+        resource: { kind: 'snippet', snippetId: 'snippet-1' },
       },
     )
 
@@ -185,15 +161,10 @@ describe('useWorkflowInlineAgentDetail', () => {
     expect(mockAppComposerQueryFn).not.toHaveBeenCalled()
   })
 
-  it('polls until a copied inline agent composer is created for the new node', async () => {
+  it('polls until a copied inline agent composer is created, then stops', async () => {
+    vi.useFakeTimers()
     mockAppComposerQueryFn.mockResolvedValueOnce({ agent: undefined })
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
-    })
+    const queryClient = createTestQueryClient()
     const { result } = renderWorkflowHook(
       () =>
         useWorkflowInlineAgentDetail('copied-node', 'source-inline-agent', {
@@ -201,29 +172,24 @@ describe('useWorkflowInlineAgentDetail', () => {
         }),
       {
         queryClient,
-        resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
-        hooksStoreProps: {
-          fileSettings: {} as never,
-        },
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
       },
     )
 
-    await waitFor(() => expect(mockAppComposerQueryFn).toHaveBeenCalledTimes(2), {
-      timeout: 1500,
-    })
+    await act(() => vi.advanceTimersByTimeAsync(0))
+    expect(mockAppComposerQueryFn).toHaveBeenCalledTimes(1)
+    await act(() => vi.advanceTimersByTimeAsync(1001))
     expect(result.current.data).toEqual({ agent: { id: 'app-agent' } })
+    expect(mockAppComposerQueryFn).toHaveBeenCalledTimes(2)
+    await act(() => vi.advanceTimersByTimeAsync(3000))
+    expect(mockAppComposerQueryFn).toHaveBeenCalledTimes(2)
   })
 
   it('retries five times and stops polling when loading the copied inline agent composer fails', async () => {
+    vi.useFakeTimers()
     mockAppComposerQueryFn.mockRejectedValue(new Error('Agent composer was not created'))
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-          retryDelay: 0,
-        },
-      },
-    })
+    const queryClient = createTestQueryClient()
+    queryClient.setDefaultOptions({ queries: { retry: false, retryDelay: 0 } })
     const { result } = renderWorkflowHook(
       () =>
         useWorkflowInlineAgentDetail('copied-node', 'source-inline-agent', {
@@ -231,18 +197,14 @@ describe('useWorkflowInlineAgentDetail', () => {
         }),
       {
         queryClient,
-        resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
-        hooksStoreProps: {
-          fileSettings: {} as never,
-        },
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
       },
     )
 
-    await waitFor(() => expect(result.current.isError).toBe(true))
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 1200))
-    })
-
+    await act(() => vi.advanceTimersByTimeAsync(10))
+    expect(result.current.isError).toBe(true)
+    expect(mockAppComposerQueryFn).toHaveBeenCalledTimes(6)
+    await act(() => vi.advanceTimersByTimeAsync(3000))
     expect(mockAppComposerQueryFn).toHaveBeenCalledTimes(6)
   })
 })
@@ -250,17 +212,10 @@ describe('useWorkflowInlineAgentDetail', () => {
 describe('useCreateInlineAgentBinding', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockDefaultModel.value = {
+    mockDefaultModel.value = createDefaultModelFixture({
       model: 'gpt-4o-mini',
-      model_type: 'llm',
-      provider: {
-        provider: 'langgenius/openai/openai',
-        icon_small: {
-          en_US: 'openai',
-          zh_Hans: 'openai',
-        },
-      },
-    }
+      provider: { provider: 'langgenius/openai/openai' },
+    })
   })
 
   it('creates inline agent with the default text generation model', async () => {
@@ -268,10 +223,7 @@ describe('useCreateInlineAgentBinding', () => {
     const queryClient = createInlineAgentBindingQueryClient()
     const { result } = renderWorkflowHook(() => useCreateInlineAgentBinding(), {
       queryClient,
-      resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
-      hooksStoreProps: {
-        fileSettings: {} as never,
-      },
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
     })
 
     act(() => {
@@ -325,21 +277,21 @@ describe('useCreateInlineAgentBinding', () => {
         }),
       }),
     )
-    expect(trackCreateAppMock).toHaveBeenCalledWith({
-      source: 'studio_blank',
-      appMode: 'agent-v2',
-      agentScope: AgentScope.InWorkflow,
-    })
+    expect(trackEventMock).toHaveBeenCalledWith(
+      'create_app',
+      expect.objectContaining({
+        source: 'studio_blank',
+        app_mode: 'agent-v2',
+        agent_scope: AgentScope.InWorkflow,
+      }),
+    )
   })
 
   it('tracks inline agent creation with the chatflow scope', async () => {
     const queryClient = createInlineAgentBindingQueryClient('advanced-chat')
     const { result } = renderWorkflowHook(() => useCreateInlineAgentBinding(), {
       queryClient,
-      resource: { kind: 'app' as const, appId: 'chatflow-1', mode: 'advanced-chat' as const },
-      hooksStoreProps: {
-        fileSettings: {} as never,
-      },
+      resource: { kind: 'app', appId: 'chatflow-1', mode: 'advanced-chat' },
     })
 
     act(() => {
@@ -347,11 +299,14 @@ describe('useCreateInlineAgentBinding', () => {
     })
 
     await waitFor(() => {
-      expect(trackCreateAppMock).toHaveBeenCalledWith({
-        source: 'studio_blank',
-        appMode: 'agent-v2',
-        agentScope: AgentScope.InChatflow,
-      })
+      expect(trackEventMock).toHaveBeenCalledWith(
+        'create_app',
+        expect.objectContaining({
+          source: 'studio_blank',
+          app_mode: 'agent-v2',
+          agent_scope: AgentScope.InChatflow,
+        }),
+      )
     })
   })
 
@@ -360,10 +315,7 @@ describe('useCreateInlineAgentBinding', () => {
     const queryClient = createInlineAgentBindingQueryClient()
     const { result } = renderWorkflowHook(() => useCreateInlineAgentBinding(), {
       queryClient,
-      resource: { kind: 'snippet' as const, snippetId: 'snippet-1' },
-      hooksStoreProps: {
-        fileSettings: {} as never,
-      },
+      resource: { kind: 'snippet', snippetId: 'snippet-1' },
     })
 
     act(() => {
@@ -402,15 +354,12 @@ describe('useCreateInlineAgentBinding', () => {
   })
 
   it('creates inline agent with a model-less initial soul before the default model loads', async () => {
-    mockDefaultModel.value = undefined as never
+    mockDefaultModel.value = undefined
     const onSuccess = vi.fn()
     const queryClient = createInlineAgentBindingQueryClient()
     const { result } = renderWorkflowHook(() => useCreateInlineAgentBinding(), {
       queryClient,
-      resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
-      hooksStoreProps: {
-        fileSettings: {} as never,
-      },
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
     })
 
     act(() => {
@@ -464,7 +413,7 @@ describe('useCreateInlineAgentBinding', () => {
     expect(onError).toHaveBeenCalledTimes(1)
     expect(onSuccess).not.toHaveBeenCalled()
     expect(queryClient.getQueryData(appComposerKey())).toBeUndefined()
-    expect(trackCreateAppMock).not.toHaveBeenCalled()
+    expect(trackEventMock).not.toHaveBeenCalled()
     expect(result.current.isCreatingInlineAgent).toBe(false)
   })
 
@@ -480,10 +429,7 @@ describe('useCreateInlineAgentBinding', () => {
     const queryClient = createInlineAgentBindingQueryClient()
     const { result, unmount } = renderWorkflowHook(() => useCreateInlineAgentBinding(), {
       queryClient,
-      resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
-      hooksStoreProps: {
-        fileSettings: {} as never,
-      },
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
     })
 
     act(() => {
@@ -526,16 +472,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
   })
 
   it('saves inline agent composer changes through the workflow node composer API', async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-        mutations: {
-          retry: false,
-        },
-      },
-    })
+    const queryClient = createTestQueryClient()
     const { result } = renderWorkflowHook(
       () => ({
         ...useWorkflowInlineAgentConfigureSync({
@@ -553,10 +490,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
       }),
       {
         queryClient,
-        resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
-        hooksStoreProps: {
-          fileSettings: {} as never,
-        },
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
       },
     )
 
@@ -601,16 +535,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
   })
 
   it('saves inline agent composer changes through the snippet composer API', async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-        mutations: {
-          retry: false,
-        },
-      },
-    })
+    const queryClient = createTestQueryClient()
     const { result } = renderWorkflowHook(
       () => ({
         ...useWorkflowInlineAgentConfigureSync({
@@ -624,10 +549,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
       }),
       {
         queryClient,
-        resource: { kind: 'snippet' as const, snippetId: 'snippet-1' },
-        hooksStoreProps: {
-          fileSettings: {} as never,
-        },
+        resource: { kind: 'snippet', snippetId: 'snippet-1' },
       },
     )
 
@@ -668,16 +590,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
   })
 
   it('still saves manually when inline agent autosave is disabled', async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-        mutations: {
-          retry: false,
-        },
-      },
-    })
+    const queryClient = createTestQueryClient()
     const { result } = renderWorkflowHook(
       () => ({
         ...useWorkflowInlineAgentConfigureSync({
@@ -692,10 +605,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
       }),
       {
         queryClient,
-        resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
-        hooksStoreProps: {
-          fileSettings: {} as never,
-        },
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
       },
     )
 
@@ -729,16 +639,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
   })
 
   it('does not save manually when the inline agent composer draft is unchanged', async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-        mutations: {
-          retry: false,
-        },
-      },
-    })
+    const queryClient = createTestQueryClient()
     const { result } = renderWorkflowHook(
       () =>
         useWorkflowInlineAgentConfigureSync({
@@ -750,10 +651,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
         }),
       {
         queryClient,
-        resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
-        hooksStoreProps: {
-          fileSettings: {} as never,
-        },
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
       },
     )
 
@@ -766,16 +664,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
   })
 
   it('saves the effective inline model when the form draft is unchanged', async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-        mutations: {
-          retry: false,
-        },
-      },
-    })
+    const queryClient = createTestQueryClient()
     const { result } = renderWorkflowHook(
       () =>
         useWorkflowInlineAgentConfigureSync({
@@ -791,10 +680,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
         }),
       {
         queryClient,
-        resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
-        hooksStoreProps: {
-          fileSettings: {} as never,
-        },
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
       },
     )
 

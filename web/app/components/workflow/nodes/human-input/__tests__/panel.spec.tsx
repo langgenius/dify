@@ -213,13 +213,14 @@ describe('human-input/panel', () => {
   })
 
   it('offers the first action when the action list is empty', async () => {
+    const user = userEvent.setup()
     const config = createConfigResult({ inputs: createData({ user_actions: [] }) })
     mockUseConfig.mockReturnValue(config)
     renderPanel()
     expect(
       screen.getByText('workflowHumanInput.nodes.humanInput.userActions.emptyTip'),
     ).toBeInTheDocument()
-    await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.add' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
     expect(config.handleUserActionAdd).toHaveBeenCalledWith({
       id: 'action_1',
       title: 'Button Text 1',

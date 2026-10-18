@@ -1,30 +1,34 @@
-import type { PluginDetail } from '@/app/components/plugins/types'
-import { render, screen } from '@testing-library/react'
+import type { consoleClient } from '@/service/console'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
-import { createPluginDetail } from '../../../plugin-detail-panel/__tests__/endpoint-fixture'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createInstalledPluginFixture } from '@/test/fixtures/plugin'
 import ToolPicker from '../tool-picker'
 
-const mockInstalledPluginList = vi.hoisted(() => ({
-  data: {
-    plugins: [] as PluginDetail[],
-  },
-  isLoading: false,
-}))
+const installedPlugins = vi.hoisted(() =>
+  vi.fn<typeof consoleClient.workspaces.current.plugin.list.get>(),
+)
 
-vi.mock('@/service/use-plugins', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/use-plugins')>()),
-  useInstalledPluginList: () => mockInstalledPluginList,
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.list.get': installedPlugins,
+    }),
+  }
+})
 
 const createPlugin = (
   pluginId: string,
-  source: PluginDetail['source'],
+  source: PluginSource,
   category: PluginCategoryEnum,
   tags: string[],
-): PluginDetail => {
-  const plugin = createPluginDetail()
+) => {
+  const plugin = createInstalledPluginFixture({ id: pluginId, plugin_id: pluginId })
   return {
     ...plugin,
     plugin_id: pluginId,
@@ -40,14 +44,10 @@ const createPlugin = (
 
 describe('ToolPicker', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockInstalledPluginList.data = {
-      plugins: [],
-    }
-    mockInstalledPluginList.isLoading = false
+    installedPlugins.mockReset().mockResolvedValue({ plugins: [], total: 0 })
   })
 
-  it('shows the empty installed-plugin state', () => {
+  it('shows the empty installed-plugin state', async () => {
     render(
       <ToolPicker
         trigger={<button>trigger</button>}
@@ -58,24 +58,25 @@ describe('ToolPicker', () => {
       />,
     )
     expect(
-      screen.getByText('plugin.autoUpdate.noPluginPlaceholder.noInstalled'),
+      await screen.findByText('plugin.autoUpdate.noPluginPlaceholder.noInstalled'),
     ).toBeInTheDocument()
   })
 
   it('filters by plugin type, tags, and query', async () => {
     const user = userEvent.setup()
-    mockInstalledPluginList.data = {
+    installedPlugins.mockResolvedValue({
       plugins: [
         createPlugin('tool-search', PluginSource.marketplace, PluginCategoryEnum.tool, ['search']),
         createPlugin('tool-rag', PluginSource.marketplace, PluginCategoryEnum.tool, ['rag']),
         createPlugin('model-agent', PluginSource.marketplace, PluginCategoryEnum.model, ['agent']),
         createPlugin('github-tool', PluginSource.github, PluginCategoryEnum.tool, ['rag']),
       ],
-    }
+      total: 4,
+    })
 
     render(
       <ToolPicker
-        trigger={<span>trigger</span>}
+        trigger={<button type="button">trigger</button>}
         value={[]}
         onChange={vi.fn()}
         isShow
@@ -83,14 +84,20 @@ describe('ToolPicker', () => {
       />,
     )
 
-    expect(screen.getAllByRole('checkbox', { name: /^(tool-|model-|datasource-)/ })).toHaveLength(3)
+    expect(
+      await screen.findAllByRole('checkbox', { name: /^(tool-|model-|datasource-)/ }),
+    ).toHaveLength(3)
     expect(screen.queryByText('github-tool')).not.toBeInTheDocument()
 
-    await user.click(screen.getByText('plugin.category.models'))
+    await user.click(screen.getByRole('button', { name: 'plugin.category.models' }))
+    expect(screen.getByRole('button', { name: 'plugin.category.models' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
     expect(screen.getAllByRole('checkbox', { name: /^(tool-|model-|datasource-)/ })).toHaveLength(1)
     expect(screen.getByText('model-agent')).toBeInTheDocument()
 
-    await user.click(screen.getByText('plugin.category.tools'))
+    await user.click(screen.getByRole('button', { name: 'plugin.category.tools' }))
     expect(screen.getAllByRole('checkbox', { name: /^(tool-|model-|datasource-)/ })).toHaveLength(2)
 
     await user.click(screen.getByRole('button', { name: 'pluginTags.allTags' }))
@@ -109,8 +116,8 @@ describe('ToolPicker', () => {
     expect(screen.getByText('plugin.autoUpdate.noPluginPlaceholder.noFound')).toBeInTheDocument()
   })
 
-  it('limits selectable integrations to the provided integration category', () => {
-    mockInstalledPluginList.data = {
+  it('limits selectable integrations to the provided integration category', async () => {
+    installedPlugins.mockResolvedValue({
       plugins: [
         createPlugin('model-openai', PluginSource.marketplace, PluginCategoryEnum.model, ['llm']),
         createPlugin('tool-rag', PluginSource.marketplace, PluginCategoryEnum.tool, ['rag']),
@@ -118,11 +125,12 @@ describe('ToolPicker', () => {
           'docs',
         ]),
       ],
-    }
+      total: 3,
+    })
 
     render(
       <ToolPicker
-        trigger={<span>trigger</span>}
+        trigger={<button type="button">trigger</button>}
         value={[]}
         onChange={vi.fn()}
         isShow
@@ -131,9 +139,13 @@ describe('ToolPicker', () => {
       />,
     )
 
-    expect(screen.getByText('plugin.category.models')).toBeInTheDocument()
-    expect(screen.queryByText('plugin.category.all')).not.toBeInTheDocument()
-    expect(screen.queryByText('plugin.category.tools')).not.toBeInTheDocument()
+    expect(await screen.findByRole('checkbox', { name: 'model-openai' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'plugin.category.models' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(screen.queryByRole('button', { name: 'plugin.category.all' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'plugin.category.tools' })).not.toBeInTheDocument()
     expect(screen.getAllByRole('checkbox', { name: /^(tool-|model-|datasource-)/ })).toHaveLength(1)
     expect(screen.getByText('model-openai')).toBeInTheDocument()
     expect(screen.queryByText('tool-rag')).not.toBeInTheDocument()

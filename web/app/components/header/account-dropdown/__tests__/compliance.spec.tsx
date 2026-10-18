@@ -87,6 +87,7 @@ describe('Compliance', () => {
   }
 
   it('keeps GDPR downloadable while plan-dependent documents wait for features', async () => {
+    const user = userEvent.setup()
     queryClient.clear()
     vi.mocked(consoleClient.compliance.download.get).mockResolvedValue({
       url: 'https://example.com/gdpr.pdf',
@@ -100,7 +101,7 @@ describe('Compliance', () => {
       'true',
     )
     expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
-    await userEvent.setup().click(screen.getByText('common.compliance.gdpr'))
+    await user.click(screen.getByText('common.compliance.gdpr'))
     await waitFor(() =>
       expect(consoleClient.compliance.download.get).toHaveBeenCalledWith(
         { query: { doc_name: 'GDPR' } },
@@ -112,12 +113,13 @@ describe('Compliance', () => {
 
   describe('Actions', () => {
     it('should trigger download mutation successfully', async () => {
+      const user = userEvent.setup()
       const mockUrl = 'http://example.com/doc.pdf'
       vi.mocked(consoleClient.compliance.download.get).mockResolvedValue({ url: mockUrl })
       seedFeatures(queryClient, { billing: { subscription: { plan: 'team' } } })
 
       await openMenuAndRender()
-      await userEvent.setup().click(getComplianceMenuItem('common.compliance.soc2Type1'))
+      await user.click(getComplianceMenuItem('common.compliance.soc2Type1'))
 
       await waitFor(() => {
         expect(consoleClient.compliance.download.get).toHaveBeenCalledWith(
@@ -130,6 +132,7 @@ describe('Compliance', () => {
     })
 
     it('should handle download mutation error', async () => {
+      const user = userEvent.setup()
       vi.mocked(consoleClient.compliance.download.get).mockRejectedValue(
         new Error('Download failed'),
       )
@@ -137,7 +140,7 @@ describe('Compliance', () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
       await openMenuAndRender()
-      await userEvent.setup().click(getComplianceMenuItem('common.compliance.soc2Type1'))
+      await user.click(getComplianceMenuItem('common.compliance.soc2Type1'))
 
       await waitFor(() => {
         expect(consoleClient.compliance.download.get).toHaveBeenCalledWith(
@@ -151,8 +154,9 @@ describe('Compliance', () => {
     })
 
     it('should handle upgrade click on badge for sandbox plan', async () => {
+      const user = userEvent.setup()
       await openMenuAndRender()
-      await userEvent.setup().click(getComplianceMenuItem('common.compliance.soc2Type2'))
+      await user.click(getComplianceMenuItem('common.compliance.soc2Type2'))
 
       await waitFor(() =>
         expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
@@ -160,11 +164,12 @@ describe('Compliance', () => {
     })
 
     it('should handle upgrade click on badge for non-sandbox plan', async () => {
+      const user = userEvent.setup()
       seedFeatures(queryClient, { billing: { subscription: { plan: 'professional' } } })
 
       await openMenuAndRender()
       // SOC2 Type II is restricted for professional
-      await userEvent.setup().click(getComplianceMenuItem('common.compliance.soc2Type2'))
+      await user.click(getComplianceMenuItem('common.compliance.soc2Type2'))
 
       await waitFor(() =>
         expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('billing'),

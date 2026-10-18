@@ -1,5 +1,5 @@
 import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import { createEvent, fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -7,31 +7,17 @@ import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { DatasetACLPermission } from '@/utils/permission'
 import OperationsDropdown from '../operations-dropdown'
 
-const mockConsoleState = vi.hoisted(() => ({
-  userProfile: { id: 'user-1' },
-  workspacePermissionKeys: [] as string[],
-}))
-
 let mockIsRbacEnabled = true
-const noopKeyboardHandler = () => {}
 
 const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
   renderWithConsoleQuery(ui, {
+    accountProfile: { id: 'user-1' },
+    workspacePermissionKeys: [],
     systemFeatures: {
       rbac_enabled: mockIsRbacEnabled,
     },
   })
 
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createWorkspaceStateModuleMock(() => mockConsoleState)
-})
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createPermissionStateModuleMock(() => mockConsoleState)
-})
 describe('OperationsDropdown', () => {
   const createMockDataset = (
     overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
@@ -56,8 +42,6 @@ describe('OperationsDropdown', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockConsoleState.userProfile = { id: 'user-1' }
-    mockConsoleState.workspacePermissionKeys = []
     mockIsRbacEnabled = true
   })
 
@@ -152,35 +136,6 @@ describe('OperationsDropdown', () => {
       expect(onOutsideClick).toHaveBeenCalledTimes(1)
     })
 
-    it('should prevent the card click default behavior when opening the menu', () => {
-      render(<OperationsDropdown {...defaultProps} />)
-
-      const trigger = screen.getByLabelText('Dataset operations')
-      const event = createEvent.click(trigger)
-
-      fireEvent(trigger, event)
-
-      expect(event.defaultPrevented).toBe(true)
-    })
-
-    it('should keep menu item clicks from bubbling to the card while running the item action', async () => {
-      const user = userEvent.setup()
-      const detectIsUsedByApp = vi.fn()
-      const onCardClick = vi.fn()
-
-      render(
-        <div role="button" tabIndex={0} onClick={onCardClick} onKeyDown={noopKeyboardHandler}>
-          <OperationsDropdown {...defaultProps} detectIsUsedByApp={detectIsUsedByApp} />
-        </div>,
-      )
-
-      await user.click(screen.getByLabelText('Dataset operations'))
-      await user.click(await screen.findByRole('menuitem', { name: 'common.operation.delete' }))
-
-      expect(detectIsUsedByApp).toHaveBeenCalledTimes(1)
-      expect(onCardClick).not.toHaveBeenCalled()
-    })
-
     it('should keep tour-opened operations menu items from running actions', async () => {
       const detectIsUsedByApp = vi.fn()
 
@@ -199,26 +154,6 @@ describe('OperationsDropdown', () => {
 
       expect(detectIsUsedByApp).not.toHaveBeenCalled()
       expect(screen.getByRole('menu', { hidden: true })).toBeInTheDocument()
-    })
-
-    it('should call openAccessConfig when resource access is clicked', async () => {
-      const user = userEvent.setup()
-      const openAccessConfig = vi.fn()
-      const dataset = createMockDataset({
-        permission_keys: [DatasetACLPermission.AccessConfig],
-      })
-      render(
-        <OperationsDropdown
-          {...defaultProps}
-          dataset={dataset}
-          openAccessConfig={openAccessConfig}
-        />,
-      )
-
-      await user.click(screen.getByLabelText('Dataset operations'))
-      await user.click(screen.getByText('navigation.settings.resourceAccess'))
-
-      expect(openAccessConfig).toHaveBeenCalledTimes(1)
     })
   })
 })

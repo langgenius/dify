@@ -52,26 +52,29 @@ describe('FileItem (chat-input)', () => {
   })
 
   it('should call onRemove when delete button is clicked', async () => {
+    const user = userEvent.setup()
     const onRemove = vi.fn()
     render(<FileItem file={createFile()} canPreview showDeleteAction onRemove={onRemove} />)
     const delete_button = screen.getByRole('button', { name: 'common.operation.remove' })
-    await userEvent.setup().click(delete_button)
+    await user.click(delete_button)
     expect(onRemove).toHaveBeenCalledWith('file-1')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('should call onReUpload when replay icon is clicked', async () => {
+    const user = userEvent.setup()
     const onReUpload = vi.fn()
     render(<FileItem file={createFile({ progress: -1 })} canPreview onReUpload={onReUpload} />)
 
     const replayIcon = screen.getByRole('button', { name: 'common.operation.retry' })
-    await userEvent.setup().click(replayIcon!)
+    await user.click(replayIcon!)
 
     expect(onReUpload).toHaveBeenCalledWith('file-1')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('should close audio preview', async () => {
+    const user = userEvent.setup()
     render(
       <FileItem
         file={createFile({
@@ -83,24 +86,25 @@ describe('FileItem (chat-input)', () => {
       />,
     )
 
-    await userEvent.setup().click(screen.getByText(/audio\.mp3/i))
+    await user.click(screen.getByText(/audio\.mp3/i))
     expect(document.querySelector('audio source')).toHaveAttribute(
       'src',
       'https://example.com/audio.mp3',
     )
 
     const deleteButton = screen.getByRole('button', { name: 'common.operation.close' })
-    await userEvent.setup().click(deleteButton)
+    await user.click(deleteButton)
 
     expect(document.querySelector('audio')).not.toBeInTheDocument()
   })
 
   it('should call downloadUrl when download button is clicked', async () => {
+    const user = userEvent.setup()
     const { downloadUrl } = await import('@/utils/download')
     render(<FileItem file={createFile()} canPreview showDownloadAction />)
 
     const downloadBtn = screen.getByRole('button', { name: 'common.operation.download' })
-    await userEvent.setup().click(downloadBtn)
+    await user.click(downloadBtn)
 
     expect(downloadUrl).toHaveBeenCalledWith({
       url: 'https://example.com/document.pdf?as_attachment=true',
@@ -119,6 +123,7 @@ describe('FileItem (chat-input)', () => {
   })
 
   it('should not show preview when canPreview is false', async () => {
+    const user = userEvent.setup()
     render(
       <FileItem
         file={createFile({
@@ -129,12 +134,13 @@ describe('FileItem (chat-input)', () => {
       />,
     )
 
-    await userEvent.setup().click(screen.getByText(/audio\.mp3/i))
+    await user.click(screen.getByText(/audio\.mp3/i))
 
     expect(document.querySelector('audio')).not.toBeInTheDocument()
   })
 
   it('should close video preview', async () => {
+    const user = userEvent.setup()
     render(
       <FileItem
         file={createFile({
@@ -146,19 +152,20 @@ describe('FileItem (chat-input)', () => {
       />,
     )
 
-    await userEvent.setup().click(screen.getByText(/video\.mp4/i))
+    await user.click(screen.getByText(/video\.mp4/i))
     expect(document.querySelector('video source')).toHaveAttribute(
       'src',
       'https://example.com/video.mp4',
     )
 
     const closeBtn = screen.getByRole('button', { name: 'common.operation.close' })
-    await userEvent.setup().click(closeBtn)
+    await user.click(closeBtn)
 
     expect(document.querySelector('video')).not.toBeInTheDocument()
   })
 
   it('should close pdf preview', async () => {
+    const user = userEvent.setup()
     render(
       <FileItem
         file={createFile({
@@ -170,13 +177,13 @@ describe('FileItem (chat-input)', () => {
       />,
     )
 
-    await userEvent.setup().click(screen.getByText(/doc\.pdf/i))
+    await user.click(screen.getByText(/doc\.pdf/i))
     expect(await screen.findByTestId('pdf-preview')).toHaveAttribute(
       'data-url',
       'https://example.com/doc.pdf',
     )
 
-    await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
@@ -215,24 +222,26 @@ describe('FileItem (chat-input)', () => {
   it.each(['audio/mpeg', 'video/mp4'])(
     'preserves native controls without autoplay for %s',
     async (type) => {
+      const user = userEvent.setup()
       const { container } = render(
         <FileItem file={createFile({ name: 'media', type })} canPreview />,
       )
-      await userEvent.setup().click(screen.getByRole('button', { name: 'media' }))
+      await user.click(screen.getByRole('button', { name: 'media' }))
       const media = within(screen.getByRole('dialog')).getByTitle('media')
       expect(media.querySelector('source')).toHaveAttribute('type', type)
       expect(media).toHaveAttribute('controls')
       expect(media).toHaveAttribute('preload', 'metadata')
       expect(media).not.toHaveAttribute('autoplay')
       expect(container.querySelector('audio,video')).not.toBeInTheDocument()
-      await userEvent.setup().click(media)
+      await user.click(media)
       expect(screen.getByRole('dialog', { name: 'media' })).toBeInTheDocument()
-      await userEvent.setup().keyboard('{Escape}')
+      await user.keyboard('{Escape}')
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     },
   )
 
   it('keeps the open source while upload completes and releases its Blob before the next session', async () => {
+    const user = userEvent.setup()
     const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:local-audio')
     const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL')
     const file = createFile({
@@ -243,22 +252,22 @@ describe('FileItem (chat-input)', () => {
     })
     const { rerender } = render(<FileItem file={file} canPreview />)
     expect(createObjectURL).not.toHaveBeenCalled()
-    await userEvent.setup().click(screen.getByRole('button', { name: 'audio.mp3' }))
+    await user.click(screen.getByRole('button', { name: 'audio.mp3' }))
     expect(document.querySelector('audio source')).toHaveAttribute('src', 'blob:local-audio')
     rerender(<FileItem file={{ ...file, url: 'https://example.com/uploaded.mp3' }} canPreview />)
     expect(document.querySelector('audio source')).toHaveAttribute('src', 'blob:local-audio')
     expect(createObjectURL).toHaveBeenCalledTimes(1)
     expect(revokeObjectURL).not.toHaveBeenCalled()
-    await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(revokeObjectURL).toHaveBeenCalledExactlyOnceWith('blob:local-audio')
-    await userEvent.setup().click(screen.getByRole('button', { name: 'audio.mp3' }))
+    await user.click(screen.getByRole('button', { name: 'audio.mp3' }))
     expect(document.querySelector('audio source')).toHaveAttribute(
       'src',
       'https://example.com/uploaded.mp3',
     )
     expect(createObjectURL).toHaveBeenCalledTimes(1)
-    await userEvent.setup().keyboard('{Escape}')
+    await user.keyboard('{Escape}')
     expect(revokeObjectURL).toHaveBeenCalledTimes(1)
     createObjectURL.mockRestore()
     revokeObjectURL.mockRestore()
@@ -270,6 +279,7 @@ describe('FileItem (chat-input)', () => {
   ])(
     'borrows the preferred URL without creating or revoking it: $expected',
     async ({ url, expected }) => {
+      const user = userEvent.setup()
       const createObjectURL = vi.spyOn(URL, 'createObjectURL')
       const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL')
       render(
@@ -284,9 +294,9 @@ describe('FileItem (chat-input)', () => {
           canPreview
         />,
       )
-      await userEvent.setup().click(screen.getByRole('button', { name: 'audio.mp3' }))
+      await user.click(screen.getByRole('button', { name: 'audio.mp3' }))
       expect(document.querySelector('audio source')).toHaveAttribute('src', expected)
-      await userEvent.setup().keyboard('{Escape}')
+      await user.keyboard('{Escape}')
       expect(createObjectURL).not.toHaveBeenCalled()
       expect(revokeObjectURL).not.toHaveBeenCalled()
       createObjectURL.mockRestore()
@@ -295,6 +305,7 @@ describe('FileItem (chat-input)', () => {
   )
 
   it('ends the resource session if preview permission is removed', async () => {
+    const user = userEvent.setup()
     const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:local-audio')
     const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL')
     const file = createFile({
@@ -304,7 +315,7 @@ describe('FileItem (chat-input)', () => {
       originalFile: new File(['audio'], 'audio.mp3'),
     })
     const { rerender } = render(<FileItem file={file} canPreview />)
-    await userEvent.setup().click(screen.getByRole('button', { name: 'audio.mp3' }))
+    await user.click(screen.getByRole('button', { name: 'audio.mp3' }))
     rerender(<FileItem file={file} canPreview={false} />)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'audio.mp3' })).not.toBeInTheDocument()

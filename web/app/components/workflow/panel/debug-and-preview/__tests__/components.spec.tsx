@@ -412,6 +412,7 @@ describe('debug-and-preview components', () => {
     })
 
     it('disables sending while the latest workflow is paused', async () => {
+      const user = userEvent.setup()
       const chatState = createChatState({
         chatList: [
           {
@@ -434,7 +435,7 @@ describe('debug-and-preview components', () => {
       )
       const send = screen.getByRole('button', { name: 'send-chat' })
       expect(send).toBeDisabled()
-      await userEvent.setup().click(send)
+      await user.click(send)
       expect(chatState.handleSend).not.toHaveBeenCalled()
     })
 

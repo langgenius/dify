@@ -75,15 +75,34 @@ const renderCard = (
     consoleQuery.auth.plugin.datasource.byProviderId.get.queryKey({
       input: { params: { provider_id: providerId } },
     }),
-    consoleQuery.rag.pipelines.datasourcePlugins.get.key(),
+    consoleQuery.rag.pipelines.datasourcePlugins.get.queryKey(),
   ]
-  for (const key of affectedKeys) queryClient.setQueryData(key, { data: [] })
+  queryClient.setQueryData(consoleQuery.auth.plugin.datasource.list.get.queryKey(), { result: [] })
+  queryClient.setQueryData(consoleQuery.auth.plugin.datasource.defaultList.get.queryKey(), {
+    result: [],
+  })
+  queryClient.setQueryData(
+    consoleQuery.auth.plugin.datasource.byProviderId.get.queryKey({
+      input: { params: { provider_id: providerId } },
+    }),
+    { result: [] },
+  )
+  queryClient.setQueryData(consoleQuery.rag.pipelines.datasourcePlugins.get.queryKey(), [])
+  const unrelatedKeys = [
+    consoleQuery.account.profile.get.queryKey(),
+    consoleQuery.auth.plugin.datasource.byProviderId.get.queryKey({
+      input: { params: { provider_id: 'other-plugin/other-provider' } },
+    }),
+  ] as const
+  queryClient.setQueryData(unrelatedKeys[1], { result: [] })
   const view = renderWithConsoleQuery(<Card item={data} disabled={disabled} />, {
     queryClient,
     workspacePermissionKeys: permissions,
   })
   const expectInvalidated = () => {
     for (const key of affectedKeys) expect(queryClient.getQueryState(key)?.isInvalidated).toBe(true)
+    for (const key of unrelatedKeys)
+      expect(queryClient.getQueryState(key)?.isInvalidated).toBe(false)
   }
   const expectFresh = () => {
     for (const key of affectedKeys)
@@ -91,13 +110,11 @@ const renderCard = (
   }
   return { ...view, expectInvalidated, expectFresh }
 }
-const openActions = async () =>
-  userEvent
-    .setup()
-    .click(screen.getByRole('button', { name: 'common.operation.more Credential 1' }))
-const chooseAction = async (name: string | RegExp) => {
-  await openActions()
-  await userEvent.setup().click(await screen.findByRole('menuitem', { name }))
+const openActions = (user: ReturnType<typeof userEvent.setup>) =>
+  user.click(screen.getByRole('button', { name: 'common.operation.more Credential 1' }))
+const chooseAction = async (user: ReturnType<typeof userEvent.setup>, name: string | RegExp) => {
+  await openActions(user)
+  await user.click(await screen.findByRole('menuitem', { name }))
 }
 
 describe('Datasource Card', () => {
@@ -129,7 +146,7 @@ describe('Datasource Card', () => {
     const pending = createDeferred<{ result: string }>()
     mockPost.mockReturnValueOnce(pending.promise)
     const { expectFresh, expectInvalidated } = renderCard()
-    await chooseAction('common.operation.edit')
+    await chooseAction(user, 'common.operation.edit')
     const dialog = await screen.findByRole('dialog', { name: 'plugin.auth.useApiAuth' })
     expect(within(dialog).getByDisplayValue('Credential 1')).toBeInTheDocument()
     const keyInput = within(dialog).getByDisplayValue('key1')
@@ -150,7 +167,7 @@ describe('Datasource Card', () => {
   it('cancels editing without sending a credential update', async () => {
     const user = userEvent.setup()
     const { expectFresh } = renderCard()
-    await chooseAction('common.operation.edit')
+    await chooseAction(user, 'common.operation.edit')
     await user.click(await screen.findByRole('button', { name: 'common.operation.cancel' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(mockPost).not.toHaveBeenCalled()
@@ -162,10 +179,10 @@ describe('Datasource Card', () => {
     const pending = createDeferred<{ result: string }>()
     mockPost.mockReturnValueOnce(pending.promise)
     const { expectFresh, expectInvalidated } = renderCard()
-    await chooseAction('common.operation.remove')
+    await chooseAction(user, 'common.operation.remove')
     await user.click(await screen.findByRole('button', { name: 'common.operation.cancel' }))
     expect(mockPost).not.toHaveBeenCalled()
-    await chooseAction('common.operation.remove')
+    await chooseAction(user, 'common.operation.remove')
     const confirm = await screen.findByRole('button', { name: 'common.operation.confirm' })
     await user.click(confirm)
     await user.click(confirm)
@@ -182,14 +199,14 @@ describe('Datasource Card', () => {
   it('sets a default credential with use permission and blocks management actions', async () => {
     const user = userEvent.setup()
     const { expectInvalidated } = renderCard(oauthItem, ['credential.use'])
-    await chooseAction('plugin.auth.setDefault')
+    await chooseAction(user, 'plugin.auth.setDefault')
     await waitFor(() =>
       expect(mockPost).toHaveBeenCalledExactlyOnceWith(`${endpoint}/default`, {
         body: { id: 'c1' },
       }),
     )
     await waitFor(expectInvalidated)
-    await openActions()
+    await openActions(user)
     for (const name of [
       'common.operation.rename',
       'common.operation.remove',
@@ -207,7 +224,7 @@ describe('Datasource Card', () => {
   it('blocks credential operations without use or manage permission', async () => {
     const user = userEvent.setup()
     renderCard(item, [])
-    await openActions()
+    await openActions(user)
     for (const name of [
       'plugin.auth.setDefault',
       'common.operation.edit',
@@ -225,7 +242,7 @@ describe('Datasource Card', () => {
   it('renames OAuth credentials through the inline editor', async () => {
     const user = userEvent.setup()
     const { expectInvalidated } = renderCard(oauthItem)
-    await chooseAction('common.operation.rename')
+    await chooseAction(user, 'common.operation.rename')
     const input = await screen.findByRole('textbox', {
       name: 'common.operation.rename Credential 1',
     })
@@ -242,8 +259,9 @@ describe('Datasource Card', () => {
   })
 
   it('starts OAuth for the selected credential and refreshes caches only after completion', async () => {
+    const user = userEvent.setup()
     const { expectFresh, expectInvalidated } = renderCard(oauthItem)
-    await chooseAction('common.dataSource.notion.changeAuthorizedPages')
+    await chooseAction(user, 'common.dataSource.notion.changeAuthorizedPages')
     await waitFor(() =>
       expect(openOAuthPopup).toHaveBeenCalledExactlyOnceWith(
         'https://oauth.example/authorize',
@@ -260,9 +278,10 @@ describe('Datasource Card', () => {
   })
 
   it('keeps the current authorization if no OAuth URL is returned', async () => {
+    const user = userEvent.setup()
     mockGetPluginOAuthUrl.mockResolvedValueOnce({ authorization_url: '' })
     const { expectFresh } = renderCard(oauthItem)
-    await chooseAction('common.dataSource.notion.changeAuthorizedPages')
+    await chooseAction(user, 'common.dataSource.notion.changeAuthorizedPages')
     await waitFor(() => expect(mockGetPluginOAuthUrl).toHaveBeenCalledTimes(1))
     expect(openOAuthPopup).not.toHaveBeenCalled()
     expectFresh()

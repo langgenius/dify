@@ -1,15 +1,11 @@
 import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { MockedFunction, MockInstance } from 'vite-plus/test'
+import type { MockInstance } from 'vite-plus/test'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { DatasetConfigs } from '@/models/debug'
 import type { RetrievalConfig } from '@/types/app'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/components/app/configuration/toast'
-import {
-  useCurrentProviderAndModel,
-  useModelListAndDefaultModelAndCurrentProviderAndModel,
-} from '@/app/components/header/account-setting/model-provider-page/hooks'
 import {
   ChunkingMode,
   DataSourceType,
@@ -17,49 +13,18 @@ import {
   WeightedScoreEnum,
 } from '@/models/datasets'
 import { PermissionLevel } from '@/models/permission'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
 import ConfigContent from '../config-content'
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => {
-  type Props = {
-    value?: { provider: string; model: string }
-    onValueChange?: (model: { provider: string; model: string }) => void
-  }
-
-  const MockModelSelector = ({ value, onValueChange }: Props) => (
-    <button
-      type="button"
-      onClick={() => onValueChange?.(value ?? { provider: 'mock-provider', model: 'mock-model' })}
-    >
-      Mock ModelSelector
-    </button>
-  )
-
-  return {
-    ModelSelector: MockModelSelector,
-  }
+const render = createNuqsTestRenderer((ui: React.ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient)
+  return renderWithConsoleQuery(ui, { queryClient })
 })
-
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
-  () => ({
-    default: () => <div data-testid="model-parameter-modal" />,
-  }),
-)
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelListAndDefaultModelAndCurrentProviderAndModel: vi.fn(),
-  useCurrentProviderAndModel: vi.fn(),
-}))
-
-const mockedUseModelListAndDefaultModelAndCurrentProviderAndModel =
-  useModelListAndDefaultModelAndCurrentProviderAndModel as MockedFunction<
-    typeof useModelListAndDefaultModelAndCurrentProviderAndModel
-  >
-const mockedUseCurrentProviderAndModel = useCurrentProviderAndModel as MockedFunction<
-  typeof useCurrentProviderAndModel
->
 
 let toastErrorSpy: MockInstance
 
@@ -177,16 +142,6 @@ describe('ConfigContent', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
-    mockedUseModelListAndDefaultModelAndCurrentProviderAndModel.mockReturnValue({
-      modelList: [],
-      defaultModel: undefined,
-      currentProvider: undefined,
-      currentModel: undefined,
-    })
-    mockedUseCurrentProviderAndModel.mockReturnValue({
-      currentProvider: undefined,
-      currentModel: undefined,
-    })
   })
 
   afterEach(() => {

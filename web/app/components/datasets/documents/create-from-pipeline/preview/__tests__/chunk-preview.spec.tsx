@@ -98,12 +98,13 @@ describe('ChunkPreview', () => {
 
   describe('Idle State', () => {
     it('should call onPreview when preview button is clicked', async () => {
+      const user = userEvent.setup()
       const onPreview = vi.fn()
 
       render(<ChunkPreview {...defaultProps} isIdle={true} onPreview={onPreview} />)
 
       const button = screen.getByRole('button', { name: /previewChunks/i })
-      await userEvent.setup().click(button)
+      await user.click(button)
       expect(onPreview).toHaveBeenCalledTimes(1)
     })
   })

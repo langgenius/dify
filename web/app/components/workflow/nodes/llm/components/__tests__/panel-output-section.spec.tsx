@@ -49,6 +49,7 @@ describe('llm/panel-output-section', () => {
   })
 
   it('expands output details through the real section control', async () => {
+    const user = userEvent.setup()
     const Harness = () => {
       const [collapsed, setCollapsed] = useState(true)
       return (
@@ -65,9 +66,7 @@ describe('llm/panel-output-section', () => {
     }
     render(<Harness />)
     expect(screen.queryByText('reasoning_content')).not.toBeInTheDocument()
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'workflow.nodes.common.outputVars' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.nodes.common.outputVars' }))
     expect(screen.getByText('reasoning_content')).toBeInTheDocument()
     expect(screen.getByText('usage')).toBeInTheDocument()
     expect(screen.queryByTestId('structure-output')).not.toBeInTheDocument()
