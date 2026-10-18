@@ -69,6 +69,7 @@ class ConversationService:
 
         # define sort fields and directions
         sort_field, sort_direction = cls._get_sort_params(sort_by)
+        sort_column = cls._get_sort_column(sort_field)
 
         if last_id:
             last_conversation = session.scalar(stmt.where(Conversation.id == last_id))
@@ -82,9 +83,7 @@ class ConversationService:
                 reference_conversation=last_conversation,
             )
             stmt = stmt.where(filter_condition)
-        query_stmt = stmt.order_by(
-            sort_direction(getattr(Conversation, sort_field)), sort_direction(Conversation.id)
-        ).limit(limit)
+        query_stmt = stmt.order_by(sort_direction(sort_column), sort_direction(Conversation.id)).limit(limit)
         conversations = session.scalars(query_stmt).all()
 
         has_more = False
@@ -108,19 +107,31 @@ class ConversationService:
             return sort_by[1:], desc
         return sort_by, asc
 
+    @staticmethod
+    def _get_sort_column(sort_field: str):
+        if sort_field == "created_at":
+            return Conversation.created_at
+        if sort_field == "updated_at":
+            return Conversation.updated_at
+        raise ValueError(f"Unsupported conversation sort field: {sort_field}")
+
     @classmethod
     def _build_filter_condition(cls, sort_field: str, sort_direction: Callable, reference_conversation: Conversation):
-        field_value = getattr(reference_conversation, sort_field)
+        sort_column = cls._get_sort_column(sort_field)
+        if sort_field == "created_at":
+            field_value = reference_conversation.created_at
+        else:
+            field_value = reference_conversation.updated_at
         if sort_direction is desc:
-            field_condition = getattr(Conversation, sort_field) < field_value
+            field_condition = sort_column < field_value
             id_condition = Conversation.id < reference_conversation.id
         else:
-            field_condition = getattr(Conversation, sort_field) > field_value
+            field_condition = sort_column > field_value
             id_condition = Conversation.id > reference_conversation.id
 
         return or_(
             field_condition,
-            and_(getattr(Conversation, sort_field) == field_value, id_condition),
+            and_(sort_column == field_value, id_condition),
         )
 
     @classmethod
