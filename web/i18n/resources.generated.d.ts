@@ -546,6 +546,7 @@ export default interface Resources {
     'agentDetail.versionHistory.restore': 'Restore'
     'agentDetail.versionHistory.versionName': 'Version {{version}}'
     'agentDetail.versionHistory.viewOnly': 'View Only'
+    exportAgent: 'Export Agent'
   }
   app: {
     'accessControlDialog.accessItems.anyone': 'Anyone with the link'
@@ -590,9 +591,7 @@ export default interface Resources {
     editAppTitle: 'Edit App Info'
     editFailed: 'Failed to update app info'
     exportApp: 'Export App'
-    exportAppFailed: 'Failed to export app'
-    exportAppSuccess: 'App package (.ifpkg) downloaded'
-    exportFailed: 'Export DSL failed.'
+    exportFailed: 'Export failed'
     'exportSecret.description': 'If selected, secret values will be included in the exported app package.'
     'exportSecret.title': 'Export app with secret values'
     'filterEmpty.noApps': 'No apps here'
@@ -683,6 +682,7 @@ export default interface Resources {
     'iconPicker.title': 'Choose icon'
     'iconPicker.tryYourLuck': 'Try your luck'
     'iconPicker.zoom': 'Zoom'
+    ifpkgDownloaded: 'IFPKG file downloaded'
     importApp: 'Import App'
     importAppDescription: 'App package or DSL file'
     importAppFormats: 'Supports .ifpkg, .yaml, and .yml'

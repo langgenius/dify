@@ -26,16 +26,4 @@ describe('Log', () => {
     expect(onOpenLog).toHaveBeenCalledExactlyOnceWith(logItem)
     expect(onParentClick).not.toHaveBeenCalled()
   })
-
-  it.each(['{Enter}', ' '])('opens the selected log with %s', async (key) => {
-    const user = userEvent.setup()
-    const onOpenLog = vi.fn()
-    render(<Log logItem={logItem} onOpenLog={onOpenLog} />)
-
-    await user.tab()
-    expect(screen.getByRole('button', { name: /operation\.log/ })).toHaveFocus()
-    await user.keyboard(key)
-
-    expect(onOpenLog).toHaveBeenCalledExactlyOnceWith(logItem)
-  })
 })

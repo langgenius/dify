@@ -122,10 +122,15 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
     const documentId = data.documentId || data.sources?.[0]?.document_id
     if (!isUploadFile || !datasetId || !documentId || isDownloading) return
 
-    const res = await downloadDocument({
-      params: { dataset_id: datasetId, document_id: documentId },
-    })
-    if (res?.url) downloadUrl({ url: res.url, fileName: data.documentName })
+    try {
+      // Finish the requested download even if the citation unmounts while fetching its URL.
+      const res = await downloadDocument({
+        params: { dataset_id: datasetId, document_id: documentId },
+      })
+      if (res?.url) downloadUrl({ url: res.url, fileName: data.documentName })
+    } catch {
+      // The request layer reports the error; allow retry without an unhandled rejection.
+    }
   }
 
   return (
@@ -157,7 +162,8 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
               <FileIcon type={fileType} className="mr-1 size-4 shrink-0" />
               <div className="truncate system-xs-medium text-text-tertiary">
                 {(data.dataSourceType === 'upload_file' || data.dataSourceType === 'file') &&
-                !!data.sources?.[0]?.dataset_id ? (
+                !!data.sources?.[0]?.dataset_id &&
+                !!(data.documentId || data.sources?.[0]?.document_id) ? (
                   <button
                     type="button"
                     className="cursor-pointer truncate border-none bg-transparent p-0 text-left text-text-tertiary hover:underline"

@@ -142,12 +142,7 @@ describe('AgentRosterResponseContent', () => {
     await user.click(processToggle)
 
     expect(processToggle).toHaveAttribute('aria-expanded', 'true')
-    await waitFor(
-      () => {
-        expect(screen.getByText('history answer')).toBeInTheDocument()
-      },
-      { timeout: 5000 },
-    )
+    expect(await screen.findByText('history answer')).toBeInTheDocument()
 
     expect(screen.queryByText('internal thought should not render')).not.toBeInTheDocument()
   })
@@ -257,6 +252,9 @@ describe('AgentRosterResponseContent', () => {
       expect(screen.getByTestId('agent-roster-response-content')).toHaveTextContent('second answer')
     })
 
+    expect(screen.getByText('Loaded tools')).toBeInTheDocument()
+    expect(screen.getByText('first answer')).toBeInTheDocument()
+    expect(screen.getByText('Ran commands')).toBeInTheDocument()
     const content = screen.getByTestId('agent-roster-response-content').textContent ?? ''
     expect(content.indexOf('Loaded tools')).toBeLessThan(content.indexOf('first answer'))
     expect(content.indexOf('first answer')).toBeLessThan(content.indexOf('Ran commands'))
@@ -350,7 +348,7 @@ describe('AgentRosterResponseContent', () => {
 
     await user.click(screen.getByRole('button', { name: 'Thinking' }))
 
-    expect(screen.getByRole('button', { name: 'Ran commands' })).toBeInTheDocument()
+    expect(screen.getByText('Ran commands')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Scaffold skill directory' })).toBeInTheDocument()
   })
 
@@ -539,7 +537,7 @@ describe('AgentRosterResponseContent', () => {
     await user.click(screen.getByRole('button', { name: 'Thinking' }))
 
     expect(screen.getByText('public progress update')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Ran commands' })).toBeInTheDocument()
+    expect(screen.getByText('Ran commands')).toBeInTheDocument()
     expect(screen.getByText('final answer')).toBeInTheDocument()
     expect(screen.queryByText('internal thought should not render')).not.toBeInTheDocument()
   })
@@ -615,7 +613,7 @@ describe('AgentRosterResponseContent', () => {
     await user.click(processToggle)
 
     expect(processToggle).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByRole('button', { name: 'Ran commands' })).toBeInTheDocument()
+    expect(screen.getByText('Ran commands')).toBeInTheDocument()
     expect(screen.getByText('final answer')).toBeInTheDocument()
   })
 })

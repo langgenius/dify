@@ -22,145 +22,67 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe('preprocessNodesAndEdges', () => {
-  it('should return origin nodes and edges when no iteration/loop nodes exist', () => {
-    const nodes = [createNode({ data: { type: BlockEnum.Code, title: '', desc: '' } })]
-    const result = preprocessNodesAndEdges(nodes, [])
-    expect(result).toEqual({ nodes, edges: [] })
-  })
+describe.each([
+  [BlockEnum.Iteration, BlockEnum.IterationStart, CUSTOM_ITERATION_START_NODE],
+  [BlockEnum.Loop, BlockEnum.LoopStart, CUSTOM_LOOP_START_NODE],
+])('migrates legacy %s containers', (containerType, startType, customType) => {
+  it.each([undefined, 'missing-child'])(
+    'creates a valid start when the old reference is %s',
+    (startId) => {
+      const container = createNode({
+        id: 'container',
+        data: { type: containerType, title: '', desc: '', start_node_id: startId },
+      })
+      const result = preprocessNodesAndEdges([container], [])
+      const start = result.nodes.find((node) => node.data.type === startType)!
+      expect(start).toMatchObject({ parentId: 'container', type: customType })
+      expect(result.nodes.find((node) => node.id === 'container')!.data).toMatchObject({
+        start_node_id: start.id,
+      })
+      expect(result.edges).toEqual([])
+      expect(preprocessNodesAndEdges(result.nodes, result.edges)).toEqual(result)
+    },
+  )
 
-  it('should add iteration start node when iteration has no start_node_id', () => {
-    const nodes = [
-      createNode({ id: 'iter-1', data: { type: BlockEnum.Iteration, title: '', desc: '' } }),
-    ]
-    const result = preprocessNodesAndEdges(nodes, [])
-    const startNodes = result.nodes.filter((n) => n.data.type === BlockEnum.IterationStart)
-    expect(startNodes).toHaveLength(1)
-    expect(startNodes[0]!.parentId).toBe('iter-1')
-  })
-
-  it('should add iteration start node when iteration has start_node_id but node type does not match', () => {
-    const nodes = [
-      createNode({
-        id: 'iter-1',
-        data: { type: BlockEnum.Iteration, title: '', desc: '', start_node_id: 'some-node' },
-      }),
-      createNode({ id: 'some-node', data: { type: BlockEnum.Code, title: '', desc: '' } }),
-    ]
-    const result = preprocessNodesAndEdges(nodes, [])
-    const startNodes = result.nodes.filter((n) => n.data.type === BlockEnum.IterationStart)
-    expect(startNodes).toHaveLength(1)
-  })
-
-  it('should not add iteration start node when one already exists with correct type', () => {
+  it('connects the new start to the previous entry and preserves existing child edges', () => {
     const nodes = [
       createNode({
-        id: 'iter-1',
-        data: { type: BlockEnum.Iteration, title: '', desc: '', start_node_id: 'iter-start' },
+        id: 'container',
+        data: { type: containerType, title: '', desc: '', start_node_id: 'child' },
       }),
       createNode({
-        id: 'iter-start',
-        type: CUSTOM_ITERATION_START_NODE,
-        data: { type: BlockEnum.IterationStart, title: '', desc: '' },
-      }),
-    ]
-    const result = preprocessNodesAndEdges(nodes, [])
-    expect(result.nodes).toEqual(nodes)
-  })
-
-  it('should add loop start node when loop has no start_node_id', () => {
-    const nodes = [
-      createNode({ id: 'loop-1', data: { type: BlockEnum.Loop, title: '', desc: '' } }),
-    ]
-    const result = preprocessNodesAndEdges(nodes, [])
-    const startNodes = result.nodes.filter((n) => n.data.type === BlockEnum.LoopStart)
-    expect(startNodes).toHaveLength(1)
-  })
-
-  it('should add loop start node when loop has start_node_id but type does not match', () => {
-    const nodes = [
-      createNode({
-        id: 'loop-1',
-        data: { type: BlockEnum.Loop, title: '', desc: '', start_node_id: 'some-node' },
-      }),
-      createNode({ id: 'some-node', data: { type: BlockEnum.Code, title: '', desc: '' } }),
-    ]
-    const result = preprocessNodesAndEdges(nodes, [])
-    const startNodes = result.nodes.filter((n) => n.data.type === BlockEnum.LoopStart)
-    expect(startNodes).toHaveLength(1)
-  })
-
-  it('should not add loop start node when one already exists with correct type', () => {
-    const nodes = [
-      createNode({
-        id: 'loop-1',
-        data: { type: BlockEnum.Loop, title: '', desc: '', start_node_id: 'loop-start' },
+        id: 'child',
+        parentId: 'container',
+        data: { type: BlockEnum.Code, title: '', desc: '' },
       }),
       createNode({
-        id: 'loop-start',
-        type: CUSTOM_LOOP_START_NODE,
-        data: { type: BlockEnum.LoopStart, title: '', desc: '' },
-      }),
-    ]
-    const result = preprocessNodesAndEdges(nodes, [])
-    expect(result.nodes).toEqual(nodes)
-  })
-
-  it('should create edges linking new start nodes to existing start nodes', () => {
-    const nodes = [
-      createNode({
-        id: 'iter-1',
-        data: { type: BlockEnum.Iteration, title: '', desc: '', start_node_id: 'child-1' },
-      }),
-      createNode({
-        id: 'child-1',
-        parentId: 'iter-1',
+        id: 'next',
+        parentId: 'container',
         data: { type: BlockEnum.Code, title: '', desc: '' },
       }),
     ]
-    const result = preprocessNodesAndEdges(nodes, [])
-    const newEdges = result.edges
-    expect(newEdges).toHaveLength(1)
-    expect(newEdges[0]!.target).toBe('child-1')
-    expect(newEdges[0]!.data!.sourceType).toBe(BlockEnum.IterationStart)
-    expect(newEdges[0]!.data!.isInIteration).toBe(true)
-  })
-
-  it('should create edges for loop nodes with start_node_id', () => {
-    const nodes = [
-      createNode({
-        id: 'loop-1',
-        data: { type: BlockEnum.Loop, title: '', desc: '', start_node_id: 'child-1' },
+    const existing = createEdge({ source: 'child', target: 'next' })
+    const result = preprocessNodesAndEdges(nodes, [existing])
+    const start = result.nodes.find((node) => node.data.type === startType)!
+    expect(result.nodes.find((node) => node.id === 'container')!.data).toMatchObject({
+      start_node_id: start.id,
+    })
+    expect(result.edges).toEqual([
+      existing,
+      expect.objectContaining({
+        source: start.id,
+        target: 'child',
+        sourceHandle: 'source',
+        targetHandle: 'target',
+        data: expect.objectContaining({
+          sourceType: startType,
+          targetType: BlockEnum.Code,
+          isInIteration: containerType === BlockEnum.Iteration,
+          isInLoop: containerType === BlockEnum.Loop,
+        }),
       }),
-      createNode({
-        id: 'child-1',
-        parentId: 'loop-1',
-        data: { type: BlockEnum.Code, title: '', desc: '' },
-      }),
-    ]
-    const result = preprocessNodesAndEdges(nodes, [])
-    const newEdges = result.edges
-    expect(newEdges).toHaveLength(1)
-    expect(newEdges[0]!.target).toBe('child-1')
-    expect(newEdges[0]!.data!.isInLoop).toBe(true)
-  })
-
-  it('should update start_node_id on iteration and loop nodes', () => {
-    const nodes = [
-      createNode({
-        id: 'iter-1',
-        data: { type: BlockEnum.Iteration, title: '', desc: '' },
-      }),
-      createNode({
-        id: 'loop-1',
-        data: { type: BlockEnum.Loop, title: '', desc: '' },
-      }),
-    ]
-    const result = preprocessNodesAndEdges(nodes, [])
-    const iterNode = result.nodes.find((n) => n.id === 'iter-1')
-    const loopNode = result.nodes.find((n) => n.id === 'loop-1')
-    expect((iterNode!.data as IterationNodeType).start_node_id).toBeTruthy()
-    expect((loopNode!.data as LoopNodeType).start_node_id).toBeTruthy()
+    ])
+    expect(preprocessNodesAndEdges(result.nodes, result.edges)).toEqual(result)
   })
 })
 
@@ -245,8 +167,7 @@ describe('initialNodes', () => {
     ]
 
     const result = initialNodes(nodes, [])
-    expect(result[0]!.data._targetBranches).toBeDefined()
-    expect(result[0]!.data._targetBranches).toHaveLength(2)
+    expect(result[0]!.data._targetBranches?.map((branch) => branch.id)).toEqual(['case-1', 'false'])
   })
 
   it('should migrate legacy IfElse node without cases to cases format', () => {
@@ -266,8 +187,11 @@ describe('initialNodes', () => {
 
     const result = initialNodes(nodes, [])
     const data = result[0]!.data as IfElseNodeType
-    expect(data.cases).toHaveLength(1)
-    expect(data.cases[0]!.case_id).toBe('true')
+    expect(data.cases).toEqual([
+      { case_id: 'true', logical_operator: 'and', conditions: [{ id: 'c1', value: 'test' }] },
+    ])
+    expect(data.conditions).toBeUndefined()
+    expect(data.logical_operator).toBeUndefined()
   })
 
   it('should delete legacy conditions/logical_operator when cases exist', () => {
@@ -308,7 +232,7 @@ describe('initialNodes', () => {
     ]
 
     const result = initialNodes(nodes, [])
-    expect(result[0]!.data._targetBranches).toHaveLength(1)
+    expect(result[0]!.data._targetBranches).toEqual([{ id: 'cls-1', name: 'Class 1' }])
   })
 
   it('should set iteration node defaults', () => {
@@ -480,6 +404,7 @@ describe('initialNodes', () => {
           desc: '',
           tool_configurations: {
             api_key: 'secret-key',
+            optional_key: null,
             nested: { type: 'constant', value: 'already-migrated' },
           },
         },
@@ -489,6 +414,7 @@ describe('initialNodes', () => {
     const result = initialNodes(nodes, [])
     const data = result[0]!.data as ToolNodeType
     expect(data.tool_node_version).toBe('2')
+    expect(data.tool_configurations.optional_key).toEqual({ type: 'constant', value: null })
     expect(data.tool_configurations.api_key).toEqual({
       type: 'constant',
       value: 'secret-key',
@@ -537,44 +463,6 @@ describe('initialNodes', () => {
     expect(data.tool_configurations).toEqual({ key: 'val' })
   })
 
-  it('should handle Tool node with null configuration value', () => {
-    const nodes = [
-      createNode({
-        id: 'tool-1',
-        data: {
-          type: BlockEnum.Tool,
-          title: '',
-          desc: '',
-          tool_configurations: { key: null },
-        },
-      }),
-    ]
-
-    const result = initialNodes(nodes, [])
-    const data = result[0]!.data as ToolNodeType
-    expect(data.tool_configurations.key).toEqual({ type: 'constant', value: null })
-  })
-
-  it('should handle Tool node with empty tool_configurations', () => {
-    const nodes = [
-      createNode({
-        id: 'tool-1',
-        data: {
-          type: BlockEnum.Tool,
-          title: '',
-          desc: '',
-          tool_configurations: {},
-        },
-      }),
-    ]
-
-    const result = initialNodes(nodes, [])
-    const data = result[0]!.data as ToolNodeType
-    expect(data.tool_node_version).toBe('2')
-  })
-})
-
-describe('initialEdges', () => {
   it('should normalize legacy nested and root edge layers', () => {
     const nodes = [
       createNode({ id: 'iter-1', data: { type: BlockEnum.Iteration, title: '', desc: '' } }),
@@ -627,17 +515,6 @@ describe('initialEdges', () => {
     )
   })
 
-  it('should set edge type to custom', () => {
-    const nodes = [
-      createNode({ id: 'a', data: { type: BlockEnum.Start, title: '', desc: '' } }),
-      createNode({ id: 'b', data: { type: BlockEnum.Code, title: '', desc: '' } }),
-    ]
-    const edges = [createEdge({ source: 'a', target: 'b' })]
-
-    const result = initialEdges(edges, nodes)
-    expect(result[0]!.type).toBe('custom')
-  })
-
   it('should set default sourceHandle and targetHandle', () => {
     const nodes = [
       createNode({ id: 'a', data: { type: BlockEnum.Start, title: '', desc: '' } }),
@@ -648,22 +525,12 @@ describe('initialEdges', () => {
     Reflect.deleteProperty(edge, 'targetHandle')
 
     const result = initialEdges([edge], nodes)
+    expect(result[0]!).toMatchObject({
+      type: 'custom',
+      data: { sourceType: BlockEnum.Start, targetType: BlockEnum.Code },
+    })
     expect(result[0]!.sourceHandle).toBe('source')
     expect(result[0]!.targetHandle).toBe('target')
-  })
-
-  it('should set sourceType and targetType from nodes', () => {
-    const nodes = [
-      createNode({ id: 'a', data: { type: BlockEnum.Start, title: '', desc: '' } }),
-      createNode({ id: 'b', data: { type: BlockEnum.Code, title: '', desc: '' } }),
-    ]
-    const edges = [createEdge({ source: 'a', target: 'b' })]
-    Reflect.deleteProperty(edges[0]!.data!, 'sourceType')
-    Reflect.deleteProperty(edges[0]!.data!, 'targetType')
-
-    const result = initialEdges(edges, nodes)
-    expect(result[0]!.data!.sourceType).toBe(BlockEnum.Start)
-    expect(result[0]!.data!.targetType).toBe(BlockEnum.Code)
   })
 
   it('should set _connectedNodeIsSelected when a node is selected', () => {
@@ -690,33 +557,7 @@ describe('initialEdges', () => {
     ]
 
     const result = initialEdges(edges, nodes)
-    const hasCycleEdge = result.some(
-      (e) => (e.source === 'b' && e.target === 'c') || (e.source === 'c' && e.target === 'b'),
-    )
-    const hasABEdge = result.some((e) => e.source === 'a' && e.target === 'b')
-    expect(hasCycleEdge).toBe(false)
-    // In this specific graph, getCycleEdges treats all nodes remaining in the DFS stack (a, b, c)
-    // as part of the cycle, so a→b is also filtered. This assertion documents that behaviour.
-    expect(hasABEdge).toBe(false)
-  })
-
-  it('should keep non-cycle edges intact', () => {
-    const nodes = [
-      createNode({ id: 'a', data: { type: BlockEnum.Start, title: '', desc: '' } }),
-      createNode({ id: 'b', data: { type: BlockEnum.Code, title: '', desc: '' } }),
-    ]
-    const edges = [createEdge({ source: 'a', target: 'b' })]
-
-    const result = initialEdges(edges, nodes)
-    expect(result).toHaveLength(1)
-    expect(result[0]!.source).toBe('a')
-    expect(result[0]!.target).toBe('b')
-  })
-
-  it('should handle empty edges', () => {
-    const nodes = [createNode({ id: 'a', data: { type: BlockEnum.Start, title: '', desc: '' } })]
-    const result = initialEdges([], nodes)
-    expect(result).toHaveLength(0)
+    expect(result.map((edge) => [edge.source, edge.target])).toEqual([['a', 'b']])
   })
 
   it('should handle edges where source/target node is missing from nodesMap', () => {
@@ -757,50 +598,27 @@ describe('initialEdges', () => {
     expect(result[0]!.targetHandle).toBe('custom-tgt')
   })
 
-  it('should handle graph with edges referencing nodes not in the node list', () => {
-    const nodes = [
-      createNode({ id: 'a', data: { type: BlockEnum.Start, title: '', desc: '' } }),
-      createNode({ id: 'b', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+  it('removes cycle edges while preserving connections into, out of, and between cycles', () => {
+    const nodes = ['start', 'a', 'b', 'c', 'd', 'self', 'end'].map((id) => createNode({ id }))
+    const pairs = [
+      ['start', 'a'],
+      ['a', 'b'],
+      ['b', 'a'],
+      ['b', 'c'],
+      ['c', 'd'],
+      ['d', 'c'],
+      ['d', 'end'],
+      ['start', 'self'],
+      ['self', 'self'],
+      ['self', 'end'],
     ]
-    const edges = [
-      createEdge({ source: 'a', target: 'b' }),
-      createEdge({ source: 'unknown-src', target: 'unknown-tgt' }),
-    ]
-
-    const result = initialEdges(edges, nodes)
-    expect(result.length).toBeGreaterThanOrEqual(1)
-  })
-
-  it('should handle self-referencing cycle', () => {
-    const nodes = [
-      createNode({ id: 'a', data: { type: BlockEnum.Start, title: '', desc: '' } }),
-      createNode({ id: 'b', data: { type: BlockEnum.Code, title: '', desc: '' } }),
-    ]
-    const edges = [
-      createEdge({ source: 'a', target: 'b' }),
-      createEdge({ source: 'b', target: 'b' }),
-    ]
-
-    const result = initialEdges(edges, nodes)
-    const selfLoop = result.find((e) => e.source === 'b' && e.target === 'b')
-    expect(selfLoop).toBeUndefined()
-  })
-
-  it('should handle complex cycle with multiple nodes', () => {
-    const nodes = [
-      createNode({ id: 'a', data: { type: BlockEnum.Start, title: '', desc: '' } }),
-      createNode({ id: 'b', data: { type: BlockEnum.Code, title: '', desc: '' } }),
-      createNode({ id: 'c', data: { type: BlockEnum.Code, title: '', desc: '' } }),
-      createNode({ id: 'd', data: { type: BlockEnum.Code, title: '', desc: '' } }),
-    ]
-    const edges = [
-      createEdge({ source: 'a', target: 'b' }),
-      createEdge({ source: 'b', target: 'c' }),
-      createEdge({ source: 'c', target: 'd' }),
-      createEdge({ source: 'd', target: 'b' }),
-    ]
-
-    const result = initialEdges(edges, nodes)
-    expect(result.length).toBeLessThan(edges.length)
+    const edges = pairs.map(([source, target]) => createEdge({ source: source!, target: target! }))
+    expect(initialEdges(edges, nodes).map((edge) => [edge.source, edge.target])).toEqual([
+      ['start', 'a'],
+      ['b', 'c'],
+      ['d', 'end'],
+      ['start', 'self'],
+      ['self', 'end'],
+    ])
   })
 })

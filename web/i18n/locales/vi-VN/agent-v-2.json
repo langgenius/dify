@@ -381,5 +381,6 @@
   "agentDetail.versionHistory.filter": "Lọc phiên bản",
   "agentDetail.versionHistory.restore": "Khôi phục",
   "agentDetail.versionHistory.versionName": "Phiên bản {{version}}",
-  "agentDetail.versionHistory.viewOnly": "Chỉ xem"
+  "agentDetail.versionHistory.viewOnly": "Chỉ xem",
+  "exportAgent": "Xuất tác nhân"
 }

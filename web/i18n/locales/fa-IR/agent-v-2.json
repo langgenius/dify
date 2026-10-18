@@ -381,5 +381,6 @@
   "agentDetail.versionHistory.filter": "فیلتر نسخه‌ها",
   "agentDetail.versionHistory.restore": "بازیابی",
   "agentDetail.versionHistory.versionName": "نسخه {{version}}",
-  "agentDetail.versionHistory.viewOnly": "فقط نمایش"
+  "agentDetail.versionHistory.viewOnly": "فقط نمایش",
+  "exportAgent": "خروجی گرفتن از Agent"
 }

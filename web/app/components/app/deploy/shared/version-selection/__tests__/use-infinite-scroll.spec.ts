@@ -101,7 +101,7 @@ describe('deploy useInfiniteScroll', () => {
   })
 
   it('should observe the sentinel within the version list', () => {
-    render(createElement(TestInfiniteScroll, { query: createQuery() }))
+    const view = render(createElement(TestInfiniteScroll, { query: createQuery() }))
 
     expect(scrollRoot).not.toBeNull()
     expect(scrollSentinel).not.toBeNull()
@@ -111,16 +111,8 @@ describe('deploy useInfiniteScroll', () => {
       rootMargin: '0px 0px 300px 0px',
       threshold: 0,
     })
-  })
-
-  it('should fetch the next page when the sentinel intersects', () => {
-    const query = createQuery()
-    render(createElement(TestInfiniteScroll, { query }))
-
-    triggerIntersection(true)
-
-    expect(query.fetchNextPage).toHaveBeenCalledOnce()
-    expect(query.fetchNextPage).toHaveBeenCalledWith({ cancelRefetch: false })
+    view.unmount()
+    expect(disconnect).toHaveBeenCalled()
   })
 
   it('should keep the observer when only the query snapshot changes', () => {
@@ -135,6 +127,7 @@ describe('deploy useInfiniteScroll', () => {
 
     expect(observerConstructed).toHaveBeenCalledOnce()
     expect(nextQuery.fetchNextPage).toHaveBeenCalledOnce()
+    expect(initialQuery.fetchNextPage).not.toHaveBeenCalled()
   })
 
   it.each([
@@ -165,22 +158,20 @@ describe('deploy useInfiniteScroll', () => {
       }),
     )
 
+    triggerIntersection(false)
+    expect(fetchNextPage).not.toHaveBeenCalled()
     triggerIntersection(true)
     triggerIntersection(true)
 
     expect(fetchNextPage).toHaveBeenCalledOnce()
+    expect(fetchNextPage).toHaveBeenCalledWith({ cancelRefetch: false })
 
     await act(async () => {
       resolveFetch()
       await Promise.resolve()
     })
-  })
-
-  it('should disconnect the observer on unmount', () => {
-    const view = render(createElement(TestInfiniteScroll, { query: createQuery() }))
-
-    view.unmount()
-
-    expect(disconnect).toHaveBeenCalled()
+    triggerIntersection(true)
+    expect(fetchNextPage).toHaveBeenCalledTimes(2)
+    await act(async () => resolveFetch())
   })
 })

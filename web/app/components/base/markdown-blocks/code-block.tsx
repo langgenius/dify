@@ -247,7 +247,7 @@ export const CodeBlock: any = memo(({ inline, className, children = '', ...props
 
   // Handle container resize for echarts
   useEffect(() => {
-    if (language !== 'echarts' || !chartInstanceRef.current) return
+    if (language !== 'echarts') return
 
     const handleResize = () => {
       if (chartInstanceRef.current)
@@ -331,7 +331,7 @@ export const CodeBlock: any = memo(({ inline, className, children = '', ...props
           trimmedContent.split('{').length !== trimmedContent.split('}').length)) ||
       (trimmedContent.startsWith('[') &&
         (!trimmedContent.endsWith(']') ||
-          trimmedContent.split('[').length !== trimmedContent.split('}').length)) ||
+          trimmedContent.split('[').length !== trimmedContent.split(']').length)) ||
       trimmedContent.split('"').length % 2 !== 1 ||
       (trimmedContent.includes('{"') && !trimmedContent.includes('"}'))
 

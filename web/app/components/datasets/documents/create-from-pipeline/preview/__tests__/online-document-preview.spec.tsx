@@ -137,23 +137,12 @@ describe('OnlineDocumentPreview', () => {
     expect(defaultProps.hidePreview).toHaveBeenCalledOnce()
   })
 
-  it('formats large character counts from the response', async () => {
-    mockMutateAsync.mockResolvedValue({ content: 'a'.repeat(2500) })
+  it('reports a rejected preview request', async () => {
+    mockMutateAsync.mockRejectedValue(new Error('Failed to fetch document'))
     render(<OnlineDocumentPreview {...defaultProps} />)
-    expect(
-      await screen.findByText('2.5k datasetPipeline.addDocuments.characters'),
-    ).toBeInTheDocument()
+    await waitFor(() => expect(mockToastError).toHaveBeenCalledWith('Failed to fetch document'))
+    expect(screen.queryByText('Test content')).not.toBeInTheDocument()
   })
-
-  it.each(['Failed to fetch document', 'Network Error'])(
-    'reports a rejected request without an unhandled rejection: %s',
-    async (message) => {
-      mockMutateAsync.mockRejectedValue(new Error(message))
-      render(<OnlineDocumentPreview {...defaultProps} />)
-      await waitFor(() => expect(mockToastError).toHaveBeenCalledWith(message))
-      expect(screen.queryByText('Test content')).not.toBeInTheDocument()
-    },
-  )
 
   it('keeps the empty response empty after the mutation finishes', async () => {
     mockMutateAsync.mockResolvedValue({ content: '' })

@@ -1,108 +1,64 @@
-import { render, screen } from '@testing-library/react'
+import type { EmbeddedChatbotContextValue } from '../../context'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { AppSourceType } from '@/service/share'
+import { useState } from 'react'
+import { InputVarType } from '@/app/components/workflow/types'
 import { createEmbeddedChatbotContextFixture } from '@/test/fixtures/embedded-chatbot'
 import { useEmbeddedChatbotContext } from '../../context'
-import { createTheme } from '../../theme/theme'
 import InputsFormNode from '../index'
 
-vi.mock('../../context', () => ({
-  useEmbeddedChatbotContext: vi.fn(),
-}))
+vi.mock('../../context', () => ({ useEmbeddedChatbotContext: vi.fn() }))
 
-// Mock InputsFormContent to avoid complex integration in this test
-vi.mock('../content', () => ({
-  default: () => <div data-testid="mock-inputs-form-content" />,
-}))
+const inputsForms = [
+  { variable: 'topic', label: 'Topic', type: InputVarType.textInput, required: true },
+]
+const setContext = (overrides: Partial<EmbeddedChatbotContextValue> = {}) => {
+  vi.mocked(useEmbeddedChatbotContext).mockReturnValue(
+    createEmbeddedChatbotContextFixture({ inputsForms, ...overrides }),
+  )
+}
+function Form({ initiallyCollapsed = false }) {
+  const [collapsed, setCollapsed] = useState(initiallyCollapsed)
+  return <InputsFormNode collapsed={collapsed} setCollapsed={setCollapsed} />
+}
 
-const mockContextValue = createEmbeddedChatbotContextFixture({
-  appSourceType: AppSourceType.webApp,
-  isMobile: false,
-  currentConversationId: '',
-  theme: undefined,
-  handleStartChat: vi.fn(),
-  allInputsHidden: false,
-  inputsForms: [{ variable: 'test' }],
+it.each([{ allInputsHidden: true }, { inputsForms: [] }])(
+  'omits settings when no input can be edited: %j',
+  (overrides) => {
+    setContext(overrides)
+    render(<Form />)
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  },
+)
+
+it('collapses a new conversation only after starting chat succeeds', async () => {
+  const user = userEvent.setup()
+  const start = vi.fn<EmbeddedChatbotContextValue['handleStartChat']>()
+  setContext({ handleStartChat: start })
+  render(<Form />)
+  await user.click(screen.getByRole('button', { name: 'share.chat.startChat' }))
+  expect(start).toHaveBeenCalledTimes(1)
+  expect(screen.getByRole('textbox', { name: 'Topic' })).toBeInTheDocument()
+  act(() => start.mock.calls[0]![0]!())
+  expect(screen.queryByRole('textbox', { name: 'Topic' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+  expect(screen.getByRole('textbox', { name: 'Topic' })).toBeInTheDocument()
 })
 
-describe('InputsFormNode', () => {
+it('lets an existing conversation reopen and close its settings without starting a new chat', async () => {
   const user = userEvent.setup()
-  const setCollapsed = vi.fn()
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-
-    vi.mocked(useEmbeddedChatbotContext).mockReturnValue(mockContextValue)
+  const start = vi.fn()
+  setContext({
+    currentConversationId: 'conv-123',
+    currentConversationInputs: { topic: 'Existing topic' },
+    handleStartChat: start,
   })
-
-  it('should return null if allInputsHidden is true', () => {
-    vi.mocked(useEmbeddedChatbotContext).mockReturnValue({
-      ...mockContextValue,
-      allInputsHidden: true,
-    })
-    const { container } = render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
-    expect(container.firstChild).toBeNull()
-  })
-
-  it('should return null if inputsForms is empty', () => {
-    vi.mocked(useEmbeddedChatbotContext).mockReturnValue({
-      ...mockContextValue,
-      inputsForms: [],
-    })
-    const { container } = render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
-    expect(container.firstChild).toBeNull()
-  })
-
-  it('should render expanded state correctly', () => {
-    render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
-    expect(screen.getByText(/chat.chatSettingsTitle/i)).toBeInTheDocument()
-    expect(screen.getByTestId('mock-inputs-form-content')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'share.chat.startChat' })).toBeInTheDocument()
-  })
-
-  it('should render collapsed state correctly', () => {
-    render(<InputsFormNode collapsed={true} setCollapsed={setCollapsed} />)
-    expect(screen.getByText(/chat.chatSettingsTitle/i)).toBeInTheDocument()
-    expect(screen.queryByTestId('mock-inputs-form-content')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'common.operation.edit' })).toBeInTheDocument()
-  })
-
-  it('should handle edit button click', async () => {
-    render(<InputsFormNode collapsed={true} setCollapsed={setCollapsed} />)
-    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
-    expect(setCollapsed).toHaveBeenCalledWith(false)
-  })
-
-  it('should handle close button click', async () => {
-    vi.mocked(useEmbeddedChatbotContext).mockReturnValue({
-      ...mockContextValue,
-      currentConversationId: 'conv-123',
-    })
-    render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
-    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
-    expect(setCollapsed).toHaveBeenCalledWith(true)
-  })
-
-  it('should handle start chat button click', async () => {
-    const handleStartChat = vi.fn((cb) => cb())
-
-    vi.mocked(useEmbeddedChatbotContext).mockReturnValue({
-      ...mockContextValue,
-      handleStartChat,
-    })
-    render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
-    await user.click(screen.getByRole('button', { name: 'share.chat.startChat' }))
-    expect(handleStartChat).toHaveBeenCalled()
-    expect(setCollapsed).toHaveBeenCalledWith(true)
-  })
-
-  it('should apply theme primary color to start chat button', () => {
-    vi.mocked(useEmbeddedChatbotContext).mockReturnValue({
-      ...mockContextValue,
-      theme: createTheme('#ff0000'),
-    })
-    render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
-    const button = screen.getByRole('button', { name: 'share.chat.startChat' })
-    expect(button).toHaveStyle({ backgroundColor: '#ff0000' })
-  })
+  render(<Form initiallyCollapsed />)
+  await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+  expect(screen.getByRole('textbox', { name: 'Topic' })).toHaveValue('Existing topic')
+  expect(screen.queryByRole('button', { name: 'share.chat.startChat' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+  expect(screen.queryByRole('textbox', { name: 'Topic' })).not.toBeInTheDocument()
+  expect(start).not.toHaveBeenCalled()
 })

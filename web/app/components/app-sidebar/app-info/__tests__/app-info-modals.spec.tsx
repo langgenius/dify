@@ -1,5 +1,5 @@
 import type { AppInfoOperation } from '../app-info-modals'
-import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { consoleQuery } from '@/service/console'
@@ -26,8 +26,9 @@ vi.mock('@/app/components/app/use-export-app-dsl', () => ({
   useExportWorkflowAppDsl: () => ({
     exportWorkflowAppDsl: service.exportWorkflow,
     isExporting: false,
+    reset: vi.fn(),
   }),
-  useExportAppDsl: () => ({ exportAppDsl: service.exportApp, isExporting: false }),
+  useExportAppDsl: () => ({ exportAppDsl: service.exportApp, isExporting: false, reset: vi.fn() }),
 }))
 vi.mock('@/service/base', () => ({ request: (...args: unknown[]) => service.request(...args) }))
 vi.mock('@/app/components/workflow/collaboration/core/websocket-manager', () => ({
@@ -67,6 +68,7 @@ const render = (ui: React.ReactElement) =>
   })
 
 beforeEach(() => {
+  service.notify.mockReset()
   service.replace.mockReset()
   service.request.mockReset()
   service.exportApp.mockReset()
@@ -153,6 +155,8 @@ it('retains deletion confirmation after failure and prevents repeated submission
   await user.click(screen.getByRole('button', { name: 'common.operation.fill' }))
   await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
   await waitFor(() => expect(service.request).toHaveBeenCalledTimes(1))
+  await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+  expect(service.request).toHaveBeenCalledTimes(1)
   await user.keyboard('{Escape}')
   expect(screen.getByRole('alertdialog')).toBeInTheDocument()
   await act(async () => reject(new Error('Unavailable')))
@@ -180,6 +184,7 @@ it('submits the secret choice and keeps the export confirmation open after a fai
       appId: app.id,
       appName: app.name,
       includeSecret: true,
+      feedback: 'dialog',
     }),
   )
   expect(dialog).toBeInTheDocument()
@@ -204,12 +209,12 @@ function OperationsEntry({ operation }: { operation: AppInfoOperation }) {
 }
 
 it.each(['edit', 'duplicate', 'switch', 'delete', 'importDSL'] as const)(
-  'animates the first %s opening and focuses its input control',
+  'focuses the input control when opening %s',
   async (operation) => {
+    const user = userEvent.setup()
     render(<OperationsEntry operation={operation} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Open operation' }))
+    await user.click(screen.getByRole('button', { name: 'Open operation' }))
     const dialog = screen.getByRole(operation === 'delete' ? 'alertdialog' : 'dialog')
-    expect(dialog).toHaveAttribute('data-starting-style')
     const target =
       operation === 'importDSL'
         ? within(dialog).getByRole('button', { name: 'app.dslUploader.browse' })

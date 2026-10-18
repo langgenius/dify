@@ -381,5 +381,6 @@
   "agentDetail.versionHistory.filter": "กรองเวอร์ชัน",
   "agentDetail.versionHistory.restore": "กู้คืน",
   "agentDetail.versionHistory.versionName": "เวอร์ชัน {{version}}",
-  "agentDetail.versionHistory.viewOnly": "ดูเท่านั้น"
+  "agentDetail.versionHistory.viewOnly": "ดูเท่านั้น",
+  "exportAgent": "ส่งออกเอเจนต์"
 }

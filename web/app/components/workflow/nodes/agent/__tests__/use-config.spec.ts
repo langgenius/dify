@@ -13,7 +13,10 @@ const { request, marketplaceRefetch, marketplaceQuery } = vi.hoisted(() => ({
   marketplaceRefetch: vi.fn(),
   marketplaceQuery: vi.fn(),
 }))
-vi.mock('@/service/base', () => ({ request }))
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request,
+}))
 vi.mock('@/service/use-plugins', () => ({
   useFetchPluginsInMarketPlaceByIds: marketplaceQuery,
   useCheckInstalled: () => ({ data: { plugins: [] } }),

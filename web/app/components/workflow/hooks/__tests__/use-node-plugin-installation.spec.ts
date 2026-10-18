@@ -5,9 +5,10 @@ import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests_
 import { CollectionType } from '@/app/components/tools/types'
 import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
 import { createTestQueryClient } from '@/test/query-client'
-import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
+import { renderWorkflowHook as renderHookBase } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
 import { useNodePluginInstallation } from '../use-node-plugin-installation'
 
@@ -19,12 +20,13 @@ const mockTriggerPlugins = vi.fn()
 const mockInvalidateTriggers = vi.fn()
 let mockWorkspacePermissionKeys = ['plugin.install']
 
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
+const renderWorkflowHook: typeof renderHookBase = (callback, options) => {
+  const { queryClient } = createConsoleQueryWrapper({
+    queryClient: options?.queryClient,
     workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
+  })
+  return renderHookBase(callback, { ...options, queryClient })
+}
 
 vi.mock('@/service/use-triggers', () => ({
   useAllTriggerPlugins: (enabled: boolean) => mockTriggerPlugins(enabled),

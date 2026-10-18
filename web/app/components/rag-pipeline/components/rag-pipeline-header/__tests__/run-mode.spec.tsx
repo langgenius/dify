@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { RunMode } from '../run-mode'
 
@@ -48,13 +49,6 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
-vi.mock('@remixicon/react', () => ({
-  RiCloseLine: () => <span data-testid="close-icon" />,
-  RiDatabase2Line: () => <span data-testid="database-icon" />,
-  RiLoader2Line: () => <span data-testid="loader-icon" />,
-  RiPlayLargeLine: () => <span data-testid="play-icon" />,
-}))
-
 describe('RunMode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -63,34 +57,11 @@ describe('RunMode', () => {
   })
 
   describe('Idle state', () => {
-    it('should render test run text when no data', () => {
+    it('should call start run when button clicked', async () => {
+      const user = userEvent.setup()
       render(<RunMode />)
 
-      expect(screen.getByText('pipeline.common.testRun')).toBeInTheDocument()
-    })
-
-    it('should render custom text when provided', () => {
-      render(<RunMode text="Custom Run" />)
-
-      expect(screen.getByText('Custom Run')).toBeInTheDocument()
-    })
-
-    it('should render play icon', () => {
-      render(<RunMode />)
-
-      expect(screen.getByTestId('play-icon')).toBeInTheDocument()
-    })
-
-    it('should render keyboard shortcuts', () => {
-      const { container } = render(<RunMode />)
-
-      expect(container.querySelectorAll('kbd')).toHaveLength(2)
-    })
-
-    it('should call start run when button clicked', () => {
-      render(<RunMode />)
-
-      fireEvent.click(screen.getByText('pipeline.common.testRun'))
+      await user.click(screen.getByRole('button', { name: /pipeline.common.testRun/ }))
 
       expect(mockHandleWorkflowStartRunInWorkflow).toHaveBeenCalled()
     })
@@ -121,47 +92,31 @@ describe('RunMode', () => {
       }
     })
 
-    it('should show processing text', () => {
+    it('should call handleStopRun with task_id when stop clicked', async () => {
+      const user = userEvent.setup()
       render(<RunMode />)
 
-      expect(screen.getByText('pipeline.common.processing')).toBeInTheDocument()
-    })
-
-    it('should show stop button', () => {
-      render(<RunMode />)
-
-      expect(
-        screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.trigger.stop' }),
-      ).toBeInTheDocument()
-    })
-
-    it('should disable run button', () => {
-      render(<RunMode />)
-
-      const button = screen.getByText('pipeline.common.processing').closest('button')
-      expect(button).toBeDisabled()
-    })
-
-    it('should call handleStopRun with task_id when stop clicked', () => {
-      render(<RunMode />)
-
-      fireEvent.click(
+      await user.click(
         screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.trigger.stop' }),
       )
 
+      expect(screen.getByRole('button', { name: 'pipeline.common.processing' })).toBeDisabled()
+      expect(mockHandleWorkflowStartRunInWorkflow).not.toHaveBeenCalled()
       expect(mockHandleStopRun).toHaveBeenCalledWith('task-1')
     })
   })
 
   describe('After run completed', () => {
-    it('should show reRun text when previous run data exists', () => {
+    it('should show reRun text when previous run data exists', async () => {
+      const user = userEvent.setup()
       mockWorkflowRunningData = {
         task_id: 'task-1',
         result: { status: 'succeeded' },
       }
       render(<RunMode />)
 
-      expect(screen.getByText('pipeline.common.reRun')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: /pipeline.common.reRun/ }))
+      expect(mockHandleWorkflowStartRunInWorkflow).toHaveBeenCalledOnce()
     })
   })
 
@@ -170,29 +125,15 @@ describe('RunMode', () => {
       mockIsPreparingDataSource = true
     })
 
-    it('should show preparing text', () => {
+    it('should cancel preparing when close clicked', async () => {
+      const user = userEvent.setup()
       render(<RunMode />)
 
-      expect(screen.getByText('pipeline.common.preparingDataSource')).toBeInTheDocument()
-    })
+      await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
-    it('should show database icon', () => {
-      render(<RunMode />)
-
-      expect(screen.getByTestId('database-icon')).toBeInTheDocument()
-    })
-
-    it('should show cancel button with close icon', () => {
-      render(<RunMode />)
-
-      expect(screen.getByTestId('close-icon')).toBeInTheDocument()
-    })
-
-    it('should cancel preparing when close clicked', () => {
-      render(<RunMode />)
-
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
-
+      expect(
+        screen.getByRole('button', { name: 'pipeline.common.preparingDataSource' }),
+      ).toBeDisabled()
       expect(mockSetIsPreparingDataSource).toHaveBeenCalledWith(false)
       expect(mockSetShowDebugAndPreviewPanel).toHaveBeenCalledWith(false)
     })

@@ -1,4 +1,5 @@
-import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
+import type { ComponentProps } from 'react'
+import type PromptEditor from '@/app/components/base/prompt-editor'
 import { zKnowledgeFsSpaceListResponse } from '@dify/contracts/api/console/knowledge-fs/zod.gen'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -20,7 +21,7 @@ vi.mock('../files', () => ({ AgentFiles: () => null }))
 vi.mock('../tools', () => ({ AgentTools: () => null }))
 vi.mock('../advanced', () => ({ AgentAdvancedSettings: () => null }))
 vi.mock('@/app/components/base/prompt-editor', () => ({
-  default: (props: PromptEditorProps) => (
+  default: (props: ComponentProps<typeof PromptEditor>) => (
     <textarea
       aria-labelledby={props['aria-labelledby']}
       value={props.value}

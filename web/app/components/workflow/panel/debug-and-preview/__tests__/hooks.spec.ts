@@ -1,31 +1,26 @@
 import { act } from '@testing-library/react'
-import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
-import { sseGet } from '@/service/base'
-import { submitHumanInputForm } from '@/service/workflow'
+import { createNode } from '../../../__tests__/fixtures'
+import { renderWorkflowFlowHook as renderHook } from '../../../__tests__/workflow-test-env'
+import { BlockEnum } from '../../../types'
 import { useChat } from '../hooks'
 
 const mockHandleRun = vi.hoisted(() => vi.fn())
 const mockFetchInspectVars = vi.hoisted(() => vi.fn())
 const mockInvalidAllLastRun = vi.hoisted(() => vi.fn())
-const mockSetIterTimes = vi.hoisted(() => vi.fn())
-const mockSetLoopTimes = vi.hoisted(() => vi.fn())
 const mockSubmitHumanInputForm = vi.hoisted(() => vi.fn())
 const mockSseGet = vi.hoisted(() => vi.fn())
-const mockGetNodes = vi.hoisted(() =>
-  vi.fn(() => [] as Array<{ id: string; type: string; data: Record<string, unknown> }>),
-)
-
-let mockWorkflowRunningData: unknown = null
-
-vi.mock('@/service/base', () => ({
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
   sseGet: (...args: unknown[]) => mockSseGet(...args),
 }))
 
-vi.mock('@/service/use-workflow', () => ({
+vi.mock('@/service/use-workflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-workflow')>()),
   useInvalidateAllLastRun: () => mockInvalidAllLastRun,
 }))
 
-vi.mock('@/service/workflow', () => ({
+vi.mock('@/service/workflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/workflow')>()),
   submitHumanInputForm: (...args: unknown[]) => mockSubmitHumanInputForm(...args),
 }))
 
@@ -38,14 +33,6 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-vi.mock('reactflow', () => ({
-  useStoreApi: () => ({
-    getState: () => ({
-      getNodes: mockGetNodes,
-    }),
-  }),
-}))
-
 vi.mock('../../../hooks/use-workflow-run', () => ({
   useWorkflowRun: () => ({ handleRun: mockHandleRun }),
 }))
@@ -54,29 +41,8 @@ vi.mock('../../../hooks/use-set-workflow-vars-with-value', () => ({
   useSetWorkflowVarsWithValue: () => ({ fetchInspectVars: mockFetchInspectVars }),
 }))
 
-vi.mock('../../../hooks-store', () => ({
-  useHooksStore: () => ({
-    configsMap: {
-      resourceKind: 'appFlow',
-      flowId: 'flow-1',
-    },
-  }),
-}))
-
-vi.mock('../../../store', () => ({
-  useWorkflowStore: () => ({
-    getState: () => ({
-      setIterTimes: mockSetIterTimes,
-      setLoopTimes: mockSetLoopTimes,
-      inputs: {},
-      workflowRunningData: mockWorkflowRunningData,
-    }),
-  }),
-}))
-
 const resetMocksAndWorkflowState = () => {
   vi.clearAllMocks()
-  mockWorkflowRunningData = null
 }
 
 describe('useChat', () => {
@@ -131,8 +97,11 @@ describe('useChat', () => {
       result.current.handleSwitchSibling('message-1', {})
     })
 
-    expect(mockSseGet).toHaveBeenCalled()
-    expect(sseGet).toBeDefined()
+    expect(mockSseGet).toHaveBeenCalledWith(
+      '/workflow/workflow-run-1/events?include_state_snapshot=true&continue_on_pause=true',
+      {},
+      expect.objectContaining({ onCompleted: expect.any(Function), onData: expect.any(Function) }),
+    )
   })
 
   it('submits human input forms through the workflow service', async () => {
@@ -151,18 +120,20 @@ describe('useChat', () => {
       inputs: { field: 'value' },
       action: 'approve',
     })
-    expect(submitHumanInputForm).toBeDefined()
   })
 
   it('returns the matching custom node for a human input request', () => {
-    const node = { id: 'node-1', type: 'custom', data: { title: 'Human Input' } }
-    mockGetNodes.mockReturnValue([node, { id: 'node-2', type: 'custom', data: { title: 'Other' } }])
+    const node = createNode({
+      id: 'node-1',
+      data: { type: BlockEnum.HumanInput, title: 'Human Input' },
+    })
 
     const { result } = renderHook(() => useChat({}), {
       resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      nodes: [node, createNode({ id: 'node-2' })],
     })
 
-    expect(result.current.getHumanInputNodeData('node-1')).toEqual(node)
+    expect(result.current.getHumanInputNodeData('node-1')).toMatchObject(node)
     expect(result.current.getHumanInputNodeData('missing')).toBeUndefined()
   })
 })

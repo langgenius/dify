@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 
 const mocks = vi.hoisted(() => ({
@@ -14,9 +14,11 @@ vi.mock('@/next/navigation', () => ({
 
 describe('PluginList', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    mocks.fetch.mockReset()
     vi.stubGlobal('fetch', mocks.fetch)
   })
+
+  afterEach(() => vi.unstubAllGlobals())
 
   it('redirects a package install link to its category integration', async () => {
     mocks.fetch.mockResolvedValue({

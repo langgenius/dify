@@ -381,5 +381,6 @@
   "agentDetail.versionHistory.filter": "Filtriraj različice",
   "agentDetail.versionHistory.restore": "Obnovi",
   "agentDetail.versionHistory.versionName": "Različica {{version}}",
-  "agentDetail.versionHistory.viewOnly": "Samo ogled"
+  "agentDetail.versionHistory.viewOnly": "Samo ogled",
+  "exportAgent": "Izvozi agenta"
 }

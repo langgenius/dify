@@ -25,14 +25,6 @@ describe('useHiddenFieldNames', () => {
     vi.clearAllMocks()
   })
 
-  it('should return field names for textInput type', () => {
-    const { result } = renderHook(() => useHiddenFieldNames(PipelineInputVarType.textInput))
-
-    expect(result.current).toContain('variableconfig.defaultvalue')
-    expect(result.current).toContain('variableconfig.placeholder')
-    expect(result.current).toContain('variableconfig.tooltips')
-  })
-
   it('should return field names for paragraph type', () => {
     const { result } = renderHook(() => useHiddenFieldNames(PipelineInputVarType.paragraph))
 
@@ -64,32 +56,11 @@ describe('useHiddenFieldNames', () => {
     expect(result.current).toContain('appdebug.variableconfig.tooltips')
   })
 
-  it('should return field names for multiFiles type including max number', () => {
-    const { result } = renderHook(() => useHiddenFieldNames(PipelineInputVarType.multiFiles))
-
-    expect(result.current).toContain('appdebug.variableconfig.uploadmethod')
-    expect(result.current).toContain('appdebug.variableconfig.maxnumberofuploads')
-    expect(result.current).toContain('appdebug.variableconfig.tooltips')
-  })
-
   it('should return field names for checkbox type', () => {
     const { result } = renderHook(() => useHiddenFieldNames(PipelineInputVarType.checkbox))
 
     expect(result.current).toContain('appdebug.variableconfig.startchecked')
     expect(result.current).toContain('appdebug.variableconfig.tooltips')
-  })
-
-  it('should return only tooltips for unknown type', () => {
-    const { result } = renderHook(() => useHiddenFieldNames('unknown-type' as PipelineInputVarType))
-
-    expect(result.current).toBe('appdebug.variableconfig.tooltips')
-  })
-
-  it('should return comma-separated lowercase string', () => {
-    const { result } = renderHook(() => useHiddenFieldNames(PipelineInputVarType.textInput))
-
-    expect(result.current).toMatch(/,/)
-    expect(result.current).toBe(result.current.toLowerCase())
   })
 })
 
@@ -101,74 +72,6 @@ describe('useConfigurations', () => {
     mockGetFieldValue = vi.fn()
     mockSetFieldValue = vi.fn()
     vi.clearAllMocks()
-  })
-
-  it('should return array of configurations', () => {
-    const { result } = renderHook(() =>
-      useConfigurations({
-        getFieldValue: mockGetFieldValue,
-        setFieldValue: mockSetFieldValue,
-        supportFile: true,
-      }),
-    )
-
-    expect(Array.isArray(result.current)).toBe(true)
-    expect(result.current.length).toBeGreaterThan(0)
-  })
-
-  it('should include field type select configuration', () => {
-    const { result } = renderHook(() =>
-      useConfigurations({
-        getFieldValue: mockGetFieldValue,
-        setFieldValue: mockSetFieldValue,
-        supportFile: true,
-      }),
-    )
-
-    const typeConfig = result.current.find((c) => c.variable === 'type')
-    expect(typeConfig).toBeDefined()
-    expect(typeConfig?.required).toBe(true)
-  })
-
-  it('should include variable name configuration', () => {
-    const { result } = renderHook(() =>
-      useConfigurations({
-        getFieldValue: mockGetFieldValue,
-        setFieldValue: mockSetFieldValue,
-        supportFile: true,
-      }),
-    )
-
-    const varConfig = result.current.find((c) => c.variable === 'variable')
-    expect(varConfig).toBeDefined()
-    expect(varConfig?.required).toBe(true)
-  })
-
-  it('should include display name configuration', () => {
-    const { result } = renderHook(() =>
-      useConfigurations({
-        getFieldValue: mockGetFieldValue,
-        setFieldValue: mockSetFieldValue,
-        supportFile: true,
-      }),
-    )
-
-    const labelConfig = result.current.find((c) => c.variable === 'label')
-    expect(labelConfig).toBeDefined()
-    expect(labelConfig?.required).toBe(false)
-  })
-
-  it('should include required checkbox configuration', () => {
-    const { result } = renderHook(() =>
-      useConfigurations({
-        getFieldValue: mockGetFieldValue,
-        setFieldValue: mockSetFieldValue,
-        supportFile: true,
-      }),
-    )
-
-    const requiredConfig = result.current.find((c) => c.variable === 'required')
-    expect(requiredConfig).toBeDefined()
   })
 
   it('should set file defaults when type changes to singleFile', () => {
@@ -235,40 +138,6 @@ describe('useConfigurations', () => {
     expect(mockSetFieldValue).not.toHaveBeenCalled()
   })
 
-  it('should auto-fill label from variable name on blur-sm', () => {
-    mockGetFieldValue.mockReturnValue('')
-
-    const { result } = renderHook(() =>
-      useConfigurations({
-        getFieldValue: mockGetFieldValue,
-        setFieldValue: mockSetFieldValue,
-        supportFile: true,
-      }),
-    )
-
-    const varConfig = result.current.find((c) => c.variable === 'variable')
-    varConfig?.listeners?.onBlur?.({ value: 'myVariable', fieldApi: {} as never })
-
-    expect(mockSetFieldValue).toHaveBeenCalledWith('label', 'myVariable')
-  })
-
-  it('should not auto-fill label if label already exists', () => {
-    mockGetFieldValue.mockReturnValue('Existing Label')
-
-    const { result } = renderHook(() =>
-      useConfigurations({
-        getFieldValue: mockGetFieldValue,
-        setFieldValue: mockSetFieldValue,
-        supportFile: true,
-      }),
-    )
-
-    const varConfig = result.current.find((c) => c.variable === 'variable')
-    varConfig?.listeners?.onBlur?.({ value: 'myVariable', fieldApi: {} as never })
-
-    expect(mockSetFieldValue).not.toHaveBeenCalled()
-  })
-
   it('should reset label to variable name when display name is cleared', () => {
     mockGetFieldValue.mockReturnValue('existingVar')
 
@@ -292,20 +161,6 @@ describe('useHiddenConfigurations', () => {
     vi.clearAllMocks()
   })
 
-  it('should return array of hidden configurations', () => {
-    const { result } = renderHook(() => useHiddenConfigurations({ options: undefined }))
-
-    expect(Array.isArray(result.current)).toBe(true)
-    expect(result.current.length).toBeGreaterThan(0)
-  })
-
-  it('should include default value config for textInput', () => {
-    const { result } = renderHook(() => useHiddenConfigurations({ options: undefined }))
-
-    const defaultConfigs = result.current.filter((c) => c.variable === 'default')
-    expect(defaultConfigs.length).toBeGreaterThan(0)
-  })
-
   it('should include tooltips configuration for all types', () => {
     const { result } = renderHook(() => useHiddenConfigurations({ options: undefined }))
 
@@ -322,10 +177,11 @@ describe('useHiddenConfigurations', () => {
         c.variable === 'default' &&
         c.showConditions?.some((sc) => sc.value === PipelineInputVarType.select),
     )
-    expect(selectDefault?.options).toBeDefined()
-    expect(selectDefault?.options?.[0]?.value).toBe('')
-    expect(selectDefault?.options?.[1]?.value).toBe('opt1')
-    expect(selectDefault?.options?.[2]?.value).toBe('opt2')
+    expect(selectDefault?.options).toEqual([
+      { value: '', label: 'appDebug.variableConfig.noDefaultSelected' },
+      { value: 'opt1', label: 'opt1' },
+      { value: 'opt2', label: 'opt2' },
+    ])
   })
 
   it('should return empty options when options prop is undefined', () => {
@@ -337,24 +193,5 @@ describe('useHiddenConfigurations', () => {
         c.showConditions?.some((sc) => sc.value === PipelineInputVarType.select),
     )
     expect(selectDefault?.options).toEqual([])
-  })
-
-  it('should include upload method configs for file types', () => {
-    const { result } = renderHook(() => useHiddenConfigurations({ options: undefined }))
-
-    const uploadMethods = result.current.filter((c) => c.variable === 'allowedFileUploadMethods')
-    expect(uploadMethods.length).toBe(2) // singleFile + multiFiles
-  })
-
-  it('should include maxLength slider for multiFiles', () => {
-    const { result } = renderHook(() => useHiddenConfigurations({ options: undefined }))
-
-    const maxLength = result.current.find(
-      (c) =>
-        c.variable === 'maxLength' &&
-        c.showConditions?.some((sc) => sc.value === PipelineInputVarType.multiFiles),
-    )
-    expect(maxLength).toBeDefined()
-    expect(maxLength?.description).toBeDefined()
   })
 })

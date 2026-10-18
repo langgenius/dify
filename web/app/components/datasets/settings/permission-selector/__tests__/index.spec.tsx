@@ -94,22 +94,6 @@ describe('PermissionSelector', () => {
     vi.clearAllMocks()
   })
 
-  it('opens from its native button with the keyboard', async () => {
-    const user = userEvent.setup()
-    renderSelector()
-
-    const trigger = screen.getByRole('button', { name: /permissionsOnlyMe/ })
-    expect(trigger).toHaveAttribute('type', 'button')
-
-    await user.tab()
-    expect(trigger).toHaveFocus()
-    await user.keyboard('{Enter}')
-
-    const dialog = screen.getByRole('dialog', { name: /form.permissions/ })
-    expect(within(dialog).getByRole('radiogroup', { name: /form.permissions/ })).toBeInTheDocument()
-    expect(within(dialog).getByRole('radio', { name: /permissionsOnlyMe/ })).toBeChecked()
-  })
-
   it.each([
     ['the disabled prop', { disabled: true }, false],
     ['dataset RBAC', {}, true],

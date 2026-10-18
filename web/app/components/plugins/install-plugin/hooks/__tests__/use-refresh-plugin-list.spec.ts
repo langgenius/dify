@@ -145,21 +145,22 @@ describe('plugin installation refresh', () => {
     }
   })
 
-  it.each([null, undefined])(
-    'only refreshes installation caches without a manifest (%s)',
-    (manifest) => {
-      const { result } = renderHook(useRefreshPluginList, { wrapper })
+  it('only refreshes installation caches without a manifest', () => {
+    const { result } = renderHook(useRefreshPluginList, { wrapper })
 
-      act(() => result.current.refreshPluginList(manifest))
+    act(() => result.current.refreshPluginList())
 
-      expect(mocks.installed).toHaveBeenCalledWith()
-      expect(mocks.checkInstalled).toHaveBeenCalledOnce()
-      for (const key of [...strategyKeys, ...providerKeys])
-        expect(client.getQueryState(key)?.isInvalidated).toBe(false)
-      for (const key of toolKeys) expect(client.getQueryState(key)?.isInvalidated).toBe(false)
-      expect(client.getQueryState(datasourceKey)?.isInvalidated).toBe(false)
-      expect(mocks.triggers).not.toHaveBeenCalled()
-      expect(mocks.request).not.toHaveBeenCalled()
-    },
-  )
+    expect(mocks.installed).toHaveBeenCalledWith()
+    expect(mocks.checkInstalled).toHaveBeenCalledOnce()
+    for (const key of [
+      ...strategyKeys,
+      ...providerKeys,
+      ...toolKeys,
+      datasourceKey,
+      dataSourceAuthKey,
+    ])
+      expect(client.getQueryState(key)?.isInvalidated).toBe(false)
+    expect(mocks.triggers).not.toHaveBeenCalled()
+    expect(mocks.request).not.toHaveBeenCalled()
+  })
 })

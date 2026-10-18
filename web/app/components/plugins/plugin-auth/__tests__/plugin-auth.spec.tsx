@@ -1,5 +1,6 @@
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { render as renderWithoutUrlState } from '@/test/console/render'
 import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import PluginAuth from '../plugin-auth'
@@ -48,10 +49,6 @@ describe('PluginAuth', () => {
     ]
   })
 
-  afterEach(() => {
-    cleanup()
-  })
-
   it('renders Authorize component when not authorized', () => {
     mockUsePluginAuth.mockReturnValue({
       isAuthorized: false,
@@ -63,6 +60,7 @@ describe('PluginAuth', () => {
     })
 
     render(<PluginAuth pluginPayload={defaultPayload} />)
+    expect(mockUsePluginAuth).toHaveBeenCalledWith(defaultPayload, true)
     expect(screen.getByRole('button', { name: 'plugin.auth.useApiAuth' })).toBeEnabled()
     expect(screen.queryByText('plugin.auth.permissionHint.title')).not.toBeInTheDocument()
     expect(screen.queryByTestId('authorized')).not.toBeInTheDocument()
@@ -80,7 +78,7 @@ describe('PluginAuth', () => {
 
     render(<PluginAuth pluginPayload={defaultPayload} />)
     expect(screen.getByTestId('authorized')).toBeInTheDocument()
-    expect(screen.queryByTestId('authorize')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'plugin.auth.useApiAuth' })).not.toBeInTheDocument()
   })
 
   it('renders children when authorized and children provided', () => {
@@ -102,21 +100,8 @@ describe('PluginAuth', () => {
     expect(screen.queryByTestId('authorized')).not.toBeInTheDocument()
   })
 
-  it('passes pluginPayload.provider to usePluginAuth', () => {
-    mockUsePluginAuth.mockReturnValue({
-      isAuthorized: false,
-      canOAuth: false,
-      canApiKey: false,
-      credentials: [],
-      invalidPluginCredentialInfo: vi.fn(),
-      notAllowCustomCredential: false,
-    })
-
-    render(<PluginAuth pluginPayload={defaultPayload} />)
-    expect(mockUsePluginAuth).toHaveBeenCalledWith(defaultPayload, true)
-  })
-
-  it('renders permission hint and disables authorization configuration when credential.create is missing', () => {
+  it('disables authorization without credential.create and links to members settings', async () => {
+    const user = userEvent.setup()
     mockConsoleState.workspacePermissionKeys = ['credential.use']
     mockUsePluginAuth.mockReturnValue({
       isAuthorized: false,
@@ -132,25 +117,7 @@ describe('PluginAuth', () => {
     expect(screen.getByRole('button', { name: 'plugin.auth.useApiAuth' })).toBeDisabled()
     expect(screen.getByText('plugin.auth.permissionHint.title')).toBeInTheDocument()
     expect(screen.getByText('plugin.auth.permissionHint.description')).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'plugin.auth.permissionHint.action' }),
-    ).toBeInTheDocument()
-  })
-
-  it('opens members settings when permission hint action is clicked', async () => {
-    mockConsoleState.workspacePermissionKeys = ['credential.use']
-    mockUsePluginAuth.mockReturnValue({
-      isAuthorized: false,
-      canOAuth: false,
-      canApiKey: true,
-      credentials: [],
-      invalidPluginCredentialInfo: vi.fn(),
-      notAllowCustomCredential: false,
-    })
-
-    render(<PluginAuth pluginPayload={defaultPayload} />)
-    fireEvent.click(screen.getByRole('button', { name: 'plugin.auth.permissionHint.action' }))
-
+    await user.click(screen.getByRole('button', { name: 'plugin.auth.permissionHint.action' }))
     await waitFor(() =>
       expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('members'),
     )

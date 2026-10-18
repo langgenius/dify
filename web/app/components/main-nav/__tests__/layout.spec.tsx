@@ -1,7 +1,6 @@
-import type { ReactNode } from 'react'
 import type { Mock } from 'vite-plus/test'
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { createStore, Provider, useAtomValue, useSetAtom } from 'jotai'
 import { renderToString } from 'react-dom/server'
 import {
@@ -30,23 +29,6 @@ const mockConsoleState = vi.hoisted(() => ({
     isCurrentWorkspaceDatasetOperator: false,
   },
 }))
-
-vi.mock('@/app/components/header', () => ({
-  default: () => <div data-testid="desktop-header">Header</div>,
-}))
-
-vi.mock('@/app/components/header/header-wrapper', () => ({
-  default: ({ children }: { children: ReactNode }) => (
-    <div data-testid="header-wrapper">{children}</div>
-  ),
-}))
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useSuspenseQuery: vi.fn(),
-  }
-})
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -81,11 +63,6 @@ describe('MainNavLayout', () => {
     mockConsoleState.current = {
       isCurrentWorkspaceDatasetOperator: false,
     }
-    ;(useSuspenseQuery as Mock).mockReturnValue({
-      data: {
-        enable_app_deploy: true,
-      },
-    })
     ;(isAgentV2Enabled as Mock).mockReturnValue(true)
   })
 
@@ -106,7 +83,8 @@ describe('MainNavLayout', () => {
     expect(html).toContain('data-mode="collapse"')
   })
 
-  it('keeps an interactive change when a cached layout supplies the earlier initial value', () => {
+  it('keeps an interactive change when a cached layout supplies the earlier initial value', async () => {
+    const user = userEvent.setup()
     ;(usePathname as Mock).mockReturnValue('/datasets/dataset-1/documents')
 
     const { rerender } = render(
@@ -115,7 +93,7 @@ describe('MainNavLayout', () => {
       </MainNavLayout>,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Collapse sidebar' }))
+    await user.click(screen.getByRole('button', { name: 'Collapse sidebar' }))
     expect(screen.getByText('Collapse sidebar').parentElement).toHaveAttribute(
       'data-mode',
       'collapse',
@@ -133,31 +111,7 @@ describe('MainNavLayout', () => {
     )
   })
 
-  it('renders desktop main nav instead of the desktop header', () => {
-    render(
-      <MainNavLayout initialDetailSidebarMode="expand">
-        <div>content</div>
-      </MainNavLayout>,
-    )
-
-    expect(screen.getByTestId('main-nav')).toBeInTheDocument()
-    expect(screen.queryByTestId('desktop-header')).not.toBeInTheDocument()
-    expect(screen.getByText('content')).toBeInTheDocument()
-  })
-
-  it('uses the main nav without the desktop header wrapper', () => {
-    render(
-      <MainNavLayout initialDetailSidebarMode="expand">
-        <div>content</div>
-      </MainNavLayout>,
-    )
-
-    expect(screen.getByTestId('main-nav')).toBeInTheDocument()
-    expect(screen.queryByTestId('header-wrapper')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('desktop-header')).not.toBeInTheDocument()
-  })
-
-  it('renders one main landmark as the skip navigation target', () => {
+  it('lets the first keyboard action skip navigation and focus the single main landmark', async () => {
     render(
       <MainNavLayout initialDetailSidebarMode="expand">
         <div>content</div>
@@ -169,49 +123,12 @@ describe('MainNavLayout', () => {
     expect(screen.getAllByRole('main')).toHaveLength(1)
     expect(main).toHaveAttribute('id', 'main-content')
     expect(main).toHaveAttribute('tabIndex', '-1')
-    expect(main).toHaveClass(
-      'outline-hidden',
-      'focus:outline-hidden',
-      'focus-visible:outline-hidden',
-    )
-    expect(main).toHaveTextContent('content')
-  })
-
-  it('renders skip navigation before the repeated main navigation', () => {
-    const { container } = render(
-      <MainNavLayout initialDetailSidebarMode="expand">
-        <div>content</div>
-      </MainNavLayout>,
-    )
-
-    const skipLink = screen.getByRole('link', { name: /(?:^|\.)navigation\.skipToMain(?=$|:)/ })
-
-    expect(skipLink).toHaveAttribute('href', '#main-content')
-    expect(skipLink).toHaveClass(
-      'outline-hidden',
-      'focus-visible:ring-2',
-      'focus-visible:ring-state-accent-solid',
-    )
-    expect(
-      container.querySelector(
-        'a, button, input, select, textarea, [tabindex]:not([tabindex="-1"])',
-      ),
-    ).toBe(skipLink)
-  })
-
-  it('moves focus to the main content when skip navigation is activated', () => {
-    render(
-      <MainNavLayout initialDetailSidebarMode="expand">
-        <div>content</div>
-      </MainNavLayout>,
-    )
-
-    const skipLink = screen.getByRole('link', { name: /(?:^|\.)navigation\.skipToMain(?=$|:)/ })
-    const main = screen.getByRole('main')
-
-    fireEvent.click(skipLink)
-
+    const user = userEvent.setup()
+    await user.tab()
+    expect(screen.getByRole('link', { name: /navigation\.skipToMain/ })).toHaveFocus()
+    await user.keyboard('{Enter}')
     expect(main).toHaveFocus()
+    expect(main).toHaveTextContent('content')
   })
 
   it.each(['/datasets/dataset-1/documents', '/datasets/dataset-1/documents/document-1/settings'])(
@@ -305,55 +222,32 @@ describe('MainNavLayout', () => {
   })
 
   it.each([
+    { pathname: '/agents/agent-1/configure', datasetOperator: true, agentV2Enabled: true },
+    { pathname: '/agents/agent-1/configure', datasetOperator: false, agentV2Enabled: false },
     {
-      label: 'agent detail route for dataset operators',
-      pathname: '/agents/agent-1/configure',
-      consoleState: {
-        isCurrentWorkspaceDatasetOperator: true,
-      },
-      systemFeatures: {
-        enable_app_deploy: true,
-      },
-    },
-    {
-      label: 'deployment detail route for non-editor workspaces',
       pathname: '/deployments/app-instance-1/overview',
-      consoleState: {
-        isCurrentWorkspaceDatasetOperator: false,
-      },
-      systemFeatures: {
-        enable_app_deploy: true,
-      },
+      datasetOperator: false,
+      agentV2Enabled: true,
     },
-    {
-      label: 'deployment detail route when deployment is disabled',
-      pathname: '/deployments/app-instance-1/overview',
-      consoleState: {
-        isCurrentWorkspaceDatasetOperator: false,
-      },
-      systemFeatures: {
-        enable_app_deploy: false,
-      },
+  ])(
+    'keeps global navigation on $pathname (dataset operator: $datasetOperator, agents: $agentV2Enabled)',
+    ({ pathname, datasetOperator, agentV2Enabled }) => {
+      vi.mocked(usePathname).mockReturnValue(pathname)
+      vi.mocked(isAgentV2Enabled).mockReturnValue(agentV2Enabled)
+      mockConsoleState.current = { isCurrentWorkspaceDatasetOperator: datasetOperator }
+      render(
+        <MainNavLayout
+          initialDetailSidebarMode="expand"
+          detailSidebar={<aside aria-label="Detail sidebar" />}
+        >
+          <div>detail route content</div>
+        </MainNavLayout>,
+      )
+      expect(screen.getByTestId('main-nav')).toBeInTheDocument()
+      expect(
+        screen.queryByRole('complementary', { name: 'Detail sidebar' }),
+      ).not.toBeInTheDocument()
+      expect(screen.getByRole('main')).toHaveTextContent('detail route content')
     },
-  ])('keeps the global main nav on $label', ({ pathname, consoleState, systemFeatures }) => {
-    ;(usePathname as Mock).mockReturnValue(pathname)
-    mockConsoleState.current = consoleState
-    ;(useSuspenseQuery as Mock).mockReturnValue({
-      data: systemFeatures,
-    })
-
-    render(
-      <MainNavLayout
-        initialDetailSidebarMode="expand"
-        detailSidebar={<aside aria-label="Detail sidebar">Detail sidebar</aside>}
-      >
-        <div>detail route content</div>
-      </MainNavLayout>,
-    )
-
-    expect(screen.getByTestId('main-nav')).toBeInTheDocument()
-    expect(screen.queryByRole('complementary', { name: 'Detail sidebar' })).not.toBeInTheDocument()
-    expect(screen.getAllByRole('main')).toHaveLength(1)
-    expect(screen.getByRole('main')).toHaveTextContent('detail route content')
-  })
+  )
 })

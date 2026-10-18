@@ -105,7 +105,7 @@ const useBeforeRunForm = ({
     if (data?.status === NodeRunningStatus.Succeeded) onSuccess()
   }
 
-  const { mutateAsync: handleDatasourceSingleRun, isPending } = useMutation(
+  const { mutate: handleDatasourceSingleRun, isPending } = useMutation(
     consoleQuery.rag.pipelines.byPipelineId.workflows.draft.datasource.variablesInspect.post.mutationOptions(),
   )
 

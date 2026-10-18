@@ -381,5 +381,6 @@
   "agentDetail.versionHistory.filter": "Filter versi",
   "agentDetail.versionHistory.restore": "Pulihkan",
   "agentDetail.versionHistory.versionName": "Versi {{version}}",
-  "agentDetail.versionHistory.viewOnly": "Hanya lihat"
+  "agentDetail.versionHistory.viewOnly": "Hanya lihat",
+  "exportAgent": "Ekspor Agen"
 }

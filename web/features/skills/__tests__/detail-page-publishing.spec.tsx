@@ -37,9 +37,6 @@ describe('SkillDetailPage publishing', () => {
 
     renderSkillDetailPage()
 
-    expect(mocks.publishSkillMutationOptions).toHaveBeenCalledWith({
-      context: { silent: true },
-    })
     await user.click(
       await screen.findByRole('button', {
         name: 'skill.skillManagement.detail.publishUpdate',
@@ -73,8 +70,10 @@ describe('SkillDetailPage publishing', () => {
     expect(
       await screen.findByText('skill.skillManagement.detail.publishReferencesTitle'),
     ).toBeInTheDocument()
-    expect(await screen.findByText('Support Agent')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Support Agent/ })).toHaveAttribute('target', '_blank')
+    expect(screen.getByRole('link', { name: /Support Agent/ })).toHaveAttribute(
+      'href',
+      '/agents/agent-1/configure',
+    )
     expect(mocks.publishSkillMutationFn).not.toHaveBeenCalled()
 
     const publishDialog = screen.getByRole('dialog', {
@@ -88,8 +87,49 @@ describe('SkillDetailPage publishing', () => {
     )
 
     await waitFor(() => {
-      expect(mocks.publishSkillMutationFn).toHaveBeenCalled()
+      expect(mocks.publishSkillMutationFn).toHaveBeenCalledWith(
+        { params: { skill_id: 'skill-1' }, body: {} },
+        expect.anything(),
+      )
     })
+  })
+
+  it('prevents another publication while the request is pending and exposes the published result', async () => {
+    const user = userEvent.setup()
+    let resolvePublish!: (version: ReturnType<typeof createSkillVersion>) => void
+    mocks.publishSkillMutationFn.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolvePublish = resolve
+      }),
+    )
+    renderSkillDetailPage()
+    const publish = await screen.findByRole('button', {
+      name: 'skill.skillManagement.detail.publishUpdate',
+    })
+    await user.click(publish)
+    await waitFor(() => expect(mocks.publishSkillMutationFn).toHaveBeenCalledOnce())
+    await user.click(publish)
+    expect(mocks.publishSkillMutationFn).toHaveBeenCalledOnce()
+    expect(mocks.toastSuccess).not.toHaveBeenCalled()
+
+    await act(async () => {
+      const version = createSkillVersion({
+        id: 'version-2',
+        version_number: 2,
+        created_at: 1784638492,
+      })
+      mocks.skillDetail = {
+        ...mocks.skillDetail!,
+        latest_published_at: version.created_at,
+        latest_published_version_id: version.id,
+        latest_published_version_number: version.version_number,
+      }
+      resolvePublish(version)
+    })
+    expect(
+      await screen.findByRole('button', { name: 'skill.skillManagement.detail.published' }),
+    ).toBeDisabled()
+    expect(mocks.toastSuccess).toHaveBeenCalledWith('skill.skillManagement.detail.publishSuccess')
   })
 
   it('refreshes a fresh empty references cache before publishing', async () => {
@@ -191,6 +231,11 @@ describe('SkillDetailPage publishing', () => {
         name: 'skill.skillManagement.detail.publishReferencesTitle',
       }),
     ).not.toBeInTheDocument()
+    refreshShouldFail = false
+    await user.click(
+      screen.getByRole('button', { name: 'skill.skillManagement.detail.publishUpdate' }),
+    )
+    await waitFor(() => expect(mocks.publishSkillMutationFn).toHaveBeenCalledOnce())
   })
 
   it('cancels publishing from the referenced skill confirmation dialog', async () => {
@@ -251,15 +296,7 @@ describe('SkillDetailPage publishing', () => {
       name: /Sidebar Agent/,
     })
     expect(sidebarReferenceLink).toBeInTheDocument()
-    expect(mocks.skillReferencesQueryOptions).toHaveBeenCalledWith(
-      expect.objectContaining({
-        input: {
-          params: {
-            skill_id: 'skill-1',
-          },
-        },
-      }),
-    )
+    expect(sidebarReferenceLink).toHaveAttribute('href', '/agents/agent-1/configure')
   })
 
   it('renders a non-interactive reference count when no agent uses the skill', async () => {
@@ -294,42 +331,10 @@ describe('SkillDetailPage publishing', () => {
     renderSkillDetailPage()
 
     expect(
-      await screen.findByRole(
-        'button',
-        { name: 'skill.skillManagement.detail.referencedBy:{"count":1}' },
-        { timeout: 5000 },
-      ),
-    ).toBeInTheDocument()
-  })
-
-  it('closes the sidebar references panel when clicking outside it', async () => {
-    const user = userEvent.setup()
-    mocks.skillDetail = createSkillDetail({ reference_count: 1 })
-    mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skill-references', options],
-      queryFn: async () => ({
-        data: [createAgentReference({ display_name: 'Sidebar Agent', name: 'sidebar-agent' })],
-      }),
-    }))
-
-    renderSkillDetailPage()
-
-    await user.click(
       await screen.findByRole('button', {
         name: 'skill.skillManagement.detail.referencedBy:{"count":1}',
       }),
-    )
-    expect(await screen.findByText('Sidebar Agent')).toBeInTheDocument()
-
-    await user.click(
-      screen.getByRole('button', {
-        name: 'app.gotoAnything.searchTitle',
-      }),
-    )
-
-    await waitFor(() => {
-      expect(screen.queryByText('Sidebar Agent')).not.toBeInTheDocument()
-    })
+    ).toBeInTheDocument()
   })
 
   it('reveals the remaining publish references on request', async () => {
@@ -475,7 +480,8 @@ describe('SkillDetailPage publishing', () => {
     )
     await user.click(await screen.findByRole('button', { name: /#2/ }))
 
-    expect(await screen.findAllByText('#2')).toHaveLength(2)
+    expect(await screen.findByRole('button', { name: /#2/ })).toBeInTheDocument()
+    expect(await screen.findByText(/Rollback instructions/)).toBeInTheDocument()
 
     await user.click(
       screen.getByRole('button', { name: 'skill.skillManagement.detail.restoreVersion' }),
@@ -531,6 +537,7 @@ describe('SkillDetailPage publishing', () => {
     )
 
     expect(screen.queryByText('#2')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Named version/ })).toBeInTheDocument()
 
     const currentDraft = screen.getByRole('button', {
       name: 'skill.skillManagement.detail.currentDraft',

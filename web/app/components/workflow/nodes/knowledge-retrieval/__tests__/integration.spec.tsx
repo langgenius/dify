@@ -2,20 +2,27 @@ import type {
   DatasetDetailWithPartialMembersResponse,
   DatasetDocMetadataResponse,
 } from '@dify/contracts/api/console/datasets/types.gen'
-import type { ReactElement } from 'react'
-import type { ComparisonOperator, MetadataFilteringCondition, MetadataShape } from '../types'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import type { ComponentProps, ReactElement, ReactNode } from 'react'
+import type { ComparisonOperator, MetadataFilteringCondition } from '../types'
+import type { consoleClient } from '@/service/console'
+import { zDatasetListResponse } from '@dify/contracts/api/console/datasets/zod.gen'
+import { render as renderComponent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useEffect, useRef } from 'react'
-import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { useState } from 'react'
+import { ReactFlowProvider } from 'reactflow'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { PermissionLevel } from '@/models/permission'
+import { consoleQuery } from '@/service/console'
+import { updateDatasetSetting } from '@/service/datasets'
 import {
-  createAccountProfileQueryClient,
-  createAccountProfileQueryWrapper,
-} from '@/test/console/account-profile'
-import { QueryClientTestProvider } from '@/test/console/query-provider'
-import { render } from '@/test/console/render'
+  createCatalogModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
 import { DatasetACLPermission } from '@/utils/permission'
 import { DatasetsDetailContext } from '../../../datasets-detail-store/provider'
@@ -31,7 +38,6 @@ import ConditionItem from '../components/metadata/condition-list/condition-item'
 import ConditionOperator from '../components/metadata/condition-list/condition-operator'
 import ConditionValueMethod from '../components/metadata/condition-list/condition-value-method'
 import ConditionVariableSelector from '../components/metadata/condition-list/condition-variable-selector'
-import MetadataFilter from '../components/metadata/metadata-filter'
 import MetadataFilterSelector from '../components/metadata/metadata-filter/metadata-filter-selector'
 import MetadataTrigger from '../components/metadata/metadata-trigger'
 import RetrievalConfig from '../components/retrieval-config'
@@ -43,71 +49,56 @@ import {
   MetadataFilteringVariableType,
 } from '../types'
 
-const renderWithAccountProfile = (ui: ReactElement) =>
-  render(ui, {
-    wrapper: createAccountProfileQueryWrapper(),
+function render(ui: ReactElement) {
+  const { queryClient, wrapper: QueryWrapper } = createConsoleQueryWrapper()
+  queryClient.setQueryData(consoleQuery.datasets.retrievalSetting.get.queryKey(), {
+    retrieval_method: [RETRIEVE_METHOD.semantic, RETRIEVE_METHOD.fullText, RETRIEVE_METHOD.hybrid],
   })
+  queryClient.setQueryData(consoleQuery.workspaces.current.members.get.queryKey({ input: {} }), {
+    accounts: [],
+  })
+  seedModelProviderQueries(queryClient, [
+    createModelCatalogFixture({
+      provider: 'openai',
+      models: [
+        createCatalogModelFixture({
+          model: 'text-embedding-3',
+          model_type: ModelTypeEnum.textEmbedding,
+        }),
+        createCatalogModelFixture({
+          model: 'rerank-old',
+          label: { en_US: 'Legacy Reranker' },
+          model_type: ModelTypeEnum.rerank,
+        }),
+        createCatalogModelFixture({
+          model: 'rerank-v3',
+          label: { en_US: 'Rerank V3' },
+          model_type: ModelTypeEnum.rerank,
+        }),
+      ],
+    }),
+  ])
+  const { wrapper: UrlState } = createNuqsTestWrapper()
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryWrapper>
+      <UrlState>
+        <ReactFlowProvider>{children}</ReactFlowProvider>
+      </UrlState>
+    </QueryWrapper>
+  )
+  return renderComponent(ui, { wrapper })
+}
 
-const createDataset = (
-  overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
-): DatasetDetailWithPartialMembersResponse => ({
-  ...createDatasetFixture({
+const createDataset = (overrides: Partial<DatasetDetailWithPartialMembersResponse> = {}) =>
+  createDatasetFixture({
+    name: 'Dataset Name',
+    provider: 'internal',
+    maintainer: 'user-1',
+    document_count: 1,
+    embedding_model: 'text-embedding-3',
     permission_keys: [DatasetACLPermission.Edit, DatasetACLPermission.Use],
-  }),
-  id: 'dataset-1',
-  name: 'Dataset Name',
-  icon_info: {
-    icon: '📙',
-    icon_background: '#FFF4ED',
-    icon_type: 'emoji',
-    icon_url: '',
-  },
-  description: 'Dataset description',
-  permission: PermissionLevel.onlyMe,
-  data_source_type: DataSourceType.FILE,
-  indexing_technique:
-    'high_quality' as DatasetDetailWithPartialMembersResponse['indexing_technique'],
-  created_by: 'user-1',
-  maintainer: 'user-1',
-  updated_by: 'user-1',
-  updated_at: 1690000000,
-  app_count: 0,
-  doc_form: ChunkingMode.text,
-  document_count: 1,
-  word_count: 1000,
-  provider: 'internal',
-  embedding_model: 'text-embedding-3',
-  embedding_model_provider: 'openai',
-  embedding_available: true,
-  retrieval_model_dict: {
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_model: {
-      reranking_provider_name: '',
-      reranking_model_name: '',
-    },
-    top_k: 5,
-    score_threshold_enabled: false,
-    score_threshold: 0,
-  },
-  tags: [],
-  external_knowledge_info: {
-    external_knowledge_id: '',
-    external_knowledge_api_id: '',
-    external_knowledge_api_name: '',
-    external_knowledge_api_endpoint: '',
-  },
-  external_retrieval_model: {
-    top_k: 0,
-    score_threshold: 0,
-    score_threshold_enabled: false,
-  },
-  built_in_field_enabled: false,
-  runtime_mode: 'rag_pipeline',
-  enable_api: false,
-  is_multimodal: false,
-  ...overrides,
-})
+    ...overrides,
+  })
 
 const createMetadata = (
   overrides: Partial<DatasetDocMetadataResponse> = {},
@@ -129,187 +120,34 @@ const createCondition = (
   ...overrides,
 })
 
-const mockConsoleState = vi.hoisted(() => ({
-  userProfile: { id: 'user-1' },
-  workspacePermissionKeys: [] as string[],
-}))
-
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => mockConsoleState)
+const getDatasets = vi.hoisted(() => vi.fn<typeof consoleClient.datasets.get>())
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, { 'datasets.get': getDatasets }),
+  }
 })
-
-vi.mock('@/hooks/use-breakpoints', () => ({
-  __esModule: true,
-  default: () => 'desktop',
-  MediaType: {
-    mobile: 'mobile',
-    desktop: 'desktop',
-  },
-}))
-
-vi.mock('@/hooks/use-knowledge', () => ({
-  useKnowledge: () => ({
-    formatIndexingTechniqueAndMethod: () => 'High Quality',
-  }),
-}))
-
-vi.mock('@/app/components/app/configuration/dataset-config/select-dataset', () => ({
-  __esModule: true,
-  default: ({
-    onSelect,
-    onClose,
-  }: {
-    onSelect: (datasets: DatasetDetailWithPartialMembersResponse[]) => void
-    onClose: () => void
-  }) => (
-    <div>
-      <button
-        type="button"
-        onClick={() => onSelect([createDataset({ id: 'dataset-2', name: 'Selected Dataset' })])}
-      >
-        select-dataset
-      </button>
-      <button type="button" onClick={onClose}>
-        close-select-dataset
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/app/configuration/dataset-config/settings-modal', () => ({
-  __esModule: true,
-  default: function MockSettingsModal({
-    currentDataset,
-    onSave,
-    onCancel,
-  }: {
-    currentDataset: DatasetDetailWithPartialMembersResponse
-    onSave: (dataset: DatasetDetailWithPartialMembersResponse) => void
-    onCancel: () => void
-  }) {
-    const hasSavedRef = useRef(false)
-
-    useEffect(() => {
-      if (hasSavedRef.current) return
-
-      hasSavedRef.current = true
-      onSave(createDataset({ ...currentDataset, name: 'Updated Dataset' }))
-    }, [currentDataset, onSave])
-
-    return (
-      <div>
-        <div>{currentDataset.name}</div>
-        <button type="button" onClick={onCancel}>
-          cancel-settings
-        </button>
-      </div>
-    )
-  },
-}))
-
-vi.mock('@/app/components/app/configuration/dataset-config/params-config/config-content', () => ({
-  __esModule: true,
-  default: ({
-    onChange,
-  }: {
-    onChange: (config: Record<string, unknown>, isRetrievalModeChange?: boolean) => void
-  }) => (
-    <div>
-      <button
-        type="button"
-        onClick={() =>
-          onChange({
-            retrieval_model: RETRIEVE_TYPE.multiWay,
-            top_k: 8,
-            score_threshold_enabled: true,
-            score_threshold: 0.4,
-            reranking_model: {
-              reranking_provider_name: 'cohere',
-              reranking_model_name: 'rerank-v3',
-            },
-            reranking_mode: 'weighted_score',
-            weights: {
-              weight_type: 'customized',
-              vector_setting: {
-                vector_weight: 0.7,
-                embedding_provider_name: 'openai',
-                embedding_model_name: 'text-embedding-3',
-              },
-              keyword_setting: {
-                keyword_weight: 0.3,
-              },
-            },
-            reranking_enable: true,
-          })
-        }
-      >
-        apply-retrieval-config
-      </button>
-      <button
-        type="button"
-        onClick={() =>
-          onChange(
-            {
-              retrieval_model: RETRIEVE_TYPE.oneWay,
-            },
-            true,
-          )
-        }
-      >
-        change-retrieval-mode
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
-  () => ({
-    __esModule: true,
-    default: () => <div>model-parameter-modal</div>,
-  }),
-)
-
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-vars', () => ({
-  __esModule: true,
-  default: ({
-    onChange,
-  }: {
-    onChange: (valueSelector: string[], varItem: { type: VarType }) => void
-  }) => (
-    <button type="button" onClick={() => onChange(['node-1', 'field'], { type: VarType.string })}>
-      pick-var
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/variable-tag', () => ({
-  __esModule: true,
-  default: ({ valueSelector }: { valueSelector: string[] }) => <div>{valueSelector.join('.')}</div>,
-}))
-
-vi.mock('../components/metadata/metadata-panel', () => ({
-  __esModule: true,
-  default: ({ onCancel }: { onCancel: () => void }) => (
-    <div>
-      <div>metadata-panel</div>
-      <button type="button" onClick={onCancel}>
-        close-metadata-panel
-      </button>
-    </div>
-  ),
+vi.mock('@/service/datasets', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/datasets')>()),
+  updateDatasetSetting: vi.fn(),
 }))
 
 describe('knowledge-retrieval path', () => {
-  const getDatasetItem = () => {
-    const datasetItem = screen.getByText('Dataset Name').closest('.group\\/dataset-item')
-    if (!(datasetItem instanceof HTMLElement)) throw new Error('Dataset item container not found')
-    return datasetItem
-  }
-
   beforeEach(() => {
-    vi.clearAllMocks()
+    getDatasets.mockReset().mockResolvedValue(
+      zDatasetListResponse.parse({
+        data: [createDataset({ id: 'dataset-2', name: 'Selected Dataset' })],
+        has_more: false,
+        limit: 20,
+        page: 1,
+        total: 1,
+      }),
+    )
+    vi.mocked(updateDatasetSetting)
+      .mockReset()
+      .mockResolvedValue(createDataset({ name: 'Updated Dataset' }))
   })
 
   describe('Dataset controls', () => {
@@ -324,9 +162,11 @@ describe('knowledge-retrieval path', () => {
           name: 'common.operation.add workflow.nodes.knowledgeRetrieval.knowledge',
         }),
       )
-      await user.click(screen.getByText('select-dataset'))
+      await user.click(await screen.findByText('Selected Dataset'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
 
       expect(onChange).toHaveBeenCalledWith([
+        expect.objectContaining({ id: 'dataset-1' }),
         expect.objectContaining({
           id: 'dataset-2',
           name: 'Selected Dataset',
@@ -335,6 +175,7 @@ describe('knowledge-retrieval path', () => {
     })
 
     it('should support editing a dataset item', async () => {
+      const user = userEvent.setup()
       const onChange = vi.fn()
 
       render(
@@ -346,41 +187,35 @@ describe('knowledge-retrieval path', () => {
       )
 
       expect(screen.getByText('Dataset Name')).toBeInTheDocument()
-      const datasetItem = getDatasetItem()
-      fireEvent.click(within(datasetItem).getByRole('button', { name: 'common.operation.edit' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+      expect(onChange).not.toHaveBeenCalled()
+      const name = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
+      await user.clear(name)
+      await user.type(name, 'Updated Dataset')
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       await waitFor(() => {
         expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ name: 'Updated Dataset' }))
       })
-    })
-
-    it('should support removing a dataset item', () => {
-      const onRemove = vi.fn()
-
-      render(
-        <DatasetItem
-          payload={createDataset({ is_multimodal: true })}
-          onChange={vi.fn()}
-          onRemove={onRemove}
-        />,
+      expect(updateDatasetSetting).toHaveBeenCalledWith(
+        expect.objectContaining({
+          datasetId: 'dataset-1',
+          body: expect.objectContaining({ name: 'Updated Dataset' }),
+        }),
       )
-
-      const datasetItem = getDatasetItem()
-      fireEvent.click(within(datasetItem).getByRole('button', { name: 'common.operation.remove' }))
-      expect(onRemove).toHaveBeenCalled()
     })
 
-    it('should render empty and populated dataset lists', () => {
+    it('removes the selected dataset from the workflow list', async () => {
+      const user = userEvent.setup()
       const onChange = vi.fn()
 
-      const { rerender } = renderWithAccountProfile(<DatasetList list={[]} onChange={onChange} />)
+      const { rerender } = render(<DatasetList list={[]} onChange={onChange} />)
 
       expect(screen.getByText('appDebug.datasetConfig.knowledgeTip')).toBeInTheDocument()
 
       rerender(<DatasetList list={[createDataset()]} onChange={onChange} />)
 
-      const datasetItem = getDatasetItem()
-      fireEvent.click(within(datasetItem).getByRole('button', { name: 'common.operation.remove' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
 
       expect(onChange).toHaveBeenCalledWith([])
     })
@@ -391,54 +226,73 @@ describe('knowledge-retrieval path', () => {
         permission_keys: [DatasetACLPermission.Use],
       })
 
-      renderWithAccountProfile(<DatasetList list={[dataset]} onChange={vi.fn()} />)
-
-      const datasetItem = getDatasetItem()
+      render(<DatasetList list={[dataset]} onChange={vi.fn()} />)
 
       expect(
-        within(datasetItem).queryByRole('button', { name: 'common.operation.edit' }),
+        screen.queryByRole('button', { name: 'common.operation.edit' }),
       ).not.toBeInTheDocument()
     })
   })
 
   describe('Retrieval settings', () => {
-    it('should open retrieval config and map config updates back to workflow payload', async () => {
+    it('migrates legacy retrieval mode and saves real model and limit selections', async () => {
       const user = userEvent.setup()
       const onRetrievalModeChange = vi.fn()
       const onMultipleRetrievalConfigChange = vi.fn()
-
-      render(
-        <RetrievalConfig
-          payload={{
-            retrieval_mode: RETRIEVE_TYPE.multiWay,
-            multiple_retrieval_config: {
-              top_k: 3,
-              score_threshold: null,
-            },
-          }}
-          onRetrievalModeChange={onRetrievalModeChange}
-          onMultipleRetrievalConfigChange={onMultipleRetrievalConfigChange}
-          rerankModalOpen
-          onRerankModelOpenChange={vi.fn()}
-          selectedDatasets={[createDataset()]}
-        />,
+      function EditableRetrieval() {
+        const [payload, setPayload] = useState<ComponentProps<typeof RetrievalConfig>['payload']>({
+          retrieval_mode: RETRIEVE_TYPE.oneWay,
+          multiple_retrieval_config: {
+            top_k: 3,
+            score_threshold: null,
+            reranking_model: { provider: 'openai', model: 'rerank-old' },
+          },
+        })
+        const [open, setOpen] = useState(false)
+        return (
+          <RetrievalConfig
+            payload={payload}
+            onRetrievalModeChange={(mode) => {
+              onRetrievalModeChange(mode)
+              setPayload((value) => ({ ...value, retrieval_mode: mode }))
+            }}
+            onMultipleRetrievalConfigChange={(config) => {
+              onMultipleRetrievalConfigChange(config)
+              setPayload((value) => ({ ...value, multiple_retrieval_config: config }))
+            }}
+            rerankModalOpen={open}
+            onRerankModelOpenChange={setOpen}
+            selectedDatasets={[createDataset()]}
+          />
+        )
+      }
+      render(<EditableRetrieval />)
+      await user.click(screen.getByRole('button', { name: 'dataset.retrievalSettings' }))
+      await waitFor(() =>
+        expect(onRetrievalModeChange).toHaveBeenCalledWith(RETRIEVE_TYPE.multiWay),
       )
-
-      await user.click(screen.getByText('apply-retrieval-config'))
-      await user.click(screen.getByText('change-retrieval-mode'))
-
-      expect(onMultipleRetrievalConfigChange).toHaveBeenCalledWith(
+      await user.click(screen.getByRole('button', { name: /Legacy Reranker/ }))
+      await user.click(await screen.findByText('Rerank V3'))
+      const topK = screen.getByRole('textbox', { name: 'appDebug.datasetConfig.top_k' })
+      await user.clear(topK)
+      await user.type(topK, '8')
+      await user.tab()
+      await user.click(
+        screen.getByRole('switch', { name: 'appDebug.datasetConfig.score_threshold' }),
+      )
+      const threshold = screen.getByRole('textbox', {
+        name: 'appDebug.datasetConfig.score_threshold',
+      })
+      await user.clear(threshold)
+      await user.type(threshold, '0.4')
+      await user.tab()
+      expect(onMultipleRetrievalConfigChange).toHaveBeenLastCalledWith(
         expect.objectContaining({
           top_k: 8,
           score_threshold: 0.4,
-          reranking_model: {
-            provider: 'cohere',
-            model: 'rerank-v3',
-          },
-          reranking_enable: true,
+          reranking_model: { provider: 'openai', model: 'rerank-v3' },
         }),
       )
-      expect(onRetrievalModeChange).toHaveBeenCalledWith(RETRIEVE_TYPE.oneWay)
     })
   })
 
@@ -490,41 +344,46 @@ describe('knowledge-retrieval path', () => {
       ).toBeInTheDocument()
     })
 
-    it('should remove stale metadata conditions and open the manual metadata panel', async () => {
+    it('removes stale metadata conditions before showing the manual metadata panel', async () => {
       const user = userEvent.setup()
       const handleRemoveCondition = vi.fn()
-
-      render(
-        <MetadataTrigger
-          selectedDatasetsLoaded
-          metadataList={[createMetadata()]}
-          metadataFilteringConditions={{
-            logical_operator: LogicalOperator.and,
-            conditions: [
-              createCondition(),
-              createCondition({
-                id: 'condition-stale',
-                metadata_id: 'missing',
-                name: 'missing',
-              }),
-            ],
-          }}
-          handleAddCondition={vi.fn()}
-          handleRemoveCondition={handleRemoveCondition}
-          handleToggleConditionLogicalOperator={vi.fn()}
-          handleUpdateCondition={vi.fn()}
-        />,
-      )
-
+      function EditableMetadata() {
+        const [conditions, setConditions] = useState(() => [
+          createCondition(),
+          createCondition({
+            id: 'condition-stale',
+            metadata_id: 'missing',
+            name: 'missing',
+            value: 'stale-value',
+          }),
+        ])
+        return (
+          <MetadataTrigger
+            selectedDatasetsLoaded
+            metadataList={[createMetadata()]}
+            metadataFilteringConditions={{ logical_operator: LogicalOperator.and, conditions }}
+            handleAddCondition={vi.fn()}
+            handleRemoveCondition={(id) => {
+              handleRemoveCondition(id)
+              setConditions((current) => current.filter((condition) => condition.id !== id))
+            }}
+            handleToggleConditionLogicalOperator={vi.fn()}
+            handleUpdateCondition={vi.fn()}
+          />
+        )
+      }
+      render(<EditableMetadata />)
       expect(handleRemoveCondition).toHaveBeenCalledWith('condition-stale')
-
       await user.click(
         screen.getByRole('button', {
           name: /workflowModels.nodes.knowledgeRetrieval.metadata.panel.conditions/i,
         }),
       )
-
-      expect(screen.getByText('metadata-panel')).toBeInTheDocument()
+      expect(
+        screen.getByText('workflowModels.nodes.knowledgeRetrieval.metadata.panel.title'),
+      ).toBeInTheDocument()
+      expect(screen.getByDisplayValue('agent')).toBeInTheDocument()
+      expect(screen.queryByDisplayValue('stale-value')).not.toBeInTheDocument()
     })
 
     it('should call handleAddCondition with the chosen metadata item', async () => {
@@ -563,52 +422,6 @@ describe('knowledge-retrieval path', () => {
         }),
       )
     })
-
-    it('should render automatic and manual metadata filter states', async () => {
-      const user = userEvent.setup()
-      const baseProps: MetadataShape = {
-        metadataList: [createMetadata()],
-        metadataFilteringConditions: {
-          logical_operator: LogicalOperator.and,
-          conditions: [createCondition()],
-        },
-        selectedDatasetsLoaded: true,
-        handleAddCondition: vi.fn(),
-        handleRemoveCondition: vi.fn(),
-        handleToggleConditionLogicalOperator: vi.fn(),
-        handleUpdateCondition: vi.fn(),
-      }
-
-      const { rerender } = render(
-        <MetadataFilter
-          {...baseProps}
-          metadataFilterMode={MetadataFilteringModeEnum.automatic}
-          handleMetadataFilterModeChange={vi.fn()}
-        />,
-      )
-
-      expect(
-        screen.getByRole('button', {
-          name: /workflowModels.nodes.knowledgeRetrieval.metadata.options.automatic.title/i,
-        }),
-      ).toBeInTheDocument()
-
-      rerender(
-        <MetadataFilter
-          {...baseProps}
-          metadataFilterMode={MetadataFilteringModeEnum.manual}
-          handleMetadataFilterModeChange={vi.fn()}
-        />,
-      )
-
-      await user.click(
-        screen.getByRole('button', {
-          name: /workflowModels.nodes.knowledgeRetrieval.metadata.panel.conditions/i,
-        }),
-      )
-
-      expect(screen.getByText('metadata-panel')).toBeInTheDocument()
-    })
   })
 
   describe('Condition inputs', () => {
@@ -621,9 +434,10 @@ describe('knowledge-retrieval path', () => {
       )
 
       await user.click(screen.getByRole('button', { name: /variable/i }))
-      await user.click(screen.getByText('Constant'))
-      await user.click(screen.getByRole('button', { name: /variable/i }))
-      await user.click(screen.getAllByText('Variable')[1]!)
+      const choices = within(screen.getByRole('dialog'))
+      await user.click(choices.getByText('Variable'))
+      expect(onValueMethodChange).not.toHaveBeenCalled()
+      await user.click(choices.getByText('Constant'))
 
       expect(onValueMethodChange).toHaveBeenCalledTimes(1)
       expect(onValueMethodChange).toHaveBeenCalledWith('constant')
@@ -634,16 +448,40 @@ describe('knowledge-retrieval path', () => {
       const onVariableChange = vi.fn()
       const onCommonVariableChange = vi.fn()
 
-      const { rerender } = render(
-        <ConditionVariableSelector onChange={onVariableChange} varType={VarType.string} />,
-      )
+      function EditableVariable() {
+        const [valueSelector, setValueSelector] = useState<string[]>([])
+        return (
+          <ConditionVariableSelector
+            valueSelector={valueSelector}
+            onChange={(selector, variable) => {
+              onVariableChange(selector, variable)
+              setValueSelector(selector)
+            }}
+            varType={VarType.string}
+            availableNodes={[createNode({ id: 'node-1', data: { title: 'Source' } })]}
+            nodesOutputVars={[
+              {
+                nodeId: 'node-1',
+                title: 'Source',
+                vars: [{ variable: 'field', type: VarType.string }],
+              },
+            ]}
+          />
+        )
+      }
+      const { rerender } = render(<EditableVariable />)
 
       await user.click(
         screen.getByText('workflowModels.nodes.knowledgeRetrieval.metadata.panel.select'),
       )
-      await user.click(screen.getByText('pick-var'))
+      await user.click(within(screen.getByRole('dialog')).getByText('field'))
 
-      expect(onVariableChange).toHaveBeenCalledWith(['node-1', 'field'], { type: VarType.string })
+      expect(onVariableChange).toHaveBeenCalledWith(
+        ['node-1', 'field'],
+        expect.objectContaining({ type: VarType.string, variable: 'field' }),
+      )
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(screen.getByText('field')).toBeInTheDocument()
 
       rerender(
         <ConditionCommonVariableSelector
@@ -667,32 +505,39 @@ describe('knowledge-retrieval path', () => {
       const onDateChange = vi.fn()
       const onRemoveCondition = vi.fn()
       const onUpdateCondition = vi.fn()
-      const queryClient = createAccountProfileQueryClient({ timezone: 'UTC' })
+      function EditableCondition() {
+        const [condition, setCondition] = useState(() => createCondition())
+        return (
+          <ConditionItem
+            metadataList={[createMetadata()]}
+            condition={condition}
+            onRemoveCondition={onRemoveCondition}
+            onUpdateCondition={(id, next) => {
+              onUpdateCondition(id, next)
+              setCondition(next)
+            }}
+          />
+        )
+      }
 
-      const { container } = render(
-        <QueryClientTestProvider queryClient={queryClient}>
-          <div>
-            <ConditionOperator
-              variableType={MetadataFilteringVariableType.string}
-              value={MetadataComparisonOperator.contains}
-              onSelect={onSelect}
-            />
-            <ConditionDate value={1710000000} onChange={onDateChange} />
-            <ConditionItem
-              metadataList={[createMetadata()]}
-              condition={createCondition()}
-              onRemoveCondition={onRemoveCondition}
-              onUpdateCondition={onUpdateCondition}
-            />
-          </div>
-        </QueryClientTestProvider>,
+      render(
+        <div>
+          <ConditionOperator
+            variableType={MetadataFilteringVariableType.string}
+            value={MetadataComparisonOperator.contains}
+            onSelect={onSelect}
+          />
+          <ConditionDate value={1710000000} onChange={onDateChange} />
+          <EditableCondition />
+        </div>,
       )
 
       await user.click(screen.getAllByRole('button', { name: /contains/i })[0]!)
       await user.click(screen.getByText('workflowLogic.nodes.ifElse.comparisonOperator.is'))
       await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
-      fireEvent.change(screen.getByDisplayValue('agent'), { target: { value: 'updated-agent' } })
-      fireEvent.click(container.querySelector('.ml-1.mt-1') as Element)
+      await user.clear(screen.getByDisplayValue('agent'))
+      await user.type(screen.getByRole('textbox'), 'updated-agent')
+      await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
 
       expect(onSelect).toHaveBeenCalledWith(MetadataComparisonOperator.is as ComparisonOperator)
       expect(onDateChange).toHaveBeenCalledWith(undefined)
@@ -701,6 +546,33 @@ describe('knowledge-retrieval path', () => {
         expect.objectContaining({ value: 'updated-agent' }),
       )
       expect(onRemoveCondition).toHaveBeenCalledWith('condition-1')
+    })
+
+    it.each([
+      [MetadataFilteringVariableType.string, 'agent'],
+      [MetadataFilteringVariableType.number, 42],
+    ])('prevents editing or deleting disabled %s conditions', async (type, value) => {
+      const user = userEvent.setup()
+      const onUpdateCondition = vi.fn()
+      const onRemoveCondition = vi.fn()
+      render(
+        <ConditionItem
+          disabled
+          metadataList={[createMetadata({ type })]}
+          condition={createCondition({ value })}
+          onUpdateCondition={onUpdateCondition}
+          onRemoveCondition={onRemoveCondition}
+        />,
+      )
+      const input = screen.getByRole('textbox', {
+        name: 'workflowModels.nodes.knowledgeRetrieval.metadata.panel.placeholder',
+      })
+      expect(input).toHaveValue(String(value))
+      expect(input).toBeDisabled()
+      await user.type(input, '123')
+      await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+      expect(onUpdateCondition).not.toHaveBeenCalled()
+      expect(onRemoveCondition).not.toHaveBeenCalled()
     })
 
     it('should resolve built-in metadata fields by name because their ids are shared', () => {
@@ -728,7 +600,7 @@ describe('knowledge-retrieval path', () => {
       store.getState().updateDatasetsDetail([createDataset()])
 
       const renderNode = (datasetIds: string[]) =>
-        renderWithAccountProfile(
+        render(
           <DatasetsDetailContext value={store}>
             <Node
               id="knowledge-node"

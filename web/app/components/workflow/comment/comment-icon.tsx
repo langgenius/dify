@@ -244,7 +244,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(
             name: comment.created_by_account?.name ?? '',
           })}
           aria-describedby={isAuthor && onPositionUpdate ? descriptionId : undefined}
-          className="absolute z-10 h-auto w-auto border-0 bg-transparent p-0"
+          className="nokey absolute z-10 h-auto w-auto border-0 bg-transparent p-0"
           style={{
             left: canvasPosition.x,
             top: canvasPosition.y,
