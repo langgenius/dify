@@ -448,6 +448,12 @@ it('deletes a reply through the real thread confirmation and refreshes its conte
     await screen.findByRole('button', { name: 'workflow.keyboard.openComment:{"name":"Alice"}' }),
   )
   expect(await screen.findByText('Remove this reply')).toBeInTheDocument()
+  // Let the thread's initial focus settle before opening its reply menu.
+  await waitFor(() =>
+    expect(
+      screen.getByPlaceholderText('workflowComments.comments.placeholder.reply'),
+    ).toHaveFocus(),
+  )
   await user.click(
     screen.getByRole('button', { name: 'workflowComments.comments.aria.replyActions' }),
   )
