@@ -1,4 +1,5 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { createRef } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { BuiltinMarketplacePanel } from '../builtin-marketplace-panel'
@@ -83,11 +84,12 @@ describe('BuiltinMarketplacePanel', () => {
     expect(mockUseMarketplace).toHaveBeenLastCalledWith('', ['search'], true)
   })
 
-  it('activates Marketplace before scrolling to it from the arrow action', () => {
+  it('activates Marketplace before scrolling to it from the arrow action', async () => {
+    const user = userEvent.setup()
     const { containerRef } = renderPanel()
     containerRef.current!.scrollTo = vi.fn()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Marketplace' }))
+    await user.click(screen.getByRole('button', { name: 'Marketplace' }))
 
     expect(mockUseMarketplace).toHaveBeenLastCalledWith('', [], true)
     expect(containerRef.current!.scrollTo).toHaveBeenCalledWith({ top: -80, behavior: 'smooth' })

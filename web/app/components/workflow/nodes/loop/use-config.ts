@@ -9,16 +9,13 @@ import type {
   HandleUpdateSubVariableCondition,
   LoopNodeType,
 } from './types'
+import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useRef } from 'react'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import { useStore } from '@/app/components/workflow/store'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-} from '@/service/use-tools'
+import { consoleQuery } from '@/service/console'
 import { useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
 import { toNodeOutputVars } from '../_base/components/variable/utils'
 import useNodeCrud from '../_base/hooks/use-node-crud'
@@ -63,10 +60,22 @@ const useConfig = (id: string, payload: LoopNodeType) => {
   // output
   const { getLoopNodeChildren } = useWorkflow()
   const loopChildrenNodes = [{ id, data: payload } as any, ...getLoopNodeChildren(id)]
-  const { data: buildInTools } = useAllBuiltInTools()
-  const { data: customTools } = useAllCustomTools()
-  const { data: workflowTools } = useAllWorkflowTools()
-  const { data: mcpTools } = useAllMCPTools()
+  const { data: buildInTools } = useQuery(
+    consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: customTools } = useQuery(
+    consoleQuery.workspaces.current.tools.api.get.queryOptions({ select: selectToolsWithProvider }),
+  )
+  const { data: workflowTools } = useQuery(
+    consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: mcpTools } = useQuery(
+    consoleQuery.workspaces.current.tools.mcp.get.queryOptions({ select: selectToolsWithProvider }),
+  )
   const dataSourceList = useStore((s) => s.dataSourceList)
   const allPluginInfoList = {
     buildInTools: buildInTools || [],

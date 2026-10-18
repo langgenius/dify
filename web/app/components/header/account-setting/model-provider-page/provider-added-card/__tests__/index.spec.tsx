@@ -1,448 +1,340 @@
-import type { ReactElement } from 'react'
-import type { ModelProvider } from '../../declarations'
+import type { ComponentProps } from 'react'
 import type { ModelProviderPluginSummary } from '../../index'
-import { QueryClient } from '@tanstack/react-query'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import type { consoleClient } from '@/service/console'
+import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
+import { zModelWithProviderEntityResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { commonQueryKeys } from '@/service/use-common'
-import { createQueryClientWrapper } from '@/test/console/query-client'
-import { seedSystemFeatures } from '@/test/console/query-data'
-import { render } from '@/test/console/render'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { consoleQuery } from '@/service/console'
+import {
+  createCatalogModelFixture,
+  createProviderResponseFixture,
+  createProviderSummaryFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { useExpandModelProviderList } from '../../atoms'
 import { ConfigurationMethodEnum } from '../../declarations'
 import ProviderAddedCard from '../index'
 
-let mockIsCurrentWorkspaceManager = true
-let mockRbacEnabled = false
-let mockWorkspacePermissionKeys: string[] = [
-  'plugin.plugin_preferences',
-  'plugin.model_config',
-  'credential.use',
-  'credential.create',
-  'credential.manage',
-]
-const { mockInvalidateInstalledPluginList, mockProviderCardActions, mockInvalidateQueries } =
-  vi.hoisted(() => ({
-    mockInvalidateInstalledPluginList: vi.fn(),
-    mockProviderCardActions: vi.fn(),
-    mockInvalidateQueries: vi.fn(),
-  }))
-const mockFetchModelProviderModels = vi.fn()
-const mockQueryOptions = vi.fn(
-  ({ input, ...options }: { input: { params: { provider: string } }; enabled?: boolean }) => ({
-    queryKey: ['console', 'modelProviders', 'models', input.params.provider],
-    queryFn: () => mockFetchModelProviderModels(input.params.provider),
-    ...options,
-  }),
-)
-
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    systemFeatures: {
-      get: {
-        queryKey: () => ['system-features'],
-        queryOptions: (options: Record<string, unknown> = {}) => ({
-          queryKey: ['system-features'],
-          ...options,
-        }),
-      },
-    },
-    workspaces: {
-      current: {
-        modelProviders: {
-          summary: { get: { key: () => ['model-provider-summary'] } },
-          byProvider: {
-            models: {
-              get: {
-                queryOptions: (options: {
-                  input: { params: { provider: string } }
-                  enabled?: boolean
-                }) => mockQueryOptions(options),
-              },
-            },
-          },
-        },
-      },
-    },
-  },
+const api = vi.hoisted(() => ({
+  providers: vi.fn<typeof consoleClient.workspaces.current.modelProviders.get>(),
+  models: vi.fn<typeof consoleClient.workspaces.current.modelProviders.byProvider.models.get>(),
+  disable:
+    vi.fn<typeof consoleClient.workspaces.current.modelProviders.byProvider.models.disable.patch>(),
+  uninstall: vi.fn<typeof consoleClient.workspaces.current.plugin.uninstall.post>(),
 }))
-
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => ({
-    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager,
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.modelProviders.byProvider.models.get': api.models,
+      'workspaces.current.modelProviders.get': api.providers,
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.modelProviders.byProvider.models.disable.patch': api.disable,
+      'workspaces.current.plugin.uninstall.post': api.uninstall,
+      'workspaces.current.plugin.permission.fetch.get': async () => ({
+        install_permission: 'everyone',
+        debug_permission: 'everyone',
+      }),
+    }),
+  }
 })
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
-    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager,
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
+const providerId = 'langgenius/openai/openai'
+const provider = createProviderSummaryFixture({
+  provider: providerId,
+  icon_small: { en_US: 'openai.svg' },
 })
-
-vi.mock('@/service/use-plugins', () => ({
-  useInvalidateInstalledPluginList: () => mockInvalidateInstalledPluginList,
-}))
-
-// Mock internal components to simplify testing of the index file
-vi.mock('../credential-panel', () => ({
-  default: () => <div data-testid="credential-panel" />,
-}))
-
-vi.mock('../model-list', () => ({
-  default: ({
-    onCollapse,
-    onChange,
-  }: {
-    onCollapse: () => void
-    onChange: (provider: string) => void
-  }) => (
-    <div data-testid="model-list">
-      <button type="button" onClick={onCollapse}>
-        collapse list
-      </button>
-      <button type="button" onClick={() => onChange('langgenius/openai/openai')}>
-        refresh list
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('../../provider-icon', () => ({
-  default: () => <div data-testid="provider-icon" />,
-}))
-
-vi.mock('../../model-badge', () => ({
-  default: ({ children }: { children: string }) => <div data-testid="model-badge">{children}</div>,
-}))
-
-vi.mock('../provider-card-actions', () => ({
-  default: (props: { onUpdate?: () => Promise<void> }) => {
-    mockProviderCardActions(props)
-    return <div data-testid="provider-card-actions" />
+const model = zModelWithProviderEntityResponse.parse({
+  ...createCatalogModelFixture(),
+  provider: {
+    provider: providerId,
+    label: { en_US: 'OpenAI' },
+    supported_model_types: ['llm'],
+    tenant_id: 'tenant-1',
   },
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-auth', () => ({
-  AddCustomModel: () => <div data-testid="add-custom-model" />,
-  ManageCustomModelCredentials: () => <div data-testid="manage-custom-model" />,
-}))
-
-const createConsoleQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, gcTime: 0 },
-    },
-  })
-
-const renderWithQueryClient = (node: ReactElement) => {
-  const queryClient = createConsoleQueryClient()
-  vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(mockInvalidateQueries)
-  seedSystemFeatures(queryClient, { rbac_enabled: mockRbacEnabled })
-  return render(node, { wrapper: createQueryClientWrapper(queryClient) })
+})
+const pluginSummary: ModelProviderPluginSummary = {
+  installation_id: 'installation-1',
+  plugin_id: 'langgenius/openai',
+  plugin_unique_identifier: 'langgenius/openai:1.0.0@test',
+  runtime_type: 'local',
+  source: 'marketplace',
+  version: '1.0.0',
 }
-
-const ExternalExpandControls = () => {
-  const expandModelProviderList = useExpandModelProviderList()
+function ExternalExpandControls() {
+  const expand = useExpandModelProviderList()
   return (
     <>
-      <button
-        type="button"
-        data-testid="expand-other-provider"
-        onClick={() => expandModelProviderList('langgenius/anthropic/anthropic')}
-      >
-        expand other
+      <button type="button" onClick={() => expand('langgenius/anthropic/anthropic')}>
+        Expand Anthropic
       </button>
-      <button
-        type="button"
-        data-testid="expand-current-provider"
-        onClick={() => expandModelProviderList('langgenius/openai/openai')}
-      >
-        expand current
+      <button type="button" onClick={() => expand(providerId)}>
+        Expand OpenAI
       </button>
     </>
   )
 }
-
-const modelProviderModelsResponse = {
-  data: [
+function setup(
+  props: Partial<ComponentProps<typeof ProviderAddedCard>> = {},
+  options: ConsoleQueryTestOptions = {},
+) {
+  const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient)
+  renderWithConsoleQuery(
+    <NuqsTestingAdapter>
+      <ProviderAddedCard provider={provider} {...props} />
+      <ExternalExpandControls />
+    </NuqsTestingAdapter>,
     {
-      model: 'gpt-4',
-      label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' },
-      model_type: 'llm',
-      features: [],
-      fetch_from: 'predefined-model',
-      status: 'active',
-      model_properties: {},
-      load_balancing_enabled: false,
-      provider: {
-        provider: 'langgenius/openai/openai',
-        label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
-        supported_model_types: ['llm'],
-        tenant_id: 'tenant-id',
-      },
-    },
-  ],
-}
-
-describe('ProviderAddedCard', () => {
-  const mockProvider = {
-    provider: 'langgenius/openai/openai',
-    configurate_methods: [ConfigurationMethodEnum.predefinedModel],
-    system_configuration: { enabled: true },
-    supported_model_types: ['llm'],
-  } as unknown as ModelProvider
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockIsCurrentWorkspaceManager = true
-    mockRbacEnabled = false
-    mockWorkspacePermissionKeys = [
-      'plugin.plugin_preferences',
-      'plugin.model_config',
-      'credential.use',
-      'credential.create',
-      'credential.manage',
-    ]
-  })
-
-  it('should render provider added card component', () => {
-    renderWithQueryClient(<ProviderAddedCard provider={mockProvider} />)
-    expect(screen.getByTestId('provider-added-card')).toBeInTheDocument()
-    expect(screen.getByTestId('provider-icon')).toBeInTheDocument()
-    expect(screen.getByTestId('credential-panel')).toBeInTheDocument()
-  })
-
-  it('should hide credential controls from legacy use-only members', () => {
-    mockWorkspacePermissionKeys = ['credential.use']
-
-    renderWithQueryClient(
-      <>
-        <ProviderAddedCard provider={mockProvider} />
-        <ExternalExpandControls />
-      </>,
-    )
-
-    expect(screen.queryByTestId('credential-panel')).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: /modelProvider\.showModels/i }),
-    ).not.toBeInTheDocument()
-
-    fireEvent.click(screen.getByTestId('expand-current-provider'))
-
-    expect(mockFetchModelProviderModels).not.toHaveBeenCalled()
-  })
-
-  it('should use credential permissions when RBAC is enabled', () => {
-    mockRbacEnabled = true
-    mockWorkspacePermissionKeys = ['credential.use']
-
-    renderWithQueryClient(<ProviderAddedCard provider={mockProvider} />)
-
-    expect(screen.getByTestId('credential-panel')).toBeInTheDocument()
-  })
-
-  it('refreshes provider data and installed plugin details after an update', async () => {
-    let resolveProviderRefresh: (() => void) | undefined
-    let resolveInstalledPluginRefresh: (() => void) | undefined
-    mockInvalidateQueries.mockReturnValue(
-      new Promise<void>((resolve) => {
-        resolveProviderRefresh = resolve
-      }),
-    )
-    mockInvalidateInstalledPluginList.mockReturnValue(
-      new Promise<void>((resolve) => {
-        resolveInstalledPluginRefresh = resolve
-      }),
-    )
-
-    renderWithQueryClient(
-      <ProviderAddedCard
-        provider={mockProvider}
-        pluginSummary={
-          {
-            plugin_id: 'provider-plugin',
-            installation_id: 'provider-plugin@1.0.0',
-          } as ModelProviderPluginSummary
-        }
-      />,
-    )
-
-    const onUpdate = mockProviderCardActions.mock.calls[0]?.[0].onUpdate as () => Promise<void>
-    let isRefreshComplete = false
-    const refreshPromise = onUpdate().then(() => {
-      isRefreshComplete = true
-    })
-
-    expect(mockInvalidateInstalledPluginList).toHaveBeenCalledWith(PluginCategoryEnum.model)
-    expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ['model-provider-summary'] })
-    expect(mockInvalidateQueries).toHaveBeenCalledWith({
-      queryKey: commonQueryKeys.modelProviderDetails,
-    })
-    expect(mockInvalidateInstalledPluginList).toHaveBeenCalledTimes(1)
-
-    resolveProviderRefresh?.()
-    await Promise.resolve()
-    expect(isRefreshComplete).toBe(false)
-
-    resolveInstalledPluginRefresh?.()
-    await refreshPromise
-    expect(isRefreshComplete).toBe(true)
-  })
-
-  it('should open, refresh and collapse model list', async () => {
-    mockFetchModelProviderModels.mockResolvedValue(modelProviderModelsResponse)
-    renderWithQueryClient(<ProviderAddedCard provider={mockProvider} />)
-
-    const showModelsBtn = screen.getByRole('button', { name: /modelProvider\.showModels/i })
-    fireEvent.click(showModelsBtn)
-
-    await waitFor(() => {
-      expect(mockFetchModelProviderModels).toHaveBeenCalledWith(mockProvider.provider)
-    })
-    expect(await screen.findByTestId('model-list')).toBeInTheDocument()
-
-    // Test line 71-72: Opening when already fetched
-    const collapseBtn = screen.getByRole('button', { name: 'collapse list' })
-    fireEvent.click(collapseBtn)
-    await waitFor(() => expect(screen.queryByTestId('model-list')).not.toBeInTheDocument())
-
-    // Explicitly re-find and click to re-open
-    const modelsCountButton = screen.getByRole('button', { name: /modelProvider\.modelsNum/i })
-    expect(modelsCountButton).not.toHaveAttribute('aria-label')
-    fireEvent.click(modelsCountButton)
-    expect(await screen.findByTestId('model-list')).toBeInTheDocument()
-    expect(mockFetchModelProviderModels).toHaveBeenCalledTimes(2) // Re-open fetches again with default stale/gc behavior
-
-    // Refresh list from ModelList
-    const refreshBtn = screen.getByRole('button', { name: 'refresh list' })
-    fireEvent.click(refreshBtn)
-    await waitFor(() => {
-      expect(mockFetchModelProviderModels).toHaveBeenCalledTimes(3)
-    })
-  })
-
-  it.each(['list', 'grid'] as const)(
-    'restores focus to the model list button after collapsing in %s layout',
-    async (layout) => {
-      const user = userEvent.setup()
-      mockFetchModelProviderModels.mockResolvedValue(modelProviderModelsResponse)
-      renderWithQueryClient(<ProviderAddedCard provider={mockProvider} layout={layout} />)
-
-      await user.click(screen.getByRole('button', { name: /modelProvider\.showModels/i }))
-      const collapseButton = await screen.findByRole('button', { name: 'collapse list' })
-      await user.tab()
-      expect(collapseButton).toHaveFocus()
-
-      await user.keyboard('{Enter}')
-
-      await waitFor(() => expect(collapseButton).not.toBeInTheDocument())
-      expect(screen.getByRole('button', { name: /modelProvider\.modelsNum/i })).toHaveFocus()
+      queryClient,
+      features: {},
+      systemFeatures: { rbac_enabled: false, deployment_edition: 'COMMUNITY' },
+      workspacePermissionKeys: [
+        'plugin.plugin_preferences',
+        'plugin.model_config',
+        'credential.use',
+        'credential.create',
+        'credential.manage',
+        'plugin.delete',
+      ],
+      ...options,
     },
   )
-
-  it('should handle concurrent getModelList calls (loading state coverage)', async () => {
-    let resolveOuter: (value: unknown) => void = () => {}
-    const promise = new Promise((resolve) => {
-      resolveOuter = resolve
-    })
-    mockFetchModelProviderModels.mockReturnValue(promise)
-
-    renderWithQueryClient(<ProviderAddedCard provider={mockProvider} />)
-    const showModelsBtn = screen.getByRole('button', { name: /modelProvider\.showModels/i })
-
-    // First call sets loading to true
-    fireEvent.click(showModelsBtn)
-    await waitFor(() => {
-      expect(mockFetchModelProviderModels).toHaveBeenCalledTimes(1)
-    })
-
-    // Second call should return early because loading is true
-    fireEvent.click(showModelsBtn)
-    expect(mockFetchModelProviderModels).toHaveBeenCalledTimes(1)
-
-    await act(async () => {
-      resolveOuter({ data: [] })
-    })
-    // After resolution, loading is false and collapsed is false, so model-list appears
-    expect(await screen.findByTestId('model-list')).toBeInTheDocument()
+  return { user: userEvent.setup(), queryClient }
+}
+const showModels = () =>
+  screen.getByRole('button', { name: /modelProvider.modelProvider.showModels/ })
+const modelCount = () =>
+  screen.getByRole('button', { name: /modelProvider.modelProvider.modelsNum/ })
+const addCredential = () =>
+  screen.queryByRole('button', {
+    name: /modelProvider.modelProvider.auth.addApiKey|common.operation.config/,
   })
+beforeEach(() => {
+  api.providers
+    .mockReset()
+    .mockResolvedValue({ data: [createProviderResponseFixture({ provider: providerId })] })
+  api.models.mockReset().mockResolvedValue({ data: [model] })
+  api.disable.mockReset().mockResolvedValue({ result: 'success' })
+  api.uninstall.mockReset().mockResolvedValue({ success: true })
+})
 
-  it('should only react to external expansion for the matching provider', async () => {
-    mockFetchModelProviderModels.mockResolvedValue(modelProviderModelsResponse)
-    renderWithQueryClient(
-      <>
-        <ProviderAddedCard provider={mockProvider} />
-        <ExternalExpandControls />
-      </>,
+it.each([false, true])(
+  'applies credential permissions with RBAC enabled=%s while preventing unprivileged model expansion',
+  async (rbacEnabled) => {
+    const { user } = setup(
+      {},
+      {
+        systemFeatures: { rbac_enabled: rbacEnabled },
+        workspacePermissionKeys: ['credential.use'],
+      },
     )
+    if (rbacEnabled) expect(addCredential()).toBeInTheDocument()
+    else expect(addCredential()).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /modelProvider.modelProvider.showModels/ }),
+    ).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Expand OpenAI' }))
+    expect(api.models).not.toHaveBeenCalled()
+  },
+)
 
-    fireEvent.click(screen.getByTestId('expand-other-provider'))
-    await waitFor(() => {
-      expect(mockFetchModelProviderModels).toHaveBeenCalledTimes(0)
-    })
-
-    fireEvent.click(screen.getByTestId('expand-current-provider'))
-    await waitFor(() => {
-      expect(mockFetchModelProviderModels).toHaveBeenCalledWith(mockProvider.provider)
-    })
-    expect(mockFetchModelProviderModels).toHaveBeenCalledTimes(1)
+it('opens the real model list, refreshes it after a model change, and restores focus after collapsing', async () => {
+  const { user } = setup()
+  await user.click(showModels())
+  expect(await screen.findByText('GPT-4')).toBeInTheDocument()
+  expect(api.models).toHaveBeenCalledWith({ params: { provider: providerId } })
+  const modelSwitch = screen.getByRole('switch', { name: 'GPT-4' })
+  expect(modelSwitch).toBeChecked()
+  api.disable.mockImplementationOnce(async () => {
+    api.models.mockResolvedValue({ data: [{ ...model, status: 'disabled' }] })
+    return { result: 'success' }
   })
+  await user.click(modelSwitch)
+  await waitFor(() =>
+    expect(api.disable).toHaveBeenCalledExactlyOnceWith({
+      params: { provider: providerId },
+      body: { model: 'gpt-4', model_type: 'llm' },
+    }),
+  )
+  await waitFor(() => expect(modelSwitch).not.toBeChecked())
+  await user.click(modelCount())
+  await waitFor(() => expect(screen.queryByText('GPT-4')).not.toBeInTheDocument())
+  expect(modelCount()).toHaveFocus()
+  await user.click(modelCount())
+  expect(await screen.findByRole('switch', { name: 'GPT-4' })).not.toBeChecked()
+})
 
-  it('should render configure tip when provider is not in quota list and not configured', () => {
-    const providerWithoutQuota = {
-      ...mockProvider,
-      provider: 'custom/provider',
-    } as unknown as ModelProvider
-    renderWithQueryClient(<ProviderAddedCard provider={providerWithoutQuota} notConfigured />)
-    expect(screen.getByText('modelProvider.modelProvider.configureTip')).toBeInTheDocument()
+it('does not send duplicate model requests while expansion is loading', async () => {
+  const response = createDeferred<Awaited<ReturnType<typeof api.models>>>()
+  api.models.mockReturnValueOnce(response.promise)
+  const { user } = setup()
+  await user.click(showModels())
+  await user.click(showModels())
+  expect(api.models).toHaveBeenCalledTimes(1)
+  await act(async () => response.resolve({ data: [model] }))
+  expect(await screen.findByText('GPT-4')).toBeInTheDocument()
+})
+
+it('expands only when requested for this provider', async () => {
+  const { user } = setup()
+  await user.click(screen.getByRole('button', { name: 'Expand Anthropic' }))
+  expect(api.models).not.toHaveBeenCalled()
+  await user.click(screen.getByRole('button', { name: 'Expand OpenAI' }))
+  expect(await screen.findByText('GPT-4')).toBeInTheDocument()
+  expect(api.models).toHaveBeenCalledExactlyOnceWith({ params: { provider: providerId } })
+})
+
+it('directs an unconfigured provider to credentials instead of offering models', () => {
+  setup({
+    provider: createProviderSummaryFixture({ provider: 'custom/provider', is_configured: false }),
+    notConfigured: true,
   })
+  expect(screen.getByText('modelProvider.modelProvider.configureTip')).toBeInTheDocument()
+  expect(
+    screen.queryByRole('button', { name: /modelProvider.modelProvider.showModels/ }),
+  ).not.toBeInTheDocument()
+})
 
-  it('should render custom model actions when user can configure models', () => {
-    const customConfigProvider = {
-      ...mockProvider,
+it.each([
+  {
+    label: 'model configuration with custom models',
+    permissions: ['plugin.model_config'],
+    hasCustomModels: true,
+    canAdd: true,
+    canManage: true,
+  },
+  {
+    label: 'model configuration without custom models',
+    permissions: ['plugin.model_config'],
+    hasCustomModels: false,
+    canAdd: true,
+    canManage: false,
+  },
+  {
+    label: 'credential permissions only',
+    permissions: ['credential.use', 'credential.create', 'credential.manage'],
+    hasCustomModels: true,
+    canAdd: false,
+    canManage: false,
+  },
+])(
+  'offers custom model actions for $label',
+  ({ permissions, hasCustomModels, canAdd, canManage }) => {
+    setup(
+      {
+        provider: createProviderSummaryFixture({
+          provider: providerId,
+          configurate_methods: [ConfigurationMethodEnum.customizableModel],
+          custom_configuration: { has_custom_models: hasCustomModels },
+        }),
+      },
+      { workspacePermissionKeys: permissions },
+    )
+    const add = screen.queryByRole('button', { name: 'modelProvider.modelProvider.addModel' })
+    const manage = screen.queryByRole('button', {
+      name: 'modelProvider.modelProvider.auth.manageCredentials',
+    })
+    if (canAdd) expect(add).toBeInTheDocument()
+    else expect(add).not.toBeInTheDocument()
+    if (canManage) expect(manage).toBeInTheDocument()
+    else expect(manage).not.toBeInTheDocument()
+  },
+)
+
+it('invalidates provider catalogs and installed model plugins after removal through the real menu', async () => {
+  const { user, queryClient } = setup({ pluginSummary })
+  queryClient.setQueryData(consoleQuery.workspaces.current.modelProviders.get.queryKey(), {
+    data: [createProviderResponseFixture({ provider: providerId })],
+  })
+  const installedKey = consoleQuery.workspaces.current.plugin.byCategory.list.get.infiniteOptions({
+    input: (page) => ({ params: { category: 'model' }, query: { page, page_size: 100 } }),
+    getNextPageParam: () => undefined,
+    initialPageParam: 1,
+  }).queryKey
+  queryClient.setQueryData(installedKey, {
+    pages: [{ plugins: [], has_more: false, builtin_tools: [] }],
+    pageParams: [1],
+  })
+  const keys = [
+    installedKey,
+    consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(),
+    consoleQuery.workspaces.current.modelProviders.get.queryKey(),
+  ]
+  await user.click(
+    await screen.findByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }),
+  )
+  await user.click(
+    await screen.findByRole('menuitem', { name: 'plugin.detailPanel.operation.remove' }),
+  )
+  const dialog = await screen.findByRole('alertdialog', { name: 'plugin.action.delete' })
+  expect(api.uninstall).not.toHaveBeenCalled()
+  await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
+  await waitFor(() =>
+    expect(api.uninstall).toHaveBeenCalledExactlyOnceWith({
+      body: { plugin_installation_id: 'installation-1', preserve_credentials: false },
+    }),
+  )
+  await waitFor(() => {
+    for (const key of keys) expect(queryClient.getQueryState(key)?.isInvalidated).toBe(true)
+  })
+  expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+})
+
+it('loads custom model credentials only when their management surface opens', async () => {
+  const response = createDeferred<Awaited<ReturnType<typeof api.providers>>>()
+  api.providers.mockReturnValueOnce(response.promise)
+  const { user } = setup({
+    provider: createProviderSummaryFixture({
+      provider: providerId,
       configurate_methods: [ConfigurationMethodEnum.customizableModel],
       custom_configuration: { has_custom_models: true },
-    } as unknown as ModelProvider
-    const { unmount } = renderWithQueryClient(<ProviderAddedCard provider={customConfigProvider} />)
-
-    expect(
-      screen.getByRole('button', { name: 'modelProvider.modelProvider.auth.manageCredentials' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'modelProvider.modelProvider.addModel' }),
-    ).toBeInTheDocument()
-
-    unmount()
-    mockIsCurrentWorkspaceManager = false
-    mockWorkspacePermissionKeys = ['credential.use', 'credential.create', 'credential.manage']
-    renderWithQueryClient(<ProviderAddedCard provider={customConfigProvider} />)
-    expect(
-      screen.queryByRole('button', { name: 'modelProvider.modelProvider.auth.manageCredentials' }),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: 'modelProvider.modelProvider.addModel' }),
-    ).not.toBeInTheDocument()
+    }),
   })
-
-  it('should render custom model actions when user can configure models without credential permissions', () => {
-    const customConfigProvider = {
-      ...mockProvider,
-      configurate_methods: [ConfigurationMethodEnum.customizableModel],
-      custom_configuration: { has_custom_models: false },
-    } as unknown as ModelProvider
-    mockWorkspacePermissionKeys = ['plugin.model_config']
-
-    renderWithQueryClient(<ProviderAddedCard provider={customConfigProvider} />)
-
-    expect(
-      screen.queryByRole('button', { name: 'modelProvider.modelProvider.auth.manageCredentials' }),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'modelProvider.modelProvider.addModel' }),
-    ).toBeInTheDocument()
+  expect(api.providers).not.toHaveBeenCalled()
+  const manage = screen.getByRole('button', {
+    name: 'modelProvider.modelProvider.auth.manageCredentials',
   })
+  await user.click(manage)
+  expect(manage).toHaveAttribute('aria-disabled', 'true')
+  expect(api.providers).toHaveBeenCalledTimes(1)
+  await act(async () =>
+    response.resolve({
+      data: [
+        createProviderResponseFixture({
+          provider: providerId,
+          configurate_methods: ['customizable-model'],
+          custom_configuration: {
+            custom_models: [
+              {
+                model: 'custom-gpt',
+                model_type: 'llm',
+                credentials: null,
+                unadded_to_model_list: false,
+                current_credential_id: 'credential-1',
+                current_credential_name: 'Production key',
+                available_model_credentials: [
+                  { credential_id: 'credential-1', credential_name: 'Production key' },
+                ],
+              },
+            ],
+          },
+        }),
+      ],
+    }),
+  )
+  expect(
+    await screen.findByText('modelProvider.modelProvider.auth.customModelCredentials'),
+  ).toBeInTheDocument()
+  expect(screen.getByText('custom-gpt')).toBeInTheDocument()
+  expect(screen.getByText('Production key')).toBeInTheDocument()
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(screen.queryByText('Production key')).not.toBeInTheDocument())
 })

@@ -2428,7 +2428,7 @@ Agent has not been published. Please publish the Agent before using the API.
 | thought | string |  | No |
 | tool | string |  | No |
 | tool_input | string |  | No |
-| tool_labels | [JSONValue](#jsonvalue) | Labels for tools used. | Yes |
+| tool_labels | [AnyJSONValue](#anyjsonvalue) | Labels for tools used. | Yes |
 
 #### Annotation
 
@@ -2487,6 +2487,12 @@ Agent has not been published. Please publish the Agent before using the API.
 | embedding_model_name | string | Name of the embedding model to use for annotation matching. | Yes |
 | embedding_provider_name | string | Name of the embedding model provider. | Yes |
 | score_threshold | float | Minimum similarity score for an annotation to be considered a match. Higher values require closer matches. | Yes |
+
+#### AnyJSONValue
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AnyJSONValue |  |  |  |
 
 #### AppFeedbackListResponse
 
@@ -2560,7 +2566,7 @@ Audio size exceeded. {message}
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| text | string |  | Yes |
+| text | string | Transcribed text from audio | Yes |
 
 #### BinaryFileResponse
 
@@ -2763,7 +2769,7 @@ Public pause reason emitted by a blocking Chatflow execution.
 | id | string |  | Yes |
 | position | integer |  | Yes |
 | segment_id | string |  | Yes |
-| type | string |  | Yes |
+| type | string, <br>**Available values:** "automatic", "customized" | *Enum:* `"automatic"`, `"customized"` | Yes |
 | updated_at | integer |  | Yes |
 | word_count | integer |  | Yes |
 
@@ -2943,7 +2949,7 @@ Enum class for custom configuration status.
 | chunk_structure | string |  | Yes |
 | created_at | integer |  | Yes |
 | created_by | string |  | Yes |
-| data_source_type | string |  | Yes |
+| data_source_type | string, <br>**Available values:** "local_file", "notion_import", "online_document", "online_drive", "upload_file", "website_crawl" |  | Yes |
 | description | string |  | Yes |
 | doc_form | string |  | Yes |
 | doc_metadata | [ [DatasetDocMetadataResponse](#datasetdocmetadataresponse) ] |  | Yes |
@@ -2956,16 +2962,16 @@ Enum class for custom configuration status.
 | external_retrieval_model | [DatasetExternalRetrievalModelResponse](#datasetexternalretrievalmodelresponse) |  | Yes |
 | icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) | Icon display configuration for the knowledge base. | No |
 | id | string |  | Yes |
-| indexing_technique | string |  | Yes |
+| indexing_technique | [IndexTechniqueType](#indextechniquetype) |  | Yes |
 | is_multimodal | boolean |  | Yes |
 | is_published | boolean |  | Yes |
 | maintainer | string |  | No |
 | name | string |  | Yes |
-| permission | string |  | Yes |
+| permission | string, <br>**Available values:** "all_team_members", "only_me", "partial_members" | *Enum:* `"all_team_members"`, `"only_me"`, `"partial_members"` | Yes |
 | pipeline_id | string |  | Yes |
 | provider | string |  | Yes |
 | retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) | Retrieval configuration for the knowledge base. | Yes |
-| runtime_mode | string |  | Yes |
+| runtime_mode | string, <br>**Available values:** "general", "rag_pipeline" |  | Yes |
 | summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) | Summary index configuration. | No |
 | tags | [ [DatasetTagResponse](#datasettagresponse) ] |  | Yes |
 | total_available_documents | integer |  | Yes |
@@ -2984,7 +2990,7 @@ Enum class for custom configuration status.
 | chunk_structure | string |  | Yes |
 | created_at | integer |  | Yes |
 | created_by | string |  | Yes |
-| data_source_type | string |  | Yes |
+| data_source_type | string, <br>**Available values:** "local_file", "notion_import", "online_document", "online_drive", "upload_file", "website_crawl" |  | Yes |
 | description | string |  | Yes |
 | doc_form | string |  | Yes |
 | doc_metadata | [ [DatasetDocMetadataResponse](#datasetdocmetadataresponse) ] |  | Yes |
@@ -2997,17 +3003,17 @@ Enum class for custom configuration status.
 | external_retrieval_model | [DatasetExternalRetrievalModelResponse](#datasetexternalretrievalmodelresponse) |  | Yes |
 | icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) | Icon display configuration for the knowledge base. | No |
 | id | string |  | Yes |
-| indexing_technique | string |  | Yes |
+| indexing_technique | [IndexTechniqueType](#indextechniquetype) |  | Yes |
 | is_multimodal | boolean |  | Yes |
 | is_published | boolean |  | Yes |
 | maintainer | string |  | No |
 | name | string |  | Yes |
 | partial_member_list | [ string ] |  | No |
-| permission | string |  | Yes |
+| permission | string, <br>**Available values:** "all_team_members", "only_me", "partial_members" | *Enum:* `"all_team_members"`, `"only_me"`, `"partial_members"` | Yes |
 | pipeline_id | string |  | Yes |
 | provider | string |  | Yes |
 | retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) | Retrieval configuration for the knowledge base. | Yes |
-| runtime_mode | string |  | Yes |
+| runtime_mode | string, <br>**Available values:** "general", "rag_pipeline" |  | Yes |
 | summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) | Summary index configuration. | No |
 | tags | [ [DatasetTagResponse](#datasettagresponse) ] |  | Yes |
 | total_available_documents | integer |  | Yes |
@@ -3022,7 +3028,7 @@ Enum class for custom configuration status.
 | ---- | ---- | ----------- | -------- |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| type | string |  | Yes |
+| type | string, <br>**Available values:** "number", "string", "time" | *Enum:* `"number"`, `"string"`, `"time"` | Yes |
 
 #### DatasetExternalKnowledgeInfoResponse
 
@@ -3087,7 +3093,7 @@ Enum class for custom configuration status.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | name | string |  | Yes |
-| type | string |  | Yes |
+| type | string, <br>**Available values:** "number", "string", "time" | *Enum:* `"number"`, `"string"`, `"time"` | Yes |
 
 #### DatasetMetadataBuiltInFieldsResponse
 
@@ -3102,7 +3108,7 @@ Enum class for custom configuration status.
 | count | integer |  | No |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| type | string |  | Yes |
+| type | string, <br>**Available values:** "number", "string", "time" | *Enum:* `"number"`, `"string"`, `"time"` | Yes |
 
 #### DatasetMetadataListResponse
 
@@ -3117,7 +3123,7 @@ Enum class for custom configuration status.
 | ---- | ---- | ----------- | -------- |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| type | string |  | Yes |
+| type | string, <br>**Available values:** "number", "string", "time" | *Enum:* `"number"`, `"string"`, `"time"` | Yes |
 
 #### DatasetNameDuplicateError
 
@@ -3143,7 +3149,7 @@ The dataset name already exists. Please modify your dataset name.
 | reranking_model | [DatasetRerankingModelResponse](#datasetrerankingmodelresponse) | Reranking model configuration. | No |
 | score_threshold | number |  | No |
 | score_threshold_enabled | boolean |  | Yes |
-| search_method | string |  | Yes |
+| search_method | [RetrievalMethod](#retrievalmethod) |  | Yes |
 | top_k | integer |  | Yes |
 | weights | [DatasetWeightedScoreResponse](#datasetweightedscoreresponse) |  | No |
 
@@ -3328,8 +3334,8 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| type | string |  | Yes |
-| value | string<br>integer<br>number<br>boolean |  | No |
+| type | string, <br>**Available values:** "number", "string", "time" | *Enum:* `"number"`, `"string"`, `"time"` | Yes |
+| value | string<br>integer<br>number |  | Yes |
 
 #### DocumentResponse
 
@@ -3339,7 +3345,7 @@ Request payload for bulk downloading documents as a zip archive.
 | created_at | integer |  | No |
 | created_by | string |  | No |
 | created_from | string |  | No |
-| data_source_detail_dict | object |  | Yes |
+| data_source_detail_dict | [DocumentSourceDetailResponse](#documentsourcedetailresponse) |  | Yes |
 | data_source_info | object |  | No |
 | data_source_type | string |  | No |
 | dataset_process_rule_id | string |  | No |
@@ -3359,6 +3365,14 @@ Request payload for bulk downloading documents as a zip archive.
 | summary_index_status | string |  | No |
 | tokens | integer |  | No |
 | word_count | integer |  | No |
+
+#### DocumentSourceDetailResponse
+
+The uploaded file for file documents; Notion and website documents repeat their source info.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| upload_file | [DocumentUploadFileDetailResponse](#documentuploadfiledetailresponse) |  | No |
 
 #### DocumentStatusListResponse
 
@@ -3383,7 +3397,7 @@ Request payload for bulk downloading documents as a zip archive.
 | error_code | string |  | No |
 | estimated_vector_space_mb | integer |  | No |
 | id | string |  | Yes |
-| indexing_status | string |  | Yes |
+| indexing_status | string, <br>**Available values:** "cleaning", "completed", "error", "indexing", "parsing", "paused", "splitting", "waiting" | *Enum:* `"cleaning"`, `"completed"`, `"error"`, `"indexing"`, `"parsing"`, `"paused"`, `"splitting"`, `"waiting"` | Yes |
 | parsing_completed_at | integer |  | Yes |
 | paused_at | integer |  | Yes |
 | processing_started_at | integer |  | Yes |
@@ -3417,6 +3431,18 @@ Request payload for bulk downloading documents as a zip archive.
 | process_rule | [ProcessRule](#processrule) | Processing rules for chunking. | No |
 | retrieval_model | [RetrievalModel](#retrievalmodel) | Controls how chunks are searched and ranked when querying this knowledge base. | No |
 | text | string | Document text content. | No |
+
+#### DocumentUploadFileDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | number |  | Yes |
+| created_by | string |  | Yes |
+| extension | string |  | Yes |
+| id | string |  | Yes |
+| mime_type | string |  | No |
+| name | string |  | Yes |
+| size | integer |  | Yes |
 
 #### EndUserDetail
 
@@ -3769,15 +3795,6 @@ This form has already been submitted by another user, form_id={form_id}
 | ---- | ---- | ----------- | -------- |
 | HumanInputFormSubmittedError |  | This form has already been submitted by another user, form_id={form_id} |  |
 
-#### I18nObject
-
-Model class for i18n object.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| en_US | string |  | Yes |
-| zh_Hans | string |  | No |
-
 #### IndexInfoResponse
 
 | Name | Type | Description | Required |
@@ -3785,6 +3802,12 @@ Model class for i18n object.
 | api_version | string |  | Yes |
 | server_version | string |  | Yes |
 | welcome | string |  | Yes |
+
+#### IndexTechniqueType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| IndexTechniqueType | string |  |  |
 
 #### InvalidActionError
 
@@ -3813,12 +3836,6 @@ The metadata content is incorrect. Please check and verify.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | JSONObject | object |  |  |
-
-#### JSONValue
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| JSONValue |  |  |  |
 
 #### JSONValueType
 
@@ -3978,6 +3995,15 @@ Enum class for model property key.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ModelPropertyKey | string | Enum class for model property key. |  |
+
+#### ModelRuntimeI18nObject
+
+Model class for i18n object.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| en_US | string |  | Yes |
+| zh_Hans | string |  | No |
 
 #### ModelStatus
 
@@ -4167,7 +4193,7 @@ Model class for model response.
 | features | [ [ModelFeature](#modelfeature) ] |  | No |
 | fetch_from | [FetchFrom](#fetchfrom) | Where the model definition comes from. `predefined-model` for built-in models, `customizable-model` for user-configured models. | Yes |
 | has_invalid_load_balancing_configs | boolean |  | No |
-| label | [I18nObject](#i18nobject) | Localized display name of the model. | Yes |
+| label | [ModelRuntimeI18nObject](#modelruntimei18nobject) | Localized display name of the model. | Yes |
 | load_balancing_enabled | boolean |  | No |
 | model | string |  | Yes |
 | model_properties | object |  | Yes |
@@ -4210,9 +4236,9 @@ Model class for provider with models response.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| icon_small | [I18nObject](#i18nobject) |  | No |
-| icon_small_dark | [I18nObject](#i18nobject) |  | No |
-| label | [I18nObject](#i18nobject) | Localized display name of the provider. | Yes |
+| icon_small | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | No |
+| icon_small_dark | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | No |
+| label | [ModelRuntimeI18nObject](#modelruntimei18nobject) | Localized display name of the provider. | Yes |
 | models | [ [ProviderModelWithStatusEntity](#providermodelwithstatusentity) ] |  | Yes |
 | provider | string |  | Yes |
 | status | [CustomConfigurationStatus](#customconfigurationstatus) | Provider status. `active` when credentials are configured and valid. | Yes |
@@ -4393,7 +4419,7 @@ Rate Limit Error
 | keywords | [ string ] |  | Yes |
 | position | integer |  | Yes |
 | sign_content | string |  | Yes |
-| status | string |  | Yes |
+| status | string, <br>**Available values:** "completed", "error", "indexing", "paused", "re_segment", "waiting" | *Enum:* `"completed"`, `"error"`, `"indexing"`, `"paused"`, `"re_segment"`, `"waiting"` | Yes |
 | stopped_at | integer |  | Yes |
 | summary | string |  | Yes |
 | tokens | integer |  | Yes |

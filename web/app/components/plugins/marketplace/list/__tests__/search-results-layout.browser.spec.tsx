@@ -33,8 +33,12 @@ describe('Marketplace search result layout', () => {
       </div>,
     )
 
-    const first = screen.getByRole('link', { name: 'Plugin 1' }).element().getBoundingClientRect()
-    const nextRow = screen.getByRole('link', { name: 'Plugin 2' }).element().getBoundingClientRect()
+    const firstLink = screen.getByRole('link', { name: 'Plugin 1' })
+    const secondLink = screen.getByRole('link', { name: 'Plugin 2' })
+    await expect.element(firstLink).toBeVisible()
+    await expect.element(secondLink).toBeVisible()
+    const first = firstLink.element().getBoundingClientRect()
+    const nextRow = secondLink.element().getBoundingClientRect()
 
     expect(first.width).toBeGreaterThanOrEqual(250)
     expect(nextRow.top).toBeGreaterThanOrEqual(first.bottom)

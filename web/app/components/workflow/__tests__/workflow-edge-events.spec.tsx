@@ -1,944 +1,498 @@
-import type { Edge, Node } from '../types'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import type { WorkflowCommentDetail } from '@dify/contracts/api/console/apps/types.gen'
+import type { RefObject } from 'react'
+import type { ReactFlowInstance } from 'reactflow'
+import type { Shape as HooksStoreShape } from '../hooks-store'
+import type { WorkflowProps } from '../index'
+import type { Shape } from '../store'
+import type { EventEmitterValue } from '@/context/event-emitter'
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
-import { BaseEdge, internalsSymbol, Position, ReactFlowProvider, useStoreApi } from 'reactflow'
+import { EventEmitter } from 'ahooks/lib/useEventEmitter'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { createRef, useImperativeHandle } from 'react'
+import { useReactFlow } from 'reactflow'
+import { toast } from '@/app/notifications'
+import { EventEmitterContext } from '@/context/event-emitter'
+import { consoleQuery } from '@/service/console'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper, seedAppDslVersion } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
+import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import { WORKFLOW_DATA_UPDATE } from '../constants'
-import { Workflow } from '../index'
-import { ControlMode } from '../types'
+import WorkflowWithDefaultContext, { Workflow } from '../index'
+import codeNodeDefault from '../nodes/code/default'
+import { BlockEnum } from '../types'
+import { createEdge, createNode } from './fixtures'
 import { renderWorkflowComponent } from './workflow-test-env'
 
-type WorkflowUpdateEvent = {
-  type: string
-  payload: {
-    nodes: Node[]
-    edges: Edge[]
-  }
-}
-
-const eventEmitterState = vi.hoisted(() => ({
-  subscription: null as null | ((payload: WorkflowUpdateEvent) => void),
+const api = vi.hoisted(() => ({
+  comments:
+    vi.fn<typeof import('@/service/console').consoleClient.apps.byAppId.workflow.comments.get>(),
+  comment:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.apps.byAppId.workflow.comments.byCommentId.get
+    >(),
+  deleteComment:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.apps.byAppId.workflow.comments.byCommentId.delete
+    >(),
+  deleteReply:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.apps.byAppId.workflow.comments.byCommentId.replies.byReplyId.delete
+    >(),
 }))
-
-const reactFlowBridge = vi.hoisted(() => ({
-  store: null as null | ReturnType<typeof useStoreApi>,
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({ appId: 'app-1' }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => '/app/app-1/workflow',
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }))
-
-const collaborationBridge = vi.hoisted(() => ({
-  canFlushGraphOnPageClose: vi.fn(),
-  canUseLocalDraftFallback: vi.fn(),
-  isConnected: vi.fn(),
-  graphImportHandler: null as null | ((payload: { nodes: Node[]; edges: Edge[] }) => void),
-  historyActionHandler: null as null | ((payload: unknown) => void),
-  restoreIntentHandler: null as
-    | null
-    | ((payload: {
-        versionId: string
-        versionName?: string
-        initiatorUserId: string
-        initiatorName: string
-      }) => void),
-}))
-
-const toastInfoMock = vi.hoisted(() => vi.fn())
-const toastErrorMock = vi.hoisted(() => vi.fn())
-
-const workflowCommentState = vi.hoisted(() => ({
-  comments: [] as Array<Record<string, unknown>>,
-  pendingComment: null as null | { elementX: number; elementY: number },
-  activeComment: null as null | Record<string, unknown>,
-  activeCommentLoading: false,
-  replySubmitting: false,
-  replyUpdating: false,
-  handleCommentSubmit: vi.fn(),
-  handleCommentCancel: vi.fn(),
-  handleCommentIconClick: vi.fn(),
-  handleActiveCommentClose: vi.fn(),
-  handleCommentResolve: vi.fn(),
-  handleCommentDelete: vi.fn(async () => {}),
-  handleCommentReply: vi.fn(),
-  handleCommentReplyUpdate: vi.fn(),
-  handleCommentReplyDelete: vi.fn(async () => {}),
-  handleCommentPositionUpdate: vi.fn(),
-}))
-
-const workflowHookMocks = vi.hoisted(() => ({
-  handleNodeDragStart: vi.fn(),
-  handleNodeDrag: vi.fn(),
-  handleNodeDragStop: vi.fn(),
-  handleNodeEnter: vi.fn(),
-  handleNodeLeave: vi.fn(),
-  handleNodeClick: vi.fn(),
-  handleNodeConnect: vi.fn(),
-  handleNodeConnectStart: vi.fn(),
-  handleNodeConnectEnd: vi.fn(),
-  handleNodeContextMenu: vi.fn(),
-  handleHistoryBack: vi.fn(),
-  handleHistoryForward: vi.fn(),
-  handleEdgeEnter: vi.fn(),
-  handleEdgeLeave: vi.fn(),
-  handleEdgesChange: vi.fn(),
-  handleEdgeContextMenu: vi.fn(),
-  handleSelectionStart: vi.fn(),
-  handleSelectionChange: vi.fn(),
-  handleSelectionDrag: vi.fn(),
-  handleSelectionContextMenu: vi.fn(),
-  handlePaneContextMenu: vi.fn(),
-  handleSyncWorkflowDraft: vi.fn(),
-  syncWorkflowDraftWhenPageClose: vi.fn(),
-  fetchInspectVars: vi.fn(),
-  isValidConnection: vi.fn(),
-  useShortcuts: vi.fn(),
-  useWorkflowSearch: vi.fn(),
-}))
-
-function createInitializedNode(id: string, x: number, label: string) {
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
   return {
-    id,
-    position: { x, y: 0 },
-    positionAbsolute: { x, y: 0 },
-    width: 160,
-    height: 40,
-    sourcePosition: Position.Right,
-    targetPosition: Position.Left,
-    data: { label },
-    [internalsSymbol]: {
-      positionAbsolute: { x, y: 0 },
-      handleBounds: {
-        source: [
-          {
-            id: null,
-            nodeId: id,
-            type: 'source',
-            position: Position.Right,
-            x: 160,
-            y: 0,
-            width: 0,
-            height: 40,
-          },
-        ],
-        target: [
-          {
-            id: null,
-            nodeId: id,
-            type: 'target',
-            position: Position.Left,
-            x: 0,
-            y: 0,
-            width: 0,
-            height: 40,
-          },
-        ],
-      },
-      z: 0,
-    },
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.workflow.comments.get': api.comments,
+      'apps.byAppId.workflows.draft.variables.get': async () => ({ items: [], total: 0 }),
+      'apps.byAppId.workflow.comments.mentionUsers.get': async () => ({ users: [] }),
+      'apps.byAppId.workflow.comments.byCommentId.get': api.comment,
+      'apps.byAppId.workflow.comments.byCommentId.delete': api.deleteComment,
+      'apps.byAppId.workflow.comments.byCommentId.replies.byReplyId.delete': api.deleteReply,
+    }),
   }
-}
-
-const baseNodes = [
-  createInitializedNode('node-1', 0, 'Workflow node node-1'),
-  createInitializedNode('node-2', 240, 'Workflow node node-2'),
-] as unknown as Node[]
-
-const baseEdges = [
-  {
-    id: 'edge-1',
-    type: 'custom',
-    source: 'node-1',
-    target: 'node-2',
-    data: { sourceType: 'start', targetType: 'end' },
-  },
-] as unknown as Edge[]
-
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => ({
-    currentWorkspace: { id: 'workspace-1' },
-  }))
 })
 
-vi.mock('next/dynamic', () => ({
-  default: () => () => null,
-}))
-
-vi.mock('@/next/navigation', () => ({
-  useParams: () => ({
-    appId: 'app-1',
+const WorkflowEventProvider = EventEmitterContext.Provider
+const nodes = [
+  createNode({
+    id: 'code',
+    data: { ...codeNodeDefault.defaultValue, title: 'Transform documents' },
   }),
-  useRouter: () => ({
-    push: vi.fn(),
-  }),
-  useSearchParams: () => new URLSearchParams(),
-}))
-
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => ({
-    eventEmitter: {
-      useSubscription: (handler: (payload: WorkflowUpdateEvent) => void) => {
-        eventEmitterState.subscription = handler
-      },
-    },
-  }),
-}))
-
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: [] }),
-  useAllCustomTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: [] }),
-  useAllWorkflowTools: () => ({ data: [] }),
-}))
-
-vi.mock('@/service/workflow', () => ({
-  fetchAllInspectVars: vi.fn().mockResolvedValue([]),
-}))
-
-vi.mock('@/app/notifications', () => ({
-  toast: {
-    error: toastErrorMock,
-    info: toastInfoMock,
-  },
-}))
-
-vi.mock('../collaboration/core/collaboration-manager', () => ({
-  collaborationManager: {
-    canFlushGraphOnPageClose: collaborationBridge.canFlushGraphOnPageClose,
-    canUseLocalDraftFallback: collaborationBridge.canUseLocalDraftFallback,
-    isConnected: collaborationBridge.isConnected,
-    onGraphImport: (handler: (payload: { nodes: Node[]; edges: Edge[] }) => void) => {
-      collaborationBridge.graphImportHandler = handler
-      return vi.fn()
-    },
-    onHistoryAction: (handler: (payload: unknown) => void) => {
-      collaborationBridge.historyActionHandler = handler
-      return vi.fn()
-    },
-    onRestoreIntent: (handler: typeof collaborationBridge.restoreIntentHandler) => {
-      collaborationBridge.restoreIntentHandler = handler
-      return vi.fn()
-    },
-  },
-}))
-
-vi.mock('../comment-manager', () => ({
-  default: () => <div data-testid="comment-manager" />,
-}))
-
-vi.mock('../comment/cursor', () => ({
-  CommentCursor: () => <div data-testid="comment-cursor" />,
-}))
-
-vi.mock('../comment/comment-input', () => ({
-  CommentInput: ({ disabled, onCancel }: { disabled?: boolean; onCancel?: () => void }) => (
-    <button
-      type="button"
-      data-testid={disabled ? 'comment-input-preview' : 'comment-input-active'}
-      onClick={onCancel}
-    >
-      comment-input
-    </button>
-  ),
-}))
-
-vi.mock('../comment/comment-icon', () => ({
-  CommentIcon: ({
-    comment,
-    onClick,
-    onPositionUpdate,
-  }: {
-    comment: { id: string }
-    onClick?: () => void
-    onPositionUpdate?: (position: { elementX: number; elementY: number }) => void
-  }) => (
-    <button
-      type="button"
-      data-testid={`comment-icon-${comment.id}`}
-      onClick={() => {
-        onClick?.()
-        onPositionUpdate?.({ elementX: 1, elementY: 2 })
-      }}
-    >
-      icon
-    </button>
-  ),
-}))
-
-vi.mock('../comment/thread', () => ({
-  CommentThread: ({
-    onDelete,
-    onReplyDelete,
-    onNext,
-  }: {
-    onDelete?: () => void
-    onReplyDelete?: (replyId: string) => void
-    onNext?: () => void
-  }) => (
-    <div data-testid="comment-thread">
-      <button type="button" onClick={onDelete}>
-        delete-thread
-      </button>
-      <button type="button" onClick={() => onReplyDelete?.('reply-1')}>
-        delete-reply
-      </button>
-      <button type="button" onClick={onNext}>
-        next-comment
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('../hooks/use-workflow-comment', () => ({
-  useWorkflowComment: () => workflowCommentState,
-}))
-
-vi.mock('../base/confirm', () => ({
-  default: ({
-    isShow,
-    title,
-    desc,
-    onConfirm,
-    onCancel,
-  }: {
-    isShow: boolean
-    title?: string
-    desc?: string
-    onConfirm: () => void
-    onCancel: () => void
-  }) =>
-    isShow ? (
-      <div role="alertdialog" data-testid="confirm-dialog">
-        {title && <div>{title}</div>}
-        {desc && <div>{desc}</div>}
-        <button type="button" onClick={onConfirm}>
-          common.operation.confirm
-        </button>
-        <button type="button" onClick={onCancel}>
-          common.operation.cancel
-        </button>
-      </div>
-    ) : null,
-}))
-
-vi.mock('../candidate-node', () => ({
-  default: () => null,
-}))
-
-vi.mock('../custom-connection-line', () => ({
-  default: () => null,
-}))
-
-vi.mock('../custom-edge', () => ({
-  default: () =>
-    React.createElement(BaseEdge, {
-      id: 'edge-1',
-      path: 'M 0 0 L 100 0',
-    }),
-}))
-
-vi.mock('../help-line', () => ({
-  default: () => null,
-}))
-
-vi.mock('../nodes', () => ({
-  default: ({ id }: { id: string }) =>
-    React.createElement('div', { 'data-testid': `workflow-node-${id}` }, `Workflow node ${id}`),
-}))
-
-vi.mock('../nodes/data-source-empty', () => ({
-  default: () => null,
-}))
-
-vi.mock('../nodes/iteration-start', () => ({
-  default: () => null,
-}))
-
-vi.mock('../nodes/loop-start', () => ({
-  default: () => null,
-}))
-
-vi.mock('../note-node', () => ({
-  default: () => null,
-}))
-
-vi.mock('../operator', () => ({
-  default: () => null,
-}))
-
-vi.mock('../operator/control', () => ({
-  default: () => null,
-}))
-
-vi.mock('../simple-node', () => ({
-  default: () => null,
-}))
-
-vi.mock('../syncing-data-modal', () => ({
-  default: () => null,
-}))
-
-vi.mock('../shortcuts/use-workflow-hotkeys', () => ({
-  useWorkflowHotkeys: workflowHookMocks.useShortcuts,
-}))
-
-vi.mock('../hooks/use-edges-interactions', () => ({
-  useEdgesInteractions: () => ({
-    handleEdgeEnter: workflowHookMocks.handleEdgeEnter,
-    handleEdgeLeave: workflowHookMocks.handleEdgeLeave,
-    handleEdgesChange: workflowHookMocks.handleEdgesChange,
-    handleEdgeContextMenu: workflowHookMocks.handleEdgeContextMenu,
-  }),
-}))
-
-vi.mock('../hooks/use-nodes-interactions', () => ({
-  useNodesInteractions: () => ({
-    handleNodesCopy: vi.fn(),
-    handleNodesDelete: vi.fn(),
-    handleNodesDuplicate: vi.fn(),
-    handleNodesPaste: vi.fn(),
-    handleNodeDragStart: workflowHookMocks.handleNodeDragStart,
-    handleNodeDrag: workflowHookMocks.handleNodeDrag,
-    handleNodeDragStop: workflowHookMocks.handleNodeDragStop,
-    handleNodeEnter: workflowHookMocks.handleNodeEnter,
-    handleNodeLeave: workflowHookMocks.handleNodeLeave,
-    handleNodeClick: workflowHookMocks.handleNodeClick,
-    handleNodeConnect: workflowHookMocks.handleNodeConnect,
-    handleNodeConnectStart: workflowHookMocks.handleNodeConnectStart,
-    handleNodeConnectEnd: workflowHookMocks.handleNodeConnectEnd,
-    handleNodeContextMenu: workflowHookMocks.handleNodeContextMenu,
-    handleHistoryBack: workflowHookMocks.handleHistoryBack,
-    handleHistoryForward: workflowHookMocks.handleHistoryForward,
-  }),
-}))
-
-vi.mock('../hooks/use-workflow', () => ({
-  useNodesReadOnly: () => ({
-    nodesReadOnly: false,
-    getNodesReadOnly: () => false,
-  }),
-
-  useWorkflow: () => ({
-    isValidConnection: workflowHookMocks.isValidConnection,
-  }),
-  useWorkflowReadOnly: () => ({
-    workflowReadOnly: false,
-  }),
-}))
-
-vi.mock('../hooks/use-nodes-sync-draft', () => ({
-  useNodesSyncDraft: () => ({
-    handleSyncWorkflowDraft: workflowHookMocks.handleSyncWorkflowDraft,
-    syncWorkflowDraftWhenPageClose: workflowHookMocks.syncWorkflowDraftWhenPageClose,
-  }),
-}))
-
-vi.mock('../hooks/use-panel-interactions', () => ({
-  usePanelInteractions: () => ({
-    handlePaneContextMenu: workflowHookMocks.handlePaneContextMenu,
-  }),
-}))
-
-vi.mock('../hooks/use-DSL', () => ({
-  useDSL: () => ({
-    exportCheck: vi.fn(),
-  }),
-}))
-
-vi.mock('../hooks/use-selection-interactions', () => ({
-  useSelectionInteractions: () => ({
-    handleSelectionStart: workflowHookMocks.handleSelectionStart,
-    handleSelectionChange: workflowHookMocks.handleSelectionChange,
-    handleSelectionDrag: workflowHookMocks.handleSelectionDrag,
-    handleSelectionContextMenu: workflowHookMocks.handleSelectionContextMenu,
-  }),
-}))
-
-vi.mock('../hooks/use-set-workflow-vars-with-value', () => ({
-  useSetWorkflowVarsWithValue: () => ({
-    fetchInspectVars: workflowHookMocks.fetchInspectVars,
-  }),
-}))
-
-vi.mock('../hooks/use-workflow-panel-interactions', () => ({
-  useWorkflowMoveMode: () => ({
-    isCommentModeAvailable: false,
-  }),
-}))
-
-vi.mock('../hooks/use-workflow-refresh-draft', () => ({
-  useWorkflowRefreshDraft: () => ({
-    handleRefreshWorkflowDraft: vi.fn(),
-  }),
-}))
-
-vi.mock('../hooks/use-workflow-start-run', () => ({
-  useWorkflowStartRun: () => ({
-    handleStartWorkflowRun: vi.fn(),
-    handleWorkflowStartRunInChatflow: vi.fn(),
-  }),
-}))
-
-vi.mock('../hooks/use-workflow-search', () => ({
-  useWorkflowSearch: workflowHookMocks.useWorkflowSearch,
-}))
-
-vi.mock('../hooks/use-locate-node', () => ({
-  useLocateNode: vi.fn(),
-}))
-
-vi.mock('../nodes/_base/components/variable/use-match-schema-type', () => ({
-  default: () => ({
-    schemaTypeDefinitions: undefined,
-  }),
-}))
-
-function renderSubject(options?: {
-  nodes?: Node[]
-  edges?: Edge[]
-  initialStoreState?: Record<string, unknown>
-  isCollaborationEnabled?: boolean
-}) {
-  const {
-    nodes = baseNodes,
-    edges = baseEdges,
-    initialStoreState,
-    isCollaborationEnabled,
-  } = options ?? {}
-
-  return renderWorkflowComponent(
-    <ReactFlowProvider>
-      <Workflow nodes={nodes} edges={edges} isCollaborationEnabled={isCollaborationEnabled}>
-        <ReactFlowEdgeBootstrap nodes={nodes} edges={edges} />
-      </Workflow>
-    </ReactFlowProvider>,
-    {
-      initialStoreState,
-      resource: { kind: 'app' as const, appId: 'flow-1', mode: 'workflow' as const },
-      hooksStoreProps: {
-        fileSettings: {},
-      },
-    },
-  )
+]
+type Manager = typeof collaborationManager
+const events = {
+  graph: new Set<Parameters<Manager['onGraphImport']>[0]>(),
+  history: new Set<Parameters<Manager['onHistoryAction']>[0]>(),
+  restore: new Set<Parameters<Manager['onRestoreIntent']>[0]>(),
 }
 
-function ReactFlowEdgeBootstrap({ nodes, edges }: { nodes: Node[]; edges: Edge[] }) {
-  const store = useStoreApi()
-
-  React.useEffect(() => {
-    store.setState({
-      edges,
-      width: 500,
-      height: 500,
-      nodeInternals: new Map(nodes.map((node) => [node.id, node])),
-    })
-    reactFlowBridge.store = store
-
+beforeEach(() => {
+  for (const listeners of Object.values(events)) listeners.clear()
+  vi.spyOn(collaborationManager, 'canFlushGraphOnPageClose').mockReturnValue(true)
+  vi.spyOn(collaborationManager, 'canUseLocalDraftFallback').mockReturnValue(false)
+  vi.spyOn(collaborationManager, 'onGraphImport').mockImplementation((handler) => {
+    events.graph.add(handler)
     return () => {
-      reactFlowBridge.store = null
+      events.graph.delete(handler)
     }
-  }, [edges, nodes, store])
+  })
+  vi.spyOn(collaborationManager, 'onHistoryAction').mockImplementation((handler) => {
+    events.history.add(handler)
+    return () => {
+      events.history.delete(handler)
+    }
+  })
+  vi.spyOn(collaborationManager, 'onRestoreIntent').mockImplementation((handler) => {
+    events.restore.add(handler)
+    return () => {
+      events.restore.delete(handler)
+    }
+  })
+  vi.spyOn(collaborationManager, 'emitCommentsUpdate').mockImplementation(() => {})
+  vi.spyOn(toast, 'info').mockImplementation(() => '')
+  vi.spyOn(toast, 'error').mockImplementation(() => '')
+  api.comments.mockReset().mockResolvedValue({ data: [] })
+  api.comment.mockReset()
+  api.deleteComment.mockReset().mockResolvedValue({ result: 'success' })
+  api.deleteReply.mockReset().mockResolvedValue({ result: 'success' })
+})
+afterEach(async () => {
+  await act(async () => cleanup())
+  vi.restoreAllMocks()
+})
 
+function GraphApi({ apiRef }: { apiRef: RefObject<ReactFlowInstance | null> }) {
+  const instance = useReactFlow()
+  useImperativeHandle(apiRef, () => instance, [instance])
   return null
 }
 
-function getPane(container: HTMLElement) {
-  const pane = container.querySelector('.react-flow__pane') as HTMLElement | null
-
-  if (!pane) throw new Error('Expected a rendered React Flow pane')
-
-  return pane
+function renderSubject({
+  initialStoreState,
+  graphNodes = nodes,
+  edges = [],
+  isCollaborationEnabled = false,
+}: {
+  initialStoreState?: Partial<Shape>
+  isCollaborationEnabled?: boolean
+  graphNodes?: WorkflowProps['nodes']
+  edges?: WorkflowProps['edges']
+} = {}) {
+  const { queryClient } = createConsoleQueryWrapper({
+    systemFeatures: { enable_collaboration_mode: true },
+  })
+  seedAppDslVersion(queryClient)
+  seedModelProviderQueries(queryClient)
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+  queryClient.setQueryData(consoleQuery.workspaces.current.agentProviders.get.queryKey(), [])
+  queryClient.setQueryData(consoleQuery.workspaces.current.triggers.get.queryKey({ input: {} }), [])
+  const eventEmitter = new EventEmitter<EventEmitterValue>()
+  const graph = createRef<ReactFlowInstance>()
+  // Workflow's host supplies persistence through this public hooks-store contract.
+  const saveDraft = vi.fn<HooksStoreShape['doSyncWorkflowDraft']>().mockResolvedValue(undefined)
+  const saveOnClose = vi.fn<HooksStoreShape['syncWorkflowDraftWhenPageClose']>()
+  const subject = (props: Partial<WorkflowProps> = {}) => (
+    <NuqsTestingAdapter>
+      <WorkflowEventProvider value={{ eventEmitter }}>
+        <WorkflowWithDefaultContext nodes={graphNodes} edges={edges}>
+          <Workflow
+            nodes={graphNodes}
+            edges={edges}
+            isCollaborationEnabled={isCollaborationEnabled}
+            {...props}
+          >
+            <GraphApi apiRef={graph} />
+          </Workflow>
+        </WorkflowWithDefaultContext>
+      </WorkflowEventProvider>
+    </NuqsTestingAdapter>
+  )
+  const view = renderWorkflowComponent(subject(), {
+    queryClient,
+    initialStoreState,
+    hooksStoreProps: {
+      doSyncWorkflowDraft: saveDraft,
+      syncWorkflowDraftWhenPageClose: saveOnClose,
+    },
+  })
+  return { ...view, eventEmitter, saveDraft, saveOnClose, subject, graph }
 }
 
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: [],
-  }))
+it('opens the node context menu and clears its target when the graph is replaced', async () => {
+  const { store, eventEmitter } = renderSubject()
+  fireEvent.contextMenu(screen.getByText('Transform documents'), { clientX: 24, clientY: 48 })
+  expect(store.getState().contextMenuTarget).toMatchObject({ type: 'node', nodeId: 'code' })
+  expect(await screen.findByRole('menu')).toBeInTheDocument()
+  act(() =>
+    eventEmitter.emit({
+      type: WORKFLOW_DATA_UPDATE,
+      payload: {
+        nodes: [
+          createNode({
+            id: 'imported',
+            data: { ...codeNodeDefault.defaultValue, title: 'Imported graph' },
+          }),
+        ],
+        edges: [],
+      },
+    }),
+  )
+  expect(store.getState().contextMenuTarget).toBeUndefined()
+  expect(screen.getByText('Imported graph')).toBeInTheDocument()
+  expect(screen.queryByText('Transform documents')).not.toBeInTheDocument()
 })
 
-describe('Workflow edge event wiring', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    collaborationBridge.canFlushGraphOnPageClose.mockReturnValue(true)
-    collaborationBridge.canUseLocalDraftFallback.mockReturnValue(false)
-    collaborationBridge.isConnected.mockReturnValue(true)
-    eventEmitterState.subscription = null
-    reactFlowBridge.store = null
-    collaborationBridge.graphImportHandler = null
-    collaborationBridge.historyActionHandler = null
-    collaborationBridge.restoreIntentHandler = null
-    workflowCommentState.comments = []
-    workflowCommentState.pendingComment = null
-    workflowCommentState.activeComment = null
-    workflowCommentState.activeCommentLoading = false
-    workflowCommentState.replySubmitting = false
-    workflowCommentState.replyUpdating = false
+it('reports a persistent error when the final save fails', async () => {
+  const { saveDraft, unmount } = renderSubject({
+    initialStoreState: { isWorkflowDataLoaded: true },
   })
+  saveDraft.mockImplementation(async (_skipRefresh, callback) => callback?.onError?.())
+  await act(async () => unmount())
+  expect(toast.error).toHaveBeenCalledWith('workflow.common.draftSaveFailed', { timeout: 0 })
+})
 
-  it('should forward pane, node and edge-change events to workflow handlers when emitted by the canvas', async () => {
-    const { container } = renderSubject()
-    const pane = getPane(container)
-
-    act(() => {
-      fireEvent.contextMenu(screen.getByText('Workflow node node-1'), { clientX: 24, clientY: 48 })
-      fireEvent.contextMenu(pane, { clientX: 24, clientY: 48 })
-    })
-
-    await waitFor(() => {
-      expect(reactFlowBridge.store?.getState().onEdgesChange).toBeTypeOf('function')
-    })
-
-    act(() => {
-      reactFlowBridge.store
-        ?.getState()
-        .onEdgesChange?.([{ id: 'edge-1', type: 'select', selected: true }])
-    })
-
-    await waitFor(() => {
-      expect(workflowHookMocks.handleEdgesChange).toHaveBeenCalledWith(
-        expect.arrayContaining([expect.objectContaining({ id: 'edge-1', type: 'select' })]),
-      )
-      expect(workflowHookMocks.handleNodeContextMenu).toHaveBeenCalledWith(
-        expect.objectContaining({
-          clientX: 24,
-          clientY: 48,
-        }),
-        expect.objectContaining({ id: 'node-1' }),
-      )
-      expect(workflowHookMocks.handlePaneContextMenu).toHaveBeenCalledWith(
-        expect.objectContaining({
-          clientX: 24,
-          clientY: 48,
-        }),
-      )
-    })
+it('cancels the queued debounce and saves exactly once on unmount', async () => {
+  const { store, saveDraft, unmount } = renderSubject({
+    initialStoreState: { isWorkflowDataLoaded: true },
   })
-
-  it('should keep edge deletion delegated to workflow shortcuts instead of React Flow defaults', async () => {
-    renderSubject({
-      edges: [
-        {
-          ...baseEdges[0],
-          selected: true,
-        } as Edge,
-      ],
+  vi.useFakeTimers()
+  try {
+    store.getState().debouncedSyncWorkflowDraft(saveDraft)
+    await act(async () => unmount())
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
     })
-
-    act(() => {
-      fireEvent.keyDown(document.body, { key: 'Delete' })
-    })
-
-    await waitFor(() => {
-      expect(screen.getByText('Workflow node node-1')).toBeInTheDocument()
-    })
-    expect(workflowHookMocks.handleEdgesChange).not.toHaveBeenCalledWith(
-      expect.arrayContaining([expect.objectContaining({ id: 'edge-1', type: 'remove' })]),
+    expect(saveDraft).toHaveBeenCalledExactlyOnceWith(
+      true,
+      expect.objectContaining({ onError: expect.any(Function) }),
     )
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+it('does not save before data loads or merely because collaboration props change', async () => {
+  const { store, rerender, subject, saveDraft, saveOnClose, unmount } = renderSubject()
+  rerender(subject({ isCollaborationEnabled: true }))
+  expect(saveDraft).not.toHaveBeenCalled()
+  expect(saveOnClose).not.toHaveBeenCalled()
+  await act(async () => unmount())
+  expect(store.getState().isWorkflowDataLoaded).toBe(false)
+  expect(saveDraft).not.toHaveBeenCalled()
+  expect(saveOnClose).not.toHaveBeenCalled()
+})
+
+it('keeps loaded edits unsaved during rerenders, then flushes on actual exit', async () => {
+  const { rerender, subject, saveDraft, unmount } = renderSubject({
+    initialStoreState: { isWorkflowDataLoaded: true },
   })
+  rerender(subject({ isCollaborationEnabled: true }))
+  expect(saveDraft).not.toHaveBeenCalled()
+  await act(async () => unmount())
+  expect(saveDraft).toHaveBeenCalledTimes(1)
+})
 
-  it('should clear context menu target when workflow data updates', () => {
-    const { store } = renderSubject({
-      initialStoreState: {
-        contextMenuTarget: { type: 'edge', edgeId: 'edge-1' },
-      },
-    })
-
-    act(() => {
-      eventEmitterState.subscription?.({
-        type: WORKFLOW_DATA_UPDATE,
-        payload: {
-          nodes: baseNodes,
-          edges: [],
-        },
-      })
-    })
-
-    expect(store.getState().contextMenuTarget).toBeUndefined()
-  })
-
-  it('should show a persistent error toast when saving the draft on unmount fails', () => {
-    workflowHookMocks.handleSyncWorkflowDraft.mockImplementationOnce(
-      (_sync, _notRefreshWhenSyncError, callback) => {
-        callback?.onError?.()
-      },
-    )
-
-    const { unmount } = renderSubject({
-      initialStoreState: { isWorkflowDataLoaded: true },
+it.each([
+  { name: 'current graph leader', canFlush: true, fallback: false, localSaves: 0, saves: 1 },
+  {
+    name: 'local draft before first connection',
+    canFlush: false,
+    fallback: true,
+    localSaves: 1,
+    saves: 0,
+  },
+  {
+    name: 'session without flush permission',
+    canFlush: false,
+    fallback: false,
+    localSaves: 0,
+    saves: 0,
+  },
+])(
+  'uses the safe persistence path for a $name',
+  async ({ canFlush, fallback, localSaves, saves }) => {
+    vi.mocked(collaborationManager.canFlushGraphOnPageClose).mockReturnValue(canFlush)
+    vi.mocked(collaborationManager.canUseLocalDraftFallback).mockReturnValue(fallback)
+    const { saveDraft, saveOnClose, unmount } = renderSubject({
       isCollaborationEnabled: true,
-    })
-
-    unmount()
-
-    expect(toastErrorMock).toHaveBeenCalledWith('workflow.common.draftSaveFailed', {
-      timeout: 0,
-    })
-  })
-
-  it('should cancel the pending debounced save before the final unmount sync', () => {
-    vi.useFakeTimers()
-    try {
-      const pendingSync = vi.fn()
-      const { store, unmount } = renderSubject({
-        initialStoreState: { isWorkflowDataLoaded: true },
-      })
-      store.getState().debouncedSyncWorkflowDraft(pendingSync)
-
-      unmount()
-      vi.advanceTimersByTime(5000)
-
-      expect(workflowHookMocks.handleSyncWorkflowDraft).toHaveBeenCalledTimes(1)
-      expect(pendingSync).not.toHaveBeenCalled()
-    } finally {
-      vi.useRealTimers()
-    }
-  })
-
-  it('should skip the unmount save before workflow data has loaded', () => {
-    const { unmount } = renderSubject()
-
-    unmount()
-
-    expect(workflowHookMocks.handleSyncWorkflowDraft).not.toHaveBeenCalled()
-    expect(toastErrorMock).not.toHaveBeenCalled()
-  })
-
-  it('should not save the draft when the workflow rerenders', () => {
-    const { rerender } = renderSubject({
       initialStoreState: { isWorkflowDataLoaded: true },
-      isCollaborationEnabled: false,
     })
+    await act(async () => unmount())
+    expect(saveOnClose).toHaveBeenCalledTimes(localSaves)
+    expect(saveDraft).toHaveBeenCalledTimes(saves)
+  },
+)
 
-    rerender(
-      <ReactFlowProvider>
-        <Workflow nodes={baseNodes} edges={baseEdges} isCollaborationEnabled>
-          <ReactFlowEdgeBootstrap nodes={baseNodes} edges={baseEdges} />
-        </Workflow>
-      </ReactFlowProvider>,
-    )
-
-    expect(workflowHookMocks.handleSyncWorkflowDraft).not.toHaveBeenCalled()
-    expect(toastErrorMock).not.toHaveBeenCalled()
-  })
-
-  it('should skip the unmount save when the current collaborator is not the draft leader', () => {
-    collaborationBridge.canFlushGraphOnPageClose.mockReturnValue(false)
-
-    const { unmount } = renderSubject({
-      initialStoreState: { isWorkflowDataLoaded: true },
-      isCollaborationEnabled: true,
-    })
-
-    unmount()
-
-    expect(workflowHookMocks.handleSyncWorkflowDraft).not.toHaveBeenCalled()
-    expect(toastErrorMock).not.toHaveBeenCalled()
-  })
-
-  it('should still save on unmount when collaboration is enabled but never connected', () => {
-    // No connection means no leader election, so the collaborative flush guard can never be
-    // satisfied. Skipping the save here would silently discard unsaved edits.
-    collaborationBridge.isConnected.mockReturnValue(false)
-    collaborationBridge.canFlushGraphOnPageClose.mockReturnValue(false)
-    collaborationBridge.canUseLocalDraftFallback.mockReturnValue(true)
-
-    const { unmount } = renderSubject({
-      initialStoreState: { isWorkflowDataLoaded: true },
-      isCollaborationEnabled: true,
-    })
-
-    unmount()
-
-    expect(workflowHookMocks.syncWorkflowDraftWhenPageClose).toHaveBeenCalledTimes(1)
-    expect(workflowHookMocks.handleSyncWorkflowDraft).not.toHaveBeenCalled()
-  })
-
-  it('should skip the unmount save after an established collaboration disconnects', () => {
-    collaborationBridge.isConnected.mockReturnValue(false)
-    collaborationBridge.canFlushGraphOnPageClose.mockReturnValue(false)
-    collaborationBridge.canUseLocalDraftFallback.mockReturnValue(false)
-
-    const { unmount } = renderSubject({
-      initialStoreState: { isWorkflowDataLoaded: true },
-      isCollaborationEnabled: true,
-    })
-
-    unmount()
-
-    expect(workflowHookMocks.syncWorkflowDraftWhenPageClose).not.toHaveBeenCalled()
-    expect(workflowHookMocks.handleSyncWorkflowDraft).not.toHaveBeenCalled()
-  })
-
-  it('should render confirm description and clear showConfirm when cancelled', async () => {
-    const user = userEvent.setup()
-    const onConfirm = vi.fn()
-    const onCancel = vi.fn()
-    const { store } = renderSubject({
-      initialStoreState: {
-        showConfirm: {
-          title: 'Confirm title',
-          desc: 'Confirm description',
-          onConfirm,
-          onCancel,
-        },
+it('cancels the host confirmation without executing its action', async () => {
+  const user = userEvent.setup()
+  const onConfirm = vi.fn()
+  const onCancel = vi.fn()
+  const { store } = renderSubject({
+    initialStoreState: {
+      showConfirm: {
+        title: 'Delete selected nodes',
+        desc: 'Their connections will also be removed',
+        onConfirm,
+        onCancel,
       },
-    })
-
-    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
-    expect(screen.getByText('Confirm title')).toBeInTheDocument()
-    expect(screen.getByText('Confirm description')).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
-
-    await waitFor(() => {
-      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-    })
-    expect(store.getState().showConfirm).toBeUndefined()
-    expect(onConfirm).not.toHaveBeenCalled()
-    expect(onCancel).toHaveBeenCalledTimes(1)
+    },
   })
+  expect(screen.getByRole('alertdialog')).toHaveTextContent(
+    'Their connections will also be removed',
+  )
+  await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+  expect(store.getState().showConfirm).toBeUndefined()
+  expect(onCancel).toHaveBeenCalledTimes(1)
+  expect(onConfirm).not.toHaveBeenCalled()
+})
 
-  it('should call showConfirm.onConfirm when confirm is clicked', () => {
-    const onConfirm = vi.fn()
-
-    renderSubject({
-      initialStoreState: {
-        showConfirm: {
-          title: 'Confirm title',
-          onConfirm,
-        },
-      },
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
-
-    expect(onConfirm).toHaveBeenCalledTimes(1)
+it('executes the host action after confirmation', async () => {
+  const user = userEvent.setup()
+  const onConfirm = vi.fn()
+  renderSubject({
+    initialStoreState: { showConfirm: { title: 'Delete selected nodes', onConfirm } },
   })
+  await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+  expect(onConfirm).toHaveBeenCalledTimes(1)
+})
 
-  it('should sync graph import events and show history action toast', async () => {
-    renderSubject()
-
-    const importedNodes = [
-      createInitializedNode('node-3', 480, 'Workflow node node-3'),
-    ] as unknown as Node[]
-
-    act(() => {
-      collaborationBridge.graphImportHandler?.({
-        nodes: importedNodes,
+it('applies imported collaboration graphs and announces remote history actions', () => {
+  renderSubject()
+  act(() => {
+    for (const handler of [...events.graph])
+      handler({
+        nodes: [
+          createNode({
+            id: 'remote',
+            data: { ...codeNodeDefault.defaultValue, title: 'Remote graph' },
+          }),
+        ],
         edges: [],
       })
-      collaborationBridge.historyActionHandler?.({ action: 'undo' })
-    })
-
-    await waitFor(() => {
-      expect(screen.getByText('Workflow node node-3')).toBeInTheDocument()
-      expect(toastInfoMock).toHaveBeenCalledTimes(1)
-    })
+    for (const handler of events.history) handler({ action: 'undo' })
   })
-
-  it('should show restore intent toast when another collaborator restores a workflow version', async () => {
-    renderSubject()
-
-    act(() => {
-      collaborationBridge.restoreIntentHandler?.({
-        versionId: 'version-1',
-        versionName: 'Version One',
-        initiatorUserId: 'user-1',
-        initiatorName: 'Alice',
-      })
-    })
-
-    await waitFor(() => {
-      expect(toastInfoMock).toHaveBeenCalledWith(
-        'workflowHistory.versionHistory.action.restoreInProgress:{"userName":"Alice","versionName":"Version One"}',
-      )
-    })
-  })
-
-  it('should render comment overlays and execute comment actions in comment mode', async () => {
-    workflowCommentState.comments = [
-      { id: 'comment-1', resolved: false },
-      { id: 'comment-2', resolved: false },
-    ]
-    workflowCommentState.activeComment = { id: 'comment-1', resolved: false }
-    workflowCommentState.pendingComment = { elementX: 20, elementY: 30 }
-
-    const { container, store } = renderSubject({
-      initialStoreState: {
-        controlMode: ControlMode.Comment,
-        showUserComments: true,
-        showResolvedComments: false,
-        isCommentPlacing: true,
-        pendingComment: null,
-        isCommentPreviewHovering: true,
-        mousePosition: {
-          pageX: 100,
-          pageY: 120,
-          elementX: 40,
-          elementY: 60,
-        },
-      },
-    })
-
-    const pane = getPane(container)
-    act(() => {
-      fireEvent.mouseMove(pane, { clientX: 150, clientY: 180 })
-    })
-
-    expect(screen.getByTestId('comment-cursor')).toBeInTheDocument()
-    expect(screen.getByTestId('comment-input-preview')).toBeInTheDocument()
-    expect(screen.getByTestId('comment-input-active')).toBeInTheDocument()
-    expect(screen.getByTestId('comment-icon-comment-1')).toBeInTheDocument()
-    expect(screen.getByTestId('comment-icon-comment-2')).toBeInTheDocument()
-    expect(screen.getByTestId('comment-thread')).toBeInTheDocument()
-
-    act(() => {
-      fireEvent.click(screen.getByRole('button', { name: 'next-comment' }))
-    })
-    expect(workflowCommentState.handleCommentIconClick).toHaveBeenCalledWith({
-      id: 'comment-2',
-      resolved: false,
-    })
-
-    act(() => {
-      fireEvent.click(screen.getByRole('button', { name: 'delete-thread' }))
-    })
-    expect(store.getState().showConfirm).toBeDefined()
-
-    await act(async () => {
-      await store.getState().showConfirm?.onConfirm()
-    })
-    expect(workflowCommentState.handleCommentDelete).toHaveBeenCalledWith('comment-1')
-
-    act(() => {
-      fireEvent.click(screen.getByRole('button', { name: 'delete-reply' }))
-    })
-    expect(store.getState().showConfirm).toBeDefined()
-    await act(async () => {
-      await store.getState().showConfirm?.onConfirm()
-    })
-    expect(workflowCommentState.handleCommentReplyDelete).toHaveBeenCalledWith(
-      'comment-1',
-      'reply-1',
-    )
-
-    const wheelEvent = new WheelEvent('wheel', {
-      cancelable: true,
-      ctrlKey: true,
-    })
-    act(() => {
-      window.dispatchEvent(wheelEvent)
-    })
-
-    const gestureEvent = new Event('gesturestart', { cancelable: true })
-    act(() => {
-      window.dispatchEvent(gestureEvent)
-    })
-  })
+  expect(screen.getByText('Remote graph')).toBeInTheDocument()
+  expect(screen.queryByText('Transform documents')).not.toBeInTheDocument()
+  expect(toast.info).toHaveBeenCalledExactlyOnceWith('workflow.collaboration.historyAction.generic')
 })
 
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => false) }
+it('announces who is restoring the remote workflow version', () => {
+  renderSubject()
+  act(() => {
+    for (const handler of events.restore)
+      handler({
+        versionId: 'version-1',
+        versionName: 'Version One',
+        initiatorUserId: 'peer',
+        initiatorName: 'Alice',
+      })
+  })
+  expect(toast.info).toHaveBeenCalledWith(
+    'workflowHistory.versionHistory.action.restoreInProgress:{"userName":"Alice","versionName":"Version One"}',
+  )
+})
+
+function comment(id: string, name: string, resolved = false): WorkflowCommentDetail {
+  return {
+    id,
+    position_x: 10,
+    position_y: 20,
+    content: `Review by ${name}`,
+    created_by: id,
+    created_by_account: { id, name, email: `${id}@example.com`, avatar_url: null },
+    created_at: 100,
+    updated_at: 100,
+    resolved,
+    mentions: [],
+    replies: [],
+  }
+}
+
+it('navigates unresolved comments and deletes a thread only after confirmation', async () => {
+  const user = userEvent.setup()
+  const first = comment('user-1', 'Alice')
+  const resolved = comment('resolved', 'Resolved author', true)
+  const last = comment('last', 'Last author')
+  let comments = [first, resolved, last]
+  api.comments.mockImplementation(async () => ({
+    data: comments.map((item) => ({ ...item, mention_count: 0, reply_count: 0, participants: [] })),
+  }))
+  api.comment.mockImplementation(async ({ params }) =>
+    comments.find((item) => item.id === params.comment_id)!,
+  )
+  api.deleteComment.mockImplementation(async ({ params }) => {
+    comments = comments.filter((item) => item.id !== params.comment_id)
+    return { result: 'success' }
+  })
+  renderSubject({ initialStoreState: { showUserComments: true, showResolvedComments: false } })
+  await user.click(
+    await screen.findByRole('button', { name: 'workflow.keyboard.openComment:{"name":"Alice"}' }),
+  )
+  const thread = await screen.findByRole('dialog', { name: 'workflowComments.comments.panelTitle' })
+  expect(thread).toHaveTextContent('Review by Alice')
+  expect(
+    screen.queryByRole('button', { name: /openComment.*Resolved author/ }),
+  ).not.toBeInTheDocument()
+  await user.click(
+    within(thread).getByRole('button', { name: 'workflowComments.comments.aria.nextComment' }),
+  )
+  await waitFor(() => expect(screen.getByRole('dialog')).toHaveTextContent('Review by Last author'))
+  await user.click(
+    screen.getByRole('button', { name: 'workflowComments.comments.aria.previousComment' }),
+  )
+  await waitFor(() => expect(screen.getByRole('dialog')).toHaveTextContent('Review by Alice'))
+  await user.click(
+    screen.getByRole('button', { name: 'workflowComments.comments.aria.deleteComment' }),
+  )
+  expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+  expect(api.deleteComment).not.toHaveBeenCalled()
+  await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+  expect(api.deleteComment).not.toHaveBeenCalled()
+  await user.click(
+    screen.getByRole('button', { name: 'workflowComments.comments.aria.deleteComment' }),
+  )
+  await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+  await waitFor(() =>
+    expect(api.deleteComment).toHaveBeenCalledExactlyOnceWith({
+      params: { app_id: 'app-1', comment_id: 'user-1' },
+    }),
+  )
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('button', { name: 'workflow.keyboard.openComment:{"name":"Alice"}' }),
+    ).not.toBeInTheDocument(),
+  )
+})
+
+it('deletes a reply through the real thread confirmation and refreshes its content', async () => {
+  const user = userEvent.setup()
+  const detail = comment('user-1', 'Alice')
+  detail.replies = [
+    {
+      id: 'reply-1',
+      content: 'Remove this reply',
+      created_by: 'user-1',
+      created_by_account: detail.created_by_account,
+      created_at: 101,
+    },
+  ]
+  api.comments.mockImplementation(async () => ({
+    data: [{ ...detail, mention_count: 0, reply_count: detail.replies.length, participants: [] }],
+  }))
+  api.comment.mockImplementation(async () => ({ ...detail, replies: [...detail.replies] }))
+  api.deleteReply.mockImplementation(async () => {
+    detail.replies = []
+    return { result: 'success' }
+  })
+  renderSubject({ initialStoreState: { showUserComments: true } })
+  await user.click(
+    await screen.findByRole('button', { name: 'workflow.keyboard.openComment:{"name":"Alice"}' }),
+  )
+  expect(await screen.findByText('Remove this reply')).toBeInTheDocument()
+  await user.click(
+    screen.getByRole('button', { name: 'workflowComments.comments.aria.replyActions' }),
+  )
+  await user.click(
+    await screen.findByRole('menuitem', { name: 'workflowComments.comments.actions.deleteReply' }),
+  )
+  expect(api.deleteReply).not.toHaveBeenCalled()
+  await user.click(await screen.findByRole('button', { name: 'common.operation.delete' }))
+  await waitFor(() =>
+    expect(api.deleteReply).toHaveBeenCalledExactlyOnceWith({
+      params: { app_id: 'app-1', comment_id: 'user-1', reply_id: 'reply-1' },
+    }),
+  )
+  await waitFor(() => expect(screen.queryByText('Remove this reply')).not.toBeInTheDocument())
+})
+
+it('deletes a selected connection only inside the canvas while preserving its endpoints', async () => {
+  const user = userEvent.setup()
+  const graphNodes = [
+    createNode({
+      id: 'source',
+      data: { ...codeNodeDefault.defaultValue, _connectedSourceHandleIds: ['source'] },
+    }),
+    createNode({
+      id: 'target',
+      position: { x: 400, y: 0 },
+      data: { ...codeNodeDefault.defaultValue, _connectedTargetHandleIds: ['target'] },
+    }),
+  ]
+  const edge = createEdge({
+    id: 'connection',
+    source: 'source',
+    target: 'target',
+    sourceHandle: 'source',
+    targetHandle: 'target',
+    selected: true,
+    data: { sourceType: BlockEnum.Code, targetType: BlockEnum.Code },
+  })
+  const { graph } = renderSubject({ graphNodes, edges: [edge] })
+  // Public React Flow state proves the graph mutation without inventing handle geometry in happy-dom.
+  expect(graph.current!.getEdges()).toEqual([edge])
+  await user.keyboard('{Delete}')
+  expect(graph.current!.getEdges()).toEqual([edge])
+  act(() => screen.getByRole('region', { name: 'app.types.workflow' }).focus())
+  await user.keyboard('{Delete}')
+  await waitFor(() => expect(graph.current!.getEdges()).toEqual([]))
+  expect(graph.current!.getNodes().map((node) => node.id)).toEqual(['source', 'target'])
 })

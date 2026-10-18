@@ -1,17 +1,14 @@
-import type { CustomModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type {
+  CustomModel,
+  ModelCredentialPayload,
+  ModelTypeEnum,
+  ProviderCredential,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
-import {
-  useActiveModelCredential,
-  useActiveProviderCredential,
-  useAddModelCredential,
-  useAddProviderCredential,
-  useDeleteModelCredential,
-  useDeleteProviderCredential,
-  useEditModelCredential,
-  useEditProviderCredential,
-  useGetModelCredential,
-  useGetProviderCredential,
-} from '@/service/use-models'
+import { consoleClient, consoleQuery } from '@/service/console'
+
+type ModelCredentialRef = { credential_id: string; model: string; model_type: ModelTypeEnum }
 
 export const useGetCredential = (
   provider: string,
@@ -20,32 +17,70 @@ export const useGetCredential = (
   model?: CustomModel,
   configFrom?: string,
 ) => {
-  const providerData = useGetProviderCredential(
-    !isModelCredential && !!credentialId,
-    provider,
-    credentialId,
-  )
-  const modelData = useGetModelCredential(
-    !!isModelCredential && (!!credentialId || !!model),
-    provider,
-    credentialId,
-    model?.model,
-    model?.model_type,
-    configFrom,
-  )
+  const modelProvider = consoleQuery.workspaces.current.modelProviders.byProvider
+  const providerData = useQuery({
+    ...modelProvider.credentials.get.queryOptions({
+      input:
+        !isModelCredential && credentialId
+          ? { params: { provider }, query: { credential_id: credentialId } }
+          : skipToken,
+    }),
+    staleTime: 0,
+    gcTime: 0,
+  })
+  const modelData = useQuery({
+    ...modelProvider.models.credentials.get.queryOptions({
+      input:
+        isModelCredential && model
+          ? {
+              params: { provider },
+              query: {
+                model: model.model,
+                model_type: model.model_type,
+                config_from: configFrom,
+                credential_id: credentialId,
+              },
+            }
+          : skipToken,
+    }),
+    staleTime: 0,
+    gcTime: 0,
+  })
   return isModelCredential ? modelData : providerData
 }
 
 export const useAuthService = (provider: string) => {
-  const { mutateAsync: addProviderCredential } = useAddProviderCredential(provider)
-  const { mutateAsync: editProviderCredential } = useEditProviderCredential(provider)
-  const { mutateAsync: deleteProviderCredential } = useDeleteProviderCredential(provider)
-  const { mutateAsync: activeProviderCredential } = useActiveProviderCredential(provider)
+  const client = consoleClient.workspaces.current.modelProviders.byProvider
+  const params = { provider }
 
-  const { mutateAsync: addModelCredential } = useAddModelCredential(provider)
-  const { mutateAsync: activeModelCredential } = useActiveModelCredential(provider)
-  const { mutateAsync: deleteModelCredential } = useDeleteModelCredential(provider)
-  const { mutateAsync: editModelCredential } = useEditModelCredential(provider)
+  const { mutateAsync: addProviderCredential } = useMutation({
+    mutationFn: (body: ProviderCredential) => client.credentials.post({ params, body }),
+  })
+  const { mutateAsync: editProviderCredential } = useMutation({
+    mutationFn: (body: ProviderCredential) => client.credentials.put({ params, body }),
+  })
+  const { mutateAsync: deleteProviderCredential } = useMutation({
+    mutationFn: (body: { credential_id: string }) => client.credentials.delete({ params, body }),
+  })
+  const { mutateAsync: activeProviderCredential } = useMutation({
+    mutationFn: (body: { credential_id: string }) =>
+      client.credentials.switch.post({ params, body }),
+  })
+
+  const { mutateAsync: addModelCredential } = useMutation({
+    mutationFn: (body: ModelCredentialPayload) => client.models.credentials.post({ params, body }),
+  })
+  const { mutateAsync: activeModelCredential } = useMutation({
+    mutationFn: (body: ModelCredentialRef) =>
+      client.models.credentials.switch.post({ params, body }),
+  })
+  const { mutateAsync: deleteModelCredential } = useMutation({
+    mutationFn: (query: ModelCredentialRef) => client.models.credentials.delete({ params, query }),
+  })
+  const { mutateAsync: editModelCredential } = useMutation({
+    mutationFn: (body: ModelCredentialPayload & { credential_id: string }) =>
+      client.models.credentials.put({ params, body }),
+  })
 
   const getAddCredentialService = useCallback(
     (isModel: boolean) => {

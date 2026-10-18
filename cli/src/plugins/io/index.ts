@@ -1,6 +1,6 @@
 import type { Buffer } from 'node:buffer'
 import type { OutputService } from '@/plugins/output'
-import type { Style } from '@/sys/io/color'
+import type { ColorScheme } from '@/sys/io/color'
 import type { IOStreams } from '@/sys/io/streams'
 import type { Printable, View } from '@/sys/io/view'
 import { definePlugin } from '@/kernel/plugin'
@@ -49,7 +49,7 @@ export function ioService<S extends IOStreams>(
   streams: S,
   mode: OutputService = JSON_ONLY,
 ): IOService<S> {
-  const styles: Readonly<Record<ChannelValue, Style>> = {
+  const styles: Readonly<Record<ChannelValue, ColorScheme>> = {
     [Channel.Out]: colorScheme(
       mode.out === OutputMode.Text && colorEnabled(CHANNEL_TTY[Channel.Out](streams), env()),
     ),

@@ -1,17 +1,14 @@
+import type { SchemaDefinitionItemResponse } from '@dify/contracts/api/console/spec/types.gen'
 import type { Node, WorkflowPluginCatalogs } from '@/app/components/workflow/types'
-import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
+import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo } from 'react'
 import { useStoreApi } from 'reactflow'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-} from '@/service/use-tools'
+import { consoleQuery } from '@/service/console'
 import {
   useInvalidateConversationVarValues,
   useInvalidateSysVarValues,
@@ -29,10 +26,22 @@ export const useSetWorkflowVarsWithValue = () => {
   const invalidateSysVarValues = useInvalidateSysVarValues(resource)
   const { handleCancelAllNodeSuccessStatus } = useNodesInteractionsWithoutSync()
   const { schemaTypeDefinitions } = useMatchSchemaType()
-  const { data: buildInTools } = useAllBuiltInTools()
-  const { data: customTools } = useAllCustomTools()
-  const { data: workflowTools } = useAllWorkflowTools()
-  const { data: mcpTools } = useAllMCPTools()
+  const { data: buildInTools } = useQuery(
+    consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: customTools } = useQuery(
+    consoleQuery.workspaces.current.tools.api.get.queryOptions({ select: selectToolsWithProvider }),
+  )
+  const { data: workflowTools } = useQuery(
+    consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: mcpTools } = useQuery(
+    consoleQuery.workspaces.current.tools.mcp.get.queryOptions({ select: selectToolsWithProvider }),
+  )
   const dataSourceList = useStore((s) => s.dataSourceList)
 
   const allPluginInfoList = useMemo(() => {
@@ -49,7 +58,7 @@ export const useSetWorkflowVarsWithValue = () => {
     (
       inspectVars: VarInInspect[],
       passedInAllPluginInfoList?: WorkflowPluginCatalogs,
-      passedInSchemaTypeDefinitions?: SchemaTypeDefinition[],
+      passedInSchemaTypeDefinitions?: SchemaDefinitionItemResponse[],
     ) => {
       const { setNodesWithInspectVars } = workflowStore.getState()
       const { getNodes } = store.getState()
@@ -119,7 +128,7 @@ export const useSetWorkflowVarsWithValue = () => {
       passInVars?: boolean
       vars?: VarInInspect[]
       passedInAllPluginInfoList?: WorkflowPluginCatalogs
-      passedInSchemaTypeDefinitions?: SchemaTypeDefinition[]
+      passedInSchemaTypeDefinitions?: SchemaDefinitionItemResponse[]
     }) => {
       const { passInVars, vars, passedInAllPluginInfoList, passedInSchemaTypeDefinitions } = params
       invalidateConversationVarValues()

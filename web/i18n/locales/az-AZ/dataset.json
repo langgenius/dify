@@ -143,7 +143,6 @@
   "retrieval.full_text_search.title": "Tam mətn axtarışı",
   "retrieval.hybrid_search.description": "Tam mətn axtarışını və vektor axtarışlarını eyni vaxtda icra edin, istifadəçinin sorğusuna ən uyğun nəticəni seçmək üçün yenidən sıralayın. İstifadəçilər çəki əmsallarını təyin edə və ya yenidən sıralama modelini konfiqurasiya edə bilərlər.",
   "retrieval.hybrid_search.title": "Hibrid axtarış",
-  "retrieval.invertedIndex.title": "Tərs indeks",
   "retrieval.keyword_search.description": "Tərs indeks səmərəli məlumat axtarışı üçün istifadə olunan strukturdur. Terminlərə görə təşkil olunur və hər termin onu ehtiva edən sənədlərə və ya veb səhifələrə işarə edir.",
   "retrieval.keyword_search.title": "Tərs indeks",
   "retrieval.semantic_search.description": "Sorğunun vektor təsvirini yaradın və bu vektora ən çox bənzəyən vektorla təmsil olunan mətn hissəsini axtarın.",

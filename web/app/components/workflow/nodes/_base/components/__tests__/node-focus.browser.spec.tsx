@@ -6,6 +6,7 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { render as renderBrowser } from 'vitest-browser-react'
 import { consoleQuery } from '@/service/console'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
 import { EditorResourceScope } from '../../../../editor-resource/provider'
@@ -16,6 +17,16 @@ import 'reactflow/dist/style.css'
 
 const render = (ui: ReactElement) => {
   const queryClient = createTestQueryClient()
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  queryClient.setQueryData(consoleQuery.rag.pipelines.recommendedPlugins.get.queryKey(), {
+    installed_recommended_plugins: [],
+    uninstalled_recommended_plugins: [],
+  })
   queryClient.setQueryData(
     consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
     createAppDetailFixture({ id: 'app-1', mode: 'workflow' }),
@@ -76,16 +87,6 @@ vi.mock('@/service/use-plugins', () => ({
 vi.mock('@/service/use-triggers', () => ({
   useAllTriggerPlugins: () => ({ data: [] }),
   useInvalidateAllTriggerPlugins: () => vi.fn(),
-}))
-
-vi.mock('@/service/use-tools', () => ({
-  useRAGRecommendedPlugins: () => ({ data: [] }),
-  useInvalidateAllToolProviders: () => vi.fn(),
-  useAllBuiltInTools: () => ({ data: [] }),
-  useAllCustomTools: () => ({ data: [] }),
-  useAllWorkflowTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: [] }),
-  useInvalidateAllBuiltInTools: () => vi.fn(),
 }))
 
 vi.mock('@/app/components/plugins/marketplace/query', () => ({

@@ -26,14 +26,14 @@ from controllers.console.app.workflow import (
     WorkflowRestoreResponse,
 )
 from controllers.console.snippets.payloads import (
-    PublishWorkflowPayload,
     SnippetDraftNodeRunPayload,
     SnippetDraftRunPayload,
     SnippetDraftSyncPayload,
     SnippetIterationNodeRunPayload,
     SnippetLoopNodeRunPayload,
+    SnippetPublishWorkflowPayload,
     SnippetWorkflowListQuery,
-    WorkflowRunQuery,
+    SnippetWorkflowRunQuery,
 )
 from controllers.console.wraps import (
     RBACPermission,
@@ -102,9 +102,9 @@ register_schema_models(
     SnippetIterationNodeRunPayload,
     SnippetLoopNodeRunPayload,
     SnippetWorkflowListQuery,
-    WorkflowRunQuery,
+    SnippetWorkflowRunQuery,
     WorkflowUpdatePayload,
-    PublishWorkflowPayload,
+    SnippetPublishWorkflowPayload,
 )
 register_response_schema_models(
     console_ns,
@@ -288,7 +288,7 @@ class SnippetPublishedWorkflowApi(Resource):
         return response
 
     @console_ns.doc("publish_snippet_workflow")
-    @console_ns.expect(console_ns.models.get(PublishWorkflowPayload.__name__))
+    @console_ns.expect(console_ns.models.get(SnippetPublishWorkflowPayload.__name__))
     @console_ns.response(200, "Workflow published successfully", console_ns.models[WorkflowPublishResponse.__name__])
     @console_ns.response(400, "No draft workflow found")
     @setup_required
@@ -514,7 +514,7 @@ class SnippetWorkflowByIdApi(Resource):
 @console_ns.route("/snippets/<uuid:snippet_id>/workflow-runs")
 class SnippetWorkflowRunsApi(Resource):
     @console_ns.doc("list_snippet_workflow_runs")
-    @console_ns.doc(params=query_params_from_model(WorkflowRunQuery))
+    @console_ns.doc(params=query_params_from_model(SnippetWorkflowRunQuery))
     @console_ns.response(
         200,
         "Workflow runs retrieved successfully",
@@ -527,7 +527,7 @@ class SnippetWorkflowRunsApi(Resource):
     @with_session(write=False)
     def get(self, session: Session, snippet: CustomizedSnippet):
         """List workflow runs for snippet."""
-        query = WorkflowRunQuery.model_validate(
+        query = SnippetWorkflowRunQuery.model_validate(
             {
                 "last_id": request.args.get("last_id"),
                 "limit": request.args.get("limit", type=int, default=20),

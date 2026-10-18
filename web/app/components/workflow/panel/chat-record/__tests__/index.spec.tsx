@@ -52,7 +52,7 @@ describe('ChatRecord', () => {
           message_files: [],
         },
       ],
-    } as never)
+    })
 
     const { store } = renderWorkflowComponent(<ChatRecord />, {
       initialStoreState: { historyWorkflowData },
@@ -147,16 +147,14 @@ describe('ChatRecord', () => {
   it('stops loading when conversation fetching fails', async () => {
     mockRequest.mockRejectedValue(new Error('network error'))
 
-    const { container } = renderWorkflowComponent(<ChatRecord />, {
+    renderWorkflowComponent(<ChatRecord />, {
       initialStoreState: { historyWorkflowData },
       hooksStoreProps: {
         handleLoadBackupDraft: vi.fn(),
       },
     })
 
-    await waitFor(() => {
-      expect(container).toHaveTextContent('TEST CHAT')
-    })
+    expect(await screen.findByText(/^TEST CHAT/)).toBeVisible()
 
     expect(screen.queryByText('Question 1')).not.toBeInTheDocument()
   })

@@ -1,10 +1,10 @@
 'use client'
 
-import type { ReactNode } from 'react'
 import type {
   WorkflowCommentDetail,
-  WorkflowCommentDetailReply,
-} from '@/app/components/workflow/comment/types'
+  WorkflowCommentReply,
+} from '@dify/contracts/api/console/apps/types.gen'
+import type { ReactNode } from 'react'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -12,6 +12,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
@@ -316,7 +317,7 @@ function CommentThreadComponent({
     [screenPosition.x, screenPosition.y, containerLeft, containerTop],
   )
 
-  const handleStartEdit = useCallback((reply: WorkflowCommentDetailReply) => {
+  const handleStartEdit = useCallback((reply: WorkflowCommentReply) => {
     setEditingReply({ id: reply.id, content: reply.content })
     setIsCommentEditing(false)
     setActiveReplyMenuId(null)
@@ -818,14 +819,14 @@ function CommentThreadComponent({
               : (replyInputRef.current ?? true)
           }
         >
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['comments.actions.deleteReply'], { ns: 'workflowComments' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="system-md-regular text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['operation.confirmAction'], { ns: 'common' })}
             </AlertDialogDescription>
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton disabled={loading}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

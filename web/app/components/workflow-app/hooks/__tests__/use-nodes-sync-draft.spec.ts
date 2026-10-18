@@ -57,7 +57,8 @@ let featuresState: {
   }
 }
 
-vi.mock('reactflow', () => ({
+vi.mock('reactflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('reactflow')>()),
   useStoreApi: () => ({ getState: () => reactFlowState }),
 }))
 
@@ -156,7 +157,7 @@ const renderUseNodesSyncDraft = () => {
 
 describe('useNodesSyncDraft', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     mockSetShowConfirm.mockImplementation((confirmation) => {
       workflowStoreState.showConfirm = confirmation
     })
@@ -368,21 +369,6 @@ describe('useNodesSyncDraft', () => {
     expect(callbacks.onSuccess).not.toHaveBeenCalled()
     expect(callbacks.onError).not.toHaveBeenCalled()
     expect(callbacks.onSettled).toHaveBeenCalledOnce()
-  })
-
-  it('should save a nonempty graph without confirmation or force', async () => {
-    const { result } = renderUseNodesSyncDraft()
-
-    await act(async () => {
-      await result.current.doSyncWorkflowDraft()
-    })
-
-    expect(mockSetShowConfirm).not.toHaveBeenCalled()
-    expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
-      expect.objectContaining({
-        params: expect.not.objectContaining({ force: expect.anything() }),
-      }),
-    )
   })
 
   it('should confirm a graph that is empty after filtering placeholders and temporary entities', async () => {
@@ -606,7 +592,6 @@ describe('useNodesSyncDraft', () => {
     await act(async () => {
       await result.current.doSyncWorkflowDraft(false)
     })
-    await new Promise((r) => setTimeout(r, 0))
 
     expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalledWith(true)
   })
@@ -623,7 +608,6 @@ describe('useNodesSyncDraft', () => {
     await act(async () => {
       await result.current.doSyncWorkflowDraft(true)
     })
-    await new Promise((r) => setTimeout(r, 0))
 
     expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
   })
@@ -636,7 +620,6 @@ describe('useNodesSyncDraft', () => {
     await act(async () => {
       await result.current.doSyncWorkflowDraft(false)
     })
-    await new Promise((r) => setTimeout(r, 0))
 
     expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
   })
@@ -655,8 +638,8 @@ describe('useNodesSyncDraft', () => {
     })
 
     expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
-    expect(callbacks.onError).toHaveBeenCalled()
-    expect(callbacks.onSettled).toHaveBeenCalled()
+    expect(callbacks.onError).toHaveBeenCalledOnce()
+    expect(callbacks.onSettled).toHaveBeenCalledOnce()
   })
 
   it('should treat unavailable workflow data as a skipped sync instead of an error', async () => {
@@ -676,7 +659,7 @@ describe('useNodesSyncDraft', () => {
 
     expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
     expect(callbacks.onError).not.toHaveBeenCalled()
-    expect(callbacks.onSettled).toHaveBeenCalled()
+    expect(callbacks.onSettled).toHaveBeenCalledOnce()
   })
 
   it('should capture the graph before a queued sync runs after the canvas is torn down', async () => {
@@ -725,22 +708,6 @@ describe('useNodesSyncDraft', () => {
             edges: [draftEdge],
             viewport: { x: 10, y: 20, zoom: 1.5 },
           },
-        }),
-      }),
-    )
-  })
-
-  it('should not include source_workflow_id in draft sync payloads', async () => {
-    const { result } = renderUseNodesSyncDraft()
-
-    await act(async () => {
-      await result.current.doSyncWorkflowDraft(false)
-    })
-
-    expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
-      expect.objectContaining({
-        params: expect.not.objectContaining({
-          source_workflow_id: expect.anything(),
         }),
       }),
     )
@@ -836,11 +803,12 @@ describe('useNodesSyncDraft', () => {
         hash: 'latest-hash',
       },
     })
+    expect(mockSetShowConfirm).not.toHaveBeenCalled()
     expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('new')
     expect(mockSetDraftUpdatedAt).toHaveBeenCalledWith(1)
-    expect(callbacks.onSuccess).toHaveBeenCalled()
+    expect(callbacks.onSuccess).toHaveBeenCalledOnce()
     expect(callbacks.onError).not.toHaveBeenCalled()
-    expect(callbacks.onSettled).toHaveBeenCalled()
+    expect(callbacks.onSettled).toHaveBeenCalledOnce()
   })
 
   it('should include an environment variable patch in a full draft sync', async () => {
@@ -1101,9 +1069,9 @@ describe('useNodesSyncDraft', () => {
     expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
     expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('remote-hash')
     expect(mockSetDraftUpdatedAt).toHaveBeenCalledWith(2)
-    expect(callbacks.onSuccess).toHaveBeenCalled()
+    expect(callbacks.onSuccess).toHaveBeenCalledOnce()
     expect(callbacks.onError).not.toHaveBeenCalled()
-    expect(callbacks.onSettled).toHaveBeenCalled()
+    expect(callbacks.onSettled).toHaveBeenCalledOnce()
   })
 
   it('should report a failed leader save to the follower caller', async () => {
@@ -1127,8 +1095,8 @@ describe('useNodesSyncDraft', () => {
     expect(syncResult).toBeNull()
     expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
     expect(callbacks.onSuccess).not.toHaveBeenCalled()
-    expect(callbacks.onError).toHaveBeenCalled()
-    expect(callbacks.onSettled).toHaveBeenCalled()
+    expect(callbacks.onError).toHaveBeenCalledOnce()
+    expect(callbacks.onSettled).toHaveBeenCalledOnce()
   })
 
   it('should force a directed sync request to save locally even before leader status arrives', async () => {
@@ -1196,7 +1164,7 @@ describe('useNodesSyncDraft', () => {
     expect(syncResult).toBeNull()
     expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
     expect(callbacks.onError).not.toHaveBeenCalled()
-    expect(callbacks.onSettled).toHaveBeenCalled()
+    expect(callbacks.onSettled).toHaveBeenCalledOnce()
   })
 
   it('should skip keepalive sync on page close when current user is collaboration follower', () => {

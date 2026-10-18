@@ -79,7 +79,7 @@ function FloatingOutputEditor({
 
   return createPortal(
     <div
-      className="fixed z-50 w-100"
+      className="fixed w-100"
       style={{
         left: position.left,
         top: position.top,
