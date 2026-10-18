@@ -91,7 +91,7 @@ $response = $difyClient->message_feedback($message_id, $rating, "user_id");
 
 Replace 'your-api-key-here' with your actual Dify API key.
 
-## Workflow streaming
+## Streaming responses
 
 Pass `streaming` as the response mode to receive a Guzzle response without waiting for
 all workflow events to arrive. Read its body incrementally; individual reads may split
@@ -108,17 +108,30 @@ while (!$body->eof()) {
 
 Use `blocking` for the complete JSON response.
 
+For text-to-audio, pass `true` to consume audio without buffering the complete response:
+
+```php
+$response = $difyClient->text_to_audio("Hello", "user_id", true);
+$body = $response->getBody();
+while (!$body->eof()) {
+    echo $body->read(1024);
+}
+```
+
+This controls client-side buffering. Whether the server produces audio incrementally
+depends on the TTS provider output.
+
 ## Tests
 
-After installing the dependencies, run the workflow request regression test:
+After installing the dependencies, run the streaming request regression test:
 
 ```sh
 composer install
-php tests/workflow_stream_test.php
+php tests/streaming_test.php
 ```
 
 The test uses the SDK's real Guzzle request preparation and replaces only the HTTP
-transport. It checks streaming and blocking options, endpoint, payload, and authentication.
+transport. It checks workflow and text-to-audio streaming and buffered options, endpoints, payloads, and authentication.
 
 ## License
 

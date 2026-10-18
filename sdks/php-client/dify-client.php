@@ -80,7 +80,7 @@ class DifyClient {
             'streaming' => $streaming
         ];
 
-        return $this->send_request('POST', 'text-to-audio', $data);
+        return $this->send_request('POST', 'text-to-audio', $data, null, $streaming);
     }
 
     public function get_meta($user) {

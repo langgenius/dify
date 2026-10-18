@@ -43,3 +43,37 @@ foreach (['streaming', 'blocking'] as $index => $mode) {
 }
 
 echo "Workflow streaming and blocking request checks passed.\n";
+
+
+foreach ([true, false] as $streaming) {
+    $client = new class('test-key') extends DifyClient {
+        public function recordRequests(array &$history): void {
+            $stack = $this->client->getConfig('handler');
+            $stack->setHandler(new MockHandler([new Response(200, ['Content-Type' => 'audio/wav'], 'audio')]));
+            $stack->push(Middleware::history($history));
+        }
+    };
+    $history = [];
+    $client->recordRequests($history);
+    $response = $client->text_to_audio('hello', 'test-user', $streaming);
+    $transaction = $history[0];
+    $request = $transaction['request'];
+    if ($transaction['options']['stream'] !== $streaming) {
+        throw new RuntimeException('Wrong Guzzle stream option for text_to_audio');
+    }
+    if ($request->getMethod() !== 'POST' || $request->getUri()->getPath() !== '/v1/text-to-audio') {
+        throw new RuntimeException('Text-to-audio endpoint changed');
+    }
+    if (json_decode((string) $request->getBody(), true) !== [
+        'text' => 'hello',
+        'user' => 'test-user',
+        'streaming' => $streaming,
+    ]) {
+        throw new RuntimeException('Text-to-audio JSON payload changed');
+    }
+    if ($request->getHeaderLine('Authorization') !== 'Bearer test-key' || $response->getStatusCode() !== 200) {
+        throw new RuntimeException('Authentication or response changed');
+    }
+}
+
+echo "Text-to-audio streaming and buffered request checks passed.\n";
