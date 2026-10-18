@@ -1348,31 +1348,47 @@ def test_node_fails_closed_when_any_selected_space_is_unavailable() -> None:
     assert result.error_type == "KnowledgeFSRetrievalUnavailableError"
 
 
-def test_debugger_run_upserts_selected_bindings_but_published_run_never_does() -> None:
+def test_debugger_run_upserts_selected_bindings() -> None:
     responses = {
         "space-a": _response(mode="fast", score=0.8, space="a", text="A"),
         "space-b": _response(mode="fast", score=0.7, space="b", text="B"),
     }
-    draft_bindings = RecordingBindingService()
-    published_bindings = RecordingBindingService()
+    bindings = RecordingBindingService()
 
-    draft_result = _node(
+    result = _node(
         service=RecordingCapabilityService(responses),
         spaces=["space-a", "space-b"],
-        binding_service=draft_bindings,
-    )._run()
-    published_result = _node(
-        service=RecordingCapabilityService(responses),
-        spaces=["space-a", "space-b"],
-        binding_service=published_bindings,
-        invoke_from=InvokeFrom.WEB_APP,
-        user_from=UserFrom.END_USER,
+        binding_service=bindings,
     )._run()
 
-    assert draft_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-    assert [call["control_space_id"] for call in draft_bindings.calls] == ["space-a", "space-b"]
-    assert published_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-    assert published_bindings.calls == []
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert [call["control_space_id"] for call in bindings.calls] == ["space-a", "space-b"]
+
+
+@pytest.mark.parametrize(
+    ("invoke_from", "user_from"),
+    [
+        (InvokeFrom.WEB_APP, UserFrom.END_USER),
+        # Explore runs the published workflow as a workspace Account that may not own the space.
+        (InvokeFrom.EXPLORE, UserFrom.ACCOUNT),
+    ],
+)
+def test_published_run_retrieves_through_existing_bindings_without_upserting(
+    invoke_from: InvokeFrom, user_from: UserFrom
+) -> None:
+    responses = {"space-a": _response(mode="fast", score=0.8, space="a", text="A")}
+    bindings = RecordingBindingService()
+
+    result = _node(
+        service=RecordingCapabilityService(responses),
+        spaces=["space-a"],
+        binding_service=bindings,
+        invoke_from=invoke_from,
+        user_from=user_from,
+    )._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert bindings.calls == []
 
 
 def test_multi_space_calls_are_concurrent_but_never_exceed_the_bound() -> None:

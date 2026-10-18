@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any, Literal, Protocol, override
 
 from pydantic import ValidationError
 
-from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, UserFrom
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
 from core.app.llm.model_access import build_dify_model_access
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError
 from core.model_manager import ModelInstance, ModelManager
@@ -366,7 +366,9 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
         return self._capability_service
 
     def _ensure_draft_bindings(self, run_context: DifyRunContext) -> None:
-        if not run_context.invoke_from.runs_as_account() or run_context.user_from is not UserFrom.ACCOUNT:
+        # Only draft debugging may enable bindings. Explore runs the published workflow, so it must rely
+        # on the bindings that already admit the app instead of requiring access-config permission.
+        if run_context.invoke_from is not InvokeFrom.DEBUGGER or run_context.user_from is not UserFrom.ACCOUNT:
             return
         binding_service = self._binding_service
         if binding_service is None:
