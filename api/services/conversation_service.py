@@ -113,6 +113,8 @@ class ConversationService:
             return Conversation.created_at
         if sort_field == "updated_at":
             return Conversation.updated_at
+        if sort_field == "name":
+            return Conversation.name
         raise ValueError(f"Unsupported conversation sort field: {sort_field}")
 
     @classmethod
@@ -120,8 +122,12 @@ class ConversationService:
         sort_column = cls._get_sort_column(sort_field)
         if sort_field == "created_at":
             field_value = reference_conversation.created_at
-        else:
+        elif sort_field == "updated_at":
             field_value = reference_conversation.updated_at
+        elif sort_field == "name":
+            field_value = reference_conversation.name
+        else:
+            raise ValueError(f"Unsupported conversation sort field: {sort_field}")
         if sort_direction is desc:
             field_condition = sort_column < field_value
             id_condition = Conversation.id < reference_conversation.id

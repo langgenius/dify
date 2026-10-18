@@ -464,6 +464,45 @@ def test_legacy_auto_generate_name_reports_missing_first_message(sqlite_session:
 class TestConversationServicePagination:
     """Test conversation pagination operations."""
 
+    def test_pagination_preserves_name_sort_with_id_tiebreaker(self, sqlite_session: Session) -> None:
+        app_model = ConversationServiceTestDataFactory.create_app()
+        user = ConversationServiceTestDataFactory.create_account()
+        conversations = [
+            ConversationServiceTestDataFactory.create_conversation(
+                conversation_id=conversation_id,
+                name=name,
+            )
+            for conversation_id, name in (
+                ("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "Alpha"),
+                ("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", "Beta"),
+                ("cccccccc-cccc-cccc-cccc-cccccccccccc", "Beta"),
+            )
+        ]
+        sqlite_session.add_all(conversations)
+        sqlite_session.commit()
+
+        pages = []
+        has_more_values = []
+        last_id = None
+        while True:
+            result = ConversationService.pagination_by_last_id(
+                session=sqlite_session,
+                app_model=app_model,
+                user=user,
+                last_id=last_id,
+                limit=1,
+                invoke_from=InvokeFrom.WEB_APP,
+                sort_by="name",
+            )
+            pages.extend(conversation.id for conversation in result.data)
+            has_more_values.append(result.has_more)
+            if not result.has_more:
+                break
+            last_id = result.data[-1].id
+
+        assert pages == [conversation.id for conversation in conversations]
+        assert has_more_values == [True, True, False]
+
     @pytest.mark.parametrize("sort_by", ["updated_at", "-updated_at", "created_at", "-created_at"])
     def test_pagination_includes_conversations_with_tied_timestamps(
         self, sqlite_session: Session, sort_by: str
