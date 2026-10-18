@@ -1,6 +1,7 @@
 import type { ComponentProps, ReactElement } from 'react'
 import type { Credential } from '@/app/components/plugins/plugin-auth/types'
 import type { PluginDeclaration, PluginDetail } from '@/app/components/plugins/types'
+import type { consoleClient } from '@/service/console'
 import {
   zToolApiEntity,
   zTriggerProviderApiEntity,
@@ -18,8 +19,8 @@ import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import PluginDetailPanel from '../index'
 
 const api = vi.hoisted(() => ({
-  uninstall: vi.fn<typeof import('@/service/plugins').uninstallPlugin>(),
-  upgrade: vi.fn<typeof import('@/service/plugins').updateFromMarketPlace>(),
+  uninstall: vi.fn<typeof consoleClient.workspaces.current.plugin.uninstall.post>(),
+  upgrade: vi.fn<typeof consoleClient.workspaces.current.plugin.upgrade.marketplace.post>(),
   tools:
     vi.fn<
       typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.builtin.byProvider.tools.get
@@ -42,11 +43,6 @@ const api = vi.hoisted(() => ({
     }>
   >(),
 }))
-vi.mock('@/service/plugins', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/plugins')>()),
-  uninstallPlugin: api.uninstall,
-  updateFromMarketPlace: api.upgrade,
-}))
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
   get: api.credentials,
@@ -58,10 +54,12 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.uninstall.post': api.uninstall,
       'workspaces.current.toolProviders.get': api.providers,
       'workspaces.current.toolProvider.builtin.byProvider.tools.get': api.tools,
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.plugin.upgrade.marketplace.post': api.upgrade,
       'workspaces.current.toolProvider.builtin.byProvider.tools.get': api.tools,
       'workspaces.current.triggerProvider.byProvider.info.get': api.trigger,
       'workspaces.current.triggerProvider.byProvider.subscriptions.list.get': api.subscriptions,
@@ -270,8 +268,10 @@ it('upgrades through the confirmation dialog and refreshes its consumer without 
   await user.click(within(dialog).getByRole('button', { name: 'plugin.upgrade.upgrade' }))
   expect(onUpdate).not.toHaveBeenCalled()
   expect(api.upgrade).toHaveBeenCalledWith({
-    original_plugin_unique_identifier: 'test-plugin-uid',
-    new_plugin_unique_identifier: 'new-plugin-uid',
+    body: {
+      original_plugin_unique_identifier: 'test-plugin-uid',
+      new_plugin_unique_identifier: 'new-plugin-uid',
+    },
   })
   await act(async () => pending.resolve({ all_installed: true, task_id: '' }))
   await waitFor(() => expect(dialog).not.toBeInTheDocument())
@@ -306,7 +306,9 @@ it('requires confirmation before uninstalling, disables cancellation while pendi
   await act(async () => pending.resolve({ success: true }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-  expect(api.uninstall).toHaveBeenCalledExactlyOnceWith('test-plugin-id')
+  expect(api.uninstall).toHaveBeenCalledExactlyOnceWith({
+    body: { plugin_installation_id: 'test-plugin-id', preserve_credentials: false },
+  })
   expect(onUpdate).toHaveBeenCalledOnce()
 })
 
