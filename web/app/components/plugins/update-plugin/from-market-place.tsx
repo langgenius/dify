@@ -5,10 +5,10 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
@@ -155,17 +155,14 @@ const UpdatePluginModal = ({
     <Dialog open onOpenChange={() => onCancel()}>
       <DialogContent
         backdropProps={{ forceRender: true }}
-        className={cn('min-w-140', doShowDowngradeWarningModal && 'min-w-160 p-6')}
+        className={cn('min-w-140', doShowDowngradeWarningModal && 'min-w-160')}
       >
         {doShowDowngradeWarningModal && (
-          <>
-            <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
-            <DowngradeWarningModal
-              onCancel={onCancel}
-              onJustDowngrade={handleConfirm}
-              onExcludeAndDowngrade={handleExcludeAndDownload}
-            />
-          </>
+          <DowngradeWarningModal
+            onCancel={onCancel}
+            onJustDowngrade={handleConfirm}
+            onExcludeAndDowngrade={handleExcludeAndDownload}
+          />
         )}
         {!doShowDowngradeWarningModal && (
           <>
@@ -179,7 +176,9 @@ const UpdatePluginModal = ({
                   { ns: 'plugin' },
                 )}
               </DialogTitle>
-              <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+              <DialogHeaderCloseButton
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              />
             </DialogHeader>
             <DialogBody>
               <div className="mb-2 system-md-regular text-text-secondary">

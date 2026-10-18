@@ -22,11 +22,11 @@ import {
   Dialog,
   DialogBody,
   DialogClose,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldError } from '@langgenius/dify-ui/field'
@@ -208,7 +208,7 @@ function SwitchAppSession({
             </span>
             <span>{t(($) => $.switchTipEnd, { ns: 'app' })}</span>
           </DialogDescription>
-          <DialogCloseButton
+          <DialogHeaderCloseButton
             disabled={isPending}
             aria-label={t(($) => $['operation.close'], { ns: 'common' })}
           />

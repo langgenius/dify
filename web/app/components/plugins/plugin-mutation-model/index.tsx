@@ -5,10 +5,10 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
@@ -53,7 +53,7 @@ const PluginMutationModal: FC<Props> = ({
       <DialogContent className="w-140">
         <DialogHeader>
           <DialogTitle>{modelTitle}</DialogTitle>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <DialogBody>
           <div className="mb-2 system-md-regular text-text-secondary">{description}</div>

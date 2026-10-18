@@ -13,11 +13,11 @@ import {
   Dialog,
   DialogBody,
   DialogClose,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
@@ -684,7 +684,7 @@ export function SettingsDialog({
           <DialogDescription>
             {t(($) => $[`${prefixSettings}.modalTip`], { ns: 'appOverview' })}
           </DialogDescription>
-          <DialogCloseButton
+          <DialogHeaderCloseButton
             aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             disabled={pending}
           />

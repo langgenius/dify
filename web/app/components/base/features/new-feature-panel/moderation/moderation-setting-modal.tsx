@@ -6,10 +6,10 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Separator } from '@langgenius/dify-ui/separator'
@@ -332,7 +332,9 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
             <DialogTitle>
               {t(($) => $['feature.moderation.modal.title'], { ns: 'appDebug' })}
             </DialogTitle>
-            <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+            <DialogHeaderCloseButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            />
           </DialogHeader>
           <DialogBody className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">

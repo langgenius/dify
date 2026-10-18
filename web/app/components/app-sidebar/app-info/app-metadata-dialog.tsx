@@ -9,10 +9,10 @@ import {
   Dialog,
   DialogBody,
   DialogClose,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
@@ -211,7 +211,7 @@ function AppMetadataForm({
             ? t(($) => $.editAppTitle, { ns: 'app' })
             : t(($) => $.duplicateTitle, { ns: 'app' })}
         </DialogTitle>
-        <DialogCloseButton
+        <DialogHeaderCloseButton
           disabled={isPending}
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}
         />
