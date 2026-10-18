@@ -45,6 +45,7 @@ from extensions.application_services.workspace import (
 )
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from extensions.ext_storage import storage
+from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter
 from libs.passport import PassportService
 from models.model import EndUser
@@ -693,6 +694,7 @@ def build_application_services(
             comments=WorkflowCommentRepository(session_factory=database_client),
             notifier=CeleryWorkflowCommentMentionNotifier(),
             console_web_url=dify_config.CONSOLE_WEB_URL,
+            now=naive_utc_now,
         ),
         inner_mail=InnerMailService(dispatch=enqueue_inner_mail),
         web_passport=WebPassportService(

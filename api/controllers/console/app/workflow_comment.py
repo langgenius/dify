@@ -19,16 +19,18 @@ from fields.member_fields import AccountWithRole
 from libs.external_api import error_responses
 from libs.helper import build_avatar_url, dump_response, to_timestamp
 from machinery.context import RequestContext
-from services.app.workflow_comment_service import (
+from services.app.workflow_comment_errors import (
     InvalidMentionedUserIdError,
     InvalidWorkflowCommentContentError,
     WorkflowCommentAppNotFoundError,
-    WorkflowCommentDraft,
-    WorkflowCommentEdit,
     WorkflowCommentNotFoundError,
     WorkflowCommentPermissionError,
-    WorkflowCommentReplyDraft,
     WorkflowCommentReplyNotFoundError,
+)
+from services.app.workflow_comment_service import (
+    WorkflowCommentDraft,
+    WorkflowCommentEdit,
+    WorkflowCommentReplyDraft,
 )
 
 # Same roles as the legacy `edit_permission_required` gate; like it, admission skips the role check under RBAC.

@@ -1093,9 +1093,11 @@ forbidden_modules =
 allow_indirect_imports = True
 
 [importlinter:contract:workflow-comment-service-boundary]
-name = Workflow comment application service is framework and persistence neutral
+name = Workflow comment application service and aggregate are framework and persistence neutral
 type = forbidden
 source_modules =
+    services.app.workflow_comment_agg
+    services.app.workflow_comment_errors
     services.app.workflow_comment_service
 forbidden_modules =
     configs
