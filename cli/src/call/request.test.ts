@@ -2,7 +2,7 @@ import type { CatalogOp } from '@/plugins/catalog'
 import { readFileSync } from 'node:fs'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { expect, it } from 'vite-plus/test'
 import { LOCAL_FILES } from '@/call/files'
 import { parseCatalog } from '@/plugins/catalog'
@@ -13,7 +13,7 @@ const run = doc.ops['run.console_app.workflow']!
 const list = doc.ops['get.console_app']!
 const readFile = async (p: string) => ({
   bytes: new TextEncoder().encode(`bytes-of-${p}`),
-  name: p.split('/').pop() ?? p,
+  name: basename(p),
 })
 const FOLDERS: Readonly<Record<string, readonly string[]>> = {
   './pkg': ['a.yaml', 's/SKILL.md'],
