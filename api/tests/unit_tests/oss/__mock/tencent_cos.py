@@ -1,5 +1,4 @@
 import os
-from unittest.mock import MagicMock
 
 import pytest
 from qcloud_cos import CosS3Client
@@ -10,6 +9,7 @@ from tests.unit_tests.oss.__mock.base import (
     get_example_data,
     get_example_filename,
     get_example_filepath,
+    object_response,
 )
 
 
@@ -36,19 +36,7 @@ class MockTencentCosClass:
         assert Bucket == self.bucket_name
         assert Key == self.key
 
-        mock_stream_body = MagicMock(StreamBody)
-        mock_raw_stream = MagicMock()
-        mock_stream_body.get_raw_stream.return_value = mock_raw_stream
-        mock_raw_stream.read.return_value = self.content
-
-        mock_stream_body.get_stream_to_file = MagicMock()
-
-        def chunk_generator(chunk_size=2):
-            for i in range(0, len(self.content), chunk_size):
-                yield self.content[i : i + chunk_size]
-
-        mock_stream_body.get_stream.return_value = chunk_generator(chunk_size=4096)
-        return {"Body": mock_stream_body}
+        return {"Body": StreamBody(object_response(self.content))}
 
     def object_exists(self, Bucket, Key):  # noqa: N803
         assert Bucket == self.bucket_name

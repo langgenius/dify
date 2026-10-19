@@ -14,8 +14,8 @@ from models import EndUser, Workflow, WorkflowAppLog, WorkflowRun
 from models.enums import CreatorUserRole, EndUserType
 from models.workflow import WorkflowAppLogCreatedFrom
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
-from services.account_service import AccountService, TenantService
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
+from tests.test_containers_integration_tests.helpers import accounts as account_fixtures
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
@@ -57,7 +57,7 @@ class TestWorkflowAppLogQueryService:
             patch("services.app_service.SystemFeatureService") as mock_feature_service,
             patch("services.app_service.EnterpriseService") as mock_enterprise_service,
             patch("services.app_service.ModelManager.for_tenant") as mock_model_manager,
-            patch("services.account_service.SystemFeatureService") as mock_account_feature_service,
+            patch("services.account.login_adapters.SystemFeatureService") as mock_account_feature_service,
         ):
             # Setup default mock returns for app service
             mock_feature_service.is_webapp_auth_enabled.return_value = False
@@ -96,14 +96,14 @@ class TestWorkflowAppLogQueryService:
         mock_external_service_dependencies["account_feature_service"].is_registration_allowed.return_value = True
 
         # Create account and tenant
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Import here to avoid circular dependency
@@ -143,14 +143,14 @@ class TestWorkflowAppLogQueryService:
         mock_external_service_dependencies["account_feature_service"].is_registration_allowed.return_value = True
 
         # Create account and tenant
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         return tenant, account
@@ -201,7 +201,6 @@ class TestWorkflowAppLogQueryService:
         Returns:
             tuple: (workflow, workflow_run, workflow_app_log) - Created workflow entities
         """
-        fake = Faker()
 
         # Create workflow
         workflow = Workflow(
@@ -266,7 +265,7 @@ class TestWorkflowAppLogQueryService:
         Test successful pagination of workflow app logs with basic parameters.
         """
         # Arrange: Create test data
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         workflow, workflow_run, workflow_app_log = self._create_test_workflow_data(
             db_session_with_containers, app, account
@@ -304,7 +303,7 @@ class TestWorkflowAppLogQueryService:
         Test workflow app logs pagination with keyword search functionality.
         """
         # Arrange: Create test data
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         workflow, workflow_run, workflow_app_log = self._create_test_workflow_data(
             db_session_with_containers, app, account
@@ -351,7 +350,7 @@ class TestWorkflowAppLogQueryService:
         - SQL injection via LIKE wildcards is prevented
         """
         # Arrange: Create test data
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         workflow, _, _ = self._create_test_workflow_data(db_session_with_containers, app, account)
 
@@ -494,7 +493,7 @@ class TestWorkflowAppLogQueryService:
         Test workflow app logs pagination with status filtering.
         """
         # Arrange: Create test data with different statuses
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create workflow
@@ -593,7 +592,7 @@ class TestWorkflowAppLogQueryService:
         Test workflow app logs pagination with time-based filtering.
         """
         # Arrange: Create test data with different timestamps
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create workflow
@@ -705,7 +704,7 @@ class TestWorkflowAppLogQueryService:
         Test workflow app logs pagination with different page sizes and limits.
         """
         # Arrange: Create test data with multiple logs
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create workflow
@@ -819,7 +818,7 @@ class TestWorkflowAppLogQueryService:
         Test workflow app logs pagination with user role and session filtering.
         """
         # Arrange: Create test data with different user roles
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create workflow
@@ -976,7 +975,7 @@ class TestWorkflowAppLogQueryService:
         assert all(log.created_by_role == CreatorUserRole.ACCOUNT for log in result_with_new_email["data"])
 
         # Old email unbound, is unexpected input, should raise ValueError
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Account not found") as exc_info:
             service.get_paginate_workflow_app_logs(
                 session=db_session_with_containers, app_model=app, created_by_account=original_email, page=1, limit=20
             )
@@ -996,7 +995,7 @@ class TestWorkflowAppLogQueryService:
         assert result_no_session["total"] == 0
 
         # Test filtering by non-existent account email, is unexpected input, should raise ValueError
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Account not found") as exc_info:
             service.get_paginate_workflow_app_logs(
                 session=db_session_with_containers,
                 app_model=app,
@@ -1013,7 +1012,7 @@ class TestWorkflowAppLogQueryService:
         Test workflow app logs pagination with UUID keyword search functionality.
         """
         # Arrange: Create test data
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create workflow
@@ -1102,7 +1101,7 @@ class TestWorkflowAppLogQueryService:
         Test workflow app logs pagination with edge cases and boundary conditions.
         """
         # Arrange: Create test data
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create workflow
@@ -1200,7 +1199,7 @@ class TestWorkflowAppLogQueryService:
         Test workflow app logs pagination with empty results and no data scenarios.
         """
         # Arrange: Create test data
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Act & Assert: Test empty results
@@ -1250,7 +1249,7 @@ class TestWorkflowAppLogQueryService:
         assert len(result_no_session["data"]) == 0
 
         # Test with account email that doesn't exist
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Account not found") as exc_info:
             service.get_paginate_workflow_app_logs(
                 session=db_session_with_containers,
                 app_model=app,
@@ -1267,7 +1266,7 @@ class TestWorkflowAppLogQueryService:
         Test workflow app logs pagination with complex query combinations.
         """
         # Arrange: Create test data with various combinations
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         workflow, _, _ = self._create_test_workflow_data(db_session_with_containers, app, account)
 
@@ -1367,7 +1366,7 @@ class TestWorkflowAppLogQueryService:
         Test workflow app logs pagination with large dataset for performance validation.
         """
         # Arrange: Create a larger dataset
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         workflow, _, _ = self._create_test_workflow_data(db_session_with_containers, app, account)
 
@@ -1459,7 +1458,6 @@ class TestWorkflowAppLogQueryService:
         Test workflow app logs pagination with proper tenant isolation.
         """
         # Arrange: Create multiple tenants and apps
-        fake = Faker()
 
         # Create first tenant and app
         tenant1, account1 = self._create_test_tenant_and_account(

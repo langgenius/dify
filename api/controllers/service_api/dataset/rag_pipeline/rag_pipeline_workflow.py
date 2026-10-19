@@ -15,6 +15,7 @@ from controllers.common.errors import (
     FileTooLargeError,
     NoFileUploadedError,
     TooManyFilesError,
+    UnsupportedFileTypeError,
 )
 from controllers.common.fields import WorkflowBlockingResponse
 from controllers.common.schema import (
@@ -32,14 +33,15 @@ from controllers.service_api.wraps import DatasetApiResource
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.entities.knowledge_entities import PipelineDataset, PipelineDocument
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs import helper
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import current_user
 from models import Account
 from models.dataset import Dataset, Pipeline
 from models.engine import db
-from services.errors.file import UnsupportedFileTypeError
 from services.feature_service import FeatureService
 from services.file_service import FileService
 from services.rag_pipeline.entity.pipeline_service_api_entities import (
@@ -183,7 +185,11 @@ class DatasourcePluginsApi(DatasetApiResource):
 
         rag_pipeline_service = RagPipelineService(db.session())
         datasource_plugins: list[dict[Any, Any]] = rag_pipeline_service.get_datasource_plugins(
-            tenant_id=tenant_id, dataset_id=dataset_id_str, is_published=query.is_published
+            tenant_id=tenant_id,
+            dataset_id=dataset_id_str,
+            is_published=query.is_published,
+            credential_query=application_services().credential_queries,
+            datasource_providers=application_services().data_sources.providers,
         )
         return dump_response(DatasourcePluginListResponse, datasource_plugins), 200
 
@@ -247,6 +253,7 @@ class DatasourceNodeRunApi(DatasetApiResource):
                     datasource_type=datasource_node_run_api_entity.datasource_type,
                     is_published=datasource_node_run_api_entity.is_published,
                     credential_id=datasource_node_run_api_entity.credential_id,
+                    datasource_providers=application_services().data_sources.providers,
                 )
             )
         )
@@ -256,6 +263,7 @@ class DatasourceNodeRunApi(DatasetApiResource):
 class PipelineRunApi(DatasetApiResource):
     """Resource for datasource node run."""
 
+    @error_responses(PipelineRunError)
     @service_api_ns.doc(
         summary="Run Pipeline",
         description=(
@@ -309,7 +317,8 @@ class PipelineRunApi(DatasetApiResource):
         rag_pipeline_service = RagPipelineService(session)
         pipeline = rag_pipeline_service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset_id_str)
         try:
-            response: dict[Any, Any] | Generator[str, Any, None] = PipelineGenerateService.generate(
+            response: dict[Any, Any] | Generator[str, Any] = PipelineGenerateService.generate(
+                generator=application_services().knowledge.pipeline_generator,
                 session=session,
                 pipeline=pipeline,
                 user=current_user,
@@ -328,6 +337,9 @@ class PipelineRunApi(DatasetApiResource):
 class KnowledgebasePipelineFileUploadApi(DatasetApiResource):
     """Resource for uploading a file to a knowledgebase pipeline."""
 
+    @error_responses(
+        FilenameNotExistsError, FileTooLargeError, NoFileUploadedError, TooManyFilesError, UnsupportedFileTypeError
+    )
     @service_api_ns.doc(
         summary="Upload Pipeline File",
         description="Upload a file for use in a knowledge pipeline. Accepts a single file via `multipart/form-data`.",

@@ -14,11 +14,20 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.workflow import app_generator as app_generator_module
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
-from core.ops.ops_trace_manager import TraceQueueManager
+from core.ops.ops_trace_manager import OpsTraceManager, TraceQueueManager
 from models.enums import EndUserType
 from models.model import App, AppMode, EndUser
 from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowKind, WorkflowType
+
+
+@pytest.fixture(autouse=True)
+def disable_trace_delivery(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Construct real trace managers without provider lookup or background delivery."""
+    monkeypatch.setattr(OpsTraceManager, "get_ops_trace_instance", lambda app_id: None)
+    monkeypatch.setattr(TraceQueueManager, "start_timer", lambda self: None)
+    monkeypatch.setattr("core.telemetry.gateway.is_enterprise_telemetry_enabled", lambda: False)
+
 
 TENANT_ID = "00000000-0000-0000-0000-000000000001"
 OTHER_TENANT_ID = "00000000-0000-0000-0000-000000000002"
@@ -492,7 +501,6 @@ class TestWorkflowAppGeneratorGenerate:
         app = _persist_app(sqlite_generator_session)
         workflow = _persist_workflow(sqlite_generator_session)
         user = _persist_end_user(sqlite_generator_session)
-        monkeypatch.setattr(app_generator_module, "TraceQueueManager", Mock(return_value=Mock(spec=TraceQueueManager)))
         execute = Mock(return_value={"ok": True})
         monkeypatch.setattr(generator, "_generate", execute)
         return generator, app, workflow, user, execute
@@ -600,7 +608,7 @@ class TestWorkflowAppGeneratorResume:
             workflow_execution_id="run-id",
             call_depth=0,
         )
-        DummyTraceQueueManager = type(
+        dummy_trace_queue_manager = type(
             "_DummyTraceQueueManager",
             (TraceQueueManager,),
             {
@@ -611,7 +619,7 @@ class TestWorkflowAppGeneratorResume:
         )
         monkeypatch.setattr(
             "core.app.apps.workflow.app_generator.TraceQueueManager",
-            DummyTraceQueueManager,
+            dummy_trace_queue_manager,
         )
         captured_entity: WorkflowAppGenerateEntity | None = None
 
@@ -635,7 +643,7 @@ class TestWorkflowAppGeneratorResume:
         assert result.ok is True
         assert captured_entity is not None
         trace_manager = captured_entity.trace_manager
-        assert isinstance(trace_manager, DummyTraceQueueManager)
+        assert isinstance(trace_manager, dummy_trace_queue_manager)
         assert trace_manager.app_id == APP_ID
         assert trace_manager.user_id == "session-id"
 

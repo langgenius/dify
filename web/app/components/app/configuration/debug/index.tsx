@@ -1,4 +1,5 @@
 'use client'
+
 import type { AppModelConfigPayload } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
 import type { DebugWithSingleModelRefType } from './debug-with-single-model'
@@ -44,7 +45,7 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { consoleQuery } from '@/service/console'
 import { sendCompletionMessage } from '@/service/debug'
 import { AppSourceType } from '@/service/share'
-import { AppModeEnum, ModelModeType, TransferMethod } from '@/types/app'
+import { ModelModeType, TransferMethod } from '@/types/app'
 import { formatBooleanInputs, promptVariablesToUserInputsForm } from '@/utils/model-config'
 import GroupName from '../base/group-name'
 import CannotQueryDataset from '../base/warning-mask/cannot-query-dataset'
@@ -147,7 +148,7 @@ const Debug: FC<IDebug> = ({
   const [completionFiles, setCompletionFiles] = useState<VisionFile[]>([])
 
   const checkCanSend = useCallback(() => {
-    if (isAdvancedMode && mode !== AppModeEnum.COMPLETION) {
+    if (isAdvancedMode && mode !== 'completion') {
       if (modelModeType === ModelModeType.completion) {
         if (!hasSetBlockStatus.history) {
           toast.error(t(($) => $['otherError.historyNoBeEmpty'], { ns: 'appDebug' }))
@@ -344,7 +345,7 @@ const Debug: FC<IDebug> = ({
     sendTextCompletion()
   }
 
-  const varList = modelConfig.configs.prompt_variables.map((item: any) => {
+  const varList = modelConfig.configs.prompt_variables.map((item) => {
     return {
       label: item.key,
       value: inputs[item.key],
@@ -413,9 +414,7 @@ const Debug: FC<IDebug> = ({
 
   const handleOpenLog = (item: IChatItem) => {
     const container =
-      debugWithMultipleModel || mode === AppModeEnum.COMPLETION
-        ? ref.current
-        : singleChatContainerRef.current
+      debugWithMultipleModel || mode === 'completion' ? ref.current : singleChatContainerRef.current
     if (container) setLogModalWidth(document.body.clientWidth - (container.clientWidth + 16) - 8)
     setSelectedLogItem(item)
   }
@@ -423,9 +422,7 @@ const Debug: FC<IDebug> = ({
   useEffect(() => {
     if (!selectedLogItem) return
     const container =
-      debugWithMultipleModel || mode === AppModeEnum.COMPLETION
-        ? ref.current
-        : singleChatContainerRef.current
+      debugWithMultipleModel || mode === 'completion' ? ref.current : singleChatContainerRef.current
     if (!container) return
 
     const adjustModalWidth = () => {
@@ -471,7 +468,7 @@ const Debug: FC<IDebug> = ({
                 <div className="mx-2 h-3.5 w-px bg-divider-regular" />
               </>
             ) : null}
-            {mode !== AppModeEnum.COMPLETION && (
+            {mode !== 'completion' && (
               <>
                 {canTestAndRun && (
                   <Tooltip>
@@ -525,14 +522,14 @@ const Debug: FC<IDebug> = ({
             )}
           </div>
         </div>
-        {mode !== AppModeEnum.COMPLETION && (
+        {mode !== 'completion' && (
           <CollapsiblePanel render={<div className="mx-3" />}>
             <ChatUserInput inputs={inputs} />
           </CollapsiblePanel>
         )}
-        {mode === AppModeEnum.COMPLETION && (
+        {mode === 'completion' && (
           <PromptValuePanel
-            appType={mode as AppModeEnum}
+            appType={mode}
             onSend={handleSendTextCompletion}
             inputs={inputs}
             visionConfig={{
@@ -582,7 +579,7 @@ const Debug: FC<IDebug> = ({
             </div>
           )}
           {/* Chat */}
-          {mode !== AppModeEnum.COMPLETION && (
+          {mode !== 'completion' && (
             <div className="h-0 grow overflow-hidden">
               <DebugWithSingleModel
                 ref={debugWithSingleModelRef}
@@ -593,7 +590,7 @@ const Debug: FC<IDebug> = ({
             </div>
           )}
           {/* Text  Generation */}
-          {mode === AppModeEnum.COMPLETION && (
+          {mode === 'completion' && (
             <>
               {(completionRes || isResponding) && (
                 <>
@@ -638,6 +635,7 @@ const Debug: FC<IDebug> = ({
       {selectedLogItem &&
         (selectedLogItem.agent_thoughts?.length ? (
           <AgentLogModal
+            appId={appId}
             width={logModalWidth}
             currentLogItem={selectedLogItem}
             onCancel={() => setSelectedLogItem(undefined)}

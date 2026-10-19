@@ -19,13 +19,13 @@ class TestAdditionalFeatureManagers:
         assert set(keys) == {"opening_statement", "suggested_questions"}
 
     def test_opening_statement_validate_types(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="opening_statement must be of string type"):
             OpeningStatementConfigManager.validate_and_set_defaults({"opening_statement": 123})
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="suggested_questions must be of list type"):
             OpeningStatementConfigManager.validate_and_set_defaults(
                 {"opening_statement": "hi", "suggested_questions": "bad"}
             )
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Elements in suggested_questions list must be of string type"):
             OpeningStatementConfigManager.validate_and_set_defaults(
                 {"opening_statement": "hi", "suggested_questions": [1]}
             )
@@ -42,9 +42,9 @@ class TestAdditionalFeatureManagers:
         assert config["retriever_resource"]["enabled"] is False
         assert keys == ["retriever_resource"]
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="retriever_resource must be of dict type"):
             RetrievalResourceConfigManager.validate_and_set_defaults({"retriever_resource": "bad"})
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="enabled in retriever_resource must be of boolean type"):
             RetrievalResourceConfigManager.validate_and_set_defaults({"retriever_resource": {"enabled": "yes"}})
 
     def test_retrieval_resource_convert(self):
@@ -56,9 +56,9 @@ class TestAdditionalFeatureManagers:
         assert config["speech_to_text"]["enabled"] is False
         assert keys == ["speech_to_text"]
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="speech_to_text must be of dict type"):
             SpeechToTextConfigManager.validate_and_set_defaults({"speech_to_text": "bad"})
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="enabled in speech_to_text must be of boolean type"):
             SpeechToTextConfigManager.validate_and_set_defaults({"speech_to_text": {"enabled": "yes"}})
 
         assert SpeechToTextConfigManager.convert({"speech_to_text": {"enabled": True}}) is True
@@ -69,15 +69,15 @@ class TestAdditionalFeatureManagers:
         assert config["suggested_questions_after_answer"]["enabled"] is False
         assert keys == ["suggested_questions_after_answer"]
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="suggested_questions_after_answer must be of dict type"):
             SuggestedQuestionsAfterAnswerConfigManager.validate_and_set_defaults(
                 {"suggested_questions_after_answer": "bad"}
             )
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="enabled in suggested_questions_after_answer must be of boolean type"):
             SuggestedQuestionsAfterAnswerConfigManager.validate_and_set_defaults(
                 {"suggested_questions_after_answer": {"enabled": "yes"}}
             )
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="prompt in suggested_questions_after_answer must be of string type"):
             SuggestedQuestionsAfterAnswerConfigManager.validate_and_set_defaults(
                 {"suggested_questions_after_answer": {"enabled": True, "prompt": 123}}
             )
@@ -89,11 +89,11 @@ class TestAdditionalFeatureManagers:
             SuggestedQuestionsAfterAnswerConfigManager.validate_and_set_defaults(
                 {"suggested_questions_after_answer": {"enabled": True, "prompt": "a" * 1001}}
             )
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="model in suggested_questions_after_answer must be of object type"):
             SuggestedQuestionsAfterAnswerConfigManager.validate_and_set_defaults(
                 {"suggested_questions_after_answer": {"enabled": True, "model": "bad"}}
             )
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="name in suggested_questions_after_answer\\.model must be of string type"):
             SuggestedQuestionsAfterAnswerConfigManager.validate_and_set_defaults(
                 {"suggested_questions_after_answer": {"enabled": True, "model": {"provider": "openai"}}}
             )
@@ -128,9 +128,9 @@ class TestAdditionalFeatureManagers:
         assert config["text_to_speech"]["enabled"] is False
         assert keys == ["text_to_speech"]
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="text_to_speech must be of dict type"):
             TextToSpeechConfigManager.validate_and_set_defaults({"text_to_speech": "bad"})
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="enabled in text_to_speech must be of boolean type"):
             TextToSpeechConfigManager.validate_and_set_defaults({"text_to_speech": {"enabled": "yes"}})
         for field, value in (("voice", None), ("language", 42), ("autoPlay", "auto"), ("autoPlay", None)):
             with pytest.raises(ValueError, match=f"{field} in text_to_speech"):
@@ -157,5 +157,8 @@ class TestAdditionalFeatureManagers:
 
         assert MoreLikeThisConfigManager.convert({"more_like_this": {"enabled": True}}) is True
         assert MoreLikeThisConfigManager.convert({"more_like_this": {"enabled": False}}) is False
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match=("more_like_this must be of dict type and enabled in more_like_this must be of boolean type"),
+        ):
             MoreLikeThisConfigManager.validate_and_set_defaults({"more_like_this": "bad"})

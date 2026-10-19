@@ -4,6 +4,7 @@ import type {
   SkillFileResponse,
   SkillVersionResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { AlertDialogActions } from '@langgenius/dify-ui/alert-dialog'
 import type {
   ChangeEvent,
   ComponentPropsWithoutRef,
@@ -15,15 +16,19 @@ import type {
   RefObject,
 } from 'react'
 import type { MarkdownProps } from '@/app/components/base/markdown'
+import { AlertDialog, AlertDialogTrigger } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useMutation } from '@tanstack/react-query'
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
 import { visit } from 'unist-util-visit'
 import { Markdown } from '@/app/components/base/markdown'
 import useTimestamp from '@/hooks/use-timestamp'
+import { consoleQuery } from '@/service/console'
 import styles from './markdown-editor.module.css'
+import { RestoreVersionDialogContent } from './restore-version-dialog-content'
 import {
   getMarkdownLiveEditorSelectionOffset,
   getPathBaseName,
@@ -641,7 +646,7 @@ export function EditableMetadataEntry({
       onValueChange={setValueDraft}
       valuePlaceholder="Value"
       onBlurCapture={(event) => {
-        if (event.currentTarget.contains(event.relatedTarget as Node | null)) return
+        if (event.currentTarget.contains(event.relatedTarget)) return
         commit()
       }}
     />
@@ -663,6 +668,7 @@ export function MarkdownSourceEditor({
   readOnly: boolean
   value: string
 }) {
+  const { t } = useTranslation(['skill'])
   const [focused, setFocused] = useState(false)
   const [selectionOffset, setSelectionOffset] = useState(0)
   const [scrollTop, setScrollTop] = useState(0)
@@ -689,6 +695,7 @@ export function MarkdownSourceEditor({
         </div>
       </div>
       <textarea
+        aria-label={t(($) => $['skillManagement.detail.markdownSourceMode'])}
         ref={editorRef}
         readOnly={readOnly}
         value={value}
@@ -1145,15 +1152,22 @@ export function CsvTablePreview({ rows }: { rows: string[][] }) {
 
 export function VersionActionBar({
   onExit,
-  onRestore,
-  restoring,
+  onRestored,
   version,
 }: {
   onExit: () => void
-  onRestore: () => void
-  restoring: boolean
+  onRestored: () => void
   version: SkillVersionResponse
 }) {
+  const actionsRef = useRef<AlertDialogActions>(null)
+  const restoreMutation = useMutation(
+    consoleQuery.workspaces.current.skills.bySkillId.restore.post.mutationOptions({
+      onSuccess: () => {
+        actionsRef.current?.close()
+        onRestored()
+      },
+    }),
+  )
   const { t } = useTranslation(['skill'])
   const { formatTime } = useTimestamp()
   const publishedBy = version.published_by_name ?? version.published_by ?? '-'
@@ -1181,9 +1195,31 @@ export function VersionActionBar({
             })}
           </div>
         </div>
-        <Button variant="primary" className="h-9 px-5" loading={restoring} onClick={onRestore}>
-          {t(($) => $['skillManagement.detail.restoreVersion'])}
-        </Button>
+        <AlertDialog
+          actionsRef={actionsRef}
+          onOpenChange={(_open, details) => {
+            if (restoreMutation.isPending && details.reason !== 'imperative-action')
+              details.cancel()
+          }}
+        >
+          <AlertDialogTrigger
+            render={
+              <Button variant="primary" className="h-9 px-5" loading={restoreMutation.isPending} />
+            }
+          >
+            {t(($) => $['skillManagement.detail.restoreVersion'])}
+          </AlertDialogTrigger>
+          <RestoreVersionDialogContent
+            versionTitle={getSkillVersionTitle(version)}
+            isPending={restoreMutation.isPending}
+            onConfirm={() =>
+              restoreMutation.mutate({
+                params: { skill_id: version.skill_id },
+                body: { version_id: version.id, version_name: version.version_name },
+              })
+            }
+          />
+        </AlertDialog>
         <Button variant="secondary" className="h-9 px-4" onClick={onExit}>
           <span aria-hidden className="i-ri-history-line size-4" />
           {t(($) => $['skillManagement.detail.exitVersions'])}

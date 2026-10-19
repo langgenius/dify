@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import MagicMock, Mock, PropertyMock, call, patch
@@ -171,12 +172,12 @@ def _upload_file(
     return upload
 
 
+@dataclass(eq=False, repr=False)
 class _SimpleRetrievalChildChunk:
-    def __init__(self, id: str, content: str, score: float, position: int) -> None:
-        self.id = id
-        self.content = content
-        self.score = score
-        self.position = position
+    id: str
+    content: str
+    score: float
+    position: int
 
 
 class _SimpleRetrievalSegment:
@@ -899,7 +900,7 @@ class TestRetrievalServiceInternals:
         monkeypatch.setattr(
             RetrievalService,
             "get_segment_attachment_infos",
-            lambda attachment_ids, session: [
+            lambda attachment_ids, *, dataset_refs, session: [
                 {
                     "attachment_id": "attach-node-1",
                     "attachment_info": {
@@ -1172,7 +1173,9 @@ class TestRetrievalServiceInternals:
         assert result is None
 
     def test_get_segment_attachment_infos_returns_empty_when_upload_files_missing(self, sqlite_session: Session):
-        result = RetrievalService.get_segment_attachment_infos(["upload-1"], sqlite_session)
+        result = RetrievalService.get_segment_attachment_infos(
+            ["upload-1"], dataset_refs=(("tenant-id", "dataset-id"),), session=sqlite_session
+        )
 
         assert result == []
 
@@ -1180,7 +1183,9 @@ class TestRetrievalServiceInternals:
         sqlite_session.add(_upload_file(file_id="upload-1", name="file-name"))
         sqlite_session.commit()
 
-        result = RetrievalService.get_segment_attachment_infos(["upload-1"], sqlite_session)
+        result = RetrievalService.get_segment_attachment_infos(
+            ["upload-1"], dataset_refs=(("tenant-id", "dataset-id"),), session=sqlite_session
+        )
 
         assert result == []
 
@@ -1200,7 +1205,9 @@ class TestRetrievalServiceInternals:
         sqlite_session.add_all([upload_file_1, upload_file_2, binding])
         sqlite_session.commit()
 
-        result = RetrievalService.get_segment_attachment_infos(["upload-1", "upload-2"], sqlite_session)
+        result = RetrievalService.get_segment_attachment_infos(
+            ["upload-1", "upload-2"], dataset_refs=(("tenant-id", "dataset-id"),), session=sqlite_session
+        )
 
         assert result == [
             {

@@ -16,9 +16,9 @@ from models.model import (
 from models.workflow import WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
-from services.account_service import AccountService, TenantService
 from services.app_service import AppService, CreateAppParams
 from services.workflow_run_service import WorkflowRunService
+from tests.test_containers_integration_tests.helpers import accounts as account_fixtures
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
@@ -45,7 +45,7 @@ class TestWorkflowRunService:
             patch("services.app_service.SystemFeatureService") as mock_feature_service,
             patch("services.app_service.EnterpriseService") as mock_enterprise_service,
             patch("services.app_service.ModelManager.for_tenant") as mock_model_manager,
-            patch("services.account_service.SystemFeatureService") as mock_account_feature_service,
+            patch("services.account.login_adapters.SystemFeatureService") as mock_account_feature_service,
         ):
             # Setup default mock returns for app service
             mock_feature_service.is_webapp_auth_enabled.return_value = False
@@ -93,14 +93,14 @@ class TestWorkflowRunService:
         mock_external_service_dependencies["account_feature_service"].is_registration_allowed.return_value = True
 
         # Create account and tenant
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create app with realistic data
@@ -135,7 +135,6 @@ class TestWorkflowRunService:
         Returns:
             WorkflowRun: Created workflow run instance
         """
-        fake = Faker()
 
         # Create workflow run with offset timestamp
         base_time = datetime.now(UTC)
@@ -237,12 +236,12 @@ class TestWorkflowRunService:
         - Repository method calls
         """
         # Arrange: Create test data
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create multiple workflow runs
         workflow_runs = []
-        for i in range(5):
+        for _i in range(5):
             workflow_run = self._create_test_workflow_run(db_session_with_containers, app, account, "debugging")
             workflow_runs.append(workflow_run)
 
@@ -284,7 +283,7 @@ class TestWorkflowRunService:
         - Repository method calls with proper parameters
         """
         # Arrange: Create test data
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create multiple workflow runs with different timestamps
@@ -333,11 +332,11 @@ class TestWorkflowRunService:
         - Repository method calls with default values
         """
         # Arrange: Create test data
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create workflow runs
-        workflow_run = self._create_test_workflow_run(db_session_with_containers, app, account, "debugging")
+        self._create_test_workflow_run(db_session_with_containers, app, account, "debugging")
 
         # Act: Execute the method under test without limit
         args = {}  # No limit specified
@@ -378,7 +377,7 @@ class TestWorkflowRunService:
         - WorkflowWithMessage wrapper functionality
         """
         # Arrange: Create test data
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create workflow runs with messages
@@ -387,7 +386,7 @@ class TestWorkflowRunService:
             workflow_run = self._create_test_workflow_run(
                 db_session_with_containers, app, account, "debugging", offset_minutes=i
             )
-            message = self._create_test_message(db_session_with_containers, app, account, workflow_run)
+            self._create_test_message(db_session_with_containers, app, account, workflow_run)
             workflow_runs.append(workflow_run)
 
         # Act: Execute the method under test
@@ -429,7 +428,7 @@ class TestWorkflowRunService:
         - Repository method calls with proper parameters
         """
         # Arrange: Create test data
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create workflow run
@@ -467,7 +466,7 @@ class TestWorkflowRunService:
         - Return value for missing records
         """
         # Arrange: Create test data
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Use a non-existent UUID
@@ -499,7 +498,7 @@ class TestWorkflowRunService:
         - Context setup for plugin tool providers
         """
         # Arrange: Create test data
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create workflow run
@@ -593,19 +592,17 @@ class TestWorkflowRunService:
         - No errors when querying non-existent executions
         """
         # Arrange: Setup test data
-        account_service = AccountService()
-        tenant_service = TenantService()
         app_service = AppService()
 
         # Create account and tenant
-        account = account_service.create_account(
+        account = account_fixtures.create_account(
             email="test@example.com",
             name="Test User",
             password="password123",
             interface_language="en-US",
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name="test_tenant", session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name="test_tenant", session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create app
@@ -647,19 +644,17 @@ class TestWorkflowRunService:
         - No errors when querying with invalid ID
         """
         # Arrange: Setup test data
-        account_service = AccountService()
-        tenant_service = TenantService()
         app_service = AppService()
 
         # Create account and tenant
-        account = account_service.create_account(
+        account = account_fixtures.create_account(
             email="test@example.com",
             name="Test User",
             password="password123",
             interface_language="en-US",
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name="test_tenant", session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name="test_tenant", session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create app

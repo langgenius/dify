@@ -12,29 +12,8 @@ from controllers.common.errors import NotFoundError
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import register_response_schema_models, register_schema_models
-from core.entities.provider_entities import ProviderConfig
-from core.plugin.entities.plugin_daemon import CredentialType
-from core.plugin.impl.oauth import OAuthHandler
-from core.trigger.entities.api_entities import (
-    SubscriptionBuilderApiEntity,
-    TriggerProviderApiEntity,
-    TriggerProviderSubscriptionApiEntity,
-)
-from core.trigger.entities.entities import RequestLog, SubscriptionBuilderUpdater
-from core.trigger.trigger_manager import TriggerManager
-from extensions.ext_database import db
-from fields.base import ResponseModel
-from libs.helper import dump_response
-from libs.login import login_required
-from models.account import Account
-from models.provider_ids import TriggerProviderID
-from services.plugin.oauth_service import OAuthProxyService
-from services.trigger.trigger_provider_service import TriggerProviderService
-from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
-from services.trigger.trigger_subscription_operator_service import TriggerSubscriptionOperatorService
-
-from .. import console_ns
-from ..wraps import (
+from controllers.console import console_ns
+from controllers.console.wraps import (
     RBACPermission,
     account_initialization_required,
     edit_permission_required,
@@ -45,6 +24,27 @@ from ..wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from core.entities.provider_entities import ProviderConfig
+from core.plugin.entities.plugin_daemon import CredentialType
+from core.plugin.impl.oauth import OAuthHandler
+from core.trigger.entities.api_entities import (
+    SubscriptionBuilderApiEntity,
+    TriggerProviderApiEntity,
+    TriggerProviderSubscriptionApiEntity,
+)
+from core.trigger.entities.entities import RequestLog, SubscriptionBuilderUpdater
+from core.trigger.trigger_manager import TriggerManager
+from extensions.ext_application_services import application_services
+from extensions.ext_database import db
+from fields.base import ResponseModel
+from libs.helper import dump_response
+from libs.login import login_required
+from models.account import Account
+from models.provider_ids import TriggerProviderID
+from services.plugin.oauth_service import OAuthProxyService
+from services.trigger.trigger_provider_service import TriggerProviderService
+from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
+from services.trigger.trigger_subscription_operator_service import TriggerSubscriptionOperatorService
 
 logger = logging.getLogger(__name__)
 
@@ -213,6 +213,7 @@ class TriggerSubscriptionListApi(Resource):
                     tenant_id=tenant_id,
                     provider_id=TriggerProviderID(provider),
                     user=user,
+                    credential_query=application_services().credential_queries,
                 ),
             )
         except ValueError as e:

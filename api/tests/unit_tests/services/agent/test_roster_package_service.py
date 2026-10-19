@@ -16,6 +16,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
 from configs import dify_config
+from extensions.storage.storage_type import StorageType
+from libs.datetime_utils import naive_utc_now
 from models.agent import (
     Agent,
     AgentConfigDraft,
@@ -29,7 +31,7 @@ from models.agent import (
     AgentStatus,
 )
 from models.agent_config_entities import AgentSoulConfig
-from models.enums import AppStatus, CustomizeTokenStrategy
+from models.enums import AppStatus, CreatorUserRole, CustomizeTokenStrategy
 from models.model import App, AppMode, IconType, Site
 from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion, SkillVersionManifest
 from models.tools import ToolFile
@@ -66,7 +68,7 @@ class _MemoryStorage:
         self.read_count = 0
         self.bytes_yielded: dict[str, int] = {}
 
-    def load_stream(self, filename: str) -> Generator[bytes, None, None]:
+    def load_stream(self, filename: str) -> Generator[bytes]:
         self.read_count += 1
         if self.before_read is not None:
             self.before_read()
@@ -622,7 +624,7 @@ def test_preflight_rejects_aggregate_nested_skill_expansion(monkeypatch: pytest.
                 size=len(payload),
                 sha256=hashlib.sha256(payload).hexdigest(),
             )
-            for index, (path, payload) in zip(("one", "two"), skill_payloads.items())
+            for index, (path, payload) in zip(("one", "two"), skill_payloads.items(), strict=False)
         ],
     )
     package = _zip(
@@ -648,7 +650,6 @@ def test_preflight_rejects_aggregate_nested_skill_expansion(monkeypatch: pytest.
             id=item.id,
             scope=item.scope,
             name=item.name,
-            audit_ref="source",
         )
         for item in manifest.skills
     ]
@@ -736,7 +737,6 @@ def test_export_rejects_unusable_or_oversized_skill_payload(
         id="s_000001",
         scope="agent_config",
         name="research",
-        audit_ref="source",
     )
     app = _package_app()
     app.package.soul.config_files = []
@@ -979,13 +979,15 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
             assert exported_app.package.soul.config_skills[1].file_id == ""
             assert exported_app.package.soul.config_files[1].is_missing is True
             assert exported_app.package.soul.config_files[1].file_id == ""
-            assert set(manifest_data) == {"format", "format_version", "audit", "apps", "skills", "files"}
+            assert set(manifest_data) == {"format", "format_version", "apps", "skills", "files"}
+            for source_id in (agent.id, skill_file.id, config_file.id):
+                assert source_id.encode() not in archive.read("manifest.yaml")
+                assert source_id.encode() not in archive.read("app.yaml")
             assert set(manifest_data["files"][0]) == {
                 "id",
                 "path",
                 "size",
                 "sha256",
-                "audit",
             }
             assert manifest_data["apps"] == [
                 {
@@ -1161,7 +1163,6 @@ def test_export_uses_current_workspace_skill_bindings(
                 "path",
                 "size",
                 "sha256",
-                "audit",
                 "scope",
                 "name",
             }
@@ -1292,14 +1293,17 @@ def test_export_rejects_unavailable_agent_versions(sqlite_session: Session, sour
             AppDslService.export_dsl(app_model, session=sqlite_session, version_id=version_id)
 
 
-def test_manifest_yaml_is_strict() -> None:
+def test_manifest_yaml_ignores_unknown_fields() -> None:
     skill_payload = _skill_archive()
     file_payload = b"pdf-content"
-    manifest = _manifest(skill_payload=skill_payload, file_payload=file_payload).model_dump(mode="json")
+    expected = _manifest(skill_payload=skill_payload, file_payload=file_payload)
+    manifest = expected.model_dump(mode="json")
     manifest["unexpected"] = True
+    for group in ("apps", "skills", "files"):
+        for resource in manifest[group]:
+            resource["unexpected"] = True
 
-    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
-        RosterAgentPackageManifest.model_validate(yaml.safe_load(yaml.safe_dump(manifest)))
+    assert RosterAgentPackageManifest.model_validate(yaml.safe_load(yaml.safe_dump(manifest))) == expected
 
 
 @pytest.mark.parametrize(
@@ -1396,7 +1400,12 @@ def test_export_download_closes_owned_archive(app: Flask) -> None:
     ],
 )
 def test_export_preserves_file_metadata_in_dsl(
-    monkeypatch: pytest.MonkeyPatch, file_kind: str, declared_mime: str | None, stored_mime: str, expected_mime: str
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    file_kind: str,
+    declared_mime: str | None,
+    stored_mime: str,
+    expected_mime: str,
 ) -> None:
     from unittest.mock import Mock
 
@@ -1414,7 +1423,20 @@ def test_export_preserves_file_metadata_in_dsl(
         original_url=None,
     )
     tool_file.id = "source-id"
-    upload_file = Mock(spec=UploadFile, id="source-id", key="payload", mime_type=stored_mime)
+    upload_file = UploadFile(
+        tenant_id="tenant-1",
+        storage_type=StorageType.LOCAL,
+        key="payload",
+        name="original.pdf",
+        size=1,
+        extension="pdf",
+        mime_type=stored_mime,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-1",
+        created_at=naive_utc_now(),
+        used=False,
+    )
+    upload_file.id = "source-id"
     monkeypatch.setattr(exporter, "_tool_files", Mock(return_value={"source-id": tool_file}))
     monkeypatch.setattr(exporter, "_upload_files", Mock(return_value={"source-id": upload_file}))
     soul = AgentSoulConfig.model_validate(
@@ -1425,7 +1447,7 @@ def test_export_preserves_file_metadata_in_dsl(
         }
     )
 
-    portable_soul, _, sources = exporter._collect_payloads(session=Mock(spec=Session), tenant_id="tenant-1", soul=soul)
+    portable_soul, _, sources = exporter._collect_payloads(session=sqlite_session, tenant_id="tenant-1", soul=soul)
 
     ref = portable_soul.config_files[0]
     assert (ref.name, ref.file_kind, ref.mime_type, ref.file_id) == (

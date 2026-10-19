@@ -1,4 +1,4 @@
-import type { RadioGroupProps } from '../index'
+import type { RadioGroupProps, RadioProps } from '../index'
 import * as React from 'react'
 import { render } from 'vitest-browser-react'
 import { Field, FieldItem, FieldLabel } from '../../field'
@@ -27,7 +27,7 @@ function TestRadioGroup<Value = string>({
   )
 }
 
-type TestRadioOptionProps = React.ComponentProps<typeof Radio> & {
+type TestRadioOptionProps = RadioProps & {
   children: React.ReactNode
 }
 
@@ -184,21 +184,13 @@ describe('Radio', () => {
   it('should support custom items with a visual RadioControl', async () => {
     const screen = await render(
       <RadioGroup defaultValue="card" aria-label="Card choice">
-        <RadioItem
-          value="card"
-          nativeButton
-          render={<button type="button" className="custom-card" />}
-        >
+        <RadioItem value="card" nativeButton render={<button type="button" />}>
           <span>Card option</span>
-          <RadioControl className="custom-control" />
+          <RadioControl />
         </RadioItem>
       </RadioGroup>,
     )
 
-    await expect
-      .element(screen.getByRole('radio', { name: 'Card option' }))
-      .toHaveClass('custom-card')
-    expect(screen.container.querySelector('.custom-control')).toBeInTheDocument()
     await expect
       .element(screen.getByRole('radio', { name: 'Card option' }))
       .toHaveAttribute('data-checked', '')

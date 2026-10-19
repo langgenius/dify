@@ -32,7 +32,6 @@ from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_application_services import application_services
 from fields.app_fields import (
     AppDetail,
-    AppDetailSiteResponse,
     AppDetailWithSite,
     AppExportResponse,
     AppImportResponse,
@@ -41,13 +40,13 @@ from fields.app_fields import (
     AppPartial,
     AppTraceResponse,
     DeletedTool,
-    ModelConfigPartial,
     RecentAppListResponse,
     RecentAppResponse,
     Tag,
     WorkflowPartial,
 )
 from graphon.enums import WorkflowExecutionStatus
+from libs.external_api import error_responses
 from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 from libs.helper import dump_response
 from libs.url_utils import normalize_api_base_url
@@ -55,6 +54,7 @@ from machinery.context import RequestContext
 from models import DatasetPermissionEnum
 from models.account import TenantAccountRole
 from models.model import IconType
+from services.agent.errors import RosterAgentPackageExportFailedError
 from services.app.console_service import (
     AppExportAgentNotFoundError,
     AppExportPaidPlanRequiredError,
@@ -79,7 +79,8 @@ from services.entities.app_entities import (
     UpdateAppParams,
 )
 from services.entities.dsl_entities import ImportStatus
-from services.entities.knowledge_entities.knowledge_entities import (
+from services.errors.base import NoPermissionError
+from services.knowledge.entities.knowledge_entities import (
     DataSource,
     InfoList,
     NotionIcon,
@@ -91,7 +92,6 @@ from services.entities.knowledge_entities.knowledge_entities import (
     WeightModel,
     WeightVectorSetting,
 )
-from services.errors.account import NoPermissionError
 
 register_enum_models(console_ns, IconType)
 
@@ -109,6 +109,7 @@ class AppListBaseQuery(BaseModel):
         description="Sort apps by last modified, recently created, or earliest created",
     )
     name: str | None = Field(default=None, description="Filter by app name")
+    openapi_visible: bool = Field(default=False, description="Only return apps with API access enabled")
     tag_ids: list[str] | None = Field(default=None, description="Filter by tag IDs")
     creator_ids: list[str] | None = Field(default=None, description="Filter by creator account IDs")
     is_created_by_me: bool | None = Field(default=None, description="Filter by creator")
@@ -266,8 +267,6 @@ register_schema_models(
     AppTracePayload,
     Tag,
     WorkflowPartial,
-    ModelConfigPartial,
-    AppDetailSiteResponse,
     DeletedTool,
     AppExportResponse,
     Segmentation,
@@ -483,6 +482,7 @@ class AppCopyApi(AppResource):
     @console_ns.response(
         HTTPStatus.ACCEPTED, "App copy requires confirmation", console_ns.models[AppImportResponse.__name__]
     )
+    @console_ns.response(HTTPStatus.BAD_REQUEST, "App copy failed", console_ns.models[AppImportResponse.__name__])
     @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
     @console_account_admission(
         allowed_roles=_EDIT_ROLES, rbac_checks=[RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, PlainApp())]
@@ -502,6 +502,7 @@ class AppCopyApi(AppResource):
 
 @console_ns.route("/apps/<uuid:app_id>/export")
 class AppExportApi(AppResource):
+    @error_responses(RosterAgentPackageExportFailedError)
     @console_ns.doc("export_app")
     @console_ns.doc(description="Export application configuration as DSL")
     @console_ns.doc(params={"app_id": "Application ID to export"})
@@ -656,6 +657,7 @@ class AppTraceApi(AppResource):
     def get(self, context: RequestContext, app_id: uuid.UUID):
         return dump_response(AppTraceResponse, application_services().apps.console.get_trace(context, str(app_id)))
 
+    @error_responses(TracingProviderUnavailableError)
     @console_ns.doc("update_app_trace")
     @console_ns.doc(description="Update app tracing configuration")
     @console_ns.doc(params={"app_id": "Application ID"})

@@ -53,6 +53,10 @@ from models.dataset import Pipeline
 from models.enums import CreatorUserRole
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
+from tests.unit_tests.controllers.error_body import raised_error
+
+pytestmark = pytest.mark.usefixtures("pipeline_application")
+
 
 DEFAULT_WORKFLOW_TENANT_ID = "00000000-0000-0000-0000-000000000001"
 DEFAULT_WORKFLOW_APP_ID = "00000000-0000-0000-0000-000000000002"
@@ -333,7 +337,7 @@ class TestDraftWorkflowApi:
         with (
             app.test_request_context("/", data="bad-json", headers={"Content-Type": "text/plain"}),
         ):
-            response, status = method(api, user, pipeline)
+            response, status = raised_error(lambda: method(api, user, pipeline))
             assert status == 400
 
     def test_restore_published_workflow_to_draft_success(self, app: Flask) -> None:
@@ -486,7 +490,7 @@ class TestDraftNodeRun:
                 return_value=service,
             ),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="Workflow node execution not found"):
                 method(api, NodeRunRequiredPayload(inputs={}), user, pipeline, "node")
 
 
@@ -546,7 +550,27 @@ class TestMiscApis:
 
         service = MagicMock()
         recommended_plugins = {
-            "installed_recommended_plugins": [{"id": "p1"}],
+            "installed_recommended_plugins": [
+                {
+                    "id": "p1",
+                    "author": "langgenius",
+                    "name": "p1",
+                    "description": {
+                        "en_US": "Plugin one",
+                        "zh_Hans": "Plugin one",
+                        "pt_BR": "Plugin one",
+                        "ja_JP": "Plugin one",
+                    },
+                    "icon": "/icon.svg",
+                    "label": {
+                        "en_US": "Plugin one",
+                        "zh_Hans": "Plugin one",
+                        "pt_BR": "Plugin one",
+                        "ja_JP": "Plugin one",
+                    },
+                    "type": "builtin",
+                }
+            ],
             "uninstalled_recommended_plugins": [{"id": "p2"}],
         }
         service.get_recommended_plugins.return_value = recommended_plugins
@@ -592,7 +616,7 @@ class TestDefaultBlockConfigApi:
         pipeline = make_pipeline()
 
         with app.test_request_context("/?q=bad-json"):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="Invalid filters"):
                 method(api, DefaultBlockConfigQuery(q="bad-json"), pipeline, "llm")
 
 
@@ -670,8 +694,9 @@ class TestRagPipelineByIdApi:
         user = make_account()
 
         with app.test_request_context("/", json={}):
-            result, status = method(api, WorkflowUpdatePayload(), user, pipeline, "w1")
+            result, status = raised_error(lambda: method(api, WorkflowUpdatePayload(), user, pipeline, "w1"))
             assert status == 400
+            assert result == {"code": "invalid_param", "message": "No valid fields to update"}
 
     @pytest.mark.parametrize("transaction_fails", [False, True], ids=["commit-succeeds", "commit-fails"])
     def test_delete_retires_candidates_only_after_transaction_exit(
@@ -694,7 +719,8 @@ class TestRagPipelineByIdApi:
         @contextmanager
         def transaction() -> Generator[Session]:
             events.append("transaction-enter")
-            yield MagicMock(spec=Session)
+            with Session() as session:
+                yield session
             events.append("transaction-exit")
             if transaction_fails:
                 raise error

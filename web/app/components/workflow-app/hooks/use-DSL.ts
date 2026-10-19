@@ -1,24 +1,31 @@
 import type { useNodesSyncDraft } from './use-nodes-sync-draft'
 import type { ExportSecretEnvironmentEvent } from '@/app/components/workflow/export-secret-env-event'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { getAppTransferErrorMessage } from '@/app/components/app/transfer-error'
 import { exportAppDslFile } from '@/app/components/app/use-export-app-dsl'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
+import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { consoleClient } from '@/service/console'
+import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 
 type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
 
 const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const { t } = useTranslation(['app'])
+  const queryClient = useQueryClient()
   const { eventEmitter } = useEventEmitterContextContext()
 
-  const appDetail = useAppStore((s) => s.appDetail)
+  const { appId } = useAtomValue(workflowAppIdentityAtom)
+  const { data: appDetail } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: { params: { app_id: appId } },
+    }),
+  )
 
   const { mutateAsync: exportWorkflow, isPending: isExporting } = useMutation({
     mutationFn: async ({ include, workflowId }: { include: boolean; workflowId?: string }) => {
@@ -32,12 +39,12 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
           },
         })
         if (syncFailed) {
-          toast.error(t(($) => $.exportAppFailed, { ns: 'app' }))
+          toast.error(t(($) => $.exportFailed, { ns: 'app' }))
           return false
         }
       }
 
-      await exportAppDslFile({
+      await exportAppDslFile(queryClient, {
         appId: appDetail.id,
         appName: appDetail.name,
         includeSecret: include,
@@ -55,8 +62,8 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         return await exportWorkflow({ include, workflowId })
       } catch (error) {
         toast.error(
-          t(($) => $.exportAppFailed, { ns: 'app' }),
-          { description: await getAppTransferErrorMessage(error) },
+          t(($) => $.exportFailed, { ns: 'app' }),
+          { description: getErrorMessage(error) },
         )
         return false
       }
@@ -67,9 +74,12 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const exportCheck = useCallback(async () => {
     if (!appDetail) return
     try {
-      const { items } = await consoleClient.apps.byAppId.workflows.draft.environmentVariables.get(
-        { params: { app_id: appDetail.id } },
-        { context: { silent: true } },
+      const { items } = await queryClient.query(
+        consoleQuery.apps.byAppId.workflows.draft.environmentVariables.get.queryOptions({
+          input: { params: { app_id: appDetail.id } },
+          context: { silent: true },
+          staleTime: 0,
+        }),
       )
       const list = items.filter((env) => env.value_type === 'secret')
       if (list.length === 0) {
@@ -84,13 +94,13 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       } satisfies ExportSecretEnvironmentEvent)
     } catch (error) {
       toast.error(
-        t(($) => $.exportAppFailed, { ns: 'app' }),
+        t(($) => $.exportFailed, { ns: 'app' }),
         {
-          description: await getAppTransferErrorMessage(error),
+          description: getErrorMessage(error),
         },
       )
     }
-  }, [appDetail, eventEmitter, handleExportDSL, t])
+  }, [appDetail, eventEmitter, handleExportDSL, queryClient, t])
 
   return {
     exportCheck,
