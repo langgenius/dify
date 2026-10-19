@@ -92,7 +92,7 @@ const runtime: DifyBuilderRuntime = {
   appId: 'app-1',
   canEdit: true,
   enabled: true,
-  getCanvasSnapshot: () => ({ nodes: [], edgeCount: 0 }),
+  getCanvasSnapshot: () => ({ nodes: [], edges: [], isChatflow: false }),
   setShowPanel: vi.fn(),
   session: {
     startFix: vi.fn(),
