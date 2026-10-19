@@ -67,9 +67,7 @@ class PGVectoRS(BaseVector):
                 primary_key=True,
             )
             text: Mapped[str]  # pyrefly: ignore[missing-override-decorator]
-            meta: Mapped[dict[str, Any]] = mapped_column(
-                postgresql.JSONB
-            )  # pyrefly: ignore[missing-override-decorator]
+            meta: Mapped[dict[str, Any]] = mapped_column(postgresql.JSONB)  # pyrefly: ignore[missing-override-decorator]
             vector: Mapped[ndarray] = mapped_column(VECTOR(dim))  # pyrefly: ignore[missing-override-decorator]
 
         self._table = _Table
