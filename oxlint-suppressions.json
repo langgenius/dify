@@ -3158,11 +3158,6 @@
       "count": 9
     }
   },
-  "web/features/new-rag/upgrade/knowledge-upgrade-dialog.tsx": {
-    "shadcn/no-restyle": {
-      "count": 11
-    }
-  },
   "web/features/new-rag/upload/local-file-preview.tsx": {
     "shadcn/no-restyle": {
       "count": 7

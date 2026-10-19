@@ -10,6 +10,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
@@ -75,16 +76,12 @@ export function KnowledgeUpgradeDialog({
         if (!open) closeDialog()
       }}
     >
-      <AlertDialogContent
-        finalFocus={finalFocus}
-        initialFocus={cancelRef}
-        className="w-[calc(100vw-2rem)] max-w-120! overflow-hidden! rounded-2xl border-none p-0! text-left align-middle shadow-xl"
-      >
-        <div className="flex flex-col gap-4 p-6 pb-4">
-          <AlertDialogTitle className="body-xl-medium text-text-primary">
+      <AlertDialogContent finalFocus={finalFocus} initialFocus={cancelRef}>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
             {t(($) => $['upgrade.dialogTitle'], { ns: 'knowledgeUpgrade' })}
           </AlertDialogTitle>
-          <AlertDialogDescription render={<div />} className="body-md-regular text-text-primary">
+          <AlertDialogDescription render={<div />}>
             <p>
               <Trans
                 i18nKey={($) => $['upgrade.dialogDescription']}
@@ -112,8 +109,8 @@ export function KnowledgeUpgradeDialog({
               </p>
             )}
           </AlertDialogDescription>
-        </div>
-        <AlertDialogFooter className="gap-2 p-6 pt-0">
+        </AlertDialogHeader>
+        <AlertDialogFooter>
           <AlertDialogCancelButton ref={cancelRef} disabled={startMutation.isPending}>
             {tCommon(($) => $['operation.cancel'])}
           </AlertDialogCancelButton>
