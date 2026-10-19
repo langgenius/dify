@@ -64,7 +64,14 @@ class TestScheduleService(unittest.TestCase):
         cron_expr = "invalid cron"
         timezone = "UTC"
 
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match=(
+                "Cron expression must have exactly 5 fields or be a predefined "
+                "expression \\(@daily, @weekly, etc\\.\\)\\. Got 2 fields: 'invalid "
+                "cron'"
+            ),
+        ):
             calculate_next_run_at(cron_expr, timezone)
 
     def test_calculate_next_run_at_invalid_timezone(self):

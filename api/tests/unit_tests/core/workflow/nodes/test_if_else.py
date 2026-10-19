@@ -75,7 +75,7 @@ def test_execute_if_else_result_true():
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
     )
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
+    Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     node = _build_if_else_node(
         node_data={
@@ -160,7 +160,7 @@ def test_execute_if_else_result_false():
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
     )
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
+    Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     node = _build_if_else_node(
         node_data={
@@ -314,7 +314,7 @@ def test_execute_if_else_boolean_conditions(condition: Condition):
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
     )
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
+    Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     node_data = {
         "title": "Boolean Test",
@@ -364,7 +364,7 @@ def test_execute_if_else_boolean_false_conditions():
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
     )
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
+    Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     node_data = {
         "title": "Boolean False Test",
@@ -425,7 +425,7 @@ def test_execute_if_else_boolean_cases_structure():
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
     )
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
+    Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     node_data = {
         "title": "Boolean Cases Test",

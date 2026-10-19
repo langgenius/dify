@@ -756,7 +756,7 @@ def test_anonymous_app_detail_requires_account(harness: _Harness, monkeypatch: p
     monkeypatch.setattr(login_module, "current_user", None)
     response = harness.get()
     assert response.status_code == 401
-    assert response.get_json() == {"code": "unauthorized", "message": "Unauthorized."}
+    assert response.get_json() == {"code": "unauthorized", "message": "Unauthorized.", "status": 401}
     harness.assert_app_not_queried()
 
 

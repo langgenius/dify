@@ -2,7 +2,7 @@ import type { StateCreator } from 'zustand'
 import type { WorkflowHistoryEventT } from '../../hooks/use-workflow-history'
 import type { Edge, Node } from '../../types'
 import type { HistoryWorkflowData } from '@/app/components/workflow/types'
-import type { VersionHistory } from '@/types/workflow'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import isDeepEqual from 'fast-deep-equal'
 
 export type WorkflowHistoryEventMeta = {
@@ -43,8 +43,8 @@ export type HistorySliceShape = {
   setHistoryWorkflowData: (historyWorkflowData?: HistoryWorkflowData) => void
   showRunHistory: boolean
   setShowRunHistory: (showRunHistory: boolean) => void
-  versionHistory: VersionHistory[]
-  setVersionHistory: (versionHistory: VersionHistory[]) => void
+  versionHistory: FetchWorkflowDraftResponse[]
+  setVersionHistory: (versionHistory: FetchWorkflowDraftResponse[]) => void
 }
 
 export const createHistorySlice: StateCreator<HistorySliceShape> = (set) => ({

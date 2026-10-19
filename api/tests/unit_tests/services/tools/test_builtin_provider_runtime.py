@@ -35,7 +35,7 @@ PROVIDER = "vendor/search/search"
 @pytest.fixture
 def databases(
     monkeypatch: pytest.MonkeyPatch,
-) -> Generator[tuple[sessionmaker[Session], Session], None, None]:
+) -> Generator[tuple[sessionmaker[Session], Session]]:
     engines: list[Engine] = [create_engine("sqlite://", poolclass=QueuePool) for _ in range(2)]
     for engine in engines:
         TypeBase.metadata.create_all(

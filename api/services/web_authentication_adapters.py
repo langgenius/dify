@@ -86,20 +86,20 @@ class TokenManagerWebAuthenticationGateway(WebAuthenticationTokenGateway):
     @override
     def send_reset_password_code(self, *, account_id: str, email: str, language: str) -> str:
         limiter = self._reset_password_rate_limiter
-        if limiter.is_rate_limited(email):
-            raise WebEmailDeliveryRateLimitError(
-                flow="reset_password",
-                retry_after_minutes=int(limiter.time_window / 60),
+        with limiter.reserve(email) as acquired:
+            if not acquired:
+                raise WebEmailDeliveryRateLimitError(
+                    flow="reset_password",
+                    retry_after_minutes=int(limiter.time_window / 60),
+                )
+            code = self._generate_code()
+            token = TokenManager.generate_token(
+                account_id=account_id,
+                email=email,
+                token_type="reset_password",
+                additional_data={"code": code},
             )
-        code = self._generate_code()
-        token = TokenManager.generate_token(
-            account_id=account_id,
-            email=email,
-            token_type="reset_password",
-            additional_data={"code": code},
-        )
-        send_reset_password_mail_task.delay(language=language, to=email, code=code)
-        limiter.increment_rate_limit(email)
+            send_reset_password_mail_task.delay(language=language, to=email, code=code)
         return token
 
     @override

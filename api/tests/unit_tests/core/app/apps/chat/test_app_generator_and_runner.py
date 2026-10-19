@@ -16,6 +16,7 @@ from models.enums import ConversationFromSource
 from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message, MessageAnnotation
 from services.app.generation.adapters.chat import ChatAppGenerator
 from services.app.generation.adapters.chat_runner import ChatAppRunner
+from services.errors.conversation import ConversationNotExistsError
 
 
 class DummyGenerateEntity:
@@ -121,7 +122,7 @@ class TestChatAppGenerator:
             annotations=annotation_replies,
             records=app_records,
         )
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="query is required"):
             generator.generate(
                 session=unbound_session,
                 app_model=_app(),
@@ -139,7 +140,7 @@ class TestChatAppGenerator:
             annotations=annotation_replies,
             records=app_records,
         )
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="query must be a string"):
             generator.generate(
                 session=unbound_session,
                 app_model=_app(),
@@ -211,6 +212,77 @@ class TestChatAppGenerator:
         assert get_conversation.call_args.kwargs["app_id"] == "app-1"
         assert generate_entity.call_args.kwargs["extras"]["trace_session_id"] == "session-1"
 
+    def test_generate_releases_explicit_session_before_stream_consumption(
+        self, app_records, sqlite_session: Session, *, annotation_replies, sqlite_session_factory
+    ) -> None:
+        generator = ChatAppGenerator(
+            retrieval=build_dataset_retrieval(sqlite_session_factory),
+            annotations=annotation_replies,
+            records=app_records,
+        )
+        app_model = _app()
+        sqlite_session.add(app_model)
+        sqlite_session.commit()
+        sqlite_session.expunge_all()
+        assert sqlite_session.get(App, app_model.id) is not None
+        assert sqlite_session.in_transaction()
+
+        app_config = SimpleNamespace(
+            variables=[],
+            external_data_variables=[],
+            app_model_config_dict={},
+            app_mode=AppMode.CHAT,
+        )
+        events: list[str] = []
+
+        def initialize_records(*_args, **_kwargs):
+            assert not sqlite_session.in_transaction()
+            events.append("records")
+            return _conversation(), _message()
+
+        def stream_response(**_kwargs):
+            assert not sqlite_session.in_transaction()
+
+            def chunks():
+                assert not sqlite_session.in_transaction()
+                events.append("first-chunk")
+                yield "chunk"
+
+            return chunks()
+
+        with (
+            patch.object(ChatAppGenerator, "_get_app_model_config", return_value=AppModelConfig(app_id="app-1")),
+            patch("services.app.generation.adapters.chat.ChatAppConfigManager.config_validate", return_value={"x": 1}),
+            patch("services.app.generation.adapters.chat.ChatAppConfigManager.get_app_config", return_value=app_config),
+            patch("services.app.generation.adapters.chat.ModelConfigConverter.convert", return_value=SimpleNamespace()),
+            patch("services.app.generation.adapters.chat.FileUploadConfigManager.convert", return_value=None),
+            patch("services.app.generation.adapters.chat.ChatAppGenerateEntity", Mock(side_effect=DummyGenerateEntity)),
+            patch("services.app.generation.adapters.chat.TraceQueueManager", return_value=SimpleNamespace()),
+            patch("services.app.generation.adapters.chat.MessageBasedAppQueueManager", DummyQueueManager),
+            patch.object(ChatAppGenerator, "_prepare_user_inputs", return_value={}),
+            patch.object(ChatAppGenerator, "_init_generate_records", side_effect=initialize_records),
+            patch.object(ChatAppGenerator, "_handle_response", side_effect=stream_response),
+            patch(
+                "services.app.generation.adapters.chat.ChatAppGenerateResponseConverter.convert",
+                side_effect=lambda *, response, invoke_from: response,
+            ),
+            patch("services.app.generation.adapters.chat.copy_current_request_context", side_effect=lambda f: f),
+            patch("services.app.generation.adapters.chat.threading.Thread") as worker_thread,
+        ):
+            worker_thread.return_value.start.return_value = None
+            response = generator.generate(
+                app_model,
+                _account(),
+                {"query": "hi", "inputs": {}, "model_config": {"x": 1}},
+                InvokeFrom.DEBUGGER,
+                streaming=True,
+                session=sqlite_session,
+            )
+
+        assert events == ["records"]
+        assert next(response) == "chunk"
+        assert events == ["records", "first-chunk"]
+
     def test_generate_uses_session_for_annotation_reply(
         self, app_records, unbound_session: Session, *, annotation_replies, sqlite_session_factory
     ):
@@ -258,7 +330,7 @@ class TestChatAppGenerator:
             annotations=annotation_replies,
             records=app_records,
         )
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Only in App debug mode can override model config"):
             with (
                 patch.object(ChatAppGenerator, "_get_app_model_config", return_value=AppModelConfig(app_id="app-1")),
                 patch.object(AppModelConfig, "to_dict", return_value={}),
@@ -306,6 +378,32 @@ class TestChatAppGenerator:
                 conversation_id="c1",
                 message_id="m1",
             )
+
+    def test_generate_worker_reports_missing_app(
+        self, app, app_records, *, annotation_replies, sqlite_session_factory
+    ) -> None:
+        generator = ChatAppGenerator(
+            retrieval=build_dataset_retrieval(sqlite_session_factory),
+            annotations=annotation_replies,
+            records=app_records,
+        )
+        queue_manager = DummyQueueManager()
+        entity = DummyGenerateEntity(
+            task_id="t1",
+            user_id="u1",
+            app_config=SimpleNamespace(app_id="missing-app", tenant_id="tenant-1"),
+        )
+
+        generator._generate_worker(
+            flask_app=app,
+            application_generate_entity=entity,
+            queue_manager=queue_manager,
+            conversation_id="missing-conversation",
+            message_id="missing-message",
+        )
+
+        assert len(queue_manager.published) == 1
+        assert isinstance(queue_manager.published[0][0], ConversationNotExistsError)
 
 
 class TestChatAppRunner:

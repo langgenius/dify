@@ -1,4 +1,3 @@
-import type { HistoryWorkflowData } from '../../types'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { useWorkflowMode } from '../use-workflow-mode'
 
@@ -24,7 +23,7 @@ describe('useWorkflowMode', () => {
   it('should return viewHistory mode when historyWorkflowData exists', () => {
     const { result } = renderWorkflowHook(() => useWorkflowMode(), {
       initialStoreState: {
-        historyWorkflowData: { id: 'v1', status: 'succeeded' } as HistoryWorkflowData,
+        historyWorkflowData: { id: 'v1', status: 'succeeded' },
       },
     })
 
@@ -33,15 +32,16 @@ describe('useWorkflowMode', () => {
     expect(result.current.viewHistory).toBe(true)
   })
 
-  it('should prioritize restoring over viewHistory when both are set', () => {
+  it('keeps history and restoring flags while excluding normal mode', () => {
     const { result } = renderWorkflowHook(() => useWorkflowMode(), {
       initialStoreState: {
         isRestoring: true,
-        historyWorkflowData: { id: 'v1', status: 'succeeded' } as HistoryWorkflowData,
+        historyWorkflowData: { id: 'v1', status: 'succeeded' },
       },
     })
 
     expect(result.current.restoring).toBe(true)
+    expect(result.current.viewHistory).toBe(true)
     expect(result.current.normal).toBe(false)
   })
 })

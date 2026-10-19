@@ -1,5 +1,3 @@
-from repositories.agent.config_repository import AgentConfigRepository
-
 """Binding reads and writes in the owning workflow transaction.
 
 A workflow revision and its Agent bindings must commit or roll back together.
@@ -32,6 +30,7 @@ from models.agent_runtime_contracts import (
 )
 from models.model import UploadFile
 from models.workflow import Workflow
+from repositories.agent.config_repository import AgentConfigRepository
 from repositories.agent.creation_repository import WorkflowAgentCreationRepository
 from repositories.agent.runtime_repository import find_owned_workflow_binding
 from repositories.knowledge.dataset_read_repository import get_datasets_by_ids

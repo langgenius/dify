@@ -1,18 +1,15 @@
-from sqlalchemy.orm import sessionmaker
-
-from extensions.application_services.retrieval import build_dataset_retrieval
-from repositories.knowledge.retrieval_repository import KnowledgeRetrievalRepository
-
 """Unit tests for the inner knowledge retrieval service."""
 
 from unittest.mock import MagicMock
 
 import pytest
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.nodes.knowledge_retrieval.retrieval import Source, SourceMetadata
+from extensions.application_services.retrieval import build_dataset_retrieval
 from models.dataset import Dataset
 from models.model import App, AppMode
+from repositories.knowledge.retrieval_repository import KnowledgeRetrievalRepository
 from services.entities.knowledge_retrieval_inner import InnerKnowledgeRetrieveRequest
 from services.errors.knowledge_retrieval import (
     InnerKnowledgeRetrieveAppNotFoundError,

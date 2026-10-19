@@ -26,6 +26,7 @@ from services.app.generation.agent_config import AgentAppConfigurations
 from services.app.generation.ports import MessageFileWriter
 from services.human_input.ports import HumanInputFormReader
 from services.knowledge.retrieval.ports import DatasetRetrievalFactory
+from services.rbac.members import MemberService
 from services.tools.provider_queries import ToolProviders
 from services.tools.tool_engine import ToolEngine
 from services.workflow.execution.chatflow_ports import ChatflowRecords, ConversationVariables
@@ -59,7 +60,7 @@ class _SessionBoundWorkflowToolInvoker(WorkflowToolInvoker):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         with self._sessions.begin() as session:
             yield from ToolEngine.generic_invoke(
                 session=session,
@@ -219,7 +220,11 @@ if TYPE_CHECKING:
 
 
 def build_console_workflow_service(
-    *, database_client: sessionmaker[Session], redis: RedisClientWrapper, variables: WorkflowExecutionVariables
+    *,
+    database_client: sessionmaker[Session],
+    redis: RedisClientWrapper,
+    variables: WorkflowExecutionVariables,
+    rbac_members: MemberService,
 ) -> ConsoleWorkflowService[WorkflowAgentBindingStore]:
     from core.app.file_access import DatabaseFileAccessController
     from core.helper.encrypter import decrypt_token
@@ -275,7 +280,7 @@ def build_console_workflow_service(
         apps=apps,
         presence=WorkflowCollaborationRepository(redis=redis),
         access=WorkflowAccessGateway(
-            session_factory=database_client, apps=EnterpriseConsoleAppAccess(session_factory=database_client)
+            session_factory=database_client, apps=EnterpriseConsoleAppAccess(members=rbac_members)
         ),
     )
 

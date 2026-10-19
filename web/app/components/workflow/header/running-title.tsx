@@ -1,12 +1,13 @@
+import { useAtomValue } from 'jotai'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useIsChatMode } from '../hooks/use-workflow'
+import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import { useStore } from '../store'
 import { formatWorkflowRunIdentifier } from '../utils'
 
 const RunningTitle = () => {
-  const { t } = useTranslation(['workflow'])
-  const isChatMode = useIsChatMode()
+  const { t } = useTranslation(['workflow'] as const)
+  const isChatflow = useAtomValue(isChatflowAtom)
   const historyWorkflowData = useStore((s) => s.historyWorkflowData)
 
   return (
@@ -16,7 +17,7 @@ const RunningTitle = () => {
         className="mr-1 i-custom-vender-line-time-clock-play size-3 text-gray-500"
       />
       <span>
-        {isChatMode
+        {isChatflow
           ? `Test Chat${formatWorkflowRunIdentifier(historyWorkflowData?.finished_at)}`
           : `Test Run${formatWorkflowRunIdentifier(historyWorkflowData?.finished_at)}`}
       </span>

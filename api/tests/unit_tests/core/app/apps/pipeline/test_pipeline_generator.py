@@ -489,10 +489,10 @@ def test_generate_success_returns_converted(generator, mocker: MockerFixture, sq
 
 
 def test_single_iteration_generate_validates_inputs(generator, sqlite_session: Session):
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="node_id is required"):
         generator.single_iteration_generate(_build_pipeline(), _build_workflow(), "", _build_user(), {})
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="inputs is required"):
         generator.single_iteration_generate(
             _build_pipeline(),
             _build_workflow(),
@@ -574,7 +574,7 @@ def test_single_loop_generate_success(
 
 
 def test_handle_response_value_error_triggers_generate_task_stopped(generator, mocker: MockerFixture):
-    pipeline = _build_pipeline()
+    _build_pipeline()
     workflow = _build_workflow()
     app_entity = FakeRagPipelineGenerateEntity(task_id="t")
 
@@ -618,7 +618,7 @@ def test_build_document_supports_online_drive_datasource_type():
 
 
 def test_build_document_invalid_datasource_type():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Unsupported datasource type: invalid"):
         prepare_pipeline_document(
             built_in_field_enabled=False,
             datasource_type="invalid",
@@ -643,7 +643,7 @@ def test_format_datasource_info_list_non_online_drive(generator):
 def test_format_datasource_info_list_missing_node_data(generator):
     workflow = _build_workflow()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Datasource node data not found"):
         generator._format_datasource_info_list(
             DatasourceProviderType.ONLINE_DRIVE,
             [],

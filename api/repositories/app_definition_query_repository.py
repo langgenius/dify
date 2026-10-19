@@ -45,8 +45,45 @@ def map_site_configuration(site: Site) -> AppSiteConfiguration:
     )
 
 
+def _load_app_model_config(app: App, *, session: Session) -> AppModelConfig | None:
+    if not app.app_model_config_id:
+        return None
+    return session.scalar(
+        select(AppModelConfig).where(AppModelConfig.id == app.app_model_config_id, AppModelConfig.app_id == app.id)
+    )
+
+
+def load_app_parameter_config(app: App, *, session: Session) -> AppParameterConfig | None:
+    """Materialize the app's own selected config within the caller-owned Session."""
+    if app.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
+        if not app.workflow_id:
+            return None
+        workflow = session.scalar(
+            select(Workflow).where(
+                Workflow.id == app.workflow_id,
+                Workflow.app_id == app.id,
+                Workflow.tenant_id == app.tenant_id,
+            )
+        )
+        if workflow is None:
+            return None
+        return AppParameterConfig(
+            features_dict=workflow.features_dict,
+            user_input_form=cast(list[dict[str, Any]], workflow.user_input_form(to_old_structure=True)),
+        )
+
+    app_model_config = _load_app_model_config(app, session=session)
+    if app_model_config is None:
+        return None
+    features_dict = app_model_config.to_dict(annotation_reply=load_annotation_reply_config(session, app.id))
+    return AppParameterConfig(
+        features_dict=features_dict,
+        user_input_form=cast(list[dict[str, Any]], features_dict.get("user_input_form", [])),
+    )
+
+
 def _get_public_agent_parameter_config(app: App, *, session: Session) -> AppParameterConfig:
-    app_model_config = app.app_model_config_with_session(session=session)
+    app_model_config = _load_app_model_config(app, session=session)
     agent = app.agent_app_binding_with_session(session=session)
     if agent is None:
         raise AgentAppGeneratorError("Agent App has no bound Agent")
@@ -102,27 +139,7 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
             if public_runtime and app.mode == AppMode.AGENT:
                 return _get_public_agent_parameter_config(app, session=session)
 
-            if app.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-                workflow = app.workflow_with_session(session=session)
-                if workflow is None:
-                    return None
-
-                return AppParameterConfig(
-                    features_dict=workflow.features_dict,
-                    user_input_form=cast(list[dict[str, Any]], workflow.user_input_form(to_old_structure=True)),
-                )
-
-            app_model_config = app.app_model_config_with_session(session=session)
-            if app_model_config is None:
-                return None
-
-            features_dict = app_model_config.to_dict(
-                annotation_reply=load_annotation_reply_config(session, app.id),
-            )
-            return AppParameterConfig(
-                features_dict=features_dict,
-                user_input_form=cast(list[dict[str, Any]], features_dict.get("user_input_form", [])),
-            )
+            return load_app_parameter_config(app, session=session)
 
     @override
     def get_tool_icon_sources(self, app_id: str) -> tuple[AppToolIconSource, ...] | None:

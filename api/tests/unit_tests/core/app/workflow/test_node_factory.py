@@ -101,7 +101,7 @@ class TestDifyNodeFactory:
     def test_create_node_unknown_type(self) -> None:
         factory = self._factory()
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="No class mapping found for node type: unknown"):
             factory.create_node({"id": "node-1", "data": {"type": "unknown"}})
 
     def test_create_node_missing_mapping(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -110,7 +110,7 @@ class TestDifyNodeFactory:
             "services.workflow.execution.adapters.node_factory.get_node_type_classes_mapping", lambda: {}
         )
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="No class mapping found for node type: start"):
             factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.START}})
 
     def test_create_node_missing_latest_class(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -121,7 +121,7 @@ class TestDifyNodeFactory:
         )
         monkeypatch.setattr("services.workflow.execution.adapters.node_factory.LATEST_VERSION", "latest")
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="No latest version class found for node type: start"):
             factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.START}})
 
     def test_create_node_selects_versioned_class(self, monkeypatch: pytest.MonkeyPatch) -> None:

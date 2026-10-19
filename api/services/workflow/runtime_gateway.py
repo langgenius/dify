@@ -1,5 +1,3 @@
-from services.workflow.node_execution_extras import node_execution_extras
-
 """Adapt the existing workflow engine to framework-neutral Console ports."""
 
 from collections.abc import Mapping, Sequence
@@ -34,6 +32,7 @@ from services.workflow.contracts import (
     WorkflowTriggerError,
     WorkflowTriggerEvent,
 )
+from services.workflow.node_execution_extras import node_execution_extras
 from services.workflow.stream_reservation import WorkflowStreamReservation
 from services.workflow.variable_contracts import WorkflowExecutionVariables
 from services.workflow_service import WorkflowService

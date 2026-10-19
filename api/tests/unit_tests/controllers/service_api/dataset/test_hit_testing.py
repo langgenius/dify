@@ -112,7 +112,7 @@ class TestHitTestingPayload:
 
     def test_payload_query_too_long(self) -> None:
         """Test payload rejects query over 250 characters."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for HitTestingPayload\\\nquery"):
             HitTestingPayload(query="x" * 251)
 
     def test_payload_query_at_max_length(self) -> None:

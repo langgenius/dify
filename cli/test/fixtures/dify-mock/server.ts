@@ -44,6 +44,8 @@ export type DifyMock = {
   lastRequest: LastRequest | null
   /** Number of requests received, including GET _catalog */
   requestCount: number
+  /** Runs before each device-token poll is answered: lets a test act while a resume waits. */
+  onDeviceTokenPoll: (hook: () => void) => void
 }
 
 const TOKEN_RE = /^Bearer\s+dfo[ae]_[\w-]+$/
@@ -53,6 +55,7 @@ const EMPTY_ERROR_PATH = '/empty-error'
 const BAD_VERIFICATION_URI = 'ftp://elsewhere.example/device'
 const HANG_MS = 30_000
 const OAUTH_PREFIX = '/openapi/v1/oauth/'
+export const FORBIDDEN_HINT = 'ask a workspace owner for the editor role'
 
 const ServerErrorCode = {
   Unauthorized: 'unauthorized',
@@ -71,6 +74,7 @@ const OpId = {
   ChatRun: 'run.console_app.chat',
   AdvancedChatRun: 'run.console_app.advanced_chat',
   FormSubmit: 'submit.run.form',
+  RunEvents: 'get.run.event',
 } as const
 
 const CATALOG_STALE_MESSAGE =
@@ -195,7 +199,13 @@ function streamingRunResponse(
 
 function hitlPauseResponse(appId: string): string {
   return sseChunks([
-    { event: 'workflow_started', data: { id: 'wf-run-hitl-1', workflow_id: 'wf-1' } },
+    {
+      event: 'workflow_started',
+      data: {
+        workflow_run_id: 'wf-run-hitl-1',
+        data: { id: 'wf-run-hitl-1', workflow_id: 'wf-1' },
+      },
+    },
     { event: 'node_started', data: { id: 'n1', title: 'First Node' } },
     {
       event: 'human_input_required',
@@ -255,6 +265,7 @@ export type MockState = {
   lastImportBody: Record<string, unknown> | null
   lastRequest: LastRequest | null
   requestCount: number
+  beforeDeviceToken?: () => void
 }
 
 async function readMultipartRunBody(
@@ -424,9 +435,19 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
       return
     }
     const auth = c.req.header('Authorization') ?? ''
-    if (!TOKEN_RE.test(auth)) return unauthorized()
+    const resourceToken = getScenario() === 'resource-token' && auth === 'Bearer sk-test-resource'
+    if (!TOKEN_RE.test(auth) && !resourceToken) return unauthorized()
+    if (
+      resourceToken &&
+      c.req.path !== '/openapi/v1/workspaces' &&
+      c.req.path !== '/openapi/v1/apps' &&
+      !c.req.path.startsWith(`/openapi/v1/apps/${APPS[0]!.id}`)
+    )
+      return c.json({ code: 'forbidden', message: 'resource_not_authorized', status: 403 }, 403)
     const scenario = getScenario()
     if (scenario === 'auth-expired') return unauthorized()
+    if (scenario === 'forbidden')
+      return errorResponse(ServerErrorCode.Forbidden, 'you may not do this', 403, FORBIDDEN_HINT)
     await next()
   })
 
@@ -533,12 +554,13 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     const rows =
       getScenario() === 'sso'
         ? []
-        : WORKSPACES.map((w) => ({
+        : WORKSPACES.filter(
+            (w) => getScenario() !== 'resource-token' || w.id === APPS[0]!.workspace_id,
+          ).map((w) => ({
             id: w.id,
             name: w.name,
-            role: w.role,
+            role: getScenario() === 'resource-token' ? '' : w.role,
             status: w.status,
-            current: w.is_current,
           }))
     const total = rows.length
     const hasMore = page * limit < total
@@ -552,6 +574,12 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     })
   })
 
+  app.get('/openapi/v1/workspaces/:wsId', (c) => {
+    const ws = WORKSPACES.find((w) => w.id === c.req.param('wsId'))
+    if (ws === undefined) return errorResponse(ServerErrorCode.NotFound, 'workspace not found', 404)
+    return c.json({ id: ws.id, name: ws.name, role: ws.role, status: ws.status, created_at: null })
+  })
+
   // Reachable only under the `catalog-changed` scenario: the op that catalog v2 adds.
   app.get('/openapi/v1/workspaces/:wsId/ping', (c) => c.json({ ok: true }))
 
@@ -563,6 +591,7 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     const name = c.req.query('name')
     const workspaceId = c.req.query('workspace_id') ?? ACCOUNT.current_workspace_id
     let filtered = APPS.filter((a) => a.workspace_id === workspaceId)
+    if (getScenario() === 'resource-token') filtered = filtered.filter((a) => a.id === APPS[0]!.id)
     if (mode !== undefined && mode !== '') filtered = filtered.filter((a) => a.mode === mode)
     if (tag !== undefined && tag !== '')
       filtered = filtered.filter((a) => a.tags.some((t) => t.name === tag))
@@ -736,9 +765,18 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     return c.json({ result: 'success' })
   })
 
-  app.post('/openapi/v1/apps/:id/human-input-forms/:formToken:submit', (c) => {
-    return c.json({})
-  })
+  // Like the server: the submit names the run to follow, stopping at the next pause.
+  app.post('/openapi/v1/apps/:id/human-input-forms/:formToken:submit', (c) =>
+    c.json({
+      hints: [
+        {
+          summary: 'Follow the run',
+          op: OpId.RunEvents,
+          input: { app_id: c.req.param('id'), task_id: 'wf-run-hitl-1', continue_on_pause: false },
+        },
+      ],
+    }),
+  )
 
   app.get('/openapi/v1/apps/:id/tasks/:task_id/events', (_c) => sseResponse(hitlResumedResponse()))
 
@@ -766,6 +804,7 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
   })
 
   app.post('/openapi/v1/oauth/device/token', async (c) => {
+    state?.beforeDeviceToken?.()
     const scenario = getScenario()
     if (scenario === 'denied')
       return c.json({ error: 'access_denied', error_description: 'user rejected' }, { status: 400 })
@@ -860,6 +899,9 @@ export function startMock(opts: DifyMockOptions = {}): Promise<DifyMock> {
         },
         get requestCount() {
           return state.requestCount
+        },
+        onDeviceTokenPoll(hook) {
+          state.beforeDeviceToken = hook
         },
       })
     })

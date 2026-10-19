@@ -351,7 +351,6 @@ class AppGenerateService:
                 return rate_limit.generate(
                     convert_to_event_stream(
                         AgentAppGenerator(
-                            forms=runtime.human_forms,
                             agent_configs=runtime.agent_configs,
                             tool_providers=runtime.tool_providers,
                             workflow_queries=runtime.tools,

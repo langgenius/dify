@@ -6,6 +6,7 @@ from uuid import NAMESPACE_URL, uuid5
 import pytest
 from flask import Flask, request
 from sqlalchemy.orm import Session
+from typing_extensions import TypedDict
 
 from controllers.console.auth.error import InvalidTokenError
 from controllers.console.error import EducationActivateLimitError, EducationVerifyLimitError, EmailDomainSuspendedError
@@ -36,11 +37,12 @@ from services.entities.auth_entities import (
     ChangeEmailOldEmailToken,
     ChangeEmailOldEmailVerifiedToken,
     ChangeEmailPhase,
+    ChangeEmailTokenBase,
 )
 
 
 @pytest.fixture
-def app():
+def app() -> Flask:
     app = Flask(__name__)
     app.config["TESTING"] = True
     app.config["RESTX_MASK_HEADER"] = "X-Fields"
@@ -86,6 +88,13 @@ def _persist_account_with_tenant(session: Session, email: str, account_name: str
     return account, tenant
 
 
+class _ChangeEmailTokenKwargs(TypedDict, closed=True):
+    account_id: str
+    email: str
+    old_email: str
+    code: str
+
+
 def _build_change_email_token(
     phase: str,
     *,
@@ -93,8 +102,8 @@ def _build_change_email_token(
     email: str,
     old_email: str,
     code: str = "1234",
-):
-    token_kwargs = {
+) -> ChangeEmailTokenBase:
+    token_kwargs: _ChangeEmailTokenKwargs = {
         "account_id": account_id,
         "email": email,
         "old_email": old_email,
@@ -112,7 +121,7 @@ def _build_change_email_token(
 
 
 class TestEducationApi:
-    def test_post_activates_education_discount(self, app: Flask):
+    def test_post_activates_education_discount(self, app: Flask) -> None:
         education = MagicMock()
         education.activate.return_value = AccountEducationActivation(message="success")
         request_context = RequestContext(
@@ -145,7 +154,7 @@ class TestEducationApi:
             role="Student",
         )
 
-    def test_verify_maps_rate_limit_error(self, app: Flask):
+    def test_verify_maps_rate_limit_error(self, app: Flask) -> None:
         education = MagicMock()
         education.verify.side_effect = account_errors.EducationRateLimitExceededError
         request_context = RequestContext(
@@ -166,7 +175,7 @@ class TestEducationApi:
             with pytest.raises(EducationVerifyLimitError):
                 inspect.unwrap(api.get)(api, request_context)
 
-    def test_post_maps_rate_limit_error(self, app: Flask):
+    def test_post_maps_rate_limit_error(self, app: Flask) -> None:
         education = MagicMock()
         education.activate.side_effect = account_errors.EducationRateLimitExceededError
         request_context = RequestContext(
@@ -204,7 +213,7 @@ def _change_email_context(account_id: str = "acc") -> RequestContext:
 
 
 class TestChangeEmailControllers:
-    def test_send_delegates_parsed_request_to_application_service(self, app: Flask):
+    def test_send_delegates_parsed_request_to_application_service(self, app: Flask) -> None:
         change_email = MagicMock()
         change_email.send_code.return_value = "change-token"
         context = _change_email_context()
@@ -242,7 +251,7 @@ class TestChangeEmailControllers:
             ip_address="127.0.0.1",
         )
 
-    def test_send_maps_invalid_state_to_http_error(self, app: Flask):
+    def test_send_maps_invalid_state_to_http_error(self, app: Flask) -> None:
         change_email = MagicMock()
         change_email.send_code.side_effect = account_errors.InvalidChangeEmailTokenError
 
@@ -262,7 +271,7 @@ class TestChangeEmailControllers:
             with pytest.raises(InvalidTokenError):
                 method(api, ChangeEmailSendPayload.model_validate(request.get_json() or {}), _change_email_context())
 
-    def test_validity_serializes_promoted_token(self, app: Flask):
+    def test_validity_serializes_promoted_token(self, app: Flask) -> None:
         change_email = MagicMock()
         change_email.verify_code.return_value = ChangeEmailVerification(
             email="new@example.com",
@@ -294,7 +303,7 @@ class TestChangeEmailControllers:
             token="pending-token",
         )
 
-    def test_reset_returns_updated_account(self, app: Flask):
+    def test_reset_returns_updated_account(self, app: Flask) -> None:
         change_email = MagicMock()
         updated_account = _build_account("new@example.com", "acc")
         change_email.reset.return_value = updated_account
@@ -323,7 +332,7 @@ class TestChangeEmailControllers:
             token="verified-token",
         )
 
-    def test_reset_maps_suspended_email_domain(self, app: Flask):
+    def test_reset_maps_suspended_email_domain(self, app: Flask) -> None:
         change_email = MagicMock()
         change_email.reset.side_effect = account_errors.AccountEmailDomainSuspendedError
 
@@ -346,7 +355,7 @@ class TestChangeEmailControllers:
 
 
 class TestAccountDeletionFeedback:
-    def test_delegates_feedback_to_application_service(self, app: Flask):
+    def test_delegates_feedback_to_application_service(self, app: Flask) -> None:
         deletion_feedback = MagicMock()
         with (
             app.test_request_context(
@@ -370,7 +379,7 @@ class TestAccountDeletionFeedback:
 
 
 class TestCheckEmailUnique:
-    def test_delegates_to_email_availability_policy(self, app: Flask):
+    def test_delegates_to_email_availability_policy(self, app: Flask) -> None:
         change_email = MagicMock()
 
         with (
@@ -390,7 +399,7 @@ class TestCheckEmailUnique:
         assert response == {"result": "success"}
         change_email.ensure_available.assert_called_once_with("Case@Test.com")
 
-    def test_maps_suspended_email_domain(self, app: Flask):
+    def test_maps_suspended_email_domain(self, app: Flask) -> None:
         change_email = MagicMock()
         change_email.ensure_available.side_effect = account_errors.AccountEmailDomainSuspendedError
 

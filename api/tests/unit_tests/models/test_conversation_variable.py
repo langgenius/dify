@@ -5,7 +5,7 @@ from graphon.variables import SegmentType
 from models import ConversationVariable
 
 
-def test_from_variable_coerces_non_uuid_primary_key():
+def test_from_variable_coerces_non_uuid_primary_key() -> None:
     variable = variable_factory.build_conversation_variable_from_mapping(
         {
             "id": "opt-comp-prompt-var",
@@ -24,7 +24,7 @@ def test_from_variable_coerces_non_uuid_primary_key():
     assert row.to_variable().id == "opt-comp-prompt-var"
 
 
-def test_from_variable_and_to_variable():
+def test_from_variable_and_to_variable() -> None:
     variable = variable_factory.build_conversation_variable_from_mapping(
         {
             "id": str(uuid4()),

@@ -2,6 +2,7 @@
 
 import ssl
 from datetime import timedelta
+from importlib import import_module
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -265,6 +266,15 @@ class TestCelerySSLConfiguration:
             assert "tasks.workflow_draft_var_tasks" not in celery_app.conf["imports"]
             assert "workflow_draft_file_cleanup" not in celery_app.conf["beat_schedule"]
         assert "tasks.delete_conversation_task" in celery_app.conf["imports"]
+        assert "tasks.workflow_run_archive_deletion_tasks" in celery_app.conf["imports"]
+        import_module("tasks.workflow_run_archive_deletion_tasks")
+        task_name = "tasks.workflow_run_archive_deletion_tasks.delete_workflow_run_archive_task"
+        archive_deletion = celery_app.tasks[task_name]
+        assert archive_deletion.queue == "workflow_archive"
+        assert archive_deletion.acks_late is True
+        assert archive_deletion.reject_on_worker_lost is True
+        assert archive_deletion.autoretry_for == (Exception,)
+        assert archive_deletion.retry_kwargs["max_retries"] == 5
         assert celery_app.conf["beat_schedule"]["conversation_cleanup_sweeper"]["task"] == (
             "tasks.delete_conversation_task.sweep_deleted_conversations"
         )

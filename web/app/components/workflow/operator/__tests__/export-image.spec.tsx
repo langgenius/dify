@@ -1,6 +1,9 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { act } from 'react'
+import { renderWorkflowComponent as render } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { createConsoleQueryClient, seedAppDetail } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { ExportImage } from '../export-image'
 
 const mockToPng = vi.fn()
@@ -8,10 +11,8 @@ const mockToJpeg = vi.fn()
 const mockToSvg = vi.fn()
 const mockDownloadUrl = vi.fn()
 const mockSetViewport = vi.fn()
-const mockGetNodesReadOnly = vi.fn()
 const { mockWorkflowState } = vi.hoisted(() => ({
   mockWorkflowState: {
-    knowledgeName: '',
     appName: 'Demo App',
   },
 }))
@@ -22,7 +23,8 @@ vi.mock('html-to-image', () => ({
   toSvg: (...args: unknown[]) => mockToSvg(...args),
 }))
 
-vi.mock('reactflow', () => ({
+vi.mock('reactflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('reactflow')>()),
   getNodesBounds: () => ({ x: 0, y: 0, width: 240, height: 120 }),
   useReactFlow: () => ({
     getNodes: () => [{ id: 'node-1' }],
@@ -31,57 +33,47 @@ vi.mock('reactflow', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: typeof mockWorkflowState) => unknown) => selector(mockWorkflowState),
-}))
-
-vi.mock('../../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../hooks/use-workflow')>()
-
-  return {
-    ...actual,
-    useNodesReadOnly: () => ({
-      getNodesReadOnly: mockGetNodesReadOnly,
-    }),
-  }
-})
-
 vi.mock('@/utils/download', () => ({
   downloadUrl: (...args: unknown[]) => mockDownloadUrl(...args),
 }))
 
-vi.mock('@/app/components/base/image-uploader/image-preview', () => ({
-  default: ({ title, onCancel }: { title: string; onCancel: () => void }) => (
-    <div data-testid="image-preview">
-      <span>{title}</span>
-      <button type="button" onClick={onCancel}>
-        close-preview
-      </button>
-    </div>
-  ),
-}))
+function createExportQueryClient() {
+  const queryClient = createConsoleQueryClient()
+  seedAppDetail(
+    queryClient,
+    createAppDetailFixture({ id: 'app-1', mode: 'workflow', name: mockWorkflowState.appName }),
+  )
+  return queryClient
+}
 
 describe('ExportImage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useRealTimers()
-    mockGetNodesReadOnly.mockReturnValue(false)
     mockToPng.mockResolvedValue('data:image/png;base64,current')
     mockToJpeg.mockResolvedValue('data:image/jpeg;base64,current')
     mockToSvg.mockResolvedValue('data:image/svg+xml;base64,current')
-    mockWorkflowState.knowledgeName = ''
     mockWorkflowState.appName = 'Demo App'
 
-    document.body.innerHTML = ''
     const viewport = document.createElement('div')
     viewport.className = 'react-flow__viewport'
     document.body.appendChild(viewport)
   })
 
+  afterEach(() => {
+    cleanup()
+    document.querySelector('.react-flow__viewport')?.remove()
+    vi.restoreAllMocks()
+    vi.useRealTimers()
+  })
+
   it('opens the menu and exports the current view as png', async () => {
     const user = userEvent.setup()
 
-    render(<ExportImage />)
+    render(<ExportImage />, {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      queryClient: createExportQueryClient(),
+    })
 
     await user.click(screen.getByRole('button', { name: 'workflow.common.exportImage' }))
     const menu = screen.getByRole('menu', { name: 'workflow.common.exportImage' })
@@ -112,9 +104,11 @@ describe('ExportImage', () => {
 
   it('does not open the menu when the workflow is read only', async () => {
     const user = userEvent.setup()
-    mockGetNodesReadOnly.mockReturnValue(true)
-
-    render(<ExportImage />)
+    render(<ExportImage />, {
+      initialStoreState: { canvasReadOnly: true },
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      queryClient: createExportQueryClient(),
+    })
 
     const trigger = screen.getByRole('button', { name: 'workflow.common.exportImage' })
     expect(trigger).toHaveAttribute('aria-disabled', 'true')
@@ -127,21 +121,30 @@ describe('ExportImage', () => {
   })
 
   it('shows a preview when exporting the whole workflow', async () => {
-    vi.useFakeTimers()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
 
-    render(<ExportImage />)
+    render(<ExportImage />, {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      queryClient: createExportQueryClient(),
+    })
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.exportImage' }))
-    fireEvent.click(screen.getAllByText('workflow.common.exportPNG')[1]!)
+    await user.click(screen.getByRole('button', { name: 'workflow.common.exportImage' }))
+    await user.click(
+      within(screen.getByRole('group', { name: 'workflow.common.currentWorkflow' })).getByRole(
+        'menuitem',
+        { name: 'workflow.common.exportPNG' },
+      ),
+    )
     await act(async () => {
       await vi.advanceTimersByTimeAsync(300)
     })
 
-    expect(screen.getByTestId('image-preview')).toHaveTextContent('Demo App-whole-workflow.png')
+    expect(screen.getByRole('dialog', { name: 'Demo App-whole-workflow.png' })).toBeInTheDocument()
     await act(async () => {
       await vi.runAllTimersAsync()
     })
-    expect(mockSetViewport).toHaveBeenCalledTimes(2)
+    expect(mockSetViewport).toHaveBeenLastCalledWith({ x: 0, y: 0, zoom: 1 })
     expect(mockDownloadUrl).toHaveBeenCalledWith({
       url: 'data:image/png;base64,current',
       fileName: 'Demo App-whole-workflow.png',
@@ -154,7 +157,10 @@ describe('ExportImage', () => {
   ])('exports the current view with %s', async (label, exporter, fileName) => {
     const user = userEvent.setup()
 
-    render(<ExportImage />)
+    render(<ExportImage />, {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      queryClient: createExportQueryClient(),
+    })
 
     await user.click(screen.getByRole('button', { name: 'workflow.common.exportImage' }))
     await user.click(screen.getAllByText(label)[0]!)
@@ -169,12 +175,21 @@ describe('ExportImage', () => {
   })
 
   it('exports the whole workflow as svg', async () => {
-    vi.useFakeTimers()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
 
-    render(<ExportImage />)
+    render(<ExportImage />, {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      queryClient: createExportQueryClient(),
+    })
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.exportImage' }))
-    fireEvent.click(screen.getAllByText('workflow.common.exportSVG')[1]!)
+    await user.click(screen.getByRole('button', { name: 'workflow.common.exportImage' }))
+    await user.click(
+      within(screen.getByRole('group', { name: 'workflow.common.currentWorkflow' })).getByRole(
+        'menuitem',
+        { name: 'workflow.common.exportSVG' },
+      ),
+    )
     await act(async () => {
       await vi.advanceTimersByTimeAsync(300)
     })
@@ -183,16 +198,42 @@ describe('ExportImage', () => {
     await act(async () => {
       await vi.runAllTimersAsync()
     })
-    expect(mockSetViewport).toHaveBeenCalledTimes(2)
-    expect(screen.getByTestId('image-preview')).toHaveTextContent('Demo App-whole-workflow.svg')
+    expect(mockSetViewport).toHaveBeenLastCalledWith({ x: 0, y: 0, zoom: 1 })
+    expect(screen.getByRole('dialog', { name: 'Demo App-whole-workflow.svg' })).toBeInTheDocument()
+  })
+
+  it('uses the refreshed App name when exporting without restarting the editor', async () => {
+    const user = userEvent.setup()
+    const queryClient = createExportQueryClient()
+    render(<ExportImage />, {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      queryClient,
+    })
+    await act(async () => {
+      seedAppDetail(
+        queryClient,
+        createAppDetailFixture({ id: 'app-1', mode: 'workflow', name: 'Renamed App' }),
+      )
+    })
+    await user.click(screen.getByRole('button', { name: 'workflow.common.exportImage' }))
+    const group = screen.getByRole('group', { name: 'workflow.common.currentView' })
+    await user.click(within(group).getByRole('menuitem', { name: 'workflow.common.exportPNG' }))
+    await waitFor(() =>
+      expect(mockDownloadUrl).toHaveBeenCalledWith({
+        url: 'data:image/png;base64,current',
+        fileName: 'Renamed App.png',
+      }),
+    )
   })
 
   it('returns early when there is no app or knowledge name', async () => {
     const user = userEvent.setup()
     mockWorkflowState.appName = ''
-    mockWorkflowState.knowledgeName = ''
 
-    render(<ExportImage />)
+    render(<ExportImage />, {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      queryClient: createExportQueryClient(),
+    })
 
     await user.click(screen.getByRole('button', { name: 'workflow.common.exportImage' }))
     await user.click(screen.getAllByText('workflow.common.exportPNG')[0]!)
@@ -205,7 +246,10 @@ describe('ExportImage', () => {
     const user = userEvent.setup()
     document.querySelector('.react-flow__viewport')?.remove()
 
-    render(<ExportImage />)
+    render(<ExportImage />, {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      queryClient: createExportQueryClient(),
+    })
 
     await user.click(screen.getByRole('button', { name: 'workflow.common.exportImage' }))
     await user.click(screen.getAllByText('workflow.common.exportPNG')[0]!)
@@ -217,14 +261,43 @@ describe('ExportImage', () => {
   it('returns early when the workflow becomes read only before exporting', async () => {
     const user = userEvent.setup()
 
-    render(<ExportImage />)
+    const { store } = render(<ExportImage />, {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      queryClient: createExportQueryClient(),
+    })
 
     await user.click(screen.getByRole('button', { name: 'workflow.common.exportImage' }))
-    mockGetNodesReadOnly.mockReturnValue(true)
+    act(() => store.setState({ canvasReadOnly: true }))
     await user.click(screen.getAllByText('workflow.common.exportJPEG')[0]!)
 
     expect(mockToJpeg).not.toHaveBeenCalled()
     expect(mockDownloadUrl).not.toHaveBeenCalled()
+  })
+
+  it('restores the viewport when rendering the whole workflow fails', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockToPng.mockRejectedValueOnce(new Error('capture failed'))
+    render(<ExportImage />, {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      queryClient: createExportQueryClient(),
+    })
+    await user.click(screen.getByRole('button', { name: 'workflow.common.exportImage' }))
+    await user.click(
+      within(screen.getByRole('group', { name: 'workflow.common.currentWorkflow' })).getByRole(
+        'menuitem',
+        { name: 'workflow.common.exportPNG' },
+      ),
+    )
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300)
+    })
+
+    expect(mockToPng).toHaveBeenCalledTimes(1)
+    expect(mockSetViewport).toHaveBeenLastCalledWith({ x: 0, y: 0, zoom: 1 })
+    expect(mockDownloadUrl).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('logs export failures and lets the preview close', async () => {
@@ -232,7 +305,10 @@ describe('ExportImage', () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     mockToJpeg.mockRejectedValueOnce(new Error('boom'))
 
-    render(<ExportImage />)
+    render(<ExportImage />, {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      queryClient: createExportQueryClient(),
+    })
 
     await user.click(screen.getByRole('button', { name: 'workflow.common.exportImage' }))
     await user.click(screen.getAllByText('workflow.common.exportJPEG')[0]!)
@@ -240,16 +316,23 @@ describe('ExportImage', () => {
     await waitFor(() => {
       expect(consoleErrorSpy).toHaveBeenCalledWith('Export image failed:', expect.any(Error))
     })
-    expect(screen.queryByTestId('image-preview')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
     mockToPng.mockResolvedValueOnce('data:image/png;base64,current')
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.exportImage' }))
-    fireEvent.click(screen.getAllByText('workflow.common.exportPNG')[1]!)
+    await user.click(screen.getByRole('button', { name: 'workflow.common.exportImage' }))
+    await user.click(
+      within(screen.getByRole('group', { name: 'workflow.common.currentWorkflow' })).getByRole(
+        'menuitem',
+        { name: 'workflow.common.exportPNG' },
+      ),
+    )
     await waitFor(() => {
-      expect(screen.getByTestId('image-preview')).toBeInTheDocument()
+      expect(
+        screen.getByRole('dialog', { name: 'Demo App-whole-workflow.png' }),
+      ).toBeInTheDocument()
     })
-    await user.click(screen.getByText('close-preview'))
-    expect(screen.queryByTestId('image-preview')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
     consoleErrorSpy.mockRestore()
   })

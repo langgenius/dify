@@ -2,7 +2,7 @@ import logging
 import queue
 from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from typing import Any, final
 from urllib.parse import urljoin, urlparse
 
@@ -261,7 +261,7 @@ def sse_client(
     headers: dict[str, Any] | None = None,
     timeout: float = 5.0,
     sse_read_timeout: float = 1 * 60,
-) -> Generator[tuple[ReadQueue, WriteQueue], None, None]:
+) -> Generator[tuple[ReadQueue, WriteQueue]]:
     """
     Client transport for SSE.
     `sse_read_timeout` determines how long (in seconds) the client will wait for a new
@@ -310,10 +310,8 @@ def sse_client(
     finally:
         # Close the SSE connection to unblock the reader thread
         if transport.event_source is not None:
-            try:
+            with suppress(RuntimeError):
                 transport.event_source.response.close()
-            except RuntimeError:
-                pass
 
         # Clean up queues
         if read_queue:
@@ -352,7 +350,7 @@ def send_message(http_client: httpx.Client, endpoint_url: str, session_message: 
 
 def read_messages(
     sse_client: SSEClient,
-) -> Generator[SessionMessage | Exception, None, None]:
+) -> Generator[SessionMessage | Exception]:
     """
     Read messages from the SSE client.
 

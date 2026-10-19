@@ -67,7 +67,7 @@ class SnippetPublicationRepository:
     @contextmanager
     def draft(
         self, *, tenant_id: str, snippet_id: str
-    ) -> Generator[tuple[WorkflowSnapshot, WorkflowAgentBindingRepository], None, None]:
+    ) -> Generator[tuple[WorkflowSnapshot, WorkflowAgentBindingRepository]]:
         with self._sessions() as session:
             draft = session.scalar(self._draft(tenant_id, snippet_id))
             if draft is None:
@@ -75,7 +75,7 @@ class SnippetPublicationRepository:
             yield workflow_snapshot(draft), WorkflowAgentBindingRepository(session)
 
     @contextmanager
-    def publication(self, source: WorkflowSnapshot) -> Generator[SnippetPublicationTransaction, None, None]:
+    def publication(self, source: WorkflowSnapshot) -> Generator[SnippetPublicationTransaction]:
         with self._sessions(expire_on_commit=False) as session, session.begin():
             snippet = session.scalar(
                 select(CustomizedSnippet)

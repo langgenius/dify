@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from dataclasses import dataclass
 from unittest.mock import patch
 
 import pytest
@@ -19,9 +20,9 @@ class _RequestStub:
     args = {"a": "b"}
 
 
+@dataclass(eq=False, repr=False)
 class _AppScopedEndUserServicesStub:
-    def __init__(self, commands: object) -> None:
-        self.commands = commands
+    commands: object
 
 
 class _ApplicationServicesStub:

@@ -1,5 +1,3 @@
-from controllers.common.rbac import RBACCheck
-
 """Keep the existing workflow role, RBAC and app-mode admission policy."""
 
 from collections.abc import Callable, Sequence
@@ -12,7 +10,7 @@ import pytest
 from flask import Flask
 from werkzeug.exceptions import Forbidden
 
-from controllers.common.rbac import PlainApp
+from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.console import flask_admission
 from controllers.console.app import workflow, workflow_admission
 from controllers.console.app.error import AppNotFoundError, DraftWorkflowNotSync
