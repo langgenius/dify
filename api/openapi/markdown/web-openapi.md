@@ -2137,6 +2137,8 @@ Too many form requests. Please try again later.
 | status | string |  | Yes |
 | total_price | string |  | No |
 | total_tokens | integer |  | Yes |
+| workflow_run_id | string |  | No |
+| workflow_run_is_running | boolean |  | No |
 
 #### WebModelConfigResponse
 
