@@ -513,6 +513,34 @@ def test_im_assessment_controls_message_form_and_auth_without_losing_email(conte
     adapter.close.assert_called_once()
 
 
+def test_im_link_subject_stays_literal_like_email_while_body_renders_markdown(context: Context, providers):
+    from core.human_input_v2.im_integration.adapters.entities import CardAssessment
+    from services.human_input_v2.composition import build_human_input_delivery_service
+
+    _add_im(context)
+    adapter, email_send = providers
+    adapter.dynamic_card_messaging.assess.return_value = CardAssessment(False, "file input")
+    node = _node(Contact(contact_id=_CONTACT))
+    node.message_template.subject = "### Review {{#start.name#}}"
+    node.message_template.body = "# H1\n\n[Approval]({{#url#}})"
+    pool = VariablePool()
+    pool.add(["start", "name"], "**Alice**")
+    created = context.prepare(node, pool)
+    assert isinstance(created, CreatedForm)
+
+    build_human_input_delivery_service(tenant_id=_TENANT, session_factory=context.sessions).deliver(
+        form=created.form,
+        recipient=created.recipients[0],
+        message_template=created.message_template,
+    )
+
+    message = adapter.messaging.send_text.call_args.args[1]
+    assert adapter.messaging.send_text.call_args.kwargs["subject"] == "### Review **Alice**"
+    assert message.startswith("# H1\n\n[Approval](https://console.example.com/human-input/")
+    assert email_send.call_args.kwargs["subject"] == "### Review **Alice**"
+    assert "<h1>H1</h1>" in email_send.call_args.kwargs["html"]
+
+
 @pytest.mark.parametrize("contact_kind", ["workspace", "organization"])
 @pytest.mark.parametrize("app_web_url", ["https://app.example.com", ""])
 def test_account_contact_notifications_use_console_form_page(

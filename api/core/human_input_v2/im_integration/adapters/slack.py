@@ -16,6 +16,7 @@ from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from email.message import Message
 from math import isfinite
+from string import punctuation
 from typing import Annotated, ClassVar, Literal, Never, Self, override
 from urllib.error import URLError
 from urllib.parse import parse_qs
@@ -783,12 +784,23 @@ class _SlackMessaging(IMMessaging):
         self._client = client
 
     @override
-    def send_text(self, provider_user_id: ProviderUserId, body: str) -> MessageSendingResult:
+    def send_text(
+        self, provider_user_id: ProviderUserId, body: str, subject: str | None = None
+    ) -> MessageSendingResult:
         try:
-            response = self._client.chat_postMessage(
-                channel=str(provider_user_id),
-                markdown_text=body,
-            )
+            if subject is None:
+                response = self._client.chat_postMessage(channel=str(provider_user_id), markdown_text=body)
+            else:
+                blocks: list[dict[str, JsonValue]] = []
+                if subject:
+                    escaped_subject = "".join(
+                        f"\\{character}" if character in punctuation else character for character in subject
+                    )
+                    blocks.append({"type": "markdown", "text": f"# {escaped_subject}"})
+                blocks.append({"type": "markdown", "text": body})
+                response = self._client.chat_postMessage(
+                    channel=str(provider_user_id), text=f"{subject}\n\n{body}", blocks=blocks
+                )
         except SlackClientError:
             return MessageSendingError("Slack message acceptance could not be confirmed.")
         return _accepted_message(response)

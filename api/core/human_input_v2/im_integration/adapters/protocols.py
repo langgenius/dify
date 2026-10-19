@@ -42,8 +42,13 @@ class IMDirectory(Protocol):
 class IMMessaging(Protocol):
     """Adapter-bound personal text messaging capability."""
 
-    def send_text(self, provider_user_id: ProviderUserId, body: str) -> MessageSendingResult:
-        """Attempt one provider message creation without automatic replay."""
+    def send_text(
+        self, provider_user_id: ProviderUserId, body: str, subject: str | None = None
+    ) -> MessageSendingResult:
+        """Send a CommonMark body with an optional plain-text subject, without replay.
+
+        Each adapter owns subject presentation and provider-specific formatting.
+        """
         ...
 
 

@@ -234,10 +234,46 @@ def test_email_preserves_markdown_headings_and_approval_link(context: _Context) 
 def test_im_uses_current_editors_binding_and_closes_adapter(context: _Context) -> None:
     context.send(DebugChannel.SLACK, **{"#start.name#": "Alice"})
     context.adapter.messaging.send_text.assert_called_once_with(
-        "editor-slack-id", "Review Alice\n\nPlease review https://example.com/human-input-test"
+        "editor-slack-id", "Please review https://example.com/human-input-test", subject="Review Alice"
     )
     context.adapter.close.assert_called_once()
     context.gateway.send_message.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("subject", "expected_subject"),
+    [
+        ("### HITL v2 Migration Check", "### HITL v2 Migration Check"),
+        ("**Review** {{#start.name#}}", "**Review** _Alice_"),
+        ("[Review](https://example.com) &copy;", "[Review](https://example.com) &copy;"),
+        (r"`Review` C:\approvals", r"`Review` C:\approvals"),
+    ],
+)
+def test_im_subject_stays_literal_while_body_renders_markdown(
+    context: _Context, subject: str, expected_subject: str
+) -> None:
+    context.template(subject, "# H1\n\n## H2\n\n[Approval]({{#url#}})")
+
+    context.send(DebugChannel.SLACK, **{"#start.name#": "_Alice_"})
+
+    context.adapter.messaging.send_text.assert_called_once_with(
+        "editor-slack-id",
+        "# H1\n\n## H2\n\n[Approval](https://example.com/human-input-test)",
+        subject=expected_subject,
+    )
+
+
+@pytest.mark.parametrize("provider", [IMProvider.DING_TALK, IMProvider.WE_COM])
+def test_plain_text_im_does_not_expose_markdown_escapes(context: _Context, provider: IMProvider) -> None:
+    with context.sessions.begin() as session:
+        session.query(HumanInputIMChannel).one().provider = provider
+    context.template("### Review **Alice**", "Open {{#url#}}")
+
+    context.send(DebugChannel(provider.value))
+
+    context.adapter.messaging.send_text.assert_called_once_with(
+        "editor-slack-id", "Open https://example.com/human-input-test", subject="### Review **Alice**"
+    )
 
 
 @pytest.mark.parametrize("channel", [DebugChannel.EMAIL, DebugChannel.SLACK])

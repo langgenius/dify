@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from email.message import Message
 from http import HTTPStatus
+from string import punctuation
 from typing import ClassVar, Literal, override
 from urllib.parse import quote, urlsplit
 from uuid import UUID
@@ -98,6 +99,7 @@ _GRAPH_DIRECTORY_PAGE_SIZE = 999
 _GRAPH_CREDENTIAL_TEST_PAGE_SIZE = 1
 _PUBLIC_TEAMS_SERVICE_URL = "https://smba.trafficmanager.net/teams/"
 _JSON_CONTENT_TYPE = "application/json"
+_EXTENDED_MARKDOWN_TEXT_FORMAT = "extendedmarkdown"
 _TEAMS_BOT_CHANNEL_ID_PREFIX = "28:"
 _BOT_TOKEN_REJECTION_PREFIX = "Failed to get access token with error: "
 _OAUTH_CREDENTIAL_REJECTION_CODES = frozenset(("invalid_client", "invalid_grant", "unauthorized_client"))
@@ -593,8 +595,20 @@ class _MSTeamsMessaging(IMMessaging):
         self._client_id = client_id
 
     @override
-    def send_text(self, provider_user_id: ProviderUserId, body: str) -> MessageSendingResult:
-        return self._send_activity(provider_user_id, Activity(type="message", text=body))
+    def send_text(
+        self, provider_user_id: ProviderUserId, body: str, subject: str | None = None
+    ) -> MessageSendingResult:
+        if subject:
+            # Keep subject content literal inside the Markdown heading.
+            escaped_subject = "".join(
+                f"\\{character}" if character in punctuation else character for character in subject
+            )
+            body = f"# {escaped_subject}\n\n{body}"
+        # Teams' default Markdown renderer does not support headings.
+        return self._send_activity(
+            provider_user_id,
+            Activity(type="message", text=body, text_format=_EXTENDED_MARKDOWN_TEXT_FORMAT),
+        )
 
     def _send_activity(
         self,

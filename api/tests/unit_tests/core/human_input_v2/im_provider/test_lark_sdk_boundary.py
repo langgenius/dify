@@ -222,6 +222,24 @@ class _RecordedSDKStreamClient:
 class _LarkHTTPReplay:
     def __init__(self) -> None:
         self.exchanges = TypeAdapter(dict[str, _CapturedExchange]).validate_json(_FIXTURE_PATH.read_text())
+        # Reuse captured responses while checking the current Markdown request contract.
+        for operation, markdown in (
+            ("text", "Lark protocol capture: **unit tests**\n\n测试消息"),
+            ("invalid_recipient", "Lark unit test invalid recipient"),
+        ):
+            exchange = self.exchanges[operation]
+            assert exchange.request.body is not None
+            request_body = {
+                **exchange.request.body,
+                "msg_type": "interactive",
+                "content": json.dumps(
+                    {"schema": "2.0", "body": {"elements": [{"tag": "markdown", "content": markdown}]}},
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                ),
+            }
+            current_request = exchange.request.model_copy(update={"body": request_body})
+            self.exchanges[operation] = exchange.model_copy(update={"request": current_request})
         self.responses: dict[str, _CapturedResponse] = {}
         self.requests: list[_CapturedRequest] = []
         self.unmatched: list[_CapturedRequest] = []

@@ -355,7 +355,11 @@ class _WeComMessaging(IMMessaging):
         self._token_provider = token_provider
 
     @override
-    def send_text(self, provider_user_id: ProviderUserId, body: str) -> MessageSendingResult:
+    def send_text(
+        self, provider_user_id: ProviderUserId, body: str, subject: str | None = None
+    ) -> MessageSendingResult:
+        if subject is not None:
+            body = f"{subject}\n\n{body}"
         try:
             access_token = self._token_provider.get()
             client = _new_client(self._credentials, access_token=access_token)
