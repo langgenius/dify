@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
+from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
 from urllib import error as urllib_error
@@ -19,7 +20,9 @@ from alibabacloud_dingtalk.robot_1_0.models import (
     BatchSendOTOResponseBody,
 )
 from alibabacloud_tea_util.models import RuntimeOptions
+from pydantic import ValidationError
 from pytest_mock import MockerFixture
+from Tea.exceptions import TeaException
 
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
@@ -40,19 +43,13 @@ from core.human_input_v2.im_integration.adapters.dingtalk import (
     _DingTalkDirectory,
     _DingTalkMessaging,
 )
-from core.human_input_v2.im_integration.adapters.entities import Avatar
+from core.human_input_v2.im_integration.adapters.entities import Avatar, IMProviderError
 
 
 class _ProviderError(Exception):
     def __init__(self, *, status_code: int | None = None) -> None:
         super().__init__("sanitized provider response that must not escape")
         self.status_code = status_code
-
-
-class _CamelCaseProviderError(Exception):
-    def __init__(self, status_code: int) -> None:
-        super().__init__("sanitized provider response that must not escape")
-        self.statusCode = status_code
 
 
 @dataclass(frozen=True, slots=True)
@@ -123,7 +120,7 @@ class _FakeDirectoryHTTPClient:
         self._recorded = recorded
         self.close_calls = 0
 
-    def post(self, url: str, *, access_token: str, body: dict[str, int]) -> bytes:
+    def post(self, url: str, *, access_token: str, body: dict[str, int]) -> dingtalk_module._DirectoryHTTPResponse:
         parsed = _RecordedRequest(
             path=urlparse(url).path,
             token=access_token,
@@ -133,10 +130,12 @@ class _FakeDirectoryHTTPClient:
             self._recorded.append(parsed)
         status_code, payload = self._route(parsed)
         if not 200 <= status_code < 300:
-            raise OSError
-        return json.dumps(payload, separators=(",", ":")).encode()
+            raise urllib_error.HTTPError(
+                url, status_code, "provider HTTP failure", {}, BytesIO(json.dumps(payload).encode())
+            )
+        return dingtalk_module._DirectoryHTTPResponse(json.dumps(payload, separators=(",", ":")).encode(), status_code)
 
-    def get(self, url: str, *, access_token: str) -> bytes:
+    def get(self, url: str, *, access_token: str) -> dingtalk_module._DirectoryHTTPResponse:
         parsed = _RecordedRequest(
             path=urlparse(url).path,
             token=access_token,
@@ -145,13 +144,12 @@ class _FakeDirectoryHTTPClient:
         )
         if self._recorded is not None:
             self._recorded.append(parsed)
-        try:
-            status_code, payload = self._route(parsed)
-        except OSError:
-            raise dingtalk_module._DirectoryHTTPError from None
+        status_code, payload = self._route(parsed)
         if not 200 <= status_code < 300:
-            raise dingtalk_module._DirectoryHTTPError
-        return json.dumps(payload, separators=(",", ":")).encode()
+            raise urllib_error.HTTPError(
+                url, status_code, "provider HTTP failure", {}, BytesIO(json.dumps(payload).encode())
+            )
+        return dingtalk_module._DirectoryHTTPResponse(json.dumps(payload, separators=(",", ":")).encode(), status_code)
 
     def close(self) -> None:
         self.close_calls += 1
@@ -398,7 +396,7 @@ def test_credential_test_rejects_partial_member_scope_without_root_baseline(
     result = DingTalkIMProviderAdapter(_credentials()).test_credentials()
 
     assert result == CredentialTestFailure(
-        CredentialTestFailureKind.UNKNOWN,
+        CredentialTestFailureKind.PERMISSION_DENIED,
         "DingTalk could not verify complete member authorization.",
     )
     assert [(request.method, request.path) for request in recorded] == [("GET", "/auth/scopes")]
@@ -513,26 +511,30 @@ def test_credential_test_fails_closed_when_member_scope_is_unverifiable(
     monkeypatch.setattr(dingtalk_module, "_new_robot_client", _FakeRobotClient)
     monkeypatch.setattr(dingtalk_module, "_new_http_client", lambda: _http_client(route, recorded))
 
-    result = DingTalkIMProviderAdapter(_credentials()).test_credentials()
-
-    assert result == CredentialTestFailure(
-        CredentialTestFailureKind.UNKNOWN,
-        "DingTalk could not verify complete member authorization.",
-    )
+    if isinstance(scope_result, dict) and scope_result.get("errcode") == 60011:
+        result = DingTalkIMProviderAdapter(_credentials()).test_credentials()
+        assert isinstance(result, CredentialTestFailure)
+        assert result.kind is CredentialTestFailureKind.UNKNOWN
+        assert result.provider_error_code == "60011"
+        assert result.http_status == 200
+    else:
+        expected_error = type(scope_result) if isinstance(scope_result, Exception) else ValueError
+        with pytest.raises(expected_error) as captured:
+            DingTalkIMProviderAdapter(_credentials()).test_credentials()
+        if isinstance(scope_result, Exception):
+            assert captured.value is scope_result
     assert [(request.method, request.path) for request in recorded] == [("GET", "/auth/scopes")]
-    assert isinstance(result, CredentialTestFailure)
-    assert "sanitized" not in result.reason
 
 
 def test_credential_test_fails_closed_on_invalid_scope_json_without_leaking_body(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class InvalidJSONHTTPClient:
-        def get(self, url: str, *, access_token: str) -> bytes:
+        def get(self, url: str, *, access_token: str) -> dingtalk_module._DirectoryHTTPResponse:
             del url, access_token
-            return b'{"secret":"sanitized-sensitive-value"'
+            return dingtalk_module._DirectoryHTTPResponse(b'{"secret":"sanitized-sensitive-value"', 200)
 
-        def post(self, url: str, *, access_token: str, body: dict[str, int]) -> bytes:
+        def post(self, url: str, *, access_token: str, body: dict[str, int]) -> dingtalk_module._DirectoryHTTPResponse:
             del url, access_token, body
             pytest.fail("invalid scope JSON must not proceed to the root baseline")
 
@@ -544,14 +546,8 @@ def test_credential_test_fails_closed_on_invalid_scope_json_without_leaking_body
     monkeypatch.setattr(dingtalk_module, "_new_robot_client", _FakeRobotClient)
     monkeypatch.setattr(dingtalk_module, "_new_http_client", InvalidJSONHTTPClient)
 
-    result = DingTalkIMProviderAdapter(_credentials()).test_credentials()
-
-    assert result == CredentialTestFailure(
-        CredentialTestFailureKind.UNKNOWN,
-        "DingTalk could not verify complete member authorization.",
-    )
-    assert isinstance(result, CredentialTestFailure)
-    assert "sanitized-sensitive-value" not in result.reason
+    with pytest.raises(ValueError):
+        DingTalkIMProviderAdapter(_credentials()).test_credentials()
 
 
 def test_credential_test_fails_closed_on_scope_http_error_without_root_baseline(
@@ -570,11 +566,9 @@ def test_credential_test_fails_closed_on_scope_http_error_without_root_baseline(
     monkeypatch.setattr(dingtalk_module, "_new_http_client", lambda: _http_client(route, recorded))
 
     result = DingTalkIMProviderAdapter(_credentials()).test_credentials()
-
-    assert result == CredentialTestFailure(
-        CredentialTestFailureKind.UNKNOWN,
-        "DingTalk could not verify complete member authorization.",
-    )
+    assert isinstance(result, CredentialTestFailure)
+    assert result.http_status == 503
+    assert result.provider_error_code == "0"
     assert [(request.method, request.path) for request in recorded] == [("GET", "/auth/scopes")]
 
 
@@ -625,12 +619,39 @@ def test_credential_test_normalizes_sdk_failures_without_provider_material(
     monkeypatch.setattr(dingtalk_module, "_new_robot_client", _FakeRobotClient)
     monkeypatch.setattr(dingtalk_module, "_new_http_client", lambda: _http_client(_successful_directory_route))
 
+    del expected_kind
+    expected_error = type(token_response) if isinstance(token_response, Exception) else IMProviderError
+    with pytest.raises(expected_error) as captured:
+        DingTalkIMProviderAdapter(_credentials()).test_credentials()
+    if isinstance(token_response, Exception):
+        assert captured.value is token_response
+
+
+def test_credential_test_preserves_oauth_provider_error_code(monkeypatch) -> None:
+    clients = iter(
+        (
+            _FakeOAuthClient(
+                TeaException(
+                    {
+                        "code": "InvalidClientSecret",
+                        "message": "sanitized-client-secret",
+                        "data": {"statusCode": 401},
+                    }
+                )
+            ),
+            _FakeOAuthClient(),
+        )
+    )
+    monkeypatch.setattr(dingtalk_module, "_new_oauth_client", lambda: next(clients))
+    monkeypatch.setattr(dingtalk_module, "_new_robot_client", _FakeRobotClient)
+    monkeypatch.setattr(dingtalk_module, "_new_http_client", lambda: _http_client(_successful_directory_route))
+
     result = DingTalkIMProviderAdapter(_credentials()).test_credentials()
 
     assert isinstance(result, CredentialTestFailure)
-    assert result.kind is expected_kind
-    assert "sanitized provider response" not in result.reason
-    assert "sanitized-client-secret" not in result.reason
+    assert result.provider_error_code == "InvalidClientSecret"
+    assert result.missing_permissions == ()
+    assert "sanitized-client-secret" not in repr(result)
 
 
 def test_credential_test_requires_root_baseline_permission(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -654,6 +675,8 @@ def test_credential_test_requires_root_baseline_permission(monkeypatch: pytest.M
     assert result == CredentialTestFailure(
         CredentialTestFailureKind.TENANT_ID_UNAVAILABLE,
         "DingTalk could not verify the configured corporation directory boundary.",
+        provider_error_code="60011",
+        http_status=200,
     )
 
 
@@ -852,15 +875,10 @@ def test_default_token_provider_uses_complete_sdk_responses_without_cache() -> N
 def test_default_token_provider_rejects_malformed_sdk_responses(response: object) -> None:
     provider = dingtalk_module._SDKAccessTokenProvider(_credentials(), _FakeOAuthClient(response))
 
-    with pytest.raises(dingtalk_module._AccessTokenError):
+    with pytest.raises(IMProviderError, match="DingTalk returned an invalid access token response") as captured:
         provider.get()
-
-
-def test_authentication_rejection_supports_sdk_status_code_aliases() -> None:
-    camel_case_error = _CamelCaseProviderError(403)
-
-    assert dingtalk_module._is_authentication_rejection(camel_case_error)
-    assert not dingtalk_module._is_authentication_rejection(_ProviderError())
+    assert isinstance(captured.value.__cause__, ValidationError)
+    assert "body" in str(captured.value)
 
 
 def test_adapter_rejects_non_resolved_credentials_before_client_construction(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -888,12 +906,8 @@ def test_credential_test_normalizes_unknown_root_boundary_failures(monkeypatch: 
 
     monkeypatch.setattr(dingtalk_module, "_new_http_client", lambda: _http_client(fail_root))
 
-    result = DingTalkIMProviderAdapter(_credentials()).test_credentials()
-
-    assert result == CredentialTestFailure(
-        CredentialTestFailureKind.UNKNOWN,
-        "DingTalk credential testing could not be completed.",
-    )
+    with pytest.raises(OSError, match="fake raw transport detail"):
+        DingTalkIMProviderAdapter(_credentials()).test_credentials()
 
 
 def test_directory_fixture_preserves_full_traversal_and_minimal_projection(mocker: MockerFixture) -> None:
@@ -1054,6 +1068,7 @@ def test_directory_token_failure_does_not_call_http() -> None:
 class _URLResponse:
     def __init__(self, body: bytes) -> None:
         self._body = body
+        self.status = 200
 
     def __enter__(self) -> _URLResponse:
         return self
@@ -1081,7 +1096,8 @@ def test_urllib_directory_client_uses_fixed_post_shape(monkeypatch: pytest.Monke
         body={"dept_id": 1},
     )
 
-    assert response == b'{"errcode":0,"errmsg":"ok","result":[]}'
+    assert response.body == b'{"errcode":0,"errmsg":"ok","result":[]}'
+    assert response.http_status == 200
     request, timeout = recorded[0]
     assert request.method == "POST"
     assert request.full_url.startswith(dingtalk_module._DEPARTMENT_LIST_URL)
@@ -1106,7 +1122,8 @@ def test_urllib_client_uses_fixed_authorization_scope_get_shape(monkeypatch: pyt
         access_token="fake-access-token-scope-001",
     )
 
-    assert response.startswith(b'{"errcode":0')
+    assert response.body.startswith(b'{"errcode":0')
+    assert response.http_status == 200
     request, timeout = recorded[0]
     assert request.method == "GET"
     assert request.full_url.startswith("https://oapi.dingtalk.com/auth/scopes")
@@ -1129,12 +1146,12 @@ def test_urllib_client_normalizes_authorization_scope_transport_errors(
 
     monkeypatch.setattr(dingtalk_module.urllib_request, "urlopen", fail_urlopen)
 
-    with pytest.raises(dingtalk_module._DirectoryHTTPError) as caught:
+    with pytest.raises(type(error)) as caught:
         dingtalk_module._UrllibDirectoryHTTPClient().get(
             "https://oapi.dingtalk.com/auth/scopes",
             access_token="fake-access-token-scope-001",
         )
-    assert str(caught.value) == ""
+    assert caught.value is error
 
 
 @pytest.mark.parametrize(
@@ -1151,13 +1168,13 @@ def test_urllib_directory_client_normalizes_transport_errors(
 
     monkeypatch.setattr(dingtalk_module.urllib_request, "urlopen", fail_urlopen)
 
-    with pytest.raises(dingtalk_module._DirectoryHTTPError) as caught:
+    with pytest.raises(type(error)) as caught:
         dingtalk_module._UrllibDirectoryHTTPClient().post(
             dingtalk_module._USER_LIST_URL,
             access_token="fake-access-token-directory-001",
             body={"dept_id": 1, "cursor": 0, "size": 100},
         )
-    assert str(caught.value) == ""
+    assert caught.value is error
 
 
 def test_messaging_accepts_complete_sdk_response_and_locator_round_trips_through_json_text() -> None:

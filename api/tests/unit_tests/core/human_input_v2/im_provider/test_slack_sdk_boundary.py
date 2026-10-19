@@ -43,6 +43,7 @@ from core.human_input_v2.im_integration.adapters import (
     WebhookRequest,
 )
 from core.human_input_v2.im_integration.adapters import slack as slack_adapter_module
+from core.human_input_v2.im_integration.adapters.entities import IMProviderError
 from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
 from core.human_input_v2.resolved_form import (
     FileInput,
@@ -492,6 +493,16 @@ def test_real_web_client_credential_failures_are_typed_and_sanitized(
     slack_api_server.state.enqueue("auth.test", auth_body, headers=auth_headers)
     adapter, _ = _adapter(monkeypatch, slack_api_server)
 
+    if expected_kind is CredentialTestFailureKind.TENANT_ID_UNAVAILABLE:
+        with pytest.raises(IMProviderError):
+            adapter.test_credentials()
+        return
+    if auth_body.get("ok") is True:
+        if not auth_headers:
+            with pytest.raises(IMProviderError):
+                adapter.test_credentials()
+            return
+        expected_kind = CredentialTestFailureKind.PERMISSION_DENIED
     result = adapter.test_credentials()
 
     assert isinstance(result, CredentialTestFailure)
@@ -522,6 +533,10 @@ def test_real_web_client_socket_credential_failures_are_typed(
     slack_api_server.state.enqueue("apps.connections.open", connection_body)
     adapter, _ = _adapter(monkeypatch, slack_api_server)
 
+    if connection_body.get("ok") is True:
+        with pytest.raises(IMProviderError):
+            adapter.test_credentials()
+        return
     result = adapter.test_credentials()
 
     assert isinstance(result, CredentialTestFailure)

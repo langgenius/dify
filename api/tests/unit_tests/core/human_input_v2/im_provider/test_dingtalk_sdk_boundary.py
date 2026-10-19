@@ -21,6 +21,7 @@ from alibabacloud_dingtalk.robot_1_0.models import (
     BatchSendOTOResponseBody,
 )
 from alibabacloud_tea_util.models import RuntimeOptions
+from pydantic import ValidationError
 from pytest_mock import MockerFixture
 
 from core.human_input_v2.entities import IMProvider
@@ -38,6 +39,7 @@ from core.human_input_v2.im_integration.adapters import (
 )
 from core.human_input_v2.im_integration.adapters import dingtalk as dingtalk_module
 from core.human_input_v2.im_integration.adapters.dingtalk import DingTalkIMProviderAdapter
+from core.human_input_v2.im_integration.adapters.entities import IMProviderError
 
 _FIXTURE_PATH = Path(__file__).parents[4] / "fixtures" / "im_provider" / "dingtalk" / "sanitized_protocol.json"
 
@@ -94,21 +96,21 @@ class _FixtureHTTPClient:
         self.calls: list[tuple[str, str, dict[str, int]]] = []
         self.close_calls = 0
 
-    def get(self, url: str, *, access_token: str) -> bytes:
+    def get(self, url: str, *, access_token: str) -> dingtalk_module._DirectoryHTTPResponse:
         path = urlparse(url).path
         self.calls.append((path, access_token, {}))
         status_code, response = self._route(path, {})
         if not 200 <= status_code < 300:
             raise OSError("fake HTTP failure detail")
-        return json.dumps(response, separators=(",", ":")).encode()
+        return dingtalk_module._DirectoryHTTPResponse(json.dumps(response, separators=(",", ":")).encode(), status_code)
 
-    def post(self, url: str, *, access_token: str, body: dict[str, int]) -> bytes:
+    def post(self, url: str, *, access_token: str, body: dict[str, int]) -> dingtalk_module._DirectoryHTTPResponse:
         path = urlparse(url).path
         self.calls.append((path, access_token, dict(body)))
         status_code, response = self._route(path, dict(body))
         if not 200 <= status_code < 300:
             raise OSError("fake HTTP failure detail")
-        return json.dumps(response, separators=(",", ":")).encode()
+        return dingtalk_module._DirectoryHTTPResponse(json.dumps(response, separators=(",", ":")).encode(), status_code)
 
     def close(self) -> None:
         self.close_calls += 1
@@ -314,11 +316,12 @@ def test_public_credential_test_normalizes_token_failures(
         direct=_OAuthSequence(direct_response),
     )
 
-    result = adapter.test_credentials()
-
-    assert isinstance(result, CredentialTestFailure)
-    assert result.kind is expected_kind
-    assert "fake" not in result.reason.casefold()
+    del expected_kind
+    expected_error = type(direct_response) if isinstance(direct_response, Exception) else IMProviderError
+    with pytest.raises(expected_error) as captured:
+        adapter.test_credentials()
+    if isinstance(direct_response, Exception):
+        assert captured.value is direct_response
     assert http.calls == []
 
 
@@ -368,11 +371,13 @@ def test_public_credential_test_requires_a_valid_root_baseline(
         http=http,
     )
 
-    result = adapter.test_credentials()
-
-    assert isinstance(result, CredentialTestFailure)
-    assert result.kind is expected_kind
-    assert "fake" not in result.reason.casefold()
+    if expected_kind is CredentialTestFailureKind.TENANT_ID_UNAVAILABLE:
+        result = adapter.test_credentials()
+        assert isinstance(result, CredentialTestFailure)
+        assert result.kind is expected_kind
+    else:
+        with pytest.raises((IMProviderError, ValidationError)):
+            adapter.test_credentials()
     assert len(http.calls) == 2
 
 

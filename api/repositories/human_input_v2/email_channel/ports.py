@@ -17,23 +17,27 @@ from .entities import (
 
 
 class EmailProviderValidationError(Exception):
-    """Classified provider failure containing only a stable safe code."""
+    """Classified provider failure with safe internal and upstream codes."""
 
     code: str
 
-    def __init__(self, code: str) -> None:
+    def __init__(self, code: str, *, provider_error_code: str | None = None, http_status: int | None = None) -> None:
         super().__init__(code)
         self.code = code
+        self.provider_error_code = provider_error_code
+        self.http_status = http_status
 
 
 class EmailProviderOperationError(Exception):
-    """Classified provider or transport failure containing only a stable safe code."""
+    """Classified provider or transport failure with safe diagnostic codes."""
 
     code: str
 
-    def __init__(self, code: str) -> None:
+    def __init__(self, code: str, *, provider_error_code: str | None = None, http_status: int | None = None) -> None:
         super().__init__(code)
         self.code = code
+        self.provider_error_code = provider_error_code
+        self.http_status = http_status
 
 
 class EmailChannelPersistenceError(RuntimeError):

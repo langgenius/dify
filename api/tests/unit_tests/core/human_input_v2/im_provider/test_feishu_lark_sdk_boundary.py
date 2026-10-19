@@ -47,6 +47,7 @@ from core.human_input_v2.im_integration.adapters import (
 )
 from core.human_input_v2.im_integration.adapters import feishu_lark as adapter_module
 from core.human_input_v2.im_integration.adapters.credentials import FeishuCredentials, LarkCredentials
+from core.human_input_v2.im_integration.adapters.entities import IMProviderError
 from core.human_input_v2.im_integration.adapters.feishu_lark import (
     FeishuIMProviderAdapter,
     LarkIMProviderAdapter,
@@ -1042,6 +1043,17 @@ def test_credential_failures_remain_typed_across_adapter_composition(
         gateway.scope.append(scope_result)
     adapter = _scripted_adapter(monkeypatch, gateway)
 
+    if isinstance(tenant_result, Exception) or isinstance(scope_result, Exception):
+        execution_error = tenant_result if isinstance(tenant_result, Exception) else scope_result
+        assert isinstance(execution_error, Exception)
+        with pytest.raises(type(execution_error)) as captured:
+            adapter.test_credentials()
+        assert captured.value is execution_error
+        return
+    if expected_kind is CredentialTestFailureKind.TENANT_ID_UNAVAILABLE:
+        with pytest.raises(IMProviderError):
+            adapter.test_credentials()
+        return
     result = adapter.test_credentials()
 
     assert isinstance(result, CredentialTestFailure)

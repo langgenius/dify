@@ -42,6 +42,7 @@ from core.human_input_v2.im_integration.adapters import (
     WebhookRequest,
 )
 from core.human_input_v2.im_integration.adapters import slack as slack_module
+from core.human_input_v2.im_integration.adapters.entities import IMProviderError
 from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
 from core.human_input_v2.resolved_form import (
     FileInput,
@@ -285,6 +286,7 @@ def test_credential_test_returns_safe_typed_failures(mocker) -> None:
 
     assert isinstance(rejected, CredentialTestFailure)
     assert rejected.kind is CredentialTestFailureKind.AUTHENTICATION_REJECTED
+    assert rejected.provider_error_code == "invalid_auth"
     assert "raw-provider-message" not in rejected.reason
     assert "must-not-leak" not in rejected.reason
 
@@ -293,9 +295,70 @@ def test_credential_test_returns_safe_typed_failures(mocker) -> None:
         SlackResponse({"ok": True}, headers={"x-oauth-scopes": "chat:write,users:read,users:read.email"})
     )
     second_adapter = _adapter(mocker, second_client)
-    missing_tenant = second_adapter.test_credentials()
-    assert isinstance(missing_tenant, CredentialTestFailure)
-    assert missing_tenant.kind is CredentialTestFailureKind.TENANT_ID_UNAVAILABLE
+    with pytest.raises(IMProviderError, match="workspace identity"):
+        second_adapter.test_credentials()
+
+
+def test_credential_test_reports_only_scopes_explicitly_missing_from_provider_response(mocker) -> None:
+    client = FakeWebClient()
+    client.auth_responses.append(
+        SlackApiError(
+            "secret raw message",
+            response=SlackResponse(
+                {
+                    "error": "missing_scope",
+                    "needed": "users:read,users:read.email",
+                    "provided": "users:read",
+                }
+            ),
+        )
+    )
+
+    result = _adapter(mocker, client).test_credentials()
+
+    assert isinstance(result, CredentialTestFailure)
+    assert result.provider_error_code == "missing_scope"
+    assert result.missing_permissions == ("users:read.email",)
+    assert "secret raw message" not in repr(result)
+
+
+def test_credential_test_identifies_missing_baseline_scopes_from_granted_scopes(mocker) -> None:
+    client = FakeWebClient()
+    client.auth_responses.append(SlackResponse({"team_id": "T1"}, headers={"x-oauth-scopes": "users:read"}))
+
+    result = _adapter(mocker, client).test_credentials()
+
+    assert isinstance(result, CredentialTestFailure)
+    assert result.missing_permissions == ("chat:write", "users:read.email")
+
+
+@pytest.mark.parametrize(
+    "scope_details",
+    [
+        {},
+        {"needed": "users:read.email"},
+        {"needed": ["users:read.email"], "provided": "users:read"},
+    ],
+)
+def test_credential_test_keeps_error_code_without_guessing_unavailable_scope_details(mocker, scope_details) -> None:
+    client = FakeWebClient()
+    client.auth_responses.append(
+        SlackApiError(
+            "raw secret",
+            response=SlackResponse(
+                {
+                    "error": "missing_scope",
+                    **scope_details,
+                }
+            ),
+        )
+    )
+
+    result = _adapter(mocker, client).test_credentials()
+
+    assert isinstance(result, CredentialTestFailure)
+    assert result.provider_error_code == "missing_scope"
+    assert result.missing_permissions == ()
 
 
 @pytest.mark.parametrize("connection_url", ["", "   "])
@@ -305,28 +368,21 @@ def test_credential_test_rejects_blank_socket_url(mocker, connection_url: str) -
     client.connection_responses.append(SlackResponse({"ok": True, "url": connection_url}))
     adapter = _adapter(mocker, client)
 
-    result = adapter.test_credentials()
-
-    assert result == CredentialTestFailure(
-        CredentialTestFailureKind.UNKNOWN,
-        "Slack Socket Mode credentials could not be confirmed.",
-    )
+    with pytest.raises(IMProviderError, match="connection URL"):
+        adapter.test_credentials()
 
 
 def test_credential_test_normalizes_unexpected_socket_failure_without_details(mocker, caplog) -> None:
     sensitive_marker = "sensitive socket credential details"
     client = FakeWebClient()
     client.auth_responses.append(_successful_auth_response())
-    client.connection_responses.append(RuntimeError(sensitive_marker))
+    execution_error = RuntimeError(sensitive_marker)
+    client.connection_responses.append(execution_error)
     adapter = _adapter(mocker, client)
 
-    with caplog.at_level(logging.ERROR, logger="core.human_input_v2.im_integration.adapters.slack"):
-        result = adapter.test_credentials()
-
-    assert result == CredentialTestFailure(
-        CredentialTestFailureKind.UNKNOWN,
-        "Slack credential testing could not be completed.",
-    )
+    with pytest.raises(RuntimeError, match=sensitive_marker) as captured:
+        adapter.test_credentials()
+    assert captured.value is execution_error
     assert sensitive_marker not in caplog.text
 
 

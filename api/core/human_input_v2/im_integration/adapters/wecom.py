@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import time
 from email.headerregistry import Address
+from json import JSONDecodeError
 from typing import Annotated, Literal, Protocol, override
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, RootModel, StrictInt, StrictStr, ValidationError, field_validator
+from requests.exceptions import Timeout as RequestsTimeout
 from wechatpy.enterprise import WeChatClient
 from wechatpy.exceptions import WeChatClientException
 
@@ -18,9 +20,11 @@ from core.human_input_v2.im_integration.adapters.entities import (
     CredentialTestFailure,
     CredentialTestFailureKind,
     CredentialTestSuccess,
+    CredentialTestTimeoutError,
     Directory,
     DirectoryEntry,
     DirectoryReadFailure,
+    IMProviderError,
     MessageAccepted,
     MessageSendingError,
     MessageSendingResult,
@@ -125,6 +129,12 @@ class _AccessTokenStatus(BaseModel):
     errcode: StrictInt
 
 
+class _HTTPResponseMetadata(BaseModel):
+    model_config = ConfigDict(extra="ignore", strict=True, from_attributes=True)
+
+    status_code: int | None = None
+
+
 class _WeComClientWithBoundedTokenFetch(WeChatClient):
     @override
     def fetch_access_token(self) -> object:
@@ -140,7 +150,7 @@ class _WeComClientWithBoundedTokenFetch(WeChatClient):
         payload = response.json()
         status = _AccessTokenStatus.model_validate(payload)
         if status.errcode != 0:
-            raise WeChatClientException(status.errcode, None)
+            raise WeChatClientException(status.errcode, None, response=response)
 
         token = _AccessTokenResponse.model_validate(payload)
         self.session.set(self.access_token_key, token.access_token, token.expires_in)
@@ -400,36 +410,63 @@ class WeComIMProviderAdapter:
 
     def test_credentials(self) -> CredentialTestSuccess | CredentialTestFailure:
         try:
-            client = _new_client(self._credentials)
+            return self._test_credentials()
+        except (TimeoutError, httpx.TimeoutException, RequestsTimeout) as error:
+            raise CredentialTestTimeoutError() from error
+        except httpx.HTTPStatusError as error:
+            try:
+                rejection = _AccessTokenStatus.model_validate(error.response.json())
+            except (JSONDecodeError, ValidationError):
+                provider_error_code = None
+            else:
+                provider_error_code = str(rejection.errcode)
+            return CredentialTestFailure(
+                CredentialTestFailureKind.UNKNOWN,
+                _CREDENTIAL_TEST_FAILED,
+                provider_error_code=provider_error_code,
+                http_status=error.response.status_code,
+            )
+
+    def _test_credentials(self) -> CredentialTestSuccess | CredentialTestFailure:
+        client = _new_client(self._credentials)
+        try:
             _fetch_access_token(client)
         except WeChatClientException as error:
-            if error.errcode in _AUTHENTICATION_REJECTION_CODES:
-                return CredentialTestFailure(CredentialTestFailureKind.AUTHENTICATION_REJECTED, _CREDENTIAL_REJECTED)
-            return CredentialTestFailure(CredentialTestFailureKind.UNKNOWN, _CREDENTIAL_TEST_FAILED)
-        except ValidationError:
-            return CredentialTestFailure(CredentialTestFailureKind.UNKNOWN, _CREDENTIAL_TEST_FAILED)
-        # The SDK can surface transport and decoding failures outside its documented
-        # exception hierarchy. The shared boundary must normalize all of them.
-        except Exception:
-            return CredentialTestFailure(CredentialTestFailureKind.UNKNOWN, _CREDENTIAL_TEST_FAILED)
-
+            if error.errcode is None and error.response is None:
+                raise
+            kind = (
+                CredentialTestFailureKind.AUTHENTICATION_REJECTED
+                if error.errcode in _AUTHENTICATION_REJECTION_CODES
+                else CredentialTestFailureKind.UNKNOWN
+            )
+            return CredentialTestFailure(
+                kind,
+                _CREDENTIAL_REJECTED,
+                provider_error_code=str(error.errcode) if error.errcode is not None else None,
+                http_status=_HTTPResponseMetadata.model_validate(error.response).status_code
+                if error.response is not None
+                else None,
+            )
         try:
             agent = _AgentResponse.model_validate(client.agent.get(int(self._credentials.agent_id)))
         except WeChatClientException as error:
+            if error.errcode is None and error.response is None:
+                raise
+            kind = CredentialTestFailureKind.UNKNOWN
             if error.errcode in _TENANT_BOUNDARY_REJECTION_CODES:
-                return CredentialTestFailure(
-                    CredentialTestFailureKind.TENANT_ID_UNAVAILABLE,
-                    _TENANT_BOUNDARY_UNAVAILABLE,
-                )
-            return CredentialTestFailure(CredentialTestFailureKind.UNKNOWN, _CREDENTIAL_TEST_FAILED)
-        except ValidationError:
-            return CredentialTestFailure(CredentialTestFailureKind.UNKNOWN, _CREDENTIAL_TEST_FAILED)
-        # See the token boundary above; no Provider exception may cross this API.
-        except Exception:
-            return CredentialTestFailure(CredentialTestFailureKind.UNKNOWN, _CREDENTIAL_TEST_FAILED)
-
+                kind = CredentialTestFailureKind.PERMISSION_DENIED
+            elif error.errcode in _AUTHENTICATION_REJECTION_CODES:
+                kind = CredentialTestFailureKind.AUTHENTICATION_REJECTED
+            return CredentialTestFailure(
+                kind,
+                _TENANT_BOUNDARY_UNAVAILABLE,
+                provider_error_code=str(error.errcode) if error.errcode is not None else None,
+                http_status=_HTTPResponseMetadata.model_validate(error.response).status_code
+                if error.response is not None
+                else None,
+            )
         if agent.agentid != int(self._credentials.agent_id):
-            return CredentialTestFailure(CredentialTestFailureKind.UNKNOWN, _CREDENTIAL_TEST_FAILED)
+            raise IMProviderError("WeCom returned a different application identity.")
         return CredentialTestSuccess(IMProvider.WE_COM, self._credentials.corp_id)
 
     @property

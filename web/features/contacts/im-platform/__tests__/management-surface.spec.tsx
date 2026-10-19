@@ -539,6 +539,39 @@ describe('Contacts IM platform binding flows', () => {
     expect(JSON.stringify(queryClient.getMutationCache().getAll())).not.toContain(submittedApiKey)
   })
 
+  it.each(['testConnection', 'saveCredentials'] as const)(
+    'displays the provider error code when Email %s fails',
+    async (operation) => {
+      const user = userEvent.setup()
+      const { repository } = renderSurface()
+      const message =
+        'The submitted credentials are invalid. Provider error code: restricted_api_key.'
+      vi.spyOn(repository, operation).mockRejectedValue(
+        new ContactImRepositoryError(ContactImRepositoryErrorCode.MutationFailed, message),
+      )
+      await user.click(
+        within(await screen.findByRole('group', { name: 'Email' })).getByRole('button'),
+      )
+      await user.type(
+        screen.getByLabelText('contacts.imPlatform.email.senderEmail'),
+        'approvals@example.com',
+      )
+      await user.type(screen.getByLabelText('contacts.imPlatform.email.senderName'), 'Approvals')
+      await user.type(screen.getByLabelText('contacts.imPlatform.email.apiKey'), 'resend-test-key')
+      await user.click(
+        screen.getByRole('button', {
+          name:
+            operation === 'testConnection'
+              ? 'contacts.imPlatform.action.testConnection'
+              : 'contacts.imPlatform.action.save',
+        }),
+      )
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(message)
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+    },
+  )
+
   it('saves Email as a configured channel and never exposes the submitted API key', async () => {
     const user = userEvent.setup()
     const { container, repository } = renderSurface()
@@ -928,7 +961,7 @@ describe('Contacts channel credential API contracts', () => {
       .mockRejectedValueOnce(
         new ContactImRepositoryError(
           ContactImRepositoryErrorCode.MutationFailed,
-          'The provider rejected these credentials.',
+          'Provider error code: missing_scope. Missing permissions: users:read.email.',
         ),
       )
       .mockResolvedValue(slack)
@@ -943,7 +976,9 @@ describe('Contacts channel credential API contracts', () => {
     await user.click(
       screen.getByRole('button', { name: 'contacts.imPlatform.action.testConnection' }),
     )
-    expect(await screen.findByText('The provider rejected these credentials.')).toBeInTheDocument()
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Provider error code: missing_scope. Missing permissions: users:read.email.',
+    )
     expect(screen.queryByText('contacts.imPlatform.email.testSucceeded')).not.toBeInTheDocument()
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(save).not.toHaveBeenCalled()

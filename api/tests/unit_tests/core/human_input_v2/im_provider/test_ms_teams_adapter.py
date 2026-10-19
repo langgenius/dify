@@ -126,6 +126,7 @@ def _adapter_with_tokens(mocker, *, graph_claims: dict[str, object], bot_claims:
     graph_credential = mocker.patch.object(ms_teams, "ClientSecretCredential", autospec=True).return_value
     graph_credential.get_token.return_value = SimpleNamespace(token=_unsigned_token(graph_claims))
     graph_client = mocker.patch.object(ms_teams.httpx, "Client", autospec=True).return_value
+    graph_client.get.return_value = httpx.Response(200, json={"value": []})
     bot_credentials = mocker.patch.object(ms_teams, "_MSTeamsBotCredentials", autospec=True).return_value
     bot_credentials.get_access_token.return_value = _unsigned_token(bot_claims)
     adapter = ms_teams.MSTeamsIMProviderAdapter(_credentials())
@@ -292,64 +293,51 @@ def test_construction_exposes_webhook_only_capabilities_without_provider_io(mock
 
 
 def test_credential_test_confirms_graph_permission_bot_auth_and_tenant(mocker) -> None:
-    adapter, _, _, bot_credentials = _adapter_with_tokens(
+    adapter, graph_credential, graph_client, bot_credentials = _adapter_with_tokens(
         mocker,
-        graph_claims={
-            "aud": "https://graph.microsoft.com",
-            "tid": _credentials().tenant_id,
-            "roles": ["User.Read.All"],
-        },
-        bot_claims={
-            "aud": "https://api.botframework.com",
-            "appid": _credentials().client_id,
-            "tid": _credentials().tenant_id,
-        },
+        graph_claims={},
+        bot_claims={},
     )
+    graph_credential.get_token.return_value = SimpleNamespace(token="opaque-graph-access-token")
+    bot_credentials.get_access_token.return_value = "opaque-bot-access-token"
+    graph_client.get.return_value = httpx.Response(200, json={"value": []})
 
-    assert hasattr(adapter, "test_credentials")
-    assert adapter.test_credentials() == CredentialTestSuccess(adapter.provider, _credentials().tenant_id)
+    result = adapter.test_credentials()
+
+    assert result == CredentialTestSuccess(adapter.provider, _credentials().tenant_id)
+    graph_client.get.assert_called_once_with(
+        "https://graph.microsoft.com/v1.0/users",
+        headers={"Authorization": "Bearer opaque-graph-access-token"},
+        params={"$select": "id,displayName,mail", "$top": 1},
+    )
+    bot_credentials.get_access_token.assert_called_once_with()
 
 
 def test_credential_test_returns_safe_typed_failures(mocker) -> None:
-    adapter, graph_credential, _, bot_credentials = _adapter_with_tokens(
-        mocker,
-        graph_claims={"aud": "https://graph.microsoft.com", "roles": ["User.Read.All"]},
-        bot_claims={
-            "aud": "https://api.botframework.com",
-            "appid": _credentials().client_id,
-            "tid": _credentials().tenant_id,
+    adapter, _, graph_client, bot_credentials = _adapter_with_tokens(mocker, graph_claims={}, bot_claims={})
+    graph_client.get.return_value = httpx.Response(
+        403,
+        json={
+            "error": {"code": "Authorization_RequestDenied", "message": "Insufficient privileges"},
         },
     )
-    unavailable = adapter.test_credentials()
-    assert isinstance(unavailable, CredentialTestFailure)
-    assert unavailable.kind is CredentialTestFailureKind.TENANT_ID_UNAVAILABLE
 
-    graph_credential.get_token.return_value = SimpleNamespace(
-        token=_unsigned_token(
-            {
-                "aud": "https://graph.microsoft.com",
-                "tid": _credentials().tenant_id,
-                "roles": [],
-            }
-        )
-    )
-    missing_permission = adapter.test_credentials()
-    assert isinstance(missing_permission, CredentialTestFailure)
-    assert missing_permission.kind is CredentialTestFailureKind.UNKNOWN
+    denied = adapter.test_credentials()
 
-    graph_credential.get_token.return_value = SimpleNamespace(
-        token=_unsigned_token(
-            {
-                "aud": "https://graph.microsoft.com",
-                "tid": _credentials().tenant_id,
-                "roles": ["User.Read.All"],
-            }
-        )
+    assert isinstance(denied, CredentialTestFailure)
+    assert denied.kind is CredentialTestFailureKind.PERMISSION_DENIED
+    assert denied.http_status == 403
+    assert denied.provider_error_code == "Authorization_RequestDenied"
+    assert denied.missing_permissions == ()
+
+    graph_client.get.return_value = httpx.Response(200, json={"value": []})
+    bot_credentials.get_access_token.side_effect = PermissionError(
+        "Failed to get access token with error: invalid_client, error_description: sensitive provider details"
     )
-    bot_credentials.get_access_token.side_effect = PermissionError("invalid_client: sensitive provider details")
     rejected = adapter.test_credentials()
     assert isinstance(rejected, CredentialTestFailure)
     assert rejected.kind is CredentialTestFailureKind.AUTHENTICATION_REJECTED
+    assert rejected.provider_error_code == "invalid_client"
     assert "sensitive provider details" not in rejected.reason
 
 
@@ -367,7 +355,9 @@ def test_credential_test_treats_transient_bot_auth_failure_as_unknown(mocker) ->
             "tid": _credentials().tenant_id,
         },
     )
-    bot_credentials.get_access_token.side_effect = PermissionError("temporarily_unavailable: test-only upstream outage")
+    bot_credentials.get_access_token.side_effect = PermissionError(
+        "Failed to get access token with error: temporarily_unavailable, error_description: test-only upstream outage"
+    )
 
     result = adapter.test_credentials()
 
@@ -375,7 +365,7 @@ def test_credential_test_treats_transient_bot_auth_failure_as_unknown(mocker) ->
     assert result.kind is CredentialTestFailureKind.UNKNOWN
 
 
-def test_credential_test_compares_guid_claims_case_insensitively(mocker) -> None:
+def test_credential_test_preserves_the_configured_tenant_identity(mocker) -> None:
     credentials = MSTeamsCredentials(
         provider="ms_teams",
         tenant_id="AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
@@ -383,24 +373,11 @@ def test_credential_test_compares_guid_claims_case_insensitively(mocker) -> None
         client_secret="test-only-client-secret",
     )
     graph_credential = mocker.patch.object(ms_teams, "ClientSecretCredential", autospec=True).return_value
-    graph_credential.get_token.return_value = SimpleNamespace(
-        token=_unsigned_token(
-            {
-                "aud": "https://graph.microsoft.com",
-                "tid": credentials.tenant_id.lower(),
-                "roles": ["User.Read.All"],
-            }
-        )
-    )
-    mocker.patch.object(ms_teams.httpx, "Client", autospec=True)
+    graph_credential.get_token.return_value = SimpleNamespace(token="opaque-graph-access-token")
+    graph_client = mocker.patch.object(ms_teams.httpx, "Client", autospec=True).return_value
+    graph_client.get.return_value = httpx.Response(200, json={"value": []})
     bot_credentials = mocker.patch.object(ms_teams, "_MSTeamsBotCredentials", autospec=True).return_value
-    bot_credentials.get_access_token.return_value = _unsigned_token(
-        {
-            "aud": "https://api.botframework.com",
-            "appid": credentials.client_id.lower(),
-            "tid": credentials.tenant_id.lower(),
-        }
-    )
+    bot_credentials.get_access_token.return_value = "opaque-bot-access-token"
     adapter = ms_teams.MSTeamsIMProviderAdapter(credentials)
 
     result = adapter.test_credentials()
@@ -408,99 +385,34 @@ def test_credential_test_compares_guid_claims_case_insensitively(mocker) -> None
     assert result == CredentialTestSuccess(adapter.provider, credentials.tenant_id.lower())
 
 
-@pytest.mark.parametrize("malformed_claim", ["graph_tenant", "bot_tenant", "bot_client"])
-def test_credential_test_rejects_malformed_guid_claims_safely(mocker, malformed_claim: str) -> None:
-    graph_tenant_id = _credentials().tenant_id
-    bot_tenant_id = _credentials().tenant_id
-    bot_client_id = _credentials().client_id
-    if malformed_claim == "graph_tenant":
-        graph_tenant_id = "not-a-guid"
-    elif malformed_claim == "bot_tenant":
-        bot_tenant_id = "not-a-guid"
-    else:
-        bot_client_id = "not-a-guid"
-    adapter, _, _, _ = _adapter_with_tokens(
+def test_credential_test_propagates_graph_and_bot_execution_failures(mocker, caplog) -> None:
+    adapter, graph_credential, graph_client, bot_credentials = _adapter_with_tokens(
         mocker,
-        graph_claims={
-            "aud": "https://graph.microsoft.com",
-            "tid": graph_tenant_id,
-            "roles": ["User.Read.All"],
-        },
-        bot_claims={
-            "aud": "https://api.botframework.com",
-            "appid": bot_client_id,
-            "tid": bot_tenant_id,
-        },
+        graph_claims={},
+        bot_claims={},
     )
-
-    result = adapter.test_credentials()
-
-    assert isinstance(result, CredentialTestFailure)
-    assert result.kind is CredentialTestFailureKind.UNKNOWN
-
-
-def test_credential_test_normalizes_graph_and_bot_boundary_failures(mocker, caplog) -> None:
-    adapter, graph_credential, _, bot_credentials = _adapter_with_tokens(
-        mocker,
-        graph_claims={
-            "aud": "https://graph.microsoft.com",
-            "tid": _credentials().tenant_id,
-            "roles": ["User.Read.All"],
-        },
-        bot_claims={
-            "aud": "https://api.botframework.com",
-            "appid": _credentials().client_id,
-            "tid": _credentials().tenant_id,
-        },
-    )
-    graph_credential.get_token.side_effect = ClientAuthenticationError("sensitive graph rejection")
+    graph_credential.get_token.side_effect = ClientAuthenticationError("AADSTS7000215: sensitive graph rejection")
     graph_rejected = adapter.test_credentials()
     assert isinstance(graph_rejected, CredentialTestFailure)
     assert graph_rejected.kind is CredentialTestFailureKind.AUTHENTICATION_REJECTED
+    assert graph_rejected.provider_error_code == "AADSTS7000215"
 
     graph_credential.get_token.side_effect = RuntimeError("sensitive graph failure")
-    graph_unknown = adapter.test_credentials()
-    assert isinstance(graph_unknown, CredentialTestFailure)
-    assert graph_unknown.kind is CredentialTestFailureKind.UNKNOWN
+    with pytest.raises(RuntimeError) as captured:
+        adapter.test_credentials()
+    assert captured.value is graph_credential.get_token.side_effect
 
     graph_credential.get_token.side_effect = None
-    graph_credential.get_token.return_value = SimpleNamespace(token="not-a-jwt")
-    malformed_graph_token = adapter.test_credentials()
-    assert isinstance(malformed_graph_token, CredentialTestFailure)
-    assert malformed_graph_token.kind is CredentialTestFailureKind.UNKNOWN
+    graph_client.get.side_effect = httpx.ReadTimeout("sensitive Graph request timeout")
+    with pytest.raises(ms_teams.CredentialTestTimeoutError) as captured_timeout:
+        adapter.test_credentials()
+    assert captured_timeout.value.__cause__ is graph_client.get.side_effect
 
-    graph_credential.get_token.return_value = SimpleNamespace(
-        token=_unsigned_token(
-            {
-                "aud": "https://graph.microsoft.com",
-                "tid": "33333333-3333-3333-3333-333333333333",
-                "roles": ["User.Read.All"],
-            }
-        )
-    )
-    mismatched_graph_tenant = adapter.test_credentials()
-    assert isinstance(mismatched_graph_tenant, CredentialTestFailure)
-    assert mismatched_graph_tenant.kind is CredentialTestFailureKind.AUTHENTICATION_REJECTED
-
-    graph_credential.get_token.return_value = SimpleNamespace(
-        token=_unsigned_token(
-            {
-                "aud": "https://graph.microsoft.com",
-                "tid": _credentials().tenant_id,
-                "roles": ["User.Read.All"],
-            }
-        )
-    )
+    graph_client.get.side_effect = None
     bot_credentials.get_access_token.side_effect = RuntimeError("sensitive bot failure")
-    bot_unknown = adapter.test_credentials()
-    assert isinstance(bot_unknown, CredentialTestFailure)
-    assert bot_unknown.kind is CredentialTestFailureKind.UNKNOWN
-
-    bot_credentials.get_access_token.side_effect = None
-    bot_credentials.get_access_token.return_value = "not-a-jwt"
-    malformed_bot_token = adapter.test_credentials()
-    assert isinstance(malformed_bot_token, CredentialTestFailure)
-    assert malformed_bot_token.kind is CredentialTestFailureKind.UNKNOWN
+    with pytest.raises(RuntimeError) as captured:
+        adapter.test_credentials()
+    assert captured.value is bot_credentials.get_access_token.side_effect
     assert "sensitive graph rejection" not in caplog.text
     assert "sensitive graph failure" not in caplog.text
     assert "sensitive bot failure" not in caplog.text

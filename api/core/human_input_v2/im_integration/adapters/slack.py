@@ -17,6 +17,7 @@ from datetime import UTC, datetime
 from email.message import Message
 from math import isfinite
 from typing import Annotated, ClassVar, Literal, Never, Self, override
+from urllib.error import URLError
 from urllib.parse import parse_qs
 
 from pydantic import (
@@ -53,6 +54,7 @@ from core.human_input_v2.im_integration.adapters.entities import (
     CredentialTestFailure,
     CredentialTestFailureKind,
     CredentialTestSuccess,
+    CredentialTestTimeoutError,
     Directory,
     DirectoryEntry,
     DirectoryReadFailure,
@@ -62,6 +64,7 @@ from core.human_input_v2.im_integration.adapters.entities import (
     IMCardEventDecodeResult,
     IMCardEventDecodingError,
     IMEventIngressKind,
+    IMProviderError,
     IMStreamStartError,
     IMStreamStopError,
     MessageAccepted,
@@ -1121,37 +1124,34 @@ class SlackIMProviderAdapter:
 
     def test_credentials(self) -> CredentialTestSuccess | CredentialTestFailure:
         try:
+            return self._test_credentials()
+        except TimeoutError as error:
+            raise CredentialTestTimeoutError() from error
+        except URLError as error:
+            if isinstance(error.reason, TimeoutError):
+                raise CredentialTestTimeoutError() from error
+            raise
+
+    def _test_credentials(self) -> CredentialTestSuccess | CredentialTestFailure:
+        try:
             response = self._client.auth_test()
         except SlackApiError as error:
-            kind = (
-                CredentialTestFailureKind.AUTHENTICATION_REJECTED
-                if _slack_error_code(error) in self._AUTHENTICATION_ERROR_CODES
-                else CredentialTestFailureKind.UNKNOWN
-            )
-            return CredentialTestFailure(kind, "Slack rejected the credential test.")
-        except SlackClientError:
-            return CredentialTestFailure(
-                CredentialTestFailureKind.UNKNOWN,
-                "Slack credential testing could not be completed.",
-            )
-        except Exception:
-            _log_safe_error("Unexpected Slack credential test failure")
-            return CredentialTestFailure(
-                CredentialTestFailureKind.UNKNOWN,
-                "Slack credential testing could not be completed.",
+            return _slack_credential_failure(
+                error, self._AUTHENTICATION_ERROR_CODES, "Slack rejected the credential test."
             )
 
         team_id = response.get("team_id")
         if not isinstance(team_id, str) or not team_id:
-            return CredentialTestFailure(
-                CredentialTestFailureKind.TENANT_ID_UNAVAILABLE,
-                "Slack did not provide a stable workspace identity.",
-            )
+            raise IMProviderError("Slack did not provide a stable workspace identity.")
         granted_scopes = _oauth_scopes(response.headers)
+        if granted_scopes is None:
+            raise IMProviderError("Slack did not provide its granted OAuth scopes.")
         if not self._BASELINE_BOT_SCOPES.issubset(granted_scopes):
             return CredentialTestFailure(
-                CredentialTestFailureKind.UNKNOWN,
+                CredentialTestFailureKind.PERMISSION_DENIED,
                 "Slack baseline permissions could not be confirmed.",
+                missing_permissions=tuple(sorted(self._BASELINE_BOT_SCOPES - granted_scopes)),
+                http_status=_SlackHTTPResponseMetadata.model_validate(response).status_code,
             )
         app_token = self._credentials.app_token
         if app_token is None:
@@ -1159,33 +1159,22 @@ class SlackIMProviderAdapter:
         try:
             connection_response = self._client.apps_connections_open(app_token=app_token)
         except SlackApiError as error:
-            kind = (
-                CredentialTestFailureKind.AUTHENTICATION_REJECTED
-                if _slack_error_code(error) in self._AUTHENTICATION_ERROR_CODES
-                else CredentialTestFailureKind.UNKNOWN
+            return _slack_credential_failure(
+                error, self._AUTHENTICATION_ERROR_CODES, "Slack Socket Mode credentials could not be confirmed."
             )
-            return CredentialTestFailure(kind, "Slack Socket Mode credentials could not be confirmed.")
-        except SlackClientError:
-            return CredentialTestFailure(
-                CredentialTestFailureKind.UNKNOWN,
-                "Slack Socket Mode credential testing could not be completed.",
-            )
-        except Exception:
-            _log_safe_error("Unexpected Slack Socket Mode credential test failure")
-            return CredentialTestFailure(
-                CredentialTestFailureKind.UNKNOWN,
-                "Slack credential testing could not be completed.",
-            )
-        connection_url = connection_response.get("url")
-        if (
-            connection_response.get("ok") is not True
-            or not isinstance(connection_url, str)
-            or not connection_url.strip()
-        ):
+        if connection_response.get("ok") is False:
+            rejection = _SlackCredentialError.model_validate({"error": connection_response.get("error")})
             return CredentialTestFailure(
                 CredentialTestFailureKind.UNKNOWN,
                 "Slack Socket Mode credentials could not be confirmed.",
+                provider_error_code=rejection.error,
+                http_status=_SlackHTTPResponseMetadata.model_validate(connection_response).status_code,
             )
+        if connection_response.get("ok") is not True:
+            raise IMProviderError("Slack Socket Mode response did not confirm the connection.")
+        connection_url = connection_response.get("url")
+        if not isinstance(connection_url, str) or not connection_url.strip():
+            raise IMProviderError("Slack Socket Mode response did not provide a connection URL.")
         return CredentialTestSuccess(IMProvider.SLACK, team_id)
 
     @property
@@ -1336,13 +1325,71 @@ def _slack_error_code(error: SlackApiError) -> str | None:
     return error_code if isinstance(error_code, str) else None
 
 
-def _oauth_scopes(headers: Mapping[str, str] | None) -> frozenset[str]:
+class _SlackHTTPResponseMetadata(BaseModel):
+    model_config = ConfigDict(extra="ignore", strict=True, from_attributes=True)
+
+    status_code: int | None = None
+
+
+class _SlackCredentialError(BaseModel):
+    model_config = ConfigDict(extra="ignore", strict=True, hide_input_in_errors=True)
+
+    error: str | None = None
+
+
+class _SlackCredentialScopes(BaseModel):
+    model_config = ConfigDict(extra="ignore", strict=True, hide_input_in_errors=True)
+
+    needed: str
+    provided: str
+
+
+def _slack_credential_failure(
+    error: SlackApiError,
+    authentication_error_codes: frozenset[str],
+    reason: str,
+) -> CredentialTestFailure:
+    http_status = _SlackHTTPResponseMetadata.model_validate(error.response).status_code
+    error_code = _slack_error_code(error)
+    kind = CredentialTestFailureKind.UNKNOWN
+    if error_code in authentication_error_codes:
+        kind = CredentialTestFailureKind.AUTHENTICATION_REJECTED
+    elif error_code == "missing_scope":
+        kind = CredentialTestFailureKind.PERMISSION_DENIED
+    try:
+        rejection = _SlackCredentialError.model_validate(
+            {
+                "error": error.response.get("error"),
+            }
+        )
+    except ValidationError:
+        return CredentialTestFailure(kind, reason, http_status=http_status)
+    missing_permissions: tuple[str, ...] = ()
+    if rejection.error == "missing_scope":
+        try:
+            scopes = _SlackCredentialScopes.model_validate(
+                {
+                    "needed": error.response.get("needed"),
+                    "provided": error.response.get("provided"),
+                }
+            )
+        except ValidationError:
+            # Keep the provider code when optional scope details are malformed.
+            return CredentialTestFailure(kind, reason, rejection.error, http_status=http_status)
+        else:
+            needed = frozenset(scope.strip() for scope in scopes.needed.split(",") if scope.strip())
+            provided = frozenset(scope.strip() for scope in scopes.provided.split(",") if scope.strip())
+            missing_permissions = tuple(sorted(needed - provided))
+    return CredentialTestFailure(kind, reason, rejection.error, missing_permissions, http_status=http_status)
+
+
+def _oauth_scopes(headers: Mapping[str, str] | None) -> frozenset[str] | None:
     if headers is None:
-        return frozenset()
+        return None
     for name, value in headers.items():
         if name.casefold() == "x-oauth-scopes":
             return frozenset(scope.strip() for scope in value.split(",") if scope.strip())
-    return frozenset()
+    return None
 
 
 __all__ = ["SlackIMProviderAdapter"]
