@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReplaceApiKeyValues } from '@/app/components/share/connections/replace-api-key-dialog'
 import type { RequiredConnection } from '@/app/components/share/connections/required-connections'
 import type { RequiredConnectionService } from '@/app/components/share/connections/required-services'
 import { useState } from 'react'
@@ -51,6 +52,8 @@ const initialServices: readonly RequiredConnectionService[] = [
     id: 'google-search',
     name: 'Google Search',
     description: 'Research prospects',
+    readmeUrl:
+      'https://github.com/langgenius/dify-official-plugins/blob/main/tools/google/README.md',
     iconClassName: 'i-custom-public-plugins-google',
     availableConnections: [],
     methods: ['oauth', 'api-key'],
@@ -106,7 +109,11 @@ export default function ConnectionsDemo() {
     )
   }
 
-  const handleReconnect = (serviceId: string, connectionId: string) => {
+  const handleReconnect = (
+    serviceId: string,
+    connectionId: string,
+    replacement?: ReplaceApiKeyValues,
+  ) => {
     setServices((currentServices) =>
       currentServices.map((service) =>
         service.id === serviceId
@@ -114,7 +121,11 @@ export default function ConnectionsDemo() {
               ...service,
               availableConnections: service.availableConnections.map((connection) =>
                 connection.id === connectionId
-                  ? { ...connection, status: 'active' as const }
+                  ? {
+                      ...connection,
+                      name: replacement?.name ?? connection.name,
+                      status: 'active' as const,
+                    }
                   : connection,
               ),
               selectedConnectionId: connectionId,

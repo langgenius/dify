@@ -26,7 +26,179 @@ const services: readonly RequiredConnectionService[] = [
   },
 ]
 
+const invalidService: RequiredConnectionService = {
+  id: 'search',
+  name: 'Google Search',
+  description: 'Search the web.',
+  methods: ['api-key'],
+  availableConnections: [{ id: 'key', name: 'Personal key', method: 'api-key', status: 'invalid' }],
+  selectedConnectionId: 'key',
+}
+
 describe('ConfigureConnections', () => {
+  it('returns to the same configuration surface after discarding a replacement and starts the next draft empty', async () => {
+    const user = userEvent.setup()
+    const onReplace = vi.fn()
+    render(
+      <ConfigureConnections
+        services={[invalidService]}
+        onConnect={vi.fn()}
+        onConnectionChange={vi.fn()}
+        onReplace={onReplace}
+      />,
+    )
+    const trigger = screen.getByRole('button', { name: 'share.connections.configure.title 1' })
+    await user.click(trigger)
+    const configuration = await screen.findByRole('dialog', {
+      name: 'share.connections.configure.title',
+    })
+    const openReplacement = async () => {
+      await user.click(within(configuration).getByRole('button', { name: 'Google Search' }))
+      const popover = await screen.findByRole('dialog', {
+        name: 'share.connections.apiKeys.title:{"provider":"Google Search"}',
+      })
+      await user.click(
+        within(popover).getByRole('button', { name: 'share.connections.apiKeys.replace' }),
+      )
+      return screen.findByRole('dialog', { name: 'share.connections.apiKeys.replaceTitle' })
+    }
+
+    for (const dismissal of ['cancel', 'close', 'escape']) {
+      const replacement = await openReplacement()
+      expect(replacement).toBe(configuration)
+      expect(screen.getAllByRole('dialog', { hidden: true })).toHaveLength(1)
+      const name = within(replacement).getByRole('textbox', {
+        name: 'plugin.auth.authorizationName',
+      })
+      const apiKey = within(replacement).getByLabelText(/share\.connections\.setup\.apiKey/)
+      await waitFor(() => expect(name).toHaveFocus())
+      expect(name).toHaveValue('Personal key')
+      expect(apiKey).toHaveValue('')
+      await user.clear(name)
+      await user.type(name, 'Unsaved name')
+      await user.type(apiKey, 'unsaved-secret')
+      if (dismissal === 'escape') await user.keyboard('{Escape}')
+      else
+        await user.click(
+          within(replacement).getByRole('button', { name: `common.operation.${dismissal}` }),
+        )
+      const resumed = await screen.findByRole('dialog', {
+        name: 'share.connections.configure.title',
+      })
+      expect(resumed).toBe(configuration)
+      await waitFor(() =>
+        expect(
+          within(resumed).getByRole('heading', {
+            name: 'share.connections.configure.title',
+          }),
+        ).toHaveFocus(),
+      )
+      expect(within(resumed).getByRole('button', { name: 'Google Search' })).toHaveTextContent(
+        'Personal key',
+      )
+      expect(trigger).toHaveAccessibleName('share.connections.configure.title 1')
+      expect(onReplace).not.toHaveBeenCalled()
+    }
+
+    const reopened = await openReplacement()
+    expect(within(reopened).getByLabelText(/share\.connections\.setup\.apiKey/)).toHaveValue('')
+    await user.keyboard('{Escape}')
+    expect(await screen.findByRole('dialog', { name: 'share.connections.configure.title' })).toBe(
+      configuration,
+    )
+    await user.keyboard('{Escape}')
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { hidden: true })).not.toBeInTheDocument(),
+    )
+    await waitFor(() => expect(trigger).toHaveFocus())
+  })
+
+  it('keeps the warning count until a replacement is saved and the owner marks the selected key active', async () => {
+    const user = userEvent.setup()
+    const onReplace = vi.fn()
+    function ConnectedConfiguration() {
+      const [currentServices, setCurrentServices] = useState([invalidService])
+      return (
+        <ConfigureConnections
+          services={currentServices}
+          onConnect={vi.fn()}
+          onConnectionChange={vi.fn()}
+          onReplace={(serviceId, connectionId, values) => {
+            onReplace(serviceId, connectionId, values)
+            setCurrentServices((current) =>
+              current.map((service) =>
+                service.id === serviceId
+                  ? {
+                      ...service,
+                      availableConnections: service.availableConnections.map((connection) =>
+                        connection.id === connectionId
+                          ? { ...connection, name: values.name, status: 'active' }
+                          : connection,
+                      ),
+                    }
+                  : service,
+              ),
+            )
+          }}
+        />
+      )
+    }
+    render(<ConnectedConfiguration />)
+    const trigger = screen.getByRole('button', { name: 'share.connections.configure.title 1' })
+    await user.click(trigger)
+    const configuration = await screen.findByRole('dialog', {
+      name: 'share.connections.configure.title',
+    })
+    await user.click(within(configuration).getByRole('button', { name: 'Google Search' }))
+    const popover = await screen.findByRole('dialog', {
+      name: 'share.connections.apiKeys.title:{"provider":"Google Search"}',
+    })
+    await user.click(
+      within(popover).getByRole('button', { name: 'share.connections.apiKeys.replace' }),
+    )
+    const replacement = await screen.findByRole('dialog', {
+      name: 'share.connections.apiKeys.replaceTitle',
+    })
+    expect(replacement).toBe(configuration)
+    expect(screen.getAllByRole('dialog', { hidden: true })).toHaveLength(1)
+    const replacementName = within(replacement).getByRole('textbox', {
+      name: 'plugin.auth.authorizationName',
+    })
+    await user.clear(replacementName)
+    await user.type(replacementName, 'Replacement key')
+    await user.type(
+      within(replacement).getByLabelText(/share\.connections\.setup\.apiKey/),
+      'replacement-key',
+    )
+    expect(onReplace).not.toHaveBeenCalled()
+    expect(trigger).toHaveAccessibleName('share.connections.configure.title 1')
+
+    await user.click(within(replacement).getByRole('button', { name: 'common.operation.save' }))
+
+    expect(onReplace).toHaveBeenCalledExactlyOnceWith('search', 'key', {
+      name: 'Replacement key',
+      apiKey: 'replacement-key',
+    })
+    const resumed = await screen.findByRole('dialog', {
+      name: 'share.connections.configure.title',
+    })
+    expect(resumed).toBe(configuration)
+    expect(screen.getAllByRole('dialog', { hidden: true })).toHaveLength(1)
+    expect(
+      screen.queryByRole('dialog', { name: 'share.connections.apiKeys.replaceTitle' }),
+    ).not.toBeInTheDocument()
+    expect(trigger).toHaveAccessibleName('share.connections.configure.title')
+    expect(within(trigger).queryByText(/^\d+$/)).not.toBeInTheDocument()
+    const selectedKey = within(resumed).getByRole('button', { name: 'Google Search' })
+    expect(selectedKey).toHaveTextContent('Replacement key')
+    expect(selectedKey).not.toHaveAccessibleDescription(/share.connections.apiKeys.warning/)
+    await user.keyboard('{Escape}')
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { hidden: true })).not.toBeInTheDocument(),
+    )
+    await waitFor(() => expect(trigger).toHaveFocus())
+  })
+
   it('counts only unhealthy selected services and removes the count after recovery or a healthy selection', () => {
     const createService = (
       id: string,
@@ -130,7 +302,7 @@ describe('ConfigureConnections', () => {
     const addApiKey = within(notion).getByRole('button', {
       name: 'share.connections.setup.addApiKey',
     })
-    expect(select).toBeDisabled()
+    expect(select).toHaveAttribute('aria-disabled', 'true')
     expect(connect).toBeDisabled()
     expect(addApiKey).toBeDisabled()
     await user.click(select)
@@ -156,7 +328,7 @@ describe('ConfigureConnections', () => {
     expect(
       within(dialog).queryByText('share.connections.configure.runningDescription'),
     ).not.toBeInTheDocument()
-    expect(select).toBeEnabled()
+    expect(select).not.toHaveAttribute('aria-disabled', 'true')
     expect(connect).toBeEnabled()
     expect(addApiKey).toBeEnabled()
     await user.click(addApiKey)
@@ -278,7 +450,7 @@ describe('ConfigureConnections', () => {
     const remove = screen.getByRole('menuitem', { name: 'share.connections.accounts.remove' })
     rerender(<ConfigureConnections {...props} isResponding />)
 
-    expect(accountTrigger).toBeDisabled()
+    expect(accountTrigger).toHaveAttribute('aria-disabled', 'true')
     await waitFor(() => {
       for (const action of screen.queryAllByRole('menuitem'))
         expect(action).toHaveAttribute('aria-disabled', 'true')

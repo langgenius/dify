@@ -13,6 +13,7 @@ export type ConnectionMethod = 'oauth' | 'api-key'
 
 export type RequiredConnectionService = RequiredConnection & {
   description: string
+  readmeUrl?: string
   availableConnections: readonly {
     id: string
     name: string
@@ -38,12 +39,19 @@ function ServiceItem({
   disabled,
   onReconnect,
   onReplace,
+  onRequestReplace,
   onRemove,
 }: {
   service: RequiredConnectionService
 } & Pick<
   Props,
-  'onConnect' | 'onConnectionChange' | 'disabled' | 'onReconnect' | 'onReplace' | 'onRemove'
+  | 'onConnect'
+  | 'onConnectionChange'
+  | 'disabled'
+  | 'onReconnect'
+  | 'onReplace'
+  | 'onRequestReplace'
+  | 'onRemove'
 >) {
   const { t } = useTranslation(['share'])
   const nameId = useId()
@@ -104,6 +112,7 @@ function ServiceItem({
             onConnectionChange={onConnectionChange}
             onReconnect={onReconnect}
             onReplace={onReplace}
+            onRequestReplace={onRequestReplace}
             onRemove={onRemove}
           />
         ) : (
@@ -147,6 +156,7 @@ export default function RequiredServices({
   disabled = false,
   onReconnect,
   onReplace,
+  onRequestReplace,
   onRemove,
   className,
 }: Props) {
@@ -163,6 +173,7 @@ export default function RequiredServices({
           disabled={disabled}
           onReconnect={onReconnect}
           onReplace={onReplace}
+          onRequestReplace={onRequestReplace}
           onRemove={onRemove}
         />
       ))}
