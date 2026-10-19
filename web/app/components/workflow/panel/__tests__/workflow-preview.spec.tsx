@@ -12,16 +12,27 @@ import {
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 import { BlockEnum, InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
-import { request } from '@/service/base'
 import { submitHumanInputForm } from '@/service/workflow'
 import { renderWorkflowEditor } from '@/test/workflow-editor'
 import WorkflowPreview from '../workflow-preview'
 
 vi.mock('copy-to-clipboard', () => ({ default: vi.fn() }))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  request: vi.fn(),
-}))
+const getChildExecutions = vi.hoisted(() =>
+  vi.fn<
+    typeof import('@/service/console').consoleClient.apps.byAppId.workflowRuns.byRunId.nodeExecutions.byNodeExecutionId.children.get
+  >(),
+)
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.workflowRuns.byRunId.nodeExecutions.byNodeExecutionId.children.get':
+        getChildExecutions,
+    }),
+  }
+})
 vi.mock('@/service/workflow', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/workflow')>()),
   submitHumanInputForm: vi.fn(),
@@ -99,7 +110,7 @@ const createHumanInputFilledFormData = (
 })
 
 beforeEach(() => {
-  vi.mocked(request).mockReset()
+  getChildExecutions.mockReset()
   mockSubmitHumanInputForm.mockReset().mockResolvedValue({ result: 'success' })
   vi.mocked(copy).mockReset().mockResolvedValue(true)
   vi.spyOn(toast, 'success')
@@ -288,7 +299,7 @@ it('opens the trace from the partial-success warning', async () => {
 
 it('loads nested tool traces using the editor app identity and preview run ID', async () => {
   const user = userEvent.setup()
-  vi.mocked(request).mockImplementation(async () => Response.json({ data: [] }))
+  getChildExecutions.mockResolvedValue({ data: [] })
   renderPreview({
     resource: { kind: 'app', appId: 'preview-app', mode: 'workflow' },
     initialStoreState: {
@@ -314,11 +325,11 @@ it('loads nested tool traces using the editor app identity and preview run ID', 
 
   await user.click(await screen.findByRole('button', { name: 'runLog.tracing' }))
   expect(await screen.findByText('common.noData')).toBeInTheDocument()
-  expect(request).toHaveBeenCalledWith(
-    expect.stringContaining(
-      '/apps/preview-app/workflow-runs/preview-run/node-executions/preview-tool/children',
-    ),
-    expect.anything(),
-    expect.anything(),
-  )
+  expect(getChildExecutions).toHaveBeenCalledWith({
+    params: {
+      app_id: 'preview-app',
+      run_id: 'preview-run',
+      node_execution_id: 'preview-tool',
+    },
+  })
 })

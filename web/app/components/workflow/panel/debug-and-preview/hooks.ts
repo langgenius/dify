@@ -885,8 +885,12 @@ export const useChat = (
                   nodeFinishedData.execution_metadata?.parallel_id
               )
             })
-            if (currentIndex > -1)
-              responseItem.workflowProcess.tracing[currentIndex] = nodeFinishedData
+            if (currentIndex > -1) {
+              responseItem.workflowProcess.tracing[currentIndex] = {
+                ...responseItem.workflowProcess.tracing[currentIndex],
+                ...nodeFinishedData,
+              }
+            }
           })
         },
         onLoopStart: ({ data: loopStartedData }) => {
