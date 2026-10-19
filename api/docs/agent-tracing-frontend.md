@@ -1,6 +1,6 @@
 # Agent tracing 前端接入说明
 
-更新日期：2026-10-18。面向 DIFY-2975 / DIFY-2983 / DIFY-2984 / DIFY-2985 的前端实现与联调。
+更新日期：2026-10-19。面向 DIFY-2975 / DIFY-2983 / DIFY-2984 / DIFY-2985 的前端实现与联调。
 
 后端应用级 Agent tracing、Console API 与生成契约已实现。各 provider 的平台证据及边界记录于第 12 节。Weave 在 10 月 16 日的验收受账号试用状态限制；10 月 19 日切换 Free 后，项目、trace 树及调用链接已能实际打开，后续专项按独立证据记录。后续 Databricks、Opik、腾讯云、OSS MLflow 和 Phoenix 均通过 Dify UI 配置并发起业务，再独立查询平台。本文定义后端契约；dev 前端的具体联调范围单独记录。
 
@@ -311,6 +311,8 @@ await consoleClient.agent.byAgentId.traceConfig.post({
 Weave Cloud 的 `host` 为 `https://api.wandb.ai`，`endpoint` 为 `https://trace.wandb.ai`。先在供应商创建项目，再填写明确的 `entity` 与项目裸名称；若不填写 `entity`，可填写 `entity/project`，或由当前凭据解析默认 entity，验证成功后服务端会保存解析结果。不能同时提供 `entity` 和带 entity 前缀的 `project`。
 
 Weave 的 POST/PATCH 只读校验账户、项目可写权限和 trace 查询端点，不隐式创建项目、不调用全局 SDK login/init。GET 不访问供应商。保存成功后持久化规范化的 entity/project 与项目链接；PATCH 保留未编辑密钥的实际脱敏回显值。校验通过不等于后续 ingestion 一定成功，继续按运行状态判断。
+
+Weave 的 managed 与 legacy 导出共用实例独立的 typed HTTP transport，通过既有 SSRF 请求边界发送显式凭据和目标。legacy 构造器不再调用 `wandb.login` / `weave.init`、写入 `.netrc` 或创建 SDK 后台队列；未配置 entity 的历史记录仅在实际发送时按本实例凭据解析。Celery 仍负责异步投递。legacy 保留旧 call ID、父子关系、状态与 raw usage 映射，不因 managed 的 thread/turn 改进而新增原生 session、费用或用量聚合能力。
 
 Databricks 的 `host` 必须是 HTTPS workspace origin，`experiment_id` 是已存在的数字 ID。POST/PATCH 使用请求级 PAT 或 OAuth M2M 认证，只读核对 exact experiment ID 与 active 状态；它证明认证和实验可读，不证明写权限、trace API 可用或 artifact 投递成功。GET 在本地生成项目链接，不构造 legacy MLflow exporter，也不修改进程级认证环境、tracking URI 或当前 experiment。可空凭据保留 null / 清空语义，masked-key 原样保存保留原密钥；M2M 与 PAT 的双向切换有真实 RSA/持久化测试，账号级验收目前只有 PAT。
 
