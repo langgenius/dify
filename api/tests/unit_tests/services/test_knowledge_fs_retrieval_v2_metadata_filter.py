@@ -105,7 +105,7 @@ def test_build_metadata_filter_prompt_mirrors_legacy_chat_and_completion_templat
     assert isinstance(completion_text, str)
     assert "finance reports" in completion_text
     assert json.dumps(["department"]) in completion_text
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="'unknown' is not a valid ModelMode"):
         build_metadata_filter_prompt(
             model_config=model_config,  # type: ignore[arg-type]
             mode="unknown",
@@ -126,7 +126,7 @@ def test_parse_metadata_map_accepts_markdown_wrapped_json_and_ignores_junk() -> 
     ]
     assert parse_metadata_map('{"metadata_map": {"not": "a list"}}') == []
     assert parse_metadata_map('[{"metadata_map": []}]') == []
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="could not find json block in the output"):
         parse_metadata_map("not json at all")
     with pytest.raises(OutputParserError):
         parse_metadata_map("[]")

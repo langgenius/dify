@@ -13,6 +13,6 @@ if is_module_patched("socket"):
 
 
 # Import after gevent patching.
-from app import app, celery  # noqa: E402
+from app import app, celery
 
 __all__ = ["app", "celery"]

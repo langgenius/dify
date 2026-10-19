@@ -124,7 +124,7 @@ def test_missing_index_distinct_from_provider_failure(
     else:
         assert execute_text_request(store, payload) == {"points": [], "matches": []}
     cursor.execute_error = OSError("unavailable")
-    with pytest.raises(OSError):
+    with pytest.raises(OSError, match="unavailable"):
         execute_text_request(store, payload)
 
 

@@ -414,7 +414,7 @@ def test_legacy_dataset_factory_uses_shared_binding_and_resumes_pending(environm
     from dify_vdb_tidb_on_qdrant import tidb_on_qdrant_vector as legacy
 
     binding = add_binding(environment, tenant=environment.tenants[0].id, active=True)
-    dataset = Dataset(id=str(uuid.uuid4()), tenant_id=binding.tenant_id, index_struct=None)
+    dataset = Dataset(id=str(uuid.uuid4()), tenant_id=environment.tenants[0].id, index_struct=None)
     with (
         patch.object(
             legacy, "resolve_tidb_auth_binding", side_effect=[service.TidbBindingPendingError(), binding]

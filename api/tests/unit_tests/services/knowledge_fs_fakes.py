@@ -2,6 +2,19 @@
 
 from __future__ import annotations
 
+from typing import cast
+
+from models.knowledge_fs import (
+    KnowledgeFSCapabilityClaimsSummary,
+    KnowledgeFSCapabilityReservationSummary,
+    KnowledgeFSLifecycleOperation,
+    KnowledgeFSLifecycleOutbox,
+    KnowledgeFSProvisionCommandPayload,
+    KnowledgeFSRevokeCommandPayload,
+)
+from services.knowledge_fs.capability_broker import (
+    KnowledgeFSIssuedProductCapability,
+)
 from services.knowledge_fs.lifecycle_port import (
     KnowledgeFSCapabilityGrantRevokeAck,
     KnowledgeFSCapabilityGrantRevokeRequest,
@@ -14,6 +27,7 @@ from services.knowledge_fs.lifecycle_port import (
     KnowledgeFSIntegratedProvisionRequest,
     KnowledgeFSRemoteSpace,
 )
+from services.knowledge_fs.service_api_authorization import KnowledgeFSServiceApiProfile
 
 
 class UnexpectedLifecycleRemote:
@@ -54,14 +68,6 @@ class UnexpectedLifecycleRemote:
         raise AssertionError("Unexpected KnowledgeFS operation: list_spaces")
 
 
-from typing import cast
-
-from services.knowledge_fs.capability_broker import (
-    KnowledgeFSIssuedProductCapability,
-)
-from services.knowledge_fs.service_api_authorization import KnowledgeFSServiceApiProfile
-
-
 class UnexpectedCapabilityIssuer:
     def issue_interactive(
         self,
@@ -94,14 +100,6 @@ class UnexpectedCapabilityIssuer:
         raise AssertionError("Unexpected KnowledgeFS operation: issue_service")
 
 
-from models.knowledge_fs import (
-    KnowledgeFSLifecycleOperation,
-    KnowledgeFSLifecycleOutbox,
-    KnowledgeFSProvisionCommandPayload,
-    KnowledgeFSRevokeCommandPayload,
-)
-
-
 def revoke_payload(command: KnowledgeFSLifecycleOutbox) -> KnowledgeFSRevokeCommandPayload:
     assert command.operation is KnowledgeFSLifecycleOperation.REVOKE
     assert "grant_id" in command.command_payload
@@ -112,9 +110,6 @@ def provision_payload(command: KnowledgeFSLifecycleOutbox) -> KnowledgeFSProvisi
     assert command.operation is KnowledgeFSLifecycleOperation.PROVISION
     assert "provisioning_key" in command.command_payload
     return cast(KnowledgeFSProvisionCommandPayload, command.command_payload)
-
-
-from models.knowledge_fs import KnowledgeFSCapabilityClaimsSummary, KnowledgeFSCapabilityReservationSummary
 
 
 def reservation_summary(

@@ -1290,7 +1290,7 @@ def test_space_create_profile_intent_matches_the_exact_kfs_pending_configuration
         "topK": 20,
     }
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="retrieval.defaultMode"):
         KnowledgeFSSpaceCreatePayload.model_validate(
             {
                 "name": "Invalid preset",

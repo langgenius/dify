@@ -1,6 +1,26 @@
+from collections import deque
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from typing import cast
+from unittest.mock import patch
 
-from services.knowledge_fs.product_dto import KnowledgeFSSourceWorkflowResponse
+import pytest
+
+from services.knowledge_fs.product_dto import (
+    KnowledgeFSAsyncSourceImportPayload,
+    KnowledgeFSCrawlImportPayload,
+    KnowledgeFSCrawlPreviewSelectionPayload,
+    KnowledgeFSSourceUpdatePayload,
+    KnowledgeFSSourceWorkflowImportPayload,
+    KnowledgeFSSourceWorkflowResponse,
+)
+from services.knowledge_fs.product_remote import KnowledgeFSProductRequestRejectedError
+from services.knowledge_fs.source_import_commit_service import (
+    commit_source_import,
+    resume_committed_source_import,
+    retry_or_resume_source_workflow,
+)
+from tests.unit_tests.services.knowledge_fs_services_a_fakes import CallRecorder, sent_payload
 
 
 def source_workflow(**overrides: object) -> KnowledgeFSSourceWorkflowResponse:
@@ -21,29 +41,6 @@ def source_workflow(**overrides: object) -> KnowledgeFSSourceWorkflowResponse:
             **overrides,
         }
     )
-
-
-from collections import deque
-from dataclasses import dataclass, field
-from typing import cast
-from unittest.mock import patch
-
-import pytest
-
-from services.knowledge_fs.product_dto import (
-    KnowledgeFSAsyncSourceImportPayload,
-    KnowledgeFSCrawlImportPayload,
-    KnowledgeFSCrawlPreviewSelectionPayload,
-    KnowledgeFSSourceUpdatePayload,
-    KnowledgeFSSourceWorkflowImportPayload,
-)
-from services.knowledge_fs.product_remote import KnowledgeFSProductRequestRejectedError
-from services.knowledge_fs.source_import_commit_service import (
-    commit_source_import,
-    resume_committed_source_import,
-    retry_or_resume_source_workflow,
-)
-from tests.unit_tests.services.knowledge_fs_services_a_fakes import CallRecorder, sent_payload
 
 
 @dataclass(frozen=True)

@@ -24,7 +24,8 @@ API_ROOT = Path(__file__).resolve().parents[1]
 if str(API_ROOT) not in sys.path:
     sys.path.insert(0, str(API_ROOT))
 
-from dev.knowledge_fs_product_contract import (
+# Import after script path setup.
+from dev.knowledge_fs_product_contract import (  # noqa: E402
     capability_operation_runtime_contracts,
     parse_capability_operation_policy,
     parse_product_operation_gap_manifest,

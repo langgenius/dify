@@ -104,19 +104,19 @@ def test_space_payloads_share_the_40_character_name_limit() -> None:
     assert len(_create_payload(name="n" * 40).name) == 40
     assert len(KnowledgeFSSpaceUpdatePayload(name="n" * 40).name or "") == 40
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="String should have at most 40 characters"):
         _create_payload(name="n" * 41)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="String should have at most 40 characters"):
         KnowledgeFSSpaceUpdatePayload(name="n" * 41)
 
     for icon in ("grinning", "slightly_smiling_face", "+1", "builtin:camera-spec"):
         assert KnowledgeFSSpaceUpdatePayload(icon=icon).icon == icon
     for icon in ("https://example.com/icon.png", "builtin:Camera", "x" * 65):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="icon\n  String should match pattern"):
             KnowledgeFSSpaceUpdatePayload(icon=icon)
     assert KnowledgeFSSpaceUpdatePayload(icon_background="#FCE7F6").icon_background == "#FCE7F6"
     for icon_background in ("FCE7F6", "#fff", "#GGGGGG"):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="icon_background\n  String should match pattern"):
             KnowledgeFSSpaceUpdatePayload(icon_background=icon_background)
 
 
