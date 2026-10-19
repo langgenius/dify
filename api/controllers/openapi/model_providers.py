@@ -10,6 +10,7 @@ from typing import Any, Final
 from flask_restx import Resource
 from werkzeug.exceptions import BadRequest
 
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint, op_of
@@ -334,6 +335,7 @@ class ModelsApi(Resource):
             Example(title="LLMs", input={"model_type": "llm"}),
             Example(title="OpenAI models", input={"provider": _PROVIDER_EXAMPLE}),
         ),
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         requirements=WORKSPACE_READ_GUARDS,
         query=ModelListQuery,
         returns=(HTTPStatus.OK, ModelListResponse, "Models"),

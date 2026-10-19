@@ -27,6 +27,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import RequestEntityTooLarge
 
 from constants import BYTES_PER_MIB
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.schema import query_params_from_model, query_params_from_request
 from controllers.openapi import openapi_ns
 from controllers.openapi._errors import ErrorBody, RequestOverRouteLimits
@@ -218,6 +219,7 @@ def endpoint(
     deprecated: bool = False,
     effect: Effect | None = None,
     examples: Sequence[Example] = (),
+    pat_policy: PersonalAccessTokenPolicy | None = None,
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """The one seam a route attaches to for auth, request validation and response
     serialisation — auth, then ``accepts``, then ``returns``. Exposes
@@ -255,6 +257,7 @@ def endpoint(
         requirements=requirements,
         edition=edition,
         context=context,
+        pat_policy=pat_policy,
         catalog=CatalogMeta(
             op=op,
             kind=kind,

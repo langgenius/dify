@@ -51,6 +51,8 @@ class AuthContext:
 
     @property
     def scopes(self) -> frozenset[Scope]:
+        if self.token_type is TokenType.PERSONAL_ACCESS:
+            return frozenset()
         return self.token_type.subject.scopes
 
 

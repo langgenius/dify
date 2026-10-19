@@ -8,6 +8,7 @@ from flask_restx import Resource
 from werkzeug.exceptions import BadRequest, NotFound
 
 from constants.oauth_bearer import Scope
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.errors import ForbiddenError, NotFoundError
 from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
@@ -113,6 +114,7 @@ class AppDslImportApi(Resource):
     @endpoint(
         context="workspace",
         op="import.console_app.dsl",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         effect=Effect.DESTRUCTIVE,
         summary="Import an app from DSL text or URL",
@@ -213,6 +215,7 @@ class AppDslImportConfirmApi(Resource):
     @endpoint(
         context="workspace",
         op="confirm.console_app.dsl_import",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         effect=Effect.DESTRUCTIVE,
         summary="Confirm a pending DSL import",
@@ -249,6 +252,7 @@ class AppDslExportApi(Resource):
     @endpoint(
         context="app",
         op="export.console_app.dsl",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Export app DSL as YAML text inside a JSON object",
         examples=(
@@ -291,6 +295,7 @@ class AppDslCheckDependenciesApi(Resource):
     @endpoint(
         context="workspace",
         op="check.console_app.dependency",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Check plugin dependencies of an app",
         examples=(Example(title="Check which plugins an app needs", input={"app_id": "<app_id>"}),),

@@ -10,6 +10,7 @@ from typing import Final, Literal
 
 from flask_restx import Resource
 
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint
@@ -41,6 +42,7 @@ class WorkflowAppCreateApi(Resource):
         kind=Kind.OBJECT,
         summary="Create a blank workflow app; export its DSL to start building",
         examples=(Example(title="Create a workflow app", input={"name": "Release notes"}),),
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         requirements=_CREATE_GUARDS,
         body=CreateAppPayload,
         returns=(HTTPStatus.CREATED, CreatedAppResponse, "Created"),

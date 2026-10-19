@@ -8,6 +8,7 @@ from flask_restx import Resource
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from constants.oauth_bearer import Scope
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint
 from controllers.openapi._models import (
@@ -38,6 +39,7 @@ class AccountApi(Resource):
         kind=Kind.OBJECT,
         summary="Current account",
         examples=(Example(title="Show the logged-in account and its workspaces", input={}),),
+        pat_policy=PersonalAccessTokenPolicy.IDENTITY_DISCOVERY,
         requirements=(CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.FULL)),
         returns=(200, AccountResponse, "Account info"),
     )

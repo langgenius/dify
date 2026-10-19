@@ -64,3 +64,52 @@ def emit_wrong_surface(
             "token_id": token_id,
         },
     )
+
+
+def emit_personal_request(
+    *,
+    token_id: str,
+    account_id: str,
+    operation: str,
+    target_route: str,
+    target_ids: dict[str, str],
+    http_status: int,
+    streaming: bool,
+    trace_id: str | None,
+) -> None:
+    """Audit authenticated PAT requests without headers, bodies or exception text.
+
+    A successful SSE response records admission only, not execution completion.
+    trace_id is absent when no server trace was assigned.
+    """
+    outcome = (
+        "failed"
+        if http_status >= 500
+        else "denied"
+        if http_status >= 400
+        else "stream_opened"
+        if streaming
+        else "succeeded"
+    )
+    logger.info(
+        "audit: pat.request.openapi token_id=%s account_id=%s operation=%s target=%s ids=%s outcome=%s status=%s",
+        token_id,
+        account_id,
+        operation,
+        target_route,
+        target_ids,
+        outcome,
+        http_status,
+        extra={
+            "audit": True,
+            "event": "pat.request.openapi",
+            "token_id": token_id,
+            "account_id": account_id,
+            "operation": operation,
+            "target_route": target_route,
+            "target_ids": target_ids,
+            "outcome": outcome,
+            "http_status": http_status,
+            "trace_id": trace_id,
+        },
+    )

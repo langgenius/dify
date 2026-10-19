@@ -10,6 +10,7 @@ from typing import Final
 from flask_restx import Resource
 from werkzeug.exceptions import BadRequest
 
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint, op_of
@@ -197,6 +198,7 @@ class ToolsApi(Resource):
             Example(title="Find GitHub tools", input={"query": "github"}),
             Example(title="Workflows published as tools", input={"provider_type": "workflow"}),
         ),
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         requirements=WORKSPACE_READ_GUARDS,
         query=ToolListQuery,
         returns=(HTTPStatus.OK, ToolListResponse, "Tools"),

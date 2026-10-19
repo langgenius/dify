@@ -124,7 +124,7 @@ class SQLAlchemyDatasetOperations:
         page, limit = clamp_pagination(query.page, query.limit, 100)
         with self._sessions() as session:
             account = load_actor(session, context)
-            if query.ids:
+            if query.ids and not query.for_selection:
                 datasets, total = DatasetService.get_datasets_by_ids(
                     list(query.ids),
                     context.active_workspace_id,
@@ -144,6 +144,8 @@ class SQLAlchemyDatasetOperations:
                     query.include_all,
                     creator_ids=list(query.creator_ids),
                     tags=self._tags,
+                    for_selection=query.for_selection,
+                    ids=list(query.ids) if query.ids else None,
                     accessible_dataset_ids=accessible_ids,
                 )
             data = load_dataset_details(datasets, session=session)
@@ -173,7 +175,7 @@ class SQLAlchemyDatasetOperations:
                 ).model_dump(mode="json")
             return {
                 "data": data,
-                "has_more": not query.ids and page * limit < total,
+                "has_more": (query.for_selection or not query.ids) and page * limit < total,
                 "total": total,
                 "page": page,
                 "limit": limit,
