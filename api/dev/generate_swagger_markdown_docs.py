@@ -20,14 +20,19 @@ API_ROOT = Path(__file__).resolve().parents[1]
 if str(API_ROOT) not in sys.path:
     sys.path.insert(0, str(API_ROOT))
 
-from dev.generate_fastopenapi_specs import FASTOPENAPI_SPEC_TARGETS, generate_fastopenapi_specs
-from dev.generate_swagger_specs import SPEC_TARGETS, generate_specs
+# Import after script path setup.
+from dev.generate_fastopenapi_specs import FASTOPENAPI_SPEC_TARGETS, generate_fastopenapi_specs  # noqa: E402
+
+# Import after script path setup.
+from dev.generate_swagger_specs import SPEC_TARGETS, generate_specs  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
 SWAGGER_MARKDOWN_PACKAGE = "swagger-markdown@3.0.0"
 CONSOLE_OPENAPI_FILENAME = "console-openapi.json"
 STALE_COMBINED_MARKDOWN_FILENAME = "api-reference.md"
+# The inner API is a trusted server-to-server surface, not part of the published API reference.
+MARKDOWN_SPEC_TARGETS = tuple(target for target in SPEC_TARGETS if target.filename != "inner-openapi.json")
 
 
 def _schema_ref_name(schema: object) -> str | None:
@@ -368,7 +373,7 @@ def generate_markdown_docs(
         with tempfile.TemporaryDirectory(prefix="dify-api-docs-") as temp_dir:
             temp_markdown_dir = Path(temp_dir)
 
-            for target in SPEC_TARGETS:
+            for target in MARKDOWN_SPEC_TARGETS:
                 openapi_path = openapi_paths_by_name[target.filename]
                 markdown_path = markdown_dir / f"{openapi_path.stem}.md"
                 _convert_spec_to_markdown(openapi_path, markdown_path)

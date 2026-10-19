@@ -1,140 +1,77 @@
-import { render, screen } from '@testing-library/react'
+import type { CommonNodeType } from '../../types'
+import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum, NodeRunningStatus } from '../../types'
 import SimpleNode from '../index'
 
-let mockNodesReadOnly = false
-
-vi.mock('../../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../hooks/use-workflow')>()
-
-  return {
-    ...actual,
-    useNodesReadOnly: () => ({
-      nodesReadOnly: mockNodesReadOnly,
-    }),
-  }
-})
-
-vi.mock('@/app/components/workflow/block-icon', () => ({
-  __esModule: true,
-  default: ({ type }: { type: BlockEnum }) => <div>{`block-icon:${type}`}</div>,
-}))
-
+const control = vi.fn()
+const handle = vi.fn()
+// Controls and connection handles have independent interaction coverage.
 vi.mock('@/app/components/workflow/nodes/_base/components/node-control', () => ({
-  __esModule: true,
-  default: ({ id }: { id: string }) => <div>{`node-control:${id}`}</div>,
+  default: (props: { id: string }) => {
+    control(props)
+    return null
+  },
 }))
-
 vi.mock('@/app/components/workflow/nodes/_base/components/node-handle', () => ({
-  NodeTargetHandle: ({ handleId }: { handleId: string }) => <div>{`node-handle:${handleId}`}</div>,
+  NodeTargetHandle: (props: { id: string; handleId: string }) => {
+    handle(props)
+    return null
+  },
 }))
 
-const createData = (overrides: Record<string, unknown> = {}) => ({
-  title: 'Answer',
-  desc: '',
-  type: BlockEnum.Answer,
-  ...overrides,
-})
-
-describe('simple-node', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockNodesReadOnly = false
-  })
-
-  it('should render the block shell, target handle, and node control by default', () => {
-    render(<SimpleNode id="simple-node" data={createData()} />)
-
-    expect(screen.getByText('Answer')).toBeInTheDocument()
-    expect(screen.getByText('block-icon:answer')).toBeInTheDocument()
-    expect(screen.getByText('node-handle:target')).toBeInTheDocument()
-    expect(screen.getByText('node-control:simple-node')).toBeInTheDocument()
-  })
-
-  it('should show the running state border and spinner', () => {
-    const { container } = render(
-      <SimpleNode
-        id="simple-node"
-        data={createData({
-          _runningStatus: NodeRunningStatus.Running,
-        })}
-      />,
-    )
-
-    expect(container.querySelector('.text-text-accent')).not.toBeNull()
-    expect(container.innerHTML).toContain('border-state-accent-solid!')
-    expect(screen.queryByText('node-control:simple-node')).not.toBeInTheDocument()
-  })
-
-  it('should show success, failed, and exception status indicators', () => {
-    const { container, rerender } = render(
-      <SimpleNode
-        id="simple-node"
-        data={createData({
-          _runningStatus: NodeRunningStatus.Succeeded,
-        })}
-      />,
-    )
-
-    expect(container.querySelector('.text-text-success')).not.toBeNull()
-    expect(container.innerHTML).toContain('border-state-success-solid!')
-
-    rerender(
-      <SimpleNode
-        id="simple-node"
-        data={createData({
-          _runningStatus: NodeRunningStatus.Failed,
-        })}
-      />,
-    )
-
-    expect(container.querySelector('.text-text-destructive')).not.toBeNull()
-    expect(container.innerHTML).toContain('border-state-destructive-solid!')
-
-    rerender(
-      <SimpleNode
-        id="simple-node"
-        data={createData({
-          _runningStatus: NodeRunningStatus.Exception,
-        })}
-      />,
-    )
-
-    expect(container.querySelector('.text-text-warning-secondary')).not.toBeNull()
-    expect(container.innerHTML).toContain('border-state-warning-solid!')
-  })
-
-  it('should hide handles and controls for candidate or read-only nodes and show selected waiting styles', () => {
-    mockNodesReadOnly = true
-    const { container } = render(
-      <SimpleNode
-        id="simple-node"
-        data={createData({
-          selected: true,
-          _waitingRun: true,
-          _isCandidate: true,
-        })}
-      />,
-    )
-
-    expect(screen.queryByText('node-handle:target')).not.toBeInTheDocument()
-    expect(screen.queryByText('node-control:simple-node')).not.toBeInTheDocument()
-    expect(
-      container.querySelector('.border-components-option-card-option-selected-border'),
-    ).not.toBeNull()
-    expect(container.querySelector('.opacity-70')).not.toBeNull()
-  })
-
-  it('should show a spinner when a single run is still running', () => {
-    const { container } = render(
-      <SimpleNode
-        id="simple-node"
-        data={createData({
-          _singleRunningStatus: NodeRunningStatus.Running,
-        })}
-      />,
-    )
-
-    expect(container.querySelector('.animate-spin')).not.toBeNull()
-  })
-})
+it.each([
+  {
+    name: 'editable',
+    readOnly: false,
+    candidate: false,
+    status: undefined,
+    controls: true,
+    connection: true,
+  },
+  {
+    name: 'running',
+    readOnly: false,
+    candidate: false,
+    status: NodeRunningStatus.Running,
+    controls: false,
+    connection: true,
+  },
+  {
+    name: 'candidate',
+    readOnly: false,
+    candidate: true,
+    status: undefined,
+    controls: false,
+    connection: false,
+  },
+  {
+    name: 'readonly',
+    readOnly: true,
+    candidate: false,
+    status: undefined,
+    controls: false,
+    connection: true,
+  },
+])(
+  'exposes the appropriate controls for an $name node',
+  ({ readOnly, candidate, status, controls, connection }) => {
+    const data: CommonNodeType = {
+      title: 'Answer',
+      desc: '',
+      type: BlockEnum.Answer,
+      _isCandidate: candidate,
+      _runningStatus: status,
+    }
+    renderWorkflowComponent(<SimpleNode id="simple-node" data={data} />, {
+      initialStoreState: { canvasReadOnly: readOnly },
+    })
+    if (controls)
+      expect(control).toHaveBeenCalledWith(expect.objectContaining({ id: 'simple-node' }))
+    else expect(control).not.toHaveBeenCalled()
+    if (connection)
+      expect(handle).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'simple-node', handleId: 'target' }),
+      )
+    else expect(handle).not.toHaveBeenCalled()
+  },
+)

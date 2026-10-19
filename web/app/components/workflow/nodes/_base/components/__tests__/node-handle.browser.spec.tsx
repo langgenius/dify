@@ -1,13 +1,20 @@
-import type { RefObject } from 'react'
+import type { ReactElement, RefObject } from 'react'
 import type { Connection, NodeProps } from 'reactflow'
 import type { CommonNodeType, OnSelectBlock } from '../../../../types'
 import type { HumanInputNodeType } from '../../../human-input/types'
 import { useRef, useState } from 'react'
 import ReactFlow, { ReactFlowProvider, useReactFlow } from 'reactflow'
 import { page, userEvent } from 'vite-plus/test/browser'
-import { render } from 'vitest-browser-react'
+import { render as renderBrowser } from 'vitest-browser-react'
+import { consoleQuery } from '@/service/console'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createTestQueryClient } from '@/test/query-client'
 import { WorkflowContext } from '../../../../context'
 import CustomEdge from '../../../../custom-edge'
+import { EditorResourceScope } from '../../../../editor-resource/provider'
+import { HooksStoreContext } from '../../../../hooks-store/provider'
+import { createHooksStore } from '../../../../hooks-store/store'
 import { useWorkflowControlScale } from '../../../../hooks/use-workflow-control-scale'
 import { createWorkflowStore } from '../../../../store/workflow'
 import { BlockEnum } from '../../../../types'
@@ -16,6 +23,21 @@ import { UserActionButtonType } from '../../../human-input/types'
 import { NodeSourceHandle, NodeTargetHandle } from '../node-handle'
 import 'reactflow/dist/style.css'
 import '../../../../style.css'
+
+const render = (ui: ReactElement) => {
+  const queryClient = createTestQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+    createAppDetailFixture({ id: 'app-1', mode: 'workflow' }),
+  )
+  return renderBrowser(
+    <QueryClientTestProvider queryClient={queryClient}>
+      <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
+        {ui}
+      </EditorResourceScope>
+    </QueryClientTestProvider>,
+  )
+}
 
 const { handleNodeAdd } = vi.hoisted(() => ({ handleNodeAdd: vi.fn() }))
 
@@ -27,13 +49,6 @@ vi.mock('../../../../hooks/use-available-blocks', () => ({
 }))
 vi.mock('../../../../hooks/use-nodes-interactions', () => ({
   useNodesInteractions: () => ({ handleNodeAdd }),
-}))
-vi.mock('../../../../hooks/use-workflow', () => ({
-  useIsChatMode: () => false,
-  useNodesReadOnly: () => ({ getNodesReadOnly: () => false }),
-}))
-vi.mock('../../../../hooks-store', () => ({
-  useHooksStore: (selector: (state: object) => unknown) => selector({}),
 }))
 // Search results are outside the handle's hit testing and connection contract.
 vi.mock('../../../../block-selector/tabs', () => ({
@@ -174,11 +189,14 @@ function Canvas({
 
 function Fixture(props: { initialZoom?: number; showEdge?: boolean; humanInput?: boolean }) {
   const [store] = useState(() => createWorkflowStore({}))
+  const [hooksStore] = useState(() => createHooksStore({}))
   return (
     <WorkflowContext value={store}>
-      <ReactFlowProvider>
-        <Canvas {...props} />
-      </ReactFlowProvider>
+      <HooksStoreContext.Provider value={hooksStore}>
+        <ReactFlowProvider>
+          <Canvas {...props} />
+        </ReactFlowProvider>
+      </HooksStoreContext.Provider>
     </WorkflowContext>
   )
 }

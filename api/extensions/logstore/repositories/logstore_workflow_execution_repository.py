@@ -143,6 +143,7 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
             ("total_tokens", str(domain_model.total_tokens)),
             ("total_steps", str(domain_model.total_steps)),
             ("exceptions_count", str(domain_model.exceptions_count)),
+            ("elapsed_time", str(domain_model.elapsed_time)),
             (
                 "created_by_role",
                 self._creator_user_role.value

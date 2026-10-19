@@ -4,21 +4,23 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
-  DialogClose,
+  DialogBody,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { consoleClient, consoleQuery } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import { ModelTypeEnum } from '../declarations'
 import {
@@ -133,7 +135,35 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
   ] = useSystemDefaultModelAndModelList(speech2textDefaultModel, speech2textModelList)
   const [currentTTSDefaultModel, changeCurrentTTSDefaultModel, resetTTSDefaultModel] =
     useSystemDefaultModelAndModelList(ttsDefaultModel, ttsModelList)
+  const saveMutation = useMutation(
+    consoleQuery.workspaces.current.defaultModel.post.mutationOptions({
+      context: { silent: true },
+      onSuccess: (res) => {
+        if (res.result !== 'success') return
+
+        setManuallyOpen(false)
+        if (activeDialog === 'system-models') void setActiveDialog(null)
+        setChangedModelTypes([])
+        const allModelTypes = [
+          ModelTypeEnum.textGeneration,
+          ModelTypeEnum.textEmbedding,
+          ModelTypeEnum.rerank,
+          ModelTypeEnum.speech2text,
+          ModelTypeEnum.tts,
+        ]
+        allModelTypes.forEach((type) => invalidateDefaultModel(type))
+        changedModelTypes.forEach((type) => updateModelList(type))
+      },
+    }),
+  )
+  const saveError =
+    saveMutation.error?.message ||
+    (saveMutation.isError || (saveMutation.isSuccess && saveMutation.data.result !== 'success')
+      ? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })
+      : undefined)
   const handleOpenChange = (nextOpen: boolean) => {
+    if (saveMutation.isPending) return
+    saveMutation.reset()
     if (!nextOpen) {
       resetTextGenerationDefaultModel()
       resetEmbeddingsDefaultModel()
@@ -171,10 +201,10 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
     if (!changedModelTypes.includes(modelType))
       setChangedModelTypes([...changedModelTypes, modelType])
   }
-  const handleSave = async () => {
-    if (!canManageSystemDefaultModel || isSystemModelListLoading) return
+  const handleSave = () => {
+    if (!canManageSystemDefaultModel || isSystemModelListLoading || saveMutation.isPending) return
 
-    const res = await consoleClient.workspaces.current.defaultModel.post({
+    saveMutation.mutate({
       body: {
         model_settings: [
           ModelTypeEnum.textGeneration,
@@ -191,22 +221,6 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
         }),
       },
     })
-    if (res.result === 'success') {
-      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-      setManuallyOpen(false)
-      if (activeDialog === 'system-models') void setActiveDialog(null)
-      setChangedModelTypes([])
-
-      const allModelTypes = [
-        ModelTypeEnum.textGeneration,
-        ModelTypeEnum.textEmbedding,
-        ModelTypeEnum.rerank,
-        ModelTypeEnum.speech2text,
-        ModelTypeEnum.tts,
-      ]
-      allModelTypes.forEach((type) => invalidateDefaultModel(type))
-      changedModelTypes.forEach((type) => updateModelList(type))
-    }
   }
 
   const getResetProps = (modelType: ModelTypeEnum, labelKey: SystemModelLabelKey) => ({
@@ -238,7 +252,16 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen, details) => {
+        if (saveMutation.isPending) {
+          details.cancel()
+          return
+        }
+        handleOpenChange(nextOpen)
+      }}
+    >
       <DialogTrigger
         render={<Button variant={notConfigured ? 'primary' : 'secondary'} size="small" />}
         className={cn('relative', className)}
@@ -256,33 +279,26 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           <form
             onSubmit={(event) => {
               event.preventDefault()
-              void handleSave()
+              handleSave()
             }}
           />
         }
         backdropProps={{ forceRender: true }}
-        className="flex max-h-[calc(100dvh-2rem)] w-120 max-w-120 flex-col overflow-hidden rounded-2xl p-0"
+        className="max-h-[calc(100dvh-2rem)] max-w-120"
       >
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute top-5 right-5"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-        <div className="shrink-0 px-6 pt-6 pr-14 pb-3">
-          <DialogTitle className="title-2xl-semi-bold text-text-primary">
+        <DialogHeader>
+          <DialogTitle>
             {t(($) => $['modelProvider.systemModelSettingsTitle'], { ns: 'modelProvider' })}
           </DialogTitle>
-          <p className="mt-1 system-xs-regular text-text-tertiary">
+          <DialogDescription>
             {t(($) => $['modelProvider.systemModelSettingsDesc'], { ns: 'modelProvider' })}
-          </p>
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
+          </DialogDescription>
+          <DialogHeaderCloseButton
+            disabled={saveMutation.isPending}
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+          />
+        </DialogHeader>
+        <DialogBody>
           {isSystemModelListLoading ? (
             <div
               role="status"
@@ -303,6 +319,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                 )}
                 <div>
                   <ModelSelector
+                    disabled={saveMutation.isPending}
                     {...getResetProps(
                       ModelTypeEnum.textGeneration,
                       'modelProvider.systemReasoningModel.key',
@@ -326,6 +343,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                 )}
                 <div>
                   <ModelSelector
+                    disabled={saveMutation.isPending}
                     {...getResetProps(
                       ModelTypeEnum.textEmbedding,
                       'modelProvider.embeddingModel.key',
@@ -346,6 +364,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                 {renderModelLabel('modelProvider.rerankModel.key', 'modelProvider.rerankModel.tip')}
                 <div>
                   <ModelSelector
+                    disabled={saveMutation.isPending}
                     {...getResetProps(ModelTypeEnum.rerank, 'modelProvider.rerankModel.key')}
                     value={currentRerankDefaultModel}
                     models={rerankModelList}
@@ -364,6 +383,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                 )}
                 <div>
                   <ModelSelector
+                    disabled={saveMutation.isPending}
                     {...getResetProps(
                       ModelTypeEnum.speech2text,
                       'modelProvider.speechToTextModel.key',
@@ -384,6 +404,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                 {renderModelLabel('modelProvider.ttsModel.key', 'modelProvider.ttsModel.tip')}
                 <div>
                   <ModelSelector
+                    disabled={saveMutation.isPending}
                     {...getResetProps(ModelTypeEnum.tts, 'modelProvider.ttsModel.key')}
                     value={currentTTSDefaultModel}
                     models={ttsModelList}
@@ -397,20 +418,30 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
               </div>
             </div>
           )}
-        </div>
-        <div className="flex h-19 shrink-0 items-center justify-end gap-2 px-6 pt-5 pb-6">
-          <Button className="min-w-18" onClick={() => handleOpenChange(false)}>
+          {saveError && (
+            <p role="alert" className="mt-4 text-sm text-text-destructive">
+              {saveError}
+            </p>
+          )}
+        </DialogBody>
+        <DialogFooter>
+          <Button
+            className="min-w-18"
+            disabled={saveMutation.isPending}
+            onClick={() => handleOpenChange(false)}
+          >
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </Button>
           <Button
             className="min-w-18"
             variant="primary"
             type="submit"
+            loading={saveMutation.isPending}
             disabled={!canManageSystemDefaultModel || isSystemModelListLoading}
           >
             {t(($) => $['operation.save'], { ns: 'common' })}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

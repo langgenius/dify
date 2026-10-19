@@ -646,7 +646,7 @@ class TestWorkflowPauseIntegration:
         pause_entities = []
         repository = self._get_workflow_run_repository()
 
-        for i in range(5):
+        for _i in range(5):
             workflow_run = self._create_test_workflow_run()
             test_state = self._create_test_state()
 
@@ -858,7 +858,7 @@ class TestWorkflowPauseIntegration:
         assert deleted_pause is None
 
         try:
-            content = storage.load(file_key).decode()
+            storage.load(file_key).decode()
             pytest.fail("File should be deleted from storage after pause deletion")
         except FileNotFoundError:
             # This is expected - file should be deleted from storage

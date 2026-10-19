@@ -169,7 +169,7 @@ class TestGetTriggerProvider:
         mock_ctx.plugin_trigger_providers_lock.get.return_value = Lock()
         mock_client.return_value.fetch_trigger_provider.return_value = None
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Trigger provider org/plug/missing not found"):
             TriggerManager.get_trigger_provider("t1", TriggerProviderID("org/plug/missing"))
 
     @patch("core.trigger.trigger_manager.PluginTriggerClient")
@@ -179,7 +179,7 @@ class TestGetTriggerProvider:
         mock_ctx.plugin_trigger_providers_lock.get.return_value = Lock()
         mock_client.return_value.fetch_trigger_provider.side_effect = PluginNotFoundError("gone")
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Trigger provider org/plug/miss not found"):
             TriggerManager.get_trigger_provider("t1", TriggerProviderID("org/plug/miss"))
 
     @patch("core.trigger.trigger_manager.PluginTriggerClient")
