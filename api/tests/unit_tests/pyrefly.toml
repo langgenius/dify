@@ -526,8 +526,6 @@ project-excludes = [
   "services/agent/test_prompt_mentions.py",
   "services/agent/test_skill_package_service.py",
   "services/agent/test_workflow_publish_service.py",
-  "services/auth/test_firecrawl_auth.py",
-  "services/auth/test_jina_auth.py",
   "services/controller_api.py",
   "services/data_migration/test_dependency_discovery_service.py",
   "services/data_migration/test_entities.py",
