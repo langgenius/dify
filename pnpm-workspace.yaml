@@ -44,6 +44,8 @@ packages:
 overrides:
   '@babel/core@<=7.29.0': ^7.29.1
   '@lexical/code': npm:lexical-code-no-prism@0.41.0
+  # axe-core 4.14 enables label-content-name-mismatch, which flags existing dify-ui stories; drop once they are fixed.
+  axe-core: 4.13.0
   canvas: ^3.2.3
   esbuild@<0.28.1: ^0.28.2
   fflate@>=0.7.0 <0.7.5: 0.7.5
@@ -67,23 +69,23 @@ overrides:
   yaml@>=2.0.0 <2.8.3: 2.9.1
   yauzl@<3.2.1: 3.2.1
 catalog:
-  '@amplitude/analytics-browser': 2.47.4
-  '@amplitude/plugin-session-replay-browser': 1.36.1
+  '@amplitude/analytics-browser': 2.48.0
+  '@amplitude/plugin-session-replay-browser': 1.36.3
   '@axe-core/playwright': 4.13.0
   '@base-ui/react': 1.9.0
   '@base-ui/utils': 0.5.0
-  '@chromatic-com/storybook': 5.4.0
+  '@chromatic-com/storybook': 5.5.1
   '@cucumber/cucumber': 13.3.0
   '@date-fns/tz': 1.5.0
   '@daypicker/react': 10.0.2
   '@egoist/tailwindcss-icons': 1.9.2
-  '@eslint-react/eslint-plugin': 5.24.10
+  '@eslint-react/eslint-plugin': 5.28.1
   '@eslint/markdown': 8.0.3
   '@floating-ui/react': 0.27.20
   '@formatjs/intl-localematcher': 0.9.0
   '@heroicons/react': 2.2.0
   '@hey-api/openapi-ts': 0.99.0
-  '@hono/node-server': 2.1.4
+  '@hono/node-server': 2.1.5
   '@iconify-json/heroicons': 1.2.3
   '@iconify-json/ri': 1.2.10
   '@lexical/code': 0.47.0
@@ -93,43 +95,43 @@ catalog:
   '@lexical/selection': 0.47.0
   '@lexical/text': 0.47.0
   '@lexical/utils': 0.47.0
-  '@mediabunny/mp3-encoder': 1.61.3
+  '@mediabunny/mp3-encoder': 1.61.6
   '@monaco-editor/react': 4.7.0
   '@napi-rs/keyring': 1.3.0
-  '@orpc/client': 1.15.5
-  '@orpc/contract': 1.15.5
-  '@orpc/openapi-client': 1.15.5
-  '@orpc/tanstack-query': 1.15.5
-  '@playwright/test': 1.64.0
+  '@orpc/client': 1.15.7
+  '@orpc/contract': 1.15.7
+  '@orpc/openapi-client': 1.15.7
+  '@orpc/tanstack-query': 1.15.7
+  '@playwright/test': 1.64.1
   '@remixicon/react': 4.9.0
   '@sentry/react': 10.76.2
-  '@shadcn/lint': 0.2.0
-  '@storybook/addon-a11y': 10.6.1
-  '@storybook/addon-docs': 10.6.1
-  '@storybook/addon-links': 10.6.1
-  '@storybook/addon-onboarding': 10.6.1
-  '@storybook/addon-themes': 10.6.1
-  '@storybook/addon-vitest': 10.6.1
-  '@storybook/nextjs-vite': 10.6.1
-  '@storybook/react': 10.6.1
-  '@storybook/react-vite': 10.6.1
+  '@shadcn/lint': 0.2.1
+  '@storybook/addon-a11y': 10.6.2
+  '@storybook/addon-docs': 10.6.2
+  '@storybook/addon-links': 10.6.2
+  '@storybook/addon-onboarding': 10.6.2
+  '@storybook/addon-themes': 10.6.2
+  '@storybook/addon-vitest': 10.6.2
+  '@storybook/nextjs-vite': 10.6.2
+  '@storybook/react': 10.6.2
+  '@storybook/react-vite': 10.6.2
   '@streamdown/math': 1.0.3
   '@svgdotjs/svg.js': 3.2.8
   '@t3-oss/env-core': 0.13.11
   '@t3-oss/env-nextjs': 0.13.11
   '@tailwindcss/postcss': 4.3.3
   '@tailwindcss/vite': 4.3.3
-  '@tanstack/eslint-plugin-query': 5.104.1
+  '@tanstack/eslint-plugin-query': 5.104.4
   '@tanstack/form-core': 1.33.5
-  '@tanstack/query-core': 5.104.1
+  '@tanstack/query-core': 5.104.4
   '@tanstack/react-form': 1.33.5
   '@tanstack/react-hotkeys': 0.13.0
-  '@tanstack/react-query': 5.104.1
-  '@tanstack/react-virtual': 3.14.13
+  '@tanstack/react-query': 5.104.4
+  '@tanstack/react-virtual': 3.14.21
   '@testing-library/dom': 10.4.2
   '@testing-library/jest-dom': 7.0.1
   '@testing-library/react': 16.3.3
-  '@testing-library/user-event': 14.6.7
+  '@testing-library/user-event': 14.6.8
   '@tsslint/cli': 3.1.4
   '@tsslint/compat-eslint': 3.1.4
   '@tsslint/config': 3.1.4
@@ -141,14 +143,14 @@ catalog:
   '@types/react': 19.3.0
   '@types/react-dom': 19.3.0
   '@types/sortablejs': 1.15.9
-  '@typescript-eslint/parser': 8.71.1
+  '@typescript-eslint/parser': 8.71.2
   '@typescript/native': npm:typescript@7.0.2
   '@vitejs/plugin-react': 6.1.2
-  '@vitejs/plugin-rsc': 0.5.36
-  '@vitest/browser-playwright': 5.0.3
-  '@vitest/coverage-v8': 5.0.3
+  '@vitejs/plugin-rsc': 0.5.38
+  '@vitest/browser-playwright': 5.0.5
+  '@vitest/coverage-v8': 5.0.5
   '@xmldom/xmldom': 0.9.12
-  abcjs: 6.7.1
+  abcjs: 6.7.2
   agentation: 3.1.2
   ahooks: 3.10.0
   ajv: 8.20.0
@@ -156,15 +158,15 @@ catalog:
   c12: 4.0.0-rc.2
   chokidar: 5.0.0
   class-variance-authority: 0.7.1
-  cn: 0.4.0
+  cn: 0.5.0
   code-inspector-plugin: 1.6.6
   concurrently: 10.0.6
   copy-to-clipboard: 4.0.2
-  cron-parser: 5.10.1
+  cron-parser: 5.10.2
   date-fns: 4.4.0
   dayjs: 1.11.23
   decimal.js: 10.6.0
-  dompurify: 3.4.16
+  dompurify: 3.4.17
   echarts: 6.1.0
   echarts-for-react: 3.0.6
   elkjs: 0.12.0
@@ -172,22 +174,22 @@ catalog:
   embla-carousel-fade: 8.6.0
   embla-carousel-react: 8.6.0
   es-toolkit: 1.52.0
-  eslint: 10.12.0
+  eslint: 10.13.0
   eslint-config-flat-gitignore: 2.4.0
-  eslint-markdown: 0.18.1
+  eslint-markdown: 0.19.0
   eslint-plugin-antfu: 3.2.3
-  eslint-plugin-better-tailwindcss: 4.9.0
-  eslint-plugin-jsdoc: 65.2.1
+  eslint-plugin-better-tailwindcss: 4.9.1
+  eslint-plugin-jsdoc: 65.3.12
   eslint-plugin-jsonc: 3.4.2
   eslint-plugin-markdown-preferences: 0.42.0
-  eslint-plugin-n: 18.4.1
+  eslint-plugin-n: 18.5.0
   eslint-plugin-no-barrel-files: 2.2.0
   eslint-plugin-perfectionist: 5.12.1
   eslint-plugin-pnpm: 1.9.1
   eslint-plugin-regexp: 3.3.1
-  eslint-plugin-storybook: 10.6.1
+  eslint-plugin-storybook: 10.6.2
   eslint-plugin-yml: 3.9.0
-  eventsource-parser: 4.1.1
+  eventsource-parser: 4.1.2
   fast-deep-equal: 3.1.3
   foxact: 0.3.12
   fuse.js: 7.5.0
@@ -196,7 +198,7 @@ catalog:
   hono: 4.13.13
   html-entities: 2.6.0
   html-to-image: 1.11.13
-  i18next: 26.4.2
+  i18next: 26.5.2
   i18next-resources-for-ts: 2.1.1
   i18next-resources-to-backend: 1.2.3
   iconify-import-svg: 0.2.0
@@ -205,37 +207,37 @@ catalog:
   jotai-scope: 0.12.2
   jotai-tanstack-query: 0.11.0
   js-cookie: 3.0.8
-  js-yaml: 5.4.3
+  js-yaml: 5.5.0
   jsonschema: 1.5.0
   katex: 0.17.0
-  knip: 6.40.0
-  ky: 2.1.0
+  knip: 6.42.0
+  ky: 2.2.0
   lexical: 0.47.0
   lockfile: 1.0.4
   loro-crdt: 1.16.4
-  mediabunny: 1.61.3
-  mime: 4.1.0
+  mediabunny: 1.61.6
+  mime: 4.1.1
   mitt: 3.0.1
   motion: 13.5.1
   negotiator: 1.1.0
-  next: 16.4.1
+  next: 16.4.2
   next-themes: 0.4.6
   nuqs: 2.10.2
   open: 11.0.4
   pele: 1.6.0
   picocolors: 1.1.1
   picomatch: 4.0.7
-  pinyin-pro: 3.29.4
-  playwright: 1.64.0
-  postcss: 8.5.29
+  pinyin-pro: 3.29.5
+  playwright: 1.64.1
+  postcss: 8.5.31
   qrcode.react: 4.2.0
-  react: 19.3.0
-  react-dom: 19.3.0
+  react: 19.3.1
+  react-dom: 19.3.1
   react-easy-crop: 6.2.4
-  react-i18next: 17.0.16
+  react-i18next: 17.1.0
   react-papaparse: 4.4.0
   react-pdf-highlighter: 8.0.0-rc.0
-  react-server-dom-webpack: 19.3.0
+  react-server-dom-webpack: 19.3.1
   react-sortablejs: 6.1.4
   react-textarea-autosize: 8.5.9
   reactflow: 11.11.4
@@ -248,7 +250,7 @@ catalog:
   socket.io-client: 4.8.4
   sortablejs: 1.15.7
   std-semver: 1.0.8
-  storybook: 10.6.1
+  storybook: 10.6.2
   streamdown: 2.7.0
   string-ts: 2.3.1
   svgo: 4.1.0
@@ -259,15 +261,15 @@ catalog:
   undici: 7.30.0
   unist-util-visit: 5.1.0
   use-context-selector: 2.0.0
-  uuid: 14.0.2
-  vinext: 1.1.0
-  vite: npm:@voidzero-dev/vite-plus-core@1.1.0
-  vite-plugin-inspect: 12.0.2
-  vite-plus: 1.1.0
-  vitest: 5.0.3
+  uuid: 14.0.3
+  vinext: 1.2.1
+  vite: npm:@voidzero-dev/vite-plus-core@1.3.0
+  vite-plugin-inspect: 12.1.0
+  vite-plus: 1.3.0
+  vitest: 5.0.5
   vitest-browser-react: 2.3.0
   vitest-canvas-mock: 1.2.0
-  zod: 4.6.5
+  zod: 4.6.7
   zundo: 2.3.0
   zustand: 5.0.15
 peerDependencyRules:
