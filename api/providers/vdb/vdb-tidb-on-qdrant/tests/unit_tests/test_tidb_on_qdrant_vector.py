@@ -9,6 +9,109 @@ from dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector import (
 from qdrant_client.http import models as rest
 from qdrant_client.http.exceptions import UnexpectedResponse
 
+from core.rag.rerank.entity.weight import KeywordSetting, VectorSetting, Weights
+from core.rag.rerank.weight_rerank import WeightRerankRunner
+
+
+class TestTidbOnQdrantVectorFullTextSearch:
+    @pytest.fixture
+    def vector(self):
+        with patch("dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector.qdrant_client.QdrantClient"):
+            return TidbOnQdrantVector(
+                collection_name="test_collection",
+                group_id="test_group",
+                config=TidbOnQdrantConfig(endpoint="http://localhost:6333"),
+            )
+
+    @pytest.fixture
+    def points(self):
+        return [
+            rest.Record(
+                id=index,
+                payload={"page_content": content, "metadata": {"doc_id": str(index), "document_id": "document-1"}},
+                vector=[0.0, 1.0],
+            )
+            for index, content in enumerate(["apple", "apple banana", "banana"], start=1)
+        ]
+
+    @pytest.mark.parametrize("query", ["apple", "量子计算", "量子コンピューター"])
+    def test_sends_text_and_document_filters(self, vector, points, query):
+        # CJK cases verify transport only; tokenization must be tested against the TiDB gateway.
+        points[0].payload["page_content"] = query
+        vector._client.scroll.return_value = ([points[0]], None)
+
+        documents = vector.search_by_full_text(query, top_k=3, document_ids_filter=["document-1"])
+
+        vector._client.scroll.assert_called_once_with(
+            collection_name="test_collection",
+            scroll_filter=rest.Filter(
+                must=[
+                    rest.FieldCondition(key="metadata.document_id", match=rest.MatchAny(any=["document-1"])),
+                    rest.FieldCondition(key="page_content", match=rest.MatchText(text=query)),
+                ]
+            ),
+            limit=3,
+            with_payload=True,
+            with_vectors=True,
+        )
+        assert documents[0].page_content == query
+        assert documents[0].vector == [0.0, 1.0]
+        assert "score" not in documents[0].metadata
+
+    @pytest.mark.parametrize("top_k", [1, 2, 3, 4])
+    def test_merges_keyword_matches_and_respects_top_k(self, vector, points, top_k):
+        vector._client.scroll.side_effect = [([points[0], points[1]][:top_k], None), (points[1:][:top_k], None)]
+
+        documents = vector.search_by_full_text(" apple\tapple banana ", top_k=top_k)
+
+        assert [doc.metadata["doc_id"] for doc in documents] == ["1", "2", "3"][:top_k]
+        calls = vector._client.scroll.call_args_list
+        keywords = [call.kwargs["scroll_filter"].must[0].match.text for call in calls]
+        assert keywords == (["apple"] if top_k <= 2 else ["apple", "banana"])
+
+    def test_no_match_does_not_fall_back_to_unfiltered_scroll(self, vector):
+        vector._client.scroll.return_value = ([], None)
+
+        assert vector.search_by_full_text("absentword") == []
+        vector._client.scroll.assert_called_once()
+        assert vector._client.scroll.call_args.kwargs["scroll_filter"] == rest.Filter(
+            must=[rest.FieldCondition(key="page_content", match=rest.MatchText(text="absentword"))]
+        )
+
+    @pytest.mark.parametrize(("query", "top_k"), [("", 2), (" \t\n", 2), ("apple", 0), ("apple", -1)])
+    def test_empty_query_or_nonpositive_limit_does_not_scroll(self, vector, query, top_k):
+        assert vector.search_by_full_text(query, top_k=top_k) == []
+        vector._client.scroll.assert_not_called()
+
+    def test_limits_keyword_requests(self, vector):
+        vector._client.scroll.return_value = ([], None)
+
+        assert vector.search_by_full_text(" ".join(f"word{index}" for index in range(12))) == []
+        assert vector._client.scroll.call_count == 10
+
+    def test_keyword_only_hit_gets_a_weighted_rerank_score(self, vector, points):
+        vector._client.scroll.return_value = ([points[0]], None)
+        documents = vector.search_by_full_text("apple")
+        runner = WeightRerankRunner(
+            tenant_id="tenant-1",
+            weights=Weights(
+                vector_setting=VectorSetting(
+                    vector_weight=0.3, embedding_provider_name="test", embedding_model_name="test"
+                ),
+                keyword_setting=KeywordSetting(keyword_weight=0.7),
+            ),
+        )
+        with (
+            patch.object(runner, "_calculate_keyword_score", return_value=[0.8]),
+            patch("core.rag.rerank.weight_rerank.ModelManager.for_tenant"),
+            patch("core.rag.rerank.weight_rerank.CacheEmbedding.embed_query", return_value=[1.0, 0.0]),
+        ):
+            reranked = runner.run("apple", documents, score_threshold=0.5, top_n=1)
+
+        assert len(reranked) == 1
+        # The vectors are orthogonal: only the keyword contribution should count.
+        assert reranked[0].metadata["score"] == pytest.approx(0.56)
+
 
 class TestTidbOnQdrantVectorDeleteByIds:
     """Unit tests for TidbOnQdrantVector.delete_by_ids method."""
