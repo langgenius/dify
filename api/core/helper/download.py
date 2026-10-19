@@ -7,6 +7,10 @@ def download_with_size_limit(url: str, max_download_size: int, **kwargs: Any) ->
     response = remote_fetcher.make_request("GET", url, follow_redirects=True, **kwargs)
     if response.status_code == 404:
         raise ValueError("file not found")
+    if response.status_code >= 400:
+        # The body of a 4xx/5xx response is an error page, not the requested
+        # file. Returning it would hand callers an error document as content.
+        raise ValueError(f"Failed to download file: HTTP {response.status_code}")
 
     total_size = 0
     chunks = []

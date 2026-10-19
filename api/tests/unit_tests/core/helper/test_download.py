@@ -35,6 +35,15 @@ def test_download_with_size_limit_raises_for_404(mocker: MockerFixture) -> None:
         download_with_size_limit("https://example.com/missing.txt", max_download_size=10)
 
 
+@pytest.mark.parametrize("status_code", [403, 429, 500, 503])
+def test_download_with_size_limit_raises_for_error_status(mocker: MockerFixture, status_code: int) -> None:
+    response = _StubResponse(status_code=status_code, chunks=[b"<html>error page</html>"])
+    mocker.patch("core.file.remote_fetcher.make_request", return_value=response)
+
+    with pytest.raises(ValueError, match=f"HTTP {status_code}"):
+        download_with_size_limit("https://marketplace.example.com/api/v1/plugins/download-url", max_download_size=1024)
+
+
 def test_download_with_size_limit_raises_when_size_exceeds_limit(
     mocker: MockerFixture,
 ) -> None:
