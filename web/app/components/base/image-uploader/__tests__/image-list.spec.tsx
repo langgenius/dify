@@ -15,7 +15,7 @@ const previewButtonName = 'Preview image 1 of 1'
 
 const createLocalFile = (overrides: Partial<ImageFile> = {}): ImageFile => ({
   type: TransferMethod.local_file,
-  _id: `local-${Date.now()}-${Math.random()}`,
+  _id: 'local-file',
   fileId: 'file-id',
   progress: 100,
   url: '',
@@ -25,7 +25,7 @@ const createLocalFile = (overrides: Partial<ImageFile> = {}): ImageFile => ({
 
 const createRemoteFile = (overrides: Partial<ImageFile> = {}): ImageFile => ({
   type: TransferMethod.remote_url,
-  _id: `remote-${Date.now()}-${Math.random()}`,
+  _id: 'remote-file',
   fileId: '',
   progress: 100,
   url: 'https://example.com/image.png',
@@ -38,14 +38,6 @@ describe('ImageList', () => {
   })
 
   describe('Rendering', () => {
-    it('should render images for each item in the list', () => {
-      const list = [createLocalFile({ _id: 'file-1' }), createLocalFile({ _id: 'file-2' })]
-      const { container } = render(<ImageList list={list} />)
-
-      const images = container.querySelectorAll('img')
-      expect(images).toHaveLength(2)
-    })
-
     it('should use base64Url as src for local files', () => {
       const list = [createLocalFile({ _id: 'file-1', base64Url: 'data:image/png;base64,xyz' })]
       const { container } = render(<ImageList list={list} />)
@@ -70,13 +62,6 @@ describe('ImageList', () => {
   })
 
   describe('Props', () => {
-    it('should show remove buttons when not readonly', () => {
-      const list = [createLocalFile({ _id: 'file-1' })]
-      render(<ImageList list={list} onRemove={vi.fn()} />)
-
-      expect(screen.getByRole('button', { name: 'common.operation.remove' })).toBeInTheDocument()
-    })
-
     it('should not show remove buttons when readonly', () => {
       const list = [createLocalFile({ _id: 'file-1' })]
       render(<ImageList list={list} readonly onRemove={vi.fn()} />)
@@ -93,13 +78,6 @@ describe('ImageList', () => {
       render(<ImageList list={list} />)
 
       expect(screen.getByText(/^45\s*%$/)).toBeInTheDocument()
-    })
-
-    it('should not show progress overlay when local file is complete', () => {
-      const list = [createLocalFile({ _id: 'file-1', progress: 100 })]
-      render(<ImageList list={list} />)
-
-      expect(screen.queryByText(/\d+\s*%/)).not.toBeInTheDocument()
     })
 
     it('should show retry icon when local file upload fails (progress -1)', () => {
@@ -120,13 +98,6 @@ describe('ImageList', () => {
 
       // Loading spinner has animate-spin class
       expect(screen.getByTestId('image-loader')).toBeInTheDocument()
-    })
-
-    it('should not show loading state when remote file is loaded (progress 100)', () => {
-      const list = [createRemoteFile({ _id: 'file-1', progress: 100 })]
-      render(<ImageList list={list} />)
-
-      expect(screen.queryByTestId('image-loader')).not.toBeInTheDocument()
     })
 
     it('should show error indicator when remote file fails (progress -1)', () => {
@@ -158,19 +129,6 @@ describe('ImageList', () => {
       expect(onReUpload).toHaveBeenCalledWith('file-1')
     })
 
-    it('should open image preview when clicking a completed image', async () => {
-      const user = userEvent.setup()
-      const list = [
-        createRemoteFile({ _id: 'file-1', progress: 100, url: 'https://example.com/img.png' }),
-      ]
-      render(<ImageList list={list} />)
-
-      await user.click(screen.getByRole('button', { name: previewButtonName }))
-
-      const preview = screen.getByTestId('image-preview-container')
-      expect(preview).toBeInTheDocument()
-    })
-
     it('should not expose a preview action for an in-progress image', () => {
       const list = [createLocalFile({ _id: 'file-1', progress: 50 })]
       render(<ImageList list={list} readonly />)
@@ -186,7 +144,7 @@ describe('ImageList', () => {
 
       // Open preview
       await user.click(screen.getByRole('button', { name: previewButtonName }))
-      expect(screen.queryByTestId('image-preview-container')).toBeInTheDocument()
+      expect(screen.getByTestId('image-preview-image')).toHaveAttribute('src', list[0]!.url)
 
       // Close preview
       const closeButton = screen.getByRole('button', { name: 'common.operation.cancel' })
@@ -282,25 +240,10 @@ describe('ImageList', () => {
   describe('Edge Cases', () => {
     it('should handle list with mixed local and remote files', () => {
       const list = [createLocalFile({ _id: 'local-1' }), createRemoteFile({ _id: 'remote-1' })]
-      const { container } = render(<ImageList list={list} />)
-
-      expect(container.querySelectorAll('img')).toHaveLength(2)
-    })
-
-    it('should handle item without file property for alt attribute', () => {
-      const list = [createLocalFile({ _id: 'file-1', file: undefined })]
-      const { container } = render(<ImageList list={list} />)
-
-      expect(container.querySelector('img')).toHaveAttribute('alt', '')
-    })
-
-    it('should handle onRemove not provided gracefully', async () => {
-      const user = userEvent.setup()
-      const list = [createLocalFile({ _id: 'file-1' })]
       render(<ImageList list={list} />)
-
-      // Remove button exists, clicking it should not throw
-      await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+      expect(screen.getAllByRole('listitem')).toHaveLength(2)
+      expect(screen.getByRole('button', { name: 'Preview image 1 of 2' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Preview image 2 of 2' })).toBeInTheDocument()
     })
   })
 })

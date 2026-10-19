@@ -12,19 +12,6 @@ describe('useSnippetsQueryState', () => {
     vi.clearAllMocks()
   })
 
-  it('should expose snippets list query state actions', () => {
-    const { result } = renderWithAdapter()
-
-    expect(result.current.query).toEqual({
-      tagIDs: [],
-      keywords: '',
-      creatorIDs: [],
-    })
-    expect(typeof result.current.setKeywords).toBe('function')
-    expect(typeof result.current.setTagIDs).toBe('function')
-    expect(typeof result.current.setCreatorIDs).toBe('function')
-  })
-
   it('should parse URL filters without creator state', () => {
     const { result } = renderWithAdapter('?tagIDs=tag1;tag2&keywords=search+term')
 
@@ -37,6 +24,7 @@ describe('useSnippetsQueryState', () => {
 
   it('should update tag IDs URL state', async () => {
     const { result, onUrlUpdate } = renderWithAdapter()
+    expect(result.current.query).toEqual({ tagIDs: [], keywords: '', creatorIDs: [] })
 
     act(() => {
       result.current.setTagIDs(['tag1', 'tag2'])

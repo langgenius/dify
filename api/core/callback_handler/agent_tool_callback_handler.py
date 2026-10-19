@@ -1,5 +1,5 @@
 from collections.abc import Iterable, Mapping
-from typing import Any, TextIO, Union
+from typing import Any, TextIO
 
 from pydantic import BaseModel
 
@@ -82,7 +82,7 @@ class DifyAgentCallbackHandler(BaseModel):
                 )
             )
 
-    def on_tool_error(self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any):
+    def on_tool_error(self, error: Exception | KeyboardInterrupt, **kwargs: Any):
         """Do nothing."""
         if dify_config.DEBUG:
             print_text("\n[on_tool_error] Error: " + str(error) + "\n", color="red")

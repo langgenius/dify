@@ -650,7 +650,7 @@ class TestCreateSegmentToIndexTask:
         dataset, document = self._create_test_dataset_and_document(db_session_with_containers, tenant.id, account.id)
 
         segments = []
-        for i in range(3):
+        for _i in range(3):
             segment = self._create_test_segment(
                 db_session_with_containers, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
             )
@@ -1087,7 +1087,7 @@ class TestCreateSegmentToIndexTask:
 
         # Create multiple segments with different characteristics
         segments = []
-        for i in range(5):
+        for _i in range(5):
             segment = self._create_test_segment(
                 db_session_with_containers, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
             )

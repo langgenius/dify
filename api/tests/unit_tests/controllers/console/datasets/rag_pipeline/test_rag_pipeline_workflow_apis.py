@@ -550,7 +550,27 @@ class TestMiscApis:
 
         service = MagicMock()
         recommended_plugins = {
-            "installed_recommended_plugins": [{"id": "p1"}],
+            "installed_recommended_plugins": [
+                {
+                    "id": "p1",
+                    "author": "langgenius",
+                    "name": "p1",
+                    "description": {
+                        "en_US": "Plugin one",
+                        "zh_Hans": "Plugin one",
+                        "pt_BR": "Plugin one",
+                        "ja_JP": "Plugin one",
+                    },
+                    "icon": "/icon.svg",
+                    "label": {
+                        "en_US": "Plugin one",
+                        "zh_Hans": "Plugin one",
+                        "pt_BR": "Plugin one",
+                        "ja_JP": "Plugin one",
+                    },
+                    "type": "builtin",
+                }
+            ],
             "uninstalled_recommended_plugins": [{"id": "p2"}],
         }
         service.get_recommended_plugins.return_value = recommended_plugins

@@ -309,8 +309,8 @@ class TestConversationVariableUpdatePayload:
 
     def test_payload_with_float_value(self):
         """Test payload with float value."""
-        payload = ConversationVariableUpdatePayload(value=3.14159)
-        assert payload.value == 3.14159
+        payload = ConversationVariableUpdatePayload(value=float("3.14159"))
+        assert payload.value == float("3.14159")
 
     def test_payload_with_list_value(self):
         """Test payload with list value."""

@@ -122,19 +122,16 @@ export type UnsupportedAudioTypeError = ErrorResponse & {
   status: 415
 }
 
-export type ChatMessagePayload = {
+export type ChatMessageExplorePayload = {
   conversation_id?: string | null
-  draft_type?: 'debug_build' | 'draft'
-  files?: Array<unknown> | null
-  inputs: {
+  files?: Array<{
     [key: string]: unknown
-  }
-  model_config?: {
+  }> | null
+  inputs: {
     [key: string]: unknown
   }
   parent_message_id?: string | null
   query: string
-  response_mode?: 'blocking' | 'streaming'
   retriever_from?: string
 }
 
@@ -203,7 +200,7 @@ export type SimpleConversation = {
   created_at?: number | null
   id: string
   inputs: {
-    [key: string]: JsonValue
+    [key: string]: AnyJsonValue
   }
   introduction?: string | null
   name: string
@@ -238,7 +235,6 @@ export type MessageCursorNotFoundError = ErrorResponse & {
 
 export type MessageFeedbackPayload = {
   content?: string | null
-  message_id: string
   rating?: 'dislike' | 'like' | null
 }
 
@@ -677,16 +673,7 @@ export type InstalledAppInfoResponse = {
   use_icon_as_answer_icon: boolean
 }
 
-export type JsonValue =
-  | string
-  | number
-  | number
-  | boolean
-  | {
-      [key: string]: unknown
-    }
-  | Array<unknown>
-  | null
+export type AnyJsonValue = unknown
 
 export type ExploreMessageListItem = {
   agent_thoughts: Array<AgentThought>
@@ -758,7 +745,7 @@ export type AgentThought = {
   thought?: string | null
   tool?: string | null
   tool_input?: string | null
-  tool_labels: JsonValue
+  tool_labels: AnyJsonValue
 }
 
 export type HumanInputContent = {
@@ -838,7 +825,7 @@ export type HumanInputFormSubmissionData = {
   node_title: string
   rendered_content: string
   submitted_data?: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   } | null
 }
 
@@ -864,7 +851,7 @@ export type FormInputConfig =
       type: 'file-list'
     } & FileListInputConfig)
 
-export type JsonValue2 = unknown
+export type JsonValue = unknown
 
 export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
 
@@ -1089,7 +1076,7 @@ export type PostInstalledAppsByInstalledAppIdAudioToTextResponse =
   PostInstalledAppsByInstalledAppIdAudioToTextResponses[keyof PostInstalledAppsByInstalledAppIdAudioToTextResponses]
 
 export type PostInstalledAppsByInstalledAppIdChatMessagesData = {
-  body: ChatMessagePayload
+  body: ChatMessageExplorePayload
   path: {
     installed_app_id: string
   }

@@ -671,7 +671,7 @@ def test_generate_specs_is_idempotent(tmp_path: Path):
     second_paths = module.generate_specs(tmp_path / "second")
 
     assert [path.name for path in first_paths] == [path.name for path in second_paths]
-    for first_path, second_path in zip(first_paths, second_paths):
+    for first_path, second_path in zip(first_paths, second_paths, strict=False):
         assert first_path.read_text(encoding="utf-8") == second_path.read_text(encoding="utf-8")
 
 

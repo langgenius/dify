@@ -1,6 +1,6 @@
 'use client'
 
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -27,7 +27,7 @@ import { useDatasetCardState as useDatasetCardController } from './hooks/use-dat
 const EXTERNAL_PROVIDER = 'external'
 
 type DatasetCardProps = {
-  dataset: DataSet
+  dataset: DatasetDetailWithPartialMembersResponse
   onSuccess?: () => void
   onOpenTagManagement?: () => void
   stepByStepTourActionMenuHighlightPart?: string
@@ -132,7 +132,7 @@ const DatasetCard = ({
         )}
         <DatasetCardTags
           datasetId={dataset.id}
-          embeddingAvailable={dataset.embedding_available}
+          embeddingAvailable={!!dataset.embedding_available}
           tags={dataset.tags}
           onOpenTagManagement={onOpenTagManagement}
           onTagsChange={onSuccess}

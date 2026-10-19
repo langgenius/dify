@@ -16,7 +16,6 @@ import { ACCESS_POINT_ORDER } from '@/app/components/app/deploy/utils/access-poi
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { BuiltInAccessPoints } from './built-in-access-points'
 import { DeployedEnvironmentAccessPoints } from './deployed-environment-access-points'
@@ -162,7 +161,7 @@ export default function AccessPoint({ appId }: AccessPointProps) {
     workspacePermissionKeys,
   })
   const showEnvironmentTabs =
-    (appDetail?.mode === AppModeEnum.WORKFLOW || appDetail?.mode === AppModeEnum.ADVANCED_CHAT) &&
+    (appDetail?.mode === 'workflow' || appDetail?.mode === 'advanced-chat') &&
     capabilities.canViewAccessPoint
 
   return (

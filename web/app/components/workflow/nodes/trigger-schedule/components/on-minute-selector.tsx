@@ -11,15 +11,17 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
 type OnMinuteSelectorProps = {
+  disabled?: boolean
   value?: number
   onChange: (value: number) => void
 }
 
-const OnMinuteSelector = ({ value = 0, onChange }: OnMinuteSelectorProps) => {
+const OnMinuteSelector = ({ value = 0, onChange, disabled }: OnMinuteSelectorProps) => {
   const { t } = useTranslation(['workflowIntegrations'])
 
   return (
     <Slider
+      disabled={disabled}
       className="flex flex-col"
       value={value}
       min={0}

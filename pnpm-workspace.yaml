@@ -46,6 +46,7 @@ overrides:
   '@lexical/code': npm:lexical-code-no-prism@0.41.0
   canvas: ^3.2.3
   esbuild@<0.28.1: ^0.28.2
+  fflate@>=0.7.0 <0.7.5: 0.7.5
   # Keep Vitest's optional DOM peer aligned with Web so browser matcher types augment one Vitest instance.
   happy-dom: 'catalog:'
   is-core-module: npm:@nolyfill/is-core-module@^1.0.39
@@ -81,7 +82,7 @@ catalog:
   '@floating-ui/react': 0.27.20
   '@formatjs/intl-localematcher': 0.9.0
   '@heroicons/react': 2.2.0
-  '@hey-api/openapi-ts': 0.98.2
+  '@hey-api/openapi-ts': 0.99.0
   '@hono/node-server': 2.1.4
   '@iconify-json/heroicons': 1.2.3
   '@iconify-json/ri': 1.2.10
@@ -137,7 +138,6 @@ catalog:
   '@types/negotiator': 0.6.5
   '@types/node': 25.9.9
   '@types/picomatch': 4.0.3
-  '@types/qs': 6.15.1
   '@types/react': 19.3.0
   '@types/react-dom': 19.3.0
   '@types/sortablejs': 1.15.9
@@ -214,22 +214,21 @@ catalog:
   lockfile: 1.0.4
   loro-crdt: 1.16.4
   mediabunny: 1.61.3
-  mermaid: 11.17.2
   mime: 4.1.0
   mitt: 3.0.1
   motion: 13.5.1
   negotiator: 1.1.0
-  next: 16.4.0
+  next: 16.4.1
   next-themes: 0.4.6
   nuqs: 2.10.2
   open: 11.0.4
+  pele: 1.6.0
   picocolors: 1.1.1
   picomatch: 4.0.7
   pinyin-pro: 3.29.4
   playwright: 1.64.0
   postcss: 8.5.29
   qrcode.react: 4.2.0
-  qs: 6.16.0
   react: 19.3.0
   react-dom: 19.3.0
   react-easy-crop: 6.2.4
