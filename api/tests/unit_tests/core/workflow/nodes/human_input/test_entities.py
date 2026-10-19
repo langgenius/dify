@@ -596,7 +596,7 @@ class TestHumanInputNodeVariableResolution:
             workflow_execution_id_getter=lambda: "exec-2",
         )
         repository = runtime.build_form_repository()
-        create = mocker.spy(repository, "create_form")
+        mocker.spy(repository, "create_form")
         runtime = runtime.with_form_repository(repository)
         node = _build_human_input_node(
             node_id=config["id"],

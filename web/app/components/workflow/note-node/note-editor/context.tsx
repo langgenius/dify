@@ -1,12 +1,12 @@
 'use client'
 
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { LinkNode } from '@lexical/link'
 import { ListItemNode, ListNode } from '@lexical/list'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { $getRoot } from 'lexical'
 import { createContext, memo, useEffect, useRef } from 'react'
-import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { createNoteEditorStore } from './store'
 import theme from './theme'
 

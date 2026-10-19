@@ -23,8 +23,8 @@ logger = logging.getLogger(__name__)
 
 
 class _MoreLikeThisEventStream:
-    def __init__(self, source: Generator[Mapping[str, object] | str, None, None]) -> None:
-        self._source: Generator[Mapping[str, object] | str, None, None] = source
+    def __init__(self, source: Generator[Mapping[str, object] | str]) -> None:
+        self._source: Generator[Mapping[str, object] | str] = source
         self._events: GenerationStream = cast(GenerationStream, CompletionAppGenerator.convert_to_event_stream(source))
         self._closed: bool = False
 

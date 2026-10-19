@@ -39,6 +39,7 @@ from models.enums import CreatorUserRole, DatasetQuerySource
 from models.model import App
 from repositories.knowledge.dataset_read_repository import authorize_retrieved_segment
 from repositories.knowledge.external_retrieval_repository import prepare_external_retrieval
+from repositories.knowledge.retrieval_source_repository import get_retrieval_source_documents
 from repositories.knowledge.segment_read_adapter import sign_segment_content
 from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalKnowledgeApiSetting
 from services.errors.knowledge_retrieval import (
@@ -73,8 +74,8 @@ class KnowledgeRetrievalRepository:
                 select(DocumentModel.dataset_id, func.count(DocumentModel.id).label("available_document_count"))
                 .where(
                     DocumentModel.indexing_status == "completed",
-                    DocumentModel.enabled == True,
-                    DocumentModel.archived == False,
+                    DocumentModel.enabled.is_(True),
+                    DocumentModel.archived.is_(False),
                     DocumentModel.dataset_id.in_(dataset_ids),
                 )
                 .group_by(DocumentModel.dataset_id)
@@ -124,8 +125,8 @@ class KnowledgeRetrievalRepository:
             DatasetDocument.tenant_id == tenant_id,
             DatasetDocument.dataset_id.in_(dataset_ids),
             DatasetDocument.indexing_status == "completed",
-            DatasetDocument.enabled == True,
-            DatasetDocument.archived == False,
+            DatasetDocument.enabled.is_(True),
+            DatasetDocument.archived.is_(False),
         )
         if condition is not None and filters:
             query = query.where(and_(*filters) if condition.logical_operator == "and" else or_(*filters))
@@ -374,9 +375,12 @@ class KnowledgeRetrievalRepository:
                 dataset_ids = [i.segment.dataset_id for i in records]
                 document_ids = [i.segment.document_id for i in records]
                 datasets = retrieval_session.scalars(select(Dataset).where(Dataset.id.in_(dataset_ids))).all()
-                documents = retrieval_session.scalars(
-                    select(DatasetDocument).where(DatasetDocument.id.in_(document_ids))
-                ).all()
+                documents = get_retrieval_source_documents(
+                    tenant_id=request.tenant_id,
+                    dataset_ids=available_datasets_ids,
+                    document_ids=document_ids,
+                    session=retrieval_session,
+                )
 
                 dataset_map = {i.id: i for i in datasets}
                 document_map = {i.id: i for i in documents}
@@ -472,10 +476,7 @@ class KnowledgeRetrievalRepository:
                         segment_content = sign_segment_content(segment, session=session)
 
                     # If summary exists, prepend it to the content
-                    if record.summary:
-                        final_content = f"{record.summary}\n{segment_content}"
-                    else:
-                        final_content = segment_content
+                    final_content = f"{record.summary}\n{segment_content}" if record.summary else segment_content
 
                     document_context_list.append(
                         DocumentContext(
@@ -507,8 +508,8 @@ class KnowledgeRetrievalRepository:
                     document_ids = [record.segment.document_id for record in authorized_records]
                     dataset_document_stmt = select(DatasetDocument).where(
                         DatasetDocument.id.in_(document_ids),
-                        DatasetDocument.enabled == True,
-                        DatasetDocument.archived == False,
+                        DatasetDocument.enabled.is_(True),
+                        DatasetDocument.archived.is_(False),
                     )
                     documents = session.execute(dataset_document_stmt).scalars().all()  # type: ignore
                     dataset_stmt = select(Dataset).where(

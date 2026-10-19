@@ -51,7 +51,6 @@ from services.workflow.contracts import (
 )
 from services.workflow_ref_service import WorkflowRef, WorkflowRefService
 from services.workflow_restore import apply_published_workflow_snapshot_to_draft
-from tasks.new_agent_beta_task import register_new_agent_beta_workflow_publish_after_commit
 
 
 class WorkflowDefinitionStore:
@@ -739,11 +738,6 @@ class _PublicationTransaction:
     def sync_datasets(self, dataset_ids: set[str]) -> None:
         WorkflowDefinitionStore.sync_dataset_relationships(self.session, self.app, dataset_ids)
 
-    def track_inline_publish(self, workflow: WorkflowSnapshot) -> None:
-        register_new_agent_beta_workflow_publish_after_commit(
-            session=self.session, published_workflow_id=workflow.id, published_at=workflow.created_at
-        )
-
     def activate(self, workflow: WorkflowSnapshot) -> None:
         WorkflowDefinitionStore.activate(self.session, self.app, workflow.id, self.actor.id)
 
@@ -798,7 +792,7 @@ class WorkflowDefinitionRepository:
             return app, workflow_snapshot(workflow) if workflow is not None else None
 
     @contextmanager
-    def binding_reader(self) -> Generator[WorkflowAgentBindingRepository, None, None]:
+    def binding_reader(self) -> Generator[WorkflowAgentBindingRepository]:
         with self._sessions() as session:
             yield WorkflowAgentBindingRepository(session)
 
@@ -809,7 +803,7 @@ class WorkflowDefinitionRepository:
     @contextmanager
     def draft(
         self, context: RequestContext, app_id: str
-    ) -> Generator[DraftWorkflowRead[WorkflowAgentBindingRepository] | None, None, None]:
+    ) -> Generator[DraftWorkflowRead[WorkflowAgentBindingRepository] | None]:
         with self._sessions() as session:
             app = require_console_app(session, context, app_id)
             workflow = WorkflowDefinitionStore.get_draft_workflow(app, session=session)
@@ -826,7 +820,7 @@ class WorkflowDefinitionRepository:
     @contextmanager
     def publication(
         self, context: RequestContext, app_id: str, draft: WorkflowSnapshot
-    ) -> Generator[WorkflowPublicationTransaction[WorkflowAgentBindingRepository], None, None]:
+    ) -> Generator[WorkflowPublicationTransaction[WorkflowAgentBindingRepository]]:
         with self._sessions.begin() as session:
             app = WorkflowDefinitionStore.lock_app(session, context, app_id)
             current = WorkflowDefinitionStore.get_draft_workflow(app, session=session, for_update=True)

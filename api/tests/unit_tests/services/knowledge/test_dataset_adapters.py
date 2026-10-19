@@ -1,4 +1,4 @@
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from unittest.mock import patch
 
 import pytest
@@ -11,7 +11,6 @@ from controllers.console.datasets.datasets import (
     DatasetQueryListResponse,
     RelatedAppListResponse,
 )
-from extensions.application_services.app import AppServices
 from machinery.context import RequestContext
 from models import Account, App, Dataset, Document
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
@@ -23,6 +22,7 @@ from models.dataset import (
     DocumentSegment,
 )
 from models.enums import CreatorUserRole, DatasetQuerySource, IndexingStatus, SegmentStatus
+from repositories.app.console_repository import ConsoleAppRepository
 from services.enterprise import rbac_service
 from services.knowledge.dataset_access import DatasetNotFoundError
 from services.knowledge.datasets.adapters import SQLAlchemyDatasetOperations
@@ -31,26 +31,28 @@ from services.knowledge.documents.adapters import SQLAlchemyDocumentOperations
 from services.knowledge.entities.document_creation import DocumentIndexingJobs
 from services.knowledge.entities.knowledge_entities import KnowledgeConfig
 from services.knowledge.resource_scope import DatasetRef
+from services.rbac import contracts as rbac_contracts
 from services.tag_application_service import CreateTagInput, TagApplicationService, TagBindingInput
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.rbac_fakes import RBACDomain
 
 CONTEXT = RequestContext("request", None, "actor", "tenant")
 REF = DatasetRef("tenant", "dataset")
 
 
 def dataset(**values: object) -> Dataset:
-    return Dataset(
-        **{
-            "id": "dataset",
-            "tenant_id": "tenant",
-            "name": "Dataset",
-            "created_by": "actor",
-            "maintainer": "actor",
-            "indexing_technique": "economy",
-            "permission": "all_team_members",
-            **values,
-        }
+    row = Dataset(
+        id="dataset",
+        tenant_id="tenant",
+        name="Dataset",
+        created_by="actor",
+        maintainer="actor",
+        indexing_technique="economy",
+        permission="all_team_members",
     )
+    for key, value in values.items():
+        setattr(row, key, value)
+    return row
 
 
 def document(**values: object) -> Document:
@@ -76,8 +78,8 @@ def operations(
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
     application_tags: TagApplicationService,
-    app_services: AppServices,
-) -> Iterator[SQLAlchemyDatasetOperations]:
+    rbac_domain: RBACDomain,
+) -> SQLAlchemyDatasetOperations:
     apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
     with sqlite_session_factory.begin() as session:
         tenant = Tenant(name="Workspace")
@@ -93,16 +95,12 @@ def operations(
                 dataset(id="foreign", tenant_id="other", name="Foreign"),
             ]
         )
-    with (
-        patch.object(rbac_service.RBACService.MyPermissions, "get", return_value=rbac_service.MyPermissionsResponse()),
-        patch.object(
-            rbac_service.RBACService.DatasetPermissions, "batch_get", return_value={"dataset": ["dataset.preview"]}
-        ),
-        patch.object(rbac_service, "try_sync_creator_access_policy_member_bindings"),
-    ):
-        yield SQLAlchemyDatasetOperations(
-            session_factory=sqlite_session_factory, tags=application_tags, app_queries=app_services.queries
-        )
+    return SQLAlchemyDatasetOperations(
+        session_factory=sqlite_session_factory,
+        tags=application_tags,
+        app_queries=ConsoleAppRepository(session_factory=sqlite_session_factory),
+        members=rbac_domain.rbac.members,
+    )
 
 
 def test_listing_materializes_page_and_owner_scoped_partial_members(
@@ -274,7 +272,7 @@ def test_created_dataset_initializes_rbac_access(
                 CONTEXT.active_workspace_id,
                 CONTEXT.account_id,
                 dataset_id,
-                rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=False),
+                rbac_contracts.ReplaceMemberBindings(automatic_include_workspace_members=False),
             )
         else:
             replace_whitelist.assert_not_called()
@@ -283,7 +281,7 @@ def test_created_dataset_initializes_rbac_access(
                 sync_creator.assert_called_once_with(
                     CONTEXT.active_workspace_id,
                     CONTEXT.account_id,
-                    rbac_service.RBACResourceType.DATASET,
+                    rbac_contracts.RBACResourceType.DATASET,
                     dataset_id,
                 )
             else:
