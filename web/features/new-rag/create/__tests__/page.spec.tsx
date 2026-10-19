@@ -927,15 +927,24 @@ describe('CreateKnowledgePage', () => {
     await user.click(createButton)
 
     expect(screen.getByText('knowledgeCreate.nameRequired')).toBeInTheDocument()
+    expect(
+      screen.queryByText('datasetCreation.stepOne.modal.nameLengthInvalid'),
+    ).not.toBeInTheDocument()
     expect(serviceMock.create).not.toHaveBeenCalled()
 
-    await user.type(screen.getByRole('textbox', { name: 'knowledgeSpace.name' }), 'Handbook')
+    const nameInput = screen.getByRole('textbox', { name: 'knowledgeSpace.name' })
+    expect(nameInput).toHaveAccessibleDescription('knowledgeCreate.nameRequired')
+    expect(nameInput).toHaveFocus()
+    await user.type(nameInput, 'Handbook')
+    await waitFor(() =>
+      expect(screen.queryByText('knowledgeCreate.nameRequired')).not.toBeInTheDocument(),
+    )
     expect(createButton).toBeEnabled()
   })
 
   it('accepts a 40-character name and submits the exact value', async () => {
     const user = userEvent.setup()
-    const boundaryName = '知'.repeat(40)
+    const boundaryName = '😀'.repeat(40)
     renderPage()
 
     await user.type(screen.getByRole('textbox', { name: 'knowledgeSpace.name' }), boundaryName)
@@ -956,14 +965,73 @@ describe('CreateKnowledgePage', () => {
     await user.type(nameInput, invalidName)
 
     expect(nameInput).toHaveValue(invalidName)
-    expect(nameInput).toHaveAttribute('aria-invalid', 'true')
-    expect(nameInput).toHaveAccessibleDescription('datasetCreation.stepOne.modal.nameLengthInvalid')
     const createButton = screen.getByRole('button', {
       name: 'knowledgeCreate.createTitle',
     })
     expect(createButton).toBeEnabled()
     await user.click(createButton)
+    expect(nameInput).toHaveAttribute('aria-invalid', 'true')
+    expect(nameInput).toHaveAccessibleDescription('datasetCreation.stepOne.modal.nameLengthInvalid')
+    expect(screen.queryByText('knowledgeCreate.nameRequired')).not.toBeInTheDocument()
     expect(serviceMock.create).not.toHaveBeenCalled()
+
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Handbook')
+    await waitFor(() => expect(nameInput).not.toHaveAttribute('aria-invalid', 'true'))
+    await user.click(createButton)
+    await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
+  })
+
+  it('rejects a whitespace-only name and submits trimmed fields after correction', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    const nameInput = screen.getByRole('textbox', { name: 'knowledgeSpace.name' })
+    const createButton = screen.getByRole('button', { name: 'knowledgeCreate.createTitle' })
+    await user.type(nameInput, '   ')
+    await user.click(createButton)
+    expect(await screen.findByText('knowledgeCreate.nameRequired')).toBeVisible()
+    expect(
+      screen.queryByText('datasetCreation.stepOne.modal.nameLengthInvalid'),
+    ).not.toBeInTheDocument()
+    expect(serviceMock.create).not.toHaveBeenCalled()
+
+    await user.type(nameInput, 'Handbook  ')
+    await user.type(
+      screen.getByRole('textbox', { name: 'knowledgeCreate.description' }),
+      '  Team guide  ',
+    )
+    await user.click(createButton)
+    await waitFor(() =>
+      expect(serviceMock.create).toHaveBeenCalledWith({
+        body: expect.objectContaining({ name: 'Handbook', description: 'Team guide' }),
+      }),
+    )
+  })
+
+  it('blocks an overlong description and accepts its Unicode boundary after correction', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await user.type(screen.getByRole('textbox', { name: 'knowledgeSpace.name' }), 'Handbook')
+    const descriptionInput = screen.getByRole('textbox', { name: 'knowledgeCreate.description' })
+    const createButton = screen.getByRole('button', { name: 'knowledgeCreate.createTitle' })
+    await user.click(descriptionInput)
+    await user.paste('😀'.repeat(2001))
+    await user.click(createButton)
+    expect(descriptionInput).toHaveAttribute('aria-invalid', 'true')
+    expect(descriptionInput).toHaveAccessibleDescription(
+      /workflow.chatVariable.modal.descriptionTooLong/,
+    )
+    expect(serviceMock.create).not.toHaveBeenCalled()
+
+    await user.clear(descriptionInput)
+    await user.paste(`  ${'😀'.repeat(2000)}  `)
+    await waitFor(() => expect(descriptionInput).not.toHaveAttribute('aria-invalid', 'true'))
+    await user.click(createButton)
+    await waitFor(() =>
+      expect(serviceMock.create).toHaveBeenCalledWith({
+        body: expect.objectContaining({ description: '😀'.repeat(2000) }),
+      }),
+    )
   })
 
   it('creates a private empty knowledge space, invalidates the list, and navigates', async () => {

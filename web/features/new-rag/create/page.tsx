@@ -138,8 +138,6 @@ function CreateKnowledgeSession() {
   const createErrorMessage = t(($) => $.createFailed, { ns: 'knowledgeCreate' })
   const normalizedName = name.trim()
   const normalizedDescription = description.trim()
-  const nameLengthInvalid = Array.from(normalizedName).length > NAME_MAX_LENGTH
-  const descriptionLengthInvalid = Array.from(normalizedDescription).length > DESCRIPTION_MAX_LENGTH
   const uploadSubmissionBlocked =
     startMode === 'upload' &&
     (!uploadAvailable ||
@@ -263,8 +261,6 @@ function CreateKnowledgeSession() {
   const handleSubmit = async () => {
     if (submissionPending || uploadSubmissionBlocked || sourceSubmissionBlocked || membersInvalid)
       return
-
-    if (!normalizedName || nameLengthInvalid || descriptionLengthInvalid) return
 
     if (startMode === 'source' && !initialSource) return
 
@@ -434,10 +430,12 @@ function CreateKnowledgeSession() {
                   <Field
                     name="name"
                     className="gap-1.5"
-                    invalid={nameLengthInvalid}
                     validate={(value) => {
-                      if (typeof value === 'string' && value.length > 0 && !value.trim())
+                      const trimmed = String(value).trim()
+                      if (value !== '' && !trimmed)
                         return t(($) => $.nameRequired, { ns: 'knowledgeCreate' })
+                      if (Array.from(trimmed).length > NAME_MAX_LENGTH)
+                        return tDatasetCreation(($) => $['stepOne.modal.nameLengthInvalid'])
 
                       return null
                     }}
@@ -450,9 +448,6 @@ function CreateKnowledgeSession() {
                     </FieldLabel>
                     <Input
                       autoComplete="off"
-                      aria-describedby={
-                        nameLengthInvalid ? 'knowledge-create-name-error' : undefined
-                      }
                       disabled={submissionLocked}
                       placeholder={t(($) => $.namePlaceholder, { ns: 'knowledgeCreate' })}
                       required
@@ -465,18 +460,22 @@ function CreateKnowledgeSession() {
                     <FieldError match="valueMissing">
                       {t(($) => $.nameRequired, { ns: 'knowledgeCreate' })}
                     </FieldError>
-                    <FieldError id="knowledge-create-name-error" match={nameLengthInvalid}>
-                      {tDatasetCreation(($) => $['stepOne.modal.nameLengthInvalid'])}
-                    </FieldError>
                     <FieldError match="customError" />
                   </Field>
-                  <Field name="description" className="gap-1.5" invalid={descriptionLengthInvalid}>
+                  <Field
+                    name="description"
+                    className="gap-1.5"
+                    validate={(value) => {
+                      if (Array.from(String(value).trim()).length > DESCRIPTION_MAX_LENGTH)
+                        return tWorkflow(($) => $['chatVariable.modal.descriptionTooLong'], {
+                          maxLength: DESCRIPTION_MAX_LENGTH,
+                        })
+                      return null
+                    }}
+                  >
                     <FieldLabel>{t(($) => $.description, { ns: 'knowledgeCreate' })}</FieldLabel>
                     <Textarea
                       autoComplete="off"
-                      aria-describedby={
-                        descriptionLengthInvalid ? 'knowledge-create-description-error' : undefined
-                      }
                       className="min-h-20"
                       disabled={submissionLocked}
                       name="description"
@@ -490,14 +489,7 @@ function CreateKnowledgeSession() {
                     <FieldDescription>
                       {t(($) => $.descriptionHelp, { ns: 'knowledgeCreate' })}
                     </FieldDescription>
-                    <FieldError
-                      id="knowledge-create-description-error"
-                      match={descriptionLengthInvalid}
-                    >
-                      {tWorkflow(($) => $['chatVariable.modal.descriptionTooLong'], {
-                        maxLength: DESCRIPTION_MAX_LENGTH,
-                      })}
-                    </FieldError>
+                    <FieldError />
                   </Field>
                   <KnowledgeCreationPermissions
                     canConfigureAccess={canConfigureAccess}
