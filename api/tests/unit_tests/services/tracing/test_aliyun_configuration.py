@@ -253,8 +253,9 @@ def test_only_the_observed_resource_ack_verifies_access(
 ) -> None:
     collector.status = status
     collector.content = body
+    config = normalize_configuration(values(license_key="SYNTHETIC_PRIVATE_LICENSE@key"))
     with pytest.raises(AliyunConfigurationError) as error:
-        verify_configuration(normalize_configuration(values(license_key="SYNTHETIC_PRIVATE_LICENSE@key")))
+        verify_configuration(config)
     assert error.value.code == "verification_failed"
     rendered = str(error.value) + repr(error.value) + "".join(traceback.format_exception(error.value)) + caplog.text
     assert "SYNTHETIC_PRIVATE_LICENSE" not in rendered
@@ -265,8 +266,9 @@ def test_only_the_observed_resource_ack_verifies_access(
 
 def test_transport_failure_does_not_escape_with_private_url(collector: CollectorBoundary) -> None:
     collector.failure = httpx.ConnectError("request failed at /adapt_PRIVATE%40KEY/api/otlp/traces")
+    config = normalize_configuration(values(license_key="PRIVATE@KEY"))
     with pytest.raises(AliyunConfigurationError) as error:
-        verify_configuration(normalize_configuration(values(license_key="PRIVATE@KEY")))
+        verify_configuration(config)
     assert error.value.code == "verification_failed"
     rendered = "".join(traceback.format_exception(error.value))
     assert "PRIVATE@KEY" not in rendered
