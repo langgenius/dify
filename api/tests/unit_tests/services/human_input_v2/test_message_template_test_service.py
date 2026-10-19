@@ -220,6 +220,17 @@ def test_email_renders_and_sends_only_to_editor_without_database_writes(context:
     context.adapter_factory.assert_not_called()
 
 
+def test_email_preserves_markdown_headings_and_approval_link(context: _Context) -> None:
+    context.template("### HITL v2 Migration Check", "# H1\n\n## H2\n\n[Migration approval]({{#url#}})")
+
+    context.send()
+
+    sent = context.gateway.send_message.call_args.kwargs
+    assert sent["html"] == (
+        '<h1>H1</h1>\n<h2>H2</h2>\n<p><a href="https://example.com/human-input-test">Migration approval</a></p>'
+    )
+
+
 def test_im_uses_current_editors_binding_and_closes_adapter(context: _Context) -> None:
     context.send(DebugChannel.SLACK, **{"#start.name#": "Alice"})
     context.adapter.messaging.send_text.assert_called_once_with(
