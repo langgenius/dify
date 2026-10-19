@@ -314,6 +314,15 @@ class MCPAppApi(Resource):
             client_name = f"{client_info.name}@{client_info.version}"
             end_user = self._create_end_user(client_name, app.tenant_id, app.id, mcp_server.id, session)
 
+        generate = AppGenerateService.generate
+        if isinstance(mcp_request.root, mcp_types.CallToolRequest):
+            services = application_services()
+            generate = partial(
+                AppGenerateService.generate,
+                variables=services.workflow_variables,
+                runtime=services.workflow_runtime,
+            )
+
         return handle_mcp_request(
             session,
             app,
@@ -323,9 +332,5 @@ class MCPAppApi(Resource):
             end_user,
             request_id,
             protocol_version,
-            generate=partial(
-                AppGenerateService.generate,
-                variables=application_services().workflow_variables,
-                runtime=application_services().workflow_runtime,
-            ),
+            generate=generate,
         )

@@ -9,6 +9,7 @@ from sqlalchemy import delete
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, Unauthorized
 
+from controllers.common.errors import NotFoundError
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import CheckScope, CheckSubject
@@ -255,8 +256,6 @@ def test_other_workspace_endpoints_reject_resource_token(resource_fixture: Resou
 def test_stop_task_rejects_other_token_owner(resource_fixture: ResourceFixture) -> None:
     import inspect
 
-    from werkzeug.exceptions import NotFound
-
     from controllers.openapi.app_run import AppRunTaskStopApi
 
     flask_app, app_id, _, _, end_user = resource_fixture
@@ -268,8 +267,9 @@ def test_stop_task_rejects_other_token_owner(resource_fixture: ResourceFixture) 
         patch("controllers.openapi.app_run.GraphEngineManager") as engine,
     ):
         redis.get.return_value = b"end-user-other-user"
-        with pytest.raises(NotFound):
+        with pytest.raises(NotFoundError) as error:
             inspect.unwrap(AppRunTaskStopApi.post)(AppRunTaskStopApi(), data, app_id, "task")
+        assert error.value.code == 404
         stop.assert_not_called()
         engine.assert_not_called()
         redis.get.return_value = b"end-user-machine-user"
