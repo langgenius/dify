@@ -8,7 +8,7 @@ dependencies = [
     "arize-phoenix-otel~=0.15.0",
     "azure-identity==1.26.0",
     "beautifulsoup4==4.15.0",
-    "boto3==1.43.107",
+    "boto3==1.43.114",
     "bs4~=0.0.1",
     "cachetools~=7.2.0",
     "celery~=5.6.3",
@@ -197,10 +197,10 @@ storage = [
     "bce-python-sdk~=0.9.79",
     "cos-python-sdk-v5==1.9.44",
     "esdk-obs-python==3.26.6",
-    "google-cloud-storage>=3.16.0",
+    "google-cloud-storage>=3.17.1",
     "opendal~=0.47.10",
     "oss2==2.19.1",
-    "supabase~=2.31.0",
+    "supabase~=2.33.0",
     "tos~=2.9.3",
 ]
 
