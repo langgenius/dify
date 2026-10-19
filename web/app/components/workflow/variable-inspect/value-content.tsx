@@ -49,7 +49,9 @@ const ValueContent = ({ currentVar, handleValueChange, isTruncated }: Props) => 
   const [validationError, setValidationError] = useState<string>('')
   const [fileValue, setFileValue] = useState<any>(() => formatInspectFileValue(currentVar))
 
-  const { run: debounceValueChange } = useDebounceFn(handleValueChange, { wait: 500 })
+  const { run: debounceValueChange, cancel: cancelValueChange } = useDebounceFn(handleValueChange, {
+    wait: 500,
+  })
 
   // update default value when id changed
   useEffect(() => {
@@ -69,7 +71,11 @@ const ValueContent = ({ currentVar, handleValueChange, isTruncated }: Props) => 
     if (currentVar.value_type === 'string') setValue(value)
 
     if (currentVar.value_type === 'number') {
-      if (/^-?\d+(?:\.\d*)?$/.test(value)) setValue(Number.parseFloat(value))
+      setValue(value)
+      if (!/^-?\d+(?:\.\d*)?$/.test(value) || !Number.isFinite(Number(value))) {
+        cancelValueChange()
+        return
+      }
     }
     const newValue = currentVar.value_type === 'number' ? Number.parseFloat(value) : value
     debounceValueChange(currentVar.id, newValue)
@@ -106,8 +112,8 @@ const ValueContent = ({ currentVar, handleValueChange, isTruncated }: Props) => 
     if (contentContainerRef.current && errorMessageRef.current) {
       const errorMessageObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
-          const { inlineSize } = entry.borderBoxSize[0]!
-          const height = (contentContainerRef.current as any).clientHeight - inlineSize
+          const errorHeight = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height
+          const height = Math.max(0, (contentContainerRef.current?.clientHeight ?? 0) - errorHeight)
           setEditorHeight(height)
         }
       })

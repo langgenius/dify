@@ -3,6 +3,7 @@ import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { WorkflowRunDetailResponse } from '@/models/log'
 import type { NodeTracing, NodeTracingListResponse } from '@/types/workflow'
 import { useEffect } from 'react'
+import { fn } from 'storybook/test'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import { BlockEnum } from '@/app/components/workflow/types'
 import MessageLogModal from '.'
@@ -114,7 +115,7 @@ const useMessageLogMocks = () => {
       throw new Error(`Unmocked fetch call for ${url}`)
     }
 
-    globalThis.fetch = handle as typeof globalThis.fetch
+    globalThis.fetch = handle
 
     return () => {
       globalThis.fetch = originalFetch || globalThis.fetch
@@ -153,9 +154,7 @@ const meta = {
     defaultTab: 'DETAIL',
     width: 960,
     fixedWidth: true,
-    onCancel: () => {
-      console.log('Modal closed')
-    },
+    onCancel: fn(),
   },
   tags: ['autodocs'],
 } satisfies Meta<typeof MessageLogPreview>

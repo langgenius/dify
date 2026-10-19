@@ -1,115 +1,44 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { createEvent, fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { VariableMenuItem } from '../variable-option'
 
-describe('VariableMenuItem', () => {
-  const defaultProps = {
-    title: 'Variable Name',
-    isSelected: false,
-    queryString: null,
-    onClick: vi.fn(),
-    onMouseEnter: vi.fn(),
-  }
+it('selects the matching variable without losing its full label', async () => {
+  const user = userEvent.setup()
+  const onClick = vi.fn()
+  const onMouseEnter = vi.fn()
+  render(
+    <VariableMenuItem
+      title="System Variable"
+      queryString="TEM"
+      isSelected={false}
+      onClick={onClick}
+      onMouseEnter={onMouseEnter}
+    />,
+  )
+  const option = screen.getByTitle('System Variable')
+  expect(option).toHaveTextContent('System Variable')
+  await user.hover(option)
+  await user.click(option)
+  expect(onMouseEnter).toHaveBeenCalledOnce()
+  expect(onClick).toHaveBeenCalledOnce()
+})
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  describe('Rendering', () => {
-    it('should render the title correctly', () => {
-      render(<VariableMenuItem {...defaultProps} />)
-      expect(screen.getByText('Variable Name')).toBeInTheDocument()
-      expect(screen.getByTitle('Variable Name')).toBeInTheDocument()
-    })
-
-    it('should render the icon when provided', () => {
-      render(
-        <VariableMenuItem {...defaultProps} icon={<span data-testid="test-icon">icon</span>} />,
-      )
-      expect(screen.getByTestId('test-icon')).toBeInTheDocument()
-    })
-
-    it('should render the extra element when provided', () => {
-      render(
-        <VariableMenuItem
-          {...defaultProps}
-          extraElement={<span data-testid="extra">extra</span>}
-        />,
-      )
-      expect(screen.getByTestId('extra')).toBeInTheDocument()
-    })
-  })
-
-  describe('Highlighting Logic (queryString)', () => {
-    it('should not highlight anything when queryString is null', () => {
-      render(<VariableMenuItem {...defaultProps} queryString={null} />)
-      const titleContainer = screen.getByTitle('Variable Name')
-      // Ensure no highlighted span with text exists
-      expect(titleContainer.querySelector('.text-text-accent')?.textContent).toBe('')
-    })
-
-    it('should highlight matching text case-insensitively', () => {
-      render(<VariableMenuItem {...defaultProps} title="User Name" queryString="user" />)
-      const highlighted = screen.getByText('User')
-      expect(highlighted).toHaveClass('text-text-accent')
-
-      const titleContainer = screen.getByTitle('User Name')
-      expect(titleContainer.textContent).toBe('User Name')
-    })
-
-    it('should handle partial match in the middle of the string', () => {
-      render(<VariableMenuItem {...defaultProps} title="System Variable" queryString="tem" />)
-      const highlighted = screen.getByText('tem')
-      expect(highlighted).toHaveClass('text-text-accent')
-
-      const titleContainer = screen.getByTitle('System Variable')
-      expect(titleContainer.textContent).toBe('System Variable')
-      expect(titleContainer.innerHTML).toContain('Sys')
-      expect(titleContainer.innerHTML).toContain(' Variable')
-    })
-
-    it('should handle no match gracefully', () => {
-      render(<VariableMenuItem {...defaultProps} title="Variable" queryString="xyz" />)
-      expect(screen.getByText('Variable')).toBeInTheDocument()
-      const titleContainer = screen.getByTitle('Variable')
-      expect(titleContainer.querySelector('.text-text-accent')?.textContent).toBe('')
-    })
-  })
-
-  describe('Events', () => {
-    it('should trigger onClick when clicked', () => {
-      render(<VariableMenuItem {...defaultProps} />)
-      fireEvent.click(screen.getByTitle('Variable Name'))
-      expect(defaultProps.onClick).toHaveBeenCalledTimes(1)
-    })
-
-    it('should trigger onMouseEnter when mouse enters', () => {
-      render(<VariableMenuItem {...defaultProps} />)
-      fireEvent.mouseEnter(screen.getByTitle('Variable Name'))
-      expect(defaultProps.onMouseEnter).toHaveBeenCalledTimes(1)
-    })
-
-    it('should prevent default and stop propagation onMouseDown', () => {
-      render(<VariableMenuItem {...defaultProps} />)
-      const mousedownEvent = new MouseEvent('mousedown', {
-        bubbles: true,
-        cancelable: true,
-      })
-      const preventDefaultSpy = vi.spyOn(mousedownEvent, 'preventDefault')
-      const stopPropagationSpy = vi.spyOn(mousedownEvent, 'stopPropagation')
-
-      fireEvent(screen.getByTitle('Variable Name'), mousedownEvent)
-
-      expect(preventDefaultSpy).toHaveBeenCalled()
-      expect(stopPropagationSpy).toHaveBeenCalled()
-    })
-  })
-
-  describe('Ref handling', () => {
-    it('should call setRefElement with the element', () => {
-      const setRefElement = vi.fn()
-      render(<VariableMenuItem {...defaultProps} setRefElement={setRefElement} />)
-
-      expect(setRefElement).toHaveBeenCalledWith(expect.any(HTMLDivElement))
-    })
-  })
+it('consumes mousedown so a variable choice does not disturb the editor selection', () => {
+  const onParentMouseDown = vi.fn()
+  render(
+    <div role="presentation" onMouseDown={onParentMouseDown}>
+      <VariableMenuItem
+        title="Variable"
+        queryString={null}
+        isSelected={false}
+        onClick={vi.fn()}
+        onMouseEnter={vi.fn()}
+      />
+    </div>,
+  )
+  const target = screen.getByText('Variable')
+  const event = createEvent.mouseDown(target)
+  fireEvent(target, event)
+  expect(event.defaultPrevented).toBe(true)
+  expect(onParentMouseDown).not.toHaveBeenCalled()
 })

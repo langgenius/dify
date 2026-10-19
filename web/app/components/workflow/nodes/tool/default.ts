@@ -109,7 +109,7 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
   getOutputVars(
     payload: ToolNodeType,
     allPluginInfoList: WorkflowPluginCatalogs,
-    _ragVars: any,
+    _ragVars: unknown,
     { schemaTypeDefinitions } = { schemaTypeDefinitions: [] },
   ) {
     const { provider_id, provider_type } = payload

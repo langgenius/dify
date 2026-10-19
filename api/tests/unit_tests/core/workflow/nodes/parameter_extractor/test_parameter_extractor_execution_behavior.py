@@ -141,7 +141,7 @@ def test_function_calling_parameter_extractor(monkeypatch: pytest.MonkeyPatch) -
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs is not None
     assert result.outputs.get("location") == "kawaii"
-    assert result.outputs.get("__reason") == None
+    assert result.outputs.get("__reason") is None
 
 
 @pytest.mark.usefixtures("setup_model_mock")
@@ -183,7 +183,7 @@ def test_instructions(monkeypatch: pytest.MonkeyPatch) -> None:
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs is not None
     assert result.outputs.get("location") == "kawaii"
-    assert result.outputs.get("__reason") == None
+    assert result.outputs.get("__reason") is None
 
     process_data = result.process_data
 

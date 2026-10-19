@@ -1,5 +1,3 @@
-from services.workflow.generation.suggestions import WorkflowInstructionSuggestions
-
 """Composition root for application services used by transport adapters."""
 
 import json
@@ -38,6 +36,8 @@ from extensions.application_services.knowledge import (
     build_dataset_api_key_service,
     build_knowledge_services,
 )
+from extensions.application_services.rbac import RBACServices, build_rbac_services
+from extensions.application_services.resource_access_token import build_resource_access_token_service
 from extensions.application_services.snippets import build_snippet_generation_service
 from extensions.application_services.tools import ToolServices, build_tool_services
 from extensions.application_services.trial_app import TrialAppServices, build_trial_app_services
@@ -66,13 +66,16 @@ from repositories.account_activation_repository import SQLAlchemyAccountActivati
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.agent.runtime_repository import WorkflowAgentBindingResolver
 from repositories.api_based_extension_repository import APIBasedExtensionRepository
+from repositories.app.console_repository import ConsoleAppRepository
 from repositories.app.mcp_server_repository import AppMCPServerRepository
 from repositories.app.site_command_repository import AppSiteCommandRepository
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
+from repositories.app.workflow_comment_repository import WorkflowCommentRepository
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.app_preview_query_repository import AppPreviewQueryRepository
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
+from repositories.conversation_variable_query_repository import ConversationVariableQueryRepository
 from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.factory import DifyAPIRepositoryFactory
@@ -116,6 +119,8 @@ from services.app.advanced_prompt_template_service import AdvancedPromptTemplate
 from services.app.api_key_service import AppApiKeyService
 from services.app.generation.runtime import AppGenerationRuntime
 from services.app.mcp_server_service import AppMCPServerService
+from services.app.workflow_comment_mention_gateway import CeleryWorkflowCommentMentionNotifier
+from services.app.workflow_comment_service import WorkflowCommentService
 from services.app_audio_adapters import AppAudioRuntime
 from services.app_audio_service import AppAudio
 from services.app_definition_query_service import AppDefinitionQueryService
@@ -132,6 +137,7 @@ from services.app_tracing_config_service import AppTracingConfigService
 from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
+from services.conversation_variable_query import ConversationVariableQuery
 from services.credentials.query import CredentialQuery
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.file_grant_entities import FileGrantLimits
@@ -176,7 +182,9 @@ from services.recommended_app_catalog_gateway import (
 from services.recommended_app_package_service import RecommendedAppPackageService
 from services.recommended_app_query_service import RecommendedAppQueryService
 from services.remote_file_service import RemoteFileService
+from services.resource_access_token_service import ResourceAccessTokenService
 from services.retention.workflow_run.archive_download_adapters import (
+    dispatch_workflow_run_archive_deletion_task,
     dispatch_workflow_run_archive_download_task,
     sign_workflow_run_archive_download_url,
 )
@@ -211,6 +219,7 @@ from services.workflow.app_log_query_service import WorkflowAppLogQueryService
 from services.workflow.console_service import ConsoleWorkflowService
 from services.workflow.console_variable_service import ConsoleWorkflowVariableService
 from services.workflow.draft_service import WorkflowDraftService
+from services.workflow.generation.suggestions import WorkflowInstructionSuggestions
 from services.workflow.variable_service import WorkflowVariableService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
@@ -269,11 +278,12 @@ class ApplicationServices:
     workflow_drafts: WorkflowDraftService[WorkflowAgentBindingStore]
     snippet_generation: SnippetGenerateService
     tools: ToolServices
-    workflow_suggestions: WorkflowInstructionSuggestions
     workflow_runtime: AppGenerationRuntime
     workflow_variables: WorkflowVariableService
     console_workflow_variables: ConsoleWorkflowVariableService
     workflow_agent_bindings: WorkflowAgentBindingResolver
+    workflow_suggestions: WorkflowInstructionSuggestions
+    rbac: RBACServices
     agent_apps: AgentAppServices
     advanced_prompt_templates: AdvancedPromptTemplateService
     api_based_extensions: APIBasedExtensionApplicationService
@@ -281,12 +291,14 @@ class ApplicationServices:
     accounts: AccountServices
     app_api_keys: AppApiKeyService
     dataset_api_keys: DatasetApiKeyService
+    resource_access_tokens: ResourceAccessTokenService
     apps: AppServices
     app_definitions: AppDefinitionQueryService
     app_mcp_servers: AppMCPServerService
     app_preview_details: AppPreviewDetails
     app_previews: AppPreviewQueryService
     app_sites: AppSiteService
+    conversation_variables: ConversationVariableQuery
     app_statistics: AppStatisticQuery
     app_tracing_configs: AppTracingConfigService
     billing_portal: BillingPortalService
@@ -326,6 +338,7 @@ class ApplicationServices:
     workflow_runs: WorkflowRunService
     workspaces: WorkspaceServices
     workflow_app_logs: WorkflowAppLogQueryService
+    workflow_comments: WorkflowCommentService
     inner_mail: InnerMailService
     web_passport: WebPassportService
     tags: TagApplicationService
@@ -440,6 +453,10 @@ def build_application_services(
         builtin=builtin_catalog,
     )
     workspace_repository = WorkspaceRepository(session_factory=database_client)
+    workspace_members, workspace_provisioning = build_workspace_membership_services(
+        workspaces=workspace_repository,
+        accounts=accounts,
+    )
     recommended_app_queries = RecommendedAppQueryService(
         catalog=recommended_app_catalog,
         trial_apps=trial_apps,
@@ -463,12 +480,21 @@ def build_application_services(
     )
     oauth_server = _build_oauth_server_service(database_client=database_client, redis=redis)
     tools = build_tool_services(database_client)
+    console_apps = ConsoleAppRepository(session_factory=database_client)
+    rbac = build_rbac_services(
+        workspaces=workspace_repository,
+        workspace_members=workspace_members,
+        apps=console_apps,
+        datasets=dataset_dependencies.datasets,
+    )
     apps = build_app_services(
         database_client=database_client,
         oauth=oauth_server,
         recommended_packages=recommended_app_packages,
         tool_providers=tools.tool_providers,
         workflow_queries=tools.workflow_queries,
+        repository=console_apps,
+        rbac_members=rbac.members,
     )
     tags = TagApplicationService(tags=TagRepository(session_factory=database_client))
     workflow_variables = build_workflow_variable_service(database_client=database_client)
@@ -483,7 +509,7 @@ def build_application_services(
         providers=datasource_credentials.providers,
         redis=redis,
         tags=tags,
-        app_queries=apps.queries,
+        rbac_members=rbac.members,
     )
     app_scoped_end_user_repository = AppScopedEndUserRepo(session_factory=database_client)
     file_service = FileService(session_factory=database_client)
@@ -504,11 +530,6 @@ def build_application_services(
     workflow_node_execution_repository = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
         session_maker=database_client
     )
-    workspace_members, workspace_provisioning = build_workspace_membership_services(
-        database_client=database_client,
-        workspaces=workspace_repository,
-        accounts=accounts,
-    )
     account_services = build_account_services(
         database_client=database_client,
         deployment_edition=deployment_edition,
@@ -522,6 +543,7 @@ def build_application_services(
         activation_accounts=activation_accounts,
     )
     workspace_services = build_workspace_services(
+        database_client=database_client,
         workspaces=workspace_repository,
         accounts=accounts,
         files=file_service,
@@ -535,7 +557,7 @@ def build_application_services(
         tools=tools,
         human_input_debug=build_human_input_debug_service(database_client=database_client),
         console_workflows=build_console_workflow_service(
-            database_client=database_client, redis=redis, variables=workflow_variables
+            database_client=database_client, redis=redis, variables=workflow_variables, rbac_members=rbac.members
         ),
         workflow_drafts=build_workflow_drafts(database_client),
         workflow_variables=workflow_variables,
@@ -548,6 +570,7 @@ def build_application_services(
         snippet_generation=build_snippet_generation_service(
             database_client=database_client, variables=workflow_variables
         ),
+        rbac=rbac,
         accounts=account_services,
         apps=apps,
         credential_queries=CredentialQueryRepository(session_factory=database_client),
@@ -567,11 +590,13 @@ def build_application_services(
         app_sites=AppSiteService(
             sites=AppSiteCommandRepository(session_factory=database_client),
         ),
+        conversation_variables=ConversationVariableQueryRepository(session_factory=database_client),
         app_api_keys=build_app_api_key_service(database_client=database_client),
         dataset_api_keys=build_dataset_api_key_service(
             database_client=database_client,
             dataset_access=dataset_dependencies.access,
         ),
+        resource_access_tokens=build_resource_access_token_service(database_client=database_client),
         app_statistics=AppStatisticQueryRepository(session_factory=database_client),
         app_tracing_configs=AppTracingConfigService(
             configs=SQLAlchemyAppTracingConfigRepository(session_factory=database_client),
@@ -713,6 +738,7 @@ def build_application_services(
             tasks=WorkflowRunArchiveDownloadTaskCache(redis=redis),
             dispatcher=dispatch_workflow_run_archive_download_task,
             sign_download_url=sign_workflow_run_archive_download_url,
+            deletion_dispatcher=dispatch_workflow_run_archive_deletion_task,
         ),
         workflow_runs=WorkflowRunService(
             workflow_runs=workflow_run_repository,
@@ -722,6 +748,11 @@ def build_application_services(
         workspaces=workspace_services,
         workflow_app_logs=WorkflowAppLogQueryService(
             logs=WorkflowAppLogRepository(session_factory=database_client),
+        ),
+        workflow_comments=WorkflowCommentService(
+            comments=WorkflowCommentRepository(session_factory=database_client),
+            notifier=CeleryWorkflowCommentMentionNotifier(),
+            console_web_url=dify_config.CONSOLE_WEB_URL,
         ),
         inner_mail=InnerMailService(dispatch=enqueue_inner_mail),
         web_passport=WebPassportService(

@@ -19,12 +19,6 @@ const inspectState = vi.hoisted(() => ({
   }>,
 }))
 
-vi.mock('ahooks', () => ({
-  useDebounceFn: (fn: (...args: unknown[]) => void) => ({
-    run: fn,
-  }),
-}))
-
 vi.mock('@/app/components/workflow/hooks/use-workflow', async (importOriginal) => {
   const actual =
     await importOriginal<typeof import('@/app/components/workflow/hooks/use-workflow')>()
@@ -48,20 +42,19 @@ vi.mock('@/app/components/workflow/hooks/use-inspect-vars-crud', () => ({
   }),
 }))
 
-const createPayload = (overrides: Partial<CodeNodeType> = {}): CodeNodeType =>
-  ({
-    title: 'Code',
-    desc: '',
-    type: BlockEnum.Code,
-    code: 'def main():\n    return "ok"',
-    code_language: CodeLanguage.python3,
-    variables: [],
-    outputs: {
-      primary: { type: VarType.string, children: null },
-      secondary: { type: VarType.number, children: null },
-    },
-    ...overrides,
-  }) as CodeNodeType
+const createPayload = (overrides: Partial<CodeNodeType> = {}): CodeNodeType => ({
+  title: 'Code',
+  desc: '',
+  type: BlockEnum.Code,
+  code: 'def main():\n    return "ok"',
+  code_language: CodeLanguage.python3,
+  variables: [],
+  outputs: {
+    primary: { type: VarType.string, children: null },
+    secondary: { type: VarType.number, children: null },
+  },
+  ...overrides,
+})
 
 const renderUseOutputVarList = (
   payload: CodeNodeType = createPayload(),
@@ -119,8 +112,8 @@ describe('useOutputVarList', () => {
     })
 
     expect(result.current.isShowRemoveVarConfirm).toBe(true)
-    // only ask first, the row is still there
     expect(mockSetInputs).not.toHaveBeenCalled()
+    expect(mockDeleteInspectVar).not.toHaveBeenCalled()
 
     act(() => {
       result.current.onRemoveVarConfirm()
@@ -170,6 +163,7 @@ describe('useOutputVarList', () => {
 
     expect(result.current.isShowRemoveVarConfirm).toBe(false)
     expect(mockSetInputs).not.toHaveBeenCalled()
+    expect(mockDeleteInspectVar).not.toHaveBeenCalled()
     expect(mockOnOutputKeyOrdersChange).not.toHaveBeenCalled()
     expect(mockRemoveUsedVarInNodes).not.toHaveBeenCalled()
   })
@@ -213,49 +207,30 @@ describe('useOutputVarList', () => {
     expect(lastInputs.default_value).toEqual([{ key: 'primary', type: VarType.string, value: '' }])
   })
 
-  it('keeps the configured fallbacks of the outputs that stay behind a confirmed removal', () => {
-    mockIsVarUsedInNodes.mockReturnValue(true)
-    const payload = createPayload({
-      error_strategy: ErrorHandleTypeEnum.defaultValue,
-      default_value: [
+  it.each([true, false])(
+    'keeps the remaining fallbacks when removing an output (confirmation: %s)',
+    (requiresConfirmation) => {
+      mockIsVarUsedInNodes.mockReturnValue(requiresConfirmation)
+      const payload = createPayload({
+        error_strategy: ErrorHandleTypeEnum.defaultValue,
+        default_value: [
+          { key: 'primary', type: VarType.string, value: 'sentinel' },
+          { key: 'secondary', type: VarType.number, value: 7 },
+        ],
+      })
+      const { result } = renderUseOutputVarList(payload)
+
+      act(() => {
+        result.current.handleRemoveVariable(1)
+      })
+      if (requiresConfirmation) act(() => result.current.onRemoveVarConfirm())
+
+      const lastInputs = mockSetInputs.mock.calls.at(-1)![0] as CodeNodeType
+      expect(lastInputs.default_value).toEqual([
         { key: 'primary', type: VarType.string, value: 'sentinel' },
-        { key: 'secondary', type: VarType.number, value: 7 },
-      ],
-    })
-    const { result } = renderUseOutputVarList(payload)
-
-    act(() => {
-      result.current.handleRemoveVariable(1)
-    })
-    act(() => {
-      result.current.onRemoveVarConfirm()
-    })
-
-    const lastInputs = mockSetInputs.mock.calls.at(-1)![0] as CodeNodeType
-    expect(lastInputs.default_value).toEqual([
-      { key: 'primary', type: VarType.string, value: 'sentinel' },
-    ])
-  })
-
-  it('keeps the configured fallbacks of the outputs that stay behind a direct removal', () => {
-    const payload = createPayload({
-      error_strategy: ErrorHandleTypeEnum.defaultValue,
-      default_value: [
-        { key: 'primary', type: VarType.string, value: 'sentinel' },
-        { key: 'secondary', type: VarType.number, value: 7 },
-      ],
-    })
-    const { result } = renderUseOutputVarList(payload)
-
-    act(() => {
-      result.current.handleRemoveVariable(1)
-    })
-
-    const lastInputs = mockSetInputs.mock.calls.at(-1)![0] as CodeNodeType
-    expect(lastInputs.default_value).toEqual([
-      { key: 'primary', type: VarType.string, value: 'sentinel' },
-    ])
-  })
+      ])
+    },
+  )
 
   it('keeps the configured fallbacks when another output is added', () => {
     const payload = createPayload({
@@ -300,6 +275,12 @@ describe('useOutputVarList', () => {
       )
     })
 
+    expect(mockOnOutputKeyOrdersChange).toHaveBeenCalledWith(['renamed', 'secondary'])
+    expect(mockHandleOutVarRenameChange).toHaveBeenCalledWith(
+      'code-node',
+      ['code-node', 'primary'],
+      ['code-node', 'renamed'],
+    )
     const lastInputs = mockSetInputs.mock.calls.at(-1)![0] as CodeNodeType
     expect(lastInputs.default_value).toEqual([
       { key: 'renamed', type: VarType.string, value: 'sentinel' },
@@ -319,15 +300,16 @@ describe('useOutputVarList', () => {
 
     act(() => {
       result.current.handleVarsChange({
-        primary: { type: VarType.number, children: null },
-        secondary: { type: VarType.number, children: null },
+        primary: { type: VarType.string, children: null },
+        secondary: { type: VarType.string, children: null },
       })
     })
 
+    expect(mockDeleteInspectVar).toHaveBeenCalledExactlyOnceWith('code-node', 'inspect-secondary')
     const lastInputs = mockSetInputs.mock.calls.at(-1)![0] as CodeNodeType
     expect(lastInputs.default_value).toEqual([
-      { key: 'primary', type: VarType.number, value: 0 },
-      { key: 'secondary', type: VarType.number, value: 7 },
+      { key: 'primary', type: VarType.string, value: 'sentinel' },
+      { key: 'secondary', type: VarType.string, value: '' },
     ])
   })
 
@@ -346,5 +328,15 @@ describe('useOutputVarList', () => {
     expect(lastInputs.default_value).toEqual([
       { key: 'primary', type: VarType.string, value: 'sentinel' },
     ])
+  })
+  it('keeps inspected values when an output schema is unchanged', () => {
+    const { result } = renderUseOutputVarList()
+    act(() =>
+      result.current.handleVarsChange({
+        primary: { type: VarType.string, children: null },
+        secondary: { type: VarType.number, children: null },
+      }),
+    )
+    expect(mockDeleteInspectVar).not.toHaveBeenCalled()
   })
 })

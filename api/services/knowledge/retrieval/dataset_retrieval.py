@@ -6,7 +6,7 @@ import threading
 import time
 from collections import Counter
 from collections.abc import Generator, Mapping
-from typing import Any, Union, cast
+from typing import Any, cast
 
 from opentelemetry.trace import get_current_span
 
@@ -370,10 +370,7 @@ class DatasetRetrieval:
                 planning_strategy = PlanningStrategy.ROUTER
         available_datasets = self._records.available_datasets(tenant_id, dataset_ids)
 
-        if inputs:
-            inputs = {key: str(value) for key, value in inputs.items()}
-        else:
-            inputs = {}
+        inputs = {key: str(value) for key, value in inputs.items()} if inputs else {}
         available_datasets_ids = [dataset.id for dataset in available_datasets]
         metadata_filter_document_ids, metadata_condition = self.get_metadata_filter_condition(
             available_datasets_ids,
@@ -1121,7 +1118,7 @@ class DatasetRetrieval:
             similarity = cosine_similarity(query_tfidf, document_tfidf)
             similarities.append(similarity)
 
-        for document, score in zip(documents, similarities):
+        for document, score in zip(documents, similarities, strict=False):
             # format document
             if document.metadata is not None:
                 document.metadata["score"] = score
@@ -1244,7 +1241,7 @@ class DatasetRetrieval:
         try:
             # handle invoke result
             invoke_result = cast(
-                Generator[LLMResult, None, None],
+                Generator[LLMResult],
                 model_instance.invoke_llm(
                     prompt_messages=prompt_messages,
                     model_parameters=model_config.parameters,
@@ -1346,7 +1343,7 @@ class DatasetRetrieval:
         model_mode = ModelMode(mode)
         input_text = query
 
-        prompt_template: Union[CompletionModelPromptTemplate, list[ChatModelMessage]]
+        prompt_template: CompletionModelPromptTemplate | list[ChatModelMessage]
         if model_mode == ModelMode.CHAT:
             prompt_template = []
             system_prompt_messages = ChatModelMessage(role=PromptMessageRole.SYSTEM, text=METADATA_FILTER_SYSTEM_PROMPT)

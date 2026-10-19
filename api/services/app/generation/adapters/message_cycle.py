@@ -1,7 +1,6 @@
 import hashlib
 import logging
 from threading import Thread, Timer
-from typing import Union
 
 from flask import Flask, current_app
 
@@ -41,13 +40,11 @@ class MessageCycleManager:
     def __init__(
         self,
         *,
-        application_generate_entity: Union[
-            ChatAppGenerateEntity,
-            CompletionAppGenerateEntity,
-            AgentChatAppGenerateEntity,
-            AdvancedChatAppGenerateEntity,
-        ],
-        task_state: Union[EasyUITaskState, WorkflowTaskState],
+        application_generate_entity: ChatAppGenerateEntity
+        | CompletionAppGenerateEntity
+        | AgentChatAppGenerateEntity
+        | AdvancedChatAppGenerateEntity,
+        task_state: EasyUITaskState | WorkflowTaskState,
         records: MessageCycleRecords,
     ):
         self._records = records

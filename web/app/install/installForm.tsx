@@ -1,5 +1,4 @@
 'use client'
-import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
 import { zPostSetupBody } from '@dify/contracts/api/console/setup/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import {
@@ -24,8 +23,7 @@ import { LICENSE_LINK } from '@/constants/link'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
-import { fetchInitValidateStatus, fetchSetupStatus, login, setup } from '@/service/common'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { encryptPassword as encodePassword } from '@/utils/encryption'
 
 const accountFormSchema = zPostSetupBody.pick({ email: true, name: true, password: true }).extend({
@@ -52,7 +50,7 @@ const InstallForm = () => {
     setIsSubmitting(true)
     try {
       // First, setup the admin account
-      await setup({
+      await consoleClient.setup.post({
         body: {
           ...value,
           language: i18n.language,
@@ -60,8 +58,7 @@ const InstallForm = () => {
       })
 
       // Then, automatically login with the same credentials
-      const loginRes = await login({
-        url: '/login',
+      const loginRes = await consoleClient.login.post({
         body: {
           email: value.email,
           password: encodePassword(value.password),
@@ -82,11 +79,11 @@ const InstallForm = () => {
   }
 
   useEffect(() => {
-    fetchSetupStatus().then((res: SetupStatusResponse) => {
+    consoleClient.setup.get().then((res) => {
       if (res.step === 'finished') {
         push('/signin')
       } else {
-        fetchInitValidateStatus().then((res: InitValidateStatusResponse) => {
+        consoleClient.init.get().then((res) => {
           if (res.status === 'not_started') push('/init')
         })
       }

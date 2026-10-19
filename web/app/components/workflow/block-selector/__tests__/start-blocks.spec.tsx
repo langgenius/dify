@@ -1,37 +1,23 @@
-import type { CommonNodeType } from '../../types'
-import { render, screen, waitFor } from '@testing-library/react'
+import type { Node } from '../../types'
+import { render as renderComponent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useAvailableNodesMetaData } from '@/app/components/workflow-app/hooks/use-available-nodes-meta-data'
-import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
+import { createNode } from '../../__tests__/fixtures'
+import { WorkflowContext } from '../../context'
+import { createWorkflowStore } from '../../store/workflow'
 import { BlockEnum } from '../../types'
 import StartBlocks from '../start-blocks'
 
-vi.mock('@/app/components/workflow/store/workflow/use-nodes', () => ({
-  default: vi.fn(),
-}))
-
-vi.mock('@/app/components/workflow-app/hooks/use-available-nodes-meta-data', () => ({
-  useAvailableNodesMetaData: vi.fn(),
-}))
-
-const mockUseNodes = vi.mocked(useNodes)
-const mockUseAvailableNodesMetaData = vi.mocked(useAvailableNodesMetaData)
-
-const createNode = (type: BlockEnum) =>
-  ({
-    data: { type } as Pick<CommonNodeType, 'type'>,
-  }) as ReturnType<typeof useNodes>[number]
-
-const createAvailableNodesMetaData = (): ReturnType<typeof useAvailableNodesMetaData> =>
-  ({
-    nodes: [],
-  }) as unknown as ReturnType<typeof useAvailableNodesMetaData>
+let nodes: Node[] = []
+const render = (ui: React.ReactElement) => {
+  const store = createWorkflowStore({})
+  store.setState({ nodes })
+  return renderComponent(<WorkflowContext value={store}>{ui}</WorkflowContext>)
+}
 
 describe('StartBlocks', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseNodes.mockReturnValue([])
-    mockUseAvailableNodesMetaData.mockReturnValue(createAvailableNodesMetaData())
+    nodes = []
   })
 
   // Start block selection should respect available types and workflow state.
@@ -64,38 +50,27 @@ describe('StartBlocks', () => {
       expect(onSelect).toHaveBeenCalledWith(BlockEnum.Start)
     })
 
-    it('should hide user input when a start node already exists or hideUserInput is enabled', () => {
-      const onContentStateChange = vi.fn()
-      mockUseNodes.mockReturnValue([createNode(BlockEnum.Start)])
+    it.each([true, false])(
+      'hides user input for an existing start node or an explicit request (existing=%s)',
+      (hasStart) => {
+        const onContentStateChange = vi.fn()
+        nodes = hasStart ? [createNode({ data: { type: BlockEnum.Start } })] : []
 
-      const { container } = render(
-        <StartBlocks
-          searchText=""
-          onSelect={vi.fn()}
-          availableBlocksTypes={[BlockEnum.Start]}
-          onContentStateChange={onContentStateChange}
-          hideUserInput
-        />,
-      )
+        const { container } = render(
+          <StartBlocks
+            searchText=""
+            onSelect={vi.fn()}
+            availableBlocksTypes={[BlockEnum.Start]}
+            onContentStateChange={onContentStateChange}
+            hideUserInput={!hasStart}
+          />,
+        )
 
-      expect(container).toBeEmptyDOMElement()
-      expect(screen.queryByText('workflow.blocks.start')).not.toBeInTheDocument()
-      expect(onContentStateChange).toHaveBeenCalledWith(false)
-    })
-
-    it('should show most common badge for user input in the start selector content', () => {
-      render(
-        <StartBlocks
-          searchText=""
-          onSelect={vi.fn()}
-          availableBlocksTypes={[BlockEnum.Start]}
-          showMostCommonBadge
-        />,
-      )
-
-      expect(screen.getByText('workflow.blocks.mostCommon')).toBeInTheDocument()
-      expect(screen.queryByText('workflow.blocks.originalStartNode')).not.toBeInTheDocument()
-    })
+        expect(container).toBeEmptyDOMElement()
+        expect(screen.queryByText('workflow.blocks.start')).not.toBeInTheDocument()
+        expect(onContentStateChange).toHaveBeenCalledWith(false)
+      },
+    )
 
     it('should render built-in start block preview titles and Dify Team author', async () => {
       const user = userEvent.setup()

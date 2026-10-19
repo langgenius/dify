@@ -180,7 +180,6 @@ def test_generate_falls_back_to_new_conversation_when_conversation_missing(
     )
 
     captured: dict[str, object] = {}
-    session = sqlite_session
 
     def fake_generate(self, **kwargs):
         captured.update(kwargs)

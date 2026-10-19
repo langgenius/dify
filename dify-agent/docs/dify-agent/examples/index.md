@@ -1,8 +1,8 @@
 # Dify Agent examples
 
-These examples live under `examples/dify_agent/dify_agent_examples`. They are
-separated from Agenton examples because they depend on Dify Agent runtime services
-such as the FastAPI server, Redis, or the plugin daemon.
+These examples live under `examples/dify_agent/dify_agent_examples`. They use
+registered modules and depend on the Agent server, Redis, Dify API, and plugin
+daemon settings described in the operations guide.
 
 ## Run a Dify plugin-daemon backed model
 

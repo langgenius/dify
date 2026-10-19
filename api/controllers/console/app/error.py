@@ -1,8 +1,4 @@
 from libs.exception import BaseHTTPException
-from services.app.generation.errors import (
-    AGENT_SESSION_CONFIGURATION_CHANGED_ERROR_CODE,
-    AGENT_SESSION_CONFIGURATION_CHANGED_MESSAGE,
-)
 
 
 class AppNotFoundError(BaseHTTPException):
@@ -51,12 +47,6 @@ class CompletionRequestError(BaseHTTPException):
     error_code = "completion_request_error"
     description = "Completion request failed."
     code = 400
-
-
-class AgentSessionConfigurationChangedError(BaseHTTPException):
-    error_code = AGENT_SESSION_CONFIGURATION_CHANGED_ERROR_CODE
-    description = AGENT_SESSION_CONFIGURATION_CHANGED_MESSAGE
-    code = 409
 
 
 class AppMoreLikeThisDisabledError(BaseHTTPException):
@@ -166,4 +156,34 @@ class InvokeRateLimitError(BaseHTTPException):
 class NeedAddIdsError(BaseHTTPException):
     error_code = "need_add_ids"
     description = "Need to add ids."
+    code = 400
+
+
+class AgentSandboxBindingNotFoundHTTPError(BaseHTTPException):
+    error_code = "no_active_binding"
+    description = "No active sandbox binding."
+    code = 404
+
+
+class AgentSandboxUnavailableHTTPError(BaseHTTPException):
+    error_code = "inspector_unavailable"
+    description = "Sandbox inspector is unavailable."
+    code = 503
+
+
+class AgentSandboxDownloadUnavailableHTTPError(BaseHTTPException):
+    error_code = "binding_file_download_unavailable"
+    description = "Sandbox file download is unavailable."
+    code = 502
+
+
+class AgentBackendUnreachableError(BaseHTTPException):
+    error_code = "agent_backend_unreachable"
+    description = "Agent backend is unreachable."
+    code = 502
+
+
+class AgentNotBoundError(BaseHTTPException):
+    error_code = "agent_not_bound"
+    description = "no agent is bound for this app/node"
     code = 400

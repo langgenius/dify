@@ -22,9 +22,7 @@ def join_worker(worker: ExecutionWorker) -> None:
         logger.warning("Workflow worker %s did not stop within %s seconds", worker.name, WORKER_JOIN_TIMEOUT_SECONDS)
 
 
-def consume_stream[EventT](
-    stream: Generator[EventT, None, None], worker: ExecutionWorker
-) -> Generator[EventT, None, None]:
+def consume_stream[EventT](stream: Generator[EventT], worker: ExecutionWorker) -> Generator[EventT]:
     try:
         yield from stream
     finally:
@@ -32,8 +30,8 @@ def consume_stream[EventT](
 
 
 def generate_response[ResponseT, EventT](
-    *, worker: ExecutionWorker, respond: Callable[[], ResponseT | Generator[EventT, None, None]]
-) -> ResponseT | Generator[EventT, None, None]:
+    *, worker: ExecutionWorker, respond: Callable[[], ResponseT | Generator[EventT]]
+) -> ResponseT | Generator[EventT]:
     """Start execution, receive its result, and close ownership on every exit path."""
     worker.start()
     try:

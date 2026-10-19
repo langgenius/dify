@@ -188,7 +188,7 @@ def test_gateway_uses_quota_managed_instance_as_single_credit_owner(
     prepared = _prepare(service, request, model_instance)
     provider_chunk = _chunk("done", usage=_usage())
 
-    def provider_stream() -> Generator[LLMResultChunk, None, None]:
+    def provider_stream() -> Generator[LLMResultChunk]:
         yield provider_chunk
 
     with patch.object(ModelInstance, "invoke_llm", return_value=provider_stream()) as provider_invoke:
@@ -311,7 +311,7 @@ def test_retried_gateway_delivery_uses_one_effective_billing_charge(
             effective_charges += actual_amount
         return {"available": 97, "reserved": 0, "refunded": 0}
 
-    def provider_invoke(*_: object, **__: object) -> Generator[LLMResultChunk, None, None]:
+    def provider_invoke(*_: object, **__: object) -> Generator[LLMResultChunk]:
         yield _chunk("done", usage=_usage())
 
     with (
@@ -345,7 +345,7 @@ def test_gateway_releases_reservation_when_provider_fails_before_delivery(
     model_instance.reserve_quota = MagicMock(return_value=reservation)
     prepared = _prepare(service, request, model_instance)
 
-    def failing_stream() -> Generator[LLMResultChunk, None, None]:
+    def failing_stream() -> Generator[LLMResultChunk]:
         raise RuntimeError("provider failed")
         yield
 
@@ -372,7 +372,7 @@ def test_gateway_buffers_usage_based_quota_until_terminal_usage(
     prepared = _prepare(service, request, model_instance)
     terminal_usage = _usage(total_tokens=21)
 
-    def provider_stream() -> Generator[LLMResultChunk, None, None]:
+    def provider_stream() -> Generator[LLMResultChunk]:
         events.append("provider:first")
         yield _chunk("first")
         events.append("provider:last")

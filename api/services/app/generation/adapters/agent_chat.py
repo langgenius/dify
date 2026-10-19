@@ -78,7 +78,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         invoke_from: InvokeFrom,
         streaming: Literal[True],
         session: Session,
-    ) -> Generator[Mapping | str, None, None]: ...
+    ) -> Generator[Mapping | str]: ...
 
     @overload
     def generate(
@@ -90,7 +90,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         invoke_from: InvokeFrom,
         streaming: bool,
         session: Session,
-    ) -> Mapping | Generator[Mapping | str, None, None]: ...
+    ) -> Mapping | Generator[Mapping | str]: ...
 
     def generate(
         self,
@@ -101,7 +101,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         invoke_from: InvokeFrom,
         streaming: bool = True,
         session: Session,
-    ) -> Mapping | Generator[Mapping | str, None, None]:
+    ) -> Mapping | Generator[Mapping | str]:
         """
         Generate App response.
 

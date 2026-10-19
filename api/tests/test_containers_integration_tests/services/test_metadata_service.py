@@ -234,7 +234,7 @@ class TestMetadataService:
         )
         db_session_with_containers.expire_all()
         second_metadata_args = MetadataArgs(type="number", name="second_metadata")
-        second_metadata = _metadata_service(db_session_with_containers).create_metadata(
+        _metadata_service(db_session_with_containers).create_metadata(
             DatasetRef(tenant.id, dataset.id), second_metadata_args, actor_id=account.id
         )
         db_session_with_containers.expire_all()
@@ -408,7 +408,7 @@ class TestMetadataService:
         """
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
         dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
-        document = self._create_test_document(db_session_with_containers, dataset, account)
+        self._create_test_document(db_session_with_containers, dataset, account)
         assert dataset.built_in_field_enabled is False
         _metadata_service(db_session_with_containers).enable_built_in_field(DatasetRef(dataset.tenant_id, dataset.id))
         db_session_with_containers.expire_all()
@@ -660,7 +660,7 @@ class TestMetadataService:
         db_session_with_containers.add(dataset)
         db_session_with_containers.commit()
         metadata_args = MetadataArgs(type="string", name="test_metadata")
-        metadata = _metadata_service(db_session_with_containers).create_metadata(
+        _metadata_service(db_session_with_containers).create_metadata(
             DatasetRef(tenant.id, dataset.id), metadata_args, actor_id=account.id
         )
         db_session_with_containers.expire_all()

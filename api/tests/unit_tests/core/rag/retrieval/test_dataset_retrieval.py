@@ -1466,7 +1466,7 @@ class TestRetrievalService:
         mock_retrieve.side_effect = side_effect_with_exception
 
         # Act & Assert
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Search failed") as exc_info:
             RetrievalService.retrieve(
                 retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
                 dataset_id=mock_dataset.id,
@@ -3800,7 +3800,6 @@ class TestKnowledgeRetrievalRegression:
 
     def test_multiple_retrieve_thread_skips_failed_dataset(self, mock_dataset, caplog, sqlite_session_factory):
         dataset_retrieval = build_dataset_retrieval(sqlite_session_factory)()
-        flask_app = Flask(__name__)
         successful_dataset = Dataset(
             id=str(uuid4()),
             provider="dify",
@@ -4095,7 +4094,7 @@ class TestDatasetRetrievalAdditionalHelpers:
                 assert prompt_messages_completion == ["prompt"]
                 assert stop_completion == []
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="'unknown\\-mode' is not a valid ModelMode"):
             retrieval._get_prompt_template(
                 model_config=model_config_chat,
                 mode="unknown-mode",
@@ -4573,7 +4572,14 @@ class TestKnowledgeRetrievalCoverage:
             patch("services.knowledge.retrieval.dataset_retrieval.ModelManager.for_tenant") as mock_model_manager,
         ):
             mock_model_manager.return_value.get_model_instance.return_value = model_instance
-            with pytest.raises(Exception) as exc_info:
+            with pytest.raises(
+                Exception,
+                match=(
+                    "(?:Dify Hosted OpenAI gpt\\-4 currently not support\\.|Model gpt\\-4 "
+                    "credentials is not initialized\\.|Model provider openai quota "
+                    "exceeded\\.)"
+                ),
+            ) as exc_info:
                 retrieval.knowledge_retrieval(request)
             mock_model_manager.assert_called_once_with(tenant_id="tenant-1", user_id="user-1")
             assert error_cls in type(exc_info.value).__name__
@@ -5340,7 +5346,6 @@ class TestInternalHooksCoverage:
         return build_dataset_retrieval(sqlite_session_factory)()
 
     def test_on_retrieval_end_without_dify_documents(self, retrieval: DatasetRetrieval) -> None:
-        app = Flask(__name__)
         with patch.object(retrieval, "_send_trace_task") as mock_trace:
             retrieval._on_retrieval_end(
                 tenant_id="tenant-1",
@@ -5351,7 +5356,6 @@ class TestInternalHooksCoverage:
         mock_trace.assert_called_once()
 
     def test_on_retrieval_end_dify_without_document_ids(self, retrieval: DatasetRetrieval) -> None:
-        app = Flask(__name__)
         doc = Document(page_content="x", metadata={"doc_id": "n1"}, provider="dify")
         with (
             patch("extensions.ext_database.db", SimpleNamespace(engine=self.orm_engine)),
@@ -5361,7 +5365,6 @@ class TestInternalHooksCoverage:
         mock_trace.assert_called_once()
 
     def test_on_retrieval_end_updates_segments_for_text_and_image(self, retrieval: DatasetRetrieval) -> None:
-        app = Flask(__name__)
         tenant_id = str(uuid4())
         dataset_id = str(uuid4())
         creator_id = str(uuid4())
@@ -5494,7 +5497,6 @@ class TestInternalHooksCoverage:
         mock_trace.assert_called_once()
 
     def test_on_retrieval_end_retries_postgres_deadlock(self, retrieval: DatasetRetrieval) -> None:
-        app = Flask(__name__)
         deadlock = DBAPIError(
             "UPDATE document_segments",
             {},
@@ -5553,7 +5555,6 @@ class TestInternalHooksCoverage:
         assert retrieval_repository_module._is_postgres_deadlock_error(error) is expected
 
     def test_on_retrieval_end_reraises_non_deadlock(self, retrieval: DatasetRetrieval) -> None:
-        app = Flask(__name__)
         error = DBAPIError(
             "UPDATE document_segments",
             {},
@@ -5575,7 +5576,6 @@ class TestInternalHooksCoverage:
         mock_trace.assert_not_called()
 
     def test_on_retrieval_end_reraises_after_deadlock_retries_are_exhausted(self, retrieval: DatasetRetrieval) -> None:
-        app = Flask(__name__)
         deadlock = DBAPIError(
             "UPDATE document_segments",
             {},
@@ -5597,7 +5597,6 @@ class TestInternalHooksCoverage:
         mock_trace.assert_not_called()
 
     def test_retriever_variants(self, retrieval: DatasetRetrieval) -> None:
-        flask_app = SimpleNamespace(app_context=lambda: nullcontext())
         all_documents: list[Document] = []
         tenant_id = str(uuid4())
         creator_id = str(uuid4())
@@ -5702,7 +5701,7 @@ class TestInternalHooksCoverage:
         assert len(ranked) == 1
         assert ranked[0].metadata.get("score") == 0.0
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="metadata_model_config is required"):
             retrieval._automatic_metadata_filter_func(
                 dataset_ids=[str(uuid4())],
                 query="python",

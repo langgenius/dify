@@ -17,14 +17,14 @@ it('renders upgrade copy and handles hide and pricing actions', async () => {
   expect(screen.getByRole('dialog')).toHaveTextContent(
     'workflowHumanInput.nodes.humanInput.deliveryMethod.upgradeTipContent',
   )
+  await user.click(screen.getByRole('button', { name: /billing.upgradeBtn.encourageShort/i }))
+  await waitFor(() =>
+    expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+  )
   await user.click(
     screen.getByRole('button', {
       name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.upgradeTipHide',
     }),
   )
   expect(onOpenChange).toHaveBeenCalledWith(false)
-  await user.click(screen.getByRole('button', { name: /billing.upgradeBtn.encourageShort/i }))
-  await waitFor(() =>
-    expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
-  )
 })

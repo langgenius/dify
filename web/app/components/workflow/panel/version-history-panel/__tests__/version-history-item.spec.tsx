@@ -1,16 +1,13 @@
-import type { VersionHistory } from '@/types/workflow'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { VersionHistoryContextMenuOptions, WorkflowVersion } from '../../../types'
 import VersionHistoryItem from '../version-history-item'
 
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: { pipelineId?: string }) => unknown) =>
-    selector({ pipelineId: undefined }),
-}))
-
-const createVersionHistory = (overrides: Partial<VersionHistory> = {}): VersionHistory => ({
+const createVersionHistory = (
+  overrides: Partial<FetchWorkflowDraftResponse> = {},
+): FetchWorkflowDraftResponse => ({
   id: 'version-1',
   graph: {
     nodes: [],
@@ -143,7 +140,7 @@ describe('VersionHistoryItem', () => {
         />,
       )
 
-      fireEvent.mouseEnter(screen.getByRole('button', { name: 'Release 1' }))
+      await user.hover(screen.getByRole('button', { name: 'Release 1' }))
 
       const triggerButton = await screen.findByRole('button', { name: 'common.operation.more' })
       await user.click(triggerButton)
@@ -181,7 +178,7 @@ describe('VersionHistoryItem', () => {
         />,
       )
 
-      fireEvent.mouseEnter(screen.getByRole('button', { name: 'Release 1' }))
+      await user.hover(screen.getByRole('button', { name: 'Release 1' }))
 
       const triggerButton = await screen.findByRole('button', { name: 'common.operation.more' })
       await user.click(triggerButton)
