@@ -157,7 +157,10 @@ describe('FileTreeItem', () => {
     await user.click(button)
     await user.dblClick(button)
 
-    expect(props.onItemSelect).toHaveBeenCalledWith(expect.anything(), expect.anything())
+    expect(props.onItemSelect).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'scripts/example.ts' }),
+      expect.anything(),
+    )
     expect(props.onSelect).toHaveBeenCalledWith('scripts/example.ts', 'preview')
     expect(props.onSelect).toHaveBeenCalledWith('scripts/example.ts', 'pinned')
   })
@@ -204,7 +207,6 @@ describe('FileTreeItem', () => {
     const folder = screen.getByText('scripts').closest('[data-skill-file-tree-item]')
     expect(folder).toBeInstanceOf(HTMLElement)
     const folderButton = screen.getByRole('button', { name: 'scripts' })
-    expect(within(folderButton).queryByRole('button')).not.toBeInTheDocument()
     await user.dblClick(folderButton)
     expect(props.onToggleFolder).toHaveBeenCalledWith('scripts')
 

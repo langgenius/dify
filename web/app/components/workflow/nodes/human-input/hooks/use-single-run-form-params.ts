@@ -3,12 +3,12 @@ import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answe
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { HumanInputFormData } from '@/types/workflow'
+import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { getProcessedHumanInputFormInputs } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { fetchHumanInputNodeStepRunForm, submitHumanInputNodeStepRunForm } from '@/service/workflow'
-import { AppModeEnum } from '@/types/app'
 import useNodeCrud from '../../_base/hooks/use-node-crud'
 import { getHumanInputFormDependencySelectors, isOutput } from '../utils'
 
@@ -68,9 +68,9 @@ const useSingleRunFormParams = ({
       .filter((arr) => arr.length > 0)
   }
 
-  const appDetail = useAppStore((s) => s.appDetail)
-  const appId = appDetail?.id
-  const isWorkflowMode = appDetail?.mode === AppModeEnum.WORKFLOW
+  const resource = useAtomValue(editorResourceAtom)
+  const appId = resource.kind === 'app' ? resource.appId : undefined
+  const isWorkflowMode = resource.kind === 'app' && resource.mode === 'workflow'
   const fetchURL = useMemo(() => {
     if (!appId) return ''
     if (!isWorkflowMode) {
@@ -83,14 +83,10 @@ const useSingleRunFormParams = ({
   const handleFetchFormContent = useCallback(
     async (inputs: Record<string, string>) => {
       if (!fetchURL) return null
-      let requestParamsObj: Record<string, string> = {}
-      Object.keys(inputs).forEach((key) => {
-        if (inputs[key] === undefined) {
-          delete inputs[key]
-        }
-      })
-      requestParamsObj = { ...inputs }
-      const data = await fetchHumanInputNodeStepRunForm(fetchURL, { inputs: requestParamsObj! })
+      const requestParamsObj = Object.fromEntries(
+        Object.entries(inputs).filter(([, value]) => value !== undefined),
+      )
+      const data = await fetchHumanInputNodeStepRunForm(fetchURL, { inputs: requestParamsObj })
       setFormData(data)
       setRequiredInputs(requestParamsObj)
       return data

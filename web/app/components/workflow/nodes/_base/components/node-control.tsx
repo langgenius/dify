@@ -18,7 +18,7 @@ type NodeControlProps = Pick<Node, 'id' | 'data'> & {
 const NodeControl: FC<NodeControlProps> = ({ id, data, pluginInstallLocked }) => {
   const { t } = useTranslation(['workflow', 'workflowDebug'])
   const { handleNodeSelect } = useNodesInteractions()
-  const nodesReadOnly = useNodesReadOnly()
+  const { nodesReadOnly } = useNodesReadOnly()
   const workflowStore = useWorkflowStore()
   const canRun = useHooksStore((s) => s.accessControl.canRun)
   const isSingleRunning = data._singleRunningStatus === NodeRunningStatus.Running

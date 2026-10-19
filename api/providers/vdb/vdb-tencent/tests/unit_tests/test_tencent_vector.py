@@ -96,35 +96,36 @@ def _build_fake_tencent_modules():
         def __init__(self, **kwargs):
             self.kwargs = kwargs
 
-    tcvectordb_enum.IndexType = SimpleNamespace(
+    # ModuleType does not declare these attributes, so set them through the module namespace.
+    vars(tcvectordb_enum)["IndexType"] = SimpleNamespace(
         __members__={"HNSW": "HNSW", "PRIMARY_KEY": "PRIMARY_KEY", "FILTER": "FILTER", "SPARSE_INVERTED": "SPARSE"},
         PRIMARY_KEY="PRIMARY_KEY",
         FILTER="FILTER",
         SPARSE_INVERTED="SPARSE",
     )
-    tcvectordb_enum.MetricType = SimpleNamespace(__members__={"IP": "IP"}, IP="IP")
-    tcvectordb_enum.FieldType = SimpleNamespace(String="String", Json="Json", SparseVector="SparseVector")
+    vars(tcvectordb_enum)["MetricType"] = SimpleNamespace(__members__={"IP": "IP"}, IP="IP")
+    vars(tcvectordb_enum)["FieldType"] = SimpleNamespace(String="String", Json="Json", SparseVector="SparseVector")
 
-    tcvectordb_document.Document = _Document
-    tcvectordb_document.HNSWSearchParams = _HNSWSearchParams
-    tcvectordb_document.AnnSearch = _AnnSearch
-    tcvectordb_document.Filter = _Filter
-    tcvectordb_document.KeywordSearch = _KeywordSearch
-    tcvectordb_document.WeightedRerank = _WeightedRerank
+    vars(tcvectordb_document)["Document"] = _Document
+    vars(tcvectordb_document)["HNSWSearchParams"] = _HNSWSearchParams
+    vars(tcvectordb_document)["AnnSearch"] = _AnnSearch
+    vars(tcvectordb_document)["Filter"] = _Filter
+    vars(tcvectordb_document)["KeywordSearch"] = _KeywordSearch
+    vars(tcvectordb_document)["WeightedRerank"] = _WeightedRerank
 
-    tcvectordb_index.HNSWParams = _HNSWParams
-    tcvectordb_index.FilterIndex = _FilterIndex
-    tcvectordb_index.VectorIndex = _VectorIndex
-    tcvectordb_index.SparseIndex = _SparseIndex
+    vars(tcvectordb_index)["HNSWParams"] = _HNSWParams
+    vars(tcvectordb_index)["FilterIndex"] = _FilterIndex
+    vars(tcvectordb_index)["VectorIndex"] = _VectorIndex
+    vars(tcvectordb_index)["SparseIndex"] = _SparseIndex
 
-    tcvdb_text_encoder.BM25Encoder = _BM25Encoder
+    vars(tcvdb_text_encoder)["BM25Encoder"] = _BM25Encoder
 
-    tcvectordb_model.document = tcvectordb_document
-    tcvectordb_model.enum = tcvectordb_enum
-    tcvectordb_model.index = tcvectordb_index
+    vars(tcvectordb_model)["document"] = tcvectordb_document
+    vars(tcvectordb_model)["enum"] = tcvectordb_enum
+    vars(tcvectordb_model)["index"] = tcvectordb_index
 
-    tcvectordb.RPCVectorDBClient = RPCVectorDBClient
-    tcvectordb.VectorDBException = VectorDBError
+    vars(tcvectordb)["RPCVectorDBClient"] = RPCVectorDBClient
+    vars(tcvectordb)["VectorDBException"] = VectorDBError
 
     return {
         "tcvdb_text": tcvdb_text,
@@ -186,7 +187,14 @@ def test_config_and_init_paths(tencent_module):
         indexes=[SimpleNamespace(name="vector", dimension=512)]
     )
     vector._load_collection()
-    assert vector._enable_hybrid_search is False
+    # Without a sparse_vector index, hybrid search is turned off.
+    assert not vector._enable_hybrid_search
+
+
+@pytest.mark.parametrize("database", [None, ""])
+def test_config_requires_a_database(tencent_module, database):
+    with pytest.raises(ValueError, match="config TENCENT_VECTOR_DB_DATABASE is required"):
+        _config(tencent_module, database=database)
 
 
 def test_create_collection_branches(tencent_module, monkeypatch: pytest.MonkeyPatch):
@@ -316,8 +324,8 @@ def test_tencent_factory_existing_and_generated_collection(tencent_module, monke
     monkeypatch.setattr(tencent_module.dify_config, "TENCENT_VECTOR_DB_ENABLE_HYBRID_SEARCH", True)
 
     with patch.object(tencent_module, "TencentVector", return_value="vector") as vector_cls:
-        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=MagicMock())
-        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=MagicMock())
+        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=MagicMock(), session=None)
+        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=MagicMock(), session=None)
 
     assert result_1 == "vector"
     assert result_2 == "vector"

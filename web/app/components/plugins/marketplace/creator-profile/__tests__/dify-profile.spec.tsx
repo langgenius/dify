@@ -1,11 +1,12 @@
 import type { MarketplaceTemplate } from '@dify/contracts/marketplace'
-import type { MarketplaceSearchSelection } from '../../home/marketplace-search-autocomplete'
+import type { ReactElement } from 'react'
 import type { LoadedCreatorProfile } from '../model'
 import type { Plugin } from '@/app/components/plugins/types'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { renderWithNuqs } from '@/test/nuqs-testing'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import DifyCreatorProfile from '../dify-profile'
 
 const deploymentState = vi.hoisted(() => ({
@@ -19,6 +20,8 @@ vi.mock('@/features/system-features/state', async () => {
 
 const mocks = vi.hoisted(() => ({
   push: vi.fn(),
+  searchPlugins: vi.fn(),
+  searchTemplates: vi.fn(),
   installedInfo: { 'dify/deep_research': { version: '0.0.1' } },
 }))
 
@@ -139,58 +142,64 @@ vi.mock('@/app/components/plugins/install-plugin/hooks/use-check-installed', () 
   default: () => ({ installedInfo: mocks.installedInfo }),
 }))
 
-vi.mock('../../detail-dialog', () => ({
-  default: ({ isInstalled, plugin }: { isInstalled: boolean; plugin: { name: string } }) => (
-    <div role="dialog" aria-label="plugin-detail">
-      <span>{plugin.name}</span>
-      <span>{isInstalled ? 'installed' : 'not installed'}</span>
-    </div>
-  ),
+vi.mock('../../detail-dialog/use-silent-install', () => ({
+  useSilentMarketplaceInstall: () => ({ install: vi.fn() }),
 }))
+// Exercise real dialog/frame message handling without loading external documents.
+vi.mock('../../utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../utils')>()
+  return {
+    ...actual,
+    getPluginLinkInMarketplace: (...args: Parameters<typeof actual.getPluginLinkInMarketplace>) =>
+      `about:blank${new URL(actual.getPluginLinkInMarketplace(...args), 'https://marketplace.example.test').search}`,
+    getTemplateLinkInMarketplace: (
+      ...args: Parameters<typeof actual.getTemplateLinkInMarketplace>
+    ) =>
+      `about:blank${new URL(actual.getTemplateLinkInMarketplace(...args), 'https://marketplace.example.test').search}`,
+  }
+})
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/marketplace')>()
+  return {
+    ...actual,
+    marketplaceQuery: {
+      ...actual.marketplaceQuery,
+      searchAdvanced: {
+        ...actual.marketplaceQuery.searchAdvanced,
+        queryOptions: (
+          options: Parameters<typeof actual.marketplaceQuery.searchAdvanced.queryOptions>[0],
+        ) => ({
+          ...actual.marketplaceQuery.searchAdvanced.queryOptions(options),
+          queryFn: () => mocks.searchPlugins(),
+        }),
+      },
+      templateSearch: {
+        ...actual.marketplaceQuery.templateSearch,
+        queryOptions: (
+          options: Parameters<typeof actual.marketplaceQuery.templateSearch.queryOptions>[0],
+        ) => ({
+          ...actual.marketplaceQuery.templateSearch.queryOptions(options),
+          queryFn: () => mocks.searchTemplates(),
+        }),
+      },
+    },
+  }
+})
 
-vi.mock('../../templates/template-detail-dialog', () => ({
-  default: ({
-    onInstall,
-    template,
-  }: {
-    onInstall: () => void
-    template: { template_name: string }
-  }) => (
-    <div role="dialog" aria-label="template-detail">
-      <span>{template.template_name}</span>
-      <button type="button" onClick={onInstall}>
-        Install template
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('../header', () => ({
-  default: ({
-    onSuggestionSelect,
-  }: {
-    onSuggestionSelect: (selection: MarketplaceSearchSelection) => void
-  }) => (
-    <>
-      <button
-        type="button"
-        onClick={() => {
-          onSuggestionSelect({ kind: 'plugin', plugin: searchPlugin })
-        }}
-      >
-        Select search plugin
-      </button>
-      <button type="button" onClick={() => onSuggestionSelect({ kind: 'template', template })}>
-        Select search template
-      </button>
-    </>
-  ),
-}))
+const renderWithNuqs = (element: ReactElement) => {
+  const { wrapper: UrlState, onUrlUpdate } = createNuqsTestWrapper()
+  const result = renderWithConsoleQuery(<UrlState>{element}</UrlState>)
+  return { ...result, onUrlUpdate }
+}
+const searchInput = () =>
+  screen.getByPlaceholderText('marketplace.creatorProfile.searchPlaceholder')
 
 describe('DifyCreatorProfile', () => {
   beforeEach(() => {
     deploymentState.deploymentEdition = 'CLOUD'
     vi.clearAllMocks()
+    mocks.searchPlugins.mockResolvedValue({ data: { plugins: [searchPlugin], total: 1 } })
+    mocks.searchTemplates.mockResolvedValue({ data: { templates: [template], total: 1 } })
   })
 
   it('opens the existing plugin detail flow with installed state', async () => {
@@ -199,10 +208,9 @@ describe('DifyCreatorProfile', () => {
 
     await user.click(screen.getByRole('button', { name: 'Deep Research' }))
 
-    const dialog = screen.getByRole('dialog', { name: 'plugin-detail' })
-    expect(dialog).toHaveTextContent('deep_research')
-    expect(dialog).toHaveTextContent('installed')
-    expect(screen.queryByTestId('install-plugin')).not.toBeInTheDocument()
+    await screen.findByRole('dialog', { name: /Deep Research/ })
+    const src = screen.getByTitle(/^Deep Research/).getAttribute('src')!
+    expect(new URL(src).searchParams.get('installed')).toBe('true')
   })
 
   it('opens a template detail and imports it inside Dify', async () => {
@@ -210,21 +218,30 @@ describe('DifyCreatorProfile', () => {
     renderWithNuqs(<DifyCreatorProfile loadedProfile={loadedProfile} locale="en-US" />)
 
     await user.click(screen.getByRole('button', { name: 'Research Template' }))
-    expect(screen.getByRole('dialog', { name: 'template-detail' })).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'Install template' }))
-    expect(mocks.push).toHaveBeenCalledWith('/apps?template-id=template-one')
+    await screen.findByRole('dialog', { name: /Research Template/ })
+    const frame = screen.getByTitle(/^Research Template/) as HTMLIFrameElement
+    fireEvent(
+      window,
+      new MessageEvent('message', {
+        data: { type: 'dify-marketplace:install-template', templateId: 'template-one' },
+        origin: 'null',
+        source: frame.contentWindow,
+      }),
+    )
+    expect(mocks.push).toHaveBeenCalledExactlyOnceWith('/apps?template-id=template-one')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
   it('opens search results in the same plugin dialog controller', async () => {
     const user = userEvent.setup()
     renderWithNuqs(<DifyCreatorProfile loadedProfile={loadedProfile} locale="en-US" />)
 
-    await user.click(screen.getByRole('button', { name: 'Select search plugin' }))
+    await user.type(searchInput(), 'search')
+    await user.click(await screen.findByRole('option', { name: /Search result/ }))
 
-    const dialog = screen.getByRole('dialog', { name: 'plugin-detail' })
-    expect(dialog).toHaveTextContent('search_result')
-    expect(dialog).toHaveTextContent('not installed')
+    await screen.findByRole('dialog', { name: /Search result/ })
+    const src = screen.getByTitle(/^Search result/).getAttribute('src')!
+    expect(new URL(src).searchParams.get('installed')).toBe('false')
   })
   it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
     'links %s creator inventory to official details',
@@ -256,10 +273,13 @@ describe('DifyCreatorProfile', () => {
       const { onUrlUpdate } = renderWithNuqs(
         <DifyCreatorProfile loadedProfile={loadedProfile} locale="en-US" />,
       )
-      await user.click(screen.getByRole('button', { name: 'Select search plugin' }))
+      await user.type(searchInput(), 'search')
+      await user.click(await screen.findByRole('option', { name: /Search result/ }))
       expect(open).toHaveBeenCalledTimes(1)
       expect(new URL(String(open.mock.calls[0]![0])).pathname).toBe('/plugin/dify/search_result')
-      await user.click(screen.getByRole('button', { name: 'Select search template' }))
+      await user.clear(searchInput())
+      await user.type(searchInput(), 'template')
+      await user.click(await screen.findByRole('option', { name: /Research Template/ }))
       expect(open).toHaveBeenCalledTimes(2)
       expect(new URL(String(open.mock.calls[1]![0])).pathname).toBe('/template/dify/template-one')
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()

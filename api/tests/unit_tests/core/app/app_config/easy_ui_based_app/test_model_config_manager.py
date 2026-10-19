@@ -1,10 +1,17 @@
-from unittest.mock import MagicMock
+from typing import cast
 
 import pytest
 from pytest_mock import MockerFixture
 
 # Target
 from core.app.app_config.easy_ui_based_app.model_config.manager import ModelConfigManager
+from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, SimpleModelProviderEntity
+from core.entities.provider_configuration import ProviderConfigurations
+from core.plugin.impl.model_runtime_factory import PluginModelAssembly
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import FetchFrom, ModelPropertyKey, ModelType
+from graphon.model_runtime.entities.provider_entities import ProviderEntity
+from models.model import AppModelConfigDict
 
 # -----------------------------
 # Fixtures
@@ -12,30 +19,49 @@ from core.app.app_config.easy_ui_based_app.model_config.manager import ModelConf
 
 
 @pytest.fixture
-def valid_completion_params():
+def valid_completion_params() -> dict[str, object]:
     return {"temperature": 0.7, "stop": ["\n"]}
 
 
 @pytest.fixture
-def valid_model_list():
-    model = MagicMock()
-    model.model = "gpt-4"
-    model.model_properties = {"mode": "chat"}
-    return [model]
+def valid_model_list(provider_entities: list[ProviderEntity]) -> list[ModelWithProviderEntity]:
+    return [
+        ModelWithProviderEntity(
+            model="gpt-4",
+            label=I18nObject(en_US="GPT-4"),
+            model_type=ModelType.LLM,
+            fetch_from=FetchFrom.PREDEFINED_MODEL,
+            model_properties={ModelPropertyKey.MODE: "chat"},
+            status=ModelStatus.ACTIVE,
+            provider=SimpleModelProviderEntity(provider_entities[0]),
+        )
+    ]
 
 
 @pytest.fixture
-def provider_entities():
-    provider = MagicMock()
-    provider.provider = "openai/gpt"
-    return [provider]
+def provider_entities() -> list[ProviderEntity]:
+    return [
+        ProviderEntity(
+            provider="langgenius/openai/openai",
+            label=I18nObject(en_US="OpenAI"),
+            supported_model_types=[ModelType.LLM],
+            configurate_methods=[],
+        )
+    ]
 
 
 @pytest.fixture
-def valid_config():
-    return {
-        "model": {"provider": "openai/gpt", "name": "gpt-4", "completion_params": {"temperature": 0.5, "stop": ["END"]}}
-    }
+def valid_config() -> AppModelConfigDict:
+    return cast(
+        AppModelConfigDict,
+        {
+            "model": {
+                "provider": "langgenius/openai/openai",
+                "name": "gpt-4",
+                "completion_params": {"temperature": 0.5, "stop": ["END"]},
+            }
+        },
+    )
 
 
 # -----------------------------
@@ -45,13 +71,37 @@ def valid_config():
 
 class TestModelConfigManager:
     @staticmethod
-    def _patch_model_assembly(mocker, *, provider_entities, model_list):
-        assembly = MagicMock()
-        assembly.model_provider_factory.get_providers.return_value = provider_entities
-        assembly.provider_manager.get_configurations.return_value.get_models.return_value = model_list
+    def _patch_model_assembly(
+        mocker: MockerFixture, *, provider_entities: list[ProviderEntity], model_list: list[ModelWithProviderEntity]
+    ) -> PluginModelAssembly:
+        assembly = PluginModelAssembly(tenant_id="tenant1")
+        configurations = ProviderConfigurations(tenant_id="tenant1")
+
+        def get_providers() -> list[ProviderEntity]:
+            return provider_entities
+
+        def get_configurations(tenant_id: str) -> ProviderConfigurations:
+            assert tenant_id == assembly.tenant_id
+            return configurations
+
+        def get_models(
+            self: ProviderConfigurations, *, provider: str, model_type: ModelType
+        ) -> list[ModelWithProviderEntity]:
+            assert self is configurations
+            assert provider in [entity.provider for entity in provider_entities]
+            assert model_type == ModelType.LLM
+            return model_list
+
+        def create_assembly(*, tenant_id: str) -> PluginModelAssembly:
+            assert tenant_id == assembly.tenant_id
+            return assembly
+
+        mocker.patch.object(assembly.model_provider_factory, "get_providers", new=get_providers)
+        mocker.patch.object(assembly.provider_manager, "get_configurations", new=get_configurations)
+        mocker.patch.object(ProviderConfigurations, "get_models", new=get_models)
         mocker.patch(
             "core.app.app_config.easy_ui_based_app.model_config.manager.create_plugin_model_assembly",
-            return_value=assembly,
+            new=create_assembly,
         )
         return assembly
 
@@ -59,21 +109,27 @@ class TestModelConfigManager:
     # convert
     # ==========================================================
 
-    def test_convert_success(self, valid_config):
+    def test_convert_success(self, valid_config: AppModelConfigDict) -> None:
         result = ModelConfigManager.convert(valid_config)
 
-        assert result.provider == "openai/gpt"
+        assert result.provider == "langgenius/openai/openai"
         assert result.model == "gpt-4"
         assert result.parameters == {"temperature": 0.5}
         assert result.stop == ["END"]
 
-    def test_convert_missing_model(self):
+    def test_convert_missing_model(self) -> None:
         with pytest.raises(ValueError, match="model is required"):
-            ModelConfigManager.convert({})
+            ModelConfigManager.convert(cast(AppModelConfigDict, {}))
 
-    def test_convert_without_stop(self):
-        config = {"model": {"provider": "openai/gpt", "name": "gpt-4", "completion_params": {"temperature": 0.9}}}
-        result = ModelConfigManager.convert(config)
+    def test_convert_without_stop(self) -> None:
+        config = {
+            "model": {
+                "provider": "langgenius/openai/openai",
+                "name": "gpt-4",
+                "completion_params": {"temperature": 0.9},
+            }
+        }
+        result = ModelConfigManager.convert(cast(AppModelConfigDict, config))
         assert result.stop == []
         assert result.parameters == {"temperature": 0.9}
 
@@ -85,21 +141,21 @@ class TestModelConfigManager:
         "invalid_cp",
         [None, "string", 123, []],
     )
-    def test_validate_model_completion_params_invalid_type(self, invalid_cp):
+    def test_validate_model_completion_params_invalid_type(self, invalid_cp: object) -> None:
         with pytest.raises(ValueError, match="must be of object type"):
-            ModelConfigManager.validate_model_completion_params(invalid_cp)
+            ModelConfigManager.validate_model_completion_params(invalid_cp)  # pyrefly: ignore[bad-argument-type]
 
-    def test_validate_model_completion_params_default_stop(self):
+    def test_validate_model_completion_params_default_stop(self) -> None:
         cp = {"temperature": 0.2}
         result = ModelConfigManager.validate_model_completion_params(cp)
         assert result["stop"] == []
 
-    def test_validate_model_completion_params_invalid_stop_type(self):
+    def test_validate_model_completion_params_invalid_stop_type(self) -> None:
         cp = {"stop": "invalid"}
         with pytest.raises(ValueError, match="must be of list type"):
             ModelConfigManager.validate_model_completion_params(cp)
 
-    def test_validate_model_completion_params_stop_length_exceeded(self):
+    def test_validate_model_completion_params_stop_length_exceeded(self) -> None:
         cp = {"stop": [1, 2, 3, 4, 5]}
         with pytest.raises(ValueError, match="less than 4"):
             ModelConfigManager.validate_model_completion_params(cp)
@@ -109,8 +165,12 @@ class TestModelConfigManager:
     # ==========================================================
 
     def test_validate_and_set_defaults_success(
-        self, mocker: MockerFixture, valid_config, provider_entities, valid_model_list
-    ):
+        self,
+        mocker: MockerFixture,
+        valid_config: AppModelConfigDict,
+        provider_entities: list[ProviderEntity],
+        valid_model_list: list[ModelWithProviderEntity],
+    ) -> None:
         self._patch_model_assembly(
             mocker,
             provider_entities=provider_entities,
@@ -122,46 +182,65 @@ class TestModelConfigManager:
         assert updated_config["model"]["mode"] == "chat"
         assert keys == ["model"]
 
-    def test_validate_and_set_defaults_missing_model(self):
+    def test_validate_and_set_defaults_missing_model(self) -> None:
         with pytest.raises(ValueError, match="model is required"):
             ModelConfigManager.validate_and_set_defaults("tenant1", {})
 
-    def test_validate_and_set_defaults_model_not_dict(self):
+    def test_validate_and_set_defaults_model_not_dict(self) -> None:
         with pytest.raises(ValueError, match="object type"):
             ModelConfigManager.validate_and_set_defaults("tenant1", {"model": "invalid"})
 
-    def test_validate_and_set_defaults_missing_provider(self, mocker: MockerFixture, provider_entities):
-        config = {"model": {"name": "gpt-4", "completion_params": {}}}
+    def test_validate_and_set_defaults_missing_provider(
+        self, mocker: MockerFixture, provider_entities: list[ProviderEntity]
+    ) -> None:
+        config = {"model": {"name": "gpt-4", "completion_params": dict[str, object]()}}
         self._patch_model_assembly(mocker, provider_entities=provider_entities, model_list=[])
 
         with pytest.raises(ValueError, match="model.provider is required"):
             ModelConfigManager.validate_and_set_defaults("tenant1", config)
 
-    def test_validate_and_set_defaults_invalid_provider(self, mocker: MockerFixture, provider_entities):
-        config = {"model": {"provider": "invalid/provider", "name": "gpt-4", "completion_params": {}}}
+    def test_validate_and_set_defaults_invalid_provider(
+        self, mocker: MockerFixture, provider_entities: list[ProviderEntity]
+    ) -> None:
+        config = {"model": {"provider": "invalid/provider", "name": "gpt-4", "completion_params": dict[str, object]()}}
         self._patch_model_assembly(mocker, provider_entities=provider_entities, model_list=[])
 
         with pytest.raises(ValueError, match="model.provider is required"):
             ModelConfigManager.validate_and_set_defaults("tenant1", config)
 
-    def test_validate_and_set_defaults_missing_name(self, mocker: MockerFixture, provider_entities):
-        config = {"model": {"provider": "openai/gpt", "completion_params": {}}}
+    def test_validate_and_set_defaults_missing_name(
+        self, mocker: MockerFixture, provider_entities: list[ProviderEntity]
+    ) -> None:
+        config = {"model": {"provider": "langgenius/openai/openai", "completion_params": dict[str, object]()}}
         self._patch_model_assembly(mocker, provider_entities=provider_entities, model_list=[])
 
         with pytest.raises(ValueError, match="model.name is required"):
             ModelConfigManager.validate_and_set_defaults("tenant1", config)
 
-    def test_validate_and_set_defaults_empty_models(self, mocker: MockerFixture, provider_entities):
-        config = {"model": {"provider": "openai/gpt", "name": "gpt-4", "completion_params": {}}}
+    def test_validate_and_set_defaults_empty_models(
+        self, mocker: MockerFixture, provider_entities: list[ProviderEntity]
+    ) -> None:
+        config = {
+            "model": {"provider": "langgenius/openai/openai", "name": "gpt-4", "completion_params": dict[str, object]()}
+        }
         self._patch_model_assembly(mocker, provider_entities=provider_entities, model_list=[])
 
         with pytest.raises(ValueError, match="must be in the specified model list"):
             ModelConfigManager.validate_and_set_defaults("tenant1", config)
 
     def test_validate_and_set_defaults_invalid_model_name(
-        self, mocker: MockerFixture, provider_entities, valid_model_list
-    ):
-        config = {"model": {"provider": "openai/gpt", "name": "invalid", "completion_params": {}}}
+        self,
+        mocker: MockerFixture,
+        provider_entities: list[ProviderEntity],
+        valid_model_list: list[ModelWithProviderEntity],
+    ) -> None:
+        config = {
+            "model": {
+                "provider": "langgenius/openai/openai",
+                "name": "invalid",
+                "completion_params": dict[str, object](),
+            }
+        }
         self._patch_model_assembly(
             mocker,
             provider_entities=provider_entities,
@@ -171,12 +250,18 @@ class TestModelConfigManager:
         with pytest.raises(ValueError, match="must be in the specified model list"):
             ModelConfigManager.validate_and_set_defaults("tenant1", config)
 
-    def test_validate_and_set_defaults_default_mode_when_missing(self, mocker: MockerFixture, provider_entities):
-        model = MagicMock()
-        model.model = "gpt-4"
-        model.model_properties = {}
+    def test_validate_and_set_defaults_default_mode_when_missing(
+        self,
+        mocker: MockerFixture,
+        provider_entities: list[ProviderEntity],
+        valid_model_list: list[ModelWithProviderEntity],
+    ) -> None:
+        model = valid_model_list[0]
+        model.model_properties = dict[ModelPropertyKey, object]()
 
-        config = {"model": {"provider": "openai/gpt", "name": "gpt-4", "completion_params": {}}}
+        config = {
+            "model": {"provider": "langgenius/openai/openai", "name": "gpt-4", "completion_params": dict[str, object]()}
+        }
         self._patch_model_assembly(mocker, provider_entities=provider_entities, model_list=[model])
 
         updated_config, _ = ModelConfigManager.validate_and_set_defaults("tenant1", config)
@@ -184,9 +269,12 @@ class TestModelConfigManager:
         assert updated_config["model"]["mode"] == "completion"
 
     def test_validate_and_set_defaults_missing_completion_params(
-        self, mocker: MockerFixture, provider_entities, valid_model_list
-    ):
-        config = {"model": {"provider": "openai/gpt", "name": "gpt-4"}}
+        self,
+        mocker: MockerFixture,
+        provider_entities: list[ProviderEntity],
+        valid_model_list: list[ModelWithProviderEntity],
+    ) -> None:
+        config = {"model": {"provider": "langgenius/openai/openai", "name": "gpt-4"}}
         self._patch_model_assembly(
             mocker,
             provider_entities=provider_entities,
@@ -196,7 +284,12 @@ class TestModelConfigManager:
         with pytest.raises(ValueError, match="completion_params is required"):
             ModelConfigManager.validate_and_set_defaults("tenant1", config)
 
-    def test_validate_and_set_defaults_provider_without_slash_converted(self, mocker: MockerFixture, valid_model_list):
+    def test_validate_and_set_defaults_provider_without_slash_converted(
+        self,
+        mocker: MockerFixture,
+        provider_entities: list[ProviderEntity],
+        valid_model_list: list[ModelWithProviderEntity],
+    ) -> None:
         """
         Covers branch where provider does not contain '/' and
         ModelProviderID conversion is triggered (line 64).
@@ -205,19 +298,12 @@ class TestModelConfigManager:
             "model": {
                 "provider": "openai",  # no slash -> triggers conversion
                 "name": "gpt-4",
-                "completion_params": {},
+                "completion_params": dict[str, object](),
             }
         }
 
-        # Mock ModelProviderID to return formatted provider
-        mock_provider_id = mocker.patch("core.app.app_config.easy_ui_based_app.model_config.manager.ModelProviderID")
-        mock_provider_id.return_value = "openai/gpt"
-        provider_entity = MagicMock()
-        provider_entity.provider = "openai/gpt"
-        self._patch_model_assembly(mocker, provider_entities=[provider_entity], model_list=valid_model_list)
+        self._patch_model_assembly(mocker, provider_entities=provider_entities, model_list=valid_model_list)
 
         updated_config, _ = ModelConfigManager.validate_and_set_defaults("tenant1", config)
 
-        # Ensure conversion happened
-        mock_provider_id.assert_called_once_with("openai")
-        assert updated_config["model"]["provider"] == "openai/gpt"
+        assert updated_config["model"]["provider"] == "langgenius/openai/openai"

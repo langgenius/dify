@@ -43,7 +43,7 @@ def test_resolve_graph_runtime_state_reads_from_queue_when_cache_empty():
 def test_resolve_graph_runtime_state_raises_when_no_state_available():
     pipeline = _StubPipeline(cached_state=None, queue_state=None)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="graph runtime state not initialized\\."):
         pipeline._resolve_graph_runtime_state()
 
 
@@ -60,5 +60,5 @@ def test_extract_workflow_run_id_raises_when_missing():
     state = _make_state(None)
     pipeline = _StubPipeline(cached_state=state, queue_state=None)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="workflow_execution_id missing from runtime state"):
         pipeline._extract_workflow_run_id(state)

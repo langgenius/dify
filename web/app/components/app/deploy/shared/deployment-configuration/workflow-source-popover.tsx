@@ -5,7 +5,6 @@ import type {
   WorkflowPath,
   WorkflowReference,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import type { AppIconType } from '@/types/app'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -13,29 +12,13 @@ import AppIcon from '@/app/components/base/app-icon'
 import Link from '@/next/link'
 import { uniqueWorkflowPaths, workflowPathKey } from './utils/workflow-path'
 
-function workflowReferenceIconType(reference: WorkflowReference): AppIconType | undefined {
-  if (reference.icon_type === 'emoji') return 'emoji'
-  if (reference.icon_type === 'image' || reference.icon_type === 'link') return 'image'
-
-  return undefined
-}
-
-function workflowReferenceImageUrl(reference: WorkflowReference) {
-  if (reference.icon_type !== 'image' && reference.icon_type !== 'link') return undefined
-
-  return reference.icon_url ?? reference.icon
-}
-
 export function WorkflowReferenceIcon({ reference }: { reference: WorkflowReference }) {
   return (
     <span aria-hidden className="shrink-0">
       <AppIcon
         size="xs"
-        iconType={workflowReferenceIconType(reference)}
-        icon={reference.icon}
-        background={reference.icon_background}
-        imageUrl={workflowReferenceImageUrl(reference)}
         className="size-5 rounded-md text-sm"
+        icon={{ ...reference, icon_url: reference.icon_url ?? reference.icon }}
       />
     </span>
   )
@@ -122,7 +105,7 @@ export function WorkflowDependencyPreview({
         render={
           <button
             type="button"
-            className="group/source flex min-w-0 shrink-0 cursor-help items-center gap-1 rounded-sm outline-hidden focus-visible:ring-1 focus-visible:ring-state-accent-solid"
+            className="group/source flex min-w-0 shrink-0 cursor-help items-center gap-1 rounded-sm"
           >
             <span className="sr-only">{subjectName}: </span>
             <span className="shrink-0 system-xs-regular text-text-tertiary">
@@ -160,7 +143,7 @@ export function SubworkflowSourceTitle({ source }: { source: WorkflowAsToolSourc
         render={
           <button
             type="button"
-            className="group/source max-w-full min-w-0 cursor-help truncate rounded-sm border-b border-dotted border-text-quaternary text-start system-sm-semibold text-text-primary outline-hidden hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-state-accent-solid data-popup-open:text-text-secondary"
+            className="group/source max-w-full min-w-0 cursor-help truncate rounded-sm border-b border-dotted border-text-quaternary text-start system-sm-semibold text-text-primary hover:text-text-secondary data-popup-open:text-text-secondary"
           >
             {workflow.name}
           </button>

@@ -1,11 +1,10 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { useExportPipelineDSL } from '@/service/use-pipeline'
 import { downloadBlob } from '@/utils/download'
 
 type ModalState = {
@@ -16,7 +15,7 @@ type ModalState = {
 }
 
 type UseDatasetCardStateOptions = {
-  dataset: DataSet
+  dataset: DatasetDetailWithPartialMembersResponse
   onSuccess?: () => void
 }
 
@@ -61,7 +60,9 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
   const { mutateAsync: deleteDatasetMutation } = useMutation(
     consoleQuery.datasets.byDatasetId.delete.mutationOptions(),
   )
-  const { mutateAsync: exportPipelineConfig } = useExportPipelineDSL()
+  const { mutateAsync: exportPipelineConfig } = useMutation(
+    consoleQuery.rag.pipelines.byPipelineId.exports.get.mutationOptions(),
+  )
 
   // Export pipeline handler
   const handleExportPipeline = useCallback(
@@ -72,8 +73,8 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
       try {
         setExporting(true)
         const { data } = await exportPipelineConfig({
-          pipelineId: pipeline_id,
-          include,
+          params: { pipeline_id },
+          query: { include_secret: String(include) },
         })
         const file = new Blob([data], { type: 'application/yaml' })
         downloadBlob({ data: file, fileName: `${name}.pipeline` })
@@ -110,12 +111,9 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
         showConfirmDelete: true,
       }))
     } catch (e: unknown) {
-      if (e instanceof Response) {
-        const res = await e.json()
-        toast.error(res?.message || t(($) => $.unknownError, { ns: 'dataset' }))
-      } else {
-        toast.error((e as Error)?.message || t(($) => $.unknownError, { ns: 'dataset' }))
-      }
+      toast.error(
+        (e instanceof Error ? e.message : '') || t(($) => $.unknownError, { ns: 'dataset' }),
+      )
     }
   }, [dataset.id, queryClient, t])
 
@@ -126,12 +124,11 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
           dataset_id: dataset.id,
         },
       })
-      toast.success(t(($) => $.datasetDeleted, { ns: 'dataset' }))
       onSuccess?.()
     } finally {
       closeConfirmDelete()
     }
-  }, [dataset.id, deleteDatasetMutation, onSuccess, t, closeConfirmDelete])
+  }, [dataset.id, deleteDatasetMutation, onSuccess, closeConfirmDelete])
 
   return {
     // Modal state

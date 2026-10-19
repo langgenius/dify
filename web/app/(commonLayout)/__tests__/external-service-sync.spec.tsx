@@ -1,6 +1,8 @@
-import { render, waitFor } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { waitFor } from '@testing-library/react'
 import { REGISTRATION_SUCCESS_STORAGE_KEY } from '@/app/components/base/amplitude/registration-session-state'
 import { rememberRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AmplitudeIdentitySync } from '../external-service-sync'
 
 const { mockSetUserId, mockSetUserProperties, mockTrackEvent } = vi.hoisted(() => ({
@@ -9,38 +11,6 @@ const { mockSetUserId, mockSetUserProperties, mockTrackEvent } = vi.hoisted(() =
   mockTrackEvent: vi.fn((..._args: unknown[]) => ({
     promise: Promise.resolve({ code: 200 }),
   })),
-}))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const original = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...original,
-    useSuspenseQuery: () => ({
-      data: {
-        id: 'account-id',
-        email: 'person@example.com',
-        name: 'Person',
-        is_password_set: true,
-      },
-    }),
-  }
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const original = await importOriginal<typeof import('jotai')>()
-  return {
-    ...original,
-    useAtomValue: () => ({
-      id: 'workspace-id',
-      name: 'Workspace',
-      plan: 'professional',
-      role: 'owner',
-    }),
-  }
-})
-
-vi.mock('@/features/account-profile/client', () => ({
-  userProfileQueryOptions: () => ({}),
 }))
 
 vi.mock('@/app/components/base/amplitude', () => ({
@@ -65,14 +35,32 @@ vi.mock('@/app/components/base/analytics-consent/consent-store', async (importOr
   }
 })
 
+const render = (ui: ReactElement) =>
+  renderWithConsoleQuery(ui, {
+    accountProfile: {
+      id: 'account-id',
+      email: 'person@example.com',
+      name: 'Person',
+      is_password_set: true,
+    },
+    currentWorkspace: {
+      id: 'workspace-id',
+      name: 'Workspace',
+      plan: 'professional',
+      role: 'owner',
+    },
+  })
+
 describe('AmplitudeIdentitySync', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    window.sessionStorage.clear()
+    window.sessionStorage.removeItem(REGISTRATION_SUCCESS_STORAGE_KEY)
     vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(
       '11111111-1111-4111-8111-111111111111',
     )
   })
+
+  afterEach(() => vi.restoreAllMocks())
 
   it('sets identity before flushing a marker that already exists', async () => {
     rememberRegistrationSuccess({ method: 'oauth' })
@@ -81,7 +69,15 @@ describe('AmplitudeIdentitySync', () => {
 
     await waitFor(() => expect(mockTrackEvent).toHaveBeenCalledTimes(1))
     expect(mockSetUserId).toHaveBeenCalledWith('person@example.com')
-    expect(mockSetUserProperties).toHaveBeenCalledTimes(1)
+    expect(mockSetUserProperties).toHaveBeenCalledExactlyOnceWith({
+      email: 'person@example.com',
+      name: 'Person',
+      has_password: true,
+      workspace_id: 'workspace-id',
+      workspace_name: 'Workspace',
+      workspace_plan: 'professional',
+      workspace_role: 'owner',
+    })
     expect(mockSetUserId.mock.invocationCallOrder[0]).toBeLessThan(
       mockTrackEvent.mock.invocationCallOrder[0]!,
     )

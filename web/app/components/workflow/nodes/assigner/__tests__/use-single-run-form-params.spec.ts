@@ -1,17 +1,9 @@
 import type { AssignerNodeOperation, AssignerNodeType } from '../types'
 import type { InputVar } from '@/app/components/workflow/types'
-import { renderHook } from '@testing-library/react'
+import { renderWorkflowFlowHook as renderHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
-import useNodeCrud from '../../_base/hooks/use-node-crud'
 import { AssignerNodeInputType, WriteMode } from '../types'
 import useSingleRunFormParams from '../use-single-run-form-params'
-
-vi.mock('../../_base/hooks/use-node-crud', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}))
-
-const mockUseNodeCrud = vi.mocked(useNodeCrud)
 
 const createOperation = (
   overrides: Partial<AssignerNodeOperation> = {},
@@ -49,10 +41,6 @@ const createData = (overrides: Partial<AssignerNodeType> = {}): AssignerNodeType
 describe('assigner/use-single-run-form-params', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseNodeCrud.mockReturnValue({
-      inputs: createData(),
-      setInputs: vi.fn(),
-    } as unknown as ReturnType<typeof useNodeCrud>)
   })
 
   it('exposes only variable-driven dependencies in the single-run form', () => {

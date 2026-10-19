@@ -166,7 +166,7 @@ def test_invalid_metadata_never_writes(
     doc_type: str | None,
     metadata: dict[str, object] | None,
 ) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="(?:Both doc_type and doc_metadata must be provided\\.|Invalid doc_type\\.)"):
         service.update_metadata(
             CONTEXT, dataset_id="dataset-1", document_id="document-1", doc_type=doc_type, doc_metadata=metadata
         )
