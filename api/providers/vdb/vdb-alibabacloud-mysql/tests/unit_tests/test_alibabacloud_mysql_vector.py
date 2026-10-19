@@ -468,7 +468,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
 
         vector_store = AlibabaCloudMySQLVector(self.collection_name, self.config)
         query_vector = [0.1, 0.2, 0.3, 0.4]
-        docs = vector_store.search_by_vector(query_vector, top_k=5, document_ids_filter=["dataset1"])
+        vector_store.search_by_vector(query_vector, top_k=5, document_ids_filter=["dataset1"])
 
         # Verify the SQL contains the WHERE clause for filtering
         execute_calls = mock_cursor.execute.call_args_list
@@ -578,7 +578,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
         mock_cursor.__iter__ = lambda self: iter([])
 
         vector_store = AlibabaCloudMySQLVector(self.collection_name, self.config)
-        docs = vector_store.search_by_full_text("machine learning", top_k=5, document_ids_filter=["dataset1"])
+        vector_store.search_by_full_text("machine learning", top_k=5, document_ids_filter=["dataset1"])
 
         # Verify the SQL contains the AND clause for filtering
         execute_calls = mock_cursor.execute.call_args_list

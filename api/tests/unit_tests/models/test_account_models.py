@@ -648,7 +648,6 @@ class TestTenantModel:
         """Test custom_config_dict property getter."""
         # Arrange
         tenant = Tenant(name="Test Workspace")
-        config = {"feature1": True, "feature2": "value"}
         tenant.custom_config = '{"feature1": true, "feature2": "value"}'
 
         # Act

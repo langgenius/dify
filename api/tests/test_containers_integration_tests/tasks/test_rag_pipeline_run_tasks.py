@@ -613,7 +613,7 @@ class TestRagPipelineRunTasks:
 
         # Mock file service
         file_id1 = str(uuid.uuid4())
-        file_id2 = str(uuid.uuid4())
+        str(uuid.uuid4())
         mock_file_service["get_content"].side_effect = [file_content1, file_content2]
 
         # Use real Redis for TenantIsolatedTaskQueue
@@ -680,7 +680,7 @@ class TestRagPipelineRunTasks:
 
         # Mock file service
         file_id1 = str(uuid.uuid4())
-        file_id2 = str(uuid.uuid4())
+        str(uuid.uuid4())
         mock_file_service["get_content"].side_effect = [file_content1, file_content2]
 
         # Use real Redis for TenantIsolatedTaskQueue
@@ -772,7 +772,7 @@ class TestRagPipelineRunTasks:
         - Function raises ValueError for missing entities
         """
         # Arrange: Create entity data with valid UUIDs but non-existent entities
-        fake = Faker()
+
         invalid_entity_data = {
             "pipeline_id": str(uuid.uuid4()),
             "application_generate_entity": {
@@ -817,7 +817,7 @@ class TestRagPipelineRunTasks:
         - Function raises ValueError for missing entities
         """
         # Arrange: Create test data with non-existent IDs
-        fake = Faker()
+
         entity_data = {
             "pipeline_id": str(uuid.uuid4()),
             "application_generate_entity": {

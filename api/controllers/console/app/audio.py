@@ -440,7 +440,7 @@ def _get_text_to_speech_voices(*, tenant_id: str, language: str):
         raise CompletionRequestError(e.description)
     except ValueError as e:
         raise e
-    except Exception as e:
+    except Exception:
         logger.exception("Failed to handle get request to TextModesApi")
         raise InternalServerError()
 

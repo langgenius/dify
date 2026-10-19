@@ -90,7 +90,7 @@ def test_request_builder_outputs_dify_agent_create_run_request() -> None:
 
 def test_request_builder_separates_agent_soul_and_workflow_job_prompt() -> None:
     request = AgentBackendRunRequestBuilder().build_for_workflow_node(_run_input())
-    layers = {layer.name: layer for layer in request.composition.layers}
+    {layer.name: layer for layer in request.composition.layers}
 
     dumped = request.model_dump(mode="json")
     assert dumped["composition"]["layers"][0]["config"]["prefix"] == "You are a careful reviewer."
