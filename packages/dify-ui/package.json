@@ -9,6 +9,22 @@
       "types": "./src/cn.ts",
       "import": "./src/cn.ts"
     },
+    "./use-merged-refs": {
+      "types": "./src/use-merged-refs.ts",
+      "import": "./src/use-merged-refs.ts"
+    },
+    "./use-ref-with-init": {
+      "types": "./src/use-ref-with-init.ts",
+      "import": "./src/use-ref-with-init.ts"
+    },
+    "./use-render": {
+      "types": "./src/use-render.ts",
+      "import": "./src/use-render.ts"
+    },
+    "./merge-props": {
+      "types": "./src/merge-props.ts",
+      "import": "./src/merge-props.ts"
+    },
     "./alert-dialog": {
       "types": "./src/alert-dialog/index.tsx",
       "import": "./src/alert-dialog/index.tsx"

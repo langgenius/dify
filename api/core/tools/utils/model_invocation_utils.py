@@ -154,7 +154,7 @@ class ModelInvocationUtils:
             raise InvokeModelError(f"Invoke bad request error: {e}")
         except InvokeConnectionError as e:
             raise InvokeModelError(f"Invoke connection error: {e}")
-        except InvokeAuthorizationError as e:
+        except InvokeAuthorizationError:
             raise InvokeModelError("Invoke authorization error")
         except InvokeServerUnavailableError as e:
             raise InvokeModelError(f"Invoke server unavailable error: {e}")

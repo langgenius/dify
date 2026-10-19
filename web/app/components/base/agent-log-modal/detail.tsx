@@ -1,7 +1,7 @@
 'use client'
+import type { AgentLogResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
-import type { AgentLogDetailResponse } from '@/models/log'
 import { cn } from '@langgenius/dify-ui/cn'
 import { uniq } from 'es-toolkit/array'
 import * as React from 'react'
@@ -9,7 +9,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
-import { fetchAgentLogDetail } from '@/service/log'
+import { consoleClient } from '@/service/console'
 import ResultPanel from './result'
 import TracingPanel from './tracing'
 
@@ -79,7 +79,7 @@ function AgentLogContent({
   currentTab,
 }: AgentLogContentProps) {
   const [loading, setLoading] = useState(true)
-  const [runDetail, setRunDetail] = useState<AgentLogDetailResponse>()
+  const [runDetail, setRunDetail] = useState<AgentLogResponse>()
   const tools = useMemo(
     () =>
       uniq(
@@ -94,21 +94,23 @@ function AgentLogContent({
 
   useEffect(() => {
     let active = true
-    fetchAgentLogDetail({
-      appID: appId,
-      params: { conversation_id: conversationID, message_id: messageID },
-    }).then(
-      (data) => {
-        if (!active) return
-        setRunDetail(data)
-        setLoading(false)
-      },
-      (error) => {
-        if (!active) return
-        toast.error(`${error}`)
-        setLoading(false)
-      },
-    )
+    consoleClient.apps.byAppId.agent.logs
+      .get({
+        params: { app_id: appId },
+        query: { conversation_id: conversationID, message_id: messageID },
+      })
+      .then(
+        (data) => {
+          if (!active) return
+          setRunDetail(data)
+          setLoading(false)
+        },
+        (error) => {
+          if (!active) return
+          toast.error(error instanceof Error ? error.message : String(error))
+          setLoading(false)
+        },
+      )
     return () => {
       active = false
     }
@@ -131,8 +133,7 @@ function AgentLogContent({
           inputs={log.input}
           outputs={log.content}
           status={runDetail.meta.status}
-          error={runDetail.meta.error}
-          elapsed_time={runDetail.meta.elapsed_time}
+          elapsed_time={runDetail.meta.elapsed_time ?? undefined}
           total_tokens={runDetail.meta.total_tokens}
           created_at={runDetail.meta.start_time}
           created_by={runDetail.meta.executor}

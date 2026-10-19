@@ -1,9 +1,6 @@
 'use client'
 
-import type {
-  AgentIconType,
-  AgentReferencingWorkflowResponse,
-} from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentReferencingWorkflowResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
@@ -111,14 +108,6 @@ export function WorkflowReferencesTable({ agentId, enabled = true }: WorkflowRef
 function WorkflowAccessRow({ reference }: { reference: AgentReferencingWorkflowResponse }) {
   const { t } = useTranslation(['agentV2', 'agentRoster'])
   const { formatTime } = useTimestamp()
-  const imageUrl =
-    reference.app_icon_type === 'image' || reference.app_icon_type === 'link'
-      ? reference.app_icon
-      : undefined
-  const iconType = (imageUrl ? 'image' : reference.app_icon_type) as
-    | AgentIconType
-    | null
-    | undefined
   const updatedAt =
     reference.app_updated_at != null
       ? formatTime(
@@ -135,11 +124,13 @@ function WorkflowAccessRow({ reference }: { reference: AgentReferencingWorkflowR
           <span aria-hidden className="shrink-0">
             <AppIcon
               size="small"
-              rounded
-              iconType={iconType}
-              icon={reference.app_icon ?? undefined}
-              background={reference.app_icon_background}
-              imageUrl={imageUrl}
+              shape="circle"
+              icon={{
+                icon_type: reference.app_icon_type,
+                icon: reference.app_icon,
+                icon_url: reference.app_icon,
+                icon_background: reference.app_icon_background,
+              }}
             />
           </span>
           <span className="truncate">{reference.app_name}</span>

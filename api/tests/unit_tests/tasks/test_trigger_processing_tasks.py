@@ -1,7 +1,8 @@
-from collections.abc import Mapping
+from collections.abc import Generator, Mapping
 from unittest.mock import MagicMock, patch
 
 import pytest
+from typing_extensions import TypedDict
 
 import tasks.trigger_processing_tasks as trigger_processing_tasks_module
 from core.plugin.entities.plugin_daemon import CredentialType
@@ -59,6 +60,17 @@ class _EndUserServiceStub:
         return self.result
 
 
+class _DispatchMocks(TypedDict, closed=True):
+    get_workflows: MagicMock
+    reserve: MagicMock
+    quota_charge: MagicMock
+    mark_rate_limited: MagicMock
+    invoke_trigger_event: MagicMock
+    invoke_response: MagicMock
+    end_users: _EndUserServiceStub
+    trigger_workflow_async: MagicMock
+
+
 class TestDispatchTriggeredWorkflow:
     """Unit tests covering branch behaviours of ``dispatch_triggered_workflow``.
 
@@ -71,7 +83,7 @@ class TestDispatchTriggeredWorkflow:
     """
 
     @pytest.fixture
-    def subscription(self):
+    def subscription(self) -> TriggerSubscription:
         subscription = TriggerSubscription(
             tenant_id="tenant-123",
             user_id="user-123",
@@ -87,7 +99,7 @@ class TestDispatchTriggeredWorkflow:
         return subscription
 
     @pytest.fixture
-    def plugin_trigger(self):
+    def plugin_trigger(self) -> WorkflowPluginTrigger:
         trigger = WorkflowPluginTrigger(
             app_id="app-123",
             node_id="node-123",
@@ -100,7 +112,7 @@ class TestDispatchTriggeredWorkflow:
         return trigger
 
     @pytest.fixture
-    def provider_controller(self):
+    def provider_controller(self) -> MagicMock:
         controller = MagicMock()
         controller.plugin_unique_identifier = "langgenius/test_plugin:0.0.1"
         controller.entity.identity.name = "Test Plugin"
@@ -109,7 +121,9 @@ class TestDispatchTriggeredWorkflow:
         return controller
 
     @pytest.fixture
-    def dispatch_mocks(self, subscription, plugin_trigger, provider_controller):
+    def dispatch_mocks(
+        self, plugin_trigger: WorkflowPluginTrigger, provider_controller: MagicMock
+    ) -> Generator[_DispatchMocks]:
         """Patch all external dependencies reached by ``dispatch_triggered_workflow``.
 
         Defaults are configured so the code flow can reach the final async
@@ -119,7 +133,7 @@ class TestDispatchTriggeredWorkflow:
         """
         invoke_response = MagicMock()
         invoke_response.cancelled = False
-        invoke_response.variables = {}
+        invoke_response.variables = dict[str, object]()
 
         quota_charge = MagicMock()
         end_users = _EndUserServiceStub()
@@ -184,9 +198,11 @@ class TestDispatchTriggeredWorkflow:
                 "trigger_workflow_async": trigger_workflow_async,
             }
 
-    def test_dispatch_skips_when_workflow_missing(self, subscription, dispatch_mocks):
+    def test_dispatch_skips_when_workflow_missing(
+        self, subscription: TriggerSubscription, dispatch_mocks: _DispatchMocks
+    ) -> None:
         """Covers missing workflow → log + ``continue``."""
-        dispatch_mocks["get_workflows"].return_value = {}
+        dispatch_mocks["get_workflows"].return_value = dict[str, object]()
 
         dispatched = dispatch_triggered_workflow(
             user_id="user-123",
@@ -201,7 +217,9 @@ class TestDispatchTriggeredWorkflow:
         dispatch_mocks["invoke_trigger_event"].assert_not_called()
         dispatch_mocks["mark_rate_limited"].assert_not_called()
 
-    def test_dispatch_marks_rate_limited_when_quota_exceeded(self, subscription, plugin_trigger, dispatch_mocks):
+    def test_dispatch_marks_rate_limited_when_quota_exceeded(
+        self, subscription: TriggerSubscription, plugin_trigger: WorkflowPluginTrigger, dispatch_mocks: _DispatchMocks
+    ) -> None:
         """Covers QuotaExceededError → mark rate-limited + early return."""
         workflow = _workflow()
         dispatch_mocks["get_workflows"].return_value = {plugin_trigger.app_id: workflow}
@@ -223,8 +241,8 @@ class TestDispatchTriggeredWorkflow:
         dispatch_mocks["invoke_trigger_event"].assert_not_called()
 
     def test_dispatch_commits_quota_and_counts_when_workflow_triggered(
-        self, subscription, plugin_trigger, dispatch_mocks
-    ):
+        self, subscription: TriggerSubscription, plugin_trigger: WorkflowPluginTrigger, dispatch_mocks: _DispatchMocks
+    ) -> None:
         """Happy path: end user exists and async trigger succeeds."""
         workflow = _workflow()
         dispatch_mocks["get_workflows"].return_value = {plugin_trigger.app_id: workflow}

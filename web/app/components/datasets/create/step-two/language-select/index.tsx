@@ -13,7 +13,7 @@ import {
 import * as React from 'react'
 import { languages } from '@/i18n/language'
 
-export type ILanguageSelectProps = {
+type ILanguageSelectProps = {
   currentLanguage: string
   onSelect: (language: string) => void
   disabled?: boolean

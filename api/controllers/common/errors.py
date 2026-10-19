@@ -4,10 +4,10 @@ from http import HTTPStatus
 from typing import NoReturn, cast
 
 from flask import current_app, got_request_exception
-from flask_restx import Api
 from werkzeug.exceptions import HTTPException
 
 from libs.exception import BaseHTTPException
+from libs.external_api import ExternalApi
 from services.annotation.errors import AnnotationResourceNotFoundError
 from services.errors.base import NoPermissionError
 from services.errors.dataset import DatasetNotFoundError
@@ -103,6 +103,12 @@ class UnauthorizedError(BaseHTTPException):
     description = "Authentication is required."
 
 
+class ForbiddenError(BaseHTTPException):
+    error_code = "forbidden"
+    code = HTTPStatus.FORBIDDEN
+    description = "You don't have the permission to access the requested resource."
+
+
 class InternalServerError(BaseHTTPException):
     """Expose a safe response while retaining the original exception in server logs."""
 
@@ -174,7 +180,7 @@ def raise_unexpected_error(error: Exception, *, message: str) -> NoReturn:
     raise InternalServerError() from error
 
 
-def register_resource_error_handlers(api: Api) -> None:
+def register_resource_error_handlers(api: ExternalApi) -> None:
     """Translate annotation and document failures at the HTTP boundary."""
 
     def missing_resource(error: Exception) -> tuple[dict[str, str | int], int]:
@@ -195,9 +201,21 @@ def register_resource_error_handlers(api: Api) -> None:
         cast(OrderedDict[type[Exception], object], api.error_handlers).move_to_end(error_type, last=False)
     api.errorhandler(DocumentAccessDeniedError)(document_access_denied)
     cast(OrderedDict[type[Exception], object], api.error_handlers).move_to_end(DocumentAccessDeniedError, last=False)
+    for error_type in (
+        AnnotationResourceNotFoundError,
+        DatasetNotFoundError,
+        DocumentNotFoundError,
+        DocumentSourceNotFoundError,
+    ):
+        api.document_error_handler(error_type, status=HTTPStatus.NOT_FOUND, code=NotFoundError.error_code)
+    api.document_error_handler(
+        DocumentAccessDeniedError,
+        status=HTTPStatus.FORBIDDEN,
+        code=ForbiddenError.error_code,
+    )
 
 
-def register_permission_error_handler(api: Api) -> None:
+def register_permission_error_handler(api: ExternalApi) -> None:
     """Preserve the default permission-error response for Console and Service API."""
 
     @api.errorhandler(NoPermissionError)
@@ -211,3 +229,4 @@ def register_permission_error_handler(api: Api) -> None:
 
     # Flask-RESTX picks the first matching handler, including the generic Exception handler.
     cast(OrderedDict[type[Exception], object], api.error_handlers).move_to_end(NoPermissionError, last=False)
+    api.document_error_handler(NoPermissionError, status=HTTPStatus.BAD_REQUEST, code=InvalidArgumentError.error_code)

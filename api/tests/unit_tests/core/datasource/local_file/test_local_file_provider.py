@@ -9,7 +9,7 @@ from tests.unit_tests.core.datasource.factories import datasource_entity, provid
 
 
 class TestLocalFileDatasourcePluginProviderController:
-    def test_init(self):
+    def test_init(self) -> None:
         # Arrange
         entity = provider_entity(DatasourceProviderType.LOCAL_FILE)
         plugin_id = "test_plugin_id"
@@ -30,7 +30,7 @@ class TestLocalFileDatasourcePluginProviderController:
         assert controller.plugin_unique_identifier == plugin_unique_identifier
         assert controller.tenant_id == tenant_id
 
-    def test_provider_type(self):
+    def test_provider_type(self) -> None:
         # Arrange
         entity = provider_entity(DatasourceProviderType.LOCAL_FILE)
         controller = LocalFileDatasourcePluginProviderController(
@@ -40,7 +40,7 @@ class TestLocalFileDatasourcePluginProviderController:
         # Act & Assert
         assert controller.provider_type == DatasourceProviderType.LOCAL_FILE
 
-    def test_validate_credentials(self):
+    def test_validate_credentials(self) -> None:
         # Arrange
         entity = provider_entity(DatasourceProviderType.LOCAL_FILE)
         controller = LocalFileDatasourcePluginProviderController(
@@ -51,7 +51,7 @@ class TestLocalFileDatasourcePluginProviderController:
         # Should not raise any exception
         controller._validate_credentials("user_id", {"key": "value"})
 
-    def test_get_datasource_success(self):
+    def test_get_datasource_success(self) -> None:
         # Arrange
         source = datasource_entity("test_datasource")
         entity = provider_entity(DatasourceProviderType.LOCAL_FILE)
@@ -75,7 +75,7 @@ class TestLocalFileDatasourcePluginProviderController:
         assert datasource.icon == "test_icon"
         assert datasource.plugin_unique_identifier == plugin_unique_identifier
 
-    def test_get_datasource_not_found(self):
+    def test_get_datasource_not_found(self) -> None:
         # Arrange
         entity = provider_entity(DatasourceProviderType.LOCAL_FILE)
         entity.datasources = [datasource_entity("other_datasource")]

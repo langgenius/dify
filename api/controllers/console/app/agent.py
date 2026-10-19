@@ -45,11 +45,11 @@ class AgentToolCallResponse(ResponseModel):
     error: str | None = None
     time_cost: float | int
     tool_name: str
-    tool_label: str | dict[str, str]
+    tool_label: str | dict[str, str] = Field(description="Tool name or its i18n labels keyed by locale")
     tool_input: Any
     tool_output: Any
     tool_parameters: dict[str, Any]
-    tool_icon: Any = Field(default=None)
+    tool_icon: str | dict[str, str] | None = Field(default=None, description="Icon URL or emoji icon")
 
 
 class AgentIterationLogResponse(ResponseModel):

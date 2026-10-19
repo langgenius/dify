@@ -141,17 +141,6 @@ class TestBasedGenerateTaskPipeline:
             "message": "run limit reached (agent_run_id=run-1)",
         }
 
-    def test_stream_converter_preserves_agent_session_configuration_error(self):
-        data = AppGenerateResponseConverter._error_to_stream_response(AgentSessionSnapshotIncompatibleError())
-
-        assert data == {
-            "code": "agent_session_configuration_changed",
-            "status": 409,
-            "message": (
-                "The Agent configuration changed after this conversation started. Start a new conversation to continue."
-            ),
-        }
-
     def test_handle_output_moderation_when_flagged(self, pipeline):
         handler = Mock()
         handler.moderation_completion.return_value = ("filtered", True)

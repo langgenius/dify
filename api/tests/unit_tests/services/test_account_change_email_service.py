@@ -101,7 +101,6 @@ def test_send_old_email_code_coerces_unexpected_phase_to_initial_state(
     service: AccountChangeEmailService,
     boundaries: dict[str, MagicMock],
 ) -> None:
-
     token = service.send_code(
         _context(),
         requested_email="OLD@example.com",

@@ -1,8 +1,7 @@
 import type { Node, NodeOutPutVar, Var } from '../../types'
-import { renderHook } from '@testing-library/react'
 import { useSnippetDraftStore } from '@/app/components/snippets/draft-store'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { PipelineInputVarType } from '@/models/pipeline'
-import { FlowType } from '@/types/common'
 import { BlockEnum, VarType } from '../../types'
 import useNodesAvailableVarList, {
   useGetNodesAvailableVarList,
@@ -11,16 +10,12 @@ import useNodesAvailableVarList, {
 const mockGetTreeLeafNodes = vi.hoisted(() => vi.fn())
 const mockGetBeforeNodesInSameBranchIncludeParent = vi.hoisted(() => vi.fn())
 const mockGetNodeAvailableVars = vi.hoisted(() => vi.fn())
-const mockFlowType = vi.hoisted(() => ({
-  value: undefined as FlowType | undefined,
-}))
-
 vi.mock('../use-workflow', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../use-workflow')>()
 
   return {
     ...actual,
-    useIsChatMode: () => true,
+
     useWorkflow: () => ({
       getTreeLeafNodes: mockGetTreeLeafNodes,
       getBeforeNodesInSameBranchIncludeParent: mockGetBeforeNodesInSameBranchIncludeParent,
@@ -38,15 +33,6 @@ vi.mock('../use-workflow-variables', async (importOriginal) => {
     }),
   }
 })
-
-vi.mock('@/app/components/workflow/hooks-store/store', () => ({
-  useHooksStore: (selector: (state: { configsMap?: { flowType?: FlowType } }) => unknown) =>
-    selector({
-      configsMap: {
-        flowType: mockFlowType.value,
-      },
-    }),
-}))
 
 const createNode = (overrides: Partial<Node> = {}): Node =>
   ({
@@ -104,8 +90,6 @@ const outputVarsWithSystemVars: NodeOutPutVar[] = [
 describe('useNodesAvailableVarList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockFlowType.value = undefined
-    globalThis.history.pushState({}, '', '/')
     useSnippetDraftStore.getState().reset()
     mockGetBeforeNodesInSameBranchIncludeParent.mockImplementation((nodeId: string) => [
       createNode({ id: `before-${nodeId}` }),
@@ -115,6 +99,7 @@ describe('useNodesAvailableVarList', () => {
     ])
     mockGetNodeAvailableVars.mockReturnValue(outputVars)
   })
+  afterEach(() => useSnippetDraftStore.getState().reset())
 
   it('builds availability per node, carrying loop nodes and parent iteration context', () => {
     const loopNode = createNode({
@@ -136,12 +121,14 @@ describe('useNodesAvailableVarList', () => {
     })
     const filterVar = vi.fn(() => true)
 
-    const { result } = renderHook(() =>
-      useNodesAvailableVarList([loopNode, childNode], {
-        filterVar,
-        hideEnv: true,
-        hideChatVar: true,
-      }),
+    const { result } = renderHook(
+      () =>
+        useNodesAvailableVarList([loopNode, childNode], {
+          filterVar,
+          hideEnv: true,
+          hideChatVar: true,
+        }),
+      { resource: { kind: 'app', appId: 'app-1', mode: 'advanced-chat' } },
     )
 
     expect(mockGetBeforeNodesInSameBranchIncludeParent).toHaveBeenCalledWith('loop-1')
@@ -155,7 +142,7 @@ describe('useNodesAvailableVarList', () => {
       2,
       expect.objectContaining({
         parentNode: loopNode,
-        isChatMode: true,
+        isChatflow: true,
         filterVar,
         hideEnv: true,
         hideChatVar: true,
@@ -164,7 +151,6 @@ describe('useNodesAvailableVarList', () => {
   })
 
   it('adds snippet input fields as virtual start variables on snippet canvases', () => {
-    globalThis.history.pushState({}, '', '/snippets/snippet-1/orchestrate')
     useSnippetDraftStore.getState().setInputFields([
       {
         type: PipelineInputVarType.textInput,
@@ -176,10 +162,12 @@ describe('useNodesAvailableVarList', () => {
 
     const currentNode = createNode({ id: 'node-a' })
 
-    const { result } = renderHook(() =>
-      useNodesAvailableVarList([currentNode], {
-        filterVar: () => true,
-      }),
+    const { result } = renderHook(
+      () =>
+        useNodesAvailableVarList([currentNode], {
+          filterVar: () => true,
+        }),
+      { resource: { kind: 'snippet', snippetId: 'snippet-1' } },
     )
 
     expect(result.current['node-a']?.availableNodes[0]).toEqual(
@@ -205,15 +193,16 @@ describe('useNodesAvailableVarList', () => {
   })
 
   it('filters system variables on snippet canvases', () => {
-    globalThis.history.pushState({}, '', '/snippets/snippet-1/orchestrate')
     mockGetNodeAvailableVars.mockReturnValue(outputVarsWithSystemVars)
 
     const currentNode = createNode({ id: 'node-a' })
 
-    const { result } = renderHook(() =>
-      useNodesAvailableVarList([currentNode], {
-        filterVar: () => true,
-      }),
+    const { result } = renderHook(
+      () =>
+        useNodesAvailableVarList([currentNode], {
+          filterVar: () => true,
+        }),
+      { resource: { kind: 'snippet', snippetId: 'snippet-1' } },
     )
 
     expect(result.current['node-a']?.availableVars).toEqual([
@@ -235,39 +224,15 @@ describe('useNodesAvailableVarList', () => {
 
     const currentNode = createNode({ id: 'node-a' })
 
-    const { result } = renderHook(() =>
-      useNodesAvailableVarList([currentNode], {
-        filterVar: () => true,
-      }),
+    const { result } = renderHook(
+      () =>
+        useNodesAvailableVarList([currentNode], {
+          filterVar: () => true,
+        }),
+      { resource: { kind: 'app', appId: 'app-1', mode: 'advanced-chat' } },
     )
 
     expect(result.current['node-a']?.availableVars).toEqual(outputVarsWithSystemVars)
-  })
-
-  it('filters system variables when the current flow is a snippet', () => {
-    mockFlowType.value = FlowType.snippet
-    mockGetNodeAvailableVars.mockReturnValue(outputVarsWithSystemVars)
-
-    const currentNode = createNode({ id: 'node-a' })
-
-    const { result } = renderHook(() =>
-      useNodesAvailableVarList([currentNode], {
-        filterVar: () => true,
-      }),
-    )
-
-    expect(result.current['node-a']?.availableVars).toEqual([
-      {
-        nodeId: 'vars-node',
-        title: 'Vars',
-        vars: [
-          {
-            variable: 'answer',
-            type: VarType.string,
-          },
-        ],
-      },
-    ])
   })
 
   it('returns a callback version that can use leaf nodes or caller-provided nodes', () => {
@@ -276,7 +241,9 @@ describe('useNodesAvailableVarList', () => {
     const filterVar = vi.fn(() => true)
     const passedInAvailableNodes = [createNode({ id: 'manual-node' })]
 
-    const { result } = renderHook(() => useGetNodesAvailableVarList())
+    const { result } = renderHook(() => useGetNodesAvailableVarList(), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'advanced-chat' },
+    })
 
     const leafMap = result.current.getNodesAvailableVarList([firstNode], {
       onlyLeafNodeVar: true,
@@ -290,5 +257,39 @@ describe('useNodesAvailableVarList', () => {
     expect(mockGetTreeLeafNodes).toHaveBeenCalledWith('node-a')
     expect(leafMap['node-a']?.availableNodes.map((node) => node.id)).toEqual(['leaf-node-a'])
     expect(manualMap['node-b']?.availableNodes).toBe(passedInAvailableNodes)
+  })
+  it('keeps caller-provided nodes unchanged and isolates each loop availability list', () => {
+    const first = createNode({
+      id: 'loop-a',
+      data: { type: BlockEnum.Loop, title: 'First', desc: '' },
+    })
+    const second = createNode({
+      id: 'loop-b',
+      data: { type: BlockEnum.Loop, title: 'Second', desc: '' },
+    })
+    const source = createNode({ id: 'source' })
+    const passedInAvailableNodes = [source]
+    const { result, rerender } = renderHook(
+      () => ({
+        availability: useNodesAvailableVarList([first, second], {
+          passedInAvailableNodes,
+          filterVar: () => true,
+        }),
+        getAvailability: useGetNodesAvailableVarList().getNodesAvailableVarList,
+      }),
+      { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
+    )
+    rerender()
+    for (const availability of [
+      result.current.availability,
+      result.current.getAvailability([first, second], {
+        passedInAvailableNodes,
+        filterVar: () => true,
+      }),
+    ]) {
+      expect(availability['loop-a']!.availableNodes).toEqual([source, first])
+      expect(availability['loop-b']!.availableNodes).toEqual([source, second])
+    }
+    expect(passedInAvailableNodes).toEqual([source])
   })
 })

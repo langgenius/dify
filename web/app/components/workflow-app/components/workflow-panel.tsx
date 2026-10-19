@@ -1,11 +1,16 @@
 import type { PanelProps } from '@/app/components/workflow/panel'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import dynamic from 'next/dynamic'
 import { memo, useMemo } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import {
+  isChatflowAtom,
+  workflowAppIdentityAtom,
+} from '@/app/components/workflow/editor-resource/state'
 import Panel from '@/app/components/workflow/panel'
 import CommentsPanel from '@/app/components/workflow/panel/comments-panel'
 import { useStore } from '@/app/components/workflow/store'
-import { useIsChatMode } from '../hooks/use-is-chat-mode'
+import { consoleQuery } from '@/service/console'
 
 const MessageLogModal = dynamic(() => import('@/app/components/base/message-log-modal'), {
   ssr: false,
@@ -53,7 +58,7 @@ const WorkflowPanelOnLeft = ({ appId }: { appId: string }) => {
   )
 }
 const WorkflowPanelOnRight = () => {
-  const isChatMode = useIsChatMode()
+  const isChatflow = useAtomValue(isChatflowAtom)
   const historyWorkflowData = useStore((s) => s.historyWorkflowData)
   const showDebugAndPreviewPanel = useStore((s) => s.showDebugAndPreviewPanel)
   const showChatVariablePanel = useStore((s) => s.showChatVariablePanel)
@@ -62,39 +67,39 @@ const WorkflowPanelOnRight = () => {
 
   return (
     <>
-      {historyWorkflowData && !isChatMode && <Record />}
-      {historyWorkflowData && isChatMode && <ChatRecord />}
-      {showDebugAndPreviewPanel && isChatMode && <DebugAndPreview />}
-      {showDebugAndPreviewPanel && !isChatMode && <WorkflowPreview />}
-      {showChatVariablePanel && isChatMode && <ChatVariablePanel />}
+      {historyWorkflowData && !isChatflow && <Record />}
+      {historyWorkflowData && isChatflow && <ChatRecord />}
+      {showDebugAndPreviewPanel && isChatflow && <DebugAndPreview />}
+      {showDebugAndPreviewPanel && !isChatflow && <WorkflowPreview />}
+      {showChatVariablePanel && isChatflow && <ChatVariablePanel />}
       {showGlobalVariablePanel && <GlobalVariablePanel />}
       {controlMode === 'comment' && <CommentsPanel />}
     </>
   )
 }
 const WorkflowPanel = () => {
-  const appDetail = useAppStore((s) => s.appDetail)
+  const { appId } = useAtomValue(workflowAppIdentityAtom)
+  const { data: appDetail } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+  )
   const versionHistoryPanelProps = useMemo(() => {
-    const appId = appDetail?.id
     return {
-      appMode: appDetail?.mode,
       getVersionListUrl: `/apps/${appId}/workflows`,
       deleteVersionUrl: (versionId: string) => `/apps/${appId}/workflows/${versionId}`,
-      restoreVersionUrl: (versionId: string) => `/apps/${appId}/workflows/${versionId}/restore`,
       updateVersionUrl: (versionId: string) => `/apps/${appId}/workflows/${versionId}`,
-      latestVersionId: appDetail?.workflow?.id,
+      latestVersionId: appDetail.workflow?.id,
     }
-  }, [appDetail?.id, appDetail?.mode, appDetail?.workflow?.id])
+  }, [appId, appDetail.workflow?.id])
 
   const panelProps: PanelProps = useMemo(() => {
     return {
       components: {
-        left: appDetail && <WorkflowPanelOnLeft appId={appDetail.id} />,
+        left: <WorkflowPanelOnLeft appId={appId} />,
         right: <WorkflowPanelOnRight />,
       },
       versionHistoryPanelProps,
     }
-  }, [appDetail, versionHistoryPanelProps])
+  }, [appId, versionHistoryPanelProps])
 
   return <Panel {...panelProps} />
 }

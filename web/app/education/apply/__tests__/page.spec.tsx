@@ -1,5 +1,5 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
-import { cleanup, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import EducationApplyPage from '@/app/education/apply/application-form'
 import { toast } from '@/app/notifications'
@@ -30,10 +30,6 @@ vi.mock('@/context/workspace-state', async () => {
   return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
 
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => path,
-}))
-
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }))
@@ -46,73 +42,29 @@ vi.mock('@/hooks/use-async-window-open', () => ({
   useAsyncWindowOpen: () => vi.fn(),
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleClient: {
-    billing: {
-      invoices: {
-        get: vi.fn().mockResolvedValue({ url: 'https://billing.example.com' }),
-      },
-      subscription: { get: mockGetSubscription },
-    },
-  },
-  consoleQuery: {
-    features: {
-      get: {
-        queryKey: () => ['features'],
-      },
-    },
-    account: {
-      profile: {
-        get: {
-          queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
-        },
-      },
-      education: {
-        autocomplete: {
-          get: {
-            infiniteOptions: (options: Record<string, unknown>) => ({
-              queryKey: ['account', 'education', 'autocomplete'],
-              queryFn: async () => ({ data: [], has_next: false }),
-              ...options,
-            }),
-          },
-        },
-        get: {
-          key: () => ['account', 'education'],
-          queryOptions: (options: Record<string, unknown> = {}) => ({
-            queryKey: ['account', 'education'],
-            ...options,
-          }),
-        },
-        post: {
-          mutationOptions: () => ({ mutationFn: mockEducationAdd }),
-        },
-      },
-    },
-    systemFeatures: {
-      get: {
-        queryKey: () => ['system-features'],
-        queryOptions: (options: Record<string, unknown> = {}) => ({
-          queryKey: ['system-features'],
-          ...options,
-        }),
-      },
-    },
-    workspaces: {
-      get: {
-        queryOptions: () => ({
-          queryKey: ['workspaces'],
-          queryFn: async () => ({ workspaces: mockWorkspaces }),
-        }),
-      },
-      switch: {
-        post: {
-          mutationOptions: () => ({ mutationFn: mockSwitchWorkspace }),
-        },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'billing.invoices.get': async () => ({ url: 'https://billing.example.com' }),
+      'billing.subscription.get': mockGetSubscription,
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'account.education.autocomplete.get': async () => ({
+        curr_page: 0,
+        data: [],
+        has_next: false,
+      }),
+      'account.education.post': mockEducationAdd,
+      'account.education.get': async () => ({ is_student: true }),
+      'workspaces.get': async () => ({ workspaces: mockWorkspaces }),
+      'workspaces.switch.post': mockSwitchWorkspace,
+    }),
+  }
+})
 
 const setupContext = (isCurrentWorkspaceManager: boolean) => {
   mockConsoleState = {
@@ -139,8 +91,7 @@ const renderPage = (isEducationAccount = true) => {
 
 describe('EducationApplyPage billing boundary', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    cleanup()
+    vi.resetAllMocks()
     vi.spyOn(toast, 'error').mockImplementation(() => 'toast-id')
     mockGetSubscription.mockResolvedValue({ url: window.location.href })
     mockSwitchWorkspace.mockResolvedValue(undefined)
@@ -266,5 +217,8 @@ describe('EducationApplyPage billing boundary', () => {
         },
       })
     })
+    expect(
+      await screen.findByRole('button', { name: 'education.useEducationDiscount' }),
+    ).toBeInTheDocument()
   })
 })

@@ -230,7 +230,7 @@ def create_event_poller(
         return ScheduleTriggerDebugEventPoller(
             tenant_id=tenant_id, user_id=user_id, app_id=app_id, node_config=node_config, node_id=node_id
         )
-    raise ValueError("unable to create event poller for node type %s", node_type)
+    raise ValueError(f"unable to create event poller for node type {node_type}")
 
 
 def select_trigger_debug_events(

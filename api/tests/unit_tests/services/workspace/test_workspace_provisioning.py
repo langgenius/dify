@@ -138,7 +138,7 @@ def gateway(
     return _service(
         owners=SQLAlchemyAccountRepository(sqlite_session_factory),
         provisioning=WorkspaceRepository(sqlite_session_factory),
-        effects=WorkspaceProvisioningEffectsGateway(session_factory=sqlite_session_factory),
+        effects=WorkspaceProvisioningEffectsGateway(),
     ), signal
 
 

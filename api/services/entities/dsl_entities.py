@@ -56,6 +56,12 @@ class AppImportParams(BaseModel):
     app_id: str | None = None
 
 
+class DraftGuardedImportParams(AppImportParams):
+    """An overwrite that saves only while the draft's ``draft_token`` still equals ``draft_hash``."""
+
+    draft_hash: str | None = None
+
+
 @dataclass(frozen=True, slots=True)
 class AppDslExportData:
     """Materialized export input; remote dependencies can be resolved after closing the read transaction."""
@@ -106,6 +112,7 @@ class Import(BaseModel):
     status: ImportStatus
     app_id: str | None = None
     app_mode: AppMode | None = None
+    app_created: bool = Field(default=False, exclude=True)
     permission_keys: list[str] = Field(default_factory=list)
     current_dsl_version: str = CURRENT_APP_DSL_VERSION
     imported_dsl_version: str = ""
