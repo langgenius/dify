@@ -1,102 +1,98 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
-import {
-  Dialog,
-  DialogBackdrop,
-  DialogClose,
-  DialogPopup,
-  DialogPortal,
-  DialogTrigger,
-  DialogViewport,
-} from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogPortal, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { DiagramCanvas } from './diagram-canvas'
+import { DiagramPreview } from './diagram-preview'
 import styles from './diagram.module.css'
-import { ExportActions } from './export-actions'
 import { useDiagram } from './use-diagram'
-import { ZoomControls } from './zoom-controls'
 
 export function MermaidDiagram({ source }: { source: string }) {
-  const { t } = useTranslation(['app'])
+  const { t } = useTranslation(['common', 'app'])
   const [previewSource, setPreviewSource] = useState('')
+  const diagram = useDiagram({ source, mode: 'inline', onRendered: setPreviewSource })
+  const zoomInLabel = t(($) => $['operation.zoomIn'])
+  const zoomOutLabel = t(($) => $['operation.zoomOut'])
+  const resetLabel = t(($) => $['operation.reset'])
 
   return (
     <Dialog disablePointerDismissal>
       <div className="min-w-0 rounded-b-xl bg-components-panel-bg p-3">
-        <DiagramCanvas
-          source={source}
-          onSourceRendered={setPreviewSource}
-          actions={
-            <DialogTrigger
-              disabled={!previewSource}
-              render={<Button size="small" variant="ghost" />}
+        <div className={styles.diagram}>
+          <Tooltip<string>>
+            {({ payload }) => (
+              <>
+                <div className="mb-2 flex items-center justify-end gap-1">
+                  <TooltipTrigger
+                    payload={zoomInLabel}
+                    render={
+                      <IconButton
+                        size="lg"
+                        aria-label={zoomInLabel}
+                        disabled={!diagram.ready}
+                        onClick={() => diagram.zoomBy(1.25)}
+                      >
+                        <span aria-hidden className="i-ri-add-line size-4" />
+                      </IconButton>
+                    }
+                  />
+                  <TooltipTrigger
+                    payload={zoomOutLabel}
+                    render={
+                      <IconButton
+                        size="lg"
+                        aria-label={zoomOutLabel}
+                        disabled={!diagram.ready}
+                        onClick={() => diagram.zoomBy(0.8)}
+                      >
+                        <span aria-hidden className="i-ri-subtract-line size-4" />
+                      </IconButton>
+                    }
+                  />
+                  <TooltipTrigger
+                    payload={resetLabel}
+                    render={
+                      <IconButton
+                        size="lg"
+                        aria-label={resetLabel}
+                        disabled={!diagram.ready}
+                        onClick={diagram.reset}
+                      >
+                        <span aria-hidden className="i-ri-restart-line size-4" />
+                      </IconButton>
+                    }
+                  />
+                  <DialogTrigger
+                    disabled={!previewSource}
+                    render={<Button size="small" variant="ghost" />}
+                  >
+                    <span aria-hidden className="i-ri-fullscreen-line size-4" />
+                    {t(($) => $['mermaid.preview'], { ns: 'app' })}
+                  </DialogTrigger>
+                </div>
+                <TooltipContent>{payload}</TooltipContent>
+              </>
+            )}
+          </Tooltip>
+          <div ref={diagram.stageRef}>
+            <div ref={diagram.canvasRef} className={styles.canvas} />
+          </div>
+          {diagram.error && (
+            <p
+              role="status"
+              className="mt-2 system-xs-regular whitespace-pre-wrap text-text-destructive"
             >
-              <span aria-hidden className="i-ri-fullscreen-line size-4" />
-              {t(($) => $['mermaid.preview'], { ns: 'app' })}
-            </DialogTrigger>
-          }
-        />
+              {diagram.error}
+            </p>
+          )}
+        </div>
       </div>
       <DialogPortal>
         <DiagramPreview source={previewSource} />
       </DialogPortal>
     </Dialog>
-  )
-}
-
-function DiagramPreview({ source }: { source: string }) {
-  const { t } = useTranslation(['common'])
-  // A preview session keeps its drawing while the answer continues streaming.
-  const [snapshot] = useState(source)
-  const diagram = useDiagram({ source: snapshot, mode: 'preview' })
-  return (
-    <>
-      {/* Full-screen previews need their own visual scrim inside transparent Drawers too. */}
-      <DialogBackdrop forceRender />
-      <DialogViewport className="p-4 sm:p-8">
-        <DialogPopup
-          aria-label="Mermaid"
-          className={cn(
-            styles.diagram,
-            'pointer-events-none flex h-full min-h-0 flex-col transition-opacity data-ending-style:scale-100 data-starting-style:scale-100',
-          )}
-        >
-          <div
-            className={cn(
-              styles.previewActions,
-              'pointer-events-auto relative mb-2 flex shrink-0 items-center justify-end gap-1 self-end',
-            )}
-          >
-            <ZoomControls disabled={!diagram.ready} zoomBy={diagram.zoomBy} reset={diagram.reset} />
-            <ExportActions exportSvg={diagram.exportSvg} disabled={!diagram.ready} />
-            <DialogClose
-              render={
-                <IconButton size="lg" aria-label={t(($) => $['operation.close'])}>
-                  <span aria-hidden className="i-ri-close-line size-4" />
-                </IconButton>
-              }
-            />
-          </div>
-          <div ref={diagram.stageRef} className="flex min-h-0 flex-1 items-center">
-            <div
-              ref={diagram.canvasRef}
-              className={cn(styles.canvas, 'pointer-events-auto bg-components-panel-bg')}
-            />
-          </div>
-          {diagram.error && (
-            <p
-              role="status"
-              className="pointer-events-auto mt-2 system-xs-regular text-text-destructive"
-            >
-              {diagram.error}
-            </p>
-          )}
-        </DialogPopup>
-      </DialogViewport>
-    </>
   )
 }

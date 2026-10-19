@@ -30,9 +30,3 @@
   display: block;
   margin-inline: auto;
 }
-
-.previewActions {
-  --color-text-tertiary: var(--color-text-primary-on-surface);
-  --color-text-secondary: var(--color-text-primary-on-surface);
-  --color-state-base-hover: var(--color-state-base-hover-alt);
-}

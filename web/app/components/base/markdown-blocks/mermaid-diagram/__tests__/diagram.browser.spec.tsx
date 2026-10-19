@@ -5,6 +5,7 @@ import {
   DrawerPortal,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { MermaidDiagram } from '..'
@@ -182,10 +183,16 @@ it('keeps a tall preview and its close button inside a narrow viewport', async (
   const dialog = page.getByRole('dialog', { name: 'Mermaid' })
   await expect.element(dialog.getByText('Step 0')).toBeVisible()
   const bounds = dialog.element().getBoundingClientRect()
-  expect(bounds.left).toBeGreaterThanOrEqual(0)
-  expect(bounds.right).toBeLessThanOrEqual(320)
-  expect(bounds.top).toBeGreaterThanOrEqual(0)
-  expect(bounds.bottom).toBeLessThanOrEqual(568)
+  expect(bounds.left).toBeCloseTo(0, 0)
+  expect(bounds.right).toBeCloseTo(320, 0)
+  expect(bounds.top).toBeCloseTo(0, 0)
+  expect(bounds.bottom).toBeCloseTo(568, 0)
+  for (const button of dialog.getByRole('button').elements()) {
+    const rect = button.getBoundingClientRect()
+    expect(rect.left).toBeGreaterThanOrEqual(0)
+    expect(rect.right).toBeLessThanOrEqual(320)
+    expect(rect.top).toBeCloseTo(16, 0)
+  }
   const close = dialog.getByRole('button', { name: 'common.operation.close' })
   const buttonBounds = close.element().getBoundingClientRect()
   expect(buttonBounds.top).toBeGreaterThanOrEqual(0)
@@ -218,7 +225,17 @@ it('keeps the preview canvas fixed while the first zoom step enlarges the drawin
   )
   const initial = svg.getBoundingClientRect()
   const initialLabel = label.element().getBoundingClientRect().width
-  expect(initial.height).toBeGreaterThan(700)
+  const previewBounds = dialog.element().getBoundingClientRect()
+  expect(initial.left).toBeCloseTo(0, 0)
+  expect(initial.right).toBeCloseTo(1440, 0)
+  expect(initial.height).toBeCloseTo(previewBounds.height, 0)
+  expect(initial.top).toBeCloseTo(0, 0)
+  expect(initial.bottom).toBeCloseTo(900, 0)
+  const zoomButtonBounds = dialog
+    .getByRole('button', { name: 'common.operation.zoomIn' })
+    .element()
+    .getBoundingClientRect()
+  expect(zoomButtonBounds.top).toBeCloseTo(32, 0)
   await userEvent.click(dialog.getByRole('button', { name: 'common.operation.zoomIn' }))
   const enlarged = svg.getBoundingClientRect()
   expect(enlarged.width).toBeCloseTo(initial.width, 0)
@@ -245,10 +262,13 @@ it('copies a complete PNG after zooming and resets the success feedback', async 
     const dialog = page.getByRole('dialog', { name: 'Mermaid' })
     await expect.element(dialog.getByText('Start')).toBeVisible()
     await userEvent.click(dialog.getByRole('button', { name: 'common.operation.zoomIn' }))
+    await userEvent.hover(dialog.getByRole('button', { name: 'common.operation.copyImage' }))
+    await expect.element(page.getByText('common.operation.copyImage')).toBeVisible()
     await userEvent.click(dialog.getByRole('button', { name: 'common.operation.copyImage' }))
     await expect
       .element(dialog.getByRole('button', { name: 'common.operation.imageCopied' }))
       .toBeEnabled()
+    await expect.element(page.getByText('common.operation.imageCopied').last()).toBeVisible()
     expect(copied?.type).toBe('image/png')
     const bitmap = await createImageBitmap(copied!)
     expect(bitmap.width).toBeGreaterThan(50)
@@ -340,4 +360,68 @@ it('shows a visual scrim when previewing from a transparent log-detail drawer an
   await expect.element(preview).not.toBeInTheDocument()
   await expect.element(parent).toBeVisible()
   await expect.element(trigger).toHaveFocus()
+})
+
+it('switches preview action hints without leaking the inline hint into the dialog', async () => {
+  const view = await render(
+    <TooltipProvider delay={0} closeDelay={0}>
+      <MermaidDiagram source={'flowchart LR\n A[Start] --> B[Finish]'} />
+    </TooltipProvider>,
+  )
+  const inlineZoom = view.getByRole('button', { name: 'common.operation.zoomIn' })
+  await expect.element(inlineZoom).toBeEnabled()
+  await userEvent.hover(inlineZoom)
+  await expect.element(page.getByText('common.operation.zoomIn')).toBeVisible()
+  const preview = view.getByRole('button', { name: 'app.mermaid.preview' })
+  await userEvent.click(preview)
+  const dialog = page.getByRole('dialog', { name: 'Mermaid' })
+  const zoomOut = dialog.getByRole('button', { name: 'common.operation.zoomOut' })
+  await expect.element(zoomOut).toBeEnabled()
+  await userEvent.hover(zoomOut)
+  await expect.element(page.getByText('common.operation.zoomOut')).toBeVisible()
+  await expect.element(page.getByText('common.operation.zoomIn')).not.toBeInTheDocument()
+  const reset = dialog.getByRole('button', { name: 'common.operation.reset' })
+  await userEvent.hover(reset)
+  await expect.element(page.getByText('common.operation.reset')).toBeVisible()
+  await expect.element(page.getByText('common.operation.zoomOut')).not.toBeInTheDocument()
+  await userEvent.unhover(reset)
+  await userEvent.click(zoomOut)
+  await userEvent.keyboard('{Tab}')
+  await expect.element(reset).toHaveFocus()
+  await expect.element(page.getByText('common.operation.reset')).toBeVisible()
+  await userEvent.click(dialog.getByRole('button', { name: 'common.operation.close' }))
+  await expect.element(dialog).not.toBeInTheDocument()
+  await expect.element(page.getByText('common.operation.reset')).not.toBeInTheDocument()
+  await expect.element(preview).toHaveFocus()
+})
+
+it('initially focuses the preview stage without opening an action hint or consuming Escape', async () => {
+  const view = await render(
+    <TooltipProvider delay={0} closeDelay={0}>
+      <MermaidDiagram source={'flowchart LR\n A[Start] --> B[Finish]'} />
+    </TooltipProvider>,
+  )
+  const trigger = view.getByRole('button', { name: 'app.mermaid.preview' })
+  await expect.element(trigger).toBeEnabled()
+  trigger.element().focus()
+  await userEvent.keyboard('{Enter}')
+  const dialog = page.getByRole('dialog', { name: 'Mermaid' })
+  const stage = dialog.getByRole('group', { name: 'Mermaid' })
+  await expect.element(stage).toHaveFocus()
+  await expect.element(dialog.getByText('Start')).toBeVisible()
+  await expect.element(stage).toHaveFocus()
+  await expect.element(page.getByRole('tooltip')).not.toBeInTheDocument()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(dialog).not.toBeInTheDocument()
+  await expect.element(trigger).toHaveFocus()
+
+  await userEvent.keyboard('{Enter}')
+  await expect.element(stage).toHaveFocus()
+  await expect.element(dialog.getByText('Start')).toBeVisible()
+  await userEvent.keyboard('{Tab}')
+  await expect.element(dialog.getByText('Start').element().closest('svg')!).toHaveFocus()
+  await userEvent.keyboard('{Tab}')
+  const zoomIn = dialog.getByRole('button', { name: 'common.operation.zoomIn' })
+  await expect.element(zoomIn).toHaveFocus()
+  await expect.element(page.getByText('common.operation.zoomIn')).toBeVisible()
 })
