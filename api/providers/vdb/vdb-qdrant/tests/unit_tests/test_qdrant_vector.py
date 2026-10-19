@@ -297,6 +297,31 @@ def test_search_and_helper_methods(qdrant_module):
     assert doc.page_content == "doc"
 
 
+def test_qdrant_full_text_search_does_not_starve_later_keywords(qdrant_module):
+    vector = qdrant_module.QdrantVector("collection_1", "group-1", _config(qdrant_module))
+    common_first = SimpleNamespace(
+        id="p1", payload={"page_content": "common", "metadata": {"doc_id": "1"}}, vector=[0.1]
+    )
+    common_second = SimpleNamespace(
+        id="p2", payload={"page_content": "common", "metadata": {"doc_id": "2"}}, vector=[0.2]
+    )
+    rare_match = SimpleNamespace(id="p3", payload={"page_content": "rare", "metadata": {"doc_id": "3"}}, vector=[0.3])
+    vector._client.scroll.side_effect = [([common_first, common_second], None), ([rare_match], None)]
+
+    docs = vector.search_by_full_text("common rare", top_k=2)
+
+    assert [doc.metadata["doc_id"] for doc in docs] == ["1", "3"]
+    assert vector._client.scroll.call_count == 2
+
+
+@pytest.mark.parametrize("top_k", [0, -1])
+def test_qdrant_full_text_search_skips_nonpositive_top_k(qdrant_module, top_k):
+    vector = qdrant_module.QdrantVector("collection_1", "group-1", _config(qdrant_module))
+
+    assert vector.search_by_full_text("hello world", top_k=top_k) == []
+    vector._client.scroll.assert_not_called()
+
+
 @pytest.mark.parametrize("sqlite3_session", [(DatasetCollectionBinding,)], indirect=True)
 @pytest.mark.parametrize("use_caller_session", [True, False])
 def test_qdrant_factory_paths(
