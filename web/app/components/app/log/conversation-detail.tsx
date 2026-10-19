@@ -9,7 +9,7 @@ import type {
 import type { FeedbackFunc, IChatItem } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig } from '@/app/components/base/chat/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { DialogTitle } from '@langgenius/dify-ui/dialog'
+import { DialogClose, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
@@ -396,14 +396,9 @@ function DetailPanel({ appDetail, detail, onFeedback, initialMessages }: IDetail
 type ConversationDetailProps = {
   appDetail: AppDetailWithSite
   conversationId: string
-  onClose: () => void
 }
 
-export function ConversationDetail({
-  appDetail,
-  conversationId,
-  onClose,
-}: ConversationDetailProps) {
+export function ConversationDetail({ appDetail, conversationId }: ConversationDetailProps) {
   const { t } = useTranslation(['appLog', 'common'])
   const { formatTime } = useTimestamp()
   const isChatMode = appDetail.mode !== 'completion'
@@ -467,13 +462,13 @@ export function ConversationDetail({
             {appDetail.mode !== 'advanced-chat' && modelInfo && <ModelInfo model={modelInfo} />}
           </Suspense>
         </div>
-        <IconButton
-          size="lg"
-          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-          onClick={onClose}
-        >
-          <span aria-hidden className="i-ri-close-line size-4 text-text-tertiary" />
-        </IconButton>
+        <DialogClose
+          render={
+            <IconButton size="lg" aria-label={t(($) => $['operation.close'], { ns: 'common' })}>
+              <span aria-hidden className="i-ri-close-line size-4 text-text-tertiary" />
+            </IconButton>
+          }
+        />
       </div>
       <QueryErrorResetBoundary>
         {({ reset }) => (
@@ -511,7 +506,7 @@ export function ConversationDetail({
   )
 }
 
-type ConversationContentProps = Omit<ConversationDetailProps, 'onClose'> & {
+type ConversationContentProps = ConversationDetailProps & {
   onFeedback: FeedbackFunc
 }
 

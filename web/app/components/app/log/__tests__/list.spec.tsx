@@ -659,3 +659,38 @@ it('opens a deep-linked conversation while the list is still pending', async () 
   expect(screen.getByText('appLog.table.header.summary')).toBeVisible()
   expect(await screen.findByText('Assistant reply message-1')).toBeVisible()
 })
+
+it('keeps desktop details open while interacting outside and switching to another row', async () => {
+  const user = userEvent.setup()
+  const { wrapper: UrlState } = createNuqsTestWrapper({ searchParams: '' })
+  const logs = createLogs()
+  logs.data.push({ ...logs.data[0]!, id: 'conversation-2', name: 'another conversation' })
+  logs.total = 2
+  api.messages.mockImplementation(async ({ query }) => ({
+    data: [
+      createChatMessage(query.conversation_id === 'conversation-2' ? 'message-2' : 'message-1'),
+    ],
+    has_more: false,
+    limit: 10,
+  }))
+  renderWithConsoleQuery(
+    <UrlState>
+      <button type="button">Background action</button>
+      <ConversationList
+        appDetail={createAppDetailFixture({ id: 'app-1', mode: 'chat' })}
+        logs={logs}
+        onRefresh={onRefresh}
+      />
+    </UrlState>,
+    { queryClient: createClient() },
+  )
+  await user.click(screen.getByText('hello world'))
+  expect(await screen.findByText('Assistant reply message-1')).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'Background action' }))
+  expect(screen.getByRole('dialog')).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Background action' })).toHaveFocus()
+  await user.click(screen.getByText('another conversation'))
+  expect(await screen.findByText('Assistant reply message-2')).toBeVisible()
+  expect(screen.queryByText('Assistant reply message-1')).not.toBeInTheDocument()
+  expect(onRefresh).not.toHaveBeenCalled()
+})

@@ -144,7 +144,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     annotation?: ConversationAnnotation | null,
   ) => {
     return (
-      <Tooltip disabled={!isHighlight || isChatMode}>
+      <Tooltip disabled={isEmptyStyle}>
         <TooltipTrigger
           render={
             <div
@@ -159,10 +159,16 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
           }
         />
         <TooltipContent className="flex items-center gap-1">
-          <RiEditFill aria-hidden className="size-3 shrink-0" />
-          <span>
-            {`${t(($) => $['detail.annotationTip'], { ns: 'appLog', user: annotation?.account?.name ?? '-' })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
-          </span>
+          {isHighlight && !isChatMode ? (
+            <>
+              <RiEditFill aria-hidden className="size-3 shrink-0" />
+              <span>
+                {`${t(($) => $['detail.annotationTip'], { ns: 'appLog', user: annotation?.account?.name ?? '-' })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
+              </span>
+            </>
+          ) : (
+            value
+          )}
         </TooltipContent>
       </Tooltip>
     )
@@ -172,7 +178,8 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     <div className="relative mt-2 grow overflow-x-auto">
       <Dialog
         open={!!conversationIdInUrl}
-        modal
+        modal={isMobile}
+        disablePointerDismissal={!isMobile}
         onOpenChange={(open) => {
           if (!open) onCloseDialog()
         }}
@@ -183,11 +190,11 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
             <col />
             <col />
             {isChatflow && <col className="w-36" />}
-            <col className={isChatMode ? 'w-28' : undefined} />
+            <col className={isChatMode ? 'w-32' : undefined} />
             <col className="w-28" />
             <col className="w-28" />
-            <col className="w-40" />
-            <col className="w-40" />
+            <col className="w-44" />
+            <col className="w-44" />
           </colgroup>
           <thead className="system-xs-medium-uppercase text-text-tertiary">
             <tr>
@@ -366,19 +373,15 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
           </tbody>
         </table>
         <DialogPortal>
-          <DialogBackdrop className={cn(!isMobile && 'bg-transparent')} />
-          <DialogViewport>
+          {isMobile && <DialogBackdrop />}
+          <DialogViewport className="pointer-events-none">
             <DialogPopup
               ref={popupRef}
               initialFocus={popupRef}
-              className="fixed top-16 right-2 bottom-4 flex w-full max-w-160 flex-col overflow-hidden rounded-xl bg-components-panel-bg shadow-xl outline-hidden"
+              className="pointer-events-auto fixed top-16 right-2 bottom-4 flex w-[calc(100%-1rem)] max-w-160 flex-col overflow-hidden rounded-xl bg-components-panel-bg shadow-xl outline-hidden"
             >
               <div className="flex min-h-0 flex-1 flex-col">
-                <ConversationSession
-                  appDetail={appDetail}
-                  conversationId={conversationIdInUrl}
-                  onClose={onCloseDialog}
-                />
+                <ConversationSession appDetail={appDetail} conversationId={conversationIdInUrl} />
               </div>
             </DialogPopup>
           </DialogViewport>
@@ -393,21 +396,14 @@ export default ConversationList
 function ConversationSession({
   appDetail,
   conversationId,
-  onClose,
 }: {
   appDetail: AppDetailWithSite
   conversationId: string | null
-  onClose: () => void
 }) {
   // Keep the closing conversation mounted until the Dialog finishes its exit transition.
   const [sessionId, setSessionId] = useState(conversationId)
   if (conversationId && conversationId !== sessionId) setSessionId(conversationId)
   return sessionId ? (
-    <ConversationDetail
-      key={sessionId}
-      appDetail={appDetail}
-      conversationId={sessionId}
-      onClose={onClose}
-    />
+    <ConversationDetail key={sessionId} appDetail={appDetail} conversationId={sessionId} />
   ) : null
 }

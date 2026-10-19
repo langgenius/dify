@@ -84,35 +84,34 @@ const Filter: FC<IFilterProps> = ({
           name: t(($) => $[`filter.period.${v.name}`], { ns: 'appLog' }),
         }))}
       />
-      <fieldset disabled={!data} className="min-w-0 border-0 p-0">
-        <Chip
-          className="min-w-37.5"
-          panelClassName="w-[270px]"
-          showLeftIcon={false}
-          value={queryParams.annotation_status || 'all'}
-          onSelect={(item) => {
-            setQueryParams({
-              ...queryParams,
-              annotation_status: item.value as QueryParam['annotation_status'],
-            })
-          }}
-          onClear={() => setQueryParams({ ...queryParams, annotation_status: 'all' })}
-          items={[
-            { value: 'all', name: t(($) => $['filter.annotation.all'], { ns: 'appLog' }) },
-            {
-              value: 'annotated',
-              name: t(($) => $['filter.annotation.annotated'], {
-                ns: 'appLog',
-                count: data?.count ?? 0,
-              }),
-            },
-            {
-              value: 'not_annotated',
-              name: t(($) => $['filter.annotation.not_annotated'], { ns: 'appLog' }),
-            },
-          ]}
-        />
-      </fieldset>
+      <Chip
+        className="min-w-37.5"
+        panelClassName="w-[270px]"
+        disabled={!data}
+        showLeftIcon={false}
+        value={queryParams.annotation_status || 'all'}
+        onSelect={(item) => {
+          setQueryParams({
+            ...queryParams,
+            annotation_status: item.value as QueryParam['annotation_status'],
+          })
+        }}
+        onClear={() => setQueryParams({ ...queryParams, annotation_status: 'all' })}
+        items={[
+          { value: 'all', name: t(($) => $['filter.annotation.all'], { ns: 'appLog' }) },
+          {
+            value: 'annotated',
+            name: t(($) => $['filter.annotation.annotated'], {
+              ns: 'appLog',
+              count: data?.count ?? 0,
+            }),
+          },
+          {
+            value: 'not_annotated',
+            name: t(($) => $['filter.annotation.not_annotated'], { ns: 'appLog' }),
+          },
+        ]}
+      />
       <SearchInput
         className="w-50"
         value={queryParams.keyword ?? ''}
