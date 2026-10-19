@@ -10,6 +10,7 @@ from urllib.parse import urlsplit, urlunsplit
 from core.ops.exceptions import RetryableTraceDispatchError
 from core.ops.unified_trace.entities import CanonicalSpan, CanonicalSpanKind
 from services.tracing.provider_dispatch import TraceExportRejectedError, TraceExportUncertainError
+from services.tracing.request_log_protection import protect_http_request_logs
 
 
 def json_value(value: object) -> str:
@@ -88,10 +89,39 @@ def request(method: str, url: str, provider: str, **kwargs: Any):
 
     token = attach(set_value(_SUPPRESS_INSTRUMENTATION_KEY, True))
     try:
-        response = ssrf_proxy.make_request(method, url, max_retries=0, timeout=30.0, follow_redirects=False, **kwargs)
+        with protect_http_request_logs(provider == "aliyun"):
+            if provider == "aliyun":
+                response = _request_sensitive_aliyun(method, url, **kwargs)
+            else:
+                response = ssrf_proxy.make_request(
+                    method, url, max_retries=0, timeout=30.0, follow_redirects=False, **kwargs
+                )
     except httpx.TransportError:
         raise TraceExportUncertainError(f"{provider} ingestion outcome is unknown after transport failure") from None
     finally:
         detach(token)
     check_http_status(response.status_code, provider)
+    return response
+
+
+def _request_sensitive_aliyun(method: str, url: str, **kwargs: Any):
+    """Discard private HTTP exception objects before raising a public failure."""
+    import httpx
+
+    from core.helper import ssrf_proxy
+
+    response: httpx.Response | None = None
+    failure: RuntimeError | None = None
+    try:
+        response = ssrf_proxy.make_request(method, url, max_retries=0, timeout=30.0, follow_redirects=False, **kwargs)
+    except httpx.RequestError:
+        failure = TraceExportUncertainError("aliyun ingestion outcome is unknown after transport failure")
+    except Exception:
+        failure = TraceExportRejectedError("aliyun HTTP request was rejected by the transport boundary")
+    # Raise after leaving the original exception handler so neither its cause
+    # nor implicit context retains a credential-bearing request or message.
+    if failure is not None:
+        raise failure from None
+    if response is None:
+        raise TraceExportUncertainError("aliyun HTTP transport returned no acknowledgment")
     return response

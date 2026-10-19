@@ -67,6 +67,8 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
             normalized_config = self._normalize_mlflow_config(tracing_config)
         elif tracing_provider == "phoenix":
             normalized_config = self._normalize_phoenix_config(tracing_config)
+        elif tracing_provider == "aliyun":
+            normalized_config = self._normalize_aliyun_config(tracing_config)
         else:
             normalized_config = self._normalize_config(provider_config, tracing_config)
         self._verify_config(normalized_config, tracing_provider)
@@ -102,6 +104,8 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
             tracing_config = self._normalize_mlflow_config(tracing_config)
         elif tracing_provider == "phoenix":
             tracing_config = self._normalize_phoenix_config(tracing_config)
+        elif tracing_provider == "aliyun":
+            tracing_config = self._normalize_aliyun_config(tracing_config)
         self._validate_config(provider_config, tracing_config)
         try:
             encrypted_config = OpsTraceManager.encrypt_tracing_config(
@@ -166,7 +170,12 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
         except Exception as error:
             raise AppTracingConfigProcessingError from error
 
-        if tracing_provider == "tencent":
+        if tracing_provider == "aliyun":
+            from dify_trace_aliyun.configuration import console_url
+
+            # GET never constructs the legacy queue/exporter or probes credentials.
+            presented_config["project_url"] = console_url()
+        elif tracing_provider == "tencent":
             from dify_trace_tencent.configuration import console_url
 
             # Historical names remain readable. GET performs no connection
@@ -259,6 +268,15 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
         return normalized_config
 
     @staticmethod
+    def _normalize_aliyun_config(tracing_config: dict[str, Any]) -> dict[str, Any]:
+        from dify_trace_aliyun.configuration import normalize_configuration
+
+        try:
+            return normalize_configuration(tracing_config).model_dump()
+        except ValueError:
+            raise AppTracingConfigInvalidConfigurationError from None
+
+    @staticmethod
     def _normalize_tencent_config(tracing_config: dict[str, Any]) -> dict[str, Any]:
         from dify_trace_tencent.configuration import TencentConfigurationError, normalize_configuration
 
@@ -294,10 +312,24 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
         try:
             return config_class.model_validate(tracing_config)
         except ValidationError as error:
+            # Aliyun credentials can be embedded in a pasted endpoint. Do not
+            # propagate a Pydantic error object whose errors() includes inputs.
+            if config_class.__module__ == "dify_trace_aliyun.config":
+                raise AppTracingConfigInvalidConfigurationError from None
             raise AppTracingConfigInvalidConfigurationError from error
 
     @staticmethod
     def _verify_config(tracing_config: dict[str, Any], tracing_provider: str) -> None:
+        if tracing_provider == "aliyun":
+            from dify_trace_aliyun.config import AliyunConfig
+            from dify_trace_aliyun.configuration import AliyunConfigurationError, verify_configuration
+
+            try:
+                verify_configuration(AliyunConfig.model_validate(tracing_config))
+            except AliyunConfigurationError as error:
+                logger.warning("Aliyun configuration verification failed: error_code=%s", error.code)
+                raise AppTracingConfigVerificationFailedError from None
+            return
         if tracing_provider == "phoenix":
             from dify_trace_arize_phoenix.config import PhoenixConfig
             from dify_trace_arize_phoenix.configuration import PhoenixConfigurationError, verify_configuration
@@ -380,6 +412,10 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
     @staticmethod
     def _get_project_url(tracing_config: dict[str, Any], tracing_provider: str) -> str | None:
         try:
+            if tracing_provider == "aliyun":
+                from dify_trace_aliyun.configuration import console_url
+
+                return console_url()
             if tracing_provider == "tencent":
                 from dify_trace_tencent.configuration import console_url
 
