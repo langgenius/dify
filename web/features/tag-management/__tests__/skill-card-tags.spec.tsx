@@ -1,92 +1,41 @@
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
-import type { ComponentProps } from 'react'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { SkillCardTags } from '../components/skill-card-tags'
+import { renderWithTags } from './render'
 
-const mocks = vi.hoisted(() => ({
-  onOpenTagManagement: vi.fn(),
-  onTagsChange: vi.fn(),
-  tagList: [] as Tag[],
-  tagSelectorProps: vi.fn(),
-}))
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: ['dataset.tag.manage'],
+  }))
+})
 
-vi.mock('@tanstack/react-query', () => ({
-  useQuery: () => ({ data: mocks.tagList }),
-}))
+const tags: Tag[] = [
+  { id: 'support-id', name: 'support', type: 'skill' },
+  { id: 'sales-id', name: 'sales', type: 'skill' },
+  { id: 'app-id', name: 'support', type: 'app' },
+]
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    tags: {
-      get: {
-        queryOptions: () => ({}),
-      },
-    },
-  },
-}))
+it('selects skill tags by name while excluding tags from other resource types', async () => {
+  const user = userEvent.setup()
+  renderWithTags(<SkillCardTags skillId="skill-1" tags={['support']} />, tags)
 
-vi.mock('../components/tag-selector', () => ({
-  TagSelector: (
-    props: ComponentProps<'button'> & {
-      canBindOrUnbindTags?: boolean
-      onOpenTagManagement?: () => void
-      onTagsChange?: () => void
-      targetId: string
-      type: string
-      value: Tag[]
-    },
-  ) => {
-    mocks.tagSelectorProps(props)
-    return (
-      <button type="button" onClick={props.onOpenTagManagement}>
-        {props.value.map((tag) => tag.name).join(', ') || 'Add tag'}
-      </button>
-    )
-  },
-}))
+  await user.click(screen.getByRole('combobox', { name: 'support' }))
+  expect(screen.getAllByRole('option', { name: 'support' })).toHaveLength(1)
+  expect(screen.getByRole('option', { name: 'support' })).toHaveAttribute('aria-selected', 'true')
+  expect(screen.getByRole('option', { name: 'sales' })).toHaveAttribute('aria-selected', 'false')
+})
 
-describe('SkillCardTags', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mocks.tagList = [
-      { id: 'support-id', name: 'support', type: 'skill' },
-      { id: 'sales-id', name: 'sales', type: 'skill' },
-      { id: 'app-id', name: 'support', type: 'app' },
-    ]
-  })
+it('opens tag management through the real tag selector', async () => {
+  const user = userEvent.setup()
+  const onOpenTagManagement = vi.fn()
+  renderWithTags(
+    <SkillCardTags skillId="skill-1" tags={[]} onOpenTagManagement={onOpenTagManagement} />,
+    tags,
+  )
 
-  it('adapts skill tag names to the shared tag selector contract', () => {
-    render(
-      <SkillCardTags
-        skillId="skill-1"
-        tags={['support']}
-        onOpenTagManagement={mocks.onOpenTagManagement}
-        onTagsChange={mocks.onTagsChange}
-      />,
-    )
-
-    expect(screen.getByRole('button', { name: 'support' })).toBeInTheDocument()
-    expect(mocks.tagSelectorProps).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        canBindOrUnbindTags: true,
-        onOpenTagManagement: mocks.onOpenTagManagement,
-        onTagsChange: mocks.onTagsChange,
-        targetId: 'skill-1',
-        type: 'skill',
-        value: [{ id: 'support-id', name: 'support', type: 'skill' }],
-      }),
-    )
-  })
-
-  it('forwards the manage-tags interaction', async () => {
-    const user = userEvent.setup()
-    render(
-      <SkillCardTags skillId="skill-1" tags={[]} onOpenTagManagement={mocks.onOpenTagManagement} />,
-    )
-
-    await user.click(screen.getByRole('button', { name: 'Add tag' }))
-
-    expect(mocks.onOpenTagManagement).toHaveBeenCalledOnce()
-  })
+  await user.click(screen.getByRole('combobox', { name: 'common.tag.addTag' }))
+  await user.click(screen.getByRole('button', { name: 'common.tag.manageTags' }))
+  expect(onOpenTagManagement).toHaveBeenCalledOnce()
 })

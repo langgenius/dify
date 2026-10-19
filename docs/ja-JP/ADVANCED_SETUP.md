@@ -1,6 +1,6 @@
 # 高度なセットアップ
 
-設定をカスタマイズする必要がある場合は、[.env.example](../../docker/.env.example) ファイルのコメントを参照し、`.env` ファイルの対応する値を更新してください。さらに、デプロイ環境や要件に応じて、`docker-compose.yaml` ファイル自体を調整する必要がある場合があります。たとえば、イメージのバージョン、ポートのマッピング、ボリュームのマウントなどを変更します。変更を加えた後は、`docker-compose up -d` を再実行してください。利用可能な環境変数の全一覧は、[こちら](https://docs.dify.ai/getting-started/install-self-hosted/environments)で確認できます。
+ローカル設定は `docker/.env` に記入します。[`.env.example`](../../docker/.env.example) には標準デプロイに必要な設定のみが含まれ、オプションやサービス固有の設定は [`docker/envs/`](../../docker/envs/) にあります。必要なテンプレートを `.example` 接尾辞なしでコピーしてください。`.env` の値が優先されます。変更後は `docker/` で `docker compose up -d` を実行します。詳細は [Docker ガイド](../../docker/README.md)を参照してください。
 
 ## Grafanaを使用したメトリクス監視
 

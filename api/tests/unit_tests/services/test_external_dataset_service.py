@@ -776,7 +776,7 @@ class TestExternalDatasetServiceCheckEndpoint:
         mock_proxy.post.return_value = mock_response
 
         # Act
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Forbidden: Authorization failed with the provided api_key") as exc_info:
             ExternalDatasetService.check_endpoint_and_api_key(settings)
 
         # Assert -- the message names the failure but does not include the key.

@@ -19,6 +19,7 @@ import { SUB_VARIABLES } from '../../constants'
 type Props = Readonly<{
   value: string
   onChange: (value: string) => void
+  disabled?: boolean
   className?: string
 }>
 
@@ -27,8 +28,8 @@ type SubVariableOption = {
   name: string
 }
 
-const SubVariablePicker: FC<Props> = ({ value, onChange, className }) => {
-  const { t } = useTranslation(['common'])
+const SubVariablePicker: FC<Props> = ({ value, onChange, className, disabled }) => {
+  const { t } = useTranslation(['common', 'workflow'])
   const subVarOptions = useMemo<SubVariableOption[]>(
     () =>
       SUB_VARIABLES.map((item) => ({
@@ -44,10 +45,14 @@ const SubVariablePicker: FC<Props> = ({ value, onChange, className }) => {
   return (
     <div className={cn(className)}>
       <Select
+        disabled={disabled}
         value={selectedOption?.value ?? null}
         onValueChange={(nextValue) => nextValue && onChange(nextValue)}
       >
-        <SelectTrigger className="h-8 border-0 bg-transparent p-0 hover:bg-transparent focus-visible:bg-transparent [&>*:last-child]:hidden">
+        <SelectTrigger
+          aria-label={t(($) => $['nodes.listFilter.filterConditionKey'], { ns: 'workflow' })}
+          className="h-8 border-0 bg-transparent p-0 hover:bg-transparent focus-visible:bg-transparent [&>*:last-child]:hidden"
+        >
           <div className="group/sub-variable-picker flex h-8 items-center rounded-lg bg-components-input-bg-normal pl-1 hover:bg-state-base-hover-alt">
             {selectedOption ? (
               <div className="flex cursor-pointer justify-start">
@@ -86,7 +91,7 @@ const SubVariablePicker: FC<Props> = ({ value, onChange, className }) => {
                           aria-hidden
                           className="mr-1.25 i-custom-vender-solid-development-variable-02 h-3.5 w-3.5 text-text-accent"
                         />
-                        <SelectItemText className="mr-0 px-0 system-sm-medium text-text-secondary">
+                        <SelectItemText className="mr-0 system-sm-medium text-text-secondary">
                           {option.name}
                         </SelectItemText>
                       </div>

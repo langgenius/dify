@@ -12,13 +12,8 @@ from controllers.console.error import AlreadySetupError, NotInitValidateError
 from dify_app import DifyApp
 from enums import DeploymentEdition
 from extensions import ext_fastopenapi
-from services.setup_service import (
-    InitializationValidationRequiredError,
-    SetupAlreadyCompletedError,
-    SetupInput,
-    SetupService,
-    SetupStatus,
-)
+from services.account.contracts import SetupInput, SetupStatus
+from services.setup_service import InitializationValidationRequiredError, SetupAlreadyCompletedError, SetupService
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -94,7 +89,8 @@ def test_console_setup_fastopenapi_post_success(
     response = app.test_client().post(
         "/console/api/setup",
         json=payload,
-        headers={"CF-Connecting-IP": "203.0.113.7"},
+        headers={"CF-Connecting-IP": "198.51.100.7"},
+        environ_overrides={"REMOTE_ADDR": "203.0.113.7"},
     )
 
     assert response.status_code == 201

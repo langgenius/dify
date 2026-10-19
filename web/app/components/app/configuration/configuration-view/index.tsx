@@ -1,27 +1,30 @@
 'use client'
+
 import type { FC } from 'react'
 import type { ConfigurationViewModel } from '../hooks/configuration-view-model'
 import type { InstallBundleCompleteCallback } from '@/app/components/plugins/install-plugin/install-bundle'
 import { CodeBracketIcon } from '@heroicons/react/20/solid'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -29,7 +32,7 @@ import { useTranslation } from 'react-i18next'
 import AppPublisher from '@/app/components/app/app-publisher/features-wrapper'
 import Config from '@/app/components/app/configuration/config'
 import EditHistoryModal from '@/app/components/app/configuration/config-prompt/conversation-history/edit-modal'
-import AgentSettingButton from '@/app/components/app/configuration/config/agent-setting-button'
+import { AgentSettingDialog } from '@/app/components/app/configuration/config/agent/agent-setting'
 import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
 import Debug from '@/app/components/app/configuration/debug'
 import { FeaturesProvider } from '@/app/components/base/features'
@@ -39,7 +42,7 @@ import ModelParameterModal from '@/app/components/header/account-setting/model-p
 import PluginDependency from '@/app/components/workflow/plugin-dependency'
 import ConfigContext from '@/context/debug-configuration'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
-import { AppModeEnum, ModelModeType } from '@/types/app'
+import { ModelModeType } from '@/types/app'
 import { LegacyAgentBadge } from './legacy-agent-badge'
 
 const ConfigurationView: FC<ConfigurationViewModel> = ({
@@ -79,7 +82,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
 }) => {
   const { t } = useTranslation(['appDebug', 'common'])
   const debugWithMultipleModel = appPublisherProps.debugWithMultipleModel
-  const showLegacyAgentBadge = isAgentV2Enabled() && contextValue.mode === AppModeEnum.AGENT_CHAT
+  const showLegacyAgentBadge = isAgentV2Enabled() && contextValue.mode === 'agent-chat'
   const handlePluginInstallComplete: InstallBundleCompleteCallback = (plugins, installStatus) => {
     if (!installStatus.some((status) => status.success)) return
 
@@ -128,12 +131,12 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                   </div>
                   <div className="flex items-center">
                     {isAgent && (
-                      <AgentSettingButton
+                      <AgentSettingDialog
                         isChatModel={contextValue.modelModeType === ModelModeType.chat}
-                        agentConfig={modelConfig.agentConfig}
+                        payload={modelConfig.agentConfig}
                         isFunctionCall={contextValue.isFunctionCall}
                         disabled={contextValue.readonly}
-                        onAgentSettingChange={onAgentSettingChange}
+                        onSave={onAgentSettingChange}
                       />
                     )}
                     {!debugWithMultipleModel && (
@@ -199,26 +202,22 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
             onOpenChange={(open) => !open && setShowUseGPT4Confirm(false)}
           >
             <AlertDialogContent>
-              <div className="flex flex-col items-start gap-2 self-stretch px-6 pt-6 pb-4">
-                <AlertDialogTitle className="w-full title-2xl-semi-bold text-text-primary">
+              <AlertDialogHeader>
+                <AlertDialogTitle>
                   {t(($) => $['trailUseGPT4Info.title'], { ns: 'appDebug' })}
                 </AlertDialogTitle>
-                <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                <AlertDialogDescription>
                   {t(($) => $['trailUseGPT4Info.description'], { ns: 'appDebug' })}
                 </AlertDialogDescription>
-              </div>
-              <AlertDialogActions>
-                <AlertDialogCancelButton tone="default">
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancelButton>
                   {t(($) => $['operation.cancel'], { ns: 'common' })}
                 </AlertDialogCancelButton>
-                <AlertDialogConfirmButton
-                  variant="primary"
-                  tone="default"
-                  onClick={onConfirmUseGPT4}
-                >
+                <AlertDialogConfirmButton tone="default" onClick={onConfirmUseGPT4}>
                   {t(($) => $['operation.confirm'], { ns: 'common' })}
                 </AlertDialogConfirmButton>
-              </AlertDialogActions>
+              </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
 
@@ -254,9 +253,15 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                   <DrawerPopup className="data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-sm">
                     <DrawerContent className="flex min-h-0 flex-1 flex-col">
                       <div className="mb-4 flex shrink-0 justify-end">
-                        <DrawerCloseButton
-                          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                          className="size-6 rounded-md"
+                        <DrawerClose
+                          render={
+                            <IconButton
+                              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                              size="md"
+                            >
+                              <span aria-hidden="true" className="i-ri-close-line size-4" />
+                            </IconButton>
+                          }
                         />
                       </div>
                       <Debug
@@ -282,7 +287,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
               show
               inWorkflow={false}
               showFileUpload={false}
-              isChatMode={contextValue.mode !== AppModeEnum.COMPLETION}
+              isChatMode={contextValue.mode !== 'completion'}
               disabled={!!contextValue.readonly}
               onChange={onFeaturesChange}
               onClose={onCloseFeaturePanel}

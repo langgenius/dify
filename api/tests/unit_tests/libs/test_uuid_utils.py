@@ -203,7 +203,7 @@ def test_uuidv7_timestamp_error_handling_wrong_version():
     """Test error handling for non-UUIDv7 inputs."""
 
     uuid_v4 = uuid.uuid4()
-    with pytest.raises(ValueError) as exc_ctx:
+    with pytest.raises(ValueError, match="Expected UUIDv7 \\(version 7\\), got version 4") as exc_ctx:
         uuidv7_timestamp(uuid_v4)
     assert "Expected UUIDv7 (version 7)" in str(exc_ctx.value)
     assert f"got version {uuid_v4.version}" in str(exc_ctx.value)

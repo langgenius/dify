@@ -1,4 +1,4 @@
-from typing import Any, Literal, Union
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -47,6 +47,6 @@ class VisualConfig(BaseModel):
     )
 
     # For monthly frequency
-    monthly_days: list[Union[int, Literal["last"]]] | None = Field(
+    monthly_days: list[int | Literal["last"]] | None = Field(
         default=None, description="Days of month to run on (1-31 or 'last')"
     )

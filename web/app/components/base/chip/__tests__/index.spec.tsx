@@ -10,27 +10,19 @@ const items: Item[] = [
 ]
 
 describe('Chip', () => {
-  it('uses the trigger label without replacing the option label', async () => {
+  it('keeps distinct trigger and option labels while selecting the full item', async () => {
     const user = userEvent.setup()
-    render(<Chip value="all" items={items} onSelect={vi.fn()} onClear={vi.fn()} />)
+    const onSelect = vi.fn()
+    render(<Chip value="all" items={items} onSelect={onSelect} onClear={vi.fn()} />)
 
     await user.click(screen.getByRole('combobox', { name: 'Item Types' }))
-
     const listbox = await screen.findByRole('listbox')
     expect(within(listbox).getByRole('option', { name: 'All Items' })).toHaveAttribute(
       'aria-selected',
       'true',
     )
     expect(within(listbox).queryByRole('option', { name: 'Item Types' })).not.toBeInTheDocument()
-  })
-
-  it('selects an item and closes the listbox', async () => {
-    const user = userEvent.setup()
-    const onSelect = vi.fn()
-    render(<Chip value="all" items={items} onSelect={onSelect} onClear={vi.fn()} />)
-
-    await user.click(screen.getByRole('combobox', { name: 'Item Types' }))
-    await user.click(await screen.findByRole('option', { name: 'Active' }))
+    await user.click(within(listbox).getByRole('option', { name: 'Active' }))
 
     expect(onSelect).toHaveBeenCalledWith(items[1])
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
@@ -60,4 +52,20 @@ describe('Chip', () => {
       screen.getByRole('button', { name: /common\.operation\.clear Zero/ }),
     ).toBeInTheDocument()
   })
+})
+
+it('disables selection and clearing together without hiding the current value', async () => {
+  const user = userEvent.setup()
+  const onSelect = vi.fn()
+  const onClear = vi.fn()
+  render(<Chip disabled value="active" items={items} onSelect={onSelect} onClear={onClear} />)
+  const trigger = screen.getByRole('combobox', { name: 'Active' })
+  const clear = screen.getByRole('button', { name: /common\.operation\.clear Active/ })
+  expect(trigger).toBeDisabled()
+  expect(clear).toBeDisabled()
+  await user.click(trigger)
+  await user.click(clear)
+  expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  expect(onSelect).not.toHaveBeenCalled()
+  expect(onClear).not.toHaveBeenCalled()
 })

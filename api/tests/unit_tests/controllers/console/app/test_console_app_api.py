@@ -245,7 +245,7 @@ def test_export_closes_archive_when_send_file_fails(
         raise OSError("delivery failed")
 
     monkeypatch.setattr(controller, "send_file", fail)
-    with app.test_request_context("/"), pytest.raises(OSError):
+    with app.test_request_context("/"), pytest.raises(OSError, match="delivery failed"):
         invoke(controller.AppExportApi, controller.AppExportApi.get, app_id=APP_ID)
     assert archive.closed
 
@@ -335,11 +335,11 @@ def test_create_quota_is_part_of_admission_and_precedes_application_call(
         "controllers.console.wraps.FeatureService.get_features",
         lambda *_args, **_kwargs: FeatureModel(apps=LimitationModel(size=1, limit=1)),
     )
-    injector = inspect.unwrap(
-        controller.AppListApi.post, stop=lambda f: "allowed_roles" in inspect.getclosurevars(f).nonlocals
+    admission = inspect.unwrap(
+        controller.AppListApi.post, stop=lambda f: inspect.getclosurevars(f).nonlocals.get("resource") == "apps"
     )
     with app.test_request_context(method="POST", json={"name": "Example", "mode": "chat"}), pytest.raises(Forbidden):
-        injector(controller.AppListApi())
+        admission(controller.AppListApi())
     assert boundary.calls == []
 
 

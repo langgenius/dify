@@ -26,7 +26,7 @@ from machinery.context import RequestContext
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset
 from models.model import ApiToken
-from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
+from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.app.api_key_service import AppApiKeyNotReadyError
 from services.auth.api_key_contracts import (
     ApiKeyLimitExceededError,
@@ -205,7 +205,7 @@ def test_errors_keep_http_contract(keys_app: KeysApp, error: Exception, status: 
     assert response.json is not None
     assert response.json["message"].startswith(message)
     if isinstance(error, ApiKeyLimitExceededError):
-        assert response.json["custom"] == "max_keys_exceeded"
+        assert response.json["code"] == "max_keys_exceeded"
 
 
 @pytest.mark.parametrize(
@@ -286,7 +286,7 @@ def persisted_keys_app(
     sqlite_session.commit()
     dataset_access = build_dataset_dependencies(
         database_client=sqlite_session_factory,
-        workspace_roles=WorkspaceMemberQueryRepository(session_factory=sqlite_session_factory),
+        workspace_roles=WorkspaceRepository(session_factory=sqlite_session_factory),
     ).access
     service = build_dataset_api_key_service(
         database_client=sqlite_session_factory,
@@ -322,5 +322,5 @@ def test_both_http_routes_enforce_the_same_key_limit(persisted_keys_app: KeysApp
         response = client.post(path)
         assert response.status_code == 400
         assert response.json is not None
-        assert response.json["custom"] == "max_keys_exceeded"
+        assert response.json["code"] == "max_keys_exceeded"
     assert len(sqlite_session.scalars(select(ApiToken)).all()) == 10

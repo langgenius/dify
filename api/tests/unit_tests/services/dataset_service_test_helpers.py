@@ -44,7 +44,7 @@ from services.entities.knowledge_entities.rag_pipeline_entities import (
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     RetrievalSetting as RagPipelineRetrievalSetting,
 )
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
 from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.document import DocumentIndexingError
@@ -182,7 +182,6 @@ class DatasetServiceUnitDataFactory:
             chunk_structure=doc_form,
             enable_api=enable_api,
             updated_by=None,
-            updated_at=None,
             summary_index_setting=summary_index_setting,
             **kwargs,
         )

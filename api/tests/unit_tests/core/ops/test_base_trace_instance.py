@@ -1,8 +1,7 @@
 from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import pytest
-from sqlalchemy import Engine
+from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
 
 from core.ops.base_trace_instance import BaseTraceInstance
@@ -61,8 +60,7 @@ def _persist_account(session: Session) -> Account:
 
 
 def _trace_instance() -> ConcreteTraceInstance:
-    # Tracing configuration is a domain collaborator, not an ORM session.
-    return ConcreteTraceInstance(MagicMock(spec=BaseTracingConfig))
+    return ConcreteTraceInstance(BaseTracingConfig())
 
 
 @pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
@@ -92,12 +90,13 @@ def test_get_service_account_with_tenant_tenant_not_found(sqlite_session: Sessio
     _persist_app(sqlite_session, created_by="creator_id")
     _persist_account(sqlite_session)
 
-    with pytest.raises(ValueError, match="Current tenant not found for account creator_id"):
+    with pytest.raises(ValueError, match="App tenant tenant_id not found for account creator_id"):
         _trace_instance().get_service_account_with_tenant("some_app_id")
 
 
+@pytest.mark.parametrize("current", [True, False])
 @pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
-def test_get_service_account_with_tenant_success(sqlite_session: Session):
+def test_get_service_account_with_tenant_success(sqlite_session: Session, current: bool):
     _persist_app(sqlite_session, created_by="creator_id")
     _persist_account(sqlite_session)
     tenant = Tenant(name="Workspace")
@@ -107,6 +106,41 @@ def test_get_service_account_with_tenant_success(sqlite_session: Session):
             tenant,
             TenantAccountJoin(
                 tenant_id=tenant.id,
+                account_id="creator_id",
+                current=current,
+                role=TenantAccountRole.OWNER,
+            ),
+        ]
+    )
+    sqlite_session.commit()
+
+    result = _trace_instance().get_service_account_with_tenant("some_app_id")
+
+    assert result.id == "creator_id"
+    assert result.current_tenant_id == "tenant_id"
+    assert result.current_role == TenantAccountRole.OWNER
+
+
+@pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
+def test_get_service_account_with_tenant_uses_app_workspace(sqlite_session: Session):
+    _persist_app(sqlite_session, created_by="creator_id")
+    _persist_account(sqlite_session)
+    app_tenant = Tenant(name="App workspace")
+    app_tenant.id = "tenant_id"
+    current_tenant = Tenant(name="Current workspace")
+    current_tenant.id = "other_tenant_id"
+    sqlite_session.add_all(
+        [
+            app_tenant,
+            current_tenant,
+            TenantAccountJoin(
+                tenant_id="tenant_id",
+                account_id="creator_id",
+                current=False,
+                role=TenantAccountRole.EDITOR,
+            ),
+            TenantAccountJoin(
+                tenant_id="other_tenant_id",
                 account_id="creator_id",
                 current=True,
                 role=TenantAccountRole.OWNER,
@@ -119,4 +153,56 @@ def test_get_service_account_with_tenant_success(sqlite_session: Session):
 
     assert result.id == "creator_id"
     assert result.current_tenant_id == "tenant_id"
-    assert result.current_role == TenantAccountRole.OWNER
+    assert result.current_role == TenantAccountRole.EDITOR
+    sqlite_session.expire_all()
+    memberships = sqlite_session.scalars(
+        select(TenantAccountJoin).where(TenantAccountJoin.account_id == "creator_id")
+    ).all()
+    assert {membership.tenant_id: membership.current for membership in memberships} == {
+        "tenant_id": False,
+        "other_tenant_id": True,
+    }
+
+
+@pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
+def test_get_service_account_with_tenant_requires_app_membership(sqlite_session: Session):
+    _persist_app(sqlite_session, created_by="creator_id")
+    _persist_account(sqlite_session)
+    app_tenant = Tenant(name="App workspace")
+    app_tenant.id = "tenant_id"
+    current_tenant = Tenant(name="Current workspace")
+    current_tenant.id = "other_tenant_id"
+    sqlite_session.add_all(
+        [
+            app_tenant,
+            current_tenant,
+            TenantAccountJoin(
+                tenant_id="other_tenant_id",
+                account_id="creator_id",
+                current=True,
+                role=TenantAccountRole.OWNER,
+            ),
+        ]
+    )
+    sqlite_session.commit()
+
+    with pytest.raises(ValueError, match="App tenant tenant_id not found for account creator_id"):
+        _trace_instance().get_service_account_with_tenant("some_app_id")
+
+
+@pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
+def test_get_service_account_with_tenant_requires_existing_app_tenant(sqlite_session: Session):
+    _persist_app(sqlite_session, created_by="creator_id")
+    _persist_account(sqlite_session)
+    sqlite_session.add(
+        TenantAccountJoin(
+            tenant_id="tenant_id",
+            account_id="creator_id",
+            current=True,
+            role=TenantAccountRole.OWNER,
+        )
+    )
+    sqlite_session.commit()
+
+    with pytest.raises(ValueError, match="App tenant tenant_id not found for account creator_id"):
+        _trace_instance().get_service_account_with_tenant("some_app_id")

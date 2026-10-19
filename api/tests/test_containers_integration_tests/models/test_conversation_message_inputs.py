@@ -37,7 +37,7 @@ class TestConversationMessageInputsTenantResolution:
     """Integration tests for Conversation/Message.inputs tenant resolution via real DB lookup."""
 
     @pytest.fixture(autouse=True)
-    def _auto_rollback(self, db_session_with_containers: Session) -> Generator[None, None, None]:
+    def _auto_rollback(self, db_session_with_containers: Session) -> Generator[None]:
         """Automatically rollback session changes after each test."""
         yield
         db_session_with_containers.rollback()

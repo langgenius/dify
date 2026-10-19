@@ -1,8 +1,18 @@
 from collections.abc import Generator
+from io import BytesIO
 
 import pytest
+from requests import Response
 
 from extensions.storage.base_storage import BaseStorage
+
+
+def object_response(content: bytes) -> Response:
+    response = Response()
+    response.status_code = 200
+    response.headers["Content-Length"] = str(len(content))
+    response.raw = BytesIO(content)
+    return response
 
 
 def get_example_folder() -> str:
@@ -53,6 +63,7 @@ class BaseStorageTest:
         generator = self.storage.load_stream(get_example_filename())
         assert isinstance(generator, Generator)
         assert next(generator) == get_example_data()
+        assert list(generator) == []
 
     def test_download(self):
         """Test downloading data."""

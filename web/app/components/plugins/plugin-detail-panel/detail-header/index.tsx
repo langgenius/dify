@@ -1,12 +1,21 @@
 'use client'
 
+import type { PluginVersionsResponse } from '@dify/contracts/marketplace'
 import type { PluginDetail } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuGroupLabel,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useQuery } from '@tanstack/react-query'
-import { useCallback, useMemo } from 'react'
+import { skipToken, useQuery } from '@tanstack/react-query'
+import { useCallback, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import Badge from '@/app/components/base/badge'
@@ -14,12 +23,15 @@ import { AuthCategory, PluginAuth } from '@/app/components/plugins/plugin-auth'
 import { OperationDropdown } from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
 import { BUILTIN_TOOLS_ARRAY } from '@/app/components/plugins/readme-panel/constants'
 import { useReadmePanelStore } from '@/app/components/plugins/readme-panel/store'
-import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
+import { selectToolCollections } from '@/app/components/tools/utils/query-select'
 import { API_PREFIX } from '@/config'
 import { useGetLanguage } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useTheme from '@/hooks/use-theme'
-import { useAllToolProviders } from '@/service/use-tools'
+import useTimestamp from '@/hooks/use-timestamp'
+import { consoleQuery } from '@/service/console'
+import { marketplaceQuery } from '@/service/marketplace'
+import { isEarlierThanVersion } from '@/utils/semver'
 import { getMarketplaceUrl } from '@/utils/var'
 import Verified from '../../base/badges/verified'
 import DeprecationNotice from '../../base/deprecation-notice'
@@ -84,7 +96,10 @@ const DetailHeader = ({
   onHide,
   onUpdate,
 }: Props) => {
-  const { t } = useTranslation(['common', 'plugin'])
+  const { t } = useTranslation(['common', 'plugin', 'appLog'])
+  const versionMenuLabelId = useId()
+  const { formatDate } = useTimestamp()
+  const dateFormat = t(($) => $.dateTimeFormat, { ns: 'appLog' }).split(' ')[0]!
   const openReadmePanel = useReadmePanelStore((s) => s.openReadmePanel)
   const { data: timezone } = useQuery({
     ...userProfileQueryOptions(),
@@ -100,8 +115,6 @@ const DetailHeader = ({
     source,
     tenant_id,
     version,
-    latest_version,
-    latest_unique_identifier,
     meta,
     plugin_id,
     status,
@@ -117,24 +130,44 @@ const DetailHeader = ({
     versionPicker,
     hasNewVersion,
     isAutoUpgradeEnabled,
+    autoUpgradeSettings,
     isFromGitHub,
     isFromMarketplace,
   } = useDetailHeaderState(detail)
 
-  const { handleUpdate, handleUpdatedFromMarketplace, handleDelete } = usePluginOperations({
-    detail,
-    modalStates,
-    versionPicker,
-    isFromMarketplace,
-    canDeletePlugin,
-    canUpdatePlugin,
-    onUpdate,
-  })
+  const { handleUpdate, handleUpdatedFromMarketplace, handleDelete, deleting } =
+    usePluginOperations({
+      detail,
+      modalStates,
+      canDeletePlugin,
+      canUpdatePlugin,
+      onUpdate,
+    })
+
+  const [organization, pluginName] = plugin_id.split('/')
+  const versionsQuery = useQuery(
+    marketplaceQuery.pluginVersions.queryOptions({
+      input:
+        organization && pluginName
+          ? { params: { organization, pluginName }, query: { page: 1, page_size: 100 } }
+          : skipToken,
+      enabled: versionPicker.isShow && canUpdatePlugin && isFromMarketplace && !isReadmeView,
+      retry: false,
+    }),
+  )
+  const loadingVersions =
+    versionPicker.isShow && (versionsQuery.isPending || autoUpgradeSettings.isPending)
 
   const isTool = category === PluginCategoryEnum.tool
   const providerBriefInfo = tool?.identity
   const providerKey = `${plugin_id}/${providerBriefInfo?.name}`
-  const { data: collectionList = [] } = useAllToolProviders(isTool)
+  const { data: collectionList = [] } = useQuery(
+    consoleQuery.workspaces.current.toolProviders.get.queryOptions({
+      input: { query: {} },
+      enabled: isTool,
+      select: selectToolCollections,
+    }),
+  )
   const provider = useMemo(() => {
     return collectionList.find((collection) => collection.name === providerKey)
   }, [collectionList, providerKey])
@@ -151,20 +184,23 @@ const DetailHeader = ({
     })
   }, [detail, openReadmePanel])
 
-  const handleVersionSelect = (state: {
-    version: string
-    unique_identifier: string
-    isDowngrade?: boolean
-  }) => {
-    versionPicker.setTargetVersion(state)
-    handleUpdate(state.isDowngrade)
+  const handleVersionSelect = (item: PluginVersionsResponse['data']['versions'][number]) => {
+    const isDowngrade = isEarlierThanVersion(item.version, detail.version)
+    versionPicker.setTargetVersion({
+      ...item,
+      plugin: detail,
+      warnAboutAutoUpdate: isDowngrade && isAutoUpgradeEnabled,
+    })
+    handleUpdate()
   }
 
   const handleTriggerLatestUpdate = () => {
     if (isFromMarketplace) {
+      if (!detail.latest_version || !detail.latest_unique_identifier) return
       versionPicker.setTargetVersion({
-        version: latest_version,
-        unique_identifier: latest_unique_identifier,
+        plugin: detail,
+        version: detail.latest_version,
+        unique_identifier: detail.latest_unique_identifier,
       })
     }
     handleUpdate()
@@ -201,39 +237,80 @@ const DetailHeader = ({
             )}
 
             {/* Version Picker */}
-            {!!version && (
-              <PluginVersionPicker
-                disabled={!canUpdatePlugin || !isFromMarketplace || isReadmeView}
-                isShow={versionPicker.isShow}
-                onShowChange={versionPicker.setIsShow}
-                pluginID={plugin_id}
-                currentVersion={version}
-                onSelect={handleVersionSelect}
-                trigger={(open) => (
-                  <Badge
-                    className={cn(
-                      'mx-1',
-                      open && 'bg-state-base-hover',
-                      (open || (canUpdatePlugin && isFromMarketplace)) &&
-                        'hover:bg-state-base-hover',
-                    )}
-                    uppercase={false}
-                    text={
-                      <>
-                        <div>{isFromGitHub ? (meta?.version ?? version ?? '') : version}</div>
-                        {canUpdatePlugin && isFromMarketplace && !isReadmeView && (
-                          <span
-                            aria-hidden
-                            className="ml-1 i-ri-arrow-left-right-line size-3 text-text-tertiary"
-                          />
+            <DropdownMenu
+              open={
+                !!version &&
+                versionPicker.isShow &&
+                canUpdatePlugin &&
+                isFromMarketplace &&
+                !isReadmeView &&
+                !loadingVersions
+              }
+              onOpenChange={versionPicker.setIsShow}
+            >
+              {!!version && (
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="small"
+                      disabled={!canUpdatePlugin || !isFromMarketplace || isReadmeView}
+                      loading={loadingVersions}
+                      className="relative mx-1 h-5 overflow-visible rounded-[5px] border border-divider-deep px-1.25 system-xs-medium text-text-tertiary"
+                    >
+                      {hasNewVersion && (
+                        <span className="absolute -top-0.5 -right-0.5 size-1.5 rounded-xs border border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg shadow-sm" />
+                      )}
+                      <span>{isFromGitHub ? (meta?.version ?? version) : version}</span>
+                      {canUpdatePlugin &&
+                        isFromMarketplace &&
+                        !isReadmeView &&
+                        !loadingVersions && (
+                          <span aria-hidden className="i-ri-arrow-left-right-line size-3" />
                         )}
-                      </>
-                    }
-                    hasRedCornerMark={hasNewVersion}
-                  />
-                )}
-              />
-            )}
+                    </Button>
+                  }
+                />
+              )}
+              <DropdownMenuContent
+                className="max-h-[min(16rem,var(--available-height))]"
+                placement="bottom-start"
+                aria-labelledby={versionMenuLabelId}
+              >
+                <DropdownMenuGroup>
+                  <DropdownMenuGroupLabel id={versionMenuLabelId}>
+                    {t(($) => $['detailPanel.switchVersion'], { ns: 'plugin' })}
+                  </DropdownMenuGroupLabel>
+                  {versionsQuery.data && autoUpgradeSettings.data ? (
+                    versionsQuery.data.data.versions.map((item) => (
+                      <DropdownMenuItem
+                        key={item.unique_identifier}
+                        disabled={version === item.version}
+                        onClick={() => handleVersionSelect(item)}
+                      >
+                        <span>{item.version}</span>
+                        {version === item.version && (
+                          <Badge className="shrink-0" variant="dimm" text="CURRENT" />
+                        )}
+                        <span className="ms-auto text-text-tertiary">
+                          {formatDate(item.created_at, dateFormat)}
+                        </span>
+                      </DropdownMenuItem>
+                    ))
+                  ) : (
+                    <DropdownMenuItem
+                      closeOnClick={false}
+                      onClick={() => {
+                        if (versionsQuery.isError) void versionsQuery.refetch()
+                        if (autoUpgradeSettings.isError) void autoUpgradeSettings.refetch()
+                      }}
+                    >
+                      {t(($) => $['operation.retry'], { ns: 'common' })}
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             {/* Auto Update Badge */}
             {isAutoUpgradeEnabled && !isReadmeView && (
@@ -363,10 +440,9 @@ const DetailHeader = ({
         detail={detail}
         modalStates={modalStates}
         targetVersion={versionPicker.targetVersion}
-        isDowngrade={versionPicker.isDowngrade}
-        isAutoUpgradeEnabled={isAutoUpgradeEnabled}
         onUpdatedFromMarketplace={handleUpdatedFromMarketplace}
         onDelete={handleDelete}
+        deleting={deleting}
       />
     </div>
   )

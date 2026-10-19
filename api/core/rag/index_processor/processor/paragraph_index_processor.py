@@ -1,5 +1,6 @@
 """Paragraph index processor."""
 
+import contextlib
 import logging
 import re
 import uuid
@@ -30,6 +31,7 @@ from core.rag.index_processor.index_processor_base import BaseIndexProcessor, Su
 from core.rag.models.document import AttachmentDocument, Document, MultimodalGeneralStructureChunk
 from core.tools.utils.text_processing_utils import remove_leading_symbols
 from core.workflow.file_reference import build_file_reference
+from extensions.ext_login import load_account
 from factories.file_factory import build_from_mapping
 from graphon.file import File, FileTransferMethod, FileType, file_manager
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
@@ -46,7 +48,6 @@ from models import UploadFile
 from models.account import Account
 from models.dataset import Dataset, DatasetProcessRule, DocumentSegment, SegmentAttachmentBinding
 from models.dataset import Document as DatasetDocument
-from services.account_service import AccountService
 from services.knowledge.summaries.adapters import SummaryIndexAdapter
 
 logger = logging.getLogger(__name__)
@@ -242,8 +243,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                         all_multimodal_documents.append(file_document)
                     doc.attachments = attachments
                 else:
-                    with session_factory.create_session() as account_session:
-                        account = AccountService.load_user(document.created_by, account_session)
+                    account = load_account(document.created_by)
                     if not account:
                         raise ValueError("Invalid account")
                     doc.attachments = self._get_content_files(
@@ -460,11 +460,9 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         # This is especially important for image-only chunks where text is empty or minimal
         if is_default_prompt:
             language_for_prompt = document_language or "the same language as the input content"
-            try:
+            # If default prompt doesn't have {language} placeholder, use it as-is
+            with contextlib.suppress(KeyError):
                 summary_prompt = summary_prompt.format(language=language_for_prompt)
-            except KeyError:
-                # If default prompt doesn't have {language} placeholder, use it as-is
-                pass
 
         model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
         model_instance = model_manager.get_model_instance(

@@ -7,7 +7,8 @@ from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
-from core.entities.model_entities import ModelStatus
+from core.entities.model_entities import ModelStatus, ModelWithProviderEntity
+from core.entities.provider_configuration import ProviderConfigurations
 from core.entities.provider_entities import CredentialConfiguration
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderBinding
@@ -535,6 +536,20 @@ class TestModelProviderServiceConfiguration:
         assert "ORDER BY provider_credentials.created_at DESC, provider_credentials.id DESC" in statements[1]
         assert "provider_model_credentials" in statements[2]
 
+    def test_list_models_should_pass_filters_through(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        service, manager = _create_service_with_mocked_manager()
+        filters: list[dict[str, object]] = []
+
+        def get_models(_self: ProviderConfigurations, **kwargs: object) -> list[ModelWithProviderEntity]:
+            filters.append(kwargs)
+            return []
+
+        monkeypatch.setattr(ProviderConfigurations, "get_models", get_models)
+        manager.get_configurations.return_value = ProviderConfigurations(tenant_id="tenant-1")
+
+        assert service.list_models("tenant-1", provider=None, model_type=ModelType.LLM) == []
+        assert filters == [{"provider": None, "model_type": ModelType.LLM}]
+
     def test_get_models_by_provider_should_wrap_model_entities_with_tenant_context(self) -> None:
         service, manager = _create_service_with_mocked_manager()
 
@@ -604,7 +619,7 @@ class TestModelProviderServiceDelegation:
                 },
                 "create_provider_credential",
                 ({"token": "abc"}, "A"),
-                None,
+                "new-credential-id",
             ),
             (
                 "update_provider_credential",
@@ -663,6 +678,8 @@ class TestModelProviderServiceDelegation:
                 provider_method.assert_called_once_with(provider_call_kwargs)
         if method_name == "get_provider_credential":
             assert result == {"token": "abc"}
+        if method_name == "create_provider_credential":
+            assert result == "new-credential-id"
 
     @pytest.mark.parametrize(
         ("method_name", "method_kwargs", "provider_method_name", "expected_kwargs", "provider_return"),
@@ -710,7 +727,7 @@ class TestModelProviderServiceDelegation:
                     "credentials": {"api_key": "x"},
                     "credential_name": "cred-a",
                 },
-                None,
+                "new-credential-id",
             ),
             (
                 "update_model_credential",
@@ -807,6 +824,8 @@ class TestModelProviderServiceDelegation:
         getattr(provider_configuration, provider_method_name).assert_called_once_with(**expected_kwargs)
         if method_name == "get_model_credential":
             assert result == {"api_key": "x"}
+        if method_name == "create_model_credential":
+            assert result == "new-credential-id"
 
     @pytest.mark.parametrize(
         ("method_name", "method_kwargs", "provider_method_name", "expected_kwargs"),
