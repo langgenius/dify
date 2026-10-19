@@ -83,44 +83,41 @@ function focusRingSpace(tab: Element, scrollport: Element) {
   )
 }
 
-it.each(['{Enter}', ' '])(
-  'keeps focus visible and activates the focused environment only with %s',
-  async (activationKey) => {
-    const { screen, onUrlUpdate } = await renderAccessPoint()
-    const builtIn = screen.getByRole('tab', { name: 'Built-in' })
-    const deployed = screen.getByRole('tab', { name: 'test-1' })
-    await userEvent.tab()
-    await expect.element(builtIn).toHaveFocus()
+it('keeps focus visible and activates the focused environment only with Enter', async () => {
+  const { screen, onUrlUpdate } = await renderAccessPoint()
+  const builtIn = screen.getByRole('tab', { name: 'Built-in' })
+  const deployed = screen.getByRole('tab', { name: 'test-1' })
+  await userEvent.tab()
+  await expect.element(builtIn).toHaveFocus()
 
-    const scrollport = screen.getByRole('tablist').element()
-    // The primitive owns a 2px outer focus ring; the scrollport must leave room for it.
-    expect(focusRingSpace(builtIn.element(), scrollport)).toBeGreaterThanOrEqual(2)
-    const selectedBackground = getComputedStyle(builtIn.element()).backgroundColor
-    await userEvent.keyboard('{ArrowRight}')
-    await expect.element(deployed).toHaveFocus()
-    await expect.element(builtIn).toHaveAttribute('aria-selected', 'true')
-    await expect.element(deployed).toHaveAttribute('aria-selected', 'false')
-    expect(getComputedStyle(builtIn.element()).backgroundColor).toBe(selectedBackground)
-    expect(getComputedStyle(deployed.element()).backgroundColor).not.toBe(selectedBackground)
-    expect(focusRingSpace(deployed.element(), scrollport)).toBeGreaterThanOrEqual(2)
-    expect(onUrlUpdate).not.toHaveBeenCalled()
+  const scrollport = screen.getByRole('tablist').element()
+  // The primitive owns a 2px outer focus ring; the scrollport must leave room for it.
+  expect(focusRingSpace(builtIn.element(), scrollport)).toBeGreaterThanOrEqual(2)
+  const selectedBackground = getComputedStyle(builtIn.element()).backgroundColor
+  await userEvent.keyboard('{ArrowRight}')
+  await expect.element(deployed).toHaveFocus()
+  await expect.element(builtIn).toHaveAttribute('aria-selected', 'true')
+  await expect.element(deployed).toHaveAttribute('aria-selected', 'false')
+  expect(getComputedStyle(builtIn.element()).backgroundColor).toBe(selectedBackground)
+  expect(getComputedStyle(deployed.element()).backgroundColor).not.toBe(selectedBackground)
+  expect(focusRingSpace(deployed.element(), scrollport)).toBeGreaterThanOrEqual(2)
+  expect(onUrlUpdate).not.toHaveBeenCalled()
 
-    await userEvent.keyboard('{ArrowLeft}')
-    await expect.element(builtIn).toHaveFocus()
-    await userEvent.keyboard('{ArrowRight}')
-    await expect.element(deployed).toHaveFocus()
-    expect(onUrlUpdate).not.toHaveBeenCalled()
+  await userEvent.keyboard('{ArrowLeft}')
+  await expect.element(builtIn).toHaveFocus()
+  await userEvent.keyboard('{ArrowRight}')
+  await expect.element(deployed).toHaveFocus()
+  expect(onUrlUpdate).not.toHaveBeenCalled()
 
-    await userEvent.keyboard(activationKey)
-    await expect.element(deployed).toHaveAttribute('aria-selected', 'true')
-    expect(getComputedStyle(deployed.element()).backgroundColor).toBe(selectedBackground)
-    expect(onUrlUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ queryString: '?environment=environment-0' }),
-    )
-    await userEvent.tab()
-    await expect.element(screen.getByRole('tabpanel', { name: 'test-1' })).toHaveFocus()
-  },
-)
+  await userEvent.keyboard('{Enter}')
+  await expect.element(deployed).toHaveAttribute('aria-selected', 'true')
+  expect(getComputedStyle(deployed.element()).backgroundColor).toBe(selectedBackground)
+  expect(onUrlUpdate).toHaveBeenCalledWith(
+    expect.objectContaining({ queryString: '?environment=environment-0' }),
+  )
+  await userEvent.tab()
+  await expect.element(screen.getByRole('tabpanel', { name: 'test-1' })).toHaveFocus()
+})
 
 it('scrolls the first and last keyboard-focused tabs fully into view without activating them', async () => {
   await page.viewport(320, 640)

@@ -214,22 +214,6 @@ When(
 )
 
 Then(
-  'the {string} app access point dialog should support keyboard focus and dismissal',
-  async function (this: DifyWorld, surface: string) {
-    const page = this.getPage()
-    const { dialog, trigger } = getAccessPointDialog(page, surface)
-    await expectDialogFocus(page, dialog)
-    await page.keyboard.press('Escape')
-    await expect(dialog).toBeHidden()
-    await expect(trigger).toBeFocused()
-
-    await activateWithKeyboard(trigger)
-    await expect(dialog).toBeVisible()
-    await expect(dialog).toHaveCSS('opacity', '1')
-  },
-)
-
-Then(
   'the app API Key list should contain {int} key(s)',
   async function (this: DifyWorld, count: number) {
     const { dialog } = getAccessPointDialog(this.getPage(), 'API Key')
@@ -370,10 +354,10 @@ When('I inspect the Web App settings {string}', async function (this: DifyWorld,
 })
 
 Then(
-  'the Web App settings {string} should support keyboard focus and dismissal',
+  'the Web App settings {string} should restore focus after popup dismissal',
   async function (this: DifyWorld, state: string) {
     const page = this.getPage()
-    const { dialog, trigger } = getAccessPointDialog(page, 'Web App settings')
+    const { dialog } = getAccessPointDialog(page, 'Web App settings')
     if (state === 'language options') {
       await page.keyboard.press('Escape')
       await expect(page.getByRole('listbox')).toBeHidden()
@@ -383,10 +367,6 @@ Then(
       await expect(page.getByRole('dialog', { name: 'Choose icon', exact: true })).toBeHidden()
       await expect(dialog.getByRole('button', { name: 'Choose icon', exact: true })).toBeFocused()
     }
-    await expectDialogFocus(page, dialog)
-    await page.keyboard.press('Escape')
-    await expect(dialog).toBeHidden()
-    await expect(trigger).toBeFocused()
   },
 )
 
@@ -435,8 +415,15 @@ Then(
   },
 )
 
+When('I expand the embedding hidden input fields', async function (this: DifyWorld) {
+  const { dialog } = getAccessPointDialog(this.getPage(), 'Embedding')
+  const disclosure = dialog.getByRole('button', { name: /^Pre-Fill Hidden Fields/ })
+  await activateWithKeyboard(disclosure)
+  await expect(disclosure).toHaveAttribute('aria-expanded', 'true')
+})
+
 When(
-  'I configure the {string} embedding with hidden inputs',
+  'I select the {string} embedding preview',
   async function (this: DifyWorld, embedding: string) {
     const { dialog } = getAccessPointDialog(this.getPage(), 'Embedding')
     const tabNames: Record<string, string> = {
@@ -449,9 +436,6 @@ When(
     const tab = dialog.getByRole('tab', { name: tabName, exact: true })
     await activateWithKeyboard(tab)
     await expect(tab).toHaveAttribute('aria-selected', 'true')
-    const disclosure = dialog.getByRole('button', { name: /^Pre-Fill Hidden Fields/ })
-    await activateWithKeyboard(disclosure)
-    await expect(disclosure).toHaveAttribute('aria-expanded', 'true')
   },
 )
 

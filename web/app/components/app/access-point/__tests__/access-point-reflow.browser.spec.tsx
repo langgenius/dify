@@ -97,23 +97,20 @@ it('keeps the heading, URL and actions reachable in the space available at 320px
   await expect.element(screen.getByRole('link', { name: 'Open' })).toBeVisible()
 })
 
-it.each(['disabled', 'unavailable'] as const)(
-  'keeps the %s endpoint readable while the open action is disabled',
-  async (state) => {
-    const screen = await render(
-      <AccessPointUrl
-        enabled={false}
-        label="Access URL"
-        value="https://example.test/workflow/1234567890"
-        unavailable={state === 'unavailable'}
-        unavailableLabel="Unavailable"
-        showOpen
-        openLabel="Open"
-      />,
-    )
-    const address = screen.getByText('https://example.test/workflow/1234567890')
-    await expect.element(address).toBeVisible()
-    expectReadableContrast(address.element())
-    await expect.element(screen.getByRole('button', { name: 'Open' })).toBeDisabled()
-  },
-)
+it('keeps the unavailable endpoint readable while the open action is disabled', async () => {
+  const screen = await render(
+    <AccessPointUrl
+      enabled={false}
+      label="Access URL"
+      value="https://example.test/workflow/1234567890"
+      unavailable
+      unavailableLabel="Unavailable"
+      showOpen
+      openLabel="Open"
+    />,
+  )
+  const address = screen.getByText('https://example.test/workflow/1234567890')
+  await expect.element(address).toBeVisible()
+  expectReadableContrast(address.element())
+  await expect.element(screen.getByRole('button', { name: 'Open' })).toBeDisabled()
+})

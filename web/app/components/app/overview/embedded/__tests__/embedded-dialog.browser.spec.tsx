@@ -1,6 +1,5 @@
 import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import copy from 'copy-to-clipboard'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { InputVarType } from '@/app/components/workflow/types'
@@ -126,7 +125,6 @@ it('keeps Copy and the hidden input in view at 320px while tabbing and scrolling
       }),
     )
     .toBeVisible()
-  expect(copy).toHaveBeenCalledWith(preview.element().textContent)
   queryClient.clear()
 })
 

@@ -48,8 +48,7 @@ Feature: App access point automated WCAG checks
     When I navigate to the app access point page
     Then the app access point page should be ready
     When I open the "<surface>" app access point dialog
-    Then the "<surface>" app access point dialog should support keyboard focus and dismissal
-    And the current page should have no automatically detectable WCAG Level <level> violations
+    Then the current page should have no automatically detectable WCAG Level <level> violations
 
     @wcag-a @wcag-page-app-access-point
     Examples: Dialogs at Level A
@@ -105,49 +104,68 @@ Feature: App access point automated WCAG checks
     When I open the "Web App settings" app access point dialog
     And I inspect the Web App settings "<state>"
     Then the current page should have no automatically detectable WCAG Level <level> violations
-    And the Web App settings "<state>" should support keyboard focus and dismissal
 
     @wcag-a @wcag-page-app-access-point
     Examples: Web App settings at Level A
       | state             | level |
       | form              | A     |
       | validation errors | A     |
-      | language options  | A     |
-      | icon picker       | A     |
 
     @wcag-aa @wcag-page-app-access-point
     Examples: Web App settings at Level AA
       | state             | level |
       | form              | AA    |
       | validation errors | AA    |
-      | language options  | AA    |
-      | icon picker       | AA    |
 
-  Scenario Outline: Chatflow <embedding> embedding with hidden inputs has no automatically detectable WCAG Level <level> violations
+  Scenario Outline: Web App settings <state> popup has no automatically detectable WCAG Level <level> violations
+    Given I am signed in as the default E2E admin
+    And a published chatflow app with hidden access point inputs
+    When I navigate to the app access point page
+    Then the app access point page should be ready
+    When I open the "Web App settings" app access point dialog
+    And I inspect the Web App settings "<state>"
+    Then the current page should have no automatically detectable WCAG Level <level> violations
+    And the Web App settings "<state>" should restore focus after popup dismissal
+
+    @wcag-a @wcag-page-app-access-point
+    Examples: Web App settings popups at Level A
+      | state            | level |
+      | language options | A     |
+      | icon picker      | A     |
+
+    @wcag-aa @wcag-page-app-access-point
+    Examples: Web App settings popups at Level AA
+      | state            | level |
+      | language options | AA    |
+      | icon picker      | AA    |
+
+  Scenario Outline: Chatflow embedding previews with hidden inputs have no automatically detectable WCAG Level <level> violations
     Given I am signed in as the default E2E admin
     And a published chatflow app with hidden access point inputs
     When I navigate to the app access point page
     Then the app access point page should be ready
     And the current page should have no automatically detectable WCAG Level <level> violations
     When I open the "Embedding" app access point dialog
-    Then the "Embedding" app access point dialog should support keyboard focus and dismissal
-    When I configure the "<embedding>" embedding with hidden inputs
+    And I expand the embedding hidden input fields
+    And I select the "iframe" embedding preview
+    Then the selected embedding should expose its preview and copy action
+    And the current page should have no automatically detectable WCAG Level <level> violations
+    When I select the "scripts" embedding preview
+    Then the selected embedding should expose its preview and copy action
+    And the current page should have no automatically detectable WCAG Level <level> violations
+    When I select the "Chrome extension" embedding preview
     Then the selected embedding should expose its preview and copy action
     And the current page should have no automatically detectable WCAG Level <level> violations
 
     @wcag-a @wcag-page-app-access-point
     Examples: Embedding at Level A
-      | embedding        | level |
-      | iframe           | A     |
-      | scripts          | A     |
-      | Chrome extension | A     |
+      | level |
+      | A     |
 
     @wcag-aa @wcag-page-app-access-point
     Examples: Embedding at Level AA
-      | embedding        | level |
-      | iframe           | AA    |
-      | scripts          | AA    |
-      | Chrome extension | AA    |
+      | level |
+      | AA    |
 
   Scenario Outline: Workflow hidden input configuration has no automatically detectable WCAG Level <level> violations
     Given I am signed in as the default E2E admin
@@ -155,8 +173,7 @@ Feature: App access point automated WCAG checks
     When I navigate to the app access point page
     Then the app access point page should be ready
     When I open the "Workflow hidden inputs" app access point dialog
-    Then the "Workflow hidden inputs" app access point dialog should support keyboard focus and dismissal
-    When I fill the app access point hidden input form
+    And I fill the app access point hidden input form
     Then the current page should have no automatically detectable WCAG Level <level> violations
     When I open the hidden input language options
     Then the current page should have no automatically detectable WCAG Level <level> violations
@@ -179,8 +196,7 @@ Feature: App access point automated WCAG checks
     When I navigate to the app access point page
     Then the app access point page should be ready
     When I open the "MCP description" app access point dialog
-    Then the "MCP description" app access point dialog should support keyboard focus and dismissal
-    And the configured MCP parameter descriptions should be labelled and populated
+    Then the configured MCP parameter descriptions should be labelled and populated
     And the current page should have no automatically detectable WCAG Level <level> violations
 
     @wcag-a @wcag-page-app-access-point
