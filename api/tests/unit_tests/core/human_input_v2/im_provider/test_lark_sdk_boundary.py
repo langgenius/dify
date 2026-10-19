@@ -330,7 +330,10 @@ def test_lark_credentials_require_root_access_despite_a_successful_user_scope(re
     adapter = LarkIMProviderAdapter(_credentials())
 
     assert adapter.test_credentials() == CredentialTestFailure(
-        CredentialTestFailureKind.UNKNOWN, "Lark baseline permissions could not be confirmed."
+        CredentialTestFailureKind.UNKNOWN,
+        "Lark baseline permissions could not be confirmed.",
+        provider_error_code="40004",
+        http_status=403,
     )
 
 
@@ -346,7 +349,9 @@ def test_lark_invalid_app_secret_returns_a_safe_failure() -> None:
     adapter = LarkIMProviderAdapter(_credentials(app_secret="invalid-test-secret"))
 
     assert adapter.test_credentials() == CredentialTestFailure(
-        CredentialTestFailureKind.UNKNOWN, "Lark credential testing could not be completed."
+        CredentialTestFailureKind.UNKNOWN,
+        "Lark rejected the credential test.",
+        provider_error_code="10014",
     )
 
 
@@ -354,7 +359,10 @@ def test_lark_invalid_tenant_token_is_classified_as_authentication_rejected(repl
     replay.responses["tenant"] = replay.exchanges["invalid_token"].response
 
     assert LarkIMProviderAdapter(_credentials()).test_credentials() == CredentialTestFailure(
-        CredentialTestFailureKind.AUTHENTICATION_REJECTED, "Lark rejected the credential test."
+        CredentialTestFailureKind.AUTHENTICATION_REJECTED,
+        "Lark rejected the credential test.",
+        provider_error_code="99991663",
+        http_status=400,
     )
 
 

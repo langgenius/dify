@@ -6,6 +6,7 @@ import weakref
 
 import httpx
 import pytest
+from pydantic import ValidationError
 from wechatpy.enterprise import WeChatClient
 from wechatpy.exceptions import WeChatClientException
 
@@ -17,6 +18,7 @@ from core.human_input_v2.im_integration.adapters import (
     EventAcceptance,
     WeComCredentials,
 )
+from core.human_input_v2.im_integration.adapters.entities import IMProviderError
 
 
 class _Consumer:
@@ -160,9 +162,8 @@ def test_credential_token_fetch_applies_a_bounded_network_timeout(
 
     monkeypatch.setattr(httpx, "get", get)
 
-    result = wecom_module.WeComIMProviderAdapter(_credentials()).test_credentials()
-
-    assert isinstance(result, CredentialTestFailure)
+    with pytest.raises(ValueError):
+        wecom_module.WeComIMProviderAdapter(_credentials()).test_credentials()
     assert observed_requests == [(wecom_module._ACCESS_TOKEN_URL, 5.0)]
 
 
@@ -188,6 +189,7 @@ def test_credential_token_fetch_preserves_authentication_rejection_classificatio
     assert result == CredentialTestFailure(
         CredentialTestFailureKind.AUTHENTICATION_REJECTED,
         "WeCom rejected the credential test.",
+        provider_error_code="40013",
     )
     assert "fake raw provider detail" not in result.reason
 
@@ -254,13 +256,17 @@ def test_credential_test_normalizes_token_failures_without_provider_material(
     client = _FakeClient(token_response)
     monkeypatch.setattr(wecom_module, "_new_client", lambda *_args, **_kwargs: client)
 
-    result = wecom_module.WeComIMProviderAdapter(_credentials()).test_credentials()
-
-    assert isinstance(result, CredentialTestFailure)
-    assert result.kind is expected_kind
-    assert "fake raw provider detail" not in result.reason
-    assert "fake transport detail" not in result.reason
-    assert "fake-secret-001" not in result.reason
+    if isinstance(token_response, WeChatClientException) and token_response.errcode is not None:
+        result = wecom_module.WeComIMProviderAdapter(_credentials()).test_credentials()
+        assert isinstance(result, CredentialTestFailure)
+        assert result.kind is expected_kind
+        assert result.provider_error_code == str(token_response.errcode)
+    else:
+        expected_error = type(token_response) if isinstance(token_response, Exception) else ValueError
+        with pytest.raises(expected_error) as captured:
+            wecom_module.WeComIMProviderAdapter(_credentials()).test_credentials()
+        if isinstance(token_response, Exception):
+            assert captured.value is token_response
     assert client.agent.calls == []
 
 
@@ -272,6 +278,7 @@ def test_credential_test_normalizes_token_failures_without_provider_material(
             CredentialTestFailure(
                 CredentialTestFailureKind.TENANT_ID_UNAVAILABLE,
                 "WeCom could not verify the configured corporation directory boundary.",
+                provider_error_code="40056",
             ),
         ),
         (
@@ -306,13 +313,21 @@ def test_credential_test_requires_the_bound_agent_directory_boundary(
     client = _FakeClient(_token_response(), agent_response)
     monkeypatch.setattr(wecom_module, "_new_client", lambda *_args, **_kwargs: client)
 
-    result = wecom_module.WeComIMProviderAdapter(_credentials()).test_credentials()
-
-    assert result == expected
+    if isinstance(agent_response, WeChatClientException) and agent_response.errcode is not None:
+        result = wecom_module.WeComIMProviderAdapter(_credentials()).test_credentials()
+        assert isinstance(result, CredentialTestFailure)
+        assert result.kind is CredentialTestFailureKind.PERMISSION_DENIED
+        assert result.provider_error_code == expected.provider_error_code
+    else:
+        expected_error = (
+            type(agent_response) if isinstance(agent_response, Exception) else (IMProviderError, ValidationError)
+        )
+        with pytest.raises(expected_error) as captured:
+            wecom_module.WeComIMProviderAdapter(_credentials()).test_credentials()
+        if isinstance(agent_response, Exception):
+            assert captured.value is agent_response
     assert client.fetch_calls == 1
     assert client.agent.calls == [1000001]
-    assert "fake raw provider detail" not in result.reason
-    assert "fake transport detail" not in result.reason
 
 
 @pytest.mark.parametrize(
@@ -342,9 +357,5 @@ def test_credential_test_rejects_malformed_directory_scope(
     client = _FakeClient(_token_response(), agent_response)
     monkeypatch.setattr(wecom_module, "_new_client", lambda *_args, **_kwargs: client)
 
-    result = wecom_module.WeComIMProviderAdapter(_credentials()).test_credentials()
-
-    assert result == CredentialTestFailure(
-        CredentialTestFailureKind.UNKNOWN,
-        "WeCom credential testing could not be completed.",
-    )
+    with pytest.raises(ValueError):
+        wecom_module.WeComIMProviderAdapter(_credentials()).test_credentials()

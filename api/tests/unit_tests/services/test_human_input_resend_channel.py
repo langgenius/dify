@@ -119,6 +119,29 @@ def test_transport_failure_is_classified_without_credential_material() -> None:
     assert "re_secret" not in repr(raised.value)
 
 
+@pytest.mark.parametrize(
+    "name", ["restricted_api_key", "validation_error", "monthly_quota_exceeded", "new_provider_error"]
+)
+def test_provider_error_preserves_original_resend_code_without_raw_message(name: str) -> None:
+    gateway = ResendProviderGateway(
+        http_client=FakeHTTPClient(
+            FakeResponse(
+                403,
+                {
+                    "name": name,
+                    "message": "raw response containing re_secret",
+                },
+            )
+        )
+    )
+
+    with pytest.raises((EmailProviderValidationError, EmailProviderOperationError)) as captured:
+        gateway.send_test(_candidate())
+
+    assert captured.value.provider_error_code == name
+    assert "re_secret" not in repr(captured.value)
+
+
 def test_send_message_uses_rendered_content_and_selected_channel_credentials() -> None:
     http_client = FakeHTTPClient(FakeResponse(200, {"id": "email-1"}))
     gateway = ResendProviderGateway(http_client=http_client, id_factory=lambda: "message-1")

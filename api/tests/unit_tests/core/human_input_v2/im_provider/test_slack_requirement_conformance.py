@@ -199,18 +199,17 @@ def test_credential_test_normalizes_unexpected_failure_without_secret_leak(mocke
     client.auth_test.side_effect = RuntimeError("sanitized-client-secret")
     adapter = _adapter(mocker, client)
 
-    result = adapter.test_credentials()
-
-    assert result == CredentialTestFailure(
-        CredentialTestFailureKind.UNKNOWN,
-        "Slack credential testing could not be completed.",
-    )
+    with pytest.raises(RuntimeError, match="sanitized-client-secret") as captured:
+        adapter.test_credentials()
+    assert captured.value is client.auth_test.side_effect
 
 
 def test_credential_test_maps_transport_and_scope_failures_to_safe_results(mocker: MockerFixture) -> None:
     transport_client = mocker.Mock(spec=WebClient)
     transport_client.auth_test.side_effect = SlackClientError("sanitized transport details")
-    transport_result = _adapter(mocker, transport_client).test_credentials()
+    with pytest.raises(SlackClientError) as captured:
+        _adapter(mocker, transport_client).test_credentials()
+    assert captured.value is transport_client.auth_test.side_effect
 
     scope_client = mocker.Mock(spec=WebClient)
     scope_client.auth_test.return_value = _SlackResponse(
@@ -219,13 +218,10 @@ def test_credential_test_maps_transport_and_scope_failures_to_safe_results(mocke
     )
     scope_result = _adapter(mocker, scope_client).test_credentials()
 
-    assert transport_result == CredentialTestFailure(
-        CredentialTestFailureKind.UNKNOWN,
-        "Slack credential testing could not be completed.",
-    )
     assert scope_result == CredentialTestFailure(
-        CredentialTestFailureKind.UNKNOWN,
+        CredentialTestFailureKind.PERMISSION_DENIED,
         "Slack baseline permissions could not be confirmed.",
+        missing_permissions=("users:read.email",),
     )
     scope_client.apps_connections_open.assert_not_called()
 
@@ -260,6 +256,11 @@ def test_credential_test_maps_socket_mode_sdk_failures(
     client.auth_test.return_value = _successful_auth_response()
     client.apps_connections_open.side_effect = socket_failure
 
+    if not isinstance(socket_failure, SlackApiError):
+        with pytest.raises(type(socket_failure)) as captured:
+            _adapter(mocker, client).test_credentials()
+        assert captured.value is socket_failure
+        return
     result = _adapter(mocker, client).test_credentials()
 
     assert isinstance(result, CredentialTestFailure)

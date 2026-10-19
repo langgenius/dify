@@ -604,6 +604,33 @@ describe('Contact IM channel API repository', () => {
     },
   )
 
+  it.each(['im', 'email'] as const)(
+    'preserves safe provider diagnostics when creating a %s channel',
+    async (kind) => {
+      const client = createChannelClient()
+      const message =
+        'The provider connection could not be established. Provider error code: 99991672. Missing permissions: contact:contact.base:readonly.'
+      client.channels[kind].post.mockRejectedValue(
+        Response.json({ code: 'bad_request', message }, { status: 400 }),
+      )
+      const command =
+        kind === 'im'
+          ? slackCommand
+          : {
+              ...slackCommand,
+              provider: ContactImProvider.Email,
+              values: { senderEmail: 'sender@example.test', senderName: 'Sender' },
+            }
+
+      await expect(
+        createContactImApiRepository(organization, client).saveCredentials({
+          ...command,
+          replaceActiveProvider: false,
+        }),
+      ).rejects.toMatchObject({ code: 'mutation_failed', statusDescription: message })
+    },
+  )
+
   it('never bypasses required fresh secrets or identity fields through retainSecret', async () => {
     const client = createChannelClient()
     const repository = createContactImApiRepository(organization, client)

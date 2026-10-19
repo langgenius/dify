@@ -29,11 +29,13 @@ from cryptography.hazmat.primitives import padding as symmetric_padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from lark_oapi.api import contact, im, tenant
 from lark_oapi.channel import FeishuChannel, TransportConfig
+from lark_oapi.core.exception import AccessTokenException, ObtainAccessTokenException
 from lark_oapi.event.callback.model.p2_card_action_trigger import P2CardActionTrigger, P2CardActionTriggerResponse
 from lark_oapi.ws import client as sdk_ws_client_module
 from markdown_it import MarkdownIt
 from markdown_it.token import Token
 from pydantic import AliasPath, BaseModel, ConfigDict, Field, JsonValue, TypeAdapter, ValidationError, field_validator
+from requests.exceptions import Timeout as RequestsTimeout
 from websockets.asyncio.client import ClientConnection
 
 from core.human_input import ButtonStyle
@@ -51,6 +53,7 @@ from core.human_input_v2.im_integration.adapters.entities import (
     CredentialTestFailure,
     CredentialTestFailureKind,
     CredentialTestSuccess,
+    CredentialTestTimeoutError,
     Directory,
     DirectoryEntry,
     DirectoryReadFailure,
@@ -60,6 +63,7 @@ from core.human_input_v2.im_integration.adapters.entities import (
     IMCardEventDecodeResult,
     IMCardEventDecodingError,
     IMEventIngressKind,
+    IMProviderError,
     IMStreamStartError,
     IMStreamStopError,
     MessageAccepted,
@@ -623,8 +627,56 @@ class _TenantData(_ExternalResponseModel):
     tenant: _Tenant
 
 
-class _TenantResponse(_ExternalResponseModel):
-    code: int
+class _PermissionViolation(_ExternalResponseModel):
+    type: str | None = None
+    subject: str
+
+
+class _PermissionErrorDetails(_ExternalResponseModel):
+    permission_violations: list[_PermissionViolation] = Field(default_factory=list)
+
+
+class _HTTPResponseMetadata(_ExternalResponseModel):
+    status_code: int | None = None
+
+
+class _CredentialResponse(_ExternalResponseModel):
+    code: int | None = None
+    error: JsonValue = None
+    raw: _HTTPResponseMetadata | None = None
+
+
+def _credential_rejection(response: _CredentialResponse, reason: str) -> CredentialTestFailure:
+    try:
+        details = _PermissionErrorDetails.model_validate(response.error)
+    except ValidationError:
+        missing_permissions = ()
+    else:
+        missing_permissions = tuple(
+            sorted(
+                {
+                    violation.subject
+                    for violation in details.permission_violations
+                    if violation.type == "action" and violation.subject
+                }
+            )
+        )
+    kind = CredentialTestFailureKind.UNKNOWN
+    if response.code in _AUTHENTICATION_REJECTED_CODES:
+        kind = CredentialTestFailureKind.AUTHENTICATION_REJECTED
+    elif missing_permissions:
+        kind = CredentialTestFailureKind.PERMISSION_DENIED
+    provider_error_code = str(response.code) if response.code is not None else None
+    return CredentialTestFailure(
+        kind,
+        reason,
+        provider_error_code,
+        missing_permissions,
+        http_status=response.raw.status_code if response.raw is not None else None,
+    )
+
+
+class _TenantResponse(_CredentialResponse):
     data: _TenantData | None = None
 
 
@@ -635,8 +687,7 @@ class _ScopeData(_ExternalResponseModel):
     page_token: str | None = Field(default=None, strict=True)
 
 
-class _ScopeResponse(_ExternalResponseModel):
-    code: int
+class _ScopeResponse(_CredentialResponse):
     data: _ScopeData | None = None
 
 
@@ -677,8 +728,7 @@ class _DepartmentPageData(_ExternalResponseModel):
     page_token: str | None = Field(default=None, strict=True)
 
 
-class _DepartmentPageResponse(_ExternalResponseModel):
-    code: int
+class _DepartmentPageResponse(_CredentialResponse):
     data: _DepartmentPageData | None = None
 
 
@@ -1601,56 +1651,72 @@ class _FeishuLarkIMProviderAdapter:
         return self._provider
 
     def test_credentials(self) -> CredentialTestSuccess | CredentialTestFailure:
+        try:
+            return self._test_credentials()
+        except (AccessTokenException, ObtainAccessTokenException) as error:
+            return _credential_rejection(
+                _CredentialResponse(
+                    code=error.code,
+                    raw=_HTTPResponseMetadata(status_code=error.status_code)
+                    if isinstance(error, AccessTokenException)
+                    else None,
+                ),
+                f"{_provider_name(self._provider)} rejected the credential test.",
+            )
+        except (TimeoutError, RequestsTimeout) as error:
+            raise CredentialTestTimeoutError() from error
+
+    def _test_credentials(self) -> CredentialTestSuccess | CredentialTestFailure:
         self._ensure_open()
-        try:
-            tenant_response = _TenantResponse.model_validate(self._gateway.query_tenant())
-        except Exception:
-            _log_safe_error("Feishu/Lark credential test failed", extra={"im_provider": self._provider.value})
-            return CredentialTestFailure(
-                CredentialTestFailureKind.UNKNOWN,
-                f"{_provider_name(self._provider)} credential testing could not be completed.",
+        tenant_payload = self._gateway.query_tenant()
+        tenant_envelope = _CredentialResponse.model_validate(tenant_payload)
+        if tenant_envelope.code != 0:
+            return _credential_rejection(
+                tenant_envelope, f"{_provider_name(self._provider)} rejected the credential test."
             )
-        if tenant_response.code != 0:
-            kind = (
-                CredentialTestFailureKind.AUTHENTICATION_REJECTED
-                if tenant_response.code in _AUTHENTICATION_REJECTED_CODES
-                else CredentialTestFailureKind.UNKNOWN
-            )
-            return CredentialTestFailure(kind, f"{_provider_name(self._provider)} rejected the credential test.")
+        tenant_response = _TenantResponse.model_validate(tenant_payload)
         if tenant_response.data is None or tenant_response.data.tenant.tenant_key is None:
-            return CredentialTestFailure(
-                CredentialTestFailureKind.TENANT_ID_UNAVAILABLE,
-                f"{_provider_name(self._provider)} did not provide a stable tenant identity.",
-            )
-        try:
-            self._validate_complete_scope()
-            self._validate_root_department_access()
-        except Exception:
-            return CredentialTestFailure(
-                CredentialTestFailureKind.UNKNOWN,
-                f"{_provider_name(self._provider)} baseline permissions could not be confirmed.",
-            )
+            raise IMProviderError(f"{_provider_name(self._provider)} did not provide a stable tenant identity.")
+        scope_failure = self._validate_complete_scope()
+        if scope_failure is not None:
+            return scope_failure
+        department_failure = self._validate_root_department_access()
+        if department_failure is not None:
+            return department_failure
         return CredentialTestSuccess(self._provider, tenant_response.data.tenant.tenant_key)
 
-    def _validate_complete_scope(self) -> None:
+    def _validate_complete_scope(self) -> CredentialTestFailure | None:
         page_token: str | None = None
         seen_tokens: set[str] = set()
         while True:
-            response = _ScopeResponse.model_validate(self._gateway.list_scope(page_token))
-            if response.code != 0 or response.data is None:
-                raise ValueError("directory scope page was rejected")
+            scope_payload = self._gateway.list_scope(page_token)
+            scope_envelope = _CredentialResponse.model_validate(scope_payload)
+            if scope_envelope.code != 0:
+                return _credential_rejection(
+                    scope_envelope, f"{_provider_name(self._provider)} baseline permissions could not be confirmed."
+                )
+            response = _ScopeResponse.model_validate(scope_payload)
+            if response.data is None:
+                raise IMProviderError("directory scope page was rejected")
             page_token = _next_page_token(response.data.has_more, response.data.page_token, seen_tokens)
             if page_token is None:
-                return
+                return None
 
-    def _validate_root_department_access(self) -> None:
-        response = _DepartmentPageResponse.model_validate(self._gateway.list_departments(_ROOT_DEPARTMENT, None))
-        if response.code != 0 or response.data is None:
-            raise ValueError("root department access was rejected")
+    def _validate_root_department_access(self) -> CredentialTestFailure | None:
+        department_payload = self._gateway.list_departments(_ROOT_DEPARTMENT, None)
+        department_envelope = _CredentialResponse.model_validate(department_payload)
+        if department_envelope.code != 0:
+            return _credential_rejection(
+                department_envelope, f"{_provider_name(self._provider)} baseline permissions could not be confirmed."
+            )
+        response = _DepartmentPageResponse.model_validate(department_payload)
+        if response.data is None:
+            raise IMProviderError("root department access was rejected")
         for department in response.data.items:
             if _department_identity(department) is None:
-                raise ValueError("root department response contains an invalid identity")
+                raise IMProviderError("root department response contains an invalid identity")
         _next_page_token(response.data.has_more, response.data.page_token, set())
+        return None
 
     @property
     def directory(self) -> IMDirectory:
@@ -1823,7 +1889,7 @@ def _next_page_token(has_more: bool, page_token: str | None, seen_tokens: set[st
     if not has_more:
         return None
     if page_token is None or not page_token.strip() or page_token in seen_tokens:
-        raise ValueError("invalid pagination")
+        raise IMProviderError("invalid pagination")
     seen_tokens.add(page_token)
     return page_token
 
@@ -1847,10 +1913,10 @@ def _department_identity(department: _DirectoryDepartment) -> _DepartmentIdentit
 def _sdk_response_mapping(response: object) -> Mapping[str, object]:
     serialized = lark.JSON.marshal(response)
     if serialized is None:
-        raise ValueError("SDK response is empty")
+        raise IMProviderError("SDK response is empty")
     decoded = json.loads(serialized)
     if not isinstance(decoded, dict) or any(not isinstance(key, str) for key in decoded):
-        raise ValueError("SDK response is not a JSON object")
+        raise IMProviderError("SDK response is not a JSON object")
     return decoded
 
 
