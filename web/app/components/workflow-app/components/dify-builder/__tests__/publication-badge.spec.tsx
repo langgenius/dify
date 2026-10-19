@@ -82,7 +82,7 @@ const setup = (appId = 'app-1') => {
       <DifyBuilderProvider
         appId={appId}
         canEdit
-        getCanvasSnapshot={() => ({ nodes: [], edgeCount: 0 })}
+        getCanvasSnapshot={() => ({ nodes: [], edges: [], isChatflow: false })}
         onRefreshCanvas={async () => true}
         onSyncDraft={async () => undefined}
       >

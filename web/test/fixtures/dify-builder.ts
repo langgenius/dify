@@ -9,7 +9,7 @@ export const createDifyBuilderRuntime = (overrides: RuntimeOverrides = {}): Dify
   appId: 'app-1',
   canEdit: true,
   enabled: true,
-  getCanvasSnapshot: () => ({ nodes: [], edgeCount: 0 }),
+  getCanvasSnapshot: () => ({ nodes: [], edges: [], isChatflow: false }),
   setShowPanel: vi.fn(),
   ...overrides,
   session: {

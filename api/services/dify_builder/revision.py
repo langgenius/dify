@@ -4,6 +4,7 @@ import hashlib
 import json
 from collections.abc import Mapping
 from copy import deepcopy
+from operator import itemgetter
 from typing import TYPE_CHECKING
 
 from core.dify_builder.models import Graph
@@ -132,9 +133,10 @@ def execution_revision(workflow: "Workflow") -> str:
     """Hash execution inputs while retaining unknown configuration fields.
 
     Canvas hydration and the editor's transient data keys (prefixed with ``_``)
-    do not affect execution. Array order is preserved: sorting configuration
-    arrays can change branch, prompt, or variable semantics. Secret variables
-    use their resolved values so re-encryption alone cannot invalidate a plan.
+    do not affect execution. Nodes are keyed by ID; their canvas array order
+    is ignored. Configuration array order is preserved because it can change
+    branch, prompt, or variable semantics. Secret variables use their resolved
+    values so re-encryption alone cannot invalidate a plan.
     Only the digest leaves the adapter; plaintext values are neither returned
     nor persisted here.
 
@@ -186,6 +188,10 @@ def normalize_execution_graph(graph: Graph) -> Graph:
         for node in graph.get("nodes", [])
         if node.get("type") != "custom-note"
     ]
+    # Collaboration exports the node map in key order, which can differ from
+    # the template's array order. Execution resolves nodes by ID and edges.
+    # Sort only this collection, leaving ordered node configuration untouched.
+    graph["nodes"].sort(key=itemgetter("id"))
     graph["edges"] = [
         {
             **{key: value for key, value in edge.items() if key not in _EDGE_PRESENTATION_FIELDS},
@@ -205,7 +211,7 @@ def normalize_execution_graph(graph: Graph) -> Graph:
 
 
 def executable_graph_revision(graph: Graph) -> str:
-    """Opaque digest of executable graph configuration; preserves array order."""
+    """Digest of executable graph configuration; preserves configuration array order."""
     return hashlib.sha256(
         json.dumps(normalize_execution_graph(graph), sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()

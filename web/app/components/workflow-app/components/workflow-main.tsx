@@ -581,9 +581,10 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const getDifyBuilderCanvasSnapshot = useCallback(
     () => ({
       nodes: reactFlow.getNodes(),
-      edgeCount: reactFlow.getEdges().length,
+      edges: reactFlow.getEdges(),
+      isChatflow: appDetail.mode === 'advanced-chat',
     }),
-    [reactFlow],
+    [appDetail.mode, reactFlow],
   )
   const handleDifyBuilderRefreshCanvas = useCallback(
     async (shouldApply: () => boolean) => {

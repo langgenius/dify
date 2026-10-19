@@ -339,7 +339,11 @@ const renderFlow = (edgeCount = 0, reactStrictMode = false) => {
     <DifyBuilderProvider
       appId="app-1"
       canEdit
-      getCanvasSnapshot={() => ({ nodes: [], edgeCount })}
+      getCanvasSnapshot={() => ({
+        nodes: [],
+        edges: Array.from({ length: edgeCount }, () => ({ source: 'start', target: 'llm' })),
+        isChatflow: false,
+      })}
       onRefreshCanvas={mocks.refreshCanvas}
       onSyncDraft={mocks.syncDraft}
       tenantId="workspace-1"

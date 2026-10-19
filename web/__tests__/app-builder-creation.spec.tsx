@@ -121,7 +121,7 @@ function CreationFlow() {
           canStartCreation
           tenantId="workspace-1"
           userId="user-1"
-          getCanvasSnapshot={() => ({ nodes: [], edgeCount: 0 })}
+          getCanvasSnapshot={() => ({ nodes: [], edges: [], isChatflow: false })}
           onSyncDraft={mocks.syncDraft}
           onRefreshCanvas={async () => true}
         >
