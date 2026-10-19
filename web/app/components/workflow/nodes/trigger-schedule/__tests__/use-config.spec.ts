@@ -81,7 +81,9 @@ it('persists raw cron mode without visual schedule fields', () => {
 it('saves the profile timezone when the node has none, so the backend does not fall back to UTC', async () => {
   const { queryClient } = createConsoleQueryWrapper()
   seedAccountProfileQuery(queryClient, { timezone: 'Asia/Shanghai' })
-  const { result } = renderNodeConfig(useConfig, createData({ timezone: undefined }), { queryClient })
+  const { result } = renderNodeConfig(useConfig, createData({ timezone: undefined }), {
+    queryClient,
+  })
   await waitFor(() => {
     expect(result.current.flow.getNode('node')?.data).toEqual(
       expect.objectContaining({ timezone: 'Asia/Shanghai' }),
@@ -92,7 +94,9 @@ it('saves the profile timezone when the node has none, so the backend does not f
 it('does not overwrite a timezone that is already saved', async () => {
   const { queryClient } = createConsoleQueryWrapper()
   seedAccountProfileQuery(queryClient, { timezone: 'Asia/Shanghai' })
-  const { result } = renderNodeConfig(useConfig, createData({ timezone: 'Europe/Berlin' }), { queryClient })
+  const { result } = renderNodeConfig(useConfig, createData({ timezone: 'Europe/Berlin' }), {
+    queryClient,
+  })
   await new Promise((resolve) => setTimeout(resolve, 0))
   expect(result.current.flow.getNode('node')?.data).toEqual(
     expect.objectContaining({ timezone: 'Europe/Berlin' }),
