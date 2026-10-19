@@ -9,6 +9,8 @@ export type FileReader = (
   path: string,
 ) => Promise<{ readonly bytes: Uint8Array; readonly name: string }>
 
+export type FolderLister = (path: string) => Promise<readonly string[] | undefined>
+
 const LIST_SUFFIX = '[]'
 
 const HttpMethod = { Get: 'GET', Delete: 'DELETE' } as const
