@@ -10,9 +10,9 @@ from uuid import UUID
 from flask import Response
 from flask_restx import Resource
 from pydantic import BaseModel
-from werkzeug.exceptions import HTTPException, InternalServerError, Unauthorized
 
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
+from controllers.common.errors import InternalServerError, UnauthorizedError
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
@@ -42,6 +42,8 @@ from fields.conversation_fields import ResultResponse
 from fields.message_fields import ExploreMessageInfiniteScrollPagination, SuggestedQuestionsResponse
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
+from libs.exception import BaseHTTPException
+from libs.external_api import error_responses
 from machinery.context import RequestContext
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
@@ -84,7 +86,7 @@ def _message_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
         except AppDefinitionUnavailableError as error:
             raise AppUnavailableError() from error
         except (AccountNotFoundError, SuggestedQuestionsActorNotFoundError) as error:
-            raise Unauthorized("Account no longer exists.") from error
+            raise UnauthorizedError("Account no longer exists.") from error
         except MessageNotChatAppError as error:
             raise NotChatAppError() from error
         except InstalledAppNotCompletionError as error:
@@ -109,7 +111,7 @@ def _message_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             raise ProviderModelCurrentlyNotSupportError() from error
         except InvokeError as error:
             raise CompletionRequestError(error.description) from error
-        except (HTTPException, ValueError):
+        except (BaseHTTPException, ValueError):
             raise
         except Exception as error:
             logger.exception("Installed-app message operation failed")
@@ -123,6 +125,7 @@ def _message_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     endpoint="installed_app_messages",
 )
 class MessageListApi(Resource):
+    @error_responses(ConversationNotFoundHTTPError, MessageCursorNotFoundHTTPError, NotChatAppError)
     @console_ns.doc(params=query_params_from_model(MessageListQuery))
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ExploreMessageInfiniteScrollPagination.__name__])
     @console_account_admission()
@@ -147,6 +150,7 @@ class MessageListApi(Resource):
     endpoint="installed_app_message_feedback",
 )
 class MessageFeedbackApi(Resource):
+    @error_responses(MessageFeedbackRatingRequiredHTTPError, MessageNotFoundHTTPError)
     @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Feedback submitted successfully", console_ns.models[ResultResponse.__name__])
     @console_account_admission()
@@ -175,6 +179,16 @@ class MessageFeedbackApi(Resource):
     endpoint="installed_app_more_like_this",
 )
 class MessageMoreLikeThisApi(Resource):
+    @error_responses(
+        AppMoreLikeThisDisabledError,
+        AppUnavailableError,
+        CompletionRequestError,
+        MessageNotFoundHTTPError,
+        NotCompletionAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc(params=query_params_from_model(MoreLikeThisQuery))
     @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
@@ -203,6 +217,17 @@ class MessageMoreLikeThisApi(Resource):
     endpoint="installed_app_suggested_question",
 )
 class MessageSuggestedQuestionApi(Resource):
+    @error_responses(
+        AppSuggestedQuestionsAfterAnswerDisabledError,
+        AppUnavailableError,
+        CompletionRequestError,
+        ConversationNotFoundHTTPError,
+        MessageNotFoundHTTPError,
+        NotChatAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SuggestedQuestionsResponse.__name__])
     @console_account_admission()
     @get_installed_app

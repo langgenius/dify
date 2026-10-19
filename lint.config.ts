@@ -4,14 +4,15 @@ import type { OxlintConfig } from 'vite-plus/lint'
 import path from 'node:path'
 
 const rootDir = import.meta.dirname
+const webPackageJson = path.resolve(rootDir, 'web/package.json')
 const difyUiPackageJson = path.resolve(rootDir, 'packages/dify-ui/package.json')
 const enableTailwindCanonicalClasses = process.env.TAILWIND_CANONICAL_CLASSES === 'true'
 
-export const hintContentRules = {
+export const stylingContractRules = {
   'shadcn/no-restyle': [
     'error',
     {
-      componentImports: ['^@langgenius/dify-ui/(tooltip|infotip)$'],
+      componentImports: ['^@langgenius/dify-ui/(tooltip|infotip|dialog|alert-dialog)$'],
       allow: ['*'],
       contracts: [
         {
@@ -27,6 +28,54 @@ export const hintContentRules = {
           allow: ['w-*', 'max-w-*', 'whitespace-pre-wrap'],
           message:
             '"{{className}}" is outside the InfotipContent styling contract. Use the default hint surface, spacing, typography, and wrapping from packages/dify-ui/src/infotip/index.tsx; callers may constrain width or preserve content line breaks.',
+        },
+        {
+          pattern: '^(Dialog|AlertDialog)Content$',
+          allow: [
+            'w-*',
+            'min-w-*',
+            'max-w-*',
+            'h-*',
+            'min-h-*',
+            'max-h-*',
+            'overflow-hidden',
+            'transition-none',
+          ],
+          deny: ['max-w-none', 'max-h-none', 'w-screen', 'h-screen'],
+          message:
+            '"{{className}}" is outside the {{component}} styling contract. The surface owns position, chrome and scrolling, and its parts own spacing; callers may size it within the viewport or disable transitions. Compose DialogPortal, DialogBackdrop and DialogPopup for a custom surface.',
+        },
+        {
+          pattern: '^DialogPopup$',
+          allow: ['*'],
+          deny: ['top-1/2', 'left-1/2', '-translate-x-1/2', '-translate-y-1/2'],
+          message:
+            '"{{className}}" recreates the DialogContent centering. Use DialogContent for a centered dialog; DialogPopup is the bare dialog element for a surface that places and dresses itself.',
+        },
+        {
+          pattern: '^(Dialog|AlertDialog)(Title|Description)$',
+          allow: ['sr-only'],
+          message:
+            '"{{className}}" is outside the {{component}} styling contract. Use its default typography and colour; callers may only hide it visually.',
+        },
+        {
+          pattern: '^(DialogHeader|AlertDialogHeader|AlertDialogFooter)$',
+          allow: [],
+          message:
+            '"{{className}}" is outside the {{component}} styling contract. The part owns its spacing and layout.',
+        },
+        {
+          pattern: '^DialogFooter$',
+          allow: ['flex-col', 'items-stretch'],
+          message:
+            '"{{className}}" is outside the DialogFooter styling contract. The footer owns its spacing and alignment; callers may stack full-width actions.',
+        },
+        {
+          pattern: '^(Dialog|AlertDialog)Body$',
+          allow: ['layout', 'gap-*', 'space-x-*', 'space-y-*'],
+          deny: ['flex-1', 'flex-auto', 'flex-initial', 'flex-none', 'overflow-*'],
+          message:
+            '"{{className}}" is outside the {{component}} styling contract. The body owns the content gutter and scrolls between the header and footer; callers may lay out its content.',
         },
       ],
     },
@@ -205,14 +254,9 @@ export const lintConfig = {
     '@tanstack/eslint-plugin-query',
     'eslint-plugin-antfu',
     ...(enableTailwindCanonicalClasses ? ['eslint-plugin-better-tailwindcss'] : []),
-    'eslint-plugin-command',
     {
       name: 'dify',
       specifier: './web/plugins/eslint/index.js',
-    },
-    {
-      name: 'eslint-comments',
-      specifier: '@eslint-community/eslint-plugin-eslint-comments',
     },
     {
       name: 'eslint-react',
@@ -490,11 +534,6 @@ export const lintConfig = {
     'dify/require-disable-directive-description': 'error',
     'dify/require-i18n-namespace': 'error',
     'dify/require-t-function-namespace': 'error',
-    'eslint-comments/no-aggregating-enable': 'error',
-    'eslint-comments/no-duplicate-disable': 'error',
-    'eslint-comments/no-unlimited-disable': 'error',
-    'eslint-comments/no-unused-enable': 'error',
-    'command/command': 'error',
     'perfectionist/sort-exports': [
       'error',
       {
@@ -781,7 +820,6 @@ export const lintConfig = {
     {
       files: ['**/*.d.{ts,cts,mts}'],
       rules: {
-        'eslint-comments/no-unlimited-disable': 'off',
         'no-unused-vars': 'off',
       },
     },
@@ -835,7 +873,7 @@ export const lintConfig = {
     },
     {
       files: ['web/**/*.{jsx,tsx}'],
-      rules: hintContentRules,
+      rules: stylingContractRules,
     },
     {
       files: ['web/**/*.stories.{js,cjs,mjs,jsx,ts,tsx}', 'web/**/*.story.{js,cjs,mjs,jsx,ts,tsx}'],
@@ -857,7 +895,7 @@ export const lintConfig = {
     {
       files: ['web/.storybook/main.{js,cjs,mjs,ts}'],
       rules: {
-        'storybook/no-uninstalled-addons': 'error',
+        'storybook/no-uninstalled-addons': ['error', { packageJsonLocation: webPackageJson }],
       },
     },
     {
@@ -1383,11 +1421,6 @@ export const lintConfig = {
         'valid-typeof': 'error',
         'vars-on-top': 'off',
         yoda: 'off',
-        'eslint-comments/no-aggregating-enable': 'off',
-        'eslint-comments/no-duplicate-disable': 'off',
-        'eslint-comments/no-unlimited-disable': 'off',
-        'eslint-comments/no-unused-enable': 'off',
-        'command/command': 'off',
         'perfectionist/sort-exports': 'off',
         'perfectionist/sort-named-exports': 'off',
         'perfectionist/sort-named-imports': 'off',

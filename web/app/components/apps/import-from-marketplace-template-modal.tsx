@@ -1,8 +1,15 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { RiCloseLine } from '@remixicon/react'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
@@ -72,25 +79,13 @@ const ImportFromMarketplaceTemplateModal = ({
         if (!open) onClose()
       }}
     >
-      <DialogContent className="w-130 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0 shadow-xl">
-        <div className="flex items-center justify-between pt-6 pr-5 pb-3 pl-6">
-          <DialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t(($) => $['marketplace.template.modalTitle'], { ns: 'app' })}
-          </DialogTitle>
-          <DialogClose
-            render={
-              <button
-                type="button"
-                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                className="flex size-8 cursor-pointer items-center border-none bg-transparent p-0 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-              >
-                <RiCloseLine aria-hidden className="size-5 text-text-tertiary" />
-              </button>
-            }
-          />
-        </div>
+      <DialogContent className="w-130">
+        <DialogHeader>
+          <DialogTitle>{t(($) => $['marketplace.template.modalTitle'], { ns: 'app' })}</DialogTitle>
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
 
-        <div className="px-6 py-4" aria-busy={isLoading}>
+        <DialogBody aria-busy={isLoading}>
           {isLoading && (
             <div className="flex items-center justify-center py-8">
               <div className="system-md-regular text-text-tertiary">
@@ -112,15 +107,14 @@ const ImportFromMarketplaceTemplateModal = ({
               <div className="flex items-center gap-3">
                 <AppIcon
                   size="large"
-                  iconType={template.icon_file_key ? 'image' : 'emoji'}
-                  icon={template.icon || 'page_facing_up'}
-                  background={template.icon_file_key ? undefined : template.icon_background}
-                  decorative
-                  imageUrl={
-                    template.icon_file_key
+                  icon={{
+                    icon_type: template.icon_file_key ? 'image' : 'emoji',
+                    icon: template.icon || 'page_facing_up',
+                    icon_url: template.icon_file_key
                       ? `${MARKETPLACE_API_PREFIX}/templates/${template.id}/icon`
-                      : undefined
-                  }
+                      : undefined,
+                    icon_background: template.icon_file_key ? undefined : template.icon_background,
+                  }}
                 />
                 <div className="flex flex-col">
                   <div className="system-md-semibold text-text-primary">
@@ -163,12 +157,10 @@ const ImportFromMarketplaceTemplateModal = ({
               )}
             </div>
           )}
-        </div>
+        </DialogBody>
 
-        <div className="flex justify-end px-6 py-5">
-          <Button className="mr-2" onClick={onClose}>
-            {t(($) => $['newApp.Cancel'], { ns: 'app' })}
-          </Button>
+        <DialogFooter>
+          <Button onClick={onClose}>{t(($) => $['newApp.Cancel'], { ns: 'app' })}</Button>
           <Button
             variant="primary"
             disabled={isLoading || isError}
@@ -177,7 +169,7 @@ const ImportFromMarketplaceTemplateModal = ({
           >
             {t(($) => $['marketplace.template.importConfirm'], { ns: 'app' })}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

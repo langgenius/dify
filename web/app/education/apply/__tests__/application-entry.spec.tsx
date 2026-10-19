@@ -14,10 +14,6 @@ vi.mock('../application-form', () => ({
 }))
 
 describe('EducationApplyRoute', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('returns to home when the education plan is unavailable', () => {
     const { queryClient, wrapper } = createConsoleQueryWrapper()
     seedFeatures(queryClient, { education: { enabled: false } })

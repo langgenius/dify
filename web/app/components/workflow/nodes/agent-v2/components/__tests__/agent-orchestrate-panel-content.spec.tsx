@@ -1,1499 +1,684 @@
 import type {
-  AgentSoulConfig,
-  WorkflowAgentComposerResponse,
-} from '@dify/contracts/api/console/apps/types.gen'
-import type { ReactNode, Ref } from 'react'
-import type { AgentBuildDraftChangeSummary } from '@/features/agent-v2/agent-detail/configure/components/orchestrate/build-draft-changes-context'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+  AgentBuildDraftResponse,
+  MessageDetailResponse,
+  SandboxReadResponse,
+} from '@dify/contracts/api/console/agent/types.gen'
+import type { WorkflowAgentComposerResponse } from '@dify/contracts/api/console/apps/types.gen'
+import type { ComponentProps } from 'react'
+import { zWorkflowAgentComposerResponse } from '@dify/contracts/api/console/apps/zod.gen'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { replacePromptEditorText } from '@/app/components/base/prompt-editor/plugins/__tests__/test-helpers'
+import { renderEditor } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { AgentScope } from '@/features/agent-v2/analytics'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
-import { AppModeEnum } from '@/types/app'
-import { FlowType } from '@/types/common'
+import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper, seedAppDetail, seedFeatures } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
+import { createDeferred } from '@/test/deferred'
+import { createAgentFixture } from '@/test/fixtures/agent'
+import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { WorkflowInlineAgentConfigureWorkspace } from '../agent-orchestrate-panel-content'
 
-const mocks = vi.hoisted(() => ({
-  checkoutBuildDraft: vi.fn(),
-  completeBuildConversation: undefined as (() => void) | undefined,
-  deleteBuildDraft: vi.fn(),
-  downloadAgentSandboxFile: vi.fn(),
-  downloadWorkflowSandboxFile: vi.fn(),
+const ssePost = vi.hoisted(() => vi.fn<typeof import('@/service/base').ssePost>())
+
+const api = vi.hoisted(() => ({
   loadBuildDraft: vi.fn(),
-  applyBuildDraft: vi.fn(),
-  finalizeBuildChat: vi.fn(),
-  refreshDebugConversation: vi.fn(),
   saveBuildDraft: vi.fn(),
-  saveAgentSoulConfig: vi.fn(),
-  saveDraft: vi.fn(),
-  stopBuildChat: vi.fn(),
+  deleteBuildDraft: vi.fn(),
+  saveComposer: vi.fn(),
+  refreshConversation: vi.fn(),
+  stopMessage: vi.fn(),
+  history: vi.fn(),
   trackEvent: vi.fn(),
-  uploadAgentSandboxFile: vi.fn(),
-  uploadWorkflowSandboxFile: vi.fn(),
 }))
-
-const permission = vi.hoisted(() => ({ canCreateAgents: true }))
-
-vi.mock('@/features/agent-v2/permissions', () => ({
-  useCanCreateAgents: () => permission.canCreateAgents,
+vi.mock('@/app/components/base/amplitude', () => ({ trackEvent: api.trackEvent }))
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({ appId: 'app-1' }),
+  usePathname: () => '/app/app-1/workflow',
 }))
-
-vi.mock('@/app/components/base/amplitude', () => ({
-  trackEvent: mocks.trackEvent,
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  ssePost,
 }))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useDefaultModel: () => ({
-    data: undefined,
-  }),
-  useTextGenerationCurrentProviderAndModelAndModelList: () => ({
-    textGenerationModelList: [],
-  }),
-}))
-
-vi.mock('@/features/agent-v2/agent-detail/configure/components/orchestrate', async () => {
-  const { useAtom } = await import('jotai')
-  const { agentComposerDraftAtom } = await import('@/features/agent-v2/agent-composer/store')
-
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
   return {
-    AgentOrchestratePanel: (props: {
-      bottomAction?: ReactNode
-      headerAction?: ReactNode
-      isBuildDraftActive?: boolean
-      readOnly?: boolean
-    }) => {
-      const [draft, setDraft] = useAtom(agentComposerDraftAtom)
-
-      return (
-        <div role="region" aria-label="orchestrate-panel">
-          <span>{`readonly:${props.readOnly ? 'yes' : 'no'}`}</span>
-          <span>{`buildDraft:${props.isBuildDraftActive ? 'yes' : 'no'}`}</span>
-          {props.headerAction}
-          <input
-            aria-label="local composer draft"
-            value={draft.prompt}
-            onChange={(event) =>
-              setDraft({
-                ...draft,
-                prompt: event.currentTarget.value,
-              })
-            }
-          />
-          {props.bottomAction}
-        </div>
-      )
-    },
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'agent.byAgentId.buildDraft.get': api.loadBuildDraft,
+      'agent.byAgentId.buildDraft.put': api.saveBuildDraft,
+      'agent.byAgentId.buildDraft.delete': api.deleteBuildDraft,
+      'agent.byAgentId.debugConversation.refresh.post': api.refreshConversation,
+      'agent.byAgentId.chatMessages.get': api.history,
+      'apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put': api.saveComposer,
+      'agent.byAgentId.sandbox.get': () => ({ workspace_cwd: '.' }),
+      'agent.byAgentId.sandbox.files.get': () => ({
+        path: '.',
+        entries: [{ name: 'result.txt', type: 'file' }],
+      }),
+      'agent.byAgentId.sandbox.files.read.get': () =>
+        ({
+          text: 'Build result',
+          path: 'result.txt',
+          binary: false,
+          truncated: false,
+        }) satisfies SandboxReadResponse,
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'agent.byAgentId.chatMessages.byTaskId.stop.post': api.stopMessage,
+    }),
   }
 })
 
-vi.mock(
-  '@/features/agent-v2/agent-detail/configure/components/orchestrate/build-draft-bar',
-  () => ({
-    AgentBuildDraftBar: (props: {
-      changeSummary?: AgentBuildDraftChangeSummary
-      changesCount: number
-      disabled?: boolean
-      onApply: () => void
-      onDiscard: () => void
-    }) => (
-      <div role="region" aria-label="build-draft-bar">
-        <span>{`changes:${props.changesCount}`}</span>
-        <span>
-          {`summary:${props.changeSummary?.files.map((file) => file.name).join(',') ?? 'none'}`}
-        </span>
-        <button type="button" disabled={props.disabled} onClick={props.onApply}>
-          apply build draft
-        </button>
-        <button type="button" disabled={props.disabled} onClick={props.onDiscard}>
-          discard build draft
-        </button>
-      </div>
-    ),
-  }),
-)
-
-vi.mock('@/features/agent-v2/agent-detail/configure/components/preview/build-background', () => ({
-  AgentBuildPanelBackground: () => null,
-}))
-
-vi.mock('@/features/agent-v2/agent-detail/configure/components/preview/build-chat', async () => {
-  const { useImperativeHandle, useState } = await import('react')
-
-  return {
-    AgentBuildChat: (props: {
-      conversationId?: string | null
-      controllerRef?: Ref<{ stop: () => void }>
-      onConversationComplete?: (conversationId: string, workflowRunId?: string) => void
-      onConversationIdChange?: (conversationId: string) => void
-      onSendInterrupted?: () => void
-      onSaveDraftBeforeRun?: () => Promise<AgentSoulConfig | void>
-    }) => {
-      const [messageSent, setMessageSent] = useState(false)
-      const [sentPrompt, setSentPrompt] = useState<string | undefined>()
-      useImperativeHandle(props.controllerRef, () => ({ stop: mocks.stopBuildChat }))
-      mocks.completeBuildConversation = () =>
-        props.onConversationComplete?.('build-conversation-new', 'workflow-run-1')
-
-      return (
-        <div role="region" aria-label="build-chat">
-          <span>{`build:${props.conversationId ?? 'none'}`}</span>
-          <span>{`sent:${messageSent ? 'yes' : 'no'}`}</span>
-          <span>{`prompt:${sentPrompt ?? 'none'}`}</span>
-          <button
-            type="button"
-            onClick={() => {
-              void props.onSaveDraftBeforeRun?.().then(
-                (agentSoulConfig) => {
-                  setSentPrompt(agentSoulConfig?.prompt?.system_prompt)
-                  setMessageSent(true)
-                  props.onConversationIdChange?.('build-conversation-new')
-                },
-                () => undefined,
-              )
-            }}
-          >
-            send build message
-          </button>
-          <button type="button" onClick={() => mocks.completeBuildConversation?.()}>
-            complete build conversation
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setMessageSent(true)
-              props.onSendInterrupted?.()
-            }}
-          >
-            fail build conversation
-          </button>
-        </div>
-      )
-    },
-  }
-})
-
-vi.mock('@/features/agent-v2/agent-detail/configure/components/preview/preview-chat', () => ({
-  AgentPreviewChat: (props: {
-    answerActionPosition?: 'auto' | 'below'
-    conversationId?: string | null
-    onConversationIdChange?: (conversationId: string) => void
-    onSaveDraftBeforeRun?: () => Promise<unknown>
-  }) => (
-    <div role="region" aria-label="preview-chat">
-      <span>{`preview:${props.conversationId ?? 'none'}`}</span>
-      <span>{`actionPosition:${props.answerActionPosition ?? 'auto'}`}</span>
-      <button
-        type="button"
-        onClick={() => {
-          void props.onSaveDraftBeforeRun?.().then(() => {
-            props.onConversationIdChange?.('preview-conversation-new')
-          })
-        }}
-      >
-        send preview message
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/agent-v2/agent-soul-config', () => ({
-  useWorkflowInlineAgentConfigureSync: () => ({
-    saveAgentSoulConfig: mocks.saveAgentSoulConfig,
-    saveDraft: mocks.saveDraft,
-  }),
-}))
-
-vi.mock('@/service/console', async () => {
-  const { createSystemFeaturesFixture } = await import('@/test/console/system-features')
-  return {
-    consoleClient: {
-      agent: {
-        byAgentId: {
-          sandbox: {
-            files: {
-              upload: {
-                post: mocks.uploadAgentSandboxFile,
-              },
-            },
-          },
-        },
-      },
-      apps: {
-        byAppId: {
-          workflowRuns: {
-            byWorkflowRunId: {
-              agentNodes: {
-                byNodeId: {
-                  sandbox: {
-                    files: {
-                      upload: {
-                        post: mocks.uploadWorkflowSandboxFile,
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-    consoleQuery: {
-      systemFeatures: {
-        get: {
-          queryKey: () => ['system-features'],
-          queryOptions: () => ({
-            queryKey: ['system-features'],
-            initialData: createSystemFeaturesFixture(),
-          }),
-        },
-      },
-      agent: {
-        byAgentId: {
-          get: {
-            queryKey: () => ['agent-detail'],
-          },
-          debugConversation: {
-            refresh: {
-              post: {
-                mutationOptions: (options?: {
-                  onSuccess?: (data: {
-                    debug_conversation_has_messages: boolean
-                    debug_conversation_id: string
-                    debug_conversation_message_count: number
-                  }) => void
-                }) => ({
-                  mutationFn: mocks.refreshDebugConversation,
-                  ...options,
-                }),
-              },
-            },
-          },
-          composer: {
-            get: {
-              queryOptions: vi.fn(),
-            },
-          },
-          buildDraft: {
-            get: {
-              queryOptions: () => ({
-                queryKey: ['build-draft'],
-                queryFn: mocks.loadBuildDraft,
-              }),
-            },
-            delete: {
-              mutationOptions: () => ({ mutationFn: mocks.deleteBuildDraft }),
-            },
-            put: {
-              mutationOptions: () => ({ mutationFn: mocks.saveBuildDraft }),
-            },
-            apply: {
-              post: {
-                mutationOptions: () => ({ mutationFn: mocks.applyBuildDraft }),
-              },
-            },
-            checkout: {
-              post: {
-                mutationOptions: () => ({ mutationFn: mocks.checkoutBuildDraft }),
-              },
-            },
-          },
-          buildChat: {
-            finalize: {
-              post: {
-                mutationOptions: () => ({ mutationFn: mocks.finalizeBuildChat }),
-              },
-            },
-          },
-          sandbox: {
-            get: {
-              queryOptions: () => ({
-                queryKey: ['sandbox-info'],
-                queryFn: () =>
-                  Promise.resolve({
-                    workspace_cwd: '.',
-                  }),
-              }),
-            },
-            files: {
-              get: {
-                key: () => ['agent-sandbox-files'],
-                queryOptions: () => ({
-                  queryKey: ['sandbox-files'],
-                  queryFn: () =>
-                    Promise.resolve({
-                      entries: [
-                        {
-                          name: 'result.txt',
-                          type: 'file',
-                        },
-                      ],
-                      path: '.',
-                    }),
-                }),
-              },
-              read: {
-                get: {
-                  queryOptions: () => ({
-                    queryKey: ['sandbox-file'],
-                    queryFn: () =>
-                      Promise.resolve({
-                        text: 'result',
-                      }),
-                  }),
-                },
-              },
-              download: {
-                post: {
-                  mutationOptions: () => ({ mutationFn: mocks.downloadAgentSandboxFile }),
-                },
-              },
-              upload: {
-                post: {
-                  mutationOptions: () => ({ mutationFn: mocks.uploadAgentSandboxFile }),
-                },
-              },
-            },
-          },
-        },
-      },
-      apps: {
-        byAppId: {
-          workflowRuns: {
-            byWorkflowRunId: {
-              agentNodes: {
-                byNodeId: {
-                  sandbox: {
-                    files: {
-                      get: {
-                        key: () => ['workflow-agent-node-sandbox-files'],
-                        queryOptions: () => ({
-                          queryKey: ['workflow-agent-node-sandbox-files'],
-                          queryFn: () =>
-                            Promise.resolve({
-                              entries: [
-                                {
-                                  name: 'result.txt',
-                                  type: 'file',
-                                },
-                              ],
-                              path: '.',
-                            }),
-                        }),
-                      },
-                      read: {
-                        get: {
-                          queryOptions: () => ({
-                            queryKey: ['workflow-agent-node-sandbox-file'],
-                            queryFn: () =>
-                              Promise.resolve({
-                                text: 'result',
-                              }),
-                          }),
-                        },
-                      },
-                      download: {
-                        post: {
-                          mutationOptions: () => ({
-                            mutationFn: mocks.downloadWorkflowSandboxFile,
-                          }),
-                        },
-                      },
-                      upload: {
-                        post: {
-                          mutationOptions: () => ({ mutationFn: mocks.uploadWorkflowSandboxFile }),
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-          workflows: {
-            draft: {
-              nodes: {
-                byNodeId: {
-                  agentComposer: {
-                    get: {
-                      queryKey: ({
-                        input,
-                      }: {
-                        input: {
-                          params: {
-                            app_id: string
-                            node_id: string
-                          }
-                        }
-                      }) => ['workflow-agent-composer', input.params.app_id, input.params.node_id],
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  }
-})
-
-function createInlineComposerState({
-  debugConversationHasMessages = false,
-  debugConversationId = null,
-  debugConversationMessageCount = 0,
-  snapshotId = 'snapshot-1',
-  systemPrompt = 'Help with workflow tasks.',
-}: {
-  debugConversationHasMessages?: boolean
-  debugConversationId?: string | null
-  debugConversationMessageCount?: number
-  snapshotId?: string
-  systemPrompt?: string
-} = {}): WorkflowAgentComposerResponse {
-  return {
-    active_config_snapshot: {
-      id: snapshotId,
-    },
+const createComposer = (overrides: Partial<WorkflowAgentComposerResponse> = {}) =>
+  zWorkflowAgentComposerResponse.parse({
+    variant: 'workflow',
+    agent_soul: { schema_version: 1, prompt: { system_prompt: 'Help with workflow tasks.' } },
+    node_job: {},
+    save_options: [],
+    soul_lock: { locked: false },
     agent: {
       id: 'agent-1',
-      icon: 'A',
-      icon_background: '#E0F2FE',
-      icon_type: 'emoji',
       name: 'Inline Agent',
+      description: '',
+      scope: 'workflow_only',
+      status: 'active',
+      icon_type: 'emoji',
+      icon: 'A',
     },
-    agent_soul: {
-      schema_version: 1,
-      prompt: {
-        system_prompt: systemPrompt,
-      },
-    } satisfies AgentSoulConfig,
     binding: {
       id: 'binding-1',
       binding_type: 'inline_agent',
       agent_id: 'agent-1',
-      current_snapshot_id: snapshotId,
-      workflow_id: 'workflow-1',
+      current_snapshot_id: 'snapshot-1',
       node_id: 'node-1',
+      workflow_id: 'workflow-1',
     },
-    debug_conversation_has_messages: debugConversationHasMessages,
-    debug_conversation_id: debugConversationId,
-    debug_conversation_message_count: debugConversationMessageCount,
-  } as WorkflowAgentComposerResponse
-}
+    ...overrides,
+  } satisfies WorkflowAgentComposerResponse)
+const createBuildDraft = (prompt = 'Built instructions'): AgentBuildDraftResponse => ({
+  variant: 'agent_app',
+  agent_soul: { schema_version: 1, prompt: { system_prompt: prompt } },
+  draft: { id: 'build-1', agent_id: 'agent-1', draft_type: 'debug_build' },
+})
+const createHistoryMessage = (
+  conversationId = 'old-conversation',
+  answer = 'Earlier answer',
+): MessageDetailResponse => ({
+  id: 'old-message',
+  conversation_id: conversationId,
+  query: 'Earlier request',
+  answer,
+  agent_thoughts: [],
+  feedbacks: [],
+  from_source: 'console',
+  inputs: {},
+  message: [],
+  message_files: [],
+  answer_tokens: 3,
+  message_tokens: 2,
+  metadata: {},
+  provider_response_latency: 0.5,
+  status: 'normal',
+})
 
-function createDeferredPromise<T>() {
-  let resolve!: (value: T) => void
-  const promise = new Promise<T>((resolvePromise) => {
-    resolve = resolvePromise
+const historyByConversation = new Map<string, MessageDetailResponse[]>()
+
+const prefix = 'agentV2.agentDetail.configure'
+const promptEditor = () => screen.getByRole('textbox', { name: `${prefix}.prompt.label` })
+const buildInput = () => screen.getByRole('textbox', { name: `${prefix}.build.inputPlaceholder` })
+const previewInput = () =>
+  screen.getByRole('textbox', { name: new RegExp(`${prefix}.preview.inputPlaceholder`) })
+const applyButton = () => screen.getByRole('button', { name: 'custom.apply' })
+const discardButton = () => screen.getByRole('button', { name: `${prefix}.buildDraft.discard` })
+const restartButton = () => screen.getByRole('button', { name: `${prefix}.preview.restart` })
+
+function renderWorkspace({
+  composer = createComposer(),
+  open = true,
+  edition = 'CLOUD',
+  canCreate = true,
+  onSaveInlineToRoster,
+}: {
+  composer?: WorkflowAgentComposerResponse | null
+  open?: boolean
+  edition?: 'CLOUD' | 'COMMUNITY'
+  canCreate?: boolean
+  onSaveInlineToRoster?: () => void
+} = {}) {
+  const { queryClient } = createConsoleQueryWrapper({
+    workspacePermissionKeys: canCreate ? ['agent.create'] : [],
+    systemFeatures: { deployment_edition: edition },
   })
-
-  return { promise, resolve }
-}
-
-describe('WorkflowInlineAgentConfigureWorkspace', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    useAppStore.getState().setAppDetail({ mode: AppModeEnum.WORKFLOW } as never)
-    mocks.completeBuildConversation = undefined
-    permission.canCreateAgents = true
-    mocks.loadBuildDraft.mockRejectedValue(new Response(null, { status: 404 }))
-    mocks.checkoutBuildDraft.mockResolvedValue({
-      agent_soul: {},
-      draft: {
-        id: 'build-draft-1',
-      },
-      variant: 'agent_app',
-    })
-    mocks.deleteBuildDraft.mockResolvedValue({ result: 'success' })
-    mocks.applyBuildDraft.mockResolvedValue({
-      agent_soul: {},
-      draft: {},
-      variant: 'agent_app',
-    })
-    mocks.finalizeBuildChat.mockResolvedValue({ result: 'success' })
-    mocks.refreshDebugConversation.mockResolvedValue({
-      debug_conversation_has_messages: false,
-      debug_conversation_id: 'build-conversation-refreshed',
-      debug_conversation_message_count: 0,
-    })
-    mocks.saveBuildDraft.mockResolvedValue({
-      agent_soul: {
-        schema_version: 1,
-        prompt: {
-          system_prompt: 'Help with workflow tasks.',
-        },
-      },
-      draft: {
-        id: 'build-draft-1',
-      },
-      variant: 'agent_app',
-    })
-    mocks.saveDraft.mockResolvedValue(createInlineComposerState())
-    mocks.saveAgentSoulConfig.mockResolvedValue(createInlineComposerState())
-    mocks.uploadAgentSandboxFile.mockResolvedValue({
-      url: 'https://example.com/agent-sandbox-file',
-    })
-    mocks.uploadWorkflowSandboxFile.mockResolvedValue({
-      url: 'https://example.com/workflow-sandbox-file',
-    })
+  seedFeatures(queryClient)
+  seedAppDetail(queryClient, createAppDetailFixture({ id: 'app-1', mode: 'workflow' }))
+  seedModelProviderQueries(queryClient)
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
   })
-
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
-  function renderWorkspace(
-    props: {
-      deploymentEdition?: 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE'
-      inlineComposerState?: WorkflowAgentComposerResponse
-      onSaveInlineToRoster?: () => void
-    } = {},
-  ) {
-    return render(
-      <WorkflowInlineAgentConfigureWorkspace
-        agentId="agent-1"
-        flowId="app-1"
-        flowType={FlowType.appFlow}
-        inlineComposerState={props.inlineComposerState ?? createInlineComposerState()}
-        nodeId="node-1"
-        onSaveInlineToRoster={props.onSaveInlineToRoster}
-        open
-      />,
-      {
-        systemFeatures: {
-          deployment_edition: props.deploymentEdition ?? 'CLOUD',
-        },
-      },
-    )
+  queryClient.setQueryData(
+    consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
+    createAgentFixture({ name: 'Inline Agent' }),
+  )
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.agents.byAgentId.skills.get.queryKey({
+      input: { params: { agent_id: 'agent-1' } },
+    }),
+    { agent_id: 'agent-1', data: [] },
+  )
+  const props: ComponentProps<typeof WorkflowInlineAgentConfigureWorkspace> = {
+    agentId: 'agent-1',
+    resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    inlineComposerState: composer ?? undefined,
+    nodeId: 'node-1',
+    open,
+    onSaveInlineToRoster,
   }
-
-  it('should load the build draft while the inline composer is pending', async () => {
-    render(
-      <WorkflowInlineAgentConfigureWorkspace
-        agentId="agent-1"
-        flowId="app-1"
-        flowType={FlowType.appFlow}
-        nodeId="node-1"
-        open
-      />,
-    )
-
-    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
-    expect(screen.queryByRole('region', { name: 'orchestrate-panel' })).not.toBeInTheDocument()
-    await waitFor(() => expect(mocks.loadBuildDraft).toHaveBeenCalledTimes(1))
-  })
-
-  it('should not load the build draft while the inline agent panel is closed', async () => {
-    render(
-      <WorkflowInlineAgentConfigureWorkspace
-        agentId="agent-1"
-        flowId="app-1"
-        flowType={FlowType.appFlow}
-        inlineComposerState={createInlineComposerState()}
-        nodeId="node-1"
-        open={false}
-      />,
-    )
-
-    await act(async () => {
-      await Promise.resolve()
+  const render = createNuqsTestRenderer((ui) => renderEditor(ui, { queryClient }))
+  const result = render(<WorkflowInlineAgentConfigureWorkspace {...props} />)
+  return {
+    ...result,
+    queryClient,
+    update: (changes: Partial<typeof props>) =>
+      result.rerender(<WorkflowInlineAgentConfigureWorkspace {...props} {...changes} />),
+  }
+}
+async function sendBuild(
+  user: ReturnType<typeof userEvent.setup>,
+  message = 'Build a tender reviewer',
+) {
+  await user.type(
+    await screen.findByRole('textbox', { name: `${prefix}.build.inputPlaceholder` }),
+    message,
+  )
+  await user.keyboard('{Enter}')
+}
+async function sendPreview(
+  user: ReturnType<typeof userEvent.setup>,
+  message = 'Review this tender',
+) {
+  await user.type(previewInput(), message)
+  await user.keyboard('{Enter}')
+}
+async function changeMode(user: ReturnType<typeof userEvent.setup>, mode: 'build' | 'preview') {
+  await user.click(await screen.findByRole('radio', { name: `${prefix}.rightPanel.${mode}` }))
+}
+async function confirm(user: ReturnType<typeof userEvent.setup>) {
+  const dialog = within(await screen.findByRole('alertdialog'))
+  await user.click(dialog.getByRole('button', { name: 'common.operation.confirm' }))
+}
+function stream(index = 0) {
+  const options = vi.mocked(ssePost).mock.calls[index]?.[2]
+  if (!options) throw new Error('Expected a chat stream')
+  return options
+}
+async function receive(
+  index = 0,
+  conversationId = 'build-conversation',
+  message = 'Built the reviewer',
+) {
+  const body = ssePost.mock.calls[index]![1].body
+  if (!body || typeof body !== 'object' || !('query' in body) || typeof body.query !== 'string')
+    throw new Error('Expected a chat request body')
+  historyByConversation.set(conversationId, [
+    ...(historyByConversation.get(conversationId) ?? []),
+    {
+      ...createHistoryMessage(conversationId, message),
+      id: `message-${index}`,
+      query: body.query,
+      parent_message_id:
+        'parent_message_id' in body && typeof body.parent_message_id === 'string'
+          ? body.parent_message_id
+          : null,
+    },
+  ])
+  await act(async () => {
+    stream(index).onData?.(message, true, {
+      event: 'message',
+      conversationId,
+      messageId: `message-${index}`,
+      taskId: `task-${index}`,
     })
-    expect(mocks.loadBuildDraft).not.toHaveBeenCalled()
+  })
+}
+async function complete(index = 0) {
+  await act(async () => {
+    await stream(index).onCompleted?.()
+  })
+}
+
+beforeAll(async () => {
+  // Load the real dynamic chat and Markdown renderers before timing preview interactions.
+  await Promise.all([
+    import('@/app/components/base/chat/chat'),
+    import('@/app/components/base/markdown/streamdown-wrapper'),
+  ])
+})
+
+beforeEach(() => {
+  historyByConversation.clear()
+  for (const mock of Object.values(api)) mock.mockReset()
+  vi.mocked(ssePost)
+    .mockReset()
+    .mockImplementation(async (_url, _data, options) => {
+      options.getAbortController?.(new AbortController())
+    })
+  api.loadBuildDraft.mockRejectedValue(createHttpError(new Response(null, { status: 404 })))
+  api.saveBuildDraft.mockImplementation(async (input) =>
+    createBuildDraft(input.body.agent_soul.prompt.system_prompt),
+  )
+  api.deleteBuildDraft.mockResolvedValue({ result: 'success' })
+  api.saveComposer.mockImplementation(async (input) =>
+    createComposer({ agent_soul: input.body.agent_soul }),
+  )
+  api.refreshConversation.mockResolvedValue({
+    debug_conversation_id: 'refreshed-conversation',
+    debug_conversation_has_messages: false,
+    debug_conversation_message_count: 0,
+  })
+  api.stopMessage.mockResolvedValue({ result: 'success' })
+  api.history.mockImplementation(async (input) => ({
+    data: historyByConversation.get(input.query.conversation_id) ?? [],
+    has_more: false,
+    limit: 20,
+  }))
+})
+
+describe('Inline Agent configure workspace', () => {
+  it('loads the build draft while waiting for composer data', async () => {
+    renderWorkspace({ composer: null })
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeVisible()
+    expect(
+      screen.queryByRole('textbox', { name: `${prefix}.prompt.label` }),
+    ).not.toBeInTheDocument()
+    await waitFor(() => expect(api.loadBuildDraft).toHaveBeenCalledOnce())
   })
 
-  async function restartCurrentChat() {
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'agentV2.agentDetail.configure.preview.restart',
+  it('starts loading the build draft when the panel opens', async () => {
+    const { update } = renderWorkspace({ open: false })
+    expect(api.loadBuildDraft).not.toHaveBeenCalled()
+    update({ open: true })
+    await waitFor(() => expect(api.loadBuildDraft).toHaveBeenCalledOnce())
+  })
+
+  it('runs preview without creating a build draft and preserves the separate build session', async () => {
+    const user = userEvent.setup()
+    renderWorkspace()
+    await changeMode(user, 'preview')
+    await sendPreview(user)
+    await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
+    expect(vi.mocked(ssePost).mock.calls[0]?.[1].body).toMatchObject({
+      query: 'Review this tender',
+    })
+    expect(vi.mocked(ssePost).mock.calls[0]?.[1].body).not.toHaveProperty('draft_type')
+    expect(api.saveBuildDraft).not.toHaveBeenCalled()
+    expect(api.trackEvent).toHaveBeenCalledWith('agent_preview_mode_run', {
+      agent_scope: AgentScope.InWorkflow,
+    })
+    await receive(0, 'preview-conversation', 'Preview answer')
+    await complete()
+    expect(await screen.findByText('Preview answer')).toBeVisible()
+    await changeMode(user, 'build')
+    expect(buildInput()).toBeVisible()
+    expect(screen.queryByText('Preview answer')).not.toBeInTheDocument()
+  })
+
+  it('saves the edited workflow prompt before preparing the build draft and starting the stream', async () => {
+    const user = userEvent.setup()
+    const saved = createDeferred<ReturnType<typeof createComposer>>()
+    api.saveComposer.mockReturnValue(saved.promise)
+    api.saveBuildDraft.mockResolvedValue(createBuildDraft('Normalized instructions'))
+    renderWorkspace()
+    await replacePromptEditorText(
+      await screen.findByRole('textbox', { name: `${prefix}.prompt.label` }),
+      'Local instructions',
+    )
+    await sendBuild(user)
+    await waitFor(() => expect(api.saveComposer).toHaveBeenCalledOnce())
+    expect(api.saveBuildDraft).not.toHaveBeenCalled()
+    expect(ssePost).not.toHaveBeenCalled()
+    await act(async () =>
+      saved.resolve(
+        createComposer({ agent_soul: { prompt: { system_prompt: 'Saved instructions' } } }),
+      ),
+    )
+    await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
+    expect(api.saveBuildDraft).toHaveBeenCalledWith({
+      params: { agent_id: 'agent-1' },
+      body: {
+        variant: 'agent_app',
+        save_strategy: 'save_to_current_version',
+        agent_soul: expect.objectContaining({ prompt: { system_prompt: 'Saved instructions' } }),
+      },
+    })
+    expect(vi.mocked(ssePost).mock.calls[0]?.[1].body).toMatchObject({
+      query: 'Build a tender reviewer',
+      draft_type: 'debug_build',
+    })
+    expect(promptEditor()).toHaveTextContent('Normalized instructions')
+    expect(api.trackEvent).toHaveBeenCalledWith('agent_build_mode_run', {
+      agent_scope: AgentScope.InWorkflow,
+    })
+  })
+
+  it('keeps the current conversation visible while entering build draft mode and unlocks actions after completion', async () => {
+    const user = userEvent.setup()
+    renderWorkspace()
+    expect(await screen.findByRole('button', { name: `${prefix}.preview.restart` })).toBeDisabled()
+    await sendBuild(user)
+    await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
+    await receive()
+    expect(await screen.findByText('Built the reviewer')).toBeVisible()
+    expect(promptEditor()).toHaveAttribute('contenteditable', 'false')
+    expect(applyButton()).toBeDisabled()
+    expect(discardButton()).toBeDisabled()
+    api.loadBuildDraft.mockResolvedValue(createBuildDraft())
+    await complete()
+    await waitFor(() => expect(applyButton()).toBeEnabled(), { timeout: 2000 })
+    expect(discardButton()).toBeEnabled()
+    expect(restartButton()).toBeEnabled()
+    expect(screen.getByText('Built the reviewer')).toBeVisible()
+  })
+
+  it('requires confirmation to discard a build session and stops its stream before switching to preview', async () => {
+    const user = userEvent.setup()
+    renderWorkspace()
+    await sendBuild(user)
+    await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
+    await receive()
+    await changeMode(user, 'preview')
+    expect(
+      await screen.findByRole('alertdialog', { name: `${prefix}.switchToPreviewConfirm.title` }),
+    ).toBeVisible()
+    expect(api.deleteBuildDraft).not.toHaveBeenCalled()
+    await confirm(user)
+    await waitFor(() => expect(api.deleteBuildDraft).toHaveBeenCalledOnce())
+    expect(api.stopMessage).toHaveBeenCalledWith({
+      params: { agent_id: 'agent-1', task_id: 'task-0' },
+    })
+    expect(api.stopMessage.mock.invocationCallOrder[0]).toBeLessThan(
+      api.deleteBuildDraft.mock.invocationCallOrder[0]!,
+    )
+    expect(previewInput()).toBeVisible()
+    expect(promptEditor()).toHaveTextContent('Help with workflow tasks.')
+  })
+
+  it('disables preview in community edition', async () => {
+    renderWorkspace({ edition: 'COMMUNITY' })
+    expect(
+      await screen.findByRole('radio', { name: `${prefix}.rightPanel.preview` }),
+    ).toBeDisabled()
+  })
+
+  it('hides save to roster when workspace permissions deny agent creation', async () => {
+    renderWorkspace({ canCreate: false, onSaveInlineToRoster: vi.fn() })
+    await screen.findByRole('textbox', { name: `${prefix}.prompt.label` })
+    expect(screen.queryByRole('button', { name: 'common.operation.more' })).not.toBeInTheDocument()
+  })
+
+  it('preserves local prompt edits when a newer inline snapshot arrives', async () => {
+    const { update } = renderWorkspace()
+    await replacePromptEditorText(
+      await screen.findByRole('textbox', { name: `${prefix}.prompt.label` }),
+      'Unsaved local instructions',
+    )
+    update({
+      inlineComposerState: createComposer({
+        binding: { ...createComposer().binding!, current_snapshot_id: 'snapshot-2' },
+        agent_soul: { prompt: { system_prompt: 'Server instructions' } },
       }),
-    )
-
-    const confirmDialog = await screen.findByRole('alertdialog', {
-      name: 'agentV2.agentDetail.configure.clearSessionConfirm.title',
     })
-    expect(confirmDialog).toBeInTheDocument()
+    expect(promptEditor()).toHaveTextContent('Unsaved local instructions')
+  })
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
-  }
+  it('waits for an in-flight build preparation before discarding it, without sending the stale request', async () => {
+    const user = userEvent.setup()
+    const saved = createDeferred<AgentBuildDraftResponse>()
+    api.saveBuildDraft.mockReturnValue(saved.promise)
+    renderWorkspace()
+    await sendBuild(user)
+    await waitFor(() => expect(api.saveBuildDraft).toHaveBeenCalledOnce())
+    await changeMode(user, 'preview')
+    await confirm(user)
+    expect(api.deleteBuildDraft).not.toHaveBeenCalled()
+    await act(async () => saved.resolve(createBuildDraft('Late build instructions')))
+    await waitFor(() => expect(api.deleteBuildDraft).toHaveBeenCalledOnce())
+    expect(ssePost).not.toHaveBeenCalled()
+    expect(previewInput()).toBeVisible()
+    expect(promptEditor()).toHaveTextContent('Help with workflow tasks.')
+  })
 
-  describe('Right panel mode', () => {
-    it('should switch an inline agent between build and preview without creating a build draft from preview', async () => {
-      const user = userEvent.setup()
-      renderWorkspace()
-
-      const previewButton = await screen.findByRole('radio', {
-        name: 'agentV2.agentDetail.configure.rightPanel.preview',
-      })
-      expect(previewButton).toBeEnabled()
-
-      await user.click(previewButton)
-
-      expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent('preview:none')
-      expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent(
-        'actionPosition:below',
-      )
-      expect(screen.queryByRole('region', { name: 'build-chat' })).not.toBeInTheDocument()
-
-      await user.click(screen.getByRole('button', { name: 'send preview message' }))
-
-      await waitFor(() => expect(mocks.saveDraft).toHaveBeenCalled())
-      expect(mocks.trackEvent).toHaveBeenCalledWith('agent_preview_mode_run', {
-        agent_scope: AgentScope.InWorkflow,
-      })
-      expect(mocks.saveBuildDraft).not.toHaveBeenCalled()
-
-      await user.click(
-        screen.getByRole('radio', {
-          name: 'agentV2.agentDetail.configure.rightPanel.build',
-        }),
-      )
-
-      expect(screen.getByRole('region', { name: 'build-chat' })).toBeInTheDocument()
-      expect(screen.queryByRole('region', { name: 'preview-chat' })).not.toBeInTheDocument()
-    })
-
-    it('should refresh only the inline preview conversation when restarting preview mode', async () => {
-      const user = userEvent.setup()
-      renderWorkspace({
-        inlineComposerState: createInlineComposerState({
-          debugConversationHasMessages: true,
-          debugConversationId: 'inline-build-conversation-1',
-          debugConversationMessageCount: 1,
-        }),
-      })
-
-      await user.click(
-        await screen.findByRole('radio', {
-          name: 'agentV2.agentDetail.configure.rightPanel.preview',
-        }),
-      )
-      await user.click(screen.getByRole('button', { name: 'send preview message' }))
-      await waitFor(() => {
-        expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent(
-          'preview:preview-conversation-new',
-        )
-      })
-      await user.click(
-        screen.getByRole('button', {
-          name: 'agentV2.agentDetail.configure.preview.restart',
-        }),
-      )
-
-      await waitFor(() => {
-        expect(mocks.refreshDebugConversation).toHaveBeenCalledWith(
-          {
-            params: {
-              agent_id: 'agent-1',
-            },
-            body: {
-              draft_type: 'draft',
-            },
-          },
-          expect.any(Object),
-        )
-      })
-      expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent('preview:none')
-
-      await user.click(
-        screen.getByRole('radio', {
-          name: 'agentV2.agentDetail.configure.rightPanel.build',
-        }),
-      )
-
-      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent(
-        'build:inline-build-conversation-1',
-      )
-    })
-
-    it('should discard an active inline build session before switching to preview', async () => {
-      const user = userEvent.setup()
-      renderWorkspace()
-
-      await user.click(await screen.findByRole('button', { name: 'send build message' }))
-      await waitFor(() =>
-        expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:yes'),
-      )
-
-      await user.click(
-        screen.getByRole('radio', {
-          name: 'agentV2.agentDetail.configure.rightPanel.preview',
-        }),
-      )
-
-      expect(
-        await screen.findByRole('alertdialog', {
-          name: 'agentV2.agentDetail.configure.switchToPreviewConfirm.title',
-        }),
-      ).toBeInTheDocument()
-      expect(screen.getByRole('region', { name: 'build-chat', hidden: true })).toBeInTheDocument()
-
-      await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
-
-      await waitFor(() => expect(mocks.deleteBuildDraft).toHaveBeenCalled())
-      expect(mocks.stopBuildChat).toHaveBeenCalledTimes(1)
-      const stopBuildChatCallOrder = mocks.stopBuildChat.mock.invocationCallOrder[0]
-      const deleteBuildDraftCallOrder = mocks.deleteBuildDraft.mock.invocationCallOrder[0]
-      if (stopBuildChatCallOrder === undefined || deleteBuildDraftCallOrder === undefined)
-        throw new Error('Expected Build stop and draft deletion calls.')
-      expect(stopBuildChatCallOrder).toBeLessThan(deleteBuildDraftCallOrder)
-      expect(screen.getByRole('region', { name: 'preview-chat' })).toBeInTheDocument()
-      expect(screen.queryByRole('region', { name: 'build-chat' })).not.toBeInTheDocument()
-
-      await user.click(screen.getByRole('button', { name: 'send preview message' }))
-      await waitFor(() => {
-        expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent(
-          'preview:preview-conversation-new',
-        )
-      })
-      expect(
-        screen.getByRole('button', {
-          name: 'agentV2.agentDetail.configure.preview.restart',
-        }),
-      ).toBeEnabled()
-    })
-
-    it('should wait for an in-flight inline build draft save and ignore its result after switching to preview', async () => {
-      const user = userEvent.setup()
-      const buildDraftSave = createDeferredPromise<{
-        agent_soul: AgentSoulConfig
-        draft: object
-        variant: 'agent_app'
-      }>()
-      mocks.saveBuildDraft.mockReturnValue(buildDraftSave.promise)
-      renderWorkspace()
-
-      await user.click(await screen.findByRole('button', { name: 'send build message' }))
-      await waitFor(() => expect(mocks.saveBuildDraft).toHaveBeenCalledTimes(1))
-
-      await user.click(
-        screen.getByRole('radio', {
-          name: 'agentV2.agentDetail.configure.rightPanel.preview',
-        }),
-      )
-      await user.click(
-        await screen.findByRole('button', {
-          name: 'common.operation.confirm',
-        }),
-      )
-
-      expect(mocks.deleteBuildDraft).not.toHaveBeenCalled()
-
+  it('ignores a late stream completion after leaving and reopening build mode', async () => {
+    const user = userEvent.setup()
+    renderWorkspace()
+    await sendBuild(user)
+    await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
+    await receive()
+    await changeMode(user, 'preview')
+    await confirm(user)
+    await screen.findByRole('textbox', { name: new RegExp(`${prefix}.preview.inputPlaceholder`) })
+    await changeMode(user, 'build')
+    await screen.findByRole('textbox', { name: `${prefix}.build.inputPlaceholder` })
+    const requests = api.loadBuildDraft.mock.calls.length
+    vi.useFakeTimers()
+    try {
+      await complete()
       await act(async () => {
-        buildDraftSave.resolve({
-          agent_soul: {
-            schema_version: 1,
-            prompt: {
-              system_prompt: 'Late build draft prompt.',
-            },
-          },
-          draft: {},
-          variant: 'agent_app',
-        })
+        await vi.advanceTimersByTimeAsync(1000)
       })
+      expect(api.loadBuildDraft).toHaveBeenCalledTimes(requests)
+      expect(promptEditor()).toHaveAttribute('contenteditable', 'true')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 
-      await waitFor(() => expect(mocks.deleteBuildDraft).toHaveBeenCalledTimes(1))
-      expect(screen.getByRole('region', { name: 'preview-chat' })).toBeInTheDocument()
-      expect(screen.getByLabelText('local composer draft')).toHaveValue('Help with workflow tasks.')
-    })
-
-    it('should ignore a late inline build completion after leaving and re-entering build mode', async () => {
-      const user = userEvent.setup()
-      renderWorkspace()
-
-      await user.click(await screen.findByRole('button', { name: 'send build message' }))
-      await waitFor(() =>
-        expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:yes'),
-      )
-      const completeBuildConversation = mocks.completeBuildConversation
-      if (!completeBuildConversation) throw new Error('Expected a Build completion callback.')
-
-      await user.click(
-        screen.getByRole('radio', {
-          name: 'agentV2.agentDetail.configure.rightPanel.preview',
-        }),
-      )
-      await user.click(
-        await screen.findByRole('button', {
-          name: 'common.operation.confirm',
-        }),
-      )
-      await screen.findByRole('region', { name: 'preview-chat' })
-
-      await user.click(
-        screen.getByRole('radio', {
-          name: 'agentV2.agentDetail.configure.rightPanel.build',
-        }),
-      )
-      await screen.findByRole('region', { name: 'build-chat' })
-      const buildDraftLoadCount = mocks.loadBuildDraft.mock.calls.length
-
+  it('does not unlock a new build run when an older completion refresh resolves', async () => {
+    const user = userEvent.setup()
+    // Advance the delayed refresh without spending the test budget on real timers.
+    const completeAndRefresh = async (index = 0) => {
       vi.useFakeTimers()
       try {
+        await complete(index)
         await act(async () => {
-          completeBuildConversation()
           await vi.advanceTimersByTimeAsync(1000)
         })
-        expect(mocks.loadBuildDraft).toHaveBeenCalledTimes(buildDraftLoadCount)
       } finally {
         vi.useRealTimers()
       }
-    })
+    }
+    const refreshed = createDeferred<AgentBuildDraftResponse>()
+    renderWorkspace()
+    await sendBuild(user)
+    await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
+    await receive()
+    api.loadBuildDraft.mockReturnValue(refreshed.promise)
+    await completeAndRefresh()
+    expect(api.loadBuildDraft).toHaveBeenCalledTimes(2)
+    await sendBuild(user, 'Improve the reviewer')
+    await waitFor(() => expect(ssePost).toHaveBeenCalledTimes(2))
+    await act(async () => refreshed.resolve(createBuildDraft('Old completion')))
+    expect(applyButton()).toBeDisabled()
+    expect(discardButton()).toBeDisabled()
+    expect(promptEditor()).not.toHaveTextContent('Old completion')
+    await receive(1, 'build-conversation', 'Improved reviewer')
+    api.loadBuildDraft.mockResolvedValue(createBuildDraft('Improved instructions'))
+    await completeAndRefresh(1)
+    await waitFor(() => expect(applyButton()).toBeEnabled())
+  })
 
-    it('should confirm before discarding an existing inline build draft', async () => {
+  it('unlocks draft actions after the chat stream fails', async () => {
+    const user = userEvent.setup()
+    renderWorkspace()
+    await sendBuild(user)
+    await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
+    expect(applyButton()).toBeDisabled()
+    await act(async () => {
+      await stream().onCompleted?.(true, 'Stream unavailable')
+    })
+    await waitFor(() => expect(applyButton()).toBeEnabled())
+    expect(discardButton()).toBeEnabled()
+  })
+
+  it.each(['apply', 'discard'] as const)(
+    'finishes %s and restores editing even when refreshing the debug conversation fails',
+    async (action) => {
       const user = userEvent.setup()
-      mocks.loadBuildDraft.mockResolvedValue({
-        agent_soul: {
-          schema_version: 1,
-          prompt: {
-            system_prompt: 'Existing build draft prompt.',
-          },
-        },
-        draft: {},
-        variant: 'agent_app',
-      })
+      api.loadBuildDraft.mockResolvedValue(createBuildDraft())
+      api.refreshConversation.mockRejectedValue(new Error('Refresh failed'))
       renderWorkspace()
-
-      await user.click(
-        await screen.findByRole('radio', {
-          name: 'agentV2.agentDetail.configure.rightPanel.preview',
-        }),
-      )
-
-      expect(
-        await screen.findByRole('alertdialog', {
-          name: 'agentV2.agentDetail.configure.switchToPreviewConfirm.title',
-        }),
-      ).toBeInTheDocument()
-      expect(mocks.deleteBuildDraft).not.toHaveBeenCalled()
-
-      await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
-
-      await waitFor(() => expect(mocks.deleteBuildDraft).toHaveBeenCalledTimes(1))
-      expect(screen.getByRole('region', { name: 'preview-chat' })).toBeInTheDocument()
-      expect(screen.queryByRole('region', { name: 'build-chat' })).not.toBeInTheDocument()
-    })
-
-    it('should keep preview disabled for an inline agent in community edition', async () => {
-      renderWorkspace({ deploymentEdition: 'COMMUNITY' })
-
-      expect(
-        await screen.findByRole('radio', {
-          name: 'agentV2.agentDetail.configure.rightPanel.preview',
-        }),
-      ).toBeDisabled()
-      expect(screen.getByRole('region', { name: 'build-chat' })).toBeInTheDocument()
-      expect(screen.queryByRole('region', { name: 'preview-chat' })).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Working Directory', () => {
-    it('should show save-to-roster in the configure header menu without rendering the old action bar', async () => {
-      renderWorkspace({
-        onSaveInlineToRoster: vi.fn(),
-      })
-
-      expect(
-        await screen.findByRole('button', { name: 'common.operation.more' }),
-      ).toBeInTheDocument()
-      expect(
-        screen.queryByRole('button', { name: 'common.operation.save' }),
-      ).not.toBeInTheDocument()
-      expect(
-        screen.queryByRole('button', { name: 'common.operation.cancel' }),
-      ).not.toBeInTheDocument()
-    })
-
-    it('should hide the save-to-roster menu when the user cannot create agents', async () => {
-      permission.canCreateAgents = false
-
-      renderWorkspace({
-        onSaveInlineToRoster: vi.fn(),
-      })
-
-      await screen.findByRole('region', { name: 'orchestrate-panel' })
-      expect(
-        screen.queryByRole('button', { name: 'common.operation.more' }),
-      ).not.toBeInTheDocument()
-    })
-
-    it('should show the working directory panel when the header action is clicked', async () => {
-      renderWorkspace({
-        inlineComposerState: createInlineComposerState({
-          debugConversationHasMessages: true,
-          debugConversationId: 'inline-debug-conversation-1',
-          debugConversationMessageCount: 1,
-        }),
-      })
-
-      expect(
-        screen.queryByRole('button', {
-          name: 'agentV2.agentDetail.configure.workingDirectory.fileSystem',
-        }),
-      ).not.toBeInTheDocument()
-
-      fireEvent.click(
-        await screen.findByRole('button', {
-          name: 'send build message',
-        }),
-      )
+      await screen.findByRole('button', { name: 'custom.apply' })
+      expect(promptEditor()).toHaveAttribute('contenteditable', 'false')
+      if (action === 'apply') await user.click(applyButton())
+      else {
+        await user.click(discardButton())
+        await confirm(user)
+      }
       await waitFor(() =>
-        expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent(
-          'build:build-conversation-new',
-        ),
+        expect(
+          screen.queryByRole('group', { name: `${prefix}.buildDraft.title` }),
+        ).not.toBeInTheDocument(),
       )
-      expect(
-        screen.queryByRole('button', {
-          name: 'agentV2.agentDetail.configure.workingDirectory.fileSystem',
-        }),
-      ).not.toBeInTheDocument()
-
-      fireEvent.click(
-        await screen.findByRole('button', {
-          name: 'complete build conversation',
-        }),
+      expect(promptEditor()).toHaveAttribute('contenteditable', 'true')
+      expect(promptEditor()).toHaveTextContent(
+        action === 'apply' ? 'Built instructions' : 'Help with workflow tasks.',
       )
-      expect(
-        screen.getByRole('button', {
-          name: 'agentV2.agentDetail.configure.workingDirectory.fileSystem',
-        }),
-      ).toBeInTheDocument()
-
-      fireEvent.click(
-        await screen.findByRole('button', {
-          name: 'agentV2.agentDetail.configure.workingDirectory.fileSystem',
-        }),
-      )
-
-      expect(
-        await screen.findByRole('dialog', {
-          name: 'agentV2.agentDetail.configure.workingDirectory.title',
-        }),
-      ).toBeInTheDocument()
-      expect(await screen.findAllByText('result.txt')).not.toHaveLength(0)
-    })
-  })
-
-  describe('Build Chat', () => {
-    it('should save the workflow agent draft and write that snapshot into the build draft before starting build chat', async () => {
-      mocks.saveDraft.mockResolvedValue(
-        createInlineComposerState({
-          snapshotId: 'snapshot-saved',
-          systemPrompt: 'Saved workflow snapshot prompt.',
-        }),
-      )
-      renderWorkspace()
-
-      fireEvent.click(await screen.findByRole('button', { name: 'send build message' }))
-
-      await waitFor(() => expect(mocks.saveDraft).toHaveBeenCalled())
-      expect(mocks.saveBuildDraft).toHaveBeenCalledWith(
-        {
-          params: {
-            agent_id: 'agent-1',
-          },
+      expect(api.deleteBuildDraft).toHaveBeenCalledExactlyOnceWith({
+        params: { agent_id: 'agent-1' },
+      })
+      expect(api.refreshConversation).toHaveBeenCalledExactlyOnceWith({
+        params: { agent_id: 'agent-1' },
+      })
+      if (action === 'apply')
+        expect(api.saveComposer).toHaveBeenCalledWith({
+          params: { app_id: 'app-1', node_id: 'node-1' },
           body: {
-            variant: 'agent_app',
-            save_strategy: 'save_to_current_version',
-            agent_soul: expect.objectContaining({
-              prompt: expect.objectContaining({
-                system_prompt: 'Saved workflow snapshot prompt.',
-              }),
-            }),
+            variant: 'workflow',
+            save_strategy: 'node_job_only',
+            agent_soul: createBuildDraft().agent_soul,
           },
-        },
-        expect.any(Object),
-      )
-      const saveDraftCallOrder = mocks.saveDraft.mock.invocationCallOrder[0]
-      const saveBuildDraftCallOrder = mocks.saveBuildDraft.mock.invocationCallOrder[0]
-      expect(saveDraftCallOrder).toBeDefined()
-      expect(saveBuildDraftCallOrder).toBeDefined()
-      if (saveDraftCallOrder === undefined || saveBuildDraftCallOrder === undefined)
-        throw new Error('Expected workflow draft and build draft saves to be called')
-
-      expect(saveDraftCallOrder).toBeLessThan(saveBuildDraftCallOrder)
-      expect(mocks.checkoutBuildDraft).not.toHaveBeenCalled()
-      expect(mocks.trackEvent).toHaveBeenCalledWith('agent_build_mode_run', {
-        agent_scope: AgentScope.InWorkflow,
-      })
-    })
-
-    it('should use the saved build draft response as the build chat source', async () => {
-      mocks.saveDraft.mockResolvedValue(
-        createInlineComposerState({
-          snapshotId: 'snapshot-saved',
-          systemPrompt: 'Saved workflow snapshot prompt.',
-        }),
-      )
-      mocks.saveBuildDraft.mockResolvedValue({
-        agent_soul: {
-          schema_version: 1,
-          prompt: {
-            system_prompt: 'Normalized build draft prompt.',
-          },
-        },
-        draft: {},
-        variant: 'agent_app',
-      })
-      renderWorkspace()
-
-      fireEvent.click(await screen.findByRole('button', { name: 'send build message' }))
-
-      await waitFor(() => {
-        expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:yes')
-      })
-      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent(
-        'prompt:Normalized build draft prompt.',
-      )
-    })
-
-    it('should enter build draft mode without resetting the current inline build chat', async () => {
-      mocks.loadBuildDraft
-        .mockRejectedValueOnce(new Response(null, { status: 404 }))
-        .mockResolvedValue({
-          agent_soul: {
-            schema_version: 1,
-            prompt: {
-              system_prompt: 'Build draft prompt',
-            },
-          },
-          draft: {},
-          variant: 'agent_app',
         })
-      mocks.saveBuildDraft.mockResolvedValue({
-        agent_soul: {
-          schema_version: 1,
-          prompt: {
-            system_prompt: 'Build draft prompt',
-          },
-        },
-        draft: {},
-        variant: 'agent_app',
-      })
-      renderWorkspace()
+      else expect(api.saveComposer).not.toHaveBeenCalled()
+    },
+  )
 
-      expect(
-        await screen.findByRole('button', {
-          name: 'agentV2.agentDetail.configure.preview.restart',
-        }),
-      ).toBeDisabled()
+  it('keeps an existing build draft until the switch-to-preview confirmation is accepted', async () => {
+    const user = userEvent.setup()
+    api.loadBuildDraft.mockResolvedValue(createBuildDraft())
+    renderWorkspace()
+    await screen.findByRole('button', { name: 'custom.apply' })
+    await changeMode(user, 'preview')
+    const dialog = within(await screen.findByRole('alertdialog'))
+    await user.click(dialog.getByRole('button', { name: 'common.operation.cancel' }))
+    expect(api.deleteBuildDraft).not.toHaveBeenCalled()
+    expect(applyButton()).toBeVisible()
+    await changeMode(user, 'preview')
+    await confirm(user)
+    await waitFor(() => expect(api.deleteBuildDraft).toHaveBeenCalledOnce())
+    expect(previewInput()).toBeVisible()
+    expect(promptEditor()).toHaveTextContent('Help with workflow tasks.')
+  })
 
-      fireEvent.click(await screen.findByRole('button', { name: 'send build message' }))
+  it.each([false, true])(
+    'reopens and restarts the composer debug conversation (with build draft: %s)',
+    async (hasBuildDraft) => {
+      const user = userEvent.setup()
+      if (hasBuildDraft) api.loadBuildDraft.mockResolvedValue(createBuildDraft())
 
-      await waitFor(() =>
-        expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:yes'),
-      )
-      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent(
-        'build:build-conversation-new',
-      )
-      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
-        'readonly:yes',
-      )
-      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
-        'buildDraft:yes',
-      )
-      expect(screen.getByRole('region', { name: 'build-draft-bar' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'apply build draft' })).toBeDisabled()
-      expect(screen.getByRole('button', { name: 'discard build draft' })).toBeDisabled()
-      expect(
-        screen.getByRole('button', {
-          name: 'agentV2.agentDetail.configure.preview.restart',
-        }),
-      ).toBeDisabled()
-
-      vi.useFakeTimers()
-      fireEvent.click(screen.getByRole('button', { name: 'complete build conversation' }))
-
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(1000)
-      })
-
-      expect(mocks.loadBuildDraft).toHaveBeenCalled()
-      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:yes')
-      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent(
-        'build:build-conversation-new',
-      )
-      expect(screen.getByRole('button', { name: 'apply build draft' })).toBeEnabled()
-      expect(screen.getByRole('button', { name: 'discard build draft' })).toBeEnabled()
-      expect(
-        screen.getByRole('button', {
-          name: 'agentV2.agentDetail.configure.preview.restart',
-        }),
-      ).toBeEnabled()
-    })
-
-    it('should seed inline build chat from the workflow composer debug conversation when reopening build draft', async () => {
-      mocks.loadBuildDraft.mockResolvedValue({
-        agent_soul: {
-          schema_version: 1,
-          prompt: {
-            system_prompt: 'Build draft prompt',
-          },
-        },
-        draft: {},
-        variant: 'agent_app',
-      })
-
+      historyByConversation.set('old-conversation', [createHistoryMessage()])
       renderWorkspace({
-        inlineComposerState: createInlineComposerState({
-          debugConversationId: 'inline-debug-conversation-1',
+        composer: createComposer({
+          debug_conversation_id: 'old-conversation',
+          debug_conversation_has_messages: true,
+          debug_conversation_message_count: 1,
         }),
       })
-
-      expect(await screen.findByRole('region', { name: 'build-draft-bar' })).toBeInTheDocument()
-      expect(screen.getByRole('region', { name: 'build-draft-bar' })).toHaveTextContent(
-        'summary:build_note.md',
-      )
-      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent(
-        'build:inline-debug-conversation-1',
-      )
-      expect(
-        screen.getByRole('button', {
-          name: 'agentV2.agentDetail.configure.preview.restart',
+      expect(await screen.findByText('Earlier answer')).toBeVisible()
+      expect(api.history).toHaveBeenCalledWith({
+        params: { agent_id: 'agent-1' },
+        query: { conversation_id: 'old-conversation' },
+      })
+      await user.click(restartButton())
+      await confirm(user)
+      await waitFor(() =>
+        expect(api.refreshConversation).toHaveBeenCalledExactlyOnceWith({
+          params: { agent_id: 'agent-1' },
         }),
-      ).toBeEnabled()
+      )
+      await waitFor(() => expect(screen.queryByText('Earlier answer')).not.toBeInTheDocument())
+      if (hasBuildDraft) expect(api.deleteBuildDraft).toHaveBeenCalledOnce()
+      else expect(api.deleteBuildDraft).not.toHaveBeenCalled()
+    },
+  )
+
+  it('keeps restart disabled when the existing debug conversation has no messages', async () => {
+    renderWorkspace({
+      composer: createComposer({
+        debug_conversation_id: 'empty-conversation',
+        debug_conversation_has_messages: false,
+        debug_conversation_message_count: 0,
+      }),
     })
+    await screen.findByRole('textbox', { name: `${prefix}.build.inputPlaceholder` })
+    expect(restartButton()).toBeDisabled()
+  })
 
-    it('should keep restart disabled when workflow composer debug conversation has no messages', async () => {
-      renderWorkspace({
-        inlineComposerState: createInlineComposerState({
-          debugConversationHasMessages: false,
-          debugConversationId: 'inline-debug-conversation-1',
-          debugConversationMessageCount: 0,
-        }),
-      })
-
-      expect(await screen.findByRole('region', { name: 'build-chat' })).toHaveTextContent(
-        'build:inline-debug-conversation-1',
-      )
-      expect(
-        screen.getByRole('button', {
-          name: 'agentV2.agentDetail.configure.preview.restart',
-        }),
-      ).toBeDisabled()
+  it('refreshes only the preview conversation when restarting preview', async () => {
+    const user = userEvent.setup()
+    historyByConversation.set('saved-build', [createHistoryMessage('saved-build', 'Build history')])
+    renderWorkspace({
+      composer: createComposer({
+        debug_conversation_id: 'saved-build',
+        debug_conversation_has_messages: true,
+        debug_conversation_message_count: 1,
+      }),
     })
+    await screen.findByText('Build history')
+    await changeMode(user, 'preview')
+    await sendPreview(user)
+    await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
+    await receive(0, 'preview-conversation', 'Preview answer')
+    await complete()
+    await user.click(restartButton())
+    await waitFor(() =>
+      expect(api.refreshConversation).toHaveBeenCalledExactlyOnceWith({
+        params: { agent_id: 'agent-1' },
+        body: { draft_type: 'draft' },
+      }),
+    )
+    await waitFor(() => expect(screen.queryByText('Preview answer')).not.toBeInTheDocument())
+    expect(api.deleteBuildDraft).not.toHaveBeenCalled()
+    await changeMode(user, 'build')
+    expect(await screen.findByText('Build history')).toBeVisible()
+  })
 
-    it('should refresh inline debug conversation when restarting an existing debug chat', async () => {
-      renderWorkspace({
-        inlineComposerState: createInlineComposerState({
-          debugConversationHasMessages: true,
-          debugConversationId: 'inline-debug-conversation-1',
-          debugConversationMessageCount: 1,
-        }),
-      })
-
-      expect(await screen.findByRole('region', { name: 'build-chat' })).toHaveTextContent(
-        'build:inline-debug-conversation-1',
-      )
-      await restartCurrentChat()
-
-      await waitFor(() =>
-        expect(mocks.refreshDebugConversation).toHaveBeenCalledWith(
-          {
-            params: {
-              agent_id: 'agent-1',
-            },
-          },
-          expect.any(Object),
-        ),
-      )
-      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
-    })
-
-    it('should re-enable inline build draft actions when build chat fails', async () => {
-      mocks.loadBuildDraft
-        .mockRejectedValueOnce(new Response(null, { status: 404 }))
-        .mockResolvedValue({
-          agent_soul: {
-            schema_version: 1,
-            prompt: {
-              system_prompt: 'Build draft prompt',
-            },
-          },
-          draft: {},
-          variant: 'agent_app',
-        })
-      mocks.saveBuildDraft.mockResolvedValue({
-        agent_soul: {
-          schema_version: 1,
-          prompt: {
-            system_prompt: 'Build draft prompt',
-          },
-        },
-        draft: {},
-        variant: 'agent_app',
-      })
-      renderWorkspace()
-
-      fireEvent.click(await screen.findByRole('button', { name: 'send build message' }))
-
-      await waitFor(() =>
-        expect(screen.getByRole('button', { name: 'apply build draft' })).toBeDisabled(),
-      )
-
-      fireEvent.click(screen.getByRole('button', { name: 'fail build conversation' }))
-
-      expect(screen.getByRole('button', { name: 'apply build draft' })).toBeEnabled()
-      expect(screen.getByRole('button', { name: 'discard build draft' })).toBeEnabled()
-      expect(
-        screen.getByRole('button', {
-          name: 'agentV2.agentDetail.configure.preview.restart',
-        }),
-      ).toBeEnabled()
-    })
-
-    it('should not let a previous inline build completion refresh unlock a new build run', async () => {
-      mocks.loadBuildDraft.mockResolvedValue({
-        agent_soul: {
-          schema_version: 1,
-          prompt: {
-            system_prompt: 'Build draft prompt',
-          },
-        },
-        draft: {},
-        variant: 'agent_app',
-      })
-      renderWorkspace()
-
-      await screen.findByRole('region', { name: 'build-draft-bar' })
-      const initialBuildDraftLoadCount = mocks.loadBuildDraft.mock.calls.length
-
-      fireEvent.click(await screen.findByRole('button', { name: 'send build message' }))
-      await waitFor(() =>
-        expect(screen.getByRole('button', { name: 'apply build draft' })).toBeDisabled(),
-      )
-
-      vi.useFakeTimers()
-      fireEvent.click(screen.getByRole('button', { name: 'complete build conversation' }))
-      fireEvent.click(screen.getByRole('button', { name: 'send build message' }))
-      await act(async () => {
-        await Promise.resolve()
-      })
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(1000)
-      })
-
-      expect(mocks.loadBuildDraft).toHaveBeenCalledTimes(initialBuildDraftLoadCount)
-      expect(screen.getByRole('button', { name: 'apply build draft' })).toBeDisabled()
-      expect(screen.getByRole('button', { name: 'discard build draft' })).toBeDisabled()
-    })
-
-    it('should refresh the inline build debug conversation when restarting after a build send', async () => {
-      mocks.loadBuildDraft
-        .mockRejectedValueOnce(new Response(null, { status: 404 }))
-        .mockResolvedValue({
-          agent_soul: {
-            schema_version: 1,
-            prompt: {
-              system_prompt: 'Build draft prompt',
-            },
-          },
-          draft: {},
-          variant: 'agent_app',
-        })
-      mocks.saveBuildDraft.mockResolvedValue({
-        agent_soul: {
-          schema_version: 1,
-          prompt: {
-            system_prompt: 'Build draft prompt',
-          },
-        },
-        draft: {},
-        variant: 'agent_app',
-      })
-      renderWorkspace()
-
-      fireEvent.click(await screen.findByRole('button', { name: 'send build message' }))
-      await waitFor(() =>
-        expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent(
-          'build:build-conversation-new',
-        ),
-      )
-
-      fireEvent.click(screen.getByRole('button', { name: 'fail build conversation' }))
-      await restartCurrentChat()
-
-      await waitFor(() =>
-        expect(mocks.deleteBuildDraft).toHaveBeenCalledWith(
-          {
-            params: {
-              agent_id: 'agent-1',
-            },
-          },
-          expect.any(Object),
-        ),
-      )
-      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith(
-        {
-          params: {
-            agent_id: 'agent-1',
-          },
-        },
-        expect.any(Object),
-      )
-      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
-    })
-
-    it('should apply inline build draft through the workflow node composer owner', async () => {
-      mocks.loadBuildDraft.mockResolvedValue({
-        agent_soul: {
-          schema_version: 1,
-          prompt: {
-            system_prompt: 'Applied inline build prompt',
-          },
-        },
-        draft: {},
-        variant: 'agent_app',
-      })
-      renderWorkspace()
-
-      fireEvent.click(await screen.findByRole('button', { name: 'apply build draft' }))
-
-      await waitFor(() =>
-        expect(mocks.saveAgentSoulConfig).toHaveBeenCalledWith(
-          expect.objectContaining({
-            prompt: expect.objectContaining({
-              system_prompt: 'Applied inline build prompt',
-            }),
-          }),
-        ),
-      )
-      expect(mocks.deleteBuildDraft).toHaveBeenCalledWith(
-        {
-          params: {
-            agent_id: 'agent-1',
-          },
-        },
-        expect.any(Object),
-      )
-      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith(
-        {
-          params: {
-            agent_id: 'agent-1',
-          },
-        },
-        expect.any(Object),
-      )
-      expect(mocks.applyBuildDraft).not.toHaveBeenCalled()
-    })
-
-    it('should keep exiting inline build draft when debug conversation refresh fails after applying', async () => {
-      mocks.refreshDebugConversation.mockRejectedValueOnce(new Error('refresh failed'))
-      mocks.loadBuildDraft.mockResolvedValue({
-        agent_soul: {
-          schema_version: 1,
-          prompt: {
-            system_prompt: 'Applied inline build prompt',
-          },
-        },
-        draft: {},
-        variant: 'agent_app',
-      })
-      renderWorkspace()
-
-      fireEvent.click(await screen.findByRole('button', { name: 'apply build draft' }))
-
-      await waitFor(() => expect(mocks.saveAgentSoulConfig).toHaveBeenCalled())
-      expect(mocks.deleteBuildDraft).toHaveBeenCalled()
-      await waitFor(() =>
-        expect(screen.queryByRole('region', { name: 'build-draft-bar' })).not.toBeInTheDocument(),
-      )
-      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
-      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
-        'readonly:no',
-      )
-      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
-        'buildDraft:no',
-      )
-    })
-
-    it('should refresh the inline build debug conversation when discarding the build draft', async () => {
-      mocks.loadBuildDraft.mockResolvedValue({
-        agent_soul: {
-          schema_version: 1,
-          prompt: {
-            system_prompt: 'Discarded inline build prompt',
-          },
-        },
-        draft: {},
-        variant: 'agent_app',
-      })
-      renderWorkspace()
-
-      fireEvent.click(await screen.findByRole('button', { name: 'discard build draft' }))
-
-      await waitFor(() =>
-        expect(mocks.deleteBuildDraft).toHaveBeenCalledWith(
-          {
-            params: {
-              agent_id: 'agent-1',
-            },
-          },
-          expect.any(Object),
-        ),
-      )
-      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith(
-        {
-          params: {
-            agent_id: 'agent-1',
-          },
-        },
-        expect.any(Object),
-      )
-      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
-    })
-
-    it('should keep exiting inline build draft when debug conversation refresh fails after discarding', async () => {
-      mocks.refreshDebugConversation.mockRejectedValueOnce(new Error('refresh failed'))
-      mocks.loadBuildDraft.mockResolvedValue({
-        agent_soul: {
-          schema_version: 1,
-          prompt: {
-            system_prompt: 'Discarded inline build prompt',
-          },
-        },
-        draft: {},
-        variant: 'agent_app',
-      })
-      renderWorkspace()
-
-      fireEvent.click(await screen.findByRole('button', { name: 'discard build draft' }))
-
-      await waitFor(() => expect(mocks.deleteBuildDraft).toHaveBeenCalled())
-      await waitFor(() =>
-        expect(screen.queryByRole('region', { name: 'build-draft-bar' })).not.toBeInTheDocument(),
-      )
-      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
-      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
-        'readonly:no',
-      )
-      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
-        'buildDraft:no',
-      )
-    })
-
-    it('should keep the composer session mounted when the inline snapshot changes', async () => {
-      const { rerender } = renderWorkspace({
-        inlineComposerState: createInlineComposerState({ snapshotId: 'snapshot-1' }),
-      })
-      const localDraftInput = await screen.findByRole('textbox', { name: 'local composer draft' })
-
-      fireEvent.change(localDraftInput, { target: { value: 'draft still mounted' } })
-
-      rerender(
-        <WorkflowInlineAgentConfigureWorkspace
-          agentId="agent-1"
-          flowId="app-1"
-          flowType={FlowType.appFlow}
-          inlineComposerState={createInlineComposerState({ snapshotId: 'snapshot-2' })}
-          nodeId="node-1"
-          open
-        />,
-      )
-
-      expect(screen.getByRole('textbox', { name: 'local composer draft' })).toHaveValue(
-        'draft still mounted',
-      )
-    })
+  it('opens generated files after a build response completes', async () => {
+    const user = userEvent.setup()
+    renderWorkspace()
+    expect(
+      screen.queryByRole('button', { name: `${prefix}.workingDirectory.fileSystem` }),
+    ).not.toBeInTheDocument()
+    await sendBuild(user)
+    await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
+    await receive()
+    expect(
+      screen.queryByRole('button', { name: `${prefix}.workingDirectory.fileSystem` }),
+    ).not.toBeInTheDocument()
+    api.loadBuildDraft.mockResolvedValue(createBuildDraft())
+    await complete()
+    await user.click(
+      await screen.findByRole('button', { name: `${prefix}.workingDirectory.fileSystem` }),
+    )
+    expect(await screen.findByRole('dialog', { name: 'result.txt' })).toBeVisible()
+    expect(await screen.findByText('Build result')).toBeVisible()
   })
 })

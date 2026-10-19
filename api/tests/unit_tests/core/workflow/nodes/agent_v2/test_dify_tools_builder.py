@@ -80,7 +80,7 @@ class FakeTool(Tool):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> ToolInvokeMessage | list[ToolInvokeMessage] | Generator[ToolInvokeMessage, None, None]:
+    ) -> ToolInvokeMessage | list[ToolInvokeMessage] | Generator[ToolInvokeMessage]:
         raise NotImplementedError
 
 

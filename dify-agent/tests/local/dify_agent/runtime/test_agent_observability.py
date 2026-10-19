@@ -21,6 +21,8 @@ from pydantic_ai.models.test import TestModel
 
 import dify_agent.server.observability as server_observability
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from pydantic_ai.toolsets import FunctionToolset
+
 from dify_agent.runtime.agent_factory import DIFY_AGENT_RUN_NAME, create_agent
 from dify_agent.runtime.observability import (
     DIFY_TENANT_ID_ATTRIBUTE,
@@ -80,7 +82,9 @@ def test_create_agent_instrument_disabled_survives_global_instrument_all() -> No
     try:
         Agent.instrument_all(InstrumentationSettings(tracer_provider=platform_provider))
 
-        agent = create_agent(TestModel(custom_output_text="done"), tools=[])
+        agent = create_agent(
+            TestModel(custom_output_text="done"), toolsets=[FunctionToolset(tools=[])], capabilities=[]
+        )
         assert agent.instrument is False
 
         _ = agent.run_sync("test-only input")
@@ -99,7 +103,11 @@ def test_agent_observability_runs_agent_spans_to_business_exporter_only() -> Non
     try:
         Agent.instrument_all(InstrumentationSettings(tracer_provider=platform_provider))
         observability = AgentObservability(client=client)
-        agent = create_agent(TestModel(custom_output_text="done"), tools=[Tool(_static_tool)])
+        agent = create_agent(
+            TestModel(custom_output_text="done"),
+            toolsets=[FunctionToolset(tools=[Tool(_static_tool)])],
+            capabilities=[],
+        )
         observability.instrument(agent)
 
         _ = agent.run_sync("test-only input")
@@ -125,7 +133,11 @@ def test_agent_observability_excludes_content_by_default() -> None:
     client = _local_client(exporter)
     try:
         observability = AgentObservability(client=client, include_content=False)
-        agent = create_agent(TestModel(custom_output_text="done"), tools=[Tool(_static_tool)])
+        agent = create_agent(
+            TestModel(custom_output_text="done"),
+            toolsets=[FunctionToolset(tools=[Tool(_static_tool)])],
+            capabilities=[],
+        )
         observability.instrument(agent)
 
         _ = agent.run_sync("content-sentinel-input-1")
@@ -145,7 +157,11 @@ def test_agent_observability_includes_content_when_opted_in() -> None:
     client = _local_client(exporter)
     try:
         observability = AgentObservability(client=client, include_content=True)
-        agent = create_agent(TestModel(custom_output_text="done"), tools=[Tool(_static_tool)])
+        agent = create_agent(
+            TestModel(custom_output_text="done"),
+            toolsets=[FunctionToolset(tools=[Tool(_static_tool)])],
+            capabilities=[],
+        )
         observability.instrument(agent)
 
         _ = agent.run_sync("content-sentinel-input-2")
@@ -166,7 +182,11 @@ def test_business_agent_root_detaches_from_platform_parent_span() -> None:
     business_client = _local_client(business_exporter)
     try:
         observability = AgentObservability(client=business_client)
-        agent = create_agent(TestModel(custom_output_text="done"), tools=[Tool(_static_tool)])
+        agent = create_agent(
+            TestModel(custom_output_text="done"),
+            toolsets=[FunctionToolset(tools=[Tool(_static_tool)])],
+            capabilities=[],
+        )
         observability.instrument(agent)
 
         with platform_client.span("platform-incoming-request"):
@@ -194,7 +214,9 @@ def test_agent_shutdown_does_not_stop_platform_pipeline() -> None:
     try:
         Agent.instrument_all(InstrumentationSettings(tracer_provider=platform_client.config.get_tracer_provider()))
         observability = AgentObservability(client=business_client)
-        agent = create_agent(TestModel(custom_output_text="done"), tools=[])
+        agent = create_agent(
+            TestModel(custom_output_text="done"), toolsets=[FunctionToolset(tools=[])], capabilities=[]
+        )
         observability.instrument(agent)
         _ = agent.run_sync("test-only input")
         assert business_client.force_flush(timeout_millis=10000)
@@ -234,7 +256,11 @@ def test_business_descendants_stay_in_business_trace_and_caller_context_restored
     business_client = _local_client(business_exporter)
     try:
         observability = AgentObservability(client=business_client)
-        agent = create_agent(TestModel(custom_output_text="done"), tools=[Tool(_static_tool)])
+        agent = create_agent(
+            TestModel(custom_output_text="done"),
+            toolsets=[FunctionToolset(tools=[Tool(_static_tool)])],
+            capabilities=[],
+        )
         observability.instrument(agent)
 
         with platform_client.span("platform-incoming-request") as platform_span:
@@ -278,7 +304,9 @@ def test_platform_httpx_client_span_detaches_from_business_parent() -> None:
             return http.get("http://test-only.local/ping").text
 
         observability = AgentObservability(client=business_client)
-        agent = create_agent(TestModel(custom_output_text="done"), tools=[Tool(net_tool)])
+        agent = create_agent(
+            TestModel(custom_output_text="done"), toolsets=[FunctionToolset(tools=[Tool(net_tool)])], capabilities=[]
+        )
         observability.instrument(agent)
 
         with platform_client.span("platform-incoming-request"):
@@ -406,7 +434,11 @@ def test_concurrent_agent_runs_have_independent_business_roots() -> None:
         observability = AgentObservability(client=business_client)
         agents = []
         for index in range(2):
-            agent = create_agent(TestModel(custom_output_text=f"done-{index}"), tools=[Tool(_static_tool)])
+            agent = create_agent(
+                TestModel(custom_output_text=f"done-{index}"),
+                toolsets=[FunctionToolset(tools=[Tool(_static_tool)])],
+                capabilities=[],
+            )
             observability.instrument(agent)
             agents.append(agent)
 
@@ -494,7 +526,9 @@ def test_shared_trace_context_mode_links_business_run_to_platform_parent() -> No
             return http.get("http://test-only.local/ping").text
 
         observability = AgentObservability(client=business_client, trace_context_mode="shared")
-        agent = create_agent(TestModel(custom_output_text="done"), tools=[Tool(net_tool)])
+        agent = create_agent(
+            TestModel(custom_output_text="done"), toolsets=[FunctionToolset(tools=[Tool(net_tool)])], capabilities=[]
+        )
         observability.instrument(agent)
 
         with platform_client.span("shared-platform-root"):
@@ -546,7 +580,11 @@ def test_shared_mode_agent_pipeline_respects_remote_parent_sampling(monkeypatch:
     observability_instance = server_observability.configure_agent_observability(settings)
     assert observability_instance is not None
     try:
-        agent = create_agent(TestModel(custom_output_text="done"), tools=[Tool(_static_tool)])
+        agent = create_agent(
+            TestModel(custom_output_text="done"),
+            toolsets=[FunctionToolset(tools=[Tool(_static_tool)])],
+            capabilities=[],
+        )
         observability_instance.instrument(agent)
 
         unsampled = set_span_in_context(
@@ -654,7 +692,11 @@ def test_agent_observability_stamps_dify_context_on_every_run_span(trace_context
             client=client,
             trace_context_mode=cast(Literal["isolated", "shared"], trace_context_mode),
         )
-        agent = create_agent(TestModel(custom_output_text="done"), tools=[Tool(_static_tool)])
+        agent = create_agent(
+            TestModel(custom_output_text="done"),
+            toolsets=[FunctionToolset(tools=[Tool(_static_tool)])],
+            capabilities=[],
+        )
         observability.instrument(agent, execution_context=_workflow_execution_context())
 
         _ = agent.run_sync("test-only input")
@@ -677,7 +719,11 @@ def test_agent_observability_omits_dify_attributes_without_an_execution_context(
     client = _local_client(exporter)
     try:
         observability = AgentObservability(client=client)
-        agent = create_agent(TestModel(custom_output_text="done"), tools=[Tool(_static_tool)])
+        agent = create_agent(
+            TestModel(custom_output_text="done"),
+            toolsets=[FunctionToolset(tools=[Tool(_static_tool)])],
+            capabilities=[],
+        )
         observability.instrument(agent)
 
         _ = agent.run_sync("test-only input")
@@ -700,7 +746,11 @@ def test_dify_attributes_do_not_break_isolated_parent_policy() -> None:
     business_client = _local_client(business_exporter)
     try:
         observability = AgentObservability(client=business_client)
-        agent = create_agent(TestModel(custom_output_text="done"), tools=[Tool(_static_tool)])
+        agent = create_agent(
+            TestModel(custom_output_text="done"),
+            toolsets=[FunctionToolset(tools=[Tool(_static_tool)])],
+            capabilities=[],
+        )
         observability.instrument(agent, execution_context=_workflow_execution_context())
 
         with platform_client.span("platform-incoming-request"):

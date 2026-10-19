@@ -1,146 +1,17 @@
-import type { ReactNode } from 'react'
 import type { HttpNodeType } from '../types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWorkflowFlowComponent as render } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
 import Panel from '../panel'
-import { AuthorizationType, BodyPayloadValueType, BodyType, Method } from '../types'
+import { AuthorizationType, BodyType, Method } from '../types'
 
 const mockUseConfig = vi.hoisted(() => vi.fn())
-const mockAuthorizationModal = vi.hoisted(() => vi.fn())
-const mockCurlPanel = vi.hoisted(() => vi.fn())
-const mockApiInput = vi.hoisted(() => vi.fn())
-const mockKeyValue = vi.hoisted(() => vi.fn())
-const mockEditBody = vi.hoisted(() => vi.fn())
-const mockTimeout = vi.hoisted(() => vi.fn())
 
-type ApiInputProps = {
-  method: Method
-  url: string
-  onMethodChange: (method: Method) => void
-  onUrlChange: (url: string) => void
-}
-
-type KeyValueProps = {
-  nodeId: string
-  list: Array<{ key: string; value: string }>
-  onChange: (value: Array<{ key: string; value: string }>) => void
-  onAdd: () => void
-}
-
-type EditBodyProps = {
-  payload: HttpNodeType['body']
-  onChange: (value: HttpNodeType['body']) => void
-}
-
-type TimeoutProps = {
-  payload: HttpNodeType['timeout']
-  onChange: (value: HttpNodeType['timeout']) => void
-}
-
-vi.mock('../use-config', () => ({
-  __esModule: true,
-  default: (...args: unknown[]) => mockUseConfig(...args),
-}))
-
-vi.mock('../components/authorization', () => ({
-  __esModule: true,
-  default: (props: {
-    nodeId: string
-    payload: HttpNodeType['authorization']
-    onChange: (value: HttpNodeType['authorization']) => void
-    onHide: () => void
-  }) => {
-    mockAuthorizationModal(props)
-    return <div data-testid="authorization-modal">{props.nodeId}</div>
-  },
-}))
-
-vi.mock('../components/curl-panel', () => ({
-  __esModule: true,
-  default: (props: {
-    nodeId: string
-    onHide: () => void
-    handleCurlImport: (node: HttpNodeType) => void
-  }) => {
-    mockCurlPanel(props)
-    return <div data-testid="curl-panel">{props.nodeId}</div>
-  },
-}))
-
-vi.mock('../components/api-input', () => ({
-  __esModule: true,
-  default: (props: ApiInputProps) => {
-    mockApiInput(props)
-    return (
-      <div>
-        <div>{`${props.method}:${props.url}`}</div>
-        <button type="button" onClick={() => props.onMethodChange(Method.post)}>
-          emit-method-change
-        </button>
-        <button type="button" onClick={() => props.onUrlChange('https://changed.example.com')}>
-          emit-url-change
-        </button>
-      </div>
-    )
-  },
-}))
-
-vi.mock('../components/key-value', () => ({
-  __esModule: true,
-  default: (props: KeyValueProps) => {
-    mockKeyValue(props)
-    return (
-      <div>
-        <div>{props.list.map((item) => `${item.key}:${item.value}`).join(',')}</div>
-        <button type="button" onClick={() => props.onChange([{ key: 'x-token', value: '123' }])}>
-          emit-key-value-change
-        </button>
-        <button type="button" onClick={props.onAdd}>
-          emit-key-value-add
-        </button>
-      </div>
-    )
-  },
-}))
-
-vi.mock('../components/edit-body', () => ({
-  __esModule: true,
-  default: (props: EditBodyProps) => {
-    mockEditBody(props)
-    return (
-      <button
-        type="button"
-        onClick={() =>
-          props.onChange({
-            type: BodyType.json,
-            data: [{ type: BodyPayloadValueType.text, value: '{"hello":"world"}' }],
-          })
-        }
-      >
-        emit-body-change
-      </button>
-    )
-  },
-}))
-
-vi.mock('../components/timeout', () => ({
-  __esModule: true,
-  default: (props: TimeoutProps) => {
-    mockTimeout(props)
-    return (
-      <button type="button" onClick={() => props.onChange({ ...props.payload, connect: 9 })}>
-        emit-timeout-change
-      </button>
-    )
-  },
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
-  __esModule: true,
-  default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  VarItem: ({ name, type }: { name: string; type: string }) => <div>{`${name}:${type}`}</div>,
+vi.mock('../use-config', () => ({ default: (...args: unknown[]) => mockUseConfig(...args) }))
+vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', () => ({
+  default: () => ({ availableVars: [], availableNodesWithParent: [], availableNodes: [] }),
 }))
 
 const createData = (overrides: Partial<HttpNodeType> = {}): HttpNodeType => ({
@@ -169,12 +40,8 @@ describe('http/panel', () => {
   const setParams = vi.fn()
   const addParam = vi.fn()
   const setBody = vi.fn()
-  const showAuthorization = vi.fn()
-  const hideAuthorization = vi.fn()
   const setAuthorization = vi.fn()
   const setTimeout = vi.fn()
-  const showCurlPanel = vi.fn()
-  const hideCurlPanel = vi.fn()
   const handleCurlImport = vi.fn()
 
   const createConfigResult = (overrides: Record<string, unknown> = {}) => ({
@@ -192,14 +59,8 @@ describe('http/panel', () => {
     setParams,
     addParam,
     setBody,
-    isShowAuthorization: false,
-    showAuthorization,
-    hideAuthorization,
     setAuthorization,
     setTimeout,
-    isShowCurlPanel: false,
-    showCurlPanel,
-    hideCurlPanel,
     handleCurlImport,
     handleSSLVerifyChange: vi.fn(),
     ...overrides,
@@ -210,88 +71,68 @@ describe('http/panel', () => {
     mockUseConfig.mockReturnValue(createConfigResult())
   })
 
-  it('renders request fields, forwards child changes, and wires header operations', async () => {
+  it('commits the selected method, body format and timeout from real controls', async () => {
     const user = userEvent.setup()
-
     render(<Panel id="http-node" data={createData()} panelProps={panelProps} />)
-
-    expect(screen.getByText('get:https://api.example.com')).toBeInTheDocument()
-    expect(screen.getByText('body:string')).toBeInTheDocument()
-    expect(screen.getByText('status_code:number')).toBeInTheDocument()
-    expect(screen.getByText('headers:object')).toBeInTheDocument()
-    expect(screen.getByText('files:Array[File]')).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'emit-method-change' }))
-    await user.click(screen.getByRole('button', { name: 'emit-url-change' }))
-    await user.click(screen.getAllByRole('button', { name: 'emit-key-value-change' })[0]!)
-    await user.click(screen.getAllByRole('button', { name: 'emit-key-value-add' })[0]!)
-    await user.click(screen.getAllByRole('button', { name: 'emit-key-value-change' })[1]!)
-    await user.click(screen.getAllByRole('button', { name: 'emit-key-value-add' })[1]!)
-    await user.click(screen.getByRole('button', { name: 'emit-body-change' }))
-    await user.click(screen.getByRole('button', { name: 'emit-timeout-change' }))
+    await user.click(screen.getByText('get'))
+    await user.click(screen.getByText('POST'))
+    expect(handleMethodChange).toHaveBeenCalledExactlyOnceWith(Method.post)
+    await user.click(screen.getByRole('radio', { name: 'JSON' }))
+    expect(setBody).toHaveBeenCalledExactlyOnceWith({ type: BodyType.json, data: [] })
     await user.click(
-      screen.getByText('workflowIntegrations.nodes.http.authorization.authorization'),
+      screen.getByRole('button', { name: 'workflowIntegrations.nodes.http.timeout.title' }),
     )
-    await user.click(screen.getByText('workflowIntegrations.nodes.http.curl.title'))
-
-    expect(handleMethodChange).toHaveBeenCalledWith(Method.post)
-    expect(handleUrlChange).toHaveBeenCalledWith('https://changed.example.com')
-    expect(setHeaders).toHaveBeenCalledWith([{ key: 'x-token', value: '123' }])
-    expect(addHeader).toHaveBeenCalledTimes(1)
-    expect(setParams).toHaveBeenCalledWith([{ key: 'x-token', value: '123' }])
-    expect(addParam).toHaveBeenCalledTimes(1)
-    expect(setBody).toHaveBeenCalledWith({
-      type: BodyType.json,
-      data: [{ type: 'text', value: '{"hello":"world"}' }],
+    const connect = screen.getByRole('textbox', {
+      name: 'workflowIntegrations.nodes.http.timeout.connectLabel',
     })
-    expect(setTimeout).toHaveBeenCalledWith(expect.objectContaining({ connect: 9 }))
-    expect(showAuthorization).toHaveBeenCalledTimes(1)
-    expect(showCurlPanel).toHaveBeenCalledTimes(1)
-    expect(mockApiInput).toHaveBeenCalledWith(
-      expect.objectContaining({
-        method: Method.get,
-        url: 'https://api.example.com',
-      }),
+    await user.clear(connect)
+    await user.type(connect, '9')
+    expect(setTimeout).toHaveBeenLastCalledWith({ connect: 9, read: 10, write: 15 })
+    await user.click(
+      screen.getByRole('button', { name: 'workflowIntegrations.nodes.http.curl.title' }),
     )
+    expect(
+      screen.getByRole('dialog', { name: 'workflowIntegrations.nodes.http.curl.title' }),
+    ).toBeInTheDocument()
   })
 
-  it('returns null before the config data is ready', () => {
-    mockUseConfig.mockReturnValueOnce(createConfigResult({ isDataReady: false }))
-
-    const { container } = render(
-      <Panel id="http-node" data={createData()} panelProps={panelProps} />,
-    )
-
-    expect(container).toBeEmptyDOMElement()
+  it('keeps request controls unavailable until config data is ready', () => {
+    mockUseConfig.mockReturnValue(createConfigResult({ isDataReady: false }))
+    render(<Panel id="http-node" data={createData()} panelProps={panelProps} />)
+    expect(screen.queryByRole('radio', { name: 'JSON' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'workflowIntegrations.nodes.http.curl.title' }),
+    ).not.toBeInTheDocument()
   })
 
-  it('renders auth and curl panels only when writable and toggled on', () => {
-    mockUseConfig.mockReturnValueOnce(
-      createConfigResult({
-        isShowAuthorization: true,
-        isShowCurlPanel: true,
-      }),
-    )
-
+  it('blocks request changes when the panel becomes read-only', async () => {
+    const user = userEvent.setup()
     const { rerender } = render(
       <Panel id="http-node" data={createData()} panelProps={panelProps} />,
     )
-
-    expect(screen.getByTestId('authorization-modal')).toHaveTextContent('http-node')
-    expect(screen.getByTestId('curl-panel')).toHaveTextContent('http-node')
-
-    mockUseConfig.mockReturnValueOnce(
-      createConfigResult({
-        readOnly: true,
-        isShowAuthorization: true,
-        isShowCurlPanel: true,
-      }),
-    )
-
+    expect(screen.getByRole('button', { name: /authorization.authorization/ })).toBeEnabled()
+    mockUseConfig.mockReturnValue(createConfigResult({ readOnly: true }))
     rerender(<Panel id="http-node" data={createData()} panelProps={panelProps} />)
-
-    expect(screen.queryByTestId('authorization-modal')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('curl-panel')).not.toBeInTheDocument()
-    expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
+    expect(
+      screen.queryByRole('button', { name: /authorization.authorization/ }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'workflowIntegrations.nodes.http.curl.title' }),
+    ).not.toBeInTheDocument()
+    await user.click(screen.getByText('get'))
+    expect(screen.queryByText('POST')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('radio', { name: 'JSON' }))
+    await user.click(screen.getByRole('switch'))
+    await user.click(
+      screen.getByRole('button', { name: 'workflowIntegrations.nodes.http.timeout.title' }),
+    )
+    const connect = screen.getByRole('textbox', {
+      name: 'workflowIntegrations.nodes.http.timeout.connectLabel',
+    })
+    expect(connect).toHaveAttribute('readonly')
+    await user.type(connect, '9')
+    expect(handleMethodChange).not.toHaveBeenCalled()
+    expect(setBody).not.toHaveBeenCalled()
+    expect(setTimeout).not.toHaveBeenCalled()
   })
 })

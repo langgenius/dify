@@ -78,10 +78,7 @@ def get_url(url: str, user_agent: str | None = None) -> str:
 
     # Detect encoding using charset_normalizer
     detected_encoding = charset_normalizer.from_bytes(response.content).best()
-    if detected_encoding:
-        encoding = detected_encoding.encoding
-    else:
-        encoding = "utf-8"
+    encoding = detected_encoding.encoding if detected_encoding else "utf-8"
     if encoding:
         try:
             content = response.content.decode(encoding)

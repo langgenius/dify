@@ -363,5 +363,6 @@
   "agentDetail.versionHistory.filter": "تصفية الإصدارات",
   "agentDetail.versionHistory.restore": "استعادة",
   "agentDetail.versionHistory.versionName": "الإصدار {{version}}",
-  "agentDetail.versionHistory.viewOnly": "عرض فقط"
+  "agentDetail.versionHistory.viewOnly": "عرض فقط",
+  "exportAgent": "تصدير Agent"
 }

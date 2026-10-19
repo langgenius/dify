@@ -1,7 +1,7 @@
 import uuid
-from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
@@ -54,13 +54,16 @@ def test_existing_ids_returns_only_trial_apps(sqlite_session_factory: sessionmak
     assert result == frozenset({eligible_id})
 
 
-def test_existing_ids_skips_session_for_empty_input() -> None:
-    session_factory = MagicMock(spec=sessionmaker)
+def test_existing_ids_skips_session_for_empty_input(
+    sqlite_session_factory: sessionmaker[Session], mocker: MockerFixture
+) -> None:
+    session_factory = sqlite_session_factory
+    open_session = mocker.spy(type(session_factory), "__call__")
 
     result = TrialAppRepository(session_factory).existing_ids([])
 
     assert result == frozenset()
-    session_factory.assert_not_called()
+    open_session.assert_not_called()
 
 
 def test_resolve_returns_actual_app_owner_and_account_usage(sqlite_session_factory: sessionmaker[Session]) -> None:

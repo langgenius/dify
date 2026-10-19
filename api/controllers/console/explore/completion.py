@@ -6,11 +6,12 @@ from uuid import UUID
 from flask import Response
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from werkzeug.exceptions import InternalServerError, NotFound, Unauthorized
 
 import services
+from controllers.common.errors import InternalServerError, NotFoundError, UnauthorizedError
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console import console_ns
 from controllers.console.app.error import (
     AppUnavailableError,
     CompletionRequestError,
@@ -33,6 +34,7 @@ from core.errors.error import (
 from extensions.ext_application_services import application_services
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
+from libs.external_api import error_responses
 from machinery.context import RequestContext
 from models.model import AppMode
 from services.account_errors import AccountNotFoundError
@@ -40,8 +42,6 @@ from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.errors.llm import InvokeRateLimitError
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
 from services.installed_app_generation_service import InstalledAppNotChatError, InstalledAppNotCompletionError
-
-from .. import console_ns
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ class CompletionMessageExplorePayload(BaseModel):
     retriever_from: str = Field(default="explore_app")
 
 
-class ChatMessagePayload(BaseModel):
+class ChatMessageExplorePayload(BaseModel):
     inputs: dict[str, Any]
     query: str
     files: list[dict[str, Any]] | None = Field(default=None)
@@ -77,7 +77,7 @@ class ChatMessagePayload(BaseModel):
             raise ValueError("must be a valid UUID") from exc
 
 
-register_schema_models(console_ns, CompletionMessageExplorePayload, ChatMessagePayload)
+register_schema_models(console_ns, CompletionMessageExplorePayload, ChatMessageExplorePayload)
 register_response_schema_models(console_ns, SimpleResultResponse)
 
 
@@ -87,6 +87,14 @@ register_response_schema_models(console_ns, SimpleResultResponse)
     endpoint="installed_app_completion",
 )
 class CompletionApi(Resource):
+    @error_responses(
+        AppUnavailableError,
+        CompletionRequestError,
+        NotCompletionAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.expect(console_ns.models[CompletionMessageExplorePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
@@ -112,11 +120,11 @@ class CompletionApi(Resource):
         except InstalledAppNotCompletionError:
             raise NotCompletionAppError() from None
         except InstalledAppNotFoundError:
-            raise NotFound("Installed app not found") from None
+            raise NotFoundError("Installed app not found") from None
         except AccountNotFoundError:
-            raise Unauthorized("Account no longer exists.") from None
+            raise UnauthorizedError("Account no longer exists.") from None
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFoundError("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -142,6 +150,7 @@ class CompletionApi(Resource):
     endpoint="installed_app_stop_completion",
 )
 class CompletionStopApi(Resource):
+    @error_responses(NotCompletionAppError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission()
     @get_installed_app
@@ -167,14 +176,23 @@ class CompletionStopApi(Resource):
     endpoint="installed_app_chat_completion",
 )
 class ChatApi(Resource):
-    @console_ns.expect(console_ns.models[ChatMessagePayload.__name__])
+    @error_responses(
+        AppUnavailableError,
+        CompletionRequestError,
+        InvokeRateLimitHttpError,
+        NotChatAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
+    @console_ns.expect(console_ns.models[ChatMessageExplorePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
     @get_installed_app
-    @model_validate(ChatMessagePayload)
+    @model_validate(ChatMessageExplorePayload)
     def post(
         self,
-        req_data: ChatMessagePayload,
+        req_data: ChatMessageExplorePayload,
         request_context: RequestContext,
         installed_app: InstalledAppRef,
     ) -> Response:
@@ -192,11 +210,11 @@ class ChatApi(Resource):
         except InstalledAppNotChatError:
             raise NotChatAppError() from None
         except InstalledAppNotFoundError:
-            raise NotFound("Installed app not found") from None
+            raise NotFoundError("Installed app not found") from None
         except AccountNotFoundError:
-            raise Unauthorized("Account no longer exists.") from None
+            raise UnauthorizedError("Account no longer exists.") from None
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFoundError("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -224,6 +242,7 @@ class ChatApi(Resource):
     endpoint="installed_app_stop_chat_completion",
 )
 class ChatStopApi(Resource):
+    @error_responses(NotChatAppError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission()
     @get_installed_app

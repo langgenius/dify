@@ -21,7 +21,7 @@ Supported execution modes:
 import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Union, cast
+from typing import Any, cast
 
 from sqlalchemy.orm import Session, make_transient, sessionmaker
 
@@ -108,8 +108,8 @@ class SnippetGenerateService:
     @classmethod
     def _filter_virtual_start_events(
         cls,
-        response: Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None],
-    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]:
+        response: Mapping[str, Any] | Generator[Mapping[str, Any] | str],
+    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]:
         """
         Drop snippet virtual Start node lifecycle events from stream responses.
 
@@ -119,7 +119,7 @@ class SnippetGenerateService:
         if isinstance(response, Mapping):
             return response
 
-        def _stream() -> Generator[Mapping[str, Any] | str, None, None]:
+        def _stream() -> Generator[Mapping[str, Any] | str]:
             for message in response:
                 if cls._is_virtual_start_event(message):
                     continue
@@ -131,12 +131,12 @@ class SnippetGenerateService:
     def generate(
         cls,
         snippet: CustomizedSnippet,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,
         session_maker: sessionmaker[Session] | None = None,
-    ) -> Mapping[str, Any] | Generator[str, None, None]:
+    ) -> Mapping[str, Any] | Generator[str]:
         """
         Run a snippet's draft workflow.
 
@@ -183,7 +183,7 @@ class SnippetGenerateService:
     def run_published(
         cls,
         snippet: CustomizedSnippet,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         session_maker: sessionmaker[Session] | None = None,
@@ -372,13 +372,13 @@ class SnippetGenerateService:
     def generate_single_iteration(
         cls,
         snippet: CustomizedSnippet,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         node_id: str,
         args: Mapping[str, Any],
         streaming: bool = True,
         *,
         session_maker: sessionmaker[Session],
-    ) -> Mapping[str, Any] | Generator[str, None, None]:
+    ) -> Mapping[str, Any] | Generator[str]:
         """
         Run a single iteration node in a snippet's draft workflow.
 
@@ -419,13 +419,13 @@ class SnippetGenerateService:
     def generate_single_loop(
         cls,
         snippet: CustomizedSnippet,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         node_id: str,
         args: Any,
         streaming: bool = True,
         *,
         session_maker: sessionmaker[Session],
-    ) -> Mapping[str, Any] | Generator[str, None, None]:
+    ) -> Mapping[str, Any] | Generator[str]:
         """
         Run a single loop node in a snippet's draft workflow.
 

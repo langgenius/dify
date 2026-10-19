@@ -2,7 +2,7 @@ import { CronExpressionParser } from 'cron-parser'
 
 // Convert a UTC date from cron-parser to user timezone representation
 // This ensures consistency with other execution time calculations
-const convertToUserTimezoneRepresentation = (utcDate: Date, timezone: string): Date => {
+export const convertToUserTimezoneRepresentation = (utcDate: Date, timezone: string): Date => {
   // Get the time string in the target timezone
   const userTimeStr = utcDate.toLocaleString('en-CA', {
     timeZone: timezone,
@@ -18,13 +18,16 @@ const convertToUserTimezoneRepresentation = (utcDate: Date, timezone: string): D
 }
 
 /**
- * Parse a cron expression and return the next 5 execution times
+ * Parse a cron expression and return the next 5 execution instants (real UTC times)
  *
  * @param cronExpression - Standard 5-field cron expression (minute hour day month dayOfWeek)
  * @param timezone - IANA timezone identifier (e.g., 'UTC', 'America/New_York')
- * @returns Array of Date objects representing the next 5 execution times
+ * @returns Array of Date objects holding the real instant of each run
  */
-export const parseCronExpression = (cronExpression: string, timezone: string = 'UTC'): Date[] => {
+export const getCronExecutionInstants = (
+  cronExpression: string,
+  timezone: string = 'UTC',
+): Date[] => {
   if (!cronExpression || cronExpression.trim() === '') return []
 
   const parts = cronExpression.trim().split(/\s+/)
@@ -33,26 +36,27 @@ export const parseCronExpression = (cronExpression: string, timezone: string = '
   if (parts.length !== 5 && !cronExpression.startsWith('@')) return []
 
   try {
-    // Parse the cron expression with timezone support
-    // Use the actual current time for cron-parser to handle properly
     const interval = CronExpressionParser.parse(cronExpression, {
       tz: timezone,
     })
-
-    // Get the next 5 execution times using the take() method
-    const nextCronDates = interval.take(5)
-
-    // Convert CronDate objects to Date objects and ensure they represent
-    // the time in user timezone (consistent with execution-time-calculator.ts)
-    return nextCronDates.map((cronDate) => {
-      const utcDate = cronDate.toDate()
-      return convertToUserTimezoneRepresentation(utcDate, timezone)
-    })
+    return interval.take(5).map((cronDate) => cronDate.toDate())
   } catch {
     // Return empty array if parsing fails
     return []
   }
 }
+
+/**
+ * Parse a cron expression and return the next 5 execution times
+ *
+ * @param cronExpression - Standard 5-field cron expression (minute hour day month dayOfWeek)
+ * @param timezone - IANA timezone identifier (e.g., 'UTC', 'America/New_York')
+ * @returns Array of Date objects representing the next 5 execution times
+ */
+export const parseCronExpression = (cronExpression: string, timezone: string = 'UTC'): Date[] =>
+  getCronExecutionInstants(cronExpression, timezone).map((instant) =>
+    convertToUserTimezoneRepresentation(instant, timezone),
+  )
 
 /**
  * Validate a cron expression format and syntax

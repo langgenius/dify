@@ -316,7 +316,7 @@ function AgentFileItem({
               aria-current={selected ? 'true' : undefined}
               disabled={file.isMissing}
               className={cn(
-                'group/file-tree-row relative flex h-full min-w-0 flex-1 cursor-pointer items-center rounded-md pl-2 text-left outline-hidden select-none focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
+                'group/file-tree-row relative flex h-full min-w-0 flex-1 cursor-pointer items-center rounded-md pl-2 text-left select-none focus-visible:ring-inset',
                 file.isMissing && 'cursor-default pr-6',
               )}
             />

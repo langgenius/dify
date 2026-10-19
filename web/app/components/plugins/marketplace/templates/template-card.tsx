@@ -79,10 +79,12 @@ export default function TemplateCard({ template, className, partnerText }: Templ
         <div className="relative z-0 flex shrink-0 items-center gap-3 px-4 pt-4 pb-2">
           <AppIcon
             size="large"
-            iconType={imageUrl ? 'image' : 'emoji'}
-            icon={imageUrl ? undefined : template.icon || '📄'}
-            imageUrl={imageUrl}
-            background={template.icon_background}
+            icon={{
+              icon_type: imageUrl ? 'image' : 'emoji',
+              icon: template.icon || '📄',
+              icon_url: imageUrl,
+              icon_background: template.icon_background,
+            }}
           />
           <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
             <div className="flex items-center">

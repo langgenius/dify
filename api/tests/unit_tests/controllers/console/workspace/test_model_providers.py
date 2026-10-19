@@ -395,7 +395,7 @@ class TestModelProviderCredentialApi:
                 side_effect=CredentialsValidateFailedError("bad"),
             ),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="bad"):
                 method(api, ParserCredentialCreate.model_validate(_payload()), "tenant1", provider="openai")
 
     def test_put_update_success(self, app: Flask):
@@ -557,7 +557,7 @@ class TestModelProviderIconApi:
                 return_value=(None, None),
             ),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="icon not found for provider openai, icon_type logo, lang en"):
                 api.get("t1", "openai", "logo", "en")
 
 
@@ -621,7 +621,7 @@ class TestModelProviderPaymentCheckoutUrlApi:
         method = unwrap(api.get)
 
         with app.test_request_context("/"):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="provider name openai is invalid"):
                 method(api, "tenant1", make_account(), provider="openai")
 
     def test_checkout_rejects_non_privileged_role(self, app: Flask):
