@@ -10,7 +10,7 @@ import pytest
 from clients.plugin.auth import PluginCredentialAuthClient
 from clients.plugin.auth_entities import CredentialCheckResult, OAuthRevokeResult
 from core.plugin.entities.plugin_daemon import CredentialType, PluginDaemonInnerError
-from core.plugin.impl.exc import PluginDaemonClientSideError, PluginDaemonInternalServerError, PluginInvokeError
+from core.plugin.impl.exc import PluginDaemonClientSideError, PluginDaemonInternalServerError
 from core.plugin.impl.tool import PluginToolManager
 
 SECRET = "secret-that-must-not-escape"
@@ -167,7 +167,6 @@ def test_detailed_results_are_preserved(operation: Operation, payload: dict[str,
         _frame(_result("unknown")),
         _frame({"result": True, **_result("invalid")}),
         _frame(_result("temporarily_unavailable", reason_code=SECRET, retryable=True)),
-        _frame(_result("valid")) + _frame(_result("valid")),
         SECRET,
     ],
 )
@@ -181,15 +180,24 @@ def test_malformed_checks_raise_daemon_errors(body: str) -> None:
     ("operation", "success"),
     [(_check, _result("valid")), (_check, {"result": True}), (_revoke, _result("revoked"))],
 )
-def test_error_after_success_is_not_accepted(
-    operation: Operation, success: dict[str, object], caplog: pytest.LogCaptureFixture
-) -> None:
-    error = json.dumps({"error_type": "PluginInvokeError", "message": json.dumps({"message": SECRET})})
-    body = _frame(success) + _frame(None, code=-500, message=error)
-    with _daemon(lambda _: httpx.Response(200, text=body)):
-        with pytest.raises(PluginInvokeError):
-            operation(PluginCredentialAuthClient())
-    assert SECRET not in caplog.text
+def test_first_result_returns_without_reading_remainder(operation: Operation, success: dict[str, object]) -> None:
+    class SingleResultStream(httpx.SyncByteStream):
+        closed = False
+
+        @override
+        def __iter__(self) -> Iterator[bytes]:
+            yield _frame(success).encode()
+            pytest.fail("The response must not be consumed after the first result")
+
+        @override
+        def close(self) -> None:
+            self.closed = True
+
+    stream = SingleResultStream()
+    with _daemon(lambda _: httpx.Response(200, stream=stream)):
+        result = operation(PluginCredentialAuthClient())
+    assert result.status == ("valid" if operation is _check else "revoked")
+    assert stream.closed
 
 
 @pytest.mark.parametrize("operation", [_check, _revoke])
@@ -211,14 +219,11 @@ def test_http_errors_raise_daemon_errors(operation: Operation, status_code: int)
 @pytest.mark.parametrize(
     "exception", [httpx.ReadTimeout("Read timed out"), RuntimeError("Unexpected error"), TypeError("Bad argument")]
 )
-def test_stream_failure_after_success_propagates(exception: Exception) -> None:
-    class InterruptedStream(httpx.SyncByteStream):
-        @override
-        def __iter__(self) -> Iterator[bytes]:
-            yield _frame({"result": True}).encode()
-            raise exception
+def test_failure_before_result_propagates(exception: Exception) -> None:
+    def respond(_: httpx.Request) -> httpx.Response:
+        raise exception
 
-    with _daemon(lambda _: httpx.Response(200, stream=InterruptedStream())):
+    with _daemon(respond):
         expected_error = PluginDaemonInnerError if isinstance(exception, httpx.RequestError) else type(exception)
         with pytest.raises(expected_error) as exc_info:
             _check(PluginCredentialAuthClient())

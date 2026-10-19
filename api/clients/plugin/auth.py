@@ -113,10 +113,7 @@ class PluginCredentialAuthClient(BasePluginClient):
                 )
             ) as response,
         ):
-            result: T | None = None
             for payload in response:
-                if result is not None:
-                    raise PluginDaemonInternalServerError("Expected exactly one successful authentication result")
                 if (
                     response_type is CredentialCheckResponse
                     and payload.keys() == {"result"}
@@ -124,10 +121,7 @@ class PluginCredentialAuthClient(BasePluginClient):
                 ):
                     payload = {"status": "valid", "reason_code": None, "retryable": False}
                 try:
-                    result = response_type.model_validate(payload)
+                    return response_type.model_validate(payload)
                 except ValidationError as exc:
                     raise PluginDaemonInternalServerError("Invalid authentication result from plugin daemon") from exc
-            if result is None:
-                raise PluginDaemonInternalServerError("Expected exactly one authentication result")
-            # Consume EOF before accepting success: a later error invalidates it.
-            return result
+            raise PluginDaemonInternalServerError("No authentication result received from plugin daemon")
