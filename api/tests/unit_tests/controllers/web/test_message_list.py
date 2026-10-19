@@ -94,7 +94,8 @@ def app() -> Flask:
     [(App, Conversation, EndUser, Message, MessageAgentThought, MessageFeedback, WorkflowRun)],
     indirect=True,
 )
-def test_message_list_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session) -> None:
+@pytest.mark.parametrize("app_mode", [AppMode.ADVANCED_CHAT, AppMode.CHAT])
+def test_message_list_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session, app_mode: AppMode) -> None:
     conversation_id = str(uuid4())
     message_id = str(uuid4())
     workflow_run_id = str(uuid4())
@@ -147,7 +148,7 @@ def test_message_list_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlit
         id="app-1",
         tenant_id="tenant-1",
         name="Chat App",
-        mode=AppMode.ADVANCED_CHAT,
+        mode=app_mode,
         enable_site=False,
         enable_api=False,
     )
@@ -162,7 +163,7 @@ def test_message_list_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlit
     conversation = Conversation(
         id=conversation_id,
         app_id=app_model.id,
-        mode=AppMode.ADVANCED_CHAT,
+        mode=app_mode,
         name="Conversation",
         _inputs={},
         status="normal",
@@ -188,7 +189,7 @@ def test_message_list_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlit
         invoke_from=InvokeFrom.SERVICE_API,
         from_source=ConversationFromSource.API,
         from_end_user_id=end_user.id,
-        app_mode=AppMode.ADVANCED_CHAT,
+        app_mode=app_mode,
         workflow_run_id=workflow_run_id,
         message_metadata=json.dumps(
             {
@@ -252,6 +253,11 @@ def test_message_list_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlit
 
     with (
         patch.object(message_module.MessageService, "pagination_by_first_id", return_value=pagination) as mock_page,
+        patch.object(
+            message_module.MessageService,
+            "get_running_end_user_workflow_run_ids",
+            wraps=message_module.MessageService.get_running_end_user_workflow_run_ids,
+        ) as mock_running_workflows,
         patch.object(message_module.db, "session", return_value=sqlite_session),
         app.test_request_context(f"/messages?conversation_id={conversation_id}&limit=20"),
     ):
@@ -259,6 +265,10 @@ def test_message_list_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlit
         response = inspect.unwrap(MessageListApi.get)(MessageListApi(), query, app_model, end_user)
 
     mock_page.assert_called_once_with(app_model, end_user, conversation_id, None, 20, session=ANY)
+    if app_mode == AppMode.ADVANCED_CHAT:
+        mock_running_workflows.assert_called_once()
+    else:
+        mock_running_workflows.assert_not_called()
     assert response["limit"] == 20
     assert response["has_more"] is False
     assert len(response["data"]) == 1
@@ -281,7 +291,7 @@ def test_message_list_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlit
     assert item["extra_contents"][0]["workflow_run_id"] == message.extra_contents[0]["workflow_run_id"]
     assert item["extra_contents"][0]["submitted"] == message.extra_contents[0]["submitted"]
     assert item["workflow_run_id"] == workflow_run_id
-    assert item["workflow_run_is_running"] is True
+    assert item["workflow_run_is_running"] is (app_mode == AppMode.ADVANCED_CHAT)
 
     other_workflow_run_id = str(uuid4())
     sqlite_session.add(
