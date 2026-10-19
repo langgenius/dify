@@ -53,6 +53,8 @@
   "modelProvider.card.usageLabel": "الاستخدام",
   "modelProvider.card.usagePriority": "أولوية الاستخدام",
   "modelProvider.card.usagePriorityTip": "تعيين المورد الذي يجب استخدامه أولاً عند تشغيل النماذج.",
+  "modelProvider.clearDefaultModel.description": "قد يؤدي مسح هذا النموذج الافتراضي إلى فشل عمليات سير العمل التي تعتمد عليه.",
+  "modelProvider.clearDefaultModel.title": "هل تريد مسح {{modelType}}؟",
   "modelProvider.configureTip": "قم بإعداد مفتاح api أو أضف نموذجًا للاستخدام",
   "modelProvider.confirmDelete": "تأكيد الحذف؟",
   "modelProvider.defaultConfig": "التكوين الافتراضي",

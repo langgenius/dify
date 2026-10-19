@@ -53,6 +53,8 @@
   "modelProvider.card.usageLabel": "Sử dụng",
   "modelProvider.card.usagePriority": "Ưu tiên sử dụng",
   "modelProvider.card.usagePriorityTip": "Đặt tài nguyên sử dụng trước khi chạy mô hình.",
+  "modelProvider.clearDefaultModel.description": "Xóa mô hình mặc định này có thể khiến các quy trình làm việc phụ thuộc vào mô hình đó không hoạt động bình thường.",
+  "modelProvider.clearDefaultModel.title": "Xóa giá trị {{modelType}}?",
   "modelProvider.configureTip": "Thiết lập api-key hoặc thêm mô hình để sử dụng",
   "modelProvider.confirmDelete": "Xác nhận xóa?",
   "modelProvider.defaultConfig": "Cấu hình mặc định",

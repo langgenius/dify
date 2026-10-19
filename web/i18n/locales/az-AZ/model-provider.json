@@ -53,6 +53,8 @@
   "modelProvider.card.usageLabel": "İstifadə",
   "modelProvider.card.usagePriority": "İstifadə prioriteti",
   "modelProvider.card.usagePriorityTip": "Modelləri işə salarkən ilk olaraq hansı resursdan istifadə ediləcəyini təyin et.",
+  "modelProvider.clearDefaultModel.description": "Bu standart modelin təmizlənməsi ondan asılı olan iş axınlarının düzgün işləməməsinə səbəb ola bilər.",
+  "modelProvider.clearDefaultModel.title": "{{modelType}} təmizlənsin?",
   "modelProvider.configureTip": "İstifadə etmək üçün API açarını qur və ya model əlavə et",
   "modelProvider.confirmDelete": "Silinməni təsdiqləyirsiniz?",
   "modelProvider.defaultConfig": "Standart konfiqurasiya",

@@ -53,6 +53,8 @@
   "modelProvider.card.usageLabel": "Використання",
   "modelProvider.card.usagePriority": "Пріоритет використання",
   "modelProvider.card.usagePriorityTip": "Встановіть, який ресурс використовувати першим при запуску моделей.",
+  "modelProvider.clearDefaultModel.description": "Очищення цієї моделі за замовчуванням може призвести до збоїв у роботі робочих процесів, які від неї залежать.",
+  "modelProvider.clearDefaultModel.title": "Очистити {{modelType}}?",
   "modelProvider.configureTip": "Налаштуйте api-ключ або додайте модель для використання",
   "modelProvider.confirmDelete": "підтвердити видалення?",
   "modelProvider.defaultConfig": "Конфігурація за замовчуванням",

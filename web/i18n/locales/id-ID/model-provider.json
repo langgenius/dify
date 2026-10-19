@@ -53,6 +53,8 @@
   "modelProvider.card.usageLabel": "Penggunaan",
   "modelProvider.card.usagePriority": "Prioritas Penggunaan",
   "modelProvider.card.usagePriorityTip": "Tentukan sumber daya mana yang digunakan terlebih dahulu saat menjalankan model.",
+  "modelProvider.clearDefaultModel.description": "Mengosongkan model default ini dapat menyebabkan alur kerja yang bergantung padanya gagal dijalankan.",
+  "modelProvider.clearDefaultModel.title": "Kosongkan {{modelType}}?",
   "modelProvider.configureTip": "Menyiapkan api-key atau menambahkan model untuk digunakan",
   "modelProvider.confirmDelete": "Mengkonfirmasi penghapusan?",
   "modelProvider.defaultConfig": "Konfigurasi Default",

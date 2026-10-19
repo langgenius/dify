@@ -42,8 +42,12 @@ vi.mock('react-i18next', async () => {
     'modelProvider.speechToTextModel.tip': 'Speech to text model tip',
     'modelProvider.ttsModel.key': 'TTS Model',
     'modelProvider.ttsModel.tip': 'TTS model tip',
+    'modelProvider.clearDefaultModel.title': 'Clear {{modelType}}?',
+    'modelProvider.clearDefaultModel.description':
+      'Clearing this default model may cause workflows that rely on it to fail.',
     'modelProvider.selector.configure': 'Configure provider',
     'operation.cancel': 'Cancel',
+    'operation.clear': 'Clear',
     'operation.save': 'Save',
     'operation.reset': 'Reset',
     loading: 'Loading',
@@ -135,6 +139,12 @@ const defaultProps = {
   ttsDefaultModel: undefined,
   notConfigured: false,
   isPending: false,
+}
+
+const confirmClear = async (user: ReturnType<typeof userEvent.setup>) => {
+  const confirmation = await screen.findByRole('alertdialog')
+  await user.click(within(confirmation).getByRole('button', { name: 'Clear' }))
+  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
 }
 
 describe('SystemModel', () => {
@@ -318,6 +328,7 @@ describe('SystemModel', () => {
 
     await user.click(screen.getByRole('button', { name: /system model settings/i }))
     await user.click(screen.getByRole('button', { name: 'Reset System Reasoning Model' }))
+    await confirmClear(user)
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Unable to save model settings')
@@ -361,14 +372,14 @@ describe('SystemModel', () => {
   })
 
   it.each([
-    ['System Reasoning Model', ModelTypeEnum.textGeneration, 'textGenerationDefaultModel'],
-    ['Embedding Model', ModelTypeEnum.textEmbedding, 'embeddingsDefaultModel'],
-    ['Rerank Model', ModelTypeEnum.rerank, 'rerankDefaultModel'],
-    ['Speech to Text Model', ModelTypeEnum.speech2text, 'speech2textDefaultModel'],
-    ['TTS Model', ModelTypeEnum.tts, 'ttsDefaultModel'],
+    ['System Reasoning Model', ModelTypeEnum.textGeneration, 'textGenerationDefaultModel', true],
+    ['Embedding Model', ModelTypeEnum.textEmbedding, 'embeddingsDefaultModel', false],
+    ['Rerank Model', ModelTypeEnum.rerank, 'rerankDefaultModel', false],
+    ['Speech to Text Model', ModelTypeEnum.speech2text, 'speech2textDefaultModel', true],
+    ['TTS Model', ModelTypeEnum.tts, 'ttsDefaultModel', true],
   ] as const)(
     'saves a reset %s as null without changing other defaults',
-    async (label, modelType, prop) => {
+    async (label, modelType, prop, requiresConfirmation) => {
       const user = userEvent.setup()
       render(
         <SystemModel {...defaultProps} {...{ [prop]: { ...mockModel, model_type: modelType } }} />,
@@ -376,6 +387,20 @@ describe('SystemModel', () => {
 
       await user.click(screen.getByRole('button', { name: /system model settings/i }))
       await user.click(screen.getByRole('button', { name: `Reset ${label}` }))
+
+      if (requiresConfirmation) {
+        const confirmation = await screen.findByRole('alertdialog', { name: `Clear ${label}?` })
+        expect(confirmation).toHaveAccessibleDescription(
+          'Clearing this default model may cause workflows that rely on it to fail.',
+        )
+        expect(
+          screen.getByRole('button', { name: `Reset ${label}`, hidden: true }),
+        ).toBeInTheDocument()
+        expect(mockUpdateDefaultModel).not.toHaveBeenCalled()
+        await confirmClear(user)
+      } else {
+        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+      }
 
       expect(screen.queryByRole('button', { name: `Reset ${label}` })).not.toBeInTheDocument()
       expect(mockUpdateDefaultModel).not.toHaveBeenCalled()
@@ -401,6 +426,48 @@ describe('SystemModel', () => {
     },
   )
 
+  it.each(['Cancel', 'Escape'] as const)(
+    'keeps the edited model when dismissing the clear confirmation with %s',
+    async (dismissAction) => {
+      enableModelChoices()
+      const user = userEvent.setup()
+      render(<SystemModel {...defaultProps} />)
+
+      await user.click(screen.getByRole('button', { name: /system model settings/i }))
+      await user.click(await screen.findByRole('button', { name: /gpt-4/ }))
+      await user.click(
+        within(
+          await screen.findByRole('dialog', { name: 'plugin.detailPanel.configureModel' }),
+        ).getByRole('button', { name: /^Test model/ }),
+      )
+      await user.click(screen.getByRole('button', { name: 'Reset System Reasoning Model' }))
+      const confirmation = await screen.findByRole('alertdialog', {
+        name: 'Clear System Reasoning Model?',
+      })
+
+      if (dismissAction === 'Cancel')
+        await user.click(within(confirmation).getByRole('button', { name: 'Cancel' }))
+      else await user.keyboard('{Escape}')
+
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+      expect(screen.getByRole('dialog', { name: 'Default Model Settings' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /^Test model/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Reset System Reasoning Model' })).toBeEnabled()
+      expect(mockUpdateDefaultModel).not.toHaveBeenCalled()
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+
+      await waitFor(() => {
+        expect(mockUpdateDefaultModel).toHaveBeenCalledWith({
+          body: {
+            model_settings: expect.arrayContaining([
+              { model_type: ModelTypeEnum.textGeneration, provider: 'test', model: 'test' },
+            ]),
+          },
+        })
+      })
+    },
+  )
+
   it('saves a replacement selected after resetting a model', async () => {
     enableModelChoices()
     const user = userEvent.setup()
@@ -408,6 +475,7 @@ describe('SystemModel', () => {
 
     await user.click(screen.getByRole('button', { name: /system model settings/i }))
     await user.click(screen.getByRole('button', { name: 'Reset System Reasoning Model' }))
+    await confirmClear(user)
     await user.click(
       (
         await screen.findAllByRole('button', { name: /gpt-4|plugin.detailPanel.configureModel/ })
@@ -438,6 +506,7 @@ describe('SystemModel', () => {
 
     await user.click(screen.getByRole('button', { name: /system model settings/i }))
     await user.click(screen.getByRole('button', { name: 'Reset System Reasoning Model' }))
+    await confirmClear(user)
     expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
     await waitFor(() => {
@@ -456,6 +525,7 @@ describe('SystemModel', () => {
 
     await user.click(screen.getByRole('button', { name: /system model settings/i }))
     await user.click(screen.getByRole('button', { name: 'Reset System Reasoning Model' }))
+    await confirmClear(user)
     await user.click(screen.getByRole('button', { name: 'Save' }))
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()

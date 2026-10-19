@@ -53,6 +53,8 @@
   "modelProvider.card.usageLabel": "Utilisation",
   "modelProvider.card.usagePriority": "Priorité d'utilisation",
   "modelProvider.card.usagePriorityTip": "Définissez la ressource à utiliser en priorité lors de l'exécution des modèles.",
+  "modelProvider.clearDefaultModel.description": "Effacer ce modèle par défaut peut entraîner l’échec des workflows qui en dépendent.",
+  "modelProvider.clearDefaultModel.title": "Effacer {{modelType}} ?",
   "modelProvider.configureTip": "Configurer api-key ou ajouter un modèle à utiliser",
   "modelProvider.confirmDelete": "confirmer la suppression?",
   "modelProvider.defaultConfig": "Configuration par défaut",

@@ -53,6 +53,8 @@
   "modelProvider.card.usageLabel": "การใช้งาน",
   "modelProvider.card.usagePriority": "ลำดับความสำคัญการใช้งาน",
   "modelProvider.card.usagePriorityTip": "ตั้งค่าทรัพยากรที่จะใช้ก่อนเมื่อเรียกใช้โมเดล",
+  "modelProvider.clearDefaultModel.description": "การล้างค่าโมเดลเริ่มต้นนี้อาจทำให้เวิร์กโฟลว์ที่อาศัยโมเดลนี้ทำงานไม่สำเร็จ",
+  "modelProvider.clearDefaultModel.title": "ล้างค่า {{modelType}} หรือไม่?",
   "modelProvider.configureTip": "ตั้งค่า api-key หรือเพิ่มโมเดลเพื่อใช้",
   "modelProvider.confirmDelete": "ยืนยันการลบ?",
   "modelProvider.defaultConfig": "การกําหนดค่าเริ่มต้น",

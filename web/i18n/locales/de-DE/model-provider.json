@@ -53,6 +53,8 @@
   "modelProvider.card.usageLabel": "Verbrauch",
   "modelProvider.card.usagePriority": "Nutzungspriorität",
   "modelProvider.card.usagePriorityTip": "Legen Sie fest, welche Ressource beim Ausführen von Modellen zuerst verwendet wird.",
+  "modelProvider.clearDefaultModel.description": "Das Leeren dieses Standardmodells kann dazu führen, dass Workflows, die darauf angewiesen sind, fehlschlagen.",
+  "modelProvider.clearDefaultModel.title": "{{modelType}} leeren?",
   "modelProvider.configureTip": "Einrichten des API-Schlüssels oder Hinzufügen des zu verwendenden Modells",
   "modelProvider.confirmDelete": "Löschung bestätigen?",
   "modelProvider.defaultConfig": "Standardkonfiguration",

@@ -1,5 +1,15 @@
 import type { FC } from 'react'
 import type { DefaultModel, DefaultModelResponse } from '../declarations'
+import {
+  AlertDialog,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -17,7 +27,7 @@ import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/inf
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
-import { useId, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleQuery } from '@/service/console'
@@ -72,6 +82,13 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
   onOpenMarketplace,
 }) => {
   const modelLabelId = useId()
+  const saveButtonRef = useRef<HTMLButtonElement>(null)
+  const clearConfirmedRef = useRef(false)
+  const [clearConfirmation, setClearConfirmation] = useState<{
+    modelType: ModelTypeEnum
+    labelKey: SystemModelLabelKey
+    open: boolean
+  }>()
 
   const { t } = useTranslation(['common', 'modelProvider'])
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
@@ -171,6 +188,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
       resetSpeech2textDefaultModel()
       resetTTSDefaultModel()
       setChangedModelTypes([])
+      setClearConfirmation(undefined)
     }
     setManuallyOpen(nextOpen)
     if (!nextOpen && activeDialog === 'system-models') void setActiveDialog(null)
@@ -225,10 +243,34 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
 
   const getResetProps = (modelType: ModelTypeEnum, labelKey: SystemModelLabelKey) => ({
     onClear: canManageSystemDefaultModel
-      ? () => handleChangeDefaultModel(modelType, undefined)
+      ? () => {
+          if (
+            modelType === ModelTypeEnum.textGeneration ||
+            modelType === ModelTypeEnum.speech2text ||
+            modelType === ModelTypeEnum.tts
+          ) {
+            clearConfirmedRef.current = false
+            setClearConfirmation({ modelType, labelKey, open: true })
+            return
+          }
+          handleChangeDefaultModel(modelType, undefined)
+        }
       : undefined,
     clearLabel: `${t(($) => $['operation.reset'], { ns: 'common' })} ${t(($) => $[labelKey], { ns: 'modelProvider' })}`,
   })
+  const closeClearConfirmation = () => {
+    setClearConfirmation((current) => current && { ...current, open: false })
+  }
+  const handleConfirmClear = () => {
+    if (!clearConfirmation || !canManageSystemDefaultModel) return
+
+    clearConfirmedRef.current = true
+    handleChangeDefaultModel(clearConfirmation.modelType, undefined)
+    closeClearConfirmation()
+  }
+  const modelToClearLabel = clearConfirmation
+    ? t(($) => $[clearConfirmation.labelKey], { ns: 'modelProvider' })
+    : ''
 
   const renderModelLabel = (labelKey: SystemModelLabelKey, tipKey: SystemModelTipKey) => {
     const tipText = t(($) => $[tipKey], { ns: 'modelProvider' })
@@ -284,7 +326,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           />
         }
         backdropProps={{ forceRender: true }}
-        className="max-h-[calc(100dvh-2rem)] max-w-120"
+        className={cn('max-h-[calc(100dvh-2rem)] max-w-120', clearConfirmation && 'invisible')}
       >
         <DialogHeader>
           <DialogTitle>
@@ -433,6 +475,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </Button>
           <Button
+            ref={saveButtonRef}
             className="min-w-18"
             variant="primary"
             type="submit"
@@ -442,6 +485,44 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
             {t(($) => $['operation.save'], { ns: 'common' })}
           </Button>
         </DialogFooter>
+        <AlertDialog
+          open={clearConfirmation?.open ?? false}
+          onOpenChange={(nextOpen) => {
+            if (!nextOpen) closeClearConfirmation()
+          }}
+          onOpenChangeComplete={(nextOpen) => {
+            if (!nextOpen) setClearConfirmation((current) => (current?.open ? current : undefined))
+          }}
+        >
+          <AlertDialogContent
+            finalFocus={() => (clearConfirmedRef.current ? saveButtonRef.current : true)}
+          >
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {t(($) => $['modelProvider.clearDefaultModel.title'], {
+                  ns: 'modelProvider',
+                  modelType: modelToClearLabel,
+                })}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {t(($) => $['modelProvider.clearDefaultModel.description'], {
+                  ns: 'modelProvider',
+                })}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancelButton>
+                {t(($) => $['operation.cancel'], { ns: 'common' })}
+              </AlertDialogCancelButton>
+              <AlertDialogConfirmButton
+                disabled={!canManageSystemDefaultModel}
+                onClick={handleConfirmClear}
+              >
+                {t(($) => $['operation.clear'], { ns: 'common' })}
+              </AlertDialogConfirmButton>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent>
     </Dialog>
   )

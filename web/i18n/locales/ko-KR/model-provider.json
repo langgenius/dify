@@ -53,6 +53,8 @@
   "modelProvider.card.usageLabel": "사용량",
   "modelProvider.card.usagePriority": "사용 우선순위",
   "modelProvider.card.usagePriorityTip": "모델 실행 시 우선 사용할 리소스를 설정합니다.",
+  "modelProvider.clearDefaultModel.description": "이 기본 모델 설정을 지우면 해당 모델에 의존하는 워크플로가 정상적으로 실행되지 않을 수 있습니다.",
+  "modelProvider.clearDefaultModel.title": "{{modelType}} 값을 지우시겠습니까?",
   "modelProvider.configureTip": "api-key 설정 또는 사용할 모델 추가",
   "modelProvider.confirmDelete": "삭제를 확인하시겠습니까?",
   "modelProvider.defaultConfig": "기본 구성",
