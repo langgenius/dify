@@ -13,7 +13,7 @@ import yaml  # type: ignore
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from flask_login import current_user
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -69,6 +69,8 @@ class RagPipelineImportInfo(BaseModel):
     imported_dsl_version: str = ""
     error: str = ""
     dataset_id: str | None = None
+    # Internal creation outcome for post-commit authorization; never part of the DSL response.
+    dataset_created: bool = Field(default=False, exclude=True)
 
 
 class RagPipelinePendingData(PendingImportOwner):
@@ -275,6 +277,7 @@ class RagPipelineDslService:
             graph = workflow.get("graph", {})
             nodes = graph.get("nodes", [])
             dataset_id = None
+            dataset_created = False
             for node in nodes:
                 if node.get("data", {}).get("type") == KNOWLEDGE_INDEX_NODE_TYPE:
                     knowledge_configuration = KnowledgeConfiguration.model_validate(node.get("data", {}))
@@ -285,13 +288,14 @@ class RagPipelineDslService:
                     ):
                         raise ValueError("Chunk structure is not compatible with the published pipeline")
                     if not dataset:
+                        dataset_created = True
                         datasets = self._session.scalars(
                             select(Dataset).where(Dataset.tenant_id == account.current_tenant_id)
                         ).all()
                         names = [dataset.name for dataset in datasets]
                         generate_name = generate_incremental_name(names, name)
                         dataset = Dataset(
-                            tenant_id=account.current_tenant_id,
+                            tenant_id=cast(str, account.current_tenant_id),
                             name=generate_name,
                             description=description,
                             icon_info={
@@ -350,6 +354,7 @@ class RagPipelineDslService:
                 status=status,
                 pipeline_id=pipeline.id,
                 dataset_id=dataset_id,
+                dataset_created=dataset_created,
                 imported_dsl_version=imported_version,
             )
 
@@ -428,12 +433,14 @@ class RagPipelineDslService:
             graph = workflow.get("graph", {})
             nodes = graph.get("nodes", [])
             dataset_id = None
+            dataset_created = False
             for node in nodes:
                 if node.get("data", {}).get("type") == KNOWLEDGE_INDEX_NODE_TYPE:
                     knowledge_configuration = KnowledgeConfiguration.model_validate(node.get("data", {}))
                     if not dataset:
+                        dataset_created = True
                         dataset = Dataset(
-                            tenant_id=account.current_tenant_id,
+                            tenant_id=cast(str, account.current_tenant_id),
                             name=name,
                             description=description,
                             icon_info={
@@ -500,6 +507,7 @@ class RagPipelineDslService:
                 status=ImportStatus.COMPLETED,
                 pipeline_id=pipeline.id,
                 dataset_id=dataset_id,
+                dataset_created=dataset_created,
                 current_dsl_version=CURRENT_DSL_VERSION,
                 imported_dsl_version=data.get("version", "0.1.0"),
             )

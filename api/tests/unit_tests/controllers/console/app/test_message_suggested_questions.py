@@ -22,6 +22,7 @@ from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotIni
 from core.model_manager import ModelInstance
 from core.ops.ops_trace_manager import TraceTask
 from extensions.application_services.app import AppServices
+from extensions.application_services.rbac import RBACServices
 from extensions.ext_database import db
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
@@ -59,6 +60,7 @@ from services.message_suggested_questions_service import (
 )
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.model_factories import make_account, make_app, make_conversation, make_message
+from tests.unit_tests.rbac_fakes import RBACDomain
 
 
 @dataclass
@@ -92,6 +94,7 @@ class _Services:
     apps: AppServices
     agent_apps: _Agents
     message_suggested_questions: MessageSuggestedQuestions
+    rbac: RBACServices
 
 
 @dataclass
@@ -177,6 +180,7 @@ def harness(
     sqlite_engine: Engine,
     sqlite_session_factory: sessionmaker[Session],
     app_services: AppServices,
+    rbac_domain: RBACDomain,
 ) -> Iterator[_Harness]:
     target = make_app(app_id=str(uuid4()), tenant_id=str(uuid4()))
     account = make_account(account_id=str(uuid4()))
@@ -240,6 +244,7 @@ def harness(
         app_services,
         _Agents(AgentAppAccessService(references=AgentAppRepository(session_factory=sqlite_session_factory))),
         MessageSuggestedQuestionsRuntime(session_factory=sqlite_session_factory),
+        rbac_domain.rbac,
     )
     flask_app.extensions["application_services"] = services
     api = ExternalApi(flask_app)

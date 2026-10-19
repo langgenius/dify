@@ -140,7 +140,7 @@ export function OutputEditCard({
           </Field>
           <OutputTypeSelect value={draft.type} onChange={(value) => updateDraft({ type: value })} />
           <Field name="required" className="contents">
-            <FieldLabel className="flex h-6 items-center gap-x-1 system-xs-regular text-text-tertiary">
+            <FieldLabel className="flex h-6 cursor-pointer items-center gap-x-1 system-xs-regular text-text-tertiary">
               <Switch
                 size="xs"
                 checked={draft.required}

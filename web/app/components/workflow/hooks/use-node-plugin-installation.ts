@@ -2,18 +2,13 @@ import type { DataSourceNodeType } from '../nodes/data-source/types'
 import type { ToolNodeType } from '../nodes/tool/types'
 import type { PluginTriggerNodeType } from '../nodes/trigger-plugin/types'
 import type { CommonNodeType } from '../types'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import { CollectionType } from '@/app/components/tools/types'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
+import { getToolListQueryKey } from '@/app/components/tools/utils/tool-list-query-key'
 import { consoleQuery } from '@/service/console'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-  useInvalidToolsByType,
-} from '@/service/use-tools'
 import { useAllTriggerPlugins, useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
 import { useStore } from '../store'
 import { BlockEnum } from '../types'
@@ -51,11 +46,32 @@ const useToolInstallation = (
   const isWorkflow = enabled && data.provider_type === CollectionType.workflow
   const isMcp = enabled && data.provider_type === CollectionType.mcp
 
-  const builtInQuery = useAllBuiltInTools(isBuiltIn)
-  const customQuery = useAllCustomTools(isCustom)
-  const workflowQuery = useAllWorkflowTools(isWorkflow)
-  const mcpQuery = useAllMCPTools(isMcp)
-  const invalidateTools = useInvalidToolsByType(enabled ? data.provider_type : undefined)
+  const builtInQuery = useQuery(
+    consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+      enabled: isBuiltIn,
+      select: selectToolsWithProvider,
+    }),
+  )
+  const customQuery = useQuery(
+    consoleQuery.workspaces.current.tools.api.get.queryOptions({
+      enabled: isCustom,
+      select: selectToolsWithProvider,
+    }),
+  )
+  const workflowQuery = useQuery(
+    consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+      enabled: isWorkflow,
+      select: selectToolsWithProvider,
+    }),
+  )
+  const mcpQuery = useQuery(
+    consoleQuery.workspaces.current.tools.mcp.get.queryOptions({
+      enabled: isMcp,
+      select: selectToolsWithProvider,
+    }),
+  )
+  const queryClient = useQueryClient()
+  const toolListQueryKey = enabled ? getToolListQueryKey(data.provider_type) : undefined
 
   const collectionInfo = useMemo(() => {
     if (!enabled) return undefined
@@ -112,8 +128,8 @@ const useToolInstallation = (
   const canInstall = Boolean(data.plugin_unique_identifier) && canInstallPlugin
 
   const onInstallSuccess = useCallback(() => {
-    if (invalidateTools) invalidateTools()
-  }, [invalidateTools])
+    if (toolListQueryKey) queryClient.invalidateQueries({ queryKey: toolListQueryKey })
+  }, [queryClient, toolListQueryKey])
 
   const shouldDim = (!!collectionInfo && !isResolved) || (isResolved && !matchedCollection)
 

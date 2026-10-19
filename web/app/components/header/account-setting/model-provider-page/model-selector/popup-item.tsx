@@ -1,5 +1,5 @@
 import type { ModelType } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { ComponentProps } from 'react'
+import type { PreviewCardHandle } from '@langgenius/dify-ui/preview-card'
 import type {
   ModelSelectorModel,
   ModelSelectorModelPredicate,
@@ -37,8 +37,6 @@ export type ModelSelectorPreviewPayload = {
   provider: ModelSelectorProvider
   modelItem: ModelSelectorModel
 }
-
-type PreviewCardHandle = NonNullable<ComponentProps<typeof PreviewCardTrigger>['handle']>
 
 type PopupItemProps = {
   defaultModel?: ModelSelectorValue

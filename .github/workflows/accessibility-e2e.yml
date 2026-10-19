@@ -57,7 +57,7 @@ jobs:
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           enable-cache: true
-          python-version: '3.12'
+          python-version: '3.13'
           cache-dependency-glob: |
             api/uv.lock
 
@@ -99,7 +99,7 @@ jobs:
 
       - name: Upload accessibility Cucumber report
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cucumber-report-accessibility-${{ inputs.level }}-${{ inputs.page }}
           path: e2e/cucumber-report
@@ -107,7 +107,7 @@ jobs:
 
       - name: Upload accessibility E2E logs
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-logs-accessibility-${{ inputs.level }}-${{ inputs.page }}
           path: e2e/.logs/*.log

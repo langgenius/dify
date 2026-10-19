@@ -1,17 +1,14 @@
-import type { ModelProvider } from '../declarations'
-import { CurrentSystemQuotaTypeEnum } from '../declarations'
 import { providerSupportsCredits } from '../supports-credits'
 
-const makeProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =>
-  ({
-    provider: 'langgenius/openai/openai',
-    system_configuration: {
-      enabled: true,
-      current_quota_type: CurrentSystemQuotaTypeEnum.trial,
-      quota_configurations: [],
-    },
-    ...overrides,
-  }) as ModelProvider
+type CreditAwareProvider = NonNullable<Parameters<typeof providerSupportsCredits>[0]>
+
+const makeProvider = (overrides: Partial<CreditAwareProvider> = {}): CreditAwareProvider => ({
+  provider: 'langgenius/openai/openai',
+  system_configuration: {
+    enabled: true,
+  },
+  ...overrides,
+})
 
 describe('providerSupportsCredits', () => {
   it('returns true when the provider is system-enabled and listed in trial_models', () => {
@@ -32,8 +29,6 @@ describe('providerSupportsCredits', () => {
         makeProvider({
           system_configuration: {
             enabled: false,
-            current_quota_type: CurrentSystemQuotaTypeEnum.trial,
-            quota_configurations: [],
           },
         }),
         ['langgenius/openai/openai'],

@@ -42,9 +42,8 @@ describe('Root layout System Features bootstrap', () => {
       },
       deployment_edition: 'CLOUD',
     })
-    const { default: RootLayout, generateMetadata } = await import('../layout')
+    const { generateMetadata } = await import('../layout')
 
-    await expect(RootLayout({ children: <div>App</div> })).resolves.toBeDefined()
     await expect(generateMetadata()).resolves.toMatchObject({
       title: {
         default: 'Acme AI',
@@ -96,11 +95,10 @@ describe('Root layout System Features bootstrap', () => {
     })
   })
 
-  it('renders the client recovery path when optional System Features are unavailable', async () => {
+  it('uses default metadata when optional System Features are unavailable', async () => {
     mocks.getOptionalSystemFeatures.mockResolvedValue(undefined)
-    const { default: RootLayout, generateMetadata } = await import('../layout')
+    const { generateMetadata } = await import('../layout')
 
-    await expect(RootLayout({ children: <div>App</div> })).resolves.toBeDefined()
     await expect(generateMetadata()).resolves.toMatchObject({
       title: {
         default: 'Dify',

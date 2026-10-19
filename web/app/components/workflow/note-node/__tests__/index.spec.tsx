@@ -1,63 +1,18 @@
 import type { NoteNodeType } from '../types'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useNodes } from 'reactflow'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createNode } from '../../__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
-import { CUSTOM_NOTE_NODE } from '../constants'
+import { CUSTOM_NOTE_NODE, NOTE_SHOW_AUTHOR_STORAGE_KEY } from '../constants'
 import NoteNode from '../index'
 import { NoteTheme } from '../types'
 
-const {
-  mockHandleEditorChange,
-  mockHandleNodeDataUpdateWithSyncDraft,
-  mockHandleNodeDelete,
-  mockHandleNodesCopy,
-  mockHandleNodesDuplicate,
-  mockHandleShowAuthorChange,
-  mockHandleThemeChange,
-} = vi.hoisted(() => ({
-  mockHandleEditorChange: vi.fn(),
-  mockHandleNodeDataUpdateWithSyncDraft: vi.fn(),
-  mockHandleNodeDelete: vi.fn(),
-  mockHandleNodesCopy: vi.fn(),
-  mockHandleNodesDuplicate: vi.fn(),
-  mockHandleShowAuthorChange: vi.fn(),
-  mockHandleThemeChange: vi.fn(),
-}))
-
-vi.mock('../../hooks/use-node-data-update', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../hooks/use-node-data-update')>()
-  return {
-    ...actual,
-    useNodeDataUpdate: () => ({
-      handleNodeDataUpdateWithSyncDraft: mockHandleNodeDataUpdateWithSyncDraft,
-    }),
-  }
-})
-
-vi.mock('../../hooks/use-nodes-interactions', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../hooks/use-nodes-interactions')>()
-  return {
-    ...actual,
-    useNodesInteractions: () => ({
-      handleNodesCopy: mockHandleNodesCopy,
-      handleNodesDuplicate: mockHandleNodesDuplicate,
-      handleNodeDelete: mockHandleNodeDelete,
-    }),
-  }
-})
-
-vi.mock('../hooks', () => ({
-  useNote: () => ({
-    handleThemeChange: mockHandleThemeChange,
-    handleEditorChange: mockHandleEditorChange,
-    handleShowAuthorChange: mockHandleShowAuthorChange,
-  }),
-}))
-
-const createNoteData = (overrides: Partial<NoteNodeType> = {}): NoteNodeType => ({
+const createNoteData = (overrides: Partial<NoteNodeType> = {}): Partial<NoteNodeType> => ({
   title: '',
   desc: '',
-  type: '' as unknown as NoteNodeType['type'],
   text: '',
   theme: NoteTheme.blue,
   author: 'Alice',
@@ -68,51 +23,54 @@ const createNoteData = (overrides: Partial<NoteNodeType> = {}): NoteNodeType => 
   ...overrides,
 })
 
-const renderNoteNode = (dataOverrides: Partial<NoteNodeType> = {}) => {
-  const nodeData = createNoteData(dataOverrides)
-  const nodes = [
-    createNode({
-      id: 'note-1',
-      type: CUSTOM_NOTE_NODE,
-      data: nodeData,
-      selected: !!nodeData.selected,
-    }),
-  ]
+const NoteIds = () => {
+  const nodes = useNodes()
+  return <output aria-label="Canvas notes">{nodes.map((node) => node.id).join(',')}</output>
+}
 
-  return renderWorkflowFlowComponent(<div />, {
-    nodes,
-    edges: [],
-    reactFlowProps: {
-      nodeTypes: {
-        [CUSTOM_NOTE_NODE]: NoteNode,
+const renderNoteNode = (dataOverrides: Partial<NoteNodeType> = {}) => {
+  const data = createNoteData(dataOverrides)
+  const { queryClient } = createConsoleQueryWrapper({ appDslVersion: '0.6.0' })
+  seedModelProviderQueries(queryClient)
+
+  return renderWorkflowFlowComponent(
+    <>
+      <button type="button">Outside note</button>
+      <NoteIds />
+    </>,
+    {
+      nodes: [
+        createNode({
+          id: 'note-1',
+          type: CUSTOM_NOTE_NODE,
+          data,
+          selected: !!data.selected,
+          width: 240,
+          height: 88,
+        }),
+      ],
+      edges: [],
+      reactFlowProps: {
+        nodeTypes: {
+          [CUSTOM_NOTE_NODE]: NoteNode,
+        },
       },
+      historyStore: { nodes: [], edges: [] },
+      queryClient,
     },
-    initialStoreState: {
-      controlPromptEditorRerenderKey: 0,
-    },
-  })
+  )
+}
+
+const openNoteMenu = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(await screen.findByRole('button', { name: 'common.operation.more' }))
 }
 
 describe('NoteNode', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    localStorage.removeItem(NOTE_SHOW_AUTHOR_STORAGE_KEY)
   })
 
-  it('should render the toolbar and author for a selected persistent note', async () => {
-    renderNoteNode()
-
-    expect(screen.getByText('Alice')).toBeInTheDocument()
-
-    await waitFor(() => {
-      expect(screen.getByText('workflow.nodes.note.editor.small')).toBeInTheDocument()
-    })
-
-    expect(
-      screen.getByText('workflow.nodes.note.editor.small').closest('.nodrag.nopan.nowheel'),
-    ).toBeInTheDocument()
-  })
-
-  it('should hide the toolbar for temporary notes', () => {
+  it('hides the toolbar for temporary notes', () => {
     renderNoteNode({
       _isTempNode: true,
       showAuthor: false,
@@ -121,18 +79,42 @@ describe('NoteNode', () => {
     expect(screen.queryByText('workflow.nodes.note.editor.small')).not.toBeInTheDocument()
   })
 
-  it('should clear the selected state when clicking outside the note', async () => {
+  it('clears the selected state when clicking outside the note', async () => {
+    const user = userEvent.setup()
     renderNoteNode()
 
-    fireEvent.click(document.body)
+    expect(await screen.findByText('workflow.nodes.note.editor.small')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Outside note' }))
+    await waitFor(() =>
+      expect(screen.queryByText('workflow.nodes.note.editor.small')).not.toBeInTheDocument(),
+    )
+    expect(screen.getByText('Alice')).toBeInTheDocument()
+  })
 
-    await waitFor(() => {
-      expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith({
-        id: 'note-1',
-        data: {
-          selected: false,
-        },
-      })
-    })
+  it('hides the author and remembers the preference for new notes', async () => {
+    const user = userEvent.setup()
+    renderNoteNode()
+
+    expect(screen.getByText('Alice')).toBeInTheDocument()
+    await openNoteMenu(user)
+    await user.click(
+      screen.getByRole('menuitemcheckbox', { name: 'workflow.nodes.note.editor.showAuthor' }),
+    )
+
+    await waitFor(() => expect(screen.queryByText('Alice')).not.toBeInTheDocument())
+    expect(localStorage.getItem(NOTE_SHOW_AUTHOR_STORAGE_KEY)).toBe('false')
+  })
+
+  it('removes the note from the canvas from its menu', async () => {
+    const user = userEvent.setup()
+    renderNoteNode()
+
+    expect(screen.getByRole('status', { name: 'Canvas notes' })).toHaveTextContent('note-1')
+    await openNoteMenu(user)
+    await user.click(screen.getByRole('menuitem', { name: /common\.operation\.delete/ }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('status', { name: 'Canvas notes' })).toBeEmptyDOMElement(),
+    )
   })
 })

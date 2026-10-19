@@ -4,3 +4,4 @@ declare const __DIFYCTL_VERSION__: string
 declare const __DIFYCTL_COMMIT__: string
 declare const __DIFYCTL_BUILD_DATE__: string
 declare const __DIFYCTL_CHANNEL__: string
+declare const __DIFYCTL_COMPILED__: boolean
