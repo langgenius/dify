@@ -31,9 +31,7 @@ providers/vdb/vdb-qdrant/tests/unit_tests/test_qdrant_vector.py
 providers/vdb/vdb-relyt/tests/unit_tests/test_relyt_vector.py
 providers/vdb/vdb-tablestore/tests/integration_tests/test_tablestore.py
 providers/vdb/vdb-tablestore/tests/unit_tests/test_tablestore_vector.py
-providers/vdb/vdb-tencent/src/dify_vdb_tencent/tencent_vector.py
 providers/vdb/vdb-tencent/tests/integration_tests/conftest.py
-providers/vdb/vdb-tencent/tests/unit_tests/test_tencent_vector.py
 providers/vdb/vdb-tidb-on-qdrant/src/dify_vdb_tidb_on_qdrant/tidb_on_qdrant_vector.py
 providers/vdb/vdb-tidb-on-qdrant/src/dify_vdb_tidb_on_qdrant/tidb_service.py
 providers/vdb/vdb-tidb-on-qdrant/tests/unit_tests/test_tidb_service.py

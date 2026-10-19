@@ -58,7 +58,6 @@ export function opCommand(id: string, op: CatalogOp): CommandConstructor {
   return class OpCommand extends Command {
     static override summary = op.summary
     static override effect = effectOf(op.method)
-    static override positional = [] as const
     static override examples = op.examples
     static override hidden = op.internal
 
