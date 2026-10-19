@@ -24,9 +24,9 @@ dayjs.extend(timezone)
 
 type LogDetailMessage = {
   answer?: string | number | null
-  inputs?: Record<string, unknown>
-  message_files?: Array<{ url?: string | null }>
-  query?: string
+  inputs?: Record<string, unknown> | null
+  message_files?: Array<{ url?: string | null }> | null
+  query?: string | null
 }
 
 type ConversationLogDetail = {
@@ -38,7 +38,7 @@ type ConversationLogDetail = {
     // Untyped JSON in the console API response.
     user_input_form?: unknown
   } | null
-  name?: string
+  name?: string | null
 }
 
 const getUserInputVariable = (item: unknown) => {
@@ -219,40 +219,6 @@ export const mergeUniqueChatItems = (prevItems: IChatItem[], newItems: IChatItem
   return [...uniqueNewItems, ...prevItems]
 }
 
-export const mergePaginatedChatItems = ({
-  maxRetryCount,
-  newItems,
-  prevItems,
-  retryCount,
-}: {
-  maxRetryCount: number
-  newItems: IChatItem[]
-  prevItems: IChatItem[]
-  retryCount: number
-}) => {
-  const existingIds = new Set(prevItems.map((item) => item.id))
-  const uniqueNewItems = newItems.filter((item) => !existingIds.has(item.id))
-
-  if (!uniqueNewItems.length) {
-    if (retryCount < maxRetryCount && prevItems.length > 1) {
-      return {
-        items: prevItems,
-        retryCount: retryCount + 1,
-      }
-    }
-
-    return {
-      items: prevItems,
-      retryCount: 0,
-    }
-  }
-
-  return {
-    items: [...uniqueNewItems, ...prevItems],
-    retryCount: 0,
-  }
-}
-
 export const buildChatThreadState = ({
   allChatItems,
   hasMore,
@@ -378,7 +344,7 @@ export const getConversationRowValues = ({
   noOutputLabel,
 }: {
   isChatMode: boolean
-  log: ConversationLogDetail
+  log: Omit<ConversationLogDetail, 'model_config'>
   noChatLabel: string
   noOutputLabel: string
 }) => {
