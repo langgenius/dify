@@ -2,6 +2,7 @@ import logging
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
 
+from sqlalchemy import update
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -63,10 +64,11 @@ from extensions.ext_database import db
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import GraphRuntimeState
+from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser
-from models.workflow import Workflow, WorkflowAppLog, WorkflowAppLogCreatedFrom
+from models.workflow import Workflow, WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +103,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             self._created_by_role = CreatorUserRole.ACCOUNT
 
         self._application_generate_entity = application_generate_entity
+        self._tenant_id = application_generate_entity.app_config.tenant_id
         self._workflow_features_dict = workflow.features_dict
         self._workflow_execution_id = ""
         self._invoke_from = queue_manager.invoke_from
@@ -314,6 +317,61 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         """Fluent validation for workflow state."""
         if not self._workflow_execution_id:
             raise ValueError("workflow run not initialized.")
+
+    def _persist_workflow_run_terminal_state(
+        self,
+        *,
+        session: Session,
+        status: WorkflowExecutionStatus,
+        error: str | None,
+    ) -> None:
+        """
+        Best-effort persistence for terminal workflow run state.
+
+        The GraphEngine persistence layer is the source of truth for workflow execution records, but it may not emit a
+        ``GraphRunAbortedEvent`` promptly when a run is terminated while the engine is waiting on external I/O (LLM/tool
+        calls). When that happens, the stream may end with ``QueueStopEvent`` while the DB record remains RUNNING.
+
+        This method updates the ``workflow_runs`` record to STOPPED so the UI/log system reflects the user's stop action
+        even if the engine does not emit an abort event immediately.
+        """
+        run_id = self._workflow_execution_id
+        workflow_run = session.get(WorkflowRun, run_id)
+        if workflow_run is None:
+            return
+        if workflow_run.tenant_id != self._tenant_id:
+            logger.warning(
+                "Skip persisting workflow stop status due to tenant mismatch, workflow_run_id=%s",
+                run_id,
+            )
+            return
+
+        terminal_statuses = (
+            WorkflowExecutionStatus.SUCCEEDED,
+            WorkflowExecutionStatus.FAILED,
+            WorkflowExecutionStatus.STOPPED,
+            WorkflowExecutionStatus.PARTIAL_SUCCEEDED,
+        )
+        if workflow_run.status in terminal_statuses:
+            return
+
+        finished_at = workflow_run.finished_at or naive_utc_now()
+        # The engine may commit a terminal state after the read, so recheck it atomically when writing.
+        session.execute(
+            update(WorkflowRun)
+            .where(
+                WorkflowRun.id == run_id,
+                WorkflowRun.tenant_id == self._tenant_id,
+                WorkflowRun.status.not_in(terminal_statuses),
+            )
+            .values(
+                status=status,
+                error=error,
+                finished_at=finished_at,
+                elapsed_time=(finished_at - workflow_run.created_at).total_seconds(),
+            )
+            .execution_options(synchronize_session=False)
+        )
 
     def _handle_ping_event(self, event: QueuePingEvent, **kwargs) -> Generator[PingStreamResponse]:
         """Handle ping events."""
@@ -539,6 +597,14 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             status = WorkflowExecutionStatus.STOPPED
             error = event.get_stop_reason()
             exceptions_count = 0
+            try:
+                with self._database_session() as session:
+                    self._persist_workflow_run_terminal_state(session=session, status=status, error=error)
+            except Exception:
+                logger.exception(
+                    "Failed to persist workflow stop status, workflow_run_id=%s",
+                    self._workflow_execution_id,
+                )
         workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
             task_id=self._application_generate_entity.task_id,
             workflow_id=self._workflow.id,
