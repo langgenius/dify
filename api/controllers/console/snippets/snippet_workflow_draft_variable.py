@@ -17,6 +17,7 @@ from flask_restx import Resource
 
 from controllers.common.schema import query_params_from_model
 from controllers.console import console_ns
+from controllers.console.app.error import DraftWorkflowNotExist
 from controllers.console.app.workflow_draft_variable import (
     EnvironmentVariableListResponse,
     WorkflowDraftVariableListQuery,
@@ -32,6 +33,7 @@ from fields.workflow_draft_variable_fields import (
     WorkflowDraftVariableListWithoutValueResponse,
     WorkflowDraftVariableResponse,
 )
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from services.workflow.contracts import WorkflowOwner
@@ -39,6 +41,7 @@ from services.workflow.contracts import WorkflowOwner
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/variables")
 class SnippetWorkflowVariableCollectionApi(Resource):
+    @error_responses(DraftWorkflowNotExist)
     @console_ns.doc(params=query_params_from_model(WorkflowDraftVariableListQuery))
     @console_ns.doc("get_snippet_workflow_variables")
     @console_ns.doc(description="List draft workflow variables without values (paginated, snippet scope)")
@@ -210,6 +213,7 @@ class SnippetSystemVariableCollectionApi(Resource):
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/environment-variables")
 class SnippetEnvironmentVariableCollectionApi(Resource):
+    @error_responses(DraftWorkflowNotExist)
     @console_ns.doc("get_snippet_environment_variables")
     @console_ns.doc(description="Get environment variables from snippet draft workflow graph")
     @console_ns.response(

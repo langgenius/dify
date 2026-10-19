@@ -190,7 +190,7 @@ export const Disabled: Story = {
   ),
   play: async ({ canvas, userEvent }) => {
     const trigger = canvas.getByRole('button', { name: 'Unavailable options' })
-    await expect(trigger).toHaveAttribute('aria-disabled', 'true')
+    await expect(trigger).toBeDisabled()
     await userEvent.click(trigger)
     await expect(trigger).toHaveAttribute('aria-expanded', 'false')
     await expect(canvas.queryByText('These options are not available.')).not.toBeInTheDocument()

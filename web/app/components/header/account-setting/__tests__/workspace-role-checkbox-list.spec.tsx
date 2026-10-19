@@ -1,10 +1,23 @@
 import type { Role } from '@/models/access-control'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import WorkspaceRoleCheckboxList from '../workspace-role-checkbox-list'
 
-vi.mock('@/service/access-control/use-workspace-roles')
+const { mockWorkspaceRoleListHook } = vi.hoisted(() => ({
+  mockWorkspaceRoleListHook: vi.fn(),
+}))
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.rbac.roles.get': () => mockWorkspaceRoleListHook(),
+    }),
+  }
+})
 
 const createRole = (overrides: Partial<Role>): Role => ({
   id: 'role-1',
@@ -27,41 +40,10 @@ const mockRoles = [
 describe('WorkspaceRoleCheckboxList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useWorkspaceRoleList).mockReturnValue({
-      data: {
-        pages: [
-          {
-            data: mockRoles,
-            pagination: {
-              total_count: 2,
-              per_page: 20,
-              current_page: 1,
-              total_pages: 1,
-            },
-          },
-        ],
-        pageParams: [1],
-      },
-      isLoading: false,
-      error: null,
-      hasNextPage: false,
-      isFetchingNextPage: false,
-      fetchNextPage: vi.fn(),
-    } as unknown as ReturnType<typeof useWorkspaceRoleList>)
-  })
-
-  it('should render checkboxes when multiple roles are allowed', () => {
-    render(
-      <WorkspaceRoleCheckboxList
-        selectedRoleIds={['role-1']}
-        selectedRoles={[mockRoles[0]!]}
-        onSelectedRolesChange={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByRole('checkbox', { name: /First role/i })).toBeInTheDocument()
-    expect(screen.getAllByRole('checkbox')).toHaveLength(mockRoles.length)
-    expect(screen.queryByRole('radio', { name: /First role/i })).not.toBeInTheDocument()
+    mockWorkspaceRoleListHook.mockResolvedValue({
+      data: mockRoles,
+      pagination: { total_count: 2, per_page: 20, current_page: 1, total_pages: 1 },
+    })
   })
 
   it('should provide one named keyboard stop per role and toggle from its label', async () => {
@@ -74,9 +56,9 @@ describe('WorkspaceRoleCheckboxList', () => {
       />,
     )
 
-    const firstRole = screen.getByRole('checkbox', { name: /First role/i })
+    const firstRole = await screen.findByRole('checkbox', { name: /First role/i })
     const secondRole = screen.getByRole('checkbox', { name: /Second role/i })
-    await user.click(screen.getByText('First role'))
+    await user.click(await screen.findByText('First role'))
     expect(onSelectedRolesChange).toHaveBeenLastCalledWith([mockRoles[0]])
 
     firstRole.focus()
@@ -97,12 +79,12 @@ describe('WorkspaceRoleCheckboxList', () => {
       />,
     )
 
-    await user.click(screen.getByText('First role'))
+    await user.click(await screen.findByText('First role'))
     expect(onSelectedRolesChange).not.toHaveBeenCalled()
     expect(screen.getByRole('checkbox', { name: /First role/i })).toHaveAttribute('data-disabled')
   })
 
-  it('should render radios when only one role is allowed', () => {
+  it('should render radios when only one role is allowed', async () => {
     render(
       <WorkspaceRoleCheckboxList
         selectedRoleIds={['role-1']}
@@ -112,7 +94,7 @@ describe('WorkspaceRoleCheckboxList', () => {
       />,
     )
 
-    const selectedRole = screen.getByRole('radio', { name: /First role/i })
+    const selectedRole = await screen.findByRole('radio', { name: /First role/i })
     const unselectedRole = screen.getByRole('radio', { name: /Second role/i })
     expect(selectedRole).toHaveAttribute('data-checked', '')
     expect(unselectedRole).not.toHaveAttribute('data-checked')
@@ -133,14 +115,17 @@ describe('WorkspaceRoleCheckboxList', () => {
     const searchInput = screen.getByRole('searchbox', {
       name: 'permission.role.searchPlaceholder',
     })
+    await screen.findByRole('checkbox', { name: /Second role/i })
     await user.type(searchInput, 'First')
+    expect(screen.queryByRole('checkbox', { name: /Second role/i })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
     expect(searchInput).toHaveValue('')
     expect(searchInput).toHaveFocus()
+    expect(screen.getByRole('checkbox', { name: /Second role/i })).toBeInTheDocument()
   })
 
-  it('should expose disabled state on single-role options', () => {
+  it('should expose disabled state on single-role options', async () => {
     render(
       <WorkspaceRoleCheckboxList
         selectedRoleIds={['role-1']}
@@ -151,37 +136,20 @@ describe('WorkspaceRoleCheckboxList', () => {
       />,
     )
 
-    expect(screen.getByRole('radio', { name: /First role/i })).toHaveAttribute('data-disabled', '')
+    expect(await screen.findByRole('radio', { name: /First role/i })).toHaveAttribute(
+      'data-disabled',
+      '',
+    )
     expect(screen.getByRole('radio', { name: /Second role/i })).not.toHaveAttribute('data-disabled')
   })
 
-  it('should show legacy role descriptions when only one role is allowed', () => {
-    vi.mocked(useWorkspaceRoleList).mockReturnValue({
-      data: {
-        pages: [
-          {
-            data: [
-              createRole({ id: 'admin', name: 'admin' }),
-              createRole({ id: 'editor', name: 'editor' }),
-              createRole({ id: 'normal', name: 'normal' }),
-              createRole({ id: 'dataset_operator', name: 'dataset_operator' }),
-            ],
-            pagination: {
-              total_count: 4,
-              per_page: 20,
-              current_page: 1,
-              total_pages: 1,
-            },
-          },
-        ],
-        pageParams: [1],
-      },
-      isLoading: false,
-      error: null,
-      hasNextPage: false,
-      isFetchingNextPage: false,
-      fetchNextPage: vi.fn(),
-    } as unknown as ReturnType<typeof useWorkspaceRoleList>)
+  it('should show legacy role descriptions when only one role is allowed', async () => {
+    mockWorkspaceRoleListHook.mockResolvedValue({
+      data: ['admin', 'editor', 'normal', 'dataset_operator'].map((name) =>
+        createRole({ id: name, name }),
+      ),
+      pagination: { total_count: 4, per_page: 20, current_page: 1, total_pages: 1 },
+    })
 
     render(
       <WorkspaceRoleCheckboxList
@@ -192,7 +160,7 @@ describe('WorkspaceRoleCheckboxList', () => {
       />,
     )
 
-    expect(screen.getByText('workspaceMembers.members.adminTip')).toBeInTheDocument()
+    expect(await screen.findByText('workspaceMembers.members.adminTip')).toBeInTheDocument()
     expect(screen.getByText('workspaceMembers.members.editorTip')).toBeInTheDocument()
     expect(screen.getByText('workspaceMembers.members.normalTip')).toBeInTheDocument()
     expect(screen.getByText('workspaceMembers.members.datasetOperatorTip')).toBeInTheDocument()

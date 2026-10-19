@@ -94,7 +94,7 @@ class ExecutionContext:
         return self._user
 
     @contextmanager
-    def enter(self) -> Generator[None, None, None]:
+    def enter(self) -> Generator[None]:
         """Enter this execution context."""
         if self._context_vars:
             for var, val in self._context_vars.items():
@@ -145,7 +145,7 @@ class NullAppContext(AppContext):
 
     @contextmanager
     @override
-    def enter(self) -> Generator[None, None, None]:
+    def enter(self) -> Generator[None]:
         """Enter null context (no-op)."""
         yield
 

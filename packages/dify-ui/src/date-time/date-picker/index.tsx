@@ -1,6 +1,6 @@
 'use client'
 
-import type { CalendarPanelLabels, CalendarPanelProps } from '../date-picker/calendar-panel'
+import type { CalendarPanelLabels, CalendarPanelProps } from '../internal/calendar-panel'
 import type {
   PickerClearProps,
   PickerContentProps,
@@ -12,8 +12,8 @@ import type {
 import { useControlled } from '@base-ui/utils/useControlled'
 import { enUS } from '@daypicker/react/locale/en-US'
 import * as React from 'react'
-import { CalendarPanel } from '../date-picker/calendar-panel'
-import { formatDateValue, getInitialMonth, requireDateValue } from '../date-picker/date-value'
+import { CalendarPanel } from '../internal/calendar-panel'
+import { formatDateValue, getInitialMonth, requireDateValue } from '../internal/date-value'
 import {
   PickerClear,
   PickerContent,
@@ -69,7 +69,7 @@ function DatePicker({
     default: defaultValue,
     name: 'DatePicker',
   })
-  requireDateValue(value)
+  const parsedValue = requireDateValue(value)
   if (props.minDate) requireDateValue(props.minDate)
   if (props.maxDate) requireDateValue(props.maxDate)
   if (props.minDate && props.maxDate && props.minDate > props.maxDate)
@@ -99,14 +99,14 @@ function DatePicker({
         }
         placeholder={props.placeholder ?? 'Select date'}
         displayValue={
-          value
+          parsedValue
             ? new Intl.DateTimeFormat(props.locale?.code ?? 'en-US', {
                 year: 'numeric',
                 calendar: 'gregory',
                 month: 'short',
                 day: 'numeric',
                 timeZone: 'UTC',
-              }).format(requireDateValue(value)!)
+              }).format(parsedValue)
             : ''
         }
         serializedValue={value ?? ''}

@@ -58,7 +58,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
     @classmethod
     def invoke_llm(
         cls, user_id: str, tenant: Tenant, payload: RequestInvokeLLM
-    ) -> Generator[LLMResultChunk, None, None] | LLMResult:
+    ) -> Generator[LLMResultChunk] | LLMResult:
         """
         invoke llm
         """
@@ -81,7 +81,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
 
         if isinstance(response, Generator):
 
-            def handle() -> Generator[LLMResultChunk, None, None]:
+            def handle() -> Generator[LLMResultChunk]:
                 for chunk in response:
                     chunk.prompt_messages = []
                     yield chunk
@@ -89,7 +89,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             return handle()
         else:
 
-            def handle_non_streaming(response: LLMResult) -> Generator[LLMResultChunk, None, None]:
+            def handle_non_streaming(response: LLMResult) -> Generator[LLMResultChunk]:
                 yield LLMResultChunk(
                     model=response.model,
                     prompt_messages=[],
@@ -138,7 +138,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
 
         if isinstance(response, Generator):
 
-            def handle() -> Generator[LLMResultChunkWithStructuredOutput, None, None]:
+            def handle() -> Generator[LLMResultChunkWithStructuredOutput]:
                 for chunk in response:
                     chunk.prompt_messages = []
                     yield chunk
@@ -148,7 +148,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
 
             def handle_non_streaming(
                 response: LLMResultWithStructuredOutput,
-            ) -> Generator[LLMResultChunkWithStructuredOutput, None, None]:
+            ) -> Generator[LLMResultChunkWithStructuredOutput]:
                 yield LLMResultChunkWithStructuredOutput(
                     model=response.model,
                     prompt_messages=[],
@@ -218,7 +218,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             model=payload.model,
         )
 
-        def handle() -> Generator[dict[str, Any], None, None]:
+        def handle() -> Generator[dict[str, Any]]:
             response = model_instance.invoke_tts(content_text=payload.content_text, voice=payload.voice)
             audio_stream, mime_type = inspect_audio_stream(response, get_model_audio_mime_type(model_instance))
             for chunk in audio_stream:
@@ -316,7 +316,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
         max_tokens = cls.get_system_model_max_tokens(tenant_id=tenant.id, user_id=user_id)
         content = payload.text
 
-        SUMMARY_PROMPT = """You are a professional language researcher, you are interested in the language
+        summary_prompt = """You are a professional language researcher, you are interested in the language
 and you can quickly aimed at the main point of an webpage and reproduce it in your own words but
 retain the original meaning and keep the key points.
 however, the text you got is too long, what you got is possible a part of the text.
@@ -342,7 +342,7 @@ Here is the extra instruction you need to follow:
             return cls.get_prompt_tokens(
                 tenant_id=tenant.id,
                 prompt_messages=[
-                    SystemPromptMessage(content=SUMMARY_PROMPT.replace("{payload.instruction}", payload.instruction)),
+                    SystemPromptMessage(content=summary_prompt.replace("{payload.instruction}", payload.instruction)),
                     UserPromptMessage(content=content),
                 ],
                 user_id=user_id,
@@ -353,7 +353,7 @@ Here is the extra instruction you need to follow:
                 user_id=user_id,
                 tenant=tenant,
                 prompt_messages=[
-                    SystemPromptMessage(content=SUMMARY_PROMPT.replace("{payload.instruction}", payload.instruction)),
+                    SystemPromptMessage(content=summary_prompt.replace("{payload.instruction}", payload.instruction)),
                     UserPromptMessage(content=content),
                 ],
             )

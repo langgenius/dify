@@ -2,7 +2,7 @@ import Page from './page'
 
 const mockRedirect = vi.fn()
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   redirect: (path: string) => mockRedirect(path),
 }))
 

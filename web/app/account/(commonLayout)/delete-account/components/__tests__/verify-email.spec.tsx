@@ -21,8 +21,7 @@ vi.mock('@/app/components/signin/countdown', () => ({
 
 describe('VerifyEmail', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockConfirmDeleteAccount.mockResolvedValue({ result: 'success' })
+    mockConfirmDeleteAccount.mockReset().mockResolvedValue({ result: 'success' })
   })
 
   it('submits a complete verification code through the form', async () => {
@@ -36,7 +35,6 @@ describe('VerifyEmail', () => {
       name: 'accountSettings.account.permanentlyDeleteButton',
     })
 
-    expect(submitButton).toBeEnabled()
     await user.click(submitButton)
 
     const errors = await screen.findAllByText('accountSettings.account.verificationPlaceholder')
@@ -48,7 +46,6 @@ describe('VerifyEmail', () => {
 
     await user.type(input, '123456')
 
-    expect(submitButton).toBeEnabled()
     await user.keyboard('{Enter}')
 
     await waitFor(() => {

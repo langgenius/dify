@@ -69,7 +69,7 @@ def _request(
     *,
     path: str,
     payload: dict[str, str],
-) -> Generator[None, None, None]:
+) -> Generator[None]:
     services = SimpleNamespace(accounts=SimpleNamespace(email_registration=service))
     with (
         patch("controllers.console.auth.email_register.application_services", return_value=services),
