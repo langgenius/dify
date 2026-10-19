@@ -28,6 +28,7 @@ from controllers.console.wraps import (
 from controllers.web import web_ns
 from controllers.web.error import WebAppAccessServiceUnavailableError, WebAppNotFoundError
 from controllers.web.flask_admission import web_anonymous_admission
+from controllers.web.wraps import extract_web_login_token
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from libs.external_api import error_responses
@@ -35,7 +36,6 @@ from libs.helper import EmailStr
 from libs.password import valid_password
 from libs.token import (
     clear_webapp_access_token_from_cookie,
-    extract_webapp_access_token,
     extract_webapp_passport,
 )
 from machinery.context import RequestContext
@@ -145,7 +145,7 @@ class LoginStatusApi(Resource):
             status = application_services().web_authentication.get_login_status(
                 app_code=query.app_code,
                 user_id=query.user_id,
-                access_token=extract_webapp_access_token(request),
+                access_token=extract_web_login_token(),
                 app_session_token=extract_webapp_passport(query.app_code, request) if query.app_code else None,
             )
         except WebAppAccessAppNotFoundError as error:

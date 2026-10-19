@@ -1042,6 +1042,14 @@ class AuthConfig(BaseSettings):
     Configuration for authentication and OAuth
     """
 
+    WEBAPP_ACCOUNT_PASSPORT_ENABLED: bool = Field(
+        default=False,
+        description="Enable internal Account Passport issuance for identity binding. "
+        "When unset, defaults to true in Cloud and false "
+        "in other editions; an explicit value overrides the edition default. Enable only after every API instance "
+        "supports it. Disabling issuance does not revoke existing Passports.",
+    )
+
     OAUTH_REDIRECT_PATH: str = Field(
         description="Redirect path for OAuth authentication callbacks",
         default="/console/api/oauth/authorize",

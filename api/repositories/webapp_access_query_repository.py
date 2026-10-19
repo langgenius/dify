@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import DBAPIError, TimeoutError
 from sqlalchemy.orm import Session, sessionmaker
 
+from models.enums import AppStatus
 from models.model import App, EndUser, Site
 from services.entities.authentication_entities import WebAppSessionRecord
 from services.web_authentication_service import WebAppSessionQuery
@@ -34,7 +35,7 @@ class WebAppAccessQueryRepository(WebAppAccessQuery, WebAppSessionQuery):
         end_user_id: str,
     ) -> WebAppSessionRecord | None:
         stmt = (
-            select(EndUser.session_id)
+            select(EndUser.session_id, EndUser.account_id)
             .select_from(Site)
             .join(App, App.id == Site.app_id)
             .join(EndUser, EndUser.app_id == App.id)
@@ -42,6 +43,8 @@ class WebAppAccessQueryRepository(WebAppAccessQuery, WebAppSessionQuery):
                 Site.code == app_code,
                 App.id == app_id,
                 App.enable_site.is_(True),
+                App.status == AppStatus.NORMAL,
+                Site.status == AppStatus.NORMAL,
                 EndUser.id == end_user_id,
                 EndUser.tenant_id == App.tenant_id,
             )
@@ -49,9 +52,9 @@ class WebAppAccessQueryRepository(WebAppAccessQuery, WebAppSessionQuery):
         )
         try:
             with self._session_factory() as session:
-                session_id = session.scalar(stmt)
-                if session_id is None:
+                row = session.execute(stmt).one_or_none()
+                if row is None:
                     return None
-                return WebAppSessionRecord(end_user_session_id=session_id)
+                return WebAppSessionRecord(end_user_session_id=row.session_id, account_id=row.account_id)
         except (DBAPIError, TimeoutError) as e:
             raise WebAppAccessUnavailableError from e

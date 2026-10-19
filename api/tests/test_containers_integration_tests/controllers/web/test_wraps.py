@@ -289,6 +289,7 @@ class TestDecodeJwtToken:
 
         mock_extract.return_value = "jwt-token"
         mock_passport_cls.return_value.verify.return_value = {
+            "sub": "Web API Passport",
             "app_code": site.code,
             "app_id": app_model.id,
             "end_user_id": end_user.id,
@@ -324,6 +325,7 @@ class TestDecodeJwtToken:
         non_existent_id = str(uuid4())
         mock_extract.return_value = "jwt-token"
         mock_passport_cls.return_value.verify.return_value = {
+            "sub": "Web API Passport",
             "app_code": "code1",
             "app_id": non_existent_id,
             "end_user_id": str(uuid4()),
@@ -349,6 +351,7 @@ class TestDecodeJwtToken:
 
         mock_extract.return_value = "jwt-token"
         mock_passport_cls.return_value.verify.return_value = {
+            "sub": "Web API Passport",
             "app_code": site.code,
             "app_id": app_model.id,
             "end_user_id": end_user.id,
@@ -375,6 +378,7 @@ class TestDecodeJwtToken:
 
         mock_extract.return_value = "jwt-token"
         mock_passport_cls.return_value.verify.return_value = {
+            "sub": "Web API Passport",
             "app_code": site.code,
             "app_id": app_model.id,
             "end_user_id": non_existent_eu,
@@ -400,6 +404,7 @@ class TestDecodeJwtToken:
 
         mock_extract.return_value = "jwt-token"
         mock_passport_cls.return_value.verify.return_value = {
+            "sub": "Web API Passport",
             "app_code": site.code,
             "app_id": app_model.id,
             "end_user_id": end_user.id,

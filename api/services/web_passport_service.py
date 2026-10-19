@@ -5,8 +5,6 @@ from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import Any, Protocol
 
-from pydantic import ValidationError
-
 from services.entities.passport_entities import (
     EndUserRecord,
     WebAppLoginClaims,
@@ -15,6 +13,7 @@ from services.entities.passport_entities import (
     WebPassportRequest,
     WebPassportResult,
 )
+from services.web_identity_service import WebIdentityError, WebIdentityService
 
 
 class WebAppAuthType(StrEnum):
@@ -35,12 +34,22 @@ class WebPassportAuthenticationRequiredError(Exception):
     pass
 
 
+class WebPassportAccessDeniedError(Exception):
+    pass
+
+
+class WebPassportAccountExchangeDisabledError(Exception):
+    pass
+
+
 class WebPassportRepository(Protocol):
     def get_active_web_app(self, app_code: str) -> WebAppRecord | None: ...
 
     def is_web_app_active(self, app: WebAppRecord) -> bool: ...
 
     def resolve_standard_end_user(self, app: WebAppRecord, session_id: str | None) -> WebPassportEndUserResolution: ...
+
+    def resolve_account_end_user(self, app: WebAppRecord, account_id: str) -> WebPassportEndUserResolution: ...
 
     def resolve_authenticated_end_user(
         self,
@@ -56,6 +65,8 @@ class WebPassportAuthGateway(Protocol):
 
     def get_app_auth_type(self, app_id: str) -> WebAppAuthType: ...
 
+    def is_account_allowed(self, app_id: str, account_id: str) -> bool: ...
+
 
 class WebPassportTokenGateway(Protocol):
     def verify(self, token: str) -> Mapping[str, Any]: ...
@@ -70,12 +81,16 @@ class WebPassportService:
         passports: WebPassportRepository,
         auth: WebPassportAuthGateway,
         tokens: WebPassportTokenGateway,
+        identities: WebIdentityService,
+        account_passports_enabled: bool,
         now: Callable[[], datetime],
         access_token_expire_minutes: int,
     ) -> None:
         self._passports = passports
         self._auth = auth
         self._tokens = tokens
+        self._identities = identities
+        self._account_passports_enabled = account_passports_enabled
         self._now = now
         self._access_token_expire_minutes = access_token_expire_minutes
 
@@ -84,9 +99,10 @@ class WebPassportService:
         if app is None:
             raise WebPassportNotFoundError()
 
-        login_claims: WebAppLoginClaims | None = None
         if self._auth.is_webapp_auth_enabled():
             login_claims = self._decode_login_token(request.access_token)
+            if login_claims is not None and login_claims.token_source != "webapp_login_token":
+                raise WebPassportUnauthorizedError("Invalid web app login token source.")
             auth_type = self._auth.get_app_auth_type(app.app_id)
             if auth_type != WebAppAuthType.PUBLIC:
                 if login_claims is None:
@@ -94,6 +110,8 @@ class WebPassportService:
                 self._require_active_web_app(app)
                 return self._exchange_enterprise_token(app, login_claims, auth_type)
 
+        # Preserve legacy anonymous restoration independently of Account capability.
+        # Account-linked rows are excluded by the repository, not selected by user hints.
         end_user = self._resolve_standard_user(app, request.user_session_id)
         token = self._tokens.issue(
             {
@@ -106,19 +124,65 @@ class WebPassportService:
         )
         return WebPassportResult(access_token=token)
 
+    def issue_for_account(self, *, app_code: str, access_token: str) -> WebPassportResult:
+        """Internal Account issuance for the future identity-binding flow.
+
+        The legacy HTTP Passport endpoint does not call this method. Account and
+        App identities remain independent until a binding flow explicitly chooses
+        the Account identity; no Guest record or history is modified here.
+        """
+        if not self._account_passports_enabled:
+            raise WebPassportAccountExchangeDisabledError("Account Passport exchange is not enabled.")
+        app = self._passports.get_active_web_app(app_code)
+        if app is None:
+            raise WebPassportNotFoundError()
+        claims = self._decode_login_token(access_token)
+        if claims is None:
+            raise WebPassportAuthenticationRequiredError("Account login required.")
+        if claims.token_source is not None or claims.account_id is None:
+            raise WebPassportUnauthorizedError("Account login required.")
+        auth_type = (
+            self._auth.get_app_auth_type(app.app_id) if self._auth.is_webapp_auth_enabled() else WebAppAuthType.PUBLIC
+        )
+        if auth_type == WebAppAuthType.EXTERNAL:
+            raise WebPassportAuthenticationRequiredError("Please login as external user.")
+        if auth_type == WebAppAuthType.INTERNAL and not self._auth.is_account_allowed(app.app_id, claims.account_id):
+            raise WebPassportAccessDeniedError("Account cannot access this web app.")
+        return self._exchange_account_token(app, claims)
+
     def _decode_login_token(self, token: str | None) -> WebAppLoginClaims | None:
         if not token:
             return None
 
-        decoded = self._tokens.verify(token)
         try:
-            claims = WebAppLoginClaims.model_validate(decoded)
-        except ValidationError as exc:
-            raise WebPassportUnauthorizedError("Invalid web app login token.") from exc
+            return self._identities.resolve_login(self._tokens.verify(token))
+        except WebIdentityError as exc:
+            raise WebPassportUnauthorizedError(str(exc)) from exc
 
-        if claims.token_source != "webapp_login_token":
-            raise WebPassportUnauthorizedError("Invalid token source. Expected 'webapp_login_token'.")
-        return claims
+    def _exchange_account_token(self, app: WebAppRecord, claims: WebAppLoginClaims) -> WebPassportResult:
+        assert claims.account_id is not None
+        assert claims.exp is not None
+        resolution = self._passports.resolve_account_end_user(app, claims.account_id)
+        self._require_active_resolution(resolution)
+        if resolution.end_user is None:
+            raise WebPassportNotFoundError()
+        now = self._now()
+        expires_at = min(claims.exp, int((now + timedelta(minutes=self._access_token_expire_minutes)).timestamp()))
+        return WebPassportResult(
+            access_token=self._tokens.issue(
+                {
+                    "iss": app.app_id,
+                    "sub": "Web API Passport",
+                    "app_id": app.app_id,
+                    "app_code": app.app_code,
+                    "end_user_id": resolution.end_user.id,
+                    "token_source": "webapp_account",
+                    "auth_type": WebAppAuthType.INTERNAL.value,
+                    "granted_at": int(now.timestamp()),
+                    "exp": expires_at,
+                }
+            )
+        )
 
     def _resolve_standard_user(self, app: WebAppRecord, session_id: str | None) -> EndUserRecord:
         resolution = self._passports.resolve_standard_end_user(app, session_id)

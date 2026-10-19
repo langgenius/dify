@@ -409,3 +409,34 @@ def test_celery_broker_url_with_special_chars_password(
     assert redis_config["userid"] == expected_username  # kombu uses 'userid' not 'username'
     assert redis_config["password"] == expected_password
     assert redis_config["virtual_host"] == expected_db  # kombu uses 'virtual_host' not 'db'
+
+
+@pytest.mark.parametrize("edition", list(DeploymentEdition))
+def test_account_passport_default_depends_on_edition_only_when_unset(edition: DeploymentEdition) -> None:
+    config = _make_config(DEPLOYMENT_EDITION=edition)
+    assert config.WEBAPP_ACCOUNT_PASSPORT_ENABLED is (edition == DeploymentEdition.CLOUD)
+    assert "WEBAPP_ACCOUNT_PASSPORT_ENABLED" not in config.model_fields_set
+
+
+@pytest.mark.parametrize("edition", list(DeploymentEdition))
+@pytest.mark.parametrize("enabled", [True, False])
+def test_explicit_account_passport_setting_overrides_every_edition(edition: DeploymentEdition, enabled: bool) -> None:
+    config = _make_config(DEPLOYMENT_EDITION=edition, WEBAPP_ACCOUNT_PASSPORT_ENABLED=enabled)
+    assert config.WEBAPP_ACCOUNT_PASSPORT_ENABLED is enabled
+    assert "WEBAPP_ACCOUNT_PASSPORT_ENABLED" in config.model_fields_set
+
+
+@pytest.mark.parametrize("edition", list(DeploymentEdition))
+@pytest.mark.parametrize("value", [None, "true", "false"])
+def test_account_passport_environment_setting_overrides_edition(
+    monkeypatch: pytest.MonkeyPatch,
+    edition: DeploymentEdition,
+    value: str | None,
+) -> None:
+    monkeypatch.setenv("DEPLOYMENT_EDITION", edition.value)
+    monkeypatch.delenv("WEBAPP_ACCOUNT_PASSPORT_ENABLED", raising=False)
+    if value is not None:
+        monkeypatch.setenv("WEBAPP_ACCOUNT_PASSPORT_ENABLED", value)
+    config = DifyConfig(_env_file=None)
+    expected = edition == DeploymentEdition.CLOUD if value is None else value == "true"
+    assert config.WEBAPP_ACCOUNT_PASSPORT_ENABLED is expected

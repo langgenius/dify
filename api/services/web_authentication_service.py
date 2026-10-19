@@ -175,7 +175,7 @@ class WebAuthenticationService:
         app_session_token: str | None,
     ) -> WebLoginStatus:
         if not app_code:
-            return WebLoginStatus(logged_in=bool(access_token), app_logged_in=False)
+            return WebLoginStatus(logged_in=self._tokens.verify_access_token(access_token), app_logged_in=False)
 
         app_id = self._app_access.find_app_id_by_code(app_code)
         if app_id is None:

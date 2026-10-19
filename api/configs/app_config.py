@@ -1,10 +1,12 @@
 import logging
 from pathlib import Path
-from typing import Any, override
+from typing import Any, Self, override
 
+from pydantic import model_validator
 from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict, TomlConfigSettingsSource
 
+from enums import DeploymentEdition
 from libs.file_utils import search_file_upwards
 
 from .deploy import DeploymentConfig
@@ -90,6 +92,16 @@ class DifyConfig(
     # please consider to arrange it in the proper config group of existed or added
     # for better readability and maintainability.
     # Thanks for your concentration and consideration.
+
+    @model_validator(mode="after")
+    def resolve_edition_defaults(self) -> Self:
+        if "WEBAPP_ACCOUNT_PASSPORT_ENABLED" not in self.model_fields_set:
+            # Keep the derived default out of fields_set so revalidation still
+            # distinguishes it from an explicit environment or remote setting.
+            object.__setattr__(
+                self, "WEBAPP_ACCOUNT_PASSPORT_ENABLED", self.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
+            )
+        return self
 
     @classmethod
     @override

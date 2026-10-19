@@ -2080,6 +2080,7 @@ class EndUser(Base, UserMixin):
         sa.PrimaryKeyConstraint("id", name="end_user_pkey"),
         sa.Index("end_user_session_id_idx", "session_id", "type"),
         sa.Index("end_user_tenant_session_id_idx", "tenant_id", "session_id", "type"),
+        sa.UniqueConstraint("tenant_id", "app_id", "type", "account_id", name="end_user_app_account_key"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
@@ -2089,6 +2090,8 @@ class EndUser(Base, UserMixin):
     external_user_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     _is_anonymous: Mapped[bool] = mapped_column("is_anonymous", sa.Boolean, nullable=False, server_default=sa.true())
+    # Internal identity link; never include it in public DTOs or Passport claims.
+    account_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
 
     @property
     @override

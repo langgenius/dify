@@ -1891,3 +1891,81 @@ def test_installed_app_visibility_propagates_access_unavailable_with_original_ca
     assert type(caught.value) is WebAppAccessUnavailableError
     assert caught.value.__cause__ is enterprise_error
     assert enterprise_request.call_count == (2 if failure_stage == "permissions" else 1)
+
+
+@pytest.mark.parametrize("edition", list(DeploymentEdition))
+@pytest.mark.parametrize("enabled", [True, False])
+def test_account_passport_exchange_is_controlled_by_configuration_in_every_edition(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    edition: DeploymentEdition,
+    enabled: bool,
+) -> None:
+    from libs.passport import PassportService
+    from models.model import EndUser
+    from services.enterprise.enterprise_service import WebAppSettings
+    from services.web_passport_service import WebPassportAccountExchangeDisabledError
+    from tests.unit_tests.config_override import apply_config_overrides
+
+    apply_config_overrides(
+        monkeypatch,
+        WEBAPP_ACCOUNT_PASSPORT_ENABLED=enabled,
+        SECRET_KEY="test-account-passport-configuration-signing-key",
+    )
+    monkeypatch.setattr(
+        EnterpriseService.WebAppAuth,
+        "get_app_access_mode_by_id",
+        MagicMock(return_value=WebAppSettings(accessMode="public")),
+    )
+    account = Account(name="Consumer", email="consumer@example.com")
+    sqlite_session.add(account)
+    app_model = App(tenant_id=str(uuid4()), name="Rollout", mode="chat", enable_site=True, enable_api=False)
+    sqlite_session.add(app_model)
+    sqlite_session.flush()
+    sqlite_session.add(
+        Site(
+            app_id=app_model.id,
+            code="rollout-code",
+            title="Rollout",
+            default_language="en-US",
+            customize_token_strategy=CustomizeTokenStrategy.UUID,
+        )
+    )
+    sqlite_session.commit()
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=edition,
+        initialization_password="",
+        redis=_redis(),
+    )
+    token = PassportService().issue({"sub": "Console API Passport", "user_id": account.id, "exp": 2_000_000_000})
+    if not enabled:
+        with pytest.raises(WebPassportAccountExchangeDisabledError):
+            services.web_passport.issue_for_account(app_code="rollout-code", access_token=token)
+        assert sqlite_session.scalar(select(EndUser.id).where(EndUser.account_id == account.id)) is None
+        return
+
+    result = services.web_passport.issue_for_account(app_code="rollout-code", access_token=token)
+    claims = PassportService().verify(result.access_token)
+    stored = sqlite_session.get(EndUser, claims["end_user_id"])
+    assert stored is not None
+    assert stored.account_id == account.id
+    assert "account_id" not in claims
+    assert "user_id" not in claims
+
+    apply_config_overrides(monkeypatch, WEBAPP_ACCOUNT_PASSPORT_ENABLED=False)
+    reader = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=edition,
+        initialization_password="",
+        redis=_redis(),
+    )
+    assert reader.web_authentication.get_login_status(
+        app_code="rollout-code",
+        user_id=None,
+        access_token=None,
+        app_session_token=result.access_token,
+    ).app_logged_in
+    with pytest.raises(WebPassportAccountExchangeDisabledError):
+        reader.web_passport.issue_for_account(app_code="rollout-code", access_token=token)

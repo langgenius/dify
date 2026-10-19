@@ -356,17 +356,17 @@ def test_login_status_uses_access_and_app_session_gateways(service_fixture: Serv
     assert status.app_logged_in is True
 
 
-def test_login_status_without_app_code_uses_token_presence_check(
+def test_login_status_without_app_code_rejects_unverified_token(
     service_fixture: ServiceFixture,
 ) -> None:
     status = service_fixture.service.get_login_status(
         app_code=None,
         user_id=None,
-        access_token="not-verified-here",
+        access_token="invalid-token",
         app_session_token=None,
     )
 
-    assert status.logged_in is True
+    assert status.logged_in is False
     assert status.app_logged_in is False
 
 
@@ -728,3 +728,18 @@ def test_password_reset_rejects_failed_repository_update(service_fixture: Servic
         "account-1",
         AccountPasswordDigest(password_hash="hashed:NewValid123!", password_salt="new-salt"),
     )
+
+
+@pytest.mark.parametrize("access_token", [None, "invalid-token", "valid-token", "another-account-token"])
+def test_account_login_state_does_not_invalidate_existing_app_session(
+    service_fixture: ServiceFixture,
+    access_token: str | None,
+) -> None:
+    service_fixture.app_sessions.valid = True
+    status = service_fixture.service.get_login_status(
+        app_code="site-code",
+        user_id=None,
+        access_token=access_token,
+        app_session_token="valid-passport",
+    )
+    assert status.app_logged_in is True
