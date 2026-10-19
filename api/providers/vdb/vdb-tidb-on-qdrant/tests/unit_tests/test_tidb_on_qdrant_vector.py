@@ -69,7 +69,9 @@ class TestTidbOnQdrantVectorFullTextSearch:
         keywords = [call.kwargs["scroll_filter"].must[0].match.text for call in calls]
         assert keywords == ["apple", "banana"]
 
-    def test_later_keywords_are_not_starved_by_first_keyword(self, vector, points):
+    def test_later_keywords_are_not_starved_by_first_keyword(
+        self, vector: TidbOnQdrantVector, points: list[rest.Record]
+    ) -> None:
         vector._client.scroll.side_effect = [([points[0], points[1]], None), ([points[2]], None)]
 
         documents = vector.search_by_full_text("common rare", top_k=2)
@@ -77,14 +79,18 @@ class TestTidbOnQdrantVectorFullTextSearch:
         assert [doc.metadata["doc_id"] for doc in documents] == ["1", "3"]
         assert vector._client.scroll.call_count == 2
 
-    def test_overlapping_keyword_matches_are_deduplicated(self, vector, points):
+    def test_overlapping_keyword_matches_are_deduplicated(
+        self, vector: TidbOnQdrantVector, points: list[rest.Record]
+    ) -> None:
         vector._client.scroll.side_effect = [([points[0], points[1]], None), ([points[0], points[2]], None)]
 
         documents = vector.search_by_full_text("common rare", top_k=3)
 
         assert [doc.metadata["doc_id"] for doc in documents] == ["1", "3", "2"]
 
-    def test_stops_after_exhausting_duplicate_keyword_matches(self, vector, points):
+    def test_stops_after_exhausting_duplicate_keyword_matches(
+        self, vector: TidbOnQdrantVector, points: list[rest.Record]
+    ) -> None:
         vector._client.scroll.side_effect = [([points[0], points[1]], None), ([points[0]], None)]
 
         documents = vector.search_by_full_text("common rare", top_k=4)

@@ -448,7 +448,7 @@ class QdrantVector(BaseVector):
 
         seen_ids: set[str | int] = set()
         documents: list[Document] = []
-        keyword_results: list[list[Any]] = []
+        keyword_results: list[list[rest.Record]] = []
 
         # Search each keyword separately and merge results.
         # This ensures each keyword gets its own search, preventing one keyword's
@@ -477,20 +477,22 @@ class QdrantVector(BaseVector):
         # Select round-robin so a common first keyword cannot fill top_k before
         # later keywords contribute their matches.
         result_indexes = [0] * len(keyword_results)
-        while len(documents) < top_k:
+        while True:
             found_result = False
             for index, results in enumerate(keyword_results):
                 while result_indexes[index] < len(results):
                     result = results[result_indexes[index]]
                     result_indexes[index] += 1
-                    if result and result.id not in seen_ids:
+                    if result.id not in seen_ids:
                         seen_ids.add(result.id)
                         document = self._document_from_scored_point(result, Field.CONTENT_KEY, Field.METADATA_KEY)
                         documents.append(document)
                         found_result = True
                         break
                 if len(documents) >= top_k:
-                    return documents
+                    break
+            if len(documents) >= top_k:
+                break
             if not found_result:
                 break
 
