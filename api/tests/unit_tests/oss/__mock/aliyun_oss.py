@@ -1,5 +1,7 @@
 import os
 import posixpath
+from collections.abc import Generator
+from dataclasses import dataclass
 
 import pytest
 from oss2 import Bucket
@@ -16,30 +18,15 @@ from tests.unit_tests.oss.__mock.base import (
 )
 
 
+@dataclass
 class MockResponse:
-    def __init__(self, status, headers, request_id):
-        self.status = status
-        self.headers = headers
-        self.request_id = request_id
+    status: int
+    headers: dict[str, str]
+    request_id: str
 
 
 class MockAliyunOssClass:
-    def __init__(
-        self,
-        auth,
-        endpoint,
-        bucket_name,
-        is_cname=False,
-        session=None,
-        connect_timeout=None,
-        app_name="",
-        enable_crc=True,
-        proxies=None,
-        region=None,
-        cloudbox_id=None,
-        is_path_style=False,
-        is_verify_object_strict=True,
-    ):
+    def __init__(self, *_args: object, **_kwargs: object) -> None:
         self.bucket_name = get_example_bucket()
         self.key = posixpath.join(get_example_folder(), get_example_filename())
         self.content = get_example_data()
@@ -53,31 +40,29 @@ class MockAliyunOssClass:
             "request_id",
         )
 
-    def put_object(self, key, data, headers=None, progress_callback=None):
+    def put_object(self, key: str, data: bytes) -> PutObjectResult:
         assert key == self.key
         assert data == self.content
         return PutObjectResult(self.resp)
 
-    def get_object(self, key, byte_range=None, headers=None, progress_callback=None, process=None, params=None):
+    def get_object(self, key: str) -> GetObjectResult:
         assert key == self.key
 
         response = object_response(self.content)
         response.headers.update(self.resp.headers)
         return GetObjectResult(OssResponse(response))
 
-    def get_object_to_file(
-        self, key, filename, byte_range=None, headers=None, progress_callback=None, process=None, params=None
-    ):
+    def get_object_to_file(self, key: str, filename: str) -> None:
         assert key == self.key
         assert filename == self.filepath
 
-    def object_exists(self, key, headers=None):
+    def object_exists(self, key: str) -> bool:
         assert key == self.key
         return True
 
-    def delete_object(self, key, params=None, headers=None):
+    def delete_object(self, key: str) -> MockResponse:
         assert key == self.key
-        self.resp.headers["x-oss-delete-marker"] = True
+        self.resp.headers["x-oss-delete-marker"] = "true"
         return self.resp
 
 
@@ -85,7 +70,7 @@ MOCK = os.getenv("MOCK_SWITCH", "false").lower() == "true"
 
 
 @pytest.fixture
-def setup_aliyun_oss_mock(monkeypatch: pytest.MonkeyPatch):
+def setup_aliyun_oss_mock(monkeypatch: pytest.MonkeyPatch) -> Generator[None]:
     if MOCK:
         monkeypatch.setattr(Bucket, "__init__", MockAliyunOssClass.__init__)
         monkeypatch.setattr(Bucket, "put_object", MockAliyunOssClass.put_object)
