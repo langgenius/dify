@@ -2,22 +2,19 @@
 
 from collections.abc import Mapping
 from typing import Any
-from urllib.parse import quote, urlsplit
 
 from core.ops.unified_trace.entities import CanonicalTrace
+from dify_trace_aliyun.configuration import AliyunConfigurationError, ingestion_url
 from services.tracing.genai_attributes import attributes
 from services.tracing.otlp_export import build_request, export_http
-from services.tracing.provider_common import endpoint, required
-from services.tracing.provider_dispatch import TraceExportResult
+from services.tracing.provider_dispatch import TraceExportRejectedError, TraceExportResult
 
 
 def export_trace(provider: str, config: Mapping[str, Any], trace: CanonicalTrace) -> TraceExportResult:
-    base = endpoint(required(config, "endpoint"))
-    license_key = quote(required(config, "license_key"), safe="")
-    hostname = (urlsplit(base).hostname or "").removesuffix(".")
-    is_sls = hostname == "log.aliyuncs.com" or hostname.endswith(".log.aliyuncs.com")
-    suffix = "api/v1/traces" if is_sls else "api/otlp/traces"
-    url = f"{base}/adapt_{license_key}/{suffix}"
+    try:
+        url = ingestion_url(config)
+    except AliyunConfigurationError:
+        raise TraceExportRejectedError("Aliyun tracing configuration is invalid") from None
     payload = build_request(
         trace,
         {
