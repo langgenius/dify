@@ -177,7 +177,7 @@ class AgentDefaultFieldsDCMixin(DefaultFieldsDCMixin, kw_only=True):
     )
 
 
-class Agent(AgentDefaultFieldsDCMixin, TypeBase):
+class Agent(AgentDefaultFieldsDCMixin, TypeBase, kw_only=True):
     """Agent Soul and source lineage; ``AgentWorkspaceBinding.id`` identifies each materialized participant."""
 
     __tablename__ = "agents"
@@ -200,8 +200,8 @@ class Agent(AgentDefaultFieldsDCMixin, TypeBase):
         ),
     )
 
-    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)
-    name: Mapped[str] = mapped_column(String(255), nullable=False, default=None)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(LongText, nullable=False, default="")
     role: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     icon_type: Mapped[AgentIconType | None] = mapped_column(
@@ -217,8 +217,8 @@ class Agent(AgentDefaultFieldsDCMixin, TypeBase):
     agent_kind: Mapped[AgentKind] = mapped_column(
         EnumText(AgentKind, length=32), nullable=False, default=AgentKind.DIFY_AGENT
     )
-    scope: Mapped[AgentScope] = mapped_column(EnumText(AgentScope, length=32), nullable=False, default=None)
-    source: Mapped[AgentSource] = mapped_column(EnumText(AgentSource, length=32), nullable=False, default=None)
+    scope: Mapped[AgentScope] = mapped_column(EnumText(AgentScope, length=32), nullable=False)
+    source: Mapped[AgentSource] = mapped_column(EnumText(AgentSource, length=32), nullable=False)
     app_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     backing_app_id: Mapped[str | None] = mapped_column(
         StringUUID,
@@ -281,9 +281,9 @@ class AgentHomeSnapshot(TypeBase, kw_only=True):
         insert_default=lambda: str(uuidv7()),
         default_factory=lambda: str(uuidv7()),
     )
-    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)
-    agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)
-    snapshot_ref: Mapped[str] = mapped_column(String(255), nullable=False, default=None)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    snapshot_ref: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[AgentWorkingResourceStatus] = mapped_column(
         EnumText(AgentWorkingResourceStatus, length=32),
         nullable=False,
@@ -300,7 +300,7 @@ class AgentHomeSnapshot(TypeBase, kw_only=True):
     )
 
 
-class AgentDebugConversation(AgentDefaultFieldsDCMixin, TypeBase):
+class AgentDebugConversation(AgentDefaultFieldsDCMixin, TypeBase, kw_only=True):
     """Current console Conversation pointer for one account and draft surface.
 
     This row owns no Binding or runtime. A Preview Conversation holds its
@@ -322,20 +322,20 @@ class AgentDebugConversation(AgentDefaultFieldsDCMixin, TypeBase):
         Index("agent_debug_conversation_account_idx", "tenant_id", "account_id"),
     )
 
-    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)
-    agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)
-    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)
-    account_id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     draft_type: Mapped[AgentConfigDraftType] = mapped_column(
         EnumText(AgentConfigDraftType, length=32),
         nullable=False,
         default=AgentConfigDraftType.DEBUG_BUILD,
         server_default=sa.text("'debug_build'"),
     )
-    conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)
+    conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
 
-class AgentConfigDraft(AgentDefaultFieldsDCMixin, TypeBase):
+class AgentConfigDraft(AgentDefaultFieldsDCMixin, TypeBase, kw_only=True):
     """Editable Agent Soul draft separated from immutable published snapshots.
 
     A DEBUG_BUILD draft owns its materialized participant through
@@ -356,17 +356,15 @@ class AgentConfigDraft(AgentDefaultFieldsDCMixin, TypeBase):
         Index("agent_config_draft_base_snapshot_idx", "tenant_id", "base_snapshot_id"),
     )
 
-    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)
-    agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)
-    draft_type: Mapped[AgentConfigDraftType] = mapped_column(
-        EnumText(AgentConfigDraftType, length=32), nullable=False, default=None
-    )
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    draft_type: Mapped[AgentConfigDraftType] = mapped_column(EnumText(AgentConfigDraftType, length=32), nullable=False)
     account_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     draft_owner_key: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     base_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     home_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     agent_workspace_binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
-    config_snapshot: Mapped[Any] = mapped_column(JSONModelColumn(AgentSoulConfig), nullable=False, default=None)
+    config_snapshot: Mapped[Any] = mapped_column(JSONModelColumn(AgentSoulConfig), nullable=False)
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
 
@@ -381,7 +379,7 @@ class AgentConfigDraft(AgentDefaultFieldsDCMixin, TypeBase):
         return dict(self.config_snapshot)
 
 
-class AgentConfigSnapshot(AgentDefaultFieldsDCMixin, TypeBase):
+class AgentConfigSnapshot(AgentDefaultFieldsDCMixin, TypeBase, kw_only=True):
     """Immutable Agent Soul snapshot.
 
     ``config_snapshot`` stores ``AgentSoulConfig`` as JSON-backed ``LongText``.
@@ -397,10 +395,10 @@ class AgentConfigSnapshot(AgentDefaultFieldsDCMixin, TypeBase):
         Index("agent_config_snapshot_tenant_created_at_idx", "tenant_id", "created_at"),
     )
 
-    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)
-    agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)
-    version: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=None)
-    config_snapshot: Mapped[Any] = mapped_column(JSONModelColumn(AgentSoulConfig), nullable=False, default=None)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    version: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    config_snapshot: Mapped[Any] = mapped_column(JSONModelColumn(AgentSoulConfig), nullable=False)
     home_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     summary: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     version_note: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
@@ -447,13 +445,13 @@ class AgentConfigRevision(TypeBase, kw_only=True):
         insert_default=lambda: str(uuidv7()),
         default_factory=lambda: str(uuidv7()),
     )
-    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)
-    agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     previous_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
-    current_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=False, default=None)
-    revision: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=None)
+    current_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=False)
+    revision: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     operation: Mapped[AgentConfigRevisionOperation] = mapped_column(
-        EnumText(AgentConfigRevisionOperation, length=64), nullable=False, default=None
+        EnumText(AgentConfigRevisionOperation, length=64), nullable=False
     )
     summary: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     version_note: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
@@ -467,7 +465,7 @@ class AgentConfigRevision(TypeBase, kw_only=True):
     )
 
 
-class WorkflowAgentNodeBinding(AgentDefaultFieldsDCMixin, TypeBase):
+class WorkflowAgentNodeBinding(AgentDefaultFieldsDCMixin, TypeBase, kw_only=True):
     """Binding between one workflow node and one Agent config snapshot.
 
     ``node_job_config`` stores Workflow Node Job JSON only. Agent Soul belongs
@@ -495,21 +493,21 @@ class WorkflowAgentNodeBinding(AgentDefaultFieldsDCMixin, TypeBase):
         ),
     )
 
-    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)
-    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)
-    workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # Tracks which workflow version (draft or a published version string) this
     # binding belongs to. Mirrors ``Workflow.version`` and lets us keep separate
     # rows for the draft workflow and each published copy under the same
     # workflow_id, restoring the stage 1 §5.3 unique key.
-    workflow_version: Mapped[str] = mapped_column(String(255), nullable=False, default=None)
-    node_id: Mapped[str] = mapped_column(String(255), nullable=False, default=None)
+    workflow_version: Mapped[str] = mapped_column(String(255), nullable=False)
+    node_id: Mapped[str] = mapped_column(String(255), nullable=False)
     binding_type: Mapped[WorkflowAgentBindingType] = mapped_column(
-        EnumText(WorkflowAgentBindingType, length=32), nullable=False, default=None
+        EnumText(WorkflowAgentBindingType, length=32), nullable=False
     )
     agent_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     current_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
-    node_job_config: Mapped[Any] = mapped_column(JSONModelColumn(WorkflowNodeJobConfig), nullable=False, default=None)
+    node_job_config: Mapped[Any] = mapped_column(JSONModelColumn(WorkflowNodeJobConfig), nullable=False)
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
 
@@ -524,7 +522,7 @@ class WorkflowAgentNodeBinding(AgentDefaultFieldsDCMixin, TypeBase):
         return dict(self.node_job_config)
 
 
-class AgentWorkspace(AgentDefaultFieldsDCMixin, TypeBase):
+class AgentWorkspace(AgentDefaultFieldsDCMixin, TypeBase, kw_only=True):
     """Mutable Workspace owned by one product scope, independent of Agents."""
 
     __tablename__ = "agent_workspaces"
@@ -544,14 +542,14 @@ class AgentWorkspace(AgentDefaultFieldsDCMixin, TypeBase):
         Index("agent_workspace_status_retired_idx", "status", "retired_at"),
     )
 
-    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)
-    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     owner_type: Mapped[AgentWorkspaceOwnerType] = mapped_column(
-        EnumText(AgentWorkspaceOwnerType, length=32), nullable=False, default=None
+        EnumText(AgentWorkspaceOwnerType, length=32), nullable=False
     )
-    owner_id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)
-    owner_scope_key: Mapped[str] = mapped_column(String(255), nullable=False, default=None)
-    backend_workspace_ref: Mapped[str] = mapped_column(String(255), nullable=False, default=None)
+    owner_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    owner_scope_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    backend_workspace_ref: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[AgentWorkingResourceStatus] = mapped_column(
         EnumText(AgentWorkingResourceStatus, length=32),
         nullable=False,
@@ -562,7 +560,7 @@ class AgentWorkspace(AgentDefaultFieldsDCMixin, TypeBase):
     retired_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
 
 
-class AgentWorkspaceBinding(AgentDefaultFieldsDCMixin, TypeBase):
+class AgentWorkspaceBinding(AgentDefaultFieldsDCMixin, TypeBase, kw_only=True):
     """One materialized Agent participant and session attached to a Workspace.
 
     All resource IDs are logical associations rather than database foreign
@@ -579,16 +577,16 @@ class AgentWorkspaceBinding(AgentDefaultFieldsDCMixin, TypeBase):
         Index("agent_workspace_binding_status_retired_idx", "status", "retired_at"),
     )
 
-    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)
-    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)
-    workspace_id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)
-    agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    workspace_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     base_home_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
-    agent_config_version_id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)
+    agent_config_version_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     agent_config_version_kind: Mapped[AgentConfigVersionKind] = mapped_column(
-        EnumText(AgentConfigVersionKind, length=32), nullable=False, default=None
+        EnumText(AgentConfigVersionKind, length=32), nullable=False
     )
-    backend_binding_ref: Mapped[str] = mapped_column(String(255), nullable=False, default=None)
+    backend_binding_ref: Mapped[str] = mapped_column(String(255), nullable=False)
     session_snapshot: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     status: Mapped[AgentWorkingResourceStatus] = mapped_column(
         EnumText(AgentWorkingResourceStatus, length=32),
