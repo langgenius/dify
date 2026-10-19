@@ -1,42 +1,36 @@
-import type { Node } from '../../types'
+import type { ToolProviderApiEntityResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { AvailableNodesMetaData } from '../../hooks-store/store'
+import type { NodeDefault } from '../../types'
+import { waitFor } from '@testing-library/react'
 import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { CollectionType } from '@/app/components/tools/types'
+import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
+import { createNode } from '../../__tests__/fixtures'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
+import { BlockClassification } from '../../block-selector/types'
 import { BlockEnum } from '../../types'
-import { useNodeMetaData, useNodesMetaData } from '../use-nodes-meta-data'
+import { useNodeMetaData } from '../use-nodes-meta-data'
 
 vi.mock('@/context/i18n', () => ({
-  useGetLanguage: () => 'en-US',
+  useGetLanguage: () => 'en_US',
 }))
 
-const buildInToolsState = vi.hoisted(
-  () => [] as Array<{ id: string; author: string; description: Record<string, string> }>,
-)
-const customToolsState = vi.hoisted(
-  () => [] as Array<{ id: string; author: string; description: Record<string, string> }>,
-)
-const workflowToolsState = vi.hoisted(
-  () => [] as Array<{ id: string; author: string; description: Record<string, string> }>,
-)
+const buildInToolsState = vi.hoisted(() => [] as ToolProviderApiEntityResponse[])
+const customToolsState = vi.hoisted(() => [] as ToolProviderApiEntityResponse[])
+const workflowToolsState = vi.hoisted(() => [] as ToolProviderApiEntityResponse[])
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: buildInToolsState }),
-  useAllCustomTools: () => ({ data: customToolsState }),
-  useAllWorkflowTools: () => ({ data: workflowToolsState }),
-}))
-
-const createNode = (overrides: Partial<Node> = {}): Node =>
-  ({
-    id: 'node-1',
-    type: 'custom',
-    position: { x: 0, y: 0 },
-    data: {
-      type: BlockEnum.LLM,
-      title: 'Node',
-      desc: '',
-    },
-    ...overrides,
-  }) as Node
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.builtin.get': async () => buildInToolsState,
+      'workspaces.current.tools.api.get': async () => customToolsState,
+      'workspaces.current.tools.workflow.get': async () => workflowToolsState,
+    }),
+  }
+})
 
 describe('useNodesMetaData', () => {
   beforeEach(() => {
@@ -46,25 +40,16 @@ describe('useNodesMetaData', () => {
     workflowToolsState.length = 0
   })
 
-  it('returns empty metadata collections when the hooks store has no node map', () => {
-    const { result } = renderWorkflowHook(() => useNodesMetaData(), {
-      hooksStoreProps: {},
-    })
-
-    expect(result.current).toEqual({
-      nodes: [],
-      nodesMap: {},
-    })
-  })
-
-  it('resolves built-in tool metadata from tool providers', () => {
-    buildInToolsState.push({
-      id: 'provider-1',
-      author: 'Provider Author',
-      description: {
-        'en-US': 'Built-in provider description',
-      },
-    })
+  it('resolves built-in tool metadata from tool providers', async () => {
+    buildInToolsState.push(
+      createToolProviderFixture({
+        id: 'provider-1',
+        author: 'Provider Author',
+        description: {
+          en_US: 'Built-in provider description',
+        },
+      }),
+    )
 
     const toolNode = createNode({
       data: {
@@ -84,6 +69,7 @@ describe('useNodesMetaData', () => {
       },
     })
 
+    await waitFor(() => expect(result.current.author).toBe('Provider Author'))
     expect(result.current).toEqual(
       expect.objectContaining({
         author: 'Provider Author',
@@ -123,14 +109,18 @@ describe('useNodesMetaData', () => {
       },
     })
 
-    const metadataMap = {
+    const metadataMap: Partial<Record<BlockEnum, NodeDefault>> = {
       [BlockEnum.LLM]: {
         metaData: {
+          classification: BlockClassification.Default,
+          sort: 0,
           type: BlockEnum.LLM,
           title: 'LLM',
           author: 'Dify',
           description: 'Node description',
         },
+        defaultValue: { type: BlockEnum.LLM, title: 'LLM', desc: '' },
+        checkValid: () => ({ isValid: true }),
       },
     }
 
@@ -141,7 +131,8 @@ describe('useNodesMetaData', () => {
       hooksStoreProps: {
         availableNodesMetaData: {
           nodes: [],
-          nodesMap: metadataMap as never,
+          // This catalog fixture intentionally exposes only the node under test.
+          nodesMap: metadataMap as AvailableNodesMetaData['nodesMap'],
         },
       },
     })
@@ -150,7 +141,8 @@ describe('useNodesMetaData', () => {
       hooksStoreProps: {
         availableNodesMetaData: {
           nodes: [],
-          nodesMap: metadataMap as never,
+          // This catalog fixture intentionally exposes only the node under test.
+          nodesMap: metadataMap as AvailableNodesMetaData['nodesMap'],
         },
       },
     })

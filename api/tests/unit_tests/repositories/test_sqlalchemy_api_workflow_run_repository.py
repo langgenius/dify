@@ -4,6 +4,7 @@ import logging
 from datetime import UTC, datetime
 from decimal import Decimal
 from unittest.mock import patch
+from uuid import uuid4
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
@@ -17,6 +18,7 @@ from models.enums import ConversationFromSource, CreatorUserRole, WorkflowRunTri
 from models.human_input import HumanInputForm, HumanInputFormRecipient
 from models.human_input_entities import FormDefinition, ParagraphInputConfig, UserActionConfig
 from models.workflow import WorkflowPause, WorkflowPauseReason, WorkflowRun
+from repositories.api_workflow_run_repository import AppWorkflowRunStats
 from repositories.sqlalchemy_api_workflow_run_repository import (
     DifyAPISQLAlchemyWorkflowRunRepository,
     WorkflowRunMessageRef,
@@ -322,3 +324,71 @@ def test_delete_pause_model_deletes_record_when_state_object_delete_fails(
     assert "workflow_run_id=run-1" in caplog.text
     assert "object_key=workflow-state.json" in caplog.text
     assert caplog.records[-1].exc_info is not None
+
+
+def _app_run(
+    *,
+    tenant_id: str,
+    app_id: str,
+    status: WorkflowExecutionStatus,
+    created_at: datetime,
+    triggered_from: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.APP_RUN,
+) -> WorkflowRun:
+    run = _workflow_run(run_id=str(uuid4()), tenant_id=tenant_id, status=status)
+    run.app_id = app_id
+    run.triggered_from = triggered_from
+    run.created_at = created_at
+    return run
+
+
+def test_app_run_stats_scope_runs_by_app_tenant_source_and_window(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    since = datetime(2026, 10, 14, 12)
+    sqlite_session.add_all(
+        [
+            _app_run(tenant_id="t-1", app_id="a-1", status=WorkflowExecutionStatus.SUCCEEDED, created_at=since),
+            _app_run(
+                tenant_id="t-1",
+                app_id="a-1",
+                status=WorkflowExecutionStatus.FAILED,
+                created_at=datetime(2026, 10, 14, 13),
+                triggered_from=WorkflowRunTriggeredFrom.WEBHOOK,
+            ),
+            # Before the window: neither counted nor newer than a-1's windowed runs.
+            _app_run(
+                tenant_id="t-1", app_id="a-1", status=WorkflowExecutionStatus.FAILED, created_at=datetime(2026, 1, 1)
+            ),
+            # Before the window: only the last-run lookup sees it.
+            _app_run(
+                tenant_id="t-1", app_id="a-2", status=WorkflowExecutionStatus.SUCCEEDED, created_at=datetime(2026, 1, 1)
+            ),
+            # Excluded source, even though it is the newest run.
+            _app_run(
+                tenant_id="t-1",
+                app_id="a-2",
+                status=WorkflowExecutionStatus.FAILED,
+                created_at=datetime(2026, 10, 15),
+                triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
+            ),
+            # Another tenant's run for a requested app id is not that app's run.
+            _app_run(
+                tenant_id="t-2", app_id="a-1", status=WorkflowExecutionStatus.FAILED, created_at=datetime(2026, 10, 15)
+            ),
+        ]
+    )
+    sqlite_session.commit()
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=sqlite_session_factory)
+    apps = {"a-1": "t-1", "a-2": "t-1"}
+    sources = [WorkflowRunTriggeredFrom.APP_RUN, WorkflowRunTriggeredFrom.WEBHOOK]
+
+    assert repository.get_stats_by_app_ids(apps, sources, since) == {
+        "a-1": AppWorkflowRunStats(
+            status_counts={WorkflowExecutionStatus.SUCCEEDED: 1, WorkflowExecutionStatus.FAILED: 1},
+            last_created_at=datetime(2026, 10, 14, 13),
+        ),
+        # Only runs before the window: no counts, but still the newest run time.
+        "a-2": AppWorkflowRunStats(status_counts={}, last_created_at=datetime(2026, 1, 1)),
+    }
+    assert repository.get_stats_by_app_ids({}, sources, since) == {}

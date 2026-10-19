@@ -287,7 +287,7 @@ class WeaviateVector(BaseVector):
 
                 self._ensure_properties()
                 redis_client.set(cache_key, 1, ex=3600)
-            except Exception as e:
+            except Exception:
                 logger.exception("Error creating collection %s", self._collection_name)
                 raise
 
@@ -372,7 +372,7 @@ class WeaviateVector(BaseVector):
         metadatas = [d.metadata for d in documents]
 
         col = self._client.collections.use(self._collection_name)
-        objs: list[DataObject] = []
+        objs: list[DataObject[dict[str, Any], None]] = []
         ids_out: list[str] = []
 
         for i, text in enumerate(texts):
@@ -531,10 +531,7 @@ class WeaviateVector(BaseVector):
         for obj in res.objects:
             properties = dict(obj.properties or {})
             text = properties.pop(Field.TEXT_KEY.value, "")
-            if obj.metadata and obj.metadata.distance is not None:
-                distance = obj.metadata.distance
-            else:
-                distance = 1.0
+            distance = obj.metadata.distance if obj.metadata and obj.metadata.distance is not None else 1.0
             score = 1.0 - distance
 
             if score > score_threshold:

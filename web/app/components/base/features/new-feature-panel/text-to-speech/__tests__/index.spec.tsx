@@ -1,187 +1,72 @@
-import type { ReactNode } from 'react'
 import type { Features } from '../../../types'
-import type { OnFeaturesChange } from '@/app/components/base/features/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { TtsAutoPlay } from '@/types/app'
 import { FeaturesProvider } from '../../../context'
 import TextToSpeech from '../index'
 
-vi.mock('@/i18n/language', () => ({
-  languages: [
-    { value: 'en-US', name: 'English', example: 'Hello world' },
-    { value: 'zh-Hans', name: '中文', example: '你好' },
-  ],
-}))
+vi.mock('@/next/navigation', () => ({ useParams: () => ({}) }))
+// Audio playback is owned by AudioBtn; this suite exercises feature configuration.
+vi.mock('@/app/components/base/audio-btn', () => ({ AudioBtn: () => null }))
 
-vi.mock('../voice-settings', () => ({
-  default: ({
-    open,
-    onOpen,
-    children,
-  }: {
-    open: boolean
-    onOpen: (open: boolean) => void
-    children: ReactNode
-  }) => (
-    <div data-testid="voice-settings" data-open={open ? 'true' : 'false'}>
-      <button data-testid="open-voice-settings" onClick={() => onOpen(true)}>
-        open-voice-settings
-      </button>
-      {children}
-    </div>
-  ),
-}))
-
-const defaultFeatures: Features = {
-  moreLikeThis: { enabled: false },
-  opening: { enabled: false },
-  suggested: { enabled: false },
-  text2speech: { enabled: false },
-  speech2text: { enabled: false },
-  citation: { enabled: false },
-  moderation: { enabled: false },
-  file: { enabled: false },
-  annotationReply: { enabled: false },
-}
-
-const renderWithProvider = (
-  props: { disabled?: boolean; onChange?: OnFeaturesChange } = {},
-  featureOverrides?: Partial<Features>,
-) => {
-  const features = { ...defaultFeatures, ...featureOverrides }
-  return render(
-    <FeaturesProvider features={features}>
-      <TextToSpeech disabled={props.disabled ?? false} onChange={props.onChange} />
+const renderFeature = (
+  text2speech: Features['text2speech'] = { enabled: false },
+  disabled = false,
+  onChange?: () => void,
+) =>
+  render(
+    <FeaturesProvider features={{ text2speech }}>
+      <TextToSpeech disabled={disabled} onChange={onChange} />
     </FeaturesProvider>,
   )
-}
 
 describe('TextToSpeech', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should render the text-to-speech title', () => {
-    renderWithProvider()
-
-    expect(screen.getByText(/feature\.textToSpeech\.title/)).toBeInTheDocument()
-  })
-
-  it('should render description when disabled', () => {
-    renderWithProvider()
-
-    expect(screen.getByText(/feature\.textToSpeech\.description/)).toBeInTheDocument()
-  })
-
-  it('should render a switch toggle', () => {
-    renderWithProvider()
-
-    expect(screen.getByRole('switch')).toBeInTheDocument()
-  })
-
-  it('should call onChange when toggled', () => {
+  it('updates the feature store and retains voice preferences across disable and enable', async () => {
+    const user = userEvent.setup({ skipHover: true })
     const onChange = vi.fn()
-    renderWithProvider({ onChange })
-
-    fireEvent.click(screen.getByRole('switch'))
-
-    expect(onChange).toHaveBeenCalled()
-  })
-
-  it('should toggle without onChange callback', () => {
-    renderWithProvider()
-    fireEvent.click(screen.getByRole('switch'))
-    expect(screen.getByRole('switch')).toBeInTheDocument()
-  })
-
-  it('should show language and voice info when enabled and not hovering', () => {
-    renderWithProvider(
-      {},
-      {
-        text2speech: { enabled: true, language: 'en-US', voice: 'alloy' },
-      },
+    renderFeature(
+      { enabled: true, language: 'en-US', voice: 'alloy', autoPlay: TtsAutoPlay.enabled },
+      false,
+      onChange,
     )
-
-    expect(screen.getByText('English')).toBeInTheDocument()
     expect(screen.getByText('alloy')).toBeInTheDocument()
+    expect(screen.getByText(/voice.voiceSettings.autoPlayEnabled/)).toBeInTheDocument()
+    await user.click(screen.getByRole('switch'))
+    expect(screen.getByRole('switch')).not.toBeChecked()
+    expect(screen.getByText(/feature.textToSpeech.description/)).toBeInTheDocument()
+    await user.click(screen.getByRole('switch'))
+    await user.unhover(screen.getByRole('switch'))
+    expect(screen.getByRole('switch')).toBeChecked()
+    expect(screen.getByText('alloy')).toBeInTheDocument()
+    expect(onChange).toHaveBeenCalledTimes(2)
   })
 
-  it('should show default display text when voice is not set', () => {
-    renderWithProvider(
-      {},
-      {
-        text2speech: { enabled: true, language: 'en-US' },
-      },
-    )
-
-    expect(screen.getByText(/voice\.defaultDisplay/)).toBeInTheDocument()
+  it('opens real voice settings and persists autoplay changes', async () => {
+    const user = userEvent.setup({ skipHover: true })
+    renderFeature({ enabled: true, language: 'en-US' })
+    expect(screen.getByText(/voice.defaultDisplay/)).toBeInTheDocument()
+    await user.hover(screen.getByText(/feature.textToSpeech.title/))
+    await user.click(screen.getByRole('button', { name: /voice.voiceSettings.title/ }))
+    const dialog = await screen.findByRole('dialog')
+    const switches = screen.getAllByRole('switch')
+    await user.click(switches.find((item) => dialog.contains(item))!)
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await user.hover(screen.getByText(/feature.textToSpeech.title/))
+    await user.click(screen.getByRole('button', { name: /voice.voiceSettings.title/ }))
+    expect(within(await screen.findByRole('dialog')).getByRole('switch')).toBeChecked()
   })
 
-  it('should show voice settings button when hovering', () => {
-    renderWithProvider(
-      {},
-      {
-        text2speech: { enabled: true },
-      },
-    )
-
-    // Simulate mouse enter on the feature card
-    const card = screen.getByText(/feature\.textToSpeech\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
-
-    expect(screen.getByText(/voice\.voiceSettings\.title/)).toBeInTheDocument()
-  })
-
-  it('should hide voice settings button after mouse leave', () => {
-    renderWithProvider(
-      {},
-      {
-        text2speech: { enabled: true },
-      },
-    )
-
-    const card = screen.getByText(/feature\.textToSpeech\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
-    expect(screen.getByText(/voice\.voiceSettings\.title/)).toBeInTheDocument()
-
-    fireEvent.mouseLeave(card)
-    expect(screen.queryByText(/voice\.voiceSettings\.title/)).not.toBeInTheDocument()
-  })
-
-  it('should show autoPlay enabled text when autoPlay is enabled', () => {
-    renderWithProvider(
-      {},
-      {
-        text2speech: { enabled: true, language: 'en-US', autoPlay: TtsAutoPlay.enabled },
-      },
-    )
-
-    expect(screen.getByText(/voice\.voiceSettings\.autoPlayEnabled/)).toBeInTheDocument()
-  })
-
-  it('should show autoPlay disabled text when autoPlay is not enabled', () => {
-    renderWithProvider(
-      {},
-      {
-        text2speech: { enabled: true, language: 'en-US' },
-      },
-    )
-
-    expect(screen.getByText(/voice\.voiceSettings\.autoPlayDisabled/)).toBeInTheDocument()
-  })
-
-  it('should pass open false to voice settings when disabled and modal is opened', () => {
-    renderWithProvider(
-      { disabled: true },
-      {
-        text2speech: { enabled: true },
-      },
-    )
-
-    const card = screen.getByText(/feature\.textToSpeech\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
-    fireEvent.click(screen.getByTestId('open-voice-settings'))
-
-    expect(screen.getByTestId('voice-settings')).toHaveAttribute('data-open', 'false')
+  it('prevents toggling or opening voice settings when disabled', async () => {
+    const user = userEvent.setup({ skipHover: true })
+    const onChange = vi.fn()
+    renderFeature({ enabled: true, language: 'en-US' }, true, onChange)
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
+    await user.hover(screen.getByText(/feature.textToSpeech.title/))
+    const settings = screen.getByRole('button', { name: /voice.voiceSettings.title/ })
+    expect(settings).toBeDisabled()
+    await user.click(settings)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(onChange).not.toHaveBeenCalled()
   })
 })

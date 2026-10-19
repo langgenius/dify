@@ -1,38 +1,54 @@
 'use client'
-import type { AnnotationItem } from './type'
+import type { Annotation } from '@dify/contracts/api/console/apps/types.gen'
+import type { AlertDialogActions } from '@langgenius/dify-ui/alert-dialog'
+import { AlertDialog, AlertDialogTrigger } from '@langgenius/dify-ui/alert-dialog'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useMutation } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import useTimestamp from '@/hooks/use-timestamp'
+import { consoleQuery } from '@/service/console'
 import BatchAction from './batch-action'
-import RemoveAnnotationConfirmModal from './remove-annotation-confirm-modal'
+import { RemoveAnnotationConfirmContent } from './remove-annotation-confirm-modal'
 
 type Props = Readonly<{
-  list: AnnotationItem[]
-  onView: (item: AnnotationItem) => void
-  onRemove: (id: string) => void
+  appId: string
+  list: Annotation[]
+  onView: (item: Annotation) => void
+  onRemoved: () => void
   selectedIds: string[]
   onSelectedIdsChange: (selectedIds: string[]) => void
   onBatchDelete: () => Promise<void>
 }>
 
 type AnnotationTableRowProps = {
-  item: AnnotationItem
+  appId: string
+  item: Annotation
   formattedCreatedAt: string
-  onView: (item: AnnotationItem) => void
-  onRemoveClick: (id: string) => void
+  onView: (item: Annotation) => void
+  onRemoved: () => void
 }
 
 function AnnotationTableRow({
+  appId,
   item,
   formattedCreatedAt,
   onView,
-  onRemoveClick,
+  onRemoved,
 }: AnnotationTableRowProps) {
   const { t } = useTranslation(['appDebug'])
   const questionId = React.useId()
+  const removeConfirmActionsRef = React.useRef<AlertDialogActions>(null)
+  const removeMutation = useMutation(
+    consoleQuery.apps.byAppId.annotations.byAnnotationId.delete.mutationOptions({
+      onSuccess: () => {
+        removeConfirmActionsRef.current?.close()
+        onRemoved()
+      },
+    }),
+  )
 
   return (
     <tr
@@ -44,10 +60,10 @@ function AnnotationTableRow({
           <Checkbox className="shrink-0" value={item.id} aria-labelledby={questionId} />
         </div>
       </td>
-      <td className="max-w-62.5 truncate p-3 pr-2" title={item.question}>
+      <td className="max-w-62.5 truncate p-3 pr-2" title={item.question ?? undefined}>
         <span id={questionId}>{item.question}</span>
       </td>
-      <td className="max-w-62.5 truncate p-3 pr-2" title={item.answer}>
+      <td className="max-w-62.5 truncate p-3 pr-2" title={item.answer ?? undefined}>
         {item.answer}
       </td>
       <td className="p-3 pr-2">{formattedCreatedAt}</td>
@@ -60,12 +76,29 @@ function AnnotationTableRow({
           >
             <span aria-hidden className="i-ri-edit-line size-4" />
           </IconButton>
-          <IconButton
-            aria-label={t(($) => $['feature.annotation.remove'], { ns: 'appDebug' })}
-            onClick={() => onRemoveClick(item.id)}
+          <AlertDialog
+            actionsRef={removeConfirmActionsRef}
+            onOpenChange={(open, details) => {
+              if (!open && removeMutation.isPending && details.reason !== 'imperative-action')
+                details.cancel()
+            }}
           >
-            <span aria-hidden className="i-ri-delete-bin-line size-4" />
-          </IconButton>
+            <AlertDialogTrigger
+              render={
+                <IconButton
+                  aria-label={t(($) => $['feature.annotation.remove'], { ns: 'appDebug' })}
+                >
+                  <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                </IconButton>
+              }
+            />
+            <RemoveAnnotationConfirmContent
+              isPending={removeMutation.isPending}
+              onRemove={() =>
+                removeMutation.mutate({ params: { app_id: appId, annotation_id: item.id } })
+              }
+            />
+          </AlertDialog>
         </div>
       </td>
     </tr>
@@ -73,17 +106,16 @@ function AnnotationTableRow({
 }
 
 export function List({
+  appId,
   list,
   onView,
-  onRemove,
+  onRemoved,
   selectedIds,
   onSelectedIdsChange,
   onBatchDelete,
 }: Props) {
   const { t } = useTranslation(['appAnnotation', 'appLog', 'common'])
   const { formatTime } = useTimestamp()
-  const [currId, setCurrId] = React.useState<string | null>(null)
-  const [showConfirmDelete, setShowConfirmDelete] = React.useState(false)
   const annotationIds = list.map((item) => item.id)
 
   return (
@@ -128,28 +160,22 @@ export function List({
                 <AnnotationTableRow
                   key={item.id}
                   item={item}
-                  formattedCreatedAt={formatTime(
-                    item.created_at,
-                    t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
-                  )}
+                  formattedCreatedAt={
+                    item.created_at
+                      ? formatTime(
+                          item.created_at,
+                          t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
+                        )
+                      : '-'
+                  }
+                  appId={appId}
                   onView={onView}
-                  onRemoveClick={(id) => {
-                    setCurrId(id)
-                    setShowConfirmDelete(true)
-                  }}
+                  onRemoved={onRemoved}
                 />
               ))}
             </tbody>
           </table>
         </CheckboxGroup>
-        <RemoveAnnotationConfirmModal
-          isShow={showConfirmDelete}
-          onHide={() => setShowConfirmDelete(false)}
-          onRemove={() => {
-            onRemove(currId as string)
-            setShowConfirmDelete(false)
-          }}
-        />
       </div>
       {selectedIds.length > 0 && (
         <BatchAction

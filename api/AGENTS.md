@@ -25,6 +25,11 @@ Run direct Python commands through `uv run --project api`. Docker-backed integra
 - Use existing Celery task and queue owners for asynchronous work; do not route unrelated jobs through workflow-specific services.
 - Celery tasks that may be retried or redelivered must keep side effects idempotent and log affected resource identifiers.
 
+New SQLAlchemy models must inherit from `models.base.TypeBase`. The ast-grep
+guard rejects new `Base` subclasses. Existing `Base` subclasses may be edited
+or migrated without adding more legacy inheritance. `make lint` checks local
+changes, and CI checks the PR against its target revision.
+
 ## Typing Best Practises
 
 - Treat nullable types (`T | None`) strictly as union types; document the semantic meaning for each branch.
