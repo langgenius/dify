@@ -3374,27 +3374,52 @@ def test_pptx_extraction_ignores_unreferenced_external_and_missing_slide_parts()
     assert SkillManagementService._extract_pptx_text(payload, max_chars=1000) == "keep"
 
 
-def test_build_assistant_attachment_context_extracts_rtf_text() -> None:
+@pytest.mark.parametrize(
+    ("payload", "expected"),
+    [
+        pytest.param(
+            rb"{\rtf1\ansi Skill Builder\par reads RTF notes.}", "Skill Builder\nreads RTF notes.", id="ascii"
+        ),
+        pytest.param(rb"{\rtf1\ansi \u945? followed}", "α followed", id="default-uc1"),
+        pytest.param(rb"{\rtf1\ansi\uc0\u20320\u22909!}", "你好!", id="uc0-adjacent-unicode"),
+        pytest.param(rb"{\rtf1\ansi\uc2\u945?? followed}", "α followed", id="uc2-plain-fallback"),
+        pytest.param(rb"{\rtf1\ansi\uc2\u945\'3f\'3f followed}", "α followed", id="uc2-hex-fallback"),
+        pytest.param(rb"{\rtf1\ansi\u945\{ followed}", "α followed", id="escaped-brace-fallback"),
+        pytest.param(rb"{\rtf1\ansi\u945\tab followed}", "αfollowed", id="control-word-fallback"),
+        pytest.param(rb"{\rtf1\ansi\uc2\u945??{\uc0\u946!}\u947?? end}", "αβ!γ end", id="group-scope"),
+        pytest.param(rb"{\rtf1\ansi\uc2{\u945?}\u946?? end}", "αβ end", id="group-ends-fallback"),
+        pytest.param(b"{\\rtf1\\ansi\\uc2\\u945?\r\n? followed}", "α followed", id="newline-in-fallback"),
+        pytest.param(rb"{\rtf1\ansi\uc0\u-255!}", "！!", id="signed-unicode"),
+        pytest.param(rb"{\rtf1\ansi\u945\bin3 abc followed}", "α followed", id="binary-fallback"),
+        pytest.param(rb"{\rtf1\ansi{\*\hidden\uc0 discarded}\u945? kept}", "α kept", id="ignored-group"),
+        pytest.param(b"{\\rtf1\\u945\\bin2 \xc3\xa9OK}", "αOK", id="utf8-binary-fallback"),
+        pytest.param(b"{\\rtf1\\u945\\bin2 \xc3\xa9OK{\\*\\hidden \xff}}", "αOK", id="latin1-binary-fallback"),
+        pytest.param(b"{\\rtf1\\u945\\bin4 \xf0\x9f\x98\x80OK}", "αOK", id="utf8-four-byte-binary-fallback"),
+        pytest.param(b"{\\rtf1\\u945\\bin6 \xc3\xa9\xf0\x9f\x98\x80OK}", "αOK", id="utf8-mixed-binary-fallback"),
+        pytest.param("{\\rtf1 Café 中文}".encode(), "Café 中文", id="utf8-literal-text"),
+        pytest.param(b"{\\rtf1 Caf\xe9}", "Café", id="latin1-literal-text"),
+        pytest.param(rb"{\rtf1\ansi caf\'e9}", "café", id="hex-literal-text"),
+        pytest.param(rb"{\rtf1\ansi \{notes\} \\ path}", r"{notes} \ path", id="escaped-literal-text"),
+    ],
+)
+def test_build_assistant_attachment_context_extracts_rtf_text(payload: bytes, expected: str) -> None:
     attachment = SkillAssistAttachmentPayload(
         tool_file_id="rtf-file-1",
         name="notes.rtf",
         mime_type="application/rtf",
-        size=74,
+        size=len(payload),
     )
 
     with patch(
         "services.skill_management_service.SkillManagementService._load_assistant_tool_file_bytes",
-        return_value=b"{\\rtf1\\ansi Skill Builder\\par reads RTF notes.}",
+        return_value=payload,
     ):
         context = SkillManagementService._build_assistant_attachment_context(
             tenant_id=TENANT,
             attachments=[attachment],
         )
 
-    assert "--- notes.rtf" in context
-    assert "Skill Builder" in context
-    assert "reads RTF notes." in context
-    assert "Binary attachment available" not in context
+    assert context == f"--- notes.rtf (application/rtf, {len(payload)} bytes) ---\n{expected}"
 
 
 def test_build_assistant_image_contents_encodes_images_for_vision_models() -> None:
