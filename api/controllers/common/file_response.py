@@ -103,6 +103,11 @@ def requested_byte_range(mime_type: str | None, size: int, range_media_types: fr
     range_header = request.headers.get("Range")
     if not range_header:
         return None
+    # These responses carry no ETag or Last-Modified validator, so an
+    # If-Range precondition can never match; RFC 9110 section 13.1.5 then
+    # requires ignoring the Range and sending the complete representation.
+    if request.headers.get("If-Range"):
+        return None
     parsed = parse_range_header(range_header)
     if parsed is None or parsed.units != "bytes" or len(parsed.ranges) != 1:
         return None
