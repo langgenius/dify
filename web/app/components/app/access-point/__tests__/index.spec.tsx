@@ -166,6 +166,33 @@ describe('AccessPoint', () => {
     )
   })
 
+  it('associates the selected environment tab with its content when navigating by keyboard', async () => {
+    const user = userEvent.setup()
+    const { onUrlUpdate } = renderAccessPoint()
+    const builtInTab = screen.getByRole('tab', { name: 'Built-in' })
+    const builtInPanel = screen.getByRole('tabpanel', { name: 'Built-in' })
+
+    expect(builtInTab).toHaveAttribute('aria-controls', builtInPanel.id)
+    await user.tab()
+    expect(builtInTab).toHaveFocus()
+    await user.keyboard('{ArrowRight}')
+
+    const stagingTab = screen.getByRole('tab', { name: 'Staging' })
+    expect(stagingTab).toHaveFocus()
+    expect(builtInTab).toHaveAttribute('aria-selected', 'true')
+    expect(stagingTab).toHaveAttribute('aria-selected', 'false')
+    expect(onUrlUpdate).not.toHaveBeenCalled()
+    await user.keyboard('{Enter}')
+
+    const stagingPanel = await screen.findByRole('tabpanel', { name: 'Staging' })
+    expect(stagingTab).toHaveFocus()
+    expect(stagingTab).toHaveAttribute('aria-selected', 'true')
+    expect(stagingTab).toHaveAttribute('aria-controls', stagingPanel.id)
+    expect(onUrlUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ queryString: '?environment=staging' }),
+    )
+  })
+
   it('selects the target environment and highlights its access point from the URL', () => {
     renderAccessPoint({
       searchParams: '?environment=canary&accessPoint=serviceApi',
@@ -248,6 +275,8 @@ describe('AccessPoint', () => {
     renderAccessPoint()
 
     expect(screen.queryByRole('tab')).not.toBeInTheDocument()
+    expect(screen.queryByRole('tabpanel')).not.toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'common.appMenus.accessPoint' })).toBeInTheDocument()
     expect(accessPointMocks.builtIn).toHaveBeenCalledTimes(1)
     expect(accessPointMocks.deployed).not.toHaveBeenCalled()
   })
