@@ -12,7 +12,6 @@ import {
   getFormattedChatList,
   getThreadChatItems,
   isNearTopLoadMore,
-  mergePaginatedChatItems,
   mergeUniqueChatItems,
 } from '../list-utils'
 
@@ -138,7 +137,7 @@ describe('log list utils', () => {
     )
   })
 
-  it('should merge unique chat items and handle pagination retries', () => {
+  it('should prepend new chat items without duplicating existing messages', () => {
     const prevItems = createChatItems()
     const merged = mergeUniqueChatItems(prevItems, [
       { id: 'answer-2', content: 'reply', isAnswer: true } as IChatItem,
@@ -152,30 +151,6 @@ describe('log list utils', () => {
       'question-2',
       'answer-2',
     ])
-
-    expect(
-      mergePaginatedChatItems({
-        maxRetryCount: 3,
-        newItems: [],
-        prevItems,
-        retryCount: 1,
-      }),
-    ).toEqual({
-      items: prevItems,
-      retryCount: 2,
-    })
-
-    expect(
-      mergePaginatedChatItems({
-        maxRetryCount: 3,
-        newItems: [],
-        prevItems,
-        retryCount: 3,
-      }),
-    ).toEqual({
-      items: prevItems,
-      retryCount: 0,
-    })
   })
 
   it('should build thread state and support switching siblings', () => {
