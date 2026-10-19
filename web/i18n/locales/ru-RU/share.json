@@ -26,6 +26,7 @@
   "connections.accounts.title": "Аккаунты {{provider}}",
   "connections.apiKeys.invalid": "Недействительный ключ API",
   "connections.apiKeys.newKeyPlaceholder": "Введите новый ключ API",
+  "connections.apiKeys.remove": "Удалить ключ API",
   "connections.apiKeys.replace": "Заменить",
   "connections.apiKeys.replaceTitle": "Заменить ключ API",
   "connections.apiKeys.title": "Ключи API {{provider}}",

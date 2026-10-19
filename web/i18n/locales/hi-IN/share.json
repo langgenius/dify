@@ -26,6 +26,7 @@
   "connections.accounts.title": "{{provider}} खाते",
   "connections.apiKeys.invalid": "अमान्य API कुंजी",
   "connections.apiKeys.newKeyPlaceholder": "नई API कुंजी दर्ज करें",
+  "connections.apiKeys.remove": "API कुंजी हटाएँ",
   "connections.apiKeys.replace": "बदलें",
   "connections.apiKeys.replaceTitle": "API कुंजी बदलें",
   "connections.apiKeys.title": "{{provider}} API कुंजियाँ",

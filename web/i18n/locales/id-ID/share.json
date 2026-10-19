@@ -26,6 +26,7 @@
   "connections.accounts.title": "Akun {{provider}}",
   "connections.apiKeys.invalid": "Kunci API tidak valid",
   "connections.apiKeys.newKeyPlaceholder": "Masukkan kunci API baru",
+  "connections.apiKeys.remove": "Hapus kunci API",
   "connections.apiKeys.replace": "Ganti",
   "connections.apiKeys.replaceTitle": "Ganti kunci API",
   "connections.apiKeys.title": "Kunci API {{provider}}",

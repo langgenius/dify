@@ -26,6 +26,7 @@
   "connections.accounts.title": "Conturi {{provider}}",
   "connections.apiKeys.invalid": "Cheie API nevalidă",
   "connections.apiKeys.newKeyPlaceholder": "Introdu o nouă cheie API",
+  "connections.apiKeys.remove": "Elimină cheia API",
   "connections.apiKeys.replace": "Înlocuiește",
   "connections.apiKeys.replaceTitle": "Înlocuiește cheia API",
   "connections.apiKeys.title": "Chei API {{provider}}",

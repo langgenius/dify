@@ -26,6 +26,7 @@
   "connections.accounts.title": "Računi {{provider}}",
   "connections.apiKeys.invalid": "Neveljaven ključ API",
   "connections.apiKeys.newKeyPlaceholder": "Vnesite nov ključ API",
+  "connections.apiKeys.remove": "Odstrani ključ API",
   "connections.apiKeys.replace": "Zamenjaj",
   "connections.apiKeys.replaceTitle": "Zamenjaj ključ API",
   "connections.apiKeys.title": "Ključi API {{provider}}",

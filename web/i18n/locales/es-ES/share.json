@@ -26,6 +26,7 @@
   "connections.accounts.title": "Cuentas de {{provider}}",
   "connections.apiKeys.invalid": "Clave API no válida",
   "connections.apiKeys.newKeyPlaceholder": "Introduce una nueva clave API",
+  "connections.apiKeys.remove": "Eliminar clave API",
   "connections.apiKeys.replace": "Reemplazar",
   "connections.apiKeys.replaceTitle": "Reemplazar clave API",
   "connections.apiKeys.title": "Claves API de {{provider}}",

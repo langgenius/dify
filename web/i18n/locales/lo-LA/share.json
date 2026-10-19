@@ -26,6 +26,7 @@
   "connections.accounts.title": "ບັນຊີ {{provider}}",
   "connections.apiKeys.invalid": "ຄີ API ບໍ່ຖືກຕ້ອງ",
   "connections.apiKeys.newKeyPlaceholder": "ປ້ອນຄີ API ໃໝ່",
+  "connections.apiKeys.remove": "ເອົາຄີ API ອອກ",
   "connections.apiKeys.replace": "ປ່ຽນແທນ",
   "connections.apiKeys.replaceTitle": "ປ່ຽນແທນຄີ API",
   "connections.apiKeys.title": "ຄີ API ຂອງ {{provider}}",

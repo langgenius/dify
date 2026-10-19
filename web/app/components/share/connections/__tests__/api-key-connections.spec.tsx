@@ -127,7 +127,7 @@ describe('API Key connection management', () => {
         within(menu).queryByRole('menuitem', { name: 'share.connections.accounts.reconnect' }),
       ).not.toBeInTheDocument()
       await user.click(
-        within(menu).getByRole('menuitem', { name: 'share.connections.accounts.remove' }),
+        within(menu).getByRole('menuitem', { name: 'share.connections.apiKeys.remove' }),
       )
       expect(onRemove).toHaveBeenLastCalledWith('google-search', id)
     }

@@ -26,6 +26,7 @@
   "connections.accounts.title": "حسابات {{provider}}",
   "connections.apiKeys.invalid": "مفتاح API غير صالح",
   "connections.apiKeys.newKeyPlaceholder": "أدخل مفتاح API جديدًا",
+  "connections.apiKeys.remove": "إزالة مفتاح API",
   "connections.apiKeys.replace": "استبدال",
   "connections.apiKeys.replaceTitle": "استبدال مفتاح API",
   "connections.apiKeys.title": "مفاتيح API لـ {{provider}}",

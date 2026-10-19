@@ -26,6 +26,7 @@
   "connections.accounts.title": "{{provider}} のアカウント",
   "connections.apiKeys.invalid": "無効な API キー",
   "connections.apiKeys.newKeyPlaceholder": "新しい API キーを入力",
+  "connections.apiKeys.remove": "API キーを削除",
   "connections.apiKeys.replace": "置き換える",
   "connections.apiKeys.replaceTitle": "API キーを置き換える",
   "connections.apiKeys.title": "{{provider}} の API キー",

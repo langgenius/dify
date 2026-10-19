@@ -26,6 +26,7 @@
   "connections.accounts.title": "{{provider}} 계정",
   "connections.apiKeys.invalid": "유효하지 않은 API 키",
   "connections.apiKeys.newKeyPlaceholder": "새 API 키 입력",
+  "connections.apiKeys.remove": "API 키 제거",
   "connections.apiKeys.replace": "교체",
   "connections.apiKeys.replaceTitle": "API 키 교체",
   "connections.apiKeys.title": "{{provider}} API 키",

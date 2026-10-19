@@ -4094,6 +4094,7 @@ export default interface Resources {
     'connections.accounts.title': '{{provider}} accounts'
     'connections.apiKeys.invalid': 'Invalid API key'
     'connections.apiKeys.newKeyPlaceholder': 'Enter a new API key'
+    'connections.apiKeys.remove': 'Remove API Key'
     'connections.apiKeys.replace': 'Replace'
     'connections.apiKeys.replaceTitle': 'Replace API Key'
     'connections.apiKeys.title': '{{provider}} API keys'

@@ -26,6 +26,7 @@
   "connections.accounts.title": "บัญชี {{provider}}",
   "connections.apiKeys.invalid": "คีย์ API ไม่ถูกต้อง",
   "connections.apiKeys.newKeyPlaceholder": "ป้อนคีย์ API ใหม่",
+  "connections.apiKeys.remove": "นำคีย์ API ออก",
   "connections.apiKeys.replace": "แทนที่",
   "connections.apiKeys.replaceTitle": "แทนที่คีย์ API",
   "connections.apiKeys.title": "คีย์ API ของ {{provider}}",

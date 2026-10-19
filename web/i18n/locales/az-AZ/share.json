@@ -26,6 +26,7 @@
   "connections.accounts.title": "{{provider}} hesabları",
   "connections.apiKeys.invalid": "Etibarsız API açarı",
   "connections.apiKeys.newKeyPlaceholder": "Yeni API açarı daxil edin",
+  "connections.apiKeys.remove": "API açarını sil",
   "connections.apiKeys.replace": "Əvəz et",
   "connections.apiKeys.replaceTitle": "API açarını əvəz et",
   "connections.apiKeys.title": "{{provider}} API açarları",

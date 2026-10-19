@@ -26,6 +26,7 @@
   "connections.accounts.title": "{{provider}} 账号",
   "connections.apiKeys.invalid": "API Key 无效",
   "connections.apiKeys.newKeyPlaceholder": "输入新的 API Key",
+  "connections.apiKeys.remove": "移除 API Key",
   "connections.apiKeys.replace": "替换",
   "connections.apiKeys.replaceTitle": "替换 API Key",
   "connections.apiKeys.title": "{{provider}} API Key",

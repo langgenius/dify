@@ -87,7 +87,7 @@ function AccountActions({
           </IconButton>
         }
       />
-      <DropdownMenuContent finalFocus={returnFocus}>
+      <DropdownMenuContent className="w-50 max-w-(--available-width)" finalFocus={returnFocus}>
         {canReconnect && (
           <DropdownMenuItem
             disabled={disabled}
@@ -102,7 +102,9 @@ function AccountActions({
             disabled={disabled}
             onClick={() => onRemove(serviceId, connection.id)}
           >
-            {t(($) => $['connections.accounts.remove'], { ns: 'share' })}
+            {connection.method === 'api-key'
+              ? t(($) => $['connections.apiKeys.remove'], { ns: 'share' })
+              : t(($) => $['connections.accounts.remove'], { ns: 'share' })}
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>

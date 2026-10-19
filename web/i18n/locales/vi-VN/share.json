@@ -26,6 +26,7 @@
   "connections.accounts.title": "Tài khoản {{provider}}",
   "connections.apiKeys.invalid": "Khóa API không hợp lệ",
   "connections.apiKeys.newKeyPlaceholder": "Nhập khóa API mới",
+  "connections.apiKeys.remove": "Xóa khóa API",
   "connections.apiKeys.replace": "Thay thế",
   "connections.apiKeys.replaceTitle": "Thay thế khóa API",
   "connections.apiKeys.title": "Khóa API của {{provider}}",
