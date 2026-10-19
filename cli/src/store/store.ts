@@ -132,6 +132,17 @@ export class YamlStore {
     return this.rawContent
   }
 
+  /** Read and replace raw content under one lock for read-modify-write operations. */
+  async updateRaw(update: (rawContent: string | undefined) => string | undefined): Promise<void> {
+    await this.withLock(async () => {
+      await this.load()
+      const next = update(this.rawContent)
+      if (next === undefined) return
+      this.setRawContent(next)
+      await this.flush()
+    })
+  }
+
   private async withLock<R>(body: () => R | Promise<R>): Promise<R> {
     await this.lock()
     try {
@@ -179,7 +190,10 @@ export class YamlStore {
   }
 }
 
-function loadYaml(raw: string | undefined, file_path: string): Record<string, unknown> | null {
+export function loadYaml(
+  raw: string | undefined,
+  file_path: string,
+): Record<string, unknown> | null {
   if (raw === undefined) return null
   try {
     const documents = loadAll(raw, { schema: YAML_LOAD_SCHEMA })

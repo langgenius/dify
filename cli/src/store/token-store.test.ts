@@ -48,6 +48,43 @@ describe('FileTokenStore', () => {
     expect(await s.read('https://self.example.com', 'a@x.com')).toBe('C')
   })
 
+  it('preserves concurrent writes from separate stores', async () => {
+    let readCount = 0
+    let releaseReads!: () => void
+    const bothReads = new Promise<void>((resolve) => {
+      releaseReads = resolve
+    })
+
+    function openWithSynchronizedRead(): FileTokenStore {
+      const source = localFile(file, TOKENS_SCHEMA, ioService(streams).notice)
+      let firstRead = true
+      return new FileTokenStore({
+        ...source,
+        read: async () => {
+          const doc = await source.read()
+          if (firstRead) {
+            firstRead = false
+            readCount += 1
+            if (readCount === 2) releaseReads()
+            await bothReads
+          }
+          return doc
+        },
+      })
+    }
+
+    const first = openWithSynchronizedRead()
+    const second = openWithSynchronizedRead()
+    await Promise.all([
+      first.write('https://one.example.com', 'a@x.com', 'A'),
+      second.write('https://two.example.com', 'b@x.com', 'B'),
+    ])
+
+    const result = open()
+    expect(await result.read('https://one.example.com', 'a@x.com')).toBe('A')
+    expect(await result.read('https://two.example.com', 'b@x.com')).toBe('B')
+  })
+
   it('persists the nested shape on disk', async () => {
     const s = open()
     await s.write('https://cloud.dify.ai', 'a@x.com', 'A')
