@@ -66,6 +66,9 @@ class AppListBaseParams(BaseModel):
 
 
 class AppListParams(AppListBaseParams):
+    # Internal selection projection; Console HTTP list schemas do not expose these fields.
+    for_selection: bool = False
+    resource_ids: list[str] | None = None
     status: str | None = None
     openapi_visible: bool = False
     agent_is_published: bool | None = None

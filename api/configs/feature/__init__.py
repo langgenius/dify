@@ -38,6 +38,13 @@ class SecurityConfig(BaseSettings):
         default="",
     )
 
+    PAT_ENCRYPTION_KEY: str = Field(
+        default="",
+        repr=False,
+        description="Dedicated 32-byte hexadecimal key for recoverable personal access tokens. "
+        "All API replicas must share this key. Back it up separately from the database.",
+    )
+
     RESET_PASSWORD_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
         description="Duration in minutes for which a password reset token remains valid",
         default=5,

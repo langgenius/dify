@@ -23,6 +23,7 @@ from typing import Any, Final, cast
 from flask_restx import abort
 from pydantic import BaseModel, ValidationError
 
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.schema import query_params_from_model, query_params_from_request
 from controllers.openapi import openapi_ns
 from controllers.openapi._errors import ErrorBody
@@ -160,6 +161,7 @@ def endpoint(
     internal: bool = False,
     deprecated: bool = False,
     examples: Sequence[Example] = (),
+    pat_policy: PersonalAccessTokenPolicy | None = None,
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """The one seam a route attaches to for auth, request validation and response
     serialisation — auth, then ``accepts``, then ``returns``. Exposes
@@ -196,6 +198,7 @@ def endpoint(
         requirements=requirements,
         edition=edition,
         context=context,
+        pat_policy=pat_policy,
         catalog=CatalogMeta(
             op=op,
             kind=kind,

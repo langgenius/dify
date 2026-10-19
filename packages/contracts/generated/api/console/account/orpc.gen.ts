@@ -24,6 +24,8 @@ import {
   zMissingInvitationCodeError,
 } from './zod.gen.ts'
 import {
+  zDeleteAccountPersonalAccessTokensByTokenIdPath,
+  zDeleteAccountPersonalAccessTokensByTokenIdResponse,
   zGetAccountAvatarQuery,
   zGetAccountAvatarResponse,
   zGetAccountDeleteVerifyResponse,
@@ -32,7 +34,18 @@ import {
   zGetAccountEducationResponse,
   zGetAccountEducationVerifyResponse,
   zGetAccountIntegratesResponse,
+  zGetAccountPersonalAccessTokenResourcesQuery,
+  zGetAccountPersonalAccessTokenResourcesResponse,
+  zGetAccountPersonalAccessTokensByTokenIdPath,
+  zGetAccountPersonalAccessTokensByTokenIdResponse,
+  zGetAccountPersonalAccessTokensQuery,
+  zGetAccountPersonalAccessTokensResponse,
+  zGetAccountPersonalAccessTokenWorkspacesQuery,
+  zGetAccountPersonalAccessTokenWorkspacesResponse,
   zGetAccountProfileResponse,
+  zPatchAccountPersonalAccessTokensByTokenIdBody,
+  zPatchAccountPersonalAccessTokensByTokenIdPath,
+  zPatchAccountPersonalAccessTokensByTokenIdResponse,
   zPatchAccountProfileBody,
   zPatchAccountProfileResponse,
   zPostAccountAvatarBody,
@@ -61,6 +74,11 @@ import {
   zPostAccountNameResponse,
   zPostAccountPasswordBody,
   zPostAccountPasswordResponse,
+  zPostAccountPersonalAccessTokensBody,
+  zPostAccountPersonalAccessTokensByTokenIdSecretPath,
+  zPostAccountPersonalAccessTokensByTokenIdSecretResponse,
+  zPostAccountPersonalAccessTokensHeaders,
+  zPostAccountPersonalAccessTokensResponse,
   zPostAccountTimezoneBody,
   zPostAccountTimezoneResponse,
 } from './zod.gen.ts'
@@ -441,6 +459,131 @@ export const get7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
+    operationId: 'getAccountPersonalAccessTokenResources',
+    path: '/account/personal-access-token-resources',
+    tags: ['console'],
+  })
+  .input(z.object({ query: zGetAccountPersonalAccessTokenResourcesQuery.optional() }).optional())
+  .output(zGetAccountPersonalAccessTokenResourcesResponse)
+
+export const personalAccessTokenResources = {
+  get: get7,
+}
+
+export const get8 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAccountPersonalAccessTokenWorkspaces',
+    path: '/account/personal-access-token-workspaces',
+    tags: ['console'],
+  })
+  .input(z.object({ query: zGetAccountPersonalAccessTokenWorkspacesQuery.optional() }).optional())
+  .output(zGetAccountPersonalAccessTokenWorkspacesResponse)
+
+export const personalAccessTokenWorkspaces = {
+  get: get8,
+}
+
+export const post14 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAccountPersonalAccessTokensByTokenIdSecret',
+    path: '/account/personal-access-tokens/{token_id}/secret',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostAccountPersonalAccessTokensByTokenIdSecretPath }))
+  .output(zPostAccountPersonalAccessTokensByTokenIdSecretResponse)
+
+export const secret = {
+  post: post14,
+}
+
+export const delete2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteAccountPersonalAccessTokensByTokenId',
+    path: '/account/personal-access-tokens/{token_id}',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteAccountPersonalAccessTokensByTokenIdPath }))
+  .output(zDeleteAccountPersonalAccessTokensByTokenIdResponse)
+
+export const get9 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAccountPersonalAccessTokensByTokenId',
+    path: '/account/personal-access-tokens/{token_id}',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetAccountPersonalAccessTokensByTokenIdPath }))
+  .output(zGetAccountPersonalAccessTokensByTokenIdResponse)
+
+export const patch = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchAccountPersonalAccessTokensByTokenId',
+    path: '/account/personal-access-tokens/{token_id}',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPatchAccountPersonalAccessTokensByTokenIdBody,
+      params: zPatchAccountPersonalAccessTokensByTokenIdPath,
+    }),
+  )
+  .output(zPatchAccountPersonalAccessTokensByTokenIdResponse)
+
+export const byTokenId = {
+  delete: delete2,
+  get: get9,
+  patch,
+  secret,
+}
+
+export const get10 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAccountPersonalAccessTokens',
+    path: '/account/personal-access-tokens',
+    tags: ['console'],
+  })
+  .input(z.object({ query: zGetAccountPersonalAccessTokensQuery.optional() }).optional())
+  .output(zGetAccountPersonalAccessTokensResponse)
+
+export const post15 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAccountPersonalAccessTokens',
+    path: '/account/personal-access-tokens',
+    successStatus: 201,
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostAccountPersonalAccessTokensBody,
+      headers: zPostAccountPersonalAccessTokensHeaders.optional(),
+    }),
+  )
+  .output(zPostAccountPersonalAccessTokensResponse)
+
+export const personalAccessTokens = {
+  get: get10,
+  post: post15,
+  byTokenId,
+}
+
+export const get11 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
     operationId: 'getAccountProfile',
     path: '/account/profile',
     tags: ['console'],
@@ -448,7 +591,7 @@ export const get7 = oc
   .output(zGetAccountProfileResponse)
   .errors({ account_not_found: { status: 400, data: zAccountNotFoundError } })
 
-export const patch = oc
+export const patch2 = oc
   .route({
     inputStructure: 'detailed',
     method: 'PATCH',
@@ -461,8 +604,8 @@ export const patch = oc
   .errors({ account_not_found: { status: 400, data: zAccountNotFoundError } })
 
 export const profile = {
-  get: get7,
-  patch,
+  get: get11,
+  patch: patch2,
 }
 
 /**
@@ -470,7 +613,7 @@ export const profile = {
  *
  * @deprecated
  */
-export const post14 = oc
+export const post16 = oc
   .route({
     deprecated: true,
     description: 'Deprecated. Use PATCH /account/profile instead.',
@@ -485,7 +628,7 @@ export const post14 = oc
   .errors({ account_not_found: { status: 400, data: zAccountNotFoundError } })
 
 export const timezone = {
-  post: post14,
+  post: post16,
 }
 
 export const account = {
@@ -499,6 +642,9 @@ export const account = {
   interfaceTheme,
   name,
   password,
+  personalAccessTokenResources,
+  personalAccessTokenWorkspaces,
+  personalAccessTokens,
   profile,
   timezone,
 }

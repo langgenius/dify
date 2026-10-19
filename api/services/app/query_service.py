@@ -80,6 +80,7 @@ class AppDiscoveryService:
             if (
                 app is None
                 or app.mode not in SUPPORTED_APP_TYPES
+                or (context.personal_app_ids is not None and app.id not in context.personal_app_ids)
                 or not access.is_app_accessible(app.id, app.maintainer, context.account_id)
             ):
                 return PaginatedResult(items=[], total=0, page=query.page, per_page=query.limit)
@@ -93,6 +94,7 @@ class AppDiscoveryService:
                 "name": query.name,
                 "status": AppStatus.NORMAL,
                 "openapi_visible": True,
+                "resource_ids": list(context.personal_app_ids) if context.personal_app_ids is not None else None,
             }
         )
         access.apply_to_params(params)

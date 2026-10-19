@@ -434,6 +434,43 @@ export const zInvalidAccountPasswordError = zErrorResponse.and(
 )
 
 /**
+ * PersonalAccessTokenResponse
+ */
+export const zPersonalAccessTokenResponse = z.object({
+  created_at: z.iso.datetime(),
+  expires_at: z.iso.datetime().nullable(),
+  id: z.string(),
+  last_used_at: z.iso.datetime().nullable(),
+  name: z.string(),
+  resource_count: z.int(),
+  resource_scope_mode: z.enum(['all', 'none', 'selected']),
+  secret_last_four: z.string(),
+  status: z.enum(['access_issue', 'active', 'expired']),
+  unavailable_count: z.int(),
+  version: z.int(),
+  workspace_count: z.int(),
+  workspace_scope_mode: z.enum(['all', 'none', 'selected']),
+})
+
+/**
+ * PersonalAccessTokenListResponse
+ */
+export const zPersonalAccessTokenListResponse = z.object({
+  data: z.array(zPersonalAccessTokenResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
+/**
+ * PersonalAccessTokenSecretResponse
+ */
+export const zPersonalAccessTokenSecretResponse = z.object({
+  secret: z.string(),
+})
+
+/**
  * AccountProfilePatchPayload
  */
 export const zAccountProfilePatchPayload = z
@@ -468,6 +505,106 @@ export const zAccountIntegrateResponse = z.object({
  */
 export const zAccountIntegrateListResponse = z.object({
   data: z.array(zAccountIntegrateResponse),
+})
+
+/**
+ * PersonalAccessTokenResourceResponse
+ */
+export const zPersonalAccessTokenResourceResponse = z.object({
+  app_runners: z.array(z.lazy((): any => zPersonalAccessTokenResourceResponse)).optional(),
+  available: z.boolean(),
+  display_name: z.string(),
+  parent_app_id: z.string().nullish(),
+  reason: z.string().nullable(),
+  resource_id: z.string(),
+  resource_type: z.enum(['app', 'app_runner', 'dataset']),
+  workspace_id: z.string(),
+  workspace_name: z.string(),
+})
+
+/**
+ * PersonalAccessTokenResourceCandidateResponse
+ */
+export const zPersonalAccessTokenResourceCandidateResponse = z.object({
+  data: z.array(zPersonalAccessTokenResourceResponse),
+  has_more: z.boolean(),
+  next_cursor: z.int().nullable(),
+})
+
+/**
+ * PersonalAccessTokenWorkspaceResponse
+ */
+export const zPersonalAccessTokenWorkspaceResponse = z.object({
+  available: z.boolean(),
+  display_name: z.string(),
+  reason: z.string().nullable(),
+  role: z.string().nullable(),
+  workspace_id: z.string(),
+})
+
+/**
+ * PersonalAccessTokenWorkspaceCandidateResponse
+ */
+export const zPersonalAccessTokenWorkspaceCandidateResponse = z.object({
+  data: z.array(zPersonalAccessTokenWorkspaceResponse),
+  has_more: z.boolean(),
+  next_cursor: z.int().nullable(),
+})
+
+/**
+ * PersonalAccessTokenDetailResponse
+ */
+export const zPersonalAccessTokenDetailResponse = z.object({
+  resources: z.array(zPersonalAccessTokenResourceResponse),
+  token: zPersonalAccessTokenResponse,
+  workspaces: z.array(zPersonalAccessTokenWorkspaceResponse),
+})
+
+/**
+ * PersonalAccessTokenWorkspaceScopePayload
+ */
+export const zPersonalAccessTokenWorkspaceScopePayload = z.object({
+  mode: z.enum(['all', 'none', 'selected']).optional().default('all'),
+  workspace_ids: z.array(z.uuid()).optional(),
+})
+
+/**
+ * PersonalAccessTokenResourcePayload
+ */
+export const zPersonalAccessTokenResourcePayload = z.object({
+  resource_id: z.uuid(),
+  resource_type: z.enum(['app', 'app_runner', 'dataset']),
+})
+
+/**
+ * PersonalAccessTokenResourceScopePayload
+ */
+export const zPersonalAccessTokenResourceScopePayload = z.object({
+  mode: z.enum(['all', 'none', 'selected']).optional().default('all'),
+  resources: z.array(zPersonalAccessTokenResourcePayload).optional(),
+})
+
+/**
+ * PersonalAccessTokenCreatePayload
+ */
+export const zPersonalAccessTokenCreatePayload = z.object({
+  expiration: z
+    .enum(['180_days', '30_days', '365_days', '90_days', 'never'])
+    .optional()
+    .default('90_days'),
+  name: z.string().min(1).max(255),
+  resource_scope: zPersonalAccessTokenResourceScopePayload.optional(),
+  workspace_scope: zPersonalAccessTokenWorkspaceScopePayload.optional(),
+})
+
+/**
+ * PersonalAccessTokenUpdatePayload
+ */
+export const zPersonalAccessTokenUpdatePayload = z.object({
+  name: z.string().min(1).max(255),
+  resource_scope: zPersonalAccessTokenResourceScopePayload.nullish(),
+  version: z.int().gte(1),
+  workspace_scope: zPersonalAccessTokenWorkspaceScopePayload.nullish(),
 })
 
 /**
@@ -617,6 +754,90 @@ export const zPostAccountPasswordBody = zAccountPasswordPayload
  * Success
  */
 export const zPostAccountPasswordResponse = zAccountResponse
+
+export const zGetAccountPersonalAccessTokenResourcesQuery = z.object({
+  cursor: z.int().gte(0).optional().default(0),
+  keyword: z.string().max(100).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+})
+
+/**
+ * Available resources
+ */
+export const zGetAccountPersonalAccessTokenResourcesResponse =
+  zPersonalAccessTokenResourceCandidateResponse
+
+export const zGetAccountPersonalAccessTokenWorkspacesQuery = z.object({
+  cursor: z.int().gte(0).optional().default(0),
+  keyword: z.string().max(100).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+})
+
+/**
+ * Available workspaces
+ */
+export const zGetAccountPersonalAccessTokenWorkspacesResponse =
+  zPersonalAccessTokenWorkspaceCandidateResponse
+
+export const zGetAccountPersonalAccessTokensQuery = z.object({
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
+})
+
+/**
+ * Personal access tokens
+ */
+export const zGetAccountPersonalAccessTokensResponse = zPersonalAccessTokenListResponse
+
+export const zPostAccountPersonalAccessTokensBody = zPersonalAccessTokenCreatePayload
+
+export const zPostAccountPersonalAccessTokensHeaders = z.object({
+  'Idempotency-Key': z.string().max(128).optional(),
+})
+
+/**
+ * Personal access token created
+ */
+export const zPostAccountPersonalAccessTokensResponse = zPersonalAccessTokenResponse
+
+export const zDeleteAccountPersonalAccessTokensByTokenIdPath = z.object({
+  token_id: z.uuid(),
+})
+
+/**
+ * Personal access token revoked
+ */
+export const zDeleteAccountPersonalAccessTokensByTokenIdResponse = z.void()
+
+export const zGetAccountPersonalAccessTokensByTokenIdPath = z.object({
+  token_id: z.uuid(),
+})
+
+/**
+ * Saved scopes
+ */
+export const zGetAccountPersonalAccessTokensByTokenIdResponse = zPersonalAccessTokenDetailResponse
+
+export const zPatchAccountPersonalAccessTokensByTokenIdBody = zPersonalAccessTokenUpdatePayload
+
+export const zPatchAccountPersonalAccessTokensByTokenIdPath = z.object({
+  token_id: z.uuid(),
+})
+
+/**
+ * Updated scopes
+ */
+export const zPatchAccountPersonalAccessTokensByTokenIdResponse = zPersonalAccessTokenDetailResponse
+
+export const zPostAccountPersonalAccessTokensByTokenIdSecretPath = z.object({
+  token_id: z.uuid(),
+})
+
+/**
+ * Complete personal access token
+ */
+export const zPostAccountPersonalAccessTokensByTokenIdSecretResponse =
+  zPersonalAccessTokenSecretResponse
 
 /**
  * Success

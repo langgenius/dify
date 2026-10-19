@@ -16,6 +16,7 @@ import AvatarWithEdit from './AvatarWithEdit'
 import { ChangePasswordDialog } from './change-password-dialog'
 import { EditAccountNameDialog } from './edit-account-name-dialog'
 import EmailChangeModal from './email-change-modal'
+import PersonalAccessTokens from './personal-access-tokens'
 
 const titleClassName = `
   system-sm-semibold text-text-secondary
@@ -135,6 +136,8 @@ export default function AccountPage() {
           <ChangePasswordDialog isPasswordSet={userProfile.is_password_set} />
         </div>
       )}
+      <div className="mb-6 border border-divider-subtle" />
+      <PersonalAccessTokens />
       <div className="mb-6 border border-divider-subtle" />
       <div className="mb-8">
         <div className={titleClassName}>

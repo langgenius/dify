@@ -15,6 +15,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel
 
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.openapi.auth.requirements import Requirement
 from enums import DeploymentEdition
 
@@ -75,6 +76,7 @@ class EndpointSpec:
     catalog: CatalogMeta
     edition: frozenset[DeploymentEdition] | None = None
     context: AdmissionContext | None = "orm"
+    pat_policy: PersonalAccessTokenPolicy | None = None
 
     def allows(self, edition: DeploymentEdition) -> bool:
         """Whether this deployment exposes the route at all. `edition is None`

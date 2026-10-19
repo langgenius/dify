@@ -20,6 +20,7 @@ from werkzeug.exceptions import (
 
 import services
 from constants.oauth_bearer import Scope
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.fields import EventStreamResponse
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
@@ -411,6 +412,7 @@ def draft_test_hint(mode: AppMode, *, app_id: str, summary: str) -> Hint:
 def _run_api(route: _RunRoute) -> type[Resource]:
     @endpoint(
         op=route.op,
+        pat_policy=PersonalAccessTokenPolicy.RESOURCE_CALLS,
         kind=Kind.SSE,
         summary=route.summary,
         requirements=route.requirements,
@@ -444,6 +446,7 @@ def _run_api(route: _RunRoute) -> type[Resource]:
 class AppRunTaskStopApi(Resource):
     @endpoint(
         op="stop.run",
+        pat_policy=PersonalAccessTokenPolicy.RESOURCE_CALLS,
         kind=Kind.OBJECT,
         summary="Stop a running task",
         examples=(Example(title="Stop a running task", input={"app_id": "<app_id>", "task_id": "<task_id>"}),),

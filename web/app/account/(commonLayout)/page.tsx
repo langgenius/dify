@@ -7,7 +7,7 @@ export default function Account() {
   const { t } = useTranslation(['navigation'])
   useDocumentTitle(t(($) => $['menus.account'], { ns: 'navigation' }))
   return (
-    <div className="mx-auto w-full max-w-160 px-6 pt-12">
+    <div className="mx-auto w-full max-w-252 px-6 pt-12">
       <AccountPage />
     </div>
   )
