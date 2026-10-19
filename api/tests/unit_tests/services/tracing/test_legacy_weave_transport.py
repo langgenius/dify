@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 from weave.trace_server.trace_server_interface import CallEndReq, CallStartReq, TraceStatus
 
 from core.helper import ssrf_proxy
-from core.ops.entities.trace_entity import WorkflowTraceInfo
+from core.ops.entities.trace_entity import GenerateNameTraceInfo, WorkflowTraceInfo
 from core.ops.exceptions import RetryableTraceDispatchError
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from models.account import TenantAccountJoin, TenantAccountRole
@@ -66,14 +66,29 @@ def response(url: str, body: object, *, status: int = 200) -> httpx.Response:
 
 
 @pytest.fixture
-def wire(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, RequestOptions, dict[str, object]]]:
+def wire(
+    monkeypatch: pytest.MonkeyPatch, failure: tuple[str, str, int | str] | None
+) -> list[tuple[str, RequestOptions, dict[str, object]]]:
     sent: list[tuple[str, RequestOptions, dict[str, object]]] = []
+    fault_pending = True
 
     def send(method: str, url: str, **options: Unpack[RequestOptions]) -> httpx.Response:
+        nonlocal fault_pending
         assert method == "POST"
         assert url in {"https://trace.wandb.ai/call/start", "https://trace.wandb.ai/call/end"}
         body = json.loads(options["content"])
         sent.append((url, options, body))
+        stage = "start" if "start" in body else "end"
+        record = body[stage]
+        if fault_pending and failure is not None and (stage, record["id"]) == failure[:2]:
+            fault_pending = False
+            outcome = failure[2]
+            if outcome == "timeout":
+                raise httpx.ReadTimeout("synthetic lost acknowledgment", request=httpx.Request("POST", url))
+            if outcome == "malformed":
+                return httpx.Response(200, request=httpx.Request("POST", url), content=b"invalid-json")
+            assert isinstance(outcome, int)
+            return response(url, {"error": "DO_NOT_EXPOSE_BODY"}, status=outcome)
         if url.endswith("/call/start"):
             req = CallStartReq.model_validate(body)
             return response(url, {"id": req.start.id, "trace_id": req.start.trace_id})
@@ -116,9 +131,26 @@ def test_constructor_and_presentation_have_no_login_network_files_or_background_
 
 
 @pytest.mark.usefixtures("agent_runtime_app")
+@pytest.mark.parametrize(
+    "failure",
+    [None]
+    + [
+        (stage, call_id, status)
+        for stage, call_id in [("start", "legacy-run"), ("end", "legacy-run"), ("start", "node-0"), ("end", "node-0")]
+        for status in [429, 503]
+    ]
+    + [
+        ("start", "legacy-run", "timeout"),
+        ("start", "legacy-run", "malformed"),
+        ("end", "node-0", "malformed"),
+        ("end", "legacy-run", "timeout"),
+    ]
+    + [("start", "legacy-run", 401), ("end", "legacy-run", 401)],
+)
 def test_workflow_emits_four_real_sdk_calls_with_original_ids_payload_and_status(
     sqlite_session: Session,
     wire: list[tuple[str, RequestOptions, dict[str, object]]],
+    failure: tuple[str, str, int | str] | None,
 ) -> None:
     # The normal Flask/SQLite fixtures bind the actual service-account lookup and
     # production repository to persisted rows. Only outbound HTTP is substituted.
@@ -185,6 +217,40 @@ def test_workflow_emits_four_real_sdk_calls_with_original_ids_payload_and_status
         start_time=START,
         end_time=START + timedelta(seconds=1),
     )
+
+    if failure is not None:
+        stage, call_id, outcome = failure
+        first_start = (stage, call_id) == ("start", "legacy-run")
+        expected = (
+            TraceExportRejectedError
+            if outcome == 401
+            else RetryableTraceDispatchError
+            if first_start and outcome in {429, 503}
+            else TraceExportUncertainError
+        )
+        with pytest.raises(expected) as error:
+            adapter.trace(info)
+        if isinstance(error.value, RetryableTraceDispatchError):
+            assert error.value.acceptance_unknown is (expected is TraceExportUncertainError)
+        assert len(wire) == (1 if first_start else 8 if call_id == "legacy-run" else 2 if stage == "start" else 3)
+        assert "DO_NOT_EXPOSE" not in str(error.value)
+        assert adapter.calls == {}
+        assert info.workflow_run_status == "succeeded"
+        assert all(node.status == WorkflowNodeExecutionStatus.SUCCEEDED for node in nodes)
+        before_recovery = len(wire)
+        adapter.trace(
+            GenerateNameTraceInfo(
+                tenant_id=tenant.id,
+                inputs="new business operation",
+                outputs="new title",
+                metadata={},
+                start_time=START,
+                end_time=START + timedelta(seconds=1),
+            )
+        )
+        assert len(wire) == before_recovery + 2
+        assert adapter.calls == {}
+        return
 
     adapter.trace(info)
 
@@ -266,6 +332,47 @@ def test_interleaved_instances_resolve_only_their_own_credentials_and_targets(mo
         list(pool.map(run, ["a", "b"]))
     assert len(observed) == 4
     assert dict(os.environ) == before
+
+
+def test_concurrent_dispatches_on_one_cached_instance_keep_prefix_state_isolated(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    barrier = Barrier(2)
+
+    def send(_method: str, url: str, **options: Unpack[RequestOptions]) -> httpx.Response:
+        body = json.loads(options["content"])
+        if "start" in body:
+            start = CallStartReq.model_validate(body).start
+            if start.inputs["label"] == "unaccepted":
+                barrier.wait(timeout=5)
+                return response(url, {}, status=503)
+            return response(url, {"id": start.id, "trace_id": start.trace_id})
+        CallEndReq.model_validate(body)
+        barrier.wait(timeout=5)
+        return response(url, {}, status=503)
+
+    monkeypatch.setattr(ssrf_proxy, "make_request", send)
+    adapter = WeaveDataTrace(config())
+
+    def run(label: str) -> RetryableTraceDispatchError:
+        info = GenerateNameTraceInfo(
+            tenant_id="tenant",
+            inputs={"label": label},
+            outputs={"label": label},
+            metadata={},
+            start_time=START,
+            end_time=START + timedelta(seconds=1),
+        )
+        with pytest.raises(RetryableTraceDispatchError) as error:
+            adapter.trace(info)
+        return error.value
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        accepted, unaccepted = list(pool.map(run, ["accepted", "unaccepted"]))
+    assert isinstance(accepted, TraceExportUncertainError)
+    assert accepted.acceptance_unknown
+    assert not unaccepted.acceptance_unknown
+    assert adapter.calls == {}
 
 
 @pytest.mark.parametrize(
