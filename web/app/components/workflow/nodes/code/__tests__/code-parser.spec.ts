@@ -67,6 +67,29 @@ function main(arg1, arg2) {
 describe('extractFunctionParams', () => {
   it.each([
     [
+      'generic annotations',
+      'def main(config: dict[str, str], label: str):\n    return {"config": config}',
+      ['config', 'label'],
+    ],
+    [
+      'string defaults',
+      'def main(label: str = "one,two", count: int = 1):\n    return {"label": label}',
+      ['label', 'count'],
+    ],
+    [
+      'nested default calls',
+      'def main(value: str = make_default("x,y"), other: str = ""):\n    return {"value": value}',
+      ['value', 'other'],
+    ],
+  ])(
+    'splits parameters outside brackets and strings in Python %s',
+    (_description, code, expected) => {
+      expect(extractFunctionParams(code, CodeLanguage.python3)).toEqual(expected)
+    },
+  )
+
+  it.each([
+    [
       'Python typed defaults',
       CodeLanguage.python3,
       'def main(arg1: str = "/*", arg2: str = "*/") -> dict:\n    return {"result": arg1 + arg2}',
