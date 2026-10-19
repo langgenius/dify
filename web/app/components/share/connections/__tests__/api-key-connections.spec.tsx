@@ -2,8 +2,8 @@ import type { RequiredConnectionService } from '../required-services'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vite-plus/test'
-import ConfigureConnections from '../configure-connections'
 import RequiredServices from '../required-services'
+import ConfigureConnections from './configure-connections-fixture'
 
 const service: RequiredConnectionService = {
   id: 'google-search',

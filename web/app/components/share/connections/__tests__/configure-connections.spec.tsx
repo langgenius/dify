@@ -1,9 +1,10 @@
 import type { RequiredConnectionService } from '../required-services'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vite-plus/test'
-import ConfigureConnections from '../configure-connections'
+import { createDeferred } from '@/test/deferred'
+import ConfigureConnections from './configure-connections-fixture'
 
 const services: readonly RequiredConnectionService[] = [
   {
@@ -36,6 +37,159 @@ const invalidService: RequiredConnectionService = {
 }
 
 describe('ConfigureConnections', () => {
+  it('shares saved connections across both entry buttons and returns focus to the entry that opened each session', async () => {
+    const user = userEvent.setup()
+    const pendingAdd = createDeferred()
+    const onConnect = vi.fn()
+    const onReplace = vi.fn()
+    function SharedConnections() {
+      const [currentServices, setCurrentServices] = useState<readonly RequiredConnectionService[]>([
+        ...services,
+        invalidService,
+      ])
+      return (
+        <ConfigureConnections
+          services={currentServices}
+          onConnectionChange={vi.fn()}
+          onConnect={async (serviceId, method, values) => {
+            onConnect(serviceId, method, values)
+            await pendingAdd.promise
+            if (method !== 'api-key' || !values) return
+            setCurrentServices((current) =>
+              current.map((service) =>
+                service.id === serviceId
+                  ? {
+                      ...service,
+                      availableConnections: [
+                        { id: 'new-key', name: values.name, method: 'api-key', status: 'active' },
+                      ],
+                      selectedConnectionId: 'new-key',
+                    }
+                  : service,
+              ),
+            )
+          }}
+          onReplace={(serviceId, connectionId, values) => {
+            onReplace(serviceId, connectionId, values)
+            setCurrentServices((current) =>
+              current.map((service) =>
+                service.id === serviceId
+                  ? {
+                      ...service,
+                      availableConnections: service.availableConnections.map((connection) =>
+                        connection.id === connectionId
+                          ? { ...connection, name: values.name, status: 'active' }
+                          : connection,
+                      ),
+                    }
+                  : service,
+              ),
+            )
+          }}
+        />
+      )
+    }
+    render(<SharedConnections />)
+    const configure = screen.getByRole('button', { name: 'share.connections.configure.title 1' })
+    const manage = screen.getByRole('button', { name: 'share.connections.configure.manage' })
+    await user.click(manage)
+    const managedDialog = await screen.findByRole('dialog', {
+      name: 'share.connections.configure.title',
+    })
+    expect(screen.getAllByRole('dialog', { hidden: true })).toHaveLength(1)
+    const notion = within(managedDialog).getByRole('listitem', { name: 'Notion' })
+    await user.click(
+      within(notion).getByRole('button', { name: 'share.connections.setup.addApiKey' }),
+    )
+    const addForm = await screen.findByRole('dialog', { name: 'share.connections.setup.addApiKey' })
+    expect(addForm).toBe(managedDialog)
+    await user.type(
+      within(addForm).getByRole('textbox', { name: 'plugin.auth.authorizationName' }),
+      'Shared Notion key',
+    )
+    await user.type(
+      within(addForm).getByLabelText(/share\.connections\.setup\.apiKey/),
+      'sk-notion',
+    )
+    const save = within(addForm).getByRole('button', { name: 'common.operation.save' })
+    await user.click(save)
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('dialog', { name: 'share.connections.setup.addApiKey' })).toBe(
+      managedDialog,
+    )
+    await user.click(save)
+    expect(onConnect).toHaveBeenCalledExactlyOnceWith('notion', 'api-key', {
+      name: 'Shared Notion key',
+      apiKey: 'sk-notion',
+    })
+    await act(async () => pendingAdd.resolve())
+    expect(await screen.findByRole('dialog', { name: 'share.connections.configure.title' })).toBe(
+      managedDialog,
+    )
+    await user.keyboard('{Escape}')
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { hidden: true })).not.toBeInTheDocument(),
+    )
+    await waitFor(() => expect(manage).toHaveFocus())
+
+    await user.click(configure)
+    const configuredDialog = await screen.findByRole('dialog', {
+      name: 'share.connections.configure.title',
+    })
+    expect(within(configuredDialog).getByRole('button', { name: 'Notion' })).toHaveTextContent(
+      'Shared Notion key',
+    )
+    await user.click(within(configuredDialog).getByRole('button', { name: 'Google Search' }))
+    const popover = await screen.findByRole('dialog', {
+      name: 'share.connections.apiKeys.title:{"provider":"Google Search"}',
+    })
+    await user.click(
+      within(popover).getByRole('button', { name: 'share.connections.apiKeys.replace' }),
+    )
+    const replaceForm = await screen.findByRole('dialog', {
+      name: 'share.connections.apiKeys.replaceTitle',
+    })
+    expect(replaceForm).toBe(configuredDialog)
+    expect(screen.getAllByRole('dialog', { hidden: true })).toHaveLength(1)
+    const name = within(replaceForm).getByRole('textbox', { name: 'plugin.auth.authorizationName' })
+    await user.clear(name)
+    await user.type(name, 'Restored Search key')
+    await user.type(
+      within(replaceForm).getByLabelText(/share\.connections\.setup\.apiKey/),
+      'sk-search',
+    )
+    await user.click(within(replaceForm).getByRole('button', { name: 'common.operation.save' }))
+    expect(onReplace).toHaveBeenCalledExactlyOnceWith('search', 'key', {
+      name: 'Restored Search key',
+      apiKey: 'sk-search',
+    })
+    expect(await screen.findByRole('dialog', { name: 'share.connections.configure.title' })).toBe(
+      configuredDialog,
+    )
+    await user.keyboard('{Escape}')
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { hidden: true })).not.toBeInTheDocument(),
+    )
+    await waitFor(() => expect(configure).toHaveFocus())
+
+    await user.click(manage)
+    const reopened = await screen.findByRole('dialog', {
+      name: 'share.connections.configure.title',
+    })
+    expect(screen.getAllByRole('dialog', { hidden: true })).toHaveLength(1)
+    expect(within(reopened).getByRole('button', { name: 'Google Search' })).toHaveTextContent(
+      'Restored Search key',
+    )
+    expect(within(reopened).getByRole('button', { name: 'Notion' })).toHaveTextContent(
+      'Shared Notion key',
+    )
+    await user.click(within(reopened).getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { hidden: true })).not.toBeInTheDocument(),
+    )
+    await waitFor(() => expect(manage).toHaveFocus())
+  })
+
   it('adds a key in the same configuration surface without changing another service selection', async () => {
     const user = userEvent.setup()
     const onConnect = vi.fn()

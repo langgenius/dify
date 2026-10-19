@@ -32,6 +32,7 @@
   "connections.apiKeys.title": "Chei API {{provider}}",
   "connections.apiKeys.validationError": "Cheia API nu este validă. Verifică cheia și încearcă din nou.",
   "connections.apiKeys.warning": "Cheia API nu este validă. Înlocuiește-o sau alege altă cheie.",
+  "connections.configure.manage": "Gestionează conexiunea",
   "connections.configure.runningDescription": "Conexiunile pot fi modificate după finalizarea acestui răspuns.",
   "connections.configure.title": "Conexiuni",
   "connections.required.signIn": "Autentificare în Dify",

@@ -5,8 +5,11 @@ import type {
   ConnectionMethod,
   RequiredConnectionService,
 } from '@/app/components/share/connections/required-services'
+import { createDialogHandle, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { useState } from 'react'
-import ConfigureConnections from '@/app/components/share/connections/configure-connections'
+import ConfigureConnectionsButton from '@/app/components/share/connections/configure-connections-button'
+import ConfigureConnectionsDialog from '@/app/components/share/connections/configure-connections-dialog'
+import ManageConnectionButton from '@/app/components/share/connections/manage-connection-button'
 
 const initialServices: readonly RequiredConnectionService[] = [
   {
@@ -65,6 +68,7 @@ const initialServices: readonly RequiredConnectionService[] = [
 
 export default function ConfigureConnectionsDemo() {
   const [services, setServices] = useState(initialServices)
+  const [dialogHandle] = useState(() => createDialogHandle())
 
   const handleConnect = (serviceId: string, method: ConnectionMethod, values?: ApiKeyValues) => {
     const connection: RequiredConnectionService['availableConnections'][number] = {
@@ -149,14 +153,23 @@ export default function ConfigureConnectionsDemo() {
   }
 
   return (
-    <ConfigureConnections
-      services={services}
-      onConnect={handleConnect}
-      onConnectionChange={handleConnectionChange}
-      onReconnect={handleRestoreConnection}
-      onReplace={handleRestoreConnection}
-      onRemove={handleRemove}
-      className="self-start"
-    />
+    <>
+      <div className="flex flex-wrap items-center gap-3">
+        <DialogTrigger
+          handle={dialogHandle}
+          render={<ConfigureConnectionsButton services={services} />}
+        />
+        <DialogTrigger handle={dialogHandle} render={<ManageConnectionButton />} />
+      </div>
+      <ConfigureConnectionsDialog
+        handle={dialogHandle}
+        services={services}
+        onConnect={handleConnect}
+        onConnectionChange={handleConnectionChange}
+        onReconnect={handleRestoreConnection}
+        onReplace={handleRestoreConnection}
+        onRemove={handleRemove}
+      />
+    </>
   )
 }

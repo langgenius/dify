@@ -32,6 +32,7 @@
   "connections.apiKeys.title": "{{provider}} API açarları",
   "connections.apiKeys.validationError": "API açarı etibarsızdır. Açarı yoxlayın və yenidən cəhd edin.",
   "connections.apiKeys.warning": "API açarı etibarsızdır. Onu əvəz edin və ya başqa açar seçin.",
+  "connections.configure.manage": "Bağlantını idarə et",
   "connections.configure.runningDescription": "Bu cavab tamamlandıqdan sonra bağlantıları dəyişmək olar.",
   "connections.configure.title": "Bağlantılar",
   "connections.required.signIn": "Dify-a daxil olun",

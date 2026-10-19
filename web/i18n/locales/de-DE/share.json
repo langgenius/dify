@@ -32,6 +32,7 @@
   "connections.apiKeys.title": "{{provider}}-API-Schlüssel",
   "connections.apiKeys.validationError": "API-Schlüssel ungültig. Überprüfe den Schlüssel und versuche es erneut.",
   "connections.apiKeys.warning": "API-Schlüssel ungültig. Ersetze ihn oder wähle einen anderen Schlüssel aus.",
+  "connections.configure.manage": "Verbindung verwalten",
   "connections.configure.runningDescription": "Verbindungen können geändert werden, sobald diese Antwort abgeschlossen ist.",
   "connections.configure.title": "Verbindungen",
   "connections.required.signIn": "Bei Dify anmelden",

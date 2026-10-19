@@ -32,6 +32,7 @@
   "connections.apiKeys.title": "Clés API {{provider}}",
   "connections.apiKeys.validationError": "La clé API est invalide. Vérifiez la clé et réessayez.",
   "connections.apiKeys.warning": "La clé API est invalide. Remplacez-la ou choisissez une autre clé.",
+  "connections.configure.manage": "Gérer la connexion",
   "connections.configure.runningDescription": "Les connexions pourront être modifiées une fois cette réponse terminée.",
   "connections.configure.title": "Connexions",
   "connections.required.signIn": "Se connecter à Dify",

@@ -32,6 +32,7 @@
   "connections.apiKeys.title": "Chiavi API {{provider}}",
   "connections.apiKeys.validationError": "La chiave API non è valida. Controlla la chiave e riprova.",
   "connections.apiKeys.warning": "La chiave API non è valida. Sostituiscila o scegli un’altra chiave.",
+  "connections.configure.manage": "Gestisci connessione",
   "connections.configure.runningDescription": "Le connessioni possono essere modificate al termine di questa risposta.",
   "connections.configure.title": "Connessioni",
   "connections.required.signIn": "Accedi a Dify",

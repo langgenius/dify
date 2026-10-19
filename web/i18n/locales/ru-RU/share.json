@@ -32,6 +32,7 @@
   "connections.apiKeys.title": "Ключи API {{provider}}",
   "connections.apiKeys.validationError": "Ключ API недействителен. Проверьте ключ и попробуйте снова.",
   "connections.apiKeys.warning": "Ключ API недействителен. Замените его или выберите другой ключ.",
+  "connections.configure.manage": "Управление подключением",
   "connections.configure.runningDescription": "Подключения можно изменить после завершения этого ответа.",
   "connections.configure.title": "Подключения",
   "connections.required.signIn": "Войти в Dify",

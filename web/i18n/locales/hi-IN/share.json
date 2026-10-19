@@ -32,6 +32,7 @@
   "connections.apiKeys.title": "{{provider}} API कुंजियाँ",
   "connections.apiKeys.validationError": "API कुंजी अमान्य है। कुंजी की जाँच करें और फिर से कोशिश करें।",
   "connections.apiKeys.warning": "API कुंजी अमान्य है। इसे बदलें या दूसरी कुंजी चुनें।",
+  "connections.configure.manage": "कनेक्शन प्रबंधित करें",
   "connections.configure.runningDescription": "यह जवाब पूरा होने के बाद कनेक्शन बदले जा सकते हैं।",
   "connections.configure.title": "कनेक्शन",
   "connections.required.signIn": "Dify में साइन इन करें",

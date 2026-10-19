@@ -32,6 +32,7 @@
   "connections.apiKeys.title": "{{provider}}-API-sleutels",
   "connections.apiKeys.validationError": "De API-sleutel is ongeldig. Controleer de sleutel en probeer het opnieuw.",
   "connections.apiKeys.warning": "API-sleutel ongeldig. Vervang deze of kies een andere sleutel.",
+  "connections.configure.manage": "Verbinding beheren",
   "connections.configure.runningDescription": "Verbindingen kunnen worden gewijzigd zodra dit antwoord is voltooid.",
   "connections.configure.title": "Verbindingen",
   "connections.required.signIn": "Inloggen bij Dify",

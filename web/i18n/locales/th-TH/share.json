@@ -32,6 +32,7 @@
   "connections.apiKeys.title": "คีย์ API ของ {{provider}}",
   "connections.apiKeys.validationError": "คีย์ API ไม่ถูกต้อง ตรวจสอบคีย์แล้วลองอีกครั้ง",
   "connections.apiKeys.warning": "คีย์ API ไม่ถูกต้อง ให้แทนที่หรือเลือกคีย์อื่น",
+  "connections.configure.manage": "จัดการการเชื่อมต่อ",
   "connections.configure.runningDescription": "สามารถเปลี่ยนการเชื่อมต่อได้หลังจากตอบกลับครั้งนี้เสร็จสิ้น",
   "connections.configure.title": "การเชื่อมต่อ",
   "connections.required.signIn": "ลงชื่อเข้าใช้ Dify",

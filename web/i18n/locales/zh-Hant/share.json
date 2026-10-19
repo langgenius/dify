@@ -32,6 +32,7 @@
   "connections.apiKeys.title": "{{provider}} API Key",
   "connections.apiKeys.validationError": "API Key 無效，請檢查後重試。",
   "connections.apiKeys.warning": "API Key 無效，請替換或選擇其他 Key。",
+  "connections.configure.manage": "管理連線",
   "connections.configure.runningDescription": "本次回覆結束後可變更連接。",
   "connections.configure.title": "連接",
   "connections.required.signIn": "登入 Dify",

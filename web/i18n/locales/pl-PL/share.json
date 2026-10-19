@@ -32,6 +32,7 @@
   "connections.apiKeys.title": "Klucze API {{provider}}",
   "connections.apiKeys.validationError": "Klucz API jest nieprawidłowy. Sprawdź klucz i spróbuj ponownie.",
   "connections.apiKeys.warning": "Klucz API jest nieprawidłowy. Zastąp go lub wybierz inny klucz.",
+  "connections.configure.manage": "Zarządzaj połączeniem",
   "connections.configure.runningDescription": "Połączenia można zmienić po zakończeniu tej odpowiedzi.",
   "connections.configure.title": "Połączenia",
   "connections.required.signIn": "Zaloguj się do Dify",

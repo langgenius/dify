@@ -32,6 +32,7 @@
   "connections.apiKeys.title": "کلیدهای API مربوط به {{provider}}",
   "connections.apiKeys.validationError": "کلید API نامعتبر است. کلید را بررسی کنید و دوباره تلاش کنید.",
   "connections.apiKeys.warning": "کلید API نامعتبر است. آن را جایگزین کنید یا کلید دیگری انتخاب کنید.",
+  "connections.configure.manage": "مدیریت اتصال",
   "connections.configure.runningDescription": "پس از تکمیل این پاسخ، می‌توانید اتصال‌ها را تغییر دهید.",
   "connections.configure.title": "اتصال‌ها",
   "connections.required.signIn": "ورود به Dify",
