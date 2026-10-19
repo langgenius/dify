@@ -144,7 +144,7 @@ def test_backfill_rejects_snapshot_identity_mismatches(
         entity["workflow_execution_id" if field == "run_id" else field] = "invalid-task-or-owner"
     pause_states[pause.state_object_key] = json.dumps(state).encode()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=rf"Legacy workflow task remains unindexed: {run.id} \(paused\)\."):
         backfill_service.backfill_legacy_workflow_task_ids()
 
     sqlite_session.refresh(run)
@@ -169,7 +169,7 @@ def test_backfill_reports_unrecoverable_pause_without_changing_it(
     else:
         pause_states[pause.state_object_key] = b"invalid JSON"
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=rf"Legacy workflow task remains unindexed: {run.id} \(paused\)\."):
         backfill_service.backfill_legacy_workflow_task_ids()
 
     sqlite_session.refresh(run)
@@ -189,7 +189,7 @@ def test_backfill_requires_old_running_work_to_drain_but_indexes_valid_pauses(
     sqlite_session.commit()
     paused, _, context = _seed_pause(sqlite_session, pause_states)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=rf"Legacy workflow task remains unindexed: {running.id} \(running\)\."):
         backfill_service.backfill_legacy_workflow_task_ids()
 
     sqlite_session.refresh(running)

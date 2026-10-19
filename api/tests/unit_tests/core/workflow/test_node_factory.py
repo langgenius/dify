@@ -458,7 +458,10 @@ class TestDifyNodeFactoryCreateNode:
         constructor = _node_constructor(return_value=sentinel.node)
         monkeypatch.setattr(factory, "_resolve_node_class", MagicMock(return_value=constructor))
 
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match=r"(?s)0\.email\.config\.subject.*valid string.*0\.email\.config\.body.*valid string",
+        ):
             factory.validate_node(
                 {
                     "id": "human-input",
