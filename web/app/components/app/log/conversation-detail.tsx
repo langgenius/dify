@@ -123,12 +123,10 @@ function DetailPanel({ appDetail, detail, onFeedback, initialMessages }: IDetail
     async (index: number): Promise<boolean> => {
       const itemIndex = getAllChatItemIndex(allChatItems, threadChatItems, index)
       const annotation = allChatItems[itemIndex]?.annotation
-      if (!annotation?.id) {
-        toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
-        return false
-      }
-
+      
       try {
+        if (!annotation?.id) throw new Error('Annotation not found')
+
         await consoleClient.apps.byAppId.annotations.byAnnotationId.delete({
           params: { app_id: appDetail.id, annotation_id: annotation.id },
         })
