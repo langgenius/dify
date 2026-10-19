@@ -4,7 +4,7 @@ import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, NewType, TypedDict, Union
+from typing import Any, NewType, TypedDict
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -127,8 +127,8 @@ class WorkflowResponseConverter:
     def __init__(
         self,
         *,
-        application_generate_entity: Union[AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity],
-        user: Union[Account, EndUser],
+        application_generate_entity: AdvancedChatAppGenerateEntity | WorkflowAppGenerateEntity,
+        user: Account | EndUser,
         system_variables: Sequence[Variable],
     ):
         self._application_generate_entity = application_generate_entity
@@ -245,6 +245,7 @@ class WorkflowResponseConverter:
         run_id = self._ensure_workflow_run_id(workflow_run_id)
         started_at = naive_utc_now()
         self._workflow_started_at = started_at
+        self._application_generate_entity.workflow_execution_timing.start()
 
         return WorkflowStartStreamResponse(
             task_id=task_id,
@@ -276,7 +277,7 @@ class WorkflowResponseConverter:
             )
 
         finished_at = naive_utc_now()
-        elapsed_time = (finished_at - started_at).total_seconds()
+        elapsed_time = self._application_generate_entity.workflow_execution_timing.finish()
 
         outputs_mapping = graph_runtime_state.outputs or {}
         encoded_outputs = WorkflowRuntimeTypeConverter().to_json_encodable(outputs_mapping)
@@ -329,8 +330,7 @@ class WorkflowResponseConverter:
             raise ValueError(
                 "workflow_pause_to_stream_response called before workflow_start_to_stream_response",
             )
-        paused_at = naive_utc_now()
-        elapsed_time = (paused_at - started_at).total_seconds()
+        elapsed_time = self._application_generate_entity.workflow_execution_timing.finish()
         encoded_outputs = self._encode_outputs(event.outputs) or {}
         if self._application_generate_entity.invoke_from == InvokeFrom.SERVICE_API:
             encoded_outputs = {}
@@ -857,7 +857,7 @@ class WorkflowResponseConverter:
 
     @classmethod
     def _fetch_files_from_variable_value(
-        cls, value: Union[dict, list, Segment, File, None]
+        cls, value: dict | list | Segment | File | None
     ) -> Sequence[Mapping[str, Any]]:
         """
         Fetch files from variable value

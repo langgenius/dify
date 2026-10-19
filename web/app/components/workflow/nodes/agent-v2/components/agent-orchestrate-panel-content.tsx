@@ -9,6 +9,7 @@ import type {
   AgentComposerBindingResponse,
   WorkflowAgentComposerResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { AgentPreviewChatController } from '@/features/agent-v2/agent-detail/configure/components/preview/chat-conversation'
 import {
   DropdownMenu,
@@ -70,7 +71,6 @@ import {
 import { useCanCreateAgents } from '@/features/agent-v2/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
-import { FlowType } from '@/types/common'
 import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
 import { InlineAgentLoading } from './inline-agent-loading'
 
@@ -82,8 +82,7 @@ type WorkflowRosterAgentOrchestratePanelContentProps = {
 
 type WorkflowInlineAgentConfigureWorkspaceProps = {
   agentId?: string
-  flowId?: string
-  flowType?: FlowType
+  resource?: Extract<EditorResource, { kind: 'app' | 'snippet' }>
   inlineComposerState?: WorkflowAgentComposerResponse
   nodeId: string
   onClose?: () => void
@@ -271,8 +270,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   agentId,
   agentSoulConfig,
   buildDraft,
-  flowId,
-  flowType,
+  resource,
   inlineComposerState,
   nodeId,
   onClose,
@@ -297,7 +295,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     null,
   )
   const rightPanelChatControllerRef = useRef<AgentPreviewChatController>(null)
-  const appId = flowType === FlowType.appFlow ? flowId : undefined
+  const appId = resource?.kind === 'app' ? resource.appId : undefined
   const conversationIds = useAtomValue(agentConfigureConversationIdsAtom)
   const [rightPanelMode, setRightPanelMode] = useAtom(agentConfigureRightPanelModeAtom)
   const previewEnabled = systemFeatures?.deployment_edition !== 'COMMUNITY'
@@ -352,15 +350,15 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
             }
           },
         )
-        if (!flowId) return
+        if (!resource) return
 
-        if (flowType === FlowType.snippet) {
+        if (resource.kind === 'snippet') {
           queryClient.setQueryData<WorkflowAgentComposerResponse | undefined>(
             consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
               {
                 input: {
                   params: {
-                    snippet_id: flowId,
+                    snippet_id: resource.snippetId,
                     node_id: nodeId,
                   },
                 },
@@ -379,12 +377,12 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
           return
         }
 
-        if (flowType === FlowType.appFlow) {
+        if (resource.kind === 'app') {
           queryClient.setQueryData<WorkflowAgentComposerResponse | undefined>(
             consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
               input: {
                 params: {
-                  app_id: flowId,
+                  app_id: resource.appId,
                   node_id: nodeId,
                 },
               },

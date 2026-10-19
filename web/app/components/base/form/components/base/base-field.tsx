@@ -396,7 +396,7 @@ const BaseField = ({
           )}
           {isSelect && (
             <>
-              <SelectTrigger id={controlId} {...controlProps} className="px-2">
+              <SelectTrigger id={controlId} {...controlProps}>
                 {multiple ? (
                   <SelectValue<string, true> placeholder={selectPlaceholder}>
                     {(selectedValue) =>
@@ -443,6 +443,7 @@ const BaseField = ({
               {...controlProps}
               aria-labelledby={labelId}
               name={field.name}
+              disabled={disabled}
               title={name}
               value={value}
               onChange={(v) => field.handleChange(v)}
@@ -506,14 +507,14 @@ const BaseField = ({
               >
                 <FieldsetLegend className="sr-only">{translatedLabel || name}</FieldsetLegend>
                 <FieldItem>
-                  <FieldLabel className="flex items-center gap-1.5 system-sm-regular text-text-secondary">
-                    <Radio value={true} />
+                  <FieldLabel className="flex cursor-pointer items-center gap-1.5 system-sm-regular text-text-secondary">
+                    <Radio value={true} disabled={disabled} />
                     True
                   </FieldLabel>
                 </FieldItem>
                 <FieldItem>
-                  <FieldLabel className="flex items-center gap-1.5 system-sm-regular text-text-secondary">
-                    <Radio value={false} />
+                  <FieldLabel className="flex cursor-pointer items-center gap-1.5 system-sm-regular text-text-secondary">
+                    <Radio value={false} disabled={disabled} />
                     False
                   </FieldLabel>
                 </FieldItem>

@@ -414,7 +414,7 @@ class TestMessagesCleanServiceIntegration:
         # Arrange - Create sandbox tenants with expired messages
         sandbox_tenants = []
         sandbox_message_ids = []
-        for i in range(2):
+        for _i in range(2):
             account, tenant = self._create_account_and_tenant(db_session_with_containers, plan=CloudPlan.SANDBOX)
             sandbox_tenants.append(tenant)
             app = self._create_app(db_session_with_containers, tenant, account)
@@ -431,7 +431,7 @@ class TestMessagesCleanServiceIntegration:
         # Create paid tenants with expired messages (should NOT be deleted)
         paid_tenants = []
         paid_message_ids = []
-        for i in range(2):
+        for _i in range(2):
             account, tenant = self._create_account_and_tenant(db_session_with_containers, plan=CloudPlan.PROFESSIONAL)
             paid_tenants.append(tenant)
             app = self._create_app(db_session_with_containers, tenant, account)
@@ -605,7 +605,7 @@ class TestMessagesCleanServiceIntegration:
         """Test when billing returns partial data, unknown tenants are preserved (B5)."""
         # Arrange - Create 3 tenants
         tenants_data = []
-        for i in range(3):
+        for _i in range(3):
             account, tenant = self._create_account_and_tenant(db_session_with_containers, plan=CloudPlan.SANDBOX)
             app = self._create_app(db_session_with_containers, tenant, account)
             conv = self._create_conversation(db_session_with_containers, app)
@@ -920,7 +920,7 @@ class TestMessagesCleanServiceIntegration:
         """Test that whitelisted tenants' messages are not deleted (B9)."""
         # Arrange - Create 3 sandbox tenants with expired messages
         tenants_data = []
-        for i in range(3):
+        for _i in range(3):
             account, tenant = self._create_account_and_tenant(db_session_with_containers, plan=CloudPlan.SANDBOX)
             app = self._create_app(db_session_with_containers, tenant, account)
             conv = self._create_conversation(db_session_with_containers, app)

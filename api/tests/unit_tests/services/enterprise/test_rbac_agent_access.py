@@ -1,22 +1,21 @@
 """Unit tests for the agent-flavoured RBAC inner-API client.
 
-`RBACService.AgentAccess`, the agent methods on `RBACService.WorkspaceAccess` and
-`RBACService.Catalog.agent` are all built from one generic resource-access client.
-These tests monkeypatch `_inner_call` and assert the HTTP method, the exact endpoint,
+The resource-access clients injected into the application services share one
+implementation across apps, datasets and agents.
+These tests replace the Enterprise transport and assert the HTTP method, the exact endpoint,
 the query/body keys and the returned model for every operation.
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator
-from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from collections.abc import Callable
 
 import pytest
 
 from services.enterprise import rbac_service as svc
-
-MODULE = "services.enterprise.rbac_service"
+from services.enterprise.base import EnterpriseRequest
+from services.rbac import contracts as rbac_contracts
+from tests.unit_tests.rbac_fakes import RBACTransport, RecordedRequest
 
 TENANT = "tenant-1"
 ACTOR = "acct-1"
@@ -25,23 +24,14 @@ POLICY = "policy-1"
 
 
 @pytest.fixture
-def inner_call() -> Iterator[MagicMock]:
-    with patch(f"{MODULE}._inner_call") as call:
-        call.return_value = {"automatic_include_workspace_members": True}
-        yield call
+def transport(monkeypatch: pytest.MonkeyPatch) -> RBACTransport:
+    transport = RBACTransport(response={"automatic_include_workspace_members": True})
+    monkeypatch.setattr(EnterpriseRequest, "send_inner_rbac_request", transport.send)
+    return transport
 
 
-def _last(call: MagicMock) -> SimpleNamespace:
-    call.assert_called_once()
-    args, kwargs = call.call_args
-    return SimpleNamespace(
-        method=args[0],
-        endpoint=args[1],
-        tenant_id=kwargs.get("tenant_id"),
-        account_id=kwargs.get("account_id"),
-        json=kwargs.get("json"),
-        params=kwargs.get("params"),
-    )
+def _last(transport: RBACTransport) -> RecordedRequest:
+    return transport.only_request
 
 
 _AGENT_CASES: list[tuple[str, str, str, Callable[[], object]]] = [
@@ -49,143 +39,123 @@ _AGENT_CASES: list[tuple[str, str, str, Callable[[], object]]] = [
         "whitelist_resources",
         "GET",
         "/rbac/agents/whitelist/resources",
-        lambda: svc.RBACService.AgentAccess.whitelist_resources(TENANT, ACTOR),
+        lambda: svc._AGENT_ACCESS.whitelist_resources(TENANT, ACTOR),
     ),
     (
         "user_access_policies",
         "GET",
         "/rbac/agents/user-access-policies",
-        lambda: svc.RBACService.AgentAccess.user_access_policies(TENANT, ACTOR, agent_id=AGENT),
+        lambda: svc._AGENT_ACCESS.user_access_policies(TENANT, ACTOR, resource_id=AGENT),
     ),
     (
         "replace_user_access_policies",
         "PUT",
         "/rbac/agents/user-access-policies",
-        lambda: svc.RBACService.AgentAccess.replace_user_access_policies(
+        lambda: svc._AGENT_ACCESS.replace_user_access_policies(
             TENANT,
             ACTOR,
-            agent_id=AGENT,
+            resource_id=AGENT,
             target_account_id="member-1",
-            payload=svc.ReplaceUserAccessPolicies(access_policy_ids=[POLICY], account_ids=["member-1"]),
+            payload=rbac_contracts.ReplaceUserAccessPolicies(access_policy_ids=[POLICY], account_ids=["member-1"]),
         ),
     ),
     (
         "whitelist",
         "GET",
         "/rbac/agents/whitelist",
-        lambda: svc.RBACService.AgentAccess.whitelist(TENANT, ACTOR, agent_id=AGENT),
+        lambda: svc._AGENT_ACCESS.whitelist(TENANT, ACTOR, resource_id=AGENT),
     ),
     (
         "whitelist_config",
         "GET",
         "/rbac/agents/whitelist",
-        lambda: svc.RBACService.AgentAccess.whitelist_config(TENANT, ACTOR, agent_id=AGENT),
+        lambda: svc._AGENT_ACCESS.whitelist_config(TENANT, ACTOR, resource_id=AGENT),
     ),
     (
         "legacy_whitelist_config",
         "GET",
         "/rbac/agents/whitelist",
-        lambda: svc.RBACService.AgentAccess.legacy_whitelist_config(TENANT, ACTOR, agent_id=AGENT),
+        lambda: svc._AGENT_ACCESS.legacy_whitelist_config(TENANT, ACTOR, resource_id=AGENT),
     ),
     (
         "replace_whitelist",
         "PUT",
         "/rbac/agents/whitelist",
-        lambda: svc.RBACService.AgentAccess.replace_whitelist(
+        lambda: svc._AGENT_ACCESS.replace_whitelist(
             TENANT,
             ACTOR,
-            agent_id=AGENT,
-            payload=svc.ReplaceMemberBindings(automatic_include_workspace_members=True),
+            resource_id=AGENT,
+            payload=rbac_contracts.ReplaceMemberBindings(automatic_include_workspace_members=True),
         ),
     ),
     (
         "append_whitelist_members_batch",
         "POST",
         "/rbac/agents/whitelist/members/batch",
-        lambda: svc.RBACService.AgentAccess.append_whitelist_members_batch(
+        lambda: svc._AGENT_ACCESS.append_whitelist_members_batch(
             tenant_id=TENANT,
             account_id=ACTOR,
-            data=[svc.AppendAgentWhitelistMembersBatchItem(agent_id=AGENT, account_ids=["member-1"], policy_id=POLICY)],
+            data=[
+                rbac_contracts.AppendAgentWhitelistMembersBatchItem(
+                    agent_id=AGENT, account_ids=["member-1"], policy_id=POLICY
+                )
+            ],
         ),
     ),
     (
         "matrix",
         "GET",
         "/rbac/agents/access-policy",
-        lambda: svc.RBACService.AgentAccess.matrix(TENANT, ACTOR, agent_id=AGENT),
+        lambda: svc._AGENT_ACCESS.matrix(TENANT, ACTOR, resource_id=AGENT),
     ),
     (
         "list_role_bindings",
         "GET",
         "/rbac/agents/access-policy/role-bindings",
-        lambda: svc.RBACService.AgentAccess.list_role_bindings(TENANT, ACTOR, agent_id=AGENT, policy_id=POLICY),
-    ),
-    (
-        "replace_role_bindings",
-        "PUT",
-        "/rbac/agents/access-policy/role-bindings",
-        lambda: svc.RBACService.AgentAccess.replace_role_bindings(
-            TENANT, ACTOR, agent_id=AGENT, policy_id=POLICY, payload=svc.ReplaceRoleBindings(role_ids=["role-1"])
-        ),
+        lambda: svc._AGENT_ACCESS.list_role_bindings(TENANT, ACTOR, resource_id=AGENT, policy_id=POLICY),
     ),
     (
         "list_member_bindings",
         "GET",
         "/rbac/agents/access-policy/member-bindings",
-        lambda: svc.RBACService.AgentAccess.list_member_bindings(TENANT, ACTOR, agent_id=AGENT, policy_id=POLICY),
+        lambda: svc._AGENT_ACCESS.list_member_bindings(TENANT, ACTOR, resource_id=AGENT, policy_id=POLICY),
     ),
     (
         "delete_member_bindings",
         "DELETE",
         "/rbac/agents/access-policy/member-bindings",
-        lambda: svc.RBACService.AgentAccess.delete_member_bindings(
-            TENANT, ACTOR, agent_id=AGENT, policy_id=POLICY, payload=svc.DeleteMemberBindings(account_ids=["member-1"])
-        ),
-    ),
-    (
-        "replace_bindings",
-        "PUT",
-        "/rbac/agents/access-policy/bindings",
-        lambda: svc.RBACService.AgentAccess.replace_bindings(
+        lambda: svc._AGENT_ACCESS.delete_member_bindings(
             TENANT,
             ACTOR,
-            agent_id=AGENT,
+            resource_id=AGENT,
             policy_id=POLICY,
-            payload=svc.ReplaceBindings(role_ids=["role-1"], account_ids=["member-1"]),
+            payload=rbac_contracts.DeleteMemberBindings(account_ids=["member-1"]),
         ),
     ),
     (
         "workspace.agent_matrix",
         "GET",
         "/rbac/workspace/agents/access-policy",
-        lambda: svc.RBACService.WorkspaceAccess.agent_matrix(TENANT, ACTOR),
+        lambda: svc._WORKSPACE_AGENT_ACCESS.matrix(TENANT, ACTOR),
     ),
     (
         "workspace.list_agent_role_bindings",
         "GET",
         "/rbac/workspace/agents/access-policy/role-bindings",
-        lambda: svc.RBACService.WorkspaceAccess.list_agent_role_bindings(TENANT, ACTOR, POLICY),
-    ),
-    (
-        "workspace.replace_agent_role_bindings",
-        "PUT",
-        "/rbac/workspace/agents/access-policy/role-bindings",
-        lambda: svc.RBACService.WorkspaceAccess.replace_agent_role_bindings(
-            TENANT, ACTOR, POLICY, svc.ReplaceRoleBindings(role_ids=["role-1"])
-        ),
+        lambda: svc._WORKSPACE_AGENT_ACCESS.list_role_bindings(TENANT, ACTOR, POLICY),
     ),
     (
         "workspace.list_agent_member_bindings",
         "GET",
         "/rbac/workspace/agents/access-policy/member-bindings",
-        lambda: svc.RBACService.WorkspaceAccess.list_agent_member_bindings(TENANT, ACTOR, POLICY),
+        lambda: svc._WORKSPACE_AGENT_ACCESS.list_member_bindings(TENANT, ACTOR, POLICY),
     ),
     (
         "workspace.replace_agent_bindings",
         "PUT",
         "/rbac/workspace/agents/access-policy/bindings",
-        lambda: svc.RBACService.WorkspaceAccess.replace_agent_bindings(
-            TENANT, ACTOR, POLICY, svc.ReplaceBindings(role_ids=["role-1"], account_ids=["member-1"])
+        lambda: svc._WORKSPACE_AGENT_ACCESS.replace_bindings(
+            TENANT, ACTOR, POLICY, rbac_contracts.ReplaceBindings(role_ids=["role-1"], account_ids=["member-1"])
         ),
     ),
     (
@@ -203,11 +173,11 @@ _AGENT_CASES: list[tuple[str, str, str, Callable[[], object]]] = [
     ids=[case[0] for case in _AGENT_CASES],
 )
 def test_agent_operations_hit_the_agent_route(
-    inner_call: MagicMock, method: str, endpoint: str, invoke: Callable[[], object]
+    transport: RBACTransport, method: str, endpoint: str, invoke: Callable[[], object]
 ) -> None:
     invoke()
 
-    call = _last(inner_call)
+    call = _last(transport)
     assert call.method == method
     assert call.endpoint == endpoint
     assert "/apps/" not in call.endpoint
@@ -224,33 +194,33 @@ def test_agent_operations_hit_the_agent_route(
 _PARITY_CASES: list[tuple[str, Callable[[], object], Callable[[], object]]] = [
     (
         "whitelist_resources",
-        lambda: svc.RBACService.AppAccess.whitelist_resources(TENANT, ACTOR),
-        lambda: svc.RBACService.AgentAccess.whitelist_resources(TENANT, ACTOR),
+        lambda: svc._APP_ACCESS.whitelist_resources(TENANT, ACTOR),
+        lambda: svc._AGENT_ACCESS.whitelist_resources(TENANT, ACTOR),
     ),
     (
         "whitelist",
-        lambda: svc.RBACService.AppAccess.whitelist(TENANT, ACTOR, "res-1"),
-        lambda: svc.RBACService.AgentAccess.whitelist(TENANT, ACTOR, agent_id="res-1"),
+        lambda: svc._APP_ACCESS.whitelist(TENANT, ACTOR, "res-1"),
+        lambda: svc._AGENT_ACCESS.whitelist(TENANT, ACTOR, resource_id="res-1"),
     ),
     (
         "user_access_policies",
-        lambda: svc.RBACService.AppAccess.user_access_policies(TENANT, ACTOR, "res-1"),
-        lambda: svc.RBACService.AgentAccess.user_access_policies(TENANT, ACTOR, agent_id="res-1"),
+        lambda: svc._APP_ACCESS.user_access_policies(TENANT, ACTOR, "res-1"),
+        lambda: svc._AGENT_ACCESS.user_access_policies(TENANT, ACTOR, resource_id="res-1"),
     ),
     (
         "matrix",
-        lambda: svc.RBACService.AppAccess.matrix(TENANT, ACTOR, "res-1"),
-        lambda: svc.RBACService.AgentAccess.matrix(TENANT, ACTOR, agent_id="res-1"),
+        lambda: svc._APP_ACCESS.matrix(TENANT, ACTOR, "res-1"),
+        lambda: svc._AGENT_ACCESS.matrix(TENANT, ACTOR, resource_id="res-1"),
     ),
     (
         "list_role_bindings",
-        lambda: svc.RBACService.AppAccess.list_role_bindings(TENANT, ACTOR, "res-1", POLICY),
-        lambda: svc.RBACService.AgentAccess.list_role_bindings(TENANT, ACTOR, agent_id="res-1", policy_id=POLICY),
+        lambda: svc._APP_ACCESS.list_role_bindings(TENANT, ACTOR, "res-1", POLICY),
+        lambda: svc._AGENT_ACCESS.list_role_bindings(TENANT, ACTOR, resource_id="res-1", policy_id=POLICY),
     ),
     (
         "list_member_bindings",
-        lambda: svc.RBACService.AppAccess.list_member_bindings(TENANT, ACTOR, "res-1", POLICY),
-        lambda: svc.RBACService.AgentAccess.list_member_bindings(TENANT, ACTOR, agent_id="res-1", policy_id=POLICY),
+        lambda: svc._APP_ACCESS.list_member_bindings(TENANT, ACTOR, "res-1", POLICY),
+        lambda: svc._AGENT_ACCESS.list_member_bindings(TENANT, ACTOR, resource_id="res-1", policy_id=POLICY),
     ),
 ]
 
@@ -261,15 +231,15 @@ _PARITY_CASES: list[tuple[str, Callable[[], object], Callable[[], object]]] = [
     ids=[case[0] for case in _PARITY_CASES],
 )
 def test_same_path_and_param_shape_modulo_segment(
-    inner_call: MagicMock,
+    transport: RBACTransport,
     app_call: Callable[[], object],
     agent_call: Callable[[], object],
 ) -> None:
     app_call()
-    app = _last(inner_call)
-    inner_call.reset_mock()
+    app = _last(transport)
+    transport.requests.clear()
     agent_call()
-    agent = _last(inner_call)
+    agent = _last(transport)
 
     assert app.endpoint.replace("/apps/", "/agents/") == agent.endpoint
     assert app.method == agent.method

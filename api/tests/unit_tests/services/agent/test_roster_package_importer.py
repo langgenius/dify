@@ -85,7 +85,7 @@ class _MemoryStorage:
         self.deleted.append(filename)
         self.files.pop(filename, None)
 
-    def load_stream(self, filename: str) -> Generator[bytes, None, None]:
+    def load_stream(self, filename: str) -> Generator[bytes]:
         yield self.files[filename]
 
 
@@ -345,7 +345,7 @@ def test_template_url_rejects_failed_or_unsafe_download_before_writes(
 
     class OversizedDownload(httpx.SyncByteStream):
         @override
-        def __iter__(self) -> Generator[bytes, None, None]:
+        def __iter__(self) -> Generator[bytes]:
             yield b"x" * (2 * 1024 * 1024)
             pytest.fail("An oversized Agent package must stop downloading before reading the tail")
 
@@ -703,22 +703,22 @@ def test_import_materializes_agent_resources_and_unpublished_draft(
         assert _count(session, AgentDebugConversation) == 1
 
 
-def test_import_rejects_binary_dependencies_before_side_effects(
+def test_import_ignores_unknown_resource_metadata(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     storage = _MemoryStorage()
     importer = RosterAgentPackageImporter(storage_backend=storage)
 
-    with pytest.raises(InvalidRosterAgentPackageError, match="manifest is invalid"):
-        importer.import_package(
-            source=io.BytesIO(_package(binary_dependency=True)),
-            tenant_id="tenant-1",
-            account=_account(),
-        )
+    result = importer.import_package(
+        source=io.BytesIO(_package(binary_dependency=True)),
+        tenant_id="tenant-1",
+        account=_account(),
+    )
 
-    assert storage.files == {}
+    assert len(storage.files) == 4
     with sqlite_session_factory() as session:
-        assert _count(session, App) == 0
+        assert session.get(App, result.app_id) is not None
+        assert _count(session, App) == 1
 
 
 def test_import_marks_unavailable_knowledge_for_rebinding(

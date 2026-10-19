@@ -3,13 +3,15 @@ import type { ViewType } from '@/app/components/workflow/block-selector/types'
 import type { OnSelectBlock } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
+import { selectRAGRecommendedPlugins } from '@/app/components/tools/utils/query-select'
 import { useRAGRecommendationsCollapsed } from '@/app/components/workflow/block-selector/storage'
 import Link from '@/next/link'
-import { useRAGRecommendedPlugins } from '@/service/use-tools'
+import { consoleQuery } from '@/service/console'
 import { getMarketplaceUrl } from '@/utils/var'
 import List from './list'
 
@@ -31,7 +33,12 @@ export function RAGToolRecommendations({
     data: ragRecommendedPlugins,
     isLoading: isLoadingRAGRecommendedPlugins,
     isFetching: isFetchingRAGRecommendedPlugins,
-  } = useRAGRecommendedPlugins('tool')
+  } = useQuery(
+    consoleQuery.rag.pipelines.recommendedPlugins.get.queryOptions({
+      input: { query: { type: 'tool' } },
+      select: selectRAGRecommendedPlugins,
+    }),
+  )
 
   const recommendedPlugins = useMemo(() => {
     if (ragRecommendedPlugins) return ragRecommendedPlugins.installed_recommended_plugins

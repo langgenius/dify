@@ -205,7 +205,7 @@ def test_storage_error_is_not_converted(
     mocker.patch.object(storage, "load_stream", side_effect=storage_error)
 
     with patch("services.upload_file_delivery_service.file_helpers.verify_file_signature", return_value=True):
-        with pytest.raises(OSError) as error_info:
+        with pytest.raises(OSError, match="storage unavailable") as error_info:
             service.get_signed_file_preview(file_id="text-id", timestamp="1", nonce="nonce", sign="valid")
 
     assert error_info.value is storage_error

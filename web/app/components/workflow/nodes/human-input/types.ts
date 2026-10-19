@@ -65,7 +65,7 @@ export type UserAction = {
   button_style: UserActionButtonType
 }
 
-type StringDefault = {
+export type StringDefault = {
   selector: ValueSelector
   type: 'variable' | 'constant'
   value: string
@@ -76,9 +76,6 @@ type StringListSource = {
   type: 'variable' | 'constant'
   value: string[]
 }
-
-// Preserve the old export during the transition to the new schema names.
-export type FormInputItemDefault = StringDefault
 
 type BaseFormInputItem = {
   output_variable_name: string

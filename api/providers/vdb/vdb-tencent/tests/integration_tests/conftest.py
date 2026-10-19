@@ -1,5 +1,5 @@
 import os
-from typing import Any, Union
+from typing import Any
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
@@ -100,7 +100,7 @@ class MockTcvectordbClass:
         self,
         database_name: str,
         collection_name: str,
-        documents: list[Union[Document, dict]],
+        documents: list[Document | dict],
         timeout: float | None = None,
         build_index: bool = True,
         **kwargs,
@@ -125,9 +125,9 @@ class MockTcvectordbClass:
         self,
         database_name: str,
         collection_name: str,
-        ann: Union[list[AnnSearch], AnnSearch] | None = None,
-        match: Union[list[KeywordSearch], KeywordSearch] | None = None,
-        filter: Union[Filter, str] | None = None,
+        ann: list[AnnSearch] | AnnSearch | None = None,
+        match: list[KeywordSearch] | KeywordSearch | None = None,
+        filter: Filter | str | None = None,
         rerank: Rerank | None = None,
         retrieve_vector: bool | None = None,
         output_fields: list[str] | None = None,

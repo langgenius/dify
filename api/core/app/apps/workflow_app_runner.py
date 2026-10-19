@@ -158,7 +158,7 @@ class _WorkflowGraphConfig(BaseModel):
         return self.model_dump(mode="python", exclude_unset=True)
 
 
-class WorkflowBasedAppRunner:
+class WorkflowBasedAppRunner:  # noqa: B903  # Runtime owner; constructor names differ from private state.
     def __init__(
         self,
         *,

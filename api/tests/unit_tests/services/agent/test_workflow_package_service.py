@@ -48,7 +48,7 @@ class _MemoryStorage:
         self.files: dict[str, bytes] = {}
         self.saved: list[str] = []
 
-    def load_stream(self, filename: str) -> Generator[bytes, None, None]:
+    def load_stream(self, filename: str) -> Generator[bytes]:
         yield self.files[filename]
 
     def save(self, filename: str, data: bytes) -> None:
@@ -272,6 +272,13 @@ def test_package_round_trip_restores_bound_agents_and_resources(
     app = _source(sqlite_session, storage, mode=mode, published=published)
     with AppPackageService().export_app(app_model=app, workflow_id="workflow-1" if published else None) as exported:
         content = exported.archive.read()
+    with zipfile.ZipFile(io.BytesIO(content)) as archive:
+        manifest = yaml.safe_load(archive.read("manifest.yaml"))
+        assert all(
+            "audit" not in resource
+            for group in manifest["agent_resources"].values()
+            for resource in [*group["skills"], *group["files"]]
+        )
     prepared = AppPackageService().read_package(io.BytesIO(content))
     assert prepared is not None
     with prepared:
@@ -498,7 +505,7 @@ def test_resource_io_runs_without_database_transactions(
     load_stream = storage.load_stream
     save = storage.save
 
-    def checked_load(filename: str) -> Generator[bytes, None, None]:
+    def checked_load(filename: str) -> Generator[bytes]:
         before_io()
         yield from load_stream(filename)
 

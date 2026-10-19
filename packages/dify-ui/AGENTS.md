@@ -11,7 +11,8 @@ This file owns the package boundary. Read the matching contract guide below dire
   skills may reference these guides; these guides must not require Web docs or skills to define package behavior.
 - Prefer `@base-ui/react` when it owns the required headless behavior. Style primitives with `cva`,
   `cn`, and Dify design tokens. Keep one primitive per `src/<name>/` folder with optional colocated
-  stories and tests.
+  stories and tests. A cohesive family may use `src/<family>/<primitive>/` public entrypoints,
+  with family-shared implementation in `src/<family>/internal/`.
 - Prefer Base UI data attributes for state styling and CSS variables for exposed dynamic values.
   Follow [Styling] for state callbacks; do not mirror primitive state in React solely to add classes.
 - When an upstream API or selector contract is unclear, read the current official Base UI
