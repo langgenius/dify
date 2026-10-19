@@ -10,7 +10,6 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
-    StrictBool,
     TypeAdapter,
     ValidationInfo,
     field_serializer,
@@ -19,7 +18,6 @@ from pydantic import (
 )
 from typing_extensions import TypedDict
 
-from clients.plugin.auth_entities import CredentialCheckCapabilities
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities import OAuthSchema
 from core.plugin.entities.parameters import (
@@ -465,8 +463,6 @@ class ToolEntity(BaseModel):
 
 
 class ToolProviderEntity(BaseModel):
-    credential_check: CredentialCheckCapabilities = Field(default_factory=CredentialCheckCapabilities)
-    oauth_revoke_supported: StrictBool = False
     identity: ToolProviderIdentity
     plugin_id: str | None = None
     credentials_schema: list[ProviderConfig] = Field(default_factory=list[ProviderConfig])

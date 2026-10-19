@@ -9,7 +9,8 @@ import pytest
 
 from clients.plugin.auth import PluginCredentialAuthClient
 from clients.plugin.auth_entities import CredentialCheckResult, OAuthRevokeResult
-from core.plugin.entities.plugin_daemon import CredentialType, PluginToolProviderEntity
+from core.plugin.entities.plugin_daemon import CredentialType, PluginDaemonInnerError
+from core.plugin.impl.exc import PluginDaemonClientSideError, PluginDaemonInternalServerError, PluginInvokeError
 from core.plugin.impl.tool import PluginToolManager
 
 SECRET = "secret-that-must-not-escape"
@@ -75,17 +76,20 @@ def test_shared_client_preserves_legacy_and_detailed_requests() -> None:
 @pytest.mark.parametrize("legacy_result", [True, False, 1, "true"])
 def test_new_api_accepts_only_explicit_legacy_success(legacy_result: object) -> None:
     with _daemon(lambda _: httpx.Response(200, text=_frame({"result": legacy_result}))):
-        result = _check(PluginCredentialAuthClient())
-    assert result.status == ("valid" if legacy_result is True else "temporarily_unavailable")
-    assert result.reason_code == (None if legacy_result is True else "protocol_error")
-    assert result.retryable is False
+        if legacy_result is True:
+            result = _check(PluginCredentialAuthClient())
+            assert result.status == "valid"
+            assert result.reason_code is None
+            assert result.retryable is False
+        else:
+            with pytest.raises(PluginDaemonInternalServerError):
+                _check(PluginCredentialAuthClient())
 
 
-def test_missing_revoke_endpoint_is_not_plugin_unsupported() -> None:
+def test_missing_revoke_endpoint_raises_daemon_error() -> None:
     with _daemon(lambda _: httpx.Response(404)):
-        result = _revoke(PluginCredentialAuthClient())
-    assert result.status == "failed"
-    assert result.retryable is False
+        with pytest.raises(PluginDaemonClientSideError):
+            _revoke(PluginCredentialAuthClient())
 
 
 @pytest.mark.parametrize(
@@ -167,14 +171,10 @@ def test_detailed_results_are_preserved(operation: Operation, payload: dict[str,
         SECRET,
     ],
 )
-def test_malformed_checks_do_not_invalidate_credentials(body: str, caplog: pytest.LogCaptureFixture) -> None:
+def test_malformed_checks_raise_daemon_errors(body: str) -> None:
     with _daemon(lambda _: httpx.Response(200, text=body)):
-        result = _check(PluginCredentialAuthClient())
-    assert result.status == "temporarily_unavailable"
-    assert result.reason_code == "protocol_error"
-    assert result.retryable is False
-    assert SECRET not in result.model_dump_json()
-    assert SECRET not in caplog.text
+        with pytest.raises(PluginDaemonInternalServerError):
+            _check(PluginCredentialAuthClient())
 
 
 @pytest.mark.parametrize(
@@ -184,20 +184,17 @@ def test_malformed_checks_do_not_invalidate_credentials(body: str, caplog: pytes
 def test_error_after_success_is_not_accepted(
     operation: Operation, success: dict[str, object], caplog: pytest.LogCaptureFixture
 ) -> None:
-    error = json.dumps({"error_type": "PluginInvokeError", "message": SECRET})
+    error = json.dumps({"error_type": "PluginInvokeError", "message": json.dumps({"message": SECRET})})
     body = _frame(success) + _frame(None, code=-500, message=error)
     with _daemon(lambda _: httpx.Response(200, text=body)):
-        result = operation(PluginCredentialAuthClient())
-    assert result.status == ("temporarily_unavailable" if operation is _check else "failed")
-    assert result.reason_code == "protocol_error"
-    assert result.retryable is False
-    assert SECRET not in result.model_dump_json()
+        with pytest.raises(PluginInvokeError):
+            operation(PluginCredentialAuthClient())
     assert SECRET not in caplog.text
 
 
 @pytest.mark.parametrize("operation", [_check, _revoke])
-@pytest.mark.parametrize(("status_code", "retryable"), [(401, False), (429, True), (503, True)])
-def test_http_errors_are_not_credential_errors(operation: Operation, status_code: int, retryable: bool) -> None:
+@pytest.mark.parametrize("status_code", [401, 429, 503])
+def test_http_errors_raise_daemon_errors(operation: Operation, status_code: int) -> None:
     requests: list[httpx.Request] = []
 
     def respond(request: httpx.Request) -> httpx.Response:
@@ -205,15 +202,16 @@ def test_http_errors_are_not_credential_errors(operation: Operation, status_code
         return httpx.Response(status_code, text=SECRET)
 
     with _daemon(respond):
-        result = operation(PluginCredentialAuthClient())
-    assert result.status == ("temporarily_unavailable" if operation is _check or retryable else "failed")
-    assert result.reason_code == "daemon_unavailable"
-    assert result.retryable is retryable
+        expected_error = PluginDaemonClientSideError if status_code < 500 else PluginDaemonInternalServerError
+        with pytest.raises(expected_error):
+            operation(PluginCredentialAuthClient())
     assert len(requests) == 1
 
 
-@pytest.mark.parametrize("exception", [httpx.ReadTimeout(SECRET), RuntimeError(SECRET)])
-def test_stream_failure_after_success_is_not_accepted(exception: Exception, caplog: pytest.LogCaptureFixture) -> None:
+@pytest.mark.parametrize(
+    "exception", [httpx.ReadTimeout("Read timed out"), RuntimeError("Unexpected error"), TypeError("Bad argument")]
+)
+def test_stream_failure_after_success_propagates(exception: Exception) -> None:
     class InterruptedStream(httpx.SyncByteStream):
         @override
         def __iter__(self) -> Iterator[bytes]:
@@ -221,11 +219,13 @@ def test_stream_failure_after_success_is_not_accepted(exception: Exception, capl
             raise exception
 
     with _daemon(lambda _: httpx.Response(200, stream=InterruptedStream())):
-        result = _check(PluginCredentialAuthClient())
-    assert result.status == "temporarily_unavailable"
-    assert result.retryable is isinstance(exception, httpx.TransportError)
-    assert SECRET not in result.model_dump_json()
-    assert SECRET not in caplog.text
+        expected_error = PluginDaemonInnerError if isinstance(exception, httpx.RequestError) else type(exception)
+        with pytest.raises(expected_error) as exc_info:
+            _check(PluginCredentialAuthClient())
+    if isinstance(exception, httpx.RequestError):
+        assert exc_info.value.__cause__ is exception
+    else:
+        assert exc_info.value is exception
 
 
 def test_unauthorized_type_does_not_dispatch() -> None:
@@ -235,28 +235,3 @@ def test_unauthorized_type_does_not_dispatch() -> None:
     with _daemon(respond):
         with pytest.raises(ValueError, match="require API key or OAuth2"):
             _check(PluginCredentialAuthClient(), CredentialType.UNAUTHORIZED)
-
-
-@pytest.mark.parametrize("enabled", [False, True])
-def test_provider_capabilities_default_to_disabled_and_survive_parsing(enabled: bool) -> None:
-    capabilities = {"credential_check": {"api_key": True, "oauth2": False}, "oauth_revoke_supported": True}
-    provider = PluginToolProviderEntity.model_validate(
-        {
-            "provider": "provider",
-            "plugin_id": "org/plugin",
-            "plugin_unique_identifier": "org/plugin:1.0.0@digest",
-            "declaration": {
-                "identity": {
-                    "author": "org",
-                    "name": "provider",
-                    "description": {"en_US": "Provider"},
-                    "icon": "icon.svg",
-                    "label": {"en_US": "Provider"},
-                },
-                **(capabilities if enabled else {}),
-            },
-        }
-    )
-    declaration = provider.model_dump()["declaration"]
-    assert declaration["credential_check"] == {"api_key": enabled, "oauth2": False}
-    assert declaration["oauth_revoke_supported"] is enabled

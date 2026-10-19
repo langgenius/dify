@@ -1,13 +1,13 @@
-"""Detailed credential checks and best-effort OAuth revocation.
+"""Detailed credential checks and OAuth revocation.
 
-Callers resolve and authorize credentials before this boundary. The daemon owns
-capability checks for the dispatched plugin version; these calls never refresh
-tokens, persist Connection state, or retry provider operations automatically.
+Callers resolve and authorize credentials before this boundary. These calls
+never refresh tokens, persist Connection state, or retry provider operations
+automatically.
 
 Legacy true results preserve the existing validator's success semantics. Legacy
 false results cannot distinguish invalid credentials from other failures, so
-they do not invalidate credentials. An absent revoke endpoint returns a failure
-value so local cleanup can continue.
+they do not invalidate credentials. Transport and protocol errors propagate as
+plugin daemon exceptions. Connection lifecycle services own best-effort cleanup.
 """
 
 import time
@@ -15,16 +15,16 @@ from collections.abc import Mapping
 from contextlib import closing
 from typing import Any
 
-import httpx
+from pydantic import ValidationError
 
 from clients.plugin.auth_entities import (
-    AuthReasonCode,
     CredentialCheckResponse,
     CredentialCheckResult,
     OAuthRevokeResult,
 )
-from core.plugin.entities.plugin_daemon import CredentialType, PluginDaemonInnerError
+from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.base import BasePluginClient, use_plugin_daemon_request_timeout
+from core.plugin.impl.exc import PluginDaemonInternalServerError
 from models.provider_ids import ToolProviderID
 
 
@@ -76,7 +76,7 @@ class PluginCredentialAuthClient(BasePluginClient):
         system_credentials: Mapping[str, Any],
         credentials: Mapping[str, Any],
     ) -> OAuthRevokeResult:
-        """Return remote failures as values so local cleanup can still proceed.
+        """Return the provider result; callers handle best-effort cleanup on errors.
 
         The caller supplies the OAuth client configuration used for the original
         grant. App unbinding must not call this operation.
@@ -101,51 +101,33 @@ class PluginCredentialAuthClient(BasePluginClient):
         data: dict[str, Any],
         response_type: type[T],
     ) -> T:
-        try:
-            with (
-                use_plugin_daemon_request_timeout(10),
-                closing(
-                    self._request_with_plugin_daemon_response_stream(
-                        "POST",
-                        f"plugin/{tenant_id}/dispatch/{operation}",
-                        dict[str, object],
-                        headers={"X-Plugin-ID": provider_id.plugin_id, "Content-Type": "application/json"},
-                        data={"user_id": user_id, "data": {"provider": provider_id.provider_name, **data}},
-                    )
-                ) as response,
-            ):
-                result: T | None = None
-                for payload in response:
-                    if result is not None:
-                        raise ValueError("Expected exactly one successful authentication result")
-                    if (
-                        response_type is CredentialCheckResponse
-                        and payload.keys() == {"result"}
-                        and payload["result"] is True
-                    ):
-                        payload = {"status": "valid", "reason_code": None, "retryable": False}
+        with (
+            use_plugin_daemon_request_timeout(10),
+            closing(
+                self._request_with_plugin_daemon_response_stream(
+                    "POST",
+                    f"plugin/{tenant_id}/dispatch/{operation}",
+                    dict[str, object],
+                    headers={"X-Plugin-ID": provider_id.plugin_id, "Content-Type": "application/json"},
+                    data={"user_id": user_id, "data": {"provider": provider_id.provider_name, **data}},
+                )
+            ) as response,
+        ):
+            result: T | None = None
+            for payload in response:
+                if result is not None:
+                    raise PluginDaemonInternalServerError("Expected exactly one successful authentication result")
+                if (
+                    response_type is CredentialCheckResponse
+                    and payload.keys() == {"result"}
+                    and payload["result"] is True
+                ):
+                    payload = {"status": "valid", "reason_code": None, "retryable": False}
+                try:
                     result = response_type.model_validate(payload)
-                if result is None:
-                    raise ValueError("Expected exactly one authentication result")
-                # Consume EOF before accepting success: a later error invalidates it.
-                return result
-        except httpx.HTTPStatusError as exc:
-            reason_code: AuthReasonCode = "daemon_unavailable"
-            retryable = exc.response.status_code == 429 or exc.response.status_code >= 500
-        except PluginDaemonInnerError as exc:
-            reason_code = "daemon_unavailable"
-            retryable = isinstance(exc.__cause__, httpx.TransportError)
-        except (ValueError, TypeError):
-            reason_code, retryable = "protocol_error", False
-        except Exception:
-            reason_code, retryable = "unknown_error", False
-
-        return response_type.model_validate(
-            {
-                "status": "failed"
-                if response_type is OAuthRevokeResult and not retryable
-                else "temporarily_unavailable",
-                "reason_code": reason_code,
-                "retryable": retryable,
-            }
-        )
+                except ValidationError as exc:
+                    raise PluginDaemonInternalServerError("Invalid authentication result from plugin daemon") from exc
+            if result is None:
+                raise PluginDaemonInternalServerError("Expected exactly one authentication result")
+            # Consume EOF before accepting success: a later error invalidates it.
+            return result

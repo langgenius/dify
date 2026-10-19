@@ -1062,7 +1062,7 @@ class TestPluginRuntimeEdgeCases:
             first_result = next(results)
             assert first_result.value == "valid"
 
-            with pytest.raises(ValueError, match="\\{invalid json\\}"):
+            with pytest.raises(PluginDaemonInternalServerError, match="Invalid response"):
                 next(results)
 
     def test_request_with_bytes_data(self, plugin_client, mock_config):

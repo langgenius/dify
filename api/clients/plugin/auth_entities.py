@@ -1,18 +1,8 @@
-"""Tool authentication contracts shared with the plugin daemon.
-
-Capabilities are opt-in per provider and installed plugin version. Neither an
-OAuth schema nor the legacy boolean validator proves detailed check support.
-"""
+"""Credential check and OAuth revocation results returned by plugin providers."""
 
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, StrictBool
-
-
-class CredentialCheckCapabilities(BaseModel):
-    api_key: StrictBool = False
-    oauth2: StrictBool = False
-
 
 AuthReasonCode = Literal[
     "credential_invalid",
