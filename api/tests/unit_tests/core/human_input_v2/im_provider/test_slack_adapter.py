@@ -955,6 +955,32 @@ def test_webhook_authenticates_challenge_and_business_events_before_consumer(moc
     assert len(consumer.events) == 1
 
 
+@pytest.mark.parametrize(
+    "authentication_headers",
+    [
+        (),
+        (("X-Slack-Request-Timestamp", _REQUEST_TIMESTAMP), ("X-Slack-Signature", "v0=invalid")),
+    ],
+    ids=("missing-signature", "invalid-signature"),
+)
+def test_url_verification_rejects_unauthenticated_challenge(mocker, authentication_headers) -> None:
+    adapter = _adapter(mocker, FakeWebClient())
+    consumer = RecordingConsumer()
+    handler = adapter.create_webhook_handler(consumer)
+    body = b'{"type":"url_verification","challenge":"challenge-value"}'
+    request = WebhookRequest(
+        method="POST",
+        headers=(("Content-Type", "application/json"), *authentication_headers),
+        body=body,
+        received_at=_RECEIVED_AT,
+    )
+
+    response = handler.handle(request)
+
+    assert response.status_code == 401
+    assert consumer.events == []
+
+
 def test_webhook_not_accepted_is_not_successfully_acknowledged(mocker) -> None:
     adapter = _adapter(mocker, FakeWebClient())
     consumer = RecordingConsumer(EventAcceptance.NOT_ACCEPTED)

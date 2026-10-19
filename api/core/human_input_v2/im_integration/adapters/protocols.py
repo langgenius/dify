@@ -89,10 +89,13 @@ class IMEventConsumer(Protocol):
 
 
 class IMWebhookHandler(Protocol):
-    """Thread-safe framework-neutral authenticated webhook handler."""
+    """Thread-safe framework-neutral provider webhook handler."""
 
     def handle(self, request: WebhookRequest) -> WebhookResponse:
-        """Authenticate, decode, consume, and map one provider request."""
+        """Handle provider URL verification or authenticate and consume an event.
+
+        URL verification returns the provider response without invoking the consumer.
+        """
         ...
 
 

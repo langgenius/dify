@@ -1305,7 +1305,7 @@ class _FeishuLarkDynamicCardMessaging(IMDynamicCardMessaging):
 
 
 class _FeishuLarkWebhookHandler(IMWebhookHandler):
-    """Authenticated Webhook boundary safe for concurrent calls."""
+    """Concurrent webhook boundary honoring optional provider authentication."""
 
     def __init__(
         self,
@@ -1324,17 +1324,17 @@ class _FeishuLarkWebhookHandler(IMWebhookHandler):
     def handle(self, request: WebhookRequest) -> WebhookResponse:
         if request.method != "POST":
             return _webhook_response(405, {"code": 1})
-        authenticated = self._authenticate_and_decode(request)
-        if authenticated is None:
+        decoded_request = self._decode_request(request)
+        if decoded_request is None:
             return _webhook_response(401, {"code": 1})
-        decoded, encrypted, native_payload = authenticated
+        decoded, encrypted, native_payload = decoded_request
 
         if decoded.get("type") == "url_verification":
             try:
                 challenge = _WebhookChallenge.model_validate(decoded)
             except ValidationError:
                 return _webhook_response(400, {"code": 1})
-            if not self._challenge_is_authenticated(challenge.token, decrypted=encrypted):
+            if not self._challenge_matches_configuration(challenge.token, decrypted=encrypted):
                 return _webhook_response(401, {"code": 1})
             return _webhook_response(200, {"challenge": challenge.challenge})
 
@@ -1373,15 +1373,13 @@ class _FeishuLarkWebhookHandler(IMWebhookHandler):
             return _webhook_response(503, {"code": 1})
         return _webhook_response(200, {"code": 0})
 
-    def _authenticate_and_decode(
+    def _decode_request(
         self,
         request: WebhookRequest,
     ) -> tuple[dict[str, object], bool, str] | None:
         # Authentication must parse Provider JSON for challenge, token, signature,
         # and tenant checks. The separate native string is never reconstructed;
         # it is persisted exactly so only the codec normalizes card callback facts.
-        if self._verification_token is None and self._encrypt_key is None:
-            return None
         try:
             outer = _decode_json_object(request.body)
             encrypted = outer.get("encrypt")
@@ -1410,9 +1408,9 @@ class _FeishuLarkWebhookHandler(IMWebhookHandler):
             token is not None and hmac.compare_digest(token, self._verification_token)
         )
 
-    def _challenge_is_authenticated(self, token: str | None, *, decrypted: bool) -> bool:
+    def _challenge_matches_configuration(self, token: str | None, *, decrypted: bool) -> bool:
         if self._verification_token is None:
-            return decrypted
+            return decrypted or self._encrypt_key is None
         return token is not None and hmac.compare_digest(token, self._verification_token)
 
 

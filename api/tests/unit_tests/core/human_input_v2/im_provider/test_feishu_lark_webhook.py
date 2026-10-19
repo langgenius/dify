@@ -217,9 +217,11 @@ def test_authenticated_webhook_event_maps_confirmed_timestamp_units_safely(
 
 
 @pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
-def test_plaintext_business_event_without_auth_material_fails_closed(
+@pytest.mark.parametrize("include_token", [False, True], ids=("missing-token", "unconfigured-token"))
+def test_plaintext_business_event_without_optional_authentication_is_accepted(
     monkeypatch: pytest.MonkeyPatch,
     provider: IMProvider,
+    include_token: bool,
 ) -> None:
     gateway = _Gateway(["tenant_sanitized"])
     consumer = _Consumer()
@@ -230,12 +232,21 @@ def test_plaintext_business_event_without_auth_material_fails_closed(
         verification_token=None,
         encrypt_key=None,
     ).create_webhook_handler(consumer)
+    payload = json.loads(_event_body(token="unconfigured-token"))
+    if not include_token:
+        del payload["header"]["token"]
+    body = json.dumps(payload).encode()
 
-    response = handler.handle(WebhookRequest("POST", (), _event_body(), _RECEIVED_AT))
+    response = handler.handle(WebhookRequest("POST", (), body, _RECEIVED_AT))
 
-    assert response.status_code != 200
-    assert consumer.events == []
-    assert gateway.calls == []
+    assert response.status_code == 200
+    assert json.loads(response.body) == {"code": 0}
+    assert len(consumer.events) == 1
+    event = consumer.events[0]
+    assert event.provider is provider
+    assert event.provider_tenant_id == "tenant_sanitized"
+    assert event.event_id == "evt_sanitized_event"
+    assert event.payload == body.decode()
 
 
 @pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
