@@ -67,7 +67,7 @@ def _make_checker(
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def test_all_scalar_types_ready_on_correct_payload():
+def test_all_scalar_types_ready_on_correct_payload() -> None:
     checker = _make_checker()
     declared = [
         DeclaredOutputConfig(name="s", type=DeclaredOutputType.STRING),
@@ -75,7 +75,7 @@ def test_all_scalar_types_ready_on_correct_payload():
         DeclaredOutputConfig(name="b", type=DeclaredOutputType.BOOLEAN),
         DeclaredOutputConfig(name="o", type=DeclaredOutputType.OBJECT),
     ]
-    payload = {"s": "hello", "n": 3.14, "b": True, "o": {"k": "v"}}
+    payload = {"s": "hello", "n": float("3.14"), "b": True, "o": {"k": "v"}}
 
     outcome = checker.check(declared_outputs=declared, raw_output=payload, tenant_id="t-1")
 
@@ -88,7 +88,7 @@ def test_all_scalar_types_ready_on_correct_payload():
     }
 
 
-def test_number_rejects_bool_even_though_python_says_isinstance_int():
+def test_number_rejects_bool_even_though_python_says_isinstance_int() -> None:
     checker = _make_checker()
     outcome = checker.check(
         declared_outputs=[DeclaredOutputConfig(name="n", type=DeclaredOutputType.NUMBER)],
@@ -109,7 +109,9 @@ def test_number_rejects_bool_even_though_python_says_isinstance_int():
         (DeclaredOutputType.OBJECT, [1, 2], "list"),
     ],
 )
-def test_type_mismatch_reported_with_actual_kind(declared_type, wrong_value, expected_kind):
+def test_type_mismatch_reported_with_actual_kind(
+    declared_type: DeclaredOutputType, wrong_value: object, expected_kind: str
+) -> None:
     checker = _make_checker()
     outcome = checker.check(
         declared_outputs=[DeclaredOutputConfig(name="x", type=declared_type)],
@@ -126,7 +128,7 @@ def test_type_mismatch_reported_with_actual_kind(declared_type, wrong_value, exp
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def test_array_of_strings_validates_each_item():
+def test_array_of_strings_validates_each_item() -> None:
     checker = _make_checker()
     declared = DeclaredOutputConfig(
         name="tags",
@@ -143,7 +145,7 @@ def test_array_of_strings_validates_each_item():
     assert reason.startswith("items[1]:")
 
 
-def test_array_of_files_validates_per_item_file_ref():
+def test_array_of_files_validates_per_item_file_ref() -> None:
     checker = _make_checker(allowed={"t-1": {"file-A"}})
     declared = DeclaredOutputConfig(
         name="docs",
@@ -174,7 +176,7 @@ def test_array_of_files_validates_per_item_file_ref():
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def test_file_ref_must_be_tenant_owned():
+def test_file_ref_must_be_tenant_owned() -> None:
     checker = _make_checker(allowed={"t-1": {"my-file"}})
     declared = DeclaredOutputConfig(name="report", type=DeclaredOutputType.FILE)
     allowed_reference = build_file_reference(record_id="my-file")
@@ -195,7 +197,7 @@ def test_file_ref_must_be_tenant_owned():
     assert outcome.has_failures
 
 
-def test_file_ref_must_match_transfer_method_family():
+def test_file_ref_must_match_transfer_method_family() -> None:
     tool_reference = build_file_reference(record_id="tool-file-1")
     checker = _make_checker(
         allowed={"t-1": {"tool-file-1"}},
@@ -215,7 +217,7 @@ def test_file_ref_must_match_transfer_method_family():
     assert "not accessible" in (outcome.failures[0].reason or "")
 
 
-def test_datasource_file_ref_is_accepted_for_matching_transfer_method_family():
+def test_datasource_file_ref_is_accepted_for_matching_transfer_method_family() -> None:
     datasource_reference = build_file_reference(record_id="datasource-file-1")
     checker = _make_checker(
         allowed={"t-1": {"datasource-file-1"}},
@@ -234,7 +236,7 @@ def test_datasource_file_ref_is_accepted_for_matching_transfer_method_family():
     assert not outcome.has_failures
 
 
-def test_datasource_file_ref_rejects_transfer_method_family_mismatch():
+def test_datasource_file_ref_rejects_transfer_method_family_mismatch() -> None:
     tool_reference = build_file_reference(record_id="tool-file-1")
     checker = _make_checker(
         allowed={"t-1": {"tool-file-1"}},
@@ -254,7 +256,7 @@ def test_datasource_file_ref_rejects_transfer_method_family_mismatch():
     assert "not accessible" in (outcome.failures[0].reason or "")
 
 
-def test_file_ref_missing_reference_or_url_fails():
+def test_file_ref_missing_reference_or_url_fails() -> None:
     checker = _make_checker()
     declared = DeclaredOutputConfig(name="r", type=DeclaredOutputType.FILE)
 
@@ -269,7 +271,7 @@ def test_file_ref_missing_reference_or_url_fails():
     )
 
 
-def test_file_ref_accepts_remote_url_mapping_without_tenant_lookup():
+def test_file_ref_accepts_remote_url_mapping_without_tenant_lookup() -> None:
     checker = _make_checker()
     declared = DeclaredOutputConfig(name="r", type=DeclaredOutputType.FILE)
 
@@ -282,7 +284,7 @@ def test_file_ref_accepts_remote_url_mapping_without_tenant_lookup():
     assert not outcome.has_failures
 
 
-def test_file_ref_rejects_legacy_id_only_shape():
+def test_file_ref_rejects_legacy_id_only_shape() -> None:
     checker = _make_checker(allowed={"t-1": {"tool-file-1"}})
     declared = DeclaredOutputConfig(name="r", type=DeclaredOutputType.FILE)
 
@@ -367,7 +369,7 @@ def test_file_ref_rejects_non_canonical_reference() -> None:
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def test_optional_output_missing_is_not_produced_not_a_failure():
+def test_optional_output_missing_is_not_produced_not_a_failure() -> None:
     checker = _make_checker()
     declared = [
         DeclaredOutputConfig(name="opt", type=DeclaredOutputType.STRING, required=False),
@@ -379,7 +381,7 @@ def test_optional_output_missing_is_not_produced_not_a_failure():
     assert outcome.results[0].status == OutputTypeCheckStatus.NOT_PRODUCED
 
 
-def test_required_output_missing_is_failure():
+def test_required_output_missing_is_failure() -> None:
     checker = _make_checker()
     declared = [_str_output(required=True)]
 
@@ -390,7 +392,7 @@ def test_required_output_missing_is_failure():
     assert "missing" in outcome.failures[0].reason
 
 
-def test_non_dict_payload_fails_all_required_outputs():
+def test_non_dict_payload_fails_all_required_outputs() -> None:
     """If backend returns a string instead of an object, every required declared
     output is marked failed; optional outputs are marked failed too because we
     can't even attempt a lookup."""
@@ -408,7 +410,7 @@ def test_non_dict_payload_fails_all_required_outputs():
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def test_outcome_by_name_indexes_results():
+def test_outcome_by_name_indexes_results() -> None:
     checker = _make_checker()
     declared = [_str_output("a"), _str_output("b")]
 

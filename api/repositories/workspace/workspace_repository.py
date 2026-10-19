@@ -29,6 +29,7 @@ from repositories.account.repository import SQLAlchemyAccountRepository
 from services.account.contracts import AccountCreation
 from services.account.login_service import ConsoleAuthWorkspaceQuery
 from services.account_ports import AccountWorkspaceMembershipQuery, AccountWorkspaceSnapshotQuery
+from services.app.query_service import DiscoveryWorkspaces
 from services.entities.account_access_entities import AccountWorkspaceSnapshot
 from services.errors.workspace import (
     MemberNotInTenantError,
@@ -61,20 +62,22 @@ class WorkspaceRepository(
     ConsoleAuthWorkspaceQuery,
     DeviceWorkspaceQuery,
     WorkspaceMemberQuery,
+    DiscoveryWorkspaces,
 ):
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
+    @override
+    def names_by_ids(self, workspace_ids: Sequence[str]) -> dict[str, str]:
+        if not workspace_ids:
+            return {}
+        with self._session_factory() as session:
+            rows = session.execute(select(Tenant.id, Tenant.name).where(Tenant.id.in_(workspace_ids)))
+            return dict(rows.tuples().all())
+
     def get_account_role(self, *, account_id: str, tenant_id: str) -> str | None:
         """Read the current membership role without loading or mutating an Account."""
-        stmt = (
-            select(TenantAccountJoin.role)
-            .where(TenantAccountJoin.account_id == account_id, TenantAccountJoin.tenant_id == tenant_id)
-            .limit(1)
-        )
-        with self._session_factory() as session:
-            role = session.scalar(stmt)
-            return role.value if role is not None else None
+        return self.get_legacy_role(workspace_id=tenant_id, account_id=account_id)
 
     def provision(
         self,
@@ -391,7 +394,7 @@ class WorkspaceRepository(
 
     @override
     def list_for_workspace(
-        self, workspace_id: str, *, role: TenantAccountRole | None = None
+        self, workspace_id: str, *, role: TenantAccountRole | None = None, account_ids: Sequence[str] | None = None
     ) -> tuple[WorkspaceMemberRecord, ...]:
         """Read membership snapshots without retaining a Session during role resolution."""
         stmt = (
@@ -412,6 +415,10 @@ class WorkspaceRepository(
         )
         if role is not None:
             stmt = stmt.where(TenantAccountJoin.role == role)
+        if account_ids is not None:
+            if not account_ids:
+                return ()
+            stmt = stmt.where(Account.id.in_(account_ids))
 
         with self._session_factory() as session:
             return tuple(

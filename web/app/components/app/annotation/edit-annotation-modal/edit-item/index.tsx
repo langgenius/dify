@@ -3,7 +3,6 @@ import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { RiDeleteBinLine, RiEditFill, RiEditLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -24,7 +23,7 @@ type Props = Readonly<{
 
 export const EditTitle: FC<{ className?: string; title: string }> = ({ className, title }) => (
   <div className={cn(className, 'flex h-4.5 items-center system-xs-medium text-text-tertiary')}>
-    <RiEditFill className="mr-1 size-3.5" />
+    <span aria-hidden className="mr-1 i-ri-edit-fill size-3.5" />
     <div>{title}</div>
     <div
       className="ml-2 h-px grow"
@@ -94,21 +93,23 @@ const EditItem: FC<Props> = ({ type, readonly, content, onSave }) => {
             )}
             <div className="mt-2 flex items-center">
               {!readonly && (
-                <div
+                <button
+                  type="button"
                   className="flex cursor-pointer items-center space-x-1 system-xs-medium text-text-accent"
                   onClick={() => {
                     setIsEdit(true)
                   }}
                 >
-                  <RiEditLine className="mr-1 size-3.5" />
-                  <div>{t(($) => $['operation.edit'], { ns: 'common' })}</div>
-                </div>
+                  <span aria-hidden className="mr-1 i-ri-edit-line size-3.5" />
+                  <span>{t(($) => $['operation.edit'], { ns: 'common' })}</span>
+                </button>
               )}
 
               {showNewContent && (
                 <div className="ml-2 flex items-center system-xs-medium text-text-tertiary">
                   <div className="mr-2">·</div>
-                  <div
+                  <button
+                    type="button"
                     className="flex cursor-pointer items-center space-x-1"
                     onClick={async () => {
                       try {
@@ -121,11 +122,11 @@ const EditItem: FC<Props> = ({ type, readonly, content, onSave }) => {
                       }
                     }}
                   >
-                    <div className="size-3.5">
-                      <RiDeleteBinLine className="size-3.5" />
-                    </div>
-                    <div>{t(($) => $['operation.delete'], { ns: 'common' })}</div>
-                  </div>
+                    <span className="size-3.5">
+                      <span aria-hidden className="i-ri-delete-bin-line size-3.5" />
+                    </span>
+                    <span>{t(($) => $['operation.delete'], { ns: 'common' })}</span>
+                  </button>
                 </div>
               )}
             </div>

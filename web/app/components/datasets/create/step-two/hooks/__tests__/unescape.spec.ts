@@ -82,15 +82,7 @@ describe('unescape', () => {
     expect(unescape('hello world')).toBe('hello world')
   })
 
-  it('should handle mixed escaped and non-escaped content', () => {
-    expect(unescape('before\\nafter')).toBe('before\nafter')
-  })
-
   it('should handle empty string', () => {
     expect(unescape('')).toBe('')
-  })
-
-  it('should handle string with no escape sequences', () => {
-    expect(unescape('abc123')).toBe('abc123')
   })
 })

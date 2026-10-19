@@ -49,6 +49,7 @@ export default defineConfig({
       __DIFYCTL_COMMIT__: JSON.stringify(buildInfo.commit),
       __DIFYCTL_BUILD_DATE__: JSON.stringify(buildInfo.buildDate),
       __DIFYCTL_CHANNEL__: JSON.stringify(buildInfo.channel),
+      __DIFYCTL_COMPILED__: 'false',
     },
   },
   test: {

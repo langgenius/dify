@@ -324,7 +324,7 @@ class TestDatasetDocumentStoreAddDocuments(_UsesSQLiteSession):
         )
         store = DatasetDocumentStore(dataset=_dataset(), user_id=USER_ID, document_id=DOCUMENT_ID)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="zip\\(\\) argument 2 is shorter than argument 1"):
             store.add_documents(session=sqlite_session, docs=[document], token_counts=[])
 
         assert sqlite_session.scalar(select(func.count()).select_from(DocumentSegment)) == 0

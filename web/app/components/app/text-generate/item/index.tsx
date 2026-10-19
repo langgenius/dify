@@ -139,7 +139,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
       return
     }
     startQuerying()
-    const res: any = await fetchMoreLikeThis(messageId as string, appSourceType, installedAppId)
+    const res: any = await fetchMoreLikeThis(messageId, appSourceType, installedAppId)
     setCompletionRes(res.answer)
     setChildFeedback({
       rating: null,
@@ -170,7 +170,14 @@ const GenerationItem: FC<IGenerationItemProps> = ({
       appId: params.appId as string,
       messageId: messageId!,
     })
-    onOpenLog(buildPromptLogItem(data))
+    const promptLog = buildPromptLogItem(data)
+    onOpenLog({
+      id: promptLog.id,
+      // The prompt log modal only renders `log`; message file entries are passed through as-is.
+      log: promptLog.log as IChatItem['log'],
+      content: data.answer,
+      isAnswer: true,
+    })
   }
 
   const [currentTab, setCurrentTab] = useState<string>('DETAIL')

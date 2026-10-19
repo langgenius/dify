@@ -1,7 +1,9 @@
+import type { LocalFile } from './local-file'
 import { AsyncEntry } from '@napi-rs/keyring'
+import { z } from 'zod'
 import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
-import { YamlStore } from './store'
+import { BINARY } from '@/version/info'
 
 /**
  * Credential store keyed by an opaque (host, email) pair.
@@ -12,60 +14,40 @@ export type TokenStore = {
   remove: (host: string, email: string) => Promise<void>
 }
 
-const DOC_VERSION = 1
+const KEYCHAIN_ENTRY_PREFIX = 'tokens'
 
-export type TokenDoc = {
-  version?: number
-  tokens?: Record<string, Record<string, string>>
-}
+export const TOKENS_SCHEMA = z.object({
+  tokens: z.record(z.string(), z.record(z.string(), z.string())).default({}),
+})
+
+type TokensDoc = z.infer<typeof TOKENS_SCHEMA>
+
+export type TokensFile = LocalFile<TokensDoc>
 
 export class FileTokenStore implements TokenStore {
-  private readonly store: YamlStore
+  private readonly file: TokensFile
 
-  constructor(filePath: string) {
-    this.store = new YamlStore(filePath)
+  constructor(file: TokensFile) {
+    this.file = file
   }
 
   async read(host: string, email: string): Promise<string> {
-    const doc = await this.store.getTyped<TokenDoc>()
-    if (doc === null) return ''
-    // missing version = legacy pre-v1 format (same data shape); future unknown versions are rejected
-    if (doc.version !== undefined && doc.version !== DOC_VERSION) return ''
-    return doc.tokens?.[host]?.[email] ?? ''
+    return (await this.file.read())?.tokens[host]?.[email] ?? ''
   }
 
   async write(host: string, email: string, bearer: string): Promise<void> {
-    const doc = await this.load()
-    const hostMap = doc.tokens[host] ?? {}
-    hostMap[email] = bearer
-    doc.tokens[host] = hostMap
-    await this.store.setTyped(doc)
+    const doc = (await this.file.read()) ?? { tokens: {} }
+    doc.tokens[host] = { ...doc.tokens[host], [email]: bearer }
+    await this.file.write(doc)
   }
 
   async remove(host: string, email: string): Promise<void> {
-    const doc = await this.store.getTyped<TokenDoc>()
-    if (doc === null) return
-    if (doc.version !== undefined && doc.version !== DOC_VERSION) return
-    const tokens = doc.tokens ?? {}
-    const hostMap = tokens[host]
-    if (hostMap === undefined || !(email in hostMap)) return
+    const doc = await this.file.read()
+    const hostMap = doc?.tokens[host]
+    if (doc === null || hostMap === undefined || !(email in hostMap)) return
     delete hostMap[email]
-    if (Object.keys(hostMap).length === 0) delete tokens[host]
-    await this.store.setTyped({ version: DOC_VERSION, tokens })
-  }
-
-  private async load(): Promise<{
-    version: number
-    tokens: Record<string, Record<string, string>>
-  }> {
-    const doc = await this.store.getTyped<TokenDoc>()
-    if (doc === null) return { version: DOC_VERSION, tokens: {} }
-    if (doc.version !== undefined && doc.version !== DOC_VERSION)
-      return { version: DOC_VERSION, tokens: {} }
-    return {
-      version: DOC_VERSION,
-      tokens: (doc.tokens ?? {}) as Record<string, Record<string, string>>,
-    }
+    if (Object.keys(hostMap).length === 0) delete doc.tokens[host]
+    await this.file.write(doc)
   }
 }
 
@@ -82,7 +64,7 @@ export class KeychainTokenStore implements TokenStore {
   async read(host: string, email: string): Promise<string> {
     let raw: string | null | undefined
     try {
-      raw = await new AsyncEntry(this.service, entryName(host, email)).getPassword()
+      raw = await new AsyncEntry(this.service, this.entry(host, email)).getPassword()
     } catch (err) {
       throw keyringUnavailableError(err)
     }
@@ -97,7 +79,9 @@ export class KeychainTokenStore implements TokenStore {
 
   async write(host: string, email: string, bearer: string): Promise<void> {
     try {
-      await new AsyncEntry(this.service, entryName(host, email)).setPassword(JSON.stringify(bearer))
+      await new AsyncEntry(this.service, this.entry(host, email)).setPassword(
+        JSON.stringify(bearer),
+      )
     } catch (err) {
       throw keyringUnavailableError(err)
     }
@@ -105,22 +89,22 @@ export class KeychainTokenStore implements TokenStore {
 
   async remove(host: string, email: string): Promise<void> {
     try {
-      await new AsyncEntry(this.service, entryName(host, email)).deletePassword()
+      await new AsyncEntry(this.service, this.entry(host, email)).deletePassword()
     } catch {
       /* missing entry is fine */
     }
   }
-}
 
-function entryName(host: string, email: string): string {
-  return `tokens.${host}.${email}`
+  private entry(host: string, email: string): string {
+    return `${KEYCHAIN_ENTRY_PREFIX}.${host}.${email}`
+  }
 }
 
 function keyringUnavailableError(cause: unknown): BaseError {
   return new BaseError({
     code: ErrorCode.KeyringUnavailable,
     message: 'OS keychain is unreachable',
-    hint: 'credentials are stored in the system keychain but it could not be accessed; unlock the keychain (or the login session) and retry',
+    hint: `unlock the keychain (or the login session) and retry, or run ${BINARY} login --server <url> --no-keyring to keep the token in a file`,
     cause,
   })
 }

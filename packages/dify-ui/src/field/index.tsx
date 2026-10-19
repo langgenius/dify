@@ -1,14 +1,13 @@
 'use client'
 
-import type { Field as BaseFieldNS } from '@base-ui/react/field'
 import { Field as BaseField } from '@base-ui/react/field'
 import { cn } from '../cn'
-import { formLabelClassName } from '../form-control-shared'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { formLabelClassName } from '../internal/form-control'
+import { resolveClassName } from '../internal/resolve-class-name'
 
-type FieldActions = BaseFieldNS.Root.Actions
+type FieldActions = BaseField.Root.Actions
 
-type FieldProps = BaseFieldNS.Root.Props
+type FieldProps = BaseField.Root.Props
 
 function Field({ className, ...props }: FieldProps) {
   return (
@@ -21,7 +20,7 @@ function Field({ className, ...props }: FieldProps) {
   )
 }
 
-type FieldItemProps = BaseFieldNS.Item.Props
+type FieldItemProps = BaseField.Item.Props
 
 function FieldItem({ className, ...props }: FieldItemProps) {
   return (
@@ -32,7 +31,7 @@ function FieldItem({ className, ...props }: FieldItemProps) {
   )
 }
 
-type FieldLabelProps = BaseFieldNS.Label.Props
+type FieldLabelProps = BaseField.Label.Props
 
 function FieldLabel({ className, ...props }: FieldLabelProps) {
   return (
@@ -43,7 +42,7 @@ function FieldLabel({ className, ...props }: FieldLabelProps) {
   )
 }
 
-type FieldDescriptionProps = BaseFieldNS.Description.Props
+type FieldDescriptionProps = BaseField.Description.Props
 
 function FieldDescription({ className, ...props }: FieldDescriptionProps) {
   return (
@@ -56,7 +55,7 @@ function FieldDescription({ className, ...props }: FieldDescriptionProps) {
   )
 }
 
-type FieldErrorProps = BaseFieldNS.Error.Props
+type FieldErrorProps = BaseField.Error.Props
 
 function FieldError({ className, ...props }: FieldErrorProps) {
   return (
@@ -69,7 +68,7 @@ function FieldError({ className, ...props }: FieldErrorProps) {
   )
 }
 
-type FieldValidityProps = BaseFieldNS.Validity.Props
+type FieldValidityProps = BaseField.Validity.Props
 
 const FieldValidity = BaseField.Validity
 

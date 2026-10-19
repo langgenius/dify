@@ -12,6 +12,7 @@ from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig
 from enums.agent import WorkflowAgentBindingType
 from errors.workflow import NodeNotFoundError, WorkflowDataError
+from graphon.entities.base_node_data import BaseNodeData
 from graphon.entities.graph_config import NodeConfigDict
 from graphon.enums import BuiltinNodeTypes, NodeType
 from graphon.variables import VariableBase
@@ -21,7 +22,7 @@ from services.agent.publication_contracts import AgentPublicationState
 RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE = "source workflow must be published"
 MAX_WORKFLOW_ONLINE_USERS_REQUEST_IDS = 1000
 
-type WorkflowGeneration = Mapping[str, Any] | Generator[str, None, None]
+type WorkflowGeneration = Mapping[str, Any] | Generator[str]
 
 
 @dataclass(frozen=True)
@@ -149,9 +150,7 @@ class WorkflowSnapshot(WorkflowBindingScope):
             return [{variable["type"]: variable} for variable in variables]
         return variables
 
-    def walk_nodes(
-        self, specific_node_type: NodeType | None = None
-    ) -> Generator[tuple[str, Mapping[str, Any]], None, None]:
+    def walk_nodes(self, specific_node_type: NodeType | None = None) -> Generator[tuple[str, Mapping[str, Any]]]:
         nodes = self.graph_dict.get("nodes")
         if not isinstance(nodes, list):
             raise WorkflowDataError("nodes not found in workflow graph")
@@ -183,8 +182,10 @@ class WorkflowSnapshot(WorkflowBindingScope):
         data = node_config.get("data")
         if isinstance(data, Mapping):
             node_type = data.get("type")
+        elif isinstance(data, BaseNodeData):
+            node_type = data.type
         else:
-            node_type = getattr(data, "type", None)
+            raise WorkflowDataError("node type not found in workflow graph")
         if not isinstance(node_type, str):
             raise WorkflowDataError("node type not found in workflow graph")
         return node_type

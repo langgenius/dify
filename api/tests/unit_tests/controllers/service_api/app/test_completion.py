@@ -196,7 +196,9 @@ class TestChatRequestPayload:
 
     def test_payload_rejects_invalid_uuid_conversation_id(self):
         """Test that invalid UUID format raises ValueError."""
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match="1 validation error for ChatRequestPayload\\\nconversation_id"
+        ) as exc_info:
             ChatRequestPayload(inputs={}, query="test", conversation_id="not-a-uuid")
         assert "valid UUID" in str(exc_info.value)
 
@@ -596,7 +598,7 @@ class TestChatApiController:
     def test_rejects_sandbox_plan_workflow_version(
         self, app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session
     ) -> None:
-        completion_module = sys.modules["controllers.service_api.app.completion"]
+        sys.modules["controllers.service_api.app.completion"]
         apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
 
         billing_get_info = Mock(return_value={"subscription": {"plan": CloudPlan.SANDBOX}})
@@ -630,6 +632,7 @@ class TestChatApiController:
             (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL, str(uuid.uuid4())),
             (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, None),
         ],
+        ids=["community-version", "enterprise-version", "cloud-paid-version", "cloud-default-version"],
     )
     def test_allows_default_or_entitled_workflow_version_execution(
         self,

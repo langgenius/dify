@@ -363,5 +363,6 @@
   "agentDetail.versionHistory.filter": "バージョンをフィルター",
   "agentDetail.versionHistory.restore": "復元",
   "agentDetail.versionHistory.versionName": "バージョン {{version}}",
-  "agentDetail.versionHistory.viewOnly": "表示のみ"
+  "agentDetail.versionHistory.viewOnly": "表示のみ",
+  "exportAgent": "エージェントをエクスポート"
 }

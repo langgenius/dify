@@ -1,11 +1,11 @@
 'use client'
-import type { InitialDocumentDetail } from '@/models/pipeline'
+import type { PipelineDocument } from '@dify/contracts/api/console/rag/types.gen'
 import { memo } from 'react'
 import Processing from '../processing'
 
 type StepThreeContentProps = {
   batchId: string
-  documents: InitialDocumentDetail[]
+  documents: PipelineDocument[]
 }
 
 const StepThreeContent = ({ batchId, documents }: StepThreeContentProps) => {

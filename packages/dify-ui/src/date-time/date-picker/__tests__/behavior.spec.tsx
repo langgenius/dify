@@ -318,6 +318,25 @@ it('opens on the allowed month and retains a visible focus target if every date 
     .toHaveFocus()
 })
 
+it('focuses the month title after applying a month with no available dates', async () => {
+  const screen = await render(
+    <DatePicker defaultValue="2025-01-15" isDateUnavailable={(date) => date.startsWith('2025-02')}>
+      <DatePickerLabel className="sr-only">Date</DatePickerLabel>
+      <Parts />
+    </DatePicker>,
+  )
+  await screen.getByRole('button', { name: 'Date Jan 15, 2025' }).click()
+  await screen.getByRole('button', { name: 'Choose month and year: January 2025' }).click()
+  await screen.getByRole('option', { name: 'February' }).click()
+  await expect.element(screen.getByRole('option', { name: 'February' })).toHaveFocus()
+  await screen.getByRole('button', { name: 'OK' }).click()
+
+  await expect.element(screen.getByRole('grid', { name: 'February 2025' })).toBeInTheDocument()
+  await expect
+    .element(screen.getByRole('button', { name: 'Choose month and year: February 2025' }))
+    .toHaveFocus()
+})
+
 it('keeps adjacent-month dates selectable by pointer', async () => {
   const screen = await render(
     <DatePicker defaultValue="2025-01-15">

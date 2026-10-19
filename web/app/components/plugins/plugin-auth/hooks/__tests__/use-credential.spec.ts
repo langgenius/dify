@@ -1,6 +1,9 @@
 import type { PluginPayload } from '../../types'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook } from '@testing-library/react'
+import { createElement } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
 import { AuthCategory, CredentialTypeEnum } from '../../types'
 import {
   useAddPluginCredentialHook,
@@ -30,7 +33,6 @@ const mockUseGetPluginOAuthClientSchema = vi.fn().mockReturnValue({ data: null, 
 const mockUseInvalidPluginOAuthClientSchema = vi.fn().mockReturnValue(vi.fn())
 const mockUseSetPluginOAuthCustomClient = vi.fn().mockReturnValue({ mutateAsync: vi.fn() })
 const mockUseDeletePluginOAuthCustomClient = vi.fn().mockReturnValue({ mutateAsync: vi.fn() })
-const mockInvalidToolsByType = vi.fn()
 
 vi.mock('@/service/use-plugins-auth', () => ({
   useGetPluginCredentialInfo: (...args: unknown[]) => mockUseGetPluginCredentialInfo(...args),
@@ -48,10 +50,6 @@ vi.mock('@/service/use-plugins-auth', () => ({
   useSetPluginOAuthCustomClient: (...args: unknown[]) => mockUseSetPluginOAuthCustomClient(...args),
   useDeletePluginOAuthCustomClient: (...args: unknown[]) =>
     mockUseDeletePluginOAuthCustomClient(...args),
-}))
-
-vi.mock('@/service/use-tools', () => ({
-  useInvalidToolsByType: () => mockInvalidToolsByType,
 }))
 
 const toolPayload = {
@@ -90,13 +88,22 @@ describe('use-credential hooks', () => {
 
   describe('useInvalidPluginCredentialInfoHook', () => {
     it('should return a function that invalidates both credential info and tools', () => {
-      const { result } = renderHook(() => useInvalidPluginCredentialInfoHook(toolPayload))
+      const queryClient = new QueryClient()
+      const builtInToolsKey = consoleQuery.workspaces.current.tools.builtin.get.queryKey()
+      const customToolsKey = consoleQuery.workspaces.current.tools.api.get.queryKey()
+      queryClient.setQueryData(builtInToolsKey, [])
+      queryClient.setQueryData(customToolsKey, [])
+      const { result } = renderHook(() => useInvalidPluginCredentialInfoHook(toolPayload), {
+        wrapper: ({ children }) =>
+          createElement(QueryClientProvider, { client: queryClient }, children),
+      })
 
       result.current()
 
       const invalidFn = mockUseInvalidPluginCredentialInfo.mock.results[0]!.value
       expect(invalidFn).toHaveBeenCalled()
-      expect(mockInvalidToolsByType).toHaveBeenCalled()
+      expect(queryClient.getQueryState(builtInToolsKey)?.isInvalidated).toBe(true)
+      expect(queryClient.getQueryState(customToolsKey)?.isInvalidated).toBe(false)
     })
   })
 

@@ -23,7 +23,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({ id, data }) => 
     readOnly,
     inputs,
     handleModelChanged,
-    isChatMode,
+    isChatflow,
     isChatModel,
     handleCompletionParamsChange,
     handleQueryVarChange,
@@ -94,13 +94,13 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({ id, data }) => 
       </div>
       <FieldCollapse title={t(($) => $[`${i18nPrefix}.advancedSetting`], { ns: 'workflowModels' })}>
         <AdvancedSetting
-          hideMemorySetting={!isChatMode}
+          hideMemorySetting={!isChatflow}
           instruction={inputs.instruction}
           onInstructionChange={handleInstructionChange}
           memory={inputs.memory}
           onMemoryChange={handleMemoryChange}
           readonly={readOnly}
-          isChatApp={isChatMode}
+          isChatApp={isChatflow}
           isChatModel={isChatModel}
           hasSetBlockStatus={hasSetBlockStatus}
           nodesOutputVars={availableVars}

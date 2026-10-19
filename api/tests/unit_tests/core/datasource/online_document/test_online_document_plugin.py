@@ -1,16 +1,18 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
 from core.datasource.entities.datasource_entities import (
+    DatasourceMessage,
     DatasourceProviderType,
     GetOnlineDocumentPageContentRequest,
+    OnlineDocumentPagesMessage,
 )
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
 from tests.unit_tests.core.datasource.factories import datasource_entity
 
 
 class TestOnlineDocumentDatasourcePlugin:
-    def test_init(self):
+    def test_init(self) -> None:
         # Arrange
         entity = datasource_entity("test_name")
         runtime = DatasourceRuntime(tenant_id="test_tenant")
@@ -34,7 +36,7 @@ class TestOnlineDocumentDatasourcePlugin:
         assert plugin.icon == icon
         assert plugin.plugin_unique_identifier == plugin_unique_identifier
 
-    def test_get_online_document_pages(self):
+    def test_get_online_document_pages(self) -> None:
         # Arrange
         entity = datasource_entity("test_name")
         entity.identity.provider = "test_provider"
@@ -58,12 +60,13 @@ class TestOnlineDocumentDatasourcePlugin:
         datasource_parameters = {"param": "value"}
         provider_type = "test_type"
 
-        mock_generator = MagicMock()
+        messages = [OnlineDocumentPagesMessage(result=[])]
+        response_stream = (message for message in messages)
 
         # Patch PluginDatasourceManager to isolate plugin behavior from external dependencies
-        with patch("core.datasource.online_document.online_document_plugin.PluginDatasourceManager") as MockManager:
-            mock_manager_instance = MockManager.return_value
-            mock_manager_instance.get_online_document_pages.return_value = mock_generator
+        with patch("core.datasource.online_document.online_document_plugin.PluginDatasourceManager") as mock_manager:
+            mock_manager_instance = mock_manager.return_value
+            mock_manager_instance.get_online_document_pages.return_value = response_stream
 
             # Act
             result = plugin.get_online_document_pages(
@@ -71,7 +74,8 @@ class TestOnlineDocumentDatasourcePlugin:
             )
 
             # Assert
-            assert result == mock_generator
+            assert result is response_stream
+            assert list(result) == messages
             mock_manager_instance.get_online_document_pages.assert_called_once_with(
                 tenant_id=tenant_id,
                 user_id=user_id,
@@ -82,7 +86,7 @@ class TestOnlineDocumentDatasourcePlugin:
                 provider_type=provider_type,
             )
 
-    def test_get_online_document_page_content(self):
+    def test_get_online_document_page_content(self) -> None:
         # Arrange
         entity = datasource_entity("test_name")
         entity.identity.provider = "test_provider"
@@ -108,11 +112,12 @@ class TestOnlineDocumentDatasourcePlugin:
         )
         provider_type = "test_type"
 
-        mock_generator = MagicMock()
+        messages = [DatasourceMessage(type="text", message=DatasourceMessage.TextMessage(text="document content"))]
+        response_stream = (message for message in messages)
 
-        with patch("core.datasource.online_document.online_document_plugin.PluginDatasourceManager") as MockManager:
-            mock_manager_instance = MockManager.return_value
-            mock_manager_instance.get_online_document_page_content.return_value = mock_generator
+        with patch("core.datasource.online_document.online_document_plugin.PluginDatasourceManager") as mock_manager:
+            mock_manager_instance = mock_manager.return_value
+            mock_manager_instance.get_online_document_page_content.return_value = response_stream
 
             # Act
             result = plugin.get_online_document_page_content(
@@ -120,7 +125,8 @@ class TestOnlineDocumentDatasourcePlugin:
             )
 
             # Assert
-            assert result == mock_generator
+            assert result is response_stream
+            assert list(result) == messages
             mock_manager_instance.get_online_document_page_content.assert_called_once_with(
                 tenant_id=tenant_id,
                 user_id=user_id,
@@ -131,7 +137,7 @@ class TestOnlineDocumentDatasourcePlugin:
                 provider_type=provider_type,
             )
 
-    def test_datasource_provider_type(self):
+    def test_datasource_provider_type(self) -> None:
         # Arrange
         entity = datasource_entity("test_name")
         runtime = DatasourceRuntime(tenant_id="test_tenant")

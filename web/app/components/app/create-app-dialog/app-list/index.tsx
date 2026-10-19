@@ -1,6 +1,7 @@
 'use client'
 
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
+import type { AppType } from '@/app/components/apps/app-type'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
@@ -23,7 +24,6 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useCanImportAgents } from '@/features/agent-v2/permissions'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import { consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { hasPermission } from '@/utils/permission'
 import AppCard from '../app-card'
@@ -62,7 +62,7 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
     searchInputRef.current?.focus()
   }
 
-  const [currentType, setCurrentType] = useState<AppModeEnum[]>([])
+  const [currentType, setCurrentType] = useState<AppType[]>([])
   const [currCategory, setCurrCategory] = useState<AppCategories | string>(allCategoriesEn)
 
   const { data, isLoading } = useQuery(
@@ -74,7 +74,7 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
     () =>
       [...(data?.recommended_apps ?? [])]
         .filter((item) =>
-          templateMode ? item.app?.mode === templateMode : item.app?.mode !== AppModeEnum.AGENT,
+          templateMode ? item.app?.mode === templateMode : item.app?.mode !== 'agent',
         )
         .sort((a, b) => (a.position ?? 0) - (b.position ?? 0)),
     [data?.recommended_apps, templateMode],
@@ -101,18 +101,11 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
     })
     if (currentType.length === 0) return filteredByCategory
     return filteredByCategory.filter((item) => {
-      if (currentType.includes(AppModeEnum.CHAT) && item.app?.mode === AppModeEnum.CHAT) return true
-      if (
-        currentType.includes(AppModeEnum.ADVANCED_CHAT) &&
-        item.app?.mode === AppModeEnum.ADVANCED_CHAT
-      )
-        return true
-      if (currentType.includes(AppModeEnum.AGENT_CHAT) && item.app?.mode === AppModeEnum.AGENT_CHAT)
-        return true
-      if (currentType.includes(AppModeEnum.COMPLETION) && item.app?.mode === AppModeEnum.COMPLETION)
-        return true
-      if (currentType.includes(AppModeEnum.WORKFLOW) && item.app?.mode === AppModeEnum.WORKFLOW)
-        return true
+      if (currentType.includes('chat') && item.app?.mode === 'chat') return true
+      if (currentType.includes('advanced-chat') && item.app?.mode === 'advanced-chat') return true
+      if (currentType.includes('agent-chat') && item.app?.mode === 'agent-chat') return true
+      if (currentType.includes('completion') && item.app?.mode === 'completion') return true
+      if (currentType.includes('workflow') && item.app?.mode === 'workflow') return true
       return false
     })
   }, [currentType, activeCategory, allCategoriesEn, data, allList])
@@ -152,7 +145,7 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
       })
       if (
         !canCreateTemplate(detail.mode) ||
-        (templateMode ? detail.mode !== templateMode : detail.mode === AppModeEnum.AGENT)
+        (templateMode ? detail.mode !== templateMode : detail.mode === 'agent')
       )
         throw new Error('Template mode does not match this picker')
       await handleImportDSL(
