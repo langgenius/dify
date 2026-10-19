@@ -3,6 +3,11 @@
 Callers resolve and authorize credentials before this boundary. The daemon owns
 capability checks for the dispatched plugin version; these calls never refresh
 tokens, persist Connection state, or retry provider operations automatically.
+
+API deployment does not activate these operations. Before callers enable them,
+all daemon nodes must support the detailed protocol. Legacy boolean responses
+fail the check; an absent revoke endpoint returns a failure value. Neither is
+evidence that the plugin explicitly declared the operation unsupported.
 """
 
 import time
@@ -17,7 +22,7 @@ from clients.plugin.auth_entities import (
     CredentialCheckResult,
     OAuthRevokeResult,
 )
-from core.helper.http_client_pooling import get_pooled_http_client
+from clients.plugin.http_client import get_client
 from core.plugin.entities.plugin_daemon import CredentialType, PluginDaemonBasicResponse
 from core.plugin.impl.base import BasePluginClient
 from models.provider_ids import ToolProviderID
@@ -25,12 +30,7 @@ from models.provider_ids import ToolProviderID
 
 class PluginCredentialAuthClient(BasePluginClient):
     def __init__(self, *, http_client: httpx.Client | None = None) -> None:
-        self._http_client = http_client or get_pooled_http_client(
-            "plugin_daemon",
-            lambda: httpx.Client(
-                limits=httpx.Limits(max_keepalive_connections=50, max_connections=100), trust_env=False
-            ),
-        )
+        self._http_client = http_client or get_client()
 
     def check_provider_credentials(
         self,

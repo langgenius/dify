@@ -1,13 +1,16 @@
 import json
 from collections.abc import Callable, Iterator
 from typing import override
+from unittest.mock import patch
 
 import httpx
 import pytest
 
 from clients.plugin.auth import PluginCredentialAuthClient
 from clients.plugin.auth_entities import CredentialCheckResult, OAuthRevokeResult
+from clients.plugin.http_client import get_client
 from core.plugin.entities.plugin_daemon import CredentialType, PluginToolProviderEntity
+from core.plugin.impl.tool import PluginToolManager
 
 SECRET = "secret-that-must-not-escape"
 
@@ -43,6 +46,42 @@ def _revoke(client: PluginCredentialAuthClient) -> OAuthRevokeResult:
 
 
 Operation = Callable[[PluginCredentialAuthClient], CredentialCheckResult | OAuthRevokeResult]
+
+
+def test_shared_client_preserves_legacy_and_detailed_requests() -> None:
+    formats: list[str | None] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        data = json.loads(request.content)["data"]
+        formats.append(data.get("result_format"))
+        payload = _result("valid") if data.get("result_format") == "detailed" else {"result": True}
+        return httpx.Response(200, text=_frame(payload))
+
+    with (
+        httpx.Client(transport=httpx.MockTransport(respond)) as http_client,
+        patch.object(get_client(), "stream", http_client.stream),
+    ):
+        assert PluginToolManager().validate_provider_credentials("tenant-1", "user-1", "org/plugin/provider", {})
+        assert _check(PluginCredentialAuthClient()).status == "valid"
+    assert formats == [None, "detailed"]
+
+
+@pytest.mark.parametrize("legacy_result", [True, False])
+def test_new_api_rejects_old_daemon_boolean_results(legacy_result: bool) -> None:
+    with httpx.Client(
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, text=_frame({"result": legacy_result})))
+    ) as http_client:
+        result = _check(PluginCredentialAuthClient(http_client=http_client))
+    assert result.status == "temporarily_unavailable"
+    assert result.reason_code == "protocol_error"
+    assert result.retryable is False
+
+
+def test_missing_revoke_endpoint_is_not_plugin_unsupported() -> None:
+    with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(404))) as http_client:
+        result = _revoke(PluginCredentialAuthClient(http_client=http_client))
+    assert result.status == "failed"
+    assert result.retryable is False
 
 
 @pytest.mark.parametrize(
@@ -119,7 +158,6 @@ def test_detailed_results_are_preserved(operation: Operation, payload: dict[str,
     "body",
     [
         "",
-        _frame({"result": True}),
         _frame(_result("unknown")),
         _frame(_result("temporarily_unavailable", reason_code=SECRET, retryable=True)),
         _frame(_result("valid")) + _frame(_result("valid")),
