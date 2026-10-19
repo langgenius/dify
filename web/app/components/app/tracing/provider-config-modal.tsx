@@ -21,9 +21,9 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   DialogBody,
   DialogClose,
-  DialogCloseButton,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
@@ -125,7 +125,7 @@ export function ProviderConfigModal({
           {t(($) => $[`${I18N_PREFIX}.title`], { ns: 'app' })}
           {t(($) => $[`tracing.${type}.title`], { ns: 'app' })}
         </DialogTitle>
-        <DialogCloseButton
+        <DialogHeaderCloseButton
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}
           disabled={pending}
         />
