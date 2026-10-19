@@ -69,6 +69,10 @@ class IndexingBackend(Protocol):
 
     def load(self, document: IndexingDocument, chunks: list[Document]) -> None: ...
 
+    def discard(self, document: IndexingDocument, chunks: list[Document]) -> None:
+        """Remove index entries that ``load`` may have written for a document deleted meanwhile."""
+        ...
+
 
 class DocumentIndexingService:
     """Coordinate committed phases; no caller session is held across execution."""
@@ -102,6 +106,10 @@ class DocumentIndexingService:
         self._run(ref, start="indexing")
 
     def _run(self, ref: DocumentRef, *, start: Literal["parsing", "splitting", "indexing"]) -> None:
+        # None: no index write has started, so a deletion leaves nothing behind.
+        # Set: load may have written these chunks; document cleanup snapshots segment
+        # node ids before deleting them and cannot see entries written after its snapshot.
+        loading: tuple[IndexingDocument, list[Document]] | None = None
         try:
             document = self._documents.get_indexing_document(ref)
             if document is None:
@@ -126,6 +134,7 @@ class DocumentIndexingService:
 
             started = self._clock()
             self._backend.check_paused(ref)
+            loading = (document, chunks)
             self._backend.load(document, chunks)
             self._backend.check_paused(ref)
             self._documents.complete_indexing(ref, tokens=total_tokens, latency=self._clock() - started)
@@ -133,6 +142,11 @@ class DocumentIndexingService:
             raise
         except DocumentIsDeletedPausedError:
             logger.info("Document deleted during indexing: %s", ref)
+            if loading is not None:
+                try:
+                    self._backend.discard(*loading)
+                except Exception:
+                    logger.exception("Failed to discard index entries of document deleted during indexing: %s", ref)
         except Exception as error:
             logger.exception("Document indexing failed: %s", ref)
             self._documents.fail_indexing(ref, self._backend.describe_error(error))

@@ -174,6 +174,40 @@ class IndexingExecutionAdapter:
             with ThreadPoolExecutor(max_workers=1) as executor:
                 executor.submit(propagate_context(self._process_chunk), app, document.ref, chunks, True).result()
 
+    def discard(self, document: IndexingDocument, chunks: list[Document]) -> None:
+        """Remove the index entries ``load`` writes for ``chunks``; deleting absent ids is a no-op.
+
+        Mirrors ``_process_chunk``: child vectors for parent-child documents, body vectors
+        otherwise, and body keywords for economy datasets.
+        """
+        dataset = self._documents.get_indexing_dataset(document.ref.dataset)
+        if dataset is None:
+            return
+        if document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
+            node_ids = [child.metadata["doc_id"] for chunk in chunks for child in chunk.children or []]
+        else:
+            node_ids = [chunk.metadata["doc_id"] for chunk in chunks]
+        if not node_ids:
+            return
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
+            with self._session_factory() as session:
+                vector_type = Vector.resolve_vector_type(dataset, session=session)
+            Vector(dataset, session=None, vector_type=vector_type).delete_by_ids(node_ids)
+        elif (
+            dataset.indexing_technique == IndexTechniqueType.ECONOMY
+            and document.doc_form != IndexStructureType.PARENT_CHILD_INDEX
+        ):
+            dataset_ref = document.ref.dataset
+            Jieba(dataset).update_texts(
+                [],
+                read=lambda: self._segments.get_keyword_table(dataset_ref),
+                write=lambda storage_type, data, selected: self._segments.save_keyword_table(
+                    dataset_ref, storage_type=storage_type, data=data, keywords=selected
+                ),
+                lock=redis_client.lock(f"keyword_indexing_lock_{dataset.id}", timeout=600),
+                deleted_ids=node_ids,
+            )
+
     def _process_chunk(self, app: Flask, ref: DocumentRef, chunks: list[Document], keywords: bool) -> None:
         with app.app_context():
             self.check_paused(ref)

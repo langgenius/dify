@@ -126,3 +126,50 @@ def test_indexing_persists_the_backend_error_description(execution: ExecutionFix
     ports.backend.describe_error.assert_called_once_with(error)
     ports.documents.fail_indexing.assert_called_once_with(document.ref, "source file missing")
     ports.documents.complete_indexing.assert_not_called()
+
+
+@pytest.mark.parametrize("start", ["parsing", "indexing"])
+def test_deletion_after_index_write_discards_the_written_entries(execution: ExecutionFixture, start: str) -> None:
+    service, ports, document, chunks = execution
+    ports.documents.complete_indexing.side_effect = DocumentIsDeletedPausedError()
+    if start == "parsing":
+        service.run([document.ref])
+    else:
+        service.run_in_indexing_status(document.ref)
+    loaded = chunks if start == "parsing" else chunks[1:]
+    calls = [call[0] for call in ports.mock_calls]
+    assert calls.index("backend.load") < calls.index("backend.discard")
+    ports.backend.discard.assert_called_once_with(document, loaded)
+    ports.documents.fail_indexing.assert_not_called()
+
+
+def test_deletion_detected_inside_load_discards_the_chunks_handed_to_load(execution: ExecutionFixture) -> None:
+    service, ports, document, chunks = execution
+    ports.backend.load.side_effect = DocumentIsDeletedPausedError()
+    service.run([document.ref])
+    ports.backend.discard.assert_called_once_with(document, chunks)
+    ports.documents.complete_indexing.assert_not_called()
+
+
+@pytest.mark.parametrize("stage", ["get_indexing_document", "mark_splitting"])
+def test_deletion_before_index_write_has_nothing_to_discard(execution: ExecutionFixture, stage: str) -> None:
+    service, ports, document, _ = execution
+    operation = {
+        "get_indexing_document": ports.documents.get_indexing_document,
+        "mark_splitting": ports.documents.mark_splitting,
+    }[stage]
+    operation.side_effect = DocumentIsDeletedPausedError()
+    service.run([document.ref])
+    ports.backend.load.assert_not_called()
+    ports.backend.discard.assert_not_called()
+
+
+def test_discard_failure_is_logged_without_failing_the_deleted_document(
+    execution: ExecutionFixture, caplog: pytest.LogCaptureFixture
+) -> None:
+    service, ports, document, _ = execution
+    ports.documents.complete_indexing.side_effect = DocumentIsDeletedPausedError()
+    ports.backend.discard.side_effect = RuntimeError("vector store unavailable")
+    service.run([document.ref])
+    ports.documents.fail_indexing.assert_not_called()
+    assert "Failed to discard index entries of document deleted during indexing" in caplog.text
