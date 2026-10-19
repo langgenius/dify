@@ -10,7 +10,7 @@ from inspect import unwrap
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
+from flask import Flask, request
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
@@ -109,7 +109,7 @@ class TestDatasetTagsApiPost:
         tenant: Tenant,
         controller_session: Session,
     ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetTagsApi
+        from controllers.service_api.dataset.dataset import DatasetTagsApi, TagCreatePayload
 
         tag = make_tag(controller_session, tenant, account, id="tag-new", name="New Tag")
         mock_tag_svc.save_tags.return_value = tag
@@ -120,7 +120,8 @@ class TestDatasetTagsApiPost:
             json={"name": "New Tag"},
         ):
             api = DatasetTagsApi()
-            response, status = unwrap(api.post)(api, controller_session, _=None)
+            payload = TagCreatePayload.model_validate(request.get_json() or {})
+            response, status = unwrap(api.post)(api, payload, controller_session, _=None)
 
         assert status == 200
         assert response == {"id": "tag-new", "name": "New Tag", "type": "knowledge", "binding_count": "0"}
@@ -155,7 +156,7 @@ class TestDatasetTagsApiPatch:
         tenant: Tenant,
         controller_session: Session,
     ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetTagsApi
+        from controllers.service_api.dataset.dataset import DatasetTagsApi, TagUpdatePayload
 
         tag = make_tag(controller_session, tenant, account, id="tag-1", name="Updated Tag")
         mock_tag_svc.update_tags.return_value = tag
@@ -168,7 +169,8 @@ class TestDatasetTagsApiPatch:
             json={"name": "Updated Tag", "tag_id": "tag-1"},
         ):
             api = DatasetTagsApi()
-            response, status = unwrap(api.patch)(api, controller_session, _=None)
+            payload = TagUpdatePayload.model_validate(request.get_json() or {})
+            response, status = unwrap(api.patch)(api, payload, controller_session, _=None)
 
         assert status == 200
         assert response == {"id": "tag-1", "name": "Updated Tag", "type": "knowledge", "binding_count": "5"}
@@ -206,7 +208,7 @@ class TestDatasetTagsApiDelete:
         app: Flask,
         controller_session: Session,
     ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetTagsApi
+        from controllers.service_api.dataset.dataset import DatasetTagsApi, TagDeletePayload
 
         mock_tag_svc.delete_tag.return_value = None
         mock_service_api_ns.payload = {"tag_id": "tag-1"}
@@ -217,7 +219,8 @@ class TestDatasetTagsApiDelete:
             json={"tag_id": "tag-1"},
         ):
             api = DatasetTagsApi()
-            result = unwrap(api.delete)(api, controller_session, _=None)
+            payload = TagDeletePayload.model_validate(request.get_json() or {})
+            result = unwrap(api.delete)(api, payload, controller_session, _=None)
 
         assert result == ("", 204)
         mock_tag_svc.delete_tag.assert_called_once_with("tag-1", controller_session, tag_type=TagType.KNOWLEDGE)
@@ -263,7 +266,7 @@ class TestDatasetTagBindingApiPost:
         app: Flask,
         controller_session: Session,
     ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetTagBindingApi
+        from controllers.service_api.dataset.dataset import DatasetTagBindingApi, TagBindingPayload
 
         mock_tag_svc.save_tag_binding.return_value = None
 
@@ -273,7 +276,8 @@ class TestDatasetTagBindingApiPost:
             json={"tag_ids": ["tag-1"], "target_id": "ds-1"},
         ):
             api = DatasetTagBindingApi()
-            result = unwrap(api.post)(api, controller_session, _=None)
+            payload = TagBindingPayload.model_validate(request.get_json() or {})
+            result = unwrap(api.post)(api, payload, controller_session, _=None)
 
         assert result == ("", 204)
         from services.tag_service import TagBindingCreatePayload
@@ -309,7 +313,7 @@ class TestDatasetTagUnbindingApiPost:
         app: Flask,
         controller_session: Session,
     ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetTagUnbindingApi
+        from controllers.service_api.dataset.dataset import DatasetTagUnbindingApi, TagUnbindingPayload
 
         mock_tag_svc.delete_tag_binding.return_value = None
 
@@ -319,7 +323,8 @@ class TestDatasetTagUnbindingApiPost:
             json={"tag_ids": ["tag-1"], "target_id": "ds-1"},
         ):
             api = DatasetTagUnbindingApi()
-            result = unwrap(api.post)(api, controller_session, _=None)
+            payload = TagUnbindingPayload.model_validate(request.get_json() or {})
+            result = unwrap(api.post)(api, payload, controller_session, _=None)
 
         assert result == ("", 204)
         from services.tag_service import TagBindingDeletePayload
@@ -337,7 +342,7 @@ class TestDatasetTagUnbindingApiPost:
         app: Flask,
         controller_session: Session,
     ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetTagUnbindingApi
+        from controllers.service_api.dataset.dataset import DatasetTagUnbindingApi, TagUnbindingPayload
 
         mock_tag_svc.delete_tag_binding.return_value = None
 
@@ -347,7 +352,8 @@ class TestDatasetTagUnbindingApiPost:
             json={"tag_id": "tag-1", "target_id": "ds-1"},
         ):
             api = DatasetTagUnbindingApi()
-            result = unwrap(api.post)(api, controller_session, _=None)
+            payload = TagUnbindingPayload.model_validate(request.get_json() or {})
+            result = unwrap(api.post)(api, payload, controller_session, _=None)
 
         assert result == ("", 204)
         from services.tag_service import TagBindingDeletePayload

@@ -1,32 +1,13 @@
-import { act, renderHook } from '@testing-library/react'
-import NoteEditorContext from '../context'
-import { createNoteEditorStore, useNoteEditorStore, useStore } from '../store'
+import { createNoteEditorStore } from '../store'
 
 describe('note editor store', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.useFakeTimers()
   })
 
-  it('stores selection state and link metadata', () => {
-    const store = createNoteEditorStore()
-
-    store.getState().setLinkOperatorShow(true)
-    store.getState().setSelectedIsBold(true)
-    store.getState().setSelectedIsItalic(true)
-    store.getState().setSelectedIsStrikeThrough(true)
-    store.getState().setSelectedLinkUrl('https://dify.ai')
-    store.getState().setSelectedIsLink(true)
-    store.getState().setSelectedIsBullet(true)
-
-    expect(store.getState()).toMatchObject({
-      linkOperatorShow: true,
-      selectedIsBold: true,
-      selectedIsItalic: true,
-      selectedIsStrikeThrough: true,
-      selectedLinkUrl: 'https://dify.ai',
-      selectedIsLink: true,
-      selectedIsBullet: true,
-    })
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.useRealTimers()
   })
 
   it('resolves the current selection parent as the link anchor element', () => {
@@ -50,28 +31,29 @@ describe('note editor store', () => {
     vi.useRealTimers()
   })
 
-  it('reads note editor state from context hooks', () => {
-    const store = createNoteEditorStore()
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <NoteEditorContext.Provider value={store}>{children}</NoteEditorContext.Provider>
-    )
+  it('keeps a dismissed link closed when an earlier anchor request finishes', () => {
+    vi.useFakeTimers()
+    try {
+      const store = createNoteEditorStore()
+      const link = document.createElement('a')
+      const text = document.createTextNode('Link')
+      link.appendChild(text)
+      vi.spyOn(window, 'getSelection').mockReturnValue({ focusNode: text } as unknown as Selection)
 
-    const { result: selectedResult } = renderHook(() => useStore((state) => state.selectedIsBold), {
-      wrapper,
-    })
-    const { result: storeResult } = renderHook(() => useNoteEditorStore(), { wrapper })
+      store.getState().setSelectedLinkKey('selected-link')
+      store.getState().setLinkAnchorElement(true)
+      store.getState().dismissLinkEditor()
+      vi.runAllTimers()
 
-    act(() => {
-      storeResult.current.getState().setSelectedIsBold(true)
-    })
+      expect(store.getState().linkAnchorElement).toBeNull()
+      expect(store.getState().linkOperatorShow).toBe(false)
+      expect(store.getState().dismissedLinkKey).toBe('selected-link')
 
-    expect(selectedResult.current).toBe(true)
-    expect(storeResult.current).toBe(store)
-  })
-
-  it('throws when the note editor store provider is missing', () => {
-    expect(() => renderHook(() => useStore((state) => state.selectedIsBold))).toThrow(
-      'Missing NoteEditorContext.Provider in the tree',
-    )
+      store.getState().setLinkAnchorElement(link)
+      expect(store.getState().linkAnchorElement).toBe(link)
+      expect(store.getState().dismissedLinkKey).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

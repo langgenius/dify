@@ -1,4 +1,6 @@
-from typing import override
+from collections.abc import Callable
+from pathlib import Path
+from typing import cast, override
 
 import pytest
 from flask import Flask
@@ -64,10 +66,16 @@ class _IsolatedDifyConfig(DifyConfig):
 
 
 def _make_config(**values: object) -> DifyConfig:
-    return _IsolatedDifyConfig(**values)
+    # Pydantic exposes a generated field-wise signature, while this helper intentionally forwards heterogeneous input.
+    factory = cast(Callable[..., _IsolatedDifyConfig], _IsolatedDifyConfig)
+    return factory(**values)
 
 
-def test_dify_config_keeps_secret_key_empty_when_missing(tmp_path) -> None:
+def test_skill_package_default_limit_matches_documentation() -> None:
+    assert _make_config().UPLOAD_SKILL_FILE_SIZE_LIMIT == 50
+
+
+def test_dify_config_keeps_secret_key_empty_when_missing(tmp_path: Path) -> None:
     config = _make_config(OPENDAL_FS_ROOT=str(tmp_path))
 
     assert config.SECRET_KEY == ""
@@ -75,14 +83,14 @@ def test_dify_config_keeps_secret_key_empty_when_missing(tmp_path) -> None:
     assert not (tmp_path / ".dify_secret_key").exists()
 
 
-def test_dify_config_preserves_explicit_secret_key(tmp_path) -> None:
+def test_dify_config_preserves_explicit_secret_key(tmp_path: Path) -> None:
     config = _make_config(SECRET_KEY="explicit", OPENDAL_FS_ROOT=str(tmp_path))
 
     assert config.SECRET_KEY == "explicit"
     assert not (tmp_path / ".dify_secret_key").exists()
 
 
-def test_dify_config():
+def test_dify_config() -> None:
     config = _make_config(
         HTTP_REQUEST_MAX_WRITE_TIMEOUT="30",
         HTTP_REQUEST_MAX_READ_TIMEOUT="300",
@@ -208,7 +216,7 @@ def test_new_user_default_models_reject_duplicate_model_types() -> None:
         _ = config.NEW_USER_DEFAULT_MODEL_LIST
 
 
-def test_http_timeout_defaults():
+def test_http_timeout_defaults() -> None:
     """Test that HTTP timeout defaults are correctly set"""
     config = _make_config()
 
@@ -218,13 +226,13 @@ def test_http_timeout_defaults():
     assert config.HTTP_REQUEST_MAX_WRITE_TIMEOUT == 600
 
 
-def test_internal_files_url_falls_back_to_server_console_api_url():
+def test_internal_files_url_falls_back_to_server_console_api_url() -> None:
     config = _make_config(SERVER_CONSOLE_API_URL="http://api:5001")
 
     assert config.INTERNAL_FILES_URL == "http://api:5001"
 
 
-def test_internal_files_url_prefers_explicit_value():
+def test_internal_files_url_prefers_explicit_value() -> None:
     config = _make_config(
         INTERNAL_FILES_URL="http://files-internal:5001",
         SERVER_CONSOLE_API_URL="http://api:5001",
@@ -233,13 +241,13 @@ def test_internal_files_url_prefers_explicit_value():
     assert config.INTERNAL_FILES_URL == "http://files-internal:5001"
 
 
-def test_empty_files_url_overrides_console_api_url_for_relative_browser_uris():
+def test_empty_files_url_overrides_console_api_url_for_relative_browser_uris() -> None:
     config = _make_config(FILES_URL="", CONSOLE_API_URL="http://api:5001")
 
     assert config.FILES_URL == ""
 
 
-def test_flask_configs():
+def test_flask_configs() -> None:
     flask_app = Flask("app")
     flask_app.config.from_mapping(
         _make_config(
@@ -291,14 +299,14 @@ def test_flask_configs():
     assert str(URL(str(config["CODE_EXECUTION_ENDPOINT"])) / "v1") == "http://127.0.0.1:8194/v1"
 
 
-def test_inner_api_config_exist():
+def test_inner_api_config_exist() -> None:
     config = _make_config(INNER_API_KEY="test-inner-api-key")
     assert config.INNER_API is False
     assert isinstance(config.INNER_API_KEY, str)
     assert len(config.INNER_API_KEY) > 0
 
 
-def test_db_extras_options_merging():
+def test_db_extras_options_merging() -> None:
     """Test that DB_EXTRAS options are merged with the default timezone startup option."""
     config = _make_config(DB_EXTRAS="options=-c search_path=myschema")
 
@@ -307,7 +315,7 @@ def test_db_extras_options_merging():
     assert "timezone=UTC" in options
 
 
-def test_db_session_timezone_override_can_disable_app_level_timezone_injection():
+def test_db_session_timezone_override_can_disable_app_level_timezone_injection() -> None:
     config = _make_config(
         DB_EXTRAS="options=-c search_path=myschema",
         DB_SESSION_TIMEZONE_OVERRIDE="",
@@ -318,7 +326,7 @@ def test_db_session_timezone_override_can_disable_app_level_timezone_injection()
     }
 
 
-def test_pubsub_redis_url_default():
+def test_pubsub_redis_url_default() -> None:
     config = _make_config(
         REDIS_HOST="redis.example.com",
         REDIS_PORT="6380",
@@ -332,25 +340,25 @@ def test_pubsub_redis_url_default():
     assert config.PUBSUB_REDIS_CHANNEL_TYPE == "pubsub"
 
 
-def test_pubsub_redis_url_override():
+def test_pubsub_redis_url_override() -> None:
     config = _make_config(PUBSUB_REDIS_URL="redis://pubsub-host:6381/5")
 
     assert config.normalized_pubsub_redis_url == "redis://pubsub-host:6381/5"
 
 
-def test_pubsub_redis_url_required_when_default_unavailable():
+def test_pubsub_redis_url_required_when_default_unavailable() -> None:
     config = _make_config(REDIS_HOST="")
     with pytest.raises(ValueError, match="PUBSUB_REDIS_URL must be set"):
         _ = config.normalized_pubsub_redis_url
 
 
-def test_dify_config_exposes_redis_key_prefix_default():
+def test_dify_config_exposes_redis_key_prefix_default() -> None:
     config = _make_config()
 
     assert config.REDIS_KEY_PREFIX == ""
 
 
-def test_dify_config_accepts_redis_key_prefix():
+def test_dify_config_accepts_redis_key_prefix() -> None:
     config = _make_config(REDIS_KEY_PREFIX="enterprise-a")
 
     assert config.REDIS_KEY_PREFIX == "enterprise-a"
@@ -379,13 +387,13 @@ def test_dify_config_accepts_redis_key_prefix():
     ],
 )
 def test_celery_broker_url_with_special_chars_password(
-    broker_url,
-    expected_host,
-    expected_port,
-    expected_username,
-    expected_password,
-    expected_db,
-):
+    broker_url: str,
+    expected_host: str,
+    expected_port: int,
+    expected_username: str | None,
+    expected_password: str | None,
+    expected_db: str,
+) -> None:
     """Test that CELERY_BROKER_URL with various formats are handled correctly."""
     from kombu.utils.url import parse_url
 

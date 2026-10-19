@@ -13,6 +13,7 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.extractor import notion_extractor
+from core.rag.extractor.entity.extract_setting import StoredDocumentExtractionInput
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.base import TypeBase
 from models.dataset import Document as DocumentModel
@@ -25,7 +26,7 @@ def persisted_document(
     sqlite_engine: Engine,
 ) -> Iterator[tuple[sessionmaker[Session], DocumentModel]]:
     """Persist a Notion document and bind the extractor's ``db.session`` to SQLite."""
-    TypeBase.metadata.create_all(sqlite_engine, tables=[DocumentModel.__table__])
+    TypeBase.metadata.create_all(sqlite_engine, tables=[TypeBase.metadata.tables[DocumentModel.__tablename__]])
     session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     document = DocumentModel(
         id=str(uuid.uuid4()),
@@ -48,7 +49,7 @@ def persisted_document(
         yield session_maker, document
 
 
-def _mock_response(data, status_code: int = 200, text: str = ""):
+def _mock_response(data: object, status_code: int = 200, text: str = "") -> mock.Mock:
     response = mock.Mock()
     response.status_code = status_code
     response.text = text
@@ -57,43 +58,34 @@ def _mock_response(data, status_code: int = 200, text: str = ""):
 
 
 class TestNotionExtractorInitAndPublicMethods:
-    def test_init_with_explicit_token(self):
+    def test_init_with_explicit_token(self) -> None:
         extractor = notion_extractor.NotionExtractor(
             notion_workspace_id="ws",
             notion_obj_id="obj",
             notion_page_type="page",
             tenant_id="tenant",
             notion_access_token="token",
+            notion_token_loader=lambda: "token",
         )
 
         assert extractor._notion_access_token == "token"
 
-    def test_init_falls_back_to_env_token_when_credential_lookup_fails(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(
-            notion_extractor.NotionExtractor,
-            "_get_access_token",
-            classmethod(lambda cls, tenant_id, credential_id: (_ for _ in ()).throw(Exception("credential error"))),
-        )
-        monkeypatch.setattr(notion_extractor.dify_config, "NOTION_INTEGRATION_TOKEN", "env-token", raising=False)
-
+    def test_init_uses_injected_token_loader(self) -> None:
+        loader = mock.Mock(return_value="resolved-token")
         extractor = notion_extractor.NotionExtractor(
             notion_workspace_id="ws",
             notion_obj_id="obj",
             notion_page_type="page",
             tenant_id="tenant",
             credential_id="cred",
+            notion_token_loader=loader,
         )
 
-        assert extractor._notion_access_token == "env-token"
+        assert extractor._notion_access_token == "resolved-token"
+        loader.assert_called_once_with()
 
-    def test_init_raises_if_no_credential_and_no_env_token(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(
-            notion_extractor.NotionExtractor,
-            "_get_access_token",
-            classmethod(lambda cls, tenant_id, credential_id: (_ for _ in ()).throw(Exception("credential error"))),
-        )
-        monkeypatch.setattr(notion_extractor.dify_config, "NOTION_INTEGRATION_TOKEN", None, raising=False)
-
+    def test_init_propagates_missing_token_from_loader(self) -> None:
+        loader = mock.Mock(side_effect=ValueError("Must specify `integration_token`"))
         with pytest.raises(ValueError, match="Must specify `integration_token`"):
             notion_extractor.NotionExtractor(
                 notion_workspace_id="ws",
@@ -101,15 +93,17 @@ class TestNotionExtractorInitAndPublicMethods:
                 notion_page_type="page",
                 tenant_id="tenant",
                 credential_id="cred",
+                notion_token_loader=loader,
             )
 
-    def test_extract_updates_last_edited_and_loads_documents(self, monkeypatch: pytest.MonkeyPatch):
+    def test_extract_updates_last_edited_and_loads_documents(self, monkeypatch: pytest.MonkeyPatch) -> None:
         extractor = notion_extractor.NotionExtractor(
             notion_workspace_id="ws",
             notion_obj_id="obj",
             notion_page_type="page",
             tenant_id="tenant",
             notion_access_token="token",
+            notion_token_loader=lambda: "token",
         )
 
         update_mock = mock.Mock()
@@ -123,13 +117,14 @@ class TestNotionExtractorInitAndPublicMethods:
         load_mock.assert_called_once_with("obj", "page")
         assert len(docs) == 1
 
-    def test_load_data_as_documents_page_database_and_invalid(self, monkeypatch: pytest.MonkeyPatch):
+    def test_load_data_as_documents_page_database_and_invalid(self, monkeypatch: pytest.MonkeyPatch) -> None:
         extractor = notion_extractor.NotionExtractor(
             notion_workspace_id="ws",
             notion_obj_id="obj",
             notion_page_type="page",
             tenant_id="tenant",
             notion_access_token="token",
+            notion_token_loader=lambda: "token",
         )
 
         monkeypatch.setattr(extractor, "_get_notion_block_data", lambda _: ["line1", "line2"])
@@ -145,13 +140,14 @@ class TestNotionExtractorInitAndPublicMethods:
 
 
 class TestNotionDatabase:
-    def test_get_notion_database_data_parses_property_types_and_pagination(self, mocker: MockerFixture):
+    def test_get_notion_database_data_parses_property_types_and_pagination(self, mocker: MockerFixture) -> None:
         extractor = notion_extractor.NotionExtractor(
             notion_workspace_id="ws",
             notion_obj_id="obj",
             notion_page_type="database",
             tenant_id="tenant",
             notion_access_token="token",
+            notion_token_loader=lambda: "token",
         )
 
         first_page = {
@@ -163,9 +159,9 @@ class TestNotionDatabase:
                             "multi_select": [{"name": "A"}, {"name": "B"}],
                         },
                         "title_prop": {"type": "title", "title": [{"plain_text": "Title"}]},
-                        "empty_title": {"type": "title", "title": []},
+                        "empty_title": {"type": "title", "title": list[object]()},
                         "rich": {"type": "rich_text", "rich_text": [{"plain_text": "RichText"}]},
-                        "empty_rich": {"type": "rich_text", "rich_text": []},
+                        "empty_rich": {"type": "rich_text", "rich_text": list[object]()},
                         "select_prop": {"type": "select", "select": {"name": "Selected"}},
                         "empty_select": {"type": "select", "select": None},
                         "status_prop": {"type": "status", "status": {"name": "Open"}},
@@ -179,7 +175,7 @@ class TestNotionDatabase:
             "has_more": True,
             "next_cursor": "cursor-2",
         }
-        second_page = {"results": [], "has_more": False, "next_cursor": None}
+        second_page = {"results": list[object](), "has_more": False, "next_cursor": None}
 
         mock_post = mocker.patch("httpx.post", side_effect=[_mock_response(first_page), _mock_response(second_page)])
 
@@ -195,19 +191,64 @@ class TestNotionDatabase:
         assert "Row Page URL:https://notion.so/page-1" in content
         assert mock_post.call_count == 2
 
-    def test_get_notion_database_data_handles_missing_results_and_empty_content(self, mocker: MockerFixture):
+    def test_get_notion_database_data_joins_all_rich_text_segments(self, mocker: MockerFixture) -> None:
+        """Formatted text arrives as multiple segments; all of them must be kept."""
         extractor = notion_extractor.NotionExtractor(
             notion_workspace_id="ws",
             notion_obj_id="obj",
             notion_page_type="database",
             tenant_id="tenant",
             notion_access_token="token",
+            notion_token_loader=lambda: "token",
+        )
+
+        page = {
+            "results": [
+                {
+                    "properties": {
+                        "title_prop": {
+                            "type": "title",
+                            "title": [{"plain_text": "Hello "}, {"plain_text": "world"}],
+                        },
+                        "rich": {
+                            "type": "rich_text",
+                            "rich_text": [
+                                {"plain_text": "first "},
+                                {"plain_text": "second"},
+                                {"plain_text": " third"},
+                            ],
+                        },
+                    },
+                    "url": "https://notion.so/page-1",
+                }
+            ],
+            "has_more": False,
+            "next_cursor": None,
+        }
+
+        mocker.patch("httpx.post", return_value=_mock_response(page))
+
+        docs = extractor._get_notion_database_data("db-1")
+
+        assert len(docs) == 1
+        content = docs[0].page_content
+        assert "rich:first second third" in content
+        assert "title_prop:Hello world" in content
+
+    def test_get_notion_database_data_handles_missing_results_and_empty_content(self, mocker: MockerFixture) -> None:
+        extractor = notion_extractor.NotionExtractor(
+            notion_workspace_id="ws",
+            notion_obj_id="obj",
+            notion_page_type="database",
+            tenant_id="tenant",
+            notion_access_token="token",
+            notion_token_loader=lambda: "token",
         )
 
         mocker.patch("httpx.post", return_value=_mock_response({"results": None}))
         assert extractor._get_notion_database_data("db-1") == []
 
-    def test_requests_use_bounded_timeout(self, mocker: MockerFixture):
+    def test_requests_use_bounded_timeout(self, mocker: MockerFixture) -> None:
         """All outbound Notion API calls must carry a bounded timeout so a hanging endpoint cannot block extraction."""
         extractor = notion_extractor.NotionExtractor(
             notion_workspace_id="ws",
@@ -215,6 +256,7 @@ class TestNotionDatabase:
             notion_page_type="database",
             tenant_id="tenant",
             notion_access_token="token",
+            notion_token_loader=lambda: "token",
         )
 
         mock_post = mocker.patch("httpx.post", return_value=_mock_response({"results": None}))
@@ -227,13 +269,14 @@ class TestNotionDatabase:
         extractor.get_notion_last_edited_time()
         assert mock_request.call_args.kwargs["timeout"] == notion_extractor._REQUEST_TIMEOUT
 
-    def test_get_notion_database_data_requires_access_token(self):
+    def test_get_notion_database_data_requires_access_token(self) -> None:
         extractor = notion_extractor.NotionExtractor(
             notion_workspace_id="ws",
             notion_obj_id="obj",
             notion_page_type="database",
             tenant_id="tenant",
             notion_access_token="token",
+            notion_token_loader=lambda: "token",
         )
         extractor._notion_access_token = None
 
@@ -242,18 +285,21 @@ class TestNotionDatabase:
 
 
 class TestNotionBlocks:
-    def test_get_notion_block_data_success_with_table_headings_children_and_pagination(self, mocker: MockerFixture):
+    def test_get_notion_block_data_success_with_table_headings_children_and_pagination(
+        self, mocker: MockerFixture
+    ) -> None:
         extractor = notion_extractor.NotionExtractor(
             notion_workspace_id="ws",
             notion_obj_id="obj",
             notion_page_type="page",
             tenant_id="tenant",
             notion_access_token="token",
+            notion_token_loader=lambda: "token",
         )
 
         first_response = {
             "results": [
-                {"type": "table", "id": "tbl-1", "has_children": False, "table": {}},
+                {"type": "table", "id": "tbl-1", "has_children": False, "table": dict[str, object]()},
                 {
                     "type": "heading_1",
                     "id": "h1",
@@ -270,7 +316,7 @@ class TestNotionBlocks:
                     "type": "child_page",
                     "id": "cp1",
                     "has_children": True,
-                    "child_page": {"rich_text": []},
+                    "child_page": {"rich_text": list[object]()},
                 },
             ],
             "next_cursor": "cursor-2",
@@ -298,13 +344,14 @@ class TestNotionBlocks:
         assert "Paragraph\nCHILD\n\n" in lines[2]
         assert "## SubHeading" in lines[-1]
 
-    def test_get_notion_block_data_handles_http_error_and_invalid_payload(self, mocker: MockerFixture):
+    def test_get_notion_block_data_handles_http_error_and_invalid_payload(self, mocker: MockerFixture) -> None:
         extractor = notion_extractor.NotionExtractor(
             notion_workspace_id="ws",
             notion_obj_id="obj",
             notion_page_type="page",
             tenant_id="tenant",
             notion_access_token="token",
+            notion_token_loader=lambda: "token",
         )
 
         mocker.patch("httpx.request", side_effect=httpx.HTTPError("network"))
@@ -319,13 +366,14 @@ class TestNotionBlocks:
         with pytest.raises(ValueError, match="Error fetching Notion block data: boom"):
             extractor._get_notion_block_data("page-1")
 
-    def test_read_block_supports_heading_table_and_recursion(self, mocker: MockerFixture):
+    def test_read_block_supports_heading_table_and_recursion(self, mocker: MockerFixture) -> None:
         extractor = notion_extractor.NotionExtractor(
             notion_workspace_id="ws",
             notion_obj_id="obj",
             notion_page_type="page",
             tenant_id="tenant",
             notion_access_token="token",
+            notion_token_loader=lambda: "token",
         )
 
         root_payload = {
@@ -342,7 +390,7 @@ class TestNotionBlocks:
                     "has_children": True,
                     "paragraph": {"rich_text": [{"text": {"content": "Parent"}}]},
                 },
-                {"type": "table", "id": "tbl-1", "has_children": False, "table": {}},
+                {"type": "table", "id": "tbl-1", "has_children": False, "table": dict[str, object]()},
             ],
             "next_cursor": None,
         }
@@ -368,25 +416,27 @@ class TestNotionBlocks:
         assert "Child" in content
         assert "TABLE-MD" in content
 
-    def test_read_block_breaks_on_missing_results(self, mocker: MockerFixture):
+    def test_read_block_breaks_on_missing_results(self, mocker: MockerFixture) -> None:
         extractor = notion_extractor.NotionExtractor(
             notion_workspace_id="ws",
             notion_obj_id="obj",
             notion_page_type="page",
             tenant_id="tenant",
             notion_access_token="token",
+            notion_token_loader=lambda: "token",
         )
         mocker.patch("httpx.request", return_value=_mock_response({"results": None, "next_cursor": None}))
 
         assert extractor._read_block("root") == ""
 
-    def test_read_table_rows_formats_markdown_with_pagination(self, mocker: MockerFixture):
+    def test_read_table_rows_formats_markdown_with_pagination(self, mocker: MockerFixture) -> None:
         extractor = notion_extractor.NotionExtractor(
             notion_workspace_id="ws",
             notion_obj_id="obj",
             notion_page_type="page",
             tenant_id="tenant",
             notion_access_token="token",
+            notion_token_loader=lambda: "token",
         )
 
         page_one = {
@@ -416,7 +466,7 @@ class TestNotionBlocks:
                     "table_row": {
                         "cells": [
                             [{"text": {"content": "H1"}}],
-                            [],
+                            list[object](),
                         ]
                     }
                 },
@@ -441,15 +491,101 @@ class TestNotionBlocks:
         assert "| H1 |  |" in markdown
         assert "| R2C1 | R2C2 |" in markdown
 
-
-class TestNotionMetadataAndCredentialMethods:
-    def test_update_last_edited_time_no_document_model(self):
+    def test_read_table_rows_joins_rich_text_segments_within_cell(self, mocker: MockerFixture) -> None:
         extractor = notion_extractor.NotionExtractor(
             notion_workspace_id="ws",
             notion_obj_id="obj",
             notion_page_type="page",
             tenant_id="tenant",
             notion_access_token="token",
+            notion_token_loader=lambda: "token",
+        )
+
+        # A cell with mixed formatting arrives as multiple rich text segments.
+        page = {
+            "results": [
+                {
+                    "table_row": {
+                        "cells": [
+                            [{"text": {"content": "Name"}}],
+                            [{"text": {"content": "Desc"}}],
+                        ]
+                    }
+                },
+                {
+                    "table_row": {
+                        "cells": [
+                            [{"text": {"content": "item1"}}],
+                            [{"text": {"content": "plain "}}, {"text": {"content": "bold"}}],
+                        ]
+                    }
+                },
+            ],
+            "next_cursor": None,
+        }
+
+        mocker.patch("httpx.request", side_effect=[_mock_response(page)])
+
+        markdown = extractor._read_table_rows("tbl-1")
+
+        assert "| item1 | plain bold |" in markdown
+        # Every row must keep the same column count as the header.
+        for line in markdown.splitlines():
+            if line.startswith("|"):
+                assert line.count("|") == 3
+
+    def test_read_table_rows_preserves_empty_data_cells_as_columns(self, mocker: MockerFixture) -> None:
+        extractor = notion_extractor.NotionExtractor(
+            notion_workspace_id="ws",
+            notion_obj_id="obj",
+            notion_page_type="page",
+            tenant_id="tenant",
+            notion_access_token="token",
+            notion_token_loader=lambda: "token",
+        )
+
+        page = {
+            "results": [
+                {
+                    "table_row": {
+                        "cells": [
+                            [{"text": {"content": "A"}}],
+                            [{"text": {"content": "B"}}],
+                            [{"text": {"content": "C"}}],
+                        ]
+                    }
+                },
+                {
+                    "table_row": {
+                        "cells": [
+                            [{"text": {"content": "a1"}}],
+                            list[object](),
+                            [{"text": {"content": "c1"}}],
+                        ]
+                    }
+                },
+            ],
+            "next_cursor": None,
+        }
+
+        mocker.patch("httpx.request", side_effect=[_mock_response(page)])
+
+        markdown = extractor._read_table_rows("tbl-1")
+
+        # The empty middle cell must remain an empty column instead of
+        # collapsing and shifting the following cell left.
+        assert "| a1 |  | c1 |" in markdown
+
+
+class TestNotionMetadataAndCredentialMethods:
+    def test_update_last_edited_time_no_document_model(self) -> None:
+        extractor = notion_extractor.NotionExtractor(
+            notion_workspace_id="ws",
+            notion_obj_id="obj",
+            notion_page_type="page",
+            tenant_id="tenant",
+            notion_access_token="token",
+            notion_token_loader=lambda: "token",
         )
 
         assert extractor.update_last_edited_time(None) is None
@@ -458,18 +594,20 @@ class TestNotionMetadataAndCredentialMethods:
         self,
         monkeypatch: pytest.MonkeyPatch,
         persisted_document: tuple[sessionmaker[Session], DocumentModel],
-    ):
+    ) -> None:
         extractor = notion_extractor.NotionExtractor(
             notion_workspace_id="ws",
             notion_obj_id="obj",
             notion_page_type="page",
             tenant_id="tenant",
             notion_access_token="token",
+            notion_token_loader=lambda: "token",
         )
         monkeypatch.setattr(extractor, "get_notion_last_edited_time", lambda: "2026-01-01T00:00:00.000Z")
         session_maker, document = persisted_document
 
-        extractor.update_last_edited_time(document)
+        snapshot = StoredDocumentExtractionInput.model_validate(document)
+        extractor.update_last_edited_time(snapshot)
 
         # Closing the writer session rolls back an uncommitted update before the independent read below.
         notion_extractor.db.session.close()
@@ -481,13 +619,36 @@ class TestNotionMetadataAndCredentialMethods:
                 "last_edited_time": "2026-01-01T00:00:00.000Z",
             }
 
-    def test_get_notion_last_edited_time_uses_page_and_database_urls(self, mocker: MockerFixture):
+    def test_last_edited_time_update_rejects_a_foreign_owner_snapshot(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        persisted_document: tuple[sessionmaker[Session], DocumentModel],
+    ) -> None:
+        session_maker, document = persisted_document
+        extractor = notion_extractor.NotionExtractor(
+            notion_workspace_id="ws",
+            notion_obj_id="obj",
+            notion_page_type="page",
+            tenant_id=document.tenant_id,
+            notion_access_token="token",
+            notion_token_loader=lambda: "token",
+        )
+        monkeypatch.setattr(extractor, "get_notion_last_edited_time", lambda: "2026-01-01T00:00:00.000Z")
+        snapshot = StoredDocumentExtractionInput.model_validate(document).model_copy(update={"tenant_id": "foreign"})
+        extractor.update_last_edited_time(snapshot)
+        with session_maker() as session:
+            stored = session.get(DocumentModel, document.id)
+            assert stored is not None
+            assert stored.data_source_info_dict["last_edited_time"] == "2025-01-01T00:00:00.000Z"
+
+    def test_get_notion_last_edited_time_uses_page_and_database_urls(self, mocker: MockerFixture) -> None:
         extractor_page = notion_extractor.NotionExtractor(
             notion_workspace_id="ws",
             notion_obj_id="page-id",
             notion_page_type="page",
             tenant_id="tenant",
             notion_access_token="token",
+            notion_token_loader=lambda: "token",
         )
         request_mock = mocker.patch(
             "httpx.request", return_value=_mock_response({"last_edited_time": "2025-05-01T00:00:00.000Z"})
@@ -502,6 +663,7 @@ class TestNotionMetadataAndCredentialMethods:
             notion_page_type="database",
             tenant_id="tenant",
             notion_access_token="token",
+            notion_token_loader=lambda: "token",
         )
         request_mock = mocker.patch(
             "httpx.request", return_value=_mock_response({"last_edited_time": "2025-06-01T00:00:00.000Z"})
@@ -510,35 +672,31 @@ class TestNotionMetadataAndCredentialMethods:
         assert extractor_db.get_notion_last_edited_time() == "2025-06-01T00:00:00.000Z"
         assert "databases/db-id" in request_mock.call_args[0][1]
 
-    def test_get_notion_last_edited_time_requires_access_token(self):
+    def test_get_notion_last_edited_time_requires_access_token(self) -> None:
         extractor = notion_extractor.NotionExtractor(
             notion_workspace_id="ws",
             notion_obj_id="obj",
             notion_page_type="page",
             tenant_id="tenant",
             notion_access_token="token",
+            notion_token_loader=lambda: "token",
         )
         extractor._notion_access_token = None
 
         with pytest.raises(AssertionError, match="Notion access token is required"):
             extractor.get_notion_last_edited_time()
 
-    def test_get_access_token_success_and_errors(self, monkeypatch: pytest.MonkeyPatch):
-        with pytest.raises(Exception, match="No credential id found"):
-            notion_extractor.NotionExtractor._get_access_token("tenant", None)
 
-        class FakeProviderServiceMissing:
-            def get_datasource_credentials(self, **kwargs):
-                return None
-
-        monkeypatch.setattr(notion_extractor, "DatasourceProviderService", FakeProviderServiceMissing)
-        with pytest.raises(Exception, match="No notion credential found"):
-            notion_extractor.NotionExtractor._get_access_token("tenant", "cred")
-
-        class FakeProviderServiceFound:
-            def get_datasource_credentials(self, **kwargs):
-                return {"integration_secret": "token-from-credential"}
-
-        monkeypatch.setattr(notion_extractor, "DatasourceProviderService", FakeProviderServiceFound)
-
-        assert notion_extractor.NotionExtractor._get_access_token("tenant", "cred") == "token-from-credential"
+def test_get_cell_text_uses_plain_text_for_mention_and_equation_segments() -> None:
+    # Notion rich text segments of type mention or equation carry plain_text
+    # but no "text" object; they must not be dropped from the cell content.
+    cell = [
+        {"type": "text", "text": {"content": "see "}, "plain_text": "see "},
+        {"type": "mention", "mention": {"type": "user", "user": dict[str, object]()}, "plain_text": "@alice"},
+        {"type": "equation", "equation": {"expression": "e=mc^2"}, "plain_text": "e=mc^2"},
+    ]
+    assert notion_extractor.NotionExtractor._get_cell_text(cell) == "see @alicee=mc^2"
+    # Empty cell stays an empty column.
+    assert notion_extractor.NotionExtractor._get_cell_text([]) == ""
+    # Fall back to text.content when plain_text is absent.
+    assert notion_extractor.NotionExtractor._get_cell_text([{"text": {"content": "x"}}]) == "x"

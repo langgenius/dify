@@ -33,7 +33,7 @@ class DifyLLMNode(LLMNode):
         polling_model: LLMPollingCapableProtocol,
         prompt_messages: Sequence[PromptMessage],
         stop: Sequence[str] | None,
-    ) -> Generator[NodeEventBase | LLMStructuredOutput, None, None]:
+    ) -> Generator[NodeEventBase | LLMStructuredOutput]:
         try:
             yield from super()._invoke_llm_with_polling(
                 polling_model=polling_model,

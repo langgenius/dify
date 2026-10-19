@@ -546,7 +546,7 @@ class AgentFeatureToggleConfig(AgentFlexibleConfig):
 class AgentTextToSpeechFeatureConfig(AgentFeatureToggleConfig):
     language: str | None = None
     voice: str | None = None
-    autoPlay: str | None = None
+    autoPlay: Literal["enabled", "disabled"] | None = None
 
 
 class AgentSuggestedQuestionsAfterAnswerModelConfig(AgentFlexibleConfig):
@@ -705,7 +705,9 @@ class AgentSoulDifyToolConfig(BaseModel):
         if not self.provider_id and not (self.plugin_id and self.provider):
             raise ValueError("Dify tool requires provider_id or plugin_id + provider")
         if self.credential_type != "unauthorized" and (self.credential_ref is None or not self.credential_ref.id):
-            raise ValueError("credential_ref.id is required for credentialed Dify tools")
+            # credential resolved by provider_id, see ``ToolManager``
+            if self.provider_type not in {ToolProviderType.API, ToolProviderType.WORKFLOW}:
+                raise ValueError("credential_ref.id is required for credentialed Dify tools")
         # ``name`` is reserved for a future user-rename UX. Until that lands
         # the model-visible name is forced to match ``tool_name``; reject
         # explicit values so a frontend bug surfaces immediately instead of
@@ -1070,16 +1072,59 @@ SYSTEM_DECLARED_OUTPUTS: Final[tuple[DeclaredOutputConfig, ...]] = (
         description="Free-form text answer.",
     ),
 )
-# ``switch`` and ``_session`` are reserved for future system output contracts.
+# ``switch`` is derived when routing is enabled; ``_session`` remains reserved.
 RESERVED_DECLARED_OUTPUT_NAMES: Final[frozenset[str]] = frozenset({"text", "switch", "_session"})
+
+
+class WorkflowOutputRoute(BaseModel):
+    """Stable workflow exit identity and its model-visible selection condition."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(min_length=1)
+    name: str = ""
+    label: str | None = None
+
+    @field_validator("id")
+    @classmethod
+    def _validate_id(cls, value: str) -> str:
+        if not value.strip() or value in {"source", "target", "fail-branch"}:
+            raise ValueError("output route id must be nonblank and must not use a system handle")
+        return value
+
+
+class WorkflowOutputRoutes(BaseModel):
+    """Enabled routes require at least two exits; drafts may omit conditions."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = False
+    routes: list[WorkflowOutputRoute] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _validate_routes(self) -> Self:
+        if self.enabled and len(self.routes) < 2:
+            raise ValueError("Enabled output routes require at least two routes.")
+        if len({route.id for route in self.routes}) != len(self.routes):
+            raise ValueError("output route ids must be unique")
+        return self
+
+    def validate_for_execution(self) -> None:
+        if self.enabled and any(not route.name.strip() for route in self.routes):
+            raise ValueError("Each enabled output route requires a selection condition.")
 
 
 def effective_declared_outputs(
     declared_outputs: list[DeclaredOutputConfig] | tuple[DeclaredOutputConfig, ...],
+    output_routes: WorkflowOutputRoutes | None = None,
 ) -> tuple[DeclaredOutputConfig, ...]:
-    """Project the system ``text`` output followed by custom declarations."""
-
-    return SYSTEM_DECLARED_OUTPUTS + tuple(declared_outputs)
+    """Project system outputs for this job before its custom declarations."""
+    switch = (
+        (DeclaredOutputConfig(name="switch", type=DeclaredOutputType.STRING, description="Selected output route ID."),)
+        if output_routes is not None and output_routes.enabled
+        else ()
+    )
+    return SYSTEM_DECLARED_OUTPUTS + switch + tuple(declared_outputs)
 
 
 class WorkflowNodeJobConfig(BaseModel):
@@ -1090,6 +1135,7 @@ class WorkflowNodeJobConfig(BaseModel):
     workflow_prompt: str = ""
     previous_node_output_refs: list[WorkflowPreviousNodeOutputRef] = Field(default_factory=list)
     declared_outputs: list[DeclaredOutputConfig] = Field(default_factory=list)
+    output_routes: WorkflowOutputRoutes = Field(default_factory=WorkflowOutputRoutes)
     human_contacts: list[AgentHumanContactConfig] = Field(default_factory=list)
     metadata: WorkflowNodeJobMetadata = Field(default_factory=WorkflowNodeJobMetadata)
 

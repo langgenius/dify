@@ -1,22 +1,14 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CollectionType } from '@/app/components/tools/types'
-import { useGetLanguage } from '@/context/i18n'
-import useTheme from '@/hooks/use-theme'
-import { Theme } from '@/types/app'
 import { BlockEnum } from '../../../types'
 import { createPlugin, createToolProvider } from '../../__tests__/factories'
 import { ViewType } from '../../types'
 import List from '../list'
-import UninstalledItem from '../uninstalled-item'
 
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: vi.fn(),
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => 'en_US',
-}))
-
-vi.mock('@/hooks/use-theme', () => ({
-  default: vi.fn(),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/mcp-tool-availability', () => ({
@@ -35,6 +27,7 @@ vi.mock(
   }),
 )
 
+// Installation owns its own status/permission tests; this list owns opening the selected package.
 vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () => ({
   default: ({ uniqueIdentifier, onClose }: { uniqueIdentifier: string; onClose: () => void }) => (
     <div data-testid="install-from-marketplace">
@@ -46,14 +39,9 @@ vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () =
   ),
 }))
 
-const mockUseGetLanguage = vi.mocked(useGetLanguage)
-const mockUseTheme = vi.mocked(useTheme)
-
 describe('RAG tool recommendations list', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseGetLanguage.mockReturnValue('en_US')
-    mockUseTheme.mockReturnValue({ theme: Theme.light } as ReturnType<typeof useTheme>)
   })
 
   it('should render installed tools in flat view and delegate selection', async () => {
@@ -90,11 +78,16 @@ describe('RAG tool recommendations list', () => {
     const user = userEvent.setup()
 
     render(
-      <UninstalledItem
-        payload={createPlugin({
-          latest_package_identifier: 'rag-plugin@1.0.0',
-          label: { en_US: 'RAG Plugin', zh_Hans: 'RAG Plugin' },
-        })}
+      <List
+        tools={[]}
+        viewType={ViewType.flat}
+        onSelect={vi.fn()}
+        unInstalledPlugins={[
+          createPlugin({
+            latest_package_identifier: 'rag-plugin@1.0.0',
+            label: { en_US: 'RAG Plugin', zh_Hans: 'RAG Plugin' },
+          }),
+        ]}
       />,
     )
 
@@ -107,5 +100,7 @@ describe('RAG tool recommendations list', () => {
     await user.keyboard('{Enter}')
 
     expect(screen.getByTestId('install-from-marketplace')).toHaveTextContent('rag-plugin@1.0.0')
+    await user.click(screen.getByRole('button', { name: 'install-close' }))
+    expect(screen.queryByTestId('install-from-marketplace')).not.toBeInTheDocument()
   })
 })

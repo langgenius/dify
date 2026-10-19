@@ -2,6 +2,8 @@ import type { CommonNodeType } from '@/app/components/workflow/types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { ReactFlowProvider } from 'reactflow'
+import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useAvailableBlocks } from '../../../../../hooks/use-available-blocks'
 import { useNodesInteractions } from '../../../../../hooks/use-nodes-interactions'
@@ -36,7 +38,8 @@ const mockHandleNodeDisconnect = vi.fn()
 const defaultNodeData = {
   type: BlockEnum.Code,
   title: 'Code Node',
-} as CommonNodeType
+  desc: '',
+} satisfies CommonNodeType
 
 const TestHarness = () => {
   const [open, setOpen] = useState(false)
@@ -66,28 +69,33 @@ describe('NextStep operator', () => {
     } as unknown as ReturnType<typeof useNodesInteractions>)
   })
 
-  it('opens the menu and keeps the change action available', async () => {
-    const user = userEvent.setup()
-    render(<TestHarness />)
-
-    await user.click(screen.getAllByRole('button')[0]!)
-
-    expect(screen.getByText('workflow.panel.change')).toBeInTheDocument()
-    expect(screen.getByText('workflow.common.disconnect')).toBeInTheDocument()
-    expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
-  })
-
   it('disconnects and deletes the next step from the menu', async () => {
     const user = userEvent.setup()
     render(<TestHarness />)
 
-    await user.click(screen.getAllByRole('button')[0]!)
-    await user.click(screen.getByText('workflow.common.disconnect'))
+    await user.click(screen.getByRole('button', { name: 'workflow.common.moreActions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'workflow.common.disconnect' }))
     expect(mockHandleNodeDisconnect).toHaveBeenCalledWith('node-1')
     expect(screen.queryByText('workflow.common.disconnect')).not.toBeInTheDocument()
 
-    await user.click(screen.getAllByRole('button')[0]!)
-    await user.click(screen.getByText('common.operation.delete'))
+    await user.click(screen.getByRole('button', { name: 'workflow.common.moreActions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
     expect(mockHandleNodeDelete).toHaveBeenCalledWith('node-1')
+  })
+
+  it('opens the node selector from the change menu item with the keyboard', async () => {
+    const user = userEvent.setup()
+    renderWorkflowComponent(
+      <ReactFlowProvider>
+        <TestHarness />
+      </ReactFlowProvider>,
+    )
+
+    await user.tab()
+    await user.keyboard('{ArrowDown}{Enter}')
+
+    expect(
+      await screen.findByRole('dialog', { name: 'workflow.common.addBlock' }),
+    ).toBeInTheDocument()
   })
 })

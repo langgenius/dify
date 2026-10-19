@@ -114,20 +114,25 @@ def build_oauth_authorization_server_metadata_discovery_urls(auth_server_url: st
     base = f"{parsed.scheme}://{parsed.netloc}"
     path = parsed.path.rstrip("/")
     # OAuth 2.0 Authorization Server Metadata at root (MCP-03-26)
-    urls.append(f"{base}/.well-known/oauth-authorization-server")
-
-    # OpenID Connect Discovery at root
-    urls.append(f"{base}/.well-known/openid-configuration")
+    urls.extend(
+        [
+            f"{base}/.well-known/oauth-authorization-server",
+            # OpenID Connect Discovery at root
+            f"{base}/.well-known/openid-configuration",
+        ]
+    )
 
     if path:
         # OpenID Connect Discovery with path insertion
-        urls.append(f"{base}/.well-known/openid-configuration{path}")
-
-        # OpenID Connect Discovery path appending
-        urls.append(f"{base}{path}/.well-known/openid-configuration")
-
-        # OAuth 2.0 Authorization Server Metadata with path insertion
-        urls.append(f"{base}/.well-known/oauth-authorization-server{path}")
+        urls.extend(
+            [
+                f"{base}/.well-known/openid-configuration{path}",
+                # OpenID Connect Discovery path appending
+                f"{base}{path}/.well-known/openid-configuration",
+                # OAuth 2.0 Authorization Server Metadata with path insertion
+                f"{base}/.well-known/oauth-authorization-server{path}",
+            ]
+        )
 
     return urls
 
@@ -531,7 +536,9 @@ def register_client(
         headers={"Content-Type": "application/json"},
     )
     if not response.is_success:
-        response.raise_for_status()
+        # Callers only translate RequestError/ValueError into a user-facing error,
+        # so a raise_for_status() here would escape as an opaque 500.
+        raise ValueError(f"Client registration failed: HTTP {response.status_code}, Response: {response.text}")
     return OAuthClientInformationFull.model_validate(response.json())
 
 

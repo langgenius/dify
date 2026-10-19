@@ -1,14 +1,18 @@
 import json
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from types import SimpleNamespace
+from unittest import mock
+from unittest.mock import create_autospec
 
 import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from graphon.enums import (
@@ -30,10 +34,19 @@ from models.dataset import (
 )
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.workflow import Workflow, WorkflowRun
+from repositories.knowledge.dataset_read_repository import get_pipeline_dataset
+from services.credentials.query import CredentialQuery
+from services.data_source.credential_gateway import DatasourceProviderCredentialStore
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, PipelineTemplateInfoEntity
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
+from services.rag_pipeline import rag_pipeline as rag_pipeline_module
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.workflow_ref_service import WorkflowRef
+
+
+@pytest.fixture
+def pipeline_generator(mocker: MockerFixture):
+    return mocker.create_autospec(PipelineGenerator, instance=True, spec_set=True)
 
 
 @dataclass
@@ -70,17 +83,20 @@ class MockRepo:
     pass
 
 
-def test_get_published_workflow_by_id_locks_restore_source(mocker: MockerFixture) -> None:
-    session = mocker.Mock(spec=Session)
+def test_get_published_workflow_by_id_locks_restore_source(
+    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
+) -> None:
+    session = rag_pipeline_service.session
     workflow = _make_workflow()
     workflow.version = "v1"
-    session.scalar.return_value = workflow
-    service = RagPipelineService.__new__(RagPipelineService)
-    service._session = session
+    session.add(workflow)
+    session.flush()
+    lookup = mocker.spy(session, "scalar")
+    service = rag_pipeline_service.service
 
     result = service.get_published_workflow_by_id(_make_pipeline(), workflow.id)
 
-    stmt = session.scalar.call_args.args[0]
+    stmt = lookup.call_args.args[0]
     sql = str(stmt.compile(dialect=postgresql.dialect()))
     assert result is workflow
     assert "FOR UPDATE" in sql
@@ -249,9 +265,9 @@ def _make_recommended_plugin(plugin_id: str) -> PipelineRecommendedPlugin:
 
 
 def test_get_pipeline_templates_fallbacks_to_builtin_for_non_english_empty_result(
-    mocker: MockerFixture, sqlite_session: Session
+    mocker: MockerFixture, sqlite_session: Session, config_overrides: Callable[..., None]
 ) -> None:
-    mocker.patch("services.rag_pipeline.rag_pipeline.dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE", "remote")
+    config_overrides(HOSTED_FETCH_PIPELINE_TEMPLATES_MODE="remote")
     session = sqlite_session
 
     remote_retrieval = mocker.Mock()
@@ -290,9 +306,12 @@ def test_get_pipeline_templates_customized_mode_uses_customized_factory(
 
 @pytest.mark.parametrize("template_type", ["built-in", "customized"])
 def test_get_pipeline_template_detail_uses_expected_mode(
-    mocker: MockerFixture, template_type: str, sqlite_session: Session
+    mocker: MockerFixture,
+    template_type: str,
+    sqlite_session: Session,
+    config_overrides: Callable[..., None],
 ) -> None:
-    mocker.patch("services.rag_pipeline.rag_pipeline.dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE", "remote")
+    config_overrides(HOSTED_FETCH_PIPELINE_TEMPLATES_MODE="remote")
     session = sqlite_session
     retrieval = mocker.Mock()
     retrieval.get_pipeline_template_detail.return_value = {"id": "tpl-1"}
@@ -606,7 +625,7 @@ def test_publish_workflow_success(mocker: MockerFixture, rag_pipeline_service: R
     dataset = _make_dataset()
     _persist(rag_pipeline_service.session, draft_workflow, pipeline, dataset)
     mocker.patch("services.rag_pipeline.rag_pipeline.KnowledgeConfiguration.model_validate", return_value=mocker.Mock())
-    mock_dataset_service_class = mocker.patch("services.dataset_service.DatasetService")
+    mock_dataset_service_class = mocker.patch("services.knowledge.dataset_service.DatasetService")
 
     result = rag_pipeline_service.service.publish_workflow(
         session=rag_pipeline_service.session, pipeline=pipeline, account=_make_account()
@@ -711,6 +730,9 @@ def test_run_datasource_workflow_node_website_crawl(
         account=_make_account(),
         datasource_type="website_crawl",
         is_published=True,
+        datasource_providers=rag_pipeline_module.DatasourceProviderService(
+            credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
+        ),
     )
 
     events = list(gen)
@@ -792,6 +814,9 @@ def test_run_datasource_node_preview_online_document(
         account=_make_account(),
         datasource_type="online_document",
         is_published=True,
+        datasource_providers=rag_pipeline_module.DatasourceProviderService(
+            credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
+        ),
     )
 
     # 4. Assertions
@@ -911,7 +936,7 @@ def test_publish_customized_pipeline_template_success(
     # Mock RagPipelineDslService
     mock_dsl_service = mocker.Mock()
     mock_dsl_service.export_rag_pipeline_dsl.return_value = "dsl: content"
-    mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.RagPipelineDslService", return_value=mock_dsl_service)
+    mocker.patch.object(rag_pipeline_module, "RagPipelineDslService", return_value=mock_dsl_service)
 
     account = _make_account(account_id="user-123")
 
@@ -963,7 +988,15 @@ def test_get_datasource_plugins_success(
     mocker.patch("services.rag_pipeline.rag_pipeline.DatasourceProviderService", return_value=mock_provider_service)
 
     # 2. Run test
-    result = rag_pipeline_service.service.get_datasource_plugins("t1", "d1", True)
+    result = rag_pipeline_service.service.get_datasource_plugins(
+        "t1",
+        "d1",
+        True,
+        credential_query=mock.create_autospec(CredentialQuery, instance=True),
+        datasource_providers=rag_pipeline_module.DatasourceProviderService(
+            credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
+        ),
+    )
 
     # 3. Assertions
     assert len(result) == 1
@@ -975,7 +1008,7 @@ def test_get_datasource_plugins_success(
 
 
 def test_retry_error_document_success(
-    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
+    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext, pipeline_generator
 ) -> None:
     dataset = _make_dataset()
     document = _make_document()
@@ -998,12 +1031,11 @@ def test_retry_error_document_success(
     _persist(rag_pipeline_service.session, log, pipeline, workflow)
 
     # Mock PipelineGenerator
-    mock_gen_instance = mocker.Mock()
-    mocker.patch("services.rag_pipeline.rag_pipeline.PipelineGenerator", return_value=mock_gen_instance)
+    mock_gen_instance = pipeline_generator
 
     # 2. Run test
     user = mocker.Mock()
-    rag_pipeline_service.service.retry_error_document(dataset, document, user)
+    rag_pipeline_service.service.retry_error_document(dataset, document, user, generator=pipeline_generator)
 
     # 3. Assertions
     mock_gen_instance.generate.assert_called_once()
@@ -1030,11 +1062,26 @@ def test_set_datasource_variables_success(
     draft_wf.get_enclosing_node_type_and_id.return_value = None  # Avoid unpacking error
     mocker.patch.object(rag_pipeline_service.service, "get_draft_workflow", return_value=draft_wf)
 
-    execution = mocker.Mock(spec=WorkflowNodeExecution)
-    execution.id = "exec-1"
-    execution.process_data = {}
-    execution.inputs = {}
-    execution.outputs = {}
+    execution = WorkflowNodeExecution(
+        id="exec-1",
+        node_execution_id="node-exec-1",
+        workflow_id="wf-1",
+        workflow_execution_id="run-1",
+        index=1,
+        predecessor_node_id=None,
+        node_id="node-1",
+        node_type=BuiltinNodeTypes.DATASOURCE,
+        title="Datasource",
+        process_data={},
+        inputs={},
+        outputs={},
+        status=WorkflowNodeExecutionStatus.SUCCEEDED,
+        error=None,
+        elapsed_time=0,
+        metadata={},
+        created_at=datetime(2026, 1, 1),
+        finished_at=None,
+    )
     mocker.patch.object(rag_pipeline_service.service, "_handle_node_run_result", return_value=execution)
 
     # Mock Repository
@@ -1104,7 +1151,6 @@ def test_get_default_block_configs_success(rag_pipeline_service: RagPipelineServ
 
 
 def test_get_default_block_config_success(rag_pipeline_service: RagPipelineServiceTestContext) -> None:
-
     result = rag_pipeline_service.service.get_default_block_config(BuiltinNodeTypes.LLM)
     assert result is not None
     assert result["type"] == "llm"
@@ -1125,7 +1171,6 @@ def test_publish_workflow_raises_when_draft_workflow_missing(
 def test_get_default_block_config_returns_none_when_mapped_type_missing(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-
     mocker.patch("services.rag_pipeline.rag_pipeline.get_node_type_classes_mapping", return_value={})
 
     assert rag_pipeline_service.service.get_default_block_config(BuiltinNodeTypes.START) is None
@@ -1134,7 +1179,6 @@ def test_get_default_block_config_returns_none_when_mapped_type_missing(
 def test_get_default_block_config_injects_http_request_filter(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-
     fake_node_cls = mocker.Mock()
     fake_node_cls.get_default_config.return_value = {"type": "http-request"}
     mocker.patch(
@@ -1261,6 +1305,9 @@ def test_run_datasource_workflow_node_returns_error_when_workflow_missing(
             account=_make_account(),
             datasource_type="online_document",
             is_published=False,
+            datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
+            ),
         )
     )
 
@@ -1309,6 +1356,9 @@ def test_run_datasource_workflow_node_online_document_success(
             account=_make_account(),
             datasource_type=DatasourceProviderType.ONLINE_DOCUMENT,
             is_published=True,
+            datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
+            ),
         )
     )
 
@@ -1361,6 +1411,9 @@ def test_run_datasource_workflow_node_online_drive_success(
             account=_make_account(),
             datasource_type=DatasourceProviderType.ONLINE_DRIVE,
             is_published=True,
+            datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
+            ),
         )
     )
 
@@ -1494,7 +1547,7 @@ def test_get_rag_pipeline_workflow_run_node_executions_assembles_configured_repo
         app_id=pipeline.id,
         workflow_run_id="run-1",
     )
-    mock_assemble.assert_called_once_with(expected_executions, node_repo)
+    mock_assemble.assert_called_once_with(expected_executions, node_repo, session=mock.ANY)
 
 
 def test_get_recommended_plugins_returns_empty_when_no_active_plugins(
@@ -1557,7 +1610,6 @@ def test_set_datasource_variables_raises_when_node_id_missing(
 def test_get_default_block_configs_skips_empty_configs(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-
     http_node = mocker.Mock()
     http_node.get_default_config.return_value = {"type": "http-request"}
     empty_node = mocker.Mock()
@@ -1594,6 +1646,9 @@ def test_run_datasource_workflow_node_returns_error_when_node_missing(
             account=_make_account(),
             datasource_type="online_document",
             is_published=True,
+            datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
+            ),
         )
     )
 
@@ -1636,7 +1691,8 @@ def test_run_datasource_workflow_node_online_document_exception(
 
     mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)
     mocker.patch(
-        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials", return_value=None
+        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials",
+        return_value=None,
     )
 
     events = list(
@@ -1647,6 +1703,9 @@ def test_run_datasource_workflow_node_online_document_exception(
             account=_make_account(),
             datasource_type="online_document",
             is_published=True,
+            datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
+            ),
         )
     )
 
@@ -1680,7 +1739,7 @@ def test_run_datasource_node_preview_raises_for_stream_non_string(
 
     runtime = mocker.Mock()
 
-    def _bad_stream_generator(*args, **kwargs):
+    def _bad_stream_generator[**P](*args: P.args, **kwargs: P.kwargs):
         yield DatasourceMessage(
             type=DatasourceMessage.MessageType.VARIABLE,
             message=DatasourceMessage.VariableMessage(variable_name="content", variable_value=1, stream=True),
@@ -1691,7 +1750,8 @@ def test_run_datasource_node_preview_raises_for_stream_non_string(
 
     mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)
     mocker.patch(
-        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials", return_value=None
+        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials",
+        return_value=None,
     )
 
     with pytest.raises(RuntimeError, match="must be a string"):
@@ -1702,6 +1762,9 @@ def test_run_datasource_node_preview_raises_for_stream_non_string(
             account=_make_account(),
             datasource_type="online_document",
             is_published=True,
+            datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
+            ),
         )
 
 
@@ -1753,9 +1816,12 @@ def test_get_second_step_parameters_filters_first_step_variables(
 
 def test_retry_error_document_raises_when_execution_log_not_found(
     rag_pipeline_service: RagPipelineServiceTestContext,
+    pipeline_generator,
 ) -> None:
     with pytest.raises(ValueError, match="Document pipeline execution log not found"):
-        rag_pipeline_service.service.retry_error_document(_make_dataset(), _make_document(), _make_account())
+        rag_pipeline_service.service.retry_error_document(
+            _make_dataset(), _make_document(), _make_account(), generator=pipeline_generator
+        )
 
 
 def test_get_datasource_plugins_raises_when_workflow_not_found(
@@ -1766,7 +1832,15 @@ def test_get_datasource_plugins_raises_when_workflow_not_found(
     _persist(rag_pipeline_service.session, dataset, pipeline)
 
     with pytest.raises(ValueError, match="Pipeline or workflow not found"):
-        rag_pipeline_service.service.get_datasource_plugins("t1", "d1", True)
+        rag_pipeline_service.service.get_datasource_plugins(
+            "t1",
+            "d1",
+            True,
+            credential_query=mock.create_autospec(CredentialQuery, instance=True),
+            datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
+            ),
+        )
 
 
 def test_handle_node_run_result_raises_when_no_terminal_event(
@@ -1859,7 +1933,8 @@ def test_run_datasource_node_preview_raises_for_unsupported_provider(
     runtime.datasource_provider_type.return_value = "unsupported"
     mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)
     mocker.patch(
-        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials", return_value=None
+        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials",
+        return_value=None,
     )
 
     with pytest.raises(RuntimeError, match="Unsupported datasource provider"):
@@ -1870,6 +1945,9 @@ def test_run_datasource_node_preview_raises_for_unsupported_provider(
             account=_make_account(),
             datasource_type="website_crawl",
             is_published=True,
+            datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
+            ),
         )
 
 
@@ -1919,8 +1997,10 @@ def test_init_uses_default_sessionmaker_when_none(mocker: MockerFixture, sqlite_
     assert exec_session_maker.kw["expire_on_commit"] is False
 
 
-def test_get_pipeline_templates_builtin_en_us_no_fallback(mocker: MockerFixture, sqlite_session: Session) -> None:
-    mocker.patch("services.rag_pipeline.rag_pipeline.dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE", "remote")
+def test_get_pipeline_templates_builtin_en_us_no_fallback(
+    mocker: MockerFixture, sqlite_session: Session, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(HOSTED_FETCH_PIPELINE_TEMPLATES_MODE="remote")
     session = sqlite_session
     retrieval = mocker.Mock()
     retrieval.get_pipeline_templates.return_value = {"pipeline_templates": []}
@@ -1977,7 +2057,7 @@ def test_publish_workflow_skips_dataset_update_for_non_knowledge_nodes(
 ) -> None:
     draft = _make_workflow(graph={"nodes": [{"data": {"type": "start"}}]})
     _persist(rag_pipeline_service.session, draft)
-    dataset_service = mocker.patch("services.dataset_service.DatasetService")
+    dataset_service = mocker.patch("services.knowledge.dataset_service.DatasetService")
 
     result = rag_pipeline_service.service.publish_workflow(
         session=rag_pipeline_service.session,
@@ -1992,7 +2072,6 @@ def test_publish_workflow_skips_dataset_update_for_non_knowledge_nodes(
 def test_get_default_block_config_returns_none_when_default_empty(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-
     node_cls = mocker.Mock()
     node_cls.get_default_config.return_value = None
     mocker.patch(
@@ -2038,7 +2117,8 @@ def test_run_datasource_workflow_node_handles_variable_parameter_types(
     runtime.datasource_provider_type.return_value = DatasourceProviderType.WEBSITE_CRAWL
     mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)
     mocker.patch(
-        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials", return_value=None
+        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials",
+        return_value=None,
     )
 
     events = list(
@@ -2049,6 +2129,9 @@ def test_run_datasource_workflow_node_handles_variable_parameter_types(
             account=_make_account(),
             datasource_type="website_crawl",
             is_published=True,
+            datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
+            ),
         )
     )
 
@@ -2086,7 +2169,8 @@ def test_run_datasource_workflow_node_online_drive_branch(
     runtime.datasource_provider_type.return_value = DatasourceProviderType.ONLINE_DRIVE
     mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)
     mocker.patch(
-        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials", return_value=None
+        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials",
+        return_value=None,
     )
 
     events = list(
@@ -2097,6 +2181,9 @@ def test_run_datasource_workflow_node_online_drive_branch(
             account=_make_account(),
             datasource_type="online_drive",
             is_published=True,
+            datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
+            ),
         )
     )
 
@@ -2136,7 +2223,8 @@ def test_run_datasource_node_preview_not_published_uses_draft(
     runtime.get_online_document_page_content.side_effect = doc_gen
     mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)
     mocker.patch(
-        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials", return_value=None
+        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials",
+        return_value=None,
     )
 
     result = rag_pipeline_service.service.run_datasource_node_preview(
@@ -2146,6 +2234,9 @@ def test_run_datasource_node_preview_not_published_uses_draft(
         account=_make_account(),
         datasource_type="online_document",
         is_published=False,
+        datasource_providers=rag_pipeline_module.DatasourceProviderService(
+            credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
+        ),
     )
 
     assert result == {"x": "v"}
@@ -2180,7 +2271,7 @@ def test_publish_customized_pipeline_template_rejects_unowned_workflow_before_ex
     pipeline = _make_pipeline(workflow_id="wf-1")
     workflow = _make_workflow(workflow_id="wf-1", tenant_id=workflow_tenant_id, app_id=workflow_app_id)
     _persist(rag_pipeline_service.session, pipeline, workflow)
-    dsl_service = mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.RagPipelineDslService")
+    dsl_service = mocker.patch.object(rag_pipeline_module, "RagPipelineDslService")
 
     with pytest.raises(RagPipelineResourceNotFoundError, match="Workflow not found"):
         rag_pipeline_service.service.publish_customized_pipeline_template(
@@ -2202,7 +2293,7 @@ def test_pipeline_retrieve_dataset_rejects_unowned_dataset(
     other_tenant_dataset = _make_dataset(tenant_id="t2")
     _persist(rag_pipeline_service.session, pipeline, other_tenant_dataset)
 
-    assert pipeline.retrieve_dataset(session=rag_pipeline_service.session) is None
+    assert get_pipeline_dataset(pipeline, session=rag_pipeline_service.session) is None
 
 
 @pytest.mark.parametrize(
@@ -2223,7 +2314,7 @@ def test_publish_customized_pipeline_template_rejects_missing_or_unowned_draft_b
     if draft_tenant_id and draft_app_id:
         resources.append(_make_workflow(workflow_id="wf-draft", tenant_id=draft_tenant_id, app_id=draft_app_id))
     _persist(session, *resources)
-    dsl_service = mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.RagPipelineDslService")
+    dsl_service = mocker.patch.object(rag_pipeline_module, "RagPipelineDslService")
 
     with pytest.raises(RagPipelineResourceNotFoundError, match="Draft workflow not found"):
         rag_pipeline_service.service.publish_customized_pipeline_template(
@@ -2250,6 +2341,7 @@ def test_get_recommended_plugins_skips_manifest_when_missing(
 
 def test_retry_error_document_raises_when_pipeline_missing(
     rag_pipeline_service: RagPipelineServiceTestContext,
+    pipeline_generator,
 ) -> None:
     exec_log = DocumentPipelineExecutionLog(
         pipeline_id="p1",
@@ -2263,11 +2355,14 @@ def test_retry_error_document_raises_when_pipeline_missing(
     _persist(rag_pipeline_service.session, exec_log)
 
     with pytest.raises(ValueError, match="Pipeline not found"):
-        rag_pipeline_service.service.retry_error_document(_make_dataset(), _make_document(), _make_account())
+        rag_pipeline_service.service.retry_error_document(
+            _make_dataset(), _make_document(), _make_account(), generator=pipeline_generator
+        )
 
 
 def test_retry_error_document_raises_when_workflow_missing(
     rag_pipeline_service: RagPipelineServiceTestContext,
+    pipeline_generator,
 ) -> None:
     exec_log = DocumentPipelineExecutionLog(
         pipeline_id="p1",
@@ -2282,7 +2377,9 @@ def test_retry_error_document_raises_when_workflow_missing(
     _persist(rag_pipeline_service.session, exec_log, pipeline)
 
     with pytest.raises(ValueError, match="Workflow not found"):
-        rag_pipeline_service.service.retry_error_document(_make_dataset(), _make_document(), _make_account())
+        rag_pipeline_service.service.retry_error_document(
+            _make_dataset(), _make_document(), _make_account(), generator=pipeline_generator
+        )
 
 
 def test_get_datasource_plugins_returns_empty_for_non_datasource_nodes(
@@ -2293,7 +2390,18 @@ def test_get_datasource_plugins_returns_empty_for_non_datasource_nodes(
     workflow = _make_workflow(graph={"nodes": [{"id": "n1", "data": {"type": "start"}}]})
     _persist(rag_pipeline_service.session, dataset, pipeline, workflow)
 
-    assert rag_pipeline_service.service.get_datasource_plugins("t1", "d1", True) == []
+    assert (
+        rag_pipeline_service.service.get_datasource_plugins(
+            "t1",
+            "d1",
+            True,
+            credential_query=mock.create_autospec(CredentialQuery, instance=True),
+            datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
+            ),
+        )
+        == []
+    )
 
 
 def test_publish_workflow_raises_when_knowledge_index_dataset_missing(
@@ -2323,6 +2431,9 @@ def test_run_datasource_node_preview_raises_when_workflow_missing(
             account=_make_account(),
             datasource_type="online_document",
             is_published=True,
+            datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
+            ),
         )
 
 
@@ -2341,6 +2452,9 @@ def test_run_datasource_node_preview_raises_when_node_missing(
             account=_make_account(),
             datasource_type="online_document",
             is_published=True,
+            datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
+            ),
         )
 
 
@@ -2378,7 +2492,8 @@ def test_run_datasource_node_preview_keeps_existing_user_input(
     runtime.get_online_document_page_content.side_effect = gen
     mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)
     mocker.patch(
-        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials", return_value=None
+        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials",
+        return_value=None,
     )
 
     result = rag_pipeline_service.service.run_datasource_node_preview(
@@ -2388,6 +2503,9 @@ def test_run_datasource_node_preview_keeps_existing_user_input(
         account=_make_account(),
         datasource_type="online_document",
         is_published=True,
+        datasource_providers=rag_pipeline_module.DatasourceProviderService(
+            credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
+        ),
     )
     assert result == {"ok": "1"}
 
@@ -2419,7 +2537,8 @@ def test_run_datasource_node_preview_ignores_non_variable_messages(
     runtime.get_online_document_page_content.side_effect = gen
     mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)
     mocker.patch(
-        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials", return_value=None
+        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials",
+        return_value=None,
     )
 
     result = rag_pipeline_service.service.run_datasource_node_preview(
@@ -2429,6 +2548,9 @@ def test_run_datasource_node_preview_ignores_non_variable_messages(
         account=_make_account(),
         datasource_type="online_document",
         is_published=True,
+        datasource_providers=rag_pipeline_module.DatasourceProviderService(
+            credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
+        ),
     )
     assert result == {}
 
@@ -2459,10 +2581,19 @@ def test_get_datasource_plugins_handles_empty_datasource_data_and_non_published(
     ]
     _persist(rag_pipeline_service.session, dataset, pipeline, workflow)
     mocker.patch(
-        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.list_datasource_credentials", return_value=[]
+        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.list_datasource_credentials",
+        return_value=[],
     )
 
-    result = rag_pipeline_service.service.get_datasource_plugins("t1", "d1", False)
+    result = rag_pipeline_service.service.get_datasource_plugins(
+        "t1",
+        "d1",
+        False,
+        credential_query=mock.create_autospec(CredentialQuery, instance=True),
+        datasource_providers=rag_pipeline_module.DatasourceProviderService(
+            credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
+        ),
+    )
 
     assert len(result) == 1
 
@@ -2503,7 +2634,15 @@ def test_get_datasource_plugins_extracts_user_inputs_and_credentials(
         return_value=[{"id": "c1", "name": "Cred", "type": "api", "is_default": True}],
     )
 
-    result = rag_pipeline_service.service.get_datasource_plugins("t1", "d1", True)
+    result = rag_pipeline_service.service.get_datasource_plugins(
+        "t1",
+        "d1",
+        True,
+        credential_query=mock.create_autospec(CredentialQuery, instance=True),
+        datasource_providers=rag_pipeline_module.DatasourceProviderService(
+            credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
+        ),
+    )
 
     assert len(result) == 1
     assert len(result[0]["user_input_variables"]) == 2

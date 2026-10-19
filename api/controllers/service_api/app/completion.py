@@ -27,6 +27,7 @@ from controllers.service_api.app.error import (
     WorkflowVersionExecutionNotAllowedError,
 )
 from controllers.service_api.schema import (
+    SCOPED_TASK_STOP_USER_DESCRIPTION,
     InputFileList,
     expect_user_json,
     expect_with_user,
@@ -45,6 +46,7 @@ from core.helper.trace_id_helper import get_external_trace_id, get_trace_session
 from enums import CloudPlan, DeploymentEdition
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
+from libs.external_api import error_responses
 from libs.helper import UUIDStrOrEmpty
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
@@ -173,6 +175,13 @@ register_response_schema_models(
 
 @service_api_ns.route("/completion-messages")
 class CompletionApi(Resource):
+    @error_responses(
+        AppUnavailableError,
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @service_api_ns.doc(
         summary="Send Completion Message",
         description="Send a request to the text generation application.",
@@ -207,7 +216,6 @@ class CompletionApi(Resource):
             200: "Completion created successfully",
             400: "Bad request - invalid parameters",
             401: "Unauthorized - invalid API token",
-            404: "Conversation not found",
             500: "Internal server error",
         }
     )
@@ -280,6 +288,7 @@ class CompletionApi(Resource):
 
 @service_api_ns.route("/completion-messages/<string:task_id>/stop")
 class CompletionStopApi(Resource):
+    @error_responses(AppUnavailableError)
     @service_api_ns.doc(
         summary="Stop Completion Message Generation",
         description="Stops a completion message generation task. Only supported in `streaming` mode.",
@@ -288,7 +297,11 @@ class CompletionStopApi(Resource):
             400: "`app_unavailable` : App unavailable or misconfigured.",
         },
     )
-    @expect_user_json(service_api_ns)
+    @expect_user_json(
+        service_api_ns,
+        model_name="ScopedTaskStopPayload",
+        user_description=SCOPED_TASK_STOP_USER_DESCRIPTION,
+    )
     @service_api_ns.doc("stop_completion")
     @service_api_ns.doc(description="Stop a running completion task")
     @service_api_ns.doc(
@@ -298,7 +311,6 @@ class CompletionStopApi(Resource):
         responses={
             200: "Task stopped successfully",
             401: "Unauthorized - invalid API token",
-            404: "Task not found",
         }
     )
     @service_api_ns.response(200, "Task stopped successfully", service_api_ns.models[SimpleResultResponse.__name__])
@@ -320,6 +332,17 @@ class CompletionStopApi(Resource):
 
 @service_api_ns.route("/chat-messages")
 class ChatApi(Resource):
+    @error_responses(
+        AgentNotPublishedError,
+        AppUnavailableError,
+        CompletionRequestError,
+        InvokeRateLimitHttpError,
+        NotChatAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+        WorkflowVersionExecutionNotAllowedError,
+    )
     @service_api_ns.doc(
         summary="Send Chat Message",
         description="Send a request to the chat application.",
@@ -350,7 +373,7 @@ class ChatApi(Resource):
             404: "`not_found` : Conversation does not exist.",
             429: (
                 "- `too_many_requests` : Too many concurrent requests for this app.\n"
-                "- `rate_limit_error` : The upstream model provider rate limit was exceeded."
+                "- `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached."
             ),
             500: "`internal_server_error` : Internal server error.",
         },
@@ -395,7 +418,7 @@ class ChatApi(Resource):
             and dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
         ):
             billing_info = BillingService.get_info(app_model.tenant_id, exclude_vector_space=True)
-            if billing_info["enabled"] and billing_info["subscription"]["plan"] == CloudPlan.SANDBOX:
+            if billing_info["subscription"]["plan"] == CloudPlan.SANDBOX:
                 raise WorkflowVersionExecutionNotAllowedError()
 
         external_trace_id = get_external_trace_id(request)
@@ -463,6 +486,7 @@ class ChatApi(Resource):
 
 @service_api_ns.route("/chat-messages/<string:task_id>/stop")
 class ChatStopApi(Resource):
+    @error_responses(NotChatAppError)
     @service_api_ns.doc(
         summary="Stop Chat Message Generation",
         description="Stops a chat message generation task. Only supported in `streaming` mode.",
@@ -471,7 +495,11 @@ class ChatStopApi(Resource):
             400: "`not_chat_app` : App mode does not match the API route.",
         },
     )
-    @expect_user_json(service_api_ns)
+    @expect_user_json(
+        service_api_ns,
+        model_name="ScopedTaskStopPayload",
+        user_description=SCOPED_TASK_STOP_USER_DESCRIPTION,
+    )
     @service_api_ns.doc("stop_chat_message")
     @service_api_ns.doc(description="Stop a running chat message generation")
     @service_api_ns.doc(
@@ -481,7 +509,6 @@ class ChatStopApi(Resource):
         responses={
             200: "Task stopped successfully",
             401: "Unauthorized - invalid API token",
-            404: "Task not found",
         }
     )
     @service_api_ns.response(200, "Task stopped successfully", service_api_ns.models[SimpleResultResponse.__name__])

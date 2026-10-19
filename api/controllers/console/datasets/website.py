@@ -7,8 +7,10 @@ from controllers.common.schema import query_params_from_model, register_response
 from controllers.console import console_ns
 from controllers.console.datasets.error import WebsiteCrawlError
 from controllers.console.wraps import account_initialization_required, model_validate, setup_required
+from extensions.ext_application_services import application_services
+from libs.external_api import error_responses
 from libs.login import login_required
-from services.website_service import WebsiteCrawlApiRequest, WebsiteCrawlStatusApiRequest, WebsiteService
+from services.data_source.website_service import WebsiteCrawlApiRequest, WebsiteCrawlStatusApiRequest, WebsiteService
 
 
 class WebsiteCrawlPayload(BaseModel):
@@ -31,6 +33,7 @@ register_response_schema_models(console_ns, WebsiteCrawlResponse)
 
 @console_ns.route("/website/crawl")
 class WebsiteCrawlApi(Resource):
+    @error_responses(WebsiteCrawlError)
     @console_ns.doc("crawl_website")
     @console_ns.doc(description="Crawl website content")
     @console_ns.expect(console_ns.models[WebsiteCrawlPayload.__name__])
@@ -49,7 +52,7 @@ class WebsiteCrawlApi(Resource):
 
         # Crawl URL using typed request
         try:
-            result = WebsiteService.crawl_url(api_request)
+            result = WebsiteService(providers=application_services().data_sources.providers).crawl_url(api_request)
         except Exception as e:
             raise WebsiteCrawlError(str(e))
         return result, 200
@@ -57,12 +60,12 @@ class WebsiteCrawlApi(Resource):
 
 @console_ns.route("/website/crawl/status/<string:job_id>")
 class WebsiteCrawlStatusApi(Resource):
+    @error_responses(WebsiteCrawlError)
     @console_ns.doc("get_crawl_status")
     @console_ns.doc(description="Get website crawl status")
     @console_ns.doc(params={"job_id": "Crawl job ID", "provider": "Crawl provider (firecrawl/watercrawl/jinareader)"})
     @console_ns.doc(params=query_params_from_model(WebsiteCrawlStatusQuery))
     @console_ns.response(200, "Crawl status retrieved successfully", console_ns.models[WebsiteCrawlResponse.__name__])
-    @console_ns.response(404, "Crawl job not found")
     @console_ns.response(400, "Invalid provider")
     @setup_required
     @login_required
@@ -77,7 +80,9 @@ class WebsiteCrawlStatusApi(Resource):
 
         # Get crawl status using typed request
         try:
-            result = WebsiteService.get_crawl_status_typed(api_request)
+            result = WebsiteService(providers=application_services().data_sources.providers).get_crawl_status_typed(
+                api_request
+            )
         except Exception as e:
             raise WebsiteCrawlError(str(e))
         return result, 200

@@ -1,7 +1,7 @@
-import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
-import { toast } from '@langgenius/dify-ui/toast'
+import type { AppMode, WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { useInvalidateAppWorkflow, useUpdateWorkflow } from '@/service/use-workflow'
 
 type VersionInfoUpdate = {
@@ -12,14 +12,16 @@ type VersionInfoUpdate = {
 
 export function useVersionInfo({
   appId,
+  appMode,
   publishedWorkflow,
   onClosePublisher,
 }: {
   appId?: string
+  appMode?: AppMode
   publishedWorkflow?: WorkflowResponse | null
   onClosePublisher: () => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflowHistory'])
   const [isOpen, setIsOpen] = useState(false)
   const { mutate: updateWorkflow } = useUpdateWorkflow()
   const invalidateAppWorkflow = useInvalidateAppWorkflow()
@@ -36,17 +38,21 @@ export function useVersionInfo({
 
     updateWorkflow(
       {
+        appId,
+        appMode,
         url: `/apps/${appId}/workflows/${params.id}`,
         title: params.title,
         releaseNotes: params.releaseNotes,
       },
       {
         onSuccess: () => {
-          toast.success(t(($) => $['versionHistory.action.updateSuccess'], { ns: 'workflow' }))
+          toast.success(
+            t(($) => $['versionHistory.action.updateSuccess'], { ns: 'workflowHistory' }),
+          )
           invalidateAppWorkflow(appId)
         },
         onError: () => {
-          toast.error(t(($) => $['versionHistory.action.updateFailure'], { ns: 'workflow' }))
+          toast.error(t(($) => $['versionHistory.action.updateFailure'], { ns: 'workflowHistory' }))
         },
         onSettled: () => {
           setIsOpen(false)

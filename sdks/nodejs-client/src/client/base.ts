@@ -26,8 +26,12 @@ const toConfig = (init: string | DifyClientConfig, baseUrl?: string): DifyClient
   return init
 }
 
-const appendUserToFormData = (form: SdkFormData, user: string): void => {
-  form.append('user', user)
+const setUserOnFormData = (form: SdkFormData, user: string): void => {
+  if ('set' in form && typeof form.set === 'function') {
+    form.set('user', user)
+  } else {
+    form.append('user', user)
+  }
 }
 
 export class DifyClient {
@@ -178,7 +182,7 @@ export class DifyClient {
       throw new FileUploadError('FormData is required for file uploads')
     }
     ensureNonEmptyString(user, 'user')
-    appendUserToFormData(form, user)
+    setUserOnFormData(form, user)
     return this.http.request({
       method: 'POST',
       path: '/files/upload',
@@ -205,7 +209,7 @@ export class DifyClient {
       throw new FileUploadError('FormData is required for audio uploads')
     }
     ensureNonEmptyString(user, 'user')
-    appendUserToFormData(form, user)
+    setUserOnFormData(form, user)
     return this.http.request({
       method: 'POST',
       path: '/audio-to-text',

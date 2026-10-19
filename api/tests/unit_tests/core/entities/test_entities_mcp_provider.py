@@ -1,9 +1,8 @@
 from datetime import UTC, datetime
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 
-from core.entities import mcp_provider as mcp_provider_module
 from core.entities.mcp_provider import (
     DEFAULT_EXPIRES_IN,
     DEFAULT_TOKEN_TYPE,
@@ -17,7 +16,7 @@ def _build_mcp_provider_entity() -> MCPProviderEntity:
     now = datetime(2025, 1, 1, tzinfo=UTC)
     return MCPProviderEntity(
         id="provider-1",
-        provider_id="server-1",
+        server_identifier="server-1",
         name="Example MCP",
         tenant_id="tenant-1",
         user_id="user-1",
@@ -61,7 +60,7 @@ def test_from_db_model_maps_fields() -> None:
     entity = MCPProviderEntity.from_db_model(db_provider)
 
     # Assert
-    assert entity.provider_id == "server-1"
+    assert entity.server_identifier == "server-1"
     assert entity.tools == [{"name": "search"}]
     assert entity.icon == ""
 
@@ -69,7 +68,9 @@ def test_from_db_model_maps_fields() -> None:
 def test_redirect_url_uses_console_api_url(monkeypatch: pytest.MonkeyPatch) -> None:
     # Arrange
     entity = _build_mcp_provider_entity()
-    monkeypatch.setattr(mcp_provider_module.dify_config, "CONSOLE_API_URL", "https://console.example.com")
+    from tests.unit_tests.config_override import apply_config_overrides
+
+    apply_config_overrides(monkeypatch, CONSOLE_API_URL="https://console.example.com")
 
     # Act
     redirect_url = entity.redirect_url
@@ -408,32 +409,28 @@ def test_decrypt_dict_returns_original_data_when_no_encrypted_fields() -> None:
     assert result is input_data
 
 
-def test_decrypt_dict_only_decrypts_top_level_string_values() -> None:
-    # Arrange
+def test_decrypt_dict_only_decrypts_top_level_string_values(monkeypatch: pytest.MonkeyPatch) -> None:
     entity = _build_mcp_provider_entity()
-    decryptor = Mock()
-    decryptor.decrypt.return_value = {"api_key": "plain-key"}
+    decrypted: list[tuple[str, str]] = []
 
-    def _fake_create_provider_encrypter(*, tenant_id: str, config: list, cache):
-        assert tenant_id == "tenant-1"
-        assert any(item.name == "api_key" for item in config)
-        return decryptor, None
+    def decrypt_token(tenant_id: str, token: str) -> str:
+        decrypted.append((tenant_id, token))
+        return "plain-key"
 
-    with patch("core.tools.utils.encryption.create_provider_encrypter", side_effect=_fake_create_provider_encrypter):
-        # Act
-        result = entity._decrypt_dict(
-            {
-                "api_key": "encrypted-key",
-                "nested": {"client_id": "unchanged"},
-                "empty": "",
-                "count": 2,
-            }
-        )
+    monkeypatch.setattr("core.helper.provider_encryption.encrypter.decrypt_token", decrypt_token)
+    result = entity._decrypt_dict(
+        {
+            "api_key": "encrypted-key",
+            "nested": {"client_id": "unchanged"},
+            "empty": "",
+            "count": 2,
+        }
+    )
 
-    # Assert
-    decryptor.decrypt.assert_called_once_with({"api_key": "encrypted-key"})
+    assert decrypted == [("tenant-1", "encrypted-key")]
     assert result["api_key"] == "plain-key"
     assert result["nested"] == {"client_id": "unchanged"}
+    assert result["empty"] == ""
     assert result["count"] == 2
 
 

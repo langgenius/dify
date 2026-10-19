@@ -1,5 +1,9 @@
-/* oxlint-disable typescript/no-explicit-any */
 import { act, renderHook } from '@testing-library/react'
+import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
+import {
+  createDatasetConfigsFixture,
+  createModelConfigFixture,
+} from '@/test/fixtures/debug-configuration'
 import { AgentStrategy } from '@/types/app'
 import {
   useConfigFromDebugContext,
@@ -9,36 +13,19 @@ import {
 } from '../hooks'
 
 const mockUseDebugConfigurationContext = vi.fn()
-const mockUseEventEmitterContextContext = vi.fn()
-
-let subscriptionCallback: ((value: { type: string }) => void) | null = null
 
 vi.mock('@/context/debug-configuration', () => ({
   useDebugConfigurationContext: () => mockUseDebugConfigurationContext(),
-}))
-
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => mockUseEventEmitterContextContext(),
 }))
 
 describe('configuration debug hooks', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
-    subscriptionCallback = null
-
-    mockUseEventEmitterContextContext.mockReturnValue({
-      eventEmitter: {
-        emit: vi.fn(),
-        useSubscription: (callback: (value: { type: string }) => void) => {
-          subscriptionCallback = callback
-        },
-      },
-    })
   })
 
   it('should persist multiple-model debug settings in local storage', () => {
-    const { result } = renderHook(() => useDebugWithSingleOrMultipleModel('app-1'))
+    const { result, unmount } = renderHook(() => useDebugWithSingleOrMultipleModel('app-1'))
 
     act(() => {
       result.current.handleMultipleModelConfigsChange(true, [
@@ -53,45 +40,10 @@ describe('configuration debug hooks', () => {
 
     expect(result.current.debugWithMultipleModel).toBe(true)
     expect(result.current.multipleModelConfigs).toHaveLength(1)
-    expect(
-      JSON.parse(localStorage.getItem('app-debug-with-single-or-multiple-models') || '{}'),
-    ).toEqual({
-      'app-1': {
-        multiple: true,
-        configs: [
-          {
-            id: 'model-1',
-            model: 'gpt-4o',
-            provider: 'langgenius/openai/openai',
-            parameters: { temperature: 0.7 },
-          },
-        ],
-      },
-    })
-  })
-
-  it('should restore persisted multiple-model debug settings', () => {
-    localStorage.setItem(
-      'app-debug-with-single-or-multiple-models',
-      JSON.stringify({
-        'app-1': {
-          multiple: true,
-          configs: [
-            {
-              id: 'model-1',
-              model: 'gpt-4o',
-              provider: 'langgenius/openai/openai',
-              parameters: { temperature: 0.7 },
-            },
-          ],
-        },
-      }),
-    )
-
-    const { result } = renderHook(() => useDebugWithSingleOrMultipleModel('app-1'))
-
-    expect(result.current.debugWithMultipleModel).toBe(true)
-    expect(result.current.multipleModelConfigs).toEqual([
+    unmount()
+    const restored = renderHook(() => useDebugWithSingleOrMultipleModel('app-1'))
+    expect(restored.result.current.debugWithMultipleModel).toBe(true)
+    expect(restored.result.current.multipleModelConfigs).toEqual([
       {
         id: 'model-1',
         model: 'gpt-4o',
@@ -99,6 +51,9 @@ describe('configuration debug hooks', () => {
         parameters: { temperature: 0.7 },
       },
     ])
+    const otherApp = renderHook(() => useDebugWithSingleOrMultipleModel('app-2'))
+    expect(otherApp.result.current.debugWithMultipleModel).toBe(false)
+    expect(otherApp.result.current.multipleModelConfigs).toEqual([])
   })
 
   it.each(['{', 'null'])('should fall back to default settings for stored value %s', (value) => {
@@ -113,7 +68,7 @@ describe('configuration debug hooks', () => {
   it('should derive chat config data from the debug context', () => {
     mockUseDebugConfigurationContext.mockReturnValue({
       isAdvancedMode: false,
-      modelConfig: {
+      modelConfig: createModelConfigFixture({
         agentConfig: {
           enabled: true,
           max_iteration: 3,
@@ -125,14 +80,7 @@ describe('configuration debug hooks', () => {
           prompt_variables: [{ key: 'name', name: 'Name', type: 'string', required: true }],
         },
         more_like_this: { enabled: true },
-        system_parameters: {
-          audio_file_size_limit: 1,
-          file_size_limit: 1,
-          image_file_size_limit: 1,
-          video_file_size_limit: 1,
-          workflow_file_upload_limit: 1,
-        },
-      },
+      }),
       appId: 'app-1',
       promptMode: 'simple',
       speechToTextConfig: { enabled: false },
@@ -144,7 +92,7 @@ describe('configuration debug hooks', () => {
       chatPromptConfig: { prompt: [] },
       completionPromptConfig: { prompt: { text: 'completion' } },
       dataSets: [{ id: 'dataset-1' }],
-      datasetConfigs: { retrieval_model: 'multiple' },
+      datasetConfigs: createDatasetConfigsFixture({ retrieval_model: 'multiple' }),
       visionConfig: { transfer_methods: ['local_file'], number_limits: 2 },
       annotationConfig: { enabled: false },
       textToSpeechConfig: { enabled: false, voice: '', language: '' },
@@ -168,31 +116,27 @@ describe('configuration debug hooks', () => {
     ])
   })
 
-  it('should dispatch and subscribe to formatting change events', () => {
-    const emit = vi.fn()
-    const setFormattingChanged = vi.fn()
-    mockUseEventEmitterContextContext.mockReturnValue({
-      eventEmitter: {
-        emit,
-        useSubscription: (callback: (value: { type: string }) => void) => {
-          subscriptionCallback = callback
+  it.each([
+    { hasAnswer: true, formattingChanged: false, calls: 1 },
+    { hasAnswer: false, formattingChanged: false, calls: 0 },
+    { hasAnswer: true, formattingChanged: true, calls: 0 },
+  ])(
+    'dispatches formatting changes only for existing answers requiring refresh: %j',
+    ({ hasAnswer, formattingChanged, calls }) => {
+      const setFormattingChanged = vi.fn()
+      mockUseDebugConfigurationContext.mockReturnValue({ formattingChanged, setFormattingChanged })
+      const { result } = renderHook(
+        () => {
+          useFormattingChangedSubscription([
+            { id: 'message-1', content: 'Hello', isAnswer: hasAnswer },
+          ])
+          return useFormattingChangedDispatcher()
         },
-      },
-    })
-    mockUseDebugConfigurationContext.mockReturnValue({
-      formattingChanged: false,
-      setFormattingChanged,
-    })
-
-    const { result } = renderHook(() => useFormattingChangedDispatcher())
-    renderHook(() => useFormattingChangedSubscription([{ isAnswer: true }] as any))
-
-    act(() => {
-      result.current()
-      subscriptionCallback?.({ type: 'ORCHESTRATE_CHANGED' })
-    })
-
-    expect(emit).toHaveBeenCalledWith({ type: 'ORCHESTRATE_CHANGED' })
-    expect(setFormattingChanged).toHaveBeenCalledWith(true)
-  })
+        { wrapper: EventEmitterContextProvider },
+      )
+      act(() => result.current())
+      expect(setFormattingChanged).toHaveBeenCalledTimes(calls)
+      if (calls) expect(setFormattingChanged).toHaveBeenCalledWith(true)
+    },
+  )
 })

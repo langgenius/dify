@@ -25,7 +25,12 @@ from enums import DeploymentEdition, QuotaType
 from extensions.otel import AppGenerateHandler, trace_span
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowRun
-from services.errors.app import QuotaExceededError, WorkflowIdFormatError, WorkflowNotFoundError
+from services.errors.app import (
+    QuotaExceededError,
+    TriggerWorkflowServiceModeUnavailableError,
+    WorkflowIdFormatError,
+    WorkflowNotFoundError,
+)
 from services.errors.llm import InvokeRateLimitError
 from services.quota_service import QuotaService, unlimited
 from services.workflow_service import WorkflowService
@@ -34,6 +39,13 @@ from tasks.app_generate.workflow_execute_task import AppExecutionParams, workflo
 logger = logging.getLogger(__name__)
 
 SSE_TASK_START_FALLBACK_MS = 200
+_MANUAL_WORKFLOW_INVOKE_SOURCES = frozenset(
+    {
+        InvokeFrom.OPENAPI,
+        InvokeFrom.SERVICE_API,
+        InvokeFrom.WEB_APP,
+    }
+)
 
 if TYPE_CHECKING:
     from controllers.console.app.workflow import LoopNodeRunPayload
@@ -290,6 +302,7 @@ class AppGenerateService:
             case AppMode.WORKFLOW:
                 workflow_id = args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
+                cls._ensure_workflow_service_mode_available(workflow=workflow, invoke_from=invoke_from)
                 if streaming:
                     with rate_limit_context(rate_limit, request_id):
                         payload = AppExecutionParams.new(
@@ -342,6 +355,11 @@ class AppGenerateService:
                 )
             case _:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
+
+    @staticmethod
+    def _ensure_workflow_service_mode_available(*, workflow: Workflow, invoke_from: InvokeFrom) -> None:
+        if invoke_from in _MANUAL_WORKFLOW_INVOKE_SOURCES and workflow.has_trigger_node():
+            raise TriggerWorkflowServiceModeUnavailableError()
 
     @staticmethod
     def _get_max_active_requests(app: App) -> int:

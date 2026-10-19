@@ -3,12 +3,17 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zHumanInputFormExpiredError,
+  zHumanInputFormSubmittedError,
+  zInvalidFormDataError,
+} from './zod.gen.ts'
+import {
   zGetFormHumanInputByFormTokenPath,
   zGetFormHumanInputByFormTokenResponse,
   zPostFormHumanInputByFormTokenBody,
   zPostFormHumanInputByFormTokenPath,
   zPostFormHumanInputByFormTokenResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Get human input form definition by form token
@@ -27,6 +32,7 @@ export const get = oc
   })
   .input(z.object({ params: zGetFormHumanInputByFormTokenPath }))
   .output(zGetFormHumanInputByFormTokenResponse)
+  .errors({ human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError } })
 
 /**
  * Submit human input form by form token
@@ -59,6 +65,11 @@ export const post = oc
     }),
   )
   .output(zPostFormHumanInputByFormTokenResponse)
+  .errors({
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    invalid_form_data: { status: 400, data: zInvalidFormDataError },
+  })
 
 export const byFormToken = {
   get,

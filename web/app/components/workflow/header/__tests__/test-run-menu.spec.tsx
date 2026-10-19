@@ -1,7 +1,6 @@
 import type { TestRunMenuRef, TriggerOption } from '../test-run-menu'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { act } from 'react'
 import * as React from 'react'
 import TestRunMenu, { TriggerType } from '../test-run-menu'
 
@@ -15,10 +14,6 @@ const createOption = (overrides: Partial<TriggerOption> = {}): TriggerOption => 
 })
 
 describe('TestRunMenu', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should run the only enabled option directly and preserve the child click handler', async () => {
     const user = userEvent.setup()
     const onSelect = vi.fn()
@@ -42,7 +37,8 @@ describe('TestRunMenu', () => {
     expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'user-input' }))
   })
 
-  it('should expose toggle via ref and select a shortcut when multiple options are available', () => {
+  it('selects Run All through the public toggle and menu shortcut', async () => {
+    const user = userEvent.setup()
     const onSelect = vi.fn()
 
     const Harness = () => {
@@ -74,14 +70,37 @@ describe('TestRunMenu', () => {
 
     render(<Harness />)
 
-    act(() => {
-      fireEvent.click(screen.getByRole('button', { name: 'Toggle via ref' }))
-    })
-    expect(screen.getByText('~')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Toggle via ref' }))
+    expect(screen.getByRole('menu')).toBeInTheDocument()
 
-    fireEvent.keyDown(window, { key: '0' })
+    fireEvent.keyDown(screen.getByRole('menu'), { key: '0' })
 
     expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'run-all' }))
+  })
+
+  it('keeps menu accelerators local and ignores composition and modified keys', async () => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn()
+    render(
+      <TestRunMenu
+        options={{
+          userInput: createOption(),
+          triggers: [createOption({ id: 'trigger', name: 'Webhook', type: TriggerType.Webhook })],
+        }}
+        onSelect={onSelect}
+      >
+        <button>Open menu</button>
+      </TestRunMenu>,
+    )
+    await user.click(screen.getByRole('button', { name: 'Open menu' }))
+    const menu = screen.getByRole('menu')
+    fireEvent.keyDown(document.body, { key: '0' })
+    fireEvent.keyDown(menu, { key: '0', isComposing: true })
+    fireEvent.keyDown(menu, { key: '0', ctrlKey: true })
+    fireEvent.keyDown(menu, { key: '0', repeat: true })
+    expect(onSelect).not.toHaveBeenCalled()
+    fireEvent.keyDown(menu, { key: '0' })
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'trigger' }))
   })
 
   it('should ignore disabled options in the rendered menu', async () => {

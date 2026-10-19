@@ -1,6 +1,7 @@
 import type { ChecklistItem } from '../../hooks/use-checklist'
 import type { CommonEdgeType } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   Popover,
   PopoverClose,
@@ -9,11 +10,11 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { memo, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
-import { useHooksStore } from '../../hooks-store/store'
 import { useChecklist } from '../../hooks/use-checklist'
 import { useNodesInteractions } from '../../hooks/use-nodes-interactions'
 import { useStore } from '../../store'
@@ -27,12 +28,11 @@ type WorkflowChecklistProps = {
 }
 
 const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowChecklistProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const [open, setOpen] = useState(false)
   const edges = useEdges<CommonEdgeType>()
   const nodes = useNodes()
-  const flowType = useHooksStore((s) => s.configsMap?.flowType)
-  const needWarningNodes = useChecklist(nodes, edges, { flowType })
+  const needWarningNodes = useChecklist(nodes, edges)
   const { handleNodeSelect } = useNodesInteractions()
   const setOpenInlineAgentPanelNodeId = useStore((state) => state.setOpenInlineAgentPanelNodeId)
   const checklistLabel = t(($) => $['panel.checklist'], { ns: 'workflow' })
@@ -58,37 +58,44 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
 
   return (
     <Popover open={open} onOpenChange={(newOpen) => !disabled && setOpen(newOpen)}>
-      <PopoverTrigger
-        disabled={disabled}
-        render={
-          <button
-            type="button"
-            className={cn(
-              'group relative ml-0.5 flex size-7 items-center justify-center rounded-md border-none bg-transparent p-0',
-              'data-disabled:cursor-not-allowed data-disabled:opacity-50',
-            )}
-            disabled={disabled || undefined}
-            aria-label={checklistLabel}
-          >
-            <span className="flex size-full items-center justify-center rounded-md group-data-popup-open:bg-state-accent-hover hover:bg-state-accent-hover">
-              <span
-                className="i-ri-list-check-3 size-4 text-components-button-ghost-text group-hover:text-components-button-secondary-accent-text group-data-popup-open:text-components-button-secondary-accent-text"
-                aria-hidden="true"
-              />
-            </span>
-            {!!needWarningNodes.length && (
-              <span className="absolute -top-1.5 -right-1.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full border border-gray-100 bg-text-warning-secondary text-[11px] font-semibold text-white">
-                {needWarningNodes.length}
-              </span>
-            )}
-          </button>
-        }
-      />
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <PopoverTrigger
+              disabled={disabled}
+              render={
+                <button
+                  type="button"
+                  className={cn(
+                    'group relative ml-0.5 flex size-7 items-center justify-center rounded-md border-none bg-transparent p-0',
+                    'data-disabled:cursor-not-allowed data-disabled:opacity-50',
+                  )}
+                  disabled={disabled || undefined}
+                >
+                  <span className="sr-only">{checklistLabel}</span>
+                  <span className="flex size-full items-center justify-center rounded-md group-data-popup-open:bg-state-accent-hover hover:bg-state-accent-hover">
+                    <span
+                      className="i-ri-list-check-3 size-4 text-components-button-ghost-text group-hover:text-components-button-secondary-accent-text group-data-popup-open:text-components-button-secondary-accent-text"
+                      aria-hidden="true"
+                    />
+                  </span>
+                  {!!needWarningNodes.length && (
+                    <span className="absolute -top-1.5 -right-1.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full border border-gray-100 bg-text-warning-secondary text-[11px] font-semibold text-white">
+                      {needWarningNodes.length}
+                    </span>
+                  )}
+                </button>
+              }
+            />
+          }
+        />
+        <TooltipContent>{checklistLabel}</TooltipContent>
+      </Tooltip>
       <PopoverContent
         placement="bottom-start"
         sideOffset={12}
         alignOffset={-30}
-        className="w-[420px] rounded-2xl bg-background-default-subtle"
+        className="w-105 rounded-2xl bg-background-default-subtle"
       >
         <div className="overflow-y-auto" style={{ maxHeight: 'calc(2 / 3 * 100vh)' }}>
           <div className="flex flex-col gap-0.5 px-3 pt-3.5 pb-1">
@@ -100,11 +107,16 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
                 </PopoverTitle>
               </div>
               <PopoverClose
-                className="-mt-0.5 -mr-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg"
-                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              >
-                <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
-              </PopoverClose>
+                render={
+                  <IconButton
+                    size="lg"
+                    aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                    className="-mt-1 -mr-1 shrink-0"
+                  >
+                    <span className="i-ri-close-line size-4" aria-hidden="true" />
+                  </IconButton>
+                }
+              />
             </div>
             {needWarningNodes.length > 0 && (
               <PopoverDescription className="px-1 text-xs/4 text-text-tertiary">

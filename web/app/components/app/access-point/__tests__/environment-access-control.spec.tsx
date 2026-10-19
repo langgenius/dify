@@ -1,10 +1,8 @@
 import type { ReactElement } from 'react'
-import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AccessMode } from '@/models/access-control'
-import { render } from '@/test/console/render'
-import { createTestQueryClient } from '@/test/query-client'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { EnvironmentAccessControl } from '../deployed-environment-access-points/environment-access-control'
 
 const mocks = vi.hoisted(() => ({
@@ -12,48 +10,19 @@ const mocks = vi.hoisted(() => ({
   updateAccessMode: vi.fn(),
 }))
 
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    enterprise: {
-      appDeploy: {
-        accessService: {
-          getEnvironmentSite: {
-            queryOptions: ({
-              input,
-            }: {
-              input: { params: { app_id: string; environment_id: string } }
-            }) => ({
-              queryKey: ['environment-site', input.params.app_id, input.params.environment_id],
-            }),
-          },
-          getEnvironmentWebAppSubjects: {
-            queryOptions: ({
-              input,
-            }: {
-              input: { params: { app_id: string; environment_id: string } }
-            }) => ({
-              queryKey: ['environment-subjects', input.params.app_id, input.params.environment_id],
-              queryFn: () => mocks.getSubjects(input),
-            }),
-          },
-          updateEnvironmentWebAppAccessMode: {
-            mutationOptions: (options = {}) => ({
-              mutationFn: mocks.updateAccessMode,
-              ...options,
-            }),
-          },
-        },
-      },
-    },
-  },
-}))
-
-vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => ({
-    queryKey: ['system-features'],
-    queryFn: vi.fn(),
-  }),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'enterprise.appDeploy.accessService.getEnvironmentWebAppSubjects': (input) =>
+        mocks.getSubjects(input),
+      'enterprise.appDeploy.accessService.updateEnvironmentWebAppAccessMode': (input) =>
+        mocks.updateAccessMode(input),
+    }),
+  }
+})
 
 vi.mock('@/service/access-control', () => ({
   useSearchForWhiteListCandidates: () => ({
@@ -64,7 +33,7 @@ vi.mock('@/service/access-control', () => ({
   }),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: vi.fn(),
     success: vi.fn(),
@@ -72,18 +41,17 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 
 function renderAccessControl(ui: ReactElement) {
-  const queryClient = createTestQueryClient()
-  queryClient.setQueryData(['system-features'], {
-    webapp_auth: {
-      enabled: true,
-      allow_sso: true,
-      allow_email_password_login: false,
-      allow_email_code_login: false,
-      allow_public_access: true,
+  return renderWithConsoleQuery(ui, {
+    systemFeatures: {
+      webapp_auth: {
+        enabled: true,
+        allow_sso: true,
+        allow_email_password_login: false,
+        allow_email_code_login: false,
+        allow_public_access: true,
+      },
     },
   })
-
-  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
 }
 
 describe('EnvironmentAccessControl', () => {

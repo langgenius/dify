@@ -18,6 +18,22 @@ import {
   SelectValue,
 } from '../index'
 
+function SelectTypeExamples() {
+  return (
+    <Select<string, true> multiple>
+      <SelectValue<string, true>>
+        {(selectedValue) => {
+          // @ts-expect-error multiple value render state is read-only
+          selectedValue?.push('seattle')
+          return selectedValue?.join(', ') ?? ''
+        }}
+      </SelectValue>
+    </Select>
+  )
+}
+
+void SelectTypeExamples
+
 const renderWithSafeViewport = (ui: React.ReactNode) =>
   render(<div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>{ui}</div>)
 
@@ -196,6 +212,49 @@ describe('Select wrappers', () => {
           expect(popupBounds?.left).toBeGreaterThanOrEqual(0)
           expect(popupBounds?.right).toBeLessThanOrEqual(viewportWidth)
           expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(viewportWidth)
+        })
+      } finally {
+        await page.viewport(originalViewport.width, originalViewport.height)
+      }
+    })
+
+    it('should keep a long list inside a short viewport and let it scroll', async () => {
+      const popupRef = React.createRef<HTMLDivElement>()
+      const longOptions = Array.from({ length: 30 }, (_, index) => `option-${index + 1}`)
+      const originalViewport = {
+        height: window.innerHeight,
+        width: window.innerWidth,
+      }
+
+      await page.viewport(800, 360)
+
+      try {
+        const screen = await render(
+          <div style={{ padding: 16 }}>
+            <Select open defaultValue="option-1">
+              <SelectTrigger aria-label="deployment target">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent ref={popupRef}>
+                {longOptions.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    <SelectItemText>{option}</SelectItemText>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>,
+        )
+
+        const list = screen.getByRole('listbox')
+        await expect.element(list).toBeVisible()
+        await vi.waitFor(() => {
+          const popupBounds = popupRef.current!.getBoundingClientRect()
+
+          expect(window.innerHeight).toBe(360)
+          expect(popupBounds.top).toBeGreaterThanOrEqual(0)
+          expect(popupBounds.bottom).toBeLessThanOrEqual(window.innerHeight)
+          expect(list.element().scrollHeight).toBeGreaterThan(list.element().clientHeight)
         })
       } finally {
         await page.viewport(originalViewport.width, originalViewport.height)

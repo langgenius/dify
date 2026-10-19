@@ -34,7 +34,7 @@ function List({
   hideFindMoreFooter = false,
   ref,
 }: ListProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const noFilter = !searchText && tags.length === 0
   const hasRes = list.length > 0
   const urlWithSearchText = getMarketplaceCategoryUrl(category, {

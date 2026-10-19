@@ -1,12 +1,13 @@
 from dataclasses import asdict
-from typing import Any, ClassVar, cast
+from typing import ClassVar, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from core.entities.document_task import DocumentTask
-from enums import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from services.document_indexing_proxy.batch_indexing_base import BatchDocumentIndexingProxy
+from tests.unit_tests.config_override import config_overrides_context
 
 # ---------------------------------------------------------------------------
 # Concrete subclass for testing (the base class is abstract)
@@ -17,8 +18,8 @@ class ConcreteBatchProxy(BatchDocumentIndexingProxy):
     """Minimal concrete implementation that provides the required class-level vars."""
 
     QUEUE_NAME: ClassVar[str] = "test_queue"
-    NORMAL_TASK_FUNC: ClassVar[Any] = MagicMock(name="NORMAL_TASK_FUNC")
-    PRIORITY_TASK_FUNC: ClassVar[Any] = MagicMock(name="PRIORITY_TASK_FUNC")
+    NORMAL_TASK_FUNC = MagicMock(name="NORMAL_TASK_FUNC")
+    PRIORITY_TASK_FUNC = MagicMock(name="PRIORITY_TASK_FUNC")
 
 
 # ---------------------------------------------------------------------------
@@ -30,16 +31,18 @@ DATASET_ID = "dataset-xyz"
 DOC_IDS: list[str] = ["doc-1", "doc-2", "doc-3"]
 
 
-def make_proxy(**kwargs: Any) -> ConcreteBatchProxy:
+def make_proxy(
+    *, tenant_id: str = TENANT_ID, dataset_id: str = DATASET_ID, document_ids: list[str] | None = None
+) -> ConcreteBatchProxy:
     """Factory: returns a ConcreteBatchProxy with TenantIsolatedTaskQueue mocked out."""
-    with patch("services.document_indexing_proxy.batch_indexing_base.TenantIsolatedTaskQueue") as MockQueue:
+    with patch("services.document_indexing_proxy.batch_indexing_base.TenantIsolatedTaskQueue") as mock_queue:
         proxy = ConcreteBatchProxy(
-            tenant_id=kwargs.get("tenant_id", TENANT_ID),
-            dataset_id=kwargs.get("dataset_id", DATASET_ID),
-            document_ids=kwargs.get("document_ids", DOC_IDS),
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            document_ids=document_ids if document_ids is not None else DOC_IDS,
         )
         # Expose the mock queue on the proxy so tests can assert on it
-        proxy._tenant_isolated_task_queue = MockQueue.return_value
+        proxy._tenant_isolated_task_queue = mock_queue.return_value
     return proxy
 
 
@@ -76,11 +79,11 @@ class TestBatchDocumentIndexingProxyInit:
     def test_should_create_tenant_isolated_queue_with_correct_args_when_initialized(self) -> None:
         """Verify that TenantIsolatedTaskQueue is constructed with (tenant_id, QUEUE_NAME)."""
         # Arrange / Act
-        with patch("services.document_indexing_proxy.batch_indexing_base.TenantIsolatedTaskQueue") as MockQueue:
+        with patch("services.document_indexing_proxy.batch_indexing_base.TenantIsolatedTaskQueue") as mock_queue:
             ConcreteBatchProxy(TENANT_ID, DATASET_ID, DOC_IDS)
 
         # Assert
-        MockQueue.assert_called_once_with(TENANT_ID, ConcreteBatchProxy.QUEUE_NAME)
+        mock_queue.assert_called_once_with(TENANT_ID, ConcreteBatchProxy.QUEUE_NAME)
 
     @pytest.mark.parametrize("doc_ids", [[], ["single-doc"], ["d1", "d2", "d3", "d4"]])
     def test_should_accept_any_length_document_ids_when_initialized(self, doc_ids: list[str]) -> None:
@@ -255,7 +258,7 @@ class TestSendToTenantQueue:
         mock_queue.push_tasks.assert_not_called()
 
     @pytest.mark.parametrize("falsy_key", [None, "", 0, False])
-    def test_should_init_task_when_key_is_any_falsy_value(self, falsy_key: Any) -> None:
+    def test_should_init_task_when_key_is_any_falsy_value(self, falsy_key: object) -> None:
         """Verify that any falsy return from get_task_key() triggers the init branch."""
         # Arrange
         proxy = make_proxy()
@@ -275,13 +278,13 @@ class TestSendToTenantQueue:
 class TestDispatchRouting:
     """Tests for the _dispatch / delay routing logic inherited from the base class."""
 
-    def _mock_features(self, enabled: bool, plan: CloudPlan) -> MagicMock:
+    def _mock_features(self, plan: CloudPlan) -> MagicMock:
         features = MagicMock()
-        features.billing.enabled = enabled
         features.billing.subscription.plan = plan
         return features
 
-    def test_should_send_to_normal_tenant_queue_when_billing_enabled_and_sandbox_plan(self) -> None:
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    def test_should_send_to_normal_tenant_queue_in_cloud_with_sandbox_plan(self) -> None:
         """Sandbox plan routes to normal priority queue with tenant isolation."""
         # Arrange
         proxy = make_proxy()
@@ -289,7 +292,7 @@ class TestDispatchRouting:
         proxy._tenant_isolated_task_queue.get_task_key.return_value = None
 
         with patch("services.document_indexing_proxy.base.FeatureService.get_features") as mock_features:
-            mock_features.return_value = self._mock_features(enabled=True, plan=CloudPlan.SANDBOX)
+            mock_features.return_value = self._mock_features(plan=CloudPlan.SANDBOX)
 
             # Act
             with patch.object(proxy, "_send_to_default_tenant_queue") as mock_method:
@@ -298,13 +301,14 @@ class TestDispatchRouting:
         # Assert
         mock_method.assert_called_once()
 
-    def test_should_send_to_priority_tenant_queue_when_billing_enabled_and_paid_plan(self) -> None:
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    def test_should_send_to_priority_tenant_queue_in_cloud_with_paid_plan(self) -> None:
         """Non-sandbox paid plan routes to priority queue with tenant isolation."""
         # Arrange
         proxy = make_proxy()
 
         with patch("services.document_indexing_proxy.base.FeatureService.get_features") as mock_features:
-            mock_features.return_value = self._mock_features(enabled=True, plan=CloudPlan.PROFESSIONAL)
+            mock_features.return_value = self._mock_features(plan=CloudPlan.PROFESSIONAL)
 
             # Act
             with patch.object(proxy, "_send_to_priority_tenant_queue") as mock_method:
@@ -313,13 +317,14 @@ class TestDispatchRouting:
         # Assert
         mock_method.assert_called_once()
 
-    def test_should_send_to_priority_direct_queue_when_billing_not_enabled(self) -> None:
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+    def test_should_send_to_priority_direct_queue_outside_cloud(self) -> None:
         """Self-hosted / no billing → priority direct queue (no tenant isolation)."""
         # Arrange
         proxy = make_proxy()
 
         with patch("services.document_indexing_proxy.base.FeatureService.get_features") as mock_features:
-            mock_features.return_value = self._mock_features(enabled=False, plan=CloudPlan.SANDBOX)
+            mock_features.return_value = self._mock_features(plan=CloudPlan.SANDBOX)
 
             # Act
             with patch.object(proxy, "_send_to_priority_direct_queue") as mock_method:
@@ -340,19 +345,20 @@ class TestDispatchRouting:
         # Assert
         mock_dispatch.assert_called_once()
 
-    def test_should_use_feature_service_for_billing_info(self) -> None:
-        """Verify that FeatureService.get_features is consulted during dispatch."""
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+    def test_should_skip_feature_service_outside_cloud(self) -> None:
+        """Self-hosted dispatch does not load Cloud plan data."""
         # Arrange
         proxy = make_proxy()
 
         with patch("services.document_indexing_proxy.base.FeatureService.get_features") as mock_features:
-            mock_features.return_value = self._mock_features(enabled=False, plan=CloudPlan.SANDBOX)
+            mock_features.return_value = self._mock_features(plan=CloudPlan.SANDBOX)
             with patch.object(proxy, "_send_to_priority_direct_queue"):
                 # Act
                 proxy._dispatch()
 
         # Assert
-        mock_features.assert_called_once_with(TENANT_ID, exclude_vector_space=True)
+        mock_features.assert_not_called()
 
 
 class TestBaseRouterHelpers:

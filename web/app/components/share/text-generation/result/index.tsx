@@ -1,18 +1,18 @@
 'use client'
+import type { ToastType } from '@langgenius/dify-ui/toast'
 import type { FC } from 'react'
-import type { TextGenerationTranslate } from '../types'
 import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { AppSourceType } from '@/service/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback } from 'react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import TextGenerationRes from '@/app/components/app/text-generate/item'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import NoData from '@/app/components/share/text-generation/no-data'
+import { toast } from '@/app/notifications'
 import { useResultRunState } from './hooks/use-result-run-state'
 import { useResultSender } from './hooks/use-result-sender'
 
@@ -73,17 +73,10 @@ const Result: FC<IResultProps> = ({
   onRunControlChange,
   hideInlineStopButton = false,
 }) => {
-  const { t } = useTranslation()
-  const translateResultKey = useCallback<TextGenerationTranslate>(
-    (selector, options) => t(selector, options),
-    [t],
-  )
-  const notify = useCallback(
-    ({ type, message }: { type: 'error' | 'info' | 'success' | 'warning'; message: string }) => {
-      toast(message, { type })
-    },
-    [],
-  )
+  const { t } = useTranslation(['share', 'appDebug', 'common'])
+  const notify = useCallback(({ type, message }: { type: ToastType; message: string }) => {
+    toast(message, { type })
+  }, [])
   const runState = useResultRunState({
     appId,
     appSourceType,
@@ -108,7 +101,7 @@ const Result: FC<IResultProps> = ({
     onShowRes,
     promptConfig,
     runState,
-    t: translateResultKey,
+    t,
     taskId,
     visionConfig,
   })
@@ -160,7 +153,7 @@ const Result: FC<IResultProps> = ({
         !isWorkflow &&
         (runState.isResponding && !runState.completionRes ? (
           <div className="flex size-full items-center justify-center">
-            <Loading type="area" />
+            <LoadingPlaceholder />
           </div>
         ) : (
           <>{isNoData ? <NoData /> : renderTextGenerationRes()}</>
@@ -169,7 +162,7 @@ const Result: FC<IResultProps> = ({
         isWorkflow &&
         (runState.isResponding && !runState.workflowProcessData ? (
           <div className="flex size-full items-center justify-center">
-            <Loading type="area" />
+            <LoadingPlaceholder />
           </div>
         ) : !runState.workflowProcessData ? (
           <NoData />

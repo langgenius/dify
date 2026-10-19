@@ -17,10 +17,6 @@ const createLogItem = (
 })
 
 describe('AgentLogNav', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('navigates back, opens intermediate entries, and shows the tail label', async () => {
     const user = userEvent.setup()
     const onShowAgentOrToolLog = vi.fn()
@@ -36,12 +32,12 @@ describe('AgentLogNav', () => {
 
     await user.click(screen.getByRole('button', { name: /^AGENT$/i }))
     await user.click(
-      screen.getByRole('button', { name: /^workflow\.nodes\.agent\.strategy\.label$/ }),
+      screen.getByRole('button', { name: /^workflowAgent\.nodes\.agent\.strategy\.label$/ }),
     )
     await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
     await user.click(screen.getByRole('menuitem', { name: 'Tool A' }))
 
-    expect(onShowAgentOrToolLog.mock.calls[0]).toHaveLength(0)
+    expect(onShowAgentOrToolLog).toHaveBeenNthCalledWith(1)
     expect(onShowAgentOrToolLog).toHaveBeenNthCalledWith(2, stack[0])
     expect(onShowAgentOrToolLog).toHaveBeenNthCalledWith(3, stack[1])
     expect(screen.getByText('Tool B')).toBeInTheDocument()

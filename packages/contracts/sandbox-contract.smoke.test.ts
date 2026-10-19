@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
-import { sandbox as agentSandbox } from './generated/api/console/agent/orpc.gen'
-import { sandbox as appSandbox } from './generated/api/console/apps/orpc.gen'
+import { sandbox as agentSandbox } from './generated/api/console/agent/orpc.gen.ts'
+import { sandbox as appSandbox } from './generated/api/console/apps/orpc.gen.ts'
 
 describe('generated sandbox contracts', () => {
   it.each([

@@ -11,7 +11,7 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isSearchResultEmpty } from '@/app/components/base/search-input/search-state'
@@ -32,14 +32,13 @@ import { BuiltinMarketplacePanel } from '@/app/components/tools/marketplace/buil
 import MCPList from '@/app/components/tools/mcp'
 import ProviderDetail from '@/app/components/tools/provider/detail'
 import { ToolProviderGrid } from '@/app/components/tools/tool-provider-grid'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { useCheckInstalled, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import {
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllToolProviders,
-  useAllWorkflowTools,
-} from '@/service/use-tools'
+  selectToolCollections,
+  selectToolsWithProvider,
+} from '@/app/components/tools/utils/query-select'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { consoleQuery } from '@/service/console'
+import { useCheckInstalled, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useToolProviderCategory } from './hooks/use-tool-provider-category'
 import ToolProviderCreateAction from './tool-provider-create-action'
 import { ToolProviderToolbar } from './tool-provider-toolbar'
@@ -55,7 +54,7 @@ const EMPTY_COLLECTIONS: Collection[] = []
 const ProviderList = ({ category, contentInset = 'default', layout }: ProviderListProps) => {
   // const searchParams = useSearchParams()
   // searchParams.get('category') === 'workflow'
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools', 'navigation'])
   const { getTagLabel } = useTags()
   const { canDeletePlugin, canSetPluginPreferences, canUpdatePlugin } = usePluginSettingsAccess()
   const canManageTools = useCanManageTools()
@@ -90,19 +89,32 @@ const ProviderList = ({ category, contentInset = 'default', layout }: ProviderLi
   const handleCreatedMCPProviderHandled = useCallback(() => {
     setCreatedMCPProviderId(undefined)
   }, [])
-  const allToolProvidersQuery = useAllToolProviders(activeTab === 'builtin')
-  const customToolsQuery = useAllCustomTools(activeTab === 'api')
-  const workflowToolsQuery = useAllWorkflowTools(activeTab === 'workflow')
-  const mcpToolsQuery = useAllMCPTools(activeTab === 'mcp')
-  const { refetch: refetchMcpTools } = mcpToolsQuery
+  const allToolProvidersQuery = useQuery(
+    consoleQuery.workspaces.current.toolProviders.get.queryOptions({
+      input: { query: activeTab === 'mcp' ? { type: 'mcp' } : {} },
+      enabled: activeTab === 'builtin' || activeTab === 'mcp',
+      select: selectToolCollections,
+    }),
+  )
+  const customToolsQuery = useQuery(
+    consoleQuery.workspaces.current.tools.api.get.queryOptions({
+      enabled: activeTab === 'api',
+      select: selectToolsWithProvider,
+    }),
+  )
+  const workflowToolsQuery = useQuery(
+    consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+      enabled: activeTab === 'workflow',
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { refetch: refetchMcpTools } = allToolProvidersQuery
   const activeToolsQuery =
     activeTab === 'api'
       ? customToolsQuery
       : activeTab === 'workflow'
         ? workflowToolsQuery
-        : activeTab === 'mcp'
-          ? mcpToolsQuery
-          : allToolProvidersQuery
+        : allToolProvidersQuery
   const collectionList = activeToolsQuery.data ?? EMPTY_COLLECTIONS
   const isCollectionListLoading = activeToolsQuery.isLoading
   const refetch = activeToolsQuery.refetch
@@ -189,10 +201,10 @@ const ProviderList = ({ category, contentInset = 'default', layout }: ProviderLi
   const body = (
     <>
       <div className="relative flex h-0 shrink-0 grow flex-col overflow-hidden bg-components-panel-bg">
-        <ScrollArea className="relative min-h-0 grow overflow-hidden bg-components-panel-bg">
+        <ScrollArea className="min-h-0 grow overflow-hidden bg-components-panel-bg">
           <ScrollAreaViewport
             ref={containerRef}
-            aria-label={t(($) => $['menus.tools'], { ns: 'common' })}
+            aria-label={t(($) => $['menus.tools'], { ns: 'navigation' })}
             className="overscroll-contain"
             role="region"
           >
@@ -235,8 +247,8 @@ const ProviderList = ({ category, contentInset = 'default', layout }: ProviderLi
               )}
               {activeTab === 'mcp' && (
                 <MCPList
-                  providers={mcpToolsQuery.data ?? []}
-                  isLoading={mcpToolsQuery.isLoading}
+                  providers={activeTabCollectionList}
+                  isLoading={allToolProvidersQuery.isLoading}
                   searchText={keywords}
                   contentInset={contentInset}
                   createdProviderId={createdMCPProviderId}

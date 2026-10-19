@@ -1,6 +1,6 @@
 """Credit-pool accounting tests backed by real SQLite sessions."""
 
-from collections.abc import Generator
+from collections.abc import Callable
 from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, patch
 from uuid import uuid4
@@ -48,9 +48,8 @@ def _make_redis_lock() -> MagicMock:
 
 
 @pytest.fixture(autouse=True)
-def _disable_billing_quota_by_default() -> Generator[None, None, None]:
-    with patch("services.credit_pool_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY):
-        yield
+def _disable_billing_quota_by_default(config_overrides: Callable[..., None]) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
 
 
 def test_get_pool_uses_provided_session(sqlite_session: Session) -> None:
@@ -248,10 +247,10 @@ def test_deduct_credits_capped_uses_tenant_redis_lock_before_db_deduction(sqlite
     get_locked_pool.assert_called_once_with(session=sqlite_session, tenant_id=tenant_id, pool_type="paid")
 
 
-def test_get_pool_uses_billing_quota_balance_when_enabled() -> None:
+def test_get_pool_uses_billing_quota_balance_when_enabled(config_overrides: Callable[..., None]) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     tenant_id = "tenant-1"
     with (
-        patch("services.credit_pool_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         patch("services.billing_service.BillingService.quota_get_balance") as quota_get_balance,
     ):
         quota_get_balance.return_value = {
@@ -369,10 +368,12 @@ def test_reserve_credits_database_fallback_restores_released_amount(sqlite_sessi
     assert _get_quota_used(session=sqlite_session, pool_id=pool.id) == 2
 
 
-def test_check_and_deduct_credits_uses_billing_reserve_and_commit_when_enabled() -> None:
+def test_check_and_deduct_credits_uses_billing_reserve_and_commit_when_enabled(
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     tenant_id = "tenant-1"
     with (
-        patch("services.credit_pool_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
         patch("services.billing_service.BillingService.quota_commit") as quota_commit,
         patch("services.billing_service.BillingService.quota_release") as quota_release,
@@ -413,9 +414,11 @@ def test_check_and_deduct_credits_uses_billing_reserve_and_commit_when_enabled()
     quota_release.assert_not_called()
 
 
-def test_check_and_deduct_credits_forwards_deterministic_billing_identity() -> None:
+def test_check_and_deduct_credits_forwards_deterministic_billing_identity(
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     with (
-        patch("services.credit_pool_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
         patch("services.billing_service.BillingService.quota_commit") as quota_commit,
     ):
@@ -454,9 +457,11 @@ def test_check_and_deduct_credits_forwards_deterministic_billing_identity() -> N
     )
 
 
-def test_check_and_deduct_credits_raises_when_billing_reserve_is_insufficient() -> None:
+def test_check_and_deduct_credits_raises_when_billing_reserve_is_insufficient(
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     with (
-        patch("services.credit_pool_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
     ):
         quota_reserve.return_value = {"reservation_id": "", "available": 1, "reserved": 0}
@@ -465,9 +470,11 @@ def test_check_and_deduct_credits_raises_when_billing_reserve_is_insufficient() 
             CreditPoolService.check_and_deduct_credits(tenant_id="tenant-1", credits_required=3)
 
 
-def test_check_and_deduct_credits_releases_billing_reservation_when_commit_fails() -> None:
+def test_check_and_deduct_credits_releases_billing_reservation_when_commit_fails(
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     with (
-        patch("services.credit_pool_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
         patch("services.billing_service.BillingService.quota_commit", side_effect=RuntimeError("commit failed")),
         patch("services.billing_service.BillingService.quota_release") as quota_release,
@@ -487,9 +494,10 @@ def test_check_and_deduct_credits_releases_billing_reservation_when_commit_fails
 
 def test_check_and_deduct_credits_logs_when_billing_release_fails(
     caplog: pytest.LogCaptureFixture,
+    config_overrides: Callable[..., None],
 ) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     with (
-        patch("services.credit_pool_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
         patch("services.billing_service.BillingService.quota_commit", side_effect=RuntimeError("commit failed")),
         patch(
@@ -512,10 +520,12 @@ def test_check_and_deduct_credits_logs_when_billing_release_fails(
     assert caplog.records[0].exc_info is not None
 
 
-def test_deduct_credits_capped_uses_billing_consume_capped_when_enabled() -> None:
+def test_deduct_credits_capped_uses_billing_consume_capped_when_enabled(
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     tenant_id = "tenant-1"
     with (
-        patch("services.credit_pool_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         patch("services.billing_service.BillingService.quota_consume_capped") as quota_consume_capped,
     ):
         quota_consume_capped.return_value = {

@@ -1,35 +1,46 @@
-from unittest.mock import MagicMock
+from typing import Literal
 
 import pytest
 
 # Module under test
 from core.app.app_config.common import parameters_mapping
+from tests.unit_tests.config_override import apply_config_overrides
+
+type _DefaultedFeatureKey = Literal[
+    "suggested_questions",
+    "suggested_questions_after_answer",
+    "speech_to_text",
+    "text_to_speech",
+    "retriever_resource",
+    "annotation_reply",
+    "more_like_this",
+    "sensitive_word_avoidance",
+]
 
 
 class TestGetParametersFromFeatureDict:
     """Test suite for get_parameters_from_feature_dict"""
 
     @pytest.fixture
-    def mock_config(self, monkeypatch: pytest.MonkeyPatch):
-        """Mock dify_config values"""
-        mock = MagicMock()
-        mock.UPLOAD_IMAGE_FILE_SIZE_LIMIT = 1
-        mock.UPLOAD_VIDEO_FILE_SIZE_LIMIT = 2
-        mock.UPLOAD_AUDIO_FILE_SIZE_LIMIT = 3
-        mock.UPLOAD_FILE_SIZE_LIMIT = 4
-        mock.WORKFLOW_FILE_UPLOAD_LIMIT = 5
-
-        monkeypatch.setattr(parameters_mapping, "dify_config", mock)
-        return mock
+    def mock_config(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Override file limits on the shared typed config."""
+        apply_config_overrides(
+            monkeypatch,
+            UPLOAD_IMAGE_FILE_SIZE_LIMIT=1,
+            UPLOAD_VIDEO_FILE_SIZE_LIMIT=2,
+            UPLOAD_AUDIO_FILE_SIZE_LIMIT=3,
+            UPLOAD_FILE_SIZE_LIMIT=4,
+            WORKFLOW_FILE_UPLOAD_LIMIT=5,
+        )
 
     @pytest.fixture
-    def mock_default_file_limits(self, monkeypatch: pytest.MonkeyPatch):
+    def mock_default_file_limits(self, monkeypatch: pytest.MonkeyPatch) -> int:
         """Mock DEFAULT_FILE_NUMBER_LIMITS constant"""
         monkeypatch.setattr(parameters_mapping, "DEFAULT_FILE_NUMBER_LIMITS", 99)
         return 99
 
     @pytest.fixture
-    def minimal_inputs(self):
+    def minimal_inputs(self) -> tuple[dict[str, object], list[dict[str, object]]]:
         return {}, []
 
     @pytest.mark.parametrize(
@@ -48,13 +59,12 @@ class TestGetParametersFromFeatureDict:
             ),
         ],
     )
+    @pytest.mark.usefixtures("mock_config", "mock_default_file_limits")
     def test_defaults_when_key_missing(
         self,
-        feature_key,
-        expected_default,
-        mock_config,
-        mock_default_file_limits,
-    ):
+        feature_key: _DefaultedFeatureKey,
+        expected_default: object,
+    ) -> None:
         # Arrange
         features = {}
         user_input = []
@@ -68,7 +78,8 @@ class TestGetParametersFromFeatureDict:
         # Assert
         assert result[feature_key] == expected_default
 
-    def test_opening_statement_present(self, mock_config, mock_default_file_limits):
+    @pytest.mark.usefixtures("mock_config", "mock_default_file_limits")
+    def test_opening_statement_present(self) -> None:
         # Arrange
         features = {"opening_statement": "Hello"}
 
@@ -81,7 +92,8 @@ class TestGetParametersFromFeatureDict:
         # Assert
         assert result["opening_statement"] == "Hello"
 
-    def test_opening_statement_missing_returns_none(self, mock_config, mock_default_file_limits):
+    @pytest.mark.usefixtures("mock_config", "mock_default_file_limits")
+    def test_opening_statement_missing_returns_none(self) -> None:
         # Arrange
         features = {}
 
@@ -94,7 +106,8 @@ class TestGetParametersFromFeatureDict:
         # Assert
         assert result["opening_statement"] is None
 
-    def test_all_features_provided(self, mock_config, mock_default_file_limits):
+    @pytest.mark.usefixtures("mock_config", "mock_default_file_limits")
+    def test_all_features_provided(self) -> None:
         # Arrange
         features = {
             "opening_statement": "Hi",
@@ -128,11 +141,13 @@ class TestGetParametersFromFeatureDict:
         )
 
         # Assert
+        result_dict: dict[str, object] = dict(result)
         for key in features:
-            assert result[key] == features[key]
+            assert result_dict[key] == features[key]
         assert result["user_input_form"] == user_input
 
-    def test_file_upload_default_structure(self, mock_config, mock_default_file_limits):
+    @pytest.mark.usefixtures("mock_config", "mock_default_file_limits")
+    def test_file_upload_default_structure(self) -> None:
         # Arrange
         features = {}
 
@@ -150,7 +165,8 @@ class TestGetParametersFromFeatureDict:
         assert "remote_url" in file_upload["image"]["transfer_methods"]
         assert "local_file" in file_upload["image"]["transfer_methods"]
 
-    def test_system_parameters_from_config(self, mock_config, mock_default_file_limits):
+    @pytest.mark.usefixtures("mock_config", "mock_default_file_limits")
+    def test_system_parameters_from_config(self) -> None:
         # Arrange
         features = {}
 
@@ -176,11 +192,13 @@ class TestGetParametersFromFeatureDict:
             ("invalid", []),
         ],
     )
-    def test_invalid_features_dict_type_raises(self, features_dict, user_input_form):
+    def test_invalid_features_dict_type_raises(
+        self, features_dict: object, user_input_form: list[dict[str, object]]
+    ) -> None:
         # Act & Assert
         with pytest.raises(AttributeError):
             parameters_mapping.get_parameters_from_feature_dict(
-                features_dict=features_dict,
+                features_dict=features_dict,  # pyrefly: ignore[bad-argument-type]
                 user_input_form=user_input_form,
             )
 
@@ -188,20 +206,22 @@ class TestGetParametersFromFeatureDict:
         "user_input_form",
         [None, "invalid", 123],
     )
-    def test_user_input_form_invalid_type(self, mock_config, mock_default_file_limits, user_input_form):
+    @pytest.mark.usefixtures("mock_config", "mock_default_file_limits")
+    def test_user_input_form_invalid_type(self, user_input_form: object) -> None:
         # Arrange
         features = {}
 
         # Act
         result = parameters_mapping.get_parameters_from_feature_dict(
             features_dict=features,
-            user_input_form=user_input_form,
+            user_input_form=user_input_form,  # pyrefly: ignore[bad-argument-type]
         )
 
         # Assert
         assert result["user_input_form"] == user_input_form
 
-    def test_empty_user_input_form(self, mock_config, mock_default_file_limits):
+    @pytest.mark.usefixtures("mock_config", "mock_default_file_limits")
+    def test_empty_user_input_form(self) -> None:
         features = {}
         user_input = []
 
@@ -212,8 +232,9 @@ class TestGetParametersFromFeatureDict:
 
         assert result["user_input_form"] == []
 
-    def test_feature_values_none(self, mock_config, mock_default_file_limits):
-        features = {
+    @pytest.mark.usefixtures("mock_config", "mock_default_file_limits")
+    def test_feature_values_none(self) -> None:
+        features: dict[str, object] = {
             "suggested_questions": None,
             "speech_to_text": None,
         }

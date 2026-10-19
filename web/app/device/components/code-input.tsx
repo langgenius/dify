@@ -20,7 +20,7 @@ type Props = {
  * not need to run validation itself.
  */
 const CodeInput: FC<Props> = ({ value, onChange, disabled, autoFocus }) => {
-  const { t } = useTranslation('deviceFlow')
+  const { t } = useTranslation(['deviceFlow'])
   const handle = useCallback(
     (raw: string) => {
       onChange(normaliseUserCodeInput(raw))

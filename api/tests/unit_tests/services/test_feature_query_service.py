@@ -7,18 +7,19 @@ from machinery.context import RequestContext
 from services.entities.feature_entities import (
     FeatureModel,
     LicenseModel,
+    LicenseStatus,
     SystemFeatureModel,
     VectorSpaceLimitationModel,
 )
 from services.feature_query_service import FeatureQueryGateway, FeatureQueryService
 
 
-def _request_context(*, active_workspace_id: str | None = "workspace_123") -> RequestContext:
+def _request_context() -> RequestContext:
     return RequestContext(
         request_id="request_123",
         trace_id=None,
         account_id="account_123",
-        active_workspace_id=active_workspace_id,
+        active_workspace_id="workspace_123",
     )
 
 
@@ -52,15 +53,39 @@ def test_deployment_queries_delegate_without_request_context() -> None:
     )
 
     assert service.get_app_dsl_version() == "0.6.0"
-    assert service.get_system_features() is system_features
+    assert service.get_public_system_features() is system_features
     assert service.get_license() is license_model
 
 
-def test_workspace_queries_require_active_workspace() -> None:
+def test_workspace_id_queries_delegate_without_request_context() -> None:
     gateway = create_autospec(FeatureQueryGateway, instance=True, spec_set=True)
+    features = FeatureModel()
+    vector_space = VectorSpaceLimitationModel(size=2, limit=10)
+    gateway.get_workspace_features.return_value = features
+    gateway.get_vector_space.return_value = vector_space
     service = FeatureQueryService(features=gateway, app_dsl_version="0.7.0")
 
-    with pytest.raises(RuntimeError, match="did not resolve an active workspace"):
-        service.get_features(_request_context(active_workspace_id=None))
+    assert service.get_workspace_features("workspace_123") is features
+    assert service.get_workspace_vector_space("workspace_123") is vector_space
+    gateway.get_workspace_features.assert_called_once_with("workspace_123")
+    gateway.get_vector_space.assert_called_once_with("workspace_123")
 
-    gateway.get_workspace_features.assert_not_called()
+
+@pytest.mark.parametrize(
+    ("status", "expected"),
+    [
+        (LicenseStatus.ACTIVE, True),
+        (LicenseStatus.EXPIRING, True),
+        (LicenseStatus.INACTIVE, False),
+        (LicenseStatus.EXPIRED, False),
+    ],
+)
+def test_enterprise_license_admission(status: LicenseStatus, expected: bool) -> None:
+    gateway = create_autospec(FeatureQueryGateway, instance=True, spec_set=True)
+    gateway.get_public_system_features.return_value = SystemFeatureModel(
+        deployment_edition=DeploymentEdition.ENTERPRISE,
+        license={"status": status},
+    )
+    service = FeatureQueryService(features=gateway, app_dsl_version="0.7.0")
+
+    assert service.has_valid_enterprise_license() is expected

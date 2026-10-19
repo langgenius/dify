@@ -1,4 +1,5 @@
-import * as React from 'react'
+import type * as React from 'react'
+import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { Field, FieldDescription, FieldError, FieldLabel } from '../../field'
 import { Form } from '../../form'
@@ -7,6 +8,19 @@ import { Textarea } from '../index'
 const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
 
 describe('Textarea', () => {
+  it('should show keyboard focus when read-only', async () => {
+    const screen = await render(<Textarea aria-label="Notes" defaultValue="Saved notes" readOnly />)
+    const textarea = screen.getByRole('textbox', { name: 'Notes' })
+    const restingBoxShadow = getComputedStyle(textarea.element()).boxShadow
+
+    await userEvent.keyboard('{Tab}')
+
+    await expect.element(textarea).toHaveFocus()
+    await expect
+      .poll(() => getComputedStyle(textarea.element()).boxShadow)
+      .not.toBe(restingBoxShadow)
+  })
+
   it('should render a labelled textarea through Base UI Field.Control', async () => {
     const screen = await render(
       <Field name="description">
@@ -23,15 +37,30 @@ describe('Textarea', () => {
     expect(asHTMLElement(textarea.element()).tagName).toBe('TEXTAREA')
   })
 
-  it('should apply custom classes', async () => {
+  it('should update callback styles from field state while preserving textarea variants', async () => {
     const screen = await render(
-      <label>
-        Prompt
-        <Textarea size="large" className="resize-none" />
-      </label>,
+      <Field>
+        <FieldLabel>Prompt</FieldLabel>
+        <Textarea
+          size="large"
+          // Exercise Dify's callback merging across the Field.Control textarea adapter.
+          className={(state) => (state.filled ? 'resize-none' : undefined)}
+          style={(state) => ({ opacity: state.filled ? 0.5 : 1 })}
+        />
+      </Field>,
     )
+    const textarea = screen.getByRole('textbox', { name: 'Prompt' })
+    const initialPadding = getComputedStyle(textarea.element()).padding
 
-    await expect.element(screen.getByRole('textbox', { name: 'Prompt' })).toHaveClass('resize-none')
+    await expect.element(textarea).toHaveStyle({ opacity: '1' })
+    await textarea.fill('Draft')
+    await expect.poll(() => getComputedStyle(textarea.element()).resize).toBe('none')
+    await expect.element(textarea).toHaveStyle({ opacity: '0.5' })
+    expect(getComputedStyle(textarea.element()).padding).toBe(initialPadding)
+
+    await textarea.fill('')
+    await expect.element(textarea).toHaveStyle({ opacity: '1' })
+    await expect.poll(() => getComputedStyle(textarea.element()).resize).not.toBe('none')
   })
 
   it('should call onValueChange and stay controlled until value changes', async () => {

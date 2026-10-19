@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from '@hey-api/openapi-ts'
-import { loadOpenApiYaml } from './openapi-yaml'
+import { loadOpenApiYaml } from './openapi-yaml.ts'
 
 type JsonObject = Record<string, unknown>
 
@@ -292,6 +292,7 @@ const normalizeEnterpriseOpenApi = () => {
 export default defineConfig({
   input: normalizeEnterpriseOpenApi(),
   output: {
+    module: { extension: '.ts' },
     entryFile: false,
     path: 'generated/enterprise-app-deploy',
     fileName: {

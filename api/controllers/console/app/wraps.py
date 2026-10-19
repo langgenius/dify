@@ -1,9 +1,8 @@
 """Controller decorators for console app resources.
 
 `get_app_model` still supports legacy handlers backed by Flask-SQLAlchemy's
-scoped session. Preview handlers compose `get_previewable_app_model` under
-`controllers.common.session.with_session`; preview admission finishes before
-the request Session loads the accepted App.
+scoped session. Public catalog previews use `app.preview_admission` and
+detached application queries.
 """
 
 from collections.abc import Callable
@@ -11,89 +10,45 @@ from functools import wraps
 from typing import cast, overload
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, scoped_session
 
-from configs import dify_config
 from controllers.common.session import with_session
-from controllers.common.wraps import RBACPermission, RBACResourceScope, enforce_rbac_access
 from controllers.console.app.error import AppNotFoundError
-from extensions.ext_application_services import application_services
 from extensions.ext_database import db
+from libs.external_api import document_errors
 from libs.login import current_account_with_tenant
 from models import App, AppMode
 from models.agent import AgentScope
-from services.app_service import AppService
+from models.enums import AppStatus
 
 __all__ = [
-    "agent_manage_required_for_agent_app",
     "get_app_model",
-    "get_previewable_app_model",
     "with_session",
 ]
 
 
-def _load_app_model(session: Session, app_id: str) -> App | None:
-    """Load the tenant-scoped app row with the request session owned by `with_session`."""
+def _load_app_model(session: Session | scoped_session, app_id: str) -> App | None:
+    """Load the tenant-scoped Console app row through the given session."""
     _, current_tenant_id = current_account_with_tenant()
     app_model = session.scalar(
-        select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
+        select(App)
+        .where(
+            App.id == app_id,
+            App.tenant_id == current_tenant_id,
+            App.status == AppStatus.NORMAL,
+        )
+        .limit(1)
     )
+    if app_model is not None:
+        binding = app_model.agent_app_binding_with_session(session=session, include_archived=True)
+        if binding is not None and binding.scope == AgentScope.WORKFLOW_ONLY:
+            return None
     return app_model
 
 
 def _load_app_model_from_scoped_session(app_id: str) -> App | None:
     """Load the app row for legacy handlers that have not adopted request session injection yet."""
-    _, current_tenant_id = current_account_with_tenant()
-    app_model = db.session.scalar(
-        select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
-    )
-    return app_model
-
-
-def _load_previewable_app_model(session: Session, app_id: str) -> App | None:
-    """Load a normal App after preview admission completes outside the request Session."""
-    if not application_services().recommended_app_queries.is_previewable(app_id):
-        return None
-    return AppService.get_normal_app_by_id(app_id, session)
-
-
-def agent_manage_required_for_agent_app[**P, R](view: Callable[P, R]) -> Callable[P, R]:
-    """Gate generic app management routes that target an Agent App.
-
-    A hidden workflow-only backing App only reuses the App runtime and is not
-    part of the general app management plane, so generic routes reject it
-    outright. Managing a roster Agent App mutates the roster Agent behind it
-    (rename/icon sync, archive, API enablement), so it additionally requires
-    workspace ``agent.manage`` on top of the route's existing App permission
-    checks when RBAC is enabled. A no-op for non-agent Apps. Must be placed
-    above ``get_app_model`` so the ``app_id`` path parameter is still present.
-    """
-
-    @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
-        raw_app_id = kwargs.get("app_id") or kwargs.get("resource_id")
-        if raw_app_id is not None:
-            app_model = _load_app_model_from_scoped_session(str(raw_app_id))
-            binding = (
-                app_model.agent_app_binding_with_session(session=db.session(), include_archived=True)
-                if app_model is not None
-                else None
-            )
-            if binding is not None:
-                if binding.scope == AgentScope.WORKFLOW_ONLY:
-                    raise AppNotFoundError()
-                if dify_config.RBAC_ENABLED:
-                    current_user, current_tenant_id = current_account_with_tenant()
-                    enforce_rbac_access(
-                        tenant_id=current_tenant_id,
-                        account_id=current_user.id,
-                        resource_type=RBACResourceScope.WORKSPACE,
-                        scene=RBACPermission.AGENT_MANAGE,
-                        resource_required=False,
-                    )
-        return view(*args, **kwargs)
-
-    return decorated
+    return _load_app_model(db.session, app_id)
 
 
 def _get_injected_session(args: tuple[object, ...]) -> Session | None:
@@ -162,10 +117,7 @@ def get_app_model[**P, R](
             app_mode = AppMode.value_of(app_model.mode)
 
             if mode is not None:
-                if isinstance(mode, list):
-                    modes = mode
-                else:
-                    modes = [mode]
+                modes = mode if isinstance(mode, list) else [mode]
 
                 if app_mode not in modes:
                     mode_values = {m.value for m in modes}
@@ -175,79 +127,7 @@ def get_app_model[**P, R](
 
             return view_func(*args, **kwargs)
 
-        return decorated_view
-
-    if view is None:
-        return decorator
-    else:
-        return decorator(view)
-
-
-@overload
-def get_previewable_app_model[**P, R](
-    view: Callable[P, R],
-    *,
-    mode: AppMode | list[AppMode] | None = None,
-) -> Callable[P, R]: ...
-
-
-@overload
-def get_previewable_app_model[**P, R](
-    view: None = None,
-    *,
-    mode: AppMode | list[AppMode] | None = None,
-) -> Callable[[Callable[P, R]], Callable[P, R]]: ...
-
-
-def get_previewable_app_model[**P, R](
-    view: Callable[P, R] | None = None,
-    *,
-    mode: AppMode | list[AppMode] | None = None,
-) -> Callable[P, R] | Callable[[Callable[P, R]], Callable[P, R]]:
-    """Inject an App authorized for read-only template preview.
-
-    Preview reads accept either an explicit TrialApp registration or membership
-    in the recommended catalog. This does not grant trial execution, which is
-    separately protected by TrialAppResource's feature, registration, and quota
-    checks.
-    """
-
-    def decorator(view_func: Callable[P, R]) -> Callable[P, R]:
-        @wraps(view_func)
-        def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
-            if not kwargs.get("app_id"):
-                raise ValueError("missing app_id in path parameters")
-
-            app_id = kwargs.get("app_id")
-            app_id = str(app_id)
-
-            del kwargs["app_id"]
-
-            session = _get_injected_session(args)
-            if session is None:
-                raise RuntimeError("get_previewable_app_model requires @with_session")
-            app_model = _load_previewable_app_model(session, app_id)
-
-            if not app_model:
-                raise AppNotFoundError()
-
-            app_mode = AppMode.value_of(app_model.mode)
-
-            if mode is not None:
-                if isinstance(mode, list):
-                    modes = mode
-                else:
-                    modes = [mode]
-
-                if app_mode not in modes:
-                    mode_values = {m.value for m in modes}
-                    raise AppNotFoundError(f"App mode is not in the supported list: {mode_values}")
-
-            kwargs["app_model"] = app_model
-
-            return view_func(*args, **kwargs)
-
-        return decorated_view
+        return document_errors(decorated_view, AppNotFoundError)
 
     if view is None:
         return decorator

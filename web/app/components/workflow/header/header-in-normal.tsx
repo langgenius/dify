@@ -1,9 +1,9 @@
 import type { StartNodeType } from '../nodes/start/types'
 import type { RunAndHistoryProps } from './run-and-history'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useCallback } from 'react'
 import { useNodes } from 'reactflow'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks/use-input-field-panel'
-import Divider from '../../base/divider'
 import { useHooksStore } from '../hooks-store'
 import { useNodesInteractions } from '../hooks/use-nodes-interactions'
 import { useNodesReadOnly } from '../hooks/use-workflow'
@@ -85,7 +85,7 @@ const HeaderInNormal = ({ components, controls, runAndHistoryProps }: HeaderInNo
       <div className="flex items-center gap-2">
         <OnlineUsers />
         {components?.left}
-        <Divider type="vertical" className="mx-auto h-3.5" />
+        <Separator decorative orientation="vertical" className="mx-auto h-3.5" />
         <RunAndHistory {...runAndHistoryProps} />
         {showContextButtons && (
           <div className="shrink-0 cursor-pointer rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs backdrop-blur-[10px]">

@@ -2,6 +2,7 @@ import type {
   EducationStatusResponse,
   GetAccountProfileResponse,
 } from '@dify/contracts/api/console/account/types.gen'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
 import type {
   GetSystemFeaturesLicenseResponse,
@@ -19,8 +20,9 @@ import type { ReactElement, ReactNode } from 'react'
 import type { UserProfileWithMeta } from '@/features/account-profile/client'
 import type { DeepPartial } from '@/test/console/system-features'
 import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
+import { noop } from '@tanstack/react-query'
 import { render, renderHook } from '@testing-library/react'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { ensureAccountProfileQuery, seedAccountProfileQuery } from '@/test/console/account-profile'
 import {
   currentWorkspaceQueryKey,
@@ -143,10 +145,12 @@ const ensureSystemFeatures = (queryClient: QueryClient) => {
 }
 
 const seedPendingSystemFeatures = (queryClient: QueryClient) => {
-  void queryClient.prefetchQuery({
-    queryKey: consoleQuery.systemFeatures.get.queryKey(),
-    queryFn: () => new Promise<GetSystemFeaturesResponse>(() => {}),
-  })
+  void queryClient
+    .query({
+      queryKey: consoleQuery.systemFeatures.get.queryKey(),
+      queryFn: () => new Promise<GetSystemFeaturesResponse>(() => {}),
+    })
+    .catch(noop)
 }
 
 const seedTrialModels = (queryClient: QueryClient, trialModels: readonly string[] = []) => {
@@ -162,6 +166,14 @@ export const seedAppDslVersion = (queryClient: QueryClient, appDslVersion = '0.6
   queryClient.setQueryData(getAppDslVersionQueryKey(), { app_dsl_version: appDslVersion })
 }
 
+export const seedAppDetail = (queryClient: QueryClient, appDetail: AppDetailWithSite) => {
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: appDetail.id } } }),
+    appDetail,
+  )
+  return appDetail
+}
+
 export type ConsoleQueryTestOptions = {
   /**
    * Partial overrides for the systemFeatures payload. When omitted, the cache
@@ -172,6 +184,7 @@ export type ConsoleQueryTestOptions = {
   systemFeatures?: DeepPartial<GetSystemFeaturesResponse> | null
   accountProfile?: Partial<GetAccountProfileResponse> | null
   accountProfileMeta?: Partial<UserProfileWithMeta['meta']>
+  features?: DeepPartial<GetFeaturesResponse>
   educationStatus?: Partial<EducationStatusResponse>
   currentWorkspace?: Partial<GetWorkspacesCurrentSummaryResponse> | null
   trialModels?: readonly string[] | null
@@ -199,6 +212,7 @@ export const createConsoleQueryWrapper = (
       seedAccountProfileQuery(queryClient, options.accountProfile, options.accountProfileMeta)
     else ensureAccountProfileQuery(queryClient, { timezone: 'UTC' }, options.accountProfileMeta)
   }
+  if (options.features) seedFeatures(queryClient, options.features)
   if (options.educationStatus) seedEducationStatus(queryClient, options.educationStatus)
   if (options.currentWorkspace !== null) {
     const queryKey = getCurrentWorkspaceQueryKey()
@@ -239,6 +253,7 @@ export const renderWithConsoleQuery = (
     systemFeatures: sf,
     accountProfile,
     accountProfileMeta,
+    features,
     educationStatus,
     currentWorkspace,
     trialModels,
@@ -251,6 +266,7 @@ export const renderWithConsoleQuery = (
     systemFeatures: sf,
     accountProfile,
     accountProfileMeta,
+    features,
     educationStatus,
     currentWorkspace,
     trialModels,
@@ -273,6 +289,7 @@ export const renderHookWithConsoleQuery = <Result, Props = void>(
     systemFeatures: sf,
     accountProfile,
     accountProfileMeta,
+    features,
     educationStatus,
     currentWorkspace,
     trialModels,
@@ -285,6 +302,7 @@ export const renderHookWithConsoleQuery = <Result, Props = void>(
     systemFeatures: sf,
     accountProfile,
     accountProfileMeta,
+    features,
     educationStatus,
     currentWorkspace,
     trialModels,

@@ -1,39 +1,50 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
-import type { Placement } from '../placement'
+import type * as React from 'react'
+import type { Placement } from '../internal/placement'
 import { Combobox as BaseCombobox } from '@base-ui/react/combobox'
 import { cva } from 'class-variance-authority'
-import * as React from 'react'
 import { cn } from '../cn'
-import { formLabelClassName, textControlCompoundInputFocusClassName } from '../form-control-shared'
+import { focusRingClassName, insetFocusRingClassName } from '../internal/focus'
+import { formLabelClassName, textControlGroupClassName } from '../internal/form-control'
 import {
   floatingGroupLabelClassName,
   floatingItemIndicatorClassName,
   floatingPopupAnimationClassName,
   floatingSeparatorClassName,
-} from '../overlay-shared'
-import { parsePlacement } from '../placement'
+  positionerClassName,
+} from '../internal/overlay'
+import { parsePlacement } from '../internal/placement'
+import { resolveClassName } from '../internal/resolve-class-name'
 
-type ComboboxProps<Value, Multiple extends boolean | undefined = false> = BaseCombobox.Root.Props<
+type ComboboxActions = BaseCombobox.Root.Actions
+
+type ComboboxProps<
   Value,
-  Multiple
-> &
+  Multiple extends boolean | undefined = false,
+  Item = Value,
+> = BaseCombobox.Root.Props<Value, Multiple, Item> &
   ([Multiple] extends [true] ? { multiple: true } : unknown)
+type ComboboxChangeEventReason = BaseCombobox.Root.ChangeEventReason
 type ComboboxChangeEventDetails = BaseCombobox.Root.ChangeEventDetails
+type ComboboxOpenChangeEventDetails = BaseCombobox.Root.OpenChangeEventDetails
+type ComboboxHighlightEventReason = BaseCombobox.Root.HighlightEventReason
+type ComboboxHighlightEventDetails = BaseCombobox.Root.HighlightEventDetails
 
-function Combobox<Value, Multiple extends boolean | undefined = false>(
-  props: ComboboxProps<Value, Multiple>,
+function Combobox<Value, Multiple extends boolean | undefined = false, Item = Value>(
+  props: ComboboxProps<Value, Multiple, Item>,
 ): React.JSX.Element {
   return <BaseCombobox.Root {...props} />
 }
 
+const createComboboxItems = BaseCombobox.createItems
 const ComboboxRow = BaseCombobox.Row
 const useComboboxFilter = BaseCombobox.useFilter
 const useComboboxFilteredItems = BaseCombobox.useFilteredItems
 
 type ComboboxSelectedValue<Value, Multiple extends boolean | undefined = false> =
-  | (Multiple extends true ? Value[] : Value)
+  | (Multiple extends true ? readonly Value[] : Value)
   | null
 
 type ComboboxValueProps<Value = unknown, Multiple extends boolean | undefined = false> = Omit<
@@ -51,114 +62,76 @@ function ComboboxValue(props: BaseCombobox.Value.Props): React.JSX.Element {
   return <BaseCombobox.Value {...props} />
 }
 
-type ComboboxGroupProps<Value = unknown> = Omit<BaseCombobox.Group.Props, 'items'> & {
-  items?: readonly Value[]
+type ComboboxGroupProps<Item = unknown> = Omit<BaseCombobox.Group.Props, 'items'> & {
+  items?: readonly Item[]
 }
 
-function ComboboxGroup<Value = unknown>(props: ComboboxGroupProps<Value>) {
+function ComboboxGroup<Item = unknown>(props: ComboboxGroupProps<Item>) {
   return <BaseCombobox.Group {...props} />
 }
 
-type ComboboxCollectionProps<Value = unknown> = Omit<BaseCombobox.Collection.Props, 'children'> & {
-  children: (item: Value, index: number) => React.ReactNode
+type ComboboxCollectionProps<Item = unknown> = Omit<BaseCombobox.Collection.Props, 'children'> & {
+  children: (item: Item, index: number) => React.ReactNode
 }
 
-function ComboboxCollection<Value = unknown>(props: ComboboxCollectionProps<Value>) {
+function ComboboxCollection<Item = unknown>(props: ComboboxCollectionProps<Item>) {
   return <BaseCombobox.Collection {...props} />
 }
 
 type ComboboxRowProps = BaseCombobox.Row.Props
 
+// The popup is limited to the available height and lays its parts out in a column, so an input or status
+// sharing it with the list leaves the list to shrink. The popup scrolls only when nothing can.
+// Same layout as `AutocompletePopup`; keep the two local definitions aligned.
 const comboboxPopupClassName = [
-  'w-(--anchor-width) max-w-[min(28rem,var(--available-width))] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg outline-hidden',
+  'flex max-h-(--available-height) w-(--anchor-width) max-w-[min(28rem,var(--available-width))] flex-col overflow-x-hidden overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg outline-hidden',
 ]
 
+// Same layout as `AutocompleteList`; keep the two local definitions aligned.
 const comboboxListClassName = [
   'max-h-[min(20rem,var(--available-height))] overflow-y-auto overflow-x-hidden overscroll-contain p-1 outline-hidden scroll-py-1',
   'data-empty:max-h-none data-empty:p-0',
 ]
 
 const comboboxItemClassName = [
-  'grid min-h-8 cursor-pointer select-none grid-cols-[1fr_auto] items-center gap-2 rounded-lg px-2 py-1.5 text-text-secondary outline-hidden',
+  'grid min-h-8 select-none grid-cols-[1fr_auto] items-center gap-2 rounded-lg px-2 py-1.5 text-text-secondary outline-hidden',
   'hover:bg-state-base-hover-alt hover:text-text-primary',
   'data-highlighted:bg-state-base-hover data-highlighted:text-text-primary',
   'data-selected:text-text-primary',
   'data-disabled:cursor-not-allowed data-disabled:opacity-30 data-disabled:hover:bg-transparent data-disabled:hover:text-text-secondary',
 ]
 
-const comboboxTriggerVariants = cva(
-  [
-    'group/combobox-trigger flex w-full min-w-0 items-center border-0 bg-components-input-bg-normal text-start text-components-input-text-filled outline-hidden transition-colors',
-    'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
-    'focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-    'data-placeholder:text-components-input-text-placeholder',
-    'data-readonly:cursor-default data-readonly:bg-transparent data-readonly:hover:bg-transparent',
-    'data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled',
-    'data-disabled:data-placeholder:text-components-input-text-disabled',
-    'motion-reduce:transition-none',
-  ],
-  {
-    variants: {
-      size: {
-        small: 'h-6 gap-px rounded-md px-2 py-1 system-xs-regular',
-        medium: 'h-8 gap-0.5 rounded-lg px-3 py-2 system-sm-regular',
-        large: 'h-9 gap-0.5 rounded-[10px] px-4 py-2 system-md-regular',
-      },
-    },
-    defaultVariants: {
-      size: 'medium',
-    },
-  },
-)
+type ComboboxTriggerProps = BaseCombobox.Trigger.Props
 
-type ComboboxTriggerProps = Omit<BaseCombobox.Trigger.Props, 'className'> &
-  VariantProps<typeof comboboxTriggerVariants> & {
-    className?: string
-    icon?: React.ReactNode | false
-  }
-
-function ComboboxTrigger({
-  className,
-  children,
-  icon,
-  size,
-  type = 'button',
-  ...props
-}: ComboboxTriggerProps) {
+// Owns the focus indicator only. The caller owns the appearance, directly or through `render`.
+function ComboboxTrigger({ className, type = 'button', ...props }: ComboboxTriggerProps) {
   return (
     <BaseCombobox.Trigger
       type={type}
-      className={cn(comboboxTriggerVariants({ size, className }))}
+      className={(state) => cn(focusRingClassName, resolveClassName(className, state))}
       {...props}
-    >
-      <span className="min-w-0 grow truncate">{children}</span>
-      {icon !== false && (
-        <BaseCombobox.Icon className="shrink-0 text-text-quaternary transition-colors group-hover/combobox-trigger:text-text-secondary group-data-popup-open/combobox-trigger:text-text-secondary group-data-readonly/combobox-trigger:hidden">
-          {icon ?? <span className="i-ri-arrow-down-s-line h-4 w-4" aria-hidden="true" />}
-        </BaseCombobox.Icon>
-      )}
-    </BaseCombobox.Trigger>
+    />
   )
 }
 
+// The group owns the horizontal padding and the gap, so an icon, the input, and the controls sit in
+// it without margins of their own, like `DropdownMenuInputGroup`. The input keeps a narrow inset so
+// its text lands where a standalone `Input` of the same size puts it.
 const comboboxInputGroupVariants = cva(
   [
-    'group/combobox flex w-full min-w-0 items-center border border-transparent bg-components-input-bg-normal text-components-input-text-filled shadow-none outline-hidden transition-[background-color,border-color,box-shadow]',
-    'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
-    textControlCompoundInputFocusClassName,
-    'data-focused:border-components-input-border-active data-focused:bg-components-input-bg-active data-focused:shadow-xs',
-    'data-popup-open:border-components-input-border-active data-popup-open:bg-components-input-bg-active',
-    'data-disabled:cursor-not-allowed data-disabled:border-transparent data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled',
-    'data-disabled:hover:border-transparent data-disabled:hover:bg-components-input-bg-disabled',
-    'data-readonly:shadow-none data-readonly:hover:border-transparent data-readonly:hover:bg-components-input-bg-normal',
-    'motion-reduce:transition-none',
+    textControlGroupClassName,
+    'group/combobox items-center gap-0.5',
+    // Inside the popup the group is the search box and lines up with the options on 4px gutters.
+    // The popup marks itself with a data attribute because a `role="dialog"` ancestor could also be
+    // a Dialog hosting a field anchor.
+    'in-data-dify-combobox-popup:mx-1 in-data-dify-combobox-popup:mt-1 in-data-dify-combobox-popup:w-auto',
   ],
   {
     variants: {
       size: {
-        small: 'min-h-6 rounded-md',
-        medium: 'min-h-8 rounded-lg',
-        large: 'min-h-9 rounded-[10px]',
+        small: 'min-h-6 rounded-md px-1',
+        medium: 'min-h-8 rounded-lg px-2',
+        large: 'min-h-9 rounded-[10px] px-3',
       },
     },
     defaultVariants: {
@@ -167,13 +140,15 @@ const comboboxInputGroupVariants = cva(
   },
 )
 
-type ComboboxInputGroupProps = Omit<BaseCombobox.InputGroup.Props, 'className'> &
-  VariantProps<typeof comboboxInputGroupVariants> & { className?: string }
+type ComboboxInputGroupProps = BaseCombobox.InputGroup.Props &
+  VariantProps<typeof comboboxInputGroupVariants>
 
 function ComboboxInputGroup({ className, size = 'medium', ...props }: ComboboxInputGroupProps) {
   return (
     <BaseCombobox.InputGroup
-      className={cn(comboboxInputGroupVariants({ size }), className)}
+      className={(state) =>
+        cn(comboboxInputGroupVariants({ size }), resolveClassName(className, state))
+      }
       {...props}
     />
   )
@@ -181,17 +156,18 @@ function ComboboxInputGroup({ className, size = 'medium', ...props }: ComboboxIn
 
 const comboboxInputVariants = cva(
   [
-    'w-0 min-w-0 flex-1 appearance-none border-0 bg-transparent text-components-input-text-filled caret-primary-600 outline-hidden',
+    'w-0 min-w-0 flex-1 appearance-none border-0 bg-transparent px-1 text-components-input-text-filled caret-primary-600 outline-hidden',
     'placeholder:text-components-input-text-placeholder',
     'disabled:cursor-not-allowed disabled:text-components-input-text-filled-disabled disabled:placeholder:text-components-input-text-disabled',
-    'data-readonly:cursor-default',
+    'enabled:data-readonly:cursor-default',
   ],
   {
     variants: {
+      // Vertical padding fills the group's min height exactly, so the group never grows past it.
       size: {
-        small: 'px-2 py-1 system-xs-regular',
-        medium: 'px-3 py-1.75 system-sm-regular',
-        large: 'px-4 py-2 system-md-regular',
+        small: 'py-0.75 system-xs-regular',
+        medium: 'py-1.75 system-sm-regular',
+        large: 'py-1.75 system-md-regular',
       },
     },
     defaultVariants: {
@@ -200,8 +176,8 @@ const comboboxInputVariants = cva(
   },
 )
 
-type ComboboxInputProps = Omit<BaseCombobox.Input.Props, 'className' | 'size'> &
-  VariantProps<typeof comboboxInputVariants> & { className?: string }
+type ComboboxInputProps = Omit<BaseCombobox.Input.Props, 'size'> &
+  VariantProps<typeof comboboxInputVariants>
 
 function ComboboxInput({
   className,
@@ -212,7 +188,7 @@ function ComboboxInput({
   return (
     <BaseCombobox.Input
       autoComplete={autoComplete}
-      className={cn(comboboxInputVariants({ size }), className)}
+      className={(state) => cn(comboboxInputVariants({ size }), resolveClassName(className, state))}
       {...props}
     />
   )
@@ -220,20 +196,19 @@ function ComboboxInput({
 
 const comboboxControlVariants = cva(
   [
-    'flex shrink-0 touch-manipulation items-center justify-center rounded-md text-text-tertiary outline-hidden transition-colors',
+    'flex shrink-0 touch-manipulation items-center justify-center rounded-md text-text-tertiary',
     'hover:bg-components-input-bg-hover hover:text-text-secondary focus-visible:bg-components-input-bg-hover focus-visible:text-text-secondary',
-    'focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
-    'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-tertiary disabled:focus-visible:bg-transparent disabled:focus-visible:ring-0',
-    'group-data-disabled/combobox:cursor-not-allowed group-data-disabled/combobox:hover:bg-transparent group-data-disabled/combobox:focus-visible:bg-transparent group-data-disabled/combobox:focus-visible:ring-0',
+    insetFocusRingClassName,
+    'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-tertiary disabled:focus-visible:bg-transparent',
+    'group-data-disabled/combobox:cursor-not-allowed group-data-disabled/combobox:hover:bg-transparent group-data-disabled/combobox:focus-visible:bg-transparent',
     'group-data-readonly/combobox:hidden',
-    'motion-reduce:transition-none',
   ],
   {
     variants: {
       size: {
-        small: 'me-1 size-4',
-        medium: 'me-1.5 size-5',
-        large: 'me-2 size-5',
+        small: 'size-4',
+        medium: 'size-5',
+        large: 'size-5',
       },
     },
     defaultVariants: {
@@ -242,9 +217,9 @@ const comboboxControlVariants = cva(
   },
 )
 
-type ComboboxClearProps = Omit<BaseCombobox.Clear.Props, 'className'> &
-  VariantProps<typeof comboboxControlVariants> & { className?: string }
+type ComboboxClearProps = BaseCombobox.Clear.Props & VariantProps<typeof comboboxControlVariants>
 
+// Same look as `DropdownMenuClear`; change both together.
 function ComboboxClear({
   className,
   children,
@@ -256,11 +231,13 @@ function ComboboxClear({
     <BaseCombobox.Clear
       type={type}
       aria-label={props['aria-label'] ?? (props['aria-labelledby'] ? undefined : 'Clear combobox')}
-      className={cn(
-        comboboxControlVariants({ size }),
-        'data-ending-style:opacity-0 data-starting-style:opacity-0',
-        className,
-      )}
+      className={(state) =>
+        cn(
+          comboboxControlVariants({ size }),
+          'data-ending-style:opacity-0 data-starting-style:opacity-0',
+          resolveClassName(className, state),
+        )
+      }
       {...props}
     >
       {children ?? <span className="i-ri-close-line size-4" aria-hidden="true" />}
@@ -268,8 +245,8 @@ function ComboboxClear({
   )
 }
 
-type ComboboxInputTriggerProps = Omit<BaseCombobox.Trigger.Props, 'className'> &
-  VariantProps<typeof comboboxControlVariants> & { className?: string }
+type ComboboxInputTriggerProps = BaseCombobox.Trigger.Props &
+  VariantProps<typeof comboboxControlVariants>
 
 function ComboboxInputTrigger({
   className,
@@ -284,7 +261,9 @@ function ComboboxInputTrigger({
       aria-label={
         props['aria-label'] ?? (props['aria-labelledby'] ? undefined : 'Open combobox options')
       }
-      className={cn(comboboxControlVariants({ size }), className)}
+      className={(state) =>
+        cn(comboboxControlVariants({ size }), resolveClassName(className, state))
+      }
       {...props}
     >
       {children ?? <span className="i-ri-arrow-down-s-line size-4" aria-hidden="true" />}
@@ -292,14 +271,14 @@ function ComboboxInputTrigger({
   )
 }
 
-type ComboboxIconProps = Omit<BaseCombobox.Icon.Props, 'className'> & {
-  className?: string
-}
+type ComboboxIconProps = BaseCombobox.Icon.Props
 
 function ComboboxIcon({ className, children, ...props }: ComboboxIconProps) {
   return (
     <BaseCombobox.Icon
-      className={cn('flex shrink-0 items-center text-text-tertiary', className)}
+      className={(state) =>
+        cn('flex shrink-0 items-center text-text-tertiary', resolveClassName(className, state))
+      }
       {...props}
     >
       {children ?? <span className="i-ri-arrow-down-s-line size-4" aria-hidden="true" />}
@@ -310,11 +289,7 @@ function ComboboxIcon({ className, children, ...props }: ComboboxIconProps) {
 const ComboboxPortal = BaseCombobox.Portal
 type ComboboxPortalProps = BaseCombobox.Portal.Props
 
-type ComboboxPositionerProps = Omit<
-  BaseCombobox.Positioner.Props,
-  'className' | 'side' | 'align'
-> & {
-  className?: string
+type ComboboxPositionerProps = Omit<BaseCombobox.Positioner.Props, 'side' | 'align'> & {
   placement?: Placement
 }
 
@@ -331,58 +306,66 @@ function ComboboxPositioner({
       side={side}
       align={align}
       sideOffset={sideOffset}
-      className={cn('z-50 outline-hidden', className)}
+      className={(state) => cn(positionerClassName, resolveClassName(className, state))}
       {...props}
     />
   )
 }
 
-type ComboboxPopupProps = Omit<BaseCombobox.Popup.Props, 'className'> & {
-  className?: string
-}
+type ComboboxPopupProps = BaseCombobox.Popup.Props
 
 function ComboboxPopup({ className, ...props }: ComboboxPopupProps) {
   return (
     <BaseCombobox.Popup
-      className={cn(comboboxPopupClassName, floatingPopupAnimationClassName, className)}
+      data-dify-combobox-popup=""
+      className={(state) =>
+        cn(
+          comboboxPopupClassName,
+          floatingPopupAnimationClassName,
+          resolveClassName(className, state),
+        )
+      }
       {...props}
     />
   )
 }
 
-type ComboboxListProps<Value = unknown> = Omit<
-  BaseCombobox.List.Props,
-  'children' | 'className'
-> & {
-  className?: string
-  children?: React.ReactNode | ((item: Value, index: number) => React.ReactNode)
+type ComboboxListProps<Item = unknown> = Omit<BaseCombobox.List.Props, 'children'> & {
+  children?: React.ReactNode | ((item: Item, index: number) => React.ReactNode)
 }
 
-function ComboboxList<Value = unknown>({ className, ...props }: ComboboxListProps<Value>) {
-  return <BaseCombobox.List className={cn(comboboxListClassName, className)} {...props} />
+function ComboboxList<Item = unknown>({ className, ...props }: ComboboxListProps<Item>) {
+  return (
+    <BaseCombobox.List
+      className={(state) => cn(comboboxListClassName, resolveClassName(className, state))}
+      {...props}
+    />
+  )
 }
 
-type ComboboxItemProps<Value = unknown> = Omit<BaseCombobox.Item.Props, 'className' | 'value'> & {
-  className?: string
+type ComboboxItemProps<Value = unknown> = Omit<BaseCombobox.Item.Props, 'value'> & {
   value?: Value
 }
 
 function ComboboxItem<Value = unknown>({ className, ...props }: ComboboxItemProps<Value>) {
-  return <BaseCombobox.Item className={cn(comboboxItemClassName, className)} {...props} />
+  return (
+    <BaseCombobox.Item
+      className={(state) => cn(comboboxItemClassName, resolveClassName(className, state))}
+      {...props}
+    />
+  )
 }
 
 type ComboboxItemTextProps = React.ComponentProps<'span'>
 
 function ComboboxItemText({ className, ...props }: ComboboxItemTextProps) {
-  return (
-    <span className={cn('min-w-0 grow truncate px-1 system-sm-medium', className)} {...props} />
-  )
+  return <span className={cn('min-w-0 grow truncate system-sm-medium', className)} {...props} />
 }
 
 function ComboboxItemIndicator({ className, children, ...props }: ComboboxItemIndicatorProps) {
   return (
     <BaseCombobox.ItemIndicator
-      className={cn(floatingItemIndicatorClassName, className)}
+      className={(state) => cn(floatingItemIndicatorClassName, resolveClassName(className, state))}
       {...props}
     >
       {children ?? <span className="i-ri-check-line h-4 w-4" aria-hidden="true" />}
@@ -390,93 +373,104 @@ function ComboboxItemIndicator({ className, children, ...props }: ComboboxItemIn
   )
 }
 
-type ComboboxItemIndicatorProps = Omit<
-  BaseCombobox.ItemIndicator.Props,
-  'children' | 'className'
-> & {
+type ComboboxItemIndicatorProps = Omit<BaseCombobox.ItemIndicator.Props, 'children'> & {
   children?: React.ReactNode
-  className?: string
 }
 
-type ComboboxLabelProps = Omit<BaseCombobox.Label.Props, 'className'> & {
-  className?: string
-}
+type ComboboxLabelProps = BaseCombobox.Label.Props
 
 function ComboboxLabel({ className, ...props }: ComboboxLabelProps) {
-  return <BaseCombobox.Label className={cn(formLabelClassName, className)} {...props} />
-}
-
-type ComboboxGroupLabelProps = Omit<BaseCombobox.GroupLabel.Props, 'className'> & {
-  className?: string
-}
-
-function ComboboxGroupLabel({ className, ...props }: ComboboxGroupLabelProps) {
   return (
-    <BaseCombobox.GroupLabel className={cn(floatingGroupLabelClassName, className)} {...props} />
-  )
-}
-
-type ComboboxSeparatorProps = Omit<BaseCombobox.Separator.Props, 'className'> & {
-  className?: string
-}
-
-function ComboboxSeparator({ className, ...props }: ComboboxSeparatorProps) {
-  return <BaseCombobox.Separator className={cn(floatingSeparatorClassName, className)} {...props} />
-}
-
-type ComboboxEmptyProps = Omit<BaseCombobox.Empty.Props, 'className'> & {
-  className?: string
-}
-
-function ComboboxEmpty({ className, ...props }: ComboboxEmptyProps) {
-  return (
-    <BaseCombobox.Empty
-      className={cn(
-        'px-3 py-2 system-sm-regular text-text-tertiary empty:h-0 empty:p-0',
-        className,
-      )}
+    <BaseCombobox.Label
+      className={(state) => cn(formLabelClassName, resolveClassName(className, state))}
       {...props}
     />
   )
 }
 
-type ComboboxStatusProps = Omit<BaseCombobox.Status.Props, 'className'> & {
-  className?: string
+type ComboboxGroupLabelProps = BaseCombobox.GroupLabel.Props
+
+// The list's own padding supplies the rest of the inset, so the label text lines up with the
+// item text.
+function ComboboxGroupLabel({ className, ...props }: ComboboxGroupLabelProps) {
+  return (
+    <BaseCombobox.GroupLabel
+      className={(state) =>
+        cn(floatingGroupLabelClassName, 'px-2', resolveClassName(className, state))
+      }
+      {...props}
+    />
+  )
 }
+
+type ComboboxSeparatorProps = BaseCombobox.Separator.Props
+
+function ComboboxSeparator({ className, ...props }: ComboboxSeparatorProps) {
+  return (
+    <BaseCombobox.Separator
+      className={(state) => cn(floatingSeparatorClassName, resolveClassName(className, state))}
+      {...props}
+    />
+  )
+}
+
+type ComboboxEmptyProps = BaseCombobox.Empty.Props
+
+// Same look as `DropdownMenuEmpty`; change both together.
+function ComboboxEmpty({ className, ...props }: ComboboxEmptyProps) {
+  return (
+    <BaseCombobox.Empty
+      className={(state) =>
+        cn(
+          'px-3 py-2 system-sm-regular text-text-tertiary empty:h-0 empty:p-0',
+          resolveClassName(className, state),
+        )
+      }
+      {...props}
+    />
+  )
+}
+
+type ComboboxStatusProps = BaseCombobox.Status.Props
 
 function ComboboxStatus({ className, ...props }: ComboboxStatusProps) {
   return (
     <BaseCombobox.Status
-      className={cn('px-3 py-2 system-sm-regular text-text-tertiary empty:p-0', className)}
+      className={(state) =>
+        cn(
+          'px-3 py-2 system-sm-regular text-text-tertiary empty:p-0',
+          resolveClassName(className, state),
+        )
+      }
       {...props}
     />
   )
 }
 
-type ComboboxChipsProps = Omit<BaseCombobox.Chips.Props, 'className'> & {
-  className?: string
-}
+type ComboboxChipsProps = BaseCombobox.Chips.Props
 
 function ComboboxChips({ className, ...props }: ComboboxChipsProps) {
   return (
     <BaseCombobox.Chips
-      className={cn('flex w-full min-w-0 flex-wrap items-center gap-1 px-1', className)}
+      className={(state) =>
+        cn('flex w-full min-w-0 flex-wrap items-center gap-1', resolveClassName(className, state))
+      }
       {...props}
     />
   )
 }
 
-type ComboboxChipProps = Omit<BaseCombobox.Chip.Props, 'className'> & {
-  className?: string
-}
+type ComboboxChipProps = BaseCombobox.Chip.Props
 
 function ComboboxChip({ className, ...props }: ComboboxChipProps) {
   return (
     <BaseCombobox.Chip
-      className={cn(
-        'inline-flex max-w-full min-w-0 items-center gap-1 rounded-md bg-state-base-hover px-1.5 py-0.5 system-xs-medium text-text-secondary',
-        className,
-      )}
+      className={(state) =>
+        cn(
+          'inline-flex max-w-full min-w-0 items-center gap-1 rounded-md bg-state-base-hover px-1.5 py-0.5 system-xs-medium text-text-secondary',
+          resolveClassName(className, state),
+        )
+      }
       {...props}
     />
   )
@@ -494,10 +488,13 @@ function ComboboxChipRemove({
       aria-label={
         props['aria-label'] ?? (props['aria-labelledby'] ? undefined : 'Remove selected item')
       }
-      className={cn(
-        'flex size-3.5 shrink-0 items-center justify-center rounded-sm text-text-tertiary outline-hidden hover:bg-state-base-hover-alt hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-        className,
-      )}
+      className={(state) =>
+        cn(
+          'flex size-3.5 shrink-0 items-center justify-center rounded-sm text-text-tertiary hover:bg-state-base-hover-alt hover:text-text-secondary',
+          focusRingClassName,
+          resolveClassName(className, state),
+        )
+      }
       {...props}
     >
       {children ?? <span className="i-ri-close-line size-3" aria-hidden="true" />}
@@ -505,9 +502,7 @@ function ComboboxChipRemove({
   )
 }
 
-type ComboboxChipRemoveProps = Omit<BaseCombobox.ChipRemove.Props, 'className'> & {
-  className?: string
-}
+type ComboboxChipRemoveProps = BaseCombobox.ChipRemove.Props
 
 export {
   Combobox,
@@ -536,12 +531,15 @@ export {
   ComboboxStatus,
   ComboboxTrigger,
   ComboboxValue,
+  createComboboxItems,
   useComboboxFilter,
   useComboboxFilteredItems,
 }
 
 export type {
+  ComboboxActions,
   ComboboxChangeEventDetails,
+  ComboboxChangeEventReason,
   ComboboxChipProps,
   ComboboxChipRemoveProps,
   ComboboxChipsProps,
@@ -550,6 +548,8 @@ export type {
   ComboboxEmptyProps,
   ComboboxGroupLabelProps,
   ComboboxGroupProps,
+  ComboboxHighlightEventDetails,
+  ComboboxHighlightEventReason,
   ComboboxIconProps,
   ComboboxInputGroupProps,
   ComboboxInputProps,
@@ -559,6 +559,7 @@ export type {
   ComboboxItemTextProps,
   ComboboxLabelProps,
   ComboboxListProps,
+  ComboboxOpenChangeEventDetails,
   ComboboxPopupProps,
   ComboboxPortalProps,
   ComboboxPositionerProps,

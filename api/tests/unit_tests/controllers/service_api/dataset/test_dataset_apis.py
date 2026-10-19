@@ -7,14 +7,16 @@ persisted through the shared SQLite session fixture.
 import uuid
 from datetime import UTC, datetime
 from inspect import unwrap
+from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
+from flask import Flask, request
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import Forbidden, NotFound, UnprocessableEntity
 
-import services
+import services.errors.base
 from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
 from models.account import Account, Tenant, TenantAccountRole
 from models.dataset import AppDatasetJoin, Dataset, DatasetMetadata, Document
@@ -101,7 +103,11 @@ def make_dataset(
         "is_multimodal": False,
     }
     base.update(overrides)
-    dataset = Dataset(**base)
+    created_at = cast(datetime, base.pop("created_at"))
+    updated_at = cast(datetime, base.pop("updated_at"))
+    dataset = Dataset(**base)  # type: ignore[bad-argument-type]
+    dataset.created_at = created_at
+    dataset.updated_at = updated_at
     session.add(dataset)
     session.flush()
     return dataset
@@ -188,6 +194,7 @@ def assert_dataset_detail_shape(response: dict[str, object], *, with_partial_mem
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.usefixtures("app_query_services")
 class TestDatasetListApiGet:
     """Test suite for DatasetListApi.get() endpoint."""
 
@@ -256,6 +263,179 @@ class TestDatasetListApiGet:
             False,
         )
 
+    @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
+    @patch("controllers.service_api.dataset.dataset.DatasetService")
+    def test_list_datasets_has_more_false_on_last_page_exact_limit(
+        self,
+        mock_dataset_svc: MagicMock,
+        mock_provider_mgr: MagicMock,
+        app: Flask,
+        account: Account,
+        tenant: Tenant,
+        controller_session: Session,
+    ) -> None:
+        """A full last page must set has_more false instead of forcing another fetch."""
+        from controllers.service_api.dataset.dataset import DatasetListApi
+
+        page_size = 20
+        dataset = make_dataset(controller_session, tenant, account)
+        mock_dataset_svc.get_datasets.return_value = ([dataset] * page_size, page_size)
+        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = list[object]()
+
+        with app.test_request_context(f"/datasets?page=1&limit={page_size}", method="GET"):
+            api = DatasetListApi()
+            response, status = unwrap(api.get)(api, controller_session, tenant_id=tenant.id)
+
+        assert status == 200
+        assert response["has_more"] is False
+        assert response["limit"] == page_size
+        assert response["total"] == page_size
+        assert response["page"] == 1
+
+    @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
+    @patch("controllers.service_api.dataset.dataset.DatasetService")
+    def test_list_datasets_has_more_true_when_limit_exceeds_cap(
+        self,
+        mock_dataset_svc: MagicMock,
+        mock_provider_mgr: MagicMock,
+        app: Flask,
+        account: Account,
+        tenant: Tenant,
+        controller_session: Session,
+    ) -> None:
+        """limit>100 still reports remaining rows after the server cap of 100."""
+        from controllers.service_api.dataset.dataset import DatasetListApi
+
+        returned_count = 100
+        total = 150
+        dataset = make_dataset(controller_session, tenant, account)
+        mock_dataset_svc.get_datasets.return_value = ([dataset] * returned_count, total)
+        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = list[object]()
+
+        with app.test_request_context("/datasets?page=1&limit=200", method="GET"):
+            api = DatasetListApi()
+            response, status = unwrap(api.get)(api, controller_session, tenant_id=tenant.id)
+
+        assert status == 200
+        assert response["has_more"] is True
+        assert response["limit"] == 100
+        assert response["total"] == total
+        assert response["page"] == 1
+        assert mock_dataset_svc.get_datasets.call_args.args[1] == 100
+
+    @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
+    @patch("controllers.service_api.dataset.dataset.DatasetService")
+    def test_list_datasets_reports_the_page_size_the_query_used_for_limit_zero(
+        self,
+        mock_dataset_svc: MagicMock,
+        mock_provider_mgr: MagicMock,
+        app: Flask,
+        account: Account,
+        tenant: Tenant,
+        controller_session: Session,
+    ) -> None:
+        """limit=0 is floored to one row by the query, so the response must report one."""
+        from controllers.service_api.dataset.dataset import DatasetListApi
+
+        total = 7
+        dataset = make_dataset(controller_session, tenant, account)
+        mock_dataset_svc.get_datasets.return_value = ([dataset], total)
+        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = list[object]()
+
+        with app.test_request_context("/datasets?page=1&limit=0", method="GET"):
+            api = DatasetListApi()
+            response, status = unwrap(api.get)(api, controller_session, tenant_id=tenant.id)
+
+        assert status == 200
+        assert response["limit"] == 1
+        assert response["page"] == 1
+        assert response["has_more"] is True
+        assert mock_dataset_svc.get_datasets.call_args.args[:2] == (1, 1)
+
+    @pytest.mark.usefixtures("account")
+    @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
+    @patch("controllers.service_api.dataset.dataset.DatasetService")
+    def test_list_datasets_has_more_false_past_the_last_page_for_limit_zero(
+        self,
+        mock_dataset_svc: MagicMock,
+        mock_provider_mgr: MagicMock,
+        app: Flask,
+        tenant: Tenant,
+        controller_session: Session,
+    ) -> None:
+        """A page past the end must end the walk instead of reporting more rows forever."""
+        from controllers.service_api.dataset.dataset import DatasetListApi
+
+        total = 7
+        mock_dataset_svc.get_datasets.return_value = (list[Dataset](), total)
+        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = list[object]()
+
+        with app.test_request_context("/datasets?page=8&limit=0", method="GET"):
+            api = DatasetListApi()
+            response, status = unwrap(api.get)(api, controller_session, tenant_id=tenant.id)
+
+        assert status == 200
+        assert response["has_more"] is False
+        assert response["limit"] == 1
+        assert response["page"] == 8
+        assert response["data"] == []
+
+    @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
+    @patch("controllers.service_api.dataset.dataset.DatasetService")
+    def test_list_datasets_reports_the_page_size_the_query_used_for_negative_limit(
+        self,
+        mock_dataset_svc: MagicMock,
+        mock_provider_mgr: MagicMock,
+        app: Flask,
+        account: Account,
+        tenant: Tenant,
+        controller_session: Session,
+    ) -> None:
+        """A negative limit is floored the same way, and is never echoed back."""
+        from controllers.service_api.dataset.dataset import DatasetListApi
+
+        total = 7
+        dataset = make_dataset(controller_session, tenant, account)
+        mock_dataset_svc.get_datasets.return_value = ([dataset], total)
+        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = list[object]()
+
+        with app.test_request_context("/datasets?page=1&limit=-1", method="GET"):
+            api = DatasetListApi()
+            response, status = unwrap(api.get)(api, controller_session, tenant_id=tenant.id)
+
+        assert status == 200
+        assert response["limit"] == 1
+        assert response["page"] == 1
+        assert mock_dataset_svc.get_datasets.call_args.args[:2] == (1, 1)
+
+    @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
+    @patch("controllers.service_api.dataset.dataset.DatasetService")
+    def test_list_datasets_reports_the_page_the_query_used_for_page_zero(
+        self,
+        mock_dataset_svc: MagicMock,
+        mock_provider_mgr: MagicMock,
+        app: Flask,
+        account: Account,
+        tenant: Tenant,
+        controller_session: Session,
+    ) -> None:
+        """page=0 is served as page 1, so the response must not offer page 1 as the next one."""
+        from controllers.service_api.dataset.dataset import DatasetListApi
+
+        total = 7
+        dataset = make_dataset(controller_session, tenant, account)
+        mock_dataset_svc.get_datasets.return_value = ([dataset] * total, total)
+        mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = list[object]()
+
+        with app.test_request_context("/datasets?page=0&limit=20", method="GET"):
+            api = DatasetListApi()
+            response, status = unwrap(api.get)(api, controller_session, tenant_id=tenant.id)
+
+        assert status == 200
+        assert response["page"] == 1
+        assert response["has_more"] is False
+        assert mock_dataset_svc.get_datasets.call_args.args[:2] == (1, 20)
+
 
 class TestDatasetListApiPost:
     """Test suite for DatasetListApi.post() endpoint."""
@@ -269,7 +449,7 @@ class TestDatasetListApiPost:
         tenant: Tenant,
         controller_session: Session,
     ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetListApi
+        from controllers.service_api.dataset.dataset import DatasetCreatePayload, DatasetListApi
 
         mock_dataset_svc.create_empty_dataset.return_value = make_dataset(
             controller_session, tenant, account, name="New Dataset"
@@ -281,7 +461,10 @@ class TestDatasetListApiPost:
             json={"name": "New Dataset"},
         ):
             api = DatasetListApi()
-            response, status = unwrap(api.post)(api, controller_session, tenant_id=tenant.id)
+            # `post` is wrapped in @model_validate, so the unwrapped view expects
+            # the validated model where the decorator would have injected it.
+            validated_payload = DatasetCreatePayload.model_validate(request.get_json() or {})
+            response, status = unwrap(api.post)(api, validated_payload, controller_session, tenant_id=tenant.id)
 
         assert status == 200
         assert_dataset_detail_shape(response)
@@ -297,7 +480,7 @@ class TestDatasetListApiPost:
         tenant: Tenant,
         controller_session: Session,
     ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetListApi
+        from controllers.service_api.dataset.dataset import DatasetCreatePayload, DatasetListApi
 
         mock_dataset_svc.create_empty_dataset.side_effect = services.errors.dataset.DatasetNameDuplicateError()
 
@@ -307,8 +490,29 @@ class TestDatasetListApiPost:
             json={"name": "Existing Dataset"},
         ):
             api = DatasetListApi()
+            validated_payload = DatasetCreatePayload.model_validate(request.get_json() or {})
             with pytest.raises(DatasetNameDuplicateError):
-                unwrap(api.post)(api, controller_session, tenant_id=tenant.id)
+                unwrap(api.post)(api, validated_payload, controller_session, tenant_id=tenant.id)
+
+    @pytest.mark.usefixtures("account")
+    @patch("controllers.service_api.wraps.FeatureService")
+    @patch("controllers.service_api.wraps.validate_and_get_api_token")
+    def test_invalid_body_is_rejected_before_the_handler_runs(
+        self,
+        mock_validate_token: MagicMock,
+        mock_feature_svc: MagicMock,
+        app: Flask,
+        tenant: Tenant,
+    ) -> None:
+        """The tests above unwrap the view, so this is what covers the decorator."""
+        from controllers.service_api.dataset.dataset import DatasetListApi
+
+        mock_validate_token.return_value = SimpleNamespace(tenant_id=tenant.id)
+        mock_feature_svc.get_knowledge_rate_limit.return_value = SimpleNamespace(enabled=False)
+
+        with app.test_request_context("/datasets", method="POST", json={}):
+            with pytest.raises(UnprocessableEntity):
+                DatasetListApi().post(tenant_id=tenant.id)
 
 
 # ---------------------------------------------------------------------------
@@ -438,7 +642,7 @@ class TestDatasetApiGet:
         from controllers.service_api.dataset.dataset import DatasetApi
 
         mock_dataset_svc.get_dataset.return_value = dataset
-        mock_dataset_svc.check_dataset_permission.side_effect = services.errors.account.NoPermissionError()
+        mock_dataset_svc.check_dataset_permission.side_effect = services.errors.base.NoPermissionError()
 
         with app.test_request_context(
             f"/datasets/{dataset.id}",
@@ -462,7 +666,7 @@ class TestDatasetApiPatch:
         dataset: Dataset,
         controller_session: Session,
     ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetApi
+        from controllers.service_api.dataset.dataset import DatasetApi, DatasetUpdatePayload
 
         dataset.name = "Updated Dataset"
         mock_dataset_svc.get_dataset.return_value = dataset
@@ -481,8 +685,12 @@ class TestDatasetApiPatch:
             json=payload,
         ):
             api = DatasetApi()
+            # `patch` is wrapped in @model_validate, so the unwrapped view expects
+            # the validated model where the decorator would have injected it.
+            validated_payload = DatasetUpdatePayload.model_validate(request.get_json() or {})
             response, status = unwrap(api.patch)(
                 api,
+                validated_payload,
                 controller_session,
                 _=dataset.tenant_id,
                 dataset_id=dataset.id,
@@ -650,9 +858,7 @@ class TestDocumentStatusApiPatch:
         from controllers.service_api.dataset.dataset import DocumentStatusApi
 
         mock_dataset_svc.get_dataset.return_value = dataset
-        mock_dataset_svc.check_dataset_permission.side_effect = services.errors.account.NoPermissionError(
-            "No permission"
-        )
+        mock_dataset_svc.check_dataset_permission.side_effect = services.errors.base.NoPermissionError("No permission")
 
         with app.test_request_context(
             f"/datasets/{dataset.id}/documents/status/enable",

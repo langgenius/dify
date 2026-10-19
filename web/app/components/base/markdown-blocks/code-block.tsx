@@ -1,19 +1,36 @@
+import type { EChartsOption, EChartsType } from 'echarts'
+import type EChartsReact from 'echarts-for-react'
+import type { EChartsReactProps } from 'echarts-for-react'
 import type { JSX } from 'react'
-import type { BundledLanguage, BundledTheme } from 'shiki/bundle/web'
+import type { CodeTheme } from './shiki-highlight'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Toggle } from '@langgenius/dify-ui/toggle'
-import ReactEcharts from 'echarts-for-react'
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import dynamic from 'next/dynamic'
+import {
+  lazy,
+  memo,
+  Suspense,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import CopyIcon from '@/app/components/base/copy-icon'
-import MarkdownMusic from '@/app/components/base/markdown-blocks/music'
 import ErrorBoundary from '@/app/components/base/markdown/error-boundary'
 import useTheme from '@/hooks/use-theme'
-import dynamic from '@/next/dynamic'
 import { Theme } from '@/types/app'
-import SVGRenderer from '../svg-gallery' // Assumes svg-gallery.tsx is in /base directory
 import { highlightCode } from './shiki-highlight'
 
-const Flowchart = dynamic(() => import('@/app/components/base/mermaid'), { ssr: false })
+const MermaidDiagram = dynamic(
+  () => import('./mermaid-diagram').then((module) => module.MermaidDiagram),
+  { ssr: false },
+)
+// React.lazy preserves the chart adapter's ref and loads each runtime only when rendered.
+const ReactEcharts = lazy(() => import('echarts-for-react'))
+const MarkdownMusic = lazy(() => import('./music'))
+const SVGRenderer = lazy(() => import('../svg-gallery'))
 
 const capitalizationLanguageNameMap: Record<string, string> = {
   sql: 'SQL',
@@ -68,7 +85,7 @@ const ShikiCodeBlock = memo(
   }: {
     code: string
     language: string
-    theme: BundledTheme
+    theme: CodeTheme
     initial?: JSX.Element
   }) => {
     const [nodes, setNodes] = useState(initial)
@@ -78,7 +95,7 @@ const ShikiCodeBlock = memo(
 
       void highlightCode({
         code,
-        language: language as BundledLanguage,
+        language,
         theme,
       })
         .then((result) => {
@@ -133,21 +150,21 @@ type EChartsEventParams = {
   seriesIndex?: number
   dataIndex?: number
   name?: string
-  value?: any
+  value?: unknown
   currentIndex?: number // Added for timeline events
-  [key: string]: any
+  [key: string]: unknown
 }
 
 export const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any) => {
   const { theme } = useTheme()
   const [isSVG, setIsSVG] = useState(true)
   const [chartState, setChartState] = useState<'loading' | 'success' | 'error'>('loading')
-  const [finalChartOption, setFinalChartOption] = useState<any>(null)
-  const echartsRef = useRef<any>(null)
+  const [finalChartOption, setFinalChartOption] = useState<EChartsOption | null>(null)
+  const echartsRef = useRef<EChartsReact | null>(null)
   const contentRef = useRef<string>('')
   const processedRef = useRef<boolean>(false) // Track if content was successfully processed
   const isInitialRenderRef = useRef<boolean>(true) // Track if this is initial render
-  const chartInstanceRef = useRef<any>(null) // Direct reference to ECharts instance
+  const chartInstanceRef = useRef<EChartsType | null>(null) // Direct reference to ECharts instance
   const resizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null) // For debounce handling
   const chartReadyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const finishedEventCountRef = useRef<number>(0) // Track finished event trigger count
@@ -178,12 +195,11 @@ export const CodeBlock: any = memo(({ inline, className, children = '', ...props
     [],
   )
 
-  const echartsOpts = useMemo(
-    () =>
-      ({
-        renderer: 'canvas',
-        width: 'auto',
-      }) as any,
+  const echartsOpts = useMemo<EChartsReactProps['opts']>(
+    () => ({
+      renderer: 'canvas',
+      width: 'auto',
+    }),
     [],
   )
 
@@ -199,7 +215,7 @@ export const CodeBlock: any = memo(({ inline, className, children = '', ...props
 
   // Handle ECharts instance initialization
   const handleChartReady = useCallback(
-    (instance: any) => {
+    (instance: EChartsType) => {
       chartInstanceRef.current = instance
 
       // Force resize to ensure timeline displays correctly
@@ -234,7 +250,7 @@ export const CodeBlock: any = memo(({ inline, className, children = '', ...props
 
   // Handle container resize for echarts
   useEffect(() => {
-    if (language !== 'echarts' || !chartInstanceRef.current) return
+    if (language !== 'echarts') return
 
     const handleResize = () => {
       if (chartInstanceRef.current)
@@ -318,7 +334,7 @@ export const CodeBlock: any = memo(({ inline, className, children = '', ...props
           trimmedContent.split('{').length !== trimmedContent.split('}').length)) ||
       (trimmedContent.startsWith('[') &&
         (!trimmedContent.endsWith(']') ||
-          trimmedContent.split('[').length !== trimmedContent.split('}').length)) ||
+          trimmedContent.split('[').length !== trimmedContent.split(']').length)) ||
       trimmedContent.split('"').length % 2 !== 1 ||
       (trimmedContent.includes('{"') && !trimmedContent.includes('"}'))
 
@@ -351,7 +367,7 @@ export const CodeBlock: any = memo(({ inline, className, children = '', ...props
     const content = String(children).replace(/\n$/, '')
     switch (language) {
       case 'mermaid':
-        return <Flowchart PrimitiveCode={content} theme={theme as 'light' | 'dark'} />
+        return <MermaidDiagram source={content} />
       case 'echarts': {
         // Loading state: show loading indicator
         if (chartState === 'loading') {
@@ -521,8 +537,6 @@ export const CodeBlock: any = memo(({ inline, className, children = '', ...props
     language,
     isSVG,
     finalChartOption,
-    props,
-    theme,
     match,
     chartState,
     isDarkMode,
@@ -561,7 +575,17 @@ export const CodeBlock: any = memo(({ inline, className, children = '', ...props
           <CopyIcon content={String(children).replace(/\n$/, '')} />
         </div>
       </div>
-      {renderCodeContent}
+      <Suspense
+        fallback={
+          <div
+            aria-busy="true"
+            className="animate-pulse rounded-b-[10px] bg-components-input-bg-normal"
+            style={{ minHeight: language === 'echarts' ? 350 : 96 }}
+          />
+        }
+      >
+        {renderCodeContent}
+      </Suspense>
     </div>
   )
 })

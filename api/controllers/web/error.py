@@ -1,4 +1,8 @@
 from libs.exception import BaseHTTPException
+from services.errors.app import (
+    TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_CODE,
+    TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_MESSAGE,
+)
 
 
 class AppUnavailableError(BaseHTTPException):
@@ -29,6 +33,12 @@ class NotWorkflowAppError(BaseHTTPException):
     error_code = "not_workflow_app"
     description = "Please check if your Workflow app mode matches the right API route."
     code = 400
+
+
+class TriggerWorkflowServiceModeUnavailableError(BaseHTTPException):
+    error_code = TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_CODE
+    description = TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_MESSAGE
+    code = 403
 
 
 class ConversationCompletedError(BaseHTTPException):

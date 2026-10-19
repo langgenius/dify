@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from unittest.mock import MagicMock
 
 import httpx
@@ -13,9 +14,8 @@ from services.turnstile_service import (
 
 
 @pytest.fixture(autouse=True)
-def configure_turnstile(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("services.turnstile_service.dify_config.TURNSTILE_SECRET_KEY", SecretStr("test-secret"))
-    monkeypatch.setattr("services.turnstile_service.dify_config.TURNSTILE_ALLOWED_HOSTNAMES", "dify.dev")
+def configure_turnstile(config_overrides: Callable[..., None]) -> None:
+    config_overrides(TURNSTILE_SECRET_KEY=SecretStr("test-secret"), TURNSTILE_ALLOWED_HOSTNAMES="dify.dev")
 
 
 def mock_response(monkeypatch: pytest.MonkeyPatch, *, status_code: int = 200, payload: object) -> MagicMock:
@@ -125,12 +125,11 @@ def test_verify_maps_timeout_to_upstream_error(monkeypatch: pytest.MonkeyPatch) 
     [(None, "dify.dev"), (SecretStr("test-secret"), "")],
 )
 def test_verify_fails_closed_when_cloud_configuration_is_missing(
-    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
     secret: SecretStr | None,
     allowed_hostnames: str,
 ) -> None:
-    monkeypatch.setattr("services.turnstile_service.dify_config.TURNSTILE_SECRET_KEY", secret)
-    monkeypatch.setattr("services.turnstile_service.dify_config.TURNSTILE_ALLOWED_HOSTNAMES", allowed_hostnames)
+    config_overrides(TURNSTILE_SECRET_KEY=secret, TURNSTILE_ALLOWED_HOSTNAMES=allowed_hostnames)
 
     with pytest.raises(TurnstileUpstreamError):
         TurnstileService.verify(token="verified-token", remote_ip=None)

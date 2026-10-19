@@ -8,7 +8,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from core.db.session_factory import session_factory
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+from core.rag.index_processor.index_processor import IndexProcessorFactory
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_storage import storage
 from models import WorkflowType
@@ -26,6 +26,7 @@ from models.dataset import (
 )
 from models.model import UploadFile
 from models.workflow import Workflow
+from services.dataset_storage_cleanup_service import cleanup_dataset_crawl_cache
 from tasks.refresh_billing_vector_space_task import schedule_billing_vector_space_refresh
 
 logger = logging.getLogger(__name__)
@@ -47,9 +48,9 @@ _DELETE_BATCH_SIZE = 1000
 def clean_dataset_task(
     dataset_id: str,
     tenant_id: str,
-    indexing_technique: str,
-    index_struct: str,
-    collection_binding_id: str,
+    indexing_technique: str | None,
+    index_struct: str | None,
+    collection_binding_id: str | None,
     doc_form: str,
     pipeline_id: str | None = None,
 ):
@@ -85,6 +86,8 @@ def clean_dataset_task(
         index_struct=index_struct,
         collection_binding_id=collection_binding_id,
     )
+
+    cleanup_dataset_crawl_cache(tenant_id, dataset_id)
 
     with session_factory.create_session() as session:
         try:

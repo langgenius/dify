@@ -21,6 +21,10 @@ class BindingCreateError(RuntimeBackendError):
     pass
 
 
+class BindingCapacityExhaustedError(BindingCreateError):
+    """The selected runtime backend cannot allocate another Binding."""
+
+
 class BindingAcquireError(RuntimeBackendError):
     pass
 
@@ -47,6 +51,7 @@ class WorkspaceUnavailableError(RuntimeBackendError):
 
 __all__ = [
     "BindingAcquireError",
+    "BindingCapacityExhaustedError",
     "BindingCreateError",
     "BindingDestroyError",
     "BindingLostError",

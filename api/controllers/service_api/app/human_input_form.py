@@ -17,6 +17,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console.wraps import model_validate
 from controllers.service_api import service_api_ns
 from controllers.service_api.schema import expect_with_user
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
@@ -24,9 +25,17 @@ from core.workflow.human_input_policy import HumanInputSurface, is_recipient_typ
 from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
 from extensions.ext_database import db
 from fields.base import ResponseModel
+from libs.external_api import error_responses
 from libs.helper import to_timestamp
 from models.model import App, EndUser
-from services.human_input_service import Form, FormNotFoundError, HumanInputService
+from services.human_input_service import (
+    Form,
+    FormExpiredError,
+    FormNotFoundError,
+    FormSubmittedError,
+    HumanInputService,
+    InvalidFormDataError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +85,7 @@ def _ensure_form_is_allowed_for_service_api(form: Form) -> None:
 
 @service_api_ns.route("/form/human_input/<string:form_token>")
 class WorkflowHumanInputFormApi(Resource):
+    @error_responses(FormExpiredError, FormSubmittedError)
     @service_api_ns.doc(
         summary="Get Human Input Form",
         description=(
@@ -122,6 +132,7 @@ class WorkflowHumanInputFormApi(Resource):
         inputs = service.resolve_form_inputs(form)
         return _jsonify_form_definition(form, inputs=inputs)
 
+    @error_responses(FormExpiredError, FormSubmittedError, InvalidFormDataError)
     @service_api_ns.doc(
         summary="Submit Human Input Form",
         description=(
@@ -163,9 +174,8 @@ class WorkflowHumanInputFormApi(Resource):
         service_api_ns.models[HumanInputFormSubmitResponse.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
-    def post(self, app_model: App, end_user: EndUser, form_token: str):
-        payload = HumanInputFormSubmitPayload.model_validate(service_api_ns.payload or {})
-
+    @model_validate(HumanInputFormSubmitPayload)
+    def post(self, payload: HumanInputFormSubmitPayload, app_model: App, end_user: EndUser, form_token: str):
         service = HumanInputService(db.engine)
         form = service.get_form_by_token(form_token)
         if form is None:

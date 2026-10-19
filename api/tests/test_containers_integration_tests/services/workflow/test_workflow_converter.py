@@ -131,7 +131,7 @@ class TestWorkflowConverter:
         db_session_with_containers.commit()
 
         # Set current tenant for account
-        account.current_tenant = tenant
+        account.set_current_tenant_with_session(tenant, session=db_session_with_containers)
 
         return account, tenant
 
@@ -202,7 +202,7 @@ class TestWorkflowConverter:
         - Workflow creation with correct configuration
         """
         # Arrange: Create test data
-        fake = Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
@@ -315,7 +315,7 @@ class TestWorkflowConverter:
         - Database state management
         """
         # Arrange: Create test data
-        fake = Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
@@ -325,7 +325,7 @@ class TestWorkflowConverter:
         workflow_converter = WorkflowConverter()
         workflow = workflow_converter.convert_app_model_config_to_workflow(
             app_model=app,
-            app_model_config=app.app_model_config,
+            app_model_config=app.app_model_config_with_session(session=db_session_with_containers),
             account_id=account.id,
             session=db_session_with_containers,
         )
@@ -429,7 +429,7 @@ class TestWorkflowConverter:
         - External data variable mapping
         """
         # Arrange: Create test data
-        fake = Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
@@ -508,7 +508,7 @@ class TestWorkflowConverter:
         - Query variable selector setup
         """
         # Arrange: Create test data
-        fake = Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )

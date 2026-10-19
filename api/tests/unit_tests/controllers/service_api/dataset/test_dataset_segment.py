@@ -16,11 +16,14 @@ Focus on:
 
 import inspect
 import uuid
-from unittest.mock import MagicMock, Mock, patch
+from collections.abc import Callable
+from types import SimpleNamespace
+from unittest.mock import ANY, Mock, create_autospec, patch
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import NotFound
+from sqlalchemy.orm import Session
+from werkzeug.exceptions import NotFound, UnprocessableEntity
 
 from controllers.service_api.dataset.segment import (
     ChildChunkApi,
@@ -36,26 +39,21 @@ from controllers.service_api.dataset.segment import (
 )
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from libs.datetime_utils import naive_utc_now
-from models.dataset import ChildChunk, Dataset, Document, DocumentSegment
+from models.account import Account, Tenant
+from models.dataset import ChildChunk, Dataset, Document, DocumentSegment, DocumentSegmentSummary
 from models.enums import IndexingStatus, SegmentType
-from services.dataset_service import DocumentService, SegmentService
+from services.api_token_service import CachedApiToken
+from services.knowledge.dataset_service import DocumentService, SegmentService
+from services.knowledge.segments.application import SegmentMutationService
+from tests.unit_tests.model_factories import make_account
 
 
-def _session_factory_mock():
-    mock_factory = MagicMock()
-    mock_session = MagicMock()
-    mock_factory.session = mock_session
-
-    transaction = MagicMock()
-    transaction.__enter__.return_value = mock_session
-    transaction.__exit__.return_value = None
-    mock_factory.get_session_maker.return_value.begin.return_value = transaction
-
-    read_session = MagicMock()
-    read_session.__enter__.return_value = mock_session
-    read_session.__exit__.return_value = None
-    mock_factory.create_session.return_value = read_session
-    return mock_factory
+@pytest.fixture(autouse=True)
+def segment_mutations():
+    mutations = create_autospec(SegmentMutationService, instance=True, spec_set=True)
+    services = SimpleNamespace(knowledge=SimpleNamespace(segments=SimpleNamespace(mutations=mutations)))
+    with patch("controllers.service_api.dataset.segment.application_services", return_value=services):
+        yield mutations
 
 
 def _segment_response_dict(summary: str | None = None):
@@ -90,6 +88,31 @@ def _segment_response_dict(summary: str | None = None):
     }
 
 
+@pytest.fixture
+def mock_tenant() -> Tenant:
+    tenant = Tenant(name="Segment API Tenant")
+    tenant.id = str(uuid.uuid4())
+    return tenant
+
+
+def _account() -> Account:
+    return make_account(
+        account_id=str(uuid.uuid4()), name="Segment API User", email=f"segment-api-{uuid.uuid4()}@example.com"
+    )
+
+
+def _api_token(tenant_id: str) -> CachedApiToken:
+    return CachedApiToken(
+        id=str(uuid.uuid4()),
+        app_id=None,
+        tenant_id=tenant_id,
+        type="dataset",
+        token="test_token",
+        last_used_at=None,
+        created_at=None,
+    )
+
+
 def _child_chunk() -> ChildChunk:
     child_chunk = ChildChunk(
         tenant_id="tenant-1",
@@ -110,15 +133,21 @@ def _child_chunk() -> ChildChunk:
 
 def _document_for_dataset(
     dataset: Dataset, document_id: str = "doc-id", doc_form: str = IndexStructureType.PARAGRAPH_INDEX
-):
-    document = Mock()
-    document.id = document_id
-    document.dataset_id = dataset.id
-    document.tenant_id = dataset.tenant_id
-    document.indexing_status = "completed"
-    document.enabled = True
-    document.doc_form = doc_form
-    return document
+) -> Document:
+    return Document(
+        id=document_id,
+        dataset_id=dataset.id,
+        tenant_id=dataset.tenant_id,
+        position=1,
+        data_source_type="upload_file",
+        batch="batch-1",
+        name="Document",
+        created_from="api",
+        created_by="account-1",
+        indexing_status="completed",
+        enabled=True,
+        doc_form=doc_form,
+    )
 
 
 class TestSegmentCreatePayload:
@@ -137,27 +166,27 @@ class TestSegmentCreatePayload:
 
     def test_payload_with_none_segments(self):
         """Test payload with None segments is rejected."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for SegmentCreatePayload\\\nsegments"):
             SegmentCreatePayload.model_validate({"segments": None})
 
     def test_payload_with_empty_segments(self):
         """Test payload with empty segments list is rejected."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for SegmentCreatePayload\\\nsegments"):
             SegmentCreatePayload.model_validate({"segments": []})
 
     def test_payload_requires_segments(self):
         """Test payload requires a segments field."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for SegmentCreatePayload\\\nsegments"):
             SegmentCreatePayload.model_validate({})
 
     def test_payload_rejects_segment_without_content(self):
         """Test each segment requires content."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for SegmentCreatePayload\\\nsegments\\.0\\.content"):
             SegmentCreatePayload.model_validate({"segments": [{"answer": "Answer only"}]})
 
     def test_payload_rejects_blank_content(self):
         """Test content cannot be whitespace-only."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for SegmentCreateItemPayload\\\ncontent"):
             SegmentCreateItemPayload.model_validate({"content": "   "})
 
     def test_payload_with_complex_segment_data(self):
@@ -216,7 +245,7 @@ class TestChildChunkCreatePayload:
 
     def test_payload_requires_content(self):
         """Test that content is required."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for ChildChunkCreatePayload\\\ncontent"):
             ChildChunkCreatePayload.model_validate({})
 
     def test_payload_with_long_content(self):
@@ -256,12 +285,12 @@ class TestChildChunkListQuery:
 
     def test_query_limit_minimum(self):
         """Test query limit minimum validation."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for ChildChunkListQuery\\\nlimit"):
             ChildChunkListQuery.model_validate({"limit": 0})
 
     def test_query_page_minimum(self):
         """Test query page minimum validation."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for ChildChunkListQuery\\\npage"):
             ChildChunkListQuery.model_validate({"page": 0})
 
     def test_query_with_keyword(self):
@@ -392,7 +421,7 @@ class TestSegmentServiceMockedBehavior:
         return segment
 
     @patch.object(SegmentService, "multi_create_segment")
-    def test_create_segments_returns_list(self, mock_create, mock_dataset, mock_document):
+    def test_create_segments_returns_list(self, mock_create, mock_dataset, mock_document, unbound_session: Session):
         """Test segment creation returns list of segments."""
         mock_segments = [
             DocumentSegment(
@@ -417,13 +446,11 @@ class TestSegmentServiceMockedBehavior:
             ),
         ]
         mock_create.return_value = mock_segments
-        session = Mock()
-
         result = SegmentService.multi_create_segment(
             segments=[{"content": "Test"}, {"content": "Test 2"}],
             document=mock_document,
             dataset=mock_dataset,
-            session=session,
+            session=unbound_session,
         )
 
         assert result is not None
@@ -431,9 +458,19 @@ class TestSegmentServiceMockedBehavior:
         mock_create.assert_called_once()
 
     @patch.object(SegmentService, "get_segments")
-    def test_get_segments_returns_tuple(self, mock_get, mock_document):
+    def test_get_segments_returns_tuple(self, mock_get, mock_document, mock_segment, unbound_session: Session):
         """Test get_segments returns tuple of segments and count."""
-        mock_segments = [Mock(), Mock()]
+        second_segment = DocumentSegment(
+            tenant_id=mock_segment.tenant_id,
+            dataset_id=mock_segment.dataset_id,
+            document_id=mock_segment.document_id,
+            position=2,
+            content="Second segment",
+            word_count=2,
+            tokens=2,
+            created_by="account-id",
+        )
+        mock_segments = [mock_segment, second_segment]
         mock_get.return_value = (mock_segments, 2)
 
         segments, count = SegmentService.get_segments(
@@ -441,46 +478,43 @@ class TestSegmentServiceMockedBehavior:
             tenant_id=mock_document.tenant_id,
             page=1,
             limit=20,
-            session=MagicMock(),
+            session=unbound_session,
         )
 
         assert len(segments) == 2
         assert count == 2
 
     @patch.object(SegmentService, "get_segment_by_id")
-    def test_get_segment_by_id_returns_segment(self, mock_get, mock_segment):
+    def test_get_segment_by_id_returns_segment(self, mock_get, mock_segment, unbound_session: Session):
         """Test get_segment_by_id returns segment."""
         mock_get.return_value = mock_segment
-        session = Mock()
-
         result = SegmentService.get_segment_by_id(
             segment_id=mock_segment.id,
             tenant_id=mock_segment.tenant_id,
-            session=session,
+            session=unbound_session,
         )
 
         assert result == mock_segment
 
     @patch.object(SegmentService, "get_segment_by_id")
-    def test_get_segment_by_id_returns_none_when_not_found(self, mock_get):
+    def test_get_segment_by_id_returns_none_when_not_found(self, mock_get, unbound_session: Session):
         """Test get_segment_by_id returns None when not found."""
         mock_get.return_value = None
-        session = Mock()
-
         result = SegmentService.get_segment_by_id(
             segment_id=str(uuid.uuid4()),
             tenant_id=str(uuid.uuid4()),
-            session=session,
+            session=unbound_session,
         )
 
         assert result is None
 
     @patch.object(SegmentService, "delete_segment")
-    def test_delete_segment_called(self, mock_delete, mock_segment, mock_document, mock_dataset):
+    def test_delete_segment_called(
+        self, mock_delete, mock_segment, mock_document, mock_dataset, unbound_session: Session
+    ):
         """Test segment deletion is called."""
-        session = Mock()
-        SegmentService.delete_segment(mock_segment, mock_document, mock_dataset, session)
-        mock_delete.assert_called_once_with(mock_segment, mock_document, mock_dataset, session)
+        SegmentService.delete_segment(mock_segment, mock_document, mock_dataset, unbound_session)
+        mock_delete.assert_called_once_with(mock_segment, mock_document, mock_dataset, unbound_session)
 
 
 class TestChildChunkServiceMockedBehavior:
@@ -519,7 +553,9 @@ class TestChildChunkServiceMockedBehavior:
         return chunk
 
     @patch.object(SegmentService, "create_child_chunk")
-    def test_create_child_chunk_returns_chunk(self, mock_create, mock_segment, mock_child_chunk):
+    def test_create_child_chunk_returns_chunk(
+        self, mock_create, mock_segment, mock_child_chunk, unbound_session: Session
+    ):
         """Test child chunk creation returns chunk."""
         mock_create.return_value = mock_child_chunk
 
@@ -528,16 +564,20 @@ class TestChildChunkServiceMockedBehavior:
             segment=mock_segment,
             document=Document(),
             dataset=Dataset(),
-            session=Mock(),
+            session=unbound_session,
+            actor_id="account-id",
         )
 
         assert result == mock_child_chunk
 
     @patch.object(SegmentService, "get_child_chunks")
-    def test_get_child_chunks_returns_paginated_result(self, mock_get, mock_segment):
+    def test_get_child_chunks_returns_paginated_result(self, mock_get, mock_segment, unbound_session: Session):
         """Test get_child_chunks returns paginated result."""
         mock_pagination = Mock()
-        mock_pagination.items = [Mock(), Mock()]
+        first_chunk = _child_chunk()
+        second_chunk = _child_chunk()
+        second_chunk.id = "child-2"
+        mock_pagination.items = [first_chunk, second_chunk]
         mock_pagination.total = 2
         mock_pagination.pages = 1
         mock_get.return_value = mock_pagination
@@ -548,27 +588,27 @@ class TestChildChunkServiceMockedBehavior:
             dataset_id=str(uuid.uuid4()),
             page=1,
             limit=20,
-            session=MagicMock(),
+            session=unbound_session,
         )
 
         assert len(result.items) == 2
         assert result.total == 2
 
     @patch.object(SegmentService, "get_child_chunk_by_id")
-    def test_get_child_chunk_by_id_returns_chunk(self, mock_get, mock_child_chunk):
+    def test_get_child_chunk_by_id_returns_chunk(self, mock_get, mock_child_chunk, unbound_session: Session):
         """Test get_child_chunk_by_id returns chunk."""
         mock_get.return_value = mock_child_chunk
 
         result = SegmentService.get_child_chunk_by_id(
             child_chunk_id=mock_child_chunk.id,
             tenant_id=mock_child_chunk.tenant_id,
-            session=Mock(),
+            session=unbound_session,
         )
 
         assert result == mock_child_chunk
 
     @patch.object(SegmentService, "update_child_chunk")
-    def test_update_child_chunk_returns_updated_chunk(self, mock_update, mock_child_chunk):
+    def test_update_child_chunk_returns_updated_chunk(self, mock_update, mock_child_chunk, unbound_session: Session):
         """Test update_child_chunk returns updated chunk."""
         updated_chunk = ChildChunk(
             tenant_id="tenant-id",
@@ -597,7 +637,8 @@ class TestChildChunkServiceMockedBehavior:
             ),
             document=Document(),
             dataset=Dataset(),
-            session=Mock(),
+            session=unbound_session,
+            actor_id="account-id",
         )
 
         assert result.content == "Updated content"
@@ -693,7 +734,7 @@ class TestSegmentUpdatePayload:
     def test_payload_with_segment_args(self):
         """Test payload with SegmentUpdateArgs."""
         from controllers.service_api.dataset.segment import SegmentUpdatePayload
-        from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
+        from services.knowledge.entities.segments import SegmentUpdateArgs
 
         segment_args = SegmentUpdateArgs(content="Updated content")
         payload = SegmentUpdatePayload(segment=segment_args)
@@ -702,7 +743,7 @@ class TestSegmentUpdatePayload:
     def test_payload_with_answer_update(self):
         """Test payload with answer update."""
         from controllers.service_api.dataset.segment import SegmentUpdatePayload
-        from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
+        from services.knowledge.entities.segments import SegmentUpdateArgs
 
         segment_args = SegmentUpdateArgs(answer="Updated answer")
         payload = SegmentUpdatePayload(segment=segment_args)
@@ -711,7 +752,7 @@ class TestSegmentUpdatePayload:
     def test_payload_with_keywords_update(self):
         """Test payload with keywords update."""
         from controllers.service_api.dataset.segment import SegmentUpdatePayload
-        from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
+        from services.knowledge.entities.segments import SegmentUpdateArgs
 
         segment_args = SegmentUpdateArgs(keywords=["new", "keywords"])
         payload = SegmentUpdatePayload(segment=segment_args)
@@ -720,7 +761,7 @@ class TestSegmentUpdatePayload:
     def test_payload_with_enabled_toggle(self):
         """Test payload with enabled toggle."""
         from controllers.service_api.dataset.segment import SegmentUpdatePayload
-        from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
+        from services.knowledge.entities.segments import SegmentUpdateArgs
 
         segment_args = SegmentUpdateArgs(enabled=True)
         payload = SegmentUpdatePayload(segment=segment_args)
@@ -729,7 +770,7 @@ class TestSegmentUpdatePayload:
     def test_payload_with_regenerate_child_chunks(self):
         """Test payload with regenerate_child_chunks flag."""
         from controllers.service_api.dataset.segment import SegmentUpdatePayload
-        from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
+        from services.knowledge.entities.segments import SegmentUpdateArgs
 
         segment_args = SegmentUpdateArgs(regenerate_child_chunks=True)
         payload = SegmentUpdatePayload(segment=segment_args)
@@ -741,7 +782,7 @@ class TestSegmentUpdateArgs:
 
     def test_args_with_defaults(self):
         """Test args with default values."""
-        from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
+        from services.knowledge.entities.segments import SegmentUpdateArgs
 
         args = SegmentUpdateArgs()
         assert args.content is None
@@ -752,14 +793,14 @@ class TestSegmentUpdateArgs:
 
     def test_args_with_content(self):
         """Test args with content update."""
-        from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
+        from services.knowledge.entities.segments import SegmentUpdateArgs
 
         args = SegmentUpdateArgs(content="New content here")
         assert args.content == "New content here"
 
     def test_args_with_all_fields(self):
         """Test args with all fields populated."""
-        from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
+        from services.knowledge.entities.segments import SegmentUpdateArgs
 
         args = SegmentUpdateArgs(
             content="Full content",
@@ -784,7 +825,7 @@ class TestSegmentCreateArgs:
 
     def test_args_with_defaults(self):
         """Test args with default values."""
-        from services.entities.knowledge_entities.knowledge_entities import SegmentCreateArgs
+        from services.knowledge.entities.knowledge_entities import SegmentCreateArgs
 
         args = SegmentCreateArgs()
         assert args.content is None
@@ -794,7 +835,7 @@ class TestSegmentCreateArgs:
 
     def test_args_with_content_and_answer(self):
         """Test args with content and answer for Q&A mode."""
-        from services.entities.knowledge_entities.knowledge_entities import SegmentCreateArgs
+        from services.knowledge.entities.knowledge_entities import SegmentCreateArgs
 
         args = SegmentCreateArgs(content="Question?", answer="Answer!")
         assert args.content == "Question?"
@@ -802,7 +843,7 @@ class TestSegmentCreateArgs:
 
     def test_args_with_keywords(self):
         """Test args with keywords for search indexing."""
-        from services.entities.knowledge_entities.knowledge_entities import SegmentCreateArgs
+        from services.knowledge.entities.knowledge_entities import SegmentCreateArgs
 
         args = SegmentCreateArgs(content="Test content", keywords=["machine learning", "AI", "neural networks"])
         assert args.keywords is not None
@@ -814,7 +855,7 @@ class TestChildChunkUpdateArgs:
 
     def test_args_with_content_only(self):
         """Test args with content only."""
-        from services.entities.knowledge_entities.knowledge_entities import ChildChunkUpdateArgs
+        from services.knowledge.entities.segments import ChildChunkUpdateArgs
 
         args = ChildChunkUpdateArgs(content="Updated chunk content")
         assert args.content == "Updated chunk content"
@@ -822,7 +863,7 @@ class TestChildChunkUpdateArgs:
 
     def test_args_with_id_and_content(self):
         """Test args with both id and content."""
-        from services.entities.knowledge_entities.knowledge_entities import ChildChunkUpdateArgs
+        from services.knowledge.entities.segments import ChildChunkUpdateArgs
 
         chunk_id = str(uuid.uuid4())
         args = ChildChunkUpdateArgs(id=chunk_id, content="Updated content")
@@ -941,21 +982,27 @@ class TestSegmentPagination:
         assert limit >= 1
         assert limit <= 100
 
-    def test_has_more_calculation(self):
-        """Test has_more pagination flag calculation."""
-        segments_count = 20
+    def test_has_more_false_on_last_page_exact_limit(self):
+        """Last page that fills the limit exactly must not claim more rows."""
+        page = 1
         limit = 20
+        total = 20
+        effective_limit = min(limit, 100)
 
-        has_more = segments_count == limit
-        assert has_more is True
-
-    def test_no_more_when_incomplete_page(self):
-        """Test has_more is False for incomplete page."""
-        segments_count = 15
-        limit = 20
-
-        has_more = segments_count == limit
+        has_more = page * effective_limit < total
+        assert effective_limit == 20
         assert has_more is False
+
+    def test_has_more_true_when_limit_exceeds_cap_with_remaining_rows(self):
+        """Capped pages must still report remaining rows after the first 100."""
+        page = 1
+        limit = 200
+        total = 150
+        effective_limit = min(limit, 100)
+
+        has_more = page * effective_limit < total
+        assert effective_limit == 100
+        assert has_more is True
 
 
 # =============================================================================
@@ -977,22 +1024,34 @@ class TestSegmentPagination:
 # =============================================================================
 
 
-class TestSegmentApiGet:
+class SQLiteEndpointTest:
+    session: Session
+
+    @pytest.fixture(autouse=True)
+    def _use_sqlite_session(self, sqlite_session: Session) -> None:
+        self.session = sqlite_session
+
+    def _persist_dataset(self, dataset: Dataset, tenant_id: str) -> None:
+        dataset.tenant_id = tenant_id
+        dataset.created_by = "account-1"
+        self.session.add(dataset)
+        self.session.commit()
+
+
+class TestSegmentApiGet(SQLiteEndpointTest):
     """Test suite for SegmentApi.get() endpoint.
 
     ``get`` has no billing decorators but calls
     ``current_account_with_tenant()`` and response serialization.
     """
 
-    @patch("controllers.service_api.dataset.segment.segment_responses_with_summaries")
-    @patch("controllers.service_api.dataset.segment.SummaryIndexService.get_segments_summaries")
+    @patch("controllers.service_api.dataset.segment.load_segment_details")
+    @patch("controllers.service_api.dataset.segment.SummaryIndexAdapter.get_segments_summaries")
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
-    @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
     def test_list_segments_success(
         self,
-        session_factory,
         mock_account_fn,
         mock_doc_svc,
         mock_seg_svc,
@@ -1005,8 +1064,8 @@ class TestSegmentApiGet:
     ):
         """Test successful segment list retrieval."""
         # Arrange
-        mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        session_factory.session.scalar.return_value = mock_dataset
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
+        self._persist_dataset(mock_dataset, mock_tenant.id)
         mock_doc_svc.get_document.return_value = _document_for_dataset(
             mock_dataset, doc_form=IndexStructureType.PARAGRAPH_INDEX
         )
@@ -1027,15 +1086,99 @@ class TestSegmentApiGet:
         assert "data" in response
         assert "total" in response
         assert response["page"] == 1
-        mock_dump_segments.assert_called_once_with([mock_segment], {}, session=session_factory.session)
+        mock_dump_segments.assert_called_once_with([mock_segment], {}, session=ANY)
+        assert isinstance(mock_dump_segments.call_args.kwargs["session"], Session)
+
+    @patch("controllers.service_api.dataset.segment.load_segment_details")
+    @patch("controllers.service_api.dataset.segment.SummaryIndexAdapter.get_segments_summaries")
+    @patch("controllers.service_api.dataset.segment.SegmentService")
+    @patch("controllers.service_api.dataset.segment.DocumentService")
+    @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
+    def test_list_segments_has_more_false_on_last_page_exact_limit(
+        self,
+        mock_account_fn,
+        mock_doc_svc,
+        mock_seg_svc,
+        mock_get_summaries,
+        mock_dump_segments,
+        app: Flask,
+        mock_tenant,
+        mock_dataset,
+        mock_segment,
+    ):
+        """A full last page must set has_more false instead of forcing another fetch."""
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
+        self._persist_dataset(mock_dataset, mock_tenant.id)
+        mock_doc_svc.get_document.return_value = _document_for_dataset(
+            mock_dataset, doc_form=IndexStructureType.PARAGRAPH_INDEX
+        )
+        page_size = 20
+        segments = [mock_segment] * page_size
+        mock_seg_svc.get_segments.return_value = (segments, page_size)
+        mock_get_summaries.return_value = {}
+        mock_dump_segments.return_value = [_segment_response_dict() for _ in range(page_size)]
+
+        with app.test_request_context(
+            f"/datasets/{mock_dataset.id}/documents/doc-id/segments?page=1&limit={page_size}",
+            method="GET",
+        ):
+            api = SegmentApi()
+            response, status = api.get(tenant_id=mock_tenant.id, dataset_id=mock_dataset.id, document_id="doc-id")
+
+        assert status == 200
+        assert response["has_more"] is False
+        assert response["limit"] == page_size
+        assert response["total"] == page_size
+        assert response["page"] == 1
+
+    @patch("controllers.service_api.dataset.segment.load_segment_details")
+    @patch("controllers.service_api.dataset.segment.SummaryIndexAdapter.get_segments_summaries")
+    @patch("controllers.service_api.dataset.segment.SegmentService")
+    @patch("controllers.service_api.dataset.segment.DocumentService")
+    @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
+    def test_list_segments_has_more_true_when_limit_exceeds_cap(
+        self,
+        mock_account_fn,
+        mock_doc_svc,
+        mock_seg_svc,
+        mock_get_summaries,
+        mock_dump_segments,
+        app: Flask,
+        mock_tenant,
+        mock_dataset,
+        mock_segment,
+    ):
+        """limit>100 still reports remaining rows after the server cap of 100."""
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
+        self._persist_dataset(mock_dataset, mock_tenant.id)
+        mock_doc_svc.get_document.return_value = _document_for_dataset(
+            mock_dataset, doc_form=IndexStructureType.PARAGRAPH_INDEX
+        )
+        returned_count = 100
+        total = 150
+        segments = [mock_segment] * returned_count
+        mock_seg_svc.get_segments.return_value = (segments, total)
+        mock_get_summaries.return_value = {}
+        mock_dump_segments.return_value = [_segment_response_dict() for _ in range(returned_count)]
+
+        with app.test_request_context(
+            f"/datasets/{mock_dataset.id}/documents/doc-id/segments?page=1&limit=200",
+            method="GET",
+        ):
+            api = SegmentApi()
+            response, status = api.get(tenant_id=mock_tenant.id, dataset_id=mock_dataset.id, document_id="doc-id")
+
+        assert status == 200
+        assert response["has_more"] is True
+        assert response["limit"] == 100
+        assert response["total"] == total
+        assert response["page"] == 1
 
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
-    @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
-    def test_list_segments_dataset_not_found(self, session_factory, mock_account_fn, app, mock_tenant, mock_dataset):
+    def test_list_segments_dataset_not_found(self, mock_account_fn, app, mock_tenant, mock_dataset):
         """Test 404 when dataset not found."""
         # Arrange
-        mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        session_factory.session.scalar.return_value = None
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
 
         # Act & Assert
         with app.test_request_context(
@@ -1048,14 +1191,11 @@ class TestSegmentApiGet:
 
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
-    @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
-    def test_list_segments_document_not_found(
-        self, session_factory, mock_account_fn, mock_doc_svc, app, mock_tenant, mock_dataset
-    ):
+    def test_list_segments_document_not_found(self, mock_account_fn, mock_doc_svc, app, mock_tenant, mock_dataset):
         """Test 404 when document not found."""
         # Arrange
-        mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        session_factory.session.scalar.return_value = mock_dataset
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
+        self._persist_dataset(mock_dataset, mock_tenant.id)
         mock_doc_svc.get_document.return_value = None
 
         # Act & Assert
@@ -1068,7 +1208,7 @@ class TestSegmentApiGet:
                 api.get(tenant_id=mock_tenant.id, dataset_id=mock_dataset.id, document_id="doc-id")
 
 
-class TestSegmentApiPost:
+class TestSegmentApiPost(SQLiteEndpointTest):
     """Test suite for SegmentApi.post() endpoint.
 
     ``post`` is wrapped by ``@cloud_edition_billing_resource_check``,
@@ -1082,12 +1222,9 @@ class TestSegmentApiPost:
     @staticmethod
     def _setup_billing_mocks(mock_validate_token, mock_feature_svc, tenant_id: str):
         """Configure mocks to neutralise billing/auth decorators."""
-        mock_api_token = Mock()
-        mock_api_token.tenant_id = tenant_id
-        mock_validate_token.return_value = mock_api_token
+        mock_validate_token.return_value = _api_token(tenant_id)
 
         mock_features = Mock()
-        mock_features.billing.enabled = False
         mock_feature_svc.get_features.return_value = mock_features
 
         mock_vector_space = Mock()
@@ -1099,19 +1236,17 @@ class TestSegmentApiPost:
         mock_rate_limit.enabled = False
         mock_feature_svc.get_knowledge_rate_limit.return_value = mock_rate_limit
 
-    @patch("controllers.service_api.dataset.segment.segment_responses_with_summaries")
-    @patch("controllers.service_api.dataset.segment.SummaryIndexService.get_segments_summaries")
+    @patch("controllers.service_api.dataset.segment.load_segment_details")
+    @patch("controllers.service_api.dataset.segment.SummaryIndexAdapter.get_segments_summaries")
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
-    @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     def test_create_segments_success(
         self,
         mock_validate_token,
         mock_feature_svc,
-        session_factory,
         mock_account_fn,
         mock_doc_svc,
         mock_seg_svc,
@@ -1125,10 +1260,10 @@ class TestSegmentApiPost:
         """Test successful segment creation."""
         # Arrange — neutralise billing decorators
         self._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
-        mock_account_fn.return_value = (Mock(), mock_tenant.id)
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
 
         mock_dataset.indexing_technique = "economy"
-        session_factory.session.scalar.return_value = mock_dataset
+        self._persist_dataset(mock_dataset, mock_tenant.id)
 
         mock_doc = _document_for_dataset(mock_dataset)
         mock_doc.indexing_status = "completed"
@@ -1161,18 +1296,17 @@ class TestSegmentApiPost:
         assert status == 200
         assert "data" in response
         assert "doc_form" in response
-        mock_dump_segments.assert_called_once_with([mock_segment], {}, session=session_factory.session)
+        mock_dump_segments.assert_called_once_with([mock_segment], {}, session=ANY)
+        assert isinstance(mock_dump_segments.call_args.kwargs["session"], Session)
 
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
-    @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     def test_create_segments_missing_segments(
         self,
         mock_validate_token,
         mock_feature_svc,
-        session_factory,
         mock_account_fn,
         mock_doc_svc,
         app: Flask,
@@ -1182,10 +1316,10 @@ class TestSegmentApiPost:
         """Test 400 error when segments field is missing."""
         # Arrange — neutralise billing decorators
         self._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
-        mock_account_fn.return_value = (Mock(), mock_tenant.id)
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
 
         mock_dataset.indexing_technique = "economy"
-        session_factory.session.scalar.return_value = mock_dataset
+        self._persist_dataset(mock_dataset, mock_tenant.id)
 
         mock_doc = _document_for_dataset(mock_dataset)
         mock_doc.indexing_status = "completed"
@@ -1212,14 +1346,12 @@ class TestSegmentApiPost:
 
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
-    @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     def test_create_segments_document_not_completed(
         self,
         mock_validate_token,
         mock_feature_svc,
-        session_factory,
         mock_account_fn,
         mock_doc_svc,
         app: Flask,
@@ -1229,9 +1361,9 @@ class TestSegmentApiPost:
         """Test 404 when document indexing is not completed."""
         # Arrange — neutralise billing decorators
         self._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
-        mock_account_fn.return_value = (Mock(), mock_tenant.id)
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
 
-        session_factory.session.scalar.return_value = mock_dataset
+        self._persist_dataset(mock_dataset, mock_tenant.id)
 
         mock_doc = _document_for_dataset(mock_dataset)
         mock_doc.indexing_status = "indexing"  # Not completed
@@ -1253,7 +1385,7 @@ class TestSegmentApiPost:
                 )
 
 
-class TestDatasetSegmentApiDelete:
+class TestDatasetSegmentApiDelete(SQLiteEndpointTest):
     """Test suite for DatasetSegmentApi.delete() endpoint.
 
     ``delete`` is wrapped by ``@cloud_edition_billing_rate_limit_check``
@@ -1265,10 +1397,8 @@ class TestDatasetSegmentApiDelete:
     @patch("controllers.service_api.dataset.segment.DatasetService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
-    @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
     def test_delete_segment_success(
         self,
-        session_factory,
         mock_account_fn,
         mock_doc_svc,
         mock_dataset_svc,
@@ -1280,8 +1410,8 @@ class TestDatasetSegmentApiDelete:
     ):
         """Test successful segment deletion."""
         # Arrange
-        mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        session_factory.session.scalar.return_value = mock_dataset
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
+        self._persist_dataset(mock_dataset, mock_tenant.id)
         mock_dataset_svc.check_dataset_model_setting.return_value = None
 
         mock_doc = _document_for_dataset(mock_dataset)
@@ -1299,7 +1429,7 @@ class TestDatasetSegmentApiDelete:
             delete = inspect.unwrap(api.delete)
             response = delete(
                 api,
-                session_factory.session,
+                self.session,
                 tenant_id=mock_tenant.id,
                 dataset_id=mock_dataset.id,
                 document_id="doc-id",
@@ -1309,16 +1439,14 @@ class TestDatasetSegmentApiDelete:
         # Assert
         assert response == ("", 204)
         mock_seg_svc.delete_segment.assert_called_once_with(
-            mock_segment, mock_doc, mock_dataset, session_factory.session
+            mock_segment, mock_doc, mock_dataset, self.session, mutations=ANY
         )
 
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
-    @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
     def test_delete_segment_not_found(
         self,
-        session_factory,
         mock_account_fn,
         mock_doc_svc,
         mock_seg_svc,
@@ -1328,8 +1456,8 @@ class TestDatasetSegmentApiDelete:
     ):
         """Test 404 when segment not found."""
         # Arrange
-        mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        session_factory.session.scalar.return_value = mock_dataset
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
+        self._persist_dataset(mock_dataset, mock_tenant.id)
 
         mock_doc = _document_for_dataset(mock_dataset)
         mock_doc.indexing_status = "completed"
@@ -1349,7 +1477,7 @@ class TestDatasetSegmentApiDelete:
             with pytest.raises(NotFound):
                 delete(
                     api,
-                    session_factory.session,
+                    self.session,
                     tenant_id=mock_tenant.id,
                     dataset_id=mock_dataset.id,
                     document_id="doc-id",
@@ -1359,10 +1487,8 @@ class TestDatasetSegmentApiDelete:
     @patch("controllers.service_api.dataset.segment.DatasetService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
-    @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
     def test_delete_segment_dataset_not_found(
         self,
-        session_factory,
         mock_account_fn,
         mock_doc_svc,
         mock_dataset_svc,
@@ -1372,8 +1498,7 @@ class TestDatasetSegmentApiDelete:
     ):
         """Test 404 when dataset not found for delete."""
         # Arrange
-        mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        session_factory.session.scalar.return_value = None
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
 
         # Act & Assert
         with app.test_request_context(
@@ -1385,7 +1510,7 @@ class TestDatasetSegmentApiDelete:
             with pytest.raises(NotFound):
                 delete(
                     api,
-                    session_factory.session,
+                    self.session,
                     tenant_id=mock_tenant.id,
                     dataset_id=mock_dataset.id,
                     document_id="doc-id",
@@ -1395,10 +1520,8 @@ class TestDatasetSegmentApiDelete:
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.DatasetService")
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
-    @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
     def test_delete_segment_document_not_found(
         self,
-        session_factory,
         mock_account_fn,
         mock_dataset_svc,
         mock_doc_svc,
@@ -1408,8 +1531,8 @@ class TestDatasetSegmentApiDelete:
     ):
         """Test 404 when document not found for delete."""
         # Arrange
-        mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        session_factory.session.scalar.return_value = mock_dataset
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
+        self._persist_dataset(mock_dataset, mock_tenant.id)
         mock_dataset_svc.check_dataset_model_setting.return_value = None
         mock_doc_svc.get_document.return_value = None
 
@@ -1423,7 +1546,7 @@ class TestDatasetSegmentApiDelete:
             with pytest.raises(NotFound):
                 delete(
                     api,
-                    session_factory.session,
+                    self.session,
                     tenant_id=mock_tenant.id,
                     dataset_id=mock_dataset.id,
                     document_id="doc-id",
@@ -1431,7 +1554,7 @@ class TestDatasetSegmentApiDelete:
                 )
 
 
-class TestDatasetSegmentApiUpdate:
+class TestDatasetSegmentApiUpdate(SQLiteEndpointTest):
     """Test suite for DatasetSegmentApi.post() (update segment) endpoint.
 
     ``post`` is wrapped by ``@cloud_edition_billing_resource_check`` and
@@ -1444,11 +1567,8 @@ class TestDatasetSegmentApiUpdate:
     @staticmethod
     def _setup_billing_mocks(mock_validate_token, mock_feature_svc, tenant_id: str):
         """Configure mocks to neutralise billing/auth decorators."""
-        mock_api_token = Mock()
-        mock_api_token.tenant_id = tenant_id
-        mock_validate_token.return_value = mock_api_token
+        mock_validate_token.return_value = _api_token(tenant_id)
         mock_features = Mock()
-        mock_features.billing.enabled = False
         mock_feature_svc.get_features.return_value = mock_features
         mock_vector_space = Mock()
         mock_vector_space.limit = 10
@@ -1458,20 +1578,18 @@ class TestDatasetSegmentApiUpdate:
         mock_rate_limit.enabled = False
         mock_feature_svc.get_knowledge_rate_limit.return_value = mock_rate_limit
 
-    @patch("controllers.service_api.dataset.segment.segment_response_with_summary")
-    @patch("controllers.service_api.dataset.segment.SummaryIndexService.get_segment_summary")
+    @patch("controllers.service_api.dataset.segment.load_segment_detail")
+    @patch("controllers.service_api.dataset.segment.SummaryIndexAdapter.get_segment_summary")
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.DatasetService")
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
-    @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     def test_update_segment_success(
         self,
         mock_validate_token,
         mock_feature_svc,
-        session_factory,
         mock_account_fn,
         mock_dataset_svc,
         mock_doc_svc,
@@ -1485,15 +1603,24 @@ class TestDatasetSegmentApiUpdate:
     ):
         """Test successful segment update."""
         self._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
-        mock_account_fn.return_value = (Mock(), mock_tenant.id)
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
         mock_dataset.indexing_technique = "economy"
-        session_factory.session.scalar.return_value = mock_dataset
+        self._persist_dataset(mock_dataset, mock_tenant.id)
         mock_dataset_svc.check_dataset_model_setting.return_value = None
         mock_doc_svc.get_document.return_value = _document_for_dataset(
             mock_dataset, doc_form=IndexStructureType.PARAGRAPH_INDEX
         )
         mock_seg_svc.get_segment_by_ref.return_value = mock_segment
-        updated = Mock()
+        updated = DocumentSegment(
+            tenant_id=mock_tenant.id,
+            dataset_id=mock_dataset.id,
+            document_id="doc-id",
+            position=1,
+            content="updated content",
+            word_count=2,
+            tokens=2,
+            created_by="account-1",
+        )
         updated.id = "updated-seg"
         mock_seg_svc.update_segment.return_value = updated
         mock_get_summary.return_value = None
@@ -1516,19 +1643,18 @@ class TestDatasetSegmentApiUpdate:
         assert status == 200
         assert "data" in response
         mock_seg_svc.update_segment.assert_called_once()
-        mock_dump_segment.assert_called_once_with(updated, None, session=session_factory.session)
+        mock_dump_segment.assert_called_once_with(updated, None, session=ANY)
+        assert isinstance(mock_dump_segment.call_args.kwargs["session"], Session)
 
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.DatasetService")
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
-    @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     def test_update_segment_dataset_not_found(
         self,
         mock_validate_token,
         mock_feature_svc,
-        session_factory,
         mock_account_fn,
         mock_dataset_svc,
         mock_doc_svc,
@@ -1538,8 +1664,7 @@ class TestDatasetSegmentApiUpdate:
     ):
         """Test 404 when dataset not found for update."""
         self._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
-        mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        session_factory.session.scalar.return_value = None
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
 
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-id",
@@ -1560,14 +1685,12 @@ class TestDatasetSegmentApiUpdate:
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.DatasetService")
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
-    @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     def test_update_segment_not_found(
         self,
         mock_validate_token,
         mock_feature_svc,
-        session_factory,
         mock_account_fn,
         mock_dataset_svc,
         mock_doc_svc,
@@ -1578,9 +1701,9 @@ class TestDatasetSegmentApiUpdate:
     ):
         """Test 404 when segment not found for update."""
         self._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
-        mock_account_fn.return_value = (Mock(), mock_tenant.id)
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
         mock_dataset.indexing_technique = "economy"
-        session_factory.session.scalar.return_value = mock_dataset
+        self._persist_dataset(mock_dataset, mock_tenant.id)
         mock_dataset_svc.check_dataset_model_setting.return_value = None
         mock_doc_svc.get_document.return_value = _document_for_dataset(mock_dataset)
         mock_seg_svc.get_segment_by_ref.return_value = None
@@ -1601,23 +1724,21 @@ class TestDatasetSegmentApiUpdate:
                 )
 
 
-class TestDatasetSegmentApiGetSingle:
+class TestDatasetSegmentApiGetSingle(SQLiteEndpointTest):
     """Test suite for DatasetSegmentApi.get() (single segment) endpoint.
 
     ``get`` has no billing decorators but calls
     ``current_account_with_tenant()`` and response serialization.
     """
 
-    @patch("controllers.service_api.dataset.segment.segment_response_with_summary")
-    @patch("controllers.service_api.dataset.segment.SummaryIndexService.get_segment_summary")
+    @patch("controllers.service_api.dataset.segment.load_segment_detail")
+    @patch("controllers.service_api.dataset.segment.SummaryIndexAdapter.get_segment_summary")
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.DatasetService")
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
-    @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
     def test_get_single_segment_success(
         self,
-        session_factory,
         mock_account_fn,
         mock_dataset_svc,
         mock_doc_svc,
@@ -1630,8 +1751,8 @@ class TestDatasetSegmentApiGetSingle:
         mock_segment,
     ):
         """Test successful single segment retrieval."""
-        mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        session_factory.session.scalar.return_value = mock_dataset
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
+        self._persist_dataset(mock_dataset, mock_tenant.id)
         mock_dataset_svc.check_dataset_model_setting.return_value = None
         mock_doc = _document_for_dataset(mock_dataset, doc_form=IndexStructureType.PARAGRAPH_INDEX)
         mock_doc_svc.get_document.return_value = mock_doc
@@ -1654,18 +1775,17 @@ class TestDatasetSegmentApiGetSingle:
         assert status == 200
         assert "data" in response
         assert response["doc_form"] == IndexStructureType.PARAGRAPH_INDEX
-        mock_dump_segment.assert_called_once_with(mock_segment, None, session=session_factory.session)
+        mock_dump_segment.assert_called_once_with(mock_segment, None, session=ANY)
+        assert isinstance(mock_dump_segment.call_args.kwargs["session"], Session)
 
-    @patch("controllers.service_api.dataset.segment.segment_response_with_summary")
-    @patch("controllers.service_api.dataset.segment.SummaryIndexService.get_segment_summary")
+    @patch("controllers.service_api.dataset.segment.load_segment_detail")
+    @patch("controllers.service_api.dataset.segment.SummaryIndexAdapter.get_segment_summary")
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.DatasetService")
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
-    @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
     def test_get_single_segment_includes_summary(
         self,
-        session_factory,
         mock_account_fn,
         mock_dataset_svc,
         mock_doc_svc,
@@ -1677,14 +1797,19 @@ class TestDatasetSegmentApiGetSingle:
         mock_dataset,
         mock_segment,
     ):
-        """Test that single segment response includes summary content from SummaryIndexService."""
-        mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        session_factory.session.scalar.return_value = mock_dataset
+        """Test that single segment response includes summary content from SummaryIndexAdapter."""
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
+        self._persist_dataset(mock_dataset, mock_tenant.id)
         mock_dataset_svc.check_dataset_model_setting.return_value = None
         mock_doc = _document_for_dataset(mock_dataset, doc_form=IndexStructureType.PARAGRAPH_INDEX)
         mock_doc_svc.get_document.return_value = mock_doc
         mock_seg_svc.get_segment_by_ref.return_value = mock_segment
-        mock_summary_record = Mock(summary_content="This is the segment summary")
+        mock_summary_record = DocumentSegmentSummary(
+            dataset_id=mock_dataset.id,
+            document_id="doc-id",
+            chunk_id=mock_segment.id,
+            summary_content="This is the segment summary",
+        )
         mock_get_summary.return_value = mock_summary_record
         mock_dump_segment.return_value = _segment_response_dict("This is the segment summary")
 
@@ -1705,22 +1830,20 @@ class TestDatasetSegmentApiGetSingle:
         mock_dump_segment.assert_called_once_with(
             mock_segment,
             "This is the segment summary",
-            session=session_factory.session,
+            session=ANY,
         )
+        assert isinstance(mock_dump_segment.call_args.kwargs["session"], Session)
 
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
-    @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
     def test_get_single_segment_dataset_not_found(
         self,
-        session_factory,
         mock_account_fn,
         app: Flask,
         mock_tenant,
         mock_dataset,
     ):
         """Test 404 when dataset not found."""
-        mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        session_factory.session.scalar.return_value = None
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
 
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-id",
@@ -1738,10 +1861,8 @@ class TestDatasetSegmentApiGetSingle:
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.DatasetService")
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
-    @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
     def test_get_single_segment_document_not_found(
         self,
-        session_factory,
         mock_account_fn,
         mock_dataset_svc,
         mock_doc_svc,
@@ -1750,8 +1871,8 @@ class TestDatasetSegmentApiGetSingle:
         mock_dataset,
     ):
         """Test 404 when document not found."""
-        mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        session_factory.session.scalar.return_value = mock_dataset
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
+        self._persist_dataset(mock_dataset, mock_tenant.id)
         mock_dataset_svc.check_dataset_model_setting.return_value = None
         mock_doc_svc.get_document.return_value = None
 
@@ -1772,10 +1893,8 @@ class TestDatasetSegmentApiGetSingle:
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.DatasetService")
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
-    @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
     def test_get_single_segment_segment_not_found(
         self,
-        session_factory,
         mock_account_fn,
         mock_dataset_svc,
         mock_doc_svc,
@@ -1785,8 +1904,8 @@ class TestDatasetSegmentApiGetSingle:
         mock_dataset,
     ):
         """Test 404 when segment not found."""
-        mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        session_factory.session.scalar.return_value = mock_dataset
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
+        self._persist_dataset(mock_dataset, mock_tenant.id)
         mock_dataset_svc.check_dataset_model_setting.return_value = None
         mock_doc_svc.get_document.return_value = _document_for_dataset(mock_dataset)
         mock_seg_svc.get_segment_by_ref.return_value = None
@@ -1805,7 +1924,7 @@ class TestDatasetSegmentApiGetSingle:
                 )
 
 
-class TestChildChunkApiGet:
+class TestChildChunkApiGet(SQLiteEndpointTest):
     """Test suite for ChildChunkApi.get() endpoint.
 
     ``get`` has no billing decorators but calls
@@ -1815,22 +1934,21 @@ class TestChildChunkApiGet:
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
-    @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
     def test_list_child_chunks_success(
         self,
-        session_factory,
         mock_account_fn,
         mock_doc_svc,
         mock_seg_svc,
         app: Flask,
         mock_tenant,
         mock_dataset,
+        mock_segment,
     ):
         """Test successful child chunk list retrieval."""
-        mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        session_factory.session.scalar.return_value = mock_dataset
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
+        self._persist_dataset(mock_dataset, mock_tenant.id)
         mock_doc_svc.get_document.return_value = _document_for_dataset(mock_dataset)
-        mock_seg_svc.get_segment_by_ref.return_value = Mock()
+        mock_seg_svc.get_segment_by_ref.return_value = mock_segment
 
         mock_pagination = Mock()
         mock_pagination.items = [_child_chunk(), _child_chunk()]
@@ -1855,18 +1973,15 @@ class TestChildChunkApiGet:
         assert response["page"] == 1
 
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
-    @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
     def test_list_child_chunks_dataset_not_found(
         self,
-        session_factory,
         mock_account_fn,
         app: Flask,
         mock_tenant,
         mock_dataset,
     ):
         """Test 404 when dataset not found."""
-        mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        session_factory.session.scalar.return_value = None
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
 
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-id/child_chunks",
@@ -1883,10 +1998,8 @@ class TestChildChunkApiGet:
 
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
-    @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
     def test_list_child_chunks_document_not_found(
         self,
-        session_factory,
         mock_account_fn,
         mock_doc_svc,
         app: Flask,
@@ -1894,8 +2007,8 @@ class TestChildChunkApiGet:
         mock_dataset,
     ):
         """Test 404 when document not found."""
-        mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        session_factory.session.scalar.return_value = mock_dataset
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
+        self._persist_dataset(mock_dataset, mock_tenant.id)
         mock_doc_svc.get_document.return_value = None
 
         with app.test_request_context(
@@ -1914,10 +2027,8 @@ class TestChildChunkApiGet:
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
-    @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
     def test_list_child_chunks_segment_not_found(
         self,
-        session_factory,
         mock_account_fn,
         mock_doc_svc,
         mock_seg_svc,
@@ -1926,8 +2037,8 @@ class TestChildChunkApiGet:
         mock_dataset,
     ):
         """Test 404 when segment not found."""
-        mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        session_factory.session.scalar.return_value = mock_dataset
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
+        self._persist_dataset(mock_dataset, mock_tenant.id)
         mock_doc_svc.get_document.return_value = _document_for_dataset(mock_dataset)
         mock_seg_svc.get_segment_by_ref.return_value = None
 
@@ -1945,7 +2056,7 @@ class TestChildChunkApiGet:
                 )
 
 
-class TestChildChunkApiPost:
+class TestChildChunkApiPost(SQLiteEndpointTest):
     """Test suite for ChildChunkApi.post() endpoint.
 
     ``post`` has billing decorators; we patch ``validate_and_get_api_token``
@@ -1954,11 +2065,8 @@ class TestChildChunkApiPost:
 
     @staticmethod
     def _setup_billing_mocks(mock_validate_token, mock_feature_svc, tenant_id: str):
-        mock_api_token = Mock()
-        mock_api_token.tenant_id = tenant_id
-        mock_validate_token.return_value = mock_api_token
+        mock_validate_token.return_value = _api_token(tenant_id)
         mock_features = Mock()
-        mock_features.billing.enabled = False
         mock_feature_svc.get_features.return_value = mock_features
         mock_vector_space = Mock()
         mock_vector_space.limit = 10
@@ -1971,28 +2079,27 @@ class TestChildChunkApiPost:
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
-    @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     def test_create_child_chunk_success(
         self,
         mock_validate_token,
         mock_feature_svc,
-        session_factory,
         mock_account_fn,
         mock_doc_svc,
         mock_seg_svc,
         app: Flask,
         mock_tenant,
         mock_dataset,
+        mock_segment,
     ):
         """Test successful child chunk creation."""
         self._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
-        mock_account_fn.return_value = (Mock(), mock_tenant.id)
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
         mock_dataset.indexing_technique = "economy"
-        session_factory.session.scalar.return_value = mock_dataset
+        self._persist_dataset(mock_dataset, mock_tenant.id)
         mock_doc_svc.get_document.return_value = _document_for_dataset(mock_dataset)
-        mock_seg_svc.get_segment_by_ref.return_value = Mock()
+        mock_seg_svc.get_segment_by_ref.return_value = mock_segment
         mock_child = _child_chunk()
         mock_seg_svc.create_child_chunk.return_value = mock_child
 
@@ -2014,14 +2121,12 @@ class TestChildChunkApiPost:
         assert "data" in response
 
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
-    @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     def test_create_child_chunk_dataset_not_found(
         self,
         mock_validate_token,
         mock_feature_svc,
-        session_factory,
         mock_account_fn,
         app: Flask,
         mock_tenant,
@@ -2029,8 +2134,7 @@ class TestChildChunkApiPost:
     ):
         """Test 404 when dataset not found."""
         self._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
-        mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        session_factory.session.scalar.return_value = None
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
 
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-id/child_chunks",
@@ -2050,14 +2154,12 @@ class TestChildChunkApiPost:
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
-    @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     def test_create_child_chunk_segment_not_found(
         self,
         mock_validate_token,
         mock_feature_svc,
-        session_factory,
         mock_account_fn,
         mock_doc_svc,
         mock_seg_svc,
@@ -2067,8 +2169,8 @@ class TestChildChunkApiPost:
     ):
         """Test 404 when segment not found."""
         self._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
-        mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        session_factory.session.scalar.return_value = mock_dataset
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
+        self._persist_dataset(mock_dataset, mock_tenant.id)
         mock_doc_svc.get_document.return_value = _document_for_dataset(mock_dataset)
         mock_seg_svc.get_segment_by_ref.return_value = None
 
@@ -2088,7 +2190,7 @@ class TestChildChunkApiPost:
                 )
 
 
-class TestDatasetChildChunkApiDelete:
+class TestDatasetChildChunkApiDelete(SQLiteEndpointTest):
     """Test suite for DatasetChildChunkApi.delete() endpoint.
 
     ``delete`` is wrapped by ``@cloud_edition_billing_knowledge_limit_check``
@@ -2100,34 +2202,33 @@ class TestDatasetChildChunkApiDelete:
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
-    @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
     def test_delete_child_chunk_success(
         self,
-        session_factory,
         mock_account_fn,
         mock_doc_svc,
         mock_seg_svc,
         app: Flask,
         mock_tenant,
         mock_dataset,
+        mock_segment,
+        mock_child_chunk,
     ):
         """Test successful child chunk deletion."""
-        mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        session_factory.session.scalar.return_value = mock_dataset
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
+        self._persist_dataset(mock_dataset, mock_tenant.id)
 
         mock_doc = _document_for_dataset(mock_dataset)
         mock_doc_svc.get_document.return_value = mock_doc
 
         segment_id = str(uuid.uuid4())
-        mock_segment = Mock()
         mock_segment.id = segment_id
         mock_segment.document_id = "doc-id"
         mock_seg_svc.get_segment_by_ref.return_value = mock_segment
 
         child_chunk_id = str(uuid.uuid4())
-        mock_child = Mock()
-        mock_child.segment_id = segment_id
-        mock_seg_svc.get_child_chunk_by_segment_ref.return_value = mock_child
+        mock_child_chunk.id = child_chunk_id
+        mock_child_chunk.segment_id = segment_id
+        mock_seg_svc.get_child_chunk_by_segment_ref.return_value = mock_child_chunk
         mock_seg_svc.delete_child_chunk.return_value = None
 
         with app.test_request_context(
@@ -2138,7 +2239,7 @@ class TestDatasetChildChunkApiDelete:
             delete = inspect.unwrap(api.delete)
             response = delete(
                 api,
-                session_factory.session,
+                self.session,
                 tenant_id=mock_tenant.id,
                 dataset_id=mock_dataset.id,
                 document_id="doc-id",
@@ -2152,24 +2253,22 @@ class TestDatasetChildChunkApiDelete:
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
-    @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
     def test_delete_child_chunk_not_found(
         self,
-        session_factory,
         mock_account_fn,
         mock_doc_svc,
         mock_seg_svc,
         app: Flask,
         mock_tenant,
         mock_dataset,
+        mock_segment,
     ):
         """Test 404 when child chunk not found."""
-        mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        session_factory.session.scalar.return_value = mock_dataset
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
+        self._persist_dataset(mock_dataset, mock_tenant.id)
         mock_doc_svc.get_document.return_value = _document_for_dataset(mock_dataset)
 
         segment_id = str(uuid.uuid4())
-        mock_segment = Mock()
         mock_segment.id = segment_id
         mock_segment.document_id = "doc-id"
         mock_seg_svc.get_segment_by_ref.return_value = mock_segment
@@ -2184,7 +2283,7 @@ class TestDatasetChildChunkApiDelete:
             with pytest.raises(NotFound):
                 delete(
                     api,
-                    session_factory.session,
+                    self.session,
                     tenant_id=mock_tenant.id,
                     dataset_id=mock_dataset.id,
                     document_id="doc-id",
@@ -2195,10 +2294,8 @@ class TestDatasetChildChunkApiDelete:
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
-    @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
     def test_delete_child_chunk_segment_document_mismatch(
         self,
-        session_factory,
         mock_account_fn,
         mock_doc_svc,
         mock_seg_svc,
@@ -2207,8 +2304,8 @@ class TestDatasetChildChunkApiDelete:
         mock_dataset,
     ):
         """Test 404 when segment does not belong to the document."""
-        mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        session_factory.session.scalar.return_value = mock_dataset
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
+        self._persist_dataset(mock_dataset, mock_tenant.id)
         mock_doc_svc.get_document.return_value = _document_for_dataset(mock_dataset)
 
         segment_id = str(uuid.uuid4())
@@ -2223,7 +2320,7 @@ class TestDatasetChildChunkApiDelete:
             with pytest.raises(NotFound):
                 delete(
                     api,
-                    session_factory.session,
+                    self.session,
                     tenant_id=mock_tenant.id,
                     dataset_id=mock_dataset.id,
                     document_id="doc-id",
@@ -2234,24 +2331,22 @@ class TestDatasetChildChunkApiDelete:
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
-    @patch("controllers.common.session.session_factory", new_callable=_session_factory_mock)
     def test_delete_child_chunk_wrong_segment(
         self,
-        session_factory,
         mock_account_fn,
         mock_doc_svc,
         mock_seg_svc,
         app: Flask,
         mock_tenant,
         mock_dataset,
+        mock_segment,
     ):
         """Test 404 when child chunk does not belong to the segment."""
-        mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        session_factory.session.scalar.return_value = mock_dataset
+        mock_account_fn.return_value = (_account(), mock_tenant.id)
+        self._persist_dataset(mock_dataset, mock_tenant.id)
         mock_doc_svc.get_document.return_value = _document_for_dataset(mock_dataset)
 
         segment_id = str(uuid.uuid4())
-        mock_segment = Mock()
         mock_segment.id = segment_id
         mock_segment.document_id = "doc-id"
         mock_seg_svc.get_segment_by_ref.return_value = mock_segment
@@ -2267,10 +2362,75 @@ class TestDatasetChildChunkApiDelete:
             with pytest.raises(NotFound):
                 delete(
                     api,
-                    session_factory.session,
+                    self.session,
                     tenant_id=mock_tenant.id,
                     dataset_id=mock_dataset.id,
                     document_id="doc-id",
                     segment_id=segment_id,
                     child_chunk_id="cc-id",
                 )
+
+
+class TestModelValidateDecorator(SQLiteEndpointTest):
+    """The endpoint tests above supply valid bodies, so this is what covers the decorators."""
+
+    @staticmethod
+    def _setup_billing_mocks(mock_validate_token: Mock, mock_feature_svc: Mock, tenant_id: str) -> None:
+        """Configure mocks to neutralise billing/auth decorators."""
+        mock_validate_token.return_value = _api_token(tenant_id)
+
+        mock_features = Mock()
+        mock_feature_svc.get_features.return_value = mock_features
+
+        mock_vector_space = Mock()
+        mock_vector_space.limit = 10
+        mock_vector_space.size = 0
+        mock_feature_svc.get_vector_space.return_value = mock_vector_space
+
+        mock_rate_limit = Mock()
+        mock_rate_limit.enabled = False
+        mock_feature_svc.get_knowledge_rate_limit.return_value = mock_rate_limit
+
+    @pytest.mark.parametrize(
+        ("call", "route", "method"),
+        [
+            (
+                lambda: DatasetSegmentApi().post(
+                    tenant_id="t", dataset_id="d", document_id="doc-id", segment_id="seg-id"
+                ),
+                "/datasets/d/documents/doc-id/segments/seg-id",
+                "POST",
+            ),
+            (
+                lambda: ChildChunkApi().post(tenant_id="t", dataset_id="d", document_id="doc-id", segment_id="seg-id"),
+                "/datasets/d/documents/doc-id/segments/seg-id/child_chunks",
+                "POST",
+            ),
+            (
+                lambda: DatasetChildChunkApi().patch(
+                    tenant_id="t", dataset_id="d", document_id="doc-id", segment_id="seg-id", child_chunk_id="cc-id"
+                ),
+                "/datasets/d/documents/doc-id/segments/seg-id/child_chunks/cc-id",
+                "PATCH",
+            ),
+        ],
+    )
+    @patch("controllers.service_api.wraps.FeatureService")
+    @patch("controllers.service_api.wraps.validate_and_get_api_token")
+    def test_invalid_body_is_rejected_before_the_handler_runs(
+        self,
+        mock_validate_token: Mock,
+        mock_feature_svc: Mock,
+        app: Flask,
+        mock_tenant: Mock,
+        call: Callable[[], object],
+        route: str,
+        method: str,
+    ) -> None:
+        self._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
+
+        with app.test_request_context(route, method=method, json={}, headers={"Authorization": "Bearer test_token"}):
+            with pytest.raises(UnprocessableEntity) as exc_info:
+                call()
+
+        assert exc_info.value.code == 422

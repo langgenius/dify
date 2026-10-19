@@ -4,8 +4,8 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLocale } from '@/context/i18n'
-import { getLanguage } from '@/i18n-config/language'
+import { useLocale } from '#i18n'
+import { getPluginLanguage } from '@/i18n/metadata'
 
 type Props = Readonly<{
   tool: Tool
@@ -13,8 +13,8 @@ type Props = Readonly<{
 
 const MCPToolItem = ({ tool }: Props) => {
   const locale = useLocale()
-  const language = getLanguage(locale)
-  const { t } = useTranslation()
+  const language = getPluginLanguage(locale)
+  const { t } = useTranslation(['tools'])
 
   const renderParameters = () => {
     const parameters = tool.parameters
@@ -58,7 +58,7 @@ const MCPToolItem = ({ tool }: Props) => {
           <button
             type="button"
             className={cn(
-              'bg-components-panel-item-bg w-full cursor-pointer rounded-xl border-[0.5px] border-components-panel-border-subtle px-4 py-3 text-left shadow-xs outline-hidden hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover',
+              'bg-components-panel-item-bg w-full cursor-pointer rounded-xl border-[0.5px] border-components-panel-border-subtle px-4 py-3 text-left shadow-xs hover:bg-components-panel-on-panel-item-bg-hover',
             )}
           >
             <div className="pb-0.5 system-md-semibold text-text-secondary">
@@ -72,7 +72,7 @@ const MCPToolItem = ({ tool }: Props) => {
       />
       <PopoverContent
         placement="left"
-        className="w-[360px]! rounded-xl! border-[0.5px]! border-components-panel-border! px-4! py-3.5! shadow-lg!"
+        className="w-90! rounded-xl! border-[0.5px]! border-components-panel-border! px-4! py-3.5! shadow-lg!"
       >
         <div>
           <div className="mb-1 title-xs-semi-bold text-text-primary">{tool.label[language]}</div>

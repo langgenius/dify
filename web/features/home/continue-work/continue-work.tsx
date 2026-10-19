@@ -13,7 +13,7 @@ type ContinueWorkProps = {
 }
 
 export function ContinueWork({ apps, className }: ContinueWorkProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['explore'])
 
   if (apps.length === 0) return null
 

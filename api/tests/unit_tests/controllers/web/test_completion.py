@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import InternalServerError
 
 from controllers.web.completion import ChatApi, ChatStopApi, CompletionApi, CompletionStopApi
 from controllers.web.error import (
@@ -23,24 +24,12 @@ from controllers.web.error import (
 from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
-from models.enums import EndUserType
-from models.model import App, AppMode, EndUser, IconType
+from models.model import App, AppMode, EndUser
+from tests.unit_tests.model_factories import make_app, make_end_user
 
 
 def _app(mode: AppMode) -> App:
-    return App(
-        id="app-1",
-        tenant_id="tenant-1",
-        name="Web App",
-        description="",
-        mode=mode,
-        icon_type=IconType.EMOJI,
-        icon="robot",
-        icon_background="#FFFFFF",
-        enable_site=True,
-        enable_api=False,
-        max_active_requests=0,
-    )
+    return make_app(name="Web App", mode=mode, enable_api=False, max_active_requests=0)
 
 
 def _completion_app() -> App:
@@ -52,14 +41,33 @@ def _chat_app() -> App:
 
 
 def _end_user() -> EndUser:
-    return EndUser(
-        id="eu-1",
-        tenant_id="tenant-1",
-        app_id="app-1",
-        type=EndUserType.BROWSER,
-        name="Web User",
-        session_id="session-1",
-    )
+    return make_end_user(end_user_id="eu-1", app_id="app-1", name="Web User")
+
+
+@pytest.mark.parametrize(
+    ("resource", "mode", "path"),
+    [
+        (CompletionApi, AppMode.COMPLETION, "/completion-messages"),
+        (ChatApi, AppMode.CHAT, "/chat-messages"),
+    ],
+)
+def test_unexpected_generation_error_hides_internal_details(
+    app: Flask,
+    resource: type[CompletionApi | ChatApi],
+    mode: AppMode,
+    path: str,
+) -> None:
+    error = RuntimeError("internal provider failure")
+    with (
+        patch("controllers.web.completion.AppGenerateService.generate", side_effect=error),
+        app.test_request_context(path, method="POST", json={"inputs": {}, "query": "hello"}),
+        pytest.raises(InternalServerError) as exc_info,
+    ):
+        resource().post(_app(mode), _end_user())
+
+    assert exc_info.value.code == 500
+    assert "internal provider failure" not in str(exc_info.value)
+    assert exc_info.value.__context__ is error
 
 
 # ---------------------------------------------------------------------------

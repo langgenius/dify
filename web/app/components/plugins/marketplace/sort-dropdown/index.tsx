@@ -2,15 +2,16 @@
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuRadioItemIndicator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { useState } from 'react'
 import { useTranslation } from '#i18n'
 import { useMarketplaceSort } from '../atoms'
 
 const SortDropdown = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const options = [
     {
       value: 'install_count',
@@ -34,36 +35,39 @@ const SortDropdown = () => {
     },
   ]
   const [sort, handleSortChange] = useMarketplaceSort()
-  const [open, setOpen] = useState(false)
   const selectedOption =
     options.find((option) => option.value === sort.sortBy && option.order === sort.sortOrder) ??
     options[0]!
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger className="flex h-8 cursor-pointer items-center rounded-lg bg-state-base-hover-alt px-2 pr-3">
-        <span className="mr-1 system-sm-regular text-text-secondary">
+    <DropdownMenu>
+      <DropdownMenuTrigger className="flex h-8 cursor-pointer items-center gap-1 rounded-lg bg-state-base-hover-alt px-2 pr-3">
+        <span className="system-sm-regular text-text-secondary">
           {t(($) => $['marketplace.sortBy'], { ns: 'plugin' })}
         </span>
-        <span className="mr-1 system-sm-medium text-text-primary">{selectedOption.text}</span>
+        <span className="system-sm-medium text-text-primary">{selectedOption.text}</span>
         <span aria-hidden className="i-ri-arrow-down-s-line size-4 text-text-tertiary" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent placement="bottom-start" sideOffset={4} className="p-1">
-        {options.map((option) => (
-          <DropdownMenuItem
-            key={`${option.value}-${option.order}`}
-            className="justify-between px-3 pr-2 system-md-regular text-text-primary"
-            onClick={() => {
-              handleSortChange({ sortBy: option.value, sortOrder: option.order })
-              setOpen(false)
-            }}
-          >
-            {option.text}
-            {sort.sortBy === option.value && sort.sortOrder === option.order && (
-              <span aria-hidden className="ml-2 i-ri-check-line size-4 text-text-accent" />
-            )}
-          </DropdownMenuItem>
-        ))}
+      <DropdownMenuContent placement="bottom-start" sideOffset={4} className="px-1">
+        <DropdownMenuRadioGroup
+          value={`${selectedOption.value}-${selectedOption.order}`}
+          onValueChange={(nextValue) => {
+            const option = options.find((option) => `${option.value}-${option.order}` === nextValue)
+            if (option) handleSortChange({ sortBy: option.value, sortOrder: option.order })
+          }}
+        >
+          {options.map((option) => (
+            <DropdownMenuRadioItem
+              key={`${option.value}-${option.order}`}
+              value={`${option.value}-${option.order}`}
+              closeOnClick
+              className="justify-between pl-3 system-md-regular text-text-primary"
+            >
+              {option.text}
+              <DropdownMenuRadioItemIndicator />
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   )

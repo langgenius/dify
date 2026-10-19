@@ -1,5 +1,5 @@
 import type { ModelType } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { ComponentProps } from 'react'
+import type { PreviewCardHandle } from '@langgenius/dify-ui/preview-card'
 import type {
   ModelSelectorModel,
   ModelSelectorModelPredicate,
@@ -13,12 +13,13 @@ import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgeni
 import { PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useQuery } from '@tanstack/react-query'
 import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
-import { renderI18nObject } from '@/i18n-config'
+import { renderI18nObject } from '@/i18n/metadata'
+import { consoleQuery } from '@/service/console'
 import { ConfigurationMethodEnum, ModelStatusEnum } from '../declarations'
 import {
   useLanguage,
@@ -36,8 +37,6 @@ export type ModelSelectorPreviewPayload = {
   provider: ModelSelectorProvider
   modelItem: ModelSelectorModel
 }
-
-type PreviewCardHandle = NonNullable<ComponentProps<typeof PreviewCardTrigger>['handle']>
 
 type PopupItemProps = {
   defaultModel?: ModelSelectorValue
@@ -60,18 +59,20 @@ function PopupItem({
   onSelect,
   onHide,
 }: PopupItemProps) {
-  const [modelsOpen, setModelsOpen] = useState(true)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const providerHeadingId = useId()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'modelProvider'])
   const language = useLanguage()
   const providerLabel = renderI18nObject(model.label, language)
-  const suggestionTip = t(($) => $['modelProvider.selector.suggestionTip'], { ns: 'common' })
+  const suggestionTip = t(($) => $['modelProvider.selector.suggestionTip'], { ns: 'modelProvider' })
   const { setShowModelModal } = useModalContext()
-  const { modelProviders } = useProviderContext()
+  const { data: currentProvider } = useQuery(
+    consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions({
+      select: (response) => response.data.find((provider) => provider.provider === model.provider),
+    }),
+  )
   const updateModelList = useUpdateModelList()
   const updateModelProviders = useUpdateModelProviders()
-  const currentProvider = modelProviders.find((provider) => provider.provider === model.provider)
   const { providerDetail, loadProviderDetail } = useLazyModelProviderDetail(model.provider)
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
   const canOpenCredentialDropdown = canUseCredential || canCreateCredential || canManageCredential
@@ -119,15 +120,14 @@ function PopupItem({
 
   return (
     <Collapsible
-      open={modelsOpen}
-      onOpenChange={setModelsOpen}
+      defaultOpen
       className="mb-1"
       render={<section aria-labelledby={providerHeadingId} />}
     >
       <div className="sticky top-0 z-1 flex min-h-5.5 min-w-0 items-center justify-between gap-2 bg-components-panel-bg px-3 text-xs font-medium text-text-tertiary">
         <CollapsibleTrigger
           id={providerHeadingId}
-          className="group/provider min-h-0 w-auto min-w-0 justify-start gap-0 rounded-none p-0 text-xs font-medium text-text-tertiary hover:not-data-disabled:bg-transparent hover:not-data-disabled:text-text-tertiary data-panel-open:text-text-tertiary"
+          className="group/provider flex min-h-0 min-w-0 touch-manipulation items-center justify-start gap-0 text-xs font-medium text-text-tertiary select-none"
         >
           <span className="truncate">{providerLabel}</span>
           <span
@@ -154,7 +154,7 @@ function PopupItem({
                         className="i-custom-vender-line-financeAndECommerce-credits-coin size-3"
                       />
                       <span className="ml-1 truncate">
-                        {t(($) => $['modelProvider.selector.aiCredits'], { ns: 'common' })}
+                        {t(($) => $['modelProvider.selector.aiCredits'], { ns: 'modelProvider' })}
                       </span>
                     </>
                   ) : (
@@ -164,7 +164,9 @@ function PopupItem({
                         className="i-ri-alert-fill size-3 shrink-0 text-text-warning-secondary"
                       />
                       <span className="ml-1 truncate text-text-warning">
-                        {t(($) => $['modelProvider.selector.creditsExhausted'], { ns: 'common' })}
+                        {t(($) => $['modelProvider.selector.creditsExhausted'], {
+                          ns: 'modelProvider',
+                        })}
                       </span>
                     </>
                   )
@@ -177,7 +179,9 @@ function PopupItem({
                   <>
                     <StatusDot size="small" status="disabled" />
                     <span className="ml-1 truncate text-text-tertiary">
-                      {t(($) => $['modelProvider.selector.configureRequired'], { ns: 'common' })}
+                      {t(($) => $['modelProvider.selector.configureRequired'], {
+                        ns: 'modelProvider',
+                      })}
                     </span>
                   </>
                 )}
@@ -241,10 +245,9 @@ function PopupItem({
                       <Tooltip>
                         <TooltipTrigger
                           render={
-                            <span
-                              aria-label={suggestionTip}
-                              className="i-ri-shield-star-line size-3.5 shrink-0 text-text-accent-secondary"
-                            />
+                            <span className="i-ri-shield-star-line size-3.5 shrink-0 text-text-accent-secondary">
+                              <span className="sr-only">{suggestionTip}</span>
+                            </span>
                           }
                         />
                         <TooltipContent placement="top">{suggestionTip}</TooltipContent>

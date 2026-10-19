@@ -15,6 +15,12 @@ class BillingUnprocessableEntityErrorResponse(ResponseModel):
     status: Literal[422]
 
 
+class ComplianceRateLimitErrorResponse(ResponseModel):
+    code: Literal["compliance_rate_limit"]
+    message: str
+    status: Literal[429]
+
+
 class BillingOperationFailedErrorResponse(ResponseModel):
     code: Literal["billing_operation_failed"]
     message: str
@@ -25,6 +31,12 @@ class BillingUnavailableErrorResponse(ResponseModel):
     code: Literal["billing_unavailable"]
     message: str
     status: Literal[503]
+
+
+class ComplianceRateLimitError(BaseHTTPException):
+    error_code = "compliance_rate_limit"
+    description = "Rate limit exceeded for downloading compliance report."
+    code = 429
 
 
 class BillingOperationFailedError(BaseHTTPException):

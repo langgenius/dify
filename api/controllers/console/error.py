@@ -76,6 +76,12 @@ class AccountNotFound(BaseHTTPException):
     code = 400
 
 
+class InvalidAccountPasswordRequestError(BaseHTTPException):
+    error_code = "invalid_account_password"
+    description = "The password does not satisfy the account password policy."
+    code = 400
+
+
 class EmailSendIpLimitError(BaseHTTPException):
     error_code = "email_send_ip_limit"
     description = "Too many emails have been sent from this IP address recently. Please try again later."
@@ -115,7 +121,7 @@ class EducationActivateLimitError(BaseHTTPException):
     code = 429
 
 
-class ComplianceRateLimitError(BaseHTTPException):
-    error_code = "compliance_rate_limit"
-    description = "Rate limit exceeded for downloading compliance report."
-    code = 429
+class ApiKeyLimitExceededHTTPError(BaseHTTPException):
+    error_code = "max_keys_exceeded"
+    description = "The API key limit has been reached."
+    code = 400

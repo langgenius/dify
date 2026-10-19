@@ -1,10 +1,13 @@
-import type { ChangeEvent, KeyboardEvent } from 'react'
+import type { ChangeEvent, InputHTMLAttributes, KeyboardEvent } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 
-type TagInputProps = {
+type TagInputProps = Pick<
+  InputHTMLAttributes<HTMLInputElement>,
+  'id' | 'aria-label' | 'aria-describedby' | 'aria-invalid'
+> & {
   items: string[]
   onChange: (items: string[]) => void
   disableRemove?: boolean
@@ -17,6 +20,7 @@ type TagInputProps = {
 }
 
 const TagInput = ({
+  id,
   items,
   onChange,
   disableAdd,
@@ -26,8 +30,11 @@ const TagInput = ({
   placeholder,
   required = false,
   inputClassName,
+  'aria-label': ariaLabel,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
 }: TagInputProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments'])
   const [value, setValue] = useState('')
   const [focused, setFocused] = useState(false)
   const isSpecialMode = customizedConfirmKey === 'Tab'
@@ -66,7 +73,7 @@ const TagInput = ({
   const handleKeyDown = (e: KeyboardEvent) => {
     if (isSpecialMode && e.key === 'Enter') setValue(`${value}↵`)
     if (e.key === customizedConfirmKey) {
-      if (isSpecialMode) e.preventDefault()
+      e.preventDefault()
       handleNewTag(value)
     }
   }
@@ -126,6 +133,10 @@ const TagInput = ({
             )}
           >
             <input
+              id={id}
+              aria-label={ariaLabel}
+              aria-describedby={ariaDescribedBy}
+              aria-invalid={ariaInvalid}
               className={cn(
                 'col-start-1 row-start-1 w-full min-w-0 appearance-none text-text-primary caret-[#295EFF] outline-hidden placeholder:text-text-placeholder group-hover/tag-add:placeholder:text-text-secondary',
                 isSpecialMode ? 'bg-transparent' : '',

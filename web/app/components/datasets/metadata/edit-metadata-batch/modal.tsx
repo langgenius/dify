@@ -3,16 +3,24 @@ import type { FC } from 'react'
 import type { BuiltInMetadataItem, MetadataItemInBatchEdit, MetadataItemWithEdit } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Separator } from '@langgenius/dify-ui/separator'
+import { useMutation } from '@tanstack/react-query'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
-import { useCreateMetaData } from '@/service/knowledge/use-metadata'
-import { Infotip } from '../../../base/infotip'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 import useCheckMetadataName from '../hooks/use-check-metadata-name'
 import { DatasetMetadataPicker } from '../metadata-dataset/dataset-metadata-picker'
 import { UpdateType } from '../types'
@@ -40,7 +48,9 @@ const EditMetadataBatchModal: FC<Props> = ({
   onHide,
   onShowManage,
 }) => {
-  const { t } = useTranslation()
+  const applyToAllLabelId = React.useId()
+
+  const { t } = useTranslation(['common', 'dataset'])
   const [templeList, setTempleList] = useState<MetadataItemWithEdit[]>(list)
   const handleTemplesChange = useCallback(
     (payload: MetadataItemWithEdit) => {
@@ -84,7 +94,9 @@ const EditMetadataBatchModal: FC<Props> = ({
     [list, templeList],
   )
   const { checkName } = useCheckMetadataName()
-  const { mutate: doAddMetaData } = useCreateMetaData(datasetId)
+  const { mutateAsync: createMetaData } = useMutation(
+    consoleQuery.datasets.byDatasetId.metadata.post.mutationOptions(),
+  )
   const handleAddMetaData = useCallback(
     async (payload: BuiltInMetadataItem) => {
       const errorMsg = checkName(payload.name).errorMsg
@@ -92,10 +104,10 @@ const EditMetadataBatchModal: FC<Props> = ({
         toast.error(errorMsg)
         return Promise.reject(new Error(errorMsg))
       }
-      await doAddMetaData(payload)
+      await createMetaData({ params: { dataset_id: datasetId }, body: payload })
       toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     },
-    [checkName, doAddMetaData, t],
+    [checkName, createMetaData, datasetId, t],
   )
   const [addedList, setAddedList] = useState<MetadataItemWithEdit[]>([])
   const handleAddedListChange = useCallback(
@@ -129,27 +141,16 @@ const EditMetadataBatchModal: FC<Props> = ({
         if (!open) onHide()
       }}
     >
-      <DialogContent className="w-full max-w-160! overflow-hidden! border-none text-left align-middle">
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute inset-e-6 top-6"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $[`${i18nPrefix}.editMetadata`], { ns: 'dataset' })}
-        </DialogTitle>
-
-        <div className="mt-1 system-xs-medium text-text-accent">
-          {t(($) => $[`${i18nPrefix}.editDocumentsNum`], { ns: 'dataset', num: documentNum })}
-        </div>
-        <div className="max-h-76.25 overflow-x-hidden overflow-y-auto">
-          <div className="mt-4 space-y-2">
+      <DialogContent className="w-160">
+        <DialogHeader>
+          <DialogTitle>{t(($) => $[`${i18nPrefix}.editMetadata`], { ns: 'dataset' })}</DialogTitle>
+          <div className="system-xs-medium text-text-accent">
+            {t(($) => $[`${i18nPrefix}.editDocumentsNum`], { ns: 'dataset', num: documentNum })}
+          </div>
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody>
+          <div className="space-y-2">
             {templeList.map((item) => (
               <EditMetadataBatchItem
                 key={item.id}
@@ -165,7 +166,7 @@ const EditMetadataBatchModal: FC<Props> = ({
               <div className="mr-2 shrink-0 system-xs-medium-uppercase text-text-tertiary">
                 {t(($) => $['metadata.createMetadata.title'], { ns: 'dataset' })}
               </div>
-              <Divider bgStyle="gradient" />
+              <Separator decorative className="my-2 h-[0.5px]" variant="gradient" />
             </div>
             <div className="mt-2 space-y-2">
               {addedList.map((item, i) => (
@@ -191,36 +192,37 @@ const EditMetadataBatchModal: FC<Props> = ({
               />
             </div>
           </div>
-        </div>
+        </DialogBody>
 
-        <div className="mt-4 flex items-center justify-between">
-          <div className="flex items-center select-none">
+        <DialogFooter>
+          <div className="me-auto flex items-center select-none">
             <label className="flex cursor-pointer items-center">
               <Checkbox
                 checked={isApplyToAllSelectDocument}
                 onCheckedChange={setIsApplyToAllSelectDocument}
               />
-              <span className="mr-1 ml-2 system-xs-medium text-text-secondary">
+              <span
+                id={applyToAllLabelId}
+                className="mr-1 ml-2 system-xs-medium text-text-secondary"
+              >
                 {t(($) => $[`${i18nPrefix}.applyToAllSelectDocument`], { ns: 'dataset' })}
               </span>
             </label>
-            <Infotip
-              aria-label={t(($) => $[`${i18nPrefix}.applyToAllSelectDocumentTip`], {
-                ns: 'dataset',
-              })}
-              className="p-px text-text-tertiary"
-              popupClassName="max-w-[240px]"
-            >
-              {t(($) => $[`${i18nPrefix}.applyToAllSelectDocumentTip`], { ns: 'dataset' })}
+            <Infotip>
+              <InfotipTrigger
+                aria-labelledby={applyToAllLabelId}
+                className="p-px text-text-tertiary"
+              />
+              <InfotipContent aria-labelledby={applyToAllLabelId} className="max-w-60">
+                {t(($) => $[`${i18nPrefix}.applyToAllSelectDocumentTip`], { ns: 'dataset' })}
+              </InfotipContent>
             </Infotip>
           </div>
-          <div className="flex items-center space-x-2">
-            <Button onClick={onHide}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
-            <Button onClick={handleSave} variant="primary">
-              {t(($) => $['operation.save'], { ns: 'common' })}
-            </Button>
-          </div>
-        </div>
+          <Button onClick={onHide}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
+          <Button onClick={handleSave} variant="primary">
+            {t(($) => $['operation.save'], { ns: 'common' })}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

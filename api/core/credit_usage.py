@@ -7,6 +7,7 @@ class CreditUsageCreatedBy(StrEnum):
     APP = "app"
     AGENT_NODE = "agent_node"
     BUILD_DRAFT = "build_draft"
+    SKILL_BUILDER = "skill_builder"
     CONVERSATION_NAME = "conversation_name"
     SUGGESTED_QUESTIONS = "suggested_questions"
     WORKFLOW_GENERATION = "workflow_generation"

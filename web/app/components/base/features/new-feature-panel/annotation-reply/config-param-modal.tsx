@@ -2,14 +2,21 @@
 import type { FC } from 'react'
 import type { AnnotationReplyConfig } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { toast } from '@/app/notifications'
 import { ANNOTATION_DEFAULT } from '@/config'
 import { Item } from './config-param'
 import ScoreSlider from './score-slider'
@@ -35,13 +42,16 @@ const ConfigParamModal: FC<Props> = ({
   isInit,
   annotationConfig: oldAnnotationConfig,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation', 'appDebug', 'common', 'modelProvider'])
   const {
     modelList: embeddingsModelList,
     defaultModel: embeddingsDefaultModel,
     currentModel: isEmbeddingsDefaultModelValid,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textEmbedding)
-  const [annotationConfig, setAnnotationConfig] = useState(oldAnnotationConfig)
+  const [annotationConfig, setAnnotationConfig] = useState({
+    ...oldAnnotationConfig,
+    score_threshold: oldAnnotationConfig.score_threshold ?? ANNOTATION_DEFAULT.score_threshold,
+  })
   const [isLoading, setLoading] = useState(false)
   const [embeddingModel, setEmbeddingModel] = useState(
     oldAnnotationConfig.embedding_model
@@ -65,18 +75,23 @@ const ConfigParamModal: FC<Props> = ({
       !embeddingModel.modelName ||
       (embeddingModel.modelName === embeddingsDefaultModel?.model && !isEmbeddingsDefaultModelValid)
     ) {
-      toast.error(t(($) => $['modelProvider.embeddingModel.required'], { ns: 'common' }))
+      toast.error(t(($) => $['modelProvider.embeddingModel.required'], { ns: 'modelProvider' }))
       return
     }
     setLoading(true)
-    await onSave(
-      {
-        embedding_provider_name: embeddingModel.providerName,
-        embedding_model_name: embeddingModel.modelName,
-      },
-      annotationConfig.score_threshold,
-    )
-    setLoading(false)
+    try {
+      await onSave(
+        {
+          embedding_provider_name: embeddingModel.providerName,
+          embedding_model_name: embeddingModel.modelName,
+        },
+        annotationConfig.score_threshold,
+      )
+    } catch {
+      toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
+    } finally {
+      setLoading(false)
+    }
   }
   return (
     <Dialog
@@ -85,12 +100,14 @@ const ConfigParamModal: FC<Props> = ({
         if (!open) onHide()
       }}
     >
-      <DialogContent className="mt-14! w-160! max-w-none! border-none p-6! text-left align-middle">
-        <div className="mb-2 title-2xl-semi-bold text-text-primary">
-          {t(($) => $[`initSetup.${isInit ? 'title' : 'configTitle'}`], { ns: 'appAnnotation' })}
-        </div>
+      <DialogContent className="w-160">
+        <DialogHeader>
+          <DialogTitle>
+            {t(($) => $[`initSetup.${isInit ? 'title' : 'configTitle'}`], { ns: 'appAnnotation' })}
+          </DialogTitle>
+        </DialogHeader>
 
-        <div className="mt-6 space-y-3">
+        <DialogBody className="space-y-3">
           <Item
             title={t(($) => $['feature.annotation.scoreThreshold.title'], { ns: 'appDebug' })}
             tooltip={t(($) => $['feature.annotation.scoreThreshold.description'], {
@@ -99,18 +116,18 @@ const ConfigParamModal: FC<Props> = ({
           >
             <ScoreSlider
               className="mt-1"
-              value={(annotationConfig.score_threshold ?? ANNOTATION_DEFAULT.score_threshold) * 100}
+              value={annotationConfig.score_threshold ?? ANNOTATION_DEFAULT.score_threshold}
               onChange={(val) => {
                 setAnnotationConfig({
                   ...annotationConfig,
-                  score_threshold: val / 100,
+                  score_threshold: val,
                 })
               }}
             />
           </Item>
 
           <Item
-            title={t(($) => $['modelProvider.embeddingModel.key'], { ns: 'common' })}
+            title={t(($) => $['modelProvider.embeddingModel.key'], { ns: 'modelProvider' })}
             tooltip={t(($) => $.embeddingModelSwitchTip, { ns: 'appAnnotation' })}
           >
             <div className="pt-1">
@@ -131,9 +148,9 @@ const ConfigParamModal: FC<Props> = ({
               />
             </div>
           </Item>
-        </div>
+        </DialogBody>
 
-        <div className="mt-6 flex justify-end gap-2">
+        <DialogFooter>
           <Button onClick={onHide}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
           <Button variant="primary" onClick={handleSave} loading={isLoading}>
             <div>
@@ -142,7 +159,7 @@ const ConfigParamModal: FC<Props> = ({
               })}
             </div>
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

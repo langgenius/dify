@@ -1,22 +1,23 @@
 'use client'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiCheckboxCircleFill } from '@remixicon/react'
 import { useCountDown } from 'ahooks'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { validPassword } from '@/config'
 import useDocumentTitle from '@/hooks/use-document-title'
+import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { changeWebAppPasswordWithToken } from '@/service/common'
 
 const ChangePasswordForm = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'login', 'accountSettings'])
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('token') || '')
@@ -59,7 +60,7 @@ const ChangePasswordForm = () => {
       return false
     }
     if (password !== confirmPassword) {
-      showErrorMessage(t(($) => $['account.notEqual'], { ns: 'common' }))
+      showErrorMessage(t(($) => $['account.notEqual'], { ns: 'accountSettings' }))
       return false
     }
     return true
@@ -101,41 +102,43 @@ const ChangePasswordForm = () => {
           <div className="mx-auto mt-6 w-full">
             <Form className="bg-white" onFormSubmit={() => void handleChangePassword()}>
               <Field name="password" className="mb-5">
-                <FieldLabel className="py-0 system-md-semibold text-text-secondary">
-                  {t(($) => $['account.newPassword'], { ns: 'common' })}
-                </FieldLabel>
-                <InputGroup>
-                  <InputGroupInput
-                    type={showPassword ? 'text' : 'password'}
-                    autoComplete="new-password"
-                    spellCheck={false}
-                    value={password}
-                    onValueChange={setPassword}
-                    placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
-                  />
-                  <InputGroupAddon align="inline-end">
-                    <IconButton
-                      aria-label={t(($) => $[showPassword ? 'hidePassword' : 'showPassword'], {
-                        ns: 'login',
-                      })}
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      <span
-                        className={
-                          showPassword ? 'i-ri-eye-off-line size-4' : 'i-ri-eye-line size-4'
-                        }
-                        aria-hidden="true"
-                      />
-                    </IconButton>
-                  </InputGroupAddon>
-                </InputGroup>
+                <div className="grid gap-0">
+                  <FieldLabel className="system-md-semibold">
+                    {t(($) => $['account.newPassword'], { ns: 'accountSettings' })}
+                  </FieldLabel>
+                  <InputGroup>
+                    <InputGroupInput
+                      type={showPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      spellCheck={false}
+                      value={password}
+                      onValueChange={setPassword}
+                      placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
+                    />
+                    <InputGroupAddon align="inline-end">
+                      <IconButton
+                        aria-label={t(($) => $[showPassword ? 'hidePassword' : 'showPassword'], {
+                          ns: 'login',
+                        })}
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        <span
+                          className={
+                            showPassword ? 'i-ri-eye-off-line size-4' : 'i-ri-eye-line size-4'
+                          }
+                          aria-hidden="true"
+                        />
+                      </IconButton>
+                    </InputGroupAddon>
+                  </InputGroup>
+                </div>
                 <FieldDescription className="py-0 body-xs-regular text-text-secondary">
                   {t(($) => $['error.passwordInvalid'], { ns: 'login' })}
                 </FieldDescription>
               </Field>
-              <Field name="confirmPassword" className="mb-5">
-                <FieldLabel className="py-0 system-md-semibold text-text-secondary">
-                  {t(($) => $['account.confirmPassword'], { ns: 'common' })}
+              <Field name="confirmPassword" className="mb-5 gap-0">
+                <FieldLabel className="system-md-semibold">
+                  {t(($) => $['account.confirmPassword'], { ns: 'accountSettings' })}
                 </FieldLabel>
                 <InputGroup>
                   <InputGroupInput
@@ -182,16 +185,13 @@ const ChangePasswordForm = () => {
             </h1>
           </div>
           <div className="mx-auto mt-6 w-full">
-            <Button
-              variant="primary"
-              className="w-full"
-              onClick={() => {
-                setLeftTime(undefined)
-                router.replace(getSignInUrl())
-              }}
+            <Link
+              href={getSignInUrl()}
+              replace
+              className={cn(buttonVariants({ variant: 'primary' }), 'w-full')}
             >
               {t(($) => $.passwordChanged, { ns: 'login' })} ({Math.round(countdown / 1000)}){' '}
-            </Button>
+            </Link>
           </div>
         </div>
       )}

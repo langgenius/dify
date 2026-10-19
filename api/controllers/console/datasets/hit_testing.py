@@ -5,23 +5,31 @@ from uuid import UUID
 from flask_restx import Resource
 from sqlalchemy.orm import Session
 
+from controllers.common.rbac import DatasetId, RBACCheck
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console import console_ns
+from controllers.console.app.error import (
+    CompletionRequestError,
+    ProviderModelCurrentlyNotSupportError,
+    ProviderNotInitializeError,
+    ProviderQuotaExceededError,
+)
 from controllers.console.app.wraps import with_session
-from controllers.console.wraps import RBACPermission, RBACResourceScope, rbac_permission_required
-from fields.hit_testing_fields import HitTestingResponse
-from libs.helper import dump_response
-from libs.login import login_required
-from models import Account
-
-from .. import console_ns
-from ..datasets.hit_testing_base import DatasetsHitTestingBase, HitTestingPayload
-from ..wraps import (
+from controllers.console.datasets.hit_testing_base import DatasetsHitTestingBase, HitTestingPayload
+from controllers.console.wraps import (
+    RBACPermission,
     account_initialization_required,
     cloud_edition_billing_rate_limit_check,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
 )
+from fields.hit_testing_fields import HitTestingResponse
+from libs.external_api import error_responses
+from libs.helper import dump_response
+from libs.login import login_required
+from models import Account
 
 register_schema_models(console_ns, HitTestingPayload)
 register_response_schema_models(console_ns, HitTestingResponse)
@@ -29,6 +37,12 @@ register_response_schema_models(console_ns, HitTestingResponse)
 
 @console_ns.route("/datasets/<uuid:dataset_id>/hit-testing")
 class HitTestingApi(Resource, DatasetsHitTestingBase):
+    @error_responses(
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc("test_dataset_retrieval")
     @console_ns.doc(description="Test dataset knowledge retrieval")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
@@ -46,7 +60,7 @@ class HitTestingApi(Resource, DatasetsHitTestingBase):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @with_current_tenant_id
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_PIPELINE_TEST)
+    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_PIPELINE_TEST, DatasetId()))
     @with_session
     def post(
         self, session: Session, current_user: Account, current_tenant_id: str, dataset_id: UUID

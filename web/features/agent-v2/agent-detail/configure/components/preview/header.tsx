@@ -46,7 +46,7 @@ function ModeInfoTip({ children, ariaLabel }: { children: ReactNode; ariaLabel: 
         closeDelay={200}
         aria-label={ariaLabel}
         onClick={handleClick}
-        className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+        className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0"
       >
         <span
           aria-hidden
@@ -66,10 +66,12 @@ function ModeInfoTip({ children, ariaLabel }: { children: ReactNode; ariaLabel: 
 
 function PreviewModeItem({
   previewEnabled,
+  label,
   disabledTip,
   children,
 }: {
   previewEnabled: boolean
+  label: string
   disabledTip: string
   children: ReactNode
 }) {
@@ -90,7 +92,7 @@ function PreviewModeItem({
       <PopoverTrigger
         openOnHover
         nativeButton={false}
-        aria-label={disabledTip}
+        aria-label={`${label}. ${disabledTip}`}
         render={<span className="inline-flex" />}
       >
         {item}
@@ -98,7 +100,7 @@ function PreviewModeItem({
       <PopoverContent
         placement="bottom"
         sideOffset={6}
-        className="max-w-[260px] rounded-md bg-components-tooltip-bg px-3 py-2 system-xs-regular text-text-tertiary shadow-lg"
+        className="max-w-65 rounded-md bg-components-tooltip-bg px-3 py-2 system-xs-regular text-text-tertiary shadow-lg"
       >
         {disabledTip}
       </PopoverContent>
@@ -110,6 +112,7 @@ export function AgentPreviewHeader({
   mode,
   previewEnabled,
   isChatFeaturesOpen,
+  buildEnabled = true,
   onModeChange,
   onToggleChatFeatures,
   onOpenWorkingDirectory,
@@ -122,6 +125,7 @@ export function AgentPreviewHeader({
   mode: AgentConfigureRightPanelMode
   previewEnabled: boolean
   isChatFeaturesOpen: boolean
+  buildEnabled?: boolean
   onModeChange: (mode: AgentConfigureRightPanelMode) => void
   onToggleChatFeatures: () => void
   onOpenWorkingDirectory: () => void
@@ -131,7 +135,7 @@ export function AgentPreviewHeader({
   showChatFeaturesAction?: boolean
   trailingAction?: ReactNode
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const docLink = useDocLink()
   const buildLabel = t(($) => $['agentDetail.configure.rightPanel.build'])
   const buildTipBody = t(($) => $['agentDetail.configure.rightPanel.buildTipBody'])
@@ -154,18 +158,26 @@ export function AgentPreviewHeader({
   )
 
   return (
-    <div className="relative z-1 flex h-12 shrink-0 items-center justify-between gap-3 px-4 py-2">
-      <div className="flex min-w-0 flex-1 items-center gap-2">
+    <div className="relative z-1 flex h-12 shrink-0 items-center justify-between gap-3 px-4 py-2 max-sm:h-auto max-sm:flex-wrap max-sm:gap-1 max-sm:px-2">
+      <div className="flex min-w-0 flex-1 items-center gap-2 max-sm:w-full max-sm:flex-none">
         <SegmentedControl<AgentConfigureRightPanelMode>
           value={mode}
           onValueChange={(value) => onModeChange(value)}
           aria-label={t(($) => $['agentDetail.configure.rightPanel.modeLabel'])}
         >
-          <SegmentedControlItem<AgentConfigureRightPanelMode> value="build" className="uppercase">
+          <SegmentedControlItem<AgentConfigureRightPanelMode>
+            value="build"
+            disabled={!buildEnabled}
+            className="uppercase"
+          >
             <span aria-hidden className="i-custom-vender-agent-v2-configure-build size-4" />
             {t(($) => $['agentDetail.configure.rightPanel.build'])}
           </SegmentedControlItem>
-          <PreviewModeItem previewEnabled={previewEnabled} disabledTip={previewDisabledTip}>
+          <PreviewModeItem
+            previewEnabled={previewEnabled}
+            label={previewLabel}
+            disabledTip={previewDisabledTip}
+          >
             <span aria-hidden className="i-custom-vender-agent-v2-configure-preview size-4" />
             {t(($) => $['agentDetail.configure.rightPanel.preview'])}
           </PreviewModeItem>
@@ -199,8 +211,8 @@ export function AgentPreviewHeader({
           </div>
         </ModeInfoTip>
       </div>
-      <div className="flex shrink-0 items-center">
-        <div className="flex items-center gap-2">
+      <div className="flex shrink-0 items-center max-sm:w-full max-sm:flex-wrap max-sm:justify-end">
+        <div className="flex items-center gap-2 max-sm:flex-wrap">
           <Tooltip>
             <TooltipTrigger
               render={
@@ -222,7 +234,6 @@ export function AgentPreviewHeader({
               type="button"
               onClick={onOpenWorkingDirectory}
               className="flex h-8 items-center justify-center gap-0.5 rounded-lg px-3 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              aria-label={t(($) => $['agentDetail.configure.workingDirectory.open'])}
             >
               <span aria-hidden className="i-ri-folder-3-line size-4" />
               <span className="px-0.5 system-sm-medium">
@@ -233,7 +244,7 @@ export function AgentPreviewHeader({
         </div>
         {showChatFeaturesAction && (
           <>
-            <SegmentedControlDivider className="mx-3" />
+            <SegmentedControlDivider className="mx-3 max-sm:hidden" />
             <button
               type="button"
               aria-expanded={isChatFeaturesOpen}
@@ -242,7 +253,6 @@ export function AgentPreviewHeader({
                 'flex h-8 items-center justify-center gap-1 rounded-lg px-2 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
                 isChatFeaturesOpen && 'bg-state-base-hover text-text-secondary',
               )}
-              aria-label={t(($) => $['agentDetail.configure.preview.chatFeatures'])}
             >
               <span aria-hidden className="i-ri-chat-settings-line size-4" />
               <span className="px-0.5 system-sm-medium">
@@ -253,7 +263,7 @@ export function AgentPreviewHeader({
         )}
         {trailingAction != null && (
           <>
-            <SegmentedControlDivider className="mx-3" />
+            <SegmentedControlDivider className="mx-3 max-sm:hidden" />
             {trailingAction}
           </>
         )}

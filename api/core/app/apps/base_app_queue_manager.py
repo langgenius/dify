@@ -1,3 +1,4 @@
+import errno
 import logging
 import queue
 import threading
@@ -24,10 +25,21 @@ from core.app.entities.queue_entities import (
     QueueStopEvent,
     WorkflowQueueMessage,
 )
-from extensions.ext_redis import redis_client
+from extensions.ext_redis import RedisClientWrapper, redis_client
 from graphon.runtime import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
+
+
+def _is_broken_pipe_error(error: BaseException) -> bool:
+    current_error: BaseException | None = error
+    while current_error is not None:
+        if isinstance(current_error, BrokenPipeError):
+            return True
+        if isinstance(current_error, OSError) and current_error.errno == errno.EPIPE:
+            return True
+        current_error = current_error.__cause__ or current_error.__context__
+    return False
 
 
 class PublishFrom(IntEnum):
@@ -174,12 +186,15 @@ class AppQueueManager(ABC):
         raise NotImplementedError
 
     @classmethod
-    def set_stop_flag(cls, task_id: str, invoke_from: InvokeFrom, user_id: str):
+    def set_stop_flag(
+        cls, task_id: str, invoke_from: InvokeFrom, user_id: str, *, redis: RedisClientWrapper | None = None
+    ) -> None:
         """
         Set task stop flag
         :return:
         """
-        result: Any | None = redis_client.get(cls._generate_task_belong_cache_key(task_id))
+        client = redis if redis is not None else redis_client
+        result: Any | None = client.get(cls._generate_task_belong_cache_key(task_id))
         if result is None:
             return
 
@@ -188,7 +203,7 @@ class AppQueueManager(ABC):
             return
 
         stopped_cache_key = cls._generate_stopped_cache_key(task_id)
-        redis_client.setex(stopped_cache_key, 600, 1)
+        client.setex(stopped_cache_key, 600, 1)
 
     @classmethod
     def set_stop_flag_no_user_check(cls, task_id: str) -> None:
@@ -203,16 +218,27 @@ class AppQueueManager(ABC):
 
     @cachedmethod(lambda self: self._stopped_cache, lock=lambda self: self._cache_lock)
     def _is_stopped(self) -> bool:
-        """
-        Check if task is stopped
-        :return:
+        """Return whether the task has a stop flag.
+
+        A broken Redis connection cannot establish that a stop was requested,
+        so this check fails open to avoid interrupting the workflow generator.
+        Other Redis errors retain their existing propagation behavior.
         """
         stopped_cache_key = AppQueueManager._generate_stopped_cache_key(self._task_id)
-        result = redis_client.get(stopped_cache_key)
-        if result is not None:
-            return True
+        try:
+            result = redis_client.get(stopped_cache_key)
+        except (BrokenPipeError, RedisError) as exc:
+            if not _is_broken_pipe_error(exc):
+                raise
+            logger.warning(
+                "Ignoring broken pipe while checking task stop flag; task=%s key=%s",
+                self._task_id,
+                stopped_cache_key,
+                exc_info=True,
+            )
+            return False
 
-        return False
+        return result is not None
 
     @classmethod
     def _generate_task_belong_cache_key(cls, task_id: str) -> str:

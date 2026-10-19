@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import builtins
 import importlib
+from collections.abc import Callable
 from contextlib import ExitStack, contextmanager
 from inspect import unwrap
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import NAMESPACE_URL, uuid5
 
@@ -23,6 +24,7 @@ from models import Account, BuiltinToolProvider, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole
 from models.credential_permission import CredentialPermission
 from models.enums import PermissionEnum
+from repositories.credentials.query_repository import CredentialQueryRepository
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -40,7 +42,7 @@ def app() -> Flask:
 
 
 @pytest.fixture
-def controller_module(monkeypatch: pytest.MonkeyPatch):
+def controller_module(monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], sqlite_session_factory):
     """
     Import the controller with auth decorators neutralized only during import.
 
@@ -74,11 +76,15 @@ def controller_module(monkeypatch: pytest.MonkeyPatch):
     global _WRAPS_MODULE
     wraps_module = importlib.import_module("controllers.console.wraps")
     _WRAPS_MODULE = wraps_module
-    monkeypatch.setattr(module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
-    monkeypatch.setattr(wraps_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
 
     login_module = importlib.import_module("libs.login")
     monkeypatch.setattr(login_module, "check_csrf_token", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        module,
+        "application_services",
+        lambda: SimpleNamespace(credential_queries=CredentialQueryRepository(session_factory=sqlite_session_factory)),
+    )
     return module
 
 
@@ -128,11 +134,18 @@ def _provider_credential(
 
 @contextmanager
 def _bind_database_session(session: Session):
-    database_session = scoped_session(
-        sessionmaker(bind=session.get_bind(), expire_on_commit=False),
-    )
+    session_factory = sessionmaker(bind=session.get_bind(), expire_on_commit=False)
+    database_session = scoped_session(session_factory)
     try:
-        with patch("extensions.ext_database.db.session", database_session):
+        with (
+            patch("extensions.ext_database.db.session", database_session),
+            patch(
+                "controllers.console.workspace.tool_providers.application_services",
+                return_value=SimpleNamespace(
+                    credential_queries=CredentialQueryRepository(session_factory=session_factory)
+                ),
+            ),
+        ):
             yield
     finally:
         database_session.remove()
@@ -718,20 +731,24 @@ def test_tool_labels_list(app: Flask, controller_module, monkeypatch: pytest.Mon
 # --- _resolve_identity_mode: gating + None-resolution (PR #36839 review) ---
 
 
-def test_resolve_identity_mode_none_keeps_current_when_enterprise(controller_module, monkeypatch: pytest.MonkeyPatch):
+def test_resolve_identity_mode_none_keeps_current_when_enterprise(
+    controller_module, config_overrides: Callable[..., None]
+):
     """None means 'leave unchanged' — fall back to the stored mode (update path)."""
     identity_mode = importlib.import_module("core.entities.mcp_provider").IdentityMode
-    monkeypatch.setattr(controller_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE)
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
 
     resolved = controller_module._resolve_identity_mode(None, current=identity_mode.IDP_TOKEN)
 
     assert resolved == identity_mode.IDP_TOKEN
 
 
-def test_resolve_identity_mode_explicit_value_overrides_current(controller_module, monkeypatch: pytest.MonkeyPatch):
+def test_resolve_identity_mode_explicit_value_overrides_current(
+    controller_module, config_overrides: Callable[..., None]
+):
     """An explicit value wins over the stored mode."""
     identity_mode = importlib.import_module("core.entities.mcp_provider").IdentityMode
-    monkeypatch.setattr(controller_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE)
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
 
     resolved = controller_module._resolve_identity_mode(identity_mode.OFF, current=identity_mode.IDP_TOKEN)
 
@@ -739,12 +756,12 @@ def test_resolve_identity_mode_explicit_value_overrides_current(controller_modul
 
 
 def test_resolve_identity_mode_coerces_non_off_to_off_when_not_enterprise(
-    controller_module, monkeypatch: pytest.MonkeyPatch
+    controller_module, config_overrides: Callable[..., None]
 ):
     """Gate: a non-EE deployment must never persist a non-OFF mode — the
     runtime won't forward, so the stored row must not imply it does."""
     identity_mode = importlib.import_module("core.entities.mcp_provider").IdentityMode
-    monkeypatch.setattr(controller_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
 
     # Both an explicit idp_token request AND an inherited non-OFF current
     # must collapse to OFF.
@@ -756,11 +773,11 @@ def test_resolve_identity_mode_coerces_non_off_to_off_when_not_enterprise(
 
 
 def test_resolve_identity_mode_off_is_passthrough_when_not_enterprise(
-    controller_module, monkeypatch: pytest.MonkeyPatch
+    controller_module, config_overrides: Callable[..., None]
 ):
     """OFF is always fine — the gate only neutralizes non-OFF values."""
     identity_mode = importlib.import_module("core.entities.mcp_provider").IdentityMode
-    monkeypatch.setattr(controller_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
 
     assert controller_module._resolve_identity_mode(None, current=identity_mode.OFF) == identity_mode.OFF
 

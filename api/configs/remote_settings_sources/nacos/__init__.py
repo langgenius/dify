@@ -5,13 +5,12 @@ from typing import Any, override
 
 from pydantic.fields import FieldInfo
 
-from .http_request import NacosHttpClient
-
-logger = logging.getLogger(__name__)
-
 from configs.remote_settings_sources.base import RemoteSettingsSource
 
+from .http_request import NacosHttpClient
 from .utils import parse_config
+
+logger = logging.getLogger(__name__)
 
 
 class NacosSettingsSource(RemoteSettingsSource):
@@ -43,8 +42,4 @@ class NacosSettingsSource(RemoteSettingsSource):
 
     @override
     def get_field_value(self, field: FieldInfo, field_name: str) -> tuple[Any, str, bool]:
-        field_value = self.remote_configs.get(field_name)
-        if field_value is None:
-            return None, field_name, False
-
-        return field_value, field_name, False
+        return self.resolve_field_value(self.remote_configs, field, field_name)

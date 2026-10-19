@@ -7,8 +7,11 @@ import type {
 } from './variable-modal.helpers'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { Input } from '@langgenius/dify-ui/input'
+import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
 import { RiDraftLine, RiInputField } from '@remixicon/react'
-import Input from '@/app/components/base/input'
+import { useId } from 'react'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { ChatVarType } from '../type'
@@ -43,18 +46,16 @@ type NameSectionProps = {
 }
 
 export const NameSection = ({ name, onBlur, onChange, placeholder, title }: NameSectionProps) => (
-  <div className="mb-4">
-    <SectionTitle>{title}</SectionTitle>
-    <div className="flex">
-      <Input
-        placeholder={placeholder}
-        value={name}
-        onChange={onChange}
-        onBlur={(e) => onBlur(e.target.value)}
-        type="text"
-      />
-    </div>
-  </div>
+  <Field className="mb-4">
+    <FieldLabel className="system-sm-semibold">{title}</FieldLabel>
+    <Input
+      placeholder={placeholder}
+      value={name}
+      onChange={onChange}
+      onBlur={(e) => onBlur(e.target.value)}
+      type="text"
+    />
+  </Field>
 )
 
 type TypeSectionProps = {
@@ -112,87 +113,103 @@ export const ValueSection = ({
   toggleLabelKey,
   type,
   value,
-}: ValueSectionProps) => (
-  <div className="mb-4">
-    <div className="mb-1 flex h-6 items-center justify-between system-sm-semibold text-text-secondary">
-      <div>{t(($) => $['chatVariable.modal.value'], { ns: 'workflow' })}</div>
-      {toggleLabelKey && (
-        <Button
-          variant="ghost"
-          size="small"
-          className="text-text-tertiary"
-          onClick={() => onEditorChange(!editInJSON)}
-        >
-          {editInJSON ? (
-            <RiInputField className="size-3.5" />
-          ) : (
-            <RiDraftLine className="size-3.5" />
-          )}
-          {t(editorToggleLabelSelectors[toggleLabelKey], { ns: 'workflow' })}
-        </Button>
-      )}
-    </div>
-    <div className="flex">
-      {type === ChatVarType.String && (
-        <textarea
-          className="block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:system-sm-regular placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
-          value={(value as string) || ''}
-          placeholder={t(($) => $['chatVariable.modal.valuePlaceholder'], { ns: 'workflow' }) || ''}
-          onChange={(e) => onArrayChange([e.target.value])}
-        />
-      )}
-      {type === ChatVarType.Number && (
-        <Input
-          placeholder={t(($) => $['chatVariable.modal.valuePlaceholder'], { ns: 'workflow' }) || ''}
-          value={value as number | undefined}
-          onChange={(e) => {
-            const rawValue = e.target.value
-            onArrayChange([rawValue === '' ? undefined : Number(rawValue)])
-          }}
-          type="number"
-        />
-      )}
-      {type === ChatVarType.Boolean && (
-        <BoolValue value={value as boolean} onChange={onValueChange} />
-      )}
-      {type === ChatVarType.Object && !editInJSON && (
-        <ObjectValueList list={objectValue} onChange={onObjectChange} />
-      )}
-      {type === ChatVarType.ArrayString && !editInJSON && (
-        <ArrayValueList
-          isString
-          list={(value as Array<string | undefined>) || [undefined]}
-          onChange={onArrayChange}
-        />
-      )}
-      {type === ChatVarType.ArrayNumber && !editInJSON && (
-        <ArrayValueList
-          isString={false}
-          list={(value as Array<number | undefined>) || [undefined]}
-          onChange={onArrayChange}
-        />
-      )}
-      {type === ChatVarType.ArrayBoolean && !editInJSON && (
-        <ArrayBoolList list={(value as boolean[]) || [true]} onChange={onArrayBoolChange} />
-      )}
-      {editInJSON && (
-        <div
-          className="w-full rounded-[10px] bg-components-input-bg-normal py-2 pr-1 pl-3"
-          style={{ height: editorMinHeight }}
-        >
-          <CodeEditor
-            isExpand
-            noWrapper
-            language={CodeLanguage.json}
-            value={editorContent}
-            placeholder={<div className="whitespace-pre">{placeholder}</div>}
-            onChange={onEditorValueChange}
+}: ValueSectionProps) => {
+  const numberInputId = useId()
+  return (
+    <div className="mb-4">
+      <div className="mb-1 flex h-6 items-center justify-between system-sm-semibold text-text-secondary">
+        {type === ChatVarType.Number ? (
+          <label htmlFor={numberInputId}>
+            {t(($) => $['chatVariable.modal.value'], { ns: 'workflow' })}
+          </label>
+        ) : (
+          <div>{t(($) => $['chatVariable.modal.value'], { ns: 'workflow' })}</div>
+        )}
+        {toggleLabelKey && (
+          <Button
+            variant="ghost"
+            size="small"
+            className="text-text-tertiary"
+            onClick={() => onEditorChange(!editInJSON)}
+          >
+            {editInJSON ? (
+              <RiInputField className="size-3.5" />
+            ) : (
+              <RiDraftLine className="size-3.5" />
+            )}
+            {t(editorToggleLabelSelectors[toggleLabelKey], { ns: 'workflow' })}
+          </Button>
+        )}
+      </div>
+      <div className="flex">
+        {type === ChatVarType.String && (
+          <textarea
+            className="block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:system-sm-regular placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
+            value={(value as string) || ''}
+            placeholder={
+              t(($) => $['chatVariable.modal.valuePlaceholder'], { ns: 'workflow' }) || ''
+            }
+            onChange={(e) => onArrayChange([e.target.value])}
           />
-        </div>
-      )}
+        )}
+        {type === ChatVarType.Number && (
+          <NumberField
+            format={{ maximumSignificantDigits: 21, useGrouping: false }}
+            id={numberInputId}
+            className="w-full"
+            value={typeof value === 'number' ? value : null}
+            onValueChange={(value) => onArrayChange([value ?? undefined])}
+          >
+            <NumberFieldGroup>
+              <NumberFieldInput
+                inputMode="decimal"
+                placeholder={t(($) => $['chatVariable.modal.valuePlaceholder'], { ns: 'workflow' })}
+              />
+            </NumberFieldGroup>
+          </NumberField>
+        )}
+        {type === ChatVarType.Boolean && (
+          <BoolValue value={value as boolean} onChange={onValueChange} />
+        )}
+        {type === ChatVarType.Object && !editInJSON && (
+          <ObjectValueList list={objectValue} onChange={onObjectChange} />
+        )}
+        {type === ChatVarType.ArrayString && !editInJSON && (
+          <ArrayValueList
+            isString
+            list={(value as Array<string | undefined>) || [undefined]}
+            onChange={onArrayChange}
+          />
+        )}
+        {type === ChatVarType.ArrayNumber && !editInJSON && (
+          <ArrayValueList
+            isString={false}
+            list={(value as Array<number | undefined>) || [undefined]}
+            onChange={onArrayChange}
+          />
+        )}
+        {type === ChatVarType.ArrayBoolean && !editInJSON && (
+          <ArrayBoolList list={(value as boolean[]) || [true]} onChange={onArrayBoolChange} />
+        )}
+        {editInJSON && (
+          <div
+            className="w-full rounded-[10px] bg-components-input-bg-normal py-2 pr-1 pl-3"
+            style={{ height: editorMinHeight }}
+          >
+            <CodeEditor
+              isExpand
+              noWrapper
+              language={CodeLanguage.json}
+              value={editorContent}
+              placeholder={<div className="whitespace-pre">{placeholder}</div>}
+              onChange={onEditorValueChange}
+            />
+          </div>
+        )}
+      </div>
     </div>
-  </div>
-)
+  )
+}
 
 type DescriptionSectionProps = {
   description: string

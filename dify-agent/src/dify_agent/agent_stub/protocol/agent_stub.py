@@ -18,7 +18,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, JsonValue, model_validator
 
-AGENT_STUB_PROTOCOL_VERSION: Final[int] = 1
+AGENT_STUB_PROTOCOL_VERSION: Final[Literal[1]] = 1
 AGENT_STUB_API_BASE_URL_ENV_VAR: Final[str] = "DIFY_AGENT_STUB_API_BASE_URL"
 AGENT_STUB_AUTH_JWE_ENV_VAR: Final[str] = "DIFY_AGENT_STUB_AUTH_JWE"
 

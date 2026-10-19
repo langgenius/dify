@@ -53,11 +53,7 @@ class TestModelConfigResourcePermissions:
         mock_scalars_result.one.return_value = tenant
         monkeypatch.setattr(mock_session_instance, "scalars", mock.Mock(return_value=mock_scalars_result))
 
-        mock_session_context = mock.Mock()
-        mock_session_context.__enter__.return_value = mock_session_instance
-        monkeypatch.setattr("models.account.Session", lambda _, expire_on_commit: mock_session_context)
-
-        account.current_tenant = tenant
+        account.set_current_tenant_with_session(tenant, session=mock_session_instance)
         return account
 
     @pytest.mark.parametrize(
@@ -91,11 +87,11 @@ class TestModelConfigResourcePermissions:
         # Mock current user
         monkeypatch.setattr(model_config_api, "current_user", mock_account)
 
-        # Mock AccountService.load_user to prevent authentication issues
-        from services.account_service import AccountService
+        # Mock AccountIdentityGateway.load_user to prevent authentication issues
+        from services.account.adapters import AccountIdentityGateway
 
         mock_load_user = mock.Mock(return_value=mock_account)
-        monkeypatch.setattr(AccountService, "load_user", mock_load_user)
+        monkeypatch.setattr(AccountIdentityGateway, "load_user", mock_load_user)
 
         mock_validate_config = mock.Mock(
             return_value={

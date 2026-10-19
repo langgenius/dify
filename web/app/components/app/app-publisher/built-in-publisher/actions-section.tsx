@@ -1,8 +1,8 @@
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppPublisherProps } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
-import { AppModeEnum } from '@/types/app'
 import SuggestedAction from '../suggested-action'
 import WorkflowToolAction from '../workflow-tool-action'
 
@@ -10,19 +10,10 @@ type PublisherActionsSectionProps = Pick<
   AppPublisherProps,
   'hasHumanInputNode' | 'hasTriggerNode' | 'publishedAt' | 'toolPublished' | 'workflowToolAvailable'
 > & {
-  appDetail:
-    | {
-        id?: string
-        icon?: string
-        icon_type?: string | null
-        icon_background?: string | null
-        description?: string
-        mode?: AppModeEnum
-        name?: string
-      }
-    | null
-    | undefined
+  appId: string
+  appMode: AppDetailWithSite['mode']
   appURL: string
+  canViewAccessPoint: boolean
   disabledFunctionButton: boolean
   disabledFunctionTooltip?: string
   handleOpenRunConfig?: (url: string) => void
@@ -39,8 +30,10 @@ type PublisherActionsSectionProps = Pick<
 }
 
 export function PublisherActionsSection({
-  appDetail,
+  appId,
+  appMode,
   appURL,
+  canViewAccessPoint,
   disabledFunctionButton,
   disabledFunctionTooltip,
   handleOpenRunConfig,
@@ -60,15 +53,12 @@ export function PublisherActionsSection({
   onConfigureWorkflowTool,
   onPublishToMarketplace,
 }: PublisherActionsSectionProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
 
-  const appId = appDetail?.id
   const hasPublishedVersion = Boolean(publishedAt)
   const showOpenWebApp = !hasTriggerNode
-  const showDeploy = Boolean(showDeployAction && appId)
-  const showWorkflowTool =
-    appDetail?.mode === AppModeEnum.WORKFLOW && !hasHumanInputNode && !hasTriggerNode
-  const navigationDisabled = !hasPublishedVersion || !appId
+  const showWorkflowTool = appMode === 'workflow' && !hasHumanInputNode && !hasTriggerNode
+  const navigationDisabled = !hasPublishedVersion
   const workflowToolDisabled =
     !hasPublishedVersion || !workflowToolAvailable || (toolPublished && workflowToolIsLoading)
 
@@ -111,18 +101,20 @@ export function PublisherActionsSection({
               {t(($) => $['common.openWebApp'], { ns: 'workflow' })}
             </SuggestedAction>
           </TooltipTrigger>
-          <TooltipContent role="tooltip">{disabledFunctionTooltip}</TooltipContent>
+          <TooltipContent>{disabledFunctionTooltip}</TooltipContent>
         </Tooltip>
       )}
-      <SuggestedAction
-        disabled={navigationDisabled}
-        description={t(($) => $['common.accessPointDescription'], { ns: 'workflow' })}
-        link={appId ? `/app/${appId}/access-point` : undefined}
-        icon={<span className="i-custom-vender-agent-v2-access-point size-4" />}
-      >
-        {t(($) => $['appMenus.accessPoint'], { ns: 'common' })}
-      </SuggestedAction>
-      {showDeploy && (
+      {canViewAccessPoint && (
+        <SuggestedAction
+          disabled={navigationDisabled}
+          description={t(($) => $['common.accessPointDescription'], { ns: 'workflow' })}
+          link={`/app/${appId}/access-point`}
+          icon={<span className="i-custom-vender-agent-v2-access-point size-4" />}
+        >
+          {t(($) => $['appMenus.accessPoint'], { ns: 'common' })}
+        </SuggestedAction>
+      )}
+      {showDeployAction && (
         <SuggestedAction
           disabled={navigationDisabled}
           description={t(($) => $['common.deployDescription'], { ns: 'workflow' })}

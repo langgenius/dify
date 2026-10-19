@@ -17,8 +17,8 @@ from models.account import (
 )
 from models.dataset import Dataset, ExternalKnowledgeApis, ExternalKnowledgeBindings
 from models.enums import DataSourceType
-from services.dataset_service import DatasetService
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
+from services.knowledge.dataset_service import DatasetService
 
 
 class DatasetUpdateTestDataFactory:
@@ -51,7 +51,7 @@ class DatasetUpdateTestDataFactory:
         db_session_with_containers.add(join)
         db_session_with_containers.commit()
 
-        account.current_tenant = tenant
+        account.set_current_tenant_with_session(tenant, session=db_session_with_containers)
         return account, tenant
 
     @staticmethod
@@ -220,7 +220,7 @@ class TestDatasetServiceUpdateDataset:
 
         update_data = {"name": "new_name", "external_knowledge_api_id": str(uuid4())}
 
-        with pytest.raises(ValueError) as context:
+        with pytest.raises(ValueError, match="External knowledge id is required") as context:
             DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
 
         assert "External knowledge id is required" in str(context.value)
@@ -244,7 +244,7 @@ class TestDatasetServiceUpdateDataset:
 
         update_data = {"name": "new_name", "external_knowledge_id": "knowledge_id"}
 
-        with pytest.raises(ValueError) as context:
+        with pytest.raises(ValueError, match="External knowledge api id is required") as context:
             DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
 
         assert "External knowledge api id is required" in str(context.value)
@@ -271,7 +271,7 @@ class TestDatasetServiceUpdateDataset:
             "external_knowledge_api_id": external_api.id,
         }
 
-        with pytest.raises(ValueError) as context:
+        with pytest.raises(ValueError, match="External knowledge binding not found") as context:
             DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
 
         assert "External knowledge binding not found" in str(context.value)
@@ -370,7 +370,7 @@ class TestDatasetServiceUpdateDataset:
             "retrieval_model": "new_model",
         }
 
-        with patch("services.dataset_service.deal_dataset_vector_index_task") as mock_task:
+        with patch("services.knowledge.dataset_service.deal_dataset_vector_index_task") as mock_task:
             result = DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
             mock_task.delay.assert_called_once_with(dataset.id, "remove")
 
@@ -408,12 +408,12 @@ class TestDatasetServiceUpdateDataset:
         }
 
         with (
-            patch("services.dataset_service.current_user", user),
-            patch("services.dataset_service.ModelManager.for_tenant") as mock_model_manager,
+            patch("services.knowledge.dataset_service.current_user", user),
+            patch("services.knowledge.dataset_service.ModelManager.for_tenant") as mock_model_manager,
             patch(
-                "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding"
+                "services.knowledge.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding"
             ) as mock_get_binding,
-            patch("services.dataset_service.deal_dataset_vector_index_task") as mock_task,
+            patch("services.knowledge.dataset_service.deal_dataset_vector_index_task") as mock_task,
         ):
             mock_model_manager.return_value.get_model_instance.return_value = embedding_model
             mock_get_binding.return_value = binding
@@ -503,13 +503,13 @@ class TestDatasetServiceUpdateDataset:
         }
 
         with (
-            patch("services.dataset_service.current_user", user),
-            patch("services.dataset_service.ModelManager.for_tenant") as mock_model_manager,
+            patch("services.knowledge.dataset_service.current_user", user),
+            patch("services.knowledge.dataset_service.ModelManager.for_tenant") as mock_model_manager,
             patch(
-                "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding"
+                "services.knowledge.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding"
             ) as mock_get_binding,
-            patch("services.dataset_service.deal_dataset_vector_index_task") as mock_task,
-            patch("services.dataset_service.regenerate_summary_index_task") as mock_regenerate_task,
+            patch("services.knowledge.dataset_service.deal_dataset_vector_index_task") as mock_task,
+            patch("services.knowledge.dataset_service.regenerate_summary_index_task") as mock_regenerate_task,
         ):
             mock_model_manager.return_value.get_model_instance.return_value = embedding_model
             mock_get_binding.return_value = binding
@@ -544,7 +544,7 @@ class TestDatasetServiceUpdateDataset:
         user, _ = DatasetUpdateTestDataFactory.create_account_with_tenant(db_session_with_containers)
         update_data = {"name": "new_name"}
 
-        with pytest.raises(ValueError) as context:
+        with pytest.raises(ValueError, match="Dataset not found") as context:
             DatasetService.update_dataset(str(uuid4()), update_data, user, session=db_session_with_containers)
 
         assert "Dataset not found" in str(context.value)
@@ -589,12 +589,12 @@ class TestDatasetServiceUpdateDataset:
         }
 
         with (
-            patch("services.dataset_service.current_user", user),
-            patch("services.dataset_service.ModelManager.for_tenant") as mock_model_manager,
+            patch("services.knowledge.dataset_service.current_user", user),
+            patch("services.knowledge.dataset_service.ModelManager.for_tenant") as mock_model_manager,
         ):
             mock_model_manager.return_value.get_model_instance.side_effect = Exception("No Embedding Model available")
 
-            with pytest.raises(Exception) as context:
+            with pytest.raises(Exception, match="(?i)No Embedding Model available") as context:
                 DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
 
         assert "No Embedding Model available".lower() in str(context.value).lower()

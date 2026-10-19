@@ -12,10 +12,11 @@ from flask_restx import Resource
 from flask_restx.utils import merge
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable, Unauthorized
 
 from configs import dify_config
+from controllers.common.resource_access_token_errors import resource_access_token_errors
 from controllers.service_api.schema import (
     USER_FETCH_FROM_ATTR,
     USER_FORM_PARAM,
@@ -23,14 +24,17 @@ from controllers.service_api.schema import (
     USER_REQUIRED_ATTR,
 )
 from enums import CloudPlan, DeploymentEdition
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.login import current_user
 from models import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset, RateLimitLog
-from models.model import ApiToken, App
+from models.model import ApiToken
+from repositories.knowledge import dataset_api_key_bindings
 from services.api_token_service import ApiTokenCache, fetch_token_with_single_flight, record_token_usage
-from services.end_user_service import EndUserService
+from services.app_service import AppService
+from services.auth.resource_access_token_contracts import is_resource_access_token
 from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
@@ -64,6 +68,12 @@ APP_TOKEN_FORBIDDEN_RESPONSE = {
 DATASET_TOKEN_AUTH_RESPONSES = {
     401: "Unauthorized - invalid API token",
     403: "Forbidden - dataset API access or workspace access denied",
+}
+VECTOR_SPACE_UNAVAILABLE_RESPONSE = {
+    503: (
+        "`service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox "
+        "plan only; retry the request later."
+    ),
 }
 
 
@@ -102,9 +112,21 @@ def validate_app_token[**P, R](
     def decorator(view_func: Callable[P, R]) -> Callable[P, R]:
         @wraps(view_func)
         def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
-            api_token = validate_and_get_api_token("app")
-
-            app_model = db.session.get(App, api_token.app_id)
+            auth_token = peek_service_api_bearer_token()
+            if auth_token and is_resource_access_token(auth_token):
+                with resource_access_token_errors():
+                    grant = application_services().resource_access_tokens.resolve_app_for_service_api(
+                        token=auth_token,
+                        requested_app_id=request.headers.get("X-Dify-App-ID"),
+                    )
+                app_model = AppService.get_app_in_workspace(
+                    tenant_id=grant.tenant_id,
+                    app_id=next(iter(grant.app_ids)),
+                    session=db.session(),
+                )
+            else:
+                api_token = validate_and_get_api_token("app")
+                app_model = AppService.get_app_by_id(api_token.app_id, session=db.session())
             if not app_model:
                 raise Forbidden("The app no longer exists.")
 
@@ -139,7 +161,11 @@ def validate_app_token[**P, R](
                 if user_id:
                     user_id = str(user_id)
 
-                end_user = EndUserService.get_or_create_end_user(app_model, user_id)
+                end_user = application_services().app_scoped_end_users.commands.get_or_create_end_user(
+                    app_model.tenant_id,
+                    app_model.id,
+                    user_id,
+                )
                 kwargs["end_user"] = end_user
 
                 # Set EndUser as current logged-in user for flask_login.current_user
@@ -183,16 +209,21 @@ def cloud_edition_billing_resource_check[**P, R](
     api_token_type: str,
 ) -> Callable[[Callable[P, R]], Callable[P, R]]:
     def interceptor(view: Callable[P, R]):
+        @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token(api_token_type)
-            if resource == "vector_space":
-                if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
-                    return view(*args, **kwargs)
+            if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+                return view(*args, **kwargs)
 
-                vector_space = FeatureService.get_vector_space(api_token.tenant_id)
+            tenant_id = api_token.tenant_id
+            if tenant_id is None:
+                raise Unauthorized("Tenant id is required for this token.")
+
+            if resource == "vector_space":
+                vector_space = application_services().feature_queries.get_workspace_vector_space(tenant_id)
                 if vector_space.usage_unknown:
-                    features = FeatureService.get_features(api_token.tenant_id, exclude_vector_space=True)
-                    if features.billing.enabled and features.billing.subscription.plan == CloudPlan.SANDBOX:
+                    features = FeatureService.get_features(tenant_id, exclude_vector_space=True)
+                    if features.billing.subscription.plan == CloudPlan.SANDBOX:
                         raise ServiceUnavailable(
                             "Unable to verify vector space usage right now. Please try again later."
                         )
@@ -200,24 +231,25 @@ def cloud_edition_billing_resource_check[**P, R](
                     raise Forbidden("The capacity of the vector space has reached the limit of your subscription.")
                 return view(*args, **kwargs)
 
-            features = FeatureService.get_features(api_token.tenant_id, exclude_vector_space=True)
+            features = FeatureService.get_features(tenant_id, exclude_vector_space=True)
 
-            if features.billing.enabled:
-                members = features.members
-                apps = features.apps
-                documents_upload_quota = features.documents_upload_quota
+            members = features.members
+            apps = features.apps
+            documents_upload_quota = features.documents_upload_quota
 
-                if resource == "members" and 0 < members.limit <= members.size:
-                    raise Forbidden("The number of members has reached the limit of your subscription.")
-                elif resource == "apps" and 0 < apps.limit <= apps.size:
-                    raise Forbidden("The number of apps has reached the limit of your subscription.")
-                elif resource == "documents" and 0 < documents_upload_quota.limit <= documents_upload_quota.size:
-                    raise Forbidden("The number of documents has reached the limit of your subscription.")
-                else:
-                    return view(*args, **kwargs)
-
+            if resource == "members" and 0 < members.limit <= members.size:
+                raise Forbidden("The number of members has reached the limit of your subscription.")
+            elif resource == "apps" and 0 < apps.limit <= apps.size:
+                raise Forbidden("The number of apps has reached the limit of your subscription.")
+            elif resource == "documents" and 0 < documents_upload_quota.limit <= documents_upload_quota.size:
+                raise Forbidden("The number of documents has reached the limit of your subscription.")
             return view(*args, **kwargs)
 
+        if resource == "vector_space":
+            cast(_RestxDocumentedView, decorated).__apidoc__ = cast(
+                dict[str, object],
+                merge(decorated.__dict__.get("__apidoc__", {}), {"responses": VECTOR_SPACE_UNAVAILABLE_RESPONSE}),
+            )
         return decorated
 
     return interceptor
@@ -231,15 +263,18 @@ def cloud_edition_billing_knowledge_limit_check[**P, R](
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token(api_token_type)
-            features = FeatureService.get_features(api_token.tenant_id, exclude_vector_space=True)
-            if features.billing.enabled:
-                if resource == "add_segment":
-                    if features.billing.subscription.plan == CloudPlan.SANDBOX:
-                        raise Forbidden(
-                            "To unlock this feature and elevate your Dify experience, please upgrade to a paid plan."
-                        )
-                else:
-                    return view(*args, **kwargs)
+            if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD or resource != "add_segment":
+                return view(*args, **kwargs)
+
+            tenant_id = api_token.tenant_id
+            if tenant_id is None:
+                raise Unauthorized("Tenant id is required for this token.")
+
+            features = FeatureService.get_features(tenant_id, exclude_vector_space=True)
+            if features.billing.subscription.plan == CloudPlan.SANDBOX:
+                raise Forbidden(
+                    "To unlock this feature and elevate your Dify experience, please upgrade to a paid plan."
+                )
 
             return view(*args, **kwargs)
 
@@ -258,10 +293,13 @@ def cloud_edition_billing_rate_limit_check[**P, R](
             api_token = validate_and_get_api_token(api_token_type)
 
             if resource == "knowledge":
-                knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(api_token.tenant_id)
+                tenant_id = api_token.tenant_id
+                if tenant_id is None:
+                    raise Unauthorized("Tenant id is required for this token.")
+                knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(tenant_id)
                 if knowledge_rate_limit.enabled:
                     current_time = int(time.time() * 1000)
-                    key = f"rate_limit_{api_token.tenant_id}"
+                    key = f"rate_limit_{tenant_id}"
 
                     redis_client.zadd(key, {current_time: current_time})
 
@@ -272,7 +310,7 @@ def cloud_edition_billing_rate_limit_check[**P, R](
                     if request_count > knowledge_rate_limit.limit:
                         # add ratelimit record
                         rate_limit_log = RateLimitLog(
-                            tenant_id=api_token.tenant_id,
+                            tenant_id=tenant_id,
                             subscription_plan=knowledge_rate_limit.subscription_plan,
                             operation="knowledge",
                         )
@@ -298,8 +336,6 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
 
     @wraps(view)
     def decorated(*args: object, **kwargs: object) -> R:
-        api_token = validate_and_get_api_token("dataset")
-
         # Flask may pass URL path parameters positionally, so inspect both kwargs and args.
         dataset_id = kwargs.get("dataset_id")
 
@@ -312,13 +348,36 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
             except Exception:
                 logger.exception("Failed to parse dataset_id from positional args")
 
+        auth_token = peek_service_api_bearer_token()
+        if auth_token and is_resource_access_token(auth_token):
+            with resource_access_token_errors():
+                tenant_id = application_services().resource_access_tokens.resolve_tenant_for_dataset_service_api(
+                    token=auth_token,
+                    dataset_id=str(dataset_id) if dataset_id else None,
+                )
+        else:
+            api_token = validate_and_get_api_token("dataset")
+            tenant_id = api_token.tenant_id
+
+            # Per-knowledge-base scoping is expressed by DatasetApiTokenBinding rows:
+            #   no rows  -> the key can reach every dataset in its tenant (default / back-compat)
+            #   N rows   -> the key is limited to exactly those datasets
+            # A bound key may only call endpoints carrying one of its dataset ids; endpoints
+            # without a dataset id (e.g. list/create datasets) are rejected. The set is queried
+            # per request (not cached) so scope changes take effect immediately.
+            # db.session is Flask-SQLAlchemy's scoped_session proxy; cast so the plain-Session
+            # typed helper accepts it (runtime proxies every Session method through unchanged).
+            bound_dataset_ids = dataset_api_key_bindings.get_bound_dataset_ids(cast(Session, db.session), api_token.id)
+            if bound_dataset_ids and (not dataset_id or str(dataset_id) not in bound_dataset_ids):
+                raise Forbidden("The API key is not authorized to access this knowledge base.")
+
         if dataset_id:
             dataset_id = str(dataset_id)
             dataset = db.session.scalar(
                 select(Dataset)
                 .where(
                     Dataset.id == dataset_id,
-                    Dataset.tenant_id == api_token.tenant_id,
+                    Dataset.tenant_id == tenant_id,
                 )
                 .limit(1)
             )
@@ -329,7 +388,7 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
 
         tenant_account_join = db.session.execute(
             select(Tenant, TenantAccountJoin).where(
-                Tenant.id == api_token.tenant_id,
+                Tenant.id == tenant_id,
                 TenantAccountJoin.tenant_id == Tenant.id,
                 TenantAccountJoin.role.in_(["owner"]),
                 Tenant.status == TenantStatus.NORMAL,
@@ -351,9 +410,9 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
         if expects_bound_instance:
             if not args:
                 raise TypeError("validate_dataset_token expected a bound resource instance.")
-            return view(args[0], api_token.tenant_id, *args[1:], **kwargs)
+            return view(args[0], tenant_id, *args[1:], **kwargs)
 
-        return view(api_token.tenant_id, *args, **kwargs)
+        return view(tenant_id, *args, **kwargs)
 
     return decorated
 
@@ -369,15 +428,7 @@ def validate_and_get_api_token(scope: str | None = None):
     The last_used_at field is updated asynchronously via Celery task
     to avoid blocking the request.
     """
-    auth_header = request.headers.get("Authorization")
-    if auth_header is None or " " not in auth_header:
-        raise Unauthorized("Authorization header must be provided and start with 'Bearer'")
-
-    auth_scheme, auth_token = auth_header.split(None, 1)
-    auth_scheme = auth_scheme.lower()
-
-    if auth_scheme != "bearer":
-        raise Unauthorized("Authorization scheme must be 'Bearer'")
+    auth_token = extract_service_api_bearer_token()
 
     # Try to get token from cache first
     # Returns a CachedApiToken (plain Python object), not a SQLAlchemy model
@@ -391,6 +442,27 @@ def validate_and_get_api_token(scope: str | None = None):
     # Cache miss - use Redis lock for single-flight mode
     # This ensures only one request queries DB for the same token concurrently
     return fetch_token_with_single_flight(auth_token, scope)
+
+
+def extract_service_api_bearer_token() -> str:
+    auth_header = request.headers.get("Authorization")
+    if auth_header is None or " " not in auth_header:
+        raise Unauthorized("Authorization header must be provided and start with 'Bearer'")
+
+    auth_scheme, auth_token = auth_header.split(None, 1)
+    if auth_scheme.lower() != "bearer":
+        raise Unauthorized("Authorization scheme must be 'Bearer'")
+    return auth_token
+
+
+def peek_service_api_bearer_token() -> str | None:
+    auth_header = request.headers.get("Authorization")
+    if auth_header is None or " " not in auth_header:
+        return None
+    auth_scheme, auth_token = auth_header.split(None, 1)
+    if auth_scheme.lower() != "bearer":
+        return None
+    return auth_token
 
 
 class DatasetApiResource(Resource):

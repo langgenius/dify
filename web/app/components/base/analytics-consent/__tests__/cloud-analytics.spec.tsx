@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react'
 import { QueryClient } from '@tanstack/react-query'
 import { render } from '@testing-library/react'
+import { REGISTRATION_SUCCESS_STORAGE_KEY } from '@/app/components/base/amplitude/registration-session-state'
 
 let queryClient: QueryClient
 
@@ -10,18 +10,19 @@ type ConfigState = {
   webPrefix: string | undefined
 }
 
-const { configState, mockHeadersGet, systemFeaturesQueryKey } = vi.hoisted(() => ({
+const { configState, mockHeadersGet, mockBoundary, systemFeaturesQueryKey } = vi.hoisted(() => ({
   configState: {
     cookieYesSiteKey: 'site-key',
     isProd: true,
     webPrefix: 'https://cloud.dify.ai',
   } as ConfigState,
   mockHeadersGet: vi.fn(),
+  mockBoundary: vi.fn(),
   systemFeaturesQueryKey: ['console', 'system-features'] as const,
 }))
 
 vi.mock('@/features/system-features/server', () => ({
-  getCachedSystemFeatures: () => queryClient.getQueryData(systemFeaturesQueryKey),
+  getOptionalSystemFeatures: async () => queryClient.getQueryData(systemFeaturesQueryKey),
 }))
 
 vi.mock('@/config', () => ({
@@ -36,44 +37,29 @@ vi.mock('@/config', () => ({
   },
 }))
 
-vi.mock('@/next/script', () => ({
-  default: ({
-    id,
-    strategy,
-    src,
-    nonce,
-    children,
-  }: {
-    id?: string
-    strategy?: string
-    src?: string
-    nonce?: string
-    children?: ReactNode
-  }) => (
-    <script
-      data-id={id ?? ''}
-      data-inline={typeof children === 'string' ? children : ''}
-      data-nonce={nonce ?? ''}
-      data-src={src ?? ''}
-      data-strategy={strategy ?? ''}
-    />
-  ),
-}))
-
 vi.mock('@/next/headers', () => ({
   headers: async () => ({ get: mockHeadersGet }),
 }))
 
-vi.mock('../cloud-analytics-runtime', () => ({
-  CloudAnalyticsRuntime: () => <span data-testid="cloud-analytics-runtime" />,
+vi.mock('../cloud-analytics-layout-boundary', () => ({
+  CloudAnalyticsLayoutBoundary: (props: { cookieYesSiteKey: string; nonce?: string }) => {
+    mockBoundary(props)
+    return null
+  },
 }))
 
-async function renderCloudAnalytics() {
+async function getCloudAnalyticsResult() {
   const { CloudAnalytics } = await import('../cloud-analytics')
-  return render(await CloudAnalytics())
+  return CloudAnalytics()
+}
+
+async function renderCloudAnalytics() {
+  return render(await getCloudAnalyticsResult())
 }
 
 describe('CloudAnalytics', () => {
+  let previousRegistration: string | null
+
   beforeEach(() => {
     vi.clearAllMocks()
     vi.resetModules()
@@ -81,93 +67,67 @@ describe('CloudAnalytics', () => {
     configState.isProd = true
     configState.webPrefix = 'https://cloud.dify.ai'
     queryClient = new QueryClient()
+    previousRegistration = window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)
+    window.sessionStorage.removeItem(REGISTRATION_SUCCESS_STORAGE_KEY)
     queryClient.setQueryData(systemFeaturesQueryKey, { deployment_edition: 'CLOUD' })
     mockHeadersGet.mockImplementation((name: string) => {
       const values: Record<string, string> = {
         host: 'cloud.dify.ai',
-        'x-dify-pathname': '/signin',
         'x-nonce': 'test-nonce',
       }
       return values[name] ?? null
     })
   })
 
-  it('renders analytics scripts before interaction and mounts the runtime', async () => {
-    const { container, getByTestId } = await renderCloudAnalytics()
-    const scripts = Array.from(container.querySelectorAll('script'))
-    const scriptIds = scripts.map(
-      (script) => script.getAttribute('id') || script.getAttribute('data-id'),
-    )
-
-    expect(scriptIds).toEqual([
-      'google-consent-defaults',
-      'cookieyes',
-      'google-analytics',
-      'google-analytics-init',
-    ])
-
-    const consentDefaultsScript = container.querySelector(
-      'script[data-id="google-consent-defaults"]',
-    )
-    expect(consentDefaultsScript).toHaveAttribute('data-strategy', 'beforeInteractive')
-
-    const cookieYesScript = container.querySelector('script[data-id="cookieyes"]')
-    expect(cookieYesScript).toHaveAttribute(
-      'data-src',
-      'https://cdn-cookieyes.com/client_data/site-key/script.js',
-    )
-    expect(cookieYesScript).toHaveAttribute('data-strategy', 'beforeInteractive')
-    expect(cookieYesScript).toHaveAttribute('data-nonce', 'test-nonce')
-    expect(getByTestId('cloud-analytics-runtime')).toBeInTheDocument()
+  afterEach(() => {
+    if (previousRegistration === null)
+      window.sessionStorage.removeItem(REGISTRATION_SUCCESS_STORAGE_KEY)
+    else window.sessionStorage.setItem(REGISTRATION_SUCCESS_STORAGE_KEY, previousRegistration)
+    queryClient.clear()
   })
 
-  it('does not render on a published-app path', async () => {
-    mockHeadersGet.mockImplementation((name: string) => {
-      const values: Record<string, string> = {
-        host: 'cloud.dify.ai',
-        'x-dify-pathname': '/chat/token',
-      }
-      return values[name] ?? null
-    })
-
-    const { container, queryByTestId } = await renderCloudAnalytics()
-
-    expect(container.querySelector('script')).toBeNull()
-    expect(queryByTestId('cloud-analytics-runtime')).toBeNull()
+  it('mounts the layout boundary for an eligible Cloud request', async () => {
+    await renderCloudAnalytics()
+    expect(mockBoundary).toHaveBeenCalledWith({ cookieYesSiteKey: 'site-key', nonce: 'test-nonce' })
   })
 
   it('does not render on a different host', async () => {
     mockHeadersGet.mockImplementation((name: string) => {
       const values: Record<string, string> = {
         host: 'customer.example.com',
-        'x-dify-pathname': '/signin',
       }
       return values[name] ?? null
     })
 
-    const { container, queryByTestId } = await renderCloudAnalytics()
+    const result = await getCloudAnalyticsResult()
+    render(result)
 
-    expect(container.querySelector('script')).toBeNull()
-    expect(queryByTestId('cloud-analytics-runtime')).toBeNull()
+    expect(mockBoundary).not.toHaveBeenCalled()
+    expect(result).not.toBeNull()
+    const { getAnalyticsConsent } = await import('../consent-store')
+    expect(getAnalyticsConsent()).toBe('disabled')
   })
 
   it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
     'disables analytics when deployment edition is %s',
     async (deploymentEdition) => {
       queryClient.setQueryData(systemFeaturesQueryKey, { deployment_edition: deploymentEdition })
-      const { container, queryByTestId } = await renderCloudAnalytics()
+      await renderCloudAnalytics()
 
-      expect(container.querySelector('script')).toBeNull()
-      expect(queryByTestId('cloud-analytics-runtime')).toBeNull()
+      expect(mockBoundary).not.toHaveBeenCalled()
     },
   )
 
-  it('does not render when System Features are unavailable', async () => {
+  it('suspends analytics without deleting pending registration state when System Features are unavailable', async () => {
     queryClient.removeQueries({ queryKey: systemFeaturesQueryKey })
+    window.sessionStorage.setItem(REGISTRATION_SUCCESS_STORAGE_KEY, 'pending-marker')
 
-    const { container, queryByTestId } = await renderCloudAnalytics()
+    const result = await getCloudAnalyticsResult()
+    render(result)
 
-    expect(container.querySelector('script')).toBeNull()
-    expect(queryByTestId('cloud-analytics-runtime')).toBeNull()
+    expect(mockBoundary).not.toHaveBeenCalled()
+    const { getAnalyticsConsent } = await import('../consent-store')
+    expect(getAnalyticsConsent()).toBe('unknown')
+    expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBe('pending-marker')
   })
 })

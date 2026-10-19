@@ -21,7 +21,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
-from flask import Flask
+from flask import Flask, request
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound
@@ -45,7 +45,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from fields._value_type_serializer import serialize_value_type
 from graphon.variables import StringSegment
 from graphon.variables.types import SegmentType
-from models.enums import ConversationFromSource
+from models.enums import ConversationFromSource, EndUserType
 from models.model import App, AppMode, Conversation, EndUser
 from services.conversation_service import ConversationService
 from services.errors.conversation import (
@@ -53,13 +53,32 @@ from services.errors.conversation import (
     ConversationVariableNotExistsError,
     ConversationVariableTypeMismatchError,
 )
+from tests.unit_tests.model_factories import make_conversation
 
 
-def _end_user(user_id: str = "end-user-1") -> EndUser:
-    end_user = EndUser(
-        id=user_id,
+def _app(*, app_id: str = "app-1", mode: AppMode = AppMode.CHAT) -> App:
+    return App(
+        id=app_id,
+        tenant_id="tenant-1",
+        name="Service API app",
+        description="",
+        mode=mode,
+        enable_site=True,
+        enable_api=True,
+        max_active_requests=0,
     )
-    return end_user
+
+
+def _end_user(user_id: str = "end-user-1", app_id: str = "app-1") -> EndUser:
+    return EndUser(
+        id=user_id,
+        tenant_id="tenant-1",
+        app_id=app_id,
+        type=EndUserType.SERVICE_API,
+        external_user_id="external-user-1",
+        name="Service API user",
+        session_id="session-1",
+    )
 
 
 def _conversation(
@@ -68,17 +87,15 @@ def _conversation(
     app_id: str = "app-1",
     end_user_id: str = "end-user-1",
 ) -> Conversation:
-    conversation = Conversation(
+    return make_conversation(
+        conversation_id=conversation_id,
         app_id=app_id,
-        mode=AppMode.CHAT,
         name="Original Name",
+        inputs={},
         from_source=ConversationFromSource.API,
         from_end_user_id=end_user_id,
         invoke_from=InvokeFrom.SERVICE_API,
     )
-    conversation.id = conversation_id
-    conversation.inputs = {}
-    return conversation
 
 
 class TestConversationListQuery:
@@ -107,12 +124,12 @@ class TestConversationListQuery:
 
     def test_query_rejects_limit_below_minimum(self):
         """Test query rejects limit < 1."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for ConversationListQuery\\\nlimit"):
             ConversationListQuery(limit=0)
 
     def test_query_rejects_limit_above_maximum(self):
         """Test query rejects limit > 100."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for ConversationListQuery\\\nlimit"):
             ConversationListQuery(limit=101)
 
     @pytest.mark.parametrize(
@@ -147,18 +164,36 @@ class TestConversationRenamePayload:
 
     def test_payload_requires_name_when_auto_generate_false(self):
         """Test that name is required when auto_generate is False."""
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError,
+            match=(
+                "1 validation error for ConversationRenamePayload\\\n  Value error, "
+                "name is required when auto_generate is false"
+            ),
+        ) as exc_info:
             ConversationRenamePayload(auto_generate=False)
         assert "name is required when auto_generate is false" in str(exc_info.value)
 
     def test_payload_requires_non_empty_name_when_auto_generate_false(self):
         """Test that empty string name is rejected."""
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match=(
+                "1 validation error for ConversationRenamePayload\\\n  Value error, "
+                "name is required when auto_generate is false"
+            ),
+        ):
             ConversationRenamePayload(name="", auto_generate=False)
 
     def test_payload_requires_non_whitespace_name_when_auto_generate_false(self):
         """Test that whitespace-only name is rejected."""
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match=(
+                "1 validation error for ConversationRenamePayload\\\n  Value error, "
+                "name is required when auto_generate is false"
+            ),
+        ):
             ConversationRenamePayload(name="   ", auto_generate=False)
 
     def test_payload_name_with_special_characters(self):
@@ -204,37 +239,49 @@ class TestConversationVariablesQuery:
 
     def test_query_rejects_sql_injection_single_quote(self):
         """Test that single quotes are rejected (SQL injection prevention)."""
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match="1 validation error for ConversationVariablesQuery\\\nvariable_name"
+        ) as exc_info:
             ConversationVariablesQuery(variable_name="'; DROP TABLE users;--")
         assert "can only contain" in str(exc_info.value)
 
     def test_query_rejects_sql_injection_double_quote(self):
         """Test that double quotes are rejected."""
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match="1 validation error for ConversationVariablesQuery\\\nvariable_name"
+        ) as exc_info:
             ConversationVariablesQuery(variable_name='name"test')
         assert "can only contain" in str(exc_info.value)
 
     def test_query_rejects_sql_injection_semicolon(self):
         """Test that semicolons are rejected."""
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match="1 validation error for ConversationVariablesQuery\\\nvariable_name"
+        ) as exc_info:
             ConversationVariablesQuery(variable_name="name;malicious")
         assert "can only contain" in str(exc_info.value)
 
     def test_query_rejects_sql_injection_comment(self):
         """Test that SQL comments are rejected."""
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match="1 validation error for ConversationVariablesQuery\\\nvariable_name"
+        ) as exc_info:
             ConversationVariablesQuery(variable_name="name--comment")
         assert "invalid characters" in str(exc_info.value)
 
     def test_query_rejects_special_characters(self):
         """Test that special characters are rejected."""
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match="1 validation error for ConversationVariablesQuery\\\nvariable_name"
+        ) as exc_info:
             ConversationVariablesQuery(variable_name="name@domain")
         assert "can only contain" in str(exc_info.value)
 
     def test_query_rejects_backticks(self):
         """Test that backticks are rejected (SQL injection prevention)."""
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match="1 validation error for ConversationVariablesQuery\\\nvariable_name"
+        ) as exc_info:
             ConversationVariablesQuery(variable_name="`table`")
         assert "can only contain" in str(exc_info.value)
 
@@ -262,8 +309,8 @@ class TestConversationVariableUpdatePayload:
 
     def test_payload_with_float_value(self):
         """Test payload with float value."""
-        payload = ConversationVariableUpdatePayload(value=3.14159)
-        assert payload.value == 3.14159
+        payload = ConversationVariableUpdatePayload(value=float("3.14159"))
+        assert payload.value == float("3.14159")
 
     def test_payload_with_list_value(self):
         """Test payload with list value."""
@@ -482,8 +529,8 @@ class TestConversationService:
         mock_pagination.return_value = mock_result
 
         result = ConversationService.pagination_by_last_id(
-            app_model=App(),
-            user=EndUser(),
+            app_model=_app(),
+            user=_end_user(),
             last_id=None,
             limit=20,
             invoke_from=Mock(),
@@ -501,9 +548,7 @@ class TestConversationService:
         sqlite_session.add(conversation)
         sqlite_session.commit()
 
-        app_model = App(
-            id="app-1",
-        )
+        app_model = _app()
         end_user = _end_user()
 
         result = ConversationService.rename(
@@ -522,11 +567,17 @@ class TestConversationService:
 
 class TestConversationPayloadsController:
     def test_rename_requires_name(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match=(
+                "1 validation error for ConversationRenamePayload\\\n  Value error, "
+                "name is required when auto_generate is false"
+            ),
+        ):
             ConversationRenamePayload(auto_generate=False, name="")
 
     def test_variables_query_invalid_name(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for ConversationVariablesQuery\\\nvariable_name"):
             ConversationVariablesQuery(variable_name="bad;")
 
 
@@ -534,12 +585,17 @@ class TestConversationApiController:
     def test_list_not_chat(self, app: Flask) -> None:
         api = ConversationApi()
         handler = unwrap(api.get)
-        app_model = SimpleNamespace(mode=AppMode.COMPLETION)
-        end_user = SimpleNamespace()
+        app_model = _app(mode=AppMode.COMPLETION)
+        end_user = _end_user()
 
         with app.test_request_context("/conversations", method="GET"):
             with pytest.raises(NotChatAppError):
-                handler(api, app_model=app_model, end_user=end_user)
+                handler(
+                    api,
+                    ConversationListQuery.model_validate(request.args.to_dict(flat=True)),
+                    app_model=app_model,
+                    end_user=end_user,
+                )
 
     def test_list_last_not_found(
         self,
@@ -558,7 +614,7 @@ class TestConversationApiController:
 
         api = ConversationApi()
         handler = unwrap(api.get)
-        app_model = SimpleNamespace(id="app-1", mode=AppMode.CHAT)
+        app_model = _app()
         end_user = _end_user()
 
         with app.test_request_context(
@@ -566,15 +622,20 @@ class TestConversationApiController:
             method="GET",
         ):
             with pytest.raises(NotFound):
-                handler(api, app_model=app_model, end_user=end_user)
+                handler(
+                    api,
+                    ConversationListQuery.model_validate(request.args.to_dict(flat=True)),
+                    app_model=app_model,
+                    end_user=end_user,
+                )
 
 
 class TestConversationDetailApiController:
     def test_delete_not_chat(self, app: Flask) -> None:
         api = ConversationDetailApi()
         handler = unwrap(api.delete)
-        app_model = SimpleNamespace(mode=AppMode.COMPLETION)
-        end_user = SimpleNamespace()
+        app_model = _app(mode=AppMode.COMPLETION)
+        end_user = _end_user()
 
         with app.test_request_context("/conversations/1", method="DELETE"):
             with pytest.raises(NotChatAppError):
@@ -594,8 +655,8 @@ class TestConversationDetailApiController:
 
         api = ConversationDetailApi()
         handler = unwrap(api.delete)
-        app_model = SimpleNamespace(mode=AppMode.CHAT)
-        end_user = SimpleNamespace()
+        app_model = _app()
+        end_user = _end_user()
 
         with app.test_request_context("/conversations/1", method="DELETE"):
             with pytest.raises(NotFound):
@@ -617,17 +678,19 @@ class TestConversationRenameApiController:
 
         api = ConversationRenameApi()
         handler = unwrap(api.post)
-        app_model = SimpleNamespace(mode=AppMode.CHAT)
-        end_user = SimpleNamespace()
+        app_model = _app()
+        end_user = _end_user()
 
         with app.test_request_context(
             "/conversations/1/name",
             method="POST",
             json={"auto_generate": True},
         ):
+            payload = ConversationRenamePayload.model_validate(request.get_json() or {})
             with pytest.raises(NotFound):
                 handler(
                     api,
+                    payload,
                     app_model=app_model,
                     end_user=end_user,
                     conversation_id="00000000-0000-0000-0000-000000000001",
@@ -638,13 +701,14 @@ class TestConversationVariablesApiController:
     def test_not_chat(self, app: Flask) -> None:
         api = ConversationVariablesApi()
         handler = unwrap(api.get)
-        app_model = SimpleNamespace(mode=AppMode.COMPLETION)
-        end_user = SimpleNamespace()
+        app_model = _app(mode=AppMode.COMPLETION)
+        end_user = _end_user()
 
         with app.test_request_context("/conversations/1/variables", method="GET"):
             with pytest.raises(NotChatAppError):
                 handler(
                     api,
+                    ConversationVariablesQuery.model_validate(request.args.to_dict(flat=True)),
                     app_model=app_model,
                     end_user=end_user,
                     conversation_id="00000000-0000-0000-0000-000000000001",
@@ -659,8 +723,8 @@ class TestConversationVariablesApiController:
 
         api = ConversationVariablesApi()
         handler = unwrap(api.get)
-        app_model = SimpleNamespace(mode=AppMode.CHAT)
-        end_user = SimpleNamespace()
+        app_model = _app()
+        end_user = _end_user()
 
         with app.test_request_context(
             "/conversations/1/variables?limit=20",
@@ -669,6 +733,7 @@ class TestConversationVariablesApiController:
             with pytest.raises(NotFound):
                 handler(
                     api,
+                    ConversationVariablesQuery.model_validate(request.args.to_dict(flat=True)),
                     app_model=app_model,
                     end_user=end_user,
                     conversation_id="00000000-0000-0000-0000-000000000001",
@@ -697,8 +762,8 @@ class TestConversationVariablesApiController:
 
         api = ConversationVariablesApi()
         handler = unwrap(api.get)
-        app_model = SimpleNamespace(mode=AppMode.CHAT)
-        end_user = SimpleNamespace()
+        app_model = _app()
+        end_user = _end_user()
 
         with app.test_request_context(
             "/conversations/1/variables?limit=20",
@@ -706,6 +771,7 @@ class TestConversationVariablesApiController:
         ):
             result = handler(
                 api,
+                ConversationVariablesQuery.model_validate(request.args.to_dict(flat=True)),
                 app_model=app_model,
                 end_user=end_user,
                 conversation_id="00000000-0000-0000-0000-000000000001",
@@ -728,17 +794,19 @@ class TestConversationVariableDetailApiController:
 
         api = ConversationVariableDetailApi()
         handler = unwrap(api.put)
-        app_model = SimpleNamespace(mode=AppMode.CHAT)
-        end_user = SimpleNamespace()
+        app_model = _app()
+        end_user = _end_user()
 
         with app.test_request_context(
             "/conversations/1/variables/2",
             method="PUT",
             json={"value": "x"},
         ):
+            payload = ConversationVariableUpdatePayload.model_validate(request.get_json() or {})
             with pytest.raises(BadRequest):
                 handler(
                     api,
+                    payload,
                     app_model=app_model,
                     end_user=end_user,
                     conversation_id="00000000-0000-0000-0000-000000000001",
@@ -754,17 +822,19 @@ class TestConversationVariableDetailApiController:
 
         api = ConversationVariableDetailApi()
         handler = unwrap(api.put)
-        app_model = SimpleNamespace(mode=AppMode.CHAT)
-        end_user = SimpleNamespace()
+        app_model = _app()
+        end_user = _end_user()
 
         with app.test_request_context(
             "/conversations/1/variables/2",
             method="PUT",
             json={"value": "x"},
         ):
+            payload = ConversationVariableUpdatePayload.model_validate(request.get_json() or {})
             with pytest.raises(NotFound):
                 handler(
                     api,
+                    payload,
                     app_model=app_model,
                     end_user=end_user,
                     conversation_id="00000000-0000-0000-0000-000000000001",
@@ -788,16 +858,18 @@ class TestConversationVariableDetailApiController:
 
         api = ConversationVariableDetailApi()
         handler = unwrap(api.put)
-        app_model = SimpleNamespace(mode=AppMode.CHAT)
-        end_user = SimpleNamespace()
+        app_model = _app()
+        end_user = _end_user()
 
         with app.test_request_context(
             "/conversations/1/variables/2",
             method="PUT",
             json={"value": 1},
         ):
+            payload = ConversationVariableUpdatePayload.model_validate(request.get_json() or {})
             result = handler(
                 api,
+                payload,
                 app_model=app_model,
                 end_user=end_user,
                 conversation_id="00000000-0000-0000-0000-000000000001",

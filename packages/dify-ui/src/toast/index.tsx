@@ -6,50 +6,17 @@ import type {
   ToastManagerUpdateOptions,
   ToastObject,
 } from '@base-ui/react/toast'
+import type * as React from 'react'
 import { Toast as BaseToast } from '@base-ui/react/toast'
-import * as React from 'react'
 import { cn } from '../cn'
-import { iconButtonVariants } from '../icon-button/variants'
+import { iconButtonVariants } from '../icon-button'
+import { focusRingClassName } from '../internal/focus'
 
 type ToastData = Record<string, never>
-type ToastToneStyle = {
-  gradientClassName: string
-  iconClassName: string
-}
-
-const TOAST_TONE_STYLES = {
-  loading: {
-    iconClassName: 'i-ri-loader-2-line animate-spin text-text-accent motion-reduce:animate-none',
-    gradientClassName:
-      'from-components-badge-status-light-normal-halo to-background-gradient-mask-transparent',
-  },
-  success: {
-    iconClassName: 'i-ri-checkbox-circle-fill text-text-success',
-    gradientClassName:
-      'from-components-badge-status-light-success-halo to-background-gradient-mask-transparent',
-  },
-  error: {
-    iconClassName: 'i-ri-error-warning-fill text-text-destructive',
-    gradientClassName:
-      'from-components-badge-status-light-error-halo to-background-gradient-mask-transparent',
-  },
-  warning: {
-    iconClassName: 'i-ri-alert-fill text-text-warning-secondary',
-    gradientClassName:
-      'from-components-badge-status-light-warning-halo to-background-gradient-mask-transparent',
-  },
-  info: {
-    iconClassName: 'i-ri-information-2-fill text-text-accent',
-    gradientClassName:
-      'from-components-badge-status-light-normal-halo to-background-gradient-mask-transparent',
-  },
-} satisfies Record<string, ToastToneStyle>
+// `loading` is reserved for `promise`, which resolves it into `success` or `error`.
+type ToastType = 'success' | 'error' | 'warning' | 'info'
 
 const toastCloseLabel = 'Close notification'
-const toastViewportLabel = 'Notifications'
-
-type ToastRenderType = keyof typeof TOAST_TONE_STYLES
-type ToastType = Exclude<ToastRenderType, 'loading'>
 
 type ToastAddOptions = Omit<
   ToastManagerAddOptions<ToastData>,
@@ -65,8 +32,9 @@ type ToastUpdateOptions = Omit<
   type?: ToastType
 }
 
-type ToastOptions = Omit<ToastAddOptions, 'title'>
-type TypedToastOptions = Omit<ToastOptions, 'type'>
+// Every toast carries a tone: the callable form takes it as an option, the shortcuts fix it.
+type TypedToastOptions = Omit<ToastAddOptions, 'title' | 'type'>
+type ToastOptions = TypedToastOptions & { type: ToastType }
 
 type ToastPromiseResultOption<Value> =
   | string
@@ -79,21 +47,28 @@ type ToastPromiseOptions<Value> = {
   error: ToastPromiseResultOption<unknown>
 }
 
-type ToastHostProps = {
-  timeout?: number
-  limit?: number
-  manager?: ToastManager
-  offset?: ToastHostOffset
+type ToastCardProps = {
+  toast: ToastObject<ToastData>
+  /** Additional content composed inside the card. */
+  children?: React.ReactNode
 }
 
-type ToastHostOffset = Pick<React.CSSProperties, 'top' | 'right'>
+type ToasterOffset = Pick<React.CSSProperties, 'top' | 'right'>
+
+// `children` fills the viewport and defaults to a `ToastCard` per toast; compose `useToasts` to
+// customize it.
+type ToasterProps = Pick<BaseToast.Provider.Props, 'timeout' | 'limit'> &
+  Pick<BaseToast.Viewport.Props, 'children'> & {
+    toastManager: ToastManager
+    offset?: ToasterOffset
+  }
 
 type ToastDismiss = (toastId?: string) => void
-type ToastCall = (title: React.ReactNode, options?: ToastOptions) => string
+type ToastCall = (title: React.ReactNode, options: ToastOptions) => string
 type TypedToastCall = (title: React.ReactNode, options?: TypedToastOptions) => string
 
 type ToastApi = {
-  (title: React.ReactNode, options?: ToastOptions): string
+  (title: React.ReactNode, options: ToastOptions): string
   success: TypedToastCall
   error: TypedToastCall
   warning: TypedToastCall
@@ -108,12 +83,15 @@ type ToastApi = {
 
 type ToastManager = BaseToastManager<ToastData>
 
-function isToastRenderType(type: string): type is ToastRenderType {
-  return Object.prototype.hasOwnProperty.call(TOAST_TONE_STYLES, type)
+// Base UI reads a bare string as the description; this API reads it as the title.
+function toTitleOptions(option: string | ToastUpdateOptions): ToastUpdateOptions {
+  return typeof option === 'string' ? { title: option } : option
 }
 
-function getToastRenderType(type?: string): ToastRenderType | undefined {
-  return type && isToastRenderType(type) ? type : undefined
+function toTitleResultOption<Value>(option: ToastPromiseResultOption<Value>) {
+  return typeof option === 'function'
+    ? (value: Value) => toTitleOptions(option(value))
+    : toTitleOptions(option)
 }
 
 function createToast(manager: ToastManager): ToastApi {
@@ -144,7 +122,12 @@ function createToast(manager: ToastManager): ToastApi {
   const promiseToast = <Value,>(
     promiseValue: Promise<Value>,
     options: ToastPromiseOptions<Value>,
-  ) => manager.promise(promiseValue, options)
+  ) =>
+    manager.promise(promiseValue, {
+      loading: toTitleOptions(options.loading),
+      success: toTitleResultOption(options.success),
+      error: toTitleResultOption(options.error),
+    })
 
   return Object.assign(showToast, {
     success: createTypedToast('success'),
@@ -161,29 +144,14 @@ function createToastManager(): ToastManager {
   return BaseToast.createToastManager<ToastData>()
 }
 
-const defaultToastManager = createToastManager()
-const toast = createToast(defaultToastManager)
-
-function ToastIcon({ type }: { type?: ToastRenderType }) {
-  return type ? (
-    <span aria-hidden="true" className={cn('h-5 w-5', TOAST_TONE_STYLES[type].iconClassName)} />
-  ) : null
-}
-
-function getToneGradientClasses(type?: ToastRenderType) {
-  if (type) return TOAST_TONE_STYLES[type].gradientClassName
-  return 'from-background-default-subtle to-background-gradient-mask-transparent'
-}
-
-function ToastCard({ toast: toastItem }: { toast: ToastObject<ToastData> }) {
-  const toastType = getToastRenderType(toastItem.type)
-
+function ToastCard({ toast: toastItem, children }: ToastCardProps) {
   return (
     <BaseToast.Root
       toast={toastItem}
       swipeDirection={['up', 'right']}
       className={cn(
-        'pointer-events-auto absolute top-0 right-0 w-full origin-top cursor-default rounded-xl select-none focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+        focusRingClassName,
+        'group/toast pointer-events-auto absolute top-0 right-0 w-full origin-top cursor-default rounded-xl select-none',
         '[--toast-current-height:var(--toast-frontmost-height,var(--toast-height))] [--toast-expanded-offset-y:calc(var(--toast-offset-y)+var(--toast-swipe-movement-y)+(var(--toast-index)*var(--toast-gap)))] [--toast-gap:8px] [--toast-peek:5px] [--toast-scale:calc(1-(var(--toast-index)*0.0225))] [--toast-shrink:calc(1-var(--toast-scale))]',
         'z-[calc(100-var(--toast-index))] h-(--toast-current-height)',
         '[transition:transform_500ms_cubic-bezier(0.22,1,0.36,1),opacity_500ms,height_150ms] motion-reduce:transition-none',
@@ -192,7 +160,7 @@ function ToastCard({ toast: toastItem }: { toast: ToastObject<ToastData> }) {
         'data-ending-style:pointer-events-none data-ending-style:transform-[translateY(-150%)] data-ending-style:opacity-0 data-ending-style:after:pointer-events-none',
         'data-ending-style:data-[swipe-direction=up]:transform-[translateY(calc(var(--toast-swipe-movement-y)-150%))]',
         'data-ending-style:data-[swipe-direction=right]:transform-[translateX(calc(var(--toast-swipe-movement-x)+150%))_translateY(var(--toast-expanded-offset-y))]',
-        'data-limited:pointer-events-none data-limited:opacity-0 data-starting-style:transform-[translateY(-150%)] data-starting-style:opacity-0',
+        'data-limited:opacity-0 data-starting-style:transform-[translateY(-150%)] data-starting-style:opacity-0',
         "after:pointer-events-auto after:absolute after:bottom-full after:left-0 after:h-[calc(var(--toast-gap)+1px)] after:w-full after:content-['']",
       )}
     >
@@ -200,44 +168,47 @@ function ToastCard({ toast: toastItem }: { toast: ToastObject<ToastData> }) {
         <div
           aria-hidden="true"
           className={cn(
-            'absolute -inset-px bg-linear-to-r opacity-40',
-            getToneGradientClasses(toastType),
+            'absolute -inset-px bg-linear-to-r to-background-gradient-mask-transparent opacity-40',
+            'group-data-[type=loading]/toast:from-components-badge-status-light-normal-halo',
+            'group-data-[type=info]/toast:from-components-badge-status-light-normal-halo',
+            'group-data-[type=success]/toast:from-components-badge-status-light-success-halo',
+            'group-data-[type=warning]/toast:from-components-badge-status-light-warning-halo',
+            'group-data-[type=error]/toast:from-components-badge-status-light-error-halo',
           )}
         />
         <BaseToast.Content className="relative flex items-start gap-1 overflow-hidden p-3 transition-opacity duration-200 data-behind:opacity-0 data-expanded:opacity-100 motion-reduce:transition-none">
           <div className="flex shrink-0 items-center justify-center p-0.5">
-            <ToastIcon type={toastType} />
+            <span
+              aria-hidden="true"
+              className={cn(
+                // Each tone sets its own size: the icon utility carries a 1rem size that only a
+                // utility under the same variant overrides.
+                'group-data-[type=loading]/toast:i-ri-loader-2-line group-data-[type=loading]/toast:size-5 group-data-[type=loading]/toast:animate-spin group-data-[type=loading]/toast:text-text-accent motion-reduce:animate-none',
+                'group-data-[type=info]/toast:i-ri-information-2-fill group-data-[type=info]/toast:size-5 group-data-[type=info]/toast:text-text-accent',
+                'group-data-[type=success]/toast:i-ri-checkbox-circle-fill group-data-[type=success]/toast:size-5 group-data-[type=success]/toast:text-text-success',
+                'group-data-[type=warning]/toast:i-ri-alert-fill group-data-[type=warning]/toast:size-5 group-data-[type=warning]/toast:text-text-warning-secondary',
+                'group-data-[type=error]/toast:i-ri-error-warning-fill group-data-[type=error]/toast:size-5 group-data-[type=error]/toast:text-text-destructive',
+              )}
+            />
           </div>
           <div className="min-w-0 flex-1 p-1">
-            <div className="flex w-full min-w-0 items-center gap-1">
-              {toastItem.title != null && (
-                <BaseToast.Title className="min-w-0 flex-1 system-sm-semibold wrap-break-word text-text-primary">
-                  {toastItem.title}
-                </BaseToast.Title>
+            <BaseToast.Title className="min-w-0 system-sm-semibold wrap-break-word text-text-primary" />
+            <BaseToast.Description className="mt-1 min-w-0 system-xs-regular wrap-break-word text-text-secondary" />
+            <BaseToast.Action
+              className={cn(
+                'mt-2 mb-1 flex w-fit items-center justify-center overflow-hidden rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 py-2 system-sm-medium text-components-button-secondary-text shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]',
+                focusRingClassName,
+                'hover:bg-state-base-hover focus-visible:bg-state-base-hover',
               )}
-            </div>
-            {toastItem.description != null && (
-              <BaseToast.Description className="mt-1 min-w-0 system-xs-regular wrap-break-word text-text-secondary">
-                {toastItem.description}
-              </BaseToast.Description>
-            )}
-            {toastItem.actionProps && (
-              <div className="flex w-full items-start gap-1 pt-2 pb-1">
-                <BaseToast.Action
-                  className={cn(
-                    'inline-flex items-center justify-center overflow-hidden rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 py-2 system-sm-medium text-components-button-secondary-text shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]',
-                    'hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
-                  )}
-                />
-              </div>
-            )}
+            />
           </div>
+          {children}
           <div className="flex shrink-0 items-center justify-center rounded-md p-0.5">
             <BaseToast.Close
               aria-label={toastCloseLabel}
               className={cn(
                 iconButtonVariants({ size: 'sm' }),
-                'focus-visible:bg-state-base-hover disabled:cursor-not-allowed disabled:opacity-50',
+                'focus-visible:bg-state-base-hover',
               )}
             >
               <span aria-hidden="true" className="i-ri-close-line size-4 text-text-tertiary" />
@@ -249,32 +220,36 @@ function ToastCard({ toast: toastItem }: { toast: ToastObject<ToastData> }) {
   )
 }
 
-function ToastViewport({ offset }: { offset?: ToastHostOffset }) {
-  const { toasts } = BaseToast.useToastManager<ToastData>()
-
-  return (
-    <BaseToast.Viewport
-      aria-label={toastViewportLabel}
-      className="group/toast-viewport pointer-events-none fixed top-4 right-4 z-60 w-90 max-w-[calc(100vw-2rem)] overflow-visible sm:right-8"
-      style={offset}
-    >
-      {toasts.map((toastItem) => (
-        <ToastCard key={toastItem.id} toast={toastItem} />
-      ))}
-    </BaseToast.Viewport>
-  )
+function useToasts(): ToastObject<ToastData>[] {
+  return BaseToast.useToastManager<ToastData>().toasts
 }
 
-function ToastHost({ timeout, limit, manager = defaultToastManager, offset }: ToastHostProps) {
+function ToastCards() {
+  const toasts = useToasts()
+  return toasts.map((item) => <ToastCard key={item.id} toast={item} />)
+}
+
+function Toaster({
+  toastManager,
+  timeout,
+  limit,
+  offset,
+  children = <ToastCards />,
+}: ToasterProps) {
   return (
-    <BaseToast.Provider toastManager={manager} timeout={timeout} limit={limit}>
+    <BaseToast.Provider toastManager={toastManager} timeout={timeout} limit={limit}>
       <BaseToast.Portal>
-        <ToastViewport offset={offset} />
+        <BaseToast.Viewport
+          className="pointer-events-none fixed top-4 right-4 z-50 w-90 max-w-[calc(100vw-2rem)] overflow-visible sm:right-8"
+          style={offset}
+        >
+          {children}
+        </BaseToast.Viewport>
       </BaseToast.Portal>
     </BaseToast.Provider>
   )
 }
 
-export { createToast, createToastManager, toast, ToastHost }
+export { createToast, createToastManager, ToastCard, Toaster, useToasts }
 
-export type { ToastHostProps }
+export type { ToastApi, ToastCardProps, ToasterProps, ToastManager, ToastType }

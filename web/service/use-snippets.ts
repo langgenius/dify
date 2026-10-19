@@ -1,8 +1,8 @@
+import type { InputVar as SnippetInputFieldUIModel } from '@/models/pipeline'
 import type {
   SnippetCanvasData,
   SnippetDetailPayload,
   SnippetDetail as SnippetDetailUIModel,
-  SnippetInputField as SnippetInputFieldUIModel,
   SnippetListItem as SnippetListItemUIModel,
 } from '@/models/snippet'
 import type {
@@ -23,7 +23,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 import dayjs from 'dayjs'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/console'
 
 type SnippetListParams = {
   page?: number
@@ -98,7 +98,7 @@ const toSnippetCanvasData = (workflow?: SnippetWorkflow | null): SnippetCanvasDa
 
   if (!graph || typeof graph !== 'object') return DEFAULT_GRAPH
 
-  const graphRecord = graph as Record<string, unknown>
+  const graphRecord = graph
 
   return {
     nodes: Array.isArray(graphRecord.nodes)

@@ -103,7 +103,7 @@ Feature: Agent v2 Access Point
     Then the Agent v2 Backend service API endpoint should show it was copied
 
   @core @backend-api-access
-  Scenario: Backend service API keys are managed without exposing existing secrets
+  Scenario: Backend service API keys can be created and copied while list values stay masked
     Given I am signed in as the default E2E admin
     And an Agent v2 test agent has been created via API
     And the Agent v2 draft has been published via API
@@ -111,13 +111,13 @@ Feature: Agent v2 Access Point
     When I open the Agent v2 configure page from the Agent Roster
     And I switch to the Agent v2 Access Point section
     And I open Agent v2 API key management
-    Then Agent v2 API keys should not expose a secret by default
+    Then existing Agent v2 API keys should be masked in the list
     When I create a new Agent v2 API key
-    Then I should see the newly generated Agent v2 API key once
+    Then I should see the newly generated Agent v2 API key
     When I copy the newly generated Agent v2 API key
     Then the newly generated Agent v2 API key should show it was copied
     When I close the newly generated Agent v2 API key
-    Then the Agent v2 API key list should not expose the full generated secret
+    Then the newly generated Agent v2 API key should appear masked in the list
 
   @core @backend-api-access
   Scenario: Backend service API Reference opens from Access Point
@@ -151,7 +151,7 @@ Feature: Agent v2 Access Point
     And a runnable Agent v2 test agent has been created via API
     When I open the Agent v2 configure page
     And I publish the Agent v2 draft
-    Then the Agent v2 draft should be published and up to date
+    Then the Agent v2 first publication should succeed
     Given an Agent v2 Backend service API key has been created via API
     When I send the Agent v2 Backend service API minimal request
     Then the Agent v2 Backend service API request should succeed with the normal E2E marker

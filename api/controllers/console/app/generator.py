@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, RootModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from controllers.common.fields import SimpleDataResponse
+from controllers.common.fields import ErrorMessageResponse, SimpleDataResponse
 from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
@@ -34,6 +34,7 @@ from core.workflow.generator.types import WorkflowGenerateErrorCode
 from fields.base import ResponseModel
 from graphon.model_runtime.entities.llm_entities import LLMMode
 from graphon.model_runtime.errors.invoke import InvokeError
+from libs.external_api import error_responses
 from libs.helper import compact_generate_response, dump_response
 from libs.login import login_required
 from models import App
@@ -152,6 +153,13 @@ class WorkflowGenerateErrorResponse(ResponseModel):
     node_id: str | None = None
 
 
+class WorkflowGenerateRejectedResponse(ResponseModel):
+    """400 body when the boundary guard rejects the instruction before generating."""
+
+    error: str
+    errors: list[WorkflowGenerateErrorResponse]
+
+
 class WorkflowGenerateResponse(ResponseModel):
     graph: WorkflowGraph
     message: str = ""
@@ -203,6 +211,18 @@ class GeneratorResponse(RootModel[Any]):
     root: Any
 
 
+class RuleGenerateResponse(ResponseModel):
+    prompt: str
+    variables: list[str]
+    opening_statement: str
+    error: str
+
+
+class StructuredOutputGenerateResponse(ResponseModel):
+    output: str = Field(description="Generated JSON Schema, empty when generation failed")
+    error: str = Field(description="Failure reason, empty on success")
+
+
 register_enum_models(console_ns, LLMMode)
 register_schema_models(
     console_ns,
@@ -218,8 +238,12 @@ register_schema_models(
 register_response_schema_models(
     console_ns,
     GeneratorResponse,
+    RuleGenerateResponse,
+    StructuredOutputGenerateResponse,
     SimpleDataResponse,
     WorkflowGenerateResponse,
+    WorkflowGenerateRejectedResponse,
+    ErrorMessageResponse,
     WorkflowGeneratePlanEventResponse,
     WorkflowGenerateResultEventResponse,
     WorkflowGenerateStreamEventResponse,
@@ -229,23 +253,27 @@ register_response_schema_models(
 
 @console_ns.route("/rule-generate")
 class RuleGenerateApi(Resource):
+    @error_responses(
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc("generate_rule_config")
     @console_ns.doc(description="Generate rule configuration using LLM")
     @console_ns.expect(console_ns.models[RuleGeneratePayload.__name__])
     @console_ns.response(
         200,
         "Rule configuration generated successfully",
-        console_ns.models[GeneratorResponse.__name__],
+        console_ns.models[RuleGenerateResponse.__name__],
     )
     @console_ns.response(400, "Invalid request parameters")
-    @console_ns.response(402, "Provider quota exceeded")
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_tenant_id
     @model_validate(RuleGeneratePayload)
     def post(self, req_data: RuleGeneratePayload, current_tenant_id: str):
-
         try:
             rules = LLMGenerator.generate_rule_config(tenant_id=current_tenant_id, args=req_data)
         except ProviderTokenNotInitError as ex:
@@ -257,24 +285,28 @@ class RuleGenerateApi(Resource):
         except InvokeError as e:
             raise CompletionRequestError(e.description)
 
-        return rules
+        return dump_response(RuleGenerateResponse, rules)
 
 
 @console_ns.route("/rule-code-generate")
 class RuleCodeGenerateApi(Resource):
+    @error_responses(
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc("generate_rule_code")
     @console_ns.doc(description="Generate code rules using LLM")
     @console_ns.expect(console_ns.models[RuleCodeGeneratePayload.__name__])
     @console_ns.response(200, "Code rules generated successfully", console_ns.models[GeneratorResponse.__name__])
     @console_ns.response(400, "Invalid request parameters")
-    @console_ns.response(402, "Provider quota exceeded")
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_tenant_id
     @model_validate(RuleCodeGeneratePayload)
     def post(self, req_data: RuleCodeGeneratePayload, current_tenant_id: str):
-
         try:
             code_result = LLMGenerator.generate_code(
                 tenant_id=current_tenant_id,
@@ -294,19 +326,27 @@ class RuleCodeGenerateApi(Resource):
 
 @console_ns.route("/rule-structured-output-generate")
 class RuleStructuredOutputGenerateApi(Resource):
+    @error_responses(
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc("generate_structured_output")
     @console_ns.doc(description="Generate structured output rules using LLM")
     @console_ns.expect(console_ns.models[RuleStructuredOutputPayload.__name__])
-    @console_ns.response(200, "Structured output generated successfully", console_ns.models[GeneratorResponse.__name__])
+    @console_ns.response(
+        200,
+        "Structured output generated successfully",
+        console_ns.models[StructuredOutputGenerateResponse.__name__],
+    )
     @console_ns.response(400, "Invalid request parameters")
-    @console_ns.response(402, "Provider quota exceeded")
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_tenant_id
     @model_validate(RuleStructuredOutputPayload)
     def post(self, req_data: RuleStructuredOutputPayload, current_tenant_id: str):
-
         try:
             structured_output = LLMGenerator.generate_structured_output(
                 tenant_id=current_tenant_id,
@@ -326,12 +366,21 @@ class RuleStructuredOutputGenerateApi(Resource):
 
 @console_ns.route("/instruction-generate")
 class InstructionGenerateApi(Resource):
+    @error_responses(
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc("generate_instruction")
     @console_ns.doc(description="Generate instruction for workflow nodes or general use")
     @console_ns.expect(console_ns.models[InstructionGeneratePayload.__name__])
     @console_ns.response(200, "Instruction generated successfully", console_ns.models[GeneratorResponse.__name__])
-    @console_ns.response(400, "Invalid request parameters or flow/workflow not found")
-    @console_ns.response(402, "Provider quota exceeded")
+    @console_ns.response(
+        400,
+        "Invalid request parameters or flow/workflow not found",
+        console_ns.models[ErrorMessageResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -401,6 +450,7 @@ class InstructionGenerateApi(Resource):
                     instruction=req_data.instruction,
                     model_config=req_data.model_config_data,
                     ideal_output=req_data.ideal_output,
+                    session=session,
                 )
             if req_data.node_id != "" and req_data.current != "":  # For workflow node
                 return LLMGenerator.instruction_modify_workflow(
@@ -412,6 +462,7 @@ class InstructionGenerateApi(Resource):
                     model_config=req_data.model_config_data,
                     ideal_output=req_data.ideal_output,
                     workflow_service=WorkflowService(),
+                    session=session,
                 )
             return {"error": "incompatible parameters"}, 400
         except ProviderTokenNotInitError as ex:
@@ -486,6 +537,12 @@ class WorkflowGenerateApi(Resource):
     frontend can hand it straight to ``/apps/{id}/workflows/draft``.
     """
 
+    @error_responses(
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc("generate_workflow_graph")
     @console_ns.doc(description="Generate a Dify workflow graph from natural language")
     @console_ns.expect(console_ns.models[WorkflowGeneratePayload.__name__])
@@ -494,15 +551,15 @@ class WorkflowGenerateApi(Resource):
         "Workflow graph generated successfully",
         console_ns.models[WorkflowGenerateResponse.__name__],
     )
-    @console_ns.response(400, "Invalid request parameters")
-    @console_ns.response(402, "Provider quota exceeded")
+    @console_ns.response(
+        400, "Invalid request parameters", console_ns.models[WorkflowGenerateRejectedResponse.__name__]
+    )
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_tenant_id
     @model_validate(WorkflowGeneratePayload)
     def post(self, req_data: WorkflowGeneratePayload, current_tenant_id: str):
-
         # Reject empty / over-length instructions at the boundary (shared with
         # the streaming endpoint) before spending a planner+builder roundtrip.
         guard = _workflow_instruction_guard(req_data)
@@ -586,21 +643,22 @@ class WorkflowGenerateStreamApi(Resource):
         "Server-Sent Events stream; each data frame matches this plan/result event schema",
         console_ns.models[WorkflowGenerateStreamEventResponse.__name__],
     )
-    @console_ns.response(400, "Invalid request parameters")
+    @console_ns.response(
+        400, "Invalid request parameters", console_ns.models[WorkflowGenerateRejectedResponse.__name__]
+    )
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_tenant_id
     @model_validate(WorkflowGeneratePayload)
     def post(self, req_data: WorkflowGeneratePayload, current_tenant_id: str):
-
         # Same boundary guards as the blocking endpoint — return a normal 400
         # JSON for these BEFORE opening the stream.
         guard = _workflow_instruction_guard(req_data)
         if guard is not None:
             return guard
 
-        def generate() -> Generator[str, None, None]:
+        def generate() -> Generator[str]:
             try:
                 for event_name, payload in WorkflowGeneratorService.generate_workflow_graph_stream(
                     tenant_id=current_tenant_id,

@@ -10,15 +10,10 @@ const PKG_PATH_ENV = 'DIFYCTL_PKG_PATH'
 
 // release-naming.mjs and release-r2-edge.mjs read their data from
 // cli/package.json. Tests spawn them against this fixture instead, so
-// assertions can name exact versions without tracking the live release.
+// assertions can name an exact version/channel without tracking the live release.
 
-// Deliberately far from any real Dify version, and min != max so "inside the
-// window" is a case distinct from either bound.
-export const FIXTURE_COMPAT = { minDify: '2.0.0', maxDify: '2.5.0' }
-
-export const FIXTURE_VERSION_CORE = '7.7.7'
-export const FIXTURE_VERSION = `${FIXTURE_VERSION_CORE}-alpha`
-export const FIXTURE_CHANNEL = 'alpha'
+export const FIXTURE_VERSION = '7.7.7'
+export const FIXTURE_CHANNEL = 'stable'
 export const FIXTURE_TAG_PREFIX = 'difyctl-v'
 
 export const FIXTURE_TARGET_IDS = [
@@ -43,7 +38,6 @@ const FIXTURE_RELEASE = {
 export type PkgManifestOverrides = {
   version?: string
   channel?: string
-  compat?: { minDify: string; maxDify: string }
 }
 
 // Returns the env additions that point a spawned script at the fixture.
@@ -52,7 +46,6 @@ export function pkgManifestEnv(overrides: PkgManifestOverrides = {}): Record<str
     version: overrides.version ?? FIXTURE_VERSION,
     difyctl: {
       channel: overrides.channel ?? FIXTURE_CHANNEL,
-      compat: overrides.compat ?? FIXTURE_COMPAT,
       release: FIXTURE_RELEASE,
     },
   }

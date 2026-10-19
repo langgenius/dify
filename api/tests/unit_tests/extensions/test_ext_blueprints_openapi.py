@@ -27,14 +27,13 @@ inside its function body, so the patched value is what it sees.
 from __future__ import annotations
 
 import importlib
-from collections.abc import Iterator
 
 import pytest
 from flask import Blueprint
 
-from configs import dify_config
 from dify_app import DifyApp
 from extensions import ext_blueprints
+from tests.unit_tests.config_override import apply_config_overrides
 
 # Modules whose `bp` attribute is consumed by `ext_blueprints.init_app`.
 # Keep in sync with the imports inside `init_app`.
@@ -55,7 +54,7 @@ def _probe_view() -> tuple[str, int]:
 
 
 @pytest.fixture
-def fresh_blueprints(monkeypatch: pytest.MonkeyPatch) -> Iterator[dict[str, Blueprint]]:
+def fresh_blueprints(monkeypatch: pytest.MonkeyPatch) -> dict[str, Blueprint]:
     """Replace each production blueprint singleton with a fresh, unregistered copy.
 
     Mirrors the production `name` and `url_prefix` so the gate can still
@@ -90,7 +89,7 @@ def test_openapi_blueprint_registered_with_cors_when_enabled(
     fresh_blueprints: dict[str, Blueprint],
 ) -> None:
     """Enabled gate: blueprint mounted, CORS wired, `/openapi/v1/*` rules live."""
-    monkeypatch.setattr(dify_config, "OPENAPI_ENABLED", True)
+    apply_config_overrides(monkeypatch, OPENAPI_ENABLED=True)
 
     app = _build_app()
     ext_blueprints.init_app(app)
@@ -111,7 +110,7 @@ def test_openapi_blueprint_absent_when_disabled(
     fresh_blueprints: dict[str, Blueprint],
 ) -> None:
     """Disabled gate: no blueprint, no CORS, no `/openapi/v1/*` URL rules."""
-    monkeypatch.setattr(dify_config, "OPENAPI_ENABLED", False)
+    apply_config_overrides(monkeypatch, OPENAPI_ENABLED=False)
 
     app = _build_app()
     ext_blueprints.init_app(app)

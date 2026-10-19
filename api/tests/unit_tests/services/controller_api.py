@@ -82,7 +82,7 @@ This test suite follows a comprehensive testing strategy that covers:
 ================================================================================
 """
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 from uuid import uuid4
@@ -355,9 +355,7 @@ class TestDatasetListApi:
             for i in range(3)
         ]
 
-        paginated_response = ControllerApiTestDataFactory.create_paginated_response(
-            items=datasets, total=3, page=1, per_page=20
-        )
+        ControllerApiTestDataFactory.create_paginated_response(items=datasets, total=3, page=1, per_page=20)
 
         with patch("controllers.console.datasets.datasets.DatasetService.get_datasets") as mock_get_datasets:
             mock_get_datasets.return_value = (datasets, 3)
@@ -546,7 +544,7 @@ class TestDatasetApiGet:
 
         with (
             patch("controllers.console.datasets.datasets.DatasetService.get_dataset") as mock_get_dataset,
-            patch("controllers.console.datasets.datasets.DatasetService.check_dataset_permission") as mock_check_perm,
+            patch("controllers.console.datasets.datasets.DatasetService.check_dataset_permission"),
         ):
             mock_get_dataset.return_value = None  # Dataset not found
 
@@ -813,7 +811,8 @@ class TestExternalDatasetApi:
         )
 
     @pytest.fixture
-    def mock_current_account_context(self, app: Flask) -> Iterator[Mock]:
+    def mock_current_account_context(self, app: Flask, config_overrides: Callable[..., None]) -> Iterator[Mock]:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         """Provide the wrapper auth context required by HTTP-client controller tests."""
         mock_user = Account(
             name="Test User",
@@ -830,7 +829,6 @@ class TestExternalDatasetApi:
 
         with (
             patch("controllers.console.wraps.current_account_with_tenant") as mock_get_user,
-            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("libs.login.check_csrf_token", return_value=None),
         ):
             mock_tenant_id = "tenant-123"

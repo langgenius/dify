@@ -1,21 +1,24 @@
-import type { I18nText } from '@/i18n-config/language'
+import type { I18nText } from '@/i18n/language'
 import type { CodeBasedExtensionForm } from '@/models/common'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import { LanguagesSupported } from '@/i18n/language'
 import FormGeneration from '../form-generation'
 
-const { mockLocale } = vi.hoisted(() => ({ mockLocale: { value: 'en-US' } }))
-
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => mockLocale.value,
+const locale = vi.hoisted(() => ({ value: 'en-US' }))
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
+  useLocale: () => locale.value,
 }))
-
-const i18n = (en: string, zh = en): I18nText =>
-  ({ 'en-US': en, 'zh-Hans': zh }) as unknown as I18nText
-
-const createForm = (overrides: Partial<CodeBasedExtensionForm> = {}): CodeBasedExtensionForm => ({
+const label = (en: string, zh = en): I18nText =>
+  Object.fromEntries(
+    LanguagesSupported.map((language) => [language, language === 'zh-Hans' ? zh : en]),
+  ) as I18nText
+const field = (overrides: Partial<CodeBasedExtensionForm> = {}): CodeBasedExtensionForm => ({
   type: 'text-input',
   variable: 'api_key',
-  label: i18n('API Key', 'API 密钥'),
+  label: label('API key', 'API 密钥'),
   placeholder: 'Enter API key',
   required: true,
   options: [],
@@ -23,130 +26,66 @@ const createForm = (overrides: Partial<CodeBasedExtensionForm> = {}): CodeBasedE
   max_length: 100,
   ...overrides,
 })
+const forms = [
+  field(),
+  field({ type: 'paragraph', variable: 'description', label: label('Description', '描述') }),
+  field({
+    type: 'select',
+    variable: 'model',
+    label: label('Model', '模型'),
+    placeholder: 'Choose model',
+    options: [
+      { label: label('GPT-4', '智谱-4'), value: 'gpt-4' },
+      { label: label('GPT-3.5', '智谱-3.5'), value: 'gpt-3.5' },
+    ],
+  }),
+]
+function Form({ onChange }: { onChange: (patch: Record<string, string>) => void }) {
+  const [value, setValue] = useState<Record<string, string>>({ api_key: 'existing-key' })
+  return (
+    <FormGeneration
+      forms={forms}
+      value={value}
+      onChange={(patch) => {
+        onChange(patch)
+        setValue((current) => ({ ...current, ...patch }))
+      }}
+    />
+  )
+}
 
-describe('FormGeneration', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockLocale.value = 'en-US'
-  })
+beforeEach(() => {
+  locale.value = 'en-US'
+})
 
-  it('should render text-input form fields', () => {
-    const form = createForm()
-    render(<FormGeneration forms={[form]} value={{}} onChange={vi.fn()} />)
+it('emits field-specific patches for text, paragraph, and selection without losing other values', async () => {
+  const user = userEvent.setup()
+  const onChange = vi.fn()
+  render(<Form onChange={onChange} />)
+  const key = screen.getByRole('textbox', { name: 'API key' })
+  expect(key).toHaveValue('existing-key')
+  await user.clear(key)
+  await user.type(key, 'updated-key')
+  expect(onChange).toHaveBeenLastCalledWith({ api_key: 'updated-key' })
+  await user.type(screen.getByRole('textbox', { name: 'Description' }), 'Review requests')
+  expect(onChange).toHaveBeenLastCalledWith({ description: 'Review requests' })
+  await user.click(screen.getByRole('combobox'))
+  await user.click(await screen.findByRole('option', { name: 'GPT-4' }))
+  expect(onChange).toHaveBeenLastCalledWith({ model: 'gpt-4' })
+  expect(screen.getByRole('combobox')).toHaveTextContent('GPT-4')
+  expect(key).toHaveValue('updated-key')
+  expect(screen.getByRole('textbox', { name: 'Description' })).toHaveValue('Review requests')
+})
 
-    expect(screen.getByText('API Key')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('Enter API key')).toBeInTheDocument()
-  })
-
-  it('should call onChange when text input value changes', () => {
-    const onChange = vi.fn()
-    const form = createForm()
-    render(<FormGeneration forms={[form]} value={{}} onChange={onChange} />)
-
-    fireEvent.change(screen.getByPlaceholderText('Enter API key'), {
-      target: { value: 'my-key' },
-    })
-
-    expect(onChange).toHaveBeenCalledWith({ api_key: 'my-key' })
-  })
-
-  it('should render paragraph form fields', () => {
-    const form = createForm({
-      type: 'paragraph',
-      variable: 'description',
-      label: i18n('Description', '描述'),
-      placeholder: 'Enter description',
-    })
-    render(<FormGeneration forms={[form]} value={{}} onChange={vi.fn()} />)
-
-    expect(screen.getByText('Description')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('Enter description')).toBeInTheDocument()
-  })
-
-  it('should render select form fields', () => {
-    const form = createForm({
-      type: 'select',
-      variable: 'model',
-      label: i18n('Model', '模型'),
-      options: [
-        { label: i18n('GPT-4'), value: 'gpt-4' },
-        { label: i18n('GPT-3.5'), value: 'gpt-3.5' },
-      ],
-    })
-    render(<FormGeneration forms={[form]} value={{}} onChange={vi.fn()} />)
-
-    expect(screen.getByText('Model')).toBeInTheDocument()
-  })
-
-  it('should render multiple forms', () => {
-    const forms = [
-      createForm({ variable: 'key1', label: i18n('Field 1', '字段1') }),
-      createForm({ variable: 'key2', label: i18n('Field 2', '字段2'), type: 'paragraph' }),
-    ]
-    render(<FormGeneration forms={forms} value={{}} onChange={vi.fn()} />)
-
-    expect(screen.getByText('Field 1')).toBeInTheDocument()
-    expect(screen.getByText('Field 2')).toBeInTheDocument()
-  })
-
-  it('should display existing values', () => {
-    const form = createForm()
-    render(<FormGeneration forms={[form]} value={{ api_key: 'existing-key' }} onChange={vi.fn()} />)
-
-    expect(screen.getByDisplayValue('existing-key')).toBeInTheDocument()
-  })
-
-  it('should call onChange when paragraph textarea value changes', () => {
-    const onChange = vi.fn()
-    const form = createForm({
-      type: 'paragraph',
-      variable: 'description',
-      label: i18n('Description', '描述'),
-      placeholder: 'Enter description',
-    })
-    render(<FormGeneration forms={[form]} value={{}} onChange={onChange} />)
-
-    fireEvent.change(screen.getByPlaceholderText('Enter description'), {
-      target: { value: 'my description' },
-    })
-
-    expect(onChange).toHaveBeenCalledWith({ description: 'my description' })
-  })
-
-  it('should call onChange when select option is chosen', () => {
-    const onChange = vi.fn()
-    const form = createForm({
-      type: 'select',
-      variable: 'model',
-      label: i18n('Model', '模型'),
-      options: [
-        { label: i18n('GPT-4'), value: 'gpt-4' },
-        { label: i18n('GPT-3.5'), value: 'gpt-3.5' },
-      ],
-    })
-    render(<FormGeneration forms={[form]} value={{}} onChange={onChange} />)
-
-    fireEvent.click(screen.getByRole('combobox'))
-    fireEvent.click(screen.getByRole('option', { name: 'GPT-4' }))
-
-    expect(onChange).toHaveBeenCalledWith({ model: 'gpt-4' })
-  })
-
-  it('should render zh-Hans labels for select field and options', () => {
-    mockLocale.value = 'zh-Hans'
-    const form = createForm({
-      type: 'select',
-      variable: 'model',
-      label: i18n('Model', '模型'),
-      options: [
-        { label: i18n('GPT-4', '智谱-4'), value: 'gpt-4' },
-        { label: i18n('GPT-3.5', '智谱-3.5'), value: 'gpt-3.5' },
-      ],
-    })
-    render(<FormGeneration forms={[form]} value={{}} onChange={vi.fn()} />)
-
-    expect(screen.getByText('模型')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('combobox'))
-    expect(screen.getByRole('option', { name: '智谱-4' })).toBeInTheDocument()
-  })
+it('shows Chinese labels while preserving the option identifier in emitted data', async () => {
+  locale.value = 'zh-Hans'
+  const user = userEvent.setup()
+  const onChange = vi.fn()
+  render(<Form onChange={onChange} />)
+  expect(screen.getByRole('textbox', { name: 'API 密钥' })).toBeInTheDocument()
+  expect(screen.getByText('模型')).toBeInTheDocument()
+  await user.click(screen.getByRole('combobox'))
+  await user.click(await screen.findByRole('option', { name: '智谱-4' }))
+  expect(onChange).toHaveBeenLastCalledWith({ model: 'gpt-4' })
+  expect(screen.getByRole('combobox')).toHaveTextContent('智谱-4')
 })

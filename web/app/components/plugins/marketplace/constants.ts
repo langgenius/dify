@@ -5,6 +5,12 @@ export const DEFAULT_SORT = {
   sortOrder: 'DESC',
 }
 
+/**
+ * DOM id of the marketplace scroll container. The route components render it
+ * and the scroll/viewport observers below the marketplace tree look it up.
+ */
+export const MARKETPLACE_CONTAINER_ID = 'marketplace-container'
+
 export const SCROLL_BOTTOM_THRESHOLD = 100
 
 export const PLUGIN_TYPE_SEARCH_MAP = {

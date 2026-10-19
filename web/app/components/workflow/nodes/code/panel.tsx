@@ -28,7 +28,7 @@ const codeLanguages = [
   },
 ]
 const Panel: FC<NodePanelProps<CodeNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
 
   const {
     readOnly,
@@ -51,11 +51,14 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({ id, data }) => {
 
   const handleGeneratedCode = (value: string) => {
     const params = extractFunctionParams(value, inputs.code_language)
+    // Regenerating the code rebuilds the input list from the new signature, but a
+    // parameter that survives the regeneration should keep the variable entry the
+    // user already set up -- its upstream value selector and its value type --
+    // instead of being reset to an unbound variable.
+    const existingVariables = new Map(inputs.variables.map((v) => [v.variable, v]))
     const codeNewInput = params.map((p) => {
-      return {
-        variable: p,
-        value_selector: [],
-      }
+      const existing = existingVariables.get(p)
+      return existing ? { ...existing } : { variable: p, value_selector: [] }
     })
     const returnTypes = extractReturnType(value, inputs.code_language)
     handleCodeAndVarsChange(value, codeNewInput, returnTypes)
@@ -114,6 +117,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({ id, data }) => {
           readOnly={readOnly}
           title={
             <TypeSelector
+              readonly={readOnly}
               options={codeLanguages}
               value={inputs.code_language}
               onChange={handleCodeLanguageChange}
@@ -131,14 +135,16 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({ id, data }) => {
         <Field
           title={t(($) => $[`${i18nPrefix}.outputVars`], { ns: 'workflow' })}
           operations={
-            <button
-              type="button"
-              aria-label={`${t(($) => $['operation.add'], { ns: 'common' })} ${t(($) => $[`${i18nPrefix}.outputVars`], { ns: 'workflow' })}`}
-              className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-              onClick={handleAddOutputVariable}
-            >
-              <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
-            </button>
+            readOnly ? undefined : (
+              <button
+                type="button"
+                aria-label={`${t(($) => $['operation.add'], { ns: 'common' })} ${t(($) => $[`${i18nPrefix}.outputVars`], { ns: 'workflow' })}`}
+                className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                onClick={handleAddOutputVariable}
+              >
+                <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
+              </button>
+            )
           }
           required
         >

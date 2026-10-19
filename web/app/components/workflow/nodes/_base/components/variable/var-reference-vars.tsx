@@ -1,5 +1,5 @@
 'use client'
-import type { FC } from 'react'
+import type { FC, RefObject } from 'react'
 import type { Field, StructuredOutput } from '../../../llm/types'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -98,10 +98,12 @@ const Item: FC<ItemProps> = ({
   isSelected,
   onActivate,
 }) => {
+  const nestedVariableTypes: readonly VarType[] = [VarType.object, VarType.file]
+
   const isStructureOutput =
     itemData.type === VarType.object && (itemData.children as StructuredOutput)?.schema?.properties
   const isObj =
-    [VarType.object, VarType.file].includes(itemData.type) &&
+    nestedVariableTypes.includes(itemData.type) &&
     itemData.children &&
     (itemData.children as Var[]).length > 0
   const isEnv = itemData.variable.startsWith('env.')
@@ -321,7 +323,6 @@ const Item: FC<ItemProps> = ({
 }
 
 type Props = Readonly<{
-  hideSearch?: boolean
   searchText?: string
   searchBoxClassName?: string
   vars: NodeOutPutVar[]
@@ -334,11 +335,16 @@ type Props = Readonly<{
   isInCodeGeneratorInstructionEditor?: boolean
   showManageInputField?: boolean
   onManageInputField?: () => void
-  autoFocus?: boolean
+  searchInputRef?: RefObject<HTMLInputElement | null>
   preferSchemaType?: boolean
-}>
+}> &
+  (
+    | { hideSearch: true; keyboardTarget: HTMLElement | RefObject<HTMLElement | null> | null }
+    | { hideSearch?: false; keyboardTarget?: never }
+  )
 const VarReferenceVars: FC<Props> = ({
   hideSearch,
+  keyboardTarget,
   searchText,
   searchBoxClassName,
   vars,
@@ -351,13 +357,14 @@ const VarReferenceVars: FC<Props> = ({
   isInCodeGeneratorInstructionEditor,
   showManageInputField,
   onManageInputField,
-  autoFocus = true,
+  searchInputRef: externalSearchInputRef,
   preferSchemaType,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow', 'workflowDebug'])
   const [internalSearchValue, setInternalSearchValue] = useState('')
   const listRef = useRef<HTMLDivElement>(null)
-  const searchInputRef = useRef<HTMLInputElement>(null)
+  const internalSearchInputRef = useRef<HTMLInputElement>(null)
+  const searchInputRef = externalSearchInputRef ?? internalSearchInputRef
   const searchValue = searchText ?? internalSearchValue
   const searchLabel = t(($) => $['common.searchVar'], { ns: 'workflow' })
   const filteredVars = useMemo(() => filterReferenceVars(vars, searchValue), [vars, searchValue])
@@ -454,24 +461,38 @@ const VarReferenceVars: FC<Props> = ({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.defaultPrevented || e.nativeEvent.isComposing) return
       handleKeyboardEvent(e)
     },
     [handleKeyboardEvent],
   )
 
   useEffect(() => {
-    if (!hideSearch) return
+    if (!hideSearch || !keyboardTarget) return
+    const target = 'current' in keyboardTarget ? keyboardTarget.current : keyboardTarget
+    if (!target) return
 
-    const handleDocumentKeyDown = (event: KeyboardEvent) => {
-      if (event.altKey || event.ctrlKey || event.metaKey) return
+    const handleTargetKeyDown = (event: KeyboardEvent) => {
+      if (
+        !(event.target instanceof Node) ||
+        !target.contains(event.target) ||
+        event.defaultPrevented ||
+        event.isComposing ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey
+      )
+        return
       if (!['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(event.key)) return
 
       handleKeyboardEvent(event)
     }
 
-    document.addEventListener('keydown', handleDocumentKeyDown, true)
-    return () => document.removeEventListener('keydown', handleDocumentKeyDown, true)
-  }, [handleKeyboardEvent, hideSearch])
+    // Run before React's node-movement capture handler while claiming only the declared owner.
+    const ownerDocument = target.ownerDocument
+    ownerDocument.addEventListener('keydown', handleTargetKeyDown, true)
+    return () => ownerDocument.removeEventListener('keydown', handleTargetKeyDown, true)
+  }, [handleKeyboardEvent, hideSearch, keyboardTarget])
 
   return (
     <>
@@ -497,7 +518,6 @@ const VarReferenceVars: FC<Props> = ({
               placeholder={searchLabel}
               onValueChange={setInternalSearchValue}
               onKeyDown={handleKeyDown}
-              autoFocus={autoFocus}
             />
             <InputGroupAddon className="ps-2 pe-0.5">
               <span
@@ -573,7 +593,7 @@ const VarReferenceVars: FC<Props> = ({
                   <div className="relative mt-3.5 flex items-center space-x-1">
                     <div className="h-0 w-3 shrink-0 border border-divider-subtle"></div>
                     <div className="system-2xs-semibold-uppercase text-text-tertiary">
-                      {t(($) => $['debug.lastOutput'], { ns: 'workflow' })}
+                      {t(($) => $['debug.lastOutput'], { ns: 'workflowDebug' })}
                     </div>
                     <div className="h-0 shrink-0 grow border border-divider-subtle"></div>
                   </div>

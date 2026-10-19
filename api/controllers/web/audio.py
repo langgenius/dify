@@ -2,10 +2,14 @@ import logging
 
 from flask import request
 from pydantic import field_validator
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError
 
 import services
 from controllers.common.controller_schemas import TextToAudioPayload as TextToAudioPayloadBase
+from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.session import with_session
+from controllers.console.wraps import model_validate
 from controllers.web import web_ns
 from controllers.web.error import (
     AppUnavailableError,
@@ -21,9 +25,9 @@ from controllers.web.error import (
 )
 from controllers.web.wraps import WebApiResource
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.errors.invoke import InvokeError
+from libs.external_api import error_responses
 from libs.helper import dump_response, uuid_value
 from models.model import App, EndUser
 from services.app_ref_service import AppRefService
@@ -35,8 +39,6 @@ from services.errors.audio import (
     SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
-
-from ..common.schema import register_response_schema_models, register_schema_models
 
 
 class AudioToTextResponse(ResponseModel):
@@ -60,6 +62,18 @@ logger = logging.getLogger(__name__)
 
 @web_ns.route("/audio-to-text")
 class AudioApi(WebApiResource):
+    @error_responses(
+        AppUnavailableError,
+        AudioTooLargeError,
+        CompletionRequestError,
+        NoAudioUploadedError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderNotSupportSpeechToTextError,
+        ProviderQuotaExceededError,
+        SpeechToTextDisabledError,
+        UnsupportedAudioTypeError,
+    )
     @web_ns.doc("Audio to Text")
     @web_ns.doc(description="Convert audio file to text using speech-to-text service.")
     @web_ns.doc(
@@ -67,14 +81,14 @@ class AudioApi(WebApiResource):
             200: "Success",
             400: "Bad Request",
             401: "Unauthorized",
-            403: "Forbidden",
             413: "Audio file too large",
             415: "Unsupported audio type",
             500: "Internal Server Error",
         }
     )
     @web_ns.response(200, "Success", web_ns.models[AudioToTextResponse.__name__])
-    def post(self, app_model: App, end_user: EndUser):
+    @with_session(write=False)
+    def post(self, session: Session, app_model: App, end_user: EndUser):
         """Convert audio to text"""
         file = request.files.get("file")
 
@@ -82,7 +96,7 @@ class AudioApi(WebApiResource):
             response = AudioService.transcript_asr(
                 app_model=app_model,
                 file=file,
-                session=db.session(),
+                session=session,
                 end_user=end_user.external_user_id,
             )
 
@@ -110,13 +124,20 @@ class AudioApi(WebApiResource):
             raise CompletionRequestError(e.description)
         except ValueError as e:
             raise e
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to handle post request to AudioApi")
             raise InternalServerError()
 
 
 @web_ns.route("/text-to-audio")
 class TextApi(WebApiResource):
+    @error_responses(
+        AppUnavailableError,
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @web_ns.expect(web_ns.models[TextToAudioPayload.__name__])
     @web_ns.doc("Text to Audio")
     @web_ns.doc(description="Convert text to audio using text-to-speech service.")
@@ -125,17 +146,16 @@ class TextApi(WebApiResource):
             200: "Success",
             400: "Bad Request",
             401: "Unauthorized",
-            403: "Forbidden",
             500: "Internal Server Error",
         }
     )
     # response-contract:ignore provider audio bytes; TODO: model binary audio response if shape is standardized.
     @web_ns.response(200, "Success")
-    def post(self, app_model: App, end_user: EndUser):
+    @with_session(write=False)
+    @model_validate(TextToAudioPayload)
+    def post(self, payload: TextToAudioPayload, session: Session, app_model: App, end_user: EndUser):
         """Convert text to audio"""
         try:
-            payload = TextToAudioPayload.model_validate(web_ns.payload or {})
-
             message_id = payload.message_id
             text = payload.text
             voice = payload.voice
@@ -149,7 +169,7 @@ class TextApi(WebApiResource):
                 )
             return AudioService.transcript_tts(
                 app_model=app_model,
-                session=db.session(),
+                session=session,
                 text=text,
                 voice=voice,
                 end_user=end_user.external_user_id,
@@ -158,14 +178,6 @@ class TextApi(WebApiResource):
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")
             raise AppUnavailableError()
-        except NoAudioUploadedServiceError:
-            raise NoAudioUploadedError()
-        except AudioTooLargeServiceError as e:
-            raise AudioTooLargeError(str(e))
-        except UnsupportedAudioTypeServiceError:
-            raise UnsupportedAudioTypeError()
-        except ProviderNotSupportSpeechToTextServiceError:
-            raise ProviderNotSupportSpeechToTextError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -176,6 +188,6 @@ class TextApi(WebApiResource):
             raise CompletionRequestError(e.description)
         except ValueError as e:
             raise e
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to handle post request to TextApi")
             raise InternalServerError()

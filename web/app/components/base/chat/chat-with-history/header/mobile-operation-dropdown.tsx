@@ -18,7 +18,7 @@ const MobileOperationDropdown = ({
   handleViewChatSettings,
   hideViewChatSettings = false,
 }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'share'])
   const handleMenuAction = (callback: () => void) => {
     queueMicrotask(callback)
   }
@@ -36,7 +36,7 @@ const MobileOperationDropdown = ({
           </IconButton>
         }
       />
-      <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-[160px]">
+      <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-40">
         <DropdownMenuItem
           className="system-md-regular"
           onClick={() => handleMenuAction(handleResetChat)}

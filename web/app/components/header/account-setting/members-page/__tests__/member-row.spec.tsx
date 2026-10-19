@@ -1,0 +1,76 @@
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import { screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import MemberRow from '../member-row'
+
+const member: AccountWithRoleResponse = {
+  id: 'member-1',
+  name: 'Member User',
+  email: 'member@example.com',
+  avatar: '',
+  avatar_url: '',
+  role: 'normal',
+  roles: [],
+  last_active_at: 1731000000,
+  last_login_at: 1731000000,
+  created_at: 1731000000,
+  status: 'active',
+}
+
+const renderMemberRow = (onOpenDetails = vi.fn()) => {
+  renderWithConsoleQuery(
+    <table>
+      <tbody>
+        <MemberRow
+          member={member}
+          roles={[{ id: 'role-1', name: 'Editor' }]}
+          isCurrentUser={false}
+          canManage
+          canTransferOwnership={false}
+          allowMultipleRoles={false}
+          onOpenDetails={onOpenDetails}
+          onTransferOwnership={vi.fn()}
+        />
+      </tbody>
+    </table>,
+  )
+  return onOpenDetails
+}
+
+describe('MemberRow details entry points', () => {
+  it.each(['name button', 'email'])('opens details once from the %s', async (target) => {
+    const user = userEvent.setup()
+    const onOpenDetails = renderMemberRow()
+    await user.click(
+      target === 'name button'
+        ? screen.getByRole('button', { name: 'Member User' })
+        : within(screen.getByRole('row')).getByText('member@example.com'),
+    )
+    expect(onOpenDetails).toHaveBeenCalledExactlyOnceWith(member)
+  })
+
+  it('should keep member menu and its portaled confirmation separate from details', async () => {
+    const user = userEvent.setup()
+    const onOpenDetails = renderMemberRow()
+
+    await user.click(
+      screen.getByRole('button', { name: /workspaceMembers\.members\.memberActions/ }),
+    )
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+    expect(onOpenDetails).not.toHaveBeenCalled()
+
+    await user.click(
+      screen.getByRole('menuitem', { name: 'workspaceMembers.members.removeFromTeam' }),
+    )
+    const confirmation = screen.getByRole('alertdialog')
+    expect(onOpenDetails).not.toHaveBeenCalled()
+
+    await user.click(
+      within(confirmation).getByText('workspaceMembers.members.removeFromTeamConfirmDescription'),
+    )
+    await user.click(within(confirmation).getByRole('button', { name: 'common.operation.cancel' }))
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(onOpenDetails).not.toHaveBeenCalled()
+  })
+})

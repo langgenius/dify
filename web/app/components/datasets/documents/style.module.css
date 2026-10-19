@@ -5,7 +5,7 @@
   box-sizing: border-box;
   max-width: 200px;
 }
-.documentTable thead td {
+.documentTable thead th {
   padding: 0px 10px 0px 12px;
   box-sizing: border-box;
   max-width: 200px;
@@ -15,15 +15,6 @@
 }
 .actionIconWrapperDetail {
   @apply !border-[0.5px] !border-components-button-secondary-border !bg-components-button-secondary-bg !p-2 shadow-xs shadow-shadow-shadow-3 hover:!border-components-button-secondary-border-hover hover:!bg-components-button-secondary-bg-hover;
-}
-.actionItem {
-  @apply mx-1 flex h-9 w-[calc(100%-8px)] cursor-pointer items-center gap-2 rounded-lg border-none bg-transparent px-3 py-2 text-left hover:bg-state-base-hover;
-}
-.deleteActionItem {
-  @apply hover:!bg-state-destructive-hover;
-}
-.actionName {
-  @apply text-sm text-text-secondary;
 }
 .addFileBtn {
   @apply mt-4 w-fit border-[0.5px] border-components-button-secondary-border !text-[13px] font-medium;

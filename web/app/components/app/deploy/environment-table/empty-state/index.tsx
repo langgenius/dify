@@ -9,7 +9,7 @@ import { EmptyTableSkeleton } from './skeleton'
 type EnvironmentTableEmptyProps =
   | {
       state: 'empty'
-      onSelectEnvironment?: (environment: AppEnvironment) => void
+      onSelectEnvironment: (environment: AppEnvironment) => void
     }
   | {
       state: 'error'
@@ -18,8 +18,8 @@ type EnvironmentTableEmptyProps =
     }
 
 export function EnvironmentTableEmpty(props: EnvironmentTableEmptyProps) {
-  const { t } = useTranslation('deployments')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['deployments'])
+  const { t: tCommon } = useTranslation(['common'])
   const isError = props.state === 'error'
   const title = isError ? tCommon(($) => $['errorBoundary.title']) : t(($) => $['list.emptyTitle'])
   const description = isError

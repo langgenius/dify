@@ -476,8 +476,6 @@ class WorkflowConverter:
                 prompt_transform = SimplePromptTransform()
                 prompt_template_config = prompt_transform.get_prompt_template(
                     app_mode=original_app_mode,
-                    provider=model_config.provider,
-                    model=model_config.model,
                     pre_prompt=prompt_template.simple_prompt_template,
                     has_context=knowledge_retrieval_node is not None,
                     query_in_prompt=False,
@@ -517,8 +515,6 @@ class WorkflowConverter:
                 prompt_transform = SimplePromptTransform()
                 prompt_template_config = prompt_transform.get_prompt_template(
                     app_mode=original_app_mode,
-                    provider=model_config.provider,
-                    model=model_config.model,
                     pre_prompt=prompt_template.simple_prompt_template,
                     has_context=knowledge_retrieval_node is not None,
                     query_in_prompt=False,

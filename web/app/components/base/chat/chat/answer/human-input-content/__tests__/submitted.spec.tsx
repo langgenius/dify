@@ -6,7 +6,7 @@ import { TransferMethod } from '@/types/app'
 import { SubmittedHumanInputContent } from '../submitted'
 
 vi.mock('@/app/components/base/markdown', () => ({
-  Markdown: ({ content }: { content: string }) => <div data-testid="mock-markdown">{content}</div>,
+  Markdown: ({ content }: { content: string }) => <div>{content}</div>,
 }))
 
 describe('SubmittedHumanInputContent Integration', () => {
@@ -17,19 +17,6 @@ describe('SubmittedHumanInputContent Integration', () => {
     node_id: 'node_1',
     node_title: 'Node Title',
   }
-
-  it('should render both content and executed action', () => {
-    render(<SubmittedHumanInputContent formData={mockFormData} />)
-
-    // Verify SubmittedContent rendering
-    expect(screen.getByTestId('submitted-content')).toBeInTheDocument()
-    expect(screen.getByTestId('mock-markdown')).toHaveTextContent('Rendered **Markdown** content')
-
-    // Verify ExecutedAction rendering
-    expect(screen.getByTestId('executed-action')).toBeInTheDocument()
-    // Trans component for triggered action. The mock usually renders the key.
-    expect(screen.getByText('workflow.nodes.humanInput.userActions.triggered')).toBeInTheDocument()
-  })
 
   it('should prefer structured form data over rendered markdown when available', () => {
     render(
@@ -51,7 +38,6 @@ describe('SubmittedHumanInputContent Integration', () => {
       />,
     )
 
-    expect(screen.getByTestId('submitted-form-content')).toBeInTheDocument()
     expect(screen.getByTestId('submitted-field-answer')).toHaveTextContent('approved')
     expect(screen.queryByTestId('submitted-content')).not.toBeInTheDocument()
   })
@@ -100,20 +86,25 @@ describe('SubmittedHumanInputContent Integration', () => {
     expect(screen.getByTestId('submitted-field-attachment')).toHaveTextContent('decision.pdf')
   })
 
-  it('should fallback to rendered markdown when structured form data is empty', () => {
-    render(
-      <SubmittedHumanInputContent
-        formData={{
-          ...mockFormData,
-          submitted_data: {},
-        }}
-      />,
-    )
+  it.each([undefined, {}])(
+    'falls back to rendered markdown without submitted values: %j',
+    (submittedData) => {
+      render(
+        <SubmittedHumanInputContent
+          formData={{
+            ...mockFormData,
+            submitted_data: submittedData,
+          }}
+        />,
+      )
 
-    expect(screen.getByTestId('submitted-content')).toBeInTheDocument()
-    expect(screen.getByTestId('mock-markdown')).toHaveTextContent('Rendered **Markdown** content')
-    expect(screen.queryByTestId('submitted-field-values')).not.toBeInTheDocument()
-  })
+      expect(screen.getByText('Rendered **Markdown** content')).toBeInTheDocument()
+      expect(
+        screen.getByText('workflowHumanInput.nodes.humanInput.userActions.triggered'),
+      ).toBeInTheDocument()
+      expect(screen.queryByTestId('submitted-field-values')).not.toBeInTheDocument()
+    },
+  )
 
   it('should render submitted field values when original form layout is unavailable', () => {
     render(
@@ -127,7 +118,6 @@ describe('SubmittedHumanInputContent Integration', () => {
       />,
     )
 
-    expect(screen.getByTestId('submitted-field-values')).toBeInTheDocument()
     expect(screen.getByTestId('submitted-field-answer')).toHaveTextContent('approved')
     expect(screen.queryByTestId('submitted-content')).not.toBeInTheDocument()
   })

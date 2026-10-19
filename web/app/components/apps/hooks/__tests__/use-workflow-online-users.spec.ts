@@ -1,166 +1,74 @@
-import type { WorkflowOnlineUser, WorkflowOnlineUsersResponse } from '@/models/app'
-import { renderHook } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
+import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { useWorkflowOnlineUsers } from '../use-workflow-online-users'
 
-type QueryOptions = {
-  input: {
-    body: {
-      app_ids: string[]
-    }
+const getUsers = vi.hoisted(() => vi.fn())
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.workflows.onlineUsers.post': getUsers,
+    }),
   }
-  enabled: boolean
-  select: (response?: WorkflowOnlineUsersResponse) => Record<string, WorkflowOnlineUser[]>
-  refetchInterval: false | number
-}
+})
 
-const { mockUseQuery, mockQueryOptions } = vi.hoisted(() => ({
-  mockUseQuery: vi.fn(),
-  mockQueryOptions: vi.fn((options: QueryOptions) => options),
-}))
-
-vi.mock('@tanstack/react-query', () => ({
-  useQuery: mockUseQuery,
-}))
-
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    apps: {
-      workflows: {
-        onlineUsers: {
-          post: {
-            queryOptions: mockQueryOptions,
-          },
-        },
-      },
-    },
-  },
-}))
-
-const getLastQueryOptions = () => {
-  const lastCall = mockQueryOptions.mock.lastCall
-  if (!lastCall) throw new Error('workflows.onlineUsers.post.queryOptions was not called')
-  return lastCall[0] as QueryOptions
-}
-
+const user = { user_id: 'user-1', username: 'Alice' }
 describe('useWorkflowOnlineUsers', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseQuery.mockReturnValue({ data: undefined })
+    getUsers.mockReset().mockResolvedValue({ data: {} })
+  })
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
-  describe('Query Options', () => {
-    it('should disable query with a valid empty input when app ids are empty', () => {
-      renderHook(() =>
-        useWorkflowOnlineUsers({
-          appIds: [],
-          enabled: true,
-        }),
-      )
-
-      expect(mockQueryOptions).toHaveBeenCalledWith(
-        expect.objectContaining({
-          input: { body: { app_ids: [] } },
-          enabled: false,
-          refetchInterval: false,
-        }),
-      )
-      expect(mockUseQuery).toHaveBeenCalledWith(
-        expect.objectContaining({
-          input: { body: { app_ids: [] } },
-          enabled: false,
-        }),
-      )
-    })
-
-    it('should enable query and polling when collaboration is enabled with app ids', () => {
-      renderHook(() =>
-        useWorkflowOnlineUsers({
-          appIds: ['app-1', 'app-2'],
-          enabled: true,
-        }),
-      )
-
-      expect(mockQueryOptions).toHaveBeenCalledWith(
-        expect.objectContaining({
-          input: { body: { app_ids: ['app-1', 'app-2'] } },
-          enabled: true,
-          refetchInterval: 10000,
-        }),
-      )
-    })
-
-    it('should disable query while preserving valid input when collaboration is disabled', () => {
-      renderHook(() =>
-        useWorkflowOnlineUsers({
-          appIds: ['app-1'],
-          enabled: false,
-        }),
-      )
-
-      expect(mockQueryOptions).toHaveBeenCalledWith(
-        expect.objectContaining({
-          input: { body: { app_ids: ['app-1'] } },
-          enabled: false,
-          refetchInterval: false,
-        }),
-      )
-    })
+  it.each([
+    { appIds: [], enabled: true },
+    { appIds: ['app-1'], enabled: false },
+  ])('does not request users when collaboration is unavailable (%j)', async (params) => {
+    const { result } = renderHookWithConsoleQuery(() => useWorkflowOnlineUsers(params))
+    await act(async () => {})
+    expect(getUsers).not.toHaveBeenCalled()
+    expect(result.current.onlineUsersMap).toEqual({})
   })
 
-  describe('Response Mapping', () => {
-    it('should normalize array response data by app id', () => {
-      renderHook(() =>
-        useWorkflowOnlineUsers({
-          appIds: ['app-1'],
-          enabled: true,
-        }),
+  it.each([{ data: [{ app_id: 'app-1', users: [user] }] }, { data: { 'app-1': [user] } }])(
+    'normalizes supported response shapes through the query selector (%j)',
+    async (response) => {
+      getUsers.mockResolvedValue(response)
+      const { result } = renderHookWithConsoleQuery(() =>
+        useWorkflowOnlineUsers({ appIds: ['app-1'], enabled: true }),
       )
-
-      const options = getLastQueryOptions()
-      const user = { user_id: 'user-1', username: 'Alice' }
-
-      expect(
-        options.select({
-          data: [{ app_id: 'app-1', users: [user] }],
-        }),
-      ).toEqual({
-        'app-1': [user],
-      })
-    })
-
-    it('should normalize record response data without changing user arrays', () => {
-      renderHook(() =>
-        useWorkflowOnlineUsers({
-          appIds: ['app-1'],
-          enabled: true,
-        }),
-      )
-
-      const options = getLastQueryOptions()
-      const users = [{ user_id: 'user-1', username: 'Alice' }]
-
-      expect(
-        options.select({
-          data: {
-            'app-1': users,
-          },
-        }),
-      ).toEqual({
-        'app-1': users,
-      })
-    })
-  })
-
-  describe('Return Value', () => {
-    it('should return an empty map when query data is unavailable', () => {
-      const { result } = renderHook(() =>
-        useWorkflowOnlineUsers({
-          appIds: ['app-1'],
-          enabled: true,
-        }),
-      )
-
       expect(result.current.onlineUsersMap).toEqual({})
+      await waitFor(() => expect(result.current.onlineUsersMap).toEqual({ 'app-1': [user] }))
+      expect(getUsers).toHaveBeenCalledWith({ body: { app_ids: ['app-1'] } })
+    },
+  )
+
+  it('polls every ten seconds and stops polling when collaboration is disabled', async () => {
+    vi.useFakeTimers()
+    const { result, rerender } = renderHookWithConsoleQuery(
+      ({ enabled }) => useWorkflowOnlineUsers({ appIds: ['app-1'], enabled }),
+      { initialProps: { enabled: true } },
+    )
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1)
     })
+    expect(getUsers).toHaveBeenCalledTimes(1)
+    getUsers.mockResolvedValue({ data: { 'app-1': [user] } })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10000)
+    })
+    expect(getUsers).toHaveBeenCalledTimes(2)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1)
+    })
+    expect(result.current.onlineUsersMap).toEqual({ 'app-1': [user] })
+    rerender({ enabled: false })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(20000)
+    })
+    expect(getUsers).toHaveBeenCalledTimes(2)
   })
 })

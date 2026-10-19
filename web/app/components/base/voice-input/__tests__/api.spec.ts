@@ -1,4 +1,4 @@
-import { consoleClient } from '@/service/client'
+import { consoleClient } from '@/service/console'
 import { AppSourceType, audioToText } from '@/service/share'
 import { transcribeAudio } from '../api'
 
@@ -10,7 +10,7 @@ vi.mock('@/service/share', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     apps: {
       byAppId: {

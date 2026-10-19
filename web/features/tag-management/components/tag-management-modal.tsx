@@ -1,14 +1,20 @@
 'use client'
 import type { TagType } from '@dify/contracts/api/console/tags/types.gen'
-import { Dialog, DialogClose, DialogContent } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import { getTagManagePermissionKey } from '../utils'
 import { TagItemEditor } from './tag-item-editor'
@@ -25,7 +31,7 @@ export const TagManagementModal = ({
   onClose,
   onTagsChange,
 }: TagManagementModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageTags = hasPermission(workspacePermissionKeys, getTagManagePermissionKey(type))
   const { data: tagList = [] } = useQuery(
@@ -73,27 +79,18 @@ export const TagManagementModal = ({
 
   return (
     <Dialog open={show} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="w-150 max-w-150 rounded-xl p-8">
-        <div className="relative pb-2 text-xl/7.5 font-semibold text-text-primary">
-          {t(($) => $['tag.manageTags'], { ns: 'common' })}
-        </div>
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute top-4 right-4"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-        <div className="mt-3 flex flex-wrap gap-2">
+      <DialogContent className="w-150">
+        <DialogHeader>
+          <DialogTitle>{t(($) => $['tag.manageTags'], { ns: 'common' })}</DialogTitle>
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody className="flex flex-wrap gap-2">
           <input
             aria-label={t(($) => $['tag.addNew'], { ns: 'common' }) || ''}
             className="w-25 shrink-0 appearance-none rounded-lg border border-dashed border-divider-regular bg-transparent px-2 py-1 text-sm/5 text-text-secondary caret-primary-600 outline-hidden placeholder:text-text-quaternary focus:border-solid"
             placeholder={t(($) => $['tag.addNew'], { ns: 'common' }) || ''}
             value={name}
+            readOnly={createTagMutation.isPending}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && createNewTag()}
             onBlur={createNewTag}
@@ -101,7 +98,7 @@ export const TagManagementModal = ({
           {tagList.map((tag) => (
             <TagItemEditor key={tag.id} tag={tag} onTagsChange={onTagsChange} />
           ))}
-        </div>
+        </DialogBody>
       </DialogContent>
     </Dialog>
   )

@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from 'react'
 
-export type AnalyticsConsent = 'unknown' | 'denied' | 'granted'
+export type AnalyticsConsent = 'unknown' | 'denied' | 'granted' | 'disabled'
 
 type CookieYesConsentUpdateDetail = {
   accepted: string[]

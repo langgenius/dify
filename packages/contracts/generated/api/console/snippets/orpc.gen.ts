@@ -3,6 +3,17 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zAgentNameConflictError,
+  zAgentNotFoundError,
+  zAgentSoulLockedError,
+  zAgentVersionConflictError,
+  zAgentVersionNotFoundError,
+  zDraftWorkflowNotExistError,
+  zDraftWorkflowNotSyncError,
+  zInvalidComposerConfigError,
+  zPlaintextSecretNotAllowedError,
+} from './zod.gen.ts'
+import {
   zDeleteSnippetsBySnippetIdWorkflowsByWorkflowIdPath,
   zDeleteSnippetsBySnippetIdWorkflowsByWorkflowIdResponse,
   zDeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesPath,
@@ -94,7 +105,7 @@ import {
   zPutSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerResponse,
   zPutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetPath,
   zPutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Stop a running snippet workflow task
@@ -265,6 +276,7 @@ export const get7 = oc
   })
   .input(z.object({ params: zGetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesPath }))
   .output(zGetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesResponse)
+  .errors({ draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError } })
 
 export const environmentVariables = {
   get: get7,
@@ -388,6 +400,12 @@ export const post4 = oc
     }),
   )
   .output(zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponse)
+  .errors({
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    agent_version_conflict_error: { status: 409, data: zAgentVersionConflictError },
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
+  })
 
 export const copyFromRoster = {
   post: post4,
@@ -428,6 +446,14 @@ export const post6 = oc
     }),
   )
   .output(zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponse)
+  .errors({
+    agent_name_conflict_error: { status: 409, data: zAgentNameConflictError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    agent_soul_locked_error: { status: 400, data: zAgentSoulLockedError },
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
+    plaintext_secret_not_allowed_error: { status: 400, data: zPlaintextSecretNotAllowedError },
+  })
 
 export const saveToRoster = {
   post: post6,
@@ -448,6 +474,11 @@ export const post7 = oc
     }),
   )
   .output(zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponse)
+  .errors({
+    agent_soul_locked_error: { status: 400, data: zAgentSoulLockedError },
+    invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
+    plaintext_secret_not_allowed_error: { status: 400, data: zPlaintextSecretNotAllowedError },
+  })
 
 export const validate = {
   post: post7,
@@ -468,6 +499,10 @@ export const get9 = oc
     }),
   )
   .output(zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerResponse)
+  .errors({
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+  })
 
 export const put = oc
   .route({
@@ -484,6 +519,14 @@ export const put = oc
     }),
   )
   .output(zPutSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerResponse)
+  .errors({
+    agent_name_conflict_error: { status: 409, data: zAgentNameConflictError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    agent_soul_locked_error: { status: 400, data: zAgentSoulLockedError },
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
+    plaintext_secret_not_allowed_error: { status: 400, data: zPlaintextSecretNotAllowedError },
+  })
 
 export const agentComposer = {
   get: get9,
@@ -758,6 +801,7 @@ export const get14 = oc
     }),
   )
   .output(zGetSnippetsBySnippetIdWorkflowsDraftVariablesResponse)
+  .errors({ draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError } })
 
 export const variables2 = {
   delete: delete3,
@@ -779,6 +823,7 @@ export const get15 = oc
   })
   .input(z.object({ params: zGetSnippetsBySnippetIdWorkflowsDraftPath }))
   .output(zGetSnippetsBySnippetIdWorkflowsDraftResponse)
+  .errors({ draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError } })
 
 /**
  * Sync draft workflow for snippet
@@ -799,6 +844,7 @@ export const post10 = oc
     }),
   )
   .output(zPostSnippetsBySnippetIdWorkflowsDraftResponse)
+  .errors({ draft_workflow_not_sync: { status: 409, data: zDraftWorkflowNotSyncError } })
 
 export const draft = {
   get: get15,

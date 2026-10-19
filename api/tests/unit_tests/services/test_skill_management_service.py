@@ -15,6 +15,7 @@ import pytest
 from sqlalchemy import Table, delete, func, select
 from sqlalchemy.exc import IntegrityError
 
+from core.credit_usage import CreditUsageCreatedBy
 from core.db.session_factory import session_factory
 from core.tools.tool_file_manager import ToolFileManager
 from models.account import Account
@@ -63,6 +64,7 @@ from services.skill_management_service import (
     validate_skill_description,
     validate_skill_name,
 )
+from tests.unit_tests.config_override import apply_config_overrides
 
 TENANT = "11111111-1111-1111-1111-111111111111"
 AGENT = "22222222-2222-2222-2222-222222222222"
@@ -99,7 +101,7 @@ class _FakeToolFileManager(ToolFileManager):
 
 
 @pytest.fixture(autouse=True)
-def _tables() -> Generator[None, None, None]:
+def _tables() -> Generator[None]:
     engine = session_factory.get_session_maker().kw["bind"]
     models = (
         Account,
@@ -182,21 +184,29 @@ def _skill_md(name: str = "finance-sop", description: str = "Finance SOP", body:
 def test_validate_skill_name_rejects_underscores_and_double_hyphens() -> None:
     assert validate_skill_name("finance-sop") == "finance-sop"
     for bad in ["finance_sop", "finance--sop", "-finance", "finance-", "Finance", "x" * 65]:
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match="config skill name .* must match|skill name must",
+        ):
             validate_skill_name(bad)
 
 
 def test_validate_skill_description_rejects_blank_and_long_values() -> None:
     assert validate_skill_description(" Finance SOP ") == "Finance SOP"
     for bad in ["", "   ", "x" * 1025]:
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match=("(?:skill description must be at most 1024 characters|skill description must not be blank)"),
+        ):
             validate_skill_description(bad)
 
 
 def test_normalize_skill_file_path_rejects_escape_paths() -> None:
     assert normalize_skill_file_path("references//guide.md") == "references/guide.md"
     for bad in ["", "../x", "/etc/passwd", "a/\x00b"]:
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError, match="(?:skill file path contains control characters|skill file path is invalid)"
+        ):
             normalize_skill_file_path(bad)
 
 
@@ -387,7 +397,7 @@ def test_create_assistant_stream_uses_default_model_and_keeps_draft_read_only() 
     )
     manager = SimpleNamespace(get_default_model_instance=lambda **_kwargs: model)
 
-    with patch("services.skill_management_service.ModelManager.for_tenant", return_value=manager):
+    with patch("services.skill_management_service.ModelManager.for_tenant", return_value=manager) as for_tenant:
         response = list(
             service.create_assistant_stream(
                 tenant_id=TENANT,
@@ -396,6 +406,10 @@ def test_create_assistant_stream_uses_default_model_and_keeps_draft_read_only() 
             )
         )
 
+    for_tenant.assert_called_once_with(
+        tenant_id=TENANT,
+        request_metadata={"created_by": CreditUsageCreatedBy.SKILL_BUILDER},
+    )
     assert response == ["# Draft"]
     draft = service.get_skill(tenant_id=TENANT, skill_id=created["id"])
     assert draft["files"][0]["content"] == created["files"][0]["content"]
@@ -429,7 +443,7 @@ def test_create_assistant_action_stream_applies_file_operations_and_returns_deta
     )
     manager = SimpleNamespace(get_default_model_instance=lambda **_kwargs: model)
 
-    with patch("services.skill_management_service.ModelManager.for_tenant", return_value=manager):
+    with patch("services.skill_management_service.ModelManager.for_tenant", return_value=manager) as for_tenant:
         response = list(
             service.create_assistant_action_stream(
                 tenant_id=TENANT,
@@ -440,6 +454,10 @@ def test_create_assistant_action_stream_applies_file_operations_and_returns_deta
             )
         )
 
+    for_tenant.assert_called_once_with(
+        tenant_id=TENANT,
+        request_metadata={"created_by": CreditUsageCreatedBy.SKILL_BUILDER},
+    )
     events = [json.loads(chunk.removeprefix("data: ").strip()) for chunk in response]
     assert [event["event"] for event in events] == [
         "skill_assistant_progress",
@@ -1138,6 +1156,80 @@ def test_replace_agent_bindings_rejects_skill_name_conflict_with_agent_config_sk
 
     assert exc_info.value.code == "agent_skill_name_conflict"
     assert exc_info.value.details == {"names": ["finance-sop"]}
+
+
+@pytest.mark.parametrize(
+    ("snapshot_has_skill", "draft_has_skill", "debug_has_skill", "expect_conflict"),
+    [
+        (True, False, False, False),
+        (True, False, True, False),
+        (False, True, False, True),
+        (True, True, False, True),
+        (False, None, True, False),
+        (True, None, True, True),
+    ],
+)
+def test_replace_agent_bindings_checks_editable_config(
+    snapshot_has_skill: bool,
+    draft_has_skill: bool | None,
+    debug_has_skill: bool,
+    expect_conflict: bool,
+) -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="finance-sop"))
+    skill_ref = AgentConfigSkillRefConfig(name="finance-sop", description="Embedded skill.", file_id="tool-file-1")
+    with session_factory.create_session() as session:
+        snapshot = AgentConfigSnapshot(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            version=1,
+            config_snapshot=AgentSoulConfig(config_skills=[skill_ref] if snapshot_has_skill else []),
+            created_by=USER,
+        )
+        session.add(snapshot)
+        session.flush()
+        agent = session.get(Agent, AGENT)
+        assert agent is not None
+        agent.active_config_snapshot_id = snapshot.id
+        if draft_has_skill is not None:
+            session.add(
+                AgentConfigDraft(
+                    tenant_id=TENANT,
+                    agent_id=AGENT,
+                    draft_type=AgentConfigDraftType.DRAFT,
+                    account_id=None,
+                    draft_owner_key="",
+                    base_snapshot_id=snapshot.id,
+                    config_snapshot=AgentSoulConfig(config_skills=[skill_ref] if draft_has_skill else []),
+                    created_by=USER,
+                )
+            )
+        if debug_has_skill:
+            session.add(
+                AgentConfigDraft(
+                    tenant_id=TENANT,
+                    agent_id=AGENT,
+                    draft_type=AgentConfigDraftType.DEBUG_BUILD,
+                    account_id=USER,
+                    draft_owner_key=USER,
+                    base_snapshot_id=snapshot.id,
+                    config_snapshot=AgentSoulConfig(config_skills=[skill_ref]),
+                    created_by=USER,
+                )
+            )
+        session.commit()
+
+    if expect_conflict:
+        with pytest.raises(SkillManagementServiceError) as exc_info:
+            service.replace_agent_bindings(tenant_id=TENANT, user_id=USER, agent_id=AGENT, skill_ids=[created["id"]])
+        assert exc_info.value.code == "agent_skill_name_conflict"
+        assert exc_info.value.details == {"names": ["finance-sop"]}
+    else:
+        result = service.replace_agent_bindings(
+            tenant_id=TENANT, user_id=USER, agent_id=AGENT, skill_ids=[created["id"]]
+        )
+        assert result["skill_ids"] == [created["id"]]
+        assert service.list_agent_bindings(tenant_id=TENANT, agent_id=AGENT)["data"][0]["id"] == created["id"]
 
 
 def test_replace_agent_bindings_allows_existing_bound_workspace_skill_name_in_agent_config() -> None:
@@ -2409,7 +2501,7 @@ def test_apply_draft_file_operation_conflict_includes_current_file_version() -> 
     assert exc_info.value.details["current_file_content"] == skill_md["content"]
 
 
-def test_duplicate_skill_copies_latest_published_content_without_history() -> None:
+def test_duplicate_skill_copies_current_draft_without_history() -> None:
     captured: dict[str, bytes] = {}
 
     class CapturingToolFileManager(_FakeToolFileManager):
@@ -2459,6 +2551,19 @@ def test_duplicate_skill_copies_latest_published_content_without_history() -> No
     )
     service.publish_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=SkillPublishPayload())
 
+    service.replace_draft_tree(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillDraftTreePayload(
+            files=[
+                {"path": "SKILL.md", "content": _skill_md(body="# Latest draft body")},
+                {"path": "references", "kind": "directory"},
+                {"path": "references/draft.md", "content": "Draft policy."},
+            ]
+        ),
+    )
+
     with patch("services.skill_management_service.storage.load_once", return_value=captured["archive"]):
         duplicated = service.duplicate_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"])
 
@@ -2467,11 +2572,42 @@ def test_duplicate_skill_copies_latest_published_content_without_history() -> No
     assert duplicated["tags"] == ["Finance"]
     assert duplicated["latest_published_version_id"] is None
     assert "name: finance-sop-copy" in duplicated["files"][0]["content"]
-    assert "# Published body" in duplicated["files"][0]["content"]
+    assert "# Latest draft body" in duplicated["files"][0]["content"]
     references = next(file for file in duplicated["files"] if file["path"] == "references")
     assert references["kind"] == "directory"
-    assert any(file["path"] == "references/policy.md" for file in duplicated["files"])
+    assert any(file["path"] == "references/draft.md" for file in duplicated["files"])
+    assert not any(file["path"] == "references/policy.md" for file in duplicated["files"])
     assert service.list_versions(tenant_id=TENANT, skill_id=duplicated["id"]) == {"data": []}
+
+
+@pytest.mark.parametrize("published", [False, True])
+def test_export_skill_uses_current_draft(published: bool) -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="finance-sop"))
+    if published:
+        service.publish_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=SkillPublishPayload())
+    service.replace_draft_tree(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillDraftTreePayload(
+            files=[
+                {"path": "SKILL.md", "content": _skill_md(body="# Latest draft body")},
+                {"path": "references", "kind": "directory"},
+                {"path": "references/draft.md", "content": "Draft policy."},
+            ]
+        ),
+    )
+
+    result = service.export_draft_archive(tenant_id=TENANT, skill_id=created["id"])
+
+    assert result.filename == "finance-sop.zip"
+    assert result.mime_type == "application/zip"
+    with zipfile.ZipFile(io.BytesIO(result.payload)) as archive:
+        assert set(archive.namelist()) == {"SKILL.md", "references/", "references/draft.md"}
+        assert "# Latest draft body" in archive.read("SKILL.md").decode()
+        assert archive.read("references/draft.md") == b"Draft policy."
+    assert len(service.list_versions(tenant_id=TENANT, skill_id=created["id"])["data"]) == int(published)
 
 
 def test_duplicate_skill_does_not_copy_agent_references() -> None:
@@ -2654,6 +2790,89 @@ def test_import_skill_package_creates_draft_and_rejects_name_conflicts() -> None
     assert exc_info.value.code == "skill_name_conflict"
 
 
+def test_import_skill_package_accepts_crlf_skill_md() -> None:
+    """Windows CRLF SKILL.md must not blank out the frontmatter name on import."""
+    skill_md = (
+        "---\r\n"
+        "name: expense-sop\r\n"
+        "description: Expenses\r\n"
+        "metadata:\r\n"
+        "  display-name: Expense SOP\r\n"
+        "---\r\n"
+        "\r\n"
+        "# Expenses\r\n"
+    )
+    package = io.BytesIO()
+    with zipfile.ZipFile(package, "w") as archive:
+        archive.writestr("expense-sop/SKILL.md", skill_md.encode("utf-8"))
+        archive.writestr("expense-sop/references/policy.md", "Policy")
+
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    imported = service.import_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillImportPayload(content=package.getvalue(), filename="expense-sop.zip"),
+    )
+
+    assert imported["name"] == "expense-sop"
+    assert imported["display_name"] == "Expense SOP"
+    assert imported["description"] == "Expenses"
+    skill_md_file = next(item for item in imported["files"] if item["path"] == "SKILL.md")
+    assert "\r" not in skill_md_file["content"]
+    assert skill_md_file["content"].startswith("---\nname: expense-sop\n")
+
+
+@pytest.mark.parametrize("include_empty_directory", [False, True])
+def test_import_skill_package_drops_explicit_wrapper_directory(include_empty_directory: bool) -> None:
+    package = io.BytesIO()
+    with zipfile.ZipFile(package, "w") as archive:
+        archive.writestr("critical-thinking/", "")
+        archive.writestr("__MACOSX/._critical-thinking", b"\x00")
+        archive.writestr(
+            "critical-thinking/SKILL.md",
+            "---\nname: critical-thinking\ndescription: Critical thinking\n---\n# Critical thinking",
+        )
+        archive.writestr("__MACOSX/critical-thinking/._SKILL.md", b"\x00")
+        if include_empty_directory:
+            archive.writestr("critical-thinking/references/", "")
+
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    imported = service.import_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillImportPayload(content=package.getvalue(), filename="critical-thinking.zip"),
+    )
+
+    expected_paths = ["SKILL.md", "references"] if include_empty_directory else ["SKILL.md"]
+    assert [item["path"] for item in imported["files"]] == expected_paths
+
+
+def test_import_skill_package_strips_root_alongside_macos_metadata_folder() -> None:
+    package = io.BytesIO()
+    with zipfile.ZipFile(package, "w") as archive:
+        archive.writestr(
+            "expense-sop/SKILL.md",
+            "---\nname: expense-sop\ndescription: Expenses\n---\n# Expenses",
+        )
+        archive.writestr("expense-sop/references/policy.md", "Policy")
+        # macOS Finder "Compress" adds an AppleDouble metadata sibling folder
+        # for archives whose source files carry extended attributes.
+        archive.writestr("__MACOSX/expense-sop/._SKILL.md", b"\x00")
+
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    imported = service.import_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillImportPayload(content=package.getvalue(), filename="expense-sop.zip"),
+    )
+
+    assert imported["name"] == "expense-sop"
+    imported_paths = [item["path"] for item in imported["files"]]
+    assert "SKILL.md" in imported_paths
+    assert "references/policy.md" in imported_paths
+    assert not any(path.startswith("__MACOSX") for path in imported_paths)
+
+
 def test_import_skill_package_rejects_missing_frontmatter_description() -> None:
     package = io.BytesIO()
     with zipfile.ZipFile(package, "w") as archive:
@@ -2673,7 +2892,7 @@ def test_import_skill_package_rejects_missing_frontmatter_description() -> None:
 
 
 def test_import_skill_package_rejects_archive_larger_than_upload_skill_limit(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("services.skill_management_service.dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT", 0)
+    apply_config_overrides(monkeypatch, UPLOAD_SKILL_FILE_SIZE_LIMIT=0)
 
     service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
 
@@ -2687,21 +2906,27 @@ def test_import_skill_package_rejects_archive_larger_than_upload_skill_limit(mon
     assert exc_info.value.code == "archive_too_large"
 
 
-def test_import_skill_package_rejects_zip_bomb_before_reading_members() -> None:
+def test_import_skill_package_rejects_excessive_expansion_before_reading_members(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    apply_config_overrides(monkeypatch, SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES=1024 * 1024)
     package = io.BytesIO()
     with zipfile.ZipFile(package, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         archive.writestr("payload.bin", b"\x00" * (8 * 1024 * 1024))
 
     service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
 
-    with pytest.raises(SkillManagementServiceError) as exc_info:
+    with (
+        patch.object(zipfile.ZipFile, "read", side_effect=AssertionError("member read before size validation")),
+        pytest.raises(SkillManagementServiceError) as exc_info,
+    ):
         service._draft_payload_from_zip(
             tenant_id=TENANT,
             user_id=USER,
             archive_bytes=package.getvalue(),
         )
 
-    assert exc_info.value.code == "invalid_skill_package"
+    assert exc_info.value.code == "skill_too_large"
 
 
 def test_publish_and_export_include_binary_tool_files() -> None:
@@ -2947,7 +3172,47 @@ def _zip_payload(files: dict[str, str]) -> bytes:
     return buffer.getvalue()
 
 
-def test_build_assistant_attachment_context_extracts_docx_text() -> None:
+@pytest.mark.parametrize(
+    ("body", "expected_text"),
+    [
+        pytest.param(
+            "<w:p><w:r><w:t>Escalate urgent tickets</w:t></w:r></w:p>",
+            "Escalate urgent tickets",
+            id="plain",
+        ),
+        pytest.param(
+            '<w:p><w:r><w:t xml:space="preserve">Keep </w:t></w:r>'
+            "<w:r><w:rPr><w:b/></w:rPr><w:t>customer_</w:t></w:r>"
+            "<w:r><w:t>id unchanged.</w:t></w:r></w:p>"
+            "<w:p><w:r><w:t>Next paragraph</w:t></w:r></w:p>",
+            "Keep customer_id unchanged.\nNext paragraph",
+            id="formatted-runs",
+        ),
+        pytest.param(
+            '<w:p><w:pPr><w:tabs><w:tab w:val="left" w:pos="720"/></w:tabs></w:pPr>'
+            "<w:r><w:t>left</w:t><w:tab/><w:t>middle</w:t><w:br/>"
+            "<w:t>right</w:t><w:cr/><w:t>soft</w:t><w:softHyphen/>"
+            "<w:t>hyphen</w:t><w:noBreakHyphen/><w:t>end</w:t></w:r></w:p>",
+            "left\tmiddle\nright\nsoft\u00adhyphen\u2011end",
+            id="inline-controls",
+        ),
+        pytest.param(
+            '<w:p><w:r><w:t>Before</w:t><w:pict><v:shape id="box"><v:textbox><w:txbxContent>'
+            '<w:p><w:r><w:t>Inside</w:t></w:r><w:r><w:t xml:space="preserve"> box</w:t></w:r></w:p>'
+            "</w:txbxContent></v:textbox></v:shape></w:pict><w:t>After</w:t></w:r></w:p>",
+            "Before\nInside box\nAfter",
+            id="nested-paragraphs",
+        ),
+        pytest.param(
+            "<w:tbl><w:tr><w:tc><w:p><w:r><w:t>First</w:t></w:r>"
+            '<w:r><w:t xml:space="preserve"> cell</w:t></w:r></w:p></w:tc>'
+            "<w:tc><w:p><w:r><w:t>Second cell</w:t></w:r></w:p></w:tc></w:tr></w:tbl>",
+            "First cell\nSecond cell",
+            id="table-paragraphs",
+        ),
+    ],
+)
+def test_build_assistant_attachment_context_extracts_docx_text(body: str, expected_text: str) -> None:
     attachment = SkillAssistAttachmentPayload(
         tool_file_id="docx-file-1",
         name="guide.docx",
@@ -2957,8 +3222,9 @@ def test_build_assistant_attachment_context_extracts_docx_text() -> None:
     payload = _zip_payload(
         {
             "word/document.xml": (
-                '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
-                "<w:body><w:p><w:r><w:t>Escalate urgent tickets</w:t></w:r></w:p></w:body>"
+                '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
+                'xmlns:v="urn:schemas-microsoft-com:vml">'
+                f"<w:body>{body}</w:body>"
                 "</w:document>"
             )
         }
@@ -2974,7 +3240,7 @@ def test_build_assistant_attachment_context_extracts_docx_text() -> None:
         )
 
     assert "--- guide.docx" in context
-    assert "Escalate urgent tickets" in context
+    assert context.split("\n", 1)[1] == expected_text
     assert "Binary attachment available" not in context
 
 
@@ -3047,27 +3313,154 @@ def test_build_assistant_attachment_context_extracts_pptx_text() -> None:
     assert "Binary attachment available" not in context
 
 
-def test_build_assistant_attachment_context_extracts_rtf_text() -> None:
+@pytest.mark.parametrize(
+    ("slide_order", "max_chars", "strict"),
+    [
+        pytest.param([1, 2, 10], 1000, False, id="double-digit-slides"),
+        pytest.param([3, 1, 2], 1000, False, id="reordered-slides"),
+        pytest.param([2, 1, 3], 8, True, id="bounded-strict-presentation"),
+        pytest.param([1, 2], 1000, False, id="ordinary-order"),
+    ],
+)
+def test_build_assistant_attachment_context_preserves_pptx_slide_order(
+    slide_order: list[int], max_chars: int, strict: bool
+) -> None:
+    presentation_ns = (
+        "http://purl.oclc.org/ooxml/presentationml/main"
+        if strict
+        else "http://schemas.openxmlformats.org/presentationml/2006/main"
+    )
+    relationship_ns = (
+        "http://purl.oclc.org/ooxml/officeDocument/relationships"
+        if strict
+        else "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+    )
+    drawing_ns = (
+        "http://purl.oclc.org/ooxml/drawingml/main"
+        if strict
+        else "http://schemas.openxmlformats.org/drawingml/2006/main"
+    )
+    slide_ids = "".join(f'<p:sldId id="{256 + number}" r:id="rId{500 + number}"/>' for number in slide_order)
+    relationships = "".join(
+        f'<Relationship Id="rId{500 + number}" Type="{relationship_ns}/slide" '
+        f'Target="{f"/ppt/slides/slide{number}.xml" if number % 2 else f"slides/./slide{number}.xml"}"/>'
+        for number in reversed(slide_order)
+    )
+    files = {
+        "ppt/presentation.xml": (
+            f'<p:presentation xmlns:p="{presentation_ns}" xmlns:r="{relationship_ns}">'
+            f"<p:sldIdLst>{slide_ids}</p:sldIdLst></p:presentation>"
+        ),
+        "ppt/_rels/presentation.xml.rels": (
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            f"{relationships}</Relationships>"
+        ),
+    }
+    for number in reversed(slide_order):
+        files[f"ppt/slides/slide{number}.xml"] = (
+            f'<p:sld xmlns:p="{presentation_ns}" '
+            f'xmlns:a="{drawing_ns}">'
+            f"<p:cSld><a:p><a:r><a:t>Step {number}</a:t></a:r></a:p></p:cSld></p:sld>"
+        )
+    payload = _zip_payload(files)
+    attachment = SkillAssistAttachmentPayload(
+        tool_file_id="ordered-pptx",
+        name="steps.pptx",
+        mime_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        size=len(payload),
+    )
+    header = f"--- {attachment.name} ({attachment.mime_type}, {attachment.size} bytes) ---\n"
+    expected = "\n".join(f"Step {number}" for number in slide_order)
+    if len(expected) > max_chars:
+        expected = f"{expected[:max_chars]}\n[TRUNCATED]"
+    with (
+        patch(
+            "services.skill_management_service.SkillManagementService._load_assistant_tool_file_bytes",
+            return_value=payload,
+        ),
+        patch("services.skill_management_service._MAX_ASSISTANT_ATTACHMENT_CHARS", len(header) + max_chars),
+    ):
+        context = SkillManagementService._build_assistant_attachment_context(tenant_id=TENANT, attachments=[attachment])
+    assert context == header + expected
+
+
+def test_pptx_extraction_ignores_unreferenced_external_and_missing_slide_parts() -> None:
+    relationship_ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+    slide_ids = "".join(
+        f'<p:sldId id="{256 + index}" r:id="{rid}"/>'
+        for index, rid in enumerate(["keep", "external", "missing", "master"])
+    )
+    relationships = (
+        f'<Relationship Id="keep" Type="{relationship_ns}/slide" Target="slides/slide2.xml"/>'
+        f'<Relationship Id="external" Type="{relationship_ns}/slide" Target="slides/slide1.xml" TargetMode="External"/>'
+        f'<Relationship Id="missing" Type="{relationship_ns}/slide" Target="slides/slide404.xml"/>'
+        f'<Relationship Id="master" Type="{relationship_ns}/slideMaster" Target="slides/slide3.xml"/>'
+    )
+    payload = _zip_payload(
+        {
+            "ppt/presentation.xml": (
+                '<p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" '
+                f'xmlns:r="{relationship_ns}"><p:sldIdLst>{slide_ids}</p:sldIdLst></p:presentation>'
+            ),
+            "ppt/_rels/presentation.xml.rels": (
+                '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+                f"{relationships}</Relationships>"
+            ),
+            "ppt/slides/slide1.xml": "<slide><t>external</t></slide>",
+            "ppt/slides/slide2.xml": "<slide><t>keep</t></slide>",
+            "ppt/slides/slide3.xml": "<slide><t>master</t></slide>",
+            "ppt/slides/slide99.xml": "<slide><t>unreferenced</t></slide>",
+        }
+    )
+    assert SkillManagementService._extract_pptx_text(payload, max_chars=1000) == "keep"
+
+
+@pytest.mark.parametrize(
+    ("payload", "expected"),
+    [
+        pytest.param(
+            rb"{\rtf1\ansi Skill Builder\par reads RTF notes.}", "Skill Builder\nreads RTF notes.", id="ascii"
+        ),
+        pytest.param(rb"{\rtf1\ansi \u945? followed}", "α followed", id="default-uc1"),
+        pytest.param(rb"{\rtf1\ansi\uc0\u20320\u22909!}", "你好!", id="uc0-adjacent-unicode"),
+        pytest.param(rb"{\rtf1\ansi\uc2\u945?? followed}", "α followed", id="uc2-plain-fallback"),
+        pytest.param(rb"{\rtf1\ansi\uc2\u945\'3f\'3f followed}", "α followed", id="uc2-hex-fallback"),
+        pytest.param(rb"{\rtf1\ansi\u945\{ followed}", "α followed", id="escaped-brace-fallback"),
+        pytest.param(rb"{\rtf1\ansi\u945\tab followed}", "αfollowed", id="control-word-fallback"),
+        pytest.param(rb"{\rtf1\ansi\uc2\u945??{\uc0\u946!}\u947?? end}", "αβ!γ end", id="group-scope"),
+        pytest.param(rb"{\rtf1\ansi\uc2{\u945?}\u946?? end}", "αβ end", id="group-ends-fallback"),
+        pytest.param(b"{\\rtf1\\ansi\\uc2\\u945?\r\n? followed}", "α followed", id="newline-in-fallback"),
+        pytest.param(rb"{\rtf1\ansi\uc0\u-255!}", "！!", id="signed-unicode"),
+        pytest.param(rb"{\rtf1\ansi\u945\bin3 abc followed}", "α followed", id="binary-fallback"),
+        pytest.param(rb"{\rtf1\ansi{\*\hidden\uc0 discarded}\u945? kept}", "α kept", id="ignored-group"),
+        pytest.param(b"{\\rtf1\\u945\\bin2 \xc3\xa9OK}", "αOK", id="utf8-binary-fallback"),
+        pytest.param(b"{\\rtf1\\u945\\bin2 \xc3\xa9OK{\\*\\hidden \xff}}", "αOK", id="latin1-binary-fallback"),
+        pytest.param(b"{\\rtf1\\u945\\bin4 \xf0\x9f\x98\x80OK}", "αOK", id="utf8-four-byte-binary-fallback"),
+        pytest.param(b"{\\rtf1\\u945\\bin6 \xc3\xa9\xf0\x9f\x98\x80OK}", "αOK", id="utf8-mixed-binary-fallback"),
+        pytest.param("{\\rtf1 Café 中文}".encode(), "Café 中文", id="utf8-literal-text"),
+        pytest.param(b"{\\rtf1 Caf\xe9}", "Café", id="latin1-literal-text"),
+        pytest.param(rb"{\rtf1\ansi caf\'e9}", "café", id="hex-literal-text"),
+        pytest.param(rb"{\rtf1\ansi \{notes\} \\ path}", r"{notes} \ path", id="escaped-literal-text"),
+    ],
+)
+def test_build_assistant_attachment_context_extracts_rtf_text(payload: bytes, expected: str) -> None:
     attachment = SkillAssistAttachmentPayload(
         tool_file_id="rtf-file-1",
         name="notes.rtf",
         mime_type="application/rtf",
-        size=74,
+        size=len(payload),
     )
 
     with patch(
         "services.skill_management_service.SkillManagementService._load_assistant_tool_file_bytes",
-        return_value=b"{\\rtf1\\ansi Skill Builder\\par reads RTF notes.}",
+        return_value=payload,
     ):
         context = SkillManagementService._build_assistant_attachment_context(
             tenant_id=TENANT,
             attachments=[attachment],
         )
 
-    assert "--- notes.rtf" in context
-    assert "Skill Builder" in context
-    assert "reads RTF notes." in context
-    assert "Binary attachment available" not in context
+    assert context == f"--- notes.rtf (application/rtf, {len(payload)} bytes) ---\n{expected}"
 
 
 def test_build_assistant_image_contents_encodes_images_for_vision_models() -> None:
@@ -3131,6 +3524,7 @@ def test_runtime_agent_skills_use_published_identity_when_draft_metadata_changed
         description="draft description",
     )
     version = SimpleNamespace(
+        id="version-1",
         archive_tool_file_id="archive-1",
         archive_size=10,
         hash_code="hash-1",
@@ -3141,8 +3535,10 @@ def test_runtime_agent_skills_use_published_identity_when_draft_metadata_changed
             description="published description",
         ),
     )
+    binding = SimpleNamespace(priority=0)
+    tool_file = SimpleNamespace(file_key="tools/archive-1.zip")
     session = MagicMock()
-    session.execute.return_value = [(SimpleNamespace(), skill, version)]
+    session.execute.return_value = [(binding, skill, version, tool_file)]
 
     with patch("services.skill_management_service.session_factory.create_session") as create_session:
         create_session.return_value.__enter__.return_value = session
@@ -3216,6 +3612,29 @@ def test_agent_skill_binding_changes_require_agent_publish_before_runtime_load()
 
     assert service.list_runtime_agent_skills(tenant_id=TENANT, agent_id=AGENT)[0]["name"] == "finance-sop"
 
+    with session_factory.create_session() as session:
+        agent = session.get(Agent, AGENT)
+        assert agent is not None
+        next_snapshot = AgentConfigSnapshot(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            version=2,
+            config_snapshot=AgentSoulConfig(),
+            created_by=USER,
+        )
+        session.add(next_snapshot)
+        session.flush()
+        agent.active_config_snapshot_id = next_snapshot.id
+        session.commit()
+
+    assert service.list_runtime_agent_skills(tenant_id=TENANT, agent_id=AGENT) == []
+    historical_skills = service.list_runtime_agent_skills(
+        tenant_id=TENANT, agent_id=AGENT, config_snapshot_id=snapshot_id
+    )
+    assert [skill["name"] for skill in historical_skills] == ["finance-sop"]
+    draft_skills = service.list_runtime_agent_skills(tenant_id=TENANT, agent_id=AGENT, include_draft=True)
+    assert [skill["name"] for skill in draft_skills] == ["finance-sop"]
+
 
 def test_runtime_agent_skill_pull_normalizes_archive_identity_to_published_metadata() -> None:
     archive_buffer = io.BytesIO()
@@ -3236,3 +3655,14 @@ def test_runtime_agent_skill_pull_normalizes_archive_identity_to_published_metad
         assert "description: Published description" in skill_md
         assert "display-name: Published Name" in skill_md
         assert archive.read("references/example.md") == b"Example"
+
+
+def test_archive_limits_accept_high_compression_ratio_within_size_budget(monkeypatch: pytest.MonkeyPatch) -> None:
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("data.bin", b"x" * (1024 * 1024))
+    with zipfile.ZipFile(io.BytesIO(output.getvalue())) as archive:
+        assert SkillManagementService._validate_archive_limits(archive)[0].file_size == 1024 * 1024
+        apply_config_overrides(monkeypatch, SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES=1024)
+        with pytest.raises(SkillManagementServiceError, match="uncompressed size limit"):
+            SkillManagementService._validate_archive_limits(archive)

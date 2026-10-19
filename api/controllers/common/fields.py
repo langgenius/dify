@@ -8,7 +8,7 @@ from fields.base import ResponseModel
 from graphon.file import helpers as file_helpers
 from models.model import IconType
 
-type JSONValue = str | int | float | bool | None | dict[str, Any] | list[Any]
+type ShallowJSONValue = str | int | float | bool | None | dict[str, Any] | list[Any]
 type JSONObject = dict[str, Any]
 URLString = Annotated[str, WithJsonSchema({"format": "url", "type": "string"})]
 UUIDString = Annotated[str, WithJsonSchema({"format": "uuid", "type": "string"})]
@@ -195,7 +195,7 @@ class ChatMessageBlockingResponse(ResponseModel):
     conversation_id: UUIDString
     mode: str
     answer: str
-    metadata: BlockingMetadataResponse
+    metadata: BlockingMetadataResponse = Field(description="Metadata including usage and retriever resources.")
     created_at: Int64
 
 
@@ -237,7 +237,7 @@ class ChatPausedBlockingDataResponse(ResponseModel):
     message_id: UUIDString
     workflow_run_id: UUIDString
     answer: str
-    metadata: BlockingMetadataResponse
+    metadata: BlockingMetadataResponse = Field(description="Metadata including usage and retriever resources.")
     created_at: Int64
     paused_nodes: list[str]
     reasons: list[ChatPauseReasonResponse]
@@ -257,7 +257,7 @@ class ChatPausedBlockingResponse(ResponseModel):
     conversation_id: UUIDString
     mode: str
     answer: str
-    metadata: BlockingMetadataResponse
+    metadata: BlockingMetadataResponse = Field(description="Metadata including usage and retriever resources.")
     created_at: Int64
     workflow_run_id: UUIDString
     data: ChatPausedBlockingDataResponse
@@ -283,7 +283,7 @@ class CompletionBlockingResponse(ResponseModel):
     message_id: UUIDString
     mode: str
     answer: str
-    metadata: BlockingMetadataResponse
+    metadata: BlockingMetadataResponse = Field(description="Metadata including usage and retriever resources.")
     created_at: Int64
 
 
@@ -332,11 +332,11 @@ class WorkflowBlockingResponse(RootModel[WorkflowFinishedBlockingResponse | Work
 
 
 class SimpleResultResponse(ResponseModel):
-    result: str
+    result: str = Field(description="Operation result.")
 
 
-class GeneratedAppResponse(RootModel[JSONValue]):
-    root: JSONValue
+class GeneratedAppResponse(RootModel[ShallowJSONValue]):
+    root: ShallowJSONValue
 
 
 class EventStreamResponse(RootModel[str]):
@@ -360,7 +360,7 @@ class AudioBinaryResponse(RootModel[bytes]):
 
 
 class AudioTranscriptResponse(ResponseModel):
-    text: str
+    text: str = Field(description="Transcribed text from audio")
 
 
 class ValidationResultResponse(ResponseModel):
@@ -478,7 +478,7 @@ class Parameters(BaseModel):
     user_input_form: UserInputFormList
     sensitive_word_avoidance: FeatureToggleObject
     file_upload: FileUploadObject
-    system_parameters: SystemParameters
+    system_parameters: SystemParameters = Field(description="System-level parameter limits.")
 
 
 class Site(BaseModel):
@@ -505,3 +505,9 @@ class Site(BaseModel):
         if self.icon and self.icon_type == IconType.IMAGE:
             return file_helpers.get_signed_file_url(self.icon)
         return None
+
+
+class ErrorMessageResponse(ResponseModel):
+    """Legacy ``{"error": message}`` body a few endpoints return instead of the standard error body."""
+
+    error: str

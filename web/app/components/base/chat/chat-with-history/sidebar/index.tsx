@@ -1,11 +1,13 @@
+import type { Ref } from 'react'
 import type { ConversationItem } from '@/models/share'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -23,12 +25,13 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useChatWithHistoryContext } from '../context'
 
 type Props = Readonly<{
+  toggleButtonRef?: Ref<HTMLButtonElement>
   isPanel?: boolean
   panelVisible?: boolean
 }>
 
-const Sidebar = ({ isPanel }: Props) => {
-  const { t } = useTranslation()
+const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
+  const { t } = useTranslation(['common', 'layout', 'share'])
   const {
     isInstalledApp,
     appData,
@@ -94,13 +97,7 @@ const Sidebar = ({ isPanel }: Props) => {
     >
       <div className={cn('flex shrink-0 items-center gap-3 p-3 pr-2')}>
         <div className="shrink-0">
-          <AppIcon
-            size="large"
-            iconType={appData?.site.icon_type}
-            icon={appData?.site.icon}
-            background={appData?.site.icon_background}
-            imageUrl={appData?.site.icon_url}
-          />
+          <AppIcon size="large" icon={appData?.site} />
         </div>
         <div className={cn('grow truncate system-md-semibold text-text-secondary')}>
           {appData?.site.title}
@@ -116,6 +113,7 @@ const Sidebar = ({ isPanel }: Props) => {
         )}
         {!isMobile && !isSidebarCollapsed && (
           <IconButton
+            ref={toggleButtonRef}
             aria-label={t(($) => $['sidebar.collapseSidebar'], { ns: 'layout' })}
             size="lg"
             onClick={() => handleSidebarCollapse(true)}
@@ -192,22 +190,20 @@ const Sidebar = ({ isPanel }: Props) => {
         </div>
         <AlertDialog open={!!showConfirm} onOpenChange={(open) => !open && handleCancelConfirm()}>
           <AlertDialogContent>
-            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+            <AlertDialogHeader>
+              <AlertDialogTitle>
                 {t(($) => $['chat.deleteConversation.title'], { ns: 'share' })}
               </AlertDialogTitle>
-              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                {deleteConversationContent}
-              </AlertDialogDescription>
-            </div>
-            <AlertDialogActions>
+              <AlertDialogDescription>{deleteConversationContent}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
               <AlertDialogCancelButton>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </AlertDialogCancelButton>
               <AlertDialogConfirmButton onClick={handleDelete}>
                 {t(($) => $['operation.confirm'], { ns: 'common' })}
               </AlertDialogConfirmButton>
-            </AlertDialogActions>
+            </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
         {showRename && (

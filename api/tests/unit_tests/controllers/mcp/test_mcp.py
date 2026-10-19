@@ -18,6 +18,7 @@ from models.engine import db
 from models.enums import EndUserType
 from models.model import App, AppAnnotationSetting, AppMCPServer, AppModelConfig, EndUser, IconType
 from models.workflow import Workflow, WorkflowType
+from tests.unit_tests.model_factories import make_end_user
 
 
 @pytest.fixture
@@ -40,11 +41,11 @@ def app() -> Iterator[Flask]:
 
 
 @pytest.fixture(autouse=True)
-def mock_mcp_ns():
+def mock_mcp_ns(monkeypatch: pytest.MonkeyPatch):
     fake_ns = types.SimpleNamespace()
     fake_ns.payload = None
     fake_ns.models = {}
-    module.mcp_ns = fake_ns
+    monkeypatch.setattr(module, "mcp_ns", fake_ns)
 
 
 @pytest.fixture
@@ -127,14 +128,13 @@ def _app(
 
 
 def _end_user() -> EndUser:
-    end_user = EndUser(
+    return make_end_user(
+        end_user_id=str(uuid4()),
         tenant_id=_TENANT_ID,
         app_id=_APP_ID,
-        type=EndUserType.MCP,
+        end_user_type=EndUserType.MCP,
         session_id=_SERVER_ID,
     )
-    end_user.id = str(uuid4())
-    return end_user
 
 
 class DummyResult:
@@ -208,14 +208,15 @@ class TestMCPAppApi:
 
         post_fn = unwrap(api.post)
 
-        with pytest.raises(module.MCPRequestError):
-            post_fn("server-1")
+        response = post_fn("server-1")
+        assert response.status_code == 202
+        assert response.data == b""
 
     def test_inactive_server(self):
         fake_payload(
             {
                 "jsonrpc": "2.0",
-                "method": "test",
+                "method": "ping",
                 "id": 1,
                 "params": {},
             }
@@ -241,7 +242,7 @@ class TestMCPAppApi:
         with pytest.raises(ValidationError):
             post_fn("server-1")
 
-    def test_missing_request_id(self):
+    def test_unknown_method_without_request_id_is_ignored(self):
         fake_payload(
             {
                 "jsonrpc": "2.0",
@@ -258,8 +259,9 @@ class TestMCPAppApi:
 
         post_fn = unwrap(api.post)
 
-        with pytest.raises(module.MCPRequestError):
-            post_fn("server-1")
+        response = post_fn("server-1")
+        assert response.status_code == 202
+        assert response.data == b""
 
     def test_server_not_found(self):
         """Test when MCP server doesn't exist"""
@@ -469,9 +471,13 @@ class TestMCPAppApi:
 
         post_fn = unwrap(api.post)
 
-        with pytest.raises(module.MCPRequestError) as exc_info:
-            post_fn("server-1")
-        assert "Invalid MCP request" in str(exc_info.value)
+        response = post_fn("server-1")
+        assert response.status_code == 400
+        assert response.get_json() == {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "error": {"code": module.mcp_types.METHOD_NOT_FOUND, "message": "Method not found"},
+        }
 
     def test_validate_server_status_active(self):
         """Test successful server status validation"""

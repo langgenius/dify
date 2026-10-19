@@ -9,7 +9,9 @@ from werkzeug.exceptions import Unauthorized
 import libs.login as login_module
 from extensions.ext_login import DifyLoginManager
 from libs.login import current_user
+from machinery.errors import ActiveWorkspaceRequiredError
 from models.account import Account, Tenant
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 @pytest.fixture
@@ -72,7 +74,7 @@ def login_app(mocker: MockerFixture) -> Flask:
 
 @pytest.fixture(autouse=True)
 def reset_login_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(login_module.dify_config, "LOGIN_DISABLED", False)
+    apply_config_overrides(monkeypatch, LOGIN_DISABLED=False)
 
 
 @pytest.fixture
@@ -184,7 +186,7 @@ class TestLoginRequired:
         """Test that bypass conditions skip auth lookup, CSRF, and unauthorized handling."""
 
         resolve_user = resolve_current_user(MockUser("test_user"))
-        monkeypatch.setattr(login_module.dify_config, "LOGIN_DISABLED", login_disabled)
+        apply_config_overrides(monkeypatch, LOGIN_DISABLED=login_disabled)
 
         with login_app.test_request_context(method=method):
             result = protected_view()
@@ -282,7 +284,7 @@ class TestCurrentAccountWithTenant:
         account = Account(name="Test User", email="test@example.com")
         mocker.patch.object(login_module, "current_user", new=account)
 
-        with pytest.raises(AssertionError, match="tenant information should be loaded"):
+        with pytest.raises(ActiveWorkspaceRequiredError, match="active workspace"):
             login_module.current_account_with_tenant()
 
 

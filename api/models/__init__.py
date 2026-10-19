@@ -30,6 +30,7 @@ from .agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
+from .agent_sandbox_usage import AgentSandboxExecution, AgentSandboxUsageEvent
 from .api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 from .comment import (
     WorkflowComment,
@@ -77,6 +78,7 @@ from .model import (
     AppModelConfig,
     AppStar,
     Conversation,
+    DatasetApiTokenBinding,
     DatasetRetrieverResource,
     DifySetup,
     EndUser,
@@ -111,6 +113,11 @@ from .provider import (
     ProviderType,
     TenantDefaultModel,
     TenantPreferredModelProvider,
+)
+from .resource_access_token import (
+    ResourceAccessToken,
+    ResourceAccessTokenRelation,
+    ResourceAccessTokenResourceType,
 )
 from .skill import AgentSkillBinding, Skill, SkillDraftFile, SkillFileKind, SkillFileStorage, SkillVersion
 from .snippet import CustomizedSnippet, SnippetType
@@ -170,6 +177,8 @@ __all__ = [
     "AgentHomeSnapshot",
     "AgentIconType",
     "AgentKind",
+    "AgentSandboxExecution",
+    "AgentSandboxUsageEvent",
     "AgentScope",
     "AgentSkillBinding",
     "AgentSource",
@@ -204,6 +213,7 @@ __all__ = [
     "DataSourceApiKeyAuthBinding",
     "DataSourceOauthBinding",
     "Dataset",
+    "DatasetApiTokenBinding",
     "DatasetCollectionBinding",
     "DatasetKeywordTable",
     "DatasetPermission",
@@ -247,6 +257,9 @@ __all__ = [
     "ProviderQuotaType",
     "ProviderType",
     "RecommendedApp",
+    "ResourceAccessToken",
+    "ResourceAccessTokenRelation",
+    "ResourceAccessTokenResourceType",
     "SavedMessage",
     "Site",
     "Skill",

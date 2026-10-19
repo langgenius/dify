@@ -8,15 +8,13 @@ from faker import Faker
 from flask import Flask
 from sqlalchemy.orm import Session
 
-from enums import DeploymentEdition
 from models.account import Account, Tenant
 from models.enums import AppTriggerStatus, AppTriggerType
 from models.model import App
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
 from models.workflow import Workflow
-from services.account_service import AccountService, TenantService
-from services.entities.feature_entities import SystemFeatureModel
 from services.trigger.webhook_service import WebhookService
+from tests.test_containers_integration_tests.helpers import accounts as account_fixtures
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
@@ -38,26 +36,22 @@ def test_data(
     """Persist the webhook graph with account and workspace creation enabled."""
 
     fake = Faker()
-    system_features = SystemFeatureModel(
-        deployment_edition=DeploymentEdition.COMMUNITY,
-        is_allow_register=True,
-    )
     monkeypatch.setattr(
-        "services.account_service.FeatureService.get_system_features",
-        lambda: system_features,
-    )
-    monkeypatch.setattr(
-        "services.account_service.FeatureService.is_workspace_creation_allowed",
+        "services.account.login_adapters.SystemFeatureService.is_registration_allowed",
         lambda: True,
     )
-    account = AccountService.create_account(
+    monkeypatch.setattr(
+        "services.account.login_adapters.SystemFeatureService.is_workspace_creation_allowed",
+        lambda: True,
+    )
+    account = account_fixtures.create_account(
         email=fake.email(),
         name=fake.name(),
         interface_language="en-US",
         password=generate_valid_password(fake),
         session=db_session_with_containers,
     )
-    TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+    account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
     tenant = account.current_tenant
     assert tenant is not None
     app = App(

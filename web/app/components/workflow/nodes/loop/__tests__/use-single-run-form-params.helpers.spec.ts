@@ -12,26 +12,25 @@ import {
   getVarSelectorsFromCondition,
 } from '../use-single-run-form-params.helpers'
 
-const mockGetNodeInfoById = vi.hoisted(() => vi.fn())
-const mockGetNodeUsedVarPassToServerKey = vi.hoisted(() => vi.fn())
-const mockGetNodeUsedVars = vi.hoisted(() => vi.fn())
-const mockIsSystemVar = vi.hoisted(() => vi.fn())
-
-vi.mock('../../_base/components/variable/utils', () => ({
-  getNodeInfoById: (...args: unknown[]) => mockGetNodeInfoById(...args),
-  getNodeUsedVarPassToServerKey: (...args: unknown[]) => mockGetNodeUsedVarPassToServerKey(...args),
-  getNodeUsedVars: (...args: unknown[]) => mockGetNodeUsedVars(...args),
-  isSystemVar: (...args: unknown[]) => mockIsSystemVar(...args),
-}))
-
-const createNode = (id: string, title: string, type = BlockEnum.Tool): Node =>
+const createNode = (id: string, title: string, type: BlockEnum = BlockEnum.Tool): Node =>
   ({
     id,
     position: { x: 0, y: 0 },
     data: {
       title,
       desc: '',
-      type,
+      type: id === 'tool-a' ? BlockEnum.LLM : type,
+      prompt_template: { role: 'user', text: '{{#sys.files#}}' },
+      context: { variable_selector: ['sys', 'files'] },
+      tool_configurations: {},
+      tool_parameters:
+        id === 'tool-b'
+          ? {
+              answer: { type: 'variable', value: ['start-node', 'answer'] },
+              self: { type: 'variable', value: ['current-node', 'self'] },
+              inner: { type: 'variable', value: ['inner-node', 'secret'] },
+            }
+          : {},
     },
   }) as Node
 
@@ -124,28 +123,6 @@ describe('use-single-run-form-params helpers', () => {
       createNode('inner-node', 'Inner Node'),
     ]
 
-    mockGetNodeUsedVars.mockImplementation((node: Node) => {
-      switch (node.id) {
-        case 'tool-a':
-          return [['sys', 'files']]
-        case 'tool-b':
-          return [
-            ['start-node', 'answer'],
-            ['current-node', 'self'],
-            ['inner-node', 'secret'],
-          ]
-        default:
-          return []
-      }
-    })
-    mockGetNodeUsedVarPassToServerKey.mockImplementation((_node: Node, selector: string[]) => {
-      return selector[0] === 'sys' ? ['sys_files', 'sys_files_backup'] : 'answer_key'
-    })
-    mockGetNodeInfoById.mockImplementation((nodes: Node[], id: string) =>
-      nodes.find((node) => node.id === id),
-    )
-    mockIsSystemVar.mockImplementation((selector: string[]) => selector[0] === 'sys')
-
     const toVarInputs = vi.fn((variables: Variable[]) =>
       variables.map((variable) =>
         createInputVar(variable.variable, variable.label as InputVar['label']),
@@ -192,13 +169,13 @@ describe('use-single-run-form-params helpers', () => {
     ])
     expect(result.allVarObject).toEqual({
       [['sys.files', 'tool-a', 0].join(VALUE_SELECTOR_DELIMITER)]: {
-        inSingleRunPassedKey: 'sys_files',
+        inSingleRunPassedKey: '#sys.files#',
       },
       [['sys.files', 'tool-a', 1].join(VALUE_SELECTOR_DELIMITER)]: {
-        inSingleRunPassedKey: 'sys_files_backup',
+        inSingleRunPassedKey: '#context#',
       },
       [['start-node.answer', 'tool-b', 0].join(VALUE_SELECTOR_DELIMITER)]: {
-        inSingleRunPassedKey: 'answer_key',
+        inSingleRunPassedKey: '#start-node.answer#',
       },
     })
   })

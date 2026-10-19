@@ -1,4 +1,4 @@
-import type { FetchOptionType, ResponseError } from './fetch'
+import type { FetchOptionType } from './fetch'
 import type { MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { VisionFile } from '@/types/app'
 import type {
@@ -28,8 +28,10 @@ import type {
   WorkflowPausedResponse,
   WorkflowStartedResponse,
 } from '@/types/workflow'
-import { toast } from '@langgenius/dify-ui/toast'
+import { ORPCError } from '@orpc/client'
 import Cookies from 'js-cookie'
+import { discardRegistrationSessionState } from '@/app/components/base/amplitude/registration-session-state'
+import { toast } from '@/app/notifications'
 import {
   API_PREFIX,
   CSRF_COOKIE_NAME,
@@ -43,11 +45,56 @@ import { isClient } from '@/utils/client'
 import { resolveLoginRedirectTarget } from '@/utils/login-redirect'
 import { basePath } from '@/utils/var'
 import { base, ContentType, getBaseOptions } from './fetch'
+import { httpErrorFromXhr, isHttpErrorStatus, isTransientHttpError } from './http-error'
 import { refreshAccessTokenOrReLogin } from './refresh-token'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
-import { getWebAppPassport } from './webapp-auth'
+import {
+  beginWebAppAuthorizationRecovery,
+  clearWebAppPassport,
+  completeWebAppAuthorizationRecovery,
+  getWebAppPassport,
+} from './webapp-auth'
 
 const TIME_OUT = 100000
+
+const isWebAppAuthorizationEndpoint = (url: string) =>
+  /\/(?:login(?:\/|\?|$)|passport(?:\?|$))/.test(url)
+
+const recoverEnvironmentWebAppAuthorization = (
+  error: { code?: string | number; message?: string; reason?: unknown },
+  url?: string,
+) => {
+  const address = resolveWebAppAddress()
+  if (
+    address?.kind !== 'environment' ||
+    (error.reason !== 'APPDEPLOY_UNAUTHORIZED' && error.code !== 'unauthorized') ||
+    (url && isWebAppAuthorizationEndpoint(url))
+  )
+    return false
+
+  if (!beginWebAppAuthorizationRecovery(address)) {
+    requiredWebSSOLogin(error.message, 403)
+    return true
+  }
+
+  clearWebAppPassport(address)
+  window.location.reload()
+  return true
+}
+
+const handleWebAppAuthorizationError = (
+  error: { code?: string | number; message?: string; reason?: unknown },
+  url?: string,
+) => {
+  if (
+    error.reason === 'APPDEPLOY_WEB_APP_ACCESS_DENIED' ||
+    error.code === 'web_app_access_denied'
+  ) {
+    requiredWebSSOLogin(error.message, 403)
+    return true
+  }
+  return recoverEnvironmentWebAppAuthorization(error, url)
+}
 
 const isAbortError = (error: unknown) => {
   if (typeof error === 'string') return error === 'AbortError' || error.startsWith('AbortError:')
@@ -103,6 +150,31 @@ const reportStreamResponseError = async (
     onError?.(errorMessage)
     onNotifyError?.(errorMessage)
   }
+}
+
+const handlePublicStreamResponseError = async (
+  response: Response,
+  onError: IOnError | undefined,
+  onNotifyError: IOnError | undefined,
+  silent: boolean | undefined,
+) => {
+  let data: { code?: string; message?: string; reason?: unknown } | undefined
+  try {
+    data = (await response.clone().json()) as typeof data
+  } catch {}
+
+  if (data) {
+    if (handleWebAppAuthorizationError(data)) return
+    if (data.code === 'web_sso_auth_required' || data.code === 'unauthorized') {
+      requiredWebSSOLogin()
+      return
+    }
+  }
+
+  if (onNotifyError && !silent) await reportStreamResponseError(response, onError, onNotifyError)
+  else if (!silent)
+    await reportStreamResponseError(response, onError, (message) => toast.error(message))
+  else await reportStreamResponseError(response, onError)
 }
 
 type UnhandledEventError = {
@@ -195,6 +267,14 @@ export type IOtherOptions = {
   onDataSourceNodeProcessing?: IOnDataSourceNodeProcessing
   onDataSourceNodeCompleted?: IOnDataSourceNodeCompleted
   onDataSourceNodeError?: IOnDataSourceNodeError
+}
+
+const discardRegistrationStateForConsoleAuthBoundary = ({
+  isMarketplaceAPI,
+  isPublicAPI,
+}: IOtherOptions) => {
+  if (isMarketplaceAPI || isPublicAPI) return
+  discardRegistrationSessionState()
 }
 
 function jumpTo(url: string) {
@@ -350,8 +430,10 @@ export const handleStream = (
         }
         buffer += decoder.decode(result.value, { stream: true })
         const lines = buffer.split('\n')
+        buffer = lines.pop() ?? ''
         try {
           lines.forEach((message) => {
+            if (hasError) return
             if (message.startsWith('data: ')) {
               // check if it starts with data:
               try {
@@ -473,7 +555,6 @@ export const handleStream = (
               }
             }
           })
-          buffer = lines[lines.length - 1]!
         } catch (e) {
           onData('', false, {
             conversationId: undefined,
@@ -547,11 +628,23 @@ export const upload = async (
     xhr.withCredentials = true
     xhr.responseType = 'json'
     xhr.onreadystatechange = function () {
-      if (xhr.readyState === 4) {
-        if (xhr.status === 201) resolve(xhr.response)
-        else reject(xhr)
+      if (xhr.readyState === 4 && xhr.status !== 0) {
+        if (!isHttpErrorStatus(xhr.status)) resolve(xhr.response)
+        else {
+          if (
+            isPublicAPI &&
+            (xhr.status === 401 || xhr.status === 403) &&
+            typeof xhr.response === 'object' &&
+            xhr.response !== null
+          )
+            handleWebAppAuthorizationError(xhr.response)
+          reject(httpErrorFromXhr(xhr))
+        }
       }
     }
+    xhr.onerror = () => reject(new TypeError('Failed to fetch'))
+    xhr.onabort = () => reject(new DOMException('The operation was aborted.', 'AbortError'))
+    xhr.ontimeout = () => reject(new DOMException('The operation timed out.', 'TimeoutError'))
     if (mergedOptions.onprogress) xhr.upload.onprogress = mergedOptions.onprogress
     xhr.send(mergedOptions.data)
   })
@@ -624,8 +717,8 @@ export const ssePost = async (
   )
   options.headers = new Headers(options.headers)
 
-  const contentType = (options.headers as Headers).get('Content-Type')
-  if (!contentType) (options.headers as Headers).set('Content-Type', ContentType.json)
+  const contentType = options.headers.get('Content-Type')
+  if (!contentType) options.headers.set('Content-Type', ContentType.json)
 
   getAbortController?.(abortController)
 
@@ -638,17 +731,9 @@ export const ssePost = async (
     .fetch(urlWithPrefix, options as RequestInit)
     .then((res) => {
       if (!/^[23]\d{2}$/.test(String(res.status))) {
-        if (res.status === 401) {
+        if (res.status === 401 || (res.status === 403 && isPublicAPI)) {
           if (isPublicAPI) {
-            res.json().then((data: { code?: string; message?: string }) => {
-              if (isPublicAPI) {
-                if (data.code === 'web_app_access_denied') requiredWebSSOLogin(data.message, 403)
-
-                if (data.code === 'web_sso_auth_required') requiredWebSSOLogin()
-
-                if (data.code === 'unauthorized') requiredWebSSOLogin()
-              }
-            })
+            void handlePublicStreamResponseError(res, onError, onNotifyError, silent)
           } else {
             refreshAccessTokenOrReLogin(TIME_OUT)
               .then(() => {
@@ -790,8 +875,8 @@ export const sseGet = async (
   )
   options.headers = new Headers(options.headers)
 
-  const contentType = (options.headers as Headers).get('Content-Type')
-  if (!contentType) (options.headers as Headers).set('Content-Type', ContentType.json)
+  const contentType = options.headers.get('Content-Type')
+  if (!contentType) options.headers.set('Content-Type', ContentType.json)
 
   getAbortController?.(abortController)
 
@@ -801,17 +886,9 @@ export const sseGet = async (
     .fetch(urlWithPrefix, options as RequestInit)
     .then((res) => {
       if (!/^[23]\d{2}$/.test(String(res.status))) {
-        if (res.status === 401) {
+        if (res.status === 401 || (res.status === 403 && isPublicAPI)) {
           if (isPublicAPI) {
-            res.json().then((data: { code?: string; message?: string }) => {
-              if (isPublicAPI) {
-                if (data.code === 'web_app_access_denied') requiredWebSSOLogin(data.message, 403)
-
-                if (data.code === 'web_sso_auth_required') requiredWebSSOLogin()
-
-                if (data.code === 'unauthorized') requiredWebSSOLogin()
-              }
-            })
+            void handlePublicStreamResponseError(res, onError, onNotifyError, silent)
           } else {
             refreshAccessTokenOrReLogin(TIME_OUT)
               .then(() => {
@@ -936,7 +1013,7 @@ export const sseGeneratorPost = (
   }
 
   globalThis
-    .fetch(urlWithPrefix, options as RequestInit)
+    .fetch(urlWithPrefix, options)
     .then((res) => {
       if (!/^[23]\d{2}$/.test(String(res.status))) {
         if (res.status === 401) {
@@ -1000,35 +1077,40 @@ export const sseGeneratorPost = (
 export const request = async <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   try {
     const otherOptionsForBaseFetch = otherOptions || {}
+    const { isPublicAPI = false, silent } = otherOptionsForBaseFetch
     const [err, resp] = await asyncRunSafe<T>(baseFetch(url, options, otherOptionsForBaseFetch))
-    if (err === null) return resp
-    const errResp: Response = err as any
-    if (errResp.status === 401) {
+    if (err === null) {
+      const address = resolveWebAppAddress()
+      if (isPublicAPI && address?.kind === 'environment' && !isWebAppAuthorizationEndpoint(url))
+        completeWebAppAuthorizationRecovery(address)
+      return resp
+    }
+    if (err instanceof ORPCError && (err.status === 401 || (err.status === 403 && isPublicAPI))) {
       if (!isClient) return Promise.reject(err)
 
-      const [parseErr, errRespData] = await asyncRunSafe<ResponseError>(errResp.json())
-      if (parseErr) {
-        window.location.href = buildSigninUrlWithRedirect()
+      const errRespData = { code: err.code, message: err.message, reason: err.data?.reason }
+      if (!err.data) {
+        if (err.status === 401) {
+          discardRegistrationStateForConsoleAuthBoundary(otherOptionsForBaseFetch)
+          window.location.href = buildSigninUrlWithRedirect()
+        }
         return Promise.reject(err)
       }
-      if (/\/login/.test(url)) return Promise.reject(errRespData)
+      if (/\/login/.test(url)) return Promise.reject(err)
+      if (handleWebAppAuthorizationError(errRespData, url)) return Promise.reject(err)
       // special code
       const { code, message } = errRespData
-      // webapp sso
-      if (code === 'web_app_access_denied') {
-        requiredWebSSOLogin(message, 403)
-        return Promise.reject(err)
-      }
       if (code === 'web_sso_auth_required') {
         requiredWebSSOLogin()
         return Promise.reject(err)
       }
+      if (err.status === 403) return Promise.reject(err)
       if (code === 'unauthorized_and_force_logout') {
         // Cookies will be cleared by the backend
+        discardRegistrationStateForConsoleAuthBoundary(otherOptionsForBaseFetch)
         window.location.reload()
         return Promise.reject(err)
       }
-      const { isPublicAPI = false, silent } = otherOptionsForBaseFetch
       if (isPublicAPI && code === 'unauthorized') {
         requiredWebSSOLogin()
         return Promise.reject(err)
@@ -1049,10 +1131,13 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
       // refresh token
       const [refreshErr] = await asyncRunSafe(refreshAccessTokenOrReLogin(TIME_OUT))
       if (refreshErr === null) return baseFetch<T>(url, options, otherOptionsForBaseFetch)
+      // Preserve the transient failure so callers can retry instead of treating the session as ended.
+      if (isTransientHttpError(refreshErr)) return Promise.reject(refreshErr)
       // /device is the device-flow chooser; logged-out is a valid state
       // there. Redirecting to /signin loses the user_code context and
       // the post-login flow lands on /apps instead of returning here.
       if (window.location.pathname === `${basePath}/device`) return Promise.reject(err)
+      discardRegistrationStateForConsoleAuthBoundary(otherOptionsForBaseFetch)
       if (window.location.pathname !== `${basePath}/signin`) {
         jumpTo(buildSigninUrlWithRedirect())
         return Promise.reject(err)
@@ -1110,16 +1195,6 @@ export const postMarketplace = <T>(url: string, options = {}, otherOptions?: IOt
 
 export const postPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return post<T>(url, options, { ...otherOptions, isPublicAPI: true })
-}
-
-/**
- * @deprecated For console JSON APIs, prefer generated contract clients (`consoleClient`/`consoleQuery`)
- * only after the backend OpenAPI schema produces accurate method, path, input, and output types.
- * Keep this helper for endpoints whose generated contract is missing or too loose, and for non-console
- * flows such as public APIs, marketplace APIs, streaming, upload, or download.
- */
-export const put = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return request<T>(url, Object.assign({}, options, { method: 'PUT' }), otherOptions)
 }
 
 /**

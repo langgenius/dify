@@ -15,7 +15,7 @@ const normalizePath = (path: string) => (path.startsWith('/') ? path : `/${path}
 
 export const parseWebAppAddress = (pathname: string): WebAppAddress | null => {
   const segments = pathname.split('/').filter(Boolean)
-  if (segments[0] === 'env') {
+  if (segments[0] === 'environment') {
     const [, route, code, ...rest] = segments
     if (!route || !code || rest.length > 0 || !WEB_APP_ROUTE_SEGMENTS.has(route)) return null
     return { kind: 'environment', code }
@@ -47,12 +47,20 @@ export const resolveWebAppAddress = (): WebAppAddress | null => {
 export const getWebAppApiPath = (address: WebAppAddress | null, path: string) => {
   const normalizedPath = normalizePath(path)
   if (!address || address.kind === 'default') return normalizedPath
-  return `/env/${address.code}${normalizedPath}`
+  return `/environment/${address.code}${normalizedPath}`
 }
 
-export const getWebAppPassportKey = (address: WebAppAddress) => {
+export const getWebAppScopeKey = (address: WebAppAddress) => {
   if (address.kind === 'default') return address.code
   return `environment:${address.code}`
+}
+
+export const getWebAppPassportKey = (address: WebAppAddress) => getWebAppScopeKey(address)
+
+export const getWebAppConversationScopeId = (address: WebAppAddress | null, appId?: string) => {
+  if (!appId) return ''
+  if (address?.kind === 'environment') return getWebAppScopeKey(address)
+  return appId
 }
 
 const isDifyWebAppAuthPath = (path: string) => {
@@ -60,7 +68,6 @@ const isDifyWebAppAuthPath = (path: string) => {
   return (
     pathname === '/login' ||
     pathname === '/logout' ||
-    pathname === '/login/status' ||
     pathname.startsWith('/email-code-login') ||
     pathname.startsWith('/forgot-password') ||
     pathname.startsWith('/enterprise/sso/')

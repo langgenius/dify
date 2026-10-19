@@ -1,15 +1,14 @@
 import type { TFunction } from 'i18next'
-import { AppModeEnum } from '@/types/app'
 
-export function getAppModeLabel(mode: string, t: TFunction): string {
+export function getAppModeLabel(mode: string, t: TFunction<['app']>): string {
   switch (mode) {
-    case AppModeEnum.ADVANCED_CHAT:
+    case 'advanced-chat':
       return t(($) => $['types.advanced'], { ns: 'app' })
-    case AppModeEnum.AGENT_CHAT:
+    case 'agent-chat':
       return t(($) => $['types.agent'], { ns: 'app' })
-    case AppModeEnum.CHAT:
+    case 'chat':
       return t(($) => $['types.chatbot'], { ns: 'app' })
-    case AppModeEnum.COMPLETION:
+    case 'completion':
       return t(($) => $['types.completion'], { ns: 'app' })
     default:
       return t(($) => $['types.workflow'], { ns: 'app' })
