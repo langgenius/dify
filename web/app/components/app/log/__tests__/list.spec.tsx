@@ -9,7 +9,7 @@ import {
   zConversationDetail,
   zConversationMessageDetail,
 } from '@dify/contracts/api/console/apps/zod.gen'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { toast } from '@/app/notifications'
@@ -20,6 +20,7 @@ import {
   seedModelProviderQueries,
 } from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import ConversationList from '../list'
@@ -51,6 +52,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.chatMessages.get': (input) => api.messages(input),
       'apps.byAppId.chatConversations.byConversationId.get': (input) => api.chatDetail(input),
       'apps.byAppId.completionConversations.byConversationId.get': (input) =>
         api.completionDetail(input),
@@ -614,4 +616,46 @@ it('shows each chatflow status and its conversation feedback counts', () => {
     expect(row.getByText('2')).toBeVisible()
     expect(row.getByText('3')).toBeVisible()
   }
+})
+
+it('keeps the table and close action available while conversation requests resolve independently', async () => {
+  const user = userEvent.setup()
+  const detail = createDeferred<ConversationDetail>()
+  const messages =
+    createDeferred<Awaited<ReturnType<typeof consoleClient.apps.byAppId.chatMessages.get>>>()
+  api.chatDetail.mockReturnValue(detail.promise)
+  api.messages.mockReturnValue(messages.promise)
+  renderConversationList()
+  await user.click(screen.getByText('hello world'))
+  const dialog = await screen.findByRole('dialog', { name: 'appLog.detail.conversationId' })
+  expect(within(dialog).getByRole('button', { name: 'common.operation.close' })).toBeVisible()
+  expect(screen.getByText('hello world')).toBeVisible()
+  expect(api.messages).toHaveBeenCalled()
+  await act(async () => {
+    detail.resolve(createChatDetail())
+  })
+  expect(screen.getByText('hello world')).toBeVisible()
+  expect(within(dialog).queryByText('Assistant reply message-1')).not.toBeInTheDocument()
+  await act(async () => {
+    messages.resolve({ data: [createChatMessage('message-1')], has_more: false, limit: 10 })
+  })
+  expect(await within(dialog).findByText('Assistant reply message-1')).toBeVisible()
+  expect(screen.getByText('hello world')).toBeVisible()
+})
+
+it('opens a deep-linked conversation while the list is still pending', async () => {
+  const { wrapper: UrlState } = createNuqsTestWrapper({
+    searchParams: '?conversation_id=conversation-1',
+  })
+  renderWithConsoleQuery(
+    <UrlState>
+      <ConversationList
+        appDetail={createAppDetailFixture({ id: 'app-1', mode: 'chat' })}
+        onRefresh={onRefresh}
+      />
+    </UrlState>,
+    { queryClient: createClient() },
+  )
+  expect(screen.getByText('appLog.table.header.summary')).toBeVisible()
+  expect(await screen.findByText('Assistant reply message-1')).toBeVisible()
 })

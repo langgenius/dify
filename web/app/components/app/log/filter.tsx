@@ -51,7 +51,7 @@ const Filter: FC<IFilterProps> = ({
   queryParams,
   setQueryParams,
 }: IFilterProps) => {
-  const { data, isLoading } = useQuery(
+  const { data } = useQuery(
     consoleQuery.apps.byAppId.annotations.count.get.queryOptions({
       input: appId ? { params: { app_id: appId } } : skipToken,
     }),
@@ -63,7 +63,6 @@ const Filter: FC<IFilterProps> = ({
     .filter(([key]) => !isTimePeriodRestricted || CLOUD_SANDBOX_TIME_PERIOD_KEYS.has(key))
     .map(([key, option]) => [key, resolveLogTimePeriodOption(key, option, planState)] as const)
 
-  if (isLoading || !data) return null
   return (
     <div className="mb-2 flex flex-row flex-wrap items-center gap-2">
       <Chip
@@ -85,30 +84,35 @@ const Filter: FC<IFilterProps> = ({
           name: t(($) => $[`filter.period.${v.name}`], { ns: 'appLog' }),
         }))}
       />
-      <Chip
-        className="min-w-37.5"
-        panelClassName="w-[270px]"
-        showLeftIcon={false}
-        value={queryParams.annotation_status || 'all'}
-        onSelect={(item) => {
-          setQueryParams({
-            ...queryParams,
-            annotation_status: item.value as QueryParam['annotation_status'],
-          })
-        }}
-        onClear={() => setQueryParams({ ...queryParams, annotation_status: 'all' })}
-        items={[
-          { value: 'all', name: t(($) => $['filter.annotation.all'], { ns: 'appLog' }) },
-          {
-            value: 'annotated',
-            name: t(($) => $['filter.annotation.annotated'], { ns: 'appLog', count: data?.count }),
-          },
-          {
-            value: 'not_annotated',
-            name: t(($) => $['filter.annotation.not_annotated'], { ns: 'appLog' }),
-          },
-        ]}
-      />
+      <fieldset disabled={!data} className="min-w-0 border-0 p-0">
+        <Chip
+          className="min-w-37.5"
+          panelClassName="w-[270px]"
+          showLeftIcon={false}
+          value={queryParams.annotation_status || 'all'}
+          onSelect={(item) => {
+            setQueryParams({
+              ...queryParams,
+              annotation_status: item.value as QueryParam['annotation_status'],
+            })
+          }}
+          onClear={() => setQueryParams({ ...queryParams, annotation_status: 'all' })}
+          items={[
+            { value: 'all', name: t(($) => $['filter.annotation.all'], { ns: 'appLog' }) },
+            {
+              value: 'annotated',
+              name: t(($) => $['filter.annotation.annotated'], {
+                ns: 'appLog',
+                count: data?.count ?? 0,
+              }),
+            },
+            {
+              value: 'not_annotated',
+              name: t(($) => $['filter.annotation.not_annotated'], { ns: 'appLog' }),
+            },
+          ]}
+        />
+      </fieldset>
       <SearchInput
         className="w-50"
         value={queryParams.keyword ?? ''}

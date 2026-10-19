@@ -24,9 +24,9 @@ dayjs.extend(timezone)
 
 type LogDetailMessage = {
   answer?: string | number | null
-  inputs?: Record<string, unknown>
-  message_files?: Array<{ url?: string | null }>
-  query?: string
+  inputs?: Record<string, unknown> | null
+  message_files?: Array<{ url?: string | null }> | null
+  query?: string | null
 }
 
 type ConversationLogDetail = {
@@ -38,7 +38,7 @@ type ConversationLogDetail = {
     // Untyped JSON in the console API response.
     user_input_form?: unknown
   } | null
-  name?: string
+  name?: string | null
 }
 
 const getUserInputVariable = (item: unknown) => {
@@ -378,7 +378,7 @@ export const getConversationRowValues = ({
   noOutputLabel,
 }: {
   isChatMode: boolean
-  log: ConversationLogDetail
+  log: Omit<ConversationLogDetail, 'model_config'>
   noChatLabel: string
   noOutputLabel: string
 }) => {
