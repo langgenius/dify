@@ -6,7 +6,7 @@ import type {
   DifyBuilderSessionController,
   SessionModel,
 } from './types'
-import type { DifyBuilderCanvasNode } from './utils'
+import type { DifyBuilderCanvasSnapshot } from './utils'
 import { atom } from 'jotai'
 import { atomWithMutation, queryClientAtom } from 'jotai-tanstack-query'
 import {
@@ -29,7 +29,7 @@ export type DifyBuilderRuntime = {
   appId?: string
   canEdit: boolean
   enabled: boolean
-  getCanvasSnapshot: () => { nodes: DifyBuilderCanvasNode[]; edgeCount: number }
+  getCanvasSnapshot: () => DifyBuilderCanvasSnapshot
   session: DifyBuilderSessionController
   setShowPanel: (show: boolean) => void
 }
@@ -260,8 +260,7 @@ const startDifyBuilderPromptAtom = atom(
     }
     if (!set(prepareDifyBuilderSessionAtom)) return false
 
-    const { nodes, edgeCount } = runtime.getCanvasSnapshot()
-    const startsBuild = shouldStartBuildSession(nodes, edgeCount)
+    const startsBuild = shouldStartBuildSession(runtime.getCanvasSnapshot())
     const deriveAppName = startsBuild && get(difyBuilderDeriveAppNameAtom)
     const localId = globalThis.crypto.randomUUID()
     set(difyBuilderLocalUserMessageAtom, {

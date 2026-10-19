@@ -54,7 +54,7 @@ it('moves focus before making a submitted interaction inert and preserves its an
     appId: 'app-1',
     canEdit: true,
     enabled: true,
-    getCanvasSnapshot: () => ({ nodes: [], edgeCount: 0 }),
+    getCanvasSnapshot: () => ({ nodes: [], edges: [], isChatflow: false }),
     session: {
       getTrace: () => ({ entries: [], truncated: false }),
       loadOlderConversation: async () => true,

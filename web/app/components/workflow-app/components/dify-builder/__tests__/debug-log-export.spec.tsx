@@ -46,7 +46,7 @@ const makeRuntime = () =>
     appId: 'app-1',
     canEdit: true,
     enabled: true,
-    getCanvasSnapshot: () => ({ nodes: [], edgeCount: 0 }),
+    getCanvasSnapshot: () => ({ nodes: [], edges: [], isChatflow: false }),
     onSyncDraft: vi.fn(async () => undefined),
     session: { getTrace: vi.fn(() => snapshot) },
     setShowPanel: vi.fn(),
