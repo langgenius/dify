@@ -205,7 +205,7 @@ class CompletionMessageApi(Resource):
             raise CompletionRequestError(e.description) from e
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as e:
             logger.exception("internal server error.")
             raise InternalServerError() from e
 
