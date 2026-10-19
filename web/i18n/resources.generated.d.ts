@@ -1855,6 +1855,7 @@ export default interface Resources {
     'resize.width': 'Width: {{width}} pixels'
     'settings.ipPolicies': 'IP Policies'
     'settings.ipPoliciesDescription': 'Reusable rules that control which IP addresses or ranges can access your apps'
+    'settings.ipPoliciesProPlanRequired': 'Applying a policy to an app requires the Pro plan'
     'settings.ipPolicyAddCurrentIp': 'Add it'
     'settings.ipPolicyAddEntry': 'Add'
     'settings.ipPolicyAllowlist': 'Allowlist'

@@ -256,6 +256,7 @@
   "resize.width": "幅：{{width}}ピクセル",
   "settings.ipPolicies": "IP ポリシー",
   "settings.ipPoliciesDescription": "アクセスを許可する IP アドレスまたは範囲を制御する、再利用可能なルール",
+  "settings.ipPoliciesProPlanRequired": "アプリへのポリシー適用には Pro プランが必要です",
   "settings.ipPolicyAddCurrentIp": "追加する",
   "settings.ipPolicyAddEntry": "追加",
   "settings.ipPolicyAllowlist": "許可リスト",

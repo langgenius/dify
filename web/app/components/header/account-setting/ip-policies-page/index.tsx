@@ -16,6 +16,7 @@ import {
   pricingQueryParamName,
   pricingQueryParser,
 } from '@/app/components/billing/pricing/query-params'
+import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { getIpPolicyFailReason, trackNetworkAccessEvent } from '@/features/network-access/analytics'
 import {
   canManageNetworkAccessPoliciesAtom,
@@ -65,6 +66,7 @@ function IpPoliciesListSkeleton() {
 export default function IpPoliciesPage() {
   const { t } = useTranslation(['common', 'deployments'])
   const queryClient = useQueryClient()
+  const { plan } = useAtomValue(currentWorkspaceAtom)
   const canReadPolicies = useAtomValue(canReadNetworkAccessAtom)
   const canManagePolicies = useAtomValue(canManageNetworkAccessPoliciesAtom)
   const [_pricing, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
@@ -162,6 +164,11 @@ export default function IpPoliciesPage() {
           <p className="system-sm-regular text-text-tertiary">
             {t(($) => $['settings.ipPoliciesDescription'], { ns: 'common' })}
           </p>
+          {plan === 'sandbox' && (
+            <p className="system-xs-regular text-text-tertiary">
+              {t(($) => $['settings.ipPoliciesProPlanRequired'], { ns: 'common' })}
+            </p>
+          )}
         </div>
         {canManagePolicies && !isEmpty && (
           <Button

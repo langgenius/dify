@@ -256,6 +256,7 @@
   "resize.width": "寬度：{{width}} 像素",
   "settings.ipPolicies": "IP 策略",
   "settings.ipPoliciesDescription": "可重用的規則，用來控制允許存取的 IP 位址或網段",
+  "settings.ipPoliciesProPlanRequired": "將策略套用至應用程式需要 Pro 方案",
   "settings.ipPolicyAddCurrentIp": "加入",
   "settings.ipPolicyAddEntry": "新增",
   "settings.ipPolicyAllowlist": "允許清單",
