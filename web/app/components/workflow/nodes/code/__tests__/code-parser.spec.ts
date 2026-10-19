@@ -94,7 +94,12 @@ describe('extractFunctionParams', () => {
     [
       'JavaScript templates',
       CodeLanguage.javascript,
-      'const OPEN = `/*\n// text\n`;\nfunction main({ arg1, arg2 }) {\n  return {result: `${OPEN}${arg1}${arg2}*/`}\n}',
+      `const OPEN = \`/*
+// text
+\`;
+function main({ arg1, arg2 }) {
+  return {result: \`\${OPEN}\${arg1}\${arg2}*/\`}
+}`,
     ],
     [
       'escaped JavaScript quotes before a real comment',
