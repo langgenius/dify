@@ -283,5 +283,47 @@ def test_message_list_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlit
     assert item["workflow_run_id"] == workflow_run_id
     assert item["workflow_run_is_running"] is True
 
+    other_workflow_run_id = str(uuid4())
+    sqlite_session.add(
+        WorkflowRun(
+            id=other_workflow_run_id,
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            workflow_id=str(uuid4()),
+            type=WorkflowType.WORKFLOW,
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+            version="1",
+            graph="{}",
+            inputs="{}",
+            status=WorkflowExecutionStatus.RUNNING,
+            outputs="{}",
+            error=None,
+            elapsed_time=0,
+            total_tokens=0,
+            total_steps=0,
+            created_by_role=CreatorUserRole.END_USER,
+            created_by="another-end-user",
+            created_at=created_at,
+        )
+    )
+    sqlite_session.commit()
+    assert message_module.MessageService.get_running_end_user_workflow_run_ids(
+        workflow_run_ids={workflow_run_id, other_workflow_run_id},
+        tenant_id=app_model.tenant_id,
+        app_id=app_model.id,
+        end_user_id=end_user.id,
+        session=sqlite_session,
+    ) == {workflow_run_id}
+    assert (
+        message_module.MessageService.get_running_end_user_workflow_run_ids(
+            workflow_run_ids=set(),
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            end_user_id=end_user.id,
+            session=sqlite_session,
+        )
+        == set()
+    )
+
     assert item["message_files"][0]["id"] == "file-dict"
     assert item["message_files"][1]["id"] == "file-obj"

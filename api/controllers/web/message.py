@@ -3,7 +3,6 @@ from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, TypeAdapter
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError, NotFound
 
@@ -29,13 +28,11 @@ from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotIni
 from extensions.ext_database import db
 from fields.conversation_fields import MessageResponseSource, ResultResponse
 from fields.message_fields import SuggestedQuestionsResponse, WebMessageInfiniteScrollPagination, WebMessageListItem
-from graphon.enums import WorkflowExecutionStatus
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.external_api import error_responses
-from models.enums import CreatorUserRole, FeedbackRating
+from models.enums import FeedbackRating
 from models.model import App, AppMode, EndUser
-from models.workflow import WorkflowRun
 from services.app_generate_service import AppGenerateService
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
@@ -96,19 +93,13 @@ class MessageListApi(WebApiResource):
             running_workflow_run_ids: set[str] = set()
             if app_mode == AppMode.ADVANCED_CHAT:
                 workflow_run_ids = {message.workflow_run_id for message in pagination.data if message.workflow_run_id}
-                if workflow_run_ids:
-                    running_workflow_run_ids = set(
-                        session.scalars(
-                            select(WorkflowRun.id).where(
-                                WorkflowRun.id.in_(workflow_run_ids),
-                                WorkflowRun.tenant_id == app_model.tenant_id,
-                                WorkflowRun.app_id == app_model.id,
-                                WorkflowRun.created_by_role == CreatorUserRole.END_USER,
-                                WorkflowRun.created_by == end_user.id,
-                                WorkflowRun.status == WorkflowExecutionStatus.RUNNING,
-                            )
-                        )
-                    )
+                running_workflow_run_ids = MessageService.get_running_end_user_workflow_run_ids(
+                    workflow_run_ids=workflow_run_ids,
+                    tenant_id=app_model.tenant_id,
+                    app_id=app_model.id,
+                    end_user_id=end_user.id,
+                    session=session,
+                )
 
             items = []
             for message in pagination.data:

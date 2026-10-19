@@ -18,11 +18,12 @@ from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from extensions.ext_database import db
+from graphon.enums import WorkflowExecutionStatus
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account
 from models.agent_config_entities import AgentSoulConfig
-from models.enums import FeedbackFromSource, FeedbackRating
+from models.enums import CreatorUserRole, FeedbackFromSource, FeedbackRating
 from models.model import (
     App,
     AppMode,
@@ -34,6 +35,7 @@ from models.model import (
     SuggestedQuestionsAfterAnswerConfig,
     load_annotation_reply_config,
 )
+from models.workflow import WorkflowRun
 from repositories.execution_extra_content_repository import ExecutionExtraContentRepository
 from repositories.sqlalchemy_execution_extra_content_repository import (
     SQLAlchemyExecutionExtraContentRepository,
@@ -85,6 +87,33 @@ class SuggestedQuestionsContext:
 
 
 class MessageService:
+    @classmethod
+    def get_running_end_user_workflow_run_ids(
+        cls,
+        *,
+        workflow_run_ids: set[str],
+        tenant_id: str,
+        app_id: str,
+        end_user_id: str,
+        session: Session,
+    ) -> set[str]:
+        """Return running workflow runs owned by this end user and app."""
+        if not workflow_run_ids:
+            return set()
+
+        return set(
+            session.scalars(
+                select(WorkflowRun.id).where(
+                    WorkflowRun.id.in_(workflow_run_ids),
+                    WorkflowRun.tenant_id == tenant_id,
+                    WorkflowRun.app_id == app_id,
+                    WorkflowRun.created_by_role == CreatorUserRole.END_USER,
+                    WorkflowRun.created_by == end_user_id,
+                    WorkflowRun.status == WorkflowExecutionStatus.RUNNING,
+                )
+            )
+        )
+
     @classmethod
     def _get_agent_suggested_questions_config(
         cls,
