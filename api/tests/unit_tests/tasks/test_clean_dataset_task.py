@@ -395,6 +395,46 @@ class TestPipelineAndWorkflowDeletion:
 class TestSegmentAttachmentCleanup:
     """Test cases for segment attachment cleanup."""
 
+    def test_inline_image_attachment_binding_is_deleted_after_its_file(
+        self,
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
+        orm_session_maker: sessionmaker[Session],
+        mock_storage: MagicMock,
+        mock_index_processor_factory: dict[str, MagicMock],
+    ) -> None:
+        """Inline images and attachments can refer to the same uploaded file."""
+        document = _persist_document(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
+        segment = _persist_segment(
+            orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id, document_id=document.id
+        )
+        binding, attachment_file = _persist_attachment(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
+        segment.content = f"![image](https://example.com/files/{attachment_file.id}/file-preview)"
+        binding.document_id = document.id
+        binding.segment_id = segment.id
+        with orm_session_maker.begin() as session:
+            session.add_all([segment, binding])
+        unrelated_attachments = [
+            _persist_attachment(orm_session_maker, dataset_id=str(uuid.uuid4()), tenant_id=tenant_id),
+            _persist_attachment(orm_session_maker, dataset_id=dataset_id, tenant_id=str(uuid.uuid4())),
+        ]
+
+        _run_clean_dataset(
+            dataset_id=dataset_id,
+            tenant_id=tenant_id,
+            collection_binding_id=collection_binding_id,
+        )
+
+        mock_storage.delete.assert_called_once_with(attachment_file.key)
+        with orm_session_maker() as session:
+            assert session.get(DocumentSegment, segment.id) is None
+            assert session.get(UploadFile, attachment_file.id) is None
+            assert session.get(SegmentAttachmentBinding, binding.id) is None
+            for other_binding, other_file in unrelated_attachments:
+                assert session.get(SegmentAttachmentBinding, other_binding.id) is not None
+                assert session.get(UploadFile, other_file.id) is not None
+
     def test_clean_dataset_task_with_attachments(
         self,
         dataset_id: str,
@@ -695,6 +735,67 @@ class TestStepIsolation:
 
 class TestBatchedDeletes:
     """Large child tables are deleted in bounded batches."""
+
+    def test_text_segments_use_bounded_transactions_without_image_file_queries(
+        self,
+        orm_session_maker: sessionmaker[Session],
+        sqlite_engine: Engine,
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
+        mock_storage: MagicMock,
+        mock_index_processor_factory: dict[str, MagicMock],
+    ) -> None:
+        """Text-only cleanup must not run no-op file SQL or retain the full dataset."""
+        document = _persist_document(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
+        segments = [
+            _persist_segment(
+                orm_session_maker,
+                dataset_id=dataset_id,
+                tenant_id=tenant_id,
+                document_id=document.id,
+                position=position,
+            )
+            for position in range(5)
+        ]
+        file_queries: list[str] = []
+        committed_segment_loads: list[int] = []
+        loaded_segment_ids: list[str] = []
+
+        def record_file_query(statement: str, **_kwargs: object) -> None:
+            if "from upload_files" in statement.lower():
+                file_queries.append(statement)
+
+        def record_segment_load(_session: Session, instance: object) -> None:
+            if isinstance(instance, DocumentSegment):
+                loaded_segment_ids.append(instance.id)
+
+        def record_commit(_session: Session) -> None:
+            if loaded_segment_ids:
+                committed_segment_loads.append(len(loaded_segment_ids))
+                loaded_segment_ids.clear()
+
+        event.listen(sqlite_engine, "before_cursor_execute", record_file_query, named=True)
+        event.listen(orm_session_maker, "loaded_as_persistent", record_segment_load)
+        event.listen(orm_session_maker, "after_commit", record_commit)
+        try:
+            with patch("tasks.clean_dataset_task._DELETE_BATCH_SIZE", 2):
+                _run_clean_dataset(
+                    dataset_id=dataset_id,
+                    tenant_id=tenant_id,
+                    collection_binding_id=collection_binding_id,
+                )
+        finally:
+            event.remove(sqlite_engine, "before_cursor_execute", record_file_query)
+            event.remove(orm_session_maker, "loaded_as_persistent", record_segment_load)
+            event.remove(orm_session_maker, "after_commit", record_commit)
+
+        assert file_queries == [], "Text-only segments issued unnecessary UploadFile SQL"
+        assert sum(committed_segment_loads) == len(segments)
+        assert max(committed_segment_loads) <= 2, "Segment cleanup exceeded the transaction batch size"
+        mock_storage.delete.assert_not_called()
+        with orm_session_maker() as session:
+            assert all(session.get(DocumentSegment, segment.id) is None for segment in segments)
 
     def test_documents_are_deleted_across_multiple_batches(
         self,

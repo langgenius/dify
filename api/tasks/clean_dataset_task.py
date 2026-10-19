@@ -208,10 +208,10 @@ def _delete_upload_files(session: Session, file_ids: Sequence[str]) -> None:
 
 def _delete_attachments(session: Session, tenant_id: str, dataset_id: str) -> None:
     """Delete segment attachments (upload files + bindings) for the dataset."""
-    # Use JOIN to fetch attachments with bindings in a single query
+    # Inline-image cleanup may already have deleted the file; its binding still needs cleanup.
     attachments_with_bindings = session.execute(
         select(SegmentAttachmentBinding, UploadFile)
-        .join(UploadFile, UploadFile.id == SegmentAttachmentBinding.attachment_id)
+        .outerjoin(UploadFile, UploadFile.id == SegmentAttachmentBinding.attachment_id)
         .where(
             SegmentAttachmentBinding.tenant_id == tenant_id,
             SegmentAttachmentBinding.dataset_id == dataset_id,
@@ -219,9 +219,13 @@ def _delete_attachments(session: Session, tenant_id: str, dataset_id: str) -> No
     ).all()
     if not attachments_with_bindings:
         return
-    attachment_ids = [attachment_file.id for _, attachment_file in attachments_with_bindings]
+    attachment_ids = [
+        attachment_file.id for _, attachment_file in attachments_with_bindings if attachment_file is not None
+    ]
     binding_ids = [binding.id for binding, _ in attachments_with_bindings]
     for binding, attachment_file in attachments_with_bindings:
+        if attachment_file is None:
+            continue
         try:
             storage.delete(attachment_file.key)
         except Exception:
@@ -229,7 +233,8 @@ def _delete_attachments(session: Session, tenant_id: str, dataset_id: str) -> No
                 "Delete attachment_file failed when storage deleted, attachment_file_id: %s",
                 binding.attachment_id,
             )
-    session.execute(delete(UploadFile).where(UploadFile.id.in_(attachment_ids)))
+    if attachment_ids:
+        session.execute(delete(UploadFile).where(UploadFile.id.in_(attachment_ids)))
     session.execute(delete(SegmentAttachmentBinding).where(SegmentAttachmentBinding.id.in_(binding_ids)))
     session.commit()
 
