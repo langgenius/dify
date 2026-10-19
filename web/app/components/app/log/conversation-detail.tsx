@@ -123,7 +123,7 @@ function DetailPanel({ appDetail, detail, onFeedback, initialMessages }: IDetail
     async (index: number): Promise<boolean> => {
       const itemIndex = getAllChatItemIndex(allChatItems, threadChatItems, index)
       const annotation = allChatItems[itemIndex]?.annotation
-      
+
       try {
         if (!annotation?.id) throw new Error('Annotation not found')
 
