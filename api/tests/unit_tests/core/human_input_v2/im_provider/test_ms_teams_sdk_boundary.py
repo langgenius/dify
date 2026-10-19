@@ -475,6 +475,7 @@ def test_real_connector_and_graph_boundaries_round_trip_all_outbound_capabilitie
     text_body = send_requests[0].json_body()
     assert text_body["type"] == "message"
     assert text_body["text"] == "Sanitized **text**"
+    assert text_body["textFormat"] == "extendedmarkdown"
     card_body = send_requests[1].json_body()
     assert card_body["type"] == "message"
     assert card_body["summary"] == "Sanitized title"
@@ -527,6 +528,37 @@ def test_real_connector_and_graph_boundaries_round_trip_all_outbound_capabilitie
     assert update_requests[0].json_body() == {
         "type": "message",
         "text": "Sanitized **recorded** presentation",
+    }
+
+
+@pytest.mark.parametrize(
+    ("subject", "expected_text"),
+    [
+        (None, "## Body\n\n**Approved**"),
+        ("", "## Body\n\n**Approved**"),
+        ("### Review **Alice**", "# \\#\\#\\# Review \\*\\*Alice\\*\\*\n\n## Body\n\n**Approved**"),
+    ],
+)
+def test_real_connector_sends_h1_subject_and_body_with_extended_markdown(
+    monkeypatch: pytest.MonkeyPatch,
+    connector_server: _ConnectorServer,
+    subject: str | None,
+    expected_text: str,
+) -> None:
+    state = connector_server.state
+    state.enqueue("create", 201, {"id": "test-only-conversation", "serviceUrl": _PUBLIC_SERVICE_URL})
+    state.enqueue("send", 201, {"id": "test-only-activity"})
+    adapter, _, _ = _adapter(monkeypatch, connector_factory=_connector_factory(connector_server))
+
+    result = adapter.messaging.send_text(ProviderUserId("test-only-user"), "## Body\n\n**Approved**", subject)
+
+    assert isinstance(result, MessageAccepted)
+    requests = state.requests_for("send")
+    assert len(requests) == 1
+    assert requests[0].json_body() == {
+        "type": "message",
+        "textFormat": "extendedmarkdown",
+        "text": expected_text,
     }
 
 

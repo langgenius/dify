@@ -679,7 +679,13 @@ def test_directory_normalizes_unexpected_failure_without_provider_details(mocker
     assert "sensitive graph response" not in caplog.text
 
 
-def test_text_send_resolves_personal_conversation_and_returns_exact_reference(mocker) -> None:
+@pytest.mark.parametrize(
+    ("subject", "expected"),
+    [(None, "**Review requested**"), ("### Review", "# \\#\\#\\# Review\n\n**Review requested**")],
+)
+def test_text_send_resolves_personal_conversation_and_returns_exact_reference(
+    mocker, subject: str | None, expected: str
+) -> None:
     adapter, _, _, bot_credentials = _adapter_with_tokens(
         mocker,
         graph_claims={
@@ -704,7 +710,7 @@ def test_text_send_resolves_personal_conversation_and_returns_exact_reference(mo
     )
     send_to_conversation.return_value = ResourceResponse(id="sanitized-activity")
 
-    accepted = adapter.messaging.send_text(ProviderUserId("sanitized-user-a"), "**Review requested**")
+    accepted = adapter.messaging.send_text(ProviderUserId("sanitized-user-a"), "**Review requested**", subject)
 
     assert isinstance(accepted, MessageAccepted)
     assert "sanitized-conversation" not in repr(accepted.locator)
@@ -717,7 +723,8 @@ def test_text_send_resolves_personal_conversation_and_returns_exact_reference(mo
     conversation_id, activity = send_to_conversation.call_args.args
     assert conversation_id == "sanitized-conversation"
     assert activity.type == "message"
-    assert activity.text == "**Review requested**"
+    assert activity.text == expected
+    assert activity.text_format == "extendedmarkdown"
     assert connector.config.retry_policy.retries == 0
 
 

@@ -1177,7 +1177,13 @@ def test_urllib_directory_client_normalizes_transport_errors(
     assert caught.value is error
 
 
-def test_messaging_accepts_complete_sdk_response_and_locator_round_trips_through_json_text() -> None:
+@pytest.mark.parametrize(
+    ("subject", "expected"),
+    [(None, "Exact **CommonMark** body"), ("### Review", "### Review\n\nExact **CommonMark** body")],
+)
+def test_messaging_accepts_complete_sdk_response_and_locator_round_trips_through_json_text(
+    subject: str | None, expected: str
+) -> None:
     token_provider = _FakeTokenProvider("fake-access-token-message-001")
     response = BatchSendOTOResponse(
         headers={"content-type": "application/json", "x-acs-request-id": "fake-request-message-001"},
@@ -1194,6 +1200,7 @@ def test_messaging_accepts_complete_sdk_response_and_locator_round_trips_through
     result = _DingTalkMessaging("fake-client-id-001", token_provider, robot).send_text(
         ProviderUserId("fake-user-001"),
         "Exact **CommonMark** body",
+        subject,
     )
 
     assert isinstance(result, MessageAccepted)
@@ -1203,6 +1210,7 @@ def test_messaging_accepts_complete_sdk_response_and_locator_round_trips_through
     assert "fake-process-query-key-001" not in repr(rehydrated)
     assert token_provider.calls == 1
     assert len(robot.calls) == 1
+    assert json.loads(robot.calls[0][0].msg_param) == {"content": expected}
 
 
 @pytest.mark.parametrize(

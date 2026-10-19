@@ -358,6 +358,38 @@ def test_real_web_client_round_trips_credentials_directory_messages_and_cards(
 
 
 @pytest.mark.parametrize(
+    ("subject", "heading"),
+    [
+        ("### HITL v2 Migration Check", r"# \#\#\# HITL v2 Migration Check"),
+        ("**Review** _Alice_", r"# \*\*Review\*\* \_Alice\_"),
+        ("[Review](https://example.com)", r"# \[Review\]\(https\:\/\/example\.com\)"),
+    ],
+)
+def test_real_web_client_sends_plain_subject_separately_from_markdown_body(
+    monkeypatch: pytest.MonkeyPatch,
+    slack_api_server: _SlackApiServer,
+    subject: str,
+    heading: str,
+) -> None:
+    slack_api_server.state.enqueue("chat.postMessage", {"ok": True, "channel": "D0123456789", "ts": "1000.000001"})
+    adapter, _ = _adapter(monkeypatch, slack_api_server)
+    body = "# H1\n\n## H2\n\n[Approval](https://example.com/human-input-test)"
+
+    result = adapter.messaging.send_text(ProviderUserId("sanitized-user"), body, subject=subject)
+
+    assert isinstance(result, MessageAccepted)
+    requests = slack_api_server.state.requests_for("chat.postMessage")
+    assert len(requests) == 1
+    parameters = requests[0].parameters()
+    assert parameters["channel"] == "sanitized-user"
+    assert parameters["blocks"] == [
+        {"type": "markdown", "text": heading},
+        {"type": "markdown", "text": body},
+    ]
+    assert parameters["text"] == f"{subject}\n\n{body}"
+
+
+@pytest.mark.parametrize(
     ("content", "expected_blocks"),
     [
         (

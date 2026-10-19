@@ -68,6 +68,7 @@ class _RequestRecord:
 @dataclass(slots=True)
 class _ServerState:
     requests: list[_RequestRecord] = field(default_factory=list)
+    markdown_cards: list[dict[str, object]] = field(default_factory=list)
     paginated_scope: bool = False
     paginated_directory: bool = False
     live_readiness_directory: bool = False
@@ -87,7 +88,9 @@ def _provider_confirmed_card_content() -> dict[str, object]:
     )
 
 
-def _is_provider_confirmed_card_request(request_body: dict[str, object] | None) -> bool:
+def _is_provider_confirmed_card_request(
+    request_body: dict[str, object] | None, markdown_cards: list[dict[str, object]]
+) -> bool:
     if request_body is None or request_body.get("msg_type") != "interactive":
         return False
     content = request_body.get("content")
@@ -97,7 +100,7 @@ def _is_provider_confirmed_card_request(request_body: dict[str, object] | None) 
         decoded_content = json.loads(content)
     except json.JSONDecodeError:
         return False
-    return decoded_content == _provider_confirmed_card_content()
+    return decoded_content == _provider_confirmed_card_content() or decoded_content in markdown_cards
 
 
 class _SDKRequestHandler(BaseHTTPRequestHandler):
@@ -343,7 +346,7 @@ class _SDKRequestHandler(BaseHTTPRequestHandler):
             if (
                 body is not None
                 and body.get("msg_type") == "interactive"
-                and not _is_provider_confirmed_card_request(body)
+                and not _is_provider_confirmed_card_request(body, self.server.state.markdown_cards)
             ):
                 self._respond({"code": 230001, "msg": "sanitized card contract rejection"})
                 return
@@ -791,6 +794,9 @@ def test_full_adapter_over_official_http_sdk_preserves_wrapper_parity(
     provider: IMProvider,
 ) -> None:
     sdk_server.state.paginated_directory = True
+    sdk_server.state.markdown_cards.append(
+        {"schema": "2.0", "body": {"elements": [{"tag": "markdown", "content": "Decision: **Approve**"}]}}
+    )
     observed_domains: list[str] = []
 
     def gateway_factory(credentials, domain: str):
@@ -864,7 +870,11 @@ def test_full_adapter_over_official_http_sdk_preserves_wrapper_parity(
     )
     assert len(message_requests) == 2
     assert len(patch_requests) == 1
-    assert json.loads(message_requests[0].body["content"]) == {"text": "Decision: Approve"}
+    assert message_requests[0].body["msg_type"] == "interactive"
+    assert json.loads(message_requests[0].body["content"]) == {
+        "schema": "2.0",
+        "body": {"elements": [{"tag": "markdown", "content": "Decision: **Approve**"}]},
+    }
     assert message_requests[1].body["msg_type"] == "interactive"
 
 
@@ -1723,7 +1733,7 @@ def test_directory_deduplicates_users_and_department_cycles_from_root() -> None:
     assert gateway.calls == ["users", "departments"]
 
 
-def test_commonmark_conversion_preserves_semantics_over_official_message_boundary(
+def test_subject_and_body_markdown_survive_the_official_message_boundary(
     monkeypatch: pytest.MonkeyPatch,
     sdk_server: _RunningServer,
 ) -> None:
@@ -1734,11 +1744,21 @@ def test_commonmark_conversion_preserves_semantics_over_official_message_boundar
     )
     adapter = FeishuIMProviderAdapter(_credentials())
 
-    result = adapter.messaging.send_text(
-        ProviderUserId("union_sanitized_user"),
+    body = (
         "# Decision\n\n- **Approve**\n- [Review](https://example.invalid)\n\n"
-        "![Diagram](https://image.invalid)\n\n`inline`  \nnext\n\n```text\ncode\n```",
+        "![Diagram](https://image.invalid)\n\n`inline`  \nnext\n\n```text\ncode\n```"
     )
+    expected_card: dict[str, object] = {
+        "schema": "2.0",
+        "body": {
+            "elements": [
+                {"tag": "markdown", "content": r"# \#\#\# Review \*\*Alice\*\*"},
+                {"tag": "markdown", "content": body},
+            ]
+        },
+    }
+    sdk_server.state.markdown_cards.append(expected_card)
+    result = adapter.messaging.send_text(ProviderUserId("union_sanitized_user"), body, subject="### Review **Alice**")
 
     assert isinstance(result, MessageAccepted)
     message_request = next(
@@ -1746,9 +1766,8 @@ def test_commonmark_conversion_preserves_semantics_over_official_message_boundar
         for request in sdk_server.state.requests
         if request.method == "POST" and "/open-apis/im/v1/messages?" in request.path
     )
-    assert json.loads(message_request.body["content"]) == {
-        "text": "Decision\nApprove\nReview (https://example.invalid)\nDiagram\ninline\nnext\ncode"
-    }
+    assert message_request.body["msg_type"] == "interactive"
+    assert json.loads(message_request.body["content"]) == expected_card
 
 
 def test_secure_webhook_rejects_auth_crypto_boundaries() -> None:

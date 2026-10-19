@@ -325,7 +325,11 @@ class _DingTalkMessaging(IMMessaging):
         self._client = client
 
     @override
-    def send_text(self, provider_user_id: ProviderUserId, body: str) -> MessageSendingResult:
+    def send_text(
+        self, provider_user_id: ProviderUserId, body: str, subject: str | None = None
+    ) -> MessageSendingResult:
+        if subject is not None:
+            body = f"{subject}\n\n{body}"
         try:
             access_token = self._token_provider.get()
             response = self._client.batch_send_otowith_options(

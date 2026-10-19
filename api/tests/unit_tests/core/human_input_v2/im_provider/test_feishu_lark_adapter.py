@@ -1168,27 +1168,42 @@ def test_directory_rejects_non_integer_success_code_without_partial_snapshot(
 
 
 @pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
-def test_text_send_uses_union_id_exact_plain_text_and_one_creation(
+@pytest.mark.parametrize(
+    ("subject", "expected_elements"),
+    [
+        (None, [{"tag": "markdown", "content": "# Decision\n\n**Approve**"}]),
+        (
+            "### Review **Alice**",
+            [
+                {"tag": "markdown", "content": r"# \#\#\# Review \*\*Alice\*\*"},
+                {"tag": "markdown", "content": "# Decision\n\n**Approve**"},
+            ],
+        ),
+    ],
+)
+def test_text_send_uses_union_id_and_preserves_markdown_in_one_creation(
     monkeypatch: pytest.MonkeyPatch,
     provider: Literal[IMProvider.FEISHU, IMProvider.LARK],
+    subject: str | None,
+    expected_elements: list[dict[str, str]],
 ) -> None:
     gateway = FakeSDKGateway()
     gateway.tenant_responses.append(_tenant_response())
     gateway.create_responses.append({"code": 0, "data": {"message_id": "om_sanitized_message"}})
     adapter = _adapter(monkeypatch, provider, gateway)
 
-    result = adapter.messaging.send_text(ProviderUserId("union_sanitized_user"), "Rendered plain text")
+    result = adapter.messaging.send_text(ProviderUserId("union_sanitized_user"), "# Decision\n\n**Approve**", subject)
 
     assert isinstance(result, MessageAccepted)
     creation = [call for call in gateway.calls if call[0] == "create_message"]
     assert len(creation) == 1
     receive_id, msg_type, content = creation[0][1]
-    assert (receive_id, msg_type) == ("union_sanitized_user", "text")
-    assert json.loads(content) == {"text": "Rendered plain text"}
+    assert (receive_id, msg_type) == ("union_sanitized_user", "interactive")
+    assert json.loads(content) == {"schema": "2.0", "body": {"elements": expected_elements}}
 
 
 @pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
-def test_text_send_falls_back_to_content_equivalent_plain_text(
+def test_text_send_preserves_body_markdown_without_a_subject(
     monkeypatch: pytest.MonkeyPatch, provider: Literal[IMProvider.FEISHU, IMProvider.LARK]
 ) -> None:
     gateway = FakeSDKGateway()
@@ -1203,7 +1218,10 @@ def test_text_send_falls_back_to_content_equivalent_plain_text(
 
     assert isinstance(result, MessageAccepted)
     creation = next(call for call in gateway.calls if call[0] == "create_message")
-    assert json.loads(creation[1][2]) == {"text": "Decision: Approve"}
+    assert json.loads(creation[1][2]) == {
+        "schema": "2.0",
+        "body": {"elements": [{"tag": "markdown", "content": "Decision: **Approve**"}]},
+    }
 
 
 @pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])

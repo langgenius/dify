@@ -165,19 +165,6 @@ def test_official_gateway_rejects_an_incomplete_sdk_client(monkeypatch: pytest.M
 
 
 @pytest.mark.parametrize(
-    ("body", "expected"),
-    [
-        ("# Heading\n\n- First\n- Second", "Heading\nFirst\nSecond"),
-        ("[Dify](https://dify.ai) and `code`", "Dify (https://dify.ai) and code"),
-        ("![logo](https://example.invalid/logo.png)  \nNext", "logo\nNext"),
-        ("```python\nprint('sanitized')\n```", "print('sanitized')"),
-    ],
-)
-def test_commonmark_plain_text_preserves_visible_content(body: str, expected: str) -> None:
-    assert adapter_module._commonmark_plain_text(body) == expected
-
-
-@pytest.mark.parametrize(
     ("create_time", "expected"),
     [
         ("1704067200123456", datetime(2024, 1, 1, 0, 0, 0, 123456)),

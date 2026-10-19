@@ -16,11 +16,12 @@ import json
 import logging
 import threading
 from collections import deque
-from collections.abc import Awaitable, Callable, Mapping, Sequence
+from collections.abc import Awaitable, Callable, Mapping
 from concurrent.futures import Future
 from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from string import punctuation
 from typing import ClassVar, Literal, Never, Protocol, override, runtime_checkable
 from urllib.parse import parse_qs, urlsplit
 
@@ -32,8 +33,6 @@ from lark_oapi.channel import FeishuChannel, TransportConfig
 from lark_oapi.core.exception import AccessTokenException, ObtainAccessTokenException
 from lark_oapi.event.callback.model.p2_card_action_trigger import P2CardActionTrigger, P2CardActionTriggerResponse
 from lark_oapi.ws import client as sdk_ws_client_module
-from markdown_it import MarkdownIt
-from markdown_it.token import Token
 from pydantic import AliasPath, BaseModel, ConfigDict, Field, JsonValue, TypeAdapter, ValidationError, field_validator
 from requests.exceptions import Timeout as RequestsTimeout
 from websockets.asyncio.client import ClientConnection
@@ -120,7 +119,6 @@ _MILLISECONDS_PER_SECOND = 1_000
 _MICROSECONDS_PER_SECOND = 1_000_000
 _MILLISECOND_TIMESTAMP_DIGITS = 13
 _MICROSECOND_TIMESTAMP_DIGITS = 16
-_COMMONMARK_PARSER = MarkdownIt("commonmark", {"html": False})
 
 
 def _log_safe_error(message: str, *, extra: Mapping[str, object] | None = None) -> None:
@@ -1222,12 +1220,21 @@ class _FeishuLarkMessaging(IMMessaging):
         self._provider = provider
 
     @override
-    def send_text(self, provider_user_id: ProviderUserId, body: str) -> MessageSendingResult:
+    def send_text(
+        self, provider_user_id: ProviderUserId, body: str, subject: str | None = None
+    ) -> MessageSendingResult:
         try:
-            plain_text = _commonmark_plain_text(body)
-            content = json.dumps({"text": plain_text}, ensure_ascii=False, separators=(",", ":"))
+            elements: list[dict[str, str]] = []
+            if subject:
+                escaped_subject = "".join(
+                    f"\\{character}" if character in punctuation else character for character in subject
+                )
+                elements.append({"tag": "markdown", "content": f"# {escaped_subject}"})
+            elements.append({"tag": "markdown", "content": body})
+            card = {"schema": "2.0", "body": {"elements": elements}}
+            content = json.dumps(card, ensure_ascii=False, separators=(",", ":"))
             response = _MessageResponse.model_validate(
-                self._gateway.create_message(str(provider_user_id), "text", content)
+                self._gateway.create_message(str(provider_user_id), "interactive", content)
             )
         except Exception:
             _log_safe_error(
@@ -1782,42 +1789,6 @@ def _query_tenant_id(gateway: _SDKGateway) -> str:
     if response.code != 0 or response.data is None or response.data.tenant.tenant_key is None:
         raise ValueError("stable tenant identity is unavailable")
     return response.data.tenant.tenant_key
-
-
-def _commonmark_plain_text(body: str) -> str:
-    parts: list[str] = []
-    for token in _COMMONMARK_PARSER.parse(body):
-        if token.type == "inline":
-            parts.extend(_commonmark_inline_plain_text(token.children or ()))
-        elif token.type in {"code_block", "fence"}:
-            parts.append(token.content)
-        elif token.type in {"heading_close", "list_item_close"} or (
-            token.type == "paragraph_close" and not token.hidden
-        ):
-            if parts and not parts[-1].endswith("\n"):
-                parts.append("\n")
-    return "".join(parts).rstrip("\n")
-
-
-def _commonmark_inline_plain_text(tokens: Sequence[Token]) -> list[str]:
-    parts: list[str] = []
-    links: list[tuple[int, str | None]] = []
-    for token in tokens:
-        if token.type in {"text", "code_inline"}:
-            parts.append(token.content)
-        elif token.type in {"softbreak", "hardbreak"}:
-            parts.append("\n")
-        elif token.type == "image":
-            parts.append(token.content)
-        elif token.type == "link_open":
-            href = token.attrGet("href")
-            links.append((len(parts), href if isinstance(href, str) else None))
-        elif token.type == "link_close" and links:
-            label_start, href = links.pop()
-            label = "".join(parts[label_start:])
-            if href and href != label:
-                parts.append(f" ({href})")
-    return parts
 
 
 def _valid_webhook_signature(request: WebhookRequest, encrypt_key: str) -> bytes | None:
