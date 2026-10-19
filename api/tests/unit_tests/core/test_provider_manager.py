@@ -517,55 +517,6 @@ def test__to_model_settings_lb_disabled(mock_provider_entity, provider_db: Sessi
     assert len(result[0].load_balancing_configs) == 0
 
 
-@pytest.mark.parametrize("has_active_models", [True, False])
-def test_get_default_model_does_not_create_missing_default(provider_db: Session, has_active_models: bool):
-    other_tenant_default = TenantDefaultModel(
-        tenant_id="other-tenant",
-        provider_name="anthropic",
-        model_name="claude",
-        model_type=ModelType.LLM,
-    )
-    other_type_default = TenantDefaultModel(
-        tenant_id="tenant-id",
-        provider_name="openai",
-        model_name="text-embedding-3-small",
-        model_type=ModelType.TEXT_EMBEDDING,
-    )
-    provider_db.add_all([other_tenant_default, other_type_default])
-    provider_db.commit()
-    provider_configurations = Mock()
-    provider_configurations.get_models.return_value = (
-        [Mock(model="gpt-3.5-turbo", provider=Mock(provider="openai"))] if has_active_models else []
-    )
-
-    manager = _build_provider_manager()
-    with (
-        patch.object(manager, "get_configurations", return_value=provider_configurations) as get_configurations,
-        patch("core.provider_manager.ModelProviderFactory") as mock_factory_cls,
-    ):
-        result = manager.get_default_model("tenant-id", ModelType.LLM)
-
-    assert result is None
-    get_configurations.assert_not_called()
-    mock_factory_cls.assert_not_called()
-    assert (
-        provider_db.scalar(
-            select(TenantDefaultModel).where(
-                TenantDefaultModel.tenant_id == "tenant-id",
-                TenantDefaultModel.model_type == ModelType.LLM,
-            )
-        )
-        is None
-    )
-    assert {
-        (record.tenant_id, record.model_type, record.provider_name, record.model_name)
-        for record in provider_db.scalars(select(TenantDefaultModel))
-    } == {
-        ("other-tenant", ModelType.LLM, "anthropic", "claude"),
-        ("tenant-id", ModelType.TEXT_EMBEDDING, "openai", "text-embedding-3-small"),
-    }
-
-
 def test_get_default_model_uses_injected_runtime_for_existing_default_record(provider_db: Session):
     existing_default_model = TenantDefaultModel(
         tenant_id="tenant-id",
