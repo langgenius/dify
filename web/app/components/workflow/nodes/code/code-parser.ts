@@ -5,13 +5,20 @@ import { CodeLanguage } from './types'
 export const extractFunctionParams = (code: string, language: CodeLanguage) => {
   if (language === CodeLanguage.json) return []
 
-  // A commented-out signature must not be picked up instead of the real one, so drop
-  // block comments and comment-only lines before looking for the `main` definition.
-  // This is what keeps a commented previous interface from winning the match now that
-  // the parameter list may span lines.
-  const codeWithoutComments = code
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/^[ \t]*(?:#|\/\/).*$/gm, '')
+  // Match strings first so comment markers inside them cannot consume real code.
+  // This is lightweight filtering, not a full lexer: quotes in JavaScript regex
+  // literals or nested template expressions can still confuse string boundaries.
+  const commentPatterns = {
+    [CodeLanguage.python3]:
+      /"""(?:\\[\s\S]|[^\\])*?"""|'''(?:\\[\s\S]|[^\\])*?'''|"(?:\\[\s\S]|[^"\\])*"|'(?:\\[\s\S]|[^'\\])*'|(#[^\r\n]*)/g,
+    [CodeLanguage.javascript]:
+      /"(?:\\[\s\S]|[^"\\])*"|'(?:\\[\s\S]|[^'\\])*'|`(?:\\[\s\S]|[^`\\])*`|(\/\/[^\r\n]*|\/\*[\s\S]*?\*\/)/g,
+  }
+  const codeWithoutComments = code.replace(
+    commentPatterns[language],
+    (match: string, comment: string | undefined) =>
+      comment ? comment.replace(/[^\r\n]/g, ' ') : match,
+  )
 
   const patterns: Record<Exclude<CodeLanguage, typeof CodeLanguage.json>, RegExp> = {
     [CodeLanguage.python3]: /def\s+main\s*\(([\s\S]*?)\)/,

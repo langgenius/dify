@@ -65,6 +65,68 @@ function main(arg1, arg2) {
 }
 
 describe('extractFunctionParams', () => {
+  it.each([
+    [
+      'Python typed defaults',
+      CodeLanguage.python3,
+      'def main(arg1: str = "/*", arg2: str = "*/") -> dict:\n    return {"result": arg1 + arg2}',
+    ],
+    [
+      'Python strings spanning the signature',
+      CodeLanguage.python3,
+      'OPEN = "/*"\ndef main(arg1: str, arg2: str):\n    return {"result": OPEN + arg1 + arg2 + "*/"}',
+    ],
+    [
+      'Python triple-quoted strings',
+      CodeLanguage.python3,
+      'OPEN = """/*\n# text\n"""\ndef main(arg1: str, arg2: str):\n    return {"result": OPEN + arg1 + arg2 + "*/"}',
+    ],
+    [
+      'JavaScript double-quoted strings',
+      CodeLanguage.javascript,
+      'const OPEN = "/*";\nfunction main({ arg1, arg2 }) {\n  return {result: OPEN + arg1 + arg2 + "*/"}\n}',
+    ],
+    [
+      'JavaScript single-quoted strings',
+      CodeLanguage.javascript,
+      "const OPEN = '/*';\nfunction main({ arg1, arg2 }) {\n  return {result: OPEN + arg1 + arg2 + '*/'}\n}",
+    ],
+    [
+      'JavaScript templates',
+      CodeLanguage.javascript,
+      'const OPEN = `/*\n// text\n`;\nfunction main({ arg1, arg2 }) {\n  return {result: `${OPEN}${arg1}${arg2}*/`}\n}',
+    ],
+    [
+      'escaped JavaScript quotes before a real comment',
+      CodeLanguage.javascript,
+      String.raw`const TEXT = "escaped \" /*";
+/* function main(oldArg) {} */
+function main({ arg1, arg2 }) {
+  return {result: TEXT + arg1 + arg2 + "*/"}
+}`,
+    ],
+    [
+      'escaped Python quotes before a real comment',
+      CodeLanguage.python3,
+      String.raw`TEXT = 'escaped \' /*'
+# def main(oldArg):
+def main(arg1: str, arg2: str):
+    return {"result": TEXT + arg1 + arg2 + "*/"}`,
+    ],
+    [
+      'JavaScript comments between tokens',
+      CodeLanguage.javascript,
+      'function/* interface */main({ arg1,/* input */arg2 }) {\n  return {result: arg1 + arg2}\n}',
+    ],
+    [
+      'Python CRLF comments between parameters',
+      CodeLanguage.python3,
+      'def main(\r\n    arg1: str, # first input\r\n    arg2: str,\r\n):\r\n    return {"result": arg1 + arg2}',
+    ],
+  ] as const)('preserves input names with %s', (_description, language, code) => {
+    expect(extractFunctionParams(code, language)).toEqual(['arg1', 'arg2'])
+  })
+
   describe('Python3', () => {
     it('handles no parameters', () => {
       const result = extractFunctionParams(SAMPLE_CODES.python3.noParams, CodeLanguage.python3)
