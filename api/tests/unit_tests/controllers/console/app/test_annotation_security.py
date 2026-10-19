@@ -208,21 +208,21 @@ class TestAnnotationImportFileValidation:
         max_size = dify_config.ANNOTATION_IMPORT_FILE_SIZE_LIMIT * 1024 * 1024
         large_content = b"x" * (max_size + 1024)  # Exceed by 1KB
 
-        file = FileStorage(stream=io.BytesIO(large_content), filename="test.csv", content_type="text/csv")
+        FileStorage(stream=io.BytesIO(large_content), filename="test.csv", content_type="text/csv")
 
         # Should be rejected in controller
         # This would be tested in integration tests with actual endpoint
 
     def test_empty_file_rejected(self):
         """Test that empty files are rejected."""
-        file = FileStorage(stream=io.BytesIO(b""), filename="test.csv", content_type="text/csv")
+        FileStorage(stream=io.BytesIO(b""), filename="test.csv", content_type="text/csv")
 
         # Should be rejected
         # This would be tested in integration tests
 
     def test_non_csv_file_rejected(self):
         """Test that non-CSV files are rejected."""
-        file = FileStorage(stream=io.BytesIO(b"test"), filename="test.txt", content_type="text/plain")
+        FileStorage(stream=io.BytesIO(b"test"), filename="test.txt", content_type="text/plain")
 
         # Should be rejected based on extension
         # This would be tested in integration tests
@@ -248,7 +248,7 @@ class TestAnnotationImportServiceValidation:
         with patch("services.annotation_service.current_account_with_tenant") as mock_auth:
             mock_auth.return_value = (_account(), "tenant_id")
 
-            with patch("services.annotation_service.FeatureService") as mock_features:
+            with patch("services.annotation_service.FeatureService"):
                 result = AppAnnotationService.batch_import_app_annotations("app_id", file, sqlite_session)
 
                 # Should return error about too many records
@@ -305,8 +305,8 @@ class TestAnnotationImportServiceValidation:
         with patch("services.annotation_service.current_account_with_tenant") as mock_auth:
             mock_auth.return_value = (_account(), "tenant_id")
 
-            with patch("services.annotation_service.FeatureService") as mock_features:
-                with patch("services.annotation_service.batch_import_annotations_task") as mock_task:
+            with patch("services.annotation_service.FeatureService"):
+                with patch("services.annotation_service.batch_import_annotations_task"):
                     with patch("services.annotation_service.redis_client"):
                         result = AppAnnotationService.batch_import_app_annotations("app_id", file, sqlite_session)
 

@@ -1042,7 +1042,7 @@ class TestWorkflowToolManageService:
         # Verify the tool was NOT created in database
         # This is the expected behavior (no pollution)
 
-        tool_count = (
+        (
             db_session_with_containers.query(WorkflowToolProvider)
             .where(
                 WorkflowToolProvider.tenant_id == account.current_tenant.id,
@@ -1097,7 +1097,7 @@ class TestWorkflowToolManageService:
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """Test listing workflow tools when none exist returns empty list."""
-        fake = Faker()
+
         app, account, workflow = self._create_test_app_and_account(
             db_session_with_containers, mock_external_service_dependencies
         )

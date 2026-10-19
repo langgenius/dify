@@ -1,6 +1,6 @@
 import type { CallFlags } from '@/call/flags'
 import { Buffer } from 'node:buffer'
-import { mkdtempSync, readFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { expect, it } from 'vite-plus/test'
@@ -137,6 +137,84 @@ it('file names an unnamed download after the op and its content type', async () 
   } finally {
     process.chdir(cwd)
   }
+})
+
+it.each([
+  ['../../escape.txt', 'escape.txt'],
+  ['/etc/passwd', 'passwd'],
+  ['..\\..\\win.txt', 'win.txt'],
+  ['..', `${OP_ID}.txt`],
+  ['dir/', 'dir'],
+])('file keeps only the base name of the server filename %s', async (sent, kept) => {
+  const dir = mkdtempSync(join(tmpdir(), 'difyctl-file-'))
+  const cwd = process.cwd()
+  process.chdir(dir)
+  const here = process.cwd()
+  try {
+    const r = render(
+      'file',
+      new Response('x', {
+        headers: {
+          'content-type': 'text/plain',
+          'content-disposition': `attachment; filename="${sent}"`,
+        },
+      }),
+    )
+    await r.code
+    expect(JSON.parse(r.buf.outBuf())).toMatchObject({ path: join(here, kept) })
+    expect(readFileSync(join(here, kept), 'utf8')).toBe('x')
+  } finally {
+    process.chdir(cwd)
+  }
+})
+
+it('file refuses to overwrite an existing file it named itself, and keeps the old bytes', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'difyctl-file-'))
+  const cwd = process.cwd()
+  process.chdir(dir)
+  const here = join(process.cwd(), 'r.txt')
+  writeFileSync(here, 'old')
+  try {
+    const r = render(
+      'file',
+      new Response('new', {
+        headers: {
+          'content-type': 'text/plain',
+          'content-disposition': 'attachment; filename="r.txt"',
+        },
+      }),
+    )
+    await expect(r.code).rejects.toMatchObject({
+      code: 'usage_missing_arg',
+      message: `${here} already exists; not overwriting it`,
+      hint: 'pass --output <path> to choose where to save it',
+    })
+    expect(readFileSync(here, 'utf8')).toBe('old')
+    expect(r.buf.outBuf()).toBe('')
+  } finally {
+    process.chdir(cwd)
+  }
+})
+
+it('file overwrites an existing file when --output names it', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'difyctl-file-'))
+  const out = join(dir, 'z.txt')
+  writeFileSync(out, 'old')
+  const r = render('file', new Response('new', { headers: { 'content-type': 'text/plain' } }), {
+    output: out,
+  })
+  await r.code
+  expect(readFileSync(out, 'utf8')).toBe('new')
+})
+
+it('file reports other write failures as a failed write, not an existing file', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'difyctl-file-'))
+  const out = join(dir, 'missing', 'z.txt')
+  const r = render('file', new Response('x'), { output: out })
+  await expect(r.code).rejects.toMatchObject({
+    code: 'unknown',
+    message: `failed to write file: ${out}`,
+  })
 })
 
 it.each([

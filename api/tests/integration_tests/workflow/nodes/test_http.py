@@ -72,7 +72,7 @@ def init_http_node(config: dict):
         graph_runtime_state=graph_runtime_state,
     )
 
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
+    Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     node = HttpRequestNode(
         node_id=str(uuid.uuid4()),
@@ -719,7 +719,7 @@ def test_nested_object_variable_selector(setup_http_mock):
         graph_runtime_state=graph_runtime_state,
     )
 
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
+    Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     node = HttpRequestNode(
         node_id=str(uuid.uuid4()),

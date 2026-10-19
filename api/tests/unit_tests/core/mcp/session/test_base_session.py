@@ -295,8 +295,7 @@ def test_send_request_http_status_auth_error(streams):
 
     def mock_error():
         try:
-            msg = write_stream.get(timeout=2)
-            req_id = msg.message.root.id
+            write_stream.get(timeout=2)
             response = Response(status_code=401, request=Request("GET", "http://test"))
             error = HTTPStatusError("Unauthorized", request=response.request, response=response)
             read_stream.put(error)
