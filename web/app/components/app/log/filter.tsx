@@ -51,7 +51,7 @@ const Filter: FC<IFilterProps> = ({
   queryParams,
   setQueryParams,
 }: IFilterProps) => {
-  const { data, isLoading } = useQuery(
+  const { data } = useQuery(
     consoleQuery.apps.byAppId.annotations.count.get.queryOptions({
       input: appId ? { params: { app_id: appId } } : skipToken,
     }),
@@ -63,7 +63,6 @@ const Filter: FC<IFilterProps> = ({
     .filter(([key]) => !isTimePeriodRestricted || CLOUD_SANDBOX_TIME_PERIOD_KEYS.has(key))
     .map(([key, option]) => [key, resolveLogTimePeriodOption(key, option, planState)] as const)
 
-  if (isLoading || !data) return null
   return (
     <div className="mb-2 flex flex-row flex-wrap items-center gap-2">
       <Chip
@@ -88,6 +87,7 @@ const Filter: FC<IFilterProps> = ({
       <Chip
         className="min-w-37.5"
         panelClassName="w-[270px]"
+        disabled={!data}
         showLeftIcon={false}
         value={queryParams.annotation_status || 'all'}
         onSelect={(item) => {
@@ -101,7 +101,10 @@ const Filter: FC<IFilterProps> = ({
           { value: 'all', name: t(($) => $['filter.annotation.all'], { ns: 'appLog' }) },
           {
             value: 'annotated',
-            name: t(($) => $['filter.annotation.annotated'], { ns: 'appLog', count: data?.count }),
+            name: t(($) => $['filter.annotation.annotated'], {
+              ns: 'appLog',
+              count: data?.count ?? 0,
+            }),
           },
           {
             value: 'not_annotated',
