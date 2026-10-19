@@ -1,6 +1,7 @@
 'use client'
 
-import type { HumanInputV2DebugMode } from '../types'
+import type { HumanInputV2DebugChannel, HumanInputV2DebugMode } from '../types'
+import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
@@ -10,7 +11,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ContactChannelIcon } from '@/features/contacts/management/channel-icon'
-import { HUMAN_INPUT_V2_DEBUG_CHANNELS, isHumanInputV2DebugChannel } from '../types'
+import { isHumanInputV2DebugChannel } from '../types'
+import useConfiguredChannels from '../use-configured-channels'
 
 // Original stripe background exported from Studio Figma node 25212:78484.
 const debugModeBackground =
@@ -24,15 +26,24 @@ type DebugModeProps = {
 }
 
 const DebugMode = ({ value, onChange, readonly, email }: DebugModeProps) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'contacts', 'common'])
   const errorId = useId()
   const [open, setOpen] = useState(false)
+  const configured = useConfiguredChannels()
   const channels = value.channels as string[]
   const unsupported = channels.filter((channel) => !isHumanInputV2DebugChannel(channel))
-  const selected = channels.filter(isHumanInputV2DebugChannel)
+  const selected = channels
+    .filter(isHumanInputV2DebugChannel)
+    .filter((channel) => configured.channels.includes(channel))
+  const missingSelection = configured.isSuccess && value.enabled && !selected.length
 
-  const toggleChannel = (channel: (typeof HUMAN_INPUT_V2_DEBUG_CHANNELS)[number]) => {
-    if (readonly || (selected.length === 1 && selected[0] === channel)) return
+  const toggleChannel = (channel: HumanInputV2DebugChannel) => {
+    if (
+      readonly ||
+      !configured.channels.includes(channel) ||
+      (selected.length === 1 && selected[0] === channel)
+    )
+      return
     const nextChannels = channels.includes(channel)
       ? channels.filter((item) => item !== channel)
       : [...channels, channel]
@@ -42,9 +53,7 @@ const DebugMode = ({ value, onChange, readonly, email }: DebugModeProps) => {
   return (
     <section
       className="px-4"
-      aria-describedby={
-        (value.enabled && !selected.length) || unsupported.length ? errorId : undefined
-      }
+      aria-describedby={missingSelection || unsupported.length ? errorId : undefined}
     >
       <div
         className={cn(
@@ -112,7 +121,25 @@ const DebugMode = ({ value, onChange, readonly, email }: DebugModeProps) => {
             <div className="px-2 pt-1 pb-0.5 system-xs-medium text-text-tertiary">
               {t(($) => $['nodes.humanInputV2.debug.sendVia'], { ns: 'workflow' })}
             </div>
-            {HUMAN_INPUT_V2_DEBUG_CHANNELS.map((channel) => {
+            {configured.isPending && (
+              <p role="status" className="px-2 py-1 system-xs-regular text-text-tertiary">
+                {t(($) => $['imPlatform.loading'], { ns: 'contacts' })}
+              </p>
+            )}
+            {configured.isError && (
+              <div role="alert" className="px-2 py-1 system-xs-regular text-text-destructive">
+                {t(($) => $['imPlatform.loadError.title'], { ns: 'contacts' })}
+                <Button size="small" onClick={() => void configured.refetch()}>
+                  {t(($) => $['operation.retry'], { ns: 'common' })}
+                </Button>
+              </div>
+            )}
+            {configured.isSuccess && !configured.channels.length && (
+              <p role="status" className="px-2 py-1 system-xs-regular text-text-tertiary">
+                {t(($) => $['nodes.humanInputV2.template.notConfigured'], { ns: 'workflow' })}
+              </p>
+            )}
+            {configured.channels.map((channel) => {
               const isLastChannel = selected.length === 1 && selected[0] === channel
               const label = t(($) => $[`nodes.humanInputV2.debug.channel.${channel}`], {
                 ns: 'workflow',
@@ -162,20 +189,20 @@ const DebugMode = ({ value, onChange, readonly, email }: DebugModeProps) => {
         <div className="relative h-3 w-1.25 shrink-0 border-l border-divider-regular" />
         <Switch
           aria-label={t(($) => $['nodes.humanInputV2.debug.toggle'], { ns: 'workflow' })}
-          aria-describedby={value.enabled && !selected.length ? errorId : undefined}
+          aria-describedby={missingSelection ? errorId : undefined}
           checked={value.enabled}
-          disabled={readonly}
+          disabled={readonly || (!value.enabled && !configured.channels.length)}
           onCheckedChange={(enabled) => onChange({ ...value, enabled })}
         />
       </div>
-      {value.enabled && !selected.length && (
+      {missingSelection && (
         <div id={errorId} role="alert" className="mt-1 system-xs-regular text-text-destructive">
           {t(($) => $['nodes.humanInputV2.error.debugChannelRequired'], { ns: 'workflow' })}
         </div>
       )}
       {!!unsupported.length && (
         <div
-          id={value.enabled && !selected.length ? undefined : errorId}
+          id={missingSelection ? undefined : errorId}
           role="alert"
           className="mt-1 system-xs-regular text-text-destructive"
         >
