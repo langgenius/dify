@@ -157,6 +157,6 @@ class DatasetsHitTestingBase:
             raise CompletionRequestError(e.description)
         except ValueError as e:
             raise ValueError(str(e))
-        except Exception as e:
+        except Exception:
             logger.exception("Hit testing failed.")
-            raise InternalServerError(str(e))
+            raise InternalServerError()
