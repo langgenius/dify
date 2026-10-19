@@ -16,6 +16,12 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  ScrollArea,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -303,13 +309,14 @@ const EmbeddedContent = ({
                 )}
               >
                 <div className="inline-flex items-center justify-start gap-2 self-stretch rounded-t-lg bg-background-section-burn py-1 pr-1 pl-3">
-                  <div className="shrink-0 grow system-sm-medium text-text-secondary">
+                  <div className="min-w-0 flex-1 system-sm-medium wrap-break-word text-text-secondary">
                     {t(($) => $[`${prefixEmbedded}.${v}`], { ns: 'appOverview' })}
                   </div>
                   <Tooltip>
                     <TooltipTrigger
                       render={
                         <IconButton
+                          className="shrink-0"
                           aria-label={
                             (copiedOption === v
                               ? t(($) => $[`${prefixEmbedded}.copied`], { ns: 'appOverview' })
@@ -332,23 +339,36 @@ const EmbeddedContent = ({
                     </TooltipContent>
                   </Tooltip>
                 </div>
-                <div className="flex max-h-[clamp(180px,calc(100dvh-320px),360px)] w-full items-start justify-start gap-2 overflow-auto p-3">
-                  <div className="shrink grow basis-0 font-mono text-[13px] leading-tight text-text-secondary">
-                    <pre className="select-text">
-                      {v === 'scripts' ? (
-                        scriptsContent
-                      ) : (
-                        <Suspense fallback={previewFallback}>
-                          <AsyncEmbeddedOptionContent
-                            option={v}
-                            iframeUrlPromise={previewIframeUrlPromise}
-                            latestResolvedIframeUrlRef={latestResolvedIframeUrlRef}
-                          />
-                        </Suspense>
-                      )}
-                    </pre>
-                  </div>
-                </div>
+                <ScrollArea className="relative w-full">
+                  <ScrollAreaViewport
+                    role="region"
+                    aria-label={t(($) => $[`${prefixEmbedded}.${v}`], { ns: 'appOverview' })}
+                    tabIndex={0}
+                    className="flex max-h-[clamp(180px,calc(100dvh-320px),360px)] items-start justify-start gap-2 rounded-b-lg p-3 focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
+                  >
+                    <div className="shrink grow basis-0 font-mono text-[13px] leading-tight text-text-secondary">
+                      <pre className="select-text">
+                        {v === 'scripts' ? (
+                          scriptsContent
+                        ) : (
+                          <Suspense fallback={previewFallback}>
+                            <AsyncEmbeddedOptionContent
+                              option={v}
+                              iframeUrlPromise={previewIframeUrlPromise}
+                              latestResolvedIframeUrlRef={latestResolvedIframeUrlRef}
+                            />
+                          </Suspense>
+                        )}
+                      </pre>
+                    </div>
+                  </ScrollAreaViewport>
+                  <ScrollAreaScrollbar orientation="vertical" className="right-0">
+                    <ScrollAreaThumb />
+                  </ScrollAreaScrollbar>
+                  <ScrollAreaScrollbar orientation="horizontal" className="bottom-0">
+                    <ScrollAreaThumb />
+                  </ScrollAreaScrollbar>
+                </ScrollArea>
               </div>
             </TabsPanel>
           )
