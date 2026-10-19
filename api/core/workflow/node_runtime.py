@@ -550,6 +550,12 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         variable_pool,
         node_execution_id: str | None = None,
     ) -> ToolRuntimeHandle:
+        # Dify owns credential selection; reject unsupported sources before resolving workspace credentials.
+        source = node_data.get("credential_source", "workspace")
+        if source != "workspace":
+            raise ToolRuntimeResolutionError(
+                f"Tool node {node_id!r}: credential source {source!r} is not supported by this runtime yet."
+            )
         try:
             tool_runtime = ToolManager.get_workflow_tool_runtime(
                 self._run_context.tenant_id,

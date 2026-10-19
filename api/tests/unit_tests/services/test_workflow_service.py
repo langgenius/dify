@@ -736,6 +736,76 @@ class TestWorkflowService:
         assert workflow.environment_variables == environment_variables
         assert workflow.conversation_variables == conversation_variables
 
+    @pytest.mark.parametrize("collaborative", [False, True])
+    @pytest.mark.parametrize(
+        "end_user_auth", [{}, {"credential_type": "oauth2", "selection_mode": "independent", "purpose": "Read mail."}]
+    )
+    def test_sync_draft_preserves_tool_credentials_and_unfinished_configuration(
+        self,
+        workflow_service: WorkflowService,
+        sqlite_session: Session,
+        collaborative: bool,
+        end_user_auth: dict[str, str],
+    ) -> None:
+        app = TestWorkflowAssociatedDataFactory.create_app()
+        account = TestWorkflowAssociatedDataFactory.create_account()
+        graph = {
+            "nodes": [
+                {
+                    "id": "personal",
+                    "data": {
+                        "type": "tool",
+                        "provider_type": "builtin",
+                        "provider_id": "langgenius/mail/mail",
+                        "credential_source": "end_user",
+                        "end_user_auth": end_user_auth,
+                        "test_credential_id": "workspace-test-credential",
+                    },
+                }
+            ],
+            "edges": [],
+        }
+        with patch("services.workflow_service.app_draft_workflow_was_synced"):
+            saved = workflow_service.sync_draft_workflow(
+                app_model=app,
+                graph=graph,
+                features={},
+                unique_hash=None,
+                account=account,
+                environment_variables=[],
+                conversation_variables=[],
+                session=sqlite_session,
+                graph_only=collaborative,
+            )
+
+        sqlite_session.expire(saved)
+        loaded = workflow_service.get_draft_workflow(app, session=sqlite_session)
+        assert loaded is not None
+        assert loaded.graph_dict == graph
+
+    def test_malformed_tool_credentials_do_not_replace_the_saved_graph(
+        self, workflow_service: WorkflowService, sqlite_session: Session
+    ) -> None:
+        workflow = TestWorkflowAssociatedDataFactory.create_workflow()
+        sqlite_session.add(workflow)
+        sqlite_session.commit()
+        original = workflow.graph_dict
+        invalid = {"nodes": [{"id": "personal", "data": {"type": "tool", "credential_source": "invalid"}}]}
+
+        with pytest.raises(ValueError, match="personal.*credential_source"):
+            workflow_service.sync_draft_workflow(
+                app_model=TestWorkflowAssociatedDataFactory.create_app(),
+                graph=invalid,
+                features={},
+                unique_hash=workflow.unique_hash,
+                account=TestWorkflowAssociatedDataFactory.create_account(),
+                environment_variables=[],
+                conversation_variables=[],
+                session=sqlite_session,
+            )
+
+        assert workflow.graph_dict == original
+
     def test_sync_draft_workflow_raises_hash_not_equal_error(
         self, workflow_service: WorkflowService, sqlite_session: Session
     ):
@@ -2154,6 +2224,34 @@ class TestWorkflowServiceCredentialValidation:
         )
 
     # --- _validate_workflow_credentials: tool node (with credential_id) ---
+
+    @pytest.mark.parametrize("credential_id", [None, "old-workspace-credential"])
+    def test_end_user_nodes_do_not_check_workspace_or_test_credentials(
+        self, service: WorkflowService, sqlite_session: Session, credential_id: str | None
+    ) -> None:
+        workflow = self._make_workflow(
+            [
+                {
+                    "id": "personal",
+                    "data": {
+                        "type": "tool",
+                        "provider_id": "langgenius/mail/mail",
+                        "credential_source": "end_user",
+                        "credential_id": credential_id,
+                        "test_credential_id": "deleted-test-credential",
+                    },
+                }
+            ]
+        )
+
+        with (
+            patch.object(service, "_check_default_tool_credential") as check_default,
+            patch("core.helper.credential_utils.check_credential_policy_compliance") as check_policy,
+        ):
+            service._validate_workflow_credentials(workflow, session=sqlite_session)
+
+        check_default.assert_not_called()
+        check_policy.assert_not_called()
 
     def test_validate_workflow_credentials_should_check_tool_credential_when_credential_id_present(
         self, service: WorkflowService, sqlite_session: Session
