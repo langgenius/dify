@@ -1,6 +1,7 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import TextareaAutosize from 'react-textarea-autosize'
 import { useDifyBuilderInteractionLocale } from './interactions/use-interaction-locale'
 import DifyBuilderModelSelector from './model-selector'
 import { DifyBuilderModelStatus } from './model-status'
@@ -37,13 +38,15 @@ const DifyBuilderPromptInput = ({ descriptionId }: { descriptionId?: string }) =
   }, [])
 
   return (
-    <textarea
+    <TextareaAutosize
       value={draft}
+      minRows={2}
+      maxRows={8}
       disabled={!canCompose}
       aria-label={t(($) => $.messagePlaceholder, { ns: 'difyBuilder' })}
       aria-describedby={descriptionId}
       placeholder={placeholder}
-      className="block min-h-10 w-full grow resize-none bg-transparent px-2 py-1 text-sm leading-5 tracking-[-0.07px] text-text-primary caret-[#295EFF] outline-hidden placeholder:text-text-placeholder disabled:cursor-not-allowed"
+      className="block w-full resize-none overflow-y-auto overscroll-contain bg-transparent px-2 py-1 text-sm leading-5 tracking-[-0.07px] text-text-primary caret-[#295EFF] outline-hidden placeholder:text-text-placeholder disabled:cursor-not-allowed"
       onChange={(event) => setDraft(event.currentTarget.value)}
       onCompositionStart={() => {
         if (compositionEndTimerRef.current) clearTimeout(compositionEndTimerRef.current)
@@ -99,14 +102,14 @@ const DifyBuilderComposer = () => {
       {showStatus && <DifyBuilderModelStatus {...modelState} id={statusId} rejected={rejected} />}
       <form
         aria-label={t(($) => $.messagePlaceholder, { ns: 'difyBuilder' })}
-        className="mx-4 h-21 overflow-hidden rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px] focus-within:border-components-input-border-active-prompt-1"
+        className="mx-4 overflow-hidden rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px] focus-within:border-components-input-border-active-prompt-1"
         onSubmit={(event) => {
           event.preventDefault()
           if (!model) return
           void sendDraft(model)
         }}
       >
-        <div className="flex h-full flex-col items-end justify-end p-1.5">
+        <div className="flex flex-col items-end justify-end p-1.5">
           <DifyBuilderPromptInput descriptionId={showStatus ? statusId : undefined} />
           <div className="flex h-8 w-full shrink-0 items-center justify-between gap-2 pl-1">
             <DifyBuilderModelSelector {...modelState} />
