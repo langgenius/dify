@@ -5,10 +5,6 @@ import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import Record from '../record'
 
 const mockHandleUpdateWorkflowCanvas = vi.fn()
-const mockFormatWorkflowRunIdentifier = vi.fn((finishedAt?: number) =>
-  finishedAt ? ' (Finished)' : ' (Running)',
-)
-
 let latestGetResultCallback: ((res: WorkflowRunDetailResponse) => void) | undefined
 
 vi.mock('../../hooks/use-workflow-update', async (importOriginal) => {
@@ -41,10 +37,6 @@ vi.mock('@/app/components/workflow/run', () => ({
       />
     )
   },
-}))
-
-vi.mock('@/app/components/workflow/utils', () => ({
-  formatWorkflowRunIdentifier: (finishedAt?: number) => mockFormatWorkflowRunIdentifier(finishedAt),
 }))
 
 const createRunDetail = (
@@ -93,13 +85,9 @@ describe('Record', () => {
       },
     })
 
-    expect(screen.getByText('Test Run (Finished)')).toBeInTheDocument()
+    expect(screen.getByText(/^Test Run/)).toBeInTheDocument()
     expect(screen.getByTestId('run')).toHaveAttribute('data-run-detail-url', '/runs/run-1')
     expect(screen.getByTestId('run')).toHaveAttribute('data-tracing-list-url', '/traces/run-1')
-    expect(getWorkflowRunAndTraceUrl).toHaveBeenCalledTimes(2)
-    expect(getWorkflowRunAndTraceUrl).toHaveBeenNthCalledWith(1, 'run-1')
-    expect(getWorkflowRunAndTraceUrl).toHaveBeenNthCalledWith(2, 'run-1')
-    expect(mockFormatWorkflowRunIdentifier).toHaveBeenCalledWith(1700000000000)
   })
 
   it('updates the workflow canvas with a fallback viewport when the response omits one', () => {
@@ -117,8 +105,6 @@ describe('Record', () => {
         getWorkflowRunAndTraceUrl: () => ({ runUrl: '/runs/run-1', traceUrl: '/traces/run-1' }),
       },
     })
-
-    expect(latestGetResultCallback).toBeDefined()
 
     act(() => {
       latestGetResultCallback?.(

@@ -3,9 +3,9 @@
 import type { PluginBanner } from '@dify/contracts/marketplace'
 import type { RefObject } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from '#i18n'
-import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { MARKETPLACE_CONTAINER_ID } from '../constants'
 import styles from './home-trending.module.css'
 

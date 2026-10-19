@@ -365,6 +365,6 @@ class ElasticSearchVectorFactory(AbstractVectorFactory):
 
         return ElasticSearchVector(
             index_name=collection_name,
-            config=ElasticSearchConfig(**config_dict),
+            config=ElasticSearchConfig.model_validate(config_dict),
             attributes=[],
         )

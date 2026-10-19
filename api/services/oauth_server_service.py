@@ -143,6 +143,7 @@ class OAuthServerService:
             avatar=account.avatar,
             interface_language=account.interface_language,
             timezone=account.timezone,
+            created_at=account.created_at,
         )
 
     def _require_provider_app(self, client_id: str) -> OAuthProviderAppRecord:

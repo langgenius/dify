@@ -287,7 +287,7 @@ const ConditionItem = ({
                                   aria-hidden
                                   className="mr-1.25 i-custom-vender-solid-development-variable-02 h-3.5 w-3.5 text-text-accent"
                                 />
-                                <SelectItemText className="mr-0 px-0 system-sm-medium text-text-secondary">
+                                <SelectItemText className="mr-0 system-sm-medium text-text-secondary">
                                   {option.name}
                                 </SelectItemText>
                               </div>
@@ -363,7 +363,7 @@ const ConditionItem = ({
               value={selectedSelectOption?.value ?? null}
               onValueChange={(value) => value && handleUpdateConditionValue(value)}
             >
-              <SelectTrigger className="h-8 rounded-t-none border-0 px-2 text-xs hover:bg-components-input-bg-normal focus-visible:bg-components-input-bg-normal">
+              <SelectTrigger className="h-8 rounded-t-none border-0 pl-2 text-xs hover:bg-components-input-bg-normal focus-visible:bg-components-input-bg-normal">
                 {selectedSelectOption?.name ?? t(($) => $['placeholder.select'], { ns: 'common' })}
               </SelectTrigger>
               <SelectContent>

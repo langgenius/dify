@@ -1,30 +1,35 @@
-import type { ReactNode } from 'react'
 import type { CustomRunFormProps, DataSourceNodeType } from '../types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useDataSourceStoreWithSelector } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
 import { DatasourceType } from '@/models/pipeline'
-import { FlowType } from '@/types/common'
 import { BlockEnum } from '../../../types'
 import BeforeRunForm from '../before-run-form'
 import useBeforeRunForm from '../hooks/use-before-run-form'
 
-const mockUseDataSourceStore = vi.hoisted(() => vi.fn())
-const mockSetCurrentCredentialId = vi.hoisted(() => vi.fn())
 const mockClearOnlineDocumentData = vi.hoisted(() => vi.fn())
 const mockClearWebsiteCrawlData = vi.hoisted(() => vi.fn())
 const mockClearOnlineDriveData = vi.hoisted(() => vi.fn())
 
-vi.mock('@/app/components/datasets/documents/create-from-pipeline/data-source/store', () => ({
-  useDataSourceStore: () => mockUseDataSourceStore(),
-}))
-
-vi.mock(
-  '@/app/components/datasets/documents/create-from-pipeline/data-source/store/provider',
-  () => ({
-    __esModule: true,
-    default: ({ children }: { children: ReactNode }) => <>{children}</>,
-  }),
-)
+function CredentialAction({
+  name,
+  credentialId,
+  onCredentialChange,
+}: {
+  name: string
+  credentialId: string
+  onCredentialChange: (id: string) => void
+}) {
+  const currentCredentialId = useDataSourceStoreWithSelector((state) => state.currentCredentialId)
+  return (
+    <>
+      <button type="button" onClick={() => onCredentialChange(credentialId)}>
+        {name}
+      </button>
+      <output>{currentCredentialId}</output>
+    </>
+  )
+}
 
 vi.mock('@/app/components/datasets/documents/create-from-pipeline/data-source/local-file', () => ({
   __esModule: true,
@@ -38,9 +43,11 @@ vi.mock(
   () => ({
     __esModule: true,
     default: ({ onCredentialChange }: { onCredentialChange: (credentialId: string) => void }) => (
-      <button type="button" onClick={() => onCredentialChange('credential-doc')}>
-        online-documents
-      </button>
+      <CredentialAction
+        name="online-documents"
+        credentialId="credential-doc"
+        onCredentialChange={onCredentialChange}
+      />
     ),
   }),
 )
@@ -50,9 +57,11 @@ vi.mock(
   () => ({
     __esModule: true,
     default: ({ onCredentialChange }: { onCredentialChange: (credentialId: string) => void }) => (
-      <button type="button" onClick={() => onCredentialChange('credential-site')}>
-        website-crawl
-      </button>
+      <CredentialAction
+        name="website-crawl"
+        credentialId="credential-site"
+        onCredentialChange={onCredentialChange}
+      />
     ),
   }),
 )
@@ -62,9 +71,11 @@ vi.mock(
   () => ({
     __esModule: true,
     default: ({ onCredentialChange }: { onCredentialChange: (credentialId: string) => void }) => (
-      <button type="button" onClick={() => onCredentialChange('credential-drive')}>
-        online-drive
-      </button>
+      <CredentialAction
+        name="online-drive"
+        credentialId="credential-drive"
+        onCredentialChange={onCredentialChange}
+      />
     ),
   }),
 )
@@ -73,27 +84,6 @@ vi.mock('@/app/components/rag-pipeline/components/panel/test-run/preparation/hoo
   useOnlineDocument: () => ({ clearOnlineDocumentData: mockClearOnlineDocumentData }),
   useWebsiteCrawl: () => ({ clearWebsiteCrawlData: mockClearWebsiteCrawlData }),
   useOnlineDrive: () => ({ clearOnlineDriveData: mockClearOnlineDriveData }),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/before-run-form/panel-wrap', () => ({
-  __esModule: true,
-  default: ({
-    nodeName,
-    onHide,
-    children,
-  }: {
-    nodeName: string
-    onHide: () => void
-    children: ReactNode
-  }) => (
-    <div>
-      <div>{nodeName}</div>
-      <button type="button" onClick={onHide}>
-        hide-panel
-      </button>
-      {children}
-    </div>
-  ),
 }))
 
 vi.mock('../hooks/use-before-run-form', () => ({
@@ -120,8 +110,8 @@ const createData = (overrides: Partial<DataSourceNodeType> = {}): DataSourceNode
 
 const createProps = (overrides: Partial<CustomRunFormProps> = {}): CustomRunFormProps => ({
   nodeId: 'data-source-node',
-  flowId: 'flow-id',
-  flowType: FlowType.ragPipeline,
+  resource: { kind: 'knowledge-pipeline', pipelineId: 'flow-id' },
+
   payload: createData(),
   setRunResult: vi.fn(),
   setIsRunAfterSingleRun: vi.fn(),
@@ -136,11 +126,6 @@ const createProps = (overrides: Partial<CustomRunFormProps> = {}): CustomRunForm
 describe('data-source/before-run-form', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseDataSourceStore.mockReturnValue({
-      getState: () => ({
-        setCurrentCredentialId: mockSetCurrentCredentialId,
-      }),
-    })
     mockUseBeforeRunForm.mockReturnValue({
       isPending: false,
       handleRunWithSyncDraft: vi.fn(),
@@ -155,7 +140,7 @@ describe('data-source/before-run-form', () => {
     const onCancel = vi.fn()
     const handleRunWithSyncDraft = vi.fn()
 
-    mockUseBeforeRunForm.mockReturnValueOnce({
+    mockUseBeforeRunForm.mockReturnValue({
       isPending: false,
       handleRunWithSyncDraft,
       datasourceType: DatasourceType.localFile,
@@ -165,7 +150,7 @@ describe('data-source/before-run-form', () => {
 
     render(<BeforeRunForm {...createProps({ onCancel })} />)
 
-    expect(screen.getByText('Datasource')).toBeInTheDocument()
+    expect(screen.getByText(/Datasource/)).toBeInTheDocument()
     expect(screen.getByText('pdf,md')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
@@ -178,7 +163,7 @@ describe('data-source/before-run-form', () => {
   it('clears stale online document data before switching credentials', async () => {
     const user = userEvent.setup()
 
-    mockUseBeforeRunForm.mockReturnValueOnce({
+    mockUseBeforeRunForm.mockReturnValue({
       isPending: false,
       handleRunWithSyncDraft: vi.fn(),
       datasourceType: DatasourceType.onlineDocument,
@@ -195,14 +180,14 @@ describe('data-source/before-run-form', () => {
     await user.click(screen.getByRole('button', { name: 'online-documents' }))
 
     expect(mockClearOnlineDocumentData).toHaveBeenCalled()
-    expect(mockSetCurrentCredentialId).toHaveBeenCalledWith('credential-doc')
+    expect(screen.getByRole('status')).toHaveTextContent('credential-doc')
     expect(screen.getByRole('button', { name: 'workflow.singleRun.startRun' })).toBeDisabled()
   })
 
   it('clears website crawl data before switching credentials', async () => {
     const user = userEvent.setup()
 
-    mockUseBeforeRunForm.mockReturnValueOnce({
+    mockUseBeforeRunForm.mockReturnValue({
       isPending: false,
       handleRunWithSyncDraft: vi.fn(),
       datasourceType: DatasourceType.websiteCrawl,
@@ -219,13 +204,13 @@ describe('data-source/before-run-form', () => {
     await user.click(screen.getByRole('button', { name: 'website-crawl' }))
 
     expect(mockClearWebsiteCrawlData).toHaveBeenCalled()
-    expect(mockSetCurrentCredentialId).toHaveBeenCalledWith('credential-site')
+    expect(screen.getByRole('status')).toHaveTextContent('credential-site')
   })
 
   it('clears online drive data before switching credentials', async () => {
     const user = userEvent.setup()
 
-    mockUseBeforeRunForm.mockReturnValueOnce({
+    mockUseBeforeRunForm.mockReturnValue({
       isPending: false,
       handleRunWithSyncDraft: vi.fn(),
       datasourceType: DatasourceType.onlineDrive,
@@ -242,6 +227,6 @@ describe('data-source/before-run-form', () => {
     await user.click(screen.getByRole('button', { name: 'online-drive' }))
 
     expect(mockClearOnlineDriveData).toHaveBeenCalled()
-    expect(mockSetCurrentCredentialId).toHaveBeenCalledWith('credential-drive')
+    expect(screen.getByRole('status')).toHaveTextContent('credential-drive')
   })
 })

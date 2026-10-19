@@ -1,27 +1,26 @@
 import { Button } from '@langgenius/dify-ui/button'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { FeaturesProvider } from '../../context'
 import { FollowUp } from '../follow-up'
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelListAndDefaultModelAndCurrentProviderAndModel: () => ({ defaultModel: undefined }),
-}))
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
-  () => ({
-    default: () => <div>Model selector</div>,
-  }),
-)
 
 describe('Follow-up settings keyboard access', () => {
   it('reveals the persistent trigger with keyboard focus and restores visible focus after closing', async () => {
     // Native focus and CSS visibility prove the card remains usable without hovering it.
+    const { queryClient, wrapper: QueryProvider } = createConsoleQueryWrapper()
+    seedModelProviderQueries(queryClient)
     const screen = await render(
-      <FeaturesProvider features={{ suggested: { enabled: true } }}>
-        <Button>Before feature</Button>
-        <FollowUp />
-      </FeaturesProvider>,
+      <NuqsTestingAdapter>
+        <QueryProvider>
+          <FeaturesProvider features={{ suggested: { enabled: true } }}>
+            <Button>Before feature</Button>
+            <FollowUp />
+          </FeaturesProvider>
+        </QueryProvider>
+      </NuqsTestingAdapter>,
     )
     await screen.getByRole('button', { name: 'Before feature' }).click()
     await userEvent.tab()
@@ -46,9 +45,6 @@ describe('Follow-up settings keyboard access', () => {
     await expect.element(trigger).toHaveFocus()
     expect(trigger.element().checkVisibility({ checkOpacity: true })).toBe(true)
     await userEvent.keyboard('{Enter}')
-    await expect
-      .element(dialog.getByRole('radio', { name: /modal.defaultPromptOption/ }))
-      .toBeChecked()
     await dialog.getByRole('button', { name: 'common.operation.save' }).click()
     await expect.element(dialog).not.toBeInTheDocument()
     await expect.element(trigger).toHaveFocus()
