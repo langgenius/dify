@@ -162,6 +162,21 @@ class TestFilePreviewApi:
         assert drained is False
 
     @patch.object(module, "application_services")
+    def test_audio_preview_ignores_range_when_if_range_is_present(self, mock_application_services, app: Flask):
+        # Same RFC 9110 13.1.5 rule on this route: stale If-Range + Range
+        # must answer 200 with the complete body.
+        mock_application_services.return_value.upload_file_delivery.get_signed_file_preview.return_value = _delivery(
+            mime_type="audio/mpeg", size=1000, extension="mp3", content=b"x" * 1000
+        )
+
+        with app.test_request_context(_SIGNED_QUERY, headers={"Range": "bytes=0-9", "If-Range": '"stale-validator"'}):
+            response = module.FilePreviewApi().get("file-id")
+
+        assert response.status_code == 200
+        assert "Content-Range" not in response.headers
+        assert b"".join(response.response) == b"x" * 1000
+
+    @patch.object(module, "application_services")
     def test_audio_preview_suffix_range_returns_file_tail(self, mock_application_services, app: Flask):
         mock_application_services.return_value.upload_file_delivery.get_signed_file_preview.return_value = _delivery(
             mime_type="audio/mpeg", size=1000, extension="mp3", content=b"x" * 1000
