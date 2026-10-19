@@ -207,7 +207,7 @@ def test_other_http_providers_have_native_semantics(
         ("https://project.cn-heyuan-intranet.log.aliyuncs.com/apm/trace/opentelemetry", "api/v1/traces"),
         ("https://cn-shanghai-share.log.aliyuncs.com", "api/v1/traces"),
         ("https://cn-beijing.dualstack.log.aliyuncs.com", "api/v1/traces"),
-        ("https://CN-HANGZHOU.LOG.ALIYUNCS.COM.:443", "api/v1/traces"),
+        ("https://cn-hangzhou.log.aliyuncs.com.:443", "api/v1/traces"),
         ("https://tracing-analysis-dc-hz.aliyuncs.com", "api/otlp/traces"),
         ("https://collector.example.test:4318/custom-prefix", "api/otlp/traces"),
         ("https://evil-log.aliyuncs.com.evil.test", "api/otlp/traces"),
@@ -228,6 +228,32 @@ def test_aliyun_endpoint_family_uses_dns_labels_and_preserves_custom_destination
     spans = spans_from_call(http_calls[0])
     assert [span.span_id.hex() for span in spans] == [span.id for span in trace.spans]
     assert spans[1].parent_span_id == spans[0].span_id
+
+
+def test_aliyun_raw_license_is_encoded_once_at_the_real_otlp_boundary(
+    trace: CanonicalTrace, http_calls: list[HTTPCall]
+) -> None:
+    result = export_trace(
+        "aliyun",
+        {"endpoint": "https://COLLECTOR.test:8443/prefix/", "license_key": "raw%2F@a+b/c", "app_name": "test_app"},
+        trace,
+    )
+    assert result.status == "accepted"
+    assert len(http_calls) == 1
+    assert http_calls[0][1] == "https://collector.test:8443/prefix/adapt_raw%252F@a%2Bb%2Fc/api/otlp/traces"
+    assert [span.span_id.hex() for span in spans_from_call(http_calls[0])] == [span.id for span in trace.spans]
+
+
+def test_aliyun_complete_token_url_is_rejected_without_any_ingestion(
+    trace: CanonicalTrace, http_calls: list[HTTPCall]
+) -> None:
+    with pytest.raises(TraceExportRejectedError, match="Aliyun tracing configuration is invalid"):
+        export_trace(
+            "aliyun",
+            {"endpoint": "https://collector.test/adapt_private/api/otlp/traces", "license_key": "private"},
+            trace,
+        )
+    assert http_calls == []
 
 
 @pytest.mark.parametrize(
