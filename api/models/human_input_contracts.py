@@ -24,9 +24,7 @@ class FormCreateParams:
     display_in_ui: bool
     resolved_default_values: Mapping[str, Any]
     form_kind: HumanInputFormKind = HumanInputFormKind.RUNTIME
-    # ENG-635: the conversation this form belongs to. Set together with
-    # workflow_execution_id for chatflow runs; set alone (workflow_execution_id None)
-    # for Agent v2 chat ask_human forms, which have no workflow run.
+    # Chatflow forms also belong to a conversation.
     conversation_id: str | None = None
     form_id: str | None = None
 
@@ -96,8 +94,7 @@ class HumanInputFormRecord:
     recipient_id: str | None
     recipient_type: RecipientType | None
     access_token: str | None
-    # ENG-635: Agent v2 chat owner (NULL for workflow-owned forms). Trailing +
-    # defaulted so existing record constructions stay source-compatible.
+    # Retain chatflow correlation alongside the workflow run owner.
     conversation_id: str | None = None
 
     @property

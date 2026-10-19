@@ -6,6 +6,7 @@ from uuid import UUID
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field, RootModel, ValidationError, field_validator, model_validator
+from pydantic.json_schema import SkipJsonSchema
 
 import services.errors.conversation
 from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
@@ -24,7 +25,7 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
-from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotSync
+from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.app.workflow_admission import console_workflow_admission
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import RBACPermission, model_validate
@@ -47,10 +48,12 @@ from fields.workflow_run_fields import WorkflowRunNodeExecutionResponse
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.variables.exc import VariableError
 from libs import helper
+from libs.external_api import error_responses
 from libs.helper import TimestampField, dump_response, uuid_value
 from machinery.context import RequestContext
 from models.model import AppMode
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
+from services.errors.llm import InvokeRateLimitError
 from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from services.workflow.contracts import (
     RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE,
@@ -61,8 +64,6 @@ from services.workflow.contracts import (
 
 logger = logging.getLogger(__name__)
 LISTENING_RETRY_IN = 2000
-
-from services.errors.llm import InvokeRateLimitError
 
 
 class SyncEnvironmentVariablePatchPayload(BaseModel):
@@ -92,6 +93,7 @@ class SyncDraftWorkflowPayload(BaseModel):
     graph: dict[str, Any]
     features: dict[str, Any]
     hash: str | None = None
+    force: bool = Field(default=False, strict=True, description="Explicitly confirm saving an empty workflow graph.")
     is_collaborative: bool = Field(default=False, alias="_is_collaborative")
     environment_variable_patch: SyncEnvironmentVariablePatchPayload | None = None
     conversation_variables: list[dict[str, Any]] = Field(
@@ -225,6 +227,13 @@ class WorkflowOnlineUsersPayload(BaseModel):
         return list(dict.fromkeys(app_id.strip() for app_id in app_ids if app_id.strip()))
 
 
+class WorkflowTriggerRunErrorResponse(ResponseModel):
+    """400 body when a draft trigger run fails; ``error`` is omitted when there is nothing user-facing to say."""
+
+    status: Literal["error"]
+    error: str | SkipJsonSchema[None] = None
+
+
 class WorkflowOnlineUser(ResponseModel):
     user_id: str
     username: str
@@ -309,6 +318,7 @@ register_response_schema_model(console_ns, WorkflowRunNodeExecutionResponse)
 
 register_response_schema_models(
     console_ns,
+    WorkflowTriggerRunErrorResponse,
     WorkflowConversationVariableResponse,
     PipelineVariableResponse,
     WorkflowEnvironmentVariableResponse,
@@ -333,6 +343,7 @@ register_response_schema_models(
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft")
 class DraftWorkflowApi(Resource):
+    @error_responses(DraftWorkflowNotExist)
     @console_ns.doc("get_draft_workflow")
     @console_ns.doc(description="Get draft workflow for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -348,6 +359,7 @@ class DraftWorkflowApi(Resource):
             WorkflowResponse, application_services().console_workflows.draft(request_context, str(app_id))
         )
 
+    @error_responses(DraftWorkflowNotSync)
     @console_ns.doc("sync_draft_workflow")
     @console_ns.doc(description="Sync draft workflow configuration")
     @console_ns.expect(console_ns.models[SyncDraftWorkflowPayload.__name__])
@@ -364,15 +376,21 @@ class DraftWorkflowApi(Resource):
         if "application/json" in content_type:
             payload_data = request.get_json(silent=True)
             if not isinstance(payload_data, dict):
-                return {"message": "Invalid JSON data"}, 400
+                raise InvalidArgumentError("Invalid JSON data")
             args_model = SyncDraftWorkflowPayload.model_validate(payload_data)
         elif "text/plain" in content_type:
             try:
                 args_model = SyncDraftWorkflowPayload.model_validate_json(request.data)
             except (ValueError, ValidationError):
-                return {"message": "Invalid JSON data"}, 400
+                raise InvalidArgumentError("Invalid JSON data")
         else:
             raise UnsupportedMediaTypeError()
+
+        # Empty autosaves can otherwise replace a populated draft, even with a matching hash.
+        # Require explicit confirmation for both regular saves and text/plain unload beacons.
+        if args_model.graph.get("nodes") == [] and args_model.graph.get("edges") == [] and not args_model.force:
+            raise InvalidArgumentError(description="Saving an empty workflow requires force=true.")
+
         patch = args_model.environment_variable_patch
         try:
             result = application_services().console_workflows.sync(
@@ -404,6 +422,7 @@ class DraftWorkflowApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/run")
 class AdvancedChatDraftWorkflowRunApi(Resource):
+    @error_responses(InvokeRateLimitHttpError)
     @console_ns.doc("run_advanced_chat_draft_workflow")
     @console_ns.doc(description="Run draft workflow for advanced chat application")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -565,7 +584,7 @@ class HumanInputFormPreviewPayload(BaseModel):
     )
 
 
-class HumanInputFormSubmitPayload(BaseModel):
+class HumanInputFormPreviewSubmitPayload(BaseModel):
     form_inputs: dict[str, Any] = Field(
         ...,
         description="Values the user provides for the form's own fields",
@@ -588,7 +607,7 @@ class HumanInputDeliveryTestPayload(BaseModel):
 register_schema_models(
     console_ns,
     HumanInputFormPreviewPayload,
-    HumanInputFormSubmitPayload,
+    HumanInputFormPreviewSubmitPayload,
     HumanInputDeliveryTestPayload,
 )
 
@@ -613,15 +632,17 @@ class AdvancedChatDraftHumanInputFormRunApi(Resource):
     @console_ns.doc("submit_advanced_chat_draft_human_input_form")
     @console_ns.doc(description="Submit human input form preview for advanced chat workflow")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.expect(console_ns.models[HumanInputFormSubmitPayload.__name__])
+    @console_ns.expect(console_ns.models[HumanInputFormPreviewSubmitPayload.__name__])
     @console_ns.response(
         200,
         "Human input form submission result",
         console_ns.models[HumanInputFormSubmitResponse.__name__],
     )
     @console_workflow_admission(permission=RBACPermission.APP_TEST_AND_RUN, modes=(AppMode.ADVANCED_CHAT,))
-    @model_validate(HumanInputFormSubmitPayload)
-    def post(self, args: HumanInputFormSubmitPayload, request_context: RequestContext, app_id: UUID, node_id: str):
+    @model_validate(HumanInputFormPreviewSubmitPayload)
+    def post(
+        self, args: HumanInputFormPreviewSubmitPayload, request_context: RequestContext, app_id: UUID, node_id: str
+    ):
         return jsonable_encoder(
             application_services().human_input_debug.submit_form(
                 request_context,
@@ -654,15 +675,17 @@ class WorkflowDraftHumanInputFormRunApi(Resource):
     @console_ns.doc("submit_workflow_draft_human_input_form")
     @console_ns.doc(description="Submit human input form preview for workflow")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.expect(console_ns.models[HumanInputFormSubmitPayload.__name__])
+    @console_ns.expect(console_ns.models[HumanInputFormPreviewSubmitPayload.__name__])
     @console_ns.response(
         200,
         "Human input form submission result",
         console_ns.models[HumanInputFormSubmitResponse.__name__],
     )
     @console_workflow_admission(permission=RBACPermission.APP_TEST_AND_RUN, modes=(AppMode.WORKFLOW,))
-    @model_validate(HumanInputFormSubmitPayload)
-    def post(self, args: HumanInputFormSubmitPayload, request_context: RequestContext, app_id: UUID, node_id: str):
+    @model_validate(HumanInputFormPreviewSubmitPayload)
+    def post(
+        self, args: HumanInputFormPreviewSubmitPayload, request_context: RequestContext, app_id: UUID, node_id: str
+    ):
         return jsonable_encoder(
             application_services().human_input_debug.submit_form(
                 request_context,
@@ -697,6 +720,7 @@ class WorkflowDraftHumanInputDeliveryTestApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/run")
 class DraftWorkflowRunApi(Resource):
+    @error_responses(InvokeRateLimitHttpError)
     @console_ns.doc("run_draft_workflow")
     @console_ns.doc(description="Run draft workflow")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -941,7 +965,7 @@ class WorkflowByIdApi(Resource):
     def patch(self, args: WorkflowUpdatePayload, request_context: RequestContext, app_id: UUID, workflow_id: str):
         changes = args.model_dump(exclude_none=True)
         if not changes:
-            return {"message": "No valid fields to update"}, 400
+            raise InvalidArgumentError("No valid fields to update")
         return dump_response(
             WorkflowResponse,
             application_services().console_workflows.update(request_context, str(app_id), workflow_id, changes),
@@ -979,6 +1003,12 @@ class DraftWorkflowNodeLastRunApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/trigger/run")
 class DraftWorkflowTriggerRunApi(Resource):
+    """
+    Full workflow debug - Polling API for trigger events
+    Path: /apps/<uuid:app_id>/workflows/draft/trigger/run
+    """
+
+    @error_responses(InvokeRateLimitHttpError)
     @console_ns.doc("poll_draft_workflow_trigger_run")
     @console_ns.doc(description="Poll for trigger events and execute full workflow when event arrives")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -988,6 +1018,7 @@ class DraftWorkflowTriggerRunApi(Resource):
         "Trigger event received and workflow executed successfully",
         console_ns.models[GeneratedAppResponse.__name__],
     )
+    @console_ns.response(400, "Trigger run failed", console_ns.models[WorkflowTriggerRunErrorResponse.__name__])
     @console_ns.response(403, "Permission denied")
     @console_ns.response(500, "Internal server error")
     @console_workflow_admission(permission=RBACPermission.APP_TEST_AND_RUN, modes=(AppMode.WORKFLOW,))
@@ -1019,6 +1050,7 @@ class DraftWorkflowTriggerNodeApi(Resource):
         "Trigger event received and node executed successfully",
         console_ns.models[GeneratedAppResponse.__name__],
     )
+    @console_ns.response(400, "Trigger run failed", console_ns.models[WorkflowTriggerRunErrorResponse.__name__])
     @console_ns.response(403, "Permission denied")
     @console_ns.response(500, "Internal server error")
     @console_workflow_admission(permission=RBACPermission.APP_TEST_AND_RUN, modes=(AppMode.WORKFLOW,))
@@ -1041,11 +1073,18 @@ class DraftWorkflowTriggerNodeApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/trigger/run-all")
 class DraftWorkflowTriggerRunAllApi(Resource):
+    """
+    Full workflow debug - Polling API for trigger events
+    Path: /apps/<uuid:app_id>/workflows/draft/trigger/run-all
+    """
+
+    @error_responses(InvokeRateLimitHttpError)
     @console_ns.doc("draft_workflow_trigger_run_all")
     @console_ns.doc(description="Full workflow debug when the start node is a trigger")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[DraftWorkflowTriggerRunAllPayload.__name__])
     @console_ns.response(200, "Workflow executed successfully", console_ns.models[GeneratedAppResponse.__name__])
+    @console_ns.response(400, "Trigger run failed", console_ns.models[WorkflowTriggerRunErrorResponse.__name__])
     @console_ns.response(403, "Permission denied")
     @console_ns.response(500, "Internal server error")
     @console_workflow_admission(permission=RBACPermission.APP_TEST_AND_RUN, modes=(AppMode.WORKFLOW,))

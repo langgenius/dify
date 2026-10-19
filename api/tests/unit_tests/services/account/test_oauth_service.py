@@ -171,7 +171,7 @@ class FakeAccountClaims:
     _registry_lock: LockType = field(default_factory=Lock, repr=False)
 
     @contextmanager
-    def acquire(self, *, provider: str, open_id: str, email: str) -> Generator[FakeAccountClaimLease, None, None]:
+    def acquire(self, *, provider: str, open_id: str, email: str) -> Generator[FakeAccountClaimLease]:
         self.claims.append((provider, open_id, email))
         lease = FakeAccountClaimLease(lost=self.lose_identity_on_acquire)
         self.identity_leases.append(lease)
@@ -180,7 +180,7 @@ class FakeAccountClaims:
             lease.ensure_owned()
 
     @contextmanager
-    def acquire_account(self, account_id: str) -> Generator[FakeAccountClaimLease, None, None]:
+    def acquire_account(self, account_id: str) -> Generator[FakeAccountClaimLease]:
         self.account_ids.append(account_id)
         lease = FakeAccountClaimLease()
         self.account_leases.append(lease)
@@ -189,7 +189,7 @@ class FakeAccountClaims:
             lease.ensure_owned()
 
     @contextmanager
-    def _acquire_keys(self, keys: tuple[str, ...]) -> Generator[None, None, None]:
+    def _acquire_keys(self, keys: tuple[str, ...]) -> Generator[None]:
         with self._registry_lock:
             locks = [self._locks.setdefault(key, Lock()) for key in sorted(keys)]
         for lock in locks:

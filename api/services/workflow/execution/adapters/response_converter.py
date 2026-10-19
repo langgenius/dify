@@ -4,7 +4,7 @@ import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, NewType, TypedDict, Union
+from typing import Any, NewType, TypedDict
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
@@ -122,8 +122,8 @@ class WorkflowResponseConverter:
     def __init__(
         self,
         *,
-        application_generate_entity: Union[AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity],
-        user: Union[Account, EndUser],
+        application_generate_entity: AdvancedChatAppGenerateEntity | WorkflowAppGenerateEntity,
+        user: Account | EndUser,
         system_variables: Sequence[Variable],
         contexts: ExecutionContexts,
         tool_providers: ToolProviderIcons,
@@ -854,7 +854,7 @@ class WorkflowResponseConverter:
 
     @classmethod
     def _fetch_files_from_variable_value(
-        cls, value: Union[dict, list, Segment, File, None]
+        cls, value: dict | list | Segment | File | None
     ) -> Sequence[Mapping[str, Any]]:
         """
         Fetch files from variable value

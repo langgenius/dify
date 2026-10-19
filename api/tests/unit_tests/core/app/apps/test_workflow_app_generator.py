@@ -1,8 +1,7 @@
-from dataclasses import replace
-
 """SQLite-backed tests for workflow app generation and worker reload behavior."""
 
 import contextlib
+from dataclasses import replace
 from unittest.mock import MagicMock
 
 import pytest
@@ -298,7 +297,7 @@ def test_generate_appends_pause_layer_and_forwards_state(
         staticmethod(get_recording_draft_var_saver_factory),
     )
 
-    db_session = sqlite_session_factory()
+    sqlite_session_factory()
 
     worker_kwargs: dict[str, object] = {}
 
@@ -395,7 +394,7 @@ def test_resume_path_runs_worker_with_runtime_state(
         MagicMock(side_effect=lambda response, invoke_from: response),
     )
 
-    db_session = sqlite_session_factory()
+    sqlite_session_factory()
 
     runner_instance = MagicMock()
 

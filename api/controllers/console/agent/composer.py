@@ -28,11 +28,21 @@ from fields.agent_fields import (
     AgentComposerValidateResponse,
     WorkflowAgentComposerResponse,
 )
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import login_required
 from models.model import App, AppMode
 from services.agent.composer_service import AgentComposerService
 from services.agent.composer_validator import ComposerConfigValidator
+from services.agent.errors import (
+    AgentNameConflictError,
+    AgentNotFoundError,
+    AgentSoulLockedError,
+    AgentVersionConflictError,
+    AgentVersionNotFoundError,
+    InvalidComposerConfigError,
+    PlaintextSecretNotAllowedError,
+)
 from services.entities.agent_entities import (
     ComposerSavePayload,
     WorkflowAgentComposerQuery,
@@ -54,6 +64,7 @@ register_response_schema_models(
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/agent-composer")
 class WorkflowAgentComposerApi(Resource):
+    @error_responses(AgentNotFoundError, AgentVersionNotFoundError)
     @console_ns.response(
         200, "Workflow agent composer state", console_ns.models[WorkflowAgentComposerResponse.__name__]
     )
@@ -87,6 +98,14 @@ class WorkflowAgentComposerApi(Resource):
             ),
         )
 
+    @error_responses(
+        AgentNameConflictError,
+        AgentNotFoundError,
+        AgentSoulLockedError,
+        AgentVersionNotFoundError,
+        InvalidComposerConfigError,
+        PlaintextSecretNotAllowedError,
+    )
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
     @console_ns.response(
         200, "Workflow agent composer saved", console_ns.models[WorkflowAgentComposerResponse.__name__]
@@ -125,6 +144,9 @@ class WorkflowAgentComposerApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/agent-composer/copy-from-roster")
 class WorkflowAgentComposerCopyFromRosterApi(Resource):
+    @error_responses(
+        AgentNotFoundError, AgentVersionConflictError, AgentVersionNotFoundError, InvalidComposerConfigError
+    )
     @console_ns.expect(console_ns.models[WorkflowComposerCopyFromRosterPayload.__name__])
     @console_ns.response(
         200,
@@ -167,6 +189,7 @@ class WorkflowAgentComposerCopyFromRosterApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/agent-composer/validate")
 class WorkflowAgentComposerValidateApi(Resource):
+    @error_responses(AgentSoulLockedError, InvalidComposerConfigError, PlaintextSecretNotAllowedError)
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
     @console_ns.response(
         200, "Workflow agent composer validation result", console_ns.models[AgentComposerValidateResponse.__name__]
@@ -241,6 +264,14 @@ class WorkflowAgentComposerImpactApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/agent-composer/save-to-roster")
 class WorkflowAgentComposerSaveToRosterApi(Resource):
+    @error_responses(
+        AgentNameConflictError,
+        AgentNotFoundError,
+        AgentSoulLockedError,
+        AgentVersionNotFoundError,
+        InvalidComposerConfigError,
+        PlaintextSecretNotAllowedError,
+    )
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
     @console_ns.response(
         200, "Workflow agent composer saved to roster", console_ns.models[WorkflowAgentComposerResponse.__name__]
@@ -290,6 +321,7 @@ def _require_snippet_app_id(*, session: Session, tenant_id: str, snippet_id: UUI
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/nodes/<string:node_id>/agent-composer")
 class SnippetAgentComposerApi(Resource):
+    @error_responses(AgentNotFoundError, AgentVersionNotFoundError)
     @console_ns.response(200, "Snippet agent composer state", console_ns.models[WorkflowAgentComposerResponse.__name__])
     @console_ns.doc(params=query_params_from_model(WorkflowAgentComposerQuery))
     @setup_required
@@ -320,6 +352,14 @@ class SnippetAgentComposerApi(Resource):
             ),
         )
 
+    @error_responses(
+        AgentNameConflictError,
+        AgentNotFoundError,
+        AgentSoulLockedError,
+        AgentVersionNotFoundError,
+        InvalidComposerConfigError,
+        PlaintextSecretNotAllowedError,
+    )
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
     @console_ns.response(200, "Snippet agent composer saved", console_ns.models[WorkflowAgentComposerResponse.__name__])
     @setup_required
@@ -355,6 +395,9 @@ class SnippetAgentComposerApi(Resource):
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/nodes/<string:node_id>/agent-composer/copy-from-roster")
 class SnippetAgentComposerCopyFromRosterApi(Resource):
+    @error_responses(
+        AgentNotFoundError, AgentVersionConflictError, AgentVersionNotFoundError, InvalidComposerConfigError
+    )
     @console_ns.expect(console_ns.models[WorkflowComposerCopyFromRosterPayload.__name__])
     @console_ns.response(
         200, "Roster agent copied into snippet", console_ns.models[WorkflowAgentComposerResponse.__name__]
@@ -394,6 +437,7 @@ class SnippetAgentComposerCopyFromRosterApi(Resource):
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/nodes/<string:node_id>/agent-composer/validate")
 class SnippetAgentComposerValidateApi(Resource):
+    @error_responses(AgentSoulLockedError, InvalidComposerConfigError, PlaintextSecretNotAllowedError)
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
     @console_ns.response(
         200, "Snippet agent composer validation", console_ns.models[AgentComposerValidateResponse.__name__]
@@ -469,6 +513,14 @@ class SnippetAgentComposerImpactApi(Resource):
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/nodes/<string:node_id>/agent-composer/save-to-roster")
 class SnippetAgentComposerSaveToRosterApi(Resource):
+    @error_responses(
+        AgentNameConflictError,
+        AgentNotFoundError,
+        AgentSoulLockedError,
+        AgentVersionNotFoundError,
+        InvalidComposerConfigError,
+        PlaintextSecretNotAllowedError,
+    )
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
     @console_ns.response(
         200, "Snippet agent saved to roster", console_ns.models[WorkflowAgentComposerResponse.__name__]
@@ -507,6 +559,7 @@ class SnippetAgentComposerSaveToRosterApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/composer")
 class AgentComposerApi(Resource):
+    @error_responses(AgentNotFoundError, AgentVersionNotFoundError)
     @console_ns.response(200, "Agent app composer state", console_ns.models[AgentAppComposerResponse.__name__])
     @setup_required
     @login_required
@@ -520,6 +573,13 @@ class AgentComposerApi(Resource):
             AgentComposerService.load_agent_composer(session=session, tenant_id=tenant_id, agent_id=str(agent_id)),
         )
 
+    @error_responses(
+        AgentNotFoundError,
+        AgentSoulLockedError,
+        AgentVersionNotFoundError,
+        InvalidComposerConfigError,
+        PlaintextSecretNotAllowedError,
+    )
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
     @console_ns.response(200, "Agent app composer saved", console_ns.models[AgentAppComposerResponse.__name__])
     @setup_required
@@ -546,6 +606,13 @@ class AgentComposerApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/composer/validate")
 class AgentComposerValidateApi(Resource):
+    @error_responses(
+        AgentNotFoundError,
+        AgentSoulLockedError,
+        AgentVersionNotFoundError,
+        InvalidComposerConfigError,
+        PlaintextSecretNotAllowedError,
+    )
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
     @console_ns.response(
         200, "Agent app composer validation result", console_ns.models[AgentComposerValidateResponse.__name__]
@@ -569,6 +636,7 @@ class AgentComposerValidateApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/composer/candidates")
 class AgentComposerCandidatesApi(Resource):
+    @error_responses(AgentVersionNotFoundError)
     @console_ns.response(
         200, "Agent app composer candidates", console_ns.models[AgentComposerCandidatesResponse.__name__]
     )

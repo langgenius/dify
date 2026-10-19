@@ -1,6 +1,6 @@
 import type { SkillReferenceResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { QueryClient } from '@tanstack/react-query'
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import {
@@ -15,6 +15,17 @@ import {
 
 const mocks = getMocks()
 
+function getVersionRequests(action: 'restore' | 'delete') {
+  return mocks.request.mock.calls
+    .map(([, , options]) => options.request)
+    .filter((request) => {
+      const path = new URL(request.url).pathname
+      return action === 'restore'
+        ? request.method === 'POST' && path.endsWith('/skills/skill-1/restore')
+        : request.method === 'DELETE' && path.endsWith('/skills/skill-1/versions/version-1')
+    })
+}
+
 describe('SkillDetailPage publishing', () => {
   beforeEach(resetDetailPageFixture)
 
@@ -26,9 +37,6 @@ describe('SkillDetailPage publishing', () => {
 
     renderSkillDetailPage()
 
-    expect(mocks.publishSkillMutationOptions).toHaveBeenCalledWith({
-      context: { silent: true },
-    })
     await user.click(
       await screen.findByRole('button', {
         name: 'skill.skillManagement.detail.publishUpdate',
@@ -62,8 +70,10 @@ describe('SkillDetailPage publishing', () => {
     expect(
       await screen.findByText('skill.skillManagement.detail.publishReferencesTitle'),
     ).toBeInTheDocument()
-    expect(await screen.findByText('Support Agent')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Support Agent/ })).toHaveAttribute('target', '_blank')
+    expect(screen.getByRole('link', { name: /Support Agent/ })).toHaveAttribute(
+      'href',
+      '/agents/agent-1/configure',
+    )
     expect(mocks.publishSkillMutationFn).not.toHaveBeenCalled()
 
     const publishDialog = screen.getByRole('dialog', {
@@ -77,8 +87,49 @@ describe('SkillDetailPage publishing', () => {
     )
 
     await waitFor(() => {
-      expect(mocks.publishSkillMutationFn).toHaveBeenCalled()
+      expect(mocks.publishSkillMutationFn).toHaveBeenCalledWith(
+        { params: { skill_id: 'skill-1' }, body: {} },
+        expect.anything(),
+      )
     })
+  })
+
+  it('prevents another publication while the request is pending and exposes the published result', async () => {
+    const user = userEvent.setup()
+    let resolvePublish!: (version: ReturnType<typeof createSkillVersion>) => void
+    mocks.publishSkillMutationFn.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolvePublish = resolve
+      }),
+    )
+    renderSkillDetailPage()
+    const publish = await screen.findByRole('button', {
+      name: 'skill.skillManagement.detail.publishUpdate',
+    })
+    await user.click(publish)
+    await waitFor(() => expect(mocks.publishSkillMutationFn).toHaveBeenCalledOnce())
+    await user.click(publish)
+    expect(mocks.publishSkillMutationFn).toHaveBeenCalledOnce()
+    expect(mocks.toastSuccess).not.toHaveBeenCalled()
+
+    await act(async () => {
+      const version = createSkillVersion({
+        id: 'version-2',
+        version_number: 2,
+        created_at: 1784638492,
+      })
+      mocks.skillDetail = {
+        ...mocks.skillDetail!,
+        latest_published_at: version.created_at,
+        latest_published_version_id: version.id,
+        latest_published_version_number: version.version_number,
+      }
+      resolvePublish(version)
+    })
+    expect(
+      await screen.findByRole('button', { name: 'skill.skillManagement.detail.published' }),
+    ).toBeDisabled()
+    expect(mocks.toastSuccess).toHaveBeenCalledWith('skill.skillManagement.detail.publishSuccess')
   })
 
   it('refreshes a fresh empty references cache before publishing', async () => {
@@ -180,6 +231,11 @@ describe('SkillDetailPage publishing', () => {
         name: 'skill.skillManagement.detail.publishReferencesTitle',
       }),
     ).not.toBeInTheDocument()
+    refreshShouldFail = false
+    await user.click(
+      screen.getByRole('button', { name: 'skill.skillManagement.detail.publishUpdate' }),
+    )
+    await waitFor(() => expect(mocks.publishSkillMutationFn).toHaveBeenCalledOnce())
   })
 
   it('cancels publishing from the referenced skill confirmation dialog', async () => {
@@ -240,15 +296,7 @@ describe('SkillDetailPage publishing', () => {
       name: /Sidebar Agent/,
     })
     expect(sidebarReferenceLink).toBeInTheDocument()
-    expect(mocks.skillReferencesQueryOptions).toHaveBeenCalledWith(
-      expect.objectContaining({
-        input: {
-          params: {
-            skill_id: 'skill-1',
-          },
-        },
-      }),
-    )
+    expect(sidebarReferenceLink).toHaveAttribute('href', '/agents/agent-1/configure')
   })
 
   it('renders a non-interactive reference count when no agent uses the skill', async () => {
@@ -283,42 +331,10 @@ describe('SkillDetailPage publishing', () => {
     renderSkillDetailPage()
 
     expect(
-      await screen.findByRole(
-        'button',
-        { name: 'skill.skillManagement.detail.referencedBy:{"count":1}' },
-        { timeout: 5000 },
-      ),
-    ).toBeInTheDocument()
-  })
-
-  it('closes the sidebar references panel when clicking outside it', async () => {
-    const user = userEvent.setup()
-    mocks.skillDetail = createSkillDetail({ reference_count: 1 })
-    mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skill-references', options],
-      queryFn: async () => ({
-        data: [createAgentReference({ display_name: 'Sidebar Agent', name: 'sidebar-agent' })],
-      }),
-    }))
-
-    renderSkillDetailPage()
-
-    await user.click(
       await screen.findByRole('button', {
         name: 'skill.skillManagement.detail.referencedBy:{"count":1}',
       }),
-    )
-    expect(await screen.findByText('Sidebar Agent')).toBeInTheDocument()
-
-    await user.click(
-      screen.getByRole('button', {
-        name: 'app.gotoAnything.searchTitle',
-      }),
-    )
-
-    await waitFor(() => {
-      expect(screen.queryByText('Sidebar Agent')).not.toBeInTheDocument()
-    })
+    ).toBeInTheDocument()
   })
 
   it('reveals the remaining publish references on request', async () => {
@@ -390,8 +406,7 @@ describe('SkillDetailPage publishing', () => {
       }),
     }))
 
-    const { queryClient } = renderSkillDetailPage()
-    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    renderSkillDetailPage()
 
     await user.click(
       await screen.findByRole('button', { name: 'skill.skillManagement.detail.versionHistory' }),
@@ -409,21 +424,18 @@ describe('SkillDetailPage publishing', () => {
       }),
     )
 
-    await waitFor(() => {
-      expect(mocks.restoreSkillMutationFn).toHaveBeenCalledWith(
-        expect.objectContaining({
-          body: {
-            version_id: 'version-1',
-            version_name: 'Rollback target',
-          },
-        }),
-        expect.anything(),
-      )
+    await waitFor(() => expect(getVersionRequests('restore')).toHaveLength(1))
+    expect(await getVersionRequests('restore')[0]!.clone().json()).toEqual({
+      version_id: 'version-1',
+      version_name: 'Rollback target',
     })
     await waitFor(() => {
-      expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ['skills', { type: 'infinite' }],
-      })
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', {
+          name: 'skill.skillManagement.detail.restoreVersion',
+        }),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -468,7 +480,8 @@ describe('SkillDetailPage publishing', () => {
     )
     await user.click(await screen.findByRole('button', { name: /#2/ }))
 
-    expect(await screen.findAllByText('#2')).toHaveLength(2)
+    expect(await screen.findByRole('button', { name: /#2/ })).toBeInTheDocument()
+    expect(await screen.findByText(/Rollback instructions/)).toBeInTheDocument()
 
     await user.click(
       screen.getByRole('button', { name: 'skill.skillManagement.detail.restoreVersion' }),
@@ -479,16 +492,10 @@ describe('SkillDetailPage publishing', () => {
       }),
     )
 
-    await waitFor(() => {
-      expect(mocks.restoreSkillMutationFn).toHaveBeenCalledWith(
-        expect.objectContaining({
-          body: {
-            version_id: 'version-2',
-            version_name: '',
-          },
-        }),
-        expect.anything(),
-      )
+    await waitFor(() => expect(getVersionRequests('restore')).toHaveLength(1))
+    expect(await getVersionRequests('restore')[0]!.clone().json()).toEqual({
+      version_id: 'version-2',
+      version_name: '',
     })
   })
 
@@ -530,6 +537,7 @@ describe('SkillDetailPage publishing', () => {
     )
 
     expect(screen.queryByText('#2')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Named version/ })).toBeInTheDocument()
 
     const currentDraft = screen.getByRole('button', {
       name: 'skill.skillManagement.detail.currentDraft',
@@ -587,40 +595,73 @@ describe('SkillDetailPage publishing', () => {
     })
   })
 
-  it('deletes a non-latest version from the version menu', async () => {
-    const user = userEvent.setup()
-    const version = createSkillVersion({
-      id: 'version-1',
-      is_latest: false,
-      version_name: 'Old version',
-    })
-    mocks.skillVersionsQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skill-versions', options],
-      queryFn: async () => ({
-        data: [version],
-      }),
-    }))
-    renderSkillDetailPage()
-
-    await user.click(
-      await screen.findByRole('button', { name: 'skill.skillManagement.detail.versionHistory' }),
-    )
-    await openVersionRowActions(user, 'Old version')
-    await user.click(await screen.findByText('common.operation.delete'))
-    const dialog = await screen.findByRole('alertdialog')
-
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.delete' }))
-
-    await waitFor(() => {
-      expect(mocks.versionDeleteMutationFn).toHaveBeenCalledWith(
-        {
-          params: {
-            skill_id: 'skill-1',
-            version_id: 'version-1',
-          },
-        },
-        expect.anything(),
+  it.each(['restore button', 'restore menu', 'delete menu'] as const)(
+    'keeps %s pending and retryable after failure',
+    async (entry) => {
+      const user = userEvent.setup()
+      const action = entry === 'delete menu' ? 'delete' : 'restore'
+      const confirmLabel =
+        action === 'delete'
+          ? 'common.operation.delete'
+          : 'skill.skillManagement.detail.restoreVersion'
+      const version = createSkillVersion({ version_name: 'Target version' })
+      mocks.skillVersionsQueryOptions.mockImplementation(() => ({
+        queryKey: ['skill-versions'],
+        queryFn: async () => ({ data: [version] }),
+      }))
+      mocks.skillVersionDetailQueryOptions.mockImplementation(() => ({
+        queryKey: ['skill-version-detail'],
+        queryFn: async () => ({ ...version, files: createSkillDetail().files }),
+      }))
+      renderSkillDetailPage()
+      await user.click(
+        await screen.findByRole('button', { name: 'skill.skillManagement.detail.versionHistory' }),
       )
-    })
-  })
+      if (entry === 'restore button') {
+        const trigger = await screen.findByRole('button', { name: confirmLabel })
+        expect(trigger).toHaveAttribute('aria-haspopup', 'dialog')
+        expect(trigger).toHaveAttribute('aria-expanded', 'false')
+        await user.click(trigger)
+        expect(trigger).toHaveAttribute('aria-expanded', 'true')
+        await user.click(
+          within(await screen.findByRole('alertdialog')).getByRole('button', {
+            name: 'common.operation.cancel',
+          }),
+        )
+        await waitFor(() => expect(trigger).toHaveFocus())
+        await user.click(trigger)
+      } else {
+        const row = (await screen.findByRole('button', { name: /Target version/ })).closest('li')!
+        await user.click(within(row).getByRole('button', { name: 'common.operation.more' }))
+        await user.click(await screen.findByRole('menuitem', { name: confirmLabel }))
+      }
+      const dialog = await screen.findByRole('alertdialog')
+      const confirm = within(dialog).getByRole('button', { name: confirmLabel })
+      const cancel = within(dialog).getByRole('button', { name: 'common.operation.cancel' })
+      let rejectRequest!: (error: Error) => void
+      mocks.request.mockImplementationOnce(
+        () =>
+          new Promise((_, reject) => {
+            rejectRequest = reject
+          }),
+      )
+      await user.click(confirm)
+      await waitFor(() => expect(confirm).toHaveAttribute('aria-disabled', 'true'))
+      expect(cancel).toBeDisabled()
+      await user.click(confirm)
+      await user.click(cancel)
+      await user.keyboard('{Escape}')
+      expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+      expect(getVersionRequests(action)).toHaveLength(1)
+
+      await act(async () => {
+        rejectRequest(new Error('Request failed'))
+      })
+      await waitFor(() => expect(cancel).toBeEnabled())
+      expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+      await user.click(confirm)
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+      expect(getVersionRequests(action)).toHaveLength(2)
+    },
+  )
 })

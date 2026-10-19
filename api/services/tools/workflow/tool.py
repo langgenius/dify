@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Callable, Generator, Mapping, Sequence
+from contextlib import suppress
 from typing import Any, cast, override
 
 from sqlalchemy.orm import Session
@@ -95,7 +96,7 @@ class WorkflowTool(Tool):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         """
         invoke the tool
         """
@@ -185,10 +186,8 @@ class WorkflowTool(Tool):
 
         usage_metadata: dict[str, Any] = {}
         if total_tokens is not None:
-            try:
+            with suppress(TypeError, ValueError):
                 usage_metadata["total_tokens"] = int(str(total_tokens))
-            except (TypeError, ValueError):
-                pass
         if total_price is not None:
             usage_metadata["total_price"] = str(total_price)
         currency = data.get("currency")

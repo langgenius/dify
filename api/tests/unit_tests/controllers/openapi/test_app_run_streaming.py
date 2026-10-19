@@ -14,7 +14,8 @@ from flask import Flask
 from pydantic import BaseModel, ValidationError
 from werkzeug.datastructures import FileStorage
 
-from controllers.common.errors import UnprocessableEntityError
+from controllers.openapi import app_run
+from controllers.openapi._errors import AppModeMismatch
 from controllers.openapi._models import (
     AdvancedChatRunPayload,
     ChatRunPayload,
@@ -23,6 +24,7 @@ from controllers.openapi._models import (
     WorkflowRunPayload,
 )
 from controllers.openapi.app_run import AdvancedChatRunApi, AppRunTaskStopApi, ChatRunApi, CompletionRunApi
+from core.app.entities.app_invoke_entities import InvokeFrom
 from graphon.file import FileType
 from models import Account
 from models.enums import CreatorUserRole
@@ -84,7 +86,12 @@ def test_stop_task_calls_queue_manager_and_graph_engine(app: Flask, monkeypatch:
 
     api = AppRunTaskStopApi()
     with app.test_request_context("/openapi/v1/apps/app-1/tasks/task-1:stop", method="POST"):
-        result = api.post.__handler__(api, _SealableContext(), app_id="app-1", task_id="task-1")
+        result = api.post.__handler__(
+            api,
+            _SealableContext(subject=SimpleNamespace(caller_role=CreatorUserRole.ACCOUNT)),
+            app_id="app-1",
+            task_id="task-1",
+        )
 
     queue_mock.set_stop_flag_no_user_check.assert_called_once_with("task-1")
     graph_instance.send_stop_command.assert_called_once_with("task-1")
@@ -153,7 +160,7 @@ def test_per_mode_route_refuses_an_app_of_another_mode(app: Flask, monkeypatch: 
     api = ChatRunApi()
     body = ChatRunPayload(inputs={}, query="hi")
     with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/chat:run", method="POST"):
-        with pytest.raises(UnprocessableEntityError, match="app_mode_mismatch"):
+        with pytest.raises(AppModeMismatch):
             api.post.__handler__(api, _ctx(AppMode.WORKFLOW), app_id=_TEST_APP_ID, body=body)
     generate_mock.assert_not_called()
 
@@ -225,3 +232,13 @@ def test_chat_route_passes_a_message_end_without_conversation_through(app: Flask
 
 
 pytestmark = pytest.mark.usefixtures("workflow_application")
+
+
+def test_draft_runs_do_not_hint_the_form_submit_op() -> None:
+    """A draft run's human-input form is a debugger form; the submit op only takes web-app
+    forms, so hinting it would send the agent straight into a 403."""
+    draft_routes = [route for route in app_run._RUN_ROUTES if route.invoke_from == InvokeFrom.DEBUGGER]
+    assert draft_routes
+    for route in draft_routes:
+        assert app_run._form_layer not in route.hints
+        assert "cannot be resumed over openapi" in route.summary

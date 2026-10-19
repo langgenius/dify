@@ -293,7 +293,6 @@ def _application(
 def test_mutations_use_request_actor_without_a_flask_request(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-
     with sqlite_session_factory.begin() as session:
         session.add(_dataset("dataset-1", "workspace-1"))
         session.add(_document("document-1", "workspace-1", "dataset-1"))
@@ -390,7 +389,6 @@ def test_redis_state_uses_existing_keys_and_decodes_status() -> None:
 def test_child_chunk_mutations_preserve_explicit_actors(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-
     with sqlite_session_factory.begin() as session:
         session.add(_dataset("dataset-1", "workspace-1"))
         document = _document("document-1", "workspace-1", "dataset-1")
@@ -603,6 +601,92 @@ def segment_update(
         return detail
 
     return update
+
+
+@pytest.mark.parametrize("segment_update", ["service_api"], indirect=True)
+@pytest.mark.parametrize("doc_form", list(IndexStructureType))
+def test_enable_only_patch_queues_reindexing_without_replacing_content(
+    segment_update: SegmentUpdateEntry,
+    indexing_probe: IndexingProbe,
+    sqlite_session_factory: sessionmaker[Session],
+    doc_form: IndexStructureType,
+) -> None:
+    _, _, probe = indexing_probe
+    answer = "answer" if doc_form == IndexStructureType.QA_INDEX else None
+    word_count = 13 if answer else 7
+    with sqlite_session_factory.begin() as session:
+        segment = _segment("segment-1", "workspace-1", "dataset-1", "document-1")
+        segment.enabled = False
+        segment.disabled_at = datetime(2026, 1, 1)
+        segment.disabled_by = "previous-editor"
+        segment.answer = answer
+        segment.word_count = word_count
+        segment.keywords = ["original"]
+        segment.index_node_id = "index-1"
+        session.add(segment)
+        document = session.get(Document, "document-1")
+        assert document is not None
+        document.doc_form = doc_form
+        document.word_count = word_count
+
+    # A disabled segment has no vector to update. Only the asynchronous load path is valid.
+    probe.fail = True
+    result = segment_update(
+        RequestContext("request", None, "editor", "workspace-1"),
+        dataset_id="dataset-1",
+        document_id="document-1",
+        segment_id="segment-1",
+        values={"enabled": True},
+    )
+
+    assert result.data.enabled is True
+    assert result.data.status == "completed"
+    assert result.data.disabled_at is None
+    assert result.data.disabled_by is None
+    assert result.data.content == "content"
+    assert result.data.answer == answer
+    assert result.data.keywords == ("original",)
+    assert result.data.word_count == word_count
+    assert probe.tasks == [("enable", (["segment-1"], "dataset-1", "document-1"))]
+    assert probe.deleted_ids == []
+    assert probe.writes == 0
+    with sqlite_session_factory() as session:
+        document = session.get(Document, "document-1")
+        assert document is not None
+        assert document.word_count == word_count
+
+
+@pytest.mark.parametrize("segment_update", ["service_api"], indirect=True)
+@pytest.mark.parametrize("values", [{"content": "changed"}, {"keywords": ["replacement"]}])
+def test_reenable_patch_with_edits_keeps_synchronous_index_update(
+    segment_update: SegmentUpdateEntry,
+    indexing_probe: IndexingProbe,
+    sqlite_session_factory: sessionmaker[Session],
+    values: dict[str, object],
+) -> None:
+    _, _, probe = indexing_probe
+    with sqlite_session_factory.begin() as session:
+        segment = _segment("segment-1", "workspace-1", "dataset-1", "document-1")
+        segment.enabled = False
+        segment.index_node_id = "index-1"
+        session.add(segment)
+
+    result = segment_update(
+        RequestContext("request", None, "editor", "workspace-1"),
+        dataset_id="dataset-1",
+        document_id="document-1",
+        segment_id="segment-1",
+        values={"enabled": True, **values},
+    )
+
+    assert result.data.enabled is True
+    assert result.data.status == "completed"
+    assert result.data.content == values.get("content", "content")
+    if "keywords" in values:
+        assert result.data.keywords == ("replacement",)
+    assert probe.tasks == []
+    assert probe.deleted_ids == ["index-1"]
+    assert probe.writes == 1
 
 
 @pytest.mark.parametrize("entry", ["console", "service_api"])

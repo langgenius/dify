@@ -25,11 +25,9 @@ class _Storage:
         self.saves.append((key, data))
 
 
+@dataclass(eq=False, repr=False)
 class _DatabaseBinding:
     session: Session
-
-    def __init__(self, session: Session) -> None:
-        self.session = session
 
 
 @dataclass(frozen=True)
@@ -72,7 +70,7 @@ def test_extract_images_formats(
     mock_page = MagicMock()
     mock_image_obj = MagicMock()
 
-    def mock_extract(buf: io.BytesIO, fb_format: str | None = None) -> None:
+    def mock_extract(buf: io.BytesIO, **_kwargs: object) -> None:
         buf.write(image_bytes)
 
     mock_image_obj.extract.side_effect = mock_extract
@@ -118,8 +116,8 @@ def test_extract_images_formats(
     ],
 )
 @pytest.mark.parametrize("sqlite_session", [(UploadFile,)], indirect=True)
+@pytest.mark.usefixtures("mock_dependencies")
 def test_extract_images_get_objects_scenarios(
-    mock_dependencies: _Dependencies,
     get_objects_side_effect: Exception | None,
     get_objects_return_value: list[object] | None,
 ) -> None:
@@ -139,7 +137,8 @@ def test_extract_images_get_objects_scenarios(
 
 
 @pytest.mark.parametrize("sqlite_session", [(UploadFile,)], indirect=True)
-def test_extract_calls_extract_images(mock_dependencies: _Dependencies, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.usefixtures("mock_dependencies")
+def test_extract_calls_extract_images(monkeypatch: pytest.MonkeyPatch) -> None:
     # Mock pypdfium2
     mock_pdf_doc = MagicMock()
     mock_page = MagicMock()
@@ -158,7 +157,7 @@ def test_extract_calls_extract_images(mock_dependencies: _Dependencies, monkeypa
             extractor = pe.PdfExtractor(file_path="test.pdf", tenant_id=TENANT_ID, user_id=USER_ID)
 
             # Mock _extract_images to return a known string
-            monkeypatch.setattr(extractor, "_extract_images", lambda p: "![image](img_url)")
+            monkeypatch.setattr(extractor, "_extract_images", lambda _page: "![image](img_url)")
 
             documents = list(extractor.extract())
 
@@ -181,7 +180,7 @@ def test_extract_images_failures(mock_dependencies: _Dependencies) -> None:
     # Second image is OK (JPEG)
     jpeg_bytes = b"\xff\xd8\xff some image data"
 
-    def mock_extract(buf: io.BytesIO, fb_format: str | None = None) -> None:
+    def mock_extract(buf: io.BytesIO, **_kwargs: object) -> None:
         buf.write(jpeg_bytes)
 
     mock_image_obj_ok.extract.side_effect = mock_extract

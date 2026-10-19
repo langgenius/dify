@@ -49,7 +49,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         streaming: Literal[True],
         *,
         session: Session,
-    ) -> Generator[str | Mapping[str, Any], None, None]: ...
+    ) -> Generator[str | Mapping[str, Any]]: ...
 
     @overload
     def generate(
@@ -73,7 +73,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         streaming: bool = False,
         *,
         session: Session,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]: ...
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]: ...
 
     def generate(
         self,
@@ -84,7 +84,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         streaming: bool = True,
         *,
         session: Session,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
 
@@ -289,7 +289,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         stream: bool = True,
         *,
         session: Session,
-    ) -> Mapping | Generator[Mapping | str, None, None]:
+    ) -> Mapping | Generator[Mapping | str]:
         """
         Generate App response.
 

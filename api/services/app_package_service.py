@@ -43,7 +43,7 @@ from services.entities.site_dsl import SiteDsl
 class AppPackageManifest(BaseModel):
     """Index Agent resources by the same package references used in the workflow DSL."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     format: Literal["dify.app"]
     format_version: Literal[1]

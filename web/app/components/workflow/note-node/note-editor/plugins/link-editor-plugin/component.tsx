@@ -66,7 +66,7 @@ const LinkEditorComponent = ({ containerElement }: LinkEditorComponentProps) => 
 
   return (
     <>
-      {elements.reference && (
+      {linkAnchorElement && elements.reference && (
         <FloatingPortal root={containerElement}>
           <div
             {...getFloatingProps()}

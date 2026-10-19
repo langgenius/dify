@@ -254,13 +254,13 @@ class TestWorkflowVariableService:
         var1_value = StringSegment(value=fake.word())
         var2_value = StringSegment(value=fake.word())
         var3_value = StringSegment(value=fake.word())
-        var1 = self._create_test_variable(
+        self._create_test_variable(
             db_session_with_containers, app.id, CONVERSATION_VARIABLE_NODE_ID, "var1", var1_value, fake=fake
         )
-        var2 = self._create_test_variable(
+        self._create_test_variable(
             db_session_with_containers, app.id, CONVERSATION_VARIABLE_NODE_ID, "var2", var2_value, fake=fake
         )
-        var3 = self._create_test_variable(
+        self._create_test_variable(
             db_session_with_containers,
             app.id,
             "test_node_1",
@@ -274,9 +274,6 @@ class TestWorkflowVariableService:
             [CONVERSATION_VARIABLE_NODE_ID, "var2"],
             ["test_node_1", "var3"],
         ]
-        service = build_workflow_variable_service(
-            database_client=sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
-        )
         retrieved_variables = WorkflowDraftVariableRepository(
             sessions=sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
         ).get_draft_variables_by_selectors(app.id, selectors, user_id=app.created_by)
@@ -306,7 +303,7 @@ class TestWorkflowVariableService:
         """
         fake = Faker()
         app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake=fake)
-        for i in range(5):
+        for _i in range(5):
             test_value = StringSegment(value=fake.numerify("value######"))
             self._create_test_variable(
                 db_session_with_containers,
@@ -397,10 +394,10 @@ class TestWorkflowVariableService:
         app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake=fake)
         conv_var1_value = StringSegment(value=fake.word())
         conv_var2_value = StringSegment(value=fake.word())
-        conv_var1 = self._create_test_variable(
+        self._create_test_variable(
             db_session_with_containers, app.id, CONVERSATION_VARIABLE_NODE_ID, "conv_var1", conv_var1_value, fake=fake
         )
-        conv_var2 = self._create_test_variable(
+        self._create_test_variable(
             db_session_with_containers, app.id, CONVERSATION_VARIABLE_NODE_ID, "conv_var2", conv_var2_value, fake=fake
         )
         sys_var_value = StringSegment(value=fake.word())
@@ -584,7 +581,7 @@ class TestWorkflowVariableService:
         """
         fake = Faker()
         app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake=fake)
-        for i in range(3):
+        for _i in range(3):
             test_value = StringSegment(value=fake.numerify("value######"))
             self._create_test_variable(
                 db_session_with_containers,
@@ -701,7 +698,7 @@ class TestWorkflowVariableService:
         fake = Faker()
         app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake=fake)
         node_id = fake.word()
-        for i in range(2):
+        for _i in range(2):
             test_value = StringSegment(value=fake.numerify("node_value######"))
             self._create_test_variable(
                 db_session_with_containers,
@@ -877,7 +874,7 @@ class TestWorkflowVariableService:
         app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake=fake)
         sys_var1_value = StringSegment(value=fake.word())
         sys_var2_value = StringSegment(value=fake.word())
-        sys_var1 = self._create_test_variable(
+        self._create_test_variable(
             db_session_with_containers,
             app.id,
             SYSTEM_VARIABLE_NODE_ID,
@@ -886,7 +883,7 @@ class TestWorkflowVariableService:
             variable_type=DraftVariableType.SYS,
             fake=fake,
         )
-        sys_var2 = self._create_test_variable(
+        self._create_test_variable(
             db_session_with_containers,
             app.id,
             SYSTEM_VARIABLE_NODE_ID,
@@ -912,3 +909,81 @@ class TestWorkflowVariableService:
         assert "sys_var1" in var_names
         assert "sys_var2" in var_names
         assert "conv_var" not in var_names
+
+    def test_get_variable_by_name_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """
+        Test getting variables by name successfully for different types.
+
+        This test verifies that the service can retrieve variables by name
+        for different variable types (conversation, system, node). This
+        functionality is important for variable lookup operations during
+        workflow execution and user interactions.
+        """
+        fake = Faker()
+        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake=fake)
+        test_value = StringSegment(value=fake.word())
+        self._create_test_variable(
+            db_session_with_containers, app.id, CONVERSATION_VARIABLE_NODE_ID, "test_conv_var", test_value, fake=fake
+        )
+        self._create_test_variable(
+            db_session_with_containers,
+            app.id,
+            SYSTEM_VARIABLE_NODE_ID,
+            "test_sys_var",
+            test_value,
+            variable_type=DraftVariableType.SYS,
+            fake=fake,
+        )
+        self._create_test_variable(
+            db_session_with_containers,
+            app.id,
+            "test_node",
+            "test_node_var",
+            test_value,
+            variable_type=DraftVariableType.NODE,
+            fake=fake,
+        )
+        service = build_workflow_variable_service(
+            database_client=sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
+        )
+        retrieved_conv_var = service.get_conversation_variable(app.id, "test_conv_var", user_id=app.created_by)
+        assert retrieved_conv_var is not None
+        assert retrieved_conv_var.name == "test_conv_var"
+        assert retrieved_conv_var.node_id == CONVERSATION_VARIABLE_NODE_ID
+        retrieved_sys_var = service.get_system_variable(app.id, "test_sys_var", user_id=app.created_by)
+        assert retrieved_sys_var is not None
+        assert retrieved_sys_var.name == "test_sys_var"
+        assert retrieved_sys_var.node_id == SYSTEM_VARIABLE_NODE_ID
+        retrieved_node_var = service.get_node_variable(app.id, "test_node", "test_node_var", user_id=app.created_by)
+        assert retrieved_node_var is not None
+        assert retrieved_node_var.name == "test_node_var"
+        assert retrieved_node_var.node_id == "test_node"
+
+    def test_get_variable_by_name_not_found(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """
+        Test getting variables by name when they don't exist.
+
+        This test verifies that the service returns None when trying to
+        retrieve variables by name that don't exist. This ensures proper
+        handling of missing variable scenarios for all variable types.
+        """
+        fake = Faker()
+        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake=fake)
+        service = build_workflow_variable_service(
+            database_client=sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
+        )
+        retrieved_conv_var = service.get_conversation_variable(app.id, "non_existent_conv_var", user_id=app.created_by)
+        assert retrieved_conv_var is None
+        retrieved_sys_var = service.get_system_variable(app.id, "non_existent_sys_var", user_id=app.created_by)
+        assert retrieved_sys_var is None
+        retrieved_node_var = service.get_node_variable(
+            app.id,
+            "test_node",
+            "non_existent_node_var",
+            user_id=app.created_by,
+        )
+        assert retrieved_node_var is None

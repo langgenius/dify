@@ -81,6 +81,7 @@ def test_app_cleanup_removes_agent_bindings_before_workflows(monkeypatch: pytest
     events: list[str] = []
     apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     other_cleanup_names = (
+        "cleanup_app_storage",
         "_delete_app_model_configs",
         "_delete_app_site",
         "_delete_app_mcp_servers",

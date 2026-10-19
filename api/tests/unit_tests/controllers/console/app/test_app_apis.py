@@ -70,7 +70,7 @@ from controllers.console.app.workflow_draft_variable import (
     WorkflowDraftVariableUpdatePayload,
 )
 from controllers.console.app.workflow_statistic import WorkflowStatisticQuery
-from controllers.console.app.workflow_trigger import Parser, ParserEnable
+from controllers.console.app.workflow_trigger import ParserEnable, WebhookTriggerQuery
 from machinery.context import RequestContext
 from models import App, Site
 from models.account import Account, AccountStatus
@@ -784,7 +784,7 @@ class TestWorkflowStatisticEndpoints:
 
 class TestWorkflowTriggerEndpoints:
     def test_webhook_trigger_payload(self):
-        payload = Parser(node_id="node-1")
+        payload = WebhookTriggerQuery(node_id="node-1")
         assert payload.node_id == "node-1"
 
         enable_payload = ParserEnable(trigger_id="trigger-1", enable_trigger=True)
@@ -808,7 +808,7 @@ class TestWorkflowTriggerEndpoints:
         sqlite_session.commit()
 
         with database_app.test_request_context("/?node_id=node-1"):
-            result = method(api, Parser(node_id="node-1"), sqlite_session, app_model=_make_app())
+            result = method(api, WebhookTriggerQuery(node_id="node-1"), sqlite_session, app_model=_make_app())
 
         assert isinstance(result, dict)
         assert {"id", "webhook_id", "webhook_url", "webhook_debug_url", "node_id", "created_at"} <= set(result.keys())
@@ -834,7 +834,7 @@ class TestMCPServerEndpoints:
 
 class TestErrorHandling:
     def test_annotation_list_query_validation(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for AnnotationListQuery\\\npage"):
             annotation_module.AnnotationListQuery(page=0)
 
 
@@ -844,7 +844,7 @@ class TestPayloadIntegration:
             annotation_module.AnnotationReplyPayload(
                 score_threshold=0.5, embedding_provider_name="openai", embedding_model_name="text-embedding-3-small"
             ),
-            message_module.MessageFeedbackPayload(message_id=str(uuid.uuid4()), rating="like"),
+            message_module.AppMessageFeedbackPayload(message_id=str(uuid.uuid4()), rating="like"),
             statistic_module.StatisticTimeRangeQuery(start="2024-01-01"),
         ]
         assert len(payloads) == 3

@@ -106,7 +106,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         pause_state_config: PauseStateLayerConfig | None = None,
-    ) -> Generator[Mapping[str, Any] | str, None, None]: ...
+    ) -> Generator[Mapping[str, Any] | str]: ...
 
     @overload
     def generate(
@@ -142,7 +142,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         pause_state_config: PauseStateLayerConfig | None = None,
-    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]: ...
+    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]: ...
 
     def generate(
         self,
@@ -159,7 +159,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         pause_state_config: PauseStateLayerConfig | None = None,
-    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]:
+    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]:
         with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
             files: Sequence[Mapping[str, Any]] = args.get("files") or []
 
@@ -174,7 +174,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 mappings=files,
                 tenant_id=app_model.tenant_id,
                 config=file_extra_config,
-                strict_type_validation=True if invoke_from == InvokeFrom.SERVICE_API else False,
+                strict_type_validation=invoke_from == InvokeFrom.SERVICE_API,
                 access_controller=self._file_access_controller,
             )
 
@@ -207,7 +207,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                     user_inputs=inputs,
                     variables=app_config.variables,
                     tenant_id=app_model.tenant_id,
-                    strict_type_validation=True if invoke_from == InvokeFrom.SERVICE_API else False,
+                    strict_type_validation=invoke_from == InvokeFrom.SERVICE_API,
                 )
             # init application generate entity
             application_generate_entity = WorkflowAppGenerateEntity(
@@ -284,7 +284,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         response_stream_filter: ResponseStreamFilter | None = None,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Resume a paused workflow execution using the persisted runtime state.
 
@@ -334,7 +334,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         graph_runtime_state: GraphRuntimeState | None = None,
         pause_state_config: PauseStateLayerConfig | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
 
@@ -444,7 +444,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: bool = True,
         *,
         session: Session,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
 
@@ -538,7 +538,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: bool = True,
         *,
         session: Session,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
 
@@ -718,11 +718,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         user: Account | EndUser,
         draft_var_saver_factory: DraftVariableSaverFactory,
         stream: bool = False,
-    ) -> (
-        WorkflowAppBlockingResponse
-        | WorkflowAppPausedBlockingResponse
-        | Generator[WorkflowAppStreamResponse, None, None]
-    ):
+    ) -> WorkflowAppBlockingResponse | WorkflowAppPausedBlockingResponse | Generator[WorkflowAppStreamResponse]:
         """
         Handle response.
         :param application_generate_entity: application generate entity

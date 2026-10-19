@@ -3,13 +3,14 @@ from unittest.mock import patch
 
 from flask.views import MethodView as FlaskMethodView
 
+from controllers.common.fields import Parameters, Site
+from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
+from models.model import IconType
+
 _NEEDS_METHOD_VIEW_CLEANUP = False
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = FlaskMethodView
     _NEEDS_METHOD_VIEW_CLEANUP = True
-from controllers.common.fields import Parameters, Site
-from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
-from models.model import IconType
 
 
 def test_parameters_model_round_trip():

@@ -505,7 +505,13 @@ def test_runtime_errors_keep_specific_codes_and_do_not_record_usage(
     ("error", "status", "code"),
     [
         (ConversationNotExistsError(), 404, "not_found"),
-        (ConversationCompletedError(), 400, "conversation_completed"),
+        # Nothing raises ConversationCompletedError today, so the contract does not list its code.
+        pytest.param(
+            ConversationCompletedError(),
+            400,
+            "conversation_completed",
+            marks=pytest.mark.allow_error_contract_violations,
+        ),
         (AppModelConfigBrokenError(), 400, "app_unavailable"),
     ],
 )

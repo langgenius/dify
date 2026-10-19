@@ -73,7 +73,6 @@ from services.skill_management_service import SkillManagementService
 from services.tools.provider_queries import ToolProviders
 from services.workflow.variable_service import WorkflowVariableService
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
-from tasks.new_agent_beta_task import register_new_agent_beta_publish_after_commit
 
 # WorkflowAgentNodeBinding.workflow_version tag for the draft workflow row.
 # Mirrors Workflow.version when it is "draft" (see models/workflow.py).
@@ -740,12 +739,6 @@ class AgentComposerService:
             app.enable_api = True
             app.updated_by = account_id
         session.flush()
-        register_new_agent_beta_publish_after_commit(
-            session=session,
-            tenant_id=tenant_id,
-            agent_id=agent.id,
-            snapshot_id=version.id,
-        )
         return {
             "result": "success",
             "publication_kind": "update" if access_was_ready else "first",
