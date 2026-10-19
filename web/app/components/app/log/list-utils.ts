@@ -219,40 +219,6 @@ export const mergeUniqueChatItems = (prevItems: IChatItem[], newItems: IChatItem
   return [...uniqueNewItems, ...prevItems]
 }
 
-export const mergePaginatedChatItems = ({
-  maxRetryCount,
-  newItems,
-  prevItems,
-  retryCount,
-}: {
-  maxRetryCount: number
-  newItems: IChatItem[]
-  prevItems: IChatItem[]
-  retryCount: number
-}) => {
-  const existingIds = new Set(prevItems.map((item) => item.id))
-  const uniqueNewItems = newItems.filter((item) => !existingIds.has(item.id))
-
-  if (!uniqueNewItems.length) {
-    if (retryCount < maxRetryCount && prevItems.length > 1) {
-      return {
-        items: prevItems,
-        retryCount: retryCount + 1,
-      }
-    }
-
-    return {
-      items: prevItems,
-      retryCount: 0,
-    }
-  }
-
-  return {
-    items: [...uniqueNewItems, ...prevItems],
-    retryCount: 0,
-  }
-}
-
 export const buildChatThreadState = ({
   allChatItems,
   hasMore,
