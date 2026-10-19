@@ -1,5 +1,5 @@
 import type { ScheduleTriggerNodeType } from '../types'
-import { act } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { BlockEnum } from '../../../types'
@@ -76,4 +76,41 @@ it('persists raw cron mode without visual schedule fields', () => {
       visual_config: undefined,
     }),
   )
+})
+
+it('saves the profile timezone when the node has none, so the backend does not fall back to UTC', async () => {
+  const { queryClient } = createConsoleQueryWrapper()
+  seedAccountProfileQuery(queryClient, { timezone: 'Asia/Shanghai' })
+  const { result } = renderNodeConfig(useConfig, createData({ timezone: undefined }), {
+    queryClient,
+  })
+  await waitFor(() => {
+    expect(result.current.flow.getNode('node')?.data).toEqual(
+      expect.objectContaining({ timezone: 'Asia/Shanghai' }),
+    )
+  })
+})
+
+it('does not overwrite a timezone that is already saved', async () => {
+  const { queryClient } = createConsoleQueryWrapper()
+  seedAccountProfileQuery(queryClient, { timezone: 'Asia/Shanghai' })
+  const { result } = renderNodeConfig(useConfig, createData({ timezone: 'Europe/Berlin' }), {
+    queryClient,
+  })
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  expect(result.current.flow.getNode('node')?.data).toEqual(
+    expect.objectContaining({ timezone: 'Europe/Berlin' }),
+  )
+})
+
+it('does not save the timezone in read-only mode', async () => {
+  const { queryClient } = createConsoleQueryWrapper()
+  seedAccountProfileQuery(queryClient, { timezone: 'Asia/Shanghai' })
+  const { result } = renderNodeConfig(useConfig, createData({ timezone: undefined }), {
+    queryClient,
+    initialStoreState: { isRestoring: true },
+  })
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  expect(result.current.config.readOnly).toBe(true)
+  expect(result.current.flow.getNode('node')?.data.timezone).toBeUndefined()
 })
