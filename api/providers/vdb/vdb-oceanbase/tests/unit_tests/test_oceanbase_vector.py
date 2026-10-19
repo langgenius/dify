@@ -21,7 +21,7 @@ def _build_fake_pyobvector_module():
         def __init__(self, dim):
             self.dim = dim
 
-    class VecIndexType(enum.Enum):
+    class VecIndexType(enum.IntEnum):
         HNSW = 0
 
     def l2_distance(*_args, **_kwargs):
