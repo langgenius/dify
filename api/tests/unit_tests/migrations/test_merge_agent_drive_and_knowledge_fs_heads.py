@@ -20,7 +20,15 @@ def test_merge_migration_produces_a_single_head() -> None:
 
     assert migration.revision == "c4d8e2f7a1b6"
     assert migration.down_revision == ("89919253ca7a", "e6b4a2c9d731")
-    assert ScriptDirectory(str(_MIGRATION_PATH.parents[1])).get_heads() == ["b6e2c4d8f1a0"]
+    assert ScriptDirectory(str(_MIGRATION_PATH.parents[1])).get_heads() == ["36036059b930"]
+
+
+def test_workflow_pause_merge_joins_knowledge_fs_and_main_heads() -> None:
+    merge = ScriptDirectory(str(_MIGRATION_PATH.parents[1])).get_revision("36036059b930")
+    assert merge is not None
+    # Deployed databases already applied the KnowledgeFS chain on f1d3c5b7a902, so main's
+    # later c6f4a90d8b31 joins through a merge instead of re-parenting applied revisions.
+    assert merge.down_revision == ("b6e2c4d8f1a0", "c6f4a90d8b31")
 
 
 def test_dataset_api_token_binding_resource_type_follows_main_head() -> None:
