@@ -22,6 +22,7 @@ from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
     ExportTraceServiceRequest,
     ExportTraceServiceResponse,
 )
+from weave.trace_server.trace_server_interface import StartedCallSchemaForInsert
 
 from core.helper import ssrf_proxy
 from core.ops.unified_trace.entities import CanonicalSpan, CanonicalSpanKind, CanonicalSpanStatus, CanonicalTrace
@@ -82,6 +83,22 @@ def _response(url: str, *, body: object = None, content: bytes | None = None, st
     return httpx.Response(status, request=request, json=body or {})
 
 
+@pytest.fixture
+def weave_started_calls(monkeypatch: pytest.MonkeyPatch) -> list[StartedCallSchemaForInsert]:
+    starts: list[StartedCallSchemaForInsert] = []
+
+    def send(_method: str, url: str, **kwargs: Unpack[TransportOptions]) -> httpx.Response:
+        body = json.loads(kwargs["content"])
+        if start := body.get("start"):
+            started = StartedCallSchemaForInsert.model_validate(start)
+            starts.append(started)
+            return _response(url, body={"id": started.id, "trace_id": started.trace_id})
+        return _response(url)
+
+    monkeypatch.setattr(ssrf_proxy, "make_request", send)
+    return starts
+
+
 @pytest.mark.parametrize("host", ["https://api.wandb.ai", "https://API.WANDB.AI:443"])
 def test_weave_sdk_exports_tree_session_usage_without_global_credentials(
     monkeypatch: pytest.MonkeyPatch, trace: CanonicalTrace, host: str
@@ -101,12 +118,69 @@ def test_weave_sdk_exports_tree_session_usage_without_global_credentials(
     root, child = calls[0][3]["start"], calls[1][3]["start"]
     assert child["parent_id"] == root["id"]
     assert child["thread_id"] == root["thread_id"] == "session-1"
+    assert child["turn_id"] == root["turn_id"] == root["id"]
     assert calls[2][3]["end"]["summary"]["usage"]["test-model"]["total_tokens"] == 5
     assert calls[3][3]["end"]["summary"] == {}
     assert result.trace_url == f"https://wandb.ai/team/demo/r/call/{root['id']}"
     assert result.span_urls[trace.spans[1].id].endswith(child["id"])
     assert all(call[2]["auth"] == ("api", "tenant-key") and call[2]["max_retries"] == 0 for call in calls)
     assert dict(os.environ) == before
+
+
+@pytest.mark.parametrize("root_kind", [CanonicalSpanKind.CHAIN, CanonicalSpanKind.AGENT])
+def test_weave_nested_agent_calls_form_one_outer_turn(
+    trace: CanonicalTrace, weave_started_calls: list[StartedCallSchemaForInsert], root_kind: CanonicalSpanKind
+) -> None:
+    root = trace.spans[0].model_copy(update={"kind": root_kind})
+    agent = trace.spans[1].model_copy(update={"kind": CanonicalSpanKind.AGENT})
+    model = trace.spans[1].model_copy(update={"id": "0000000000000003", "parent_id": agent.id})
+    nested = trace.model_copy(update={"spans": (root, agent, model)})
+
+    export_trace("weave", {"api_key": "tenant-key", "entity": "team", "project": "demo"}, nested)
+
+    outer, inner_agent, inner_model = weave_started_calls
+    assert inner_agent.parent_id == outer.id
+    assert inner_model.parent_id == inner_agent.id
+    assert all(call.thread_id == trace.session_id and call.turn_id == outer.id for call in weave_started_calls)
+    # Native Threads queries count only call.id == call.turn_id, including for
+    # Workflow and single-step preview outer roots with nested Agent details.
+    assert [call.id for call in weave_started_calls if call.id == call.turn_id] == [outer.id]
+
+
+def test_weave_same_session_has_distinct_stable_turns(
+    trace: CanonicalTrace, weave_started_calls: list[StartedCallSchemaForInsert]
+) -> None:
+    config = {"api_key": "tenant-key", "entity": "team", "project": "demo"}
+    first = export_trace("weave", config, trace)
+    repeated = export_trace("weave", config, trace)
+    next_trace = trace.model_copy(update={"trace_id": "abcdef1234567890abcdef1234567890"})
+    second = export_trace("weave", config, next_trace)
+
+    first_calls, repeated_calls, second_calls = (
+        weave_started_calls[:2],
+        weave_started_calls[2:4],
+        weave_started_calls[4:],
+    )
+    assert repeated_calls == first_calls
+    assert repeated == first
+    assert second.trace_url != first.trace_url
+    assert all(call.thread_id == trace.session_id for call in weave_started_calls)
+    assert first_calls[0].turn_id == first_calls[0].id
+    assert second_calls[0].turn_id == second_calls[0].id
+    assert second_calls[0].turn_id != first_calls[0].turn_id
+    assert all(call.turn_id == first_calls[0].id for call in first_calls)
+    assert all(call.turn_id == second_calls[0].id for call in second_calls)
+
+
+def test_weave_without_session_does_not_fabricate_a_thread_or_turn(
+    trace: CanonicalTrace, weave_started_calls: list[StartedCallSchemaForInsert]
+) -> None:
+    trace = trace.model_copy(update={"session_id": ""})
+
+    export_trace("weave", {"api_key": "tenant-key", "entity": "team", "project": "demo"}, trace)
+
+    assert len(weave_started_calls) == len(trace.spans)
+    assert all(call.thread_id is None and call.turn_id is None for call in weave_started_calls)
 
 
 def test_weave_resolves_optional_entity_using_only_supplied_credentials(
