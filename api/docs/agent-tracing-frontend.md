@@ -2,7 +2,7 @@
 
 更新日期：2026-10-18。面向 DIFY-2975 / DIFY-2983 / DIFY-2984 / DIFY-2985 的前端实现与联调。
 
-后端应用级 Agent tracing、Console API 与生成契约已实现。各 provider 的平台证据及边界记录于第 12 节；其中 Weave 的平台 API 核心场景已通过，供应商网页仍受账号试用状态限制，不能记为平台 UI 验收通过。后续 Databricks、Opik、腾讯云、OSS MLflow 和 Phoenix 均通过 Dify UI 配置并发起业务，再独立查询平台。本文定义后端契约；dev 前端的具体联调范围单独记录。
+后端应用级 Agent tracing、Console API 与生成契约已实现。各 provider 的平台证据及边界记录于第 12 节。Weave 在 10 月 16 日的验收受账号试用状态限制；10 月 19 日切换 Free 后，项目、trace 树及调用链接已能实际打开，后续专项按独立证据记录。后续 Databricks、Opik、腾讯云、OSS MLflow 和 Phoenix 均通过 Dify UI 配置并发起业务，再独立查询平台。本文定义后端契约；dev 前端的具体联调范围单独记录。
 
 Langfuse、LangSmith 已有独立 Agent、内容策略与终态、mixed inline/reference Workflow、单节点 preview 和普通 Workflow legacy 兼容证据。腾讯云已有云端查询证据；OSS MLflow 与 Phoenix 的本轮证据来自私有匿名实例，不代表真实账号鉴权通过。Arize 尚无平台端到端证据，阿里云暂缓验收。Databricks 的 PAT / experiment storage 结果不代表 OAuth M2M 或 Unity Catalog；OSS MLflow 已作为独立 provider 单独验收。支持声明、供应商接收 ACK、独立查询和浏览器 UI 验收分别记载，跨 Workflow 内部节点不保证同树。
 
@@ -384,7 +384,7 @@ SDK 依赖版本与第三方服务最低版本是不同概念：
 | Databricks | 同 MLflow SDK；本轮 dev 为 3.11.1 | experiment V3 metadata + SDK V2 上传凭据兼容接口 + signed artifact；本轮 PAT / experiment storage 已实际收数和完整回读。不会把 experiment ID 当成 UC table；未实现自动 UC 目标发现，不声明 UC 存储已通过 |
 | 阿里云 / 腾讯云 | 仓库 OpenTelemetry 依赖 | 按 provider 的 OTLP 端点/认证协议；没有验证的服务版本不列最低版本保证 |
 
-Weave 将业务会话映射到原生 `thread_id`，没有写入 `turn_id`，不能据此承诺平台 Threads 页的完整 turn 展示。LLM 原生 usage 映射为 prompt/completion/total tokens；`native_cost=false`，供应商按自己的定价计算出的成本不是 Dify 原生成本导出。cache token 细分与首 token 时间也不因 `native_usage=true` 自动获得支持。
+Weave managed 导出将业务会话映射到原生 `thread_id`；同一棵 trace 的 `turn_id` 使用外层 root 的稳定 call ID，所有内部 Agent、LLM 和工具调用继承该值。因此一棵 trace 只计一轮，同一会话的新 trace 形成新轮次；空 session 不构造 thread/turn。此映射不改 call ID、parent 或重试规则，也不回填历史已接收数据或改变 legacy 路径。原生 Threads 聚合、页面聊天展示和 I/O 是否符合平台识别格式仍分别验收。LLM 原生 usage 映射为 prompt/completion/total tokens；`native_cost=false`，供应商按自己的定价计算出的成本不是 Dify 原生成本导出。cache token 细分与首 token 时间也不因 `native_usage=true` 自动获得支持。
 
 Opik 保留 canonical I/O 中的 `None`、字符串、对象和对象列表；数字、布尔及其他 JSON 数组转换为 JSON 字符串，trace 与 span 使用相同映射。平台字符串需按该语义与 canonical 原值比较，不能把合法的工具整数结果误判为采集失败。`capture_content=false` 的 `None` 保持为空。顶层原生 Trace 的 `error_info` 仅跟随 canonical root ERROR；已处理的工具错误不把成功 root 升级为错误。关闭内容时使用隐私处理后的通用错误信息，不恢复原始异常正文。
 
@@ -710,7 +710,7 @@ r3 项目链接验证只读取现有运行，没有重新执行业务或补发 t
 | 历史目的地 | 当前 reference 恢复原项目后，历史第二项目运行仍返回冻结的 project/trace/node 链接 |
 | 脱敏编辑与重投保护 | dev 页面保存现有脱敏 Key 后密文与项目 URL 不变，API 容器未生成 `.netrc`；accepted 重投返回 409，attempts 仍为 1 |
 
-每条通过的查询均核对稳定 call ID、parent、单 root、trace/project/thread 归属、开始结束时间、节点类型、错误状态、canonical 内容及 LLM 原生 token 用量。Weave trace ID 是 canonical UUID 的带连字符形式；call ID 为 `uuid5(trace_uuid, span_id)`。业务会话写入 `thread_id`，未写 `turn_id`。`native_cost=false`；保留的 Dify USD metadata 和供应商自行定价的费用不作为原生成本导出验收。
+每条通过的查询均核对稳定 call ID、parent、单 root、trace/project/thread 归属、开始结束时间、节点类型、错误状态、canonical 内容及 LLM 原生 token 用量。Weave trace ID 是 canonical UUID 的带连字符形式；call ID 为 `uuid5(trace_uuid, span_id)`。该批次业务会话写入 `thread_id`，未写 `turn_id`；后续 managed 映射已补齐轮次，历史样本不追溯改写。`native_cost=false`；保留的 Dify USD metadata 和供应商自行定价的费用不作为原生成本导出验收。
 
 配置修复 `836ede2984` 移除了 POST/PATCH/GET 中对 legacy exporter 构造的依赖，改用隔离认证的只读验证，并保存规范化 entity/project/project_url。该提交目标测试 109 项、更广单测 1784 项、完整 lint/type/guards 均通过；CI 结果按对应 PR head 核对。普通应用 legacy exporter 的 SDK 登录生命周期未在这次修复中重构，其既有单元测试通过，但没有本轮 Weave 账号的普通 Chat/Workflow 平台回归证据。
 
@@ -797,7 +797,7 @@ reference Agent 日志弹窗仍未显示 tracing 面板，沿用 [DIFY-2985](htt
 ### 12.10 未验证范围与后续前端验收
 
 - 普通无 Agent Workflow legacy 已分别取得 Langfuse、LangSmith、Opik、腾讯云、OSS MLflow 与 Phoenix 平台证据；普通 Chatflow 未补独立真实平台证据。LangSmith 的同 tenant 两应用不同项目并发、双向零串数和恢复配置后的历史深链已验证；Opik 的独立项目并发证据见 12.8，只有项目链接回退，不据此声明 trace 深链。
-- Arize 仍没有平台端到端收数 / 查询验收，阿里云暂缓。Weave 平台 UI、OSS MLflow / Phoenix 的真实账号鉴权及各供应商列明的专项仍待完成；匿名实例、实现或协议测试不等于账号已验证。
+- Arize 仍没有平台端到端收数 / 查询验收，阿里云暂缓。Weave 平台 UI 的后续专项、OSS MLflow / Phoenix 的真实账号鉴权及各供应商列明的专项仍待完成；匿名实例、实现或协议测试不等于账号已验证。
 - LangSmith 的原生 cache token breakdown 和 first-token-time 专项未验证，当前相关值仅在存在时保留 metadata；`native_usage=true` 不代表所有 usage 细项全支持。
 - 跨 tenant 隔离、ingestion 写入 429 和凭据撤销没有在本轮 LangSmith 账号上执行；本次遇到的查询 429 不替代投递限流验收。公共层 / 合约测试不能写成 LangSmith 平台全部验收完成。
 - Agent 调用子 Workflow：只保证外层工具 span；内部节点仅关联，不承诺跨 Workflow 完整同树。
