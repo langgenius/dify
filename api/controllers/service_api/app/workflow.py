@@ -58,6 +58,7 @@ from graphon.enums import WorkflowExecutionStatus
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
+from libs.external_api import error_responses
 from libs.helper import dump_response, to_timestamp
 from models.model import App, AppMode, EndUser
 from repositories.factory import DifyAPIRepositoryFactory
@@ -231,6 +232,7 @@ register_response_schema_models(
 
 @service_api_ns.route("/workflows/run/<string:workflow_run_id>")
 class WorkflowRunDetailApi(Resource):
+    @error_responses(NotWorkflowAppError)
     @service_api_ns.doc(
         summary="Get Workflow Run Detail",
         description="Retrieve the current execution results of a workflow task based on the workflow execution ID.",
@@ -286,6 +288,15 @@ class WorkflowRunDetailApi(Resource):
 
 @service_api_ns.route("/workflows/run")
 class WorkflowRunApi(Resource):
+    @error_responses(
+        CompletionRequestError,
+        InvokeRateLimitHttpError,
+        NotWorkflowAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+        TriggerWorkflowServiceModeUnavailableError,
+    )
     @service_api_ns.doc(
         summary="Run Workflow",
         description="Execute a workflow. Cannot be executed without a published workflow.",
@@ -395,6 +406,16 @@ class WorkflowRunApi(Resource):
 
 @service_api_ns.route("/workflows/<string:workflow_id>/run")
 class WorkflowRunByIdApi(Resource):
+    @error_responses(
+        CompletionRequestError,
+        InvokeRateLimitHttpError,
+        NotWorkflowAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+        TriggerWorkflowServiceModeUnavailableError,
+        WorkflowVersionExecutionNotAllowedError,
+    )
     @service_api_ns.doc(
         summary="Run Workflow by ID",
         description=(
@@ -535,6 +556,7 @@ class WorkflowRunByIdApi(Resource):
 
 @service_api_ns.route("/workflows/tasks/<string:task_id>/stop")
 class WorkflowTaskStopApi(Resource):
+    @error_responses(NotWorkflowAppError)
     @service_api_ns.doc(
         summary="Stop Workflow Task",
         description="Stop a running workflow task. Only supported in `streaming` mode.",

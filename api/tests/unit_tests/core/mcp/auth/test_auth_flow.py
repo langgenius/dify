@@ -1,11 +1,9 @@
 """Unit tests for MCP OAuth authentication flow."""
 
-import json
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import httpx
 import pytest
-from pydantic import ValidationError
 
 from core.entities.mcp_provider import MCPProviderEntity
 from core.helper import ssrf_proxy
@@ -142,7 +140,7 @@ class TestRedisStateManagement:
         """Test retrieving non-existent state from Redis."""
         mock_redis.get.return_value = None
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="State parameter has expired or does not exist") as exc_info:
             _retrieve_redis_state("nonexistent-key")
 
         assert "State parameter has expired or does not exist" in str(exc_info.value)
@@ -152,7 +150,9 @@ class TestRedisStateManagement:
         """Test retrieving invalid JSON state from Redis."""
         mock_redis.get.return_value = '{"invalid": json}'
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match="Invalid state parameter: 1 validation error for OAuthCallbackState"
+        ) as exc_info:
             _retrieve_redis_state("test-key")
 
         assert "Invalid state parameter" in str(exc_info.value)
@@ -166,9 +166,7 @@ class TestOAuthDiscovery:
     @patch("core.helper.ssrf_proxy.get")
     def test_check_support_resource_discovery_success(self, mock_get):
         """Test successful resource discovery check."""
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"authorization_server_url": ["https://auth.example.com"]}
+        mock_response = httpx.Response(200, json={"authorization_server_url": ["https://auth.example.com"]})
         mock_get.return_value = mock_response
 
         supported, auth_url = check_support_resource_discovery("https://api.example.com/endpoint")
@@ -183,8 +181,7 @@ class TestOAuthDiscovery:
     @patch("core.helper.ssrf_proxy.get")
     def test_check_support_resource_discovery_not_supported(self, mock_get):
         """Test resource discovery not supported."""
-        mock_response = Mock()
-        mock_response.status_code = 404
+        mock_response = httpx.Response(404)
         mock_get.return_value = mock_response
 
         supported, auth_url = check_support_resource_discovery("https://api.example.com")
@@ -195,9 +192,7 @@ class TestOAuthDiscovery:
     @patch("core.helper.ssrf_proxy.get")
     def test_check_support_resource_discovery_with_query_fragment(self, mock_get):
         """Test resource discovery with query and fragment."""
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"authorization_server_url": ["https://auth.example.com"]}
+        mock_response = httpx.Response(200, json={"authorization_server_url": ["https://auth.example.com"]})
         mock_get.return_value = mock_response
 
         supported, auth_url = check_support_resource_discovery("https://api.example.com/path?query=1#fragment")
@@ -268,8 +263,7 @@ class TestOAuthDiscovery:
         with patch("core.mcp.auth.auth_flow.check_support_resource_discovery") as mock_check:
             mock_check.return_value = (False, "")
 
-            mock_response = Mock()
-            mock_response.status_code = 404
+            mock_response = httpx.Response(404)
             mock_get.return_value = mock_response
 
             oauth_metadata, prm, scope = discover_oauth_metadata("https://api.example.com")
@@ -350,7 +344,9 @@ class TestAuthorizationFlow:
         )
         client_info = OAuthClientInformation(client_id="test-client-id")
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match="Incompatible auth server: does not support response type code"
+        ) as exc_info:
             start_authorization(
                 "https://api.example.com",
                 metadata,
@@ -365,15 +361,16 @@ class TestAuthorizationFlow:
     @patch("core.helper.ssrf_proxy.post")
     def test_exchange_authorization_success(self, mock_post):
         """Test successful authorization code exchange."""
-        mock_response = Mock()
-        mock_response.is_success = True
-        mock_response.headers = {"content-type": "application/json"}
-        mock_response.json.return_value = {
-            "access_token": "new-access-token",
-            "token_type": "Bearer",
-            "expires_in": 3600,
-            "refresh_token": "new-refresh-token",
-        }
+        mock_response = httpx.Response(
+            200,
+            json={
+                "access_token": "new-access-token",
+                "token_type": "Bearer",
+                "expires_in": 3600,
+                "refresh_token": "new-refresh-token",
+            },
+            headers={"content-type": "application/json"},
+        )
         mock_post.return_value = mock_response
 
         metadata = OAuthMetadata(
@@ -414,14 +411,12 @@ class TestAuthorizationFlow:
     @patch("core.helper.ssrf_proxy.post")
     def test_exchange_authorization_failure(self, mock_post):
         """Test failed authorization code exchange."""
-        mock_response = Mock()
-        mock_response.is_success = False
-        mock_response.status_code = 400
+        mock_response = httpx.Response(400)
         mock_post.return_value = mock_response
 
         client_info = OAuthClientInformation(client_id="test-client-id")
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Token exchange failed: HTTP 400") as exc_info:
             exchange_authorization(
                 "https://api.example.com",
                 None,
@@ -436,15 +431,16 @@ class TestAuthorizationFlow:
     @patch("core.helper.ssrf_proxy.post")
     def test_refresh_authorization_success(self, mock_post):
         """Test successful token refresh."""
-        mock_response = Mock()
-        mock_response.is_success = True
-        mock_response.headers = {"content-type": "application/json"}
-        mock_response.json.return_value = {
-            "access_token": "refreshed-access-token",
-            "token_type": "Bearer",
-            "expires_in": 3600,
-            "refresh_token": "new-refresh-token",
-        }
+        mock_response = httpx.Response(
+            200,
+            json={
+                "access_token": "refreshed-access-token",
+                "token_type": "Bearer",
+                "expires_in": 3600,
+                "refresh_token": "new-refresh-token",
+            },
+            headers={"content-type": "application/json"},
+        )
         mock_post.return_value = mock_response
 
         metadata = OAuthMetadata(
@@ -473,14 +469,15 @@ class TestAuthorizationFlow:
     @patch("core.helper.ssrf_proxy.post")
     def test_register_client_success(self, mock_post):
         """Test successful client registration."""
-        mock_response = Mock()
-        mock_response.is_success = True
-        mock_response.json.return_value = {
-            "client_id": "new-client-id",
-            "client_secret": "new-client-secret",
-            "client_name": "Dify",
-            "redirect_uris": ["https://redirect.example.com"],
-        }
+        mock_response = httpx.Response(
+            200,
+            json={
+                "client_id": "new-client-id",
+                "client_secret": "new-client-secret",
+                "client_name": "Dify",
+                "redirect_uris": ["https://redirect.example.com"],
+            },
+        )
         mock_post.return_value = mock_response
 
         metadata = OAuthMetadata(
@@ -517,12 +514,10 @@ class TestAuthorizationFlow:
         console MCP auth endpoint only turns MCPError/ValueError into a 4xx, so
         a raw HTTPStatusError here surfaces as an opaque 500.
         """
-        mock_response = Mock()
-        mock_response.is_success = False
-        mock_response.status_code = 400
-        mock_response.text = '{"error":"invalid_redirect_uri"}'
-        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
-            "Bad Request", request=Mock(), response=mock_response
+        mock_response = httpx.Response(
+            400,
+            text='{"error":"invalid_redirect_uri"}',
+            request=httpx.Request("POST", "https://auth.example.com/register"),
         )
         mock_post.return_value = mock_response
 
@@ -534,7 +529,9 @@ class TestAuthorizationFlow:
         )
         client_metadata = OAuthClientMetadata(client_name="Dify", redirect_uris=["https://redirect.example.com"])
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match=('Client registration failed: HTTP 400, Response: \\{"error":"invalid_redirect_uri"\\}')
+        ) as exc_info:
             register_client("https://api.example.com", metadata, client_metadata)
 
         message = str(exc_info.value)
@@ -551,7 +548,9 @@ class TestAuthorizationFlow:
         )
         client_metadata = OAuthClientMetadata(client_name="Dify", redirect_uris=["https://redirect.example.com"])
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match="Incompatible auth server: does not support dynamic client registration"
+        ) as exc_info:
             register_client("https://api.example.com", metadata, client_metadata)
 
         assert "does not support dynamic client registration" in str(exc_info.value)
@@ -584,9 +583,6 @@ class TestCallbackHandling:
         )
         mock_exchange.return_value = tokens
 
-        # Setup service
-        mock_service = Mock()
-
         state_result, tokens_result = handle_callback("state-key", "auth-code")
 
         assert state_result == state_data
@@ -609,15 +605,10 @@ class TestCallbackHandling:
 class TestAuthOrchestration:
     """Test the main auth orchestration function."""
 
-    @pytest.fixture
-    def mock_service(self):
-        """Create a mock MCP service."""
-        return Mock()
-
     @patch("core.mcp.auth.auth_flow.discover_oauth_metadata")
     @patch("core.mcp.auth.auth_flow.register_client")
     @patch("core.mcp.auth.auth_flow.start_authorization")
-    def test_auth_new_registration(self, mock_start_auth, mock_register, mock_discover, provider, mock_service):
+    def test_auth_new_registration(self, mock_start_auth, mock_register, mock_discover, provider):
         """Test auth flow for new client registration."""
         # Setup
         mock_discover.return_value = (
@@ -663,7 +654,7 @@ class TestAuthOrchestration:
     @patch("core.mcp.auth.auth_flow.discover_oauth_metadata")
     @patch("core.mcp.auth.auth_flow._retrieve_redis_state")
     @patch("core.mcp.auth.auth_flow.exchange_authorization")
-    def test_auth_exchange_code(self, mock_exchange, mock_retrieve_state, mock_discover, provider, mock_service):
+    def test_auth_exchange_code(self, mock_exchange, mock_retrieve_state, mock_discover, provider):
         """Test auth flow for exchanging authorization code."""
         # Setup metadata discovery
         mock_discover.return_value = (
@@ -710,7 +701,7 @@ class TestAuthOrchestration:
         assert result.actions[0].tenant_id == "tenant-id"
 
     @patch("core.mcp.auth.auth_flow.discover_oauth_metadata")
-    def test_auth_exchange_code_without_state(self, mock_discover, provider, mock_service):
+    def test_auth_exchange_code_without_state(self, mock_discover, provider):
         """Test auth flow fails when exchanging code without state."""
         # Setup metadata discovery
         mock_discover.return_value = (
@@ -726,13 +717,15 @@ class TestAuthOrchestration:
 
         provider.credentials["client_information"] = {"client_id": "existing-client"}
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match="State parameter is required when exchanging authorization code"
+        ) as exc_info:
             auth(provider, authorization_code="auth-code")
 
         assert "State parameter is required" in str(exc_info.value)
 
     @patch("core.mcp.auth.auth_flow.refresh_authorization")
-    def test_auth_refresh_token(self, mock_refresh, provider, mock_service):
+    def test_auth_refresh_token(self, mock_refresh, provider):
         """Test auth flow for refreshing tokens."""
         # Setup existing client and tokens
         provider.credentials["client_information"] = {"client_id": "existing-client"}
@@ -781,7 +774,7 @@ class TestAuthOrchestration:
             mock_refresh.assert_called_once()
 
     @patch("core.mcp.auth.auth_flow.discover_oauth_metadata")
-    def test_auth_registration_fails_with_code(self, mock_discover, provider, mock_service):
+    def test_auth_registration_fails_with_code(self, mock_discover, provider):
         """Test auth fails when no client info exists but code is provided."""
         # Setup metadata discovery
         mock_discover.return_value = (
@@ -797,7 +790,9 @@ class TestAuthOrchestration:
 
         provider.credentials.pop("client_information", None)
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match=("Existing OAuth client information is required when exchanging an authorization code")
+        ) as exc_info:
             auth(provider, authorization_code="auth-code")
 
         assert "Existing OAuth client information is required" in str(exc_info.value)
@@ -863,20 +858,20 @@ class TestAuthOrchestration:
     @patch("core.helper.ssrf_proxy.get")
     def test_discover_protected_resource_metadata(self, mock_get):
         # Success
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "resource": "https://api.example.com",
-            "authorization_servers": ["https://auth"],
-        }
+        mock_response = httpx.Response(
+            200,
+            json={
+                "resource": "https://api.example.com",
+                "authorization_servers": ["https://auth"],
+            },
+        )
         mock_get.return_value = mock_response
         result = discover_protected_resource_metadata(None, "https://api.example.com")
         assert result is not None
         assert result.resource == "https://api.example.com"
 
         # 404 then Success
-        res404 = Mock()
-        res404.status_code = 404
+        res404 = httpx.Response(404)
         mock_get.side_effect = [res404, mock_response]
         result = discover_protected_resource_metadata(None, "https://api.example.com/path")
         assert result is not None
@@ -889,9 +884,7 @@ class TestAuthOrchestration:
 
         # JSONDecodeError (non-JSON 200 response)
         mock_get.side_effect = None
-        bad_json_response = Mock()
-        bad_json_response.status_code = 200
-        bad_json_response.json.side_effect = json.JSONDecodeError("Expecting value", "", 0)
+        bad_json_response = httpx.Response(200, content=b"not JSON")
         mock_get.return_value = bad_json_response
         result = discover_protected_resource_metadata(None, "https://api.example.com")
         assert result is None
@@ -899,37 +892,34 @@ class TestAuthOrchestration:
     @patch("core.helper.ssrf_proxy.get")
     def test_discover_oauth_authorization_server_metadata(self, mock_get):
         # Success
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "authorization_endpoint": "https://auth.example.com/auth",
-            "token_endpoint": "https://auth.example.com/token",
-            "response_types_supported": ["code"],
-        }
+        mock_response = httpx.Response(
+            200,
+            json={
+                "authorization_endpoint": "https://auth.example.com/auth",
+                "token_endpoint": "https://auth.example.com/token",
+                "response_types_supported": ["code"],
+            },
+        )
         mock_get.return_value = mock_response
         result = discover_oauth_authorization_server_metadata(None, "https://api.example.com")
         assert result is not None
         assert result.authorization_endpoint == "https://auth.example.com/auth"
 
         # 404
-        res404 = Mock()
-        res404.status_code = 404
+        res404 = httpx.Response(404)
         mock_get.side_effect = [res404, mock_response]
         result = discover_oauth_authorization_server_metadata(None, "https://api.example.com/tenant")
         assert result is not None
         assert result.authorization_endpoint == "https://auth.example.com/auth"
 
         # ValidationError
-        mock_response.json.return_value = {"invalid": "data"}
         mock_get.side_effect = None
-        mock_get.return_value = mock_response
+        mock_get.return_value = httpx.Response(200, json={"invalid": "data"})
         result = discover_oauth_authorization_server_metadata(None, "https://api.example.com")
         assert result is None
 
         # JSONDecodeError (non-JSON 200 response)
-        bad_json_response = Mock()
-        bad_json_response.status_code = 200
-        bad_json_response.json.side_effect = json.JSONDecodeError("Expecting value", "", 0)
+        bad_json_response = httpx.Response(200, content=b"not JSON")
         mock_get.return_value = bad_json_response
         result = discover_oauth_authorization_server_metadata(None, "https://api.example.com")
         assert result is None
@@ -1012,27 +1002,25 @@ class TestAuthOrchestration:
     @patch("core.helper.ssrf_proxy.get")
     def test_check_support_resource_discovery(self, mock_get):
         # Case 1: authorization_servers (plural)
-        res = Mock()
-        res.status_code = 200
-        res.json.return_value = {"authorization_servers": ["https://auth1"]}
+        res = httpx.Response(200, json={"authorization_servers": ["https://auth1"]})
         mock_get.return_value = res
         supported, url = check_support_resource_discovery("https://api")
         assert supported is True
         assert url == "https://auth1"
 
         # Case 2: authorization_server_url (singular alias)
-        res.json.return_value = {"authorization_server_url": ["https://auth2"]}
+        mock_get.return_value = httpx.Response(200, json={"authorization_server_url": ["https://auth2"]})
         supported, url = check_support_resource_discovery("https://api")
         assert supported is True
         assert url == "https://auth2"
 
         # Case 3: Missing fields
-        res.json.return_value = {"nothing": []}
+        mock_get.return_value = httpx.Response(200, json={"nothing": []})
         supported, url = check_support_resource_discovery("https://api")
         assert supported is False
 
         # Case 4: 404
-        res.status_code = 404
+        mock_get.return_value = httpx.Response(404)
         supported, url = check_support_resource_discovery("https://api")
         assert supported is False
 
@@ -1043,18 +1031,14 @@ class TestAuthOrchestration:
 
         # Case 6: JSONDecodeError (non-JSON 200 response)
         mock_get.side_effect = None
-        bad_json_res = Mock()
-        bad_json_res.status_code = 200
-        bad_json_res.json.side_effect = json.JSONDecodeError("Expecting value", "", 0)
+        bad_json_res = httpx.Response(200, content=b"not JSON")
         mock_get.return_value = bad_json_res
         supported, url = check_support_resource_discovery("https://api")
         assert supported is False
         assert url == ""
 
         # Case 7: Empty authorization_servers array (IndexError)
-        empty_res = Mock()
-        empty_res.status_code = 200
-        empty_res.json.return_value = {"authorization_servers": []}
+        empty_res = httpx.Response(200, json={"authorization_servers": []})
         mock_get.return_value = empty_res
         supported, url = check_support_resource_discovery("https://api")
         assert supported is False
@@ -1103,33 +1087,32 @@ class TestAuthOrchestration:
 
     def test_parse_token_response(self):
         # Case 1: JSON
-        res = Mock()
-        res.headers = {"content-type": "application/json"}
-        res.json.return_value = {"access_token": "at", "token_type": "Bearer"}
+        res = httpx.Response(200, json={"access_token": "at", "token_type": "Bearer"})
         tokens = _parse_token_response(res)
         assert tokens.access_token == "at"
 
         # Case 2: Form-urlencoded
-        res.headers = {"content-type": "application/x-www-form-urlencoded"}
-        res.text = "access_token=at2&token_type=Bearer"
+        res = httpx.Response(
+            200,
+            headers={"content-type": "application/x-www-form-urlencoded"},
+            content=b"access_token=at2&token_type=Bearer",
+        )
         tokens = _parse_token_response(res)
         assert tokens.access_token == "at2"
 
         # Case 3: No content-type, but JSON
-        res.headers = {}
-        res.json.return_value = {"access_token": "at3", "token_type": "Bearer"}
+        res = httpx.Response(200, content=b'{"access_token":"at3","token_type":"Bearer"}')
         tokens = _parse_token_response(res)
         assert tokens.access_token == "at3"
 
         # Case 4: No content-type, not JSON, but Form
-        res.json.side_effect = json.JSONDecodeError("msg", "doc", 0)
-        res.text = "access_token=at4&token_type=Bearer"
+        res = httpx.Response(200, content=b"access_token=at4&token_type=Bearer")
         tokens = _parse_token_response(res)
         assert tokens.access_token == "at4"
 
-        # Case 5: Validation Error fallback
-        res.json.side_effect = ValidationError.from_exception_data("error", [])
-        res.text = "access_token=at5&token_type=Bearer"
+        # Case 5: A JSON string fails token-object validation; its form fields
+        # still let the fallback recover the token from the same response body.
+        res = httpx.Response(200, content=b'"ignored&access_token=at5&token_type=Bearer&ignored"')
         tokens = _parse_token_response(res)
         assert tokens.access_token == "at5"
 
@@ -1144,10 +1127,7 @@ class TestAuthOrchestration:
         )
 
         # Success
-        res = Mock()
-        res.is_success = True
-        res.headers = {"content-type": "application/json"}
-        res.json.return_value = {"access_token": "at", "token_type": "Bearer"}
+        res = httpx.Response(200, json={"access_token": "at", "token_type": "Bearer"})
         mock_post.return_value = res
 
         tokens = exchange_authorization("https://api", metadata, client_info, "code", "verifier", "https://re")
@@ -1160,8 +1140,7 @@ class TestAuthOrchestration:
 
         # Failure: HTTP error
         metadata.grant_types_supported = ["authorization_code"]
-        res.is_success = False
-        res.status_code = 400
+        mock_post.return_value = httpx.Response(400)
         with pytest.raises(ValueError, match="Token exchange failed"):
             exchange_authorization("https://api", metadata, client_info, "code", "verifier", "https://re")
 
@@ -1171,10 +1150,7 @@ class TestAuthOrchestration:
         client_info = OAuthClientInformation(client_id="c1", client_secret="s1")
 
         # Success
-        res = Mock()
-        res.is_success = True
-        res.headers = {"content-type": "application/json"}
-        res.json.return_value = {"access_token": "at_new", "token_type": "Bearer"}
+        res = httpx.Response(200, json={"access_token": "at_new", "token_type": "Bearer"})
         mock_post.return_value = res
 
         tokens = refresh_authorization("https://api", None, client_info, "rt")
@@ -1188,8 +1164,7 @@ class TestAuthOrchestration:
 
         # Failure: HTTP error
         mock_post.side_effect = None
-        res.is_success = False
-        res.text = "error_msg"
+        mock_post.return_value = httpx.Response(400, text="error_msg")
         with pytest.raises(MCPRefreshTokenError, match="error_msg"):
             refresh_authorization("https://api", None, client_info, "rt")
 
@@ -1208,10 +1183,7 @@ class TestAuthOrchestration:
         client_info = OAuthClientInformation(client_id="c1", client_secret="s1")
 
         # Success with secret
-        res = Mock()
-        res.is_success = True
-        res.headers = {"content-type": "application/json"}
-        res.json.return_value = {"access_token": "at_cc", "token_type": "Bearer"}
+        res = httpx.Response(200, json={"access_token": "at_cc", "token_type": "Bearer"})
         mock_post.return_value = res
 
         tokens = client_credentials_flow("https://api", None, client_info, "read")
@@ -1236,9 +1208,7 @@ class TestAuthOrchestration:
             client_credentials_flow("https://api", metadata, client_info)
 
         # Failure: HTTP error
-        res.is_success = False
-        res.status_code = 401
-        res.text = "Unauthorized"
+        mock_post.return_value = httpx.Response(401, text="Unauthorized")
         with pytest.raises(ValueError, match="Client credentials token request failed"):
             client_credentials_flow("https://api", None, client_info)
 
@@ -1253,14 +1223,15 @@ class TestAuthOrchestration:
         )
         client_metadata = OAuthClientMetadata(client_name="Dify", redirect_uris=["https://re"])
 
-        res = Mock()
-        res.is_success = True
-        res.json.return_value = {
-            "client_id": "c_new",
-            "client_secret": "s_new",
-            "client_name": "Dify",
-            "redirect_uris": ["https://re"],
-        }
+        res = httpx.Response(
+            200,
+            json={
+                "client_id": "c_new",
+                "client_secret": "s_new",
+                "client_name": "Dify",
+                "redirect_uris": ["https://re"],
+            },
+        )
         mock_post.return_value = res
 
         info = register_client("https://api", metadata, client_metadata)
@@ -1277,9 +1248,7 @@ class TestAuthOrchestration:
 
         # Failure: HTTP. A rejected registration must be reported as a ValueError so
         # callers can turn it into a user-facing error instead of a bare 500.
-        res.is_success = False
-        res.status_code = 400
-        res.text = '{"error":"invalid_redirect_uri"}'
+        mock_post.return_value = httpx.Response(400, text='{"error":"invalid_redirect_uri"}')
         with pytest.raises(ValueError, match="Client registration failed: HTTP 400"):
             register_client("https://api", None, client_metadata)
 

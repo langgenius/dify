@@ -58,7 +58,7 @@ def init_tool_node(config: dict[str, object], *, workflow_runtime: WorkflowRunti
         graph_runtime_state=graph_runtime_state,
     )
 
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
+    Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     tool_file_manager = DifyToolFileManager(init_params.run_context)
 

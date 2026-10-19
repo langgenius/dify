@@ -42,7 +42,7 @@ from tests.workflow_test_utils import build_test_graph_init_params
 
 
 @pytest.fixture
-def databases(monkeypatch: pytest.MonkeyPatch) -> Generator[sessionmaker[Session], None, None]:
+def databases(monkeypatch: pytest.MonkeyPatch) -> Generator[sessionmaker[Session]]:
     engines: list[Engine] = [create_engine("sqlite://", poolclass=QueuePool) for _ in range(2)]
     tables = cast(
         list[Table],
@@ -305,7 +305,7 @@ def test_datasource_node_reads_injected_credential_before_plugin_stream(
     def get_icon_url(**_kwargs: object) -> str:
         return "icon.svg"
 
-    def stream_node_events(**kwargs: object) -> Generator[object, None, None]:
+    def stream_node_events(**kwargs: object) -> Generator[object]:
         assert databases.kw["bind"].pool.checkedout() == 0
         assert kwargs["credentials"] == {"secret": "clear"}
         calls.append("stream")

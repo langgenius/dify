@@ -108,7 +108,7 @@ def is_retriever_segment_access_granted(segment_id: str) -> bool:
 
 
 @contextmanager
-def bind_file_access_scope(scope: FileAccessScope) -> Generator[None, None, None]:
+def bind_file_access_scope(scope: FileAccessScope) -> Generator[None]:
     token = _current_file_access_scope.set(scope)
     try:
         yield

@@ -706,7 +706,7 @@ class TestWorkflowCollaborationService:
         events: list[str] = []
 
         @contextmanager
-        def graph_view_lock() -> Generator[None, None, None]:
+        def graph_view_lock() -> Generator[None]:
             events.append("lock_enter")
             yield
             events.append("lock_exit")

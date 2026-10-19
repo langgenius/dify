@@ -49,7 +49,14 @@ class TestJinja2TransformCallerSandbox:
         runner, preload = Jinja2TemplateTransformer.transform_caller(malicious_template, {})
         ns: dict = {}
         exec(compile(preload, "<preload>", "exec"), ns)  # noqa: S102
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(
+            Exception,
+            match=(
+                "(?:access to attribute '__class__' of 'str' object is unsafe\\.|"
+                "access to attribute '__globals__' of 'function' object is unsafe\\.|"
+                "access to attribute '__init__' of 'type' object is unsafe\\.)"
+            ),
+        ) as exc_info:
             exec(compile(runner, "<runner>", "exec"), ns)  # noqa: S102
         assert "unsafe" in str(exc_info.value).lower() or "security" in str(exc_info.value).lower()
 

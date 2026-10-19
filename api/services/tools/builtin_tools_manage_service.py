@@ -303,10 +303,11 @@ class BuiltinToolManageService:
 
                     session.add(db_provider)
                     session.flush()
+                    credential_id = db_provider.id
             except Exception as e:
                 raise ValueError(str(e))
 
-        return {"result": "success"}
+        return {"result": "success", "id": credential_id}
 
     @staticmethod
     def create_tool_encrypter(

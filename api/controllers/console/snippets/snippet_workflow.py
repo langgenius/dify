@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from controllers.common.controller_schemas import WorkflowUpdatePayload
-from controllers.common.errors import InternalServerError, InvalidRequestError, NotFoundError
+from controllers.common.errors import InternalServerError, InvalidArgumentError, InvalidRequestError, NotFoundError
 from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
@@ -17,14 +17,14 @@ from controllers.console import console_ns
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.snippets.payloads import (
-    PublishWorkflowPayload,
     SnippetDraftNodeRunPayload,
     SnippetDraftRunPayload,
     SnippetDraftSyncPayload,
     SnippetIterationNodeRunPayload,
     SnippetLoopNodeRunPayload,
+    SnippetPublishWorkflowPayload,
     SnippetWorkflowListQuery,
-    WorkflowRunQuery,
+    SnippetWorkflowRunQuery,
 )
 from controllers.console.wraps import (
     RBACPermission,
@@ -61,6 +61,7 @@ from fields.workflow_run_fields import (
 )
 from graphon.graph_engine.manager import GraphEngineManager
 from libs import helper
+from libs.external_api import error_responses
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from machinery.context import RequestContext
@@ -108,9 +109,9 @@ register_schema_models(
     SnippetIterationNodeRunPayload,
     SnippetLoopNodeRunPayload,
     SnippetWorkflowListQuery,
-    WorkflowRunQuery,
+    SnippetWorkflowRunQuery,
     WorkflowUpdatePayload,
-    PublishWorkflowPayload,
+    SnippetPublishWorkflowPayload,
 )
 register_response_schema_models(
     console_ns,
@@ -167,6 +168,7 @@ def get_snippet[**P, R](view_func: Callable[P, R]) -> Callable[P, R]:
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft")
 class SnippetDraftWorkflowApi(Resource):
+    @error_responses(DraftWorkflowNotExist)
     @console_ns.doc("get_snippet_draft_workflow")
     @console_ns.response(
         200,
@@ -192,6 +194,7 @@ class SnippetDraftWorkflowApi(Resource):
         response["input_fields"] = snippet.input_fields_list
         return response
 
+    @error_responses(DraftWorkflowNotSync)
     @console_ns.doc("sync_snippet_draft_workflow")
     @console_ns.expect(console_ns.models.get(SnippetDraftSyncPayload.__name__))
     @console_ns.response(
@@ -228,7 +231,7 @@ class SnippetDraftWorkflowApi(Resource):
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()
         except ValueError as e:
-            return {"message": str(e)}, 400
+            raise InvalidArgumentError(str(e)) from e
 
         return {
             "result": "success",
@@ -288,7 +291,7 @@ class SnippetPublishedWorkflowApi(Resource):
         return response
 
     @console_ns.doc("publish_snippet_workflow")
-    @console_ns.expect(console_ns.models.get(PublishWorkflowPayload.__name__))
+    @console_ns.expect(console_ns.models.get(SnippetPublishWorkflowPayload.__name__))
     @console_ns.response(200, "Workflow published successfully", console_ns.models[WorkflowPublishResponse.__name__])
     @console_ns.response(400, "No draft workflow found")
     @setup_required
@@ -311,7 +314,7 @@ class SnippetPublishedWorkflowApi(Resource):
         except WorkflowHashNotEqualError as e:
             raise DraftWorkflowNotSync() from e
         except ValueError as e:
-            return {"message": str(e)}, 400
+            raise InvalidArgumentError(str(e)) from e
 
         return {
             "result": "success",
@@ -454,7 +457,7 @@ class SnippetWorkflowByIdApi(Resource):
         update_data = req_data.model_dump(exclude_unset=True)
 
         if not update_data:
-            return {"message": "No valid fields to update"}, 400
+            raise InvalidArgumentError("No valid fields to update")
 
         snippet_service = _snippet_service()
         workflow = snippet_service.update_workflow(
@@ -497,7 +500,7 @@ class SnippetWorkflowByIdApi(Resource):
 @console_ns.route("/snippets/<uuid:snippet_id>/workflow-runs")
 class SnippetWorkflowRunsApi(Resource):
     @console_ns.doc("list_snippet_workflow_runs")
-    @console_ns.doc(params=query_params_from_model(WorkflowRunQuery))
+    @console_ns.doc(params=query_params_from_model(SnippetWorkflowRunQuery))
     @console_ns.response(
         200,
         "Workflow runs retrieved successfully",
@@ -510,7 +513,7 @@ class SnippetWorkflowRunsApi(Resource):
     @with_session(write=False)
     def get(self, session: Session, snippet: CustomizedSnippet):
         """List workflow runs for snippet."""
-        query = WorkflowRunQuery.model_validate(
+        query = SnippetWorkflowRunQuery.model_validate(
             {
                 "last_id": request.args.get("last_id"),
                 "limit": request.args.get("limit", type=int, default=20),

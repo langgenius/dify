@@ -3,9 +3,12 @@ from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from models.dataset import Dataset, Pipeline
+from core.rag.index_processor.constant.index_type import IndexStructureType
+from models.dataset import Dataset, Document, Pipeline
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.model import Account, EndUser
 from models.workflow import Workflow, WorkflowType
+from services.knowledge.resource_scope import DatasetRef
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
 from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.adapters.pipeline.pipeline_generator import PipelineGenerator
@@ -51,6 +54,24 @@ def _make_dataset(*, dataset_id: str = "dataset-1", tenant_id: str = "tenant-1")
     )
 
 
+def _make_document(
+    *, document_id: str = "doc-1", dataset_id: str = "dataset-1", tenant_id: str = "tenant-1"
+) -> Document:
+    return Document(
+        id=document_id,
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        position=1,
+        data_source_type=DataSourceType.LOCAL_FILE,
+        batch="batch",
+        name="Document",
+        created_from=DocumentCreatedFrom.API,
+        created_by="user-1",
+        indexing_status=IndexingStatus.COMPLETED,
+        doc_form=IndexStructureType.PARAGRAPH_INDEX,
+    )
+
+
 def test_generate_delegates_original_document_and_returns_event_stream(
     mocker: MockerFixture, sqlite_session: Session, pipeline_generator
 ) -> None:
@@ -62,6 +83,7 @@ def test_generate_delegates_original_document_and_returns_event_stream(
     args = {"original_document_id": "doc-1", "query": "hello"}
 
     pipeline_generator.load_workflow.return_value = _make_workflow()
+    update_status = mocker.patch.object(PipelineGenerateService, "update_document_status")
 
     generator_instance = pipeline_generator
     generator_instance.generate.return_value = "raw-events"
@@ -75,17 +97,113 @@ def test_generate_delegates_original_document_and_returns_event_stream(
         args=args,
         invoke_from=InvokeFrom.WEB_APP,
         streaming=True,
+        session=sqlite_session,
         generator=pipeline_generator,
     )
 
     assert result == "stream-events"
+    document_ref = update_status.call_args.args[0]
+    assert document_ref.dataset.tenant_id == "tenant-1"
+    assert document_ref.dataset.dataset_id == "dataset-1"
+    assert document_ref.document_id == "doc-1"
+    update_status.assert_called_once_with(document_ref, session=sqlite_session)
     assert generator_instance.generate.call_args.kwargs["args"] == args
     assert "session" not in generator_instance.generate.call_args.kwargs
 
 
-def test_generate_single_iteration_delegates(mocker: MockerFixture, pipeline_generator) -> None:
+def test_generate_rejects_pipeline_dataset_from_another_tenant(
+    mocker: MockerFixture, sqlite_session: Session, pipeline_generator
+) -> None:
+    dataset = _make_dataset(tenant_id="tenant-2")
+    pipeline = _make_pipeline()
+    sqlite_session.add_all([dataset, pipeline])
+    sqlite_session.commit()
+    pipeline_generator.load_workflow.return_value = _make_workflow()
+    update_status_mock = mocker.patch.object(PipelineGenerateService, "update_document_status")
+
+    with pytest.raises(ValueError, match="Pipeline dataset is required"):
+        PipelineGenerateService.generate(
+            pipeline=pipeline,
+            user=_make_account(),
+            args={"original_document_id": "doc-1"},
+            invoke_from=InvokeFrom.WEB_APP,
+            session=sqlite_session,
+            generator=pipeline_generator,
+        )
+
+    update_status_mock.assert_not_called()
+
+
+def test_generate_rejects_original_document_outside_pipeline_dataset_before_dispatch(
+    sqlite_session: Session,
+    pipeline_generator,
+) -> None:
+    dataset = _make_dataset()
+    pipeline = _make_pipeline()
+    outside_document = _make_document(document_id="foreign-doc", dataset_id="other-dataset", tenant_id="tenant-2")
+    sqlite_session.add_all([dataset, pipeline, outside_document])
+    sqlite_session.commit()
     pipeline_generator.load_workflow.return_value = _make_workflow()
 
+    with pytest.raises(ValueError, match="Pipeline document not found"):
+        PipelineGenerateService.generate(
+            pipeline=pipeline,
+            user=_make_account(),
+            args={"original_document_id": "foreign-doc"},
+            invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
+            session=sqlite_session,
+            generator=pipeline_generator,
+        )
+
+    sqlite_session.refresh(outside_document)
+    assert outside_document.indexing_status == IndexingStatus.COMPLETED
+    pipeline_generator.generate.assert_not_called()
+
+
+def test_update_document_status_updates_existing_document(sqlite_session: Session) -> None:
+    document = _make_document()
+    dataset = _make_dataset()
+    sqlite_session.add_all([dataset, document])
+    sqlite_session.commit()
+    dataset_ref = DatasetRef(tenant_id=dataset.tenant_id, dataset_id=dataset.id)
+    document_ref = dataset_ref.document("doc-1")
+
+    PipelineGenerateService.update_document_status(document_ref, session=sqlite_session)
+
+    assert document.indexing_status == IndexingStatus.WAITING
+
+
+@pytest.mark.parametrize(
+    ("document_tenant_id", "document_dataset_id"),
+    [
+        pytest.param("other-tenant", "dataset-1", id="other-tenant"),
+        pytest.param("tenant-1", "other-dataset", id="other-dataset"),
+    ],
+)
+def test_update_document_status_rejects_document_outside_owner(
+    document_tenant_id: str,
+    document_dataset_id: str,
+    sqlite_session: Session,
+) -> None:
+    dataset = _make_dataset()
+    dataset_ref = DatasetRef(tenant_id=dataset.tenant_id, dataset_id=dataset.id)
+    document_ref = dataset_ref.document("doc-1")
+    outside_document = _make_document(tenant_id=document_tenant_id, dataset_id=document_dataset_id)
+    sqlite_session.add(outside_document)
+    sqlite_session.commit()
+
+    with pytest.raises(ValueError, match="Pipeline document not found"):
+        PipelineGenerateService.update_document_status(document_ref, session=sqlite_session)
+
+    sqlite_session.refresh(outside_document)
+    assert outside_document.indexing_status == IndexingStatus.COMPLETED
+
+
+# --- generate_single_iteration ---
+
+
+def test_generate_single_iteration_delegates(mocker: MockerFixture, pipeline_generator) -> None:
+    pipeline_generator.load_workflow.return_value = _make_workflow()
     generator_instance = pipeline_generator
     generator_instance.single_iteration_generate.return_value = "raw-iter"
     mocker.patch("services.rag_pipeline.pipeline_generate_service.convert_to_event_stream", return_value="stream-iter")

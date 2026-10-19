@@ -13,6 +13,7 @@ from controllers.console.workspace import snippets as snippets_module
 from models.account import Account, TenantAccountRole
 from models.snippet import CustomizedSnippet
 from services.snippet_dsl_service import ImportStatus, SnippetImportInfo
+from tests.unit_tests.controllers.error_body import raised_error
 from tests.unit_tests.model_factories import make_account
 
 
@@ -204,7 +205,7 @@ def test_create_snippet_rejects_forbidden_nodes(app: Flask, sqlite_session: Sess
             },
         },
     ):
-        response, status_code = handler(api, req_data, sqlite_session, "tenant-1", user)
+        response, status_code = raised_error(lambda: handler(api, req_data, sqlite_session, "tenant-1", user))
 
     assert status_code == 400
     assert "knowledge-retrieval" in response["message"]
@@ -276,10 +277,12 @@ def test_patch_snippet_returns_400_for_empty_payload(
         method="PATCH",
         json={},
     ):
-        response, status_code = handler(api, req_data, sqlite_session, "tenant-1", user, snippet_id="snippet-1")
+        response, status_code = raised_error(
+            lambda: handler(api, req_data, sqlite_session, "tenant-1", user, snippet_id="snippet-1")
+        )
 
     assert status_code == 400
-    assert response == {"message": "No valid fields to update"}
+    assert response == {"code": "invalid_param", "message": "No valid fields to update"}
 
 
 def test_patch_snippet_updates_and_commits(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):

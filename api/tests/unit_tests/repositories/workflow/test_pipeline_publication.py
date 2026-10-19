@@ -90,7 +90,7 @@ type Publication = tuple[PipelinePublicationService, ModelGateway, IndexUpdates]
 
 
 @pytest.fixture
-def publication(sqlite_session_factory: sessionmaker[Session]) -> Generator[Publication, None, None]:
+def publication(sqlite_session_factory: sessionmaker[Session]) -> Generator[Publication]:
     sessions = sqlite_session_factory
     with sessions.begin() as session:
         pipeline = Pipeline(tenant_id="tenant-1", name="Pipeline", created_by="account-1", is_published=False)
@@ -309,7 +309,10 @@ def test_invalid_llm_environment_reference_is_rejected(
                 ]
             }
         )
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match="LLM environment variable 'missing' was not found or is not an LLM variable",
+    ):
         service.publish(CONTEXT, "pipeline-1")
     assert indexes.dispatched == []
 

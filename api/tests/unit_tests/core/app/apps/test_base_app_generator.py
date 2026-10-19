@@ -68,7 +68,10 @@ def test_restore_workflow_run_graph_requires_persisted_snapshot(
         sqlite_session.add(workflow_run)
         sqlite_session.commit()
 
-    with pytest.raises(WorkflowNotFoundError):
+    with pytest.raises(
+        WorkflowNotFoundError,
+        match="(?:Workflow run graph not found: run\\-id|Workflow run id is required when resuming)",
+    ):
         WorkflowRuntimeContextRepository(sessionmaker(bind=sqlite_session.get_bind())).restore_graph(
             workflow=workflow_snapshot(
                 make_workflow(workflow_id="workflow-1", tenant_id="tenant-1", app_id="app-1", graph="{}")
@@ -116,7 +119,7 @@ def test_validate_input_with_none_for_required_variable():
         )
 
         # Test with input None
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="test_var is required in input form") as exc_info:
             base_app_generator._validate_inputs(
                 variable_entity=var,
                 value=None,
@@ -200,7 +203,7 @@ def test_validate_inputs_with_default_value():
         label="test_number_float",
         type=VariableEntityType.NUMBER,
         required=False,
-        default=3.14,
+        default=float("3.14"),
     )
 
     result = base_app_generator._validate_inputs(
@@ -208,7 +211,7 @@ def test_validate_inputs_with_default_value():
         value=None,
     )
 
-    assert result == 3.14
+    assert result == float("3.14")
 
     # Test with number default value as string (frontend sends as string)
     var_number_string = VariableEntity(
@@ -411,7 +414,7 @@ def test_validate_inputs_required_file_with_empty_string_fails():
         required=True,
     )
 
-    with pytest.raises(ValueError) as exc_info:
+    with pytest.raises(ValueError, match="test_file in input form must be a file") as exc_info:
         base_app_generator._validate_inputs(
             variable_entity=var_file,
             value="",
@@ -443,7 +446,6 @@ def test_validate_inputs_optional_file_with_empty_string_ignores_default():
 
 class TestAppInputAdapterExtras:
     def test_wrap_stream_joins_worker_after_stream_exhaustion(self):
-        base_app_generator = AppInputAdapter()
         worker_thread = Mock()
         worker_thread.is_alive.return_value = False
 
@@ -464,7 +466,6 @@ class TestAppInputAdapterExtras:
         worker_thread.join.assert_called_once_with(timeout=300)
 
     def test_wrap_stream_joins_worker_when_stream_closes(self):
-        base_app_generator = AppInputAdapter()
         worker_thread = Mock()
         worker_thread.is_alive.return_value = False
 
@@ -586,8 +587,6 @@ class TestAppInputAdapterExtras:
             )
 
     def test_convert_to_event_stream(self):
-        base_app_generator = AppInputAdapter()
-
         assert convert_to_event_stream({"ok": True}) == {"ok": True}
 
         def _gen():

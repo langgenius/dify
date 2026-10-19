@@ -1,33 +1,22 @@
-import type { SnippetInputField } from '@/models/snippet'
-import { renderHook } from '@testing-library/react'
-import { act } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import type { InputVar } from '@/models/pipeline'
+import { act } from '@testing-library/react'
+import {
+  baseRunningData,
+  renderWorkflowHook,
+} from '@/app/components/workflow/__tests__/workflow-test-env'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { useSnippetDraftStore } from '../../draft-store'
 import { useSnippetStartRun } from '../use-snippet-start-run'
 
-const mockWorkflowStoreGetState = vi.fn()
-vi.mock('@/app/components/workflow/store', () => ({
-  useWorkflowStore: () => ({
-    getState: mockWorkflowStoreGetState,
-  }),
-}))
-
 const mockHandleCancelDebugAndPreviewPanel = vi.fn()
+const mockHandleRun = vi.fn()
 vi.mock('@/app/components/workflow/hooks/use-workflow-panel-interactions', () => ({
   useWorkflowInteractions: () => ({
     handleCancelDebugAndPreviewPanel: mockHandleCancelDebugAndPreviewPanel,
   }),
 }))
 
-const mockSetShowDebugAndPreviewPanel = vi.fn()
-const mockSetShowInputsPanel = vi.fn()
-const mockSetShowEnvPanel = vi.fn()
-const mockSetShowGlobalVariablePanel = vi.fn()
-const mockHandleRun = vi.fn()
-
-const inputFields: SnippetInputField[] = [
+const inputFields: InputVar[] = [
   {
     type: PipelineInputVarType.textInput,
     label: 'Query',
@@ -36,126 +25,57 @@ const inputFields: SnippetInputField[] = [
   },
 ]
 
-describe('useSnippetStartRun', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    useSnippetDraftStore.getState().reset()
-    mockWorkflowStoreGetState.mockReturnValue({
-      workflowRunningData: undefined,
-      showDebugAndPreviewPanel: false,
-      setShowDebugAndPreviewPanel: mockSetShowDebugAndPreviewPanel,
-      setShowInputsPanel: mockSetShowInputsPanel,
-      setShowEnvPanel: mockSetShowEnvPanel,
-      setShowGlobalVariablePanel: mockSetShowGlobalVariablePanel,
-    })
+const renderStart = (initialStoreState = {}) =>
+  renderWorkflowHook(() => useSnippetStartRun({ handleRun: mockHandleRun }), {
+    resource: { kind: 'snippet', snippetId: 'snippet-1' },
+    initialStoreState: { showEnvPanel: true, showGlobalVariablePanel: true, ...initialStoreState },
   })
 
-  it('should open the debug panel and input form when snippet has input fields', () => {
-    useSnippetDraftStore.getState().setInputFields(inputFields)
+beforeEach(() => {
+  vi.resetAllMocks()
+  useSnippetDraftStore.getState().reset()
+})
 
-    const { result } = renderHook(() =>
-      useSnippetStartRun({
-        handleRun: mockHandleRun,
-      }),
-    )
+it('uses the latest fields to open the input form and hides other variable panels', () => {
+  const { result, store } = renderStart()
+  // The fields can change after the run action is created.
+  act(() => useSnippetDraftStore.getState().setInputFields(inputFields))
+  act(() => result.current.handleWorkflowStartRunInWorkflow())
 
-    act(() => {
-      result.current.handleWorkflowStartRunInWorkflow()
-    })
-
-    expect(mockSetShowEnvPanel).toHaveBeenCalledWith(false)
-    expect(mockSetShowGlobalVariablePanel).toHaveBeenCalledWith(false)
-    expect(mockSetShowDebugAndPreviewPanel).toHaveBeenCalledWith(true)
-    expect(mockSetShowInputsPanel).toHaveBeenCalledWith(true)
-    expect(mockHandleRun).not.toHaveBeenCalled()
+  expect(store.getState()).toMatchObject({
+    showEnvPanel: false,
+    showGlobalVariablePanel: false,
+    showDebugAndPreviewPanel: true,
+    showInputsPanel: true,
   })
+  expect(mockHandleRun).not.toHaveBeenCalled()
+})
 
-  it('should run immediately when snippet has no input fields', () => {
-    const { result } = renderHook(() =>
-      useSnippetStartRun({
-        handleRun: mockHandleRun,
-      }),
-    )
+it('runs immediately without leaving an old input form visible when there are no fields', () => {
+  const { result, store } = renderStart({ showInputsPanel: true })
+  act(() => result.current.handleWorkflowStartRunInWorkflow())
 
-    act(() => {
-      result.current.handleWorkflowStartRunInWorkflow()
-    })
+  expect(store.getState()).toMatchObject({ showDebugAndPreviewPanel: true, showInputsPanel: false })
+  expect(mockHandleRun).toHaveBeenCalledExactlyOnceWith({ inputs: {} })
+})
 
-    expect(mockSetShowDebugAndPreviewPanel).toHaveBeenCalledWith(true)
-    expect(mockSetShowInputsPanel).toHaveBeenCalledWith(false)
-    expect(mockHandleRun).toHaveBeenCalledWith({ inputs: {} })
+it('closes an already open debug panel without starting another run', () => {
+  const { result } = renderStart({ showDebugAndPreviewPanel: true })
+  act(() => result.current.handleWorkflowStartRunInWorkflow())
+
+  expect(mockHandleCancelDebugAndPreviewPanel).toHaveBeenCalledOnce()
+  expect(mockHandleRun).not.toHaveBeenCalled()
+})
+
+it('leaves panels and the active run unchanged while already running', () => {
+  const { result, store } = renderStart({ workflowRunningData: baseRunningData() })
+  act(() => result.current.handleWorkflowStartRunInWorkflow())
+
+  expect(store.getState()).toMatchObject({
+    showDebugAndPreviewPanel: false,
+    showEnvPanel: true,
+    showGlobalVariablePanel: true,
   })
-
-  it('should use current snippet input fields from the store before starting a run', () => {
-    useSnippetDraftStore.getState().setInputFields(inputFields)
-
-    const { result } = renderHook(() =>
-      useSnippetStartRun({
-        handleRun: mockHandleRun,
-      }),
-    )
-
-    act(() => {
-      result.current.handleWorkflowStartRunInWorkflow()
-    })
-
-    expect(mockSetShowDebugAndPreviewPanel).toHaveBeenCalledWith(true)
-    expect(mockSetShowInputsPanel).toHaveBeenCalledWith(true)
-    expect(mockHandleRun).not.toHaveBeenCalled()
-  })
-
-  it('should close the panel when debug panel is already open', () => {
-    useSnippetDraftStore.getState().setInputFields(inputFields)
-
-    mockWorkflowStoreGetState.mockReturnValue({
-      workflowRunningData: undefined,
-      showDebugAndPreviewPanel: true,
-      setShowDebugAndPreviewPanel: mockSetShowDebugAndPreviewPanel,
-      setShowInputsPanel: mockSetShowInputsPanel,
-      setShowEnvPanel: mockSetShowEnvPanel,
-      setShowGlobalVariablePanel: mockSetShowGlobalVariablePanel,
-    })
-
-    const { result } = renderHook(() =>
-      useSnippetStartRun({
-        handleRun: mockHandleRun,
-      }),
-    )
-
-    act(() => {
-      result.current.handleWorkflowStartRunInWorkflow()
-    })
-
-    expect(mockHandleCancelDebugAndPreviewPanel).toHaveBeenCalled()
-  })
-
-  it('should do nothing when workflow is already running', () => {
-    useSnippetDraftStore.getState().setInputFields(inputFields)
-
-    mockWorkflowStoreGetState.mockReturnValue({
-      workflowRunningData: {
-        result: {
-          status: WorkflowRunningStatus.Running,
-        },
-      },
-      showDebugAndPreviewPanel: false,
-      setShowDebugAndPreviewPanel: mockSetShowDebugAndPreviewPanel,
-      setShowInputsPanel: mockSetShowInputsPanel,
-      setShowEnvPanel: mockSetShowEnvPanel,
-      setShowGlobalVariablePanel: mockSetShowGlobalVariablePanel,
-    })
-
-    const { result } = renderHook(() =>
-      useSnippetStartRun({
-        handleRun: mockHandleRun,
-      }),
-    )
-
-    act(() => {
-      result.current.handleWorkflowStartRunInWorkflow()
-    })
-
-    expect(mockSetShowDebugAndPreviewPanel).not.toHaveBeenCalled()
-    expect(mockHandleRun).not.toHaveBeenCalled()
-  })
+  expect(mockHandleRun).not.toHaveBeenCalled()
+  expect(mockHandleCancelDebugAndPreviewPanel).not.toHaveBeenCalled()
 })

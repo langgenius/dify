@@ -144,7 +144,7 @@ class TestEndpointCollectionApi:
                 side_effect=PluginPermissionDeniedError("denied"),
             ),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="denied"):
                 method(api, req_data, "t1", "u1")
 
     def test_create_validation_error(self, app: Flask):
@@ -160,7 +160,7 @@ class TestEndpointCollectionApi:
         with (
             app.test_request_context("/", json=payload),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="1 validation error for EndpointCreatePayload\\\nname"):
                 method(api, EndpointCreatePayload(**payload), "t1", "u1")
 
 
@@ -231,7 +231,7 @@ class TestEndpointListApi:
         with (
             app.test_request_context("/?page=0&page_size=10"),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="1 validation error for EndpointListQuery\\\npage"):
                 method(api, EndpointListQuery(page=0, page_size=10), "t1", "u1")
 
 
@@ -260,7 +260,7 @@ class TestEndpointListForSinglePluginApi:
         with (
             app.test_request_context("/?page=1&page_size=10"),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="1 validation error for EndpointListForPluginQuery\\\nplugin_id"):
                 method(api, EndpointListForPluginQuery(page=1, page_size=10), "t1", "u1")
 
 
@@ -332,7 +332,7 @@ class TestEndpointItemApi:
         with (
             app.test_request_context("/", method="PATCH", json=payload),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="1 validation error for EndpointUpdatePayload\\\nname"):
                 method(api, EndpointUpdatePayload(**payload), "t1", "u1", "e1")
 
     def test_update_service_failure(self, app: Flask):
@@ -379,7 +379,7 @@ class TestDeprecatedEndpointDeleteApi:
         with (
             app.test_request_context("/", json={}),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="1 validation error for EndpointIdPayload\\\nendpoint_id"):
                 method(api, EndpointIdPayload(), "t1", "u1")
 
     def test_delete_service_failure(self, app: Flask):
@@ -429,7 +429,7 @@ class TestDeprecatedEndpointUpdateApi:
         with (
             app.test_request_context("/", json=payload),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="1 validation error for LegacyEndpointUpdatePayload\\\nname"):
                 method(api, LegacyEndpointUpdatePayload(**payload), "t1", "u1")
 
     def test_update_service_failure(self, app: Flask):
@@ -513,7 +513,7 @@ class TestEndpointEnableApi:
         with (
             app.test_request_context("/", json={}),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="1 validation error for EndpointIdPayload\\\nendpoint_id"):
                 method(api, EndpointIdPayload(), "t1", "u1")
 
     def test_enable_service_failure(self, app: Flask):
@@ -557,5 +557,5 @@ class TestEndpointDisableApi:
         with (
             app.test_request_context("/", json={}),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="1 validation error for EndpointIdPayload\\\nendpoint_id"):
                 method(api, EndpointIdPayload(), "t1", "u1")

@@ -61,7 +61,7 @@ class Queue(AppQueueManager):
         return queue
 
     @override
-    def listen(self) -> Generator[MessageQueueMessage | WorkflowQueueMessage, None, None]:
+    def listen(self) -> Generator[MessageQueueMessage | WorkflowQueueMessage]:
         assert self.identity is not None
         yield MessageQueueMessage(
             task_id="task",
@@ -431,7 +431,7 @@ def test_multimodal_output_releases_connection_before_file_io_and_publishes_comm
                     assert (record.message_id, record.upload_file_id) == (identity.message_id, tool_file.id)
                 observed.append(event.message_file_id)
 
-    def stream() -> Generator[LLMResultChunk, None, None]:
+    def stream() -> Generator[LLMResultChunk]:
         yield LLMResultChunk(
             model="model",
             prompt_messages=[],

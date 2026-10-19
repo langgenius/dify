@@ -17,9 +17,9 @@ from sqlalchemy.orm import Session
 from controllers.common.errors import AccessDeniedError, NotFoundError
 from controllers.console.datasets.rag_pipeline import rag_pipeline_workflow as module
 from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
-    DraftWorkflowRunPayload,
     NodeIdQuery,
     PublishedWorkflowRunPayload,
+    RagPipelineDraftWorkflowRunPayload,
     RagPipelineRecommendedPluginQuery,
     WorkflowListQuery,
     WorkflowUpdatePayload,
@@ -236,7 +236,27 @@ def test_draft_rag_pipeline_second_step_parameters_serializes_variables(database
 
 def test_rag_pipeline_recommended_plugins_serializes_known_envelope(database_app: Flask) -> None:
     recommended_plugins = {
-        "installed_recommended_plugins": [{"name": "Dify Extractor", "meta": {"version": "1.0.0"}}],
+        "installed_recommended_plugins": [
+            {
+                "id": "langgenius/dify_extractor/dify_extractor",
+                "author": "langgenius",
+                "name": "langgenius/dify_extractor/dify_extractor",
+                "description": {
+                    "en_US": "Extract text",
+                    "zh_Hans": "Extract text",
+                    "pt_BR": "Extract text",
+                    "ja_JP": "Extract text",
+                },
+                "icon": "/icon.svg",
+                "label": {
+                    "en_US": "Dify Extractor",
+                    "zh_Hans": "Dify Extractor",
+                    "pt_BR": "Dify Extractor",
+                    "ja_JP": "Dify Extractor",
+                },
+                "type": "builtin",
+            }
+        ],
         "uninstalled_recommended_plugins": [{"plugin_id": "langgenius/notion_datasource"}],
     }
     api = module.RagPipelineRecommendedPluginApi()
@@ -404,7 +424,7 @@ def test_rag_pipeline_run_uses_injected_generator(
         patch.object(module.helper, "compact_generate_response", return_value={"ok": True}),
     ):
         req_data = (
-            DraftWorkflowRunPayload.model_validate(payload)
+            RagPipelineDraftWorkflowRunPayload.model_validate(payload)
             if api_type is module.DraftRagPipelineRunApi
             else PublishedWorkflowRunPayload.model_validate(payload)
         )
@@ -435,7 +455,7 @@ def test_rag_pipeline_run_translates_rate_limit(
     handler = unwrap_all(api.post)
     pipeline = _pipeline()
     req_data = (
-        DraftWorkflowRunPayload.model_validate(payload)
+        RagPipelineDraftWorkflowRunPayload.model_validate(payload)
         if api_type is module.DraftRagPipelineRunApi
         else PublishedWorkflowRunPayload.model_validate(payload)
     )

@@ -1,0 +1,93 @@
+id: no-new-base-model
+language: python
+severity: error
+message: New SQLAlchemy models must inherit from TypeBase instead of Base.
+utils:
+  project-import:
+    kind: import_from_statement
+    has:
+      field: module_name
+      regex: '^(models\.base|api\.models\.base|\.+base)$'
+  project-base:
+    any:
+      - all:
+          - pattern: Base
+          - inside:
+              kind: module
+              stopBy: end
+              has:
+                stopBy: end
+                all:
+                  - matches: project-import
+                  - has:
+                      stopBy: neighbor
+                      all:
+                        - kind: dotted_name
+                        - regex: '^Base$'
+      - regex: '^(api\.)?models\.base\.Base$'
+      - all:
+          - pattern: $BASE
+          - inside:
+              kind: module
+              stopBy: end
+              has:
+                stopBy: end
+                all:
+                  - pattern:
+                      context: from models.base import Base as $BASE
+                      selector: aliased_import
+                  - inside:
+                      stopBy: neighbor
+                      matches: project-import
+      - all:
+          - pattern: $MODULE.Base
+          - inside:
+              kind: module
+              stopBy: end
+              has:
+                stopBy: end
+                any:
+                  - all:
+                      - pattern:
+                          context: import models.base as $MODULE
+                          selector: aliased_import
+                      - has:
+                          field: name
+                          regex: '^(api\.)?models\.base$'
+                  - all:
+                      - pattern:
+                          context: from models import base as $MODULE
+                          selector: aliased_import
+                      - inside:
+                          kind: import_from_statement
+                          stopBy: neighbor
+                          has:
+                            field: module_name
+                            regex: '^(api\.)?models$'
+      - all:
+          - pattern: base.Base
+          - inside:
+              kind: module
+              stopBy: end
+              has:
+                stopBy: end
+                all:
+                  - kind: import_from_statement
+                  - has:
+                      field: module_name
+                      regex: '^(api\.)?models$'
+                  - has:
+                      stopBy: neighbor
+                      all:
+                        - kind: dotted_name
+                        - regex: '^base$'
+rule:
+  all:
+    - kind: class_definition
+    - has:
+        field: name
+        pattern: $NAME
+    - has:
+        field: superclasses
+        has:
+          matches: project-base

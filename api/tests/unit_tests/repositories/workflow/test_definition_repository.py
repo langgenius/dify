@@ -288,7 +288,7 @@ def test_publication_copies_secret_ciphertext_without_key_io_under_locks(
 
     monkeypatch.setattr("core.helper.encrypter.decrypt_token", unwrap)
     monkeypatch.setattr("core.helper.encrypter.encrypt_token", wrap)
-    console_variables = build_console_workflow_variables(
+    build_console_workflow_variables(
         database_client=seeded, variables=build_workflow_variable_service(database_client=seeded)
     )
     with seeded.begin() as session:
@@ -1789,7 +1789,7 @@ def test_skill_archive_validation_releases_connections_and_rechecks_agent_state(
         return archive_bytes.getvalue()
 
     monkeypatch.setattr("services.skill_management_service.storage.load_once", load)
-    console_variables = build_console_workflow_variables(
+    build_console_workflow_variables(
         database_client=seeded, variables=build_workflow_variable_service(database_client=seeded)
     )
     with seeded.begin() as session:

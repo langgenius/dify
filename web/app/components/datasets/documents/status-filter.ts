@@ -28,3 +28,22 @@ export const normalizeStatusForQuery = (value?: string | null) => {
 
   return QUERY_STATUS_ALIASES[sanitized] || sanitized
 }
+
+export const toDocumentListQuery = ({
+  status,
+  sort,
+  ...query
+}: {
+  keyword: string
+  page: number
+  limit: number
+  sort?: string
+  status?: string
+}) => {
+  const normalizedStatus = normalizeStatusForQuery(status)
+  return {
+    ...query,
+    ...(sort && { sort }),
+    ...(normalizedStatus && normalizedStatus !== 'all' && { status: normalizedStatus }),
+  }
+}

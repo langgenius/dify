@@ -168,7 +168,7 @@ class TestDatasetCollectionBindingRepositoryGetBinding:
 
         # Assert
         assert len(results) == 3
-        for result, (provider, model) in zip(results, combinations):
+        for result, (provider, model) in zip(results, combinations, strict=False):
             assert result.provider_name == provider
             assert result.model_name == model
 

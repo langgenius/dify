@@ -28,7 +28,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { isSupportCustomRunForm } from '@/app/components/workflow/utils'
 import { toast } from '@/app/notifications'
 import { VALUE_SELECTOR_DELIMITER as DELIMITER } from '@/config'
-import { useInvalidLastRun } from '@/service/use-workflow'
+import { useInvalidateLastRun } from '@/service/use-workflow'
 import { useWorkflowRunValidation } from '../../../../../hooks/use-checklist'
 import useInspectVarsCrud from '../../../../../hooks/use-inspect-vars-crud'
 import { useNodesSyncDraft } from '../../../../../hooks/use-nodes-sync-draft'
@@ -69,7 +69,7 @@ const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.TriggerPlugin]: undefined,
 }
 
-const useSingleRunFormParamsHooks = (nodeType: BlockEnum) => {
+const createSingleRunFormParamsHook = (nodeType: BlockEnum) => {
   return (params: any) => {
     return singleRunFormParamsHooks[nodeType]?.(params) || {}
   }
@@ -110,7 +110,7 @@ const getDataForCheckMoreHooks: Record<BlockEnum, any> = {
   [BlockEnum.TriggerPlugin]: useTriggerPluginGetDataForCheckMore,
 }
 
-const useGetDataForCheckMoreHooks = <T>(nodeType: BlockEnum) => {
+const createGetDataForCheckMoreHook = <T>(nodeType: BlockEnum) => {
   return (id: string, payload: CommonNodeType<T>) => {
     return (
       getDataForCheckMoreHooks[nodeType]?.({ id, payload }) || {
@@ -133,13 +133,14 @@ const useLastRun = <T>({ ...oneStepRunParams }: Params<T>) => {
   const isCustomRunNode = isSupportCustomRunForm(blockType)
   const isHumanInputNode = blockType === BlockEnum.HumanInput
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
-  const { getData: getDataForCheckMore } = useGetDataForCheckMoreHooks<T>(blockType)(
+  const useGetDataForCheckMore = createGetDataForCheckMoreHook<T>(blockType)
+  const { getData: getDataForCheckMore } = useGetDataForCheckMore(
     oneStepRunParams.id,
     oneStepRunParams.data,
   )
   const [isRunAfterSingleRun, setIsRunAfterSingleRun] = useState(false)
 
-  const { id, flowId, flowType, data } = oneStepRunParams
+  const { id, resource, data } = oneStepRunParams
   const oneStepRunRes = useOneStepRun({
     ...oneStepRunParams,
     iteratorInputKey: blockType === BlockEnum.Iteration ? `${id}.input_selector` : '',
@@ -177,7 +178,8 @@ const useLastRun = <T>({ ...oneStepRunParams }: Params<T>) => {
   } = oneStepRunRes
 
   const nodeInfo = runResult
-  const { ...singleRunParams } = useSingleRunFormParamsHooks(blockType)({
+  const useSingleRunFormParams = createSingleRunFormParamsHook(blockType)
+  const { ...singleRunParams } = useSingleRunFormParams({
     id,
     payload: data,
     runInputData,
@@ -229,7 +231,7 @@ const useLastRun = <T>({ ...oneStepRunParams }: Params<T>) => {
 
     setInitShowLastRunTab(false)
   }, [initShowLastRunTab, setInitShowLastRunTab])
-  const invalidLastRun = useInvalidLastRun(flowType, flowId, id)
+  const invalidLastRun = useInvalidateLastRun(resource, id)
 
   const handleRunWithParams = async (data: Record<string, any>) => {
     if (blockIfChecklistFailed()) return

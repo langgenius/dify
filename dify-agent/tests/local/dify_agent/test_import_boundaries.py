@@ -105,7 +105,6 @@ def test_protocol_and_dify_plugin_exports_do_not_import_server_only_modules() ->
             "anthropic",
             "dify_agent.adapters.llm",
             "dify_agent.layers.execution_context.layer",
-            "dify_agent.layers.ask_human.layer",
             "dify_agent.layers.dify_plugin.llm_layer",
             "dify_agent.layers.dify_plugin.tools_layer",
             "dify_agent.layers.knowledge.client",
@@ -125,7 +124,6 @@ def test_protocol_and_dify_plugin_exports_do_not_import_server_only_modules() ->
         imports=[
             "dify_agent.protocol",
             "dify_agent.layers.execution_context",
-            "dify_agent.layers.ask_human",
             "dify_agent.layers.dify_plugin",
             "dify_agent.layers.knowledge",
             "dify_agent.layers.output",
@@ -134,7 +132,6 @@ def test_protocol_and_dify_plugin_exports_do_not_import_server_only_modules() ->
         assertions=[
             "assert hasattr(dify_agent_protocol, 'CreateRunRequest')",
             "assert hasattr(dify_agent_layers_execution_context, 'DifyExecutionContextLayerConfig')",
-            "assert hasattr(dify_agent_layers_ask_human, 'DifyAskHumanLayerConfig')",
             "assert hasattr(dify_agent_layers_dify_plugin, 'DifyPluginLLMLayerConfig')",
             "assert hasattr(dify_agent_layers_knowledge, 'DifyKnowledgeBaseLayerConfig')",
             "assert hasattr(dify_agent_layers_output, 'DifyOutputLayerConfig')",
@@ -158,14 +155,12 @@ def test_agent_cli_help_import_is_client_safe() -> None:
             "dify_agent.layers._agent_cli_help",
             "dify_agent.agent_stub.shell_env",
             "dify_agent.layers.shell.layer",
-            "dify_agent.runtime.compositor_factory",
         ],
         assertions=[
             "assert hasattr(dify_agent_agent_stub_protocol, 'AgentStubConnectRequest')",
             "assert hasattr(dify_agent_layers__agent_cli_help, 'render_agent_stub_cli_help')",
             "assert hasattr(dify_agent_agent_stub_shell_env, 'build_shell_agent_stub_env')",
-            "assert hasattr(dify_agent_layers_shell_layer, 'DifyShellLayer')",
-            "assert hasattr(dify_agent_runtime_compositor_factory, 'create_default_layer_providers')",
+            "assert hasattr(dify_agent_layers_shell_layer, 'Capability')",
         ],
         bootstrap=[
             "import types",
@@ -278,18 +273,4 @@ def test_server_settings_import_does_not_import_agent_stub_app() -> None:
         blocked_imports=["dify_agent.agent_stub.server.app"],
         imports=["dify_agent.server.settings"],
         assertions=["assert hasattr(dify_agent_server_settings, 'ServerSettings')"],
-    )
-
-
-def test_agenton_collection_roots_do_not_eagerly_import_pydantic_ai_implementations() -> None:
-    _run_import_check(
-        blocked_imports=[
-            "agenton_collections.layers.pydantic_ai",
-            "agenton_collections.transformers.pydantic_ai",
-        ],
-        imports=["agenton_collections", "agenton_collections.transformers"],
-        assertions=[
-            "assert 'PydanticAIBridgeLayer' not in agenton_collections.__all__",
-            "assert agenton_collections_transformers.__all__ == []",
-        ],
     )
