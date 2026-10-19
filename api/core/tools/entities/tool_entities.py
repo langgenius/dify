@@ -18,6 +18,7 @@ from pydantic import (
 )
 from typing_extensions import TypedDict
 
+from clients.plugin.auth_entities import ProviderAuthCapabilities
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities import OAuthSchema
 from core.plugin.entities.parameters import (
@@ -462,7 +463,7 @@ class ToolEntity(BaseModel):
         return value or {}
 
 
-class ToolProviderEntity(BaseModel):
+class ToolProviderEntity(ProviderAuthCapabilities):
     identity: ToolProviderIdentity
     plugin_id: str | None = None
     credentials_schema: list[ProviderConfig] = Field(default_factory=list[ProviderConfig])
