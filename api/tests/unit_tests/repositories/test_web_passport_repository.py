@@ -1,12 +1,16 @@
 from collections.abc import Callable
 from unittest.mock import MagicMock
-from uuid import NAMESPACE_URL, uuid5
+from uuid import NAMESPACE_URL, uuid4, uuid5
 
+import pytest
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
+from fields.end_user_fields import EndUserDetail, SimpleEndUser
 from models.enums import CustomizeTokenStrategy, EndUserType
 from models.model import App, AppMode, EndUser, IconType, Site
+from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.web_passport_repository import WebPassportRepository
 
 
@@ -254,3 +258,95 @@ def test_resolve_standard_end_user_treats_empty_session_as_missing(
     persisted = sqlite_session.scalar(select(EndUser).where(EndUser.id == resolution.end_user.id))
     assert persisted is not None
     assert persisted.session_id == "generated-session"
+
+
+def test_account_mapping_is_stable_across_app_switches_and_redacted(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    _persist_webapp(sqlite_session, app_code="one")
+    _persist_webapp(sqlite_session, app_code="two")
+    repository = _repository(sqlite_session_factory, generate_session_id=lambda: str(uuid4()))
+    apps = [repository.get_active_web_app(code) for code in ("one", "two")]
+    account_id = str(uuid4())
+    ids: list[str] = []
+    for app in [*apps, *apps, *apps]:
+        assert app is not None
+        result = repository.resolve_account_end_user(app, account_id)
+        assert result.end_user is not None
+        ids.append(result.end_user.id)
+    assert ids[0] != ids[1]
+    assert ids == ids[:2] * 3
+    users = sqlite_session.scalars(select(EndUser).where(EndUser.account_id == account_id)).all()
+    assert len(users) == 2
+    for user in users:
+        assert user._is_anonymous is False
+        assert user.session_id != account_id
+        assert user.external_user_id is None
+        for dto in (EndUserDetail, SimpleEndUser):
+            response = dto.model_validate(user, from_attributes=True).model_dump_json()
+            assert "account_id" not in response
+            assert account_id not in response
+
+
+def test_anonymous_and_service_api_session_hints_cannot_select_account_users(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    _persist_webapp(sqlite_session)
+    repository = _repository(sqlite_session_factory, generate_session_id=lambda: str(uuid4()))
+    app = repository.get_active_web_app("code")
+    assert app is not None
+    account_user = repository.resolve_account_end_user(app, str(uuid4())).end_user
+    assert account_user is not None
+    stored = sqlite_session.get(EndUser, account_user.id)
+    assert stored is not None
+    assert (
+        AppScopedEndUserRepo(session_factory=sqlite_session_factory).find_by_session(
+            tenant_id=app.tenant_id, app_id=app.app_id, user_id=stored.session_id
+        )
+        == []
+    )
+    assert repository.restore_guest_end_user(app, stored.id).end_user is None
+    anonymous = repository.resolve_standard_end_user(app, stored.session_id)
+    assert anonymous.end_user is not None
+    assert anonymous.end_user.id != stored.id
+
+
+def test_account_mapping_is_not_created_after_app_is_disabled(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    model, _ = _persist_webapp(sqlite_session)
+    repository = _repository(sqlite_session_factory)
+    app = repository.get_active_web_app("code")
+    assert app is not None
+    model.enable_site = False
+    sqlite_session.commit()
+    result = repository.resolve_account_end_user(app, str(uuid4()))
+    assert not result.app_active
+    assert result.end_user is None
+
+
+def test_unique_constraint_rejects_duplicate_account_mapping_without_restricting_guests(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    _persist_webapp(sqlite_session)
+    repository = _repository(sqlite_session_factory, generate_session_id=lambda: str(uuid4()))
+    app = repository.get_active_web_app("code")
+    assert app is not None
+    account_id = str(uuid4())
+    repository.resolve_account_end_user(app, account_id)
+    with sqlite_session.begin_nested() as transaction:
+        sqlite_session.add(
+            EndUser(
+                tenant_id=app.tenant_id,
+                app_id=app.app_id,
+                type=EndUserType.BROWSER,
+                account_id=account_id,
+                session_id="another-session",
+            )
+        )
+        with pytest.raises(IntegrityError):
+            sqlite_session.flush()
+        transaction.rollback()
+    sqlite_session.rollback()
+    assert repository.resolve_standard_end_user(app, "guest-one").end_user is not None
+    assert repository.resolve_standard_end_user(app, "guest-two").end_user is not None

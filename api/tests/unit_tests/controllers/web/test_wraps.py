@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest import mock
 from uuid import uuid4
 
@@ -8,6 +9,7 @@ from werkzeug.exceptions import Unauthorized
 
 from core.logging.context import clear_request_context, get_identity_context
 from models import App, EndUser
+from tests.unit_tests.web_identity_fakes import web_identities
 
 
 @pytest.fixture(autouse=True)
@@ -86,6 +88,7 @@ def test_decode_jwt_token_uses_shared_session_factory(sqlite_session: Session) -
     sqlite_session.commit()
 
     with (
+        mock.patch.object(wraps, "application_services", return_value=SimpleNamespace(web_identity=web_identities())),
         mock.patch.object(wraps, "extract_webapp_passport", return_value="jwt-token"),
         mock.patch.object(wraps, "PassportService") as mock_passport_service,
         mock.patch.object(
@@ -95,6 +98,7 @@ def test_decode_jwt_token_uses_shared_session_factory(sqlite_session: Session) -
         ),
     ):
         mock_passport_service.return_value.verify.return_value = {
+            "sub": "Web API Passport",
             "app_code": "app-code",
             "app_id": app_model.id,
             "end_user_id": end_user.id,

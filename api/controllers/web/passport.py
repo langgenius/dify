@@ -7,13 +7,15 @@ from constants import HEADER_NAME_APP_CODE
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console.wraps import model_validate
 from controllers.web import web_ns
-from controllers.web.error import WebAppAuthRequiredError
+from controllers.web.error import WebAppAuthAccessDeniedError, WebAppAuthRequiredError
+from controllers.web.wraps import extract_web_login_token
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.helper import dump_response
-from libs.token import extract_webapp_access_token
+from libs.token import extract_webapp_passport
 from services.entities.passport_entities import WebPassportRequest
 from services.web_passport_service import (
+    WebPassportAccessDeniedError,
     WebPassportAuthenticationRequiredError,
     WebPassportNotFoundError,
     WebPassportUnauthorizedError,
@@ -58,12 +60,15 @@ class PassportResource(Resource):
         passport_request = WebPassportRequest(
             app_code=app_code,
             user_session_id=query.user_id,
-            access_token=extract_webapp_access_token(request),
+            access_token=extract_web_login_token(),
+            guest_passport=extract_webapp_passport(app_code, request),
         )
         try:
             result = application_services().web_passport.issue(passport_request)
         except WebPassportAuthenticationRequiredError as exc:
             raise WebAppAuthRequiredError(str(exc)) from exc
+        except WebPassportAccessDeniedError as exc:
+            raise WebAppAuthAccessDeniedError(str(exc)) from exc
         except WebPassportUnauthorizedError as exc:
             raise Unauthorized(str(exc)) from exc
         except WebPassportNotFoundError as exc:

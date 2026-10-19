@@ -190,6 +190,7 @@ from services.web_authentication_adapters import (
     TokenManagerWebAuthenticationGateway,
 )
 from services.web_authentication_service import WebAuthenticationService
+from services.web_identity_service import WebIdentityService
 from services.web_passport_gateways import (
     DeploymentWebPassportAuthGateway,
     PassportTokenGateway,
@@ -308,6 +309,7 @@ class ApplicationServices:
     workflow_comments: WorkflowCommentService
     inner_mail: InnerMailService
     web_passport: WebPassportService
+    web_identity: WebIdentityService
     tags: TagApplicationService
     workflow_statistics: WorkflowStatisticQueryService
 
@@ -477,6 +479,11 @@ def build_application_services(
     file_service = FileService(session_factory=database_client)
     remote_file_service = RemoteFileService(files=file_service)
     passwords = DefaultAccountPasswordHasher()
+    web_identity = WebIdentityService(
+        accounts=accounts,
+        allow_console_login=deployment_edition == DeploymentEdition.CLOUD,
+        allow_webapp_login=deployment_edition == DeploymentEdition.ENTERPRISE,
+    )
     web_authentication_tokens = TokenManagerWebAuthenticationGateway(
         reset_password_rate_limiter=RateLimiter(
             prefix=FORGOT_PASSWORD_SEND_RATE_LIMIT_PREFIX,
@@ -485,6 +492,7 @@ def build_application_services(
             redis_client=redis,
         ),
         access_token_expire_minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES,
+        identities=web_identity,
     )
     invitation_tokens = RedisInvitationTokenStore(redis=redis)
     activation_accounts = SQLAlchemyAccountActivationRepository(session_factory=database_client)
@@ -583,6 +591,7 @@ def build_application_services(
             app_sessions=PassportWebAppSessionGateway(
                 sessions=webapp_access_repository,
                 app_access=webapp_access,
+                identities=web_identity,
             ),
             audit=LoggingWebAuthenticationAuditGateway(logger=logging.getLogger("controllers.web.login")),
             private_app_access_enabled=deployment_edition == DeploymentEdition.ENTERPRISE,
@@ -695,6 +704,7 @@ def build_application_services(
             console_web_url=dify_config.CONSOLE_WEB_URL,
         ),
         inner_mail=InnerMailService(dispatch=enqueue_inner_mail),
+        web_identity=web_identity,
         web_passport=WebPassportService(
             passports=WebPassportRepository(
                 session_factory=database_client,
@@ -703,8 +713,10 @@ def build_application_services(
             auth=DeploymentWebPassportAuthGateway(
                 webapp_auth_enabled=SystemFeatureService.is_webapp_auth_enabled(deployment_edition=deployment_edition),
                 get_app_access_mode=EnterpriseService.WebAppAuth.get_app_access_mode_by_id,
+                is_user_allowed=EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp,
             ),
             tokens=PassportTokenGateway(passport=PassportService()),
+            identities=web_identity,
             now=lambda: datetime.now(UTC),
             access_token_expire_minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES,
         ),

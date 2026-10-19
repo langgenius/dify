@@ -66,7 +66,7 @@ class WebAppAccessGateway(Protocol):
 
 
 class WebAppSessionGateway(Protocol):
-    def verify(self, *, token: str | None, app_code: str, user_id: str | None) -> bool: ...
+    def verify(self, *, token: str | None, app_code: str, user_id: str | None, access_token: str | None) -> bool: ...
 
 
 class WebAppSessionQuery(Protocol):
@@ -175,14 +175,16 @@ class WebAuthenticationService:
         app_session_token: str | None,
     ) -> WebLoginStatus:
         if not app_code:
-            return WebLoginStatus(logged_in=bool(access_token), app_logged_in=False)
+            return WebLoginStatus(logged_in=self._tokens.verify_access_token(access_token), app_logged_in=False)
 
         app_id = self._app_access.find_app_id_by_code(app_code)
         if app_id is None:
             raise WebAppAccessAppNotFoundError(f"App with code {app_code} not found")
         is_public = not self._private_app_access_enabled or not self._app_access.requires_permission_check(app_id)
         logged_in = is_public or self._tokens.verify_access_token(access_token)
-        app_logged_in = self._app_sessions.verify(token=app_session_token, app_code=app_code, user_id=user_id)
+        app_logged_in = self._app_sessions.verify(
+            token=app_session_token, app_code=app_code, user_id=user_id, access_token=access_token
+        )
         return WebLoginStatus(logged_in=logged_in, app_logged_in=app_logged_in)
 
     def send_email_login_code(self, *, email: str, language: str | None) -> str:

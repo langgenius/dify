@@ -150,8 +150,8 @@ class AppAccessGatewayFake:
 class AppSessionGatewayFake:
     valid: bool = False
 
-    def verify(self, *, token: str | None, app_code: str, user_id: str | None) -> bool:
-        del app_code, user_id
+    def verify(self, *, token: str | None, app_code: str, user_id: str | None, access_token: str | None) -> bool:
+        del app_code, user_id, access_token
         return self.valid and token == "valid-passport"
 
 
@@ -356,17 +356,17 @@ def test_login_status_uses_access_and_app_session_gateways(service_fixture: Serv
     assert status.app_logged_in is True
 
 
-def test_login_status_without_app_code_uses_token_presence_check(
+def test_login_status_without_app_code_rejects_unverified_token(
     service_fixture: ServiceFixture,
 ) -> None:
     status = service_fixture.service.get_login_status(
         app_code=None,
         user_id=None,
-        access_token="not-verified-here",
+        access_token="invalid-token",
         app_session_token=None,
     )
 
-    assert status.logged_in is True
+    assert status.logged_in is False
     assert status.app_logged_in is False
 
 

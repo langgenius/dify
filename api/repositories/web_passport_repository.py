@@ -3,6 +3,7 @@
 from collections.abc import Callable
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.enums import AppStatus, EndUserType
@@ -78,6 +79,46 @@ class WebPassportRepository:
 
             return WebPassportEndUserResolution(app_active=True, end_user=end_user)
 
+    def resolve_account_end_user(self, app: WebAppRecord, account_id: str) -> WebPassportEndUserResolution:
+        stmt = select(EndUser.id).where(
+            EndUser.tenant_id == app.tenant_id,
+            EndUser.app_id == app.app_id,
+            EndUser.type == EndUserType.BROWSER,
+            EndUser.account_id == account_id,
+        )
+        with self._session_factory.begin() as session:
+            if not self._is_web_app_active(session, app):
+                return WebPassportEndUserResolution(app_active=False, end_user=None)
+            end_user_id = session.scalar(stmt)
+            if end_user_id is None:
+                try:
+                    with session.begin_nested():
+                        end_user = EndUser(
+                            tenant_id=app.tenant_id,
+                            app_id=app.app_id,
+                            type=EndUserType.BROWSER,
+                            account_id=account_id,
+                            is_anonymous=False,
+                            session_id=self._generate_unique_session_id(session),
+                        )
+                        session.add(end_user)
+                        session.flush()
+                        end_user_id = end_user.id
+                except IntegrityError:
+                    # A concurrent first visit may have created the same mapping.
+                    end_user_id = session.scalar(stmt.with_for_update())
+                    if end_user_id is None:
+                        raise
+            return WebPassportEndUserResolution(app_active=True, end_user=EndUserRecord(id=end_user_id))
+
+    def restore_guest_end_user(self, app: WebAppRecord, end_user_id: str) -> WebPassportEndUserResolution:
+        with self._session_factory() as session:
+            if not self._is_web_app_active(session, app):
+                return WebPassportEndUserResolution(app_active=False, end_user=None)
+            return WebPassportEndUserResolution(
+                app_active=True, end_user=self._find_end_user_by_id(session, app, end_user_id)
+            )
+
     @staticmethod
     def _active_web_app_stmt(app_code: str):
         return (
@@ -106,6 +147,8 @@ class WebPassportRepository:
                 EndUser.id == end_user_id,
                 EndUser.tenant_id == app.tenant_id,
                 EndUser.app_id == app.app_id,
+                EndUser.account_id.is_(None),
+                EndUser.type == EndUserType.BROWSER,
             )
         )
         return EndUserRecord(id=persisted_id) if persisted_id is not None else None
@@ -121,6 +164,8 @@ class WebPassportRepository:
                 EndUser.session_id == session_id,
                 EndUser.tenant_id == app.tenant_id,
                 EndUser.app_id == app.app_id,
+                EndUser.account_id.is_(None),
+                EndUser.type == EndUserType.BROWSER,
             )
         )
         return EndUserRecord(id=end_user_id) if end_user_id is not None else None
