@@ -1,13 +1,14 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogPortal, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DiagramPreview } from './diagram-preview'
-import styles from './diagram.module.css'
+import { diagramTheme } from './diagram-theme'
 import { useDiagram } from './use-diagram'
 
 export function MermaidDiagram({ source }: { source: string }) {
@@ -21,7 +22,7 @@ export function MermaidDiagram({ source }: { source: string }) {
   return (
     <Dialog disablePointerDismissal>
       <div className="min-w-0 rounded-b-xl bg-components-panel-bg p-3">
-        <div className={styles.diagram}>
+        <div className={cn(diagramTheme, 'w-full min-w-0 wrap-anywhere')}>
           <Tooltip<string>>
             {({ payload }) => (
               <>
@@ -78,7 +79,10 @@ export function MermaidDiagram({ source }: { source: string }) {
             )}
           </Tooltip>
           <div ref={diagram.stageRef}>
-            <div ref={diagram.canvasRef} className={styles.canvas} />
+            <div
+              ref={diagram.canvasRef}
+              className="mx-auto min-w-0 shrink-0 [&>svg]:mx-auto [&>svg]:block [&>svg:focus-visible]:outline-2 [&>svg:focus-visible]:outline-offset-2 [&>svg:focus-visible]:outline-text-accent"
+            />
           </div>
           {diagram.error && (
             <p

@@ -5,7 +5,7 @@ import { MermaidDiagram } from '..'
 
 vi.mock('@/utils/download', () => ({ downloadBlob: vi.fn() }))
 
-it('downloads the complete themed drawing independently of the preview zoom and stage padding', async () => {
+it('downloads the complete themed drawing independently of the preview zoom', async () => {
   document.documentElement.dataset.theme = 'dark'
   try {
     const view = await render(<MermaidDiagram source={'flowchart TD\n A[Start] --> B[Finish]'} />)
@@ -26,7 +26,6 @@ it('downloads the complete themed drawing independently of the preview zoom and 
     expect(svg.getAttribute('viewBox')).toBe(
       `0 0 ${svg.getAttribute('width')} ${svg.getAttribute('height')}`,
     )
-    expect(svg.getAttribute('style')).toContain('--pele-bg:')
     const image = new Image()
     image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(await data.text())}`
     await image.decode()

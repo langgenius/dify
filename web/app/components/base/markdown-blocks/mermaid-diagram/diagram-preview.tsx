@@ -2,10 +2,10 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { DialogBackdrop, DialogClose, DialogPopup } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { downloadBlob } from '@/utils/download'
-import styles from './diagram.module.css'
+import { diagramTheme } from './diagram-theme'
 import { diagramPng } from './export-diagram'
 import { useDiagram } from './use-diagram'
 
@@ -20,20 +20,16 @@ export function DiagramPreview({ source }: { source: string }) {
       <DialogBackdrop forceRender className="bg-background-overlay-fullscreen" />
       <DialogPopup
         aria-label="Mermaid"
-        initialFocus={diagram.stageRef}
         className={cn(
-          styles.diagram,
-          'fixed inset-0 flex flex-col transition-opacity data-closed:pointer-events-none data-ending-style:scale-100 data-starting-style:scale-100',
+          diagramTheme,
+          'fixed inset-0 flex w-full min-w-0 flex-col wrap-anywhere transition-opacity data-closed:pointer-events-none data-ending-style:scale-100 data-starting-style:scale-100',
         )}
       >
-        <div
-          ref={diagram.stageRef}
-          role="group"
-          aria-label="Mermaid"
-          tabIndex={-1}
-          className="flex min-h-0 flex-1 items-center focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-state-accent-solid"
-        >
-          <div ref={diagram.canvasRef} className={styles.canvas} />
+        <div ref={diagram.stageRef} className="flex min-h-0 flex-1 items-center">
+          <div
+            ref={diagram.canvasRef}
+            className="mx-auto min-w-0 shrink-0 [&>svg]:mx-auto [&>svg]:block [&>svg:focus-visible]:outline-2 [&>svg:focus-visible]:-outline-offset-2 [&>svg:focus-visible]:outline-text-accent"
+          />
         </div>
         <DiagramPreviewActions
           ready={diagram.ready}
@@ -58,13 +54,13 @@ type DiagramPreviewActionsProps = Pick<
 
 function DiagramPreviewActions({ ready, zoomBy, reset, exportSvg }: DiagramPreviewActionsProps) {
   const { t } = useTranslation(['common'])
-  const [copyState, setCopyState] = useState<'idle' | 'pending' | 'success' | 'error'>('idle')
+  const [copyState, setCopyState] = useState<'idle' | 'success' | 'error'>('idle')
+  const copyingRef = useRef(false)
   useEffect(() => {
     if (copyState !== 'success') return
     const timeout = setTimeout(() => setCopyState('idle'), 2000)
     return () => clearTimeout(timeout)
   }, [copyState])
-  const copying = copyState === 'pending'
   const status =
     copyState === 'success'
       ? t(($) => $['operation.imageCopied'])
@@ -74,8 +70,9 @@ function DiagramPreviewActions({ ready, zoomBy, reset, exportSvg }: DiagramPrevi
 
   const copyImage = async () => {
     const svg = exportSvg()
-    if (!svg || copying) return
-    setCopyState('pending')
+    if (!svg || copyingRef.current) return
+    copyingRef.current = true
+    setCopyState('idle')
     try {
       const png = diagramPng(svg)
       // Consume encoding failures even when the browser rejects clipboard access first.
@@ -84,6 +81,8 @@ function DiagramPreviewActions({ ready, zoomBy, reset, exportSvg }: DiagramPrevi
       setCopyState('success')
     } catch {
       setCopyState('error')
+    } finally {
+      copyingRef.current = false
     }
   }
 
@@ -183,18 +182,15 @@ function DiagramPreviewActions({ ready, zoomBy, reset, exportSvg }: DiagramPrevi
                   <IconButton
                     size="lg"
                     aria-label={copyLabel}
-                    disabled={!ready || copying}
-                    focusableWhenDisabled={copying}
+                    disabled={!ready}
                     onClick={copyImage}
                   >
                     <span
                       aria-hidden
                       className={
-                        copying
-                          ? 'i-ri-loader-4-line size-4 animate-spin motion-reduce:animate-none'
-                          : copyState === 'success'
-                            ? 'i-ri-check-line size-4'
-                            : 'i-ri-file-copy-line size-4'
+                        copyState === 'success'
+                          ? 'i-ri-check-line size-4'
+                          : 'i-ri-file-copy-line size-4'
                       }
                     />
                   </IconButton>
