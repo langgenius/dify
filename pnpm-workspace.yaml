@@ -215,7 +215,6 @@ catalog:
   lockfile: 1.0.4
   loro-crdt: 1.16.4
   mediabunny: 1.61.3
-  mermaid: 11.17.2
   mime: 4.1.0
   mitt: 3.0.1
   motion: 13.5.1
@@ -224,6 +223,7 @@ catalog:
   next-themes: 0.4.6
   nuqs: 2.10.2
   open: 11.0.4
+  pele: 1.6.0
   picocolors: 1.1.1
   picomatch: 4.0.7
   pinyin-pro: 3.29.4

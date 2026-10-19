@@ -8,10 +8,10 @@ import {
   Dialog,
   DialogBody,
   DialogClose,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { RiAlertFill, RiFileDownloadLine } from '@remixicon/react'
@@ -310,7 +310,7 @@ function ImportForm({
     >
       <DialogHeader>
         <DialogTitle>{t(($) => $.importApp, { ns: 'app' })}</DialogTitle>
-        <DialogCloseButton
+        <DialogHeaderCloseButton
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}
           disabled={isImporting}
         />

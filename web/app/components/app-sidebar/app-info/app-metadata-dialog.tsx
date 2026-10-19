@@ -9,13 +9,14 @@ import {
   Dialog,
   DialogBody,
   DialogClose,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { Switch } from '@langgenius/dify-ui/switch'
@@ -210,35 +211,44 @@ function AppMetadataForm({
             ? t(($) => $.editAppTitle, { ns: 'app' })
             : t(($) => $.duplicateTitle, { ns: 'app' })}
         </DialogTitle>
-        <DialogCloseButton
+        <DialogHeaderCloseButton
           disabled={isPending}
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}
         />
       </DialogHeader>
       <DialogBody className="flex flex-col gap-4">
-        <IconPicker value={icon} onValueChange={setSelectedIcon}>
+        <Fieldset className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 gap-y-1">
+          <FieldsetLegend className="col-span-2 mb-0">
+            {t(($) => $['newApp.captionName'], { ns: 'app' })}
+          </FieldsetLegend>
+          <IconPicker value={icon} onValueChange={setSelectedIcon}>
+            <IconPickerTrigger
+              disabled={isPending}
+              aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
+            >
+              <IconPickerIcon size="large" />
+            </IconPickerTrigger>
+            <IconPickerContent />
+          </IconPicker>
           <Field
             name="name"
+            className="contents"
             validate={(value) =>
               typeof value === 'string' && !value.trim()
                 ? t(($) => $['appCustomize.nameRequired'], { ns: 'explore' })
                 : null
             }
           >
-            <FieldLabel>{t(($) => $['newApp.captionName'], { ns: 'app' })}</FieldLabel>
-            <div className="flex items-center gap-2">
-              <IconPickerTrigger
-                disabled={isPending}
-                aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
-              >
-                <IconPickerIcon size="large" />
-              </IconPickerTrigger>
-              <Input ref={nameInputRef} defaultValue={source.name} readOnly={isPending} required />
-            </div>
-            <FieldError />
+            <Input
+              aria-label={t(($) => $['newApp.name'], { ns: 'app' })}
+              ref={nameInputRef}
+              defaultValue={source.name}
+              readOnly={isPending}
+              required
+            />
+            <FieldError className="col-span-2" />
           </Field>
-          <IconPickerContent />
-        </IconPicker>
+        </Fieldset>
         {isEdit && (
           <>
             <Field name="description">

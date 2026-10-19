@@ -5,11 +5,11 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
@@ -273,7 +273,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           <DialogDescription>
             {t(($) => $['modelProvider.systemModelSettingsDesc'], { ns: 'modelProvider' })}
           </DialogDescription>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <DialogBody>
           {isSystemModelListLoading ? (

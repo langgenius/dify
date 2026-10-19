@@ -50,7 +50,7 @@ class TestPromptTemplateConfigManagerConvert:
             "chat_prompt_config": {"prompt": [message]},
         }
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="(?:message role must be a string|message text must be a string)"):
             PromptTemplateConfigManager.convert(config)
 
     def test_convert_advanced_completion_with_roles(self):
@@ -95,7 +95,10 @@ class TestValidateAndSetDefaults:
     def test_invalid_prompt_type_raises(self):
         config = {"prompt_type": "invalid", "model": self.valid_model}
 
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match=("prompt_type must be in \\[<PromptType\\.SIMPLE: 'simple'>, <PromptType\\.ADVANCED: 'advanced'>\\]"),
+        ):
             PromptTemplateConfigManager.validate_and_set_defaults(AppMode.CHAT, config)
 
     def test_invalid_chat_prompt_config_type(self):
@@ -105,7 +108,7 @@ class TestValidateAndSetDefaults:
             "model": self.valid_model,
         }
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="chat_prompt_config must be of object type"):
             PromptTemplateConfigManager.validate_and_set_defaults(AppMode.CHAT, config)
 
     def test_simple_mode_invalid_pre_prompt_type(self):
@@ -115,7 +118,7 @@ class TestValidateAndSetDefaults:
             "model": self.valid_model,
         }
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="pre_prompt must be of string type"):
             PromptTemplateConfigManager.validate_and_set_defaults(AppMode.CHAT, config)
 
     def test_advanced_requires_one_config(self):
@@ -126,7 +129,10 @@ class TestValidateAndSetDefaults:
             "model": {"mode": "chat"},
         }
 
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match=("chat_prompt_config or completion_prompt_config is required when prompt_type is advanced"),
+        ):
             PromptTemplateConfigManager.validate_and_set_defaults(AppMode.CHAT, config)
 
     def test_advanced_invalid_model_mode(self):
@@ -136,7 +142,9 @@ class TestValidateAndSetDefaults:
             "model": {"mode": "invalid"},
         }
 
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError, match="model\\.mode must be in \\['completion', 'chat'\\] when prompt_type is advanced"
+        ):
             PromptTemplateConfigManager.validate_and_set_defaults(AppMode.CHAT, config)
 
     def test_advanced_chat_prompt_length_exceeds(self):
@@ -146,7 +154,7 @@ class TestValidateAndSetDefaults:
             "model": {"mode": "chat"},
         }
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="prompt messages must be less than 10"):
             PromptTemplateConfigManager.validate_and_set_defaults(AppMode.CHAT, config)
 
     def test_completion_prefix_defaults_set_when_empty(self):
@@ -183,5 +191,5 @@ class TestValidatePostPrompt:
 
     def test_post_prompt_invalid_type(self):
         config = {"post_prompt": 123}
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="post_prompt must be of string type"):
             PromptTemplateConfigManager.validate_post_prompt_and_set_defaults(config)

@@ -1,3 +1,5 @@
+from types import ModuleType
+
 from flask import Blueprint
 from flask_restx import Namespace
 
@@ -27,8 +29,65 @@ api.document_generic_errors(InvalidArgumentError, NotFoundError, UnauthorizedErr
 
 service_api_ns = Namespace("service_api", description="Service operations", path="/")
 
-from . import index
-from .app import (
+
+def _register_controllers() -> tuple[ModuleType, ...]:
+    """Load route modules after their namespaces and schema models exist."""
+
+    from . import index
+    from .app import (
+        annotation,
+        app,
+        audio,
+        completion,
+        conversation,
+        file,
+        file_preview,
+        human_input_form,
+        message,
+        site,
+        workflow,
+        workflow_events,
+    )
+    from .dataset import (
+        dataset,
+        document,
+        hit_testing,
+        metadata,
+        segment,
+    )
+    from .dataset.rag_pipeline import rag_pipeline_workflow
+    from .end_user import end_user
+    from .knowledge_fs import resources as knowledge_fs_resources
+    from .workspace import models
+
+    return (
+        index,
+        annotation,
+        app,
+        audio,
+        completion,
+        conversation,
+        file,
+        file_preview,
+        human_input_form,
+        message,
+        site,
+        workflow,
+        workflow_events,
+        dataset,
+        document,
+        hit_testing,
+        metadata,
+        segment,
+        rag_pipeline_workflow,
+        end_user,
+        knowledge_fs_resources,
+        models,
+    )
+
+
+(
+    index,
     annotation,
     app,
     audio,
@@ -41,18 +100,16 @@ from .app import (
     site,
     workflow,
     workflow_events,
-)
-from .dataset import (
     dataset,
     document,
     hit_testing,
     metadata,
     segment,
-)
-from .dataset.rag_pipeline import rag_pipeline_workflow
-from .end_user import end_user
-from .knowledge_fs import resources as knowledge_fs_resources
-from .workspace import models
+    rag_pipeline_workflow,
+    end_user,
+    knowledge_fs_resources,
+    models,
+) = _register_controllers()
 
 __all__ = [
     "annotation",

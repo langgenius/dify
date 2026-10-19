@@ -201,7 +201,10 @@ class TestNotionExtractorAuthentication:
         providers = build_data_source_credentials(database_client=sqlite_session_factory).providers
 
         # Act & Assert
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError,
+            match=("Must specify `integration_token` or set environment variable `NOTION_INTEGRATION_TOKEN`\\."),
+        ) as exc_info:
             NotionExtractor(
                 notion_workspace_id="workspace-123",
                 notion_obj_id="page-456",
@@ -386,7 +389,7 @@ class TestNotionExtractorPageRetrieval:
         mock_request.return_value = self._create_response({}, status_code=404)
 
         # Act & Assert
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Error fetching Notion block data: \\{\\}") as exc_info:
             extractor._get_notion_block_data("page-456")
         assert "Error fetching Notion block data" in str(exc_info.value)
 
@@ -397,7 +400,7 @@ class TestNotionExtractorPageRetrieval:
         mock_request.return_value = self._create_response({"invalid": "structure"})
 
         # Act & Assert
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Error fetching Notion block data") as exc_info:
             extractor._get_notion_block_data("page-456")
         assert "Error fetching Notion block data" in str(exc_info.value)
 
@@ -408,7 +411,7 @@ class TestNotionExtractorPageRetrieval:
         mock_request.side_effect = httpx.HTTPError("Network error")
 
         # Act & Assert
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Error fetching Notion block data") as exc_info:
             extractor._get_notion_block_data("page-456")
         assert "Error fetching Notion block data" in str(exc_info.value)
 
@@ -1042,7 +1045,7 @@ class TestNotionExtractorIntegration:
         )
 
         # Act & Assert
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="notion page type not supported") as exc_info:
             extractor.extract()
         assert "notion page type not supported" in str(exc_info.value)
 
@@ -1205,7 +1208,7 @@ class TestNotionProviderController:
         )
 
         # Act & Assert
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Datasource with name nonexistent_datasource not found") as exc_info:
             controller.get_datasource("nonexistent_datasource")
         assert "not found" in str(exc_info.value)
 
@@ -1625,7 +1628,7 @@ class TestNotionExtractorErrorScenarios:
         mock_request.side_effect = error_value
 
         # Act & Assert
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Error fetching Notion block data") as exc_info:
             extractor._get_notion_block_data("page-456")
         assert "Error fetching Notion block data" in str(exc_info.value)
 
@@ -1651,7 +1654,14 @@ class TestNotionExtractorErrorScenarios:
         mock_request.return_value = mock_response
 
         # Act & Assert
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError,
+            match=(
+                "(?:Error fetching Notion block data: Forbidden|Error fetching Notion "
+                "block data: Not Found|Error fetching Notion block data: Rate limit "
+                "exceeded|Error fetching Notion block data: Unauthorized)"
+            ),
+        ) as exc_info:
             extractor._get_notion_block_data("page-456")
         assert "Error fetching Notion block data" in str(exc_info.value)
 
@@ -1677,7 +1687,7 @@ class TestNotionExtractorErrorScenarios:
         mock_request.return_value = mock_response
 
         # Act & Assert
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Error fetching Notion block data") as exc_info:
             extractor._get_notion_block_data("page-456")
         assert "Error fetching Notion block data" in str(exc_info.value)
 

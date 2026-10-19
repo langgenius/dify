@@ -444,7 +444,7 @@ def test_query_params_from_request_raises_for_malformed_ints_by_default():
 
     app = Flask(__name__)
     with app.test_request_context("/?page=bad&limit="):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="2 validation errors for HelperQueryModel\\\npage"):
             query_params_from_request(HelperQueryModel, list_fields=("status",))
 
 

@@ -1805,7 +1805,6 @@ def _run_case(
     token_rows: dict[str, ResolvedRow],
     monkeypatch: pytest.MonkeyPatch,
 ) -> TestResponse:
-
     edition = scenario.edition or (
         DeploymentEdition.ENTERPRISE if Trait.ENTERPRISE_ONLY in route.traits else DeploymentEdition.COMMUNITY
     )

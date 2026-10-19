@@ -173,7 +173,8 @@ describe('SwitchAppModal', () => {
     it('should validate blank names and submit the current field value with Enter', async () => {
       const user = userEvent.setup()
       renderComponent()
-      const nameInput = screen.getByDisplayValue('Demo App(copy)')
+      const nameInput = screen.getByRole('textbox', { name: 'app.newApp.name' })
+      expect(screen.getByRole('group', { name: 'app.switchLabel' })).toContainElement(nameInput)
       await user.clear(nameInput)
       await user.type(nameInput, '   {Enter}')
       expect(await screen.findByText('explore.appCustomize.nameRequired')).toBeVisible()

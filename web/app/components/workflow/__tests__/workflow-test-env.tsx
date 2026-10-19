@@ -73,7 +73,7 @@ import type { WorkflowHistoryState } from '../store/workflow/history-slice'
 import type { Edge, Node, WorkflowRunningData } from '../types'
 import { QueryClient } from '@tanstack/react-query'
 import * as React from 'react'
-import ReactFlow, { ReactFlowProvider } from 'reactflow'
+import ReactFlow, { ReactFlowProvider, useStoreApi } from 'reactflow'
 import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createQueryClientWrapper } from '@/test/console/query-client'
@@ -434,6 +434,96 @@ export function renderWorkflowFlowHook<R, P = undefined>(
 
   const renderResult = renderHook(hook, { wrapper, ...rest })
   return { ...renderResult, ...stores }
+}
+
+// ---------------------------------------------------------------------------
+// renderWorkflowCanvasHook — real ReactFlow store without a mounted canvas
+// ---------------------------------------------------------------------------
+
+type WorkflowCanvasState = {
+  nodes?: Node[]
+  edges?: Edge[]
+  transform?: [number, number, number]
+}
+
+type WorkflowCanvasHookTestOptions<P> = Omit<RenderHookOptions<P>, 'wrapper'> &
+  WorkflowProviderOptions &
+  WorkflowCanvasState & {
+    /** Extra providers rendered inside the workflow and ReactFlow providers. */
+    wrapper?: React.ComponentType<{ children: React.ReactNode }>
+  }
+
+type WorkflowCanvasHookTestResult<R, P> = WorkflowHookTestResult<R, P> & {
+  /** Replace the graph or viewport the hook reads from the ReactFlow store. */
+  setCanvas: (canvas: WorkflowCanvasState) => void
+}
+
+/**
+ * Renders a hook against real workflow, hooks, and ReactFlow stores without mounting
+ * `<ReactFlow>`, so the graph and viewport stay exactly as seeded. Use it for hooks that
+ * read the canvas through `useStoreApi()`, such as draft persistence.
+ */
+export function renderWorkflowCanvasHook<R, P = undefined>(
+  hook: (props: P) => R,
+  options?: WorkflowCanvasHookTestOptions<P>,
+): WorkflowCanvasHookTestResult<R, P> {
+  const {
+    initialStoreState,
+    injectWorkflowStoreSliceFn,
+    hooksStoreProps,
+    historyStore: historyConfig,
+    queryClient,
+    resource,
+    nodes = [],
+    edges = [],
+    transform = [0, 0, 1],
+    wrapper: ExtraWrapper,
+    ...rest
+  } = options ?? {}
+
+  const stores = createStoresFromOptions({
+    initialStoreState,
+    hooksStoreProps,
+    injectWorkflowStoreSliceFn,
+  })
+  const workflowWrapper = createWorkflowWrapper(stores, historyConfig, queryClient, resource)
+  let flowStore: ReturnType<typeof useStoreApi> | undefined
+
+  const setCanvas = (canvas: WorkflowCanvasState) => {
+    if (!flowStore) throw new Error('The ReactFlow store is not mounted.')
+    const state = flowStore.getState()
+    if (canvas.nodes) state.setNodes(canvas.nodes)
+    if (canvas.edges) state.setEdges(canvas.edges)
+    if (canvas.transform) flowStore.setState({ transform: canvas.transform })
+  }
+
+  function CanvasSeed({ children }: { children: React.ReactNode }) {
+    const store = useStoreApi()
+    const [seeded] = React.useState(() => {
+      flowStore = store
+      setCanvas({ nodes, edges, transform })
+      return true
+    })
+    return seeded ? children : null
+  }
+
+  const wrapper = ({ children }: { children: React.ReactNode }) =>
+    React.createElement(
+      workflowWrapper,
+      null,
+      React.createElement(
+        ReactFlowProvider,
+        null,
+        React.createElement(
+          CanvasSeed,
+          null,
+          ExtraWrapper ? React.createElement(ExtraWrapper, null, children) : children,
+        ),
+      ),
+    )
+
+  const renderResult = renderHook(hook, { wrapper, ...rest })
+  return { ...renderResult, ...stores, setCanvas }
 }
 
 // ---------------------------------------------------------------------------

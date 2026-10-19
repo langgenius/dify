@@ -20,11 +20,11 @@ import {
   Dialog,
   DialogBody,
   DialogClose,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import {
@@ -893,7 +893,10 @@ function ImportSkillDialogForm({
     >
       <DialogHeader>
         <DialogTitle>{t(($) => $['skillManagement.importDialog.title'])}</DialogTitle>
-        <DialogCloseButton aria-label={tCommon(($) => $['operation.close'])} disabled={importing} />
+        <DialogHeaderCloseButton
+          aria-label={tCommon(($) => $['operation.close'])}
+          disabled={importing}
+        />
       </DialogHeader>
       <DialogBody>
         <div

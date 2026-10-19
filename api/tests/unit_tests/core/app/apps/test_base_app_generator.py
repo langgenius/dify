@@ -58,7 +58,9 @@ def test_restore_workflow_run_graph_requires_persisted_snapshot(
         sqlite_session.add(workflow_run)
         sqlite_session.commit()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError, match=("(?:Workflow run graph not found: run\\-id|Workflow run id is required when resuming)")
+    ):
         BaseAppGenerator._restore_workflow_run_graph(
             session=sqlite_session,
             workflow=Workflow(graph="{}"),
@@ -105,7 +107,7 @@ def test_validate_input_with_none_for_required_variable():
         )
 
         # Test with input None
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="test_var is required in input form") as exc_info:
             base_app_generator._validate_inputs(
                 variable_entity=var,
                 value=None,
@@ -400,7 +402,7 @@ def test_validate_inputs_required_file_with_empty_string_fails():
         required=True,
     )
 
-    with pytest.raises(ValueError) as exc_info:
+    with pytest.raises(ValueError, match="test_file in input form must be a file") as exc_info:
         base_app_generator._validate_inputs(
             variable_entity=var_file,
             value="",

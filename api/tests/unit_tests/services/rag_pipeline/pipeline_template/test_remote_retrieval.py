@@ -70,7 +70,7 @@ def test_fetch_pipeline_templates_from_dify_official(mocker: MockerFixture, monk
 
     success_result = RemotePipelineTemplateRetrieval.fetch_pipeline_templates_from_dify_official("en-US")
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="fetch pipeline templates failed, status code: 500"):
         RemotePipelineTemplateRetrieval.fetch_pipeline_templates_from_dify_official("en-US")
 
     assert success_result == {"pipeline_templates": [{"id": "remote-1"}]}
@@ -94,7 +94,9 @@ def test_fetch_pipeline_template_detail_from_dify_official(
     )
 
     success_result = RemotePipelineTemplateRetrieval.fetch_pipeline_template_detail_from_dify_official("remote-1")
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError, match="fetch pipeline template detail failed, status_code: 404, response: Not Found"
+    ):
         RemotePipelineTemplateRetrieval.fetch_pipeline_template_detail_from_dify_official("missing")
 
     assert success_result == {"id": "remote-1", "name": "Remote Template"}

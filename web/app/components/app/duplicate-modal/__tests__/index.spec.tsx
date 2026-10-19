@@ -37,7 +37,7 @@ function render(ui: ReactElement) {
 describe('DuplicateAppModal', () => {
   const getIconButton = () =>
     screen.getByRole('button', {
-      name: /operation\.edit.*appCustomize\.subTitle/,
+      name: /iconPicker\.title/,
     })
 
   beforeEach(() => {
@@ -88,13 +88,16 @@ describe('DuplicateAppModal', () => {
     )
 
     expect(screen.getByRole('dialog', { name: /duplicateTitle/ })).toBeInTheDocument()
-    const input = screen.getByRole('textbox', { name: /appCustomize\.subTitle/ })
+    const input = screen.getByRole('textbox', { name: /newApp\.name/ })
+    expect(screen.getByRole('group', { name: 'explore.appCustomize.subTitle' })).toContainElement(
+      input,
+    )
     await user.clear(input)
     await user.type(input, 'Updated App')
     expect(input).toHaveValue('Updated App')
 
     await user.clear(input)
-    await user.click(screen.getByRole('textbox', { name: /appCustomize\.subTitle/ }))
+    await user.click(screen.getByRole('textbox', { name: /newApp\.name/ }))
     await user.keyboard('{Enter}')
 
     expect(toastErrorMock).toHaveBeenCalledWith(
@@ -131,7 +134,7 @@ describe('DuplicateAppModal', () => {
       expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
     })
     expect(onConfirm).not.toHaveBeenCalled()
-    expect(screen.getByRole('textbox', { name: /appCustomize\.subTitle/ })).toHaveValue('Demo App')
+    expect(screen.getByRole('textbox', { name: /newApp\.name/ })).toHaveValue('Demo App')
     await user.click(screen.getByRole('button', { name: /(?:^|\.)duplicate(?=$|:)/ }))
 
     expect(onConfirm).toHaveBeenCalledWith({
@@ -201,7 +204,7 @@ describe('DuplicateAppModal', () => {
       />,
     )
 
-    await user.click(screen.getByRole('textbox', { name: /appCustomize\.subTitle/ }))
+    await user.click(screen.getByRole('textbox', { name: /newApp\.name/ }))
     await user.keyboard('{Enter}')
 
     expect(onConfirm).not.toHaveBeenCalled()

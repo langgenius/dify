@@ -687,22 +687,6 @@
       "count": 5
     }
   },
-  "web/app/components/base/mermaid/index.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    },
-    "regexp/no-super-linear-backtracking": {
-      "count": 3
-    }
-  },
-  "web/app/components/base/mermaid/utils.ts": {
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/base/node-status/index.tsx": {
     "react/only-export-components": {
       "count": 1
@@ -1553,11 +1537,6 @@
   "web/app/components/plugins/types.ts": {
     "typescript/no-explicit-any": {
       "count": 8
-    }
-  },
-  "web/app/components/plugins/update-plugin/from-market-place.tsx": {
-    "shadcn/no-restyle": {
-      "count": 1
     }
   },
   "web/app/components/rag-pipeline/components/panel/input-field/editor/form/hidden-fields.tsx": {
@@ -3364,7 +3343,7 @@
   },
   "web/service/use-plugins.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 11
+      "count": 10
     },
     "dify/require-disable-directive-description": {
       "count": 1

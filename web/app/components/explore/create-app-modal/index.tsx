@@ -10,12 +10,14 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import { Field, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Input } from '@langgenius/dify-ui/input'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Switch } from '@langgenius/dify-ui/switch'
@@ -75,7 +77,6 @@ const CreateAppModal = ({
   confirmLoading,
   onHide,
 }: CreateAppModalProps) => {
-  const nameInputId = React.useId()
   const descriptionInputId = React.useId()
   const maxActiveRequestsInputId = React.useId()
   const { t } = useTranslation(['app', 'common', 'explore'])
@@ -215,17 +216,16 @@ const CreateAppModal = ({
                 {t(($) => $['appCustomize.title'], { ns: 'explore', name: appName })}
               </DialogTitle>
             )}
-            <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+            <DialogHeaderCloseButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            />
           </DialogHeader>
           <DialogBody>
             {/* icon & name */}
-            <div className="pt-2">
-              <label
-                htmlFor={nameInputId}
-                className="block py-2 text-sm leading-5 font-medium text-text-primary"
-              >
+            <Fieldset className="pt-2">
+              <FieldsetLegend className="mb-0 block py-2 text-sm leading-5 font-medium text-text-primary">
                 {t(($) => $['newApp.captionName'], { ns: 'app' })}
-              </label>
+              </FieldsetLegend>
               <div className="flex items-center justify-between space-x-2">
                 <IconPicker value={pickerValue} onValueChange={setSelectedIcon}>
                   <IconPickerTrigger
@@ -236,15 +236,17 @@ const CreateAppModal = ({
                   </IconPickerTrigger>
                   <IconPickerContent />
                 </IconPicker>
-                <Input
-                  id={nameInputId}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' }) || ''}
-                  className="h-10 grow"
-                />
+                <Field name="name" className="grow">
+                  <Input
+                    aria-label={t(($) => $['newApp.name'], { ns: 'app' })}
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' }) || ''}
+                    className="h-10 grow"
+                  />
+                </Field>
               </div>
-            </div>
+            </Fieldset>
             {/* description */}
             <div className="pt-2">
               <label
@@ -264,20 +266,20 @@ const CreateAppModal = ({
             {/* answer icon */}
             {isEditModal &&
               (appMode === 'chat' || appMode === 'advanced-chat' || appMode === 'agent-chat') && (
-                <div className="pt-2">
+                <Field name="use_icon_as_answer_icon" className="gap-0 pt-2">
                   <div className="flex items-center justify-between">
-                    <div className="py-2 text-sm leading-5 font-medium text-text-primary">
+                    <FieldLabel className="py-2 text-sm leading-5 font-medium text-text-primary">
                       {t(($) => $['answerIcon.title'], { ns: 'app' })}
-                    </div>
+                    </FieldLabel>
                     <Switch
                       checked={useIconAsAnswerIcon}
                       onCheckedChange={(v) => setUseIconAsAnswerIcon(v)}
                     />
                   </div>
-                  <p className="body-xs-regular text-text-tertiary">
+                  <FieldDescription className="py-0">
                     {t(($) => $['answerIcon.descriptionInExplore'], { ns: 'app' })}
-                  </p>
-                </div>
+                  </FieldDescription>
+                </Field>
               )}
             {isEditModal && (
               <div className="pt-2">

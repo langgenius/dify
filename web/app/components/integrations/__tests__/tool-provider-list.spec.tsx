@@ -68,6 +68,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.uninstall.post': api.uninstall,
       'workspaces.current.toolProviders.get': api.providers,
       'workspaces.current.plugin.list.installations.ids.post': api.installed,
       'workspaces.current.toolProvider.builtin.byProvider.tools.get': api.builtinTools,
@@ -83,7 +84,6 @@ vi.mock('@/service/console', async (importOriginal) => {
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'workspaces.current.toolProvider.builtin.byProvider.tools.get': api.builtinTools,
       'workspaces.current.toolProvider.api.add.post': api.createCustom,
-      'workspaces.current.plugin.uninstall.post': api.uninstall,
       'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
       'workspaces.current.toolProvider.api.schema.post': api.parseSchema,
       'workspaces.current.plugin.permission.fetch.get': async () => ({

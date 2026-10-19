@@ -5,10 +5,10 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
@@ -128,7 +128,9 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
         >
           <DialogHeader>
             <DialogTitle>{t(($) => $.title, { ns: 'datasetSettings' })}</DialogTitle>
-            <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+            <DialogHeaderCloseButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            />
           </DialogHeader>
           <DialogBody>
             <IconPicker value={appIcon} onValueChange={handleSelectAppIcon}>
