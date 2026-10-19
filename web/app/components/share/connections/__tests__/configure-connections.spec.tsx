@@ -27,6 +27,87 @@ const services: readonly RequiredConnectionService[] = [
 ]
 
 describe('ConfigureConnections', () => {
+  it('counts only unhealthy selected services and removes the count after recovery or a healthy selection', () => {
+    const createService = (
+      id: string,
+      overrides: Partial<RequiredConnectionService>,
+    ): RequiredConnectionService => ({
+      id,
+      name: id,
+      description: 'Connection required by this app.',
+      methods: ['oauth', 'api-key'],
+      availableConnections: [],
+      ...overrides,
+    })
+    const expired = createService('expired', {
+      availableConnections: [
+        { id: 'selected', name: 'Selected account', status: 'expired' },
+        { id: 'other-expired', name: 'Other expired account', status: 'expired' },
+        { id: 'other-invalid', name: 'Other invalid key', method: 'api-key', status: 'invalid' },
+      ],
+      selectedConnectionId: 'selected',
+    })
+    const invalid = createService('invalid', {
+      availableConnections: [
+        { id: 'selected', name: 'Invalid key', method: 'api-key', status: 'invalid' },
+        { id: 'backup', name: 'Backup key', method: 'api-key', status: 'active' },
+      ],
+      selectedConnectionId: 'selected',
+    })
+    const unaffected = [
+      createService('active', {
+        availableConnections: [
+          { id: 'selected', name: 'Healthy account', status: 'active' },
+          { id: 'expired', name: 'Unused expired account', status: 'expired' },
+        ],
+        selectedConnectionId: 'selected',
+      }),
+      createService('default-status', {
+        availableConnections: [
+          { id: 'selected', name: 'Healthy account' },
+          { id: 'invalid', name: 'Unused invalid key', method: 'api-key', status: 'invalid' },
+        ],
+        selectedConnectionId: 'selected',
+      }),
+      createService('no-selection', {
+        availableConnections: [{ id: 'expired', name: 'Expired account', status: 'expired' }],
+      }),
+      createService('removed-selection', {
+        availableConnections: [{ id: 'invalid', name: 'Invalid key', status: 'invalid' }],
+        selectedConnectionId: 'removed',
+      }),
+      createService('no-connections', { selectedConnectionId: 'removed' }),
+    ]
+    const callbacks = { onConnect: vi.fn(), onConnectionChange: vi.fn() }
+    const { rerender } = render(
+      <ConfigureConnections services={[expired, invalid, ...unaffected]} {...callbacks} />,
+    )
+
+    const trigger = screen.getByRole('button', { name: 'share.connections.configure.title 2' })
+    expect(within(trigger).getByText('2')).toBeVisible()
+
+    const recovered = {
+      ...expired,
+      availableConnections: expired.availableConnections.map((connection) =>
+        connection.id === 'selected' ? { ...connection, status: 'active' as const } : connection,
+      ),
+    }
+    rerender(<ConfigureConnections services={[recovered, invalid, ...unaffected]} {...callbacks} />)
+    const remainingWarning = screen.getByRole('button', {
+      name: 'share.connections.configure.title 1',
+    })
+    expect(within(remainingWarning).getByText('1')).toBeVisible()
+
+    rerender(
+      <ConfigureConnections
+        services={[recovered, { ...invalid, selectedConnectionId: 'backup' }, ...unaffected]}
+        {...callbacks}
+      />,
+    )
+    const healthyTrigger = screen.getByRole('button', { name: 'share.connections.configure.title' })
+    expect(within(healthyTrigger).queryByText(/^\d+$/)).not.toBeInTheDocument()
+  })
+
   it('blocks all connection changes during a response and enables them when the response finishes', async () => {
     const user = userEvent.setup()
     const onConnect = vi.fn()
