@@ -13,7 +13,7 @@ class TestSegmentTypeIsArrayType:
     correct identification of array and non-array types.
     """
 
-    def test_is_array_type(self):
+    def test_is_array_type(self) -> None:
         """
         Test that all SegmentType enum values are covered in our test cases.
 
@@ -52,7 +52,7 @@ class TestSegmentTypeIsArrayType:
         covered_types = set(expected_array_types) | set(expected_non_array_types)
         assert covered_types == set(SegmentType), "All SegmentType values should be covered in tests"
 
-    def test_all_enum_values_are_supported(self):
+    def test_all_enum_values_are_supported(self) -> None:
         """
         Test that all enum values are supported and return boolean values.
 
@@ -70,7 +70,7 @@ class TestSegmentTypeIsValidArrayValidation:
     Test SegmentType.is_valid with array types using different validation strategies.
     """
 
-    def test_array_validation_all_success(self):
+    def test_array_validation_all_success(self) -> None:
         # Arrange
         value = ["hello", "world", "foo"]
         # Act
@@ -78,7 +78,7 @@ class TestSegmentTypeIsValidArrayValidation:
         # Assert
         assert is_valid
 
-    def test_array_validation_all_fail(self):
+    def test_array_validation_all_fail(self) -> None:
         # Arrange
         value = ["hello", 123, "world"]
         # Act
@@ -86,7 +86,7 @@ class TestSegmentTypeIsValidArrayValidation:
         # Assert
         assert not is_valid
 
-    def test_array_validation_first(self):
+    def test_array_validation_first(self) -> None:
         # Arrange
         value = ["hello", 123, None]
         # Act
@@ -94,7 +94,7 @@ class TestSegmentTypeIsValidArrayValidation:
         # Assert
         assert is_valid
 
-    def test_array_validation_none(self):
+    def test_array_validation_none(self) -> None:
         # Arrange
         value = [1, 2, 3]
         # Act
@@ -111,7 +111,7 @@ class TestSegmentTypeGetZeroValue:
     correct zero value generation for each type.
     """
 
-    def test_array_types_return_empty_list(self):
+    def test_array_types_return_empty_list(self) -> None:
         """Test that all array types return empty list segments."""
         array_types = [
             SegmentType.ARRAY_ANY,
@@ -126,31 +126,31 @@ class TestSegmentTypeGetZeroValue:
             assert result.value == []
             assert result.value_type == seg_type
 
-    def test_object_returns_empty_dict(self):
+    def test_object_returns_empty_dict(self) -> None:
         """Test that OBJECT type returns empty dictionary segment."""
         result = SegmentType.get_zero_value(SegmentType.OBJECT)
         assert result.value == {}
         assert result.value_type == SegmentType.OBJECT
 
-    def test_string_returns_empty_string(self):
+    def test_string_returns_empty_string(self) -> None:
         """Test that STRING type returns empty string segment."""
         result = SegmentType.get_zero_value(SegmentType.STRING)
         assert result.value == ""
         assert result.value_type == SegmentType.STRING
 
-    def test_integer_returns_zero(self):
+    def test_integer_returns_zero(self) -> None:
         """Test that INTEGER type returns zero segment."""
         result = SegmentType.get_zero_value(SegmentType.INTEGER)
         assert result.value == 0
         assert result.value_type == SegmentType.INTEGER
 
-    def test_float_returns_zero_point_zero(self):
+    def test_float_returns_zero_point_zero(self) -> None:
         """Test that FLOAT type returns 0.0 segment."""
         result = SegmentType.get_zero_value(SegmentType.FLOAT)
         assert result.value == 0.0
         assert result.value_type == SegmentType.FLOAT
 
-    def test_number_returns_zero(self):
+    def test_number_returns_zero(self) -> None:
         """Test that NUMBER type returns zero segment."""
         result = SegmentType.get_zero_value(SegmentType.NUMBER)
         assert result.value == 0
@@ -160,13 +160,13 @@ class TestSegmentTypeGetZeroValue:
         # Verify that exposed_type returns NUMBER for frontend compatibility
         assert result.value_type.exposed_type() == SegmentType.NUMBER
 
-    def test_boolean_returns_false(self):
+    def test_boolean_returns_false(self) -> None:
         """Test that BOOLEAN type returns False segment."""
         result = SegmentType.get_zero_value(SegmentType.BOOLEAN)
         assert result.value is False
         assert result.value_type == SegmentType.BOOLEAN
 
-    def test_unsupported_types_raise_value_error(self):
+    def test_unsupported_types_raise_value_error(self) -> None:
         """Test that unsupported types raise ValueError."""
         unsupported_types = [
             SegmentType.SECRET,
@@ -202,12 +202,12 @@ class TestSegmentTypeInferSegmentType:
             ({"k": "v"}, SegmentType.OBJECT),
         ],
     )
-    def test_infer_segment_type_supported_values(self, value, expected):
+    def test_infer_segment_type_supported_values(self, value: object, expected: SegmentType) -> None:
         assert SegmentType.infer_segment_type(value) == expected
 
 
 class TestSegmentTypeAdditionalMethods:
-    def test_cast_value_for_bool_number_and_array_number(self):
+    def test_cast_value_for_bool_number_and_array_number(self) -> None:
         assert SegmentType.cast_value(True, SegmentType.INTEGER) == 1
         assert SegmentType.cast_value(False, SegmentType.NUMBER) == 0
         assert SegmentType.cast_value([True, False], SegmentType.ARRAY_NUMBER) == [1, 0]
@@ -216,7 +216,7 @@ class TestSegmentTypeAdditionalMethods:
         assert SegmentType.cast_value(mixed, SegmentType.ARRAY_NUMBER) is mixed
         assert SegmentType.cast_value("x", SegmentType.STRING) == "x"
 
-    def test_exposed_type_and_element_type(self):
+    def test_exposed_type_and_element_type(self) -> None:
         assert SegmentType.INTEGER.exposed_type() == SegmentType.NUMBER
         assert SegmentType.FLOAT.exposed_type() == SegmentType.NUMBER
         assert SegmentType.STRING.exposed_type() == SegmentType.STRING
@@ -227,12 +227,12 @@ class TestSegmentTypeAdditionalMethods:
         with pytest.raises(ValueError, match="element_type is only supported by array type"):
             SegmentType.STRING.element_type()
 
-    def test_group_validation_for_segment_group_and_list(self):
+    def test_group_validation_for_segment_group_and_list(self) -> None:
         valid_group = SegmentGroup(value=[StringSegment(value="a")])
         assert SegmentType.GROUP.is_valid(valid_group) is True
         assert SegmentType.GROUP.is_valid([StringSegment(value="b")]) is True
         assert SegmentType.GROUP.is_valid(["not-segment"]) is False
 
-    def test_unreachable_assertion_branch(self):
+    def test_unreachable_assertion_branch(self) -> None:
         with pytest.raises(AssertionError, match="Expected code to be unreachable"):
             SegmentType.is_valid("not-a-segment-type", None)  # type: ignore[arg-type]

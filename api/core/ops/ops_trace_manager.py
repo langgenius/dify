@@ -443,7 +443,7 @@ class OpsTraceManager:
             keys_to_decrypt = [key for key in secret_keys if key in tracing_config]
             if keys_to_decrypt:
                 decrypted_values = batch_decrypt_token(tenant_id, [tracing_config[key] for key in keys_to_decrypt])
-                new_config.update(zip(keys_to_decrypt, decrypted_values))
+                new_config.update(zip(keys_to_decrypt, decrypted_values, strict=False))
 
             for key in other_keys:
                 new_config[key] = tracing_config.get(key, "")

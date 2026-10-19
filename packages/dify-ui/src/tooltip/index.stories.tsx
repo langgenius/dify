@@ -104,9 +104,15 @@ const PLACEMENTS: TooltipPlacement[] = [
   'left-start',
   'left',
   'left-end',
+  'inline-start-start',
+  'inline-start',
+  'inline-start-end',
+  'inline-end-start',
+  'inline-end',
+  'inline-end-end',
 ]
 
-const PlacementsDemo = () => {
+function PlacementsDemo() {
   const [placement, setPlacement] = React.useState<TooltipPlacement>('top')
 
   return (
@@ -158,24 +164,26 @@ const DELAY_PRESETS: Array<{ label: string; delay: number }> = [
   { label: 'Default', delay: 600 },
 ]
 
-const DelayDemo = () => (
-  <div className="flex items-center gap-3">
-    {DELAY_PRESETS.map(({ label, delay }) => (
-      <TooltipProvider key={delay} delay={delay}>
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <DifyIconButton aria-label={`${label} (${delay}ms)`} size="lg" variant="secondary">
-                <span aria-hidden className="i-ri-timer-line size-4" />
-              </DifyIconButton>
-            }
-          />
-          <TooltipContent>{`${label} (${delay}ms)`}</TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    ))}
-  </div>
-)
+function DelayDemo() {
+  return (
+    <div className="flex items-center gap-3">
+      {DELAY_PRESETS.map(({ label, delay }) => (
+        <TooltipProvider key={delay} delay={delay}>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <DifyIconButton aria-label={`${label} (${delay}ms)`} size="lg" variant="secondary">
+                  <span aria-hidden className="i-ri-timer-line size-4" />
+                </DifyIconButton>
+              }
+            />
+            <TooltipContent>{`${label} (${delay}ms)`}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ))}
+    </div>
+  )
+}
 
 export const WithDelay: Story = {
   parameters: {

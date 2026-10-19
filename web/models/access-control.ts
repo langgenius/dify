@@ -102,24 +102,6 @@ export type RoleListResponse = {
   pagination: Pagination
 }
 
-export type CreateRoleRequest = {
-  name: string
-  description?: string
-  permission_keys?: PermissionKey[]
-}
-
-export type UpdateRolesRequest = {
-  id: string
-  name: string
-  description?: string
-  permission_keys?: PermissionKey[]
-}
-
-export type CopyWorkspaceRoleRequest = {
-  roleId: string
-  copy_member: boolean
-}
-
 export type AccessPolicyResourceType = 'app' | 'dataset' | 'agent'
 
 type AccessPolicyCategory = 'global_system_default' | 'global_custom'
@@ -169,20 +151,6 @@ export type GetDatasetAccessPolicyByDatasetIdResponse = {
   items: AccessPolicyWithBindings[]
 }
 
-export type RolesOfMemberResponse = {
-  account_id: string
-  roles: Role[]
-}
-
-export type UpdateRolesOfMemberRequest = {
-  memberId: string
-  roleIds: string[]
-}
-
-export type GetMembersOfRoleRequest = {
-  roleId: string
-} & PaginationParameters
-
 type Account = {
   account_id: string
   account_name: string
@@ -196,36 +164,17 @@ export type ResourceUserAccessSetting = {
   access_policies: Omit<AccessPolicy, 'created_at' | 'updated_at'>[]
 }
 
-type ResourceUserAccessSettingsResponse = {
+export type ResourceUserAccessSettingsResponse = {
   data: ResourceUserAccessSetting[]
   pagination: Pagination
 }
 
-export type GetMembersOfRoleResponse = {
-  data: Account[]
-  pagination: Pagination
-}
-
-export type GetAppUserAccessSettingsResponse = ResourceUserAccessSettingsResponse
-
-export type GetDatasetUserAccessSettingsResponse = ResourceUserAccessSettingsResponse
-
-type UpdateResourceUserAccessSettingsRequest = {
+export type UpdateResourceUserAccessSettingsRequest = {
   accountId: string
   accessPolicyIds: string[]
 }
 
-export type UpdateAppUserAccessSettingsRequest = UpdateResourceUserAccessSettingsRequest
-
-export type UpdateDatasetUserAccessSettingsRequest = UpdateResourceUserAccessSettingsRequest
-
-type RemoveResourceAccessPolicyMemberBindingsRequest = {
+export type RemoveResourceAccessPolicyMemberBindingsRequest = {
   accessPolicyId: string
   accountIds: string[]
 }
-
-export type RemoveAppAccessPolicyMemberBindingsRequest =
-  RemoveResourceAccessPolicyMemberBindingsRequest
-
-export type RemoveDatasetAccessPolicyMemberBindingsRequest =
-  RemoveResourceAccessPolicyMemberBindingsRequest

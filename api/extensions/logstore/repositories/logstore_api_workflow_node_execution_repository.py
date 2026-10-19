@@ -220,10 +220,7 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
                 # For each id, select the row with max log_version
                 deduplicated_results = []
                 for rows in id_to_results.values():
-                    if len(rows) > 1:
-                        max_row = max(rows, key=lambda x: int(x.get("log_version", 0)))
-                    else:
-                        max_row = rows[0]
+                    max_row = max(rows, key=lambda x: int(x.get("log_version", 0))) if len(rows) > 1 else rows[0]
                     deduplicated_results.append(max_row)
             else:
                 # For PG mode, results are already deduplicated by the SQL query
@@ -325,10 +322,7 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
 
                 # For each id, select the row with max log_version
                 for rows in id_to_results.values():
-                    if len(rows) > 1:
-                        max_row = max(rows, key=lambda x: int(x.get("log_version", 0)))
-                    else:
-                        max_row = rows[0]
+                    max_row = max(rows, key=lambda x: int(x.get("log_version", 0))) if len(rows) > 1 else rows[0]
 
                     model = _dict_to_workflow_node_execution_model(max_row)
                     if model and model.id:  # Ensure model is valid

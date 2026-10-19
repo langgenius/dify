@@ -14,11 +14,11 @@ import {
 
 function Parts() {
   return (
-    <>
+    <React.Fragment>
       <DatePickerTrigger />
       <DatePickerClear aria-label="Clear date" />
       <DatePickerContent />
-    </>
+    </React.Fragment>
   )
 }
 
@@ -27,7 +27,7 @@ describe('DatePicker keyboard and form contract', () => {
     function Example() {
       const [visible, setVisible] = React.useState(true)
       return (
-        <>
+        <React.Fragment>
           <button type="button" onClick={() => setVisible(!visible)}>
             Toggle label
           </button>
@@ -36,7 +36,7 @@ describe('DatePicker keyboard and form contract', () => {
             <DatePickerTrigger id="custom-departure" aria-label={visible ? undefined : 'Date'} />
             <DatePickerContent aria-label={visible ? undefined : 'Choose date'} />
           </DatePicker>
-        </>
+        </React.Fragment>
       )
     }
     const screen = await render(<Example />)
@@ -315,6 +315,25 @@ it('opens on the allowed month and retains a visible focus target if every date 
   await screen.getByRole('button', { name: 'Date', exact: true }).click()
   await expect
     .element(screen.getByRole('button', { name: 'Choose month and year: February 2037' }))
+    .toHaveFocus()
+})
+
+it('focuses the month title after applying a month with no available dates', async () => {
+  const screen = await render(
+    <DatePicker defaultValue="2025-01-15" isDateUnavailable={(date) => date.startsWith('2025-02')}>
+      <DatePickerLabel className="sr-only">Date</DatePickerLabel>
+      <Parts />
+    </DatePicker>,
+  )
+  await screen.getByRole('button', { name: 'Date Jan 15, 2025' }).click()
+  await screen.getByRole('button', { name: 'Choose month and year: January 2025' }).click()
+  await screen.getByRole('option', { name: 'February' }).click()
+  await expect.element(screen.getByRole('option', { name: 'February' })).toHaveFocus()
+  await screen.getByRole('button', { name: 'OK' }).click()
+
+  await expect.element(screen.getByRole('grid', { name: 'February 2025' })).toBeInTheDocument()
+  await expect
+    .element(screen.getByRole('button', { name: 'Choose month and year: February 2025' }))
     .toHaveFocus()
 })
 

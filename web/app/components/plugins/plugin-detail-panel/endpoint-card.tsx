@@ -1,12 +1,16 @@
 import type { EndpointListItemResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { AlertDialogActions } from '@langgenius/dify-ui/alert-dialog'
 import type { PluginDetail } from '../types'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from '@langgenius/dify-ui/alert-dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
@@ -16,7 +20,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
@@ -33,8 +37,7 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
   const endpointID = data.id
   const [isShowDisableConfirm, { setTrue: showDisableConfirm, setFalse: hideDisableConfirm }] =
     useBoolean(false)
-  const [isShowDeleteConfirm, { setTrue: showDeleteConfirm, setFalse: hideDeleteConfirm }] =
-    useBoolean(false)
+  const deleteActionsRef = useRef<AlertDialogActions>(null)
   const [
     isShowEndpointModal,
     { setTrue: showEndpointModalConfirm, setFalse: hideEndpointModalConfirm },
@@ -55,7 +58,7 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
   )
   const { mutate: deleteEndpoint, isPending: isDeleting } = useMutation(
     consoleQuery.workspaces.current.endpoints.byId.delete.mutationOptions({
-      onSuccess: hideDeleteConfirm,
+      onSuccess: () => deleteActionsRef.current?.close(),
       onError: showSaveError,
     }),
   )
@@ -104,13 +107,42 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
             >
               <span aria-hidden className="i-ri-edit-line size-4" />
             </IconButton>
-            <IconButton
-              aria-label={`${t(($) => $['operation.delete'], { ns: 'common' })} ${data.name}`}
-              tone="destructive"
-              onClick={showDeleteConfirm}
-            >
-              <span aria-hidden className="i-ri-delete-bin-line size-4" />
-            </IconButton>
+            <AlertDialog actionsRef={deleteActionsRef}>
+              <AlertDialogTrigger
+                render={
+                  <IconButton
+                    aria-label={`${t(($) => $['operation.delete'], { ns: 'common' })} ${data.name}`}
+                    tone="destructive"
+                  >
+                    <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                  </IconButton>
+                }
+              />
+              <AlertDialogContent backdropProps={{ forceRender: true }}>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    {t(($) => $['detailPanel.endpointDeleteTip'], { ns: 'plugin' })}
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {t(($) => $['detailPanel.endpointDeleteContent'], {
+                      ns: 'plugin',
+                      name: data.name,
+                    })}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancelButton>
+                    {t(($) => $['operation.cancel'], { ns: 'common' })}
+                  </AlertDialogCancelButton>
+                  <AlertDialogConfirmButton
+                    loading={isDeleting}
+                    onClick={() => deleteEndpoint({ params: { id: endpointID } })}
+                  >
+                    {t(($) => $['operation.confirm'], { ns: 'common' })}
+                  </AlertDialogConfirmButton>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
         {(data.declaration?.endpoints ?? [])
@@ -177,15 +209,15 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
         onOpenChange={(open) => !open && hideDisableConfirm()}
       >
         <AlertDialogContent backdropProps={{ forceRender: true }}>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['detailPanel.endpointDisableTip'], { ns: 'plugin' })}
             </AlertDialogTitle>
-            <div className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['detailPanel.endpointDisableContent'], { ns: 'plugin', name: data.name })}
-            </div>
-          </div>
-          <AlertDialogActions>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -195,32 +227,10 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <AlertDialog open={isShowDeleteConfirm} onOpenChange={(open) => !open && hideDeleteConfirm()}>
-        <AlertDialogContent backdropProps={{ forceRender: true }}>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t(($) => $['detailPanel.endpointDeleteTip'], { ns: 'plugin' })}
-            </AlertDialogTitle>
-            <div className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t(($) => $['detailPanel.endpointDeleteContent'], { ns: 'plugin', name: data.name })}
-            </div>
-          </div>
-          <AlertDialogActions>
-            <AlertDialogCancelButton>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </AlertDialogCancelButton>
-            <AlertDialogConfirmButton
-              loading={isDeleting}
-              onClick={() => deleteEndpoint({ params: { id: endpointID } })}
-            >
-              {t(($) => $['operation.confirm'], { ns: 'common' })}
-            </AlertDialogConfirmButton>
-          </AlertDialogActions>
-        </AlertDialogContent>
-      </AlertDialog>
+
       {isShowEndpointModal && (
         <EndpointModal
           settings={data.declaration?.settings ?? []}

@@ -8,7 +8,7 @@ from core.entities.model_entities import ModelStatus
 from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.provider import Provider, ProviderModel, ProviderModelSetting, ProviderType
-from services.model_provider_service import ModelProviderService
+from services.model_provider.service import ModelProviderService
 
 
 class TestModelProviderService:
@@ -19,10 +19,10 @@ class TestModelProviderService:
         """Mock setup for external service dependencies."""
         with (
             patch(
-                "services.model_provider_service.create_plugin_provider_manager", autospec=True
+                "services.model_provider.service.create_plugin_provider_manager", autospec=True
             ) as mock_provider_manager,
             patch(
-                "services.model_provider_service.create_plugin_model_provider_factory", autospec=True
+                "services.model_provider.service.create_plugin_model_provider_factory", autospec=True
             ) as mock_model_provider_factory,
         ):
             # Setup default mock returns
@@ -100,7 +100,6 @@ class TestModelProviderService:
         Returns:
             Provider: Created provider instance
         """
-        fake = Faker()
 
         provider = Provider(
             tenant_id=tenant_id,
@@ -140,7 +139,6 @@ class TestModelProviderService:
         Returns:
             ProviderModel: Created provider model instance
         """
-        fake = Faker()
 
         provider_model = ProviderModel(
             tenant_id=tenant_id,
@@ -178,7 +176,6 @@ class TestModelProviderService:
         Returns:
             ProviderModelSetting: Created provider model setting instance
         """
-        fake = Faker()
 
         provider_model_setting = ProviderModelSetting(
             tenant_id=tenant_id,
@@ -205,15 +202,13 @@ class TestModelProviderService:
         - Mock interactions with ProviderManager
         """
         # Arrange: Create test data
-        fake = Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
 
         # Create test provider
-        provider = self._create_test_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai"
-        )
+        self._create_test_provider(db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai")
 
         # Mock ProviderManager to return realistic configuration
         mock_provider_manager = mock_external_service_dependencies["provider_manager"].return_value
@@ -283,7 +278,7 @@ class TestModelProviderService:
         - Correct handling of unsupported model types
         """
         # Arrange: Create test data
-        fake = Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
@@ -383,21 +378,19 @@ class TestModelProviderService:
         - Mock interactions with ProviderManager
         """
         # Arrange: Create test data
-        fake = Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
 
         # Create test provider and models
-        provider = self._create_test_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai"
-        )
+        self._create_test_provider(db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai")
 
-        provider_model_1 = self._create_test_provider_model(
+        self._create_test_provider_model(
             db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai", "gpt-3.5-turbo", "llm"
         )
 
-        provider_model_2 = self._create_test_provider_model(
+        self._create_test_provider_model(
             db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai", "gpt-4", "llm"
         )
 
@@ -496,15 +489,13 @@ class TestModelProviderService:
         - Mock interactions with ProviderManager
         """
         # Arrange: Create test data
-        fake = Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
 
         # Create test provider
-        provider = self._create_test_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai"
-        )
+        self._create_test_provider(db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai")
 
         # Mock ProviderManager to return realistic configuration
         mock_provider_manager = mock_external_service_dependencies["provider_manager"].return_value
@@ -555,15 +546,13 @@ class TestModelProviderService:
         - Mock interactions with ProviderManager
         """
         # Arrange: Create test data
-        fake = Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
 
         # Create test provider
-        provider = self._create_test_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai"
-        )
+        self._create_test_provider(db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai")
 
         # Mock ProviderManager to return realistic configuration
         mock_provider_manager = mock_external_service_dependencies["provider_manager"].return_value
@@ -597,7 +586,7 @@ class TestModelProviderService:
         - Mock interactions with ProviderManager
         """
         # Arrange: Create test data
-        fake = Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
@@ -629,15 +618,13 @@ class TestModelProviderService:
         - Mock interactions with ProviderManager
         """
         # Arrange: Create test data
-        fake = Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
 
         # Create test provider
-        provider = self._create_test_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai"
-        )
+        self._create_test_provider(db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai")
 
         # Mock ProviderManager to return realistic default model
         mock_provider_manager = mock_external_service_dependencies["provider_manager"].return_value
@@ -685,15 +672,13 @@ class TestModelProviderService:
         - Database state management
         """
         # Arrange: Create test data
-        fake = Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
 
         # Create test provider
-        provider = self._create_test_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai"
-        )
+        self._create_test_provider(db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai")
 
         # Mock ProviderManager to return realistic configuration
         mock_provider_manager = mock_external_service_dependencies["provider_manager"].return_value
@@ -719,15 +704,13 @@ class TestModelProviderService:
         - Mock interactions with ModelProviderFactory
         """
         # Arrange: Create test data
-        fake = Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
 
         # Create test provider
-        provider = self._create_test_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai"
-        )
+        self._create_test_provider(db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai")
 
         # Mock ModelProviderFactory to return realistic icon data
         mock_model_provider_factory = mock_external_service_dependencies["model_provider_factory"].return_value
@@ -758,15 +741,13 @@ class TestModelProviderService:
         - Provider configuration management
         """
         # Arrange: Create test data
-        fake = Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
 
         # Create test provider
-        provider = self._create_test_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai"
-        )
+        self._create_test_provider(db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai")
 
         # Mock ProviderManager to return realistic configuration
         mock_provider_manager = mock_external_service_dependencies["provider_manager"].return_value
@@ -794,15 +775,13 @@ class TestModelProviderService:
         - Model configuration management
         """
         # Arrange: Create test data
-        fake = Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
 
         # Create test provider
-        provider = self._create_test_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai"
-        )
+        self._create_test_provider(db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai")
 
         # Mock ProviderManager to return realistic configuration
         mock_provider_manager = mock_external_service_dependencies["provider_manager"].return_value
@@ -832,15 +811,13 @@ class TestModelProviderService:
         - Mock interactions with ProviderManager
         """
         # Arrange: Create test data
-        fake = Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
 
         # Create test provider
-        provider = self._create_test_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai"
-        )
+        self._create_test_provider(db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai")
 
         # Mock ProviderManager to return realistic configuration
         mock_provider_manager = mock_external_service_dependencies["provider_manager"].return_value
@@ -891,15 +868,13 @@ class TestModelProviderService:
         - Model credential validation process
         """
         # Arrange: Create test data
-        fake = Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
 
         # Create test provider
-        provider = self._create_test_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai"
-        )
+        self._create_test_provider(db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai")
 
         # Mock ProviderManager to return realistic configuration
         mock_provider_manager = mock_external_service_dependencies["provider_manager"].return_value
@@ -935,15 +910,13 @@ class TestModelProviderService:
         - Model credential management
         """
         # Arrange: Create test data
-        fake = Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
 
         # Create test provider
-        provider = self._create_test_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai"
-        )
+        self._create_test_provider(db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai")
 
         # Mock ProviderManager to return realistic configuration
         mock_provider_manager = mock_external_service_dependencies["provider_manager"].return_value
@@ -978,15 +951,13 @@ class TestModelProviderService:
         - Model credential cleanup
         """
         # Arrange: Create test data
-        fake = Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
 
         # Create test provider
-        provider = self._create_test_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai"
-        )
+        self._create_test_provider(db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai")
 
         # Mock ProviderManager to return realistic configuration
         mock_provider_manager = mock_external_service_dependencies["provider_manager"].return_value
@@ -1018,15 +989,13 @@ class TestModelProviderService:
         - Mock interactions with ProviderManager
         """
         # Arrange: Create test data
-        fake = Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
 
         # Create test provider
-        provider = self._create_test_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai"
-        )
+        self._create_test_provider(db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai")
 
         # Mock ProviderManager to return realistic configuration
         mock_provider_manager = mock_external_service_dependencies["provider_manager"].return_value
@@ -1097,15 +1066,13 @@ class TestModelProviderService:
         - Model schema handling
         """
         # Arrange: Create test data
-        fake = Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
 
         # Create test provider
-        provider = self._create_test_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai"
-        )
+        self._create_test_provider(db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai")
 
         # Mock ProviderManager to return realistic configuration
         mock_provider_manager = mock_external_service_dependencies["provider_manager"].return_value
@@ -1165,15 +1132,13 @@ class TestModelProviderService:
         - Mock interactions with ProviderManager
         """
         # Arrange: Create test data
-        fake = Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
 
         # Create test provider
-        provider = self._create_test_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai"
-        )
+        self._create_test_provider(db_session_with_containers, mock_external_service_dependencies, tenant.id, "openai")
 
         # Mock ProviderManager to return realistic configuration
         mock_provider_manager = mock_external_service_dependencies["provider_manager"].return_value
@@ -1209,7 +1174,7 @@ class TestModelProviderService:
         - Mock interactions with ProviderManager
         """
         # Arrange: Create test data
-        fake = Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )

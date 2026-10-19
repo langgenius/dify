@@ -1,168 +1,117 @@
-import type { Socket } from 'socket.io-client'
+import type { CollaborationManager } from '../collaboration-manager'
+import { createDeferred } from '@/test/deferred'
+import { createSocket } from './test-socket'
 
 const loroModuleState = vi.hoisted(() => ({ evaluations: 0 }))
-
 vi.mock('loro-crdt', async (importOriginal) => {
   loroModuleState.evaluations += 1
   return importOriginal()
 })
 
-const createMockSocket = (): Socket =>
-  ({
-    id: 'socket-runtime-loading',
-    connected: true,
-    emit: vi.fn(),
-    on: vi.fn(),
-    off: vi.fn(),
-  }) as unknown as Socket
-
-const createDeferred = <T>() => {
-  let resolve!: (value: T) => void
-  const promise = new Promise<T>((resolvePromise) => {
-    resolve = resolvePromise
-  })
-
-  return { promise, resolve }
+const releases: (() => void)[] = []
+const connect = async (manager: CollaborationManager, appId: string) => {
+  const connectionId = await manager.connect(appId)
+  releases.push(() => manager.disconnect(connectionId))
+  return connectionId
 }
 
-const loadCollaborationModules = async () => {
+const loadManager = async () => {
   const [{ CollaborationManager }, { webSocketClient }] = await Promise.all([
     import('../collaboration-manager'),
     import('../websocket-manager'),
   ])
-
-  return { CollaborationManager, webSocketClient }
+  const transport = createSocket('socket-runtime-loading')
+  const open = vi.spyOn(webSocketClient, 'connect').mockReturnValue(transport.socket)
+  const close = vi.spyOn(webSocketClient, 'disconnect').mockImplementation(() => {
+    transport.socket.connected = false
+    transport.socket.removeAllListeners()
+  })
+  vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(transport.socket)
+  vi.spyOn(webSocketClient, 'isConnected').mockImplementation(() => transport.socket.connected)
+  return { manager: new CollaborationManager(), open, close }
 }
 
-describe('CollaborationManager CRDT runtime loading', () => {
-  beforeEach(() => {
-    vi.restoreAllMocks()
-    vi.resetModules()
-    loroModuleState.evaluations = 0
+const delayRuntimeModule = () => {
+  const gate = createDeferred()
+  vi.doMock('../crdt-runtime', async () => {
+    await gate.promise
+    return vi.importActual<typeof import('../crdt-runtime')>('../crdt-runtime')
   })
+  return gate
+}
 
-  it('does not evaluate Loro when the manager module is loaded', async () => {
-    const { CollaborationManager } = await loadCollaborationModules()
-    const manager = new CollaborationManager()
+beforeEach(() => {
+  vi.resetModules()
+  loroModuleState.evaluations = 0
+})
+afterEach(() => {
+  for (const release of releases.splice(0).reverse()) release()
+  vi.doUnmock('../crdt-runtime')
+  vi.restoreAllMocks()
+})
 
-    expect(loroModuleState.evaluations).toBe(0)
-    expect(manager.isConnected()).toBe(false)
+it('keeps Loro unevaluated until a collaboration session connects', async () => {
+  const { manager, open } = await loadManager()
+  expect(loroModuleState.evaluations).toBe(0)
+  expect(manager.isConnected()).toBe(false)
+  expect(open).not.toHaveBeenCalled()
+  await connect(manager, 'app-lazy')
+  expect(loroModuleState.evaluations).toBe(1)
+  expect(open).toHaveBeenCalledExactlyOnceWith('app-lazy')
+})
+
+it('does not open a socket after a runtime import failure and can retry a successful import', async () => {
+  const runtimeError = new Error('runtime-load-failed')
+  vi.doMock('../crdt-runtime', () => {
+    throw runtimeError
   })
+  const { manager, open } = await loadManager()
+  await expect(connect(manager, 'app-retry')).rejects.toMatchObject({ cause: runtimeError })
+  expect(open).not.toHaveBeenCalled()
+  expect(manager.isConnected()).toBe(false)
+  vi.doMock('../crdt-runtime', () =>
+    vi.importActual<typeof import('../crdt-runtime')>('../crdt-runtime'),
+  )
+  await connect(manager, 'app-retry')
+  expect(open).toHaveBeenCalledExactlyOnceWith('app-retry')
+})
 
-  it('does not create connection state when the runtime fails to load and allows a retry', async () => {
-    const { CollaborationManager, webSocketClient } = await loadCollaborationModules()
-    const manager = new CollaborationManager()
-    const runtimeError = new Error('runtime-load-failed')
-    const retryError = new Error('runtime-retry-failed')
-    const loadRuntimeSpy = vi
-      .spyOn(
-        manager as unknown as {
-          loadCrdtRuntime: () => Promise<(typeof import('../crdt-runtime'))['crdtRuntime']>
-        },
-        'loadCrdtRuntime',
-      )
-      .mockRejectedValueOnce(runtimeError)
-      .mockRejectedValueOnce(retryError)
-    const connectSpy = vi.spyOn(webSocketClient, 'connect')
+it('shares one session between consumers awaiting the same runtime import', async () => {
+  const gate = delayRuntimeModule()
+  const { manager, open, close } = await loadManager()
+  const first = connect(manager, 'app-concurrent')
+  const second = connect(manager, 'app-concurrent')
+  expect(open).not.toHaveBeenCalled()
+  gate.resolve()
+  const [firstId, secondId] = await Promise.all([first, second])
+  expect(firstId).not.toBe(secondId)
+  expect(open).toHaveBeenCalledExactlyOnceWith('app-concurrent')
+  manager.disconnect(firstId)
+  expect(close).not.toHaveBeenCalled()
+  manager.disconnect(secondId)
+  expect(close).toHaveBeenCalledExactlyOnceWith('app-concurrent')
+})
 
-    await expect(manager.connect('app-runtime-failure')).rejects.toBe(runtimeError)
+it('opens only the latest workflow when the app changes while importing the runtime', async () => {
+  const gate = delayRuntimeModule()
+  const { manager, open, close } = await loadManager()
+  const first = connect(manager, 'app-first')
+  const second = connect(manager, 'app-second')
+  gate.resolve()
+  const [firstId, secondId] = await Promise.all([first, second])
+  expect(open).toHaveBeenCalledExactlyOnceWith('app-second')
+  manager.disconnect(firstId)
+  expect(close).not.toHaveBeenCalled()
+  manager.disconnect(secondId)
+  expect(close).toHaveBeenCalledExactlyOnceWith('app-second')
+})
 
-    expect(loadRuntimeSpy).toHaveBeenCalledTimes(1)
-    expect(connectSpy).not.toHaveBeenCalled()
-    expect(manager.isConnected()).toBe(false)
-
-    await expect(manager.connect('app-runtime-failure')).rejects.toBe(retryError)
-
-    expect(loadRuntimeSpy).toHaveBeenCalledTimes(2)
-    expect(connectSpy).not.toHaveBeenCalled()
-  })
-
-  it('initializes one session for concurrent consumers of the same app', async () => {
-    const { CollaborationManager, webSocketClient } = await loadCollaborationModules()
-    const manager = new CollaborationManager()
-    const loadRuntimeSpy = vi.spyOn(
-      manager as unknown as {
-        loadCrdtRuntime: () => Promise<(typeof import('../crdt-runtime'))['crdtRuntime']>
-      },
-      'loadCrdtRuntime',
-    )
-    const socket = createMockSocket()
-    const connectSpy = vi.spyOn(webSocketClient, 'connect').mockReturnValue(socket)
-    const disconnectSpy = vi
-      .spyOn(webSocketClient, 'disconnect')
-      .mockImplementation(() => undefined)
-
-    const [firstConnectionId, secondConnectionId] = await Promise.all([
-      manager.connect('app-concurrent'),
-      manager.connect('app-concurrent'),
-    ])
-
-    expect(firstConnectionId).not.toBe(secondConnectionId)
-    expect(loadRuntimeSpy).toHaveBeenCalledTimes(1)
-    expect(connectSpy).toHaveBeenCalledTimes(1)
-    expect(loroModuleState.evaluations).toBe(1)
-
-    manager.disconnect(firstConnectionId)
-    expect(disconnectSpy).not.toHaveBeenCalled()
-
-    manager.disconnect(secondConnectionId)
-    expect(disconnectSpy).toHaveBeenCalledWith('app-concurrent')
-  })
-
-  it('keeps the latest app session when the app changes during runtime loading', async () => {
-    const { CollaborationManager, webSocketClient } = await loadCollaborationModules()
-    const { crdtRuntime } = await import('../crdt-runtime')
-    const manager = new CollaborationManager()
-    const runtime = createDeferred<typeof crdtRuntime>()
-    vi.spyOn(
-      manager as unknown as {
-        loadCrdtRuntime: () => Promise<typeof crdtRuntime>
-      },
-      'loadCrdtRuntime',
-    ).mockReturnValue(runtime.promise)
-    const socket = createMockSocket()
-    const connectSpy = vi.spyOn(webSocketClient, 'connect').mockReturnValue(socket)
-    const disconnectSpy = vi
-      .spyOn(webSocketClient, 'disconnect')
-      .mockImplementation(() => undefined)
-
-    const firstConnection = manager.connect('app-first')
-    const secondConnection = manager.connect('app-second')
-
-    runtime.resolve(crdtRuntime)
-    const [firstConnectionId, secondConnectionId] = await Promise.all([
-      firstConnection,
-      secondConnection,
-    ])
-
-    expect(connectSpy).toHaveBeenCalledTimes(1)
-    expect(connectSpy).toHaveBeenCalledWith('app-second')
-
-    manager.disconnect(firstConnectionId)
-    expect(disconnectSpy).not.toHaveBeenCalled()
-
-    manager.disconnect(secondConnectionId)
-    expect(disconnectSpy).toHaveBeenCalledWith('app-second')
-  })
-
-  it('does not initialize a pending session after the manager is destroyed', async () => {
-    const { CollaborationManager, webSocketClient } = await loadCollaborationModules()
-    const { crdtRuntime } = await import('../crdt-runtime')
-    const manager = new CollaborationManager()
-    const runtime = createDeferred<typeof crdtRuntime>()
-    vi.spyOn(
-      manager as unknown as {
-        loadCrdtRuntime: () => Promise<typeof crdtRuntime>
-      },
-      'loadCrdtRuntime',
-    ).mockReturnValue(runtime.promise)
-    const connectSpy = vi.spyOn(webSocketClient, 'connect')
-
-    const connection = manager.connect('app-destroyed')
-    manager.destroy()
-    runtime.resolve(crdtRuntime)
-
-    await connection
-    expect(connectSpy).not.toHaveBeenCalled()
-  })
+it('does not open a pending session after the manager is destroyed', async () => {
+  const gate = delayRuntimeModule()
+  const { manager, open } = await loadManager()
+  const pending = connect(manager, 'app-destroyed')
+  manager.destroy()
+  gate.resolve()
+  await pending
+  expect(open).not.toHaveBeenCalled()
 })

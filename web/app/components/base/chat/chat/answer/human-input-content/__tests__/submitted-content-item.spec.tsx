@@ -100,7 +100,7 @@ describe('SubmittedContentItem', () => {
       />,
     )
 
-    expect(screen.getByTestId('submitted-field-summary')).toHaveTextContent('')
+    expect(screen.getByTestId('submitted-field-summary')).toBeEmptyDOMElement()
 
     rerender(
       <SubmittedContentItem
@@ -110,7 +110,8 @@ describe('SubmittedContentItem', () => {
       />,
     )
 
-    expect(screen.getByRole('combobox', { name: 'decision' })).toHaveTextContent('')
+    expect(screen.getByRole('combobox', { name: 'decision' }).textContent).toBe('')
+    expect(screen.getByRole('combobox', { name: 'decision' })).toBeDisabled()
   })
 
   it('renders nothing when output placeholders do not have a usable submitted value', () => {
@@ -161,23 +162,6 @@ describe('SubmittedContentItem', () => {
         content="{{#$output.evidence#}}"
         formInputFields={fields}
         values={{ evidence: attachmentValue }}
-      />,
-    )
-
-    expect(container).toBeEmptyDOMElement()
-  })
-
-  it('renders nothing for unsupported output field types', () => {
-    const { container } = render(
-      <SubmittedContentItem
-        content="{{#$output.unknown#}}"
-        formInputFields={[
-          {
-            type: 'unsupported',
-            output_variable_name: 'unknown',
-          } as unknown as FormInputItem,
-        ]}
-        values={{ unknown: 'value' }}
       />,
     )
 

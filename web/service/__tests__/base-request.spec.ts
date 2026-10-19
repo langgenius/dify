@@ -30,17 +30,6 @@ vi.mock('@/utils/var', () => ({
   basePath: '/app',
 }))
 
-vi.mock('../fetch', () => ({
-  base: mocks.baseFetch,
-  ContentType: {
-    audio: 'audio/mpeg',
-    download: 'application/octet-stream',
-    downloadZip: 'application/zip',
-    json: 'application/json',
-  },
-  getBaseOptions: vi.fn(() => ({})),
-}))
-
 vi.mock('../refresh-token', () => ({
   refreshAccessTokenOrReLogin: mocks.refreshAccessTokenOrReLogin,
 }))
@@ -55,6 +44,7 @@ vi.mock('../webapp-auth', () => ({
   clearWebAppPassport: mocks.clearWebAppPassport,
   completeWebAppAuthorizationRecovery: mocks.completeWebAppAuthorizationRecovery,
   getWebAppPassport: vi.fn(() => ''),
+  getWebAppAccessToken: vi.fn(() => ''),
 }))
 
 const createUnauthorizedResponse = () =>
@@ -93,52 +83,47 @@ type ClientRequestOptions = {
 }
 
 function arrangeClientRequest({ response, refreshError }: ClientRequestOptions) {
-  mocks.baseFetch.mockRejectedValue(response)
+  mocks.baseFetch.mockResolvedValue(response)
   if (refreshError) mocks.refreshAccessTokenOrReLogin.mockRejectedValue(refreshError)
 }
 
 describe('request 401 handling', () => {
-  const originalLocation = globalThis.location
-
   beforeEach(() => {
     mocks.isClient = true
     mocks.baseFetch.mockReset()
+    vi.stubGlobal('fetch', mocks.baseFetch)
     mocks.beginWebAppAuthorizationRecovery.mockReset()
     mocks.beginWebAppAuthorizationRecovery.mockReturnValue(true)
     mocks.clearWebAppPassport.mockReset()
     mocks.completeWebAppAuthorizationRecovery.mockReset()
     mocks.refreshAccessTokenOrReLogin.mockReset()
     mocks.resolveWebAppAddress.mockReset()
-    Object.defineProperty(globalThis, 'location', {
-      value: {
-        origin: 'https://example.com',
-        pathname: '/app/apps',
-        search: '?category=agent',
-        hash: '#recent',
-        href: 'https://example.com/app/apps?category=agent#recent',
-        reload: vi.fn(),
-      },
-      writable: true,
-      configurable: true,
+    vi.stubGlobal('location', {
+      origin: 'https://example.com',
+      pathname: '/app/apps',
+      search: '?category=agent',
+      hash: '#recent',
+      href: 'https://example.com/app/apps?category=agent#recent',
+      reload: vi.fn(),
     })
     window.sessionStorage.clear()
   })
 
   afterEach(() => {
     discardRegistrationSessionState()
-    Object.defineProperty(globalThis, 'location', {
-      value: originalLocation,
-      writable: true,
-      configurable: true,
-    })
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
   it('should not run browser auth recovery when handling 401 on the server', async () => {
     const response = createUnauthorizedResponse()
     mocks.isClient = false
-    mocks.baseFetch.mockRejectedValue(response)
+    mocks.baseFetch.mockResolvedValue(response)
 
-    await expect(request('/account/profile')).rejects.toBe(response)
+    await expect(request('/account/profile')).rejects.toMatchObject({
+      defined: false,
+      status: response.status,
+    })
 
     expect(mocks.refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
   })
@@ -148,7 +133,10 @@ describe('request 401 handling', () => {
     arrangeClientRequest({ response })
     window.sessionStorage.setItem(REGISTRATION_SUCCESS_STORAGE_KEY, 'account-a-marker')
 
-    await expect(request('/account/profile')).rejects.toBe(response)
+    await expect(request('/account/profile')).rejects.toMatchObject({
+      defined: false,
+      status: response.status,
+    })
 
     expect(globalThis.location.href).toBe(
       `https://example.com/app/signin?redirect_url=${encodeURIComponent('/app/apps?category=agent#recent')}`,
@@ -168,11 +156,12 @@ describe('request 401 handling', () => {
     })
     globalThis.location.reload = reload
 
-    await expect(request('/account/profile')).rejects.toBe(response)
+    await expect(request('/account/profile')).rejects.toMatchObject({
+      defined: false,
+      status: response.status,
+    })
 
     expect(reload).toHaveBeenCalledOnce()
-    window.sessionStorage.setItem(REGISTRATION_SUCCESS_STORAGE_KEY, 'account-b-marker')
-    expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBe('account-b-marker')
   })
 
   it('should preserve the current URL when token refresh fails', async () => {
@@ -183,7 +172,10 @@ describe('request 401 handling', () => {
     })
     window.sessionStorage.setItem(REGISTRATION_SUCCESS_STORAGE_KEY, 'account-a-marker')
 
-    await expect(request('/account/profile')).rejects.toBe(response)
+    await expect(request('/account/profile')).rejects.toMatchObject({
+      defined: false,
+      status: response.status,
+    })
 
     expect(mocks.refreshAccessTokenOrReLogin).toHaveBeenCalledOnce()
     expect(globalThis.location.href).toBe(
@@ -197,7 +189,10 @@ describe('request 401 handling', () => {
     arrangeClientRequest({ response })
     window.sessionStorage.setItem(REGISTRATION_SUCCESS_STORAGE_KEY, 'console-marker')
 
-    await expect(request('/account/profile', {}, { isPublicAPI: true })).rejects.toBe(response)
+    await expect(request('/account/profile', {}, { isPublicAPI: true })).rejects.toMatchObject({
+      defined: false,
+      status: response.status,
+    })
 
     expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBe('console-marker')
   })
@@ -215,7 +210,10 @@ describe('request 401 handling', () => {
     mocks.resolveWebAppAddress.mockReturnValue(address)
     arrangeClientRequest({ response })
 
-    await expect(request('/messages')).rejects.toBe(response)
+    await expect(request('/messages')).rejects.toMatchObject({
+      defined: false,
+      status: response.status,
+    })
 
     expect(mocks.clearWebAppPassport).toHaveBeenCalledWith(address)
     expect(globalThis.location.reload).toHaveBeenCalledOnce()
@@ -225,7 +223,7 @@ describe('request 401 handling', () => {
   it('should complete authorization recovery after an environment request succeeds', async () => {
     const address = { kind: 'environment', code: 'environment-code' } as const
     mocks.resolveWebAppAddress.mockReturnValue(address)
-    mocks.baseFetch.mockResolvedValue({ app_id: 'app-id' })
+    mocks.baseFetch.mockImplementation(async () => Response.json({ app_id: 'app-id' }))
 
     await request('/site', {}, { isPublicAPI: true })
 
@@ -235,7 +233,7 @@ describe('request 401 handling', () => {
   it('should keep authorization recovery pending after passport succeeds', async () => {
     const address = { kind: 'environment', code: 'environment-code' } as const
     mocks.resolveWebAppAddress.mockReturnValue(address)
-    mocks.baseFetch.mockResolvedValue({ access_token: 'passport' })
+    mocks.baseFetch.mockResolvedValue(Response.json({ access_token: 'passport' }))
 
     await request('/passport', {}, { isPublicAPI: true })
 
@@ -280,7 +278,10 @@ describe('request 401 handling', () => {
     mocks.beginWebAppAuthorizationRecovery.mockReturnValue(false)
     arrangeClientRequest({ response })
 
-    await expect(request('/site')).rejects.toBe(response)
+    await expect(request('/site')).rejects.toMatchObject({
+      defined: false,
+      status: response.status,
+    })
 
     expect(mocks.clearWebAppPassport).not.toHaveBeenCalled()
     expect(globalThis.location.reload).not.toHaveBeenCalled()
@@ -321,7 +322,10 @@ describe('request 401 handling', () => {
     mocks.resolveWebAppAddress.mockReturnValue(address)
     arrangeClientRequest({ response })
 
-    await expect(request('/messages', {}, { isPublicAPI: true })).rejects.toBe(response)
+    await expect(request('/messages', {}, { isPublicAPI: true })).rejects.toMatchObject({
+      defined: false,
+      status: response.status,
+    })
 
     expect(globalThis.location.href).toContain('/webapp-signin?')
     expect(globalThis.location.href).toContain('code=403')
@@ -335,6 +339,7 @@ describe('request 401 handling', () => {
     const xhr = {
       open: vi.fn(),
       setRequestHeader: vi.fn(),
+      getAllResponseHeaders: vi.fn(() => ''),
       send: vi.fn(function (this: { onreadystatechange?: () => void }) {
         this.onreadystatechange?.()
       }),
@@ -350,7 +355,11 @@ describe('request 401 handling', () => {
       responseType: '',
     } as unknown as XMLHttpRequest
 
-    await expect(upload({ xhr, data: new FormData() }, true)).rejects.toBe(xhr)
+    await expect(upload({ xhr, data: new FormData() }, true)).rejects.toMatchObject({
+      defined: false,
+      status: 401,
+      data: { reason: 'APPDEPLOY_WEB_APP_ACCESS_DENIED' },
+    })
 
     expect(globalThis.location.href).toContain('/webapp-signin?')
     expect(globalThis.location.href).toContain('code=403')

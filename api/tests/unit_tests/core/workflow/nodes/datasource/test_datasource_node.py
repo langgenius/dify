@@ -92,6 +92,7 @@ def test_datasource_node_delegates_to_manager_stream(mocker: MockerFixture):
         ),
         graph_init_params=gp,
         graph_runtime_state=gs,
+        datasource_credentials=lambda _tenant, _provider, _plugin, _credential: {},
     )
 
     evts = list(node._run())

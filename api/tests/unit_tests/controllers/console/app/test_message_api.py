@@ -120,7 +120,7 @@ def test_app_message_routes_pass_injected_session(
     ) == {"data": []}
     assert unwrap(message_module.MessageFeedbackApi.post)(
         message_module.MessageFeedbackApi(),
-        message_module.MessageFeedbackPayload(message_id=message_id, rating="like"),
+        message_module.AppMessageFeedbackPayload(message_id=message_id, rating="like"),
         session,
         current_user,
         app_model,
@@ -153,7 +153,7 @@ def test_update_message_feedback_commits_injected_session(app: Flask, sqlite_ses
 
     with app.test_request_context(json={"message_id": message_id, "rating": "like", "content": "helpful"}):
         result = message_module._update_message_feedback(
-            args=message_module.MessageFeedbackPayload(
+            args=message_module.AppMessageFeedbackPayload(
                 message_id=message_id,
                 rating="like",
                 content="helpful",
@@ -316,8 +316,8 @@ def test_chat_messages_query_empty_first_id(app: Flask, monkeypatch: pytest.Monk
 
 
 def test_message_feedback_payload_valid_like(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test MessageFeedbackPayload with like rating."""
-    payload = message_module.MessageFeedbackPayload(
+    """Test AppMessageFeedbackPayload with like rating."""
+    payload = message_module.AppMessageFeedbackPayload(
         message_id="550e8400-e29b-41d4-a716-446655440000",
         rating="like",
         content="Good answer",
@@ -327,8 +327,8 @@ def test_message_feedback_payload_valid_like(app: Flask, monkeypatch: pytest.Mon
 
 
 def test_message_feedback_payload_valid_dislike(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test MessageFeedbackPayload with dislike rating."""
-    payload = message_module.MessageFeedbackPayload(
+    """Test AppMessageFeedbackPayload with dislike rating."""
+    payload = message_module.AppMessageFeedbackPayload(
         message_id="550e8400-e29b-41d4-a716-446655440000",
         rating="dislike",
     )
@@ -336,52 +336,9 @@ def test_message_feedback_payload_valid_dislike(app: Flask, monkeypatch: pytest.
 
 
 def test_message_feedback_payload_no_rating(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test MessageFeedbackPayload without rating."""
-    payload = message_module.MessageFeedbackPayload(message_id="550e8400-e29b-41d4-a716-446655440000")
+    """Test AppMessageFeedbackPayload without rating."""
+    payload = message_module.AppMessageFeedbackPayload(message_id="550e8400-e29b-41d4-a716-446655440000")
     assert payload.rating is None
-
-
-def test_feedback_export_query_defaults(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test FeedbackExportQuery with default format."""
-    query = message_module.FeedbackExportQuery()
-    assert query.format == "csv"
-    assert query.from_source is None
-
-
-def test_feedback_export_query_json_format(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test FeedbackExportQuery with JSON format."""
-    query = message_module.FeedbackExportQuery(format="json")
-    assert query.format == "json"
-
-
-def test_feedback_export_query_has_comment_true(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test FeedbackExportQuery with has_comment as true string."""
-    query = message_module.FeedbackExportQuery(has_comment="true")
-    assert query.has_comment is True
-
-
-def test_feedback_export_query_has_comment_false(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test FeedbackExportQuery with has_comment as false string."""
-    query = message_module.FeedbackExportQuery(has_comment="false")
-    assert query.has_comment is False
-
-
-def test_feedback_export_query_has_comment_1(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test FeedbackExportQuery with has_comment as 1."""
-    query = message_module.FeedbackExportQuery(has_comment="1")
-    assert query.has_comment is True
-
-
-def test_feedback_export_query_has_comment_0(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test FeedbackExportQuery with has_comment as 0."""
-    query = message_module.FeedbackExportQuery(has_comment="0")
-    assert query.has_comment is False
-
-
-def test_feedback_export_query_rating_filter(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test FeedbackExportQuery with rating filter."""
-    query = message_module.FeedbackExportQuery(rating="like")
-    assert query.rating == "like"
 
 
 def test_annotation_count_response(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

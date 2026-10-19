@@ -8,7 +8,7 @@ import type {
   PickerTriggerProps,
   PickerValueProps,
 } from '../internal/picker-parts'
-import type { TimePanelHandle, TimePanelLabels, TimePanelProps } from '../time-picker/time-panel'
+import type { TimePanelLabels, TimePanelProps } from '../internal/time-panel'
 import { useControlled } from '@base-ui/utils/useControlled'
 import { TZDate } from '@date-fns/tz'
 import * as React from 'react'
@@ -23,8 +23,8 @@ import {
   PickerValue,
   usePickerContext,
 } from '../internal/picker-parts'
-import { TimePanel } from '../time-picker/time-panel'
-import { formatTimeValue, requireTimeValue } from '../time-picker/time-value'
+import { TimePanel } from '../internal/time-panel'
+import { formatTimeValue, requireTimeValue } from '../internal/time-value'
 
 type TimePickerLabels = TimePanelLabels & {
   title: string
@@ -136,13 +136,13 @@ function TimePickerTrigger({ children, ...props }: TimePickerTriggerProps) {
   return (
     <PickerTrigger {...props}>
       {children ?? (
-        <>
+        <React.Fragment>
           <PickerValue />
           <span
             aria-hidden="true"
             className="i-ri-time-line size-4 shrink-0 text-text-tertiary forced-colors:text-[ButtonText] forced-colors:forced-color-adjust-none"
           />
-        </>
+        </React.Fragment>
       )}
     </PickerTrigger>
   )
@@ -177,7 +177,6 @@ function Session() {
     minuteStep = 1,
   } = useContext()
   const { close } = usePickerContext()
-  const panelRef = React.useRef<TimePanelHandle>(null)
   const [draft, setDraft] = React.useState(() => value ?? currentTime(timeZone, minuteStep))
   const text = { ...defaultLabels, ...labels }
   const unavailable = Boolean(
@@ -196,7 +195,7 @@ function Session() {
         )
       }
       footer={
-        <>
+        <React.Fragment>
           <Button
             size="small"
             variant="ghost-accent"
@@ -214,21 +213,16 @@ function Session() {
             disabled={unavailable}
             aria-describedby={unavailable ? errorId : undefined}
             onClick={() => {
-              const next = panelRef.current?.settle() ?? draft
-              setDraft(next)
-              if (!isTimeUnavailable?.(next) && Number(next.slice(3)) % minuteStep === 0) {
-                commit(next)
-                close()
-              }
+              commit(draft)
+              close()
             }}
           >
             {text.apply}
           </Button>
-        </>
+        </React.Fragment>
       }
     >
       <TimePanel
-        ref={panelRef}
         minuteStep={minuteStep}
         scrollRequest={scrollRequest}
         value={draft}

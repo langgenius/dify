@@ -473,6 +473,7 @@ function AgentConfigurePageComposerContent({
       aria-busy={agentQuery.isFetching || isEnteringBuildMode}
       leftPanel={
         <AgentOrchestratePanel
+          className="max-xl:h-100 max-xl:w-full max-xl:max-w-none max-xl:min-w-0 max-xl:flex-none"
           agentId={agentId}
           agentSoulConfig={buildDraft.agentSoulConfig}
           agentName={agentQuery.data?.name}

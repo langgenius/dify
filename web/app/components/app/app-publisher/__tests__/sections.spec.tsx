@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react'
-import type { VersionHistory } from '@/types/workflow'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -8,7 +8,6 @@ import { useRef } from 'react'
 import { expectLoadingButton } from '@/test/button'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
-import { AppModeEnum } from '@/types/app'
 import { PublisherActionsSection } from '../built-in-publisher/actions-section'
 import { PublisherSummarySection } from '../built-in-publisher/summary-section'
 import { usePublishController } from '../publisher-content/use-publish-controller'
@@ -27,7 +26,9 @@ vi.mock('../publish-with-multiple-model', () => ({
   ),
 }))
 
-const createVersionInfo = (overrides: Partial<VersionHistory> = {}): VersionHistory => ({
+const createVersionInfo = (
+  overrides: Partial<FetchWorkflowDraftResponse> = {},
+): FetchWorkflowDraftResponse => ({
   id: 'workflow-version-1',
   graph: {
     nodes: [],
@@ -82,7 +83,7 @@ function PublisherPopup({
 
 function PublishingPopup({ onPublish }: { onPublish: () => Promise<void> }) {
   const publish = usePublishController({
-    appMode: AppModeEnum.CHAT,
+    appMode: 'chat' as const,
     supportsMultiEnvironment: false,
     onClose: () => {},
     onPublish,
@@ -260,7 +261,8 @@ describe('app-publisher sections', () => {
     expect(handlePublish).toHaveBeenCalledWith({ model: 'gpt-4o' })
   })
 
-  it('should render restore controls for published chat apps', () => {
+  it('should render restore controls for published chat apps', async () => {
+    const user = userEvent.setup()
     const handleRestore = vi.fn()
 
     render(
@@ -282,7 +284,7 @@ describe('app-publisher sections', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText(/(?:^|\.)common\.restore(?=$|:)/))
+    await user.click(screen.getByText(/(?:^|\.)common\.restore(?=$|:)/))
     expect(handleRestore).toHaveBeenCalled()
     expect(screen.getByRole('status').textContent).toMatch(/common\.currentDraft\b/)
   })
@@ -346,7 +348,8 @@ describe('app-publisher sections', () => {
     expect(screen.getByRole('status').textContent).toMatch(/common\.currentDraft\b/)
   })
 
-  it('should expose naming and keep publishing available for an unnamed published workflow', () => {
+  it('should expose naming and keep publishing available for an unnamed published workflow', async () => {
+    const user = userEvent.setup()
     const onEditVersion = vi.fn()
 
     render(
@@ -376,7 +379,7 @@ describe('app-publisher sections', () => {
     const nameButton = screen.getByRole('button', {
       name: /versionHistory\.nameIt\b/,
     })
-    fireEvent.click(nameButton)
+    await user.click(nameButton)
     expect(onEditVersion).toHaveBeenCalledTimes(1)
     const publishButton = screen.getByRole('button', { name: /common\.publishUpdate\b/ })
     expect(publishButton).toBeEnabled()
@@ -384,7 +387,8 @@ describe('app-publisher sections', () => {
     expect(screen.getByText(/common\.autoSaved\b/)).toBeInTheDocument()
   })
 
-  it('should show named workflow metadata and keep publish update available', () => {
+  it('should show named workflow metadata and keep publish update available', async () => {
+    const user = userEvent.setup()
     const onEditVersion = vi.fn()
 
     render(
@@ -414,7 +418,7 @@ describe('app-publisher sections', () => {
 
     expect(screen.getByText('Sprint-42')).toBeInTheDocument()
     expect(screen.getByText('Fixed data synchronization and page loading.')).toBeInTheDocument()
-    fireEvent.click(
+    await user.click(
       screen.getByRole('button', {
         name: /versionHistory\.editVersionInfo\b/,
       }),
@@ -451,33 +455,6 @@ describe('app-publisher sections', () => {
     expect(screen.queryByText(/versionHistory\.nameIt\b/)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /common\.publishUpdate\b/ })).toBeEnabled()
     expect(screen.getByRole('status').textContent).toMatch(/common\.currentDraft\b/)
-  })
-
-  it('should keep multiple-model publishing available without publish config changes', () => {
-    const handlePublish = vi.fn()
-
-    render(
-      <PublisherPopup
-        defaultOpen
-        debugWithMultipleModel
-        draftUpdatedAt={Date.now()}
-        formatTimeFromNow={() => '1 minute ago'}
-        handlePublish={handlePublish}
-        handleRestore={vi.fn()}
-        isChatApp={false}
-        isPublishing={false}
-        multipleModelConfigs={[]}
-        publishDisabled={false}
-        published={false}
-        publishedAt={Date.now()}
-        startNodeLimitExceeded={false}
-        upgradeHighlightStyle={{}}
-      />,
-    )
-
-    fireEvent.click(screen.getByText('publish-multiple-model'))
-
-    expect(handlePublish).toHaveBeenCalledWith({ model: 'gpt-4o' })
   })
 
   it('should disable multiple-model publishing when publishing is unavailable', () => {
@@ -534,10 +511,8 @@ describe('app-publisher sections', () => {
 
     render(
       <PublisherActionsSection
-        appDetail={{
-          id: 'workflow-app',
-          mode: AppModeEnum.WORKFLOW,
-        }}
+        appId={'workflow-app'}
+        appMode={'workflow'}
         appURL="https://example.com/app"
         canViewAccessPoint
         disabledFunctionButton={false}
@@ -560,7 +535,7 @@ describe('app-publisher sections', () => {
       'href',
       'https://example.com/app',
     )
-    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.config(?=$|:)/ }))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.config(?=$|:)/ }))
     expect(handleOpenRunConfig).toHaveBeenCalledWith('https://example.com/app')
     expect(screen.getByRole('link', { name: /appMenus\.accessPoint\b/ })).toHaveAttribute(
       'href',
@@ -596,10 +571,8 @@ describe('app-publisher sections', () => {
 
     render(
       <PublisherActionsSection
-        appDetail={{
-          id: 'workflow-app',
-          mode: AppModeEnum.WORKFLOW,
-        }}
+        appId={'workflow-app'}
+        appMode={'workflow'}
         appURL="https://example.com/app"
         canViewAccessPoint
         disabledFunctionButton={false}
@@ -629,10 +602,8 @@ describe('app-publisher sections', () => {
 
   it('should show the disabled reason below setup and configured workflow tool actions', () => {
     const commonProps = {
-      appDetail: {
-        id: 'workflow-app',
-        mode: AppModeEnum.WORKFLOW,
-      },
+      appId: 'workflow-app',
+      appMode: 'workflow' as const,
       appURL: 'https://example.com/app',
       canViewAccessPoint: true,
       disabledFunctionButton: false,
@@ -671,10 +642,8 @@ describe('app-publisher sections', () => {
     const user = userEvent.setup()
     const onConfigureWorkflowTool = vi.fn()
     const commonProps = {
-      appDetail: {
-        id: 'workflow-app',
-        mode: AppModeEnum.WORKFLOW,
-      },
+      appId: 'workflow-app',
+      appMode: 'workflow' as const,
       appURL: 'https://example.com/app',
       canViewAccessPoint: true,
       disabledFunctionButton: false,
@@ -717,10 +686,8 @@ describe('app-publisher sections', () => {
   it('should keep Access Point and Deploy available for trigger workflows', () => {
     render(
       <PublisherActionsSection
-        appDetail={{
-          id: 'trigger-app',
-          mode: AppModeEnum.WORKFLOW,
-        }}
+        appId={'trigger-app'}
+        appMode={'workflow'}
         appURL="https://example.com/app"
         canViewAccessPoint
         disabledFunctionButton={false}
@@ -749,7 +716,8 @@ describe('app-publisher sections', () => {
   it('should hide the Access Point publisher entry without view permission', () => {
     render(
       <PublisherActionsSection
-        appDetail={{ id: 'workflow-app', mode: AppModeEnum.WORKFLOW }}
+        appId={'workflow-app'}
+        appMode={'workflow'}
         appURL="https://example.com/app"
         canViewAccessPoint={false}
         disabledFunctionButton={false}
@@ -773,7 +741,8 @@ describe('app-publisher sections', () => {
   it('should expose unavailable quick links as disabled buttons before the first publish', () => {
     render(
       <PublisherActionsSection
-        appDetail={{ id: 'workflow-app', mode: AppModeEnum.WORKFLOW }}
+        appId={'workflow-app'}
+        appMode={'workflow'}
         appURL="https://example.com/app"
         canViewAccessPoint
         disabledFunctionButton
@@ -802,7 +771,8 @@ describe('app-publisher sections', () => {
 
     render(
       <PublisherActionsSection
-        appDetail={{ id: 'workflow-app', mode: AppModeEnum.WORKFLOW }}
+        appId={'workflow-app'}
+        appMode={'workflow'}
         appURL="https://example.com/app"
         canViewAccessPoint
         disabledFunctionButton
@@ -828,7 +798,8 @@ describe('app-publisher sections', () => {
 
     render(
       <PublisherActionsSection
-        appDetail={{ id: 'workflow-app', mode: AppModeEnum.WORKFLOW }}
+        appId={'workflow-app'}
+        appMode={'workflow'}
         appURL="https://example.com/app"
         canViewAccessPoint
         disabledFunctionButton

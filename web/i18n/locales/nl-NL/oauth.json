@@ -1,4 +1,8 @@
 {
+  "callback.error": "Autorisatie mislukt",
+  "callback.errorHint": "Ga terug naar de vorige pagina en probeer het opnieuw.",
+  "callback.success": "Autorisatie voltooid",
+  "callback.successHint": "Je kunt dit tabblad nu sluiten en teruggaan naar de vorige pagina.",
   "connect": "Connect to",
   "continue": "Continue",
   "error.authAppInfoFetchFailed": "Failed to fetch app info for authorization",

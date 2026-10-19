@@ -4,7 +4,7 @@ import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { expect, it } from 'vite-plus/test'
-import { hintContentRules } from '../../../lint.config'
+import { stylingContractRules } from '../../../lint.config'
 
 function lintFixture(source: string) {
   const require = createRequire(import.meta.url)
@@ -17,7 +17,7 @@ function lintFixture(source: string) {
       JSON.stringify({
         categories: { correctness: 'off' },
         jsPlugins: [require.resolve('@shadcn/lint')],
-        rules: hintContentRules,
+        rules: stylingContractRules,
       }),
     )
     writeFileSync(join(directory, 'fixture.tsx'), source)
@@ -133,7 +133,7 @@ it('allows Infotip widths and content line breaks while retaining its own conten
     const examples = <>
       <Explanation />
       <Explanation className="w-60 max-w-75 whitespace-pre-wrap" />
-      <Explanation className="max-w-[261px] sm:w-60" />
+      <Explanation className="max-w-65.25 sm:w-60" />
       <Explanation className={expanded ? 'w-60' : 'w-45'} />
     </>
   `)
@@ -192,4 +192,61 @@ it('checks Infotip class helpers and same-file props without restricting unrelat
   expect(diagnostics).toHaveLength(2)
   expect(diagnostics.some(({ message }) => message.includes('"shadow-none"'))).toBe(true)
   expect(diagnostics.some(({ message }) => message.includes('"p-2"'))).toBe(true)
+})
+
+it('keeps centered dialogs on DialogContent while DialogPopup places custom surfaces', () => {
+  const diagnostics = lintFixture(`
+    import { DialogContent, DialogPopup } from '@langgenius/dify-ui/dialog'
+    const examples = <>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] w-160 overflow-hidden" />
+      <DialogPopup className="fixed top-2 right-2 bottom-2 flex w-160 flex-col overflow-hidden rounded-xl" />
+      <DialogPopup className="fixed top-1/2 left-1/2 w-120 -translate-x-1/2 -translate-y-1/2" />
+    </>
+  `)
+  expect(diagnostics).toHaveLength(4)
+  for (const className of ['top-1/2', 'left-1/2', '-translate-x-1/2', '-translate-y-1/2'])
+    expect(diagnostics.some(({ message }) => message.includes(`"${className}"`))).toBe(true)
+})
+
+it('keeps centered dialog layout owned by the surface', () => {
+  const diagnostics = lintFixture(`
+    import { DialogContent } from '@langgenius/dify-ui/dialog'
+    import { AlertDialogContent } from '@langgenius/dify-ui/alert-dialog'
+    const examples = <>
+      <DialogContent className="flex flex-col" />
+      <AlertDialogContent className="flex flex-col" />
+    </>
+  `)
+  expect(diagnostics).toHaveLength(4)
+  for (const component of ['DialogContent', 'AlertDialogContent']) {
+    for (const className of ['flex', 'flex-col']) {
+      expect(
+        diagnostics.some(
+          ({ message }) => message.includes(`"${className}"`) && message.includes(component),
+        ),
+      ).toBe(true)
+    }
+  }
+})
+
+it('allows disabling dialog transitions without allowing surface or animation restyling', () => {
+  const diagnostics = lintFixture(`
+    import { DialogContent as Content } from '@langgenius/dify-ui/dialog'
+    import { AlertDialogContent } from '@langgenius/dify-ui/alert-dialog'
+    const examples = <>
+      <Content className="w-160 data-open:transition-none" />
+      <AlertDialogContent className="transition-none" />
+      <Content className="motion-reduce:transition-none" />
+      <Content className="data-open:scale-95 bg-transparent transition-all" />
+      <AlertDialogContent className="data-open:opacity-0" />
+    </>
+  `)
+  expect(diagnostics).toHaveLength(4)
+  for (const className of [
+    'data-open:scale-95',
+    'bg-transparent',
+    'transition-all',
+    'data-open:opacity-0',
+  ])
+    expect(diagnostics.some(({ message }) => message.includes(`"${className}"`))).toBe(true)
 })

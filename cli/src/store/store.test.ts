@@ -1,116 +1,79 @@
-import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, statSync } from 'node:fs'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
-import { BadYamlFormatError, ConcurrentAccessError } from './errors'
+import { BadYamlFormatError } from './errors'
 import { YamlStore } from './store'
 
-describe('YamlStore.doGet', () => {
-  it('returns default when content is undefined', () => {
-    const store = new YamlStore('/irrelevant')
-    expect(store.doGet({ key: 'name', default: 'fallback' })).toBe('fallback')
+let dir: string
+let path: string
+
+beforeEach(async () => {
+  dir = await mkdtemp(join(tmpdir(), 'difyctl-yaml-store-'))
+  path = join(dir, 'config.yml')
+})
+
+afterEach(async () => {
+  await rm(dir, { recursive: true, force: true })
+})
+
+async function parsed<T = Record<string, unknown>>(content: string): Promise<T | null> {
+  await writeFile(path, content)
+  return new YamlStore(path).getTyped<T>()
+}
+
+describe('YamlStore.getTyped', () => {
+  it('returns null when the file does not exist', async () => {
+    expect(await new YamlStore(path).getTyped()).toBeNull()
   })
 
-  it('returns default when content is empty', () => {
-    const store = new YamlStore('/irrelevant')
-    store.setRawContent('')
-    expect(store.doGet({ key: 'name', default: 'fallback' })).toBe('fallback')
+  it('reads an empty or comment-only file as an empty mapping', async () => {
+    expect(await parsed('')).toEqual({})
+    expect(await parsed('# empty configuration\n')).toEqual({})
   })
 
-  it('returns default when content contains only comments', () => {
-    const store = new YamlStore('/irrelevant')
-    store.setRawContent('# empty configuration\n')
-    expect(store.doGet({ key: 'name', default: 'fallback' })).toBe('fallback')
+  it('reads nested mappings', async () => {
+    expect(await parsed('name: alice\nuser:\n  id: 42\n')).toEqual({
+      name: 'alice',
+      user: { id: 42 },
+    })
   })
 
-  it('reads a flat key', () => {
-    const store = new YamlStore('/irrelevant')
-    store.setRawContent('name: alice\n')
-    expect(store.doGet({ key: 'name', default: '' })).toBe('alice')
+  it('resolves YAML merge keys', async () => {
+    const doc = await parsed('defaults: &defaults\n  format: json\nselected:\n  <<: *defaults\n')
+    expect(doc?.selected).toEqual({ format: 'json' })
   })
 
-  it('reads a nested key via dot notation', () => {
-    const store = new YamlStore('/irrelevant')
-    store.setRawContent('user:\n  id: 42\n')
-    expect(store.doGet({ key: 'user.id', default: 0 })).toBe(42)
-  })
-
-  it('resolves YAML merge keys', () => {
-    const store = new YamlStore('/irrelevant')
-    store.setRawContent('defaults: &defaults\n  format: json\nselected:\n  <<: *defaults\n')
-    expect(store.doGet({ key: 'selected.format', default: '' })).toBe('json')
-  })
-
-  it('parses timestamp scalars as dates', () => {
-    const store = new YamlStore('/irrelevant')
+  it('parses timestamp scalars as dates', async () => {
     const timestamp = '2026-07-10T03:04:05.000Z'
-    store.setRawContent(`created_at: ${timestamp}\n`)
-    expect(store.doGet<Date | null>({ key: 'created_at', default: null })).toEqual(
-      new Date(timestamp),
-    )
+    expect((await parsed(`created_at: ${timestamp}\n`))?.created_at).toEqual(new Date(timestamp))
   })
 
-  it('rejects multiple YAML documents', () => {
-    const store = new YamlStore('/irrelevant')
-    store.setRawContent('name: alice\n---\nname: bob\n')
-
-    expect(() => store.doGet({ key: 'name', default: '' })).toThrowError(/single document/)
-  })
-
-  it('rejects duplicate mapping keys', () => {
-    const store = new YamlStore('/irrelevant')
-    store.setRawContent('name: alice\nname: bob\n')
-
-    expect(() => store.doGet({ key: 'name', default: '' })).toThrowError(/duplicated mapping key/)
-  })
-
-  it('rejects complex mapping keys', () => {
-    const store = new YamlStore('/irrelevant')
-    store.setRawContent('? [name, region]\n: deployment\n')
-
-    expect(() => store.doGet({ key: 'name', default: '' })).toThrowError(
-      /does not support complex keys/,
-    )
-  })
-
-  it('parses explicit YAML sets as JavaScript sets', () => {
-    const store = new YamlStore('/irrelevant')
-    store.setRawContent('features: !!set\n  workflow:\n  chat:\n')
-
-    expect(store.doGet<Set<string>>({ key: 'features', default: new Set() })).toEqual(
+  it('parses explicit YAML sets as JavaScript sets', async () => {
+    expect((await parsed('features: !!set\n  workflow:\n  chat:\n'))?.features).toEqual(
       new Set(['workflow', 'chat']),
     )
   })
 
-  it('returns default for a missing flat key', () => {
-    const store = new YamlStore('/irrelevant')
-    store.setRawContent('name: alice\n')
-    expect(store.doGet({ key: 'age', default: -1 })).toBe(-1)
+  it('rejects multiple YAML documents', async () => {
+    await expect(parsed('name: alice\n---\nname: bob\n')).rejects.toThrowError(/single document/)
   })
 
-  it('returns default when an intermediate path segment is absent', () => {
-    const store = new YamlStore('/irrelevant')
-    store.setRawContent('user:\n  name: bob\n')
-    expect(store.doGet({ key: 'user.address.city', default: 'unknown' })).toBe('unknown')
+  it('rejects duplicate mapping keys', async () => {
+    await expect(parsed('name: alice\nname: bob\n')).rejects.toThrowError(/duplicated mapping key/)
   })
 
-  it('returns default when an intermediate path segment is a scalar', () => {
-    const store = new YamlStore('/irrelevant')
-    store.setRawContent('user: scalar\n')
-    expect(store.doGet({ key: 'user.id', default: 0 })).toBe(0)
+  it('rejects complex mapping keys', async () => {
+    await expect(parsed('? [name, region]\n: deployment\n')).rejects.toThrowError(
+      /does not support complex keys/,
+    )
   })
 
-  it('throws BadYamlFormatError with file path, location, and snippet for malformed YAML', () => {
-    const path = '/irrelevant'
-    const store = new YamlStore(path)
-    store.setRawContent('name: alice\nuser:\n  id: 42\n   bad: indent\n')
-    let caught: unknown
-    try {
-      store.doGet({ key: 'name', default: '' })
-    } catch (err) {
-      caught = err
-    }
+  it('throws BadYamlFormatError with file path, location, and snippet for malformed YAML', async () => {
+    const caught = await parsed('name: alice\nuser:\n  id: 42\n   bad: indent\n').catch(
+      (err: unknown) => err,
+    )
     expect(caught).toBeInstanceOf(BadYamlFormatError)
     const msg = (caught as BadYamlFormatError).message
     expect(msg).toContain(path)
@@ -119,159 +82,81 @@ describe('YamlStore.doGet', () => {
   })
 })
 
-describe('YamlStore.doSet', () => {
-  it('sets a flat key from empty content', () => {
-    const store = new YamlStore('/irrelevant')
-    store.doSet({ key: 'name', default: '' }, 'alice')
-    expect(store.doGet({ key: 'name', default: '' })).toBe('alice')
+describe('YamlStore.withLock concurrency', () => {
+  const HOLD_MS = 200
+  const releaseLater = (store: YamlStore) =>
+    new Promise<void>((resolve) => setTimeout(() => void store.unlock().then(resolve), HOLD_MS))
+
+  it('a second read waits while the first holds the lock, then reads', async () => {
+    await writeFile(path, 'key: value\n')
+    const s1 = new YamlStore(path)
+    const s2 = new YamlStore(path)
+
+    await s1.lock()
+    const [value] = await Promise.all([s2.getTyped(), releaseLater(s1)])
+
+    expect(value).toEqual({ key: 'value' })
   })
 
-  it('sets a nested key, creating intermediate objects', () => {
-    const store = new YamlStore('/irrelevant')
-    store.doSet({ key: 'user.id', default: 0 }, 42)
-    expect(store.doGet({ key: 'user.id', default: 0 })).toBe(42)
-  })
+  it('a second write waits while the first holds the lock, then writes', async () => {
+    await writeFile(path, 'key: original\n')
+    const s1 = new YamlStore(path)
+    const s2 = new YamlStore(path)
 
-  it('overwrites an existing key without disturbing siblings', () => {
-    const store = new YamlStore('/irrelevant')
-    store.setRawContent('name: alice\nage: 30\n')
-    store.doSet({ key: 'name', default: '' }, 'bob')
-    expect(store.doGet({ key: 'name', default: '' })).toBe('bob')
-    expect(store.doGet({ key: 'age', default: 0 })).toBe(30)
-  })
+    await s1.lock()
+    await Promise.all([s2.setTyped({ key: 'written' }), releaseLater(s1)])
 
-  it('replaces a scalar intermediate with an object when path deepens', () => {
-    const store = new YamlStore('/irrelevant')
-    store.setRawContent('user: scalar\n')
-    store.doSet({ key: 'user.id', default: 0 }, 99)
-    expect(store.doGet({ key: 'user.id', default: 0 })).toBe(99)
+    expect(await s2.getTyped()).toEqual({ key: 'written' })
   })
 })
 
-describe('FileBasedStore.withLock concurrency', () => {
-  let dir: string
-
-  beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'difyctl-yaml-store-'))
+describe('YamlStore.rmIf', () => {
+  it('removes the file when the predicate accepts what it holds', async () => {
+    await writeFile(path, 'device_code: dc-1\n')
+    await new YamlStore(path).rmIf((doc) => doc?.device_code === 'dc-1')
+    expect(existsSync(path)).toBe(false)
   })
 
-  afterEach(async () => {
-    await rm(dir, { recursive: true, force: true })
+  it('keeps the file when it holds something else', async () => {
+    await writeFile(path, 'device_code: dc-2\n')
+    await new YamlStore(path).rmIf((doc) => doc?.device_code === 'dc-1')
+    expect(readFileSync(path, 'utf8')).toBe('device_code: dc-2\n')
   })
 
-  it('second get throws while first holds the lock, succeeds after release', async () => {
-    const path = join(dir, 'config.yml')
-    await writeFile(path, 'key: value\n')
-
-    const s1 = new YamlStore(path)
-    const s2 = new YamlStore(path)
-
-    await s1.lock()
-
-    await expect(s2.get({ key: 'key', default: '' })).rejects.toThrow(ConcurrentAccessError)
-
-    await s1.unlock()
-
-    expect(await s2.get({ key: 'key', default: '' })).toBe('value')
-  })
-
-  it('second set throws while first holds the lock, succeeds after release', async () => {
-    const path = join(dir, 'config.yml')
-    await writeFile(path, 'key: original\n')
-
-    const s1 = new YamlStore(path)
-    const s2 = new YamlStore(path)
-
-    await s1.lock()
-
-    await expect(s2.set({ key: 'key', default: '' }, 'blocked')).rejects.toThrow(
-      ConcurrentAccessError,
-    )
-
-    await s1.unlock()
-
-    await s2.set({ key: 'key', default: '' }, 'written')
-    expect(await s2.get({ key: 'key', default: '' })).toBe('written')
+  it('is a no-op when the file does not exist', async () => {
+    await new YamlStore(path).rmIf(() => true)
+    expect(existsSync(path)).toBe(false)
   })
 })
 
 describe('YamlStore persistence', () => {
-  let dir: string
-
-  beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'difyctl-yaml-store-'))
+  it('round-trips a nested document through disk', async () => {
+    await new YamlStore(path).setTyped({ a: { b: { c: 'deep' } }, workspace: 'ws-123' })
+    expect(await new YamlStore(path).getTyped()).toEqual({
+      a: { b: { c: 'deep' } },
+      workspace: 'ws-123',
+    })
   })
 
-  afterEach(async () => {
-    await rm(dir, { recursive: true, force: true })
-  })
+  it.skipIf(process.platform === 'win32')(
+    'writes the file with owner-only permissions',
+    async () => {
+      await new YamlStore(path).setTyped({ token: 'abc-123' })
+      expect(statSync(path).mode & 0o777).toBe(0o600)
+    },
+  )
 
-  it('round-trips a flat value through disk', async () => {
-    const path = join(dir, 'config.yml')
-    await writeFile(path, '')
-
-    const s1 = new YamlStore(path)
-    s1.setRawContent('')
-    s1.doSet({ key: 'workspace', default: '' }, 'ws-123')
-    writeFileSync(path, s1.getRawContent() ?? '')
-
-    const s2 = new YamlStore(path)
-    s2.setRawContent(readFileSync(path, 'utf8'))
-    expect(s2.doGet({ key: 'workspace', default: '' })).toBe('ws-123')
-  })
-
-  it('round-trips a deep nested value through disk', async () => {
-    const path = join(dir, 'config.yml')
-    await writeFile(path, '')
-
-    const s1 = new YamlStore(path)
-    s1.setRawContent('')
-    s1.doSet({ key: 'a.b.c', default: '' }, 'deep')
-    writeFileSync(path, s1.getRawContent() ?? '')
-
-    const s2 = new YamlStore(path)
-    s2.setRawContent(readFileSync(path, 'utf8'))
-    expect(s2.doGet({ key: 'a.b.c', default: '' })).toBe('deep')
-  })
-
-  it('second doSet on a reloaded store does not clobber the first key', async () => {
-    const path = join(dir, 'config.yml')
-    await writeFile(path, '')
-
-    const s1 = new YamlStore(path)
-    s1.setRawContent('')
-    s1.doSet({ key: 'x', default: '' }, 'first')
-    writeFileSync(path, s1.getRawContent() ?? '')
-
-    const s2 = new YamlStore(path)
-    s2.setRawContent(readFileSync(path, 'utf8'))
-    s2.doSet({ key: 'y', default: '' }, 'second')
-    writeFileSync(path, s2.getRawContent() ?? '')
-
-    const s3 = new YamlStore(path)
-    s3.setRawContent(readFileSync(path, 'utf8'))
-    expect(s3.doGet({ key: 'x', default: '' })).toBe('first')
-    expect(s3.doGet({ key: 'y', default: '' })).toBe('second')
-  })
-
-  it('load → doSet → flush writes the value to disk', async () => {
-    const path = join(dir, 'config.yml')
-    await writeFile(path, 'existing: value\n')
+  it('forgets its cached content once the file is deleted and reloaded', async () => {
+    await writeFile(path, 'key: value\n')
 
     const store = new YamlStore(path)
-    await store.load()
-    store.doSet({ key: 'token', default: '' }, 'abc-123')
-    await store.flush()
+    expect(await store.getTyped<{ key: string }>()).toEqual({ key: 'value' })
 
-    const raw = readFileSync(path, 'utf8')
-    const store2 = new YamlStore(path)
-    store2.setRawContent(raw)
-    expect(store2.doGet({ key: 'token', default: '' })).toBe('abc-123')
-    expect(store2.doGet({ key: 'existing', default: '' })).toBe('value')
+    await rm(path)
+    expect(await store.getTyped<{ key: string }>()).toBeNull()
   })
 
   it('flush writes file when dirty (content changed from undefined)', async () => {
-    const path = join(dir, 'config.yml')
     const store = new YamlStore(path)
     store.setRawContent('key: value\n')
     await store.flush()
@@ -280,7 +165,6 @@ describe('YamlStore persistence', () => {
   })
 
   it('flush is a no-op when loaded content is set back unchanged', async () => {
-    const path = join(dir, 'config.yml')
     await writeFile(path, 'key: value\n')
     const store = new YamlStore(path)
     await store.load()

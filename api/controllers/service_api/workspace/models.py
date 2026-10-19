@@ -7,7 +7,7 @@ from controllers.service_api.wraps import validate_dataset_token
 from fields.base import ResponseModel
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from services.entities.model_provider_entities import ProviderWithModelsResponse
-from services.model_provider_service import ModelProviderService
+from services.model_provider.service import ModelProviderService
 
 MODEL_TYPE_PARAM = {
     "description": "Type of model to retrieve.",

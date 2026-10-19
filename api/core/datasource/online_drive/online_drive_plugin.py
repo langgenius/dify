@@ -37,7 +37,7 @@ class OnlineDriveDatasourcePlugin(DatasourcePlugin):
         user_id: str,
         request: OnlineDriveBrowseFilesRequest,
         provider_type: str,
-    ) -> Generator[OnlineDriveBrowseFilesResponse, None, None]:
+    ) -> Generator[OnlineDriveBrowseFilesResponse]:
         manager = PluginDatasourceManager()
 
         return manager.online_drive_browse_files(
@@ -55,7 +55,7 @@ class OnlineDriveDatasourcePlugin(DatasourcePlugin):
         user_id: str,
         request: OnlineDriveDownloadFileRequest,
         provider_type: str,
-    ) -> Generator[DatasourceMessage, None, None]:
+    ) -> Generator[DatasourceMessage]:
         manager = PluginDatasourceManager()
 
         return manager.online_drive_download_file(

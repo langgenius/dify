@@ -1,127 +1,96 @@
 import type { AgentConfig } from '@/models/debug'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { MAX_ITERATIONS_NUM } from '@/config'
-import { AgentSetting } from '../index'
+import { AgentStrategy } from '@/types/app'
+import { AgentSettingDialog } from '../index'
 
-const basePayload = {
+const basePayload: AgentConfig = {
   enabled: true,
-  strategy: 'react',
+  strategy: AgentStrategy.react,
   max_iteration: 5,
   tools: [],
 }
 
-const renderModal = (props?: Partial<React.ComponentProps<typeof AgentSetting>>) => {
-  const onCancel = vi.fn()
-  const onSave = vi.fn()
-  const utils = render(
-    <AgentSetting
+function SettingsFixture({ onSave }: { onSave: (payload: AgentConfig) => void }) {
+  const [payload, setPayload] = useState(basePayload)
+  return (
+    <AgentSettingDialog
       isChatModel
-      payload={basePayload as AgentConfig}
+      payload={payload}
       isFunctionCall={false}
-      onCancel={onCancel}
-      onSave={onSave}
-      {...props}
-    />,
+      onSave={(value) => {
+        setPayload(value)
+        onSave(value)
+      }}
+    />
   )
-  return { ...utils, onCancel, onSave }
 }
 
-describe('AgentSetting', () => {
-  it('should render agent mode description and default prompt section when not function call', () => {
-    renderModal()
+const settingName = 'appDebug.agent.setting.name'
 
-    expect(screen.getByText('appDebug.agent.agentMode')).toBeInTheDocument()
+describe('AgentSettingDialog', () => {
+  it('discards cancelled edits, submits current iterations, and reopens the saved configuration', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+    render(<SettingsFixture onSave={onSave} />)
+    const trigger = screen.getByRole('button', { name: settingName })
+    await user.click(trigger)
     expect(screen.getByText('appDebug.agent.agentModeType.ReACT')).toBeInTheDocument()
     expect(screen.getByText('tools.builtInPromptTitle')).toBeInTheDocument()
-  })
-
-  it('should display function call mode when isFunctionCall true', () => {
-    renderModal({ isFunctionCall: true })
-
-    expect(screen.getByText('appDebug.agent.agentModeType.functionCall')).toBeInTheDocument()
-    expect(screen.queryByText('tools.builtInPromptTitle')).not.toBeInTheDocument()
-  })
-
-  it('should update iteration via slider and number input', () => {
-    renderModal()
-    const slider = screen.getByRole('slider')
-    const numberInput = screen.getByRole('spinbutton')
-
-    fireEvent.change(slider, { target: { value: '7' } })
-    expect(screen.getAllByDisplayValue('7')).toHaveLength(2)
-
-    fireEvent.change(numberInput, { target: { value: '2' } })
-    expect(screen.getAllByDisplayValue('2')).toHaveLength(2)
-  })
-
-  it('should clamp iteration value within min/max range', () => {
-    renderModal()
-
-    const numberInput = screen.getByRole('spinbutton')
-
-    fireEvent.change(numberInput, { target: { value: '0' } })
-    expect(screen.getAllByDisplayValue('1')).toHaveLength(2)
-
-    fireEvent.change(numberInput, { target: { value: '999' } })
-    expect(screen.getAllByDisplayValue(String(MAX_ITERATIONS_NUM))).toHaveLength(2)
-  })
-
-  it('should call onCancel when cancel button clicked', () => {
-    const { onCancel } = renderModal()
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
-    expect(onCancel).toHaveBeenCalled()
-  })
-
-  it('should call onCancel when Escape is pressed', () => {
-    const { onCancel } = renderModal()
-
-    fireEvent.keyDown(document, { key: 'Escape' })
-
-    expect(onCancel).toHaveBeenCalledTimes(1)
-  })
-
-  it('should call onCancel when the backdrop is clicked', () => {
-    const { onCancel } = renderModal()
-    const dialog = screen.getByRole('dialog')
-
-    fireEvent.pointerDown(document.body, { target: document.body })
-    fireEvent.mouseDown(document.body, { target: document.body })
-    fireEvent.click(document.body, { target: document.body })
-
-    expect(dialog).toBeInTheDocument()
-    expect(onCancel).toHaveBeenCalledTimes(1)
-  })
-
-  it('should call onCancel when close button clicked', () => {
-    const { onCancel } = renderModal()
-
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
-
-    expect(onCancel).toHaveBeenCalledTimes(1)
-  })
-
-  it('should call onSave with updated payload', async () => {
-    const { onSave } = renderModal()
-    const numberInput = screen.getByRole('spinbutton')
-    fireEvent.change(numberInput, { target: { value: '6' } })
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
-    })
-
+    await user.clear(screen.getByRole('spinbutton'))
+    await user.type(screen.getByRole('spinbutton'), '7')
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(onSave).not.toHaveBeenCalled()
+    expect(trigger).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(screen.getByRole('spinbutton')).toHaveValue(5)
+    await user.clear(screen.getByRole('spinbutton'))
+    await user.type(screen.getByRole('spinbutton'), '6{Enter}')
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ max_iteration: 6 }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await user.click(trigger)
+    expect(screen.getByRole('spinbutton')).toHaveValue(6)
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(trigger).toHaveFocus()
   })
 
-  it('should save the minimum iteration when the number input is empty', async () => {
-    const { onSave } = renderModal()
-    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '' } })
-
-    expect(screen.getByRole('slider')).toHaveValue('1')
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
-    })
-
+  it('clamps iterations and saves the minimum when the number input is cleared', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+    render(<AgentSettingDialog isChatModel payload={basePayload} isFunctionCall onSave={onSave} />)
+    await user.click(screen.getByRole('button', { name: settingName }))
+    expect(screen.queryByText('tools.builtInPromptTitle')).not.toBeInTheDocument()
+    const input = screen.getByRole('spinbutton')
+    await user.clear(input)
+    await user.type(input, '999')
+    expect(input).toHaveValue(MAX_ITERATIONS_NUM)
+    await user.clear(input)
+    await user.type(input, '0')
+    expect(input).toHaveValue(1)
+    await user.clear(input)
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ max_iteration: 1 }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it('keeps readonly settings unavailable', async () => {
+    const user = userEvent.setup()
+    render(
+      <AgentSettingDialog
+        isChatModel
+        payload={basePayload}
+        isFunctionCall
+        disabled
+        onSave={vi.fn()}
+      />,
+    )
+    const trigger = screen.getByRole('button', { name: settingName })
+    expect(trigger).toBeDisabled()
+    await user.click(trigger)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

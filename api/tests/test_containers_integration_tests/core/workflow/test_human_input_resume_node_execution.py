@@ -1,7 +1,5 @@
 import time
 import uuid
-from datetime import timedelta
-from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import delete, select
@@ -10,7 +8,7 @@ from sqlalchemy.orm import Session
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.workflow.layers import PersistenceWorkflowInfo, WorkflowPersistenceLayer
-from core.repositories.human_input_repository import HumanInputFormEntity, HumanInputFormRepository
+from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.nodes.human_input.callback import (
@@ -33,38 +31,10 @@ from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.account import AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.human_input import HumanInputDelivery, HumanInputForm, HumanInputFormRecipient
 from models.model import App, AppMode, IconType
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from tests.workflow_test_utils import build_test_graph_init_params
-
-
-def _mock_form_repository_without_submission() -> HumanInputFormRepository:
-    repo = MagicMock(spec=HumanInputFormRepository)
-    form_entity = MagicMock(spec=HumanInputFormEntity)
-    form_entity.id = "test-form-id"
-    form_entity.submission_token = "test-form-token"
-    form_entity.recipients = []
-    form_entity.rendered_content = "rendered"
-    form_entity.submitted = False
-    repo.create_form.return_value = form_entity
-    repo.get_form.return_value = None
-    return repo
-
-
-def _mock_form_repository_with_submission(action_id: str) -> HumanInputFormRepository:
-    repo = MagicMock(spec=HumanInputFormRepository)
-    form_entity = MagicMock(spec=HumanInputFormEntity)
-    form_entity.id = "test-form-id"
-    form_entity.submission_token = "test-form-token"
-    form_entity.recipients = []
-    form_entity.rendered_content = "rendered"
-    form_entity.submitted = True
-    form_entity.selected_action_id = action_id
-    form_entity.submitted_data = {}
-    form_entity.status = HumanInputFormStatus.WAITING
-    form_entity.expiration_time = naive_utc_now() + timedelta(hours=1)
-    repo.get_form.return_value = form_entity
-    return repo
 
 
 def _build_runtime_state(workflow_execution_id: str, app_id: str, workflow_id: str, user_id: str) -> GraphRuntimeState:
@@ -248,6 +218,16 @@ class TestHumanInputResumeNodeExecutionIntegration:
 
         yield
 
+        form_ids = select(HumanInputForm.id).where(
+            HumanInputForm.tenant_id == self.tenant.id, HumanInputForm.app_id == self.app.id
+        )
+        self.session.execute(delete(HumanInputFormRecipient).where(HumanInputFormRecipient.form_id.in_(form_ids)))
+        self.session.execute(delete(HumanInputDelivery).where(HumanInputDelivery.form_id.in_(form_ids)))
+        self.session.execute(
+            delete(HumanInputForm).where(
+                HumanInputForm.tenant_id == self.tenant.id, HumanInputForm.app_id == self.app.id
+            )
+        )
         self.session.execute(delete(WorkflowNodeExecutionModel))
         self.session.execute(delete(WorkflowRun))
         self.session.execute(delete(Workflow).where(Workflow.id == self.workflow.id))
@@ -310,27 +290,42 @@ class TestHumanInputResumeNodeExecutionIntegration:
             workflow_id=self.workflow.id,
             user_id=self.account.id,
         )
-        pause_repo = _mock_form_repository_without_submission()
+        form_repository = HumanInputFormRepositoryImpl(
+            tenant_id=self.tenant.id, app_id=self.app.id, workflow_execution_id=execution_id
+        )
         paused_graph = _build_graph(
             runtime_state,
             self.tenant.id,
             self.app.id,
             self.workflow.id,
             self.account.id,
-            pause_repo,
+            form_repository,
         )
         self._run_graph(paused_graph, runtime_state, execution_id)
 
         snapshot = runtime_state.dumps()
         resumed_state = GraphRuntimeState.from_snapshot(snapshot)
-        resume_repo = _mock_form_repository_with_submission(action_id="continue")
+        form = self.session.scalar(
+            select(HumanInputForm).where(
+                HumanInputForm.tenant_id == self.tenant.id,
+                HumanInputForm.workflow_run_id == execution_id,
+                HumanInputForm.node_id == "human",
+            )
+        )
+        assert form is not None
+        assert form.status == HumanInputFormStatus.WAITING
+        form.selected_action_id = "continue"
+        form.submitted_data = "{}"
+        form.submitted_at = naive_utc_now()
+        form.status = HumanInputFormStatus.SUBMITTED
+        self.session.commit()
         resumed_graph = _build_graph(
             resumed_state,
             self.tenant.id,
             self.app.id,
             self.workflow.id,
             self.account.id,
-            resume_repo,
+            form_repository,
         )
         self._run_graph(resumed_graph, resumed_state, execution_id)
 

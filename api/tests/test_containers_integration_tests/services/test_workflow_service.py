@@ -6,7 +6,7 @@ TestContainers to ensure realistic database interactions and proper isolation.
 """
 
 import json
-from unittest.mock import MagicMock
+from dataclasses import dataclass
 
 import pytest
 from faker import Faker
@@ -19,6 +19,17 @@ from models.model import AppMode
 from models.workflow import WorkflowType
 from services.workflow_ref_service import WorkflowRef
 from services.workflow_service import WorkflowService
+from tests.unit_tests.core.model_fixtures import make_model_instance
+
+
+@dataclass(frozen=True)
+class _ExecutedNode:
+    """Node metadata consumed by single-step result formatting tests."""
+
+    node_type: str
+    title: str
+    error_strategy: ErrorStrategy | None
+    default_value_dict: dict[str, object]
 
 
 class TestWorkflowService:
@@ -223,7 +234,7 @@ class TestWorkflowService:
         fake = Faker()
         account = self._create_test_account(db_session_with_containers, fake)
         app = self._create_test_app(db_session_with_containers, fake)
-        workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        self._create_test_workflow(db_session_with_containers, app, account, fake)
 
         workflow_service = WorkflowService()
 
@@ -809,9 +820,8 @@ class TestWorkflowService:
         app = self._create_test_app(db_session_with_containers, fake)
 
         # Create existing draft workflow
-        existing_workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        self._create_test_workflow(db_session_with_containers, app, account, fake)
         # Get the actual hash that was generated
-        original_hash = existing_workflow.unique_hash
 
         new_graph = {
             "nodes": [
@@ -1380,7 +1390,6 @@ class TestWorkflowService:
         account = self._create_test_account(db_session_with_containers, fake)
         app = self._create_test_app(db_session_with_containers, fake)
         workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
-        original_name = workflow.marked_name
 
         db_session_with_containers.commit()
 
@@ -1558,14 +1567,13 @@ class TestWorkflowService:
 
         from unittest.mock import patch
 
-        from core.model_manager import ModelInstance
         from core.workflow.node_factory import DifyNodeFactory
 
         # Act
         with patch.object(
             DifyNodeFactory,
             "_build_model_instance_for_llm_node",
-            return_value=MagicMock(spec=ModelInstance),
+            return_value=make_model_instance(provider="openai", model="gpt-3.5-turbo"),
             autospec=True,
         ):
             result = workflow_service.run_free_workflow_node(
@@ -1610,7 +1618,7 @@ class TestWorkflowService:
 
         # Act
         # Since start nodes are not supported in run_free_node, we expect an error
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(Exception, match="Node type start not supported") as exc_info:
             workflow_service.run_free_workflow_node(
                 node_data=node_data, tenant_id=tenant_id, user_id=user_id, node_id=node_id, user_inputs=user_inputs
             )
@@ -1639,13 +1647,10 @@ class TestWorkflowService:
 
             from graphon.graph_events import NodeRunSucceededEvent
             from graphon.node_events import NodeRunResult
-            from graphon.nodes.base.node import Node
 
-            # Create mock node
-            mock_node = MagicMock(spec=Node)
-            mock_node.node_type = BuiltinNodeTypes.START
-            mock_node.title = "Test Node"
-            mock_node.error_strategy = None
+            node = _ExecutedNode(
+                node_type=BuiltinNodeTypes.START, title="Test Node", error_strategy=None, default_value_dict={}
+            )
 
             # Create mock result with valid metadata
             mock_result = NodeRunResult(
@@ -1669,7 +1674,7 @@ class TestWorkflowService:
             def event_generator():
                 yield mock_event
 
-            return mock_node, event_generator()
+            return node, event_generator()
 
         workflow_service = WorkflowService()
 
@@ -1711,13 +1716,10 @@ class TestWorkflowService:
 
             from graphon.graph_events import NodeRunFailedEvent
             from graphon.node_events import NodeRunResult
-            from graphon.nodes.base.node import Node
 
-            # Create mock node
-            mock_node = MagicMock(spec=Node)
-            mock_node.node_type = BuiltinNodeTypes.LLM
-            mock_node.title = "Test Node"
-            mock_node.error_strategy = None
+            node = _ExecutedNode(
+                node_type=BuiltinNodeTypes.LLM, title="Test Node", error_strategy=None, default_value_dict={}
+            )
 
             # Create mock failed result
             mock_result = NodeRunResult(
@@ -1740,7 +1742,7 @@ class TestWorkflowService:
             def event_generator():
                 yield mock_event
 
-            return mock_node, event_generator()
+            return node, event_generator()
 
         workflow_service = WorkflowService()
 
@@ -1778,14 +1780,13 @@ class TestWorkflowService:
 
             from graphon.graph_events import NodeRunFailedEvent
             from graphon.node_events import NodeRunResult
-            from graphon.nodes.base.node import Node
 
-            # Create mock node with continue_on_error
-            mock_node = MagicMock(spec=Node)
-            mock_node.node_type = BuiltinNodeTypes.TOOL
-            mock_node.title = "Test Node"
-            mock_node.error_strategy = ErrorStrategy.DEFAULT_VALUE
-            mock_node.default_value_dict = {"default_output": "default_value"}
+            node = _ExecutedNode(
+                node_type=BuiltinNodeTypes.TOOL,
+                title="Test Node",
+                error_strategy=ErrorStrategy.DEFAULT_VALUE,
+                default_value_dict={"default_output": "default_value"},
+            )
 
             # Create mock failed result
             mock_result = NodeRunResult(
@@ -1808,7 +1809,7 @@ class TestWorkflowService:
             def event_generator():
                 yield mock_event
 
-            return mock_node, event_generator()
+            return node, event_generator()
 
         workflow_service = WorkflowService()
 
