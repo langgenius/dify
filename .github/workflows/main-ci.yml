@@ -34,6 +34,8 @@ jobs:
         with:
           cancel_others: 'true'
           concurrent_skipping: same_content_newer
+          # Coverage checks must be generated for each new commit, even with an unchanged tree.
+          skip_after_successful_duplicate: 'false'
 
   # Check which paths were changed to determine which tests to run
   check-changes:

@@ -59,6 +59,7 @@ import { isAgentV2NodeData } from '@/app/components/workflow/nodes/agent-v2/type
 import DataSourceNodeDefault from '@/app/components/workflow/nodes/data-source/default'
 import HumanInputNodeDefault from '@/app/components/workflow/nodes/human-input/default'
 import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
+import { comparisonOperatorNotRequireValue } from '@/app/components/workflow/nodes/if-else/utils'
 import ToolNodeDefault from '@/app/components/workflow/nodes/tool/default'
 import { resolveVarType } from '@/app/components/workflow/nodes/tool/output-schema-utils'
 import PluginTriggerNodeDefault from '@/app/components/workflow/nodes/trigger-plugin/default'
@@ -1213,7 +1214,7 @@ const replaceOldVarInPromptItem = (
     : {}),
 })
 
-/** Include saved references for rename/delete/copy; execution excludes inactive route conditions. */
+/** Include saved references for rename/delete/copy; execution excludes inactive settings. */
 export const getNodeUsedVars = (node: Node, { forExecution = false } = {}): ValueSelector[] => {
   const { data } = node
   const { type } = data
@@ -1405,7 +1406,21 @@ export const getNodeUsedVars = (node: Node, { forExecution = false } = {}): Valu
     }
 
     case BlockEnum.ListFilter: {
-      res = [(data as ListFilterNodeType).variable]
+      const payload = data as ListFilterNodeType
+      const templates: string[] = []
+      if (!forExecution || payload.filter_by?.enabled) {
+        templates.push(
+          ...(payload.filter_by?.conditions || []).flatMap((condition) =>
+            typeof condition.value === 'string' &&
+            (!forExecution || !comparisonOperatorNotRequireValue(condition.comparison_operator))
+              ? [condition.value]
+              : [],
+          ),
+        )
+      }
+      if ((!forExecution || payload.extract_by?.enabled) && payload.extract_by?.serial)
+        templates.push(payload.extract_by.serial)
+      res = [payload.variable, ...matchNotSystemVars(templates)]
       break
     }
 
@@ -1508,7 +1523,8 @@ export const getNodeUsedVarPassToServerKey = (
       break
     }
 
-    case BlockEnum.VariableAggregator: {
+    case BlockEnum.VariableAggregator:
+    case BlockEnum.ListFilter: {
       res = `#${valueSelector.join('.')}#`
       break
     }
@@ -1869,6 +1885,19 @@ export const updateNodeVars = (
         const payload = data as ListFilterNodeType
         if (payload.variable.join('.') === oldVarSelector.join('.'))
           payload.variable = newVarSelector
+        payload.filter_by.conditions = payload.filter_by.conditions.map((condition) => ({
+          ...condition,
+          value:
+            typeof condition.value === 'string'
+              ? replaceOldVarInText(condition.value, oldVarSelector, newVarSelector)
+              : condition.value,
+        }))
+        if (payload.extract_by.serial)
+          payload.extract_by.serial = replaceOldVarInText(
+            payload.extract_by.serial,
+            oldVarSelector,
+            newVarSelector,
+          )
         break
       }
       case BlockEnum.HumanInput: {
