@@ -11,7 +11,7 @@ This test suite covers:
 import json
 from datetime import UTC, datetime
 from decimal import Decimal
-from unittest.mock import PropertyMock, patch
+from unittest.mock import patch
 from uuid import UUID, uuid4
 
 import pytest
@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 from models.dataset import DatasetCollectionBinding
 from models.enums import CollectionBindingType, ConversationFromSource, CustomizeTokenStrategy
 from models.model import (
+    AnnotationReplyConfig,
     App,
     AppAnnotationHitHistory,
     AppAnnotationSetting,
@@ -531,15 +532,9 @@ class TestAppModelConfig:
 
     def test_to_dict_uses_injected_annotation_reply(self):
         config = AppModelConfig(app_id=str(uuid4()))
-        annotation_reply = {"enabled": False}
+        annotation_reply: AnnotationReplyConfig = {"enabled": False}
 
-        with patch.object(
-            AppModelConfig,
-            "annotation_reply_dict",
-            new_callable=PropertyMock,
-            side_effect=AssertionError("annotation_reply_dict should not be accessed"),
-        ):
-            result = config.to_dict(annotation_reply=annotation_reply)
+        result = config.to_dict(annotation_reply=annotation_reply)
 
         assert result["annotation_reply"] == annotation_reply
 

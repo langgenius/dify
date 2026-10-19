@@ -16,6 +16,7 @@ from services.entities.app_entities import (
     AppCreationSettings,
     AppDeletion,
     AppExportOptions,
+    AppFieldChanges,
     AppListParams,
     AppPage,
     AppRecord,
@@ -98,6 +99,8 @@ class ConsoleApps(Protocol):
 
     def update(self, context: RequestContext, app_id: str, params: UpdateAppParams) -> AppRecord: ...
 
+    def update_fields(self, context: RequestContext, app_id: str, changes: AppFieldChanges) -> AppRecord: ...
+
     def rename(self, context: RequestContext, app_id: str, name: str) -> AppRecord: ...
 
     def update_icon(
@@ -107,6 +110,10 @@ class ConsoleApps(Protocol):
     def set_site_enabled(self, context: RequestContext, app_id: str, enabled: bool) -> AppChange: ...
 
     def set_api_enabled(self, context: RequestContext, app_id: str, enabled: bool) -> AppChange: ...
+
+    def access_ready(self, context: RequestContext, app_id: str) -> bool: ...
+
+    def agent_role(self, context: RequestContext, app_id: str) -> str | None: ...
 
     def set_starred(self, context: RequestContext, app_id: str, starred: bool) -> None: ...
 
@@ -137,6 +144,10 @@ class AppTransfers(Protocol):
 
     def import_agent_package(self, context: RequestContext, source: BinaryIO) -> ImportedAppPackage: ...
 
+    def import_agent_template(self, context: RequestContext, params: AppImportParams) -> ImportedAppPackage: ...
+
+    def import_agent_package_url(self, context: RequestContext, params: AppImportParams) -> ImportedAppPackage: ...
+
     def check_dependencies(self, context: RequestContext, app_id: str) -> CheckDependenciesResult: ...
 
     def export_dsl(self, context: RequestContext, app_id: str, options: AppExportOptions) -> str: ...
@@ -153,7 +164,7 @@ class AppTransfers(Protocol):
 class CreatorsPlatform(Protocol):
     def require_enabled(self) -> None: ...
 
-    def upload(self, dsl: str) -> str: ...
+    def upload(self, source: BinaryIO, *, filename: str) -> str: ...
 
     def authorize(self, account_id: str) -> str | None: ...
 
@@ -168,6 +179,8 @@ class AppTraceProvider(Protocol):
 
 class AppLifecycle(Protocol):
     def create(self, context: RequestContext, params: CreateAppParams, settings: AppCreationSettings) -> AppRecord: ...
+
+    def create_draft(self, context: RequestContext, app_id: str) -> None: ...
 
     def delete(self, context: RequestContext, app_id: str) -> AppDeletion: ...
 
@@ -200,9 +213,41 @@ class ConsoleAppService:
         self._tracing = tracing
         self._lifecycle = lifecycle
 
+    def access_ready(self, context: RequestContext, app_id: str) -> bool:
+        """Whether an agent app has a published version its web app and Service API can serve."""
+        return self._apps.access_ready(context, app_id)
+
+    def agent_role(self, context: RequestContext, app_id: str) -> str | None:
+        """The role of an agent app's backing agent; None for other apps."""
+        return self._apps.agent_role(context, app_id)
+
     def import_app(self, context: RequestContext, params: AppImportParams, *, source: BinaryIO | None = None) -> Import:
         if source is not None:
             return self._import_package(context, params, source)
+        if params.mode == "template":
+            if (
+                params.template_id is None
+                or params.version_id is None
+                or params.app_id
+                or any(value is not None for value in (params.package_url, params.yaml_content, params.yaml_url))
+            ):
+                raise InvalidRosterAgentPackageError(
+                    "template mode requires template_id and version_id without other sources"
+                )
+            self._access.require_import(context, "agent")
+            return self._import_agent_result(self._transfers.import_agent_template(context, params))
+        if params.mode == "ifpkg-url":
+            if (
+                not params.package_url
+                or params.app_id
+                or params.yaml_content is not None
+                or params.yaml_url is not None
+            ):
+                raise InvalidRosterAgentPackageError(
+                    "ifpkg-url requires package_url and does not accept YAML or app_id"
+                )
+            self._access.require_import(context, "agent")
+            return self._import_agent_result(self._transfers.import_agent_package_url(context, params))
         if params.mode == "yaml-url" and params.yaml_url:
             self._access.require_import(context, "url")
             with self._transfers.download_import(params.yaml_url) as downloaded:
@@ -225,6 +270,9 @@ class ConsoleAppService:
         if params.app_id:
             raise InvalidRosterAgentPackageError("Roster Agent package import does not support overwriting an App")
         result = self._transfers.import_agent_package(context, source)
+        return self._import_agent_result(result)
+
+    def _import_agent_result(self, result: ImportedAppPackage) -> Import:
         return Import(
             id=str(uuid4()),
             status=ImportStatus.COMPLETED_WITH_WARNINGS if result.warnings else ImportStatus.COMPLETED,
@@ -238,7 +286,7 @@ class ConsoleAppService:
     ) -> Import:
         self._access.require_import(context, "dsl")
         result = self._transfers.import_dsl(context, params, package=package)
-        self._set_import_permissions(context, result, created=params.app_id is None)
+        self._set_import_permissions(context, result, created=result.app_created)
         if result.app_id:
             self._access.initialize_import_access(result.app_id)
         return result
@@ -256,21 +304,24 @@ class ConsoleAppService:
         ):
             result.permission_keys = self._access.imported_permissions(context, result.app_id)
 
+    def get_reference(self, context: RequestContext, app_id: str) -> AppReference:
+        """Admit an existing console app without retaining its database session."""
+        return self._apps.get_reference(context, app_id)
+
     def check_import_dependencies(self, context: RequestContext, app_id: str) -> CheckDependenciesResult:
         self._apps.get_reference(context, app_id)
         return self._transfers.check_dependencies(context, app_id)
 
     def list_apps(self, context: RequestContext, params: AppListParams | StarredAppListParams) -> AppPage:
-        permissions = None
+        permissions = self._access.permissions(context)
         if isinstance(params, AppListParams):
-            permissions = self._access.permissions(context)
             params = permissions.filter_list(params)
         page = self._apps.list_apps(context, params)
         if not page.data:
             return page
         app_ids = [app.id for app in page.data]
         modes = self._access.access_modes(app_ids)
-        keys = permissions.keys_for(app_ids) if permissions is not None else {}
+        keys = permissions.keys_for(app_ids)
         return replace(
             page,
             data=[
@@ -298,8 +349,24 @@ class ConsoleAppService:
         self._access.initialize_created_app(context, app.id)
         return self._lifecycle.present(context, replace(app, permission_keys=keys))
 
+    def create_with_draft(self, context: RequestContext, params: CreateAppParams) -> AppRecord:
+        """Create a workflow-type app with the starter draft the editor saves on first open, so it exports as DSL.
+        An app whose draft could not be saved is deleted again."""
+        app = self.create(context, params)
+        try:
+            self._lifecycle.create_draft(context, app.id)
+        except Exception:
+            self.delete(context, app.id)
+            raise
+        return app
+
     def update(self, context: RequestContext, app_id: str, params: UpdateAppParams) -> AppRecord:
         app = self._apps.update(context, app_id, params)
+        self._lifecycle.updated(context, app)
+        return self.get(context, app_id)
+
+    def update_fields(self, context: RequestContext, app_id: str, changes: AppFieldChanges) -> AppRecord:
+        app = self._apps.update_fields(context, app_id, changes)
         self._lifecycle.updated(context, app)
         return self.get(context, app_id)
 
@@ -335,7 +402,9 @@ class ConsoleAppService:
         self._apps.set_starred(context, app_id, starred)
 
     def copy(self, context: RequestContext, app_id: str, params: CopyAppParams) -> tuple[Import, AppRecord | None]:
-        dsl = self._transfers.export_dsl(context, app_id, AppExportOptions(include_secret=True))
+        dsl = self._transfers.export_dsl(
+            context, app_id, AppExportOptions(include_secret=True, preserve_agent_bindings=True)
+        )
         result = self._transfers.import_dsl(
             context,
             AppImportParams(mode="yaml-content", yaml_content=dsl, **params.model_dump()),
@@ -359,6 +428,11 @@ class ConsoleAppService:
                 raise AppExportPaidPlanRequiredError("This feature requires a paid plan.")
         if options.format == "yaml":
             return self._transfers.export_dsl(context, app.id, options)
+        return self._export_package(context, app, options)
+
+    def _export_package(
+        self, context: RequestContext, app: AppReference, options: AppExportOptions
+    ) -> RosterAgentPackageExport:
         if app.mode == "agent":
             if app.bound_agent_id is None:
                 raise AppExportAgentNotFoundError("Agent not found")
@@ -371,10 +445,10 @@ class ConsoleAppService:
 
     def publish(self, context: RequestContext, app_id: str) -> str:
         # Validate ownership before producing external effects, including feature rejection.
-        self._apps.get_reference(context, app_id)
+        app = self._apps.get_reference(context, app_id)
         self._creators.require_enabled()
-        dsl = self._transfers.export_dsl(context, app_id, AppExportOptions(include_secret=False))
-        claim_code = self._creators.upload(dsl)
+        with self._export_package(context, app, AppExportOptions(format="ifpkg", include_secret=False)) as package:
+            claim_code = self._creators.upload(package.archive, filename=package.filename)
         code = self._creators.authorize(context.account_id)
         return self._creators.redirect_url(claim_code, code)
 

@@ -35,7 +35,7 @@ function ItemOperation({
       <DropdownMenuTrigger
         aria-label={tCommon(($) => $['operation.moreActionsFor'], { name: itemName })}
         className={cn(
-          'group/operation flex size-6 items-center justify-center rounded-md border-none p-0 text-text-tertiary transition-colors group-focus-within:bg-components-actionbar-bg! group-hover:bg-components-actionbar-bg! hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-components-actionbar-bg! data-popup-open:shadow-none!',
+          'group/operation flex size-6 items-center justify-center rounded-md border-none p-0 text-text-tertiary transition-colors group-focus-within:bg-components-actionbar-bg! group-hover:bg-components-actionbar-bg! hover:bg-state-base-hover focus-visible:bg-state-base-hover data-popup-open:bg-components-actionbar-bg! data-popup-open:shadow-none!',
           className,
         )}
         onClick={(e) => {

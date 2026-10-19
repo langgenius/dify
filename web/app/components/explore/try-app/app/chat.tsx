@@ -1,7 +1,7 @@
 'use client'
+import type { TrialAppDetailResponse } from '@dify/contracts/api/console/trial-apps/types.gen'
 import type { FC } from 'react'
 import type { EmbeddedChatbotContextValue } from '@/app/components/base/chat/embedded-chatbot/context'
-import type { TryAppInfo } from '@/service/try-app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -22,7 +22,7 @@ import { AppSourceType } from '@/service/share'
 
 type Props = Readonly<{
   appId: string
-  appDetail: TryAppInfo
+  appDetail: TrialAppDetailResponse
   className: string
 }>
 
@@ -60,14 +60,7 @@ const TryApp: FC<Props> = ({ appId, appDetail, className }) => {
       <div className={cn('flex h-full flex-col rounded-2xl bg-background-section-burn', className)}>
         <div className="flex shrink-0 justify-between p-3">
           <div className="flex grow items-center space-x-2">
-            <AppIcon
-              decorative
-              size="large"
-              iconType={appDetail.site.icon_type}
-              icon={appDetail.site.icon ?? undefined}
-              background={appDetail.site.icon_background ?? undefined}
-              imageUrl={appDetail.site.icon_url ?? undefined}
-            />
+            <AppIcon size="large" icon={appDetail.site} />
             <div
               className="grow truncate system-md-semibold text-text-primary"
               title={appDetail.name}
@@ -95,7 +88,7 @@ const TryApp: FC<Props> = ({ appId, appDetail, className }) => {
             {currentConversationId && inputsForms.length > 0 && <ViewFormDropdown />}
           </div>
         </div>
-        <div className="mx-auto mt-4 flex h-0 w-192.25 grow flex-col">
+        <div className="mx-auto mt-4 flex h-0 w-full max-w-192.25 min-w-0 grow flex-col">
           {!isHideTryNotice && (
             <Alert
               className="mb-4 shrink-0"

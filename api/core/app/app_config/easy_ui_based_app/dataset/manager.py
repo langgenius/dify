@@ -12,7 +12,7 @@ from core.app.app_config.entities import (
 from core.entities.agent_entities import PlanningStrategy
 from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
 from models.model import AppMode, AppModelConfigDict
-from services.dataset_service import DatasetService
+from services.knowledge.dataset_service import DatasetService
 
 
 class DatasetConfigManager:
@@ -295,7 +295,4 @@ class DatasetConfigManager:
         if not dataset:
             return False
 
-        if dataset.tenant_id != tenant_id:
-            return False
-
-        return True
+        return dataset.tenant_id == tenant_id

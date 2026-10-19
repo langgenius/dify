@@ -94,17 +94,24 @@ beforeEach(() => {
     throw new Error(`Unexpected request: ${url}`)
   })
 })
-const renderApps = (response = catalog, permissions = ['app.create_and_management']) => {
+const renderApps = (
+  response = catalog,
+  permissions = ['app.create_and_management'],
+  templateMode?: 'agent',
+) => {
   const queryClient = createConsoleQueryClient()
   queryClient.setQueryData(catalogKey('en-US'), response)
   const onClose = vi.fn()
   return {
-    ...render(<Apps onClose={onClose} />, { queryClient, workspacePermissionKeys: permissions }),
+    ...render(<Apps onClose={onClose} templateMode={templateMode} />, {
+      queryClient,
+      workspacePermissionKeys: permissions,
+    }),
     onClose,
   }
 }
 const openFirst = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.click(screen.getAllByRole('button', { name: 'app.newApp.useTemplate' })[0]!)
+  await user.click(screen.getAllByRole('button', { name: /^app\.newApp\.useTemplate/ })[0]!)
   return screen.findByRole('dialog')
 }
 
@@ -161,6 +168,53 @@ it('combines real type selection with debounced case-insensitive search and rest
   expect(search).toHaveFocus()
   expect(search).toHaveValue('')
   expect(screen.getByRole('button', { name: 'Assistant' })).toBeInTheDocument()
+})
+
+it('keeps new Agent templates out of the App selector and its legacy Agent filter', async () => {
+  const user = userEvent.setup()
+  renderApps({
+    recommended_apps: [
+      createEntry('New Agent', 0, 'agent'),
+      createEntry('Legacy Agent', 1, 'agent-chat'),
+    ],
+    categories: ['Assistant'],
+  })
+
+  await user.click(screen.getByRole('button', { name: 'app.typeSelector.all' }))
+  await user.click(screen.getByRole('button', { name: 'app.typeSelector.agent' }))
+
+  expect(screen.queryByTitle('New Agent')).not.toBeInTheDocument()
+  expect(screen.getByTitle('Legacy Agent')).toBeInTheDocument()
+})
+
+it('filters new Agent templates by catalog category in the Agent roster template picker', async () => {
+  const user = userEvent.setup()
+  renderApps(
+    {
+      recommended_apps: [
+        createEntry('Assistant Agent', 0, 'agent'),
+        createEntry('Writing Agent', 1, 'agent', 'Writing'),
+        createEntry('Legacy Agent', 2, 'agent-chat', 'Legacy'),
+      ],
+      categories: ['Assistant', 'Writing', 'Legacy'],
+    },
+    [],
+    'agent',
+  )
+
+  expect(screen.getByTitle('Assistant Agent')).toBeInTheDocument()
+  expect(screen.getByTitle('Writing Agent')).toBeInTheDocument()
+  expect(screen.queryByTitle('Legacy Agent')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'app.typeSelector.all' })).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Assistant' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Writing' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Legacy' })).not.toBeInTheDocument()
+  expect(screen.queryByText('app.newApp.startFromBlank')).not.toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'Writing' }))
+  expect(screen.queryByTitle('Assistant Agent')).not.toBeInTheDocument()
+  expect(screen.getByTitle('Writing Agent')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Writing' })).toHaveAttribute('aria-pressed', 'true')
 })
 
 it('fetches fresh detail by canonical app_id and submits the actual form with an empty initial description', async () => {
@@ -221,6 +275,23 @@ it('closes the submitted modal immediately and reports detail failure without im
   expect(redirect).not.toHaveBeenCalled()
 })
 
+it('does not import an Agent detail through the Studio App template picker', async () => {
+  const user = userEvent.setup()
+  request.mockImplementation(async (url: string) => {
+    if (new URL(url).pathname.endsWith('/explore/apps/catalog-Alpha'))
+      return Response.json({ ...detail, mode: 'agent', version_id: 'v1', export_data: '' })
+    throw new Error(`Unexpected request: ${url}`)
+  })
+  renderApps()
+
+  await openFirst(user)
+  await user.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
+
+  await waitFor(() => expect(toast.error).toHaveBeenCalledWith('app.newApp.appCreateFailed'))
+  expect(request).toHaveBeenCalledOnce()
+  expect(trackCreateApp).not.toHaveBeenCalled()
+})
+
 it('supports nullable metadata without inventing a name and requires a name before importing', async () => {
   const user = userEvent.setup()
   renderApps({
@@ -237,5 +308,7 @@ it('supports nullable metadata without inventing a name and requires a name befo
 it('does not expose creation actions without app management permission', () => {
   renderApps(catalog, [])
   expect(screen.getByTitle('Alpha')).toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: 'app.newApp.useTemplate' })).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole('button', { name: /^app\.newApp\.useTemplate/ }),
+  ).not.toBeInTheDocument()
 })

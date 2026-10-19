@@ -1,4 +1,4 @@
-import type { CSSProperties, FC, ReactNode } from 'react'
+import type { CSSProperties, FC, KeyboardEvent, ReactNode } from 'react'
 import type { SimpleSubscription } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
 import type { Node } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -6,13 +6,13 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiCloseLine, RiPlayLargeLine } from '@remixicon/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { debounce } from 'es-toolkit/compat'
+import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { cloneElement, memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import ResizeHandle from '@/app/components/base/resize-handle'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -29,9 +29,14 @@ import {
 } from '@/app/components/plugins/plugin-auth'
 import { usePluginStore } from '@/app/components/plugins/plugin-detail-panel/store'
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
+import {
+  editorAppIdAtom,
+  editorResourceAtom,
+} from '@/app/components/workflow/editor-resource/state'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { NodeActionsDropdown } from '@/app/components/workflow/node-actions-menu'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
@@ -48,9 +53,8 @@ import {
   isSupportCustomRunForm,
 } from '@/app/components/workflow/utils'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { useAllBuiltInTools } from '@/service/use-tools'
+import { consoleQuery } from '@/service/console'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
-import { FlowType } from '@/types/common'
 import { useAvailableBlocks } from '../../../../hooks/use-available-blocks'
 import useInspectVarsCrud from '../../../../hooks/use-inspect-vars-crud'
 import { useNodeDataUpdate } from '../../../../hooks/use-node-data-update'
@@ -96,13 +100,13 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   const { t } = useTranslation(['common', 'workflow', 'workflowDebug'])
   const panelId = useId()
   const language = useLanguage()
-  const appId = useStore((s) => s.appId)
+  const appId = useAtomValue(editorAppIdAtom)
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
   })
   const canEdit = useHooksStore((s) => s.accessControl.canEdit)
-  const { isConnected, nodePanelPresence } = useCollaboration(appId as string, canEdit)
+  const { isConnected, nodePanelPresence } = useCollaboration(appId, canEdit)
   const messageLogItem = useStore((state) => state.messageLogItem)
   const isSingleRunning = data._singleRunningStatus === NodeRunningStatus.Running
 
@@ -154,6 +158,9 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   const setNodePanelWidth = useStore((s) => s.setNodePanelWidth)
   const pendingSingleRun = useStore((s) => s.pendingSingleRun)
   const setPendingSingleRun = useStore((s) => s.setPendingSingleRun)
+  const pendingNodePanelFocusId = useStore((s) => s.pendingNodePanelFocusId)
+  const setPendingNodePanelFocusId = useStore((s) => s.setPendingNodePanelFocusId)
+  const descriptionInputRef = useRef<HTMLTextAreaElement>(null)
   const setNodePanelWidthStorage = useSetWorkflowNodePanelWidth()
 
   const reservedCanvasWidth = 400 // Reserve the minimum visible width for the canvas
@@ -204,6 +211,30 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   }, [nodePanelWidth, otherPanelWidth, workflowCanvasWidth, debounceUpdate])
 
   const { handleNodeSelect } = useNodesInteractions()
+  const handlePanelKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLElement>) => {
+      if (
+        event.key !== 'Escape' ||
+        event.defaultPrevented ||
+        event.nativeEvent.isComposing ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        !event.currentTarget.contains(event.target as globalThis.Node)
+      )
+        return
+
+      event.preventDefault()
+      event.stopPropagation()
+      const workflow = event.currentTarget.closest('#workflow-container')
+      const node = Array.from(
+        workflow?.querySelectorAll<HTMLElement>('.react-flow__node') ?? [],
+      ).find((element) => element.dataset.id === id)
+      node?.focus({ preventScroll: true })
+      handleNodeSelect(id, true)
+    },
+    [handleNodeSelect, id],
+  )
   const { nodesReadOnly } = useNodesReadOnly()
   const { availableNextBlocks } = useAvailableBlocks(
     getNodeCatalogType(data),
@@ -233,16 +264,26 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   const isChildNode = !!(data.isInIteration || data.isInLoop)
   const nodeMetaType = getNodeCatalogType(data)
   const isSupportSingleRun = canRunBySingle(data.type, isChildNode)
-  const appDetail = useAppStore((state) => state.appDetail)
 
   const hasClickRunning = useRef(false)
   const [isPaused, setIsPaused] = useState(false)
 
   useEffect(() => {
+    hasClickRunning.current = false
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Reset pause UI when the selected node, execution status, or panel tab changes outside this component.
+    setIsPaused(false)
+  }, [id])
+
+  useEffect(() => {
     if (data._singleRunningStatus === NodeRunningStatus.Running) {
       hasClickRunning.current = true
+      // oxlint-disable-next-line eslint-react/set-state-in-effect -- Reset pause UI when the selected node, execution status, or panel tab changes outside this component.
       setIsPaused(false)
-    } else if (data._isSingleRun && data._singleRunningStatus === undefined && hasClickRunning) {
+    } else if (
+      data._isSingleRun &&
+      data._singleRunningStatus === undefined &&
+      hasClickRunning.current
+    ) {
       setIsPaused(true)
       hasClickRunning.current = false
     }
@@ -261,13 +302,9 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
     [handleNodeDataUpdate, id, data],
   )
 
-  useEffect(() => {
-    hasClickRunning.current = false
-  }, [id])
-
   const { nodesMap } = useNodesMetaData()
 
-  const configsMap = useHooksStore((s) => s.configsMap)
+  const resource = useAtomValue(editorResourceAtom)
   const canRun = useHooksStore((s) => s.accessControl.canRun)
   const {
     isShowSingleRun,
@@ -294,16 +331,24 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
     getFilteredExistVarForms,
   } = useLastRun<typeof data>({
     id,
-    flowId: configsMap?.flowId || '',
-    flowType: configsMap?.flowType || FlowType.appFlow,
+    resource,
     data,
     defaultRunInputData: nodesMap?.[nodeMetaType]?.defaultRunInputData || {},
     isPaused,
   })
 
   useEffect(() => {
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Reset pause UI when the selected node, execution status, or panel tab changes outside this component.
     setIsPaused(false)
   }, [tabType])
+
+  useEffect(() => {
+    if (pendingNodePanelFocusId !== id || !containerRef.current) return
+
+    setTabType(TabType.settings)
+    ;(descriptionInputRef.current ?? containerRef.current).focus({ preventScroll: true })
+    setPendingNodePanelFocusId(undefined)
+  }, [containerRef, id, pendingNodePanelFocusId, setPendingNodePanelFocusId, setTabType])
 
   useEffect(() => {
     if (!pendingSingleRun || pendingSingleRun.nodeId !== id) return
@@ -326,7 +371,11 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   }, [data.type, logParams])
 
   const storeBuildInTools = useStore((s) => s.buildInTools)
-  const { data: buildInTools } = useAllBuiltInTools()
+  const { data: buildInTools } = useQuery(
+    consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
   const currToolCollection = useMemo(
     () => getCurrentToolCollection(buildInTools, storeBuildInTools, data.provider_id),
     [buildInTools, storeBuildInTools, data.provider_id],
@@ -440,10 +489,15 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   if (logParams.showSpecialResultPanel) {
     return (
       <div className={cn('relative mr-1 h-full')}>
+        {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- The panel handles bubbling Escape after its child controls have handled it. */}
         <div
           ref={containerRef}
+          onKeyDown={handlePanelKeyDown}
+          role="region"
+          aria-label={`${data.title} ${t(($) => $['panel.nodePanel'], { ns: 'workflow' })}`}
+          tabIndex={-1}
           className={cn(
-            'flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
+            'flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset',
             isSingleRunPanelVisible ? 'overflow-hidden' : 'overflow-y-auto',
           )}
           style={{
@@ -464,8 +518,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
     const customRunForm = isCustomRunFormNode
       ? getCustomRunForm({
           nodeId: id,
-          flowId: configsMap?.flowId || '',
-          flowType: configsMap?.flowType || FlowType.appFlow,
+          resource,
           payload: data,
           setRunResult,
           setIsRunAfterSingleRun,
@@ -494,10 +547,15 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
 
     return (
       <div className={cn('relative mr-1 h-full')}>
+        {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- The panel handles bubbling Escape after its child controls have handled it. */}
         <div
           ref={containerRef}
+          onKeyDown={handlePanelKeyDown}
+          role="region"
+          aria-label={`${data.title} ${t(($) => $['panel.nodePanel'], { ns: 'workflow' })}`}
+          tabIndex={-1}
           className={cn(
-            'flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
+            'flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset',
             isSingleRunPanelVisible ? 'overflow-hidden' : 'overflow-y-auto',
           )}
           style={{
@@ -570,9 +628,13 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
       <Tabs
         id={panelId}
         ref={containerRef}
+        onKeyDown={handlePanelKeyDown}
+        role="region"
+        aria-label={`${data.title} ${t(($) => $['panel.nodePanel'], { ns: 'workflow' })}`}
+        tabIndex={-1}
         value={tabType}
         onValueChange={(selectedValue) => setTabType(selectedValue)}
-        className="flex h-full flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg transition-[width] ease-linear"
+        className="flex h-full flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg transition-[width] ease-linear focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset"
         style={
           {
             width: `${nodePanelWidth}px`,
@@ -637,7 +699,11 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
             <StartPlaceholderPanelDescription />
           ) : (
             <div className="p-2">
-              <DescriptionInput value={data.desc || ''} onChange={handleDescriptionChange} />
+              <DescriptionInput
+                inputRef={descriptionInputRef}
+                value={data.desc || ''}
+                onChange={handleDescriptionChange}
+              />
             </div>
           )}
           {!isStartPlaceholderPanel && (
@@ -725,7 +791,6 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
         {!isStartPlaceholderPanel && (
           <TabsPanel value={TabType.lastRun} className="flex flex-1 flex-col overflow-y-auto">
             <LastRun
-              appId={appDetail?.id || ''}
               nodeId={id}
               canSingleRun={isSupportSingleRun}
               runningStatus={runningStatus}

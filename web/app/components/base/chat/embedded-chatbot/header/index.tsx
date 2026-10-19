@@ -43,6 +43,13 @@ const Header: FC<IHeaderProps> = ({
 
   const handleMessageReceived = useCallback(
     (event: MessageEvent) => {
+      if (event.source !== window.parent || event.data?.type !== 'dify-chatbot-config') return
+      const payload = event.data.payload
+      if (
+        typeof payload?.isToggledByButton !== 'boolean' ||
+        typeof payload?.isDraggable !== 'boolean'
+      )
+        return
       let currentParentOrigin = parentOrigin
       if (!currentParentOrigin && event.data.type === 'dify-chatbot-config') {
         currentParentOrigin = event.origin

@@ -7,22 +7,26 @@ from decimal import Decimal
 from typing import Literal, cast
 from uuid import uuid4
 
+import httpx
 import pytest
-from flask import Flask
+from flask import Flask, g
 from sqlalchemy import Connection, Engine, event, update
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 
 import services.message_service as message_module
-from core.credit_usage import CreditUsageAppType
+from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
+from core.file import remote_fetcher
 from core.model_context import get_credit_usage_metadata, use_credit_usage_metadata
 from core.model_manager import ModelInstance
 from core.ops.ops_trace_manager import TraceTask
 from extensions.ext_database import db
-from graphon.model_runtime.entities import PromptMessage
-from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.file import FileTransferMethod, FileType
+from graphon.model_runtime.entities import AssistantPromptMessage, PromptMessage
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from models import Account, App, AppMode, Conversation, Message
-from models.enums import ConversationFromSource, EndUserType
-from models.model import AppModelConfig, EndUser
+from models.enums import ConversationFromSource, CreatorUserRole, EndUserType
+from models.model import AppModelConfig, EndUser, MessageFile
 from models.workflow import Workflow, WorkflowType
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.errors.conversation import ConversationNotExistsError
@@ -42,37 +46,83 @@ type _InvokeFrom = Literal["debugger", "explore", "web-app", "service-api"]
 class _Provider:
     read_sessions: list[Session]
     tenant_id: str
-    prompts: list[str | None] = field(default_factory=list)
-    histories: list[str] = field(default_factory=list)
-    model_configs: list[object] = field(default_factory=list)
+    app_id: str
+    prompts: list[str] = field(default_factory=list)
+    model_requests: list[tuple[str, str]] = field(default_factory=list)
+    invocation_parameters: list[Mapping[str, object]] = field(default_factory=list)
     metadata: list[Mapping[str, object] | None] = field(default_factory=list)
     traces: list[TraceTask] = field(default_factory=list)
+    model_sessions: list[Session] = field(default_factory=list)
+    io_sessions: list[tuple[str, bool]] = field(default_factory=list)
     failure: Exception | None = None
+    token_failure: Exception | None = None
     history_model_failure: bool = False
+    generation_model_failure: bool = False
 
-    def get_default_model_instance(self, *, tenant_id: str, model_type: ModelType) -> ModelInstance:
+    def record_io(self, stage: str) -> None:
+        self.io_sessions.append(
+            (
+                stage,
+                all(
+                    not session.in_transaction() and not session.identity_map
+                    for session in self.read_sessions + self.model_sessions
+                ),
+            )
+        )
+
+    def _resolve_model(self, *, tenant_id: str, model_type: ModelType) -> ModelInstance:
         assert tenant_id == self.tenant_id
         assert model_type == ModelType.LLM
         assert self.read_sessions
         assert all(not session.in_transaction() and not session.identity_map for session in self.read_sessions)
-        if self.history_model_failure:
-            raise RuntimeError("No history model")
+        # Simulate ModelManager's real scoped database lookup, so both resolution
+        # stages must dispose their sessions before token/schema/provider I/O.
+        session = db.session()
+        assert session.get(App, self.app_id) is not None
+        self.model_sessions.append(session)
+        if self.history_model_failure or (self.generation_model_failure and len(self.model_sessions) > 1):
+            raise RuntimeError("No model available")
         return cast(ModelInstance, self)
 
+    def get_default_model_instance(self, *, tenant_id: str, model_type: ModelType) -> ModelInstance:
+        self.model_requests.append(("default", "default"))
+        return self._resolve_model(tenant_id=tenant_id, model_type=model_type)
+
+    def get_model_instance(self, *, tenant_id: str, model_type: ModelType, provider: str, model: str) -> ModelInstance:
+        self.model_requests.append((provider, model))
+        return self._resolve_model(tenant_id=tenant_id, model_type=model_type)
+
     def get_llm_num_tokens(self, prompt_messages: Sequence[PromptMessage]) -> int:
+        self.record_io("tokens")
+        if self.token_failure is not None:
+            raise self.token_failure
         return len(prompt_messages)
 
-    def generate(
-        self, *, tenant_id: str, histories: str, instruction_prompt: str | None, model_config: object
-    ) -> list[str]:
-        assert tenant_id == self.tenant_id
-        self.prompts.append(instruction_prompt)
-        self.histories.append(histories)
-        self.model_configs.append(model_config)
+    def get_model_schema(self) -> AIModelEntity:
+        self.record_io("schema")
+        return AIModelEntity.model_construct(parameter_rules=[])
+
+    def invoke_llm(
+        self,
+        *,
+        prompt_messages: list[PromptMessage],
+        model_parameters: Mapping[str, object],
+        stop: list[str],
+        stream: bool,
+    ) -> LLMResult:
+        self.record_io("invoke")
+        assert stream is False
+        assert stop == []
+        self.invocation_parameters.append(model_parameters)
+        self.prompts.append(prompt_messages[0].get_text_content())
         self.metadata.append(get_credit_usage_metadata())
         if self.failure is not None:
             raise self.failure
-        return ["What next?"]
+        return LLMResult(
+            model="question-model",
+            message=AssistantPromptMessage(content='["What next?"]'),
+            usage=LLMUsage.empty_usage(),
+        )
 
     def add_trace_task(self, task: TraceTask) -> None:
         self.traces.append(task)
@@ -121,6 +171,7 @@ class _Harness:
             not session.in_transaction() and not session.identity_map
             for session in self.provider.read_sessions + self.legacy_sessions
         )
+        assert all(closed for _stage, closed in self.provider.io_sessions), self.provider.io_sessions
 
 
 @pytest.fixture
@@ -176,7 +227,7 @@ def harness(
     def track_read(session: Session, _transaction: SessionTransaction, _connection: Connection) -> None:
         read_sessions.append(session)
 
-    provider = _Provider(read_sessions, target.tenant_id)
+    provider = _Provider(read_sessions, target.tenant_id, target.id)
 
     def model_manager(*, tenant_id: str) -> _Provider:
         assert tenant_id == target.tenant_id
@@ -187,7 +238,6 @@ def harness(
         return provider
 
     monkeypatch.setattr(message_module.ModelManager, "for_tenant", model_manager)
-    monkeypatch.setattr(message_module.LLMGenerator, "generate_suggested_questions_after_answer", provider.generate)
     monkeypatch.setattr(message_module, "TraceQueueManager", trace_manager)
     flask_app = Flask(__name__)
     flask_app.config.update(TESTING=True, SQLALCHEMY_DATABASE_URI=str(sqlite_engine.url))
@@ -279,25 +329,32 @@ def test_runtime_preserves_history_configuration_credit_context_and_caller_sessi
         original_metadata = get_credit_usage_metadata()
         with use_credit_usage_metadata({"request_id": "suggestions-request"}):
             inherited_metadata = get_credit_usage_metadata()
-            if provider_failure:
-                with pytest.raises(RuntimeError, match="Provider unavailable"):
-                    harness.get(actor)
-            else:
-                assert harness.get(actor) == ["What next?"]
+            assert harness.get(actor) == ([] if provider_failure else ["What next?"])
             assert get_credit_usage_metadata() == inherited_metadata
-            assert harness.provider.metadata == [{**(inherited_metadata or {}), "app_type": CreditUsageAppType.CHATBOT}]
+            assert harness.provider.metadata == [
+                {
+                    **(inherited_metadata or {}),
+                    "app_type": CreditUsageAppType.CHATBOT,
+                    "created_by": CreditUsageCreatedBy.SUGGESTED_QUESTIONS,
+                }
+            ]
         assert get_credit_usage_metadata() == original_metadata
         assert db.session() is caller_session
         assert caller_session.in_transaction()
         assert caller_app in caller_session.dirty
         assert caller_app.name == "Pending caller edit"
-        assert len(harness.legacy_sessions) == 1
-        assert harness.legacy_sessions[0] is not caller_session
+        assert len(harness.provider.model_sessions) == 2
+        assert harness.provider.model_sessions[0] is not harness.provider.model_sessions[1]
+        assert all(session is not caller_session for session in harness.legacy_sessions)
         harness.assert_closed()
-    assert harness.provider.prompts == ["Published questions"]
-    assert harness.provider.histories == ["Human: How does this work?\nAssistant: Like this."]
-    assert harness.provider.model_configs == [model_config]
-    assert len(harness.provider.traces) == (0 if provider_failure else 1)
+    assert len(harness.provider.prompts) == 1
+    assert harness.provider.prompts[0].startswith(
+        "Human: How does this work?\nAssistant: Like this.\nPublished questions\n"
+    )
+    assert harness.provider.model_requests == [("default", "default"), ("vendor", "question-model")]
+    assert [stage for stage, _closed in harness.provider.io_sessions] == ["tokens", "invoke"]
+    assert harness.provider.invocation_parameters == [{}]
+    assert len(harness.provider.traces) == 1
 
 
 @pytest.mark.parametrize("invoke_from", ["explore", "service-api"])
@@ -321,7 +378,7 @@ def test_message_and_conversation_ownership_are_enforced(
     error_type = MessageNotExistsError if entity == "message" else ConversationNotExistsError
     with harness.flask_app.app_context(), pytest.raises(error_type):
         harness.get(actor)
-    assert not harness.provider.histories
+    assert not harness.provider.prompts
     harness.assert_closed()
 
 
@@ -334,7 +391,7 @@ def test_actor_cannot_read_a_deleted_conversation(
         session.execute(update(Conversation).where(Conversation.id == harness.conversation.id).values(is_deleted=True))
     with harness.flask_app.app_context(), pytest.raises(ConversationNotExistsError):
         harness.get(actor)
-    assert not harness.provider.histories
+    assert not harness.provider.prompts
     harness.assert_closed()
 
 
@@ -362,8 +419,8 @@ def test_account_preserves_disabled_feature_and_missing_workflow_or_model_behavi
                 harness.get(actor)
         else:
             assert harness.get(actor) == []
-    assert len(harness.legacy_sessions) == 1
-    assert not harness.provider.histories
+    assert len(harness.legacy_sessions) == (1 if case == "history_provider_failure" else 0)
+    assert not harness.provider.prompts
     assert not harness.provider.traces
     harness.assert_closed()
 
@@ -400,6 +457,181 @@ def test_advanced_chat_debugger_uses_draft_while_explore_uses_published_workflow
             actor=actor,
             message_id=harness.message.id,
         ) == ["What next?"]
-    assert harness.provider.prompts == ["Draft questions" if invoke_from == "debugger" else "Published questions"]
-    assert harness.provider.model_configs == [None]
+    expected_prompt = "Draft questions" if invoke_from == "debugger" else "Published questions"
+    assert len(harness.provider.prompts) == 1
+    assert expected_prompt in harness.provider.prompts[0]
+    assert harness.provider.model_requests == [("default", "default"), ("default", "default")]
+    assert [stage for stage, _closed in harness.provider.io_sessions] == ["tokens", "schema", "invoke"]
     harness.assert_closed()
+
+
+@pytest.mark.parametrize("failure_stage", ["tokens", "generation_model"])
+def test_runtime_releases_sessions_when_history_or_second_model_stage_fails(
+    harness: _Harness, failure_stage: Literal["tokens", "generation_model"]
+) -> None:
+    actor = harness.actor("explore")
+    if failure_stage == "tokens":
+        harness.provider.token_failure = RuntimeError("Token counter unavailable")
+    else:
+        harness.provider.generation_model_failure = True
+    with harness.flask_app.app_context():
+        if failure_stage == "tokens":
+            with pytest.raises(RuntimeError, match="Token counter unavailable"):
+                harness.get(actor)
+        else:
+            assert harness.get(actor) == []
+    assert len(harness.provider.model_sessions) == (1 if failure_stage == "tokens" else 2)
+    assert not harness.provider.prompts
+    assert len(harness.provider.traces) == (0 if failure_stage == "tokens" else 1)
+    harness.assert_closed()
+
+
+@pytest.mark.parametrize("remote_failure", [False, True])
+def test_remote_attachment_is_loaded_after_history_and_model_sessions_close(
+    harness: _Harness, monkeypatch: pytest.MonkeyPatch, remote_failure: bool
+) -> None:
+    actor = harness.actor("explore")
+    with harness.factory.begin() as session:
+        session.execute(
+            update(AppModelConfig)
+            .where(AppModelConfig.id == harness.target.app_model_config_id)
+            .values(
+                file_upload=json.dumps(
+                    {"enabled": True, "allowed_file_types": ["image"], "allowed_file_upload_methods": ["remote_url"]}
+                )
+            )
+        )
+        session.add(
+            MessageFile(
+                message_id=harness.message.id,
+                type=FileType.IMAGE,
+                transfer_method=FileTransferMethod.REMOTE_URL,
+                url="https://example.com/history.png",
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by=harness.account.id,
+            )
+        )
+    requests: list[str] = []
+
+    def fetch(method: str, url: str, **_kwargs: object) -> httpx.Response:
+        harness.provider.record_io("attachment")
+        requests.append(method)
+        assert url == "https://example.com/history.png"
+        if remote_failure:
+            raise RuntimeError("Attachment unavailable")
+        return httpx.Response(
+            200,
+            headers={"content-type": "image/png", "content-length": "3"},
+            content=b"png",
+            request=httpx.Request(method, url),
+        )
+
+    monkeypatch.setattr(remote_fetcher, "make_request", fetch)
+    with harness.flask_app.app_context():
+        if remote_failure:
+            with pytest.raises(RuntimeError, match="Attachment unavailable"):
+                harness.get(actor)
+        else:
+            assert harness.get(actor) == ["What next?"]
+    assert requests
+    assert requests[0] == "HEAD"
+    if remote_failure:
+        assert not harness.provider.prompts
+        assert not harness.provider.traces
+    else:
+        assert harness.provider.prompts[0].startswith("Human: [image]\nHow does this work?\nAssistant: Like this.")
+    harness.assert_closed()
+
+
+@pytest.mark.parametrize("failure_stage", [None, "provider_sql", "trace"])
+def test_runtime_keeps_its_context_state_while_releasing_sessions_and_preserving_the_caller(
+    harness: _Harness, monkeypatch: pytest.MonkeyPatch, failure_stage: Literal["provider_sql", "trace"] | None
+) -> None:
+    actor = harness.actor("explore")
+    runtime_steps: list[str] = []
+    invocation_sessions: list[Session] = []
+    trace_sessions: list[Session] = []
+    resolve_model = harness.provider._resolve_model
+    count_tokens = harness.provider.get_llm_num_tokens
+    invoke_llm = harness.provider.invoke_llm
+
+    def resolve(*, tenant_id: str, model_type: ModelType) -> ModelInstance:
+        assert g.get("caller_marker") is None
+        if not runtime_steps:
+            g.suggested_question_steps = runtime_steps
+        assert g.get("suggested_question_steps") is runtime_steps
+        runtime_steps.append("model")
+        return resolve_model(tenant_id=tenant_id, model_type=model_type)
+
+    def tokens(prompt_messages: Sequence[PromptMessage]) -> int:
+        assert g.get("suggested_question_steps") is runtime_steps
+        runtime_steps.append("tokens")
+        return count_tokens(prompt_messages)
+
+    def invoke(
+        *, prompt_messages: list[PromptMessage], model_parameters: Mapping[str, object], stop: list[str], stream: bool
+    ) -> LLMResult:
+        assert g.get("suggested_question_steps") is runtime_steps
+        runtime_steps.append("invoke")
+        if failure_stage == "provider_sql":
+            # A real failed flush poisons this scoped session. LLMGenerator
+            # catches the error, so tracing must receive a fresh session.
+            session = db.session()
+            invocation_sessions.append(session)
+            session.add(
+                App(id=harness.target.id, tenant_id=harness.target.tenant_id, name="Duplicate", mode=AppMode.CHAT)
+            )
+            try:
+                session.flush()
+            finally:
+                assert not session.is_active
+        return invoke_llm(prompt_messages=prompt_messages, model_parameters=model_parameters, stop=stop, stream=stream)
+
+    def trace(task: TraceTask) -> None:
+        assert g.get("suggested_question_steps") is runtime_steps
+        runtime_steps.append("trace")
+        session = db.session()
+        trace_sessions.append(session)
+        app = session.get(App, harness.target.id)
+        assert app is not None
+        assert app.name == "Shared"
+        if failure_stage == "trace":
+            raise RuntimeError("Trace backend unavailable")
+        harness.provider.traces.append(task)
+
+    monkeypatch.setattr(harness.provider, "_resolve_model", resolve)
+    monkeypatch.setattr(harness.provider, "get_llm_num_tokens", tokens)
+    monkeypatch.setattr(harness.provider, "invoke_llm", invoke)
+    monkeypatch.setattr(harness.provider, "add_trace_task", trace)
+    with harness.flask_app.app_context():
+        caller_marker = object()
+        g.caller_marker = caller_marker
+        caller_session = db.session()
+        caller_app = caller_session.get(App, harness.target.id)
+        assert caller_app is not None
+        caller_app.name = "Pending caller edit"
+        harness.legacy_sessions.clear()
+        if failure_stage == "trace":
+            with pytest.raises(RuntimeError, match="Trace backend unavailable"):
+                harness.get(actor)
+        else:
+            assert harness.get(actor) == ([] if failure_stage == "provider_sql" else ["What next?"])
+        assert g.caller_marker is caller_marker
+        assert g.get("suggested_question_steps") is None
+        assert db.session() is caller_session
+        assert caller_session.in_transaction()
+        assert caller_app in caller_session.dirty
+        assert caller_app.name == "Pending caller edit"
+        assert all(session is not caller_session for session in harness.legacy_sessions)
+        harness.assert_closed()
+
+    assert runtime_steps == ["model", "tokens", "model", "invoke", "trace"]
+    assert len(trace_sessions) == 1
+    assert not trace_sessions[0].in_transaction()
+    if failure_stage == "provider_sql":
+        assert len(invocation_sessions) == 1
+        assert trace_sessions[0] is not invocation_sessions[0]
+    with harness.factory() as session:
+        persisted_app = session.get(App, harness.target.id)
+        assert persisted_app is not None
+        assert persisted_app.name == "Shared"

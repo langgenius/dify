@@ -1,7 +1,7 @@
 'use client'
 
 import type { ResourceUserAccessPolicies } from '@dify/contracts/api/console/workspaces/types.gen'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -15,7 +15,9 @@ import {
 } from '@langgenius/dify-ui/select'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { getAvatarInitial } from '@/utils/avatar'
 import { ACCESS_RULE_TABLE_GRID, DEFAULT_ACCESS_POLICY_ID } from './constants'
+import { isWorkspaceAdminRole } from './is-workspace-admin-role'
 
 type PolicyOption = {
   id: string
@@ -63,6 +65,7 @@ function UserAccessPolicyRow({
   const defaultAccessPolicyName = t(($) => $['accessRule.defaultPermission'], { ns: 'permission' })
   const accountEmail = setting.account.email || accountName
   const isWorkspaceOwner = setting.roles?.some((role) => role.role_tag === 'owner')
+  const isWorkspaceAdmin = setting.roles?.some(isWorkspaceAdminRole)
 
   const handlePolicyChange = useCallback(
     (nextPolicyId: string | null) => {
@@ -88,12 +91,12 @@ function UserAccessPolicyRow({
           disabled={isSelectionDisabled}
           onCheckedChange={(checked) => onSelectedChange?.(accountId, checked)}
         />
-        <Avatar
-          avatar={setting.account.avatar ?? null}
-          name={accountName}
-          size="md"
-          className="bg-components-icon-bg-blue-solid"
-        />
+        <Avatar size="md" aria-hidden="true">
+          <AvatarFallback className="bg-components-icon-bg-blue-solid">
+            {getAvatarInitial(accountName)}
+          </AvatarFallback>
+          <AvatarImage src={setting.account.avatar || undefined} alt="" />
+        </Avatar>
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-1.5">
             <span className="truncate system-md-medium text-text-secondary">{accountName}</span>
@@ -105,6 +108,11 @@ function UserAccessPolicyRow({
             {isWorkspaceOwner && (
               <span className="max-w-32 shrink-0 truncate rounded-[5px] border border-text-accent-secondary px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary">
                 {t(($) => $['accessRule.workspaceOwner'], { ns: 'permission' })}
+              </span>
+            )}
+            {isWorkspaceAdmin && (
+              <span className="max-w-32 shrink-0 truncate rounded-[5px] border border-text-accent-secondary px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary">
+                {t(($) => $['accessRule.workspaceAdmin'], { ns: 'permission' })}
               </span>
             )}
           </div>

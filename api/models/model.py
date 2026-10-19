@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import json
 import re
 import uuid
@@ -807,10 +808,6 @@ class AppModelConfig(TypeBase):
         return self._get_enabled_config(self.retriever_resource, default_enabled=True)
 
     @property
-    def annotation_reply_dict(self) -> AnnotationReplyConfig:
-        return load_annotation_reply_config(db.session(), self.app_id)
-
-    @property
     def more_like_this_dict(self) -> EnabledConfig:
         return self._get_enabled_config(self.more_like_this)
 
@@ -879,7 +876,7 @@ class AppModelConfig(TypeBase):
             },
         )
 
-    def to_dict(self, *, annotation_reply: AnnotationReplyConfig | None = None) -> AppModelConfigDict:
+    def to_dict(self, *, annotation_reply: AnnotationReplyConfig) -> AppModelConfigDict:
         return {
             "opening_statement": self.opening_statement,
             "suggested_questions": self.suggested_questions_list,
@@ -887,7 +884,7 @@ class AppModelConfig(TypeBase):
             "speech_to_text": self.speech_to_text_dict,
             "text_to_speech": self.text_to_speech_dict,
             "retriever_resource": self.retriever_resource_dict,
-            "annotation_reply": annotation_reply if annotation_reply is not None else self.annotation_reply_dict,
+            "annotation_reply": annotation_reply,
             "more_like_this": self.more_like_this_dict,
             "sensitive_word_avoidance": self.sensitive_word_avoidance_dict,
             "external_data_tools": self.external_data_tools_list,
@@ -1372,11 +1369,9 @@ class Conversation(Base):
             if not workflow_run:
                 continue
 
-            try:
+            # Handle invalid status values gracefully
+            with contextlib.suppress(ValueError, KeyError):
                 status_counts[WorkflowExecutionStatus(workflow_run.status)] += 1
-            except (ValueError, KeyError):
-                # Handle invalid status values gracefully
-                pass
 
         return {
             "success": status_counts[WorkflowExecutionStatus.SUCCEEDED],
@@ -1758,7 +1753,7 @@ class Message(Base):
             list[MessageFileInfo],
             [
                 {"belongs_to": message_file.belongs_to, "upload_file_id": message_file.upload_file_id, **file.to_dict()}
-                for (file, message_file) in zip(files, message_files)
+                for (file, message_file) in zip(files, message_files, strict=False)
             ],
         )
 

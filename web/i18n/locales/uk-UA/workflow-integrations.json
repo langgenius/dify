@@ -45,7 +45,6 @@
   "nodes.triggerSchedule.nextExecutionTimes": "Наступні 5 разів виконання",
   "nodes.triggerSchedule.onMinute": "Що хвилина",
   "nodes.triggerSchedule.selectFrequency": "Виберіть частоту",
-  "nodes.triggerSchedule.selectTime": "Виберіть час",
   "nodes.triggerSchedule.title": "Розклад",
   "nodes.triggerSchedule.useCronExpression": "Використовувати cron-вираз",
   "nodes.triggerSchedule.useVisualPicker": "Використати візуальний вибір",

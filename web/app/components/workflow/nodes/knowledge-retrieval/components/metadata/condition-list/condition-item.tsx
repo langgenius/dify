@@ -6,8 +6,10 @@ import type {
   MetadataShape,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RiDeleteBinLine } from '@remixicon/react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useId, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import MetadataIcon from '../metadata-icon'
 import ConditionDate from './condition-date'
@@ -48,6 +50,8 @@ const ConditionItem = ({
   availableCommonStringVars = [],
   availableCommonNumberVars = [],
 }: ConditionItemProps) => {
+  const metadataLabelId = useId()
+  const { t } = useTranslation(['common'])
   const [isHovered, setIsHovered] = useState(false)
 
   const canChooseOperator = useMemo(() => {
@@ -57,8 +61,8 @@ const ConditionItem = ({
   }, [disabled])
 
   const doRemoveCondition = useCallback(() => {
-    onRemoveCondition?.(condition.id)
-  }, [onRemoveCondition, condition.id])
+    if (!disabled) onRemoveCondition?.(condition.id)
+  }, [onRemoveCondition, condition.id, disabled])
 
   const currentMetadata = useMemo(() => {
     if (condition.metadata_id) {
@@ -76,6 +80,7 @@ const ConditionItem = ({
 
   const handleConditionOperatorChange = useCallback(
     (operator: ComparisonOperator) => {
+      if (disabled) return
       onUpdateCondition?.(condition.id, {
         ...condition,
         value: comparisonOperatorNotRequireValue(condition.comparison_operator)
@@ -84,14 +89,13 @@ const ConditionItem = ({
         comparison_operator: operator,
       })
     },
-    [onUpdateCondition, condition],
+    [onUpdateCondition, condition, disabled],
   )
 
   const valueAndValueMethod = useMemo(() => {
     if (
       (currentMetadata?.type === MetadataFilteringVariableType.string ||
-        currentMetadata?.type === MetadataFilteringVariableType.number ||
-        currentMetadata?.type === MetadataFilteringVariableType.select) &&
+        currentMetadata?.type === MetadataFilteringVariableType.number) &&
       typeof condition.value === 'string'
     ) {
       const regex = isCommonVariable ? COMMON_VARIABLE_REGEX : VARIABLE_REGEX
@@ -120,21 +124,27 @@ const ConditionItem = ({
 
   const handleValueMethodChange = useCallback(
     (v: string) => {
+      if (disabled) return
       setLocalValueMethod(v)
       onUpdateCondition?.(condition.id, { ...condition, value: undefined })
     },
-    [condition, onUpdateCondition],
+    [condition, onUpdateCondition, disabled],
   )
 
   const handleValueChange = useCallback(
     (v: any) => {
+      if (disabled) return
       onUpdateCondition?.(condition.id, { ...condition, value: v })
     },
-    [condition, onUpdateCondition],
+    [condition, onUpdateCondition, disabled],
   )
 
   return (
-    <div className={cn('mb-1 flex last-of-type:mb-0', className)}>
+    <fieldset
+      aria-labelledby={metadataLabelId}
+      disabled={disabled}
+      className={cn('mb-1 flex min-w-0 border-0 p-0 last-of-type:mb-0', className)}
+    >
       <div
         className={cn(
           'grow rounded-lg bg-components-input-bg-normal',
@@ -147,7 +157,10 @@ const ConditionItem = ({
               <div className="mr-0.5 p-px">
                 <MetadataIcon type={currentMetadata?.type} className="size-3" />
               </div>
-              <div className="mr-0.5 min-w-0 flex-1 truncate system-xs-medium text-text-secondary">
+              <div
+                id={metadataLabelId}
+                className="mr-0.5 min-w-0 flex-1 truncate system-xs-medium text-text-secondary"
+              >
                 {currentMetadata?.name}
               </div>
               <div className="system-xs-regular text-text-tertiary">{currentMetadata?.type}</div>
@@ -163,8 +176,7 @@ const ConditionItem = ({
         </div>
         <div className="border-t border-t-divider-subtle">
           {!comparisonOperatorNotRequireValue(condition.comparison_operator) &&
-            (currentMetadata?.type === MetadataFilteringVariableType.string ||
-              currentMetadata?.type === MetadataFilteringVariableType.select) && (
+            currentMetadata?.type === MetadataFilteringVariableType.string && (
               <ConditionString
                 valueMethod={localValueMethod}
                 onValueMethodChange={handleValueMethodChange}
@@ -196,19 +208,26 @@ const ConditionItem = ({
             )}
           {!comparisonOperatorNotRequireValue(condition.comparison_operator) &&
             currentMetadata?.type === MetadataFilteringVariableType.time && (
-              <ConditionDate value={condition.value as number} onChange={handleValueChange} />
+              <ConditionDate
+                disabled={disabled}
+                value={condition.value as number}
+                onChange={handleValueChange}
+              />
             )}
         </div>
       </div>
-      <div
-        className="mt-1 ml-1 flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
+      <IconButton
+        className="mt-1 ml-1 shrink-0"
+        aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
+        disabled={disabled}
+        tone="destructive"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onClick={doRemoveCondition}
       >
-        <RiDeleteBinLine className="size-4" />
-      </div>
-    </div>
+        <RiDeleteBinLine aria-hidden className="size-4" />
+      </IconButton>
+    </fieldset>
   )
 }
 

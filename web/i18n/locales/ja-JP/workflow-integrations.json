@@ -45,7 +45,6 @@
   "nodes.triggerSchedule.nextExecutionTimes": "次の5回の実行時刻",
   "nodes.triggerSchedule.onMinute": "分",
   "nodes.triggerSchedule.selectFrequency": "頻度を選択",
-  "nodes.triggerSchedule.selectTime": "時間を選択",
   "nodes.triggerSchedule.title": "スケジュール",
   "nodes.triggerSchedule.useCronExpression": "Cron 式を使用",
   "nodes.triggerSchedule.useVisualPicker": "ビジュアル設定を使用",

@@ -84,7 +84,7 @@ export function SnippetDetailTop({ expand = true, onToggle }: SnippetDetailTopPr
                 <button
                   type="button"
                   aria-label={t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
-                  className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                  className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
                 >
                   <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
                 </button>

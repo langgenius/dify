@@ -30,7 +30,7 @@ def _redis_broken_pipe_error() -> RedisConnectionError:
 
 class TestBaseAppQueueManager:
     def test_init_requires_user_id(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="user is required"):
             DummyQueueManager(task_id="t1", user_id="", invoke_from=InvokeFrom.SERVICE_API)
 
     def test_publish_error_records_event(self):

@@ -523,7 +523,7 @@ class TestWorkflowRunApi:
         config_overrides: Callable[..., None],
     ) -> None:
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-        workflow_module = sys.modules["controllers.service_api.app.workflow"]
+        sys.modules["controllers.service_api.app.workflow"]
 
         billing_get_info = Mock(return_value={"subscription": {"plan": CloudPlan.SANDBOX}})
         generate = Mock(return_value={"result": "ok"})
@@ -582,7 +582,7 @@ class TestWorkflowRunByIdApi:
         config_overrides: Callable[..., None],
     ) -> None:
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-        workflow_module = sys.modules["controllers.service_api.app.workflow"]
+        sys.modules["controllers.service_api.app.workflow"]
 
         billing_get_info = Mock(return_value={"subscription": {"plan": CloudPlan.SANDBOX}})
         generate = Mock()
@@ -669,7 +669,7 @@ class TestWorkflowRunByIdApi:
         config_overrides: Callable[..., None],
     ) -> None:
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-        workflow_module = sys.modules["controllers.service_api.app.workflow"]
+        sys.modules["controllers.service_api.app.workflow"]
         monkeypatch.setattr(
             AppGenerateService,
             "generate",
@@ -694,7 +694,7 @@ class TestWorkflowRunByIdApi:
         config_overrides: Callable[..., None],
     ) -> None:
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-        workflow_module = sys.modules["controllers.service_api.app.workflow"]
+        sys.modules["controllers.service_api.app.workflow"]
         monkeypatch.setattr(
             AppGenerateService,
             "generate",

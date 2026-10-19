@@ -36,6 +36,7 @@ const FileInAttachmentItem = ({
   const { id, name, type, progress, supportFileType, base64Url, url, isRemote } = file
   const ext = getFileExtension(name, type, isRemote)
   const isImageFile = supportFileType === SupportUploadFileTypes.image
+  const fileUrl = url || base64Url
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
   return (
     <>
@@ -46,8 +47,8 @@ const FileInAttachmentItem = ({
           canPreview && previewMode === PreviewMode.NewPage && 'cursor-pointer',
         )}
         onClick={() => {
-          if (canPreview && previewMode === PreviewMode.NewPage)
-            window.open(url || base64Url || '', '_blank')
+          if (canPreview && previewMode === PreviewMode.NewPage && fileUrl)
+            window.open(fileUrl, '_blank')
         }}
       >
         <div className="flex size-12 items-center justify-center">
@@ -79,7 +80,10 @@ const FileInAttachmentItem = ({
             <IconButton
               aria-label={`${t(($) => $['operation.retry'], { ns: 'common' })} ${name}`}
               className="mr-1"
-              onClick={() => onReUpload?.(id)}
+              onClick={(e) => {
+                e.stopPropagation()
+                onReUpload?.(id)
+              }}
             >
               <span
                 aria-hidden="true"
@@ -90,7 +94,10 @@ const FileInAttachmentItem = ({
           {showDeleteAction && (
             <IconButton
               aria-label={`${t(($) => $['operation.remove'], { ns: 'common' })} ${name}`}
-              onClick={() => onRemove?.(id)}
+              onClick={(e) => {
+                e.stopPropagation()
+                onRemove?.(id)
+              }}
             >
               <RiDeleteBinLine aria-hidden="true" className="size-4" />
             </IconButton>
@@ -99,7 +106,11 @@ const FileInAttachmentItem = ({
             <IconButton
               aria-label={`${t(($) => $['operation.view'], { ns: 'common' })} ${name}`}
               className="mr-1"
-              onClick={() => setImagePreviewUrl(url || '')}
+              disabled={!fileUrl}
+              onClick={(e) => {
+                e.stopPropagation()
+                setImagePreviewUrl(fileUrl || '')
+              }}
             >
               <RiEyeLine aria-hidden="true" className="size-4" />
             </IconButton>
@@ -107,9 +118,10 @@ const FileInAttachmentItem = ({
           {showDownloadAction && (
             <IconButton
               aria-label={`${t(($) => $['operation.download'], { ns: 'common' })} ${name}`}
+              disabled={!fileUrl}
               onClick={(e) => {
                 e.stopPropagation()
-                downloadUrl({ url: url || base64Url || '', fileName: name, target: '_blank' })
+                if (fileUrl) downloadUrl({ url: fileUrl, fileName: name, target: '_blank' })
               }}
             >
               <RiDownloadLine aria-hidden="true" className="size-4" />

@@ -5,8 +5,7 @@ import hashlib
 import hmac
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
-from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -120,7 +119,7 @@ def test_resolve_file_url_returns_remote_url() -> None:
 
 def test_resolve_file_url_requires_file_reference() -> None:
     runtime = _build_runtime()
-    file = SimpleNamespace(transfer_method=FileTransferMethod.LOCAL_FILE, reference=None)
+    file = File.model_construct(transfer_method=FileTransferMethod.LOCAL_FILE, reference=None)
 
     with pytest.raises(ValueError, match="Missing file reference"):
         runtime.resolve_file_url(file=file)
@@ -142,7 +141,13 @@ def test_resolve_file_url_uses_tool_signatures_for_tool_and_datasource_files(
     monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
 ) -> None:
-    sign_tool_file_uri = MagicMock(return_value="/files/signed")
+    signed_file_ids: list[str] = []
+
+    def sign_tool_file_uri(*, tool_file_id: str, extension: str) -> str:
+        signed_file_ids.append(tool_file_id)
+        assert extension == ".png"
+        return "/files/signed"
+
     monkeypatch.setattr(file_runtime, "sign_tool_file_uri", sign_tool_file_uri)
     config_overrides(FILES_URL="https://files.example.com")
     runtime = _build_runtime()
@@ -160,11 +165,13 @@ def test_resolve_file_url_uses_tool_signatures_for_tool_and_datasource_files(
 
     assert runtime.resolve_file_url(file=tool_file) == "https://files.example.com/files/signed"
     assert runtime.resolve_file_url(file=datasource_file) == "https://files.example.com/files/signed"
-    assert sign_tool_file_uri.call_count == 2
+    assert signed_file_ids == ["tool-file-id", "datasource-file-id"]
 
 
 def test_resolve_file_uri_keeps_dify_owned_file_origin_free(monkeypatch: pytest.MonkeyPatch) -> None:
-    sign_tool_file_uri = MagicMock(return_value="/files/tools/tool-file-id.png?sign=1")
+    def sign_tool_file_uri(**_kwargs: str) -> str:
+        return "/files/tools/tool-file-id.png?sign=1"
+
     monkeypatch.setattr(file_runtime, "sign_tool_file_uri", sign_tool_file_uri)
     runtime = _build_runtime()
     file = _build_file(
@@ -291,35 +298,31 @@ def test_resolve_storage_key_ignores_encoded_reference_when_unscoped(file_sessio
 
 
 def test_resolve_storage_key_uses_canonical_record_when_scope_is_bound(file_session: Session) -> None:
-    upload_file = _persist_upload_file(file_session)
-    controller = MagicMock()
-    controller.current_scope.return_value = FileAccessScope(
+    _persist_upload_file(file_session)
+    scope = FileAccessScope(
         tenant_id="tenant-id",
         user_id="end-user-id",
         user_from=UserFrom.END_USER,
         invoke_from=InvokeFrom.WEB_APP,
     )
-    controller.get_upload_file.return_value = upload_file
+    controller = DatabaseFileAccessController(scope_getter=lambda: scope)
     runtime = DifyWorkflowFileRuntime(file_access_controller=controller)
     file = _build_file(
         transfer_method=FileTransferMethod.LOCAL_FILE,
         reference=build_file_reference(record_id="upload-file-id", storage_key="tampered-storage-key"),
     )
     assert runtime._resolve_storage_key(file=file) == "canonical-storage-key"
-    controller.get_upload_file.assert_called_once()
-    assert isinstance(controller.get_upload_file.call_args.kwargs["session"], Session)
-    assert controller.get_upload_file.call_args.kwargs["file_id"] == "upload-file-id"
 
 
 def test_resolve_upload_file_url_rejects_unauthorized_scoped_access(file_session: Session) -> None:
-    controller = MagicMock()
-    controller.current_scope.return_value = FileAccessScope(
+    _persist_upload_file(file_session, tenant_id="other-tenant", created_by="other-user")
+    scope = FileAccessScope(
         tenant_id="tenant-id",
         user_id="end-user-id",
         user_from=UserFrom.END_USER,
         invoke_from=InvokeFrom.WEB_APP,
     )
-    controller.get_upload_file.return_value = None
+    controller = DatabaseFileAccessController(scope_getter=lambda: scope)
     runtime = DifyWorkflowFileRuntime(file_access_controller=controller)
     with pytest.raises(ValueError, match="Upload file upload-file-id not found"):
         runtime.resolve_upload_file_url(upload_file_id="upload-file-id")
@@ -398,10 +401,14 @@ def test_runtime_helper_wrappers_delegate_to_config_and_io(
 
 
 def test_bind_dify_workflow_file_runtime_registers_runtime(monkeypatch: pytest.MonkeyPatch) -> None:
-    set_runtime = MagicMock()
+    runtimes: list[DifyWorkflowFileRuntime] = []
+
+    def set_runtime(runtime: DifyWorkflowFileRuntime) -> None:
+        runtimes.append(runtime)
+
     monkeypatch.setattr(file_runtime, "set_workflow_file_runtime", set_runtime)
 
     bind_dify_workflow_file_runtime()
 
-    set_runtime.assert_called_once()
-    assert isinstance(set_runtime.call_args.args[0], DifyWorkflowFileRuntime)
+    assert len(runtimes) == 1
+    assert isinstance(runtimes[0], DifyWorkflowFileRuntime)

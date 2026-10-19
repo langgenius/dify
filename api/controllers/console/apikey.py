@@ -4,16 +4,18 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from uuid import UUID
 
-import flask_restx
 from flask_restx import Resource
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from controllers.common.rbac import AgentBehindApp, DatasetId, PlainApp, RBACCheck
 from controllers.common.schema import register_response_schema_models
 from controllers.console import console_ns
+from controllers.console.error import ApiKeyLimitExceededHTTPError
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import RBACPermission
 from extensions.ext_application_services import application_services
 from fields.api_key_fields import ApiKeyItem, ApiKeyList, build_masked_api_key_list
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
@@ -24,7 +26,7 @@ from services.auth.api_key_contracts import (
     ApiKeyNotFoundError,
     ApiKeyResourceNotFoundError,
 )
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
 from services.knowledge.api_key_service import UnknownDatasetIdsError
 
 API_KEY_EDIT_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR})
@@ -35,17 +37,33 @@ register_response_schema_models(console_ns, ApiKeyItem, ApiKeyList)
 
 @contextmanager
 def api_key_errors() -> Generator[None]:
-    """Translate application failures without changing the Console error contract."""
+    """Translate the errors every API key operation can raise."""
     try:
         yield
     except (ApiKeyResourceNotFoundError, ApiKeyNotFoundError) as error:
-        flask_restx.abort(404, message=str(error))
-    except ApiKeyLimitExceededError as error:
-        flask_restx.abort(400, message=str(error), custom="max_keys_exceeded")
+        raise NotFound(str(error)) from error
     except UnknownDatasetIdsError as error:
-        flask_restx.abort(400, message=str(error))
+        raise BadRequest(str(error)) from error
     except NoPermissionError as error:
-        flask_restx.abort(403, message=str(error))
+        raise Forbidden(str(error)) from error
+
+
+@contextmanager
+def api_key_create_errors() -> Generator[None]:
+    """Creating a key can also hit the per-resource key limit."""
+    try:
+        with api_key_errors():
+            yield
+    except ApiKeyLimitExceededError as error:
+        raise ApiKeyLimitExceededHTTPError(str(error)) from error
+
+
+@contextmanager
+def app_api_key_create_errors() -> Generator[None]:
+    """Creating an app key also requires an agent app to have a published snapshot."""
+    try:
+        with api_key_create_errors():
+            yield
     except AppApiKeyNotReadyError as error:
         raise AgentAccessNotReadyError from error
 
@@ -68,6 +86,7 @@ class AppApiKeyListResource(Resource):
             keys = application_services().app_api_keys.list_keys(request_context, str(resource_id))
         return dump_response(ApiKeyList, {"data": keys})
 
+    @error_responses(AgentAccessNotReadyError, ApiKeyLimitExceededHTTPError)
     @console_ns.doc("create_app_api_key")
     @console_ns.doc(description="Create a new API key for an app")
     @console_ns.doc(params={"resource_id": "App ID"})
@@ -81,7 +100,7 @@ class AppApiKeyListResource(Resource):
         ],
     )
     def post(self, request_context: RequestContext, resource_id: UUID) -> tuple[dict[str, object], int]:
-        with api_key_errors():
+        with app_api_key_create_errors():
             key = application_services().app_api_keys.create_key(request_context, str(resource_id))
         return dump_response(ApiKeyItem, key), 201
 
@@ -120,6 +139,7 @@ class DatasetApiKeyListResource(Resource):
             keys = application_services().dataset_api_keys.list_keys(request_context, str(resource_id))
         return dump_response(ApiKeyList, build_masked_api_key_list(keys))
 
+    @error_responses(ApiKeyLimitExceededHTTPError)
     @console_ns.doc("create_dataset_api_key")
     @console_ns.doc(description="Create a new API key for a dataset")
     @console_ns.doc(params={"resource_id": "Dataset ID"})
@@ -130,7 +150,7 @@ class DatasetApiKeyListResource(Resource):
         rbac_checks=[RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, DatasetId("resource_id"))],
     )
     def post(self, request_context: RequestContext, resource_id: UUID) -> tuple[dict[str, object], int]:
-        with api_key_errors():
+        with api_key_create_errors():
             key = application_services().dataset_api_keys.create_key(request_context, str(resource_id))
         return dump_response(ApiKeyItem, key), 201
 

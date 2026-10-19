@@ -1,6 +1,6 @@
 from collections.abc import Mapping
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock, patch, sentinel
+from unittest.mock import MagicMock, patch, sentinel
 
 import pytest
 from sqlalchemy import Engine
@@ -28,6 +28,7 @@ from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeDat
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment, StringSegment
 from models.base import TypeBase
 from models.model import AppMode, Conversation, ConversationFromSource
+from tests.unit_tests.core.model_fixtures import make_model_instance
 
 
 @pytest.fixture
@@ -563,7 +564,7 @@ class TestDifyNodeFactoryCreateNode:
                 },
             }
         )
-        wrapped_model_instance = MagicMock(spec=DifyPreparedLLM)
+        wrapped_model_instance = DifyPreparedLLM(make_model_instance(provider="openai", model="gpt-4"))
         memory = sentinel.memory
         factory._build_model_instance_for_llm_node = MagicMock(return_value=sentinel.model_instance)
         factory._build_memory_for_llm_node = MagicMock(return_value=memory)
@@ -592,7 +593,7 @@ class TestDifyNodeFactoryCreateNode:
             request_metadata={"app_id": "app-id"},
         )
         assert kwargs["model_instance"] is wrapped_model_instance
-        assert kwargs["polling_finalizer"] is wrapped_model_instance.finalize_llm_polling
+        assert kwargs["polling_finalizer"] == wrapped_model_instance.finalize_llm_polling
 
     def test_resolve_llm_model_reference_uses_shared_model_and_parameters(self, factory):
         node_data = LLMNodeData.model_validate(
@@ -721,7 +722,7 @@ class TestDifyNodeFactoryCreateNode:
         plugin_runtime = PluginModelRuntime(
             tenant_id="tenant-id",
             user_id="user-id",
-            client=Mock(spec=PluginModelClient),
+            client=PluginModelClient(),
             plugin_service=PluginService,
         )
         model_instance = _ModelInstanceStub(
@@ -749,7 +750,7 @@ class TestDifyNodeFactoryCreateNode:
         plugin_runtime = PluginModelRuntime(
             tenant_id="tenant-id",
             user_id="user-id",
-            client=Mock(spec=PluginModelClient),
+            client=PluginModelClient(),
             plugin_service=PluginService,
         )
         model_instance = _ModelInstanceStub(

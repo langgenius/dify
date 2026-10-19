@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from controllers.console.app import app_import as controller
-from controllers.console.app.error import AppNotFoundError
+from controllers.console.app.error import AppNotFoundError, DraftWorkflowNotSync
 from extensions.ext_redis import redis_client
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -20,7 +20,8 @@ from services.app.console_gateway import EnterpriseConsoleAppAccess
 from services.app_dsl_service import AppDslService, PendingData
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.dsl_entities import Import, ImportStatus
-from services.errors.account import NoPermissionError
+from services.errors.app import DraftChangedError
+from services.errors.base import NoPermissionError
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.system_feature_service import SystemFeatureService
 
@@ -81,7 +82,7 @@ def test_import_transaction_and_response_contract(
     config_overrides(RBAC_ENABLED=True, DEPLOYMENT_EDITION="COMMUNITY")
     monkeypatch.setattr("services.app.console_gateway.rbac_service.RBACService.CheckAccess.check", lambda *a, **k: True)
     app_id = str(uuid4())
-    result = Import(id="import-1", status=status, app_id=app_id)
+    result = Import(id="import-1", status=status, app_id=app_id, app_created=not overwrite)
     pending = PendingData(
         tenant_id=import_context.active_workspace_id,
         account_id=import_context.account_id,
@@ -216,3 +217,23 @@ def test_permission_errors_are_mapped_at_http_boundary(
             api = controller.AppImportApi()
             with pytest.raises(Forbidden, match="Import denied"):
                 unwrap(api.post)(api, context)
+
+
+def test_confirming_an_import_whose_draft_changed_is_a_conflict(app_query_services, app: Flask, monkeypatch) -> None:
+    """A pending openapi import carries a draft_hash; a console confirm after the draft changed must not 500."""
+
+    def changed(*_args, **_kwargs):
+        raise DraftChangedError()
+
+    monkeypatch.setattr(app_query_services.apps.console, "confirm_import", changed)
+    context = RequestContext("request", None, "actor", "workspace")
+    with app.test_request_context(method="POST"):
+        api = controller.AppImportConfirmApi()
+        with pytest.raises(DraftWorkflowNotSync) as exc_info:
+            unwrap(api.post)(api, context, import_id="import-1")
+
+    assert exc_info.value.code == 409
+
+
+def test_import_response_schema_hides_creation_marker() -> None:
+    assert "app_created" not in controller.console_ns.models[Import.__name__].__schema__["properties"]

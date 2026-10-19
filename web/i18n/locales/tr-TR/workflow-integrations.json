@@ -45,7 +45,6 @@
   "nodes.triggerSchedule.nextExecutionTimes": "Sonraki 5 yürütme zamanı",
   "nodes.triggerSchedule.onMinute": "On Dakika",
   "nodes.triggerSchedule.selectFrequency": "Frekansı seç",
-  "nodes.triggerSchedule.selectTime": "Zaman seç",
   "nodes.triggerSchedule.title": "Program",
   "nodes.triggerSchedule.useCronExpression": "Cron ifadesi kullan",
   "nodes.triggerSchedule.useVisualPicker": "Görsel seçici kullan",

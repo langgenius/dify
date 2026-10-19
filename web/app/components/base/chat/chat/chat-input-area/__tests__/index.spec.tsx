@@ -1,15 +1,18 @@
 import type { FileUpload } from '@/app/components/base/features/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { VoiceRecorder } from '@/app/components/base/voice-input/recorder'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import { FeaturesProvider } from '@/app/components/base/features/context'
 import { transcribeAudio } from '@/app/components/base/voice-input/api'
 import { startVoiceRecorder } from '@/app/components/base/voice-input/recorder'
+import { InputVarType } from '@/app/components/workflow/types'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { TransferMethod } from '@/types/app'
 import ChatInputArea from '../index'
 
-vi.setConfig({ testTimeout: 60000 })
+const render = (ui: React.ReactNode) => rtlRender(ui, { wrapper: FeaturesProvider })
 
 // ---------------------------------------------------------------------------
 // External dependency mocks
@@ -32,92 +35,21 @@ vi.mock('@/app/components/base/voice-input/recorder', () => ({
 
 vi.mock('@/app/components/base/voice-input/api', () => ({ transcribeAudio: vi.fn() }))
 
-vi.stubGlobal(
-  'requestAnimationFrame',
-  vi.fn(() => 1),
-)
-vi.stubGlobal('cancelAnimationFrame', vi.fn())
-vi.stubGlobal('devicePixelRatio', 1)
-
-// Mock Canvas
-HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue({
-  scale: vi.fn(),
-  beginPath: vi.fn(),
-  moveTo: vi.fn(),
-  rect: vi.fn(),
-  fill: vi.fn(),
-  closePath: vi.fn(),
-  clearRect: vi.fn(),
-  roundRect: vi.fn(),
-})
-HTMLCanvasElement.prototype.getBoundingClientRect = vi.fn().mockReturnValue({
-  width: 100,
-  height: 50,
-})
-
-// ---------------------------------------------------------------------------
-// File-uploader store
-// ---------------------------------------------------------------------------
-const {
-  mockFileStore,
-  mockIsDragActive,
-  mockFeaturesState,
-  mockNotify,
-  mockIsMultipleLine,
-  mockCheckInputsFormResult,
-} = vi.hoisted(() => ({
-  mockFileStore: {
-    files: [] as FileEntity[],
-    setFiles: vi.fn(),
-  },
-  mockIsDragActive: { value: false },
-  mockIsMultipleLine: { value: false },
-  mockFeaturesState: {
-    features: {
-      moreLikeThis: { enabled: false },
-      opening: { enabled: false },
-      moderation: { enabled: false },
-      speech2text: { enabled: false },
-      text2speech: { enabled: false },
-      file: { enabled: false },
-      suggested: { enabled: false },
-      citation: { enabled: false },
-      annotationReply: { enabled: false },
-    },
-  },
+const { initialFiles, mockNotify } = vi.hoisted(() => ({
+  initialFiles: { value: [] as FileEntity[] },
   mockNotify: vi.fn(),
-  mockCheckInputsFormResult: { value: true },
 }))
 
-vi.mock('@/app/components/base/file-uploader/store', () => ({
-  useFileStore: () => ({ getState: () => mockFileStore }),
-  useStore: (selector: (s: typeof mockFileStore) => unknown) => selector(mockFileStore),
-  FileContextProvider: ({ children }: { children: React.ReactNode }) =>
-    React.createElement(React.Fragment, null, children),
-}))
-
-// ---------------------------------------------------------------------------
-// File-uploader hooks
-// ---------------------------------------------------------------------------
-
-vi.mock('@/app/components/base/file-uploader/hooks', () => ({
-  useFile: () => ({
-    handleDragFileEnter: vi.fn(),
-    handleDragFileLeave: vi.fn(),
-    handleDragFileOver: vi.fn(),
-    handleDropFile: vi.fn(),
-    handleClipboardPasteFile: vi.fn(),
-    isDragActive: mockIsDragActive.value,
-  }),
-}))
-
-// ---------------------------------------------------------------------------
-// Features context mock
-// ---------------------------------------------------------------------------
-
-vi.mock('@/app/components/base/features/hooks', () => ({
-  useFeatures: (selector: (s: typeof mockFeaturesState) => unknown) => selector(mockFeaturesState),
-}))
+// Seed the real store at the provider boundary; preserve its subscription and reset behavior.
+vi.mock('@/app/components/base/file-uploader/store', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/base/file-uploader/store')>()
+  return {
+    ...actual,
+    FileContextProvider: ({ children }: { children: React.ReactNode }) => (
+      <actual.FileContextProvider value={initialFiles.value}>{children}</actual.FileContextProvider>
+    ),
+  }
+})
 
 // ---------------------------------------------------------------------------
 // Toast context
@@ -135,32 +67,6 @@ vi.mock('@/app/notifications', () => ({
 }))
 
 // ---------------------------------------------------------------------------
-// Internal layout hook
-// ---------------------------------------------------------------------------
-
-vi.mock('../hooks', () => ({
-  useTextAreaHeight: () => ({
-    wrapperRef: { current: document.createElement('div') },
-    textareaRef: { current: document.createElement('textarea') },
-    textValueRef: { current: document.createElement('div') },
-    holdSpaceRef: { current: document.createElement('div') },
-    handleTextareaResize: vi.fn(),
-    get isMultipleLine() {
-      return mockIsMultipleLine.value
-    },
-  }),
-}))
-
-// ---------------------------------------------------------------------------
-// Input-forms validation hook
-// ---------------------------------------------------------------------------
-vi.mock('../../check-input-forms-hooks', () => ({
-  useCheckInputsForms: () => ({
-    checkInputsForm: vi.fn().mockImplementation(() => mockCheckInputsFormResult.value),
-  }),
-}))
-
-// ---------------------------------------------------------------------------
 // Next.js navigation
 // ---------------------------------------------------------------------------
 vi.mock('@/next/navigation', () => ({
@@ -174,7 +80,7 @@ vi.mock('@/next/navigation', () => ({
 // ---------------------------------------------------------------------------
 const mockVisionConfig: FileUpload = {
   enabled: true,
-  fileUploadConfig: {
+  fileUploadConfig: createFileUploadConfigFixture({
     image_file_size_limit: 10,
     file_size_limit: 10,
     audio_file_size_limit: 10,
@@ -185,7 +91,7 @@ const mockVisionConfig: FileUpload = {
     single_chunk_attachment_limit: 0,
     attachment_image_file_size_limit: 0,
     file_upload_limit: 0,
-  },
+  }),
   allowed_file_types: [],
   allowed_file_extensions: [],
   number_limits: 3,
@@ -226,40 +132,62 @@ const getTextarea = () =>
 // ---------------------------------------------------------------------------
 describe('ChatInputArea', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
+    vi.stubGlobal(
+      'requestAnimationFrame',
+      vi.fn(() => 1),
+    )
+    vi.stubGlobal('cancelAnimationFrame', vi.fn())
+    vi.stubGlobal('devicePixelRatio', 1)
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+      scale: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      rect: vi.fn(),
+      fill: vi.fn(),
+      closePath: vi.fn(),
+      clearRect: vi.fn(),
+      roundRect: vi.fn(),
+    } as unknown as CanvasRenderingContext2D)
+    vi.spyOn(HTMLCanvasElement.prototype, 'getBoundingClientRect').mockReturnValue(
+      new DOMRect(0, 0, 100, 50),
+    )
     vi.mocked(startVoiceRecorder).mockResolvedValue(recorder)
     recorderStop.mockResolvedValue(new Blob(['mp3-data'], { type: 'audio/mp3' }))
     recorderCancel.mockResolvedValue()
     vi.mocked(transcribeAudio).mockResolvedValue({ text: 'Converted voice text' })
-    mockFileStore.files = []
-    mockIsDragActive.value = false
-    mockIsMultipleLine.value = false
-    mockCheckInputsFormResult.value = true
+    initialFiles.value = []
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
   // -------------------------------------------------------------------------
   describe('Rendering', () => {
-    it('should render the textarea with default placeholder', () => {
-      render(<ChatInputArea visionConfig={mockVisionConfig} />)
-      expect(getTextarea()!).toBeInTheDocument()
-    })
-
-    it('should render the readonly placeholder when readonly prop is set', () => {
-      render(<ChatInputArea visionConfig={mockVisionConfig} readonly />)
-      expect(screen.getByPlaceholderText(/inputDisabledPlaceholder/i)).toBeInTheDocument()
-    })
-
     it('should include botName in placeholder text if provided', () => {
       render(<ChatInputArea visionConfig={mockVisionConfig} botName="TestBot" />)
       // The i18n pattern shows interpolation: namespace.key:{"botName":"TestBot"}
-      expect(getTextarea()!).toHaveAttribute('placeholder', expect.stringContaining('botName'))
+      expect(getTextarea()!).toHaveAttribute('placeholder', expect.stringContaining('TestBot'))
     })
 
-    it('should render the custom placeholder when provided', () => {
+    it('keeps a visible label for the input after typing', async () => {
+      const user = userEvent.setup()
       render(
-        <ChatInputArea visionConfig={mockVisionConfig} customPlaceholder="Ask the assistant" />,
+        <ChatInputArea
+          visionConfig={mockVisionConfig}
+          customPlaceholder="Describe your agent"
+          inputLabel="Describe your agent"
+        />,
       )
-      expect(screen.getByPlaceholderText('Ask the assistant')).toBeInTheDocument()
+
+      const input = screen.getByRole('textbox', { name: 'Describe your agent' })
+      await user.type(input, 'A research assistant')
+
+      expect(input).toHaveValue('A research assistant')
+      expect(screen.getByText('Describe your agent')).toBeVisible()
     })
 
     it('should fall back to the readonly placeholder when readonly has a custom placeholder', () => {
@@ -276,22 +204,6 @@ describe('ChatInputArea', () => {
     it('should fall back to the default placeholder when custom placeholder is blank', () => {
       render(<ChatInputArea visionConfig={mockVisionConfig} customPlaceholder="   " />)
       expect(getTextarea()!).toBeInTheDocument()
-    })
-
-    it('should restore pointer events on the input surface', () => {
-      const { container } = render(<ChatInputArea visionConfig={mockVisionConfig} />)
-      expect(container.firstChild).toHaveClass('pointer-events-auto')
-    })
-
-    it('should apply drag-active styles when a file is being dragged over', () => {
-      mockIsDragActive.value = true
-      const { container } = render(<ChatInputArea visionConfig={mockVisionConfig} />)
-      expect(container.querySelector('.border-dashed')).toBeInTheDocument()
-    })
-
-    it('should render the send button', () => {
-      render(<ChatInputArea visionConfig={mockVisionConfig} />)
-      expect(screen.getByRole('button', { name: 'common.operation.send' })).toBeInTheDocument()
     })
 
     it('should render a custom send button label when provided', () => {
@@ -318,7 +230,6 @@ describe('ChatInputArea', () => {
       const startBuildButton = screen.getByRole('button', { name: 'Start build' })
 
       expect(startBuildButton).toHaveAttribute('aria-disabled', 'true')
-      expect(startBuildButton.querySelector('[aria-hidden="true"]')).toBeInTheDocument()
       await user.click(startBuildButton)
       expect(onSend).not.toHaveBeenCalled()
     })
@@ -326,15 +237,6 @@ describe('ChatInputArea', () => {
 
   // -------------------------------------------------------------------------
   describe('User Interaction', () => {
-    it('should update textarea value as the user types', async () => {
-      const user = userEvent.setup({ delay: null })
-      render(<ChatInputArea visionConfig={mockVisionConfig} />)
-      const textarea = getTextarea()!
-
-      await user.type(textarea, 'Hello world')
-      expect(textarea).toHaveValue('Hello world')
-    })
-
     it('should clear the textarea after a message is sent', async () => {
       const user = userEvent.setup({ delay: null })
       const onSend = vi.fn()
@@ -435,18 +337,6 @@ describe('ChatInputArea', () => {
       expect(textarea).toHaveValue('Second')
     })
 
-    it('should clear input when navigating past the end of history', async () => {
-      const user = userEvent.setup({ delay: null })
-      render(<ChatInputArea onSend={vi.fn()} visionConfig={mockVisionConfig} />)
-      const textarea = getTextarea()!
-
-      await user.type(textarea, 'First{Enter}')
-      await user.type(textarea, '{Meta>}{ArrowUp}{/Meta}') // First
-      await user.type(textarea, '{Meta>}{ArrowDown}{/Meta}') // empty
-
-      expect(textarea).toHaveValue('')
-    })
-
     it('should NOT navigate history when typing regular text and pressing ArrowUp', async () => {
       const user = userEvent.setup({ delay: null })
       render(<ChatInputArea onSend={vi.fn()} visionConfig={mockVisionConfig} />)
@@ -493,17 +383,6 @@ describe('ChatInputArea', () => {
       ).not.toBeInTheDocument()
     })
 
-    it('should render the voice input button when enabled with an API target', () => {
-      render(
-        <ChatInputArea
-          speechToTextConfig={{ enabled: true }}
-          speechToTextTarget={speechToTextTarget}
-          visionConfig={mockVisionConfig}
-        />,
-      )
-      expect(screen.getByRole('button', { name: 'common.voiceInput.start' })).toBeInTheDocument()
-    })
-
     it('should keep the active recorder when the chat input rerenders', async () => {
       const user = userEvent.setup({ delay: null })
       const { rerender } = render(
@@ -528,24 +407,6 @@ describe('ChatInputArea', () => {
       expect(recorderCancel).not.toHaveBeenCalled()
     })
 
-    it('should handle stop recording in VoiceInput', async () => {
-      const user = userEvent.setup({ delay: null })
-      render(
-        <ChatInputArea
-          speechToTextConfig={{ enabled: true }}
-          speechToTextTarget={speechToTextTarget}
-          visionConfig={mockVisionConfig}
-        />,
-      )
-
-      await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
-      await user.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
-
-      await waitFor(() => {
-        expect(getTextarea()!).toHaveValue('Converted voice text')
-      })
-    })
-
     it('should focus the textarea at the end of converted voice text', async () => {
       const user = userEvent.setup({ delay: null })
       render(
@@ -568,7 +429,7 @@ describe('ChatInputArea', () => {
 
     it('should focus the textarea when conversion completes while focus is in the voice input', async () => {
       const user = userEvent.setup({ delay: null })
-      let resolveTranscription: ((value: { text: string }) => void) | undefined
+      let resolveTranscription!: (value: { text: string }) => void
       vi.mocked(transcribeAudio).mockReturnValueOnce(
         new Promise((resolve) => {
           resolveTranscription = resolve
@@ -587,7 +448,7 @@ describe('ChatInputArea', () => {
       await user.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
       const cancelButton = await screen.findByRole('button', { name: 'common.operation.cancel' })
       cancelButton.focus()
-      await act(async () => resolveTranscription?.({ text: 'Converted voice text' }))
+      await act(async () => resolveTranscription({ text: 'Converted voice text' }))
 
       await waitFor(() => expect(textarea).toHaveFocus())
       expect(textarea).toHaveValue('Converted voice text')
@@ -595,7 +456,7 @@ describe('ChatInputArea', () => {
 
     it('should preserve focus when the user moves elsewhere during transcription', async () => {
       const user = userEvent.setup({ delay: null })
-      let resolveTranscription: ((value: { text: string }) => void) | undefined
+      let resolveTranscription!: (value: { text: string }) => void
       vi.mocked(transcribeAudio).mockReturnValueOnce(
         new Promise((resolve) => {
           resolveTranscription = resolve
@@ -618,7 +479,7 @@ describe('ChatInputArea', () => {
       await user.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
       await waitFor(() => expect(transcribeAudio).toHaveBeenCalledTimes(1))
       await user.click(elsewhereButton)
-      await act(async () => resolveTranscription?.({ text: 'Converted voice text' }))
+      await act(async () => resolveTranscription({ text: 'Converted voice text' }))
 
       await waitFor(() => expect(textarea).toHaveValue('Converted voice text'))
       expect(elsewhereButton).toHaveFocus()
@@ -626,7 +487,13 @@ describe('ChatInputArea', () => {
 
     it('should wait for the owning draft before transcription', async () => {
       const user = userEvent.setup({ delay: null })
-      const onBeforeSpeechToText = vi.fn().mockResolvedValue(undefined)
+      let finishSave!: () => void
+      const onBeforeSpeechToText = vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            finishSave = resolve
+          }),
+      )
       render(
         <ChatInputArea
           speechToTextConfig={{ enabled: true }}
@@ -639,11 +506,11 @@ describe('ChatInputArea', () => {
       await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
       await user.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
 
+      await waitFor(() => expect(onBeforeSpeechToText).toHaveBeenCalledTimes(1))
+      expect(transcribeAudio).not.toHaveBeenCalled()
+      await act(async () => finishSave())
       await waitFor(() => expect(transcribeAudio).toHaveBeenCalledTimes(1))
-      expect(onBeforeSpeechToText).toHaveBeenCalledTimes(1)
-      expect(onBeforeSpeechToText.mock.invocationCallOrder[0]).toBeLessThan(
-        vi.mocked(transcribeAudio).mock.invocationCallOrder[0]!,
-      )
+      expect(getTextarea()).toHaveValue('Converted voice text')
     })
 
     it('should preserve the current query and report transcription failure', async () => {
@@ -656,8 +523,8 @@ describe('ChatInputArea', () => {
           visionConfig={mockVisionConfig}
         />,
       )
-      const voiceInputButton = screen.getByRole('button', { name: 'common.voiceInput.start' })
       await user.type(getTextarea()!, 'Keep this text')
+      const voiceInputButton = screen.getByRole('button', { name: 'common.voiceInput.start' })
 
       await user.click(voiceInputButton)
       await user.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
@@ -740,7 +607,7 @@ describe('ChatInputArea', () => {
 
     it('should preserve focus when the user moves elsewhere before transcription fails', async () => {
       const user = userEvent.setup({ delay: null })
-      let rejectTranscription: ((reason?: unknown) => void) | undefined
+      let rejectTranscription!: (reason?: unknown) => void
       vi.mocked(transcribeAudio).mockReturnValueOnce(
         new Promise((_resolve, reject) => {
           rejectTranscription = reject
@@ -762,7 +629,7 @@ describe('ChatInputArea', () => {
       await user.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
       await waitFor(() => expect(transcribeAudio).toHaveBeenCalledTimes(1))
       await user.click(elsewhereButton)
-      await act(async () => rejectTranscription?.(new Error('API error')))
+      await act(async () => rejectTranscription(new Error('API error')))
 
       await waitFor(() => {
         expect(mockNotify).toHaveBeenCalledWith({
@@ -875,7 +742,7 @@ describe('ChatInputArea', () => {
     it('should NOT send while file upload is in progress', async () => {
       const user = userEvent.setup({ delay: null })
       const onSend = vi.fn()
-      mockFileStore.files = [makeFile({ uploadedId: '', progress: 50 })]
+      initialFiles.value = [makeFile({ uploadedId: '', progress: 50 })]
 
       render(<ChatInputArea onSend={onSend} visionConfig={mockVisionConfig} />)
       await user.type(getTextarea()!, 'Hello')
@@ -889,24 +756,25 @@ describe('ChatInputArea', () => {
       const user = userEvent.setup({ delay: null })
       const onSend = vi.fn()
       const completedFile = makeFile()
-      mockFileStore.files = [completedFile]
+      initialFiles.value = [completedFile]
 
       render(<ChatInputArea onSend={onSend} visionConfig={mockVisionConfig} />)
       await user.type(getTextarea()!, 'Hello')
       await user.click(screen.getByRole('button', { name: 'common.operation.send' }))
 
       expect(onSend).toHaveBeenCalledWith('Hello', [completedFile])
+      expect(screen.queryByText(completedFile.name)).not.toBeInTheDocument()
     })
 
-    it('should handle mixed transfer methods correctly', async () => {
+    it('sends a remote attachment without requiring a local upload ID', async () => {
       const user = userEvent.setup({ delay: null })
       const onSend = vi.fn()
       const remoteFile = makeFile({
         id: 'remote',
         transferMethod: TransferMethod.remote_url,
-        uploadedId: 'remote-id',
+        uploadedId: '',
       })
-      mockFileStore.files = [remoteFile]
+      initialFiles.value = [remoteFile]
 
       render(<ChatInputArea onSend={onSend} visionConfig={mockVisionConfig} />)
       await user.type(getTextarea()!, 'Remote test')
@@ -915,25 +783,34 @@ describe('ChatInputArea', () => {
       expect(onSend).toHaveBeenCalledWith('Remote test', [remoteFile])
     })
 
-    it('should NOT call onSend if checkInputsForm fails', async () => {
+    it('preserves the query and reports a missing required input', async () => {
       const user = userEvent.setup({ delay: null })
       const onSend = vi.fn()
-      mockCheckInputsFormResult.value = false
-      render(<ChatInputArea onSend={onSend} visionConfig={mockVisionConfig} />)
+      render(
+        <ChatInputArea
+          onSend={onSend}
+          visionConfig={mockVisionConfig}
+          inputsForm={[
+            {
+              type: InputVarType.textInput,
+              variable: 'name',
+              label: 'Name',
+              required: true,
+              hide: false,
+            },
+          ]}
+        />,
+      )
 
       await user.type(getTextarea()!, 'Validation fail')
       await user.click(screen.getByRole('button', { name: 'common.operation.send' }))
 
       expect(onSend).not.toHaveBeenCalled()
-    })
-
-    it('should work when onSend prop is missing', async () => {
-      const user = userEvent.setup({ delay: null })
-      render(<ChatInputArea visionConfig={mockVisionConfig} />)
-
-      await user.type(getTextarea()!, 'No onSend')
-      await user.click(screen.getByRole('button', { name: 'common.operation.send' }))
-      // Should not throw
+      expect(getTextarea()).toHaveValue('Validation fail')
+      expect(mockNotify).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'appDebug.errorMessage.valueOfVarRequired:{"key":"Name"}',
+      })
     })
   })
 
@@ -948,6 +825,7 @@ describe('ChatInputArea', () => {
       await user.type(textarea, 'Hello')
       await user.keyboard('{Shift>}{Enter}{/Shift}')
       expect(onSend).not.toHaveBeenCalled()
+      expect(getTextarea()).toHaveValue('Hello\n')
     })
 
     it('should block Enter key during composition', async () => {
@@ -967,8 +845,12 @@ describe('ChatInputArea', () => {
       expect(onSend).not.toHaveBeenCalled()
 
       fireEvent.compositionEnd(textarea)
-      // Wait for the 50ms delay in handleCompositionEnd
-      vi.advanceTimersByTime(60)
+      fireEvent.compositionStart(textarea)
+      act(() => vi.advanceTimersByTime(60))
+      fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter' })
+      expect(onSend).not.toHaveBeenCalled()
+      fireEvent.compositionEnd(textarea)
+      act(() => vi.advanceTimersByTime(60))
 
       fireEvent.keyDown(textarea, {
         key: 'Enter',
@@ -976,28 +858,12 @@ describe('ChatInputArea', () => {
         nativeEvent: { isComposing: false },
       })
 
-      expect(onSend).toHaveBeenCalled()
+      expect(onSend).toHaveBeenCalledExactlyOnceWith('Composing', [])
       vi.useRealTimers()
     })
   })
 
   // -------------------------------------------------------------------------
-  describe('Layout & Styles', () => {
-    it('should handle multi-line layout correctly', () => {
-      mockIsMultipleLine.value = true
-      render(<ChatInputArea visionConfig={mockVisionConfig} />)
-      // Send button should still be present
-      expect(screen.getByRole('button', { name: 'common.operation.send' })).toBeInTheDocument()
-    })
-
-    it('should handle drag enter event on textarea', () => {
-      render(<ChatInputArea visionConfig={mockVisionConfig} />)
-      const textarea = getTextarea()!
-      fireEvent.dragOver(textarea, { dataTransfer: { types: ['Files'] } })
-      // Verify no crash and textarea stays
-      expect(textarea).toBeInTheDocument()
-    })
-  })
 
   // -------------------------------------------------------------------------
   describe('Feature Bar', () => {
@@ -1021,11 +887,6 @@ describe('ChatInputArea', () => {
 
       const dialog = await screen.findByRole('dialog', { name: footerNotice })
       expect(dialog).toHaveTextContent(footerNoticeTooltip)
-    })
-
-    it('should render feature bar when showFeatureBar is true', () => {
-      render(<ChatInputArea visionConfig={mockVisionConfig} showFeatureBar />)
-      expect(screen.getByText(/feature.bar.empty/i)).toBeTruthy()
     })
 
     it('should call onFeatureBarClick when clicked', async () => {

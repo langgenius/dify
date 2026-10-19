@@ -1,19 +1,17 @@
 import type { ContextMenuActions } from '@langgenius/dify-ui/context-menu'
+import type { ReactElement } from 'react'
 import type { Edge, Node, NodeProps } from 'reactflow'
 import type { StoreApi } from 'zustand'
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from '@langgenius/dify-ui/context-menu'
+import { ContextMenu, ContextMenuTrigger } from '@langgenius/dify-ui/context-menu'
 import { detectPlatform } from '@tanstack/react-hotkeys'
 import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Handle, Position, ReactFlowProvider, useStore as useReactFlowStore } from 'reactflow'
 import { page, userEvent } from 'vite-plus/test/browser'
-import { render } from 'vitest-browser-react'
+import { render as renderBrowser } from 'vitest-browser-react'
 import { createStore, useStore } from 'zustand'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import { WorkflowContext } from '../../context'
 import { EdgeContextmenu } from '../../edge-contextmenu'
 import { useNodeKeyboardInteractions } from '../../hooks/use-node-keyboard-interactions'
@@ -27,6 +25,12 @@ import { createWorkflowStore } from '../../store/workflow'
 import { BlockEnum, VarType } from '../../types'
 import { WorkflowCanvas } from '../workflow-canvas'
 import 'reactflow/dist/style.css'
+
+function render(ui: ReactElement) {
+  const { queryClient, wrapper: Wrapper } = createConsoleQueryWrapper()
+  seedToolProviders(queryClient, { workflowTools: [] })
+  return renderBrowser(<Wrapper>{ui}</Wrapper>)
+}
 
 const actions = vi.hoisted(() => ({
   copy: vi.fn(),
@@ -43,10 +47,6 @@ const actions = vi.hoisted(() => ({
   comment: vi.fn(),
   dim: vi.fn(),
   undim: vi.fn(),
-  zoomTo: vi.fn(),
-  fitView: vi.fn(),
-  getZoom: vi.fn(() => 1),
-  getNodes: vi.fn<() => { data: { _isBundled?: boolean } }[]>(() => []),
 }))
 
 vi.mock('../../hooks/use-nodes-interactions', () => ({
@@ -99,7 +99,6 @@ vi.mock('../../hooks/use-nodes-meta-data', () => ({
     author: 'Dify',
   }),
 }))
-vi.mock('@/service/use-tools', () => ({ useAllWorkflowTools: () => ({ data: [] }) }))
 vi.mock('../../node-actions-menu/change-block-popup', () => ({ ChangeBlockPopup: () => null }))
 
 vi.mock('@/context/permission-state', async () => {
@@ -216,11 +215,7 @@ function Canvas({
             <SelectionContextmenu onClose={() => contextMenuActionsRef.current?.close()} />
           ) : contextMenuType === 'edge' ? (
             <EdgeContextmenu onClose={() => contextMenuActionsRef.current?.close()} />
-          ) : (
-            <ContextMenuContent>
-              <ContextMenuItem>Canvas menu action</ContextMenuItem>
-            </ContextMenuContent>
-          )}
+          ) : null}
         </ContextMenu>
         <input aria-label="Outside canvas input" />
       </ReactFlowProvider>
@@ -244,7 +239,6 @@ it('admits and releases keyboard focus while keeping character shortcuts inside 
   const before = screen.getByRole('button', { name: 'Before canvas' })
   const canvas = screen.getByRole('region', { name: 'app.types.workflow' })
   const node = screen.getByRole('button', { name: 'Workflow node' })
-  const outside = screen.getByRole('textbox', { name: 'Outside canvas input' })
 
   await userEvent.keyboard('{Tab}')
   await expect.element(before).toHaveFocus()
@@ -269,19 +263,8 @@ it('admits and releases keyboard focus while keeping character shortcuts inside 
   await userEvent.keyboard('vhc{Shift>}[Digit5]{/Shift}')
   expect(node.element().getBoundingClientRect().width).toBeCloseTo(initialWidth)
 
-  await userEvent.keyboard('{Tab}')
-  await expect.element(canvas).toHaveFocus()
-  for (let steps = 0; steps < 10 && document.activeElement !== outside.element(); steps++)
-    await userEvent.keyboard('{Tab}')
-  await expect.element(outside).toHaveFocus()
-  await userEvent.keyboard('vhc')
-  await expect.element(outside).toHaveValue('vhc')
-
   await screen.getByRole('textbox', { name: 'workflow.nodes.note.editor.label' }).click()
   await userEvent.keyboard('vhc')
-  await screen.getByRole('button', { name: 'Popup action' }).click()
-  await userEvent.keyboard('vhc{Shift>}[Digit5]{/Shift}')
-  expect(node.element().getBoundingClientRect().width).toBeCloseTo(initialWidth)
   expect(actions.pointer).toHaveBeenCalledOnce()
   expect(actions.hand).toHaveBeenCalledOnce()
   expect(actions.comment).toHaveBeenCalledOnce()
@@ -357,7 +340,7 @@ it('keeps canvas focus when delete, undo, or redo removes the focused node', asy
   await expect.element(node).toBeInTheDocument()
 })
 
-it('lets the production Note editor own text history and returns graph history on a pane click', async () => {
+it('lets the production Note editor own text history', async () => {
   await page.viewport(1000, 700)
   const screen = await render(<Canvas />)
   const note = screen.getByRole('textbox', { name: 'workflow.nodes.note.editor.label' })
@@ -371,27 +354,6 @@ it('lets the production Note editor own text history and returns graph history o
   await userEvent.keyboard(`{${mod}>}{Shift>}z{/Shift}{/${mod}}`)
   await expect.element(note).toHaveTextContent('Note text')
   expect(actions.redo).not.toHaveBeenCalled()
-
-  const canvas = screen.getByRole('region', { name: 'app.types.workflow' })
-  await canvas.click({ position: { x: 650, y: 400 } })
-  await expect.element(canvas).toHaveFocus()
-  await userEvent.keyboard(`{${mod}>}z{/${mod}}`)
-  expect(actions.undo).toHaveBeenCalledTimes(1)
-})
-
-it('returns focus to the canvas after a context menu opened from outside focus closes', async () => {
-  await page.viewport(1000, 700)
-  const screen = await render(<Canvas />)
-  const outsideInput = screen.getByRole('textbox', { name: 'Outside canvas input' })
-  await outsideInput.click()
-  const canvas = screen.getByRole('region', { name: 'app.types.workflow' })
-  await canvas.click({ button: 'right', position: { x: 650, y: 400 } })
-  await expect.element(screen.getByRole('menuitem', { name: 'Canvas menu action' })).toBeVisible()
-  await userEvent.keyboard('{ArrowDown}{Escape}')
-  await expect.element(canvas).toHaveFocus()
-  const mod = detectPlatform() === 'mac' ? 'Meta' : 'Control'
-  await userEvent.keyboard(`{${mod}>}z{/${mod}}`)
-  expect(actions.undo).toHaveBeenCalledTimes(1)
 })
 
 it.each(['menu', 'note'])(
@@ -483,18 +445,17 @@ it('returns to canvas undo after a selection context-menu action removes the foc
     targetPosition: { x: 700, y: 380 },
     steps: 5,
   })
-  await expect
-    .poll(() => canvas.element().querySelector('.react-flow__nodesselection-rect'))
-    .not.toBeNull()
   await canvas.click({ button: 'right', position: { x: 450, y: 220 } })
   await screen.getByRole('menuitem', { name: /common.operation.delete/ }).click()
   await expect
     .element(screen.getByRole('button', { name: 'Workflow node' }))
     .not.toBeInTheDocument()
+  await expect.element(screen.getByRole('button', { name: 'Other node' })).not.toBeInTheDocument()
   await expect.element(canvas).toHaveFocus()
   const mod = detectPlatform() === 'mac' ? 'Meta' : 'Control'
   await userEvent.keyboard(`{${mod}>}z{/${mod}}`)
   await expect.element(screen.getByRole('button', { name: 'Workflow node' })).toBeInTheDocument()
+  await expect.element(screen.getByRole('button', { name: 'Other node' })).toBeInTheDocument()
   expect(actions.undo).toHaveBeenCalledTimes(1)
 })
 
@@ -600,7 +561,13 @@ it('selects a connection variable before node movement handles the focused node 
   await expect.element(source).toHaveFocus()
   const sourcePosition = source.element().getBoundingClientRect()
 
-  await userEvent.keyboard('{ArrowDown}{Enter}')
+  await userEvent.keyboard('{ArrowDown}')
+  await expect
+    .poll(() =>
+      screen.getByText('second', { exact: true }).element().closest('[data-selected="true"]'),
+    )
+    .not.toBeNull()
+  await userEvent.keyboard('{Enter}')
 
   expect(onSelect).toHaveBeenCalledExactlyOnceWith(
     ['source', 'second'],

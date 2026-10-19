@@ -1,5 +1,5 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
-import { Theme } from '@/types/app'
+import userEvent from '@testing-library/user-event'
 import { CodeBlock } from '../code-block'
 
 const runtime = vi.hoisted(() => {
@@ -7,7 +7,13 @@ const runtime = vi.hoisted(() => {
   const promise = new Promise<void>((done) => {
     resolve = done
   })
+  let resolveSVG = () => undefined as void
+  const svgPromise = new Promise<void>((done) => {
+    resolveSVG = done
+  })
   return {
+    svgLoaded: false,
+    svgReady: { promise: svgPromise, resolve: resolveSVG },
     chartLoaded: false,
     musicLoaded: false,
     renderMusic: vi.fn(() => [{}]),
@@ -17,7 +23,6 @@ const runtime = vi.hoisted(() => {
   }
 })
 
-vi.mock('@/hooks/use-theme', () => ({ default: () => ({ theme: Theme.light }) }))
 vi.mock('../shiki-highlight', () => ({
   highlightCode: async ({ code }: { code: string }) => <pre>{code}</pre>,
 }))
@@ -27,6 +32,13 @@ vi.mock('echarts-for-react', () => {
     default: ({ option }: { option: unknown }) => (
       <div data-testid="chart">{JSON.stringify(option)}</div>
     ),
+  }
+})
+vi.mock('../../svg-gallery', async () => {
+  runtime.svgLoaded = true
+  await runtime.svgReady.promise
+  return {
+    default: ({ content }: { content: string }) => <div data-testid="svg-preview">{content}</div>,
   }
 })
 vi.mock('abcjs', async () => {
@@ -48,11 +60,13 @@ vi.mock('abcjs', async () => {
   }
 })
 
-it('loads chart and music runtimes only when their code-block language is rendered', async () => {
-  const { rerender } = render(
+it('loads chart, music, and SVG runtimes only when their code-block language is rendered', async () => {
+  const user = userEvent.setup()
+  const { rerender, container } = render(
     <CodeBlock className="language-typescript">const answer = 42</CodeBlock>,
   )
   await waitFor(() => expect(screen.getByText('const answer = 42')).toBeInTheDocument())
+  expect(runtime.svgLoaded).toBe(false)
   expect(runtime.chartLoaded).toBe(false)
   expect(runtime.musicLoaded).toBe(false)
 
@@ -83,4 +97,22 @@ it('loads chart and music runtimes only when their code-block language is render
     { displayPlay: true },
   )
   await waitFor(() => expect(runtime.setTune).toHaveBeenCalled())
+  expect(runtime.svgLoaded).toBe(false)
+
+  rerender(<CodeBlock className="language-svg">{'<svg>'}</CodeBlock>)
+  await waitFor(() => expect(runtime.svgLoaded).toBe(true))
+  expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument()
+  expect(screen.queryByTestId('svg-preview')).not.toBeInTheDocument()
+
+  const svg = '<svg><circle cx="50" cy="50" r="40" /></svg>'
+  rerender(<CodeBlock className="language-svg">{svg}</CodeBlock>)
+  await act(async () => runtime.svgReady.resolve())
+  expect(await screen.findByTestId('svg-preview')).toHaveTextContent(svg)
+  expect(container.querySelector('[aria-busy="true"]')).not.toBeInTheDocument()
+
+  const toggle = screen.getByRole('button', { name: 'SVG' })
+  await user.click(toggle)
+  expect(screen.queryByTestId('svg-preview')).not.toBeInTheDocument()
+  await user.click(toggle)
+  expect(await screen.findByTestId('svg-preview')).toHaveTextContent(svg)
 })

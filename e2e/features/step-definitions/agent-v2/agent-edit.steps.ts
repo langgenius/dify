@@ -114,7 +114,8 @@ When(
     this.lastCreatedAgentName = copiedAgent.name
     this.lastCreatedAgentRole = copiedAgent.role ?? undefined
 
-    await expect(page.getByText('Agent duplicated.')).toBeVisible()
+    await expect(dialog).toBeHidden()
+    await expect(page.getByRole('listitem', { name: copyName, exact: true })).toBeVisible()
   },
 )
 

@@ -1,12 +1,12 @@
 'use client'
 
-import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
-import type { FC } from 'react'
 import type {
-  WorkflowAppLogDetail,
-  WorkflowLogsResponse,
-  WorkflowRunTriggeredFrom,
-} from '@/models/log'
+  AppDetailWithSite,
+  WorkflowAppLogPaginationResponse,
+  WorkflowAppLogPartialResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
+import type { FC } from 'react'
+import type { WorkflowLogDetails, WorkflowRunTriggeredFrom } from '@/models/log'
 import { ArrowDownIcon } from '@heroicons/react/24/outline'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -25,12 +25,11 @@ import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
-import { AppModeEnum } from '@/types/app'
 import DetailPanel from './detail'
 import TriggerByDisplay from './trigger-by-display'
 
 type ILogs = {
-  logs?: WorkflowLogsResponse
+  logs?: WorkflowAppLogPaginationResponse
   appDetail?: AppDetailWithSite
   onRefresh: () => void
 }
@@ -45,9 +44,9 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
   const isMobile = media === MediaType.mobile
 
   const [showDrawer, setShowDrawer] = useState<boolean>(false)
-  const [currentLog, setCurrentLog] = useState<WorkflowAppLogDetail | undefined>()
+  const [currentLog, setCurrentLog] = useState<WorkflowAppLogPartialResponse | undefined>()
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
-  const [localLogs, setLocalLogs] = useState<WorkflowAppLogDetail[]>(logs?.data || [])
+  const [localLogs, setLocalLogs] = useState<WorkflowAppLogPartialResponse[]>(logs?.data || [])
 
   useEffect(() => {
     if (!logs?.data) {
@@ -56,7 +55,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
     }
 
     const sortedLogs = [...logs.data].sort((a, b) => {
-      const result = a.created_at - b.created_at
+      const result = (a.created_at ?? 0) - (b.created_at ?? 0)
       return sortOrder === 'asc' ? result : -result
     })
 
@@ -67,9 +66,9 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
     setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
   }
 
-  const isWorkflow = appDetail?.mode === AppModeEnum.WORKFLOW
+  const isWorkflow = appDetail?.mode === 'workflow'
 
-  const statusTdRender = (status: string) => {
+  const statusTdRender = (status?: string | null) => {
     if (status === 'succeeded') {
       return (
         <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
@@ -209,7 +208,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
             </tr>
           </thead>
           <tbody className="system-sm-regular text-text-secondary">
-            {localLogs.map((log: WorkflowAppLogDetail) => {
+            {localLogs.map((log: WorkflowAppLogPartialResponse) => {
               const endUser = log.created_by_end_user
                 ? log.created_by_end_user.session_id
                 : log.created_by_account
@@ -230,7 +229,8 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
                   }}
                 >
                   <td className="h-4">
-                    {!log.read_at && (
+                    {/* The console workflow-log response does not declare read_at yet. */}
+                    {!('read_at' in log && log.read_at) && (
                       <div className="flex items-center p-3 pr-0.5">
                         <span className="inline-block size-1.5 rounded-sm bg-util-colors-blue-blue-500"></span>
                       </div>
@@ -239,28 +239,28 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
                   <td className="w-45 p-3 pr-2">
                     <DrawerTrigger
                       data-log-detail-trigger
-                      className="w-full cursor-pointer rounded-sm text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
+                      className="w-full cursor-pointer rounded-sm text-left"
                       onClick={(event) => {
                         event.stopPropagation()
                         setCurrentLog(log)
                         setShowDrawer(true)
                       }}
                     >
-                      {formatTime(
-                        log.created_at,
-                        t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
-                      )}
+                      {log.created_at
+                        ? formatTime(
+                            log.created_at,
+                            t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
+                          )
+                        : defaultValue}
                     </DrawerTrigger>
                   </td>
-                  <td className="p-3 pr-2">{statusTdRender(log.workflow_run.status)}</td>
+                  <td className="p-3 pr-2">{statusTdRender(log.workflow_run?.status)}</td>
                   <td className="p-3 pr-2">
-                    <div
-                      className={cn(log.workflow_run.elapsed_time === 0 && 'text-text-quaternary')}
-                    >
-                      {`${log.workflow_run.elapsed_time.toFixed(3)}s`}
+                    <div className={cn(!log.workflow_run?.elapsed_time && 'text-text-quaternary')}>
+                      {`${(log.workflow_run?.elapsed_time ?? 0).toFixed(3)}s`}
                     </div>
                   </td>
-                  <td className="p-3 pr-2">{log.workflow_run.total_tokens}</td>
+                  <td className="p-3 pr-2">{log.workflow_run?.total_tokens}</td>
                   <td className="p-3 pr-2">
                     <div
                       className={cn(
@@ -274,8 +274,10 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
                   {isWorkflow && (
                     <td className="p-3 pr-2">
                       <TriggerByDisplay
-                        triggeredFrom={log.workflow_run.triggered_from as WorkflowRunTriggeredFrom}
-                        triggerMetadata={log.details?.trigger_metadata}
+                        triggeredFrom={log.workflow_run?.triggered_from as WorkflowRunTriggeredFrom}
+                        triggerMetadata={
+                          (log.details as WorkflowLogDetails | undefined)?.trigger_metadata
+                        }
                       />
                     </td>
                   )}
@@ -290,11 +292,12 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
             <DrawerPopup className="p-0! data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-3 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-150 data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:border data-[swipe-direction=right]:border-components-panel-border">
               <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
                 <DetailPanel
+                  appId={appDetail.id}
                   onClose={onCloseDrawer}
-                  runID={currentLog?.workflow_run.id || ''}
+                  runID={currentLog?.workflow_run?.id || ''}
                   canReplay={
-                    currentLog?.workflow_run.triggered_from === 'app-run' ||
-                    currentLog?.workflow_run.triggered_from === 'debugging'
+                    currentLog?.workflow_run?.triggered_from === 'app-run' ||
+                    currentLog?.workflow_run?.triggered_from === 'debugging'
                   }
                 />
               </DrawerContent>

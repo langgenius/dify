@@ -11,7 +11,6 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { LanguagesSupported } from '@/i18n/language'
 import { upload } from '@/service/base'
 import { consoleQuery } from '@/service/console'
-import { useFileUploadConfig } from '@/service/use-common'
 import { getFileExtension } from '@/utils/format'
 import { PROGRESS_COMPLETE, PROGRESS_ERROR, PROGRESS_NOT_STARTED } from '../constants'
 
@@ -81,11 +80,11 @@ export const useFileUpload = ({
   const dropRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<HTMLDivElement>(null)
   const fileUploaderRef = useRef<HTMLInputElement>(null)
-  const fileListRef = useRef<FileItem[]>([])
+  const fileListRef = useRef<FileItem[]>(fileList)
 
   const hideUpload = !supportBatchUpload && fileList.length > 0
 
-  const { data: fileUploadConfigResponse } = useFileUploadConfig()
+  const { data: fileUploadConfigResponse } = useQuery(consoleQuery.files.upload.get.queryOptions())
   const { data: supportFileTypesResponse } = useQuery(
     consoleQuery.files.supportType.get.queryOptions(),
   )

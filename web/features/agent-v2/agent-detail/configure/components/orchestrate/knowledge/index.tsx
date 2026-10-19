@@ -105,8 +105,7 @@ export function AgentKnowledgeRetrieval() {
         labelId="agent-configure-knowledge-retrieval-label"
         panelId={retrievalListId}
         tip={<AgentConfigureTipContent type="knowledge" />}
-        rootClassName="border-b border-divider-subtle pt-4"
-        panelContentClassName="flex flex-col gap-1 pb-4"
+        panelContentClassName="flex flex-col gap-1"
         actions={
           <ConfigureSectionAddButton
             ariaLabel={t(($) => $['agentDetail.configure.knowledgeRetrieval.add'])}

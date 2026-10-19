@@ -6,29 +6,24 @@ import { useLocale } from '#i18n'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
-import { useAvailableNodesMetaData } from '@/app/components/workflow-app/hooks/use-available-nodes-meta-data'
 import { useGetLanguage } from '@/context/i18n'
-import useTheme from '@/hooks/use-theme'
 import { useFeaturedTriggersRecommendations } from '@/service/use-plugins'
 import { useAllTriggerPlugins, useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
-import { Theme } from '@/types/app'
-import useNodes from '../../store/workflow/use-nodes'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createNode } from '../../__tests__/fixtures'
+import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
 import AllStartBlocks from '../all-start-blocks'
 import { createPlugin } from './factories'
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('@/context/i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/context/i18n')>()),
   useGetLanguage: vi.fn(),
 }))
 
 vi.mock('#i18n', async (importOriginal) => ({
   ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: vi.fn(),
-}))
-
-vi.mock('@/hooks/use-theme', () => ({
-  default: vi.fn(),
 }))
 
 vi.mock('@/app/components/plugins/marketplace/query', () => ({
@@ -42,14 +37,6 @@ vi.mock('@/service/use-triggers', () => ({
 
 vi.mock('@/service/use-plugins', () => ({
   useFeaturedTriggersRecommendations: vi.fn(),
-}))
-
-vi.mock('../../store/workflow/use-nodes', () => ({
-  default: vi.fn(),
-}))
-
-vi.mock('@/app/components/workflow-app/hooks/use-available-nodes-meta-data', () => ({
-  useAvailableNodesMetaData: vi.fn(),
 }))
 
 vi.mock('@/utils/var', async (importOriginal) => {
@@ -69,13 +56,10 @@ vi.mock('@/utils/var', async (importOriginal) => {
 
 const mockUseGetLanguage = vi.mocked(useGetLanguage)
 const mockUseLocale = vi.mocked(useLocale)
-const mockUseTheme = vi.mocked(useTheme)
 const mockUseMarketplacePlugins = vi.mocked(useMarketplacePlugins)
 const mockUseAllTriggerPlugins = vi.mocked(useAllTriggerPlugins)
 const mockUseInvalidateAllTriggerPlugins = vi.mocked(useInvalidateAllTriggerPlugins)
 const mockUseFeaturedTriggersRecommendations = vi.mocked(useFeaturedTriggersRecommendations)
-const mockUseNodes = vi.mocked(useNodes)
-const mockUseAvailableNodesMetaData = vi.mocked(useAvailableNodesMetaData)
 
 type UseMarketplacePluginsReturn = ReturnType<typeof useMarketplacePlugins>
 type UseAllTriggerPluginsReturn = ReturnType<typeof useAllTriggerPlugins>
@@ -120,10 +104,13 @@ const createTriggerProvider = (
 })
 
 let enableMarketplaceForRender = false
-const render = (ui: ReactElement) =>
-  renderWithConsoleQuery(ui, {
+let workflowNodes: ReturnType<typeof createNode>[] = []
+const render = (ui: ReactElement) => {
+  const { queryClient } = createConsoleQueryWrapper({
     systemFeatures: { enable_marketplace: enableMarketplaceForRender },
   })
+  return renderWorkflowComponent(ui, { queryClient, initialStoreState: { nodes: workflowNodes } })
+}
 
 const createMarketplacePluginsMock = (
   plugins: ReturnType<typeof createPlugin>[] = [],
@@ -175,18 +162,12 @@ const createFeaturedTriggersRecommendationsMock = (
   ...overrides,
 })
 
-const createAvailableNodesMetaData = (): ReturnType<typeof useAvailableNodesMetaData> =>
-  ({
-    nodes: [],
-  }) as unknown as ReturnType<typeof useAvailableNodesMetaData>
-
 describe('AllStartBlocks', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     enableMarketplaceForRender = false
     mockUseGetLanguage.mockReturnValue('en_US')
     mockUseLocale.mockReturnValue('en-US')
-    mockUseTheme.mockReturnValue({ theme: Theme.light } as ReturnType<typeof useTheme>)
     mockUseMarketplacePlugins.mockReturnValue(createMarketplacePluginsMock())
     mockUseAllTriggerPlugins.mockReturnValue(
       createTriggerPluginsQueryResult([createTriggerProvider()]),
@@ -195,8 +176,7 @@ describe('AllStartBlocks', () => {
     mockUseFeaturedTriggersRecommendations.mockReturnValue(
       createFeaturedTriggersRecommendationsMock(),
     )
-    mockUseNodes.mockReturnValue([])
-    mockUseAvailableNodesMetaData.mockReturnValue(createAvailableNodesMetaData())
+    workflowNodes = []
   })
 
   // The combined start tab should merge built-in blocks, trigger plugins, and marketplace states.
@@ -218,7 +198,6 @@ describe('AllStartBlocks', () => {
         expect(screen.getByText('workflow.blocks.start')).toBeInTheDocument()
       })
 
-      expect(screen.getByText('workflow.blocks.start')).toBeInTheDocument()
       expect(screen.queryByText('workflow.tabs.allTriggers')).not.toBeInTheDocument()
       expect(screen.getByText('workflow.blocks.mostCommon')).toBeInTheDocument()
       expect(screen.getByText('Provider One')).toBeInTheDocument()
@@ -287,6 +266,7 @@ describe('AllStartBlocks', () => {
         createMarketplacePluginsMock([
           createPlugin({
             name: 'start-marketplace',
+            plugin_id: 'plugin-2',
             label: { en_US: 'Start Marketplace', zh_Hans: 'Start Marketplace' },
           }),
         ]),
@@ -311,17 +291,32 @@ describe('AllStartBlocks', () => {
       expect(screen.getAllByRole('link', { name: /plugin\.searchInMarketplace/i })).toHaveLength(1)
     })
 
+    it('shows installed triggers once and keeps other marketplace results available', async () => {
+      enableMarketplaceForRender = true
+      mockUseMarketplacePlugins.mockReturnValue(
+        createMarketplacePluginsMock([
+          createPlugin({ plugin_id: 'plugin-1', label: { en_US: 'Installed Marketplace' } }),
+          createPlugin({ plugin_id: 'plugin-2', label: { en_US: 'Available Marketplace' } }),
+        ]),
+      )
+
+      render(
+        <AllStartBlocks
+          searchText="provider"
+          onSelect={vi.fn()}
+          availableBlocksTypes={[BlockEnum.TriggerPlugin]}
+        />,
+      )
+
+      expect(await screen.findByText('Provider One')).toBeInTheDocument()
+      expect(screen.queryByText('Installed Marketplace')).not.toBeInTheDocument()
+      expect(screen.getByText('Available Marketplace')).toBeInTheDocument()
+    })
+
     it('should show the user input conflict state without allowing another start selection', () => {
       const onSelect = vi.fn()
       enableMarketplaceForRender = true
-      mockUseNodes.mockReturnValue([
-        {
-          id: 'start',
-          data: {
-            type: BlockEnum.Start,
-          },
-        },
-      ] as never)
+      workflowNodes = [createNode({ id: 'start', data: { type: BlockEnum.Start } })]
 
       render(
         <AllStartBlocks

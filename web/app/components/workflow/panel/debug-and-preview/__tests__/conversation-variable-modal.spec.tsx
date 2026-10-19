@@ -64,6 +64,7 @@ describe('ConversationVariableModal', () => {
   })
 
   afterEach(() => {
+    vi.clearAllTimers()
     vi.useRealTimers()
   })
 
@@ -96,8 +97,8 @@ describe('ConversationVariableModal', () => {
     renderWorkflowComponent(
       <ConversationVariableModal conversationID="conversation-1" onHide={onHide} />,
       {
+        resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
         initialStoreState: {
-          appId: 'app-1',
           conversationVariables: [
             createConversationVariable(),
             createConversationVariable({
@@ -139,8 +140,8 @@ describe('ConversationVariableModal', () => {
     renderWorkflowComponent(
       <ConversationVariableModal conversationID="conversation-1" onHide={vi.fn()} />,
       {
+        resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
         initialStoreState: {
-          appId: 'app-1',
           conversationVariables: [createConversationVariable()],
         },
       },
