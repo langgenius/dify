@@ -8,12 +8,15 @@ import { isRecord } from '@/util/is-record'
 
 export type FileReader = (
   path: string,
-) => Promise<{ readonly bytes: Uint8Array; readonly name: string }>
+) => Promise<{ readonly bytes: Uint8Array<ArrayBuffer>; readonly name: string }>
 
-export type FolderLister = (path: string) => Promise<readonly string[] | undefined>
+export type FolderCheck = (path: string) => Promise<boolean>
+
+export type FolderLister = (path: string) => Promise<readonly string[]>
 
 export type FileDeps = {
   readonly readFile: FileReader
+  readonly isFolder: FolderCheck
   readonly listFolder: FolderLister
 }
 
@@ -98,13 +101,13 @@ function partName(field: string, key: string | undefined, many: boolean): string
 }
 
 async function readAsFile(path: string, { readFile }: FileDeps): Promise<File> {
-  let resolved: { bytes: Uint8Array; name: string }
+  let resolved: Awaited<ReturnType<FileReader>>
   try {
     resolved = await readFile(path)
   } catch (cause) {
     throw inputInvalid(`cannot read file "${path}"`, cause)
   }
-  return new File([Uint8Array.from(resolved.bytes)], resolved.name)
+  return new File([resolved.bytes], resolved.name)
 }
 
 function assertPathString(value: unknown, field: string): asserts value is string {
@@ -115,7 +118,7 @@ function assertPathString(value: unknown, field: string): asserts value is strin
 }
 
 async function assertNotFolder(path: string, field: string, deps: FileDeps): Promise<void> {
-  if ((await deps.listFolder(path)) !== undefined)
+  if (await deps.isFolder(path))
     throw inputInvalid(`"${path}" is a folder; a folder can only be the whole value of ${field}`)
 }
 
@@ -167,8 +170,8 @@ async function appendFileField(target: FieldTarget, value: unknown): Promise<voi
   const { form, field, deps } = target
   if (value === null || value === undefined) return
   if (typeof value === 'string') {
-    const keys = await deps.listFolder(value)
-    if (keys !== undefined) return appendFolderParts({ ...target, folder: value, keys })
+    if (await deps.isFolder(value))
+      return appendFolderParts({ ...target, folder: value, keys: await deps.listFolder(value) })
     form.append(partName(field, undefined, false), await readAsFile(value, deps))
     return
   }

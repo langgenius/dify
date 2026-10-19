@@ -1,3 +1,4 @@
+import type { FileDeps } from './request'
 import type { CatalogOp } from '@/plugins/catalog'
 import { readFileSync } from 'node:fs'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
@@ -20,8 +21,13 @@ const FOLDERS: Readonly<Record<string, readonly string[]>> = {
   './junk': [],
   './brackets': ['x[1].txt'],
 }
-const listFolder = async (p: string) => FOLDERS[p]
-const deps = { readFile, listFolder }
+const isFolder = async (p: string) => p in FOLDERS
+const listFolder = async (p: string) => {
+  const keys = FOLDERS[p]
+  if (keys === undefined) throw new Error(`not a folder: ${p}`)
+  return keys
+}
+const deps: FileDeps = { readFile, isFolder, listFolder }
 
 it('splits path, query and body', async () => {
   const req = await buildRequest(list, { workspace_id: 'ws 1', page: 2 }, deps)
@@ -131,18 +137,26 @@ it('keeps the missing-path error when the path is not a folder', async () => {
   })
 })
 
-it('lists a plain whole-value path only once', async () => {
+it('lists a folder only when it is the whole value', async () => {
+  const checked: string[] = []
   const listed: string[] = []
-  const counting = async (p: string) => {
-    listed.push(p)
-    return FOLDERS[p]
+  const counting: FileDeps = {
+    readFile,
+    isFolder: async (p) => {
+      checked.push(p)
+      return isFolder(p)
+    },
+    listFolder: async (p) => {
+      listed.push(p)
+      return listFolder(p)
+    },
   }
-  await buildRequest(
-    run,
-    { app_id: 'a', inputs: {}, attachments: './att.txt' },
-    { ...deps, listFolder: counting },
-  )
-  expect(listed).toEqual(['./att.txt'])
+  await buildRequest(run, { app_id: 'a', inputs: {}, attachments: './att.txt' }, counting)
+  await expect(
+    buildRequest(run, { app_id: 'a', inputs: {}, attachments: ['./pkg'] }, counting),
+  ).rejects.toMatchObject({ message: expect.stringContaining('is a folder') })
+  expect(checked).toEqual(['./att.txt', './pkg'])
+  expect(listed).toEqual([])
 })
 
 it('sends a real folder through the local file deps', async () => {

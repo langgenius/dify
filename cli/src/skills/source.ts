@@ -57,9 +57,10 @@ export async function openDir(root: string): Promise<SkillSource> {
       message: `no ${SKILL_FILE} in "${root}"`,
     })
   }
-  const paths = (await walkTree(root))
-    .filter((entry) => entry.kind === ENTRY_KIND.File)
-    .map((entry) => entry.path)
+  const paths: string[] = []
+  for await (const entry of walkTree(root)) {
+    if (entry.kind === ENTRY_KIND.File) paths.push(entry.path)
+  }
   return { paths, read: (path) => readLocal(join(root, path)) }
 }
 

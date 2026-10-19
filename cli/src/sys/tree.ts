@@ -16,7 +16,7 @@ export type TreeEntry = {
   readonly kind: EntryKind
 }
 
-const KEY_SEPARATOR = '/'
+export const KEY_SEPARATOR = '/'
 
 function kindOf(entry: Dirent): EntryKind {
   if (entry.isSymbolicLink()) return ENTRY_KIND.Symlink
@@ -27,17 +27,16 @@ function kindOf(entry: Dirent): EntryKind {
 
 // No `recursive` readdir: Bun follows symlinked directories there, so a link
 // loop hangs or fails with ELOOP. Walking by hand never descends into a link.
-async function walkInto(dir: string, prefix: string, out: TreeEntry[]): Promise<void> {
+async function* walkInto(dir: string, prefix: string): AsyncGenerator<TreeEntry> {
   for (const entry of await readdir(dir, { withFileTypes: true })) {
     const path = prefix === '' ? entry.name : `${prefix}${KEY_SEPARATOR}${entry.name}`
     const kind = kindOf(entry)
-    out.push({ path, kind })
-    if (kind === ENTRY_KIND.Directory) await walkInto(join(dir, entry.name), path, out)
+    yield { path, kind }
+    if (kind === ENTRY_KIND.Directory) yield* walkInto(join(dir, entry.name), path)
   }
 }
 
-export async function walkTree(root: string): Promise<readonly TreeEntry[]> {
-  const out: TreeEntry[] = []
-  await walkInto(root, '', out)
-  return out
+/** Yields one directory at a time, so a caller that stops early stops the walk. */
+export function walkTree(root: string): AsyncIterable<TreeEntry> {
+  return walkInto(root, '')
 }
