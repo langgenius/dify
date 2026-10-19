@@ -76,6 +76,8 @@ def export_trace(provider: str, config: Mapping[str, Any], trace: CanonicalTrace
     project_id = f"{entity}/{project}"
     trace_uuid = UUID(hex=trace.trace_id)
     span_ids = {span.id: str(uuid5(trace_uuid, span.id)) for span in trace.spans}
+    # Weave counts calls whose id equals turn_id as conversation turns.
+    turn_id = span_ids[trace.root_span_id] if trace.session_id else None
     wrote = False
     try:
         for span in trace.spans:
@@ -89,6 +91,7 @@ def export_trace(provider: str, config: Mapping[str, Any], trace: CanonicalTrace
                         trace_id=str(trace_uuid),
                         parent_id=span_ids.get(span.parent_id) if span.parent_id else None,
                         thread_id=trace.session_id or None,
+                        turn_id=turn_id,
                         started_at=utc(span.start_time),
                         attributes={**span.metadata, "dify.span_kind": span.kind.value, "dify.span_id": span.id},
                         inputs=span.inputs if isinstance(span.inputs, dict) else {"input": span.inputs},
