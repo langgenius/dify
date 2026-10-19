@@ -1490,7 +1490,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             return True
         except Exception as e:
             logger.info("[Arize/Phoenix] API check failed: %s", str(e), exc_info=True)
-            raise ValueError(f"[Arize/Phoenix] API check failed: {str(e)}")
+            raise ValueError(f"[Arize/Phoenix] API check failed: {str(e)}") from e
 
     def get_project_url(self):
         """Build a redirect URL that forwards the user to the correct project for Arize/Phoenix."""
@@ -1507,7 +1507,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
         except Exception as e:
             logger.info("[Arize/Phoenix] Failed to construct project URL: %s", str(e), exc_info=True)
-            raise ValueError(f"[Arize/Phoenix] Failed to construct project URL: {str(e)}")
+            raise ValueError(f"[Arize/Phoenix] Failed to construct project URL: {str(e)}") from e
 
     def _construct_llm_attributes(self, prompts: dict[str, Any] | list[Any] | str | None) -> dict[str, str]:
         """Construct LLM attributes with passed prompts for Arize/Phoenix."""

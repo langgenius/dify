@@ -140,9 +140,9 @@ class ElasticSearchVector(BaseVector):
                 raise ConnectionError("Failed to connect to Elasticsearch")
 
         except ElasticsearchConnectionError as e:
-            raise ConnectionError(f"Vector database connection error: {str(e)}")
+            raise ConnectionError(f"Vector database connection error: {str(e)}") from e
         except Exception as e:
-            raise ConnectionError(f"Elasticsearch client initialization failed: {str(e)}")
+            raise ConnectionError(f"Elasticsearch client initialization failed: {str(e)}") from e
 
         return client
 
