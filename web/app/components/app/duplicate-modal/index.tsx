@@ -5,10 +5,10 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Field } from '@langgenius/dify-ui/field'
@@ -116,7 +116,9 @@ const DuplicateAppModal = ({
         <DialogContent className="w-120">
           <DialogHeader>
             <DialogTitle>{t(($) => $.duplicateTitle, { ns: 'app' })}</DialogTitle>
-            <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+            <DialogHeaderCloseButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            />
           </DialogHeader>
           <form
             className="contents"

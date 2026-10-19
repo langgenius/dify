@@ -1,4 +1,3 @@
-from types import ModuleType
 
 from flask import Blueprint
 from flask_restx import Namespace

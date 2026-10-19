@@ -41,6 +41,14 @@ const providerKeys = [
   current.modelProviders.summary.get.key(),
   consoleQuery.workspaces.current.modelProviders.get.key(),
 ]
+const pluginVersionKeys = [
+  current.plugin.list.installations.ids.post.queryKey({
+    input: { body: { plugin_ids: ['langgenius/test'] } },
+  }),
+  current.plugin.list.latestVersions.post.queryKey({
+    input: { body: { plugin_ids: ['langgenius/test'] } },
+  }),
+]
 const datasourceKey = consoleQuery.rag.pipelines.datasourcePlugins.get.queryKey()
 const dataSourceAuthKey = consoleQuery.auth.plugin.datasource.list.get.queryKey()
 const toolKeys = [
@@ -68,7 +76,7 @@ describe('plugin installation refresh', () => {
     client = new QueryClient({
       defaultOptions: { queries: { retry: false, staleTime: Infinity } },
     })
-    for (const key of [...strategyKeys, ...providerKeys, unrelatedKey])
+    for (const key of [...strategyKeys, ...providerKeys, ...pluginVersionKeys, unrelatedKey])
       client.setQueryData(key, { cached: true })
     client.setQueryData(datasourceKey, [])
     client.setQueryData(dataSourceAuthKey, { result: [] })
@@ -88,6 +96,7 @@ describe('plugin installation refresh', () => {
     const { result } = renderHook(useRefreshPluginList, { wrapper })
 
     act(() => result.current.refreshPluginList({ category: PluginCategoryEnum.agent }))
+    for (const key of pluginVersionKeys) expect(client.getQueryState(key)?.isInvalidated).toBe(true)
 
     expect(mocks.installed).toHaveBeenCalledWith(PluginCategoryEnum.agent)
     expect(mocks.checkInstalled).toHaveBeenCalledOnce()

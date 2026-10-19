@@ -9,10 +9,10 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import {
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -374,7 +374,7 @@ export function EmbeddedDialogContent({
         <DialogDescription>
           {t(($) => $[`${prefixEmbedded}.explanation`], { ns: 'appOverview' })}
         </DialogDescription>
-        <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
       </DialogHeader>
       <DialogBody>
         <Suspense

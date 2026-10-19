@@ -1,21 +1,18 @@
-import type { UpdateFromGitHubPayload, UpdateFromMarketPlacePayload } from '../../types'
-import { screen, waitFor } from '@testing-library/react'
+import type { UpdateFromGitHubPayload } from '../../../types'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createPluginDeclarationFixture } from '@/test/fixtures/plugin'
-import { PluginCategoryEnum, PluginSource } from '../../types'
-import UpdatePlugin from '../index'
+import InstallFromGitHub from '../index'
 
-const { uploadGitHub, updateFromGitHub, updateFromMarketPlace } = vi.hoisted(() => ({
+const { uploadGitHub, updateFromGitHub } = vi.hoisted(() => ({
   uploadGitHub: vi.fn(),
   updateFromGitHub: vi.fn(),
-  updateFromMarketPlace: vi.fn(),
 }))
 vi.mock('@/service/plugins', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/plugins')>()),
   uploadGitHub,
   updateFromGitHub,
-  updateFromMarketPlace,
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -28,7 +25,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 // Model/tool catalog refresh is covered by its own hook tests.
-vi.mock('../../install-plugin/hooks/use-refresh-plugin-list', () => ({
+vi.mock('../../hooks/use-refresh-plugin-list', () => ({
   default: () => ({ refreshPluginList: vi.fn() }),
 }))
 
@@ -64,12 +61,6 @@ const github: UpdateFromGitHubPayload = {
     ],
   },
 }
-const marketPlace: UpdateFromMarketPlacePayload = {
-  category: PluginCategoryEnum.tool,
-  originalPackageInfo: { id: 'marketplace-original-id', payload: createPluginDeclarationFixture() },
-  targetPackageInfo: { id: 'marketplace-target-id', version: '2.0.0' },
-}
-
 beforeEach(() => vi.resetAllMocks())
 
 it('updates a GitHub plugin using the selected release and the existing installation identifier', async () => {
@@ -81,15 +72,7 @@ it('updates a GitHub plugin using the selected release and the existing installa
   updateFromGitHub.mockResolvedValueOnce({ all_installed: true, task_id: '' })
   const onSave = vi.fn()
   const onCancel = vi.fn()
-  render(
-    <UpdatePlugin
-      type={PluginSource.github}
-      category={PluginCategoryEnum.tool}
-      github={github}
-      onSave={onSave}
-      onCancel={onCancel}
-    />,
-  )
+  render(<InstallFromGitHub updatePayload={github} onSuccess={onSave} onClose={onCancel} />)
 
   await user.click(screen.getByRole('combobox', { name: 'plugin.installFromGitHub.selectVersion' }))
   expect(await screen.findByRole('option', { name: /v1\.0\.0.*INSTALLED/ })).toBeInTheDocument()
@@ -115,28 +98,4 @@ it('updates a GitHub plugin using the selected release and the existing installa
   )
   expect(onSave).toHaveBeenCalledOnce()
   expect(onCancel).not.toHaveBeenCalled()
-  expect(updateFromMarketPlace).not.toHaveBeenCalled()
-})
-
-it('routes a marketplace update to its package identifiers and completion callback', async () => {
-  const user = userEvent.setup()
-  updateFromMarketPlace.mockResolvedValueOnce({ all_installed: true, task_id: '' })
-  const onSave = vi.fn()
-  render(
-    <UpdatePlugin
-      type={PluginSource.marketplace}
-      category={PluginCategoryEnum.tool}
-      marketPlace={marketPlace}
-      onSave={onSave}
-      onCancel={vi.fn()}
-    />,
-  )
-  expect(screen.getByText('1.0.0 -> 2.0.0')).toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'plugin.upgrade.upgrade' }))
-  await waitFor(() => expect(onSave).toHaveBeenCalledOnce())
-  expect(updateFromMarketPlace).toHaveBeenCalledExactlyOnceWith({
-    original_plugin_unique_identifier: 'marketplace-original-id',
-    new_plugin_unique_identifier: 'marketplace-target-id',
-  })
-  expect(updateFromGitHub).not.toHaveBeenCalled()
 })

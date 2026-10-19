@@ -4,10 +4,10 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Separator } from '@langgenius/dify-ui/separator'
@@ -115,7 +115,7 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
               ? t(($) => $['mcp.server.modal.addTitle'], { ns: 'tools' })
               : t(($) => $['mcp.server.modal.editTitle'], { ns: 'tools' })}
           </DialogTitle>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <DialogBody className="space-y-5">
           <div className="space-y-0.5">

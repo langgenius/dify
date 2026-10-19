@@ -538,6 +538,83 @@ describe('useChat', () => {
       expect(lastResponse!.workflowProcess?.tracing).toHaveLength(3) // node, iteration, loop
     })
 
+    it('should merge each parallel tool result into the thought that called the tool', async () => {
+      let callbacks: HookCallbacks
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const { renderHookWithConsoleQuery } = await import('@/test/console/query-data')
+      const { result } = renderHookWithConsoleQuery(() => useChat())
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'parallel tools' }, {})
+      })
+
+      act(() => {
+        callbacks.onThought({ id: 'th-a', message_id: 'm-p', tool: 'tool_a', observation: '' })
+        callbacks.onThought({ id: 'th-b', message_id: 'm-p', tool: 'tool_b', observation: '' })
+        callbacks.onThought({
+          id: 'th-a',
+          message_id: 'm-p',
+          tool: 'tool_a',
+          observation: 'result a',
+        })
+        callbacks.onThought({
+          id: 'th-b',
+          message_id: 'm-p',
+          tool: 'tool_b',
+          observation: 'result b',
+        })
+      })
+
+      expect(
+        result.current.chatList[1]!.agent_thoughts!.map((thought) => [
+          thought.id,
+          thought.observation,
+        ]),
+      ).toEqual([
+        ['th-a', 'result a'],
+        ['th-b', 'result b'],
+      ])
+    })
+
+    it('should merge each parallel tool result into its thought after a resumed stream', async () => {
+      let initialCallbacks: HookCallbacks
+      let resumedCallbacks: HookCallbacks
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        initialCallbacks = options as HookCallbacks
+      })
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        resumedCallbacks = options as HookCallbacks
+      })
+
+      const { renderHookWithConsoleQuery } = await import('@/test/console/query-data')
+      const { result } = renderHookWithConsoleQuery(() => useChat())
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'parallel tools after pause' }, {})
+      })
+      act(() => {
+        initialCallbacks.onWorkflowStarted({ workflow_run_id: 'wr-p', task_id: 't-p' })
+        initialCallbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-p' } })
+      })
+      act(() => {
+        resumedCallbacks.onThought({ id: 'th-a', tool: 'tool_a', observation: '' })
+        resumedCallbacks.onThought({ id: 'th-b', tool: 'tool_b', observation: '' })
+        resumedCallbacks.onThought({ id: 'th-a', tool: 'tool_a', observation: 'result a' })
+        resumedCallbacks.onThought({ id: 'th-b', tool: 'tool_b', observation: 'result b' })
+      })
+
+      const response = result.current.chatList[result.current.chatList.length - 1]
+      expect(response!.agent_thoughts!.map((thought) => [thought.id, thought.observation])).toEqual(
+        [
+          ['th-a', 'result a'],
+          ['th-b', 'result b'],
+        ],
+      )
+    })
+
     it('should handle human input forms, pauses, TTS, and message ends', async () => {
       let callbacks: HookCallbacks
 
@@ -1286,6 +1363,65 @@ describe('useChat', () => {
   })
 
   describe('handleResume', () => {
+    it('merges parallel tool results into their thoughts when resuming directly', async () => {
+      let callbacks: HookCallbacks
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const prevChatTree = [
+        {
+          id: 'q-1',
+          content: 'query',
+          isAnswer: false,
+          children: [
+            {
+              id: 'm-1',
+              content: '',
+              isAnswer: true,
+              workflow_run_id: 'wr-1',
+              agent_thoughts: [],
+              siblingIndex: 0,
+            },
+          ],
+        },
+      ]
+      const { renderHookWithConsoleQuery } = await import('@/test/console/query-data')
+      const { result } = renderHookWithConsoleQuery(() =>
+        useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
+      )
+
+      act(() => {
+        result.current.handleResume('m-1', 'wr-1', { isPublicAPI: true })
+      })
+
+      const toolThought = (id: string, tool: string, position: number, observation: string) => ({
+        id,
+        message_id: 'm-1',
+        conversation_id: 'c-1',
+        position,
+        thought: '',
+        tool,
+        tool_input: '{}',
+        observation,
+        message_files: [],
+      })
+
+      act(() => {
+        callbacks.onThought(toolThought('th-a', 'tool_a', 1, ''))
+        callbacks.onThought(toolThought('th-b', 'tool_b', 2, ''))
+        callbacks.onThought(toolThought('th-a', 'tool_a', 1, 'result a'))
+        callbacks.onThought(toolThought('th-b', 'tool_b', 2, 'result b'))
+      })
+
+      const thoughts = result.current.chatList[1]!.agent_thoughts!
+      expect(thoughts).toHaveLength(2)
+      expect(thoughts.map(({ id, observation }) => [id, observation])).toEqual([
+        ['th-a', 'result a'],
+        ['th-b', 'result b'],
+      ])
+    })
+
     it('should call sseGet to resume a node and handle complex tracing', async () => {
       let callbacks: HookCallbacks
       const onNotifyError = vi.fn()

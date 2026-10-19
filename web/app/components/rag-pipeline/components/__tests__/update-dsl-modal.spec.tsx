@@ -45,14 +45,6 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/store', () => ({
-  useWorkflowStore: () => ({
-    getState: () => ({
-      pipelineId: 'test-pipeline-id',
-    }),
-  }),
-}))
-
 const mockHandleCheckPluginDependencies = vi.fn()
 vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
   usePluginDependencies: () => ({

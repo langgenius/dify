@@ -1,6 +1,6 @@
+import type { PluginVersionsResponse } from '@dify/contracts/marketplace'
 import type { ComponentProps, ReactElement } from 'react'
 import type { ModelProviderPluginSummary } from '../../index'
-import type { VersionListResponse } from '@/app/components/plugins/types'
 import type { consoleClient } from '@/service/console'
 import { zPostWorkspacesCurrentPluginListInstallationsIdsResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { act, screen, waitFor, within } from '@testing-library/react'
@@ -23,8 +23,9 @@ const api = vi.hoisted(() => ({
   detail: vi.fn<typeof consoleClient.workspaces.current.plugin.list.installations.ids.post>(),
   uninstall: vi.fn<typeof consoleClient.workspaces.current.plugin.uninstall.post>(),
   upgrade: vi.fn<typeof consoleClient.workspaces.current.plugin.upgrade.marketplace.post>(),
-  versions: vi.fn<() => Promise<{ data: VersionListResponse }>>(),
+  versions: vi.fn<() => Promise<PluginVersionsResponse>>(),
   releases: vi.fn<typeof fetch>(),
+  autoUpgrade: vi.fn<typeof consoleClient.workspaces.current.plugin.autoUpgrade.fetch.get>(),
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -33,7 +34,9 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.upgrade.marketplace.post': api.upgrade,
       'workspaces.current.plugin.list.installations.ids.post': api.detail,
+      'workspaces.current.plugin.uninstall.post': api.uninstall,
       'workspaces.current.models.modelTypes.byModelType.get': async () => ({ data: [] }),
       'workspaces.current.modelProviders.summary.get': async () => ({ data: [], plugins: {} }),
     }),
@@ -45,23 +48,24 @@ vi.mock('@/service/console', async (importOriginal) => {
         install_permission: 'everyone',
         debug_permission: 'everyone',
       }),
-      'workspaces.current.plugin.autoUpgrade.fetch.get': async () => ({
-        category: 'model',
-        auto_upgrade: {
-          strategy_setting: 'disabled',
-          upgrade_mode: 'all',
-          upgrade_time_of_day: 0,
-          include_plugins: [],
-          exclude_plugins: [],
-        },
-      }),
+      'workspaces.current.plugin.autoUpgrade.fetch.get': api.autoUpgrade,
     }),
   }
 })
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  getMarketplace: api.versions,
-}))
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/marketplace')>()
+  const { createTanstackQueryUtils } = await import('@orpc/tanstack-query')
+  return {
+    ...actual,
+    marketplaceQuery: createTanstackQueryUtils(
+      {
+        ...actual.marketplaceClient,
+        pluginVersions: api.versions,
+      },
+      { path: ['marketplace'] },
+    ),
+  }
+})
 
 const identifier = (version: string) => `langgenius/plugin-entity:${version}@test`
 const installed = zPostWorkspacesCurrentPluginListInstallationsIdsResponse.parse({
@@ -124,6 +128,16 @@ const openActions = async (user: ReturnType<typeof userEvent.setup>) => {
   )
 }
 beforeEach(() => {
+  api.autoUpgrade.mockReset().mockResolvedValue({
+    category: 'model',
+    auto_upgrade: {
+      strategy_setting: 'disabled',
+      upgrade_mode: 'all',
+      upgrade_time_of_day: 0,
+      include_plugins: [],
+      exclude_plugins: [],
+    },
+  })
   api.detail.mockReset().mockResolvedValue({ plugins: [installed] })
   api.uninstall.mockReset().mockResolvedValue({ success: true })
   api.upgrade.mockReset().mockResolvedValue({ all_installed: true, task_id: '' })
@@ -150,6 +164,53 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals()
   act(() => toast.dismiss())
+})
+
+it('loads independent version prerequisites together and keeps the trigger focused while loading', async () => {
+  const details = createDeferred<Awaited<ReturnType<typeof api.detail>>>()
+  const versions = createDeferred<PluginVersionsResponse>()
+  const versionResponse = await api.versions()
+  api.versions.mockClear().mockReturnValueOnce(versions.promise)
+  api.detail.mockReturnValueOnce(details.promise)
+  const { user } = setup()
+  const trigger = await screen.findByRole('button', { name: '1.0.0' })
+  expect(api.detail).not.toHaveBeenCalled()
+  expect(api.versions).not.toHaveBeenCalled()
+
+  await user.click(trigger)
+  await waitFor(() => {
+    expect(api.detail).toHaveBeenCalledOnce()
+    expect(api.versions).toHaveBeenCalledOnce()
+  })
+  expect(trigger).toHaveFocus()
+  expect(trigger).toHaveAttribute('aria-disabled', 'true')
+  expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  await user.click(trigger)
+  expect(api.detail).toHaveBeenCalledOnce()
+  await act(async () => details.resolve({ plugins: [installed] }))
+  expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  await act(async () => versions.resolve(versionResponse))
+  expect(
+    await screen.findByRole('menu', { name: 'plugin.detailPanel.switchVersion' }),
+  ).toBeInTheDocument()
+  expect(trigger).not.toHaveAttribute('aria-disabled', 'true')
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument())
+  expect(trigger).toHaveFocus()
+  await user.click(trigger)
+  expect(await screen.findByRole('menu')).toBeInTheDocument()
+  expect(api.detail).toHaveBeenCalledOnce()
+  expect(api.versions).toHaveBeenCalledOnce()
+})
+
+it('allows retrying a failed version query without reloading successful installation details', async () => {
+  api.versions.mockRejectedValueOnce(new Error('marketplace unavailable'))
+  const { user } = setup()
+  await user.click(await screen.findByRole('button', { name: '1.0.0' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'common.operation.retry' }))
+  expect(await screen.findByRole('menuitem', { name: /^2\.0\.0/ })).toBeInTheDocument()
+  expect(api.versions).toHaveBeenCalledTimes(2)
+  expect(api.detail).toHaveBeenCalledOnce()
 })
 
 it('loads GitHub package details only when the user opens plugin information', async () => {
@@ -205,7 +266,7 @@ it.each(['2.0.0', '0.5.0'])(
     })
     await user.click(await screen.findByRole('button', { name: '1.0.0' }))
     await user.click(
-      await screen.findByRole('button', { name: new RegExp(`^${next.replaceAll('.', '\\.')}`) }),
+      await screen.findByRole('menuitem', { name: new RegExp(`^${next.replaceAll('.', '\\.')}`) }),
     )
     const dialog = await screen.findByRole('dialog', { name: 'plugin.upgrade.title' })
     await user.click(within(dialog).getByRole('button', { name: 'plugin.upgrade.upgrade' }))
@@ -242,7 +303,7 @@ it('keeps the loaded plugin and confirmation usable when refreshing the summary 
     .mockResolvedValue(undefined)
   const { user } = setup({ summary: summary(), providerLabel: 'Provider Plugin', onUpdate })
   await user.click(await screen.findByRole('button', { name: '1.0.0' }))
-  await user.click(await screen.findByRole('button', { name: /^2\.0\.0/ }))
+  await user.click(await screen.findByRole('menuitem', { name: /^2\.0\.0/ }))
   const dialog = await screen.findByRole('dialog', { name: 'plugin.upgrade.title' })
   await user.click(within(dialog).getByRole('button', { name: 'plugin.upgrade.upgrade' }))
   await waitFor(() => expect(onUpdate).toHaveBeenCalledOnce())
@@ -291,6 +352,8 @@ it('keeps a failed removal retryable without loading plugin details and refreshe
     },
   })
   expect(onUpdate).not.toHaveBeenCalled()
+  await user.keyboard('{Escape}')
+  expect(dialog).toBeInTheDocument()
   await act(async () => removal.resolve({ success: false }))
   expect(dialog).toBeInTheDocument()
   for (const key of relatedKeys) expect(queryClient.getQueryState(key)?.isInvalidated).toBe(false)
@@ -381,3 +444,66 @@ it.each(['marketplace', 'github'] as const)(
     expect(api.uninstall).not.toHaveBeenCalled()
   },
 )
+
+it('waits for the auto-upgrade policy before offering a downgrade', async () => {
+  const policy = createDeferred<Awaited<ReturnType<typeof api.autoUpgrade>>>()
+  api.autoUpgrade.mockReturnValueOnce(policy.promise)
+  const { user } = setup()
+  const trigger = await screen.findByRole('button', { name: '1.0.0' })
+  await user.click(trigger)
+  await waitFor(() => expect(api.versions).toHaveBeenCalledOnce())
+  expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  expect(trigger).toHaveAttribute('aria-disabled', 'true')
+  await act(async () =>
+    policy.resolve({
+      category: 'model',
+      auto_upgrade: {
+        strategy_setting: 'latest',
+        upgrade_mode: 'all',
+        upgrade_time_of_day: 0,
+        include_plugins: [],
+        exclude_plugins: [],
+      },
+    }),
+  )
+  await user.click(await screen.findByRole('menuitem', { name: /^0\.5\.0/ }))
+  expect(
+    await screen.findByRole('alertdialog', {
+      name: 'plugin.autoUpdate.pluginDowngradeWarning.title',
+    }),
+  ).toBeInTheDocument()
+  expect(api.upgrade).not.toHaveBeenCalled()
+})
+
+it('blocks confirmation if delete permission is revoked while the dialog is open', async () => {
+  const { user, queryClient } = setup()
+  await openActions(user)
+  await user.click(screen.getByRole('menuitem', { name: 'plugin.detailPanel.operation.remove' }))
+  const dialog = await screen.findByRole('alertdialog')
+  await act(async () => seedWorkspacePermissionsQuery(queryClient, []))
+  const confirm = within(dialog).getByRole('button', { name: 'common.operation.confirm' })
+  await waitFor(() => expect(confirm).toBeDisabled())
+  await user.click(confirm)
+  expect(api.uninstall).not.toHaveBeenCalled()
+})
+
+it('keeps a later confirmation open when a dismissed update completes', async () => {
+  const firstUpgrade = createDeferred<Awaited<ReturnType<typeof api.upgrade>>>()
+  api.upgrade.mockReturnValueOnce(firstUpgrade.promise)
+  const onUpdate = vi.fn()
+  const { user } = setup({ summary: summary(), providerLabel: 'Provider Plugin', onUpdate })
+  await user.click(await screen.findByRole('button', { name: '1.0.0' }))
+  await user.click(await screen.findByRole('menuitem', { name: /^2\.0\.0/ }))
+  const firstDialog = await screen.findByRole('dialog', { name: 'plugin.upgrade.title' })
+  await user.click(within(firstDialog).getByRole('button', { name: 'plugin.upgrade.upgrade' }))
+  await user.click(within(firstDialog).getByRole('button', { name: 'common.operation.close' }))
+  await waitFor(() => expect(firstDialog).not.toBeInTheDocument())
+  await user.click(screen.getByRole('button', { name: '1.0.0' }))
+  await user.click(await screen.findByRole('menuitem', { name: /^0\.5\.0/ }))
+  const nextDialog = await screen.findByRole('dialog', { name: 'plugin.upgrade.title' })
+  await act(async () => firstUpgrade.resolve({ all_installed: true, task_id: '' }))
+  await waitFor(() => expect(onUpdate).toHaveBeenCalledOnce())
+  expect(nextDialog).toBeInTheDocument()
+  expect(within(nextDialog).getByText('1.0.0 -> 0.5.0')).toBeInTheDocument()
+  expect(within(nextDialog).getByRole('button', { name: 'plugin.upgrade.upgrade' })).toBeEnabled()
+})

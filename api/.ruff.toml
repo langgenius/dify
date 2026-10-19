@@ -60,7 +60,6 @@ select = [
 ignore = [
     "F841",    # unused-variable
     "B901",    # allow return in yield
-    "B903",    # class-as-data-structure
     "B904",    # raise-without-from-inside-except
     "N815",    # mixed-case-variable-in-class-scope
     "PT011",   # pytest-raises-too-broad

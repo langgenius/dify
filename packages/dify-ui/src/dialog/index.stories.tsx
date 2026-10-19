@@ -8,11 +8,11 @@ import {
   DialogBackdrop,
   DialogBody,
   DialogClose,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogPopup,
   DialogPortal,
   DialogTitle,
@@ -45,7 +45,7 @@ const meta = {
         component: [
           'Compound modal dialog built on Base UI Dialog. Use it for focused flows that interrupt the user, such as editing settings, collecting short-form input, or inspecting a record. `DialogContent` is the centered modal surface: compose `DialogHeader`, `DialogBody` and `DialogFooter` in it and the parts own the spacing, so a call site only arranges its content. `DialogBody` scrolls between the header and footer when the surface reaches the viewport.',
           '',
-          'Open state is uncontrolled by default; pass `open` and `onOpenChange` to close after an async action or to veto a close through `eventDetails.cancel()`. `DialogCloseButton` is the optional header close icon; `DialogClose` stays unstyled and composes a visible action such as Cancel. `DialogPopup` is the bare dialog element for a surface that places and dresses itself, composed with `DialogPortal`, `DialogBackdrop` and `DialogViewport`.',
+          'Open state is uncontrolled by default; pass `open` and `onOpenChange` to close after an async action or to veto a close through `eventDetails.cancel()`. `DialogHeaderCloseButton` belongs inside `DialogHeader`, which reserves space for the optional close icon; `DialogClose` stays unstyled and composes a visible action such as Cancel. `DialogPopup` is the bare dialog element for a surface that places and dresses itself, composed with `DialogPortal`, `DialogBackdrop` and `DialogViewport`.',
         ].join('\n'),
       },
     },
@@ -91,7 +91,7 @@ export const Default: Story = {
           <DialogDescription>
             Setup takes about a minute and prepares your default models, datasets and API keys.
           </DialogDescription>
-          <DialogCloseButton aria-label="Close dialog" />
+          <DialogHeaderCloseButton aria-label="Close dialog" />
         </DialogHeader>
         <DialogBody>
           <ol className="list-inside list-decimal space-y-1 system-sm-regular text-text-secondary">
@@ -143,7 +143,7 @@ function FormDialogDemo() {
           <DialogDescription>
             Save the endpoint this workspace calls for external data tools.
           </DialogDescription>
-          <DialogCloseButton aria-label="Close dialog" />
+          <DialogHeaderCloseButton aria-label="Close dialog" />
         </DialogHeader>
         <Form<ApiExtensionFormValues>
           className="contents"
@@ -224,7 +224,7 @@ export const ScrollingBody: Story = {
         <DialogHeader>
           <DialogTitle>Release notes</DialogTitle>
           <DialogDescription>Highlights from the latest workspace update.</DialogDescription>
-          <DialogCloseButton aria-label="Close dialog" />
+          <DialogHeaderCloseButton aria-label="Close dialog" />
         </DialogHeader>
         <DialogBody role="region" aria-label="Release notes" tabIndex={0}>
           <ReleaseNoteList />
@@ -273,7 +273,7 @@ export const ViewportScrolling: Story = {
               <DialogDescription>
                 Every improvement shipped since the last release.
               </DialogDescription>
-              <DialogCloseButton aria-label="Close dialog" />
+              <DialogHeaderCloseButton aria-label="Close dialog" />
             </DialogHeader>
             <DialogBody>
               <ReleaseNoteList />
@@ -333,7 +333,7 @@ export const SidePanel: Story = {
           <DialogHeader>
             <DialogTitle>Run detail</DialogTitle>
             <DialogDescription>Node executions for the selected message.</DialogDescription>
-            <DialogCloseButton aria-label="Close panel" />
+            <DialogHeaderCloseButton aria-label="Close panel" />
           </DialogHeader>
           <DialogBody>
             <table className="w-full system-sm-regular text-text-secondary">
@@ -419,7 +419,7 @@ function DetachedTriggersDemo() {
             <DialogHeader>
               <DialogTitle>Edit {payload?.name} key</DialogTitle>
               <DialogDescription>Last used {payload?.lastUsed}.</DialogDescription>
-              <DialogCloseButton aria-label="Close dialog" />
+              <DialogHeaderCloseButton aria-label="Close dialog" />
             </DialogHeader>
             <DialogBody>
               <Field name="name">
@@ -491,7 +491,7 @@ function UnsavedChangesDemo() {
         <DialogHeader>
           <DialogTitle>Edit description</DialogTitle>
           <DialogDescription>Shown on the app card and in the explore page.</DialogDescription>
-          <DialogCloseButton aria-label="Close dialog" />
+          <DialogHeaderCloseButton aria-label="Close dialog" />
         </DialogHeader>
         <DialogBody>
           <Field name="description">

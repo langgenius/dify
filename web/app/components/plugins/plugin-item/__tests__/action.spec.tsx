@@ -5,7 +5,6 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { expectLoadingButton } from '@/test/button'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { PluginSource } from '../../types'
 import Action from '../action'
 
 const requests = vi.hoisted(() => ({
@@ -170,7 +169,6 @@ describe('installed plugin actions', () => {
     expect(requests.updateModal).toHaveBeenCalledWith({
       onSaveCallback: expect.any(Function),
       payload: {
-        type: PluginSource.github,
         category: 'tool',
         github: {
           originalPackageInfo: {

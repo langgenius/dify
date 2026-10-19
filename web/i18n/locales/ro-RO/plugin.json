@@ -301,9 +301,7 @@
   "task.runningPlugins": "Installing Plugins",
   "task.successPlugins": "Successfully Installed Plugins",
   "templatePublishingGuide": "Ghid de publicare a șabloanelor",
-  "upgrade.close": "Închide",
   "upgrade.description": "Despre instalarea următorului plugin",
-  "upgrade.successfulTitle": "Instalarea cu succes",
   "upgrade.title": "Instalează pluginul",
   "upgrade.upgrade": "Instala",
   "upgrade.upgrading": "Instalarea..."

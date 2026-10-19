@@ -4,9 +4,9 @@ import type { Dependency, InstallStatus, Plugin, VersionProps } from '../../type
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
-  DialogCloseButton,
   DialogContent,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
@@ -78,7 +78,7 @@ const InstallBundle: FC<Props> = ({
       >
         <DialogHeader>
           <DialogTitle>{getTitle()}</DialogTitle>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <ReadyToInstall
           step={step}

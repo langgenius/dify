@@ -1,5 +1,6 @@
 import json
 from collections.abc import Iterator
+from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from unittest.mock import MagicMock
@@ -65,15 +66,12 @@ pytestmark = [
 ]
 
 
+@dataclass(eq=False, repr=False)
 class _DatabaseBinding:
     """Expose the SQLite engine and shared session through the production DB interface."""
 
     engine: Engine
     session: scoped_session[Session]
-
-    def __init__(self, engine: Engine, session: scoped_session[Session]) -> None:
-        self.engine = engine
-        self.session = session
 
 
 class MessageServiceTestDataFactory:

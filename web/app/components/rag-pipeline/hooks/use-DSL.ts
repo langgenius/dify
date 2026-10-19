@@ -79,7 +79,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
     } catch {
       toast.error(t(($) => $.exportFailed, { ns: 'app' }))
     }
-  }, [eventEmitter, handleExportDSL, t, workflowStore])
+  }, [eventEmitter, handleExportDSL, t, pipelineId])
   return {
     exportCheck,
     handleExportDSL,

@@ -33,15 +33,25 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.uninstall.post': api.uninstall,
       'workspaces.current.modelProviders.byProvider.models.get': api.models,
       'workspaces.current.modelProviders.get': api.providers,
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'workspaces.current.modelProviders.byProvider.models.disable.patch': api.disable,
-      'workspaces.current.plugin.uninstall.post': api.uninstall,
       'workspaces.current.plugin.permission.fetch.get': async () => ({
         install_permission: 'everyone',
         debug_permission: 'everyone',
+      }),
+      'workspaces.current.plugin.autoUpgrade.fetch.get': async () => ({
+        category: 'model',
+        auto_upgrade: {
+          strategy_setting: 'disabled',
+          upgrade_mode: 'all',
+          upgrade_time_of_day: 0,
+          include_plugins: [],
+          exclude_plugins: [],
+        },
       }),
     }),
   }
