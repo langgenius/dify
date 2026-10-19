@@ -372,7 +372,13 @@ class TestAccountProfilePatchApi:
 
     @pytest.mark.parametrize("payload", [{"name": None}, {"unexpected": "value"}])
     def test_rejects_null_or_unknown_changes(self, payload: dict[str, object]):
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match=(
+                "(?:1 validation error for AccountProfilePatchPayload\\\nname|1 "
+                "validation error for AccountProfilePatchPayload\\\nunexpected)"
+            ),
+        ):
             AccountProfilePatchPayload.model_validate(payload)
 
 
