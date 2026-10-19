@@ -30,9 +30,10 @@ import { isENV } from '@/app/components/workflow/nodes/_base/components/variable
 import { VarType } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
 import { FlowType } from '@/types/common'
-import MailBodyInput from '../../human-input/components/delivery-method/mail-body-input'
 import { isOutput } from '../../human-input/utils'
+import { getRequestURLCount } from '../message-template-utils'
 import useConfiguredChannels from '../use-configured-channels'
+import MessageTemplateBody from './message-template-body'
 
 const getTemplateVariableType = (selector: ValueSelector, availableVars: NodeOutPutVar[]) => {
   const vars = availableVars.find((item) => item.nodeId === selector[0])?.vars
@@ -142,8 +143,18 @@ const MessageTemplate = ({
     testMutation.reset()
     setOpen(true)
   }
+  const getBodyError = (body: string) => {
+    if (!body.trim())
+      return t(($) => $['nodes.humanInputV2.error.bodyRequired'], { ns: 'workflow' })
+    const count = getRequestURLCount(body)
+    if (count === 0)
+      return t(($) => $['nodes.humanInputV2.error.requestURLRequired'], { ns: 'workflow' })
+    if (count > 1)
+      return t(($) => $['nodes.humanInputV2.error.requestURLDuplicate'], { ns: 'workflow' })
+    return undefined
+  }
   const validateTemplate = () => {
-    const nextErrors = { subject: !draft.subject.trim(), body: !draft.body.trim() }
+    const nextErrors = { subject: !draft.subject.trim(), body: !!getBodyError(draft.body) }
     setErrors(nextErrors)
     if (nextErrors.subject || nextErrors.body) {
       requestAnimationFrame(() => {
@@ -152,8 +163,8 @@ const MessageTemplate = ({
           return
         }
         document
-          .getElementById(`${nodeId}-message-body-label`)
-          ?.parentElement?.querySelector<HTMLElement>('textarea, [contenteditable="true"]')
+          .getElementById(`${nodeId}-message-body`)
+          ?.querySelector<HTMLElement>('textarea, [contenteditable="true"]')
           ?.focus()
       })
       return false
@@ -365,39 +376,19 @@ const MessageTemplate = ({
                   </div>
                 )}
               </div>
-              <div
-                role="group"
-                aria-labelledby={`${nodeId}-message-body-label`}
-                aria-describedby={errors.body ? `${nodeId}-message-body-error` : undefined}
-              >
-                <div
-                  id={`${nodeId}-message-body-label`}
-                  className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
-                >
-                  {t(($) => $['nodes.humanInputV2.template.body'], { ns: 'workflow' })}
-                </div>
-                <div className="[&>div>[contenteditable]]:min-h-[118px]">
-                  <MailBodyInput
-                    readOnly={readonly || pending}
-                    value={draft.body}
-                    nodesOutputVars={availableVars}
-                    availableNodes={availableNodes}
-                    onChange={(body) => {
-                      resetTestResult()
-                      setDraft((current) => ({ ...current, body }))
-                    }}
-                  />
-                </div>
-                {errors.body && (
-                  <div
-                    id={`${nodeId}-message-body-error`}
-                    role="alert"
-                    className="mt-1 system-xs-regular text-text-destructive"
-                  >
-                    {t(($) => $['nodes.humanInputV2.error.bodyRequired'], { ns: 'workflow' })}
-                  </div>
-                )}
-              </div>
+              <MessageTemplateBody
+                nodeId={nodeId}
+                readOnly={readonly || pending}
+                value={draft.body}
+                nodesOutputVars={availableVars}
+                availableNodes={availableNodes}
+                error={errors.body ? getBodyError(draft.body) : undefined}
+                onChange={(body) => {
+                  resetTestResult()
+                  if (body !== draft.body) setErrors((current) => ({ ...current, body: true }))
+                  setDraft((current) => ({ ...current, body }))
+                }}
+              />
               {showTest && canTest && (
                 <section
                   className="space-y-3 border-t border-divider-subtle pt-4"

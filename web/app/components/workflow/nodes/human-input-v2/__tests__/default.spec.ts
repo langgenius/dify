@@ -63,11 +63,11 @@ describe('Human Input v2 default', () => {
     expect(createPayload()).not.toHaveProperty('delivery_methods')
   })
 
-  it('accepts a complete template without the v1 request URL token', () => {
+  it('accepts a complete template containing exactly one Request URL', () => {
     const result = humanInputV2Default.checkValid(
       createPayload({
         recipients_spec: [{ type: 'initiator' }],
-        message_template: { subject: 'Review request', body: 'Please review this request' },
+        message_template: { subject: 'Review request', body: 'Please review {{#url#}}' },
         user_actions: [
           { id: 'approve', title: 'Approve', button_style: UserActionButtonType.Primary },
         ],
@@ -78,11 +78,32 @@ describe('Human Input v2 default', () => {
     expect(result).toEqual({ isValid: true, errorMessage: '' })
   })
 
+  it.each([
+    ['Please review this request', 'requestURLRequired'],
+    ['{{#start.email#}} {{#url#}} {{#url#}}', 'requestURLDuplicate'],
+  ])('rejects an invalid Request URL count in %s before running', (body, error) => {
+    const result = humanInputV2Default.checkValid(
+      createPayload({
+        recipients_spec: [{ type: 'initiator' }],
+        message_template: { subject: 'Review request', body },
+        user_actions: [
+          { id: 'approve', title: 'Approve', button_style: UserActionButtonType.Primary },
+        ],
+      }),
+      withSelectorKey((key: string) => key, 'workflow'),
+    )
+
+    expect(result).toEqual({
+      isValid: false,
+      errorMessage: `nodes.humanInputV2.error.${error}`,
+    })
+  })
+
   it('validates duplicate recipients and enabled Debug Mode channels', () => {
     const t = withSelectorKey((key: string) => key, 'workflow')
     const complete = {
       recipients_spec: [{ type: 'initiator' }] as HumanInputV2NodeType['recipients_spec'],
-      message_template: { subject: 'Review', body: 'Body' },
+      message_template: { subject: 'Review', body: 'Body {{#url#}}' },
       user_actions: [
         { id: 'approve', title: 'Approve', button_style: UserActionButtonType.Primary },
       ],
@@ -109,7 +130,7 @@ describe('Human Input v2 default', () => {
     const payload = createPayload({
       recipients_spec: [{ type: 'all_workspace_contacts' }],
       debug_mode: { enabled: true, channels: ['lark'] },
-      message_template: { subject: 'Review request', body: 'Please review' },
+      message_template: { subject: 'Review request', body: 'Please review {{#url#}}' },
       user_actions: [
         { id: 'approve', title: 'Approve', button_style: UserActionButtonType.Primary },
       ],

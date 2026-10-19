@@ -20,6 +20,8 @@ const mocks = vi.hoisted(() => ({
   syncDraft: vi.fn<Shape['doSyncWorkflowDraft']>(),
 }))
 
+const originalBody = 'Original body {{#url#}}'
+
 vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
   useIsChatMode: () => mocks.isChatMode,
 }))
@@ -58,7 +60,7 @@ const renderTemplate = (
 ) => {
   const props: ComponentProps<typeof MessageTemplate> = {
     nodeId: 'human-input-v2',
-    value: { subject: 'Original subject', body: 'Original body' },
+    value: { subject: 'Original subject', body: originalBody },
     onChange: vi.fn(),
     readonly: false,
     availableVars: [],
@@ -144,24 +146,24 @@ describe('Human Input v2 Message Template', () => {
   it('preserves existing subject variables while committing subject and body edits together', async () => {
     const user = userEvent.setup()
     const { props } = renderTemplate({
-      value: { subject: 'Original subject{{#start.email#}}', body: 'Original body' },
+      value: { subject: 'Original subject{{#start.email#}}', body: originalBody },
     })
     await openTemplate(user)
 
     const subject = screen.getByLabelText('workflow.nodes.humanInputV2.template.subject')
     const body = screen.getByLabelText('message-body-editor')
     expect(subject).toHaveValue('Original subject{{#start.email#}}')
-    expect(body).toHaveValue('Original body')
+    expect(body).toHaveValue(originalBody)
 
     await user.type(subject, ' updated')
     await user.clear(body)
-    await user.type(body, 'Updated body without a request URL')
+    await user.paste('Updated body {{#url#}}')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(props.onChange).toHaveBeenCalledTimes(1)
     expect(props.onChange).toHaveBeenCalledWith({
       subject: 'Original subject{{#start.email#}} updated',
-      body: 'Updated body without a request URL',
+      body: 'Updated body {{#url#}}',
     })
   })
 
@@ -205,13 +207,15 @@ describe('Human Input v2 Message Template', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(screen.getAllByRole('alert')).toHaveLength(2)
+    expect(screen.getByText('workflow.nodes.humanInputV2.error.bodyRequired')).toBeInTheDocument()
     expect(props.onChange).not.toHaveBeenCalled()
 
     await user.type(
       screen.getByLabelText('workflow.nodes.humanInputV2.template.subject'),
       'Subject',
     )
-    await user.type(screen.getByLabelText('message-body-editor'), 'Body')
+    await user.click(screen.getByLabelText('message-body-editor'))
+    await user.paste('Body {{#url#}}')
     const save = screen.getByRole('button', { name: 'common.operation.save' })
     await user.dblClick(save)
     expect(props.onChange).toHaveBeenCalledTimes(1)
@@ -219,7 +223,10 @@ describe('Human Input v2 Message Template', () => {
 
   it('opens a non-mutating read-only view', async () => {
     const user = userEvent.setup()
-    const { props } = renderTemplate({ readonly: true })
+    const { props } = renderTemplate({
+      readonly: true,
+      value: { subject: 'Readonly subject', body: 'Legacy body without a Request URL' },
+    })
     await openTemplate(user)
 
     expect(screen.getByLabelText('workflow.nodes.humanInputV2.template.subject')).toBeDisabled()
@@ -227,6 +234,72 @@ describe('Human Input v2 Message Template', () => {
     expect(screen.queryByRole('button', { name: 'common.operation.save' })).not.toBeInTheDocument()
     expect(props.onChange).not.toHaveBeenCalled()
   })
+
+  it.each([
+    { body: 'Review this request', error: 'requestURLRequired' },
+    { body: 'Review {{#url#}} or {{#url#}}', error: 'requestURLDuplicate' },
+  ])(
+    'blocks saving an existing template with $error and focuses the body',
+    async ({ body, error }) => {
+      const user = userEvent.setup()
+      const { props } = renderTemplate({ value: { subject: 'Subject', body } })
+      await openTemplate(user)
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        `workflow.nodes.humanInputV2.error.${error}`,
+      )
+      await waitFor(() => expect(screen.getByLabelText('message-body-editor')).toHaveFocus())
+      expect(props.onChange).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([
+    { action: 'save', body: 'Review this request', error: 'requestURLRequired' },
+    { action: 'save', body: 'Review {{#url#}} or {{#url#}}', error: 'requestURLDuplicate' },
+    { action: 'test', body: 'Review this request', error: 'requestURLRequired' },
+    { action: 'test', body: 'Review {{#url#}} or {{#url#}}', error: 'requestURLDuplicate' },
+  ])(
+    'validates $error while editing before $action and clears it when corrected',
+    async ({ action, body, error }) => {
+      const user = userEvent.setup()
+      const requests = setupFetch()
+      const { props } = renderTemplate()
+      if (action === 'test') await openTest(user)
+      else await openTemplate(user)
+      const editor = screen.getByLabelText('message-body-editor')
+      await user.clear(editor)
+      await user.paste(body)
+
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        `workflow.nodes.humanInputV2.error.${error}`,
+      )
+      if (action === 'test') await sendTest(user)
+      else await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+      await waitFor(() => expect(editor).toHaveFocus())
+      expect(props.onChange).not.toHaveBeenCalled()
+      expect(mocks.syncDraft).not.toHaveBeenCalled()
+      expect(requests).toHaveLength(0)
+
+      await user.clear(editor)
+      await user.paste('Review {{#url#}}')
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      if (action === 'test') {
+        await sendTest(user)
+        expect(
+          await screen.findByText('workflow.nodes.humanInputV2.template.testCompleted'),
+        ).toBeInTheDocument()
+        expect(requests).toHaveLength(1)
+      } else {
+        await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+      }
+      expect(props.onChange).toHaveBeenCalledOnce()
+      expect(props.onChange).toHaveBeenCalledWith({
+        subject: 'Original subject',
+        body: 'Review {{#url#}}',
+      })
+    },
+  )
 
   it('opens test settings from the card without sending and discards changes with Close', async () => {
     const user = userEvent.setup()
@@ -420,7 +493,7 @@ describe('Human Input v2 Message Template', () => {
 
       expect(props.onChange).toHaveBeenCalledWith({
         subject: 'Updated test subject',
-        body: 'Original body',
+        body: originalBody,
       })
       expect(mocks.syncDraft).toHaveBeenCalledTimes(1)
       expect(requests).toHaveLength(0)
@@ -606,7 +679,7 @@ describe('Human Input v2 Message Template', () => {
       const user = userEvent.setup()
       const requests = setupFetch()
       renderTemplate({
-        value: { subject: 'Subject', body: '{{#start.tags#}}' },
+        value: { subject: 'Subject', body: '{{#start.tags#}} {{#url#}}' },
         availableVars: [
           {
             nodeId: 'start',
