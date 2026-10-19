@@ -258,7 +258,7 @@ export const useChat = (
   const [chatTree, setChatTree] = useState<ChatItemInTree[]>(prevChatTree || [])
   const chatTreeRef = useRef<ChatItemInTree[]>(chatTree)
   const prevChatTreeRef = useRef(prevChatTree)
-  if (prevChatTree && prevChatTree !== prevChatTreeRef.current) {
+  if (prevChatTree?.length && prevChatTree !== prevChatTreeRef.current) {
     prevChatTreeRef.current = prevChatTree
     chatTreeRef.current = prevChatTree
     setChatTree(prevChatTree)
