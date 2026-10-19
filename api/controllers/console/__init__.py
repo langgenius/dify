@@ -144,6 +144,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     from . import (
         apikey,
         evaluation,
+        dify_builder,
         extension,
         feature,
         file_scan,
@@ -274,6 +275,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     return (
         apikey,
         evaluation,
+        dify_builder,
         extension,
         file_scan,
         feature,
