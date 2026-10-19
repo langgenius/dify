@@ -15,6 +15,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -295,7 +296,12 @@ export function AppCardInteractions({
   const isOperationsMenuOpen = operationsMenu.open
   const setIsOperationsMenuOpen = operationsMenu.onOpenChange
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariableItemResponse[]>([])
-  const { exportAppDsl, isExporting: isAppDslExporting } = useExportAppDsl()
+  const {
+    exportAppDsl,
+    isExporting: isAppDslExporting,
+    errorMessage: exportError,
+    reset: resetExport,
+  } = useExportAppDsl()
   const { exportWorkflowAppDsl, isExporting: isWorkflowAppDslExporting } = useExportWorkflowAppDsl()
   const isExporting = isAppDslExporting || isWorkflowAppDslExporting
   const isTogglingStar = isStarring || isUnstarring
@@ -468,13 +474,19 @@ export function AppCardInteractions({
   }
 
   const onExport = async (include = false) => {
-    const result = await exportAppDsl({ appId: app.id, appName: app.name, includeSecret: include })
+    const result = await exportAppDsl({
+      appId: app.id,
+      appName: app.name,
+      includeSecret: include,
+      feedback: 'dialog',
+    })
     return result.status === 'downloaded'
   }
 
   const exportCheck = async () => {
     if (isExporting) return
 
+    resetExport()
     setIsOperationsMenuOpen(false)
     const isWorkflowApp = app.mode === 'workflow' || app.mode === 'advanced-chat'
     const result = isWorkflowApp
@@ -604,26 +616,13 @@ export function AppCardInteractions({
                 render={
                   <IconButton
                     size="lg"
-                    aria-label={
-                      isExporting
-                        ? t(($) => $['operation.exporting'], { ns: 'common' })
-                        : t(($) => $['operation.moreActionsFor'], {
-                            ns: 'common',
-                            name: app.name,
-                          })
-                    }
-                    disabled={isExporting}
+                    aria-label={t(($) => $['operation.moreActionsFor'], {
+                      ns: 'common',
+                      name: app.name,
+                    })}
                     className="data-popup-open:bg-state-base-hover"
                   >
-                    <span
-                      aria-hidden
-                      className={cn(
-                        'size-4.5 text-text-tertiary',
-                        isExporting
-                          ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none'
-                          : 'i-ri-more-fill',
-                      )}
-                    />
+                    <span aria-hidden className="i-ri-more-fill size-4.5 text-text-tertiary" />
                   </IconButton>
                 }
               />
@@ -672,20 +671,26 @@ export function AppCardInteractions({
         />
       )}
       {activeDialog === 'switch' && (
-        <SwitchAppModal show sourceApp={app} onClose={() => setActiveDialog(null)} />
+        <SwitchAppModal
+          open
+          sourceApp={app}
+          onOpenChange={(open) => {
+            if (!open) setActiveDialog(null)
+          }}
+        />
       )}
       <AlertDialog open={activeDialog === 'delete'} onOpenChange={onDeleteDialogOpenChange}>
         <AlertDialogContent>
-          <form className="flex flex-col" onSubmit={onDeleteDialogSubmit}>
-            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+          <form onSubmit={onDeleteDialogSubmit}>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
                 {t(($) => $.deleteAppConfirmTitle, { ns: 'app' })}
               </AlertDialogTitle>
-              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              <AlertDialogDescription>
                 {t(($) => $.deleteAppConfirmContent, { ns: 'app' })}
               </AlertDialogDescription>
-              <Field name="confirm-app-name" className="mt-2">
-                <FieldLabel className="system-sm-regular">
+              <Field name="confirm-app-name">
+                <FieldLabel>
                   <Trans
                     i18nKey={($) => $.deleteAppConfirmInputLabel}
                     ns="app"
@@ -697,7 +702,7 @@ export function AppCardInteractions({
                     }}
                   />
                 </FieldLabel>
-                <InputGroup className="border-components-input-border-hover">
+                <InputGroup>
                   <InputGroupInput
                     type="text"
                     autoComplete="off"
@@ -706,19 +711,18 @@ export function AppCardInteractions({
                     value={confirmDeleteInput}
                     onValueChange={setConfirmDeleteInput}
                   />
-                  <InputGroupAddon align="inline-end" className="min-w-20 justify-end pe-1.75">
+                  <InputGroupAddon align="inline-end">
                     <Button
                       variant="tertiary"
                       size="small"
                       onClick={() => setConfirmDeleteInput(app.name)}
-                      className="rounded-full px-2.5"
                     >
                       {t(($) => $['operation.fill'], { ns: 'common' })}
                     </Button>
                   </InputGroupAddon>
                 </InputGroup>
               </Field>
-            </div>
+            </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancelButton type="button" disabled={isDeleting}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
@@ -737,6 +741,7 @@ export function AppCardInteractions({
       {secretEnvList.length > 0 && (
         <AppExportConfirmModal
           envList={secretEnvList}
+          errorMessage={exportError}
           isExporting={isExporting}
           onConfirm={onExport}
           onClose={() => setSecretEnvList([])}

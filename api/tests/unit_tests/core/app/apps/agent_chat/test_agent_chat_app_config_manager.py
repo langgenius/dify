@@ -238,7 +238,7 @@ class TestValidateAgentModeAndSetDefaults:
         ["invalid", 123],
     )
     def test_agent_mode_type_validation(self, agent_mode):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="agent_mode must be of object type"):
             AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
                 "tenant", {"agent_mode": agent_mode}, _session()
             )
@@ -250,31 +250,31 @@ class TestValidateAgentModeAndSetDefaults:
         assert updated["agent_mode"]["tools"] == []
 
     def test_enabled_must_be_bool(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="enabled in agent_mode must be of boolean type"):
             AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
                 "tenant", {"agent_mode": {"enabled": "yes"}}, _session()
             )
 
     def test_strategy_must_be_valid(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="strategy in agent_mode must be in the specified strategy list"):
             AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
                 "tenant", {"agent_mode": {"enabled": True, "strategy": "invalid"}}, _session()
             )
 
     def test_tools_must_be_list(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="tools in agent_mode must be a list of objects"):
             AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
                 "tenant", {"agent_mode": {"enabled": True, "tools": "not-list"}}, _session()
             )
 
     def test_old_tool_dataset_requires_id(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="id is required in dataset"):
             AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
                 "tenant", {"agent_mode": {"enabled": True, "tools": [{"dataset": {"enabled": True}}]}}, _session()
             )
 
     def test_old_tool_dataset_id_must_be_uuid(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="id in dataset must be of UUID type"):
             AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
                 "tenant",
                 {"agent_mode": {"enabled": True, "tools": [{"dataset": {"enabled": True, "id": "bad"}}]}},
@@ -287,7 +287,7 @@ class TestValidateAgentModeAndSetDefaults:
             return_value=False,
         )
         dataset_id = str(uuid.uuid4())
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Dataset ID does not exist, please check your permission\\."):
             AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
                 "tenant",
                 {"agent_mode": {"enabled": True, "tools": [{"dataset": {"enabled": True, "id": dataset_id}}]}},
@@ -295,7 +295,7 @@ class TestValidateAgentModeAndSetDefaults:
             )
 
     def test_old_tool_enabled_must_be_bool(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="enabled in agent_mode\\.tools must be of boolean type"):
             AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
                 "tenant",
                 {"agent_mode": {"enabled": True, "tools": [{"dataset": {"enabled": "yes", "id": str(uuid.uuid4())}}]}},
@@ -306,7 +306,14 @@ class TestValidateAgentModeAndSetDefaults:
     def test_new_style_tool_requires_fields(self, missing_key):
         tool = {"enabled": True, "provider_type": "type", "provider_id": "id", "tool_name": "tool"}
         tool.pop(missing_key, None)
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match=(
+                "(?:provider_id is required in agent_mode\\.tools|provider_type is "
+                "required in agent_mode\\.tools|tool_name is required in "
+                "agent_mode\\.tools|tool_parameters is required in agent_mode\\.tools)"
+            ),
+        ):
             AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
                 "tenant", {"agent_mode": {"enabled": True, "tools": [tool]}}, _session()
             )

@@ -353,9 +353,7 @@
   "task.runningPlugins": "Installing Plugins",
   "task.successPlugins": "Successfully Installed Plugins",
   "templatePublishingGuide": "Посібник з публікації шаблонів",
-  "upgrade.close": "Закрити",
   "upgrade.description": "Про встановлення наступного плагіна",
-  "upgrade.successfulTitle": "Установка успішна",
   "upgrade.title": "Встановити плагін",
   "upgrade.upgrade": "Інсталювати",
   "upgrade.upgrading": "Установки..."

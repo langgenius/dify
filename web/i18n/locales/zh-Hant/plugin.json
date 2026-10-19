@@ -353,9 +353,7 @@
   "task.runningPlugins": "Installing Plugins",
   "task.successPlugins": "Successfully Installed Plugins",
   "templatePublishingGuide": "範本發佈指南",
-  "upgrade.close": "關閉",
   "upgrade.description": "即將安裝以下插件",
-  "upgrade.successfulTitle": "安裝成功",
   "upgrade.title": "安裝插件",
   "upgrade.upgrade": "安裝",
   "upgrade.upgrading": "安裝。。。"

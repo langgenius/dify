@@ -158,8 +158,6 @@ export type FetchWorkflowDraftResponse = {
   environments?: VersionEnvironment[]
 }
 
-export type VersionHistory = FetchWorkflowDraftResponse
-
 export type FetchWorkflowDraftPageParams = {
   url: string
   initialPage: number
@@ -169,7 +167,7 @@ export type FetchWorkflowDraftPageParams = {
 }
 
 export type FetchWorkflowDraftPageResponse = {
-  items: VersionHistory[]
+  items: FetchWorkflowDraftResponse[]
   has_more: boolean
   page: number
 }
@@ -473,8 +471,6 @@ export type PanelProps = {
   setRunInputData: (data: Record<string, any>) => void
   runResult: any
 }
-
-export type NodeRunResult = NodeTracing
 
 // Var Inspect
 export const VarInInspectType = {

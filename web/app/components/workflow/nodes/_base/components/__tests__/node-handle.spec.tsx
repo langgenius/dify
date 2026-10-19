@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react'
+import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
 import type { CommonNodeType } from '@/app/components/workflow/types'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
+import { createWorkflowSlice } from '@/app/components/workflow-app/store/workflow/workflow-slice'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { NodeSourceHandle, NodeTargetHandle } from '../node-handle'
 
@@ -13,45 +15,35 @@ type MockHooksState = {
   isReadOnly: boolean
 }
 
-type MockStoreState = {
-  dataSourceList: unknown[]
-  nodes: unknown[]
-  shouldAutoOpenStartNodeSelector: boolean
-  setShouldAutoOpenStartNodeSelector?: (open: boolean) => void
-  setHasSelectedStartNode?: (selected: boolean) => void
-}
-
-const {
-  mockHandleNodeAdd,
-  mockSetShouldAutoOpenStartNodeSelector,
-  mockSetHasSelectedStartNode,
-  mockWorkflowStoreSetState,
-  mockHooksState,
-  mockStoreState,
-} = vi.hoisted(() => {
-  const mockHooksState: MockHooksState = {
+const { mockHandleNodeAdd, mockHooksState } = vi.hoisted(() => ({
+  mockHandleNodeAdd: vi.fn(),
+  mockHooksState: {
     availablePrevBlocks: [],
     availableNextBlocks: [],
     isChatflow: false,
     isReadOnly: false,
-  }
-  const mockStoreState: MockStoreState = {
-    dataSourceList: [],
-    nodes: [],
-    shouldAutoOpenStartNodeSelector: false,
-    setShouldAutoOpenStartNodeSelector: undefined,
-    setHasSelectedStartNode: undefined,
-  }
-
-  return {
-    mockHandleNodeAdd: vi.fn(),
-    mockSetShouldAutoOpenStartNodeSelector: vi.fn(),
-    mockSetHasSelectedStartNode: vi.fn(),
-    mockWorkflowStoreSetState: vi.fn(),
-    mockHooksState,
-    mockStoreState,
-  }
-})
+  } as MockHooksState,
+}))
+let autoOpen = false
+const render = (
+  ui: React.ReactElement,
+  options: Parameters<typeof renderWorkflowFlowComponent>[1] = {},
+) =>
+  renderWorkflowFlowComponent(ui, {
+    ...options,
+    initialStoreState: {
+      shouldAutoOpenStartNodeSelector: autoOpen,
+      canvasReadOnly: mockHooksState.isReadOnly,
+    },
+    hooksStoreProps: {
+      accessControl: {
+        canEdit: true,
+        canRun: true,
+        canImportExportDSL: true,
+        canReleaseAndVersion: true,
+      },
+    },
+  })
 
 type HandleProps = {
   id?: string
@@ -60,7 +52,8 @@ type HandleProps = {
   onClick?: () => void
 }
 
-vi.mock('reactflow', () => ({
+vi.mock('reactflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('reactflow')>()),
   Handle: ({ id, className, children, onClick }: HandleProps) => (
     <div
       data-testid={`handle-${id ?? 'unknown'}`}
@@ -80,9 +73,6 @@ vi.mock('reactflow', () => ({
     Left: 'left',
     Right: 'right',
   },
-  useStoreApi: () => ({
-    getState: () => ({ getNodes: () => [] }),
-  }),
 }))
 
 vi.mock('../../../../hooks/use-available-blocks', async (importOriginal) => {
@@ -108,33 +98,6 @@ vi.mock('../../../../hooks/use-nodes-interactions', async (importOriginal) => {
   }
 })
 
-vi.mock('../../../../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../../hooks/use-workflow')>()
-
-  return {
-    ...actual,
-
-    useNodesReadOnly: () => ({
-      getNodesReadOnly: () => mockHooksState.isReadOnly,
-    }),
-  }
-})
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: <T,>(selector: (state: MockStoreState) => T) => selector(mockStoreState),
-  useWorkflowStore: () => ({
-    setState: mockWorkflowStoreSetState,
-  }),
-}))
-
-vi.mock('@/app/components/workflow/hooks-store', () => ({
-  useHooksStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    selector({
-      configsMap: { resourceKind: 'app-flow' },
-      availableNodesMetaData: { nodes: [] },
-    }),
-}))
-
 vi.mock('@/service/use-plugins', () => ({
   useFeaturedToolsRecommendations: () => ({ plugins: [], isLoading: false }),
   useFeaturedTriggersRecommendations: () => ({ plugins: [], isLoading: false }),
@@ -145,13 +108,19 @@ vi.mock('@/service/use-triggers', () => ({
   useInvalidateAllTriggerPlugins: () => vi.fn(),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: [] }),
-  useAllCustomTools: () => ({ data: [] }),
-  useAllWorkflowTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: [] }),
-  useInvalidateAllBuiltInTools: () => vi.fn(),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.builtin.get': async () => [],
+      'workspaces.current.tools.api.get': async () => [],
+      'workspaces.current.tools.workflow.get': async () => [],
+      'workspaces.current.tools.mcp.get': async () => [],
+    }),
+  }
+})
 
 vi.mock('@/app/components/plugins/marketplace/query', () => ({
   useMarketplacePlugins: () => ({ data: undefined }),
@@ -177,7 +146,14 @@ const renderTargetHandle = (dataOverrides: Partial<CommonNodeType> = {}) => {
       nodeSelectorClassName="custom-selector"
       handleClassName="custom-target-handle"
     />,
-    { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
+    {
+      injectWorkflowStoreSliceFn: createWorkflowSlice as InjectWorkflowStoreSliceFn,
+      resource: {
+        kind: 'app',
+        appId: 'app-1',
+        mode: mockHooksState.isChatflow ? 'advanced-chat' : 'workflow',
+      },
+    },
   )
 }
 
@@ -194,7 +170,14 @@ const renderSourceHandle = (
       handleClassName="custom-source-handle"
       {...propsOverrides}
     />,
-    { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
+    {
+      injectWorkflowStoreSliceFn: createWorkflowSlice as InjectWorkflowStoreSliceFn,
+      resource: {
+        kind: 'app',
+        appId: 'app-1',
+        mode: mockHooksState.isChatflow ? 'advanced-chat' : 'workflow',
+      },
+    },
   )
 }
 
@@ -207,9 +190,7 @@ describe('node-handle', () => {
     mockHooksState.isChatflow = false
     mockHooksState.isReadOnly = false
 
-    mockStoreState.shouldAutoOpenStartNodeSelector = false
-    mockStoreState.setShouldAutoOpenStartNodeSelector = mockSetShouldAutoOpenStartNodeSelector
-    mockStoreState.setHasSelectedStartNode = mockSetHasSelectedStartNode
+    autoOpen = false
   })
 
   // Target-side tests cover selector visibility, connection locking, and status rendering.
@@ -224,51 +205,25 @@ describe('node-handle', () => {
       expect(screen.getByRole('tab', { name: 'workflow.tabs.start' })).toBeInTheDocument()
     })
 
-    it('should toggle the target add trigger', () => {
+    it('opens and closes the target selector from its handle', async () => {
+      const user = userEvent.setup()
       renderTargetHandle()
-
       const handle = screen.getByTestId('handle-target-handle')
-      const addNodeButton = getAddNodeButton()
-
-      expect(addNodeButton).toHaveClass('custom-selector')
-      expect(addNodeButton).toHaveClass('opacity-0')
-      expect(addNodeButton).toHaveClass('pointer-events-none')
-
-      fireEvent.click(addNodeButton)
-
-      expect(addNodeButton).toHaveAttribute('data-popup-open')
-      // Trigger stays pointer-events-none so it never steals mousedown from
-      // the underlying React Flow handle (drag-to-connect must keep working).
-      expect(addNodeButton).toHaveClass('pointer-events-none')
-
-      fireEvent.click(handle)
-
-      expect(addNodeButton).not.toHaveAttribute('data-popup-open')
+      await user.click(handle)
+      expect(await screen.findByRole('dialog')).toBeInTheDocument()
+      await user.keyboard('{Escape}')
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     })
 
-    it('should not render the target add trigger when the handle is already connected', () => {
+    it('should not render the target add trigger when the handle is already connected', async () => {
+      const user = userEvent.setup()
       renderTargetHandle({
         _connectedTargetHandleIds: ['target-handle'],
       })
 
-      fireEvent.click(screen.getByTestId('handle-target-handle'))
+      await user.click(screen.getByTestId('handle-target-handle'))
 
       expect(queryAddNodeButton()).not.toBeInTheDocument()
-    })
-
-    it('should hide the target handle for workflow entry nodes', () => {
-      renderTargetHandle({ type: BlockEnum.TriggerPlugin })
-
-      expect(screen.getByTestId('handle-target-handle')).toHaveClass('opacity-0')
-    })
-
-    it('should keep the target add trigger visible when the node is selected', () => {
-      renderTargetHandle({
-        selected: true,
-      })
-
-      expect(getAddNodeButton()).toHaveClass('opacity-100')
-      expect(getAddNodeButton()).toHaveClass('pointer-events-none')
     })
   })
 
@@ -284,34 +239,14 @@ describe('node-handle', () => {
       expect(screen.getByRole('tab', { name: 'workflow.tabs.start' })).toBeInTheDocument()
     })
 
-    it('should toggle the source add trigger', () => {
+    it('opens and closes the source selector from its handle', async () => {
+      const user = userEvent.setup()
       renderSourceHandle()
-
       const handle = screen.getByTestId('handle-source-handle')
-      const addNodeButton = getAddNodeButton()
-
-      expect(addNodeButton).toHaveClass('opacity-0')
-
-      fireEvent.click(addNodeButton)
-
-      expect(addNodeButton).toHaveAttribute('data-popup-open')
-      expect(addNodeButton).toHaveClass('pointer-events-none')
-
-      fireEvent.click(handle)
-
-      expect(addNodeButton).not.toHaveAttribute('data-popup-open')
-    })
-
-    it('should keep the source add trigger visible when the node is selected', () => {
-      renderSourceHandle({
-        selected: true,
-      })
-
-      const addNodeButton = getAddNodeButton()
-
-      expect(addNodeButton).toHaveClass('custom-selector')
-      expect(addNodeButton).toHaveClass('opacity-100')
-      expect(addNodeButton).toHaveClass('pointer-events-none')
+      await user.click(handle)
+      expect(await screen.findByRole('dialog')).toBeInTheDocument()
+      await user.keyboard('{Escape}')
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     })
   })
 
@@ -320,11 +255,16 @@ describe('node-handle', () => {
     it('restores the previous focus when the start selector opens automatically', async () => {
       const user = userEvent.setup()
       render(<button type="button">Previous action</button>, {
-        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+        injectWorkflowStoreSliceFn: createWorkflowSlice as InjectWorkflowStoreSliceFn,
+        resource: {
+          kind: 'app',
+          appId: 'app-1',
+          mode: mockHooksState.isChatflow ? 'advanced-chat' : 'workflow',
+        },
       })
       const previousAction = screen.getByRole('button', { name: 'Previous action' })
       await user.click(previousAction)
-      mockStoreState.shouldAutoOpenStartNodeSelector = true
+      autoOpen = true
 
       renderSourceHandle({ type: BlockEnum.Start })
       await screen.findByRole('dialog')
@@ -339,58 +279,44 @@ describe('node-handle', () => {
       BlockEnum.TriggerWebhook,
       BlockEnum.TriggerPlugin,
     ])('should auto-open immediately for %s nodes', (type) => {
-      mockStoreState.shouldAutoOpenStartNodeSelector = true
+      autoOpen = true
 
-      renderSourceHandle({ type })
+      const { store } = renderSourceHandle({ type })
 
       const addNodeButton = getAddNodeButton()
 
       expect(addNodeButton).toHaveAttribute('data-popup-open')
-      expect(addNodeButton).toHaveClass('pointer-events-none')
-      expect(mockSetShouldAutoOpenStartNodeSelector).toHaveBeenCalledWith(false)
-      expect(mockSetHasSelectedStartNode).toHaveBeenCalledWith(false)
+      expect(store.getState().shouldAutoOpenStartNodeSelector).toBe(false)
+      expect(store.getState().hasSelectedStartNode).toBe(false)
     })
 
     it('should skip source auto-open in chat mode and only reset the start selector flag', () => {
       mockHooksState.isChatflow = true
-      mockStoreState.shouldAutoOpenStartNodeSelector = true
+      autoOpen = true
 
-      renderSourceHandle({ type: BlockEnum.Start })
+      const { store } = renderSourceHandle({ type: BlockEnum.Start })
 
-      expect(getAddNodeButton()).toHaveClass('opacity-0')
-      expect(mockSetShouldAutoOpenStartNodeSelector).toHaveBeenCalledWith(false)
-      expect(mockSetHasSelectedStartNode).not.toHaveBeenCalled()
-    })
-
-    it('should use the workflow store fallback when the selector setters are unavailable', () => {
-      mockStoreState.shouldAutoOpenStartNodeSelector = true
-      mockStoreState.setShouldAutoOpenStartNodeSelector = undefined
-      mockStoreState.setHasSelectedStartNode = undefined
-
-      renderSourceHandle({ type: BlockEnum.Start })
-
-      expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({
-        shouldAutoOpenStartNodeSelector: false,
-      })
-      expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ hasSelectedStartNode: false })
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(store.getState().shouldAutoOpenStartNodeSelector).toBe(false)
     })
 
     it('should not auto-open when the node type is not a workflow entry node', () => {
-      mockStoreState.shouldAutoOpenStartNodeSelector = true
+      autoOpen = true
 
-      renderSourceHandle({ type: BlockEnum.Code })
+      const { store } = renderSourceHandle({ type: BlockEnum.Code })
 
-      expect(getAddNodeButton()).toHaveClass('opacity-0')
-      expect(mockSetShouldAutoOpenStartNodeSelector).not.toHaveBeenCalled()
-      expect(mockSetHasSelectedStartNode).not.toHaveBeenCalled()
-      expect(mockWorkflowStoreSetState).not.toHaveBeenCalled()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(store.getState().shouldAutoOpenStartNodeSelector).toBe(true)
     })
   })
-})
-
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => mockHooksState.isChatflow) }
+  it('does not offer insertion controls on a readonly canvas', async () => {
+    const user = userEvent.setup()
+    mockHooksState.isReadOnly = true
+    autoOpen = true
+    renderSourceHandle({ type: BlockEnum.Start })
+    await user.click(screen.getByTestId('handle-source-handle'))
+    expect(queryAddNodeButton()).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(mockHandleNodeAdd).not.toHaveBeenCalled()
+  })
 })

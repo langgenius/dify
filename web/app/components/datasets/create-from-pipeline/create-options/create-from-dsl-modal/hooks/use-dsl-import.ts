@@ -1,4 +1,5 @@
 'use client'
+import { useMutation } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -6,7 +7,7 @@ import { usePluginDependencies } from '@/app/components/workflow/plugin-dependen
 import { toast } from '@/app/notifications'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { useRouter } from '@/next/navigation'
-import { useImportPipelineDSL, useImportPipelineDSLConfirm } from '@/service/use-pipeline'
+import { consoleQuery } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
 
 export const CreateFromDSLModalTab = {
@@ -44,8 +45,12 @@ export const useDSLImport = ({
   const [isConfirming, setIsConfirming] = useState(false)
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const isCreatingRef = useRef(false)
-  const { mutateAsync: importDSL } = useImportPipelineDSL()
-  const { mutateAsync: importDSLConfirm } = useImportPipelineDSLConfirm()
+  const { mutateAsync: importDSL } = useMutation(
+    consoleQuery.rag.pipelines.imports.post.mutationOptions(),
+  )
+  const { mutateAsync: importDSLConfirm } = useMutation(
+    consoleQuery.rag.pipelines.imports.byImportId.confirm.post.mutationOptions(),
+  )
   const notifyError = useCallback(
     (message?: string) => {
       toast.error(message || t(($) => $['creation.errorTip'], { ns: 'datasetPipeline' }))
@@ -77,14 +82,12 @@ export const useDSLImport = ({
       let response
       if (currentTab === CreateFromDSLModalTab.FROM_FILE) {
         response = await importDSL({
-          mode: DSLImportMode.YAML_CONTENT,
-          yaml_content: fileContent || '',
+          body: { mode: DSLImportMode.YAML_CONTENT, yaml_content: fileContent || '' },
         })
       }
       if (currentTab === CreateFromDSLModalTab.FROM_URL) {
         response = await importDSL({
-          mode: DSLImportMode.YAML_URL,
-          yaml_url: dslUrlValue || '',
+          body: { mode: DSLImportMode.YAML_URL, yaml_url: dslUrlValue || '' },
         })
       }
       if (!response) {
@@ -150,7 +153,7 @@ export const useDSLImport = ({
     if (!importId) return
     setIsConfirming(true)
     try {
-      const response = await importDSLConfirm(importId)
+      const response = await importDSLConfirm({ params: { import_id: importId } })
       if (!response) {
         notifyError()
         return

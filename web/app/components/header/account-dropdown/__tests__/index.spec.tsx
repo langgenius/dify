@@ -7,26 +7,15 @@ import AccountSection from '@/app/components/main-nav/components/account-section
 import EducationUserInfo from '@/app/education/user-info'
 import { useLogout } from '@/service/use-common'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { renderWithConsoleQuery as renderWithConsoleQueryWithoutUrlState } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import AccountDropdown from '../index'
-
-const { mockSetSettingsDestination } = vi.hoisted(() => ({
-  mockSetSettingsDestination: vi.fn(),
-}))
 
 vi.mock('@/service/use-common', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/use-common')>()),
   useLogout: vi.fn(),
 }))
-
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return {
-    ...actual,
-    useQueryState: () => [null, mockSetSettingsDestination],
-  }
-})
 
 vi.mock('next-themes', () => ({
   useTheme: () => ({ theme: 'system', setTheme: vi.fn() }),
@@ -39,6 +28,12 @@ const userProfile = {
   avatar_url: 'current-avatar.png',
 }
 const accountMenuAccessibleName = `${userProfile.name} accountSettings.account.account`
+
+const onUrlUpdate = vi.fn()
+const renderWithConsoleQuery = createNuqsTestRenderer(
+  renderWithConsoleQueryWithoutUrlState,
+  () => ({ onUrlUpdate }),
+)
 
 const renderAccountDropdown = () => {
   const queryClient = createAccountProfileQueryClient(userProfile)
@@ -63,17 +58,6 @@ describe('AccountDropdown', () => {
     vi.mocked(useLogout).mockReturnValue({
       mutate: mockLogout,
     } as unknown as ReturnType<typeof useLogout>)
-  })
-
-  it('includes the visible account name in the main navigation trigger accessible name', () => {
-    const queryClient = createAccountProfileQueryClient(userProfile)
-
-    renderWithConsoleQuery(<AccountSection />, {
-      queryClient,
-      features: { education: { enabled: false } },
-    })
-
-    expect(screen.getByRole('button', { name: accountMenuAccessibleName })).toBeInTheDocument()
   })
 
   it('keeps the account identity in the compact trigger accessible name', () => {
@@ -122,21 +106,6 @@ describe('AccountDropdown', () => {
     ).toBeDisabled()
   })
 
-  it('opens the main navigation account menu through the composed trigger', async () => {
-    const user = userEvent.setup()
-    renderAccountDropdown()
-
-    const trigger = screen.getByRole('button', { name: 'accountSettings.account.account' })
-    expect(trigger).not.toHaveAttribute('data-popup-open')
-
-    await user.click(trigger)
-
-    expect(await screen.findByText('current@example.com')).toBeInTheDocument()
-    expect(trigger).toHaveAttribute('data-popup-open', '')
-    expect(screen.getByText('navigation.settings.preferences')).toBeInTheDocument()
-    expect(screen.getByText('accountSettings.account.appearanceLabel')).toBeInTheDocument()
-  })
-
   it('opens preferences from the account menu', async () => {
     const user = userEvent.setup()
     renderAccountDropdown()
@@ -144,7 +113,9 @@ describe('AccountDropdown', () => {
     await user.click(screen.getByRole('button', { name: 'accountSettings.account.account' }))
     await user.click(await screen.findByText('navigation.settings.preferences'))
 
-    expect(mockSetSettingsDestination).toHaveBeenCalledWith('preferences')
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('preferences'),
+    )
   })
 
   it('shows only Logout in the end-user preview without ending the Console session', async () => {

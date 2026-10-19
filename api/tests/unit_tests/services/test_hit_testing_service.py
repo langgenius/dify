@@ -1,5 +1,6 @@
 """Unit tests for the database-independent hit-testing helpers."""
 
+from dataclasses import dataclass
 from unittest.mock import patch
 
 import pytest
@@ -39,11 +40,11 @@ class TestHitTestingServiceArguments:
             HitTestingService.hit_testing_args_check({"attachment_ids": "not a list"})
 
 
+@dataclass
 class _FakeSegment:
     """Minimal stand-in for a retrieval segment carrying a document id."""
 
-    def __init__(self, document_id: str) -> None:
-        self.document_id = document_id
+    document_id: str
 
 
 class _FakeRetrievalRecord:

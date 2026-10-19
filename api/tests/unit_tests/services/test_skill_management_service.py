@@ -184,21 +184,29 @@ def _skill_md(name: str = "finance-sop", description: str = "Finance SOP", body:
 def test_validate_skill_name_rejects_underscores_and_double_hyphens() -> None:
     assert validate_skill_name("finance-sop") == "finance-sop"
     for bad in ["finance_sop", "finance--sop", "-finance", "finance-", "Finance", "x" * 65]:
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match="config skill name .* must match|skill name must",
+        ):
             validate_skill_name(bad)
 
 
 def test_validate_skill_description_rejects_blank_and_long_values() -> None:
     assert validate_skill_description(" Finance SOP ") == "Finance SOP"
     for bad in ["", "   ", "x" * 1025]:
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match=("(?:skill description must be at most 1024 characters|skill description must not be blank)"),
+        ):
             validate_skill_description(bad)
 
 
 def test_normalize_skill_file_path_rejects_escape_paths() -> None:
     assert normalize_skill_file_path("references//guide.md") == "references/guide.md"
     for bad in ["", "../x", "/etc/passwd", "a/\x00b"]:
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError, match="(?:skill file path contains control characters|skill file path is invalid)"
+        ):
             normalize_skill_file_path(bad)
 
 
@@ -3262,6 +3270,108 @@ def test_build_assistant_attachment_context_extracts_pptx_text() -> None:
     assert "--- playbook.pptx" in context
     assert "Quarterly enablement plan" in context
     assert "Binary attachment available" not in context
+
+
+@pytest.mark.parametrize(
+    ("slide_order", "max_chars", "strict"),
+    [
+        pytest.param([1, 2, 10], 1000, False, id="double-digit-slides"),
+        pytest.param([3, 1, 2], 1000, False, id="reordered-slides"),
+        pytest.param([2, 1, 3], 8, True, id="bounded-strict-presentation"),
+        pytest.param([1, 2], 1000, False, id="ordinary-order"),
+    ],
+)
+def test_build_assistant_attachment_context_preserves_pptx_slide_order(
+    slide_order: list[int], max_chars: int, strict: bool
+) -> None:
+    presentation_ns = (
+        "http://purl.oclc.org/ooxml/presentationml/main"
+        if strict
+        else "http://schemas.openxmlformats.org/presentationml/2006/main"
+    )
+    relationship_ns = (
+        "http://purl.oclc.org/ooxml/officeDocument/relationships"
+        if strict
+        else "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+    )
+    drawing_ns = (
+        "http://purl.oclc.org/ooxml/drawingml/main"
+        if strict
+        else "http://schemas.openxmlformats.org/drawingml/2006/main"
+    )
+    slide_ids = "".join(f'<p:sldId id="{256 + number}" r:id="rId{500 + number}"/>' for number in slide_order)
+    relationships = "".join(
+        f'<Relationship Id="rId{500 + number}" Type="{relationship_ns}/slide" '
+        f'Target="{f"/ppt/slides/slide{number}.xml" if number % 2 else f"slides/./slide{number}.xml"}"/>'
+        for number in reversed(slide_order)
+    )
+    files = {
+        "ppt/presentation.xml": (
+            f'<p:presentation xmlns:p="{presentation_ns}" xmlns:r="{relationship_ns}">'
+            f"<p:sldIdLst>{slide_ids}</p:sldIdLst></p:presentation>"
+        ),
+        "ppt/_rels/presentation.xml.rels": (
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            f"{relationships}</Relationships>"
+        ),
+    }
+    for number in reversed(slide_order):
+        files[f"ppt/slides/slide{number}.xml"] = (
+            f'<p:sld xmlns:p="{presentation_ns}" '
+            f'xmlns:a="{drawing_ns}">'
+            f"<p:cSld><a:p><a:r><a:t>Step {number}</a:t></a:r></a:p></p:cSld></p:sld>"
+        )
+    payload = _zip_payload(files)
+    attachment = SkillAssistAttachmentPayload(
+        tool_file_id="ordered-pptx",
+        name="steps.pptx",
+        mime_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        size=len(payload),
+    )
+    header = f"--- {attachment.name} ({attachment.mime_type}, {attachment.size} bytes) ---\n"
+    expected = "\n".join(f"Step {number}" for number in slide_order)
+    if len(expected) > max_chars:
+        expected = f"{expected[:max_chars]}\n[TRUNCATED]"
+    with (
+        patch(
+            "services.skill_management_service.SkillManagementService._load_assistant_tool_file_bytes",
+            return_value=payload,
+        ),
+        patch("services.skill_management_service._MAX_ASSISTANT_ATTACHMENT_CHARS", len(header) + max_chars),
+    ):
+        context = SkillManagementService._build_assistant_attachment_context(tenant_id=TENANT, attachments=[attachment])
+    assert context == header + expected
+
+
+def test_pptx_extraction_ignores_unreferenced_external_and_missing_slide_parts() -> None:
+    relationship_ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+    slide_ids = "".join(
+        f'<p:sldId id="{256 + index}" r:id="{rid}"/>'
+        for index, rid in enumerate(["keep", "external", "missing", "master"])
+    )
+    relationships = (
+        f'<Relationship Id="keep" Type="{relationship_ns}/slide" Target="slides/slide2.xml"/>'
+        f'<Relationship Id="external" Type="{relationship_ns}/slide" Target="slides/slide1.xml" TargetMode="External"/>'
+        f'<Relationship Id="missing" Type="{relationship_ns}/slide" Target="slides/slide404.xml"/>'
+        f'<Relationship Id="master" Type="{relationship_ns}/slideMaster" Target="slides/slide3.xml"/>'
+    )
+    payload = _zip_payload(
+        {
+            "ppt/presentation.xml": (
+                '<p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" '
+                f'xmlns:r="{relationship_ns}"><p:sldIdLst>{slide_ids}</p:sldIdLst></p:presentation>'
+            ),
+            "ppt/_rels/presentation.xml.rels": (
+                '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+                f"{relationships}</Relationships>"
+            ),
+            "ppt/slides/slide1.xml": "<slide><t>external</t></slide>",
+            "ppt/slides/slide2.xml": "<slide><t>keep</t></slide>",
+            "ppt/slides/slide3.xml": "<slide><t>master</t></slide>",
+            "ppt/slides/slide99.xml": "<slide><t>unreferenced</t></slide>",
+        }
+    )
+    assert SkillManagementService._extract_pptx_text(payload, max_chars=1000) == "keep"
 
 
 def test_build_assistant_attachment_context_extracts_rtf_text() -> None:

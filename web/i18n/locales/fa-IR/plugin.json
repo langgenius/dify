@@ -353,9 +353,7 @@
   "task.runningPlugins": "Installing Plugins",
   "task.successPlugins": "Successfully Installed Plugins",
   "templatePublishingGuide": "راهنمای انتشار الگو",
-  "upgrade.close": "نزدیک",
   "upgrade.description": "در مورد نصب افزونه زیر",
-  "upgrade.successfulTitle": "نصب موفقیت آمیز",
   "upgrade.title": "افزونه را نصب کنید",
   "upgrade.upgrade": "نصب",
   "upgrade.upgrading": "نصب..."

@@ -527,7 +527,6 @@ class ToolBuiltinProviderListToolsApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def get(self, tenant_id: str, provider: str):
-
         return dump_response(
             ToolApiListResponse,
             BuiltinToolManageService.list_builtin_tool_provider_tools(
@@ -549,7 +548,6 @@ class ToolBuiltinProviderInfoApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def get(self, tenant_id: str, provider: str):
-
         return _dump_tool_provider_payload(
             BuiltinToolManageService.get_builtin_tool_provider_info(tenant_id, provider).to_dict()
         )
@@ -571,7 +569,6 @@ class ToolBuiltinProviderDeleteApi(Resource):
     @with_current_tenant_id
     @model_validate(BuiltinToolCredentialDeletePayload)
     def post(self, req_data: BuiltinToolCredentialDeletePayload, tenant_id: str, provider: str):
-
         return dump_response(
             SimpleResultResponse,
             BuiltinToolManageService.delete_builtin_tool_provider(
@@ -855,7 +852,6 @@ class ToolBuiltinProviderCredentialsSchemaApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def get(self, tenant_id: str, provider, credential_type):
-
         return dump_response(
             ProviderConfigListResponse,
             BuiltinToolManageService.list_builtin_provider_credentials_schema(
@@ -1075,7 +1071,6 @@ class ToolApiListApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def get(self, tenant_id: str):
-
         return _dump_tool_provider_payload_list(
             [
                 provider.to_dict()
@@ -1604,7 +1599,6 @@ class ToolMCPListAllApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def get(self, tenant_id: str):
-
         with sessionmaker(db.engine).begin() as session:
             service = MCPToolManageService(session=session)
             # Skip sensitive data decryption for list view to improve performance

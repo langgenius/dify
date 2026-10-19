@@ -3,12 +3,13 @@
 import type { EndUserConnection, LinkedApp } from '../model'
 import {
   Dialog,
-  DialogClose,
+  DialogBody,
   DialogContent,
+  DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
@@ -66,30 +67,26 @@ export default function LinkedAppsDialog({ connection, connectionLabelId }: Prop
       >
         {t(($) => $['endUser.linkedAppCount'], { ns: 'app', count: connection.apps.length })}
       </DialogTrigger>
-      <DialogContent className="flex w-130 flex-col gap-4 overflow-hidden">
-        <div className="flex shrink-0 items-center justify-between gap-4">
-          <DialogTitle className="title-3xl-semi-bold leading-7 text-text-primary">
+      <DialogContent className="w-130">
+        <DialogHeader>
+          <DialogTitle>
             {t(($) => $['endUser.linkedAppsTitle'], { ns: 'app', count: connection.apps.length })}
           </DialogTitle>
-          <DialogClose
-            render={
-              <IconButton size="md" aria-label={t(($) => $['operation.close'], { ns: 'common' })}>
-                <span className="i-ri-close-line size-4" aria-hidden="true" />
-              </IconButton>
-            }
-          />
-        </div>
-        {connection.apps.length > 0 ? (
-          <ul className="-ml-2 max-h-88 min-h-0 overflow-y-auto overscroll-contain pl-2">
-            {connection.apps.map((app) => (
-              <LinkedAppItem key={app.id} app={app} />
-            ))}
-          </ul>
-        ) : (
-          <p className="system-sm-regular text-text-tertiary">
-            {t(($) => $['endUser.noLinkedApps'], { ns: 'app' })}
-          </p>
-        )}
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody className="max-h-94">
+          {connection.apps.length > 0 ? (
+            <ul className="-ml-2 pl-2">
+              {connection.apps.map((app) => (
+                <LinkedAppItem key={app.id} app={app} />
+              ))}
+            </ul>
+          ) : (
+            <p className="system-sm-regular text-text-tertiary">
+              {t(($) => $['endUser.noLinkedApps'], { ns: 'app' })}
+            </p>
+          )}
+        </DialogBody>
       </DialogContent>
     </Dialog>
   )

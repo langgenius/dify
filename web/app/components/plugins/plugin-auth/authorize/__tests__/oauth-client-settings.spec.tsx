@@ -1,427 +1,148 @@
-import type { OAuthClientSettingsProps } from '../oauth-client-settings'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import type { FormSchema } from '@/app/components/base/form/types'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { useState } from 'react'
+import { FormTypeEnum } from '@/app/components/base/form/types'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { AuthCategory } from '../../types'
+import OAuthClientSettings from '../oauth-client-settings'
 
-const mockNotify = vi.fn()
-const mockToast = {
-  success: (message: string, options?: Record<string, unknown>) =>
-    mockNotify({ type: 'success', message, ...options }),
-  error: (message: string, options?: Record<string, unknown>) =>
-    mockNotify({ type: 'error', message, ...options }),
-  warning: (message: string, options?: Record<string, unknown>) =>
-    mockNotify({ type: 'warning', message, ...options }),
-  info: (message: string, options?: Record<string, unknown>) =>
-    mockNotify({ type: 'info', message, ...options }),
-  dismiss: vi.fn(),
-  update: vi.fn(),
-  promise: vi.fn(),
-}
-
-vi.mock('@/app/notifications', () => ({
-  toast: mockToast,
-}))
-const mockSetPluginOAuthCustomClient = vi.fn().mockResolvedValue({})
-const mockDeletePluginOAuthCustomClient = vi.fn().mockResolvedValue({})
-const mockInvalidPluginOAuthClientSchema = vi.fn()
-let mockFormValues = {
-  isCheckValidated: true,
-  values: { __oauth_client__: 'custom', client_id: 'test-id' },
-}
-let mockAuthFormProps: Record<string, unknown> | undefined
-
+const commands = vi.hoisted(() => ({ save: vi.fn(), remove: vi.fn(), invalidate: vi.fn() }))
 vi.mock('../../hooks/use-credential', () => ({
-  useSetPluginOAuthCustomClientHook: () => ({
-    mutateAsync: mockSetPluginOAuthCustomClient,
-  }),
-  useDeletePluginOAuthCustomClientHook: () => ({
-    mutateAsync: mockDeletePluginOAuthCustomClient,
-  }),
-  useInvalidPluginOAuthClientSchemaHook: () => mockInvalidPluginOAuthClientSchema,
+  useSetPluginOAuthCustomClientHook: () => ({ mutateAsync: commands.save }),
+  useDeletePluginOAuthCustomClientHook: () => ({ mutateAsync: commands.remove }),
+  useInvalidPluginOAuthClientSchemaHook: () => commands.invalidate,
 }))
-
-vi.mock('../../../readme-panel/entrance', () => ({
-  ReadmeEntrance: () => <div data-testid="readme-entrance" />,
-}))
-
-vi.mock('@/app/components/base/form/form-scenarios/auth', () => {
-  const MockAuthForm = ({
-    ref,
-    ...props
-  }: { ref?: React.Ref<unknown> } & Record<string, unknown>) => {
-    mockAuthFormProps = props
-    React.useImperativeHandle(ref, () => ({
-      getFormValues: () => mockFormValues,
-    }))
-    return <div data-testid="auth-form" />
-  }
-
-  return {
-    default: MockAuthForm,
-  }
+vi.mock('@/app/notifications', () => ({ toast: { success: vi.fn() } }))
+const payload = { category: AuthCategory.tool, provider: 'test-provider' }
+const schemas: FormSchema[] = [
+  {
+    name: '__oauth_client__',
+    label: 'Client type',
+    type: FormTypeEnum.textInput,
+    default: 'custom',
+    required: true,
+  },
+  { name: 'client_id', label: 'Client ID', type: FormTypeEnum.textInput, required: true },
+]
+beforeEach(() => {
+  commands.save.mockResolvedValue({})
+  commands.remove.mockResolvedValue({})
 })
 
-const basePayload = {
-  category: AuthCategory.tool,
-  provider: 'test-provider',
-}
+it('validates client fields and requests authorization only after a successful save', async () => {
+  const user = userEvent.setup()
+  const authorize = vi.fn()
+  const onClose = vi.fn()
+  render(
+    <OAuthClientSettings
+      pluginPayload={payload}
+      schemas={schemas}
+      onRequestAuthorization={authorize}
+      onClose={onClose}
+    />,
+  )
+  await user.click(screen.getByRole('button', { name: 'plugin.auth.saveAndAuth' }))
+  expect(commands.save).not.toHaveBeenCalled()
+  await user.type(screen.getByRole('textbox', { name: /Client ID/ }), 'new-client')
+  commands.save.mockRejectedValueOnce(new Error('Save failed'))
+  await user.click(screen.getByRole('button', { name: 'plugin.auth.saveAndAuth' }))
+  await waitFor(() => expect(commands.save).toHaveBeenCalledOnce())
+  expect(authorize).not.toHaveBeenCalled()
+  expect(onClose).not.toHaveBeenCalled()
+  await user.click(screen.getByRole('button', { name: 'plugin.auth.saveAndAuth' }))
+  await waitFor(() => expect(authorize).toHaveBeenCalledOnce())
+  expect(commands.save).toHaveBeenLastCalledWith({
+    client_params: { client_id: 'new-client' },
+    enable_oauth_custom_client: true,
+  })
+  expect(commands.invalidate).toHaveBeenCalledOnce()
+})
 
-const defaultSchemas = [
-  { name: 'client_id', label: 'Client ID', type: 'text-input', required: true },
-] as never
+it('prevents duplicate saves and supports removing the existing custom client', async () => {
+  const user = userEvent.setup()
+  const request = createDeferred<object>()
+  commands.save.mockReturnValue(request.promise)
+  const onUpdate = vi.fn()
+  render(
+    <OAuthClientSettings
+      pluginPayload={payload}
+      schemas={schemas}
+      editValues={{ __oauth_client__: 'custom', client_id: 'saved-id' }}
+      hasOriginalClientParams
+      onUpdate={onUpdate}
+    />,
+  )
+  await user.dblClick(screen.getByRole('button', { name: 'plugin.auth.saveOnly' }))
+  expect(commands.save).toHaveBeenCalledOnce()
+  expect(screen.getByRole('button', { name: 'common.operation.remove' })).toBeDisabled()
+  request.resolve({})
+  await waitFor(() => expect(onUpdate).toHaveBeenCalledOnce())
+  await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+  await waitFor(() => expect(commands.remove).toHaveBeenCalledOnce())
+  expect(onUpdate).toHaveBeenCalledTimes(2)
+})
 
-const PopoverSettingsHarness = ({
-  OAuthClientSettings,
-  onClose,
-  onPopoverClose,
-}: {
-  OAuthClientSettings: React.FC<OAuthClientSettingsProps>
-  onClose: () => void
-  onPopoverClose: () => void
-}) => {
-  const [open, setOpen] = React.useState(true)
-
-  return (
-    <Popover
-      open={open}
-      onOpenChange={(nextOpen) => {
-        setOpen(nextOpen)
-        if (!nextOpen) onPopoverClose()
-      }}
-    >
-      <PopoverTrigger render={<button type="button">OAuth</button>} />
-      <PopoverContent>
-        <div data-testid="oauth-popover">
+it('keeps the source popover open when typing in the OAuth settings dialog', async () => {
+  const user = userEvent.setup()
+  const onClose = vi.fn()
+  const onPopoverClose = vi.fn()
+  const Harness = () => {
+    const [open, setOpen] = useState(true)
+    return (
+      <Popover
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next)
+          if (!next) onPopoverClose()
+        }}
+      >
+        <PopoverTrigger render={<button>OAuth</button>} />
+        <PopoverContent>
           <OAuthClientSettings
             open={open}
             onOpenChange={setOpen}
-            pluginPayload={basePayload}
-            schemas={defaultSchemas}
+            pluginPayload={payload}
+            schemas={schemas}
             onClose={onClose}
           />
-        </div>
-      </PopoverContent>
-    </Popover>
+        </PopoverContent>
+      </Popover>
+    )
+  }
+  render(<Harness />)
+  await user.type(await screen.findByRole('textbox', { name: /Client ID/ }), 'new-client')
+  expect(onClose).not.toHaveBeenCalled()
+  expect(onPopoverClose).not.toHaveBeenCalled()
+})
+
+it('shows redirect setup information only when using a custom OAuth client', async () => {
+  const user = userEvent.setup()
+  render(
+    <OAuthClientSettings
+      pluginPayload={payload}
+      schemas={[
+        {
+          name: '__oauth_client__',
+          label: 'Client type',
+          type: FormTypeEnum.radio,
+          required: false,
+          default: 'default',
+          options: [
+            { label: 'System client', value: 'default' },
+            { label: 'Custom client', value: 'custom' },
+          ],
+        },
+      ]}
+      redirectUri="https://redirect.example.test/callback"
+    />,
   )
-}
-
-const ControlledSettingsHarness = ({
-  OAuthClientSettings,
-  onClose,
-}: {
-  OAuthClientSettings: React.FC<OAuthClientSettingsProps>
-  onClose: () => void
-}) => {
-  const [open, setOpen] = React.useState(true)
-
-  return (
-    <>
-      <div data-testid="modal-open-state">{String(open)}</div>
-      <OAuthClientSettings
-        open={open}
-        onOpenChange={setOpen}
-        pluginPayload={basePayload}
-        schemas={defaultSchemas}
-        onClose={onClose}
-      />
-    </>
-  )
-}
-
-describe('OAuthClientSettings', () => {
-  let OAuthClientSettings: React.FC<OAuthClientSettingsProps>
-
-  beforeEach(async () => {
-    vi.clearAllMocks()
-    mockFormValues = {
-      isCheckValidated: true,
-      values: { __oauth_client__: 'custom', client_id: 'test-id' },
-    }
-    mockAuthFormProps = undefined
-    const mod = await import('../oauth-client-settings')
-    OAuthClientSettings = mod.default
-  })
-
-  it('should render modal with correct title', () => {
-    render(<OAuthClientSettings pluginPayload={basePayload} schemas={defaultSchemas} />)
-
-    expect(
-      screen.getByRole('heading', { name: 'plugin.auth.oauthClientSettings' }),
-    ).toBeInTheDocument()
-  })
-
-  it('should render auth form', () => {
-    render(<OAuthClientSettings pluginPayload={basePayload} schemas={defaultSchemas} />)
-
-    expect(screen.getByTestId('auth-form')).toBeInTheDocument()
-  })
-
-  it.each([
-    { mode: 'custom', redirectUri: 'https://example.com/oauth/callback', visible: true },
-    { mode: undefined, redirectUri: 'https://example.com/oauth/callback', visible: true },
-    { mode: 'default', redirectUri: 'https://example.com/oauth/callback', visible: false },
-    { mode: 'custom', redirectUri: undefined, visible: false },
-  ])(
-    'shows redirect guidance for client mode $mode when applicable',
-    ({ mode, redirectUri, visible }) => {
-      render(
-        <OAuthClientSettings
-          pluginPayload={basePayload}
-          schemas={defaultSchemas}
-          editValues={mode ? { __oauth_client__: mode } : undefined}
-          redirectUri={redirectUri}
-        />,
-      )
-
-      if (visible) {
-        expect(screen.getByText('plugin.auth.clientInfo')).toBeInTheDocument()
-        expect(screen.getByText(redirectUri!)).toBeInTheDocument()
-      } else {
-        expect(screen.queryByText('plugin.auth.clientInfo')).not.toBeInTheDocument()
-      }
-    },
-  )
-
-  it('should render backdrop when nested inside another dialog', () => {
-    render(
-      <Dialog open>
-        <DialogContent>
-          <OAuthClientSettings pluginPayload={basePayload} schemas={defaultSchemas} />
-        </DialogContent>
-      </Dialog>,
-    )
-
-    const openBackdrops = screen
-      .getAllByRole('presentation', { hidden: true })
-      .filter((element) => element.hasAttribute('data-open'))
-
-    expect(openBackdrops).toHaveLength(2)
-  })
-
-  it('should pass schema defaults to auth form', () => {
-    render(
-      <OAuthClientSettings
-        pluginPayload={basePayload}
-        schemas={
-          [
-            {
-              name: 'client_id',
-              label: 'Client ID',
-              type: 'text-input',
-              required: true,
-              default: 'default-client-id',
-            },
-          ] as never
-        }
-      />,
-    )
-
-    expect(mockAuthFormProps?.defaultValues).toMatchObject({
-      client_id: 'default-client-id',
-    })
-  })
-
-  it('should call onClose when cancel clicked', () => {
-    const mockOnClose = vi.fn()
-    render(
-      <OAuthClientSettings
-        pluginPayload={basePayload}
-        schemas={defaultSchemas}
-        onClose={mockOnClose}
-      />,
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: /operation\.cancel/i }))
-    expect(mockOnClose).toHaveBeenCalled()
-  })
-
-  it('should close through controlled open state when cancel clicked', async () => {
-    const mockOnClose = vi.fn()
-    render(
-      <ControlledSettingsHarness OAuthClientSettings={OAuthClientSettings} onClose={mockOnClose} />,
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: /operation\.cancel/i }))
-
-    await waitFor(() => {
-      expect(screen.getByTestId('modal-open-state')).toHaveTextContent('false')
-    })
-    expect(mockOnClose).toHaveBeenCalled()
-  })
-
-  it('should stay open when backdrop is clicked', () => {
-    const mockOnClose = vi.fn()
-    render(
-      <ControlledSettingsHarness OAuthClientSettings={OAuthClientSettings} onClose={mockOnClose} />,
-    )
-
-    const backdrop = document.querySelector('.bg-background-overlay')
-    expect(backdrop).toBeInTheDocument()
-
-    fireEvent.click(backdrop!)
-
-    expect(screen.getByTestId('modal-open-state')).toHaveTextContent('true')
-    expect(mockOnClose).not.toHaveBeenCalled()
-  })
-
-  it('should save settings on save only button click', async () => {
-    const mockOnClose = vi.fn()
-    const mockOnUpdate = vi.fn()
-    render(
-      <OAuthClientSettings
-        pluginPayload={basePayload}
-        schemas={defaultSchemas}
-        onClose={mockOnClose}
-        onUpdate={mockOnUpdate}
-      />,
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: 'plugin.auth.saveOnly' }))
-
-    await waitFor(() => {
-      expect(mockSetPluginOAuthCustomClient).toHaveBeenCalledWith(
-        expect.objectContaining({
-          enable_oauth_custom_client: true,
-        }),
-      )
-    })
-  })
-
-  it('should ignore duplicate save clicks while action is pending', async () => {
-    const mockOnClose = vi.fn()
-    let resolveSave: (value: object) => void = () => {}
-    mockSetPluginOAuthCustomClient.mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          resolveSave = resolve
-        }),
-    )
-
-    render(
-      <OAuthClientSettings
-        pluginPayload={basePayload}
-        schemas={defaultSchemas}
-        onClose={mockOnClose}
-      />,
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: 'plugin.auth.saveOnly' }))
-
-    await waitFor(() => {
-      expect(mockSetPluginOAuthCustomClient).toHaveBeenCalledTimes(1)
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: 'plugin.auth.saveOnly' }))
-
-    expect(mockSetPluginOAuthCustomClient).toHaveBeenCalledTimes(1)
-
-    resolveSave({})
-
-    await waitFor(() => {
-      expect(mockOnClose).toHaveBeenCalled()
-    })
-  })
-
-  it('should request authorization after saving settings', async () => {
-    const user = userEvent.setup()
-    const mockOnRequestAuthorization = vi.fn().mockResolvedValue(undefined)
-    render(
-      <OAuthClientSettings
-        pluginPayload={basePayload}
-        schemas={defaultSchemas}
-        onRequestAuthorization={mockOnRequestAuthorization}
-      />,
-    )
-
-    await user.click(screen.getByRole('button', { name: 'plugin.auth.saveAndAuth' }))
-
-    await waitFor(() => {
-      expect(mockSetPluginOAuthCustomClient).toHaveBeenCalled()
-      expect(mockOnRequestAuthorization).toHaveBeenCalledOnce()
-    })
-  })
-
-  it('should not request authorization when saving settings fails', async () => {
-    const user = userEvent.setup()
-    const mockOnRequestAuthorization = vi.fn()
-    mockSetPluginOAuthCustomClient.mockRejectedValueOnce(new Error('Save failed'))
-    render(
-      <OAuthClientSettings
-        pluginPayload={basePayload}
-        schemas={defaultSchemas}
-        onRequestAuthorization={mockOnRequestAuthorization}
-      />,
-    )
-
-    await user.click(screen.getByRole('button', { name: 'plugin.auth.saveAndAuth' }))
-
-    await waitFor(() => {
-      expect(mockSetPluginOAuthCustomClient).toHaveBeenCalled()
-    })
-    expect(mockOnRequestAuthorization).not.toHaveBeenCalled()
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-  })
-
-  it('should remove custom client settings', async () => {
-    const mockOnClose = vi.fn()
-    const mockOnUpdate = vi.fn()
-    render(
-      <OAuthClientSettings
-        pluginPayload={basePayload}
-        schemas={defaultSchemas}
-        editValues={{ __oauth_client__: 'custom', client_id: 'test-id' }}
-        hasOriginalClientParams
-        onClose={mockOnClose}
-        onUpdate={mockOnUpdate}
-      />,
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.remove' }))
-
-    await waitFor(() => {
-      expect(mockDeletePluginOAuthCustomClient).toHaveBeenCalled()
-    })
-    expect(mockOnClose).toHaveBeenCalled()
-    expect(mockOnUpdate).toHaveBeenCalled()
-    expect(mockInvalidPluginOAuthClientSchema).toHaveBeenCalled()
-    expect(mockNotify).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: 'common.api.actionSuccess',
-        type: 'success',
-      }),
-    )
-  })
-
-  it('should render readme entrance when detail is provided', () => {
-    const payload = { ...basePayload, detail: { name: 'Test' } as never }
-    render(<OAuthClientSettings pluginPayload={payload} schemas={defaultSchemas} />)
-
-    expect(screen.getByTestId('readme-entrance')).toBeInTheDocument()
-  })
-
-  it('should stay open when clicking inside the modal from a popover', async () => {
-    const user = userEvent.setup()
-    const mockOnClose = vi.fn()
-    const mockOnPopoverClose = vi.fn()
-
-    render(
-      <PopoverSettingsHarness
-        OAuthClientSettings={OAuthClientSettings}
-        onClose={mockOnClose}
-        onPopoverClose={mockOnPopoverClose}
-      />,
-    )
-
-    const form = await screen.findByTestId('auth-form')
-
-    await user.click(form)
-
-    expect(mockOnClose).not.toHaveBeenCalled()
-    expect(mockOnPopoverClose).not.toHaveBeenCalled()
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-  })
+  expect(screen.queryByText('plugin.auth.clientInfo')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('radio', { name: 'Custom client' }))
+  expect(screen.getByText('plugin.auth.clientInfo')).toBeVisible()
+  expect(screen.getByText('https://redirect.example.test/callback')).toBeVisible()
+  await user.click(screen.getByRole('radio', { name: 'System client' }))
+  expect(screen.queryByText('plugin.auth.clientInfo')).not.toBeInTheDocument()
 })

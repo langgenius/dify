@@ -1,197 +1,105 @@
 import type { Socket } from 'socket.io-client'
 import { LoroDoc } from 'loro-crdt'
 import { CRDTProvider } from '../crdt-provider'
+import { createSocket } from './test-socket'
 
-type FakeDocEvent = {
-  by: string
+const providers: CRDTProvider[] = []
+afterEach(() => {
+  providers.splice(0).forEach((provider) => provider.destroy())
+  vi.restoreAllMocks()
+})
+const connect = (
+  socket: Socket,
+  doc: LoroDoc,
+  onSnapshotImported?: () => void,
+  shouldImportSnapshot?: () => boolean,
+) => {
+  const provider = new CRDTProvider(
+    socket,
+    doc,
+    undefined,
+    onSnapshotImported,
+    shouldImportSnapshot,
+  )
+  providers.push(provider)
+  return provider
 }
-
-type FakeDoc = {
-  export: ReturnType<typeof vi.fn>
-  import: ReturnType<typeof vi.fn>
-  subscribe: ReturnType<typeof vi.fn>
-  trigger: (event: FakeDocEvent) => void
-}
-
-const createFakeDoc = (): FakeDoc => {
-  let handler: ((payload: FakeDocEvent) => void) | null = null
-
-  const exportFn = vi.fn(() => new Uint8Array([1, 2, 3]))
-  const importFn = vi.fn()
-  const subscribeFn = vi.fn((cb: (payload: FakeDocEvent) => void) => {
-    handler = cb
-    return vi.fn()
-  })
-
-  return {
-    export: exportFn,
-    import: importFn,
-    subscribe: subscribeFn,
-    trigger: (event: FakeDocEvent) => {
-      handler?.(event)
-    },
-  }
-}
-
-type MockSocket = {
-  connected: boolean
-  trigger: (event: string, ...args: unknown[]) => void
-  emit: ReturnType<typeof vi.fn>
-  on: ReturnType<typeof vi.fn>
-  off: ReturnType<typeof vi.fn>
-}
-
-const createMockSocket = (connected = true): MockSocket => {
-  const handlers = new Map<string, (...args: unknown[]) => void>()
-
-  const socket: MockSocket = {
-    connected,
-    emit: vi.fn(),
-    on: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
-      handlers.set(event, handler)
-    }),
-    off: vi.fn((event: string) => {
-      handlers.delete(event)
-    }),
-    trigger: (event: string, ...args: unknown[]) => {
-      const handler = handlers.get(event)
-      if (handler) handler(...args)
-    },
-  }
-
-  return socket
+const sourceDocument = () => {
+  const doc = new LoroDoc()
+  doc.getMap('nodes').set('node-1', { id: 'node-1', title: 'Remote title' })
+  doc.commit()
+  return doc
 }
 
 describe('CRDTProvider', () => {
-  it('emits graph_event when local changes happen', () => {
-    const doc = createFakeDoc()
-    const socket = createMockSocket()
-
-    const provider = new CRDTProvider(socket as unknown as Socket, doc as unknown as LoroDoc)
-    expect(provider).toBeInstanceOf(CRDTProvider)
-
-    doc.trigger({ by: 'local' })
-
-    expect(socket.emit).toHaveBeenCalledWith(
-      'graph_event',
-      expect.any(Uint8Array),
-      expect.any(Function),
-    )
-    expect(doc.export).toHaveBeenCalledWith({ mode: 'update' })
+  it('exports local changes that another document can apply', () => {
+    const doc = new LoroDoc()
+    const { socket, emit } = createSocket('provider')
+    connect(socket, doc)
+    doc.getMap('nodes').set('node-1', { id: 'node-1', title: 'Local title' })
+    doc.commit()
+    expect(emit).toHaveBeenCalledWith('graph_event', expect.any(Uint8Array), expect.any(Function))
+    const peer = new LoroDoc()
+    peer.import(emit.mock.lastCall![1])
+    expect(peer.toJSON()).toEqual(doc.toJSON())
   })
 
-  it('ignores non-local events', () => {
-    const doc = createFakeDoc()
-    const socket = createMockSocket()
+  it('applies remote updates without echoing them to the socket', () => {
+    const doc = new LoroDoc()
+    const { socket, emit, receive } = createSocket('provider')
+    connect(socket, doc)
+    const source = sourceDocument()
+    receive('graph_update', source.export({ mode: 'update' }))
+    expect(doc.toJSON()).toEqual(source.toJSON())
+    expect(emit).not.toHaveBeenCalled()
+  })
 
-    const provider = new CRDTProvider(socket as unknown as Socket, doc as unknown as LoroDoc)
-
-    doc.trigger({ by: 'remote' })
-
-    expect(socket.emit).not.toHaveBeenCalled()
+  it('stops synchronizing in both directions after destroy', () => {
+    const doc = new LoroDoc()
+    const { socket, emit, receive } = createSocket('provider')
+    const provider = connect(socket, doc)
     provider.destroy()
+    doc.getMap('nodes').set('local-only', 'Local')
+    doc.commit()
+    receive('graph_update', sourceDocument().export({ mode: 'update' }))
+    expect(emit).not.toHaveBeenCalled()
+    expect(doc.getMap('nodes').toJSON()).toEqual({ 'local-only': 'Local' })
   })
 
-  it('imports remote updates on graph_update', () => {
-    const doc = createFakeDoc()
-    const socket = createMockSocket()
-
-    const provider = new CRDTProvider(socket as unknown as Socket, doc as unknown as LoroDoc)
-
-    const payload = new Uint8Array([9, 9, 9])
-    socket.trigger('graph_update', payload)
-
-    expect(doc.import).toHaveBeenCalledWith(expect.any(Uint8Array))
-    expect(Array.from(doc.import.mock.calls[0]![0])).toEqual([9, 9, 9])
-    provider.destroy()
+  it('does not queue local changes while disconnected', () => {
+    const doc = new LoroDoc()
+    const { socket, emit } = createSocket('provider', false)
+    connect(socket, doc)
+    doc.getMap('nodes').set('offline', 'Draft')
+    doc.commit()
+    expect(emit).not.toHaveBeenCalled()
   })
 
-  it('removes graph_update listener on destroy', () => {
-    const doc = createFakeDoc()
-    const socket = createMockSocket()
-
-    const provider = new CRDTProvider(socket as unknown as Socket, doc as unknown as LoroDoc)
-    provider.destroy()
-
-    expect(socket.off).toHaveBeenCalledWith('graph_update', expect.any(Function))
-  })
-
-  it('does not buffer local graph updates while the socket is offline', () => {
-    const doc = createFakeDoc()
-    const socket = createMockSocket(false)
-
-    const provider = new CRDTProvider(socket as unknown as Socket, doc as unknown as LoroDoc)
-    doc.trigger({ by: 'local' })
-
-    expect(doc.export).not.toHaveBeenCalled()
-    expect(socket.emit).not.toHaveBeenCalled()
-    provider.destroy()
-  })
-
-  it('reports imported snapshots after applying them', () => {
-    const source = new LoroDoc()
-    source.getMap('nodes').set('node-1', { id: 'node-1' })
-    source.commit()
-    const snapshot = source.export({ mode: 'snapshot' })
-    const doc = createFakeDoc()
-    const socket = createMockSocket()
+  it.each([true, false])('honors the current snapshot fallback decision (%s)', (accept) => {
+    const doc = new LoroDoc()
+    const { socket, receive } = createSocket('provider')
+    const source = sourceDocument()
     const onSnapshotImported = vi.fn()
-
-    const provider = new CRDTProvider(
-      socket as unknown as Socket,
-      doc as unknown as LoroDoc,
-      undefined,
-      onSnapshotImported,
-    )
-    socket.trigger('graph_update', snapshot)
-
-    expect(doc.import).toHaveBeenCalledWith(snapshot)
-    expect(onSnapshotImported).toHaveBeenCalledTimes(1)
-    provider.destroy()
+    connect(socket, doc, onSnapshotImported, () => accept)
+    receive('graph_update', source.export({ mode: 'snapshot' }))
+    if (accept) {
+      expect(onSnapshotImported).toHaveBeenCalledOnce()
+      expect(doc.toJSON()).toEqual(source.toJSON())
+    } else {
+      expect(doc.getMap('nodes').toJSON()).toEqual({})
+      expect(onSnapshotImported).not.toHaveBeenCalled()
+    }
   })
 
-  it('ignores a late snapshot when the current leader no longer accepts snapshot fallback', () => {
-    const source = new LoroDoc()
-    source.getMap('nodes').set('node-1', { id: 'node-1' })
-    source.commit()
-    const snapshot = source.export({ mode: 'snapshot' })
-    const doc = createFakeDoc()
-    const socket = createMockSocket()
-    const onSnapshotImported = vi.fn()
-    const provider = new CRDTProvider(
-      socket as unknown as Socket,
-      doc as unknown as LoroDoc,
-      undefined,
-      onSnapshotImported,
-      () => false,
-    )
-
-    socket.trigger('graph_update', snapshot)
-
-    expect(doc.import).not.toHaveBeenCalled()
-    expect(onSnapshotImported).not.toHaveBeenCalled()
-    provider.destroy()
-  })
-
-  it('logs an error when graph_update import fails but continues operating', () => {
-    const doc = createFakeDoc()
-    const socket = createMockSocket()
-    doc.import.mockImplementation(() => {
-      throw new Error('boom')
-    })
-
-    const provider = new CRDTProvider(socket as unknown as Socket, doc as unknown as LoroDoc)
-
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-
-    socket.trigger('graph_update', new Uint8Array([1]))
-    expect(errorSpy).toHaveBeenCalledWith('Error importing graph update:', expect.any(Error))
-
-    doc.import.mockReset()
-    socket.trigger('graph_update', new Uint8Array([2, 3]))
-    expect(doc.import).toHaveBeenCalled()
-
-    provider.destroy()
-    errorSpy.mockRestore()
+  it('continues applying valid updates after a corrupt message', () => {
+    const doc = new LoroDoc()
+    const { socket, receive } = createSocket('provider')
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    connect(socket, doc)
+    receive('graph_update', new Uint8Array([1]))
+    expect(doc.getMap('nodes').toJSON()).toEqual({})
+    const source = sourceDocument()
+    receive('graph_update', source.export({ mode: 'update' }))
+    expect(doc.toJSON()).toEqual(source.toJSON())
   })
 })

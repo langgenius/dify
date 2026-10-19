@@ -353,9 +353,7 @@
   "task.runningPlugins": "Installing Plugins",
   "task.successPlugins": "Successfully Installed Plugins",
   "templatePublishingGuide": "Panduan penerbitan templat",
-  "upgrade.close": "Tutup",
   "upgrade.description": "Tentang menginstal plugin berikut",
-  "upgrade.successfulTitle": "Instal berhasil",
   "upgrade.title": "Instal Plugin",
   "upgrade.upgrade": "Pasang",
   "upgrade.upgrading": "Menginstal..."

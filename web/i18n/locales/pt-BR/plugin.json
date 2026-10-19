@@ -353,9 +353,7 @@
   "task.runningPlugins": "Installing Plugins",
   "task.successPlugins": "Successfully Installed Plugins",
   "templatePublishingGuide": "Guia de publicação de modelos",
-  "upgrade.close": "Fechar",
   "upgrade.description": "Prestes a instalar o seguinte plugin",
-  "upgrade.successfulTitle": "Instalação bem-sucedida",
   "upgrade.title": "Instale o plugin",
   "upgrade.upgrade": "Instalar",
   "upgrade.upgrading": "Instalar..."

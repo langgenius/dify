@@ -1,9 +1,9 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { RefObject } from 'react'
 import type { ConfigurationAppMode } from '@/app/components/app/configuration/hooks/configuration-lifecycle/types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Collection } from '@/app/components/tools/types'
 import type { ExternalDataTool } from '@/models/common'
-import type { DataSet } from '@/models/datasets'
 import type {
   AnnotationReplyConfig,
   BlockStatus,
@@ -99,8 +99,8 @@ type IDebugConfiguration = {
   // model_config
   modelConfig: ModelConfig
   setModelConfig: (modelConfig: ModelConfig) => void
-  dataSets: DataSet[]
-  setDataSets: (dataSet: DataSet[]) => void
+  dataSets: DatasetDetailWithPartialMembersResponse[]
+  setDataSets: (dataSet: DatasetDetailWithPartialMembersResponse[]) => void
   showSelectDataSet: () => void
   // dataset config
   datasetConfigs: DatasetConfigs

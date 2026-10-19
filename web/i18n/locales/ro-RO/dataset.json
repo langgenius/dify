@@ -143,7 +143,6 @@
   "retrieval.full_text_search.title": "Căutare Full-Text",
   "retrieval.hybrid_search.description": "Executați căutări full-text și căutări vectoriale în același timp, reclasificați pentru a selecta cea mai bună potrivire pentru interogarea utilizatorului. Configurarea API-ului modelului Rerank este necesară.",
   "retrieval.hybrid_search.title": "Căutare Hibridă",
-  "retrieval.invertedIndex.title": "Indice inversat",
   "retrieval.keyword_search.description": "Indexul inversat este o structură utilizată pentru o recuperare eficientă. Organizat pe termeni, fiecare termen indică documente sau pagini web care îl conțin.",
   "retrieval.keyword_search.title": "Indice inversat",
   "retrieval.semantic_search.description": "Generați încorporările interogărilor și căutați bucata de text cea mai similară cu reprezentarea sa vectorială.",

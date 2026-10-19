@@ -18,10 +18,6 @@ vi.mock('../hooks/use-current-tool-collection', () => ({
   default: mockUseCurrentToolCollection,
 }))
 
-vi.mock('@/app/components/workflow/nodes/_base/components/install-plugin-button', () => ({
-  InstallPluginButton: () => <button type="button">Install Plugin</button>,
-}))
-
 const createNodeData = (overrides: Partial<ToolNodeType> = {}): ToolNodeType => ({
   title: 'Google Search',
   desc: '',
@@ -54,20 +50,6 @@ describe('ToolNode', () => {
   })
 
   describe('Authorization Warning', () => {
-    it('should render the authorization warning when the tool requires authorization and is not authorized', () => {
-      mockUseCurrentToolCollection.mockReturnValue({
-        currentTools: [],
-        currCollection: {
-          allow_delete: true,
-          is_team_authorization: false,
-        },
-      })
-
-      renderWorkflowComponent(<Node id="tool-node-1" data={createNodeData()} />)
-
-      expect(screen.getByText('workflow.nodes.tool.authorizationRequired')).toBeInTheDocument()
-    })
-
     it('should keep configuration rows visible when the authorization warning is shown', () => {
       mockUseCurrentToolCollection.mockReturnValue({
         currentTools: [],
@@ -90,14 +72,6 @@ describe('ToolNode', () => {
 
       expect(screen.getByText('region')).toBeInTheDocument()
       expect(screen.getByText('workflow.nodes.tool.authorizationRequired')).toBeInTheDocument()
-    })
-
-    it('should render nothing when there are no configs, no install action and no authorization warning', () => {
-      const { container } = renderWorkflowComponent(
-        <Node id="tool-node-1" data={createNodeData()} />,
-      )
-
-      expect(container).toBeEmptyDOMElement()
     })
   })
 

@@ -2,18 +2,18 @@ import type { BuiltinProviderOAuthClientSchemaResponse } from '@dify/contracts/a
 import type { ReactNode } from 'react'
 import type { AppUserAuthDraft, AuthorizationTab } from '../app-user-auth/draft'
 import type { Credential } from '../types'
-import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { render } from '@/test/console/render'
+import { render as renderWithoutUrlState } from '@/test/console/render'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import PluginAuth from '../plugin-auth'
 import { AuthCategory, CredentialTypeEnum } from '../types'
 
 const mockUsePluginAuth = vi.fn()
-const mockSetSettingsDestination = vi.fn()
 const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'] as string[],
 }))
@@ -67,10 +67,8 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
-})
+const onUrlUpdate = vi.fn()
+const render = createNuqsTestRenderer(renderWithoutUrlState, () => ({ onUrlUpdate }))
 
 const defaultPayload = {
   category: AuthCategory.tool,
@@ -129,10 +127,6 @@ describe('PluginAuth', () => {
     ]
   })
 
-  afterEach(() => {
-    cleanup()
-  })
-
   it('renders Authorize component when not authorized', () => {
     mockUsePluginAuth.mockReturnValue({
       isAuthorized: false,
@@ -144,6 +138,7 @@ describe('PluginAuth', () => {
     })
 
     render(<PluginAuth pluginPayload={defaultPayload} />)
+    expect(mockUsePluginAuth).toHaveBeenCalledWith(defaultPayload, true, undefined)
     expect(screen.getByRole('button', { name: 'plugin.auth.useApiAuth' })).toBeEnabled()
     expect(screen.queryByText('plugin.auth.permissionHint.title')).not.toBeInTheDocument()
     expect(screen.queryByTestId('authorized')).not.toBeInTheDocument()
@@ -161,7 +156,7 @@ describe('PluginAuth', () => {
 
     render(<PluginAuth pluginPayload={defaultPayload} />)
     expect(screen.getByTestId('authorized')).toBeInTheDocument()
-    expect(screen.queryByTestId('authorize')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'plugin.auth.useApiAuth' })).not.toBeInTheDocument()
   })
 
   it('requests provider schemas only after entering App user from Reuse', async () => {
@@ -944,7 +939,8 @@ describe('PluginAuth', () => {
     expect(mockUsePluginAuth).toHaveBeenCalledWith(defaultPayload, true, undefined)
   })
 
-  it('renders permission hint and disables authorization configuration when credential.create is missing', () => {
+  it('disables authorization without credential.create and links to members settings', async () => {
+    const user = userEvent.setup()
     mockConsoleState.workspacePermissionKeys = ['credential.use']
     mockUsePluginAuth.mockReturnValue({
       isAuthorized: false,
@@ -960,26 +956,10 @@ describe('PluginAuth', () => {
     expect(screen.getByRole('button', { name: 'plugin.auth.useApiAuth' })).toBeDisabled()
     expect(screen.getByText('plugin.auth.permissionHint.title')).toBeInTheDocument()
     expect(screen.getByText('plugin.auth.permissionHint.description')).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'plugin.auth.permissionHint.action' }),
-    ).toBeInTheDocument()
-  })
-
-  it('opens members settings when permission hint action is clicked', () => {
-    mockConsoleState.workspacePermissionKeys = ['credential.use']
-    mockUsePluginAuth.mockReturnValue({
-      isAuthorized: false,
-      canOAuth: false,
-      canApiKey: true,
-      credentials: [],
-      invalidPluginCredentialInfo: vi.fn(),
-      notAllowCustomCredential: false,
-    })
-
-    render(<PluginAuth pluginPayload={defaultPayload} />)
-    fireEvent.click(screen.getByRole('button', { name: 'plugin.auth.permissionHint.action' }))
-
-    expect(mockSetSettingsDestination).toHaveBeenCalledWith('members')
+    await user.click(screen.getByRole('button', { name: 'plugin.auth.permissionHint.action' }))
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('members'),
+    )
   })
 
   it('does not render permission hint for datasource authorization', () => {

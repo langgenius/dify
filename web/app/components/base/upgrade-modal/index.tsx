@@ -40,11 +40,7 @@ export function UpgradeModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className={cn(
-          styles.surface,
-          'w-145 max-w-120 overflow-hidden rounded-2xl p-0',
-          classNames?.content,
-        )}
+        className={cn(styles.surface, 'w-145 max-w-120 overflow-hidden', classNames?.content)}
       >
         <div className="relative">
           <div
@@ -72,12 +68,14 @@ export function UpgradeModal({
             )}
             <div className={cn('mt-6 space-y-2', classNames?.copy)}>
               <DialogTitle
+                // oxlint-disable-next-line shadcn/no-restyle -- Upgrade hero keeps its marketing title type.
                 className={cn(styles.highlight, 'title-3xl-semi-bold', classNames?.title)}
               >
                 {title}
               </DialogTitle>
               <DialogDescription
-                className={cn('system-md-regular text-text-tertiary', classNames?.description)}
+                // oxlint-disable-next-line shadcn/no-restyle -- Upgrade hero keeps its marketing body type.
+                className={cn('text-sm/5 text-text-tertiary', classNames?.description)}
               >
                 {description}
               </DialogDescription>

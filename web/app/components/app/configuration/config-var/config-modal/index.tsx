@@ -3,9 +3,15 @@
 import type { ChangeEvent, FC } from 'react'
 import type { Item as SelectItem } from './type-select'
 import type { ConfigModalValidationError } from './utils'
-import type { InputVar, InputVarType, MoreInfo } from '@/app/components/workflow/types'
-import type { FileUploadConfigResponse } from '@/models/common'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -15,7 +21,6 @@ import { toast } from '@/app/components/app/configuration/toast'
 import ConfigContext from '@/context/debug-configuration'
 import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { commonQueryKeys } from '@/service/use-common'
 import {
   checkKeys,
   getNewVarInWorkflow,
@@ -57,7 +62,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const { modelConfig } = useContext(ConfigContext)
   const { t } = useTranslation(['appDebug', 'workflow'])
   const [tempPayload, setTempPayload] = useState<InputVar>(() =>
-    normalizeSelectDefaultValue(payload || (getNewVarInWorkflow('') as any)),
+    normalizeSelectDefaultValue(payload || getNewVarInWorkflow('')),
   )
   const [validationError, setValidationError] = useState<ConfigModalValidationError>()
   const queryClient = useQueryClient()
@@ -101,7 +106,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
     [t],
   )
   const handlePayloadChange = useCallback((key: string) => {
-    return (value: any) => {
+    return (value: unknown) => {
       setTempPayload((prev) => updatePayloadField(prev, key, value))
       setValidationError((prev) => (prev?.field === key ? undefined : prev))
     }
@@ -135,12 +140,12 @@ const ConfigModal: FC<IConfigModalProps> = ({
   )
 
   const handleTypeChange = useCallback((item: SelectItem) => {
-    setTempPayload((prev) => createPayloadForType(prev, item.value as InputVarType))
+    setTempPayload((prev) => createPayloadForType(prev, item.value))
     setValidationError(undefined)
   }, [])
 
   const handleVarKeyBlur = useCallback(
-    (e: any) => {
+    (e: ChangeEvent<HTMLInputElement>) => {
       const varName = e.target.value
       if (!checkVariableName(varName, true) || tempPayload.label) return
 
@@ -156,7 +161,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
   )
 
   const handleVarNameChange = useCallback(
-    (e: ChangeEvent<any>) => {
+    (e: ChangeEvent<HTMLInputElement>) => {
       replaceSpaceWithUnderscoreInVarNameInput(e.target)
       const value = e.target.value
       const { isValid, errorKey, errorMessageKey } = checkKeys([value], true)
@@ -177,9 +182,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
   )
 
   const handleConfirm = () => {
-    const fileUploadConfig = queryClient.getQueryData<FileUploadConfigResponse>(
-      commonQueryKeys.fileUploadConfig,
-    )
+    const fileUploadConfig = queryClient.getQueryData(consoleQuery.files.upload.get.queryKey())
     const { errorMessage, errorField, moreInfo, payloadToSave } = validateConfigModalPayload({
       tempPayload,
       payload,
@@ -206,26 +209,28 @@ const ConfigModal: FC<IConfigModalProps> = ({
         if (!open) onClose()
       }}
     >
-      <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden! border-none p-0! text-left align-middle">
+      <DialogContent>
         <form
           noValidate
-          className="flex min-h-0 flex-col"
+          className="contents"
           onSubmit={(event) => {
             event.preventDefault()
             handleConfirm()
           }}
         >
-          <DialogTitle className="shrink-0 px-6 pt-6 title-2xl-semi-bold text-text-primary">
-            {t(($) => $[`variableConfig.${isCreate ? 'addModalTitle' : 'editModalTitle'}`], {
-              ns: 'appDebug',
-            })}
-          </DialogTitle>
+          <DialogHeader>
+            <DialogTitle>
+              {t(($) => $[`variableConfig.${isCreate ? 'addModalTitle' : 'editModalTitle'}`], {
+                ns: 'appDebug',
+              })}
+            </DialogTitle>
+          </DialogHeader>
 
-          <div
+          <DialogBody
             ref={modalRef}
             tabIndex={-1}
             data-testid="config-modal-scroll-area"
-            className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-6 py-4 pb-8"
+            className="min-w-0"
           >
             <ConfigModalFormFields
               checkboxDefaultSelectValue={checkboxDefaultSelectValue}
@@ -256,10 +261,10 @@ const ConfigModal: FC<IConfigModalProps> = ({
               validationError={validationError}
               t={t}
             />
-          </div>
-          <div className="shrink-0 px-6 pt-2 pb-6">
+          </DialogBody>
+          <DialogFooter>
             <ModalFoot confirmType="submit" onCancel={onClose} />
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

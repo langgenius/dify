@@ -353,9 +353,7 @@
   "task.runningPlugins": "Eklentiler Yükleniyor",
   "task.successPlugins": "Başarıyla Yüklenen Eklentiler",
   "templatePublishingGuide": "Şablon yayınlama kılavuzu",
-  "upgrade.close": "Kapat",
   "upgrade.description": "Aşağıdaki eklentiyi güncellemek üzeresiniz",
-  "upgrade.successfulTitle": "Güncelleme başarılı",
   "upgrade.title": "Eklentiyi Güncelle",
   "upgrade.upgrade": "Güncelle",
   "upgrade.upgrading": "Güncelleniyor..."

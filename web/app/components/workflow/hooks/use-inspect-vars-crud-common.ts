@@ -1,10 +1,12 @@
+import type { SchemaDefinitionItemResponse } from '@dify/contracts/api/console/spec/types.gen'
 import type { Node, ValueSelector } from '@/app/components/workflow/types'
-import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { VarInInspect } from '@/types/workflow'
+import { useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import {
   isConversationVar,
@@ -13,12 +15,7 @@ import {
   toNodeOutputVars,
 } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-} from '@/service/use-tools'
+import { consoleQuery } from '@/service/console'
 import {
   useDeleteAllInspectorVars,
   useDeleteInspectVar,
@@ -48,10 +45,22 @@ export const useInspectVarsCrudCommon = () => {
   const { mutateAsync: doEditInspectorVar } = useEditInspectorVar(resource)
   const { handleCancelNodeSuccessStatus } = useNodesInteractionsWithoutSync()
   const { handleEdgeCancelRunningStatus } = useEdgesInteractionsWithoutSync()
-  const { data: buildInTools } = useAllBuiltInTools()
-  const { data: customTools } = useAllCustomTools()
-  const { data: workflowTools } = useAllWorkflowTools()
-  const { data: mcpTools } = useAllMCPTools()
+  const { data: buildInTools } = useQuery(
+    consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: customTools } = useQuery(
+    consoleQuery.workspaces.current.tools.api.get.queryOptions({ select: selectToolsWithProvider }),
+  )
+  const { data: workflowTools } = useQuery(
+    consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: mcpTools } = useQuery(
+    consoleQuery.workspaces.current.tools.mcp.get.queryOptions({ select: selectToolsWithProvider }),
+  )
 
   const getNodeInspectVars = useCallback(
     (nodeId: string) => {
@@ -111,7 +120,7 @@ export const useInspectVarsCrudCommon = () => {
   )
 
   const fetchInspectVarValue = useCallback(
-    async (selector: ValueSelector, schemaTypeDefinitions: SchemaTypeDefinition[]) => {
+    async (selector: ValueSelector, schemaTypeDefinitions: SchemaDefinitionItemResponse[]) => {
       const { setNodeInspectVars, dataSourceList } = workflowStore.getState()
       const nodeId = selector[0]
       const isSystemVar = nodeId === 'sys'

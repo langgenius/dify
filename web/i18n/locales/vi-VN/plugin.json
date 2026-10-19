@@ -353,9 +353,7 @@
   "task.runningPlugins": "Installing Plugins",
   "task.successPlugins": "Successfully Installed Plugins",
   "templatePublishingGuide": "Hướng dẫn xuất bản mẫu",
-  "upgrade.close": "Đóng",
   "upgrade.description": "Giới thiệu cài đặt plugin sau",
-  "upgrade.successfulTitle": "Cài đặt thành công",
   "upgrade.title": "Cài đặt Plugin",
   "upgrade.upgrade": "Cài đặt",
   "upgrade.upgrading": "Cài đặt..."

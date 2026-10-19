@@ -353,9 +353,7 @@
   "task.runningPlugins": "Installing Integrations",
   "task.successPlugins": "Successfully Installed Integrations",
   "templatePublishingGuide": "Template publishing guide",
-  "upgrade.close": "Close",
   "upgrade.description": "About to install the following integration",
-  "upgrade.successfulTitle": "Install successful",
   "upgrade.title": "Install Integration",
   "upgrade.upgrade": "Install",
   "upgrade.upgrading": "Installing..."

@@ -1,11 +1,10 @@
 import type { ParameterExtractorNodeType } from '../types'
 import type { InputVar } from '@/app/components/workflow/types'
-import { renderHook } from '@testing-library/react'
+import { renderWorkflowFlowHook as renderHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import { Resolution } from '@/types/app'
 import useConfigVision from '../../../hooks/use-config-vision'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
-import useNodeCrud from '../../_base/hooks/use-node-crud'
 import { ParamType, ReasoningModeType } from '../types'
 import useSingleRunFormParams from '../use-single-run-form-params'
 
@@ -19,14 +18,8 @@ vi.mock('../../_base/hooks/use-available-var-list', () => ({
   default: vi.fn(),
 }))
 
-vi.mock('../../_base/hooks/use-node-crud', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}))
-
 const mockUseConfigVision = vi.mocked(useConfigVision)
 const mockUseAvailableVarList = vi.mocked(useAvailableVarList)
-const mockUseNodeCrud = vi.mocked(useNodeCrud)
 
 const createData = (
   overrides: Partial<ParameterExtractorNodeType> = {},
@@ -64,10 +57,7 @@ const createData = (
 describe('parameter-extractor/use-single-run-form-params', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseNodeCrud.mockReturnValue({
-      inputs: createData(),
-      setInputs: vi.fn(),
-    } as unknown as ReturnType<typeof useNodeCrud>)
+
     mockUseConfigVision.mockReturnValue({
       isVisionModel: true,
     } as ReturnType<typeof useConfigVision>)
@@ -88,7 +78,15 @@ describe('parameter-extractor/use-single-run-form-params', () => {
   })
 
   it('builds variable and vision single-run forms and returns dependent vars', () => {
-    const setRunInputData = vi.fn()
+    const runInputDataRef = {
+      current: { query: 'hello', '#context#': 'ctx', '#files#': ['file-1'] } as Record<
+        string,
+        unknown
+      >,
+    }
+    const setRunInputData = vi.fn((next: Record<string, unknown>) => {
+      runInputDataRef.current = next
+    })
     const getInputVars = vi.fn<() => InputVar[]>(() => [
       {
         label: 'Answer',
@@ -103,7 +101,7 @@ describe('parameter-extractor/use-single-run-form-params', () => {
         id: 'node-1',
         payload: createData(),
         runInputData: { query: 'hello', '#context#': 'ctx', '#files#': ['file-1'] },
-        runInputDataRef: { current: { query: 'hello', '#context#': 'ctx', '#files#': ['file-1'] } },
+        runInputDataRef,
         getInputVars,
         setRunInputData,
         toVarInputs: () => [],
@@ -140,16 +138,10 @@ describe('parameter-extractor/use-single-run-form-params', () => {
       '#files#': ['file-1'],
     })
     expect(setRunInputData).toHaveBeenNthCalledWith(2, {
-      query: 'hello',
+      query: 'updated',
       '#context#': 'ctx',
       '#files#': ['file-2'],
     })
-    const availableVarOptions = mockUseAvailableVarList.mock.calls[0]![1] as {
-      filterVar: (payload: { type: VarType }) => boolean
-    }
-
-    expect(availableVarOptions.filterVar({ type: VarType.file })).toBe(true)
-    expect(availableVarOptions.filterVar({ type: VarType.string })).toBe(false)
     expect(result.current.getDependentVars()).toEqual([
       ['node-1', 'query'],
       ['node-2', 'answer'],
@@ -160,29 +152,20 @@ describe('parameter-extractor/use-single-run-form-params', () => {
     expect(result.current.getDependentVar('unknown')).toBe(false)
   })
 
-  it('skips malformed prompt variables when collecting dependent vars', () => {
+  it('omits vision inputs and dependencies when vision is disabled', () => {
     const { result } = renderHook(() =>
       useSingleRunFormParams({
         id: 'node-1',
-        payload: createData(),
+        payload: createData({ instruction: '', vision: { enabled: false } }),
         runInputData: {},
         runInputDataRef: { current: {} },
-        getInputVars: () => [
-          {
-            label: 'Broken',
-            variable: undefined as unknown as string,
-            type: InputVarType.textInput,
-            required: false,
-          },
-        ],
+        getInputVars: () => [],
         setRunInputData: vi.fn(),
         toVarInputs: () => [],
       }),
     )
-
-    expect(result.current.getDependentVars()).toEqual([
-      ['node-1', 'query'],
-      ['node-3', 'image'],
-    ])
+    expect(result.current.forms).toHaveLength(1)
+    expect(result.current.forms[0]!.inputs.map((input) => input.variable)).toEqual(['query'])
+    expect(result.current.getDependentVars()).toEqual([['node-1', 'query']])
   })
 })

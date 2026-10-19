@@ -16,7 +16,7 @@ Key Features:
 import logging
 import os
 import time
-from collections.abc import Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from datetime import UTC, datetime
 from typing import Any, cast, override
 
@@ -30,7 +30,7 @@ from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowRun, WorkflowType
-from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from repositories.api_workflow_run_repository import APIWorkflowRunRepository, AppWorkflowRunStats
 from repositories.types import (
     AverageInteractionStats,
     DailyRunsStats,
@@ -602,6 +602,124 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         except Exception:
             logger.exception("Failed to get workflow runs count")
             raise
+
+    @override
+    def get_stats_by_app_ids(
+        self,
+        tenant_id_by_app_id: Mapping[str, str],
+        triggered_from: Sequence[WorkflowRunTriggeredFrom],
+        created_since: datetime,
+    ) -> dict[str, AppWorkflowRunStats]:
+        """
+        Combine two queries: the windowed counts need the latest version of each
+        run, while the newest start time does not and spans the whole history.
+        """
+        if not tenant_id_by_app_id:
+            return {}
+        status_counts = self._status_counts_by_app(tenant_id_by_app_id, triggered_from, created_since)
+        return {
+            app_id: AppWorkflowRunStats(status_counts=status_counts.get(app_id, {}), last_created_at=started_at)
+            for app_id, started_at in self._last_started_at_by_app(tenant_id_by_app_id, triggered_from).items()
+        }
+
+    def _status_counts_by_app(
+        self,
+        tenant_id_by_app_id: Mapping[str, str],
+        triggered_from: Sequence[WorkflowRunTriggeredFrom],
+        created_since: datetime,
+    ) -> dict[str, dict[WorkflowExecutionStatus, int]]:
+        """
+        Count runs per app and latest status.
+
+        Every log version of a run carries the run's started_at, and each one is
+        written after the run starts, so __time__ prunes the scan before the
+        window function picks the latest version.
+        """
+        # started_at is stored as naive UTC isoformat, so string comparison orders it chronologically.
+        since = escape_sql_string(created_since.isoformat())
+        since_unix = int(created_since.replace(tzinfo=UTC).timestamp())
+        sql = f"""
+            SELECT tenant_id, app_id, status, COUNT(*) AS count
+            FROM (
+                SELECT tenant_id, app_id, status,
+                    ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) AS rn
+                FROM {AliyunLogStore.workflow_execution_logstore}
+                WHERE {self._app_run_filter(tenant_id_by_app_id, triggered_from)}
+                  AND __time__ >= {since_unix}
+                  AND started_at >= '{since}'
+            ) t
+            WHERE rn = 1
+            GROUP BY tenant_id, app_id, status
+        """
+        try:
+            results = self.logstore_client.execute_sql(
+                sql=sql, query="*", logstore=AliyunLogStore.workflow_execution_logstore
+            )
+        except Exception:
+            logger.exception("Failed to get workflow run status counts by app")
+            raise
+
+        counts: dict[str, dict[WorkflowExecutionStatus, int]] = {}
+        for row in results:
+            app_id = row.get("app_id")
+            if app_id not in tenant_id_by_app_id or tenant_id_by_app_id[app_id] != row.get("tenant_id"):
+                continue
+            try:
+                status = WorkflowExecutionStatus(str(row.get("status")))
+            except ValueError:
+                logger.warning("Invalid status value: %s, skipping", row.get("status"))
+                continue
+            counts.setdefault(app_id, {})[status] = safe_int(row.get("count", 0))
+        return counts
+
+    def _last_started_at_by_app(
+        self,
+        tenant_id_by_app_id: Mapping[str, str],
+        triggered_from: Sequence[WorkflowRunTriggeredFrom],
+    ) -> dict[str, datetime]:
+        """Every log version of a run carries the same started_at, so no deduplication is needed."""
+        sql = f"""
+            SELECT tenant_id, app_id, MAX(started_at) AS last_started_at
+            FROM {AliyunLogStore.workflow_execution_logstore}
+            WHERE {self._app_run_filter(tenant_id_by_app_id, triggered_from)}
+              AND started_at != ''
+              AND __time__ > 0
+            GROUP BY tenant_id, app_id
+        """
+        try:
+            results = self.logstore_client.execute_sql(
+                sql=sql, query="*", logstore=AliyunLogStore.workflow_execution_logstore
+            )
+        except Exception:
+            logger.exception("Failed to get last workflow run time by app")
+            raise
+
+        last_created_at: dict[str, datetime] = {}
+        for row in results:
+            app_id = row.get("app_id")
+            started_at = row.get("last_started_at")
+            if (
+                app_id in tenant_id_by_app_id
+                and tenant_id_by_app_id[app_id] == row.get("tenant_id")
+                and isinstance(started_at, str)
+                and started_at
+            ):
+                last_created_at[app_id] = ensure_naive_utc(datetime.fromisoformat(started_at))
+        return last_created_at
+
+    @staticmethod
+    def _app_run_filter(
+        tenant_id_by_app_id: Mapping[str, str], triggered_from: Sequence[WorkflowRunTriggeredFrom]
+    ) -> str:
+        def in_list(values: Iterable[str]) -> str:
+            return ", ".join(f"'{escape_identifier(value)}'" for value in values)
+
+        sources = ", ".join(f"'{escape_sql_string(source.value)}'" for source in triggered_from)
+        return (
+            f"tenant_id IN ({in_list(set(tenant_id_by_app_id.values()))})"
+            f" AND app_id IN ({in_list(tenant_id_by_app_id)})"
+            f" AND triggered_from IN ({sources})"
+        )
 
     @override
     def get_daily_runs_statistics(

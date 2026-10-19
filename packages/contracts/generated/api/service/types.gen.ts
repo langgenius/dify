@@ -21,7 +21,7 @@ export type AgentThought = {
   thought?: string | null
   tool?: string | null
   tool_input?: string | null
-  tool_labels: JsonValue
+  tool_labels: AnyJsonValue
 }
 
 export type Annotation = {
@@ -67,6 +67,8 @@ export type AnnotationReplyActionPayload = {
   embedding_provider_name: string
   score_threshold: number
 }
+
+export type AnyJsonValue = unknown
 
 export type AppFeedbackListResponse = {
   data: Array<AppFeedbackResponse>
@@ -352,7 +354,7 @@ export type ChildChunkResponse = {
   id: string
   position: number
   segment_id: string
-  type: string
+  type: 'automatic' | 'customized'
   updated_at: number
   word_count: number
 }
@@ -591,7 +593,14 @@ export type DatasetDetailResponse = {
   chunk_structure: string | null
   created_at: number
   created_by: string
-  data_source_type: string | null
+  data_source_type:
+    | 'local_file'
+    | 'notion_import'
+    | 'online_document'
+    | 'online_drive'
+    | 'upload_file'
+    | 'website_crawl'
+    | null
   description: string | null
   doc_form: string | null
   doc_metadata: Array<DatasetDocMetadataResponse>
@@ -604,16 +613,16 @@ export type DatasetDetailResponse = {
   external_retrieval_model: DatasetExternalRetrievalModelResponse | null
   icon_info?: DatasetIconInfoResponse
   id: string
-  indexing_technique: string | null
+  indexing_technique: IndexTechniqueType | null
   is_multimodal: boolean
   is_published: boolean
   maintainer?: string | null
   name: string
-  permission: string
+  permission: 'all_team_members' | 'only_me' | 'partial_members'
   pipeline_id: string | null
   provider: string
   retrieval_model_dict: DatasetRetrievalModelResponse
-  runtime_mode: string | null
+  runtime_mode: 'general' | 'rag_pipeline' | null
   summary_index_setting?: DatasetSummaryIndexSettingResponse
   tags: Array<DatasetTagResponse>
   total_available_documents: number
@@ -630,7 +639,14 @@ export type DatasetDetailWithPartialMembersResponse = {
   chunk_structure: string | null
   created_at: number
   created_by: string
-  data_source_type: string | null
+  data_source_type:
+    | 'local_file'
+    | 'notion_import'
+    | 'online_document'
+    | 'online_drive'
+    | 'upload_file'
+    | 'website_crawl'
+    | null
   description: string | null
   doc_form: string | null
   doc_metadata: Array<DatasetDocMetadataResponse>
@@ -643,17 +659,17 @@ export type DatasetDetailWithPartialMembersResponse = {
   external_retrieval_model: DatasetExternalRetrievalModelResponse | null
   icon_info?: DatasetIconInfoResponse
   id: string
-  indexing_technique: string | null
+  indexing_technique: IndexTechniqueType | null
   is_multimodal: boolean
   is_published: boolean
   maintainer?: string | null
   name: string
   partial_member_list?: Array<string> | null
-  permission: string
+  permission: 'all_team_members' | 'only_me' | 'partial_members'
   pipeline_id: string | null
   provider: string
   retrieval_model_dict: DatasetRetrievalModelResponse
-  runtime_mode: string | null
+  runtime_mode: 'general' | 'rag_pipeline' | null
   summary_index_setting?: DatasetSummaryIndexSettingResponse
   tags: Array<DatasetTagResponse>
   total_available_documents: number
@@ -666,7 +682,7 @@ export type DatasetDetailWithPartialMembersResponse = {
 export type DatasetDocMetadataResponse = {
   id: string
   name: string
-  type: string
+  type: 'number' | 'string' | 'time'
 }
 
 export type DatasetExternalKnowledgeInfoResponse = {
@@ -715,7 +731,7 @@ export type DatasetMetadataActionResponse = {
 
 export type DatasetMetadataBuiltInFieldResponse = {
   name: string
-  type: string
+  type: 'number' | 'string' | 'time'
 }
 
 export type DatasetMetadataBuiltInFieldsResponse = {
@@ -726,7 +742,7 @@ export type DatasetMetadataListItemResponse = {
   count?: number
   id: string
   name: string
-  type: string
+  type: 'number' | 'string' | 'time'
 }
 
 export type DatasetMetadataListResponse = {
@@ -737,7 +753,7 @@ export type DatasetMetadataListResponse = {
 export type DatasetMetadataResponse = {
   id: string
   name: string
-  type: string
+  type: 'number' | 'string' | 'time'
 }
 
 export type DatasetNameDuplicateError = ErrorResponse & {
@@ -756,7 +772,7 @@ export type DatasetRetrievalModelResponse = {
   reranking_model?: DatasetRerankingModelResponse
   score_threshold?: number | null
   score_threshold_enabled: boolean
-  search_method: string
+  search_method: RetrievalMethod
   top_k: number
   weights?: DatasetWeightedScoreResponse | null
 }
@@ -930,8 +946,8 @@ export type DocumentMetadataOperation = {
 export type DocumentMetadataResponse = {
   id: string
   name: string
-  type: string
-  value?: string | number | number | boolean | null
+  type: 'number' | 'string' | 'time'
+  value: string | number | number | null
 }
 
 export type DocumentResponse = {
@@ -939,11 +955,9 @@ export type DocumentResponse = {
   created_at?: number | null
   created_by?: string | null
   created_from?: string | null
-  data_source_detail_dict: {
-    [key: string]: unknown
-  }
+  data_source_detail_dict: DocumentSourceDetailResponse
   data_source_info?: {
-    [key: string]: unknown
+    [key: string]: JsonValue
   } | null
   data_source_type?: string | null
   dataset_process_rule_id?: string | null
@@ -965,6 +979,11 @@ export type DocumentResponse = {
   word_count?: number | null
 }
 
+export type DocumentSourceDetailResponse = {
+  upload_file?: DocumentUploadFileDetailResponse | null
+  [key: string]: unknown
+}
+
 export type DocumentStatusListResponse = {
   data: Array<DocumentStatusResponse>
 }
@@ -978,10 +997,18 @@ export type DocumentStatusResponse = {
   completed_at: number | null
   completed_segments?: number | null
   error: string | null
-  error_code?: string | null
+  error_code?: 'vector_space_estimate_exceeded' | null
   estimated_vector_space_mb?: number | null
   id: string
-  indexing_status: string
+  indexing_status:
+    | 'cleaning'
+    | 'completed'
+    | 'error'
+    | 'indexing'
+    | 'parsing'
+    | 'paused'
+    | 'splitting'
+    | 'waiting'
   parsing_completed_at: number | null
   paused_at: number | null
   processing_started_at: number | null
@@ -1028,6 +1055,16 @@ export type DocumentTextUpdate = (
   process_rule?: ProcessRule | null
   retrieval_model?: RetrievalModel | null
   text?: string | null
+}
+
+export type DocumentUploadFileDetailResponse = {
+  created_at: number
+  created_by: string
+  extension: string
+  id: string
+  mime_type?: string | null
+  name: string
+  size: number
 }
 
 export type EndUserDetail = {
@@ -1279,21 +1316,21 @@ export type HumanInputFormSubmissionData = {
   node_title: string
   rendered_content: string
   submitted_data?: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   } | null
 }
 
 export type HumanInputFormSubmitPayload = {
   action: string
   inputs: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
 }
 
 export type HumanInputFormSubmitPayloadWithUser = {
   action: string
   inputs: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
   user: string
 }
@@ -1307,16 +1344,13 @@ export type HumanInputFormSubmittedError = ErrorResponse & {
   status: 412
 }
 
-export type I18nObject = {
-  en_US: string
-  zh_Hans?: string | null
-}
-
 export type IndexInfoResponse = {
   api_version: string
   server_version: string
   welcome: string
 }
+
+export type IndexTechniqueType = 'economy' | 'high_quality'
 
 export type InvalidActionError = ErrorResponse & {
   code: 'invalid_action'
@@ -1337,11 +1371,9 @@ export type JsonObject = {
   [key: string]: unknown
 }
 
-export type JsonValue = unknown
-
 export type JsonValueType = unknown
 
-export type JsonValue2 = unknown
+export type JsonValue = unknown
 
 export type KnowledgeTagListResponse = Array<KnowledgeTagResponse>
 
@@ -1465,6 +1497,11 @@ export type ModelPropertyKey =
   | 'supported_file_extensions'
   | 'voices'
   | 'word_limit'
+
+export type ModelRuntimeI18nObject = {
+  en_US: string
+  zh_Hans?: string | null
+}
 
 export type ModelStatus =
   | 'active'
@@ -1923,7 +1960,7 @@ export type ProviderModelWithStatusEntity = {
   features?: Array<ModelFeature> | null
   fetch_from: FetchFrom
   has_invalid_load_balancing_configs?: boolean
-  label: I18nObject
+  label: ModelRuntimeI18nObject
   load_balancing_enabled?: boolean
   model: string
   model_properties: {
@@ -1953,9 +1990,9 @@ export type ProviderWithModelsListResponse = {
 }
 
 export type ProviderWithModelsResponse = {
-  icon_small?: I18nObject | null
-  icon_small_dark?: I18nObject | null
-  label: I18nObject
+  icon_small?: ModelRuntimeI18nObject | null
+  icon_small_dark?: ModelRuntimeI18nObject | null
+  label: ModelRuntimeI18nObject
   models: Array<ProviderModelWithStatusEntity>
   provider: string
   status: CustomConfigurationStatus
@@ -2107,7 +2144,7 @@ export type SegmentResponse = {
   keywords: Array<string> | null
   position: number
   sign_content: string
-  status: string
+  status: 'completed' | 'error' | 'indexing' | 'paused' | 're_segment' | 'waiting'
   stopped_at: number | null
   summary: string | null
   tokens: number
@@ -2152,7 +2189,7 @@ export type SimpleConversation = {
   created_at?: number | null
   id: string
   inputs: {
-    [key: string]: JsonValue
+    [key: string]: AnyJsonValue
   }
   introduction?: string | null
   name: string

@@ -4,11 +4,13 @@ import type { AlertDialogContentProps } from '@langgenius/dify-ui/alert-dialog'
 import type { ConnectionProvider, EndUserConnection } from '../model'
 import {
   AlertDialog,
+  AlertDialogBody,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useRef, useState } from 'react'
@@ -68,36 +70,40 @@ export default function RemoveConnectionDialog({
       }}
     >
       {connection && (
-        <AlertDialogContent finalFocus={finalFocus} className="w-130 rounded-xl border p-6">
-          <div className="space-y-5">
-            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+        <AlertDialogContent finalFocus={finalFocus} className="w-130">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['endUser.disconnectConnectionTitle'], { ns: 'app' })}
             </AlertDialogTitle>
-            <div className="flex items-center gap-3">
-              {connection.type === 'oauth' ? (
-                <ProviderIcon provider={provider} size="small" />
-              ) : (
-                <span
-                  aria-hidden="true"
-                  className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-background-default-burn text-text-tertiary"
-                >
-                  <span className="i-ri-key-2-line size-5" />
+          </AlertDialogHeader>
+          <AlertDialogBody>
+            <div className="space-y-5">
+              <div className="flex items-center gap-3">
+                {connection.type === 'oauth' ? (
+                  <ProviderIcon provider={provider} size="small" />
+                ) : (
+                  <span
+                    aria-hidden="true"
+                    className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-background-default-burn text-text-tertiary"
+                  >
+                    <span className="i-ri-key-2-line size-5" />
+                  </span>
+                )}
+                <span className="min-w-0 system-md-semibold wrap-anywhere text-text-secondary">
+                  {connection.name}
                 </span>
+              </div>
+              <AlertDialogDescription>
+                {t(($) => $['endUser.disconnectConnectionDescription'], { ns: 'app' })}
+              </AlertDialogDescription>
+              {failed && (
+                <p role="alert" className="system-sm-regular text-text-destructive">
+                  {t(($) => $['api.actionFailed'], { ns: 'common' })}
+                </p>
               )}
-              <span className="min-w-0 system-md-semibold wrap-anywhere text-text-secondary">
-                {connection.name}
-              </span>
             </div>
-            <AlertDialogDescription className="system-xs-regular text-text-tertiary">
-              {t(($) => $['endUser.disconnectConnectionDescription'], { ns: 'app' })}
-            </AlertDialogDescription>
-            {failed && (
-              <p role="alert" className="system-sm-regular text-text-destructive">
-                {t(($) => $['api.actionFailed'], { ns: 'common' })}
-              </p>
-            )}
-          </div>
-          <AlertDialogFooter className="mt-5 gap-3 p-0">
+          </AlertDialogBody>
+          <AlertDialogFooter>
             <AlertDialogCancelButton disabled={pending}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>

@@ -129,6 +129,7 @@ const useAdvancedPromptConfig = ({
         hasSetDataSet,
       })
       if (modelModeType === ModelModeType.chat) {
+        if (!chat_prompt_config) return
         const newPromptConfig = produce(chat_prompt_config, (draft) => {
           draft.prompt = draft.prompt.map((p) => {
             return {
@@ -139,6 +140,7 @@ const useAdvancedPromptConfig = ({
         })
         setChatPromptConfig(newPromptConfig)
       } else {
+        if (!completion_prompt_config) return
         const newPromptConfig = produce(completion_prompt_config, (draft) => {
           draft.prompt.text = draft.prompt.text.replace(
             PRE_PROMPT_PLACEHOLDER_TEXT,
@@ -163,6 +165,7 @@ const useAdvancedPromptConfig = ({
       })
 
       if (toModelModeType === ModelModeType.completion) {
+        if (!completion_prompt_config) return
         const newPromptConfig = produce(completion_prompt_config, (draft) => {
           if (!completionPromptConfig.prompt?.text)
             draft.prompt.text = draft.prompt.text.replace(
@@ -191,6 +194,7 @@ const useAdvancedPromptConfig = ({
         }
         setStop(stop) // switch mode's params is async. It may override the stop value.
       } else {
+        if (!chat_prompt_config) return
         const newPromptConfig = produce(chat_prompt_config, (draft) => {
           draft.prompt = draft.prompt.map((p) => {
             return {

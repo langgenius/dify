@@ -3,6 +3,7 @@ import type {
   InstalledAppResponse,
 } from '@dify/contracts/api/console/installed-apps/types.gen'
 import type { Mock } from 'vite-plus/test'
+import { QueryClient } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import { useWebAppStore } from '@/context/web-app-context'
 import { AccessMode } from '@/models/access-control'
@@ -18,56 +19,24 @@ const mocks = vi.hoisted(() => ({
   getInstalledAppParameters: vi.fn(),
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    systemFeatures: {
-      get: {
-        queryKey: () => ['system-features'],
-        queryOptions: () => ({
-          queryKey: ['system-features'],
-          queryFn: async () => ({ webapp_auth: { enabled: true } }),
-        }),
-      },
-    },
-    enterprise: {
-      webAppAuth: {
-        getWebAppAccessMode: {
-          queryOptions: ({ input }: { input: { query: { appId: string } } }) => ({
-            queryKey: ['installed-app-access-mode', input.query.appId],
-            queryFn: () => mocks.getAccessMode(input.query.appId),
-          }),
-        },
-      },
-    },
-    installedApps: {
-      byInstalledAppId: {
-        get: {
-          queryOptions: ({ input }: { input: { params: { installed_app_id: string } } }) => ({
-            queryKey: ['installed-app', input.params.installed_app_id],
-            queryFn: () => mocks.getInstalledApp(input.params.installed_app_id),
-            retry: false,
-          }),
-        },
-        meta: {
-          get: {
-            queryOptions: ({ input }: { input: { params: { installed_app_id: string } } }) => ({
-              queryKey: ['installed-app-meta', input.params.installed_app_id],
-              queryFn: () => mocks.getInstalledAppMeta(input.params.installed_app_id),
-            }),
-          },
-        },
-        parameters: {
-          get: {
-            queryOptions: ({ input }: { input: { params: { installed_app_id: string } } }) => ({
-              queryKey: ['installed-app-parameters', input.params.installed_app_id],
-              queryFn: () => mocks.getInstalledAppParameters(input.params.installed_app_id),
-            }),
-          },
-        },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const installedId = (input: { params: { installed_app_id: string } }) =>
+    input.params.installed_app_id
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'enterprise.webAppAuth.getWebAppAccessMode': (input: { query: { appId: string } }) =>
+        mocks.getAccessMode(input.query.appId),
+      'installedApps.byInstalledAppId.get': (input) => mocks.getInstalledApp(installedId(input)),
+      'installedApps.byInstalledAppId.meta.get': (input) =>
+        mocks.getInstalledAppMeta(installedId(input)),
+      'installedApps.byInstalledAppId.parameters.get': (input) =>
+        mocks.getInstalledAppParameters(installedId(input)),
+    }),
+  }
+})
 
 vi.mock('@/context/web-app-context', () => ({
   useWebAppStore: vi.fn(),
@@ -260,7 +229,9 @@ describe('InstalledApp', () => {
     unmount()
 
     mocks.getInstalledApp.mockRejectedValue(new Error('Network unavailable'))
-    renderWithConsoleQuery(<InstalledApp id="offline-app" />)
+    renderWithConsoleQuery(<InstalledApp id="offline-app" />, {
+      queryClient: new QueryClient({ defaultOptions: { queries: { retryDelay: 0 } } }),
+    })
     expect(await screen.findByText('Network unavailable')).toBeInTheDocument()
   })
 })

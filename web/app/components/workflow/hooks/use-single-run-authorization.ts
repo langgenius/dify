@@ -1,7 +1,9 @@
 import type { Node } from '../types'
+import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { CollectionType } from '@/app/components/tools/types'
-import { useAllBuiltInTools } from '@/service/use-tools'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
+import { consoleQuery } from '@/service/console'
 import { matchesProviderReference } from '@/utils/provider-reference'
 import { isToolAuthorizationRequired } from '../nodes/tool/auth'
 import { useStore } from '../store'
@@ -11,7 +13,12 @@ export const useSingleRunAuthorization = (id: string, data: Node['data']) => {
   const { t } = useTranslation(['workflow'])
   const isBuiltInTool =
     data.type === BlockEnum.Tool && data.provider_type === CollectionType.builtIn
-  const { data: builtInTools } = useAllBuiltInTools(isBuiltInTool)
+  const { data: builtInTools } = useQuery(
+    consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+      enabled: isBuiltInTool,
+      select: selectToolsWithProvider,
+    }),
+  )
   const storedTools = useStore((state) => state.buildInTools)
   const storedDraft = useStore((state) => state.nodeAuthDrafts[id])
   const collection = (builtInTools ?? storedTools)?.find((tool) =>

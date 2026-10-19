@@ -143,7 +143,6 @@
   "retrieval.full_text_search.title": "Tìm kiếm Toàn văn bản",
   "retrieval.hybrid_search.description": "Thực hiện tìm kiếm toàn văn bản và tìm kiếm vector đồng thời, sắp xếp lại để chọn kết quả phù hợp nhất với truy vấn của người dùng. Yêu cầu cấu hình API mô hình Rerank.",
   "retrieval.hybrid_search.title": "Tìm kiếm Kết hợp",
-  "retrieval.invertedIndex.title": "Chỉ mục đảo ngược",
   "retrieval.keyword_search.description": "Chỉ số đảo ngược là một cấu trúc được sử dụng để truy xuất hiệu quả. Được sắp xếp theo thuật ngữ, mỗi thuật ngữ trỏ đến các tài liệu hoặc trang web có chứa nó.",
   "retrieval.keyword_search.title": "Chỉ số đảo ngược",
   "retrieval.semantic_search.description": "Tạo các nhúng truy vấn và tìm kiếm đoạn văn bản tương tự nhất với biểu diễn vector của nó.",

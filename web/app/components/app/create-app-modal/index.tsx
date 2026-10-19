@@ -6,6 +6,8 @@ import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import { zPostAppsBody } from '@dify/contracts/api/console/apps/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Field } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Input } from '@langgenius/dify-ui/input'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Separator } from '@langgenius/dify-ui/separator'
@@ -51,7 +53,7 @@ const shouldExpandBeginnerAppTypes = (appMode?: AppType) => {
 function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppProps) {
   const { t } = useTranslation(['app'])
   const { push } = useRouter()
-  const nameInputId = useId()
+  const descriptionInputId = useId()
   const contentRef = useRef<HTMLDivElement>(null)
 
   const [appMode, setAppMode] = useState<AppType>(defaultAppMode || 'advanced-chat')
@@ -308,19 +310,19 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
                 )}
               </div>
               <Separator />
-              <div className="flex items-center space-x-3">
+              <Fieldset className="flex items-center space-x-3">
                 <div className="flex-1">
-                  <div className="mb-1 flex h-6 items-center">
-                    <label htmlFor={nameInputId} className="system-sm-semibold text-text-secondary">
-                      {t(($) => $['newApp.captionName'], { ns: 'app' })}
-                    </label>
-                  </div>
-                  <Input
-                    id={nameInputId}
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' }) || ''}
-                  />
+                  <FieldsetLegend className="flex h-6 items-center py-0 system-sm-semibold">
+                    {t(($) => $['newApp.captionName'], { ns: 'app' })}
+                  </FieldsetLegend>
+                  <Field name="name">
+                    <Input
+                      aria-label={t(($) => $['newApp.name'], { ns: 'app' })}
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' }) || ''}
+                    />
+                  </Field>
                 </div>
                 <IconPicker value={appIcon} onValueChange={setAppIcon}>
                   <IconPickerTrigger
@@ -331,10 +333,13 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
                   </IconPickerTrigger>
                   <IconPickerContent />
                 </IconPicker>
-              </div>
+              </Fieldset>
               <div>
                 <div className="mb-1 flex h-6 items-center">
-                  <label className="system-sm-semibold text-text-secondary">
+                  <label
+                    htmlFor={descriptionInputId}
+                    className="system-sm-semibold text-text-secondary"
+                  >
                     {t(($) => $['newApp.captionDescription'], { ns: 'app' })}
                   </label>
                   <span className="ml-1 system-xs-regular text-text-tertiary">
@@ -342,7 +347,7 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
                   </span>
                 </div>
                 <Textarea
-                  aria-label={t(($) => $['newApp.captionDescription'], { ns: 'app' })}
+                  id={descriptionInputId}
                   className="resize-none"
                   placeholder={t(($) => $['newApp.appDescriptionPlaceholder'], { ns: 'app' }) || ''}
                   value={description}

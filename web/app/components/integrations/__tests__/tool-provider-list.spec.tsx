@@ -1,1141 +1,658 @@
-import type { ComponentProps, ReactNode } from 'react'
-import { cleanup, fireEvent, screen, within } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import {
-  getStepByStepTourTargetSelector,
-  STEP_BY_STEP_TOUR_TARGETS,
-} from '@/app/components/step-by-step-tour/target-registry'
-import { getToolType } from '@/app/components/tools/utils'
+import type { ComponentProps } from 'react'
+import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/console'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
+import { createDeferred } from '@/test/deferred'
+import { createPluginEntity } from '@/test/fixtures/plugin'
 import { renderWithNuqs } from '@/test/nuqs-testing'
-import { ToolType } from '../../workflow/block-selector/types'
 import ProviderList from '../tool-provider-list'
 
-vi.mock('@/app/components/plugins/hooks', () => ({
-  useTags: () => ({
-    tags: [],
-    tagsMap: {},
-    getTagLabel: (name: string) => name,
-  }),
+const api = vi.hoisted(() => ({
+  createMCP:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.mcp.post
+    >(),
+  authorizeMCP:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.mcp.auth.post
+    >(),
+  updateMCPTools:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.mcp.update.byProviderId.get
+    >(),
+  mcpTools:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.mcp.tools.byProviderId.get
+    >(),
+  installed:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.workspaces.current.plugin.list.installations.ids.post
+    >(),
+  uninstall:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.workspaces.current.plugin.uninstall.post
+    >(),
+
+  providers:
+    vi.fn<typeof import('@/service/console').consoleClient.workspaces.current.toolProviders.get>(),
+  custom:
+    vi.fn<typeof import('@/service/console').consoleClient.workspaces.current.tools.api.get>(),
+  workflow:
+    vi.fn<typeof import('@/service/console').consoleClient.workspaces.current.tools.workflow.get>(),
+  builtinTools:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.builtin.byProvider.tools.get
+    >(),
+  createCustom:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.api.add.post
+    >(),
+  parseSchema:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.api.schema.post
+    >(),
+  deleteMCP:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.mcp.delete
+    >(),
+  collections: vi.fn<typeof import('@/service/marketplace').marketplaceClient.collections>(),
 }))
 
-let mockEnableMarketplace = false
-
-const createDefaultCollections = () => [
-  {
-    id: 'builtin-1',
-    name: 'google-search',
-    author: 'Dify',
-    description: { en_US: 'Google Search', zh_Hans: '谷歌搜索' },
-    icon: 'icon-google',
-    label: { en_US: 'Google Search', zh_Hans: '谷歌搜索' },
-    type: 'builtin',
-    team_credentials: {},
-    is_team_authorization: false,
-    allow_delete: false,
-    labels: ['search'],
-  },
-  {
-    id: 'builtin-2',
-    name: 'weather-tool',
-    author: 'Dify',
-    description: { en_US: 'Weather Tool', zh_Hans: '天气工具' },
-    icon: 'icon-weather',
-    label: { en_US: 'Weather Tool', zh_Hans: '天气工具' },
-    type: 'builtin',
-    team_credentials: {},
-    is_team_authorization: false,
-    allow_delete: false,
-    labels: ['utility'],
-  },
-  {
-    id: 'builtin-plugin',
-    name: 'plugin-tool',
-    author: 'Dify',
-    description: { en_US: 'Plugin Tool', zh_Hans: '插件工具' },
-    icon: 'icon-plugin',
-    label: { en_US: 'Plugin Tool', zh_Hans: '插件工具' },
-    type: 'builtin',
-    team_credentials: {},
-    is_team_authorization: false,
-    allow_delete: false,
-    labels: [],
-    plugin_id: 'org/plugin-tool',
-  },
-  {
-    id: 'api-1',
-    name: 'my-api',
-    author: 'User',
-    description: { en_US: 'My API tool', zh_Hans: '我的 API 工具' },
-    icon: { background: '#fff', content: '🔧' },
-    label: { en_US: 'My API Tool', zh_Hans: '我的 API 工具' },
-    type: 'api',
-    team_credentials: {},
-    is_team_authorization: false,
-    allow_delete: true,
-    labels: ['api', 'tools'],
-  },
-  {
-    id: 'workflow-1',
-    name: 'wf-tool',
-    author: 'User',
-    description: { en_US: 'Workflow Tool', zh_Hans: '工作流工具' },
-    icon: { background: '#fff', content: '⚡' },
-    label: { en_US: 'Workflow Tool', zh_Hans: '工作流工具' },
-    type: 'workflow',
-    team_credentials: {},
-    is_team_authorization: false,
-    allow_delete: true,
-    labels: ['productivity', 'utilities'],
-  },
-]
-
-let mockCollectionData: ReturnType<typeof createDefaultCollections> = []
-let mockIsLoadingToolProviders = false
-const mockRefetch = vi.fn()
-const mockUseAllToolProviders = vi.hoisted(() => vi.fn())
-const mockUseAllCustomTools = vi.hoisted(() => vi.fn())
-const mockUseAllWorkflowTools = vi.hoisted(() => vi.fn())
-vi.mock('@/service/use-tools', () => ({
-  useAllToolProviders: (enabled?: boolean, type?: string) => mockUseAllToolProviders(enabled, type),
-  useAllCustomTools: (enabled?: boolean) => mockUseAllCustomTools(enabled),
-  useAllWorkflowTools: (enabled?: boolean) => mockUseAllWorkflowTools(enabled),
-}))
-
-const mockConsoleState = vi.hoisted(() => ({
-  workspacePermissionKeys: ['tool.manage', 'mcp.manage'] as string[],
-}))
-
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: mockConsoleState.workspacePermissionKeys,
-  }))
-})
-
-let mockCheckedInstalledData: { plugins: { id: string; name: string }[] } | null = null
-const mockInvalidateInstalledPluginList = vi.fn()
-vi.mock('@/service/use-plugins', () => ({
-  useCheckInstalled: ({ enabled }: { enabled: boolean }) => ({
-    data: enabled ? mockCheckedInstalledData : null,
-  }),
-  useInvalidateInstalledPluginList: () => mockInvalidateInstalledPluginList,
-}))
-
-const { mockCanSetPermissions, mockReferenceSetting, mockSetReferenceSettings } = vi.hoisted(
-  () => ({
-    mockCanSetPermissions: vi.fn(() => true),
-    mockReferenceSetting: vi.fn(() => ({
-      permission: {
-        install_permission: 'everyone',
-        debug_permission: 'admins',
-      },
-      auto_upgrade: {
-        strategy_setting: 'fix_only',
-        upgrade_time_of_day: 0,
-        upgrade_mode: 'all',
-        exclude_plugins: [],
-        include_plugins: [],
-      },
-    })),
-    mockSetReferenceSettings: vi.fn(),
-  }),
-)
-
-vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
-  useCanSetPluginSettings: () => ({
-    canSetPermissions: mockCanSetPermissions(),
-    canSetPluginPreferences: mockCanSetPermissions(),
-  }),
-  usePluginSettingsAccess: () => ({
-    canSetPermissions: mockCanSetPermissions(),
-    canSetPluginPreferences: mockCanSetPermissions(),
-    canDeletePlugin: true,
-    canUpdatePlugin: true,
-  }),
-  default: () => ({
-    referenceSetting: mockReferenceSetting(),
-    canSetPermissions: mockCanSetPermissions(),
-    canSetPluginPreferences: mockCanSetPermissions(),
-    setReferenceSettings: mockSetReferenceSettings,
-  }),
-}))
-
-vi.mock('@/app/components/header/account-setting/update-setting-dialog', () => ({
-  UpdateSettingDialog: () => (
-    <button type="button" aria-label="plugin.autoUpdate.autoUpdate">
-      plugin.autoUpdate.autoUpdate
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/plugins/card', () => ({
-  default: ({
-    payload,
-    className,
-  }: {
-    payload: { from?: string; name: string; org?: string }
-    className?: string
-  }) => (
-    <div
-      data-testid={`card-${payload.name}`}
-      data-from={payload.from}
-      data-org={payload.org}
-      className={className}
-    >
-      {payload.name}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/tools/provider/tool-card-skeleton', () => ({
-  default: ({ variant }: { variant?: string }) => (
-    <>
-      {Array.from({ length: 6 }, (_, index) => (
-        <div key={index} data-testid="tool-card-skeleton" data-variant={variant}>
-          Loading tool
-        </div>
-      ))}
-    </>
-  ),
-}))
-
-vi.mock('@/app/components/plugins/card/card-more-info', () => ({
-  default: ({ tags }: { tags: string[] }) => (
-    <div data-testid="card-more-info">{tags.join(', ')}</div>
-  ),
-}))
-
-vi.mock('@/app/components/tools/labels/filter', () => ({
-  default: ({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) => (
-    <div data-testid="label-filter">
-      <button data-testid="add-filter" onClick={() => onChange(['search'])}>
-        Add filter
-      </button>
-      <button data-testid="clear-filter" onClick={() => onChange([])}>
-        Clear filter
-      </button>
-      <span>{value.join(', ')}</span>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/tools/provider/custom-create-card', () => ({
-  default: ({ stepByStepTourTarget }: { stepByStepTourTarget?: string }) => (
-    <div data-testid="custom-create-card" data-step-by-step-tour-target={stepByStepTourTarget}>
-      Create Custom Tool
-    </div>
-  ),
-  NewCustomToolButton: () => (
-    <button type="button" data-testid="toolbar-add-custom-tool">
-      tools.addSwaggerAPIAsTool
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/tools/provider/detail', () => ({
-  default: ({ collection, onHide }: { collection: { name: string }; onHide: () => void }) => (
-    <div data-testid="provider-detail">
-      <span>{collection.name}</span>
-      <button data-testid="detail-close" onClick={onHide}>
-        Close
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/tools/provider/empty', () => ({
-  default: () => <div data-testid="workflow-empty">No workflow tools</div>,
-}))
-
-vi.mock('@/app/components/plugins/plugin-detail-panel', () => ({
-  default: ({
-    detail,
-    onUpdate,
-    onHide,
-  }: {
-    detail: unknown
-    onUpdate: () => void
-    onHide: () => void
-  }) =>
-    detail ? (
-      <div data-testid="plugin-detail-panel">
-        <button data-testid="plugin-update" onClick={onUpdate}>
-          Update
-        </button>
-        <button data-testid="plugin-close" onClick={onHide}>
-          Close
-        </button>
-      </div>
-    ) : null,
-}))
-
-vi.mock('@/app/components/plugins/marketplace/empty', () => ({
-  default: ({ text }: { text: string }) => <div data-testid="empty">{text}</div>,
-}))
-
-const { mockHandleScroll, mockUseMarketplace } = vi.hoisted(() => {
-  const handleScroll = vi.fn()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
   return {
-    mockHandleScroll: handleScroll,
-    mockUseMarketplace: vi.fn(() => ({
-      isLoading: false,
-      marketplaceCollections: [],
-      marketplaceCollectionPluginsMap: {},
-      plugins: [],
-      handleScroll,
-      page: 1,
-    })),
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.uninstall.post': api.uninstall,
+      'workspaces.current.toolProviders.get': api.providers,
+      'workspaces.current.plugin.list.installations.ids.post': api.installed,
+      'workspaces.current.toolProvider.builtin.byProvider.tools.get': api.builtinTools,
+      'workspaces.current.tools.api.get': api.custom,
+      'workspaces.current.tools.workflow.get': api.workflow,
+      'workspaces.current.toolProvider.mcp.delete': api.deleteMCP,
+      'workspaces.current.toolProvider.mcp.post': api.createMCP,
+      'workspaces.current.toolProvider.mcp.auth.post': api.authorizeMCP,
+      'workspaces.current.toolProvider.mcp.update.byProviderId.get': api.updateMCPTools,
+      'workspaces.current.toolProvider.mcp.tools.byProviderId.get': api.mcpTools,
+      'workspaces.current.plugin.installedIds.get': async () => ({ plugin_ids: [] }),
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.toolProvider.builtin.byProvider.tools.get': api.builtinTools,
+      'workspaces.current.toolProvider.api.add.post': api.createCustom,
+      'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
+      'workspaces.current.toolProvider.api.schema.post': api.parseSchema,
+      'workspaces.current.plugin.permission.fetch.get': async () => ({
+        install_permission: 'everyone',
+        debug_permission: 'everyone',
+      }),
+      'workspaces.current.plugin.autoUpgrade.fetch.get': async () => ({
+        category: 'tool',
+        auto_upgrade: {
+          strategy_setting: 'fix_only',
+          upgrade_time_of_day: 0,
+          upgrade_mode: 'all',
+          exclude_plugins: [],
+          include_plugins: [],
+        },
+      }),
+    }),
   }
 })
-vi.mock('@/app/components/tools/marketplace', () => ({
-  default: ({
-    showMarketplacePanel,
-    isMarketplaceArrowVisible,
-    contentInset,
-  }: {
-    showMarketplacePanel: () => void
-    isMarketplaceArrowVisible: boolean
-    contentInset?: string
-  }) => (
-    <div data-testid="marketplace" data-content-inset={contentInset}>
-      <button data-testid="marketplace-arrow" onClick={showMarketplacePanel}>
-        {isMarketplaceArrowVisible ? 'arrow-visible' : 'arrow-hidden'}
-      </button>
-    </div>
-  ),
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/marketplace')>()
+  return {
+    ...actual,
+    marketplaceClient: { ...actual.marketplaceClient, collections: api.collections },
+  }
+})
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useRouter: () => ({ push: vi.fn() }),
 }))
 
-vi.mock('@/app/components/tools/marketplace/hooks', () => ({
-  useMarketplace: mockUseMarketplace,
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  post: async (url: string) => {
+    if (url === '/remote-files/upload')
+      return {
+        id: 'favicon',
+        name: 'favicon.png',
+        size: 10,
+        mime_type: 'image/png',
+        url: '/favicon.png',
+      }
+    throw new Error(`Unexpected service request: ${url}`)
+  },
+  get: async (url: string) => {
+    if (
+      url ===
+      '/workspaces/current/tool-provider/builtin/langgenius/plugin-entity/plugin-entity/credential/info'
+    )
+      return {
+        supported_credential_types: [],
+        credentials: [],
+        is_oauth_custom_client_enabled: false,
+      }
+    throw new Error(`Unexpected service request: ${url}`)
+  },
 }))
 
-vi.mock('@/app/components/tools/mcp', () => ({
-  default: ({
-    providers,
-    searchText,
-    contentInset,
-    showCreateCard,
-  }: {
-    providers?: Array<{ id: string }>
-    searchText: string
-    contentInset?: string
-    showCreateCard?: boolean
-  }) => (
-    <div
-      data-testid="mcp-list"
-      data-content-inset={contentInset}
-      data-provider-ids={providers?.map((provider) => provider.id).join(',')}
-      data-show-create-card={String(showCreateCard)}
-    >
-      MCP List:
-      {searchText}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/tools/mcp/create-card', () => ({
-  NewMCPButton: ({
-    handleCreate,
-  }: {
-    handleCreate: (provider: { id: string; name: string; type: string }) => void
-  }) => (
-    <button
-      type="button"
-      data-testid="toolbar-add-mcp"
-      onClick={() => handleCreate({ id: 'new-mcp', name: 'New MCP', type: 'mcp' })}
-    >
-      tools.mcp.create.cardTitle
-    </button>
-  ),
-}))
-
-describe('getToolType', () => {
-  it.each([
-    ['builtin', ToolType.BuiltIn],
-    ['api', ToolType.Custom],
-    ['workflow', ToolType.Workflow],
-    ['mcp', ToolType.MCP],
-    ['unknown', ToolType.BuiltIn],
-  ] as const)('returns correct ToolType for "%s"', (input, expected) => {
-    expect(getToolType(input)).toBe(expected)
-  })
+const pluginEntity = createPluginEntity()
+pluginEntity.declaration.tool = {
+  credentials_schema: [],
+  identity: {
+    author: 'Dify',
+    name: 'plugin-entity',
+    icon: 'icon.svg',
+    label: { en_US: 'Plugin label' },
+    description: { en_US: 'Plugin description' },
+  },
+}
+const pluginProvider = createToolProviderFixture({
+  id: 'plugin-provider',
+  name: 'langgenius/plugin-entity/plugin-entity',
+  label: { en_US: 'Installed Plugin' },
+  plugin_id: pluginEntity.plugin_id,
 })
 
-const renderProviderList = (
-  searchParams?: Record<string, string>,
-  category?: ComponentProps<typeof ProviderList>['category'],
-  contentInset?: ComponentProps<typeof ProviderList>['contentInset'],
-) => {
-  const { wrapper: ConsoleQueryWrapper } = createConsoleQueryWrapper({
-    systemFeatures: { enable_marketplace: mockEnableMarketplace },
+const builtin = [
+  createToolProviderFixture({
+    id: 'google',
+    name: 'google-search',
+    label: { en_US: 'Google Search', zh_Hans: '谷歌搜索' },
+    description: { en_US: 'Search the web' },
+    labels: ['search'],
+    allow_delete: false,
+  }),
+  createToolProviderFixture({
+    id: 'weather',
+    name: 'weather-tool',
+    label: { en_US: 'Weather Tool' },
+    description: { en_US: 'Weather forecast' },
+    labels: ['utilities'],
+    allow_delete: false,
+  }),
+]
+const custom = createToolProviderFixture({
+  id: 'custom',
+  name: 'my-api',
+  type: 'api',
+  label: { en_US: 'My API Tool' },
+  author: 'Custom Author',
+  labels: ['api'],
+})
+const workflow = createToolProviderFixture({
+  id: 'workflow',
+  name: 'workflow-tool',
+  type: 'workflow',
+  label: { en_US: 'Workflow Tool' },
+  author: 'Workflow Author',
+  labels: ['productivity'],
+})
+const mcp = createToolProviderFixture({
+  id: 'mcp-database-id',
+  name: 'MCP Server',
+  type: 'mcp',
+  server_identifier: 'mcp-server',
+  label: { en_US: 'MCP Server' },
+  server_url: 'https://mcp.example.com',
+})
+
+type RenderOptions = {
+  category?: ComponentProps<typeof ProviderList>['category']
+  searchParams?: Record<string, string>
+  permissions?: string[]
+  providers?: typeof builtin
+  customTools?: typeof builtin
+  workflowTools?: typeof builtin
+  pending?: boolean
+  marketplace?: boolean
+}
+const renderProviderList = ({
+  category,
+  searchParams,
+  permissions = ['tool.manage', 'mcp.manage'],
+  providers = builtin,
+  customTools = [custom],
+  workflowTools = [workflow],
+  pending = false,
+  marketplace = false,
+}: RenderOptions = {}) => {
+  const { wrapper: Wrapper, queryClient } = createConsoleQueryWrapper({
+    workspacePermissionKeys: permissions,
+    systemFeatures: { enable_marketplace: marketplace, rbac_enabled: true },
   })
-  const Wrapped = ({ children }: { children: ReactNode }) => (
-    <ConsoleQueryWrapper>{children}</ConsoleQueryWrapper>
-  )
+  seedModelProviderQueries(queryClient)
+  if (!pending) {
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.toolProviders.get.queryKey({ input: { query: {} } }),
+      providers,
+    )
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.toolProviders.get.queryKey({
+        input: { query: { type: 'mcp' } },
+      }),
+      providers.filter((item) => item.type === 'mcp'),
+    )
+    queryClient.setQueryData(consoleQuery.workspaces.current.tools.api.get.queryKey(), customTools)
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.tools.workflow.get.queryKey(),
+      workflowTools,
+    )
+  }
   return renderWithNuqs(
-    <Wrapped>
-      <ProviderList category={category} contentInset={contentInset} />
-    </Wrapped>,
+    <Wrapper>
+      <ProviderList category={category} contentInset="compact" />
+    </Wrapper>,
     { searchParams },
   )
 }
 
-describe('ProviderList', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockEnableMarketplace = false
-    mockCollectionData = createDefaultCollections()
-    mockIsLoadingToolProviders = false
-    mockConsoleState.workspacePermissionKeys = ['tool.manage', 'mcp.manage']
-    mockUseAllToolProviders.mockImplementation((enabled = true) => ({
-      data: enabled ? mockCollectionData : [],
-      isLoading: enabled ? mockIsLoadingToolProviders : false,
-      refetch: mockRefetch,
-    }))
-    mockUseAllCustomTools.mockImplementation((enabled = true) => ({
-      data: enabled ? mockCollectionData.filter((collection) => collection.type === 'api') : [],
-      isLoading: enabled ? mockIsLoadingToolProviders : false,
-      refetch: mockRefetch,
-    }))
-    mockUseAllWorkflowTools.mockImplementation((enabled = true) => ({
-      data: enabled
-        ? mockCollectionData.filter((collection) => collection.type === 'workflow')
-        : [],
-      isLoading: enabled ? mockIsLoadingToolProviders : false,
-      refetch: mockRefetch,
-    }))
-    mockCheckedInstalledData = null
-    mockCanSetPermissions.mockReturnValue(true)
-    mockReferenceSetting.mockReturnValue({
-      permission: {
-        install_permission: 'everyone',
-        debug_permission: 'admins',
-      },
-      auto_upgrade: {
-        strategy_setting: 'fix_only',
-        upgrade_time_of_day: 0,
-        upgrade_mode: 'all',
-        exclude_plugins: [],
-        include_plugins: [],
-      },
-    })
-    Element.prototype.scrollTo = vi.fn()
+beforeEach(() => {
+  api.createMCP.mockReset().mockResolvedValue(mcp)
+  api.authorizeMCP.mockReset().mockResolvedValue({ result: 'success' })
+  api.updateMCPTools.mockReset().mockResolvedValue(mcp)
+  api.mcpTools.mockReset().mockResolvedValue(mcp)
+  api.installed.mockReset().mockResolvedValue({ plugins: [pluginEntity] })
+  api.uninstall.mockReset().mockResolvedValue({ success: true })
+  api.providers.mockReset().mockResolvedValue(builtin)
+  api.custom.mockReset().mockResolvedValue([custom])
+  api.workflow.mockReset().mockResolvedValue([workflow])
+  api.builtinTools.mockReset().mockResolvedValue([])
+  api.createCustom.mockReset().mockResolvedValue({ result: 'success' })
+  api.parseSchema.mockReset().mockResolvedValue({
+    parameters_schema: [],
+    credentials_schema: [],
+    warning: {},
+    schema_type: 'openapi',
   })
+  api.deleteMCP.mockReset().mockResolvedValue({ result: 'success' })
+  api.collections.mockReset().mockResolvedValue({ data: { collections: [] } })
+})
+afterEach(async () => {
+  await act(async () => cleanup())
+})
 
-  afterEach(() => {
-    cleanup()
-  })
-
-  describe('Tab Navigation', () => {
-    it('renders all four tabs', () => {
-      renderProviderList()
-      expect(screen.getByText('tools.type.builtIn')).toBeInTheDocument()
-      expect(screen.getByText('tools.type.custom')).toBeInTheDocument()
-      expect(screen.getByText('tools.type.workflow')).toBeInTheDocument()
-      expect(screen.getByText('MCP')).toBeInTheDocument()
-    })
-
-    it('keeps custom and workflow tabs visible without tool.manage', () => {
-      mockConsoleState.workspacePermissionKeys = ['mcp.manage']
-
-      renderProviderList()
-
-      expect(screen.getByText('tools.type.builtIn')).toBeInTheDocument()
-      expect(screen.getByText('tools.type.custom')).toBeInTheDocument()
-      expect(screen.getByText('tools.type.workflow')).toBeInTheDocument()
-      expect(screen.getByText('MCP')).toBeInTheDocument()
-    })
-
-    it('keeps MCP tab visible without mcp.manage', () => {
-      mockConsoleState.workspacePermissionKeys = ['tool.manage']
-
-      renderProviderList()
-
-      expect(screen.getByText('tools.type.builtIn')).toBeInTheDocument()
-      expect(screen.getByText('tools.type.custom')).toBeInTheDocument()
-      expect(screen.getByText('tools.type.workflow')).toBeInTheDocument()
-      expect(screen.getByText('MCP')).toBeInTheDocument()
-    })
-
-    it.each([
-      ['api', 'card-my-api'],
-      ['workflow', 'card-wf-tool'],
-    ] as const)('renders %s category read-only without tool.manage', (category, cardTestId) => {
-      mockConsoleState.workspacePermissionKeys = []
-
-      renderProviderList({ category })
-
-      expect(mockUseAllToolProviders).toHaveBeenCalledWith(false, undefined)
-      expect(mockUseAllCustomTools).toHaveBeenCalledWith(category === 'api')
-      expect(mockUseAllWorkflowTools).toHaveBeenCalledWith(category === 'workflow')
-      expect(screen.getByTestId(cardTestId)).toBeInTheDocument()
-      expect(screen.queryByTestId('custom-create-card')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('toolbar-add-custom-tool')).not.toBeInTheDocument()
-    })
-
-    it('switches tab when clicked', () => {
-      renderProviderList()
-      fireEvent.click(screen.getByText('tools.type.custom'))
-      expect(screen.getByTestId('toolbar-add-custom-tool')).toBeInTheDocument()
-      expect(screen.queryByTestId('custom-create-card')).not.toBeInTheDocument()
-    })
-
-    it('hides category tabs when controlled by route category', () => {
-      renderProviderList(undefined, 'builtin')
-
-      expect(screen.getByTestId('card-google-search')).toBeInTheDocument()
-      expect(screen.queryByText('tools.type.builtIn')).not.toBeInTheDocument()
-      expect(screen.queryByText('tools.type.custom')).not.toBeInTheDocument()
-      expect(screen.queryByText('tools.type.workflow')).not.toBeInTheDocument()
-      expect(screen.queryByText('MCP')).not.toBeInTheDocument()
-    })
-
-    it('resets current provider when switching to a different tab', () => {
-      renderProviderList()
-      fireEvent.click(screen.getByTestId('card-google-search'))
-      expect(screen.getByTestId('provider-detail')).toBeInTheDocument()
-      fireEvent.click(screen.getByText('tools.type.custom'))
-      expect(screen.queryByTestId('provider-detail')).not.toBeInTheDocument()
-    })
-
-    it('does not reset provider when clicking the already active tab', () => {
-      renderProviderList()
-      fireEvent.click(screen.getByTestId('card-google-search'))
-      expect(screen.getByTestId('provider-detail')).toBeInTheDocument()
-      fireEvent.click(screen.getByText('tools.type.builtIn'))
-      expect(screen.getByTestId('provider-detail')).toBeInTheDocument()
-    })
-  })
-
-  describe('Layout', () => {
-    it('uses default content inset outside compact integrations layout', () => {
-      renderProviderList()
-      const toolbar = screen.getByRole('searchbox').closest('.bg-components-panel-bg')
-
-      expect(screen.getByRole('region', { name: 'navigation.menus.tools' })).toBeInTheDocument()
-      expect(toolbar).toHaveClass('px-12', 'pt-2', 'pb-0', 'bg-components-panel-bg')
-      expect(toolbar).toHaveClass('max-w-[1600px]')
-      expect(toolbar).not.toHaveClass('sticky')
-      expect(screen.getByTestId('card-google-search').closest('.grid')).toHaveClass(
-        'px-12',
-        'gap-2',
-        'pt-2',
-      )
-      expect(screen.getByTestId('card-google-search').closest('.grid')).toHaveClass(
-        'max-w-[1600px]',
-      )
-    })
-
-    it('uses compact content inset when rendered by integrations layout', () => {
-      renderProviderList(undefined, 'builtin', 'compact')
-      const toolbar = screen.getByRole('searchbox').closest('.bg-components-panel-bg')
-
-      expect(screen.getByRole('region', { name: 'navigation.menus.tools' })).toBeInTheDocument()
-      expect(toolbar).toHaveClass('px-6', 'pt-2', 'pb-0', 'bg-components-panel-bg')
-      expect(toolbar).toHaveClass('max-w-[1600px]')
-      expect(toolbar).not.toHaveClass('sticky')
-      expect(screen.getByTestId('tool-provider-grid')).toHaveClass('px-6', 'gap-2', 'pt-1')
-      expect(screen.getByTestId('tool-provider-grid')).toHaveClass('max-w-[1600px]')
-    })
-
-    it('uses a two-column grid in compact integrations pages', () => {
-      renderProviderList(undefined, 'builtin', 'compact')
-
-      expect(screen.getByTestId('tool-provider-grid')).toHaveClass(
-        'grid',
-        'grid-cols-1',
-        'lg:grid-cols-2',
-      )
-      expect(screen.getByTestId('tool-provider-grid')).not.toHaveClass(
-        'flex',
-        'flex-wrap',
-        'md:grid-cols-3',
-      )
-      expect(screen.getByTestId('card-google-search').parentElement).toHaveClass('min-w-0')
-      expect(screen.getByTestId('card-google-search').parentElement).not.toHaveClass('flex-1')
-    })
-  })
-
-  describe('Filtering', () => {
-    it('shows only builtin collections by default', () => {
-      renderProviderList()
-      expect(screen.getByTestId('card-google-search')).toBeInTheDocument()
-      expect(screen.getByTestId('card-weather-tool')).toBeInTheDocument()
-      expect(screen.queryByTestId('card-my-api')).not.toBeInTheDocument()
-    })
-
-    it('filters by search keyword', () => {
-      renderProviderList()
-      const input = screen.getByRole('searchbox')
-      fireEvent.change(input, { target: { value: 'nonexistent' } })
-      expect(screen.queryByTestId('card-google-search')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('empty')).not.toBeInTheDocument()
-    })
-
-    it('filters by search keyword matching label', () => {
-      renderProviderList()
-      const input = screen.getByRole('searchbox')
-      fireEvent.change(input, { target: { value: 'Google' } })
-      expect(screen.getByTestId('card-google-search')).toBeInTheDocument()
-      expect(screen.queryByTestId('card-weather-tool')).not.toBeInTheDocument()
-    })
-
-    it('filters search within the current route category', () => {
-      renderProviderList(undefined, 'builtin')
-      const input = screen.getByRole('searchbox')
-      fireEvent.change(input, { target: { value: 'My API' } })
-      expect(screen.queryByTestId('card-my-api')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('card-google-search')).not.toBeInTheDocument()
-    })
-
-    it('filters collections by tag', () => {
-      renderProviderList()
-      fireEvent.click(screen.getByTestId('add-filter'))
-      expect(screen.getByTestId('card-google-search')).toBeInTheDocument()
-      expect(screen.queryByTestId('card-weather-tool')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('card-plugin-tool')).not.toBeInTheDocument()
-    })
-
-    it('restores all collections when tag filter is cleared', () => {
-      renderProviderList()
-      fireEvent.click(screen.getByTestId('add-filter'))
-      expect(screen.queryByTestId('card-weather-tool')).not.toBeInTheDocument()
-      fireEvent.click(screen.getByTestId('clear-filter'))
-      expect(screen.getByTestId('card-google-search')).toBeInTheDocument()
-      expect(screen.getByTestId('card-weather-tool')).toBeInTheDocument()
-    })
-
-    it('does not apply hidden tag filters on non-tools tabs', () => {
-      renderProviderList()
-
-      fireEvent.click(screen.getByTestId('add-filter'))
-      fireEvent.click(screen.getByText('tools.type.custom'))
-
-      expect(screen.queryByTestId('label-filter')).not.toBeInTheDocument()
-      expect(screen.getByTestId('card-my-api')).toBeInTheDocument()
-    })
-
-    it('clears search with clear button', () => {
-      renderProviderList()
-      const input = screen.getByRole('searchbox')
-      fireEvent.change(input, { target: { value: 'Google' } })
-      expect(screen.queryByTestId('card-weather-tool')).not.toBeInTheDocument()
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
-      expect(screen.getByTestId('card-weather-tool')).toBeInTheDocument()
-    })
-
-    it('shows label filter for the built-in tools page', () => {
-      renderProviderList()
-      expect(screen.getByTestId('label-filter')).toBeInTheDocument()
-    })
-
-    it.each([['api'], ['workflow'], ['mcp']] as const)(
-      'hides label filter for the %s tool page',
-      (category) => {
-        renderProviderList({ category })
-        expect(screen.queryByTestId('label-filter')).not.toBeInTheDocument()
-      },
+it('lets read-only users browse every category and synchronizes the selected category to the URL', async () => {
+  const user = userEvent.setup()
+  const { onUrlUpdate } = renderProviderList({ permissions: [], providers: [...builtin, mcp] })
+  expect(screen.getByRole('radio', { name: 'tools.type.builtIn' })).toBeChecked()
+  expect(screen.getByRole('button', { name: /Google Search/ })).toBeInTheDocument()
+  for (const [tab, label, category] of [
+    ['tools.type.custom', 'My API Tool', 'api'],
+    ['tools.type.workflow', 'Workflow Tool', 'workflow'],
+    ['MCP', 'MCP Server', 'mcp'],
+  ] as const) {
+    await user.click(screen.getByRole('radio', { name: tab }))
+    expect(await screen.findByRole('button', { name: new RegExp(label) })).toBeInTheDocument()
+    await waitFor(() =>
+      expect(onUrlUpdate).toHaveBeenLastCalledWith(
+        expect.objectContaining({ queryString: `?category=${category}` }),
+      ),
     )
+    expect(
+      screen.queryByRole('button', {
+        name: /tools\.(addSwaggerAPIAsTool|createSwaggerAPIAsTool|mcp.create.cardTitle)/,
+      }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.tag.tags' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /plugin.autoUpdate.autoUpdate/ }),
+    ).not.toBeInTheDocument()
+  }
+  expect(screen.queryByRole('button', { name: 'common.operation.more' })).not.toBeInTheDocument()
+})
 
-    it('renders search input', () => {
-      renderProviderList()
-      expect(screen.getByRole('searchbox')).toBeInTheDocument()
-    })
+it('uses the route category instead of a conflicting query parameter', () => {
+  renderProviderList({ category: 'workflow', searchParams: { category: 'api' } })
+  expect(screen.getByRole('button', { name: /Workflow Tool/ })).toHaveTextContent('Workflow Author')
+  expect(screen.getByRole('button', { name: /Workflow Tool/ })).toHaveTextContent('productivity')
+  expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /My API Tool/ })).not.toBeInTheDocument()
+})
 
-    it('shows the plugin update settings action in the tools toolbar', () => {
-      renderProviderList(undefined, 'builtin')
+it('matches localized labels within the category and restores the list when search is cleared', async () => {
+  const user = userEvent.setup()
+  renderProviderList({ category: 'builtin' })
+  await user.type(screen.getByRole('searchbox'), '谷歌')
+  expect(screen.getByRole('button', { name: /Google Search/ })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /Weather Tool/ })).not.toBeInTheDocument()
+  await user.clear(screen.getByRole('searchbox'))
+  await user.type(screen.getByRole('searchbox'), 'My API')
+  expect(
+    screen.queryByRole('button', { name: /Google Search|My API Tool/ }),
+  ).not.toBeInTheDocument()
+  expect(screen.queryByText('tools.noTools')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+  expect(screen.getByRole('button', { name: /Weather Tool/ })).toBeInTheDocument()
+})
 
-      expect(
-        screen.getByRole('button', { name: 'plugin.autoUpdate.autoUpdate' }),
-      ).toBeInTheDocument()
-    })
+it('applies and clears builtin tags without filtering other categories', async () => {
+  const user = userEvent.setup()
+  renderProviderList()
+  await user.click(screen.getByRole('button', { name: 'common.tag.tags' }))
+  await user.click(await screen.findByRole('button', { name: 'pluginTags.tags.search' }))
+  await user.keyboard('{Escape}')
+  expect(screen.queryByRole('button', { name: /Weather Tool/ })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('radio', { name: 'tools.type.custom' }))
+  expect(screen.getByRole('button', { name: /My API Tool/ })).toBeInTheDocument()
+  await user.click(screen.getByRole('radio', { name: 'tools.type.builtIn' }))
+  expect(screen.queryByRole('button', { name: /Weather Tool/ })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+  expect(screen.getByRole('button', { name: /Weather Tool/ })).toBeInTheDocument()
+})
 
-    it('hides the tools update settings action when permission management is unavailable', () => {
-      mockCanSetPermissions.mockReturnValue(false)
+it('opens the builtin provider details and clears selection when changing categories', async () => {
+  const user = userEvent.setup()
+  renderProviderList()
+  await user.click(screen.getByRole('button', { name: /Google Search/ }))
+  const detail = await screen.findByRole('dialog')
+  expect(within(detail).getByText('Google Search')).toBeInTheDocument()
+  await waitFor(() =>
+    expect(api.builtinTools).toHaveBeenCalledWith({ params: { provider: 'google-search' } }),
+  )
+  await user.click(screen.getByRole('radio', { name: 'tools.type.builtIn' }))
+  expect(screen.getByRole('dialog')).toBeInTheDocument()
+  await user.click(screen.getByRole('radio', { name: 'tools.type.custom' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  await user.click(screen.getByRole('radio', { name: 'tools.type.builtIn' }))
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+})
 
-      renderProviderList(undefined, 'builtin')
+it('closes provider details from its close control', async () => {
+  const user = userEvent.setup()
+  renderProviderList()
+  await user.click(screen.getByRole('button', { name: /Google Search/ }))
+  const detail = await screen.findByRole('dialog')
+  await user.click(within(detail).getByRole('button', { name: 'common.operation.close' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(screen.getByRole('button', { name: /Google Search/ })).not.toHaveAttribute('aria-current')
+})
 
-      expect(
-        screen.queryByRole('button', { name: 'plugin.autoUpdate.autoUpdate' }),
-      ).not.toBeInTheDocument()
-    })
+it('waits for the builtin catalog before showing the empty state', async () => {
+  const request = createDeferred<Awaited<ReturnType<typeof api.providers>>>()
+  api.providers.mockReturnValue(request.promise)
+  renderProviderList({ pending: true })
+  expect(screen.queryByText('tools.noTools')).not.toBeInTheDocument()
+  await act(async () => request.resolve([]))
+  expect(await screen.findByText('tools.noTools')).toBeInTheDocument()
+})
 
-    it.each([['mcp'], ['api'], ['workflow']] as const)(
-      'hides plugin update settings on the %s tool page',
-      (category) => {
-        renderProviderList({ category })
+it('distinguishes an empty workflow catalog from a search with no matches', async () => {
+  const user = userEvent.setup()
+  const { unmount } = renderProviderList({ category: 'workflow', workflowTools: [] })
+  expect(screen.getByRole('link', { name: /tools.workflowToolEmpty.goToStudio/ })).toHaveAttribute(
+    'href',
+    '/apps',
+  )
+  unmount()
+  renderProviderList({ category: 'workflow' })
+  await user.type(screen.getByRole('searchbox'), 'not-found')
+  expect(screen.queryByRole('button', { name: /Workflow Tool/ })).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole('link', { name: /tools.workflowToolEmpty.goToStudio/ }),
+  ).not.toBeInTheDocument()
+})
 
-        expect(
-          screen.queryByRole('button', { name: 'plugin.autoUpdate.autoUpdate' }),
-        ).not.toBeInTheDocument()
-      },
-    )
+it.each([
+  { initial: [], entry: 'tools.createSwaggerAPIAsTool' },
+  { initial: [custom], entry: 'tools.addSwaggerAPIAsTool' },
+])('creates a custom tool through $entry and refreshes the catalog', async ({ initial, entry }) => {
+  const user = userEvent.setup()
+  const created = createToolProviderFixture({
+    id: 'created',
+    name: 'New Collection',
+    type: 'api',
+    label: { en_US: 'New Collection' },
   })
-
-  describe('Custom Tab', () => {
-    it('keeps custom creation in the empty card when there are no API tools', () => {
-      mockCollectionData = createDefaultCollections().filter((c) => c.type !== 'api')
-      renderProviderList({ category: 'api' })
-
-      const customCreateCard = screen.getByTestId('custom-create-card')
-      expect(customCreateCard).toBeInTheDocument()
-      expect(screen.queryByTestId('toolbar-add-custom-tool')).not.toBeInTheDocument()
-      const selector = getStepByStepTourTargetSelector(
-        STEP_BY_STEP_TOUR_TARGETS.integrationSwaggerToolGrid,
-      )
-      expect(document.querySelector(selector)).toBe(customCreateCard)
-    })
-
-    it('moves custom creation into the toolbar when API tools exist', () => {
-      renderProviderList({ category: 'api' })
-
-      expect(screen.getByTestId('toolbar-add-custom-tool')).toBeInTheDocument()
-      expect(screen.queryByTestId('custom-create-card')).not.toBeInTheDocument()
-    })
-
-    it('uses responsive grid columns for custom tool cards', () => {
-      renderProviderList({ category: 'api' })
-
-      expect(screen.getByTestId('tool-provider-grid')).toHaveClass(
-        'grid',
-        'grid-cols-1',
-        'md:grid-cols-2',
-        'xl:grid-cols-3',
-        'gap-2.5',
-        'pt-1',
-      )
-      expect(screen.getByTestId('tool-provider-grid')).not.toHaveClass('flex', 'flex-wrap')
-      expect(screen.getByTestId('card-my-api').parentElement).toHaveClass('min-w-0')
-      expect(screen.getByTestId('card-my-api').parentElement).not.toHaveClass('flex-1')
-    })
-
-    it('anchors the Swagger API tour target to the first custom tool card', () => {
-      renderProviderList(undefined, 'api', 'compact')
-
-      const selector = getStepByStepTourTargetSelector(
-        STEP_BY_STEP_TOUR_TARGETS.integrationSwaggerToolGrid,
-      )
-      const target = document.querySelector(selector)
-
-      expect(target).toBe(screen.getByTestId('card-my-api').parentElement)
-      expect(target).not.toBe(screen.getByTestId('tool-provider-grid'))
-    })
-
-    it('shows custom API card author and label tags from collection labels', () => {
-      renderProviderList(undefined, 'api', 'compact')
-
-      const card = within(screen.getByTestId('card-my-api'))
-      expect(card.getByText('tools.author User')).toBeInTheDocument()
-      expect(card.getByText('api')).toBeInTheDocument()
-      expect(card.getByText('tools')).toBeInTheDocument()
-      expect(card.queryByText(/tools\.mcp\.toolsCount/)).not.toBeInTheDocument()
-    })
-
-    it('shows card skeletons instead of custom create card while tool providers are loading', () => {
-      mockIsLoadingToolProviders = true
-      renderProviderList({ category: 'api' })
-      expect(screen.getAllByTestId('tool-card-skeleton')).toHaveLength(6)
-      expect(screen.queryByTestId('custom-create-card')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('toolbar-add-custom-tool')).not.toBeInTheDocument()
-    })
-
-    it('uses labeled integrations skeletons in compact custom tool pages', () => {
-      mockIsLoadingToolProviders = true
-      renderProviderList(undefined, 'api', 'compact')
-
-      expect(screen.getAllByTestId('tool-card-skeleton')[0]).toHaveAttribute(
-        'data-variant',
-        'integrations-labeled',
-      )
-    })
+  api.custom.mockResolvedValue([...initial, created])
+  renderProviderList({ category: 'api', customTools: initial })
+  await user.click(screen.getByRole('button', { name: entry }))
+  const drawer = await screen.findByRole('dialog', { name: 'tools.createTool.title' })
+  await user.type(
+    within(drawer).getByRole('textbox', { name: /tools.createTool.name/ }),
+    'New Collection',
+  )
+  const schema = JSON.stringify({
+    openapi: '3.0.0',
+    info: { title: 'Weather', version: '1.0.0' },
+    servers: [{ url: 'https://weather.example.com' }],
+    paths: {},
   })
+  await user.click(within(drawer).getByPlaceholderText('tools.createTool.schemaPlaceHolder'))
+  await user.paste(schema)
+  await waitFor(() => expect(api.parseSchema).toHaveBeenCalledWith({ body: { schema } }))
+  await user.click(within(drawer).getByRole('button', { name: 'common.operation.save' }))
+  await waitFor(() =>
+    expect(api.createCustom).toHaveBeenCalledWith({
+      body: expect.objectContaining({
+        provider: 'New Collection',
+        schema,
+        schema_type: 'openapi',
+        credentials: { auth_type: 'none' },
+      }),
+    }),
+  )
+  expect(await screen.findByRole('button', { name: /New Collection/ })).toBeInTheDocument()
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole('button', { name: 'tools.createSwaggerAPIAsTool' }),
+  ).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'tools.addSwaggerAPIAsTool' })).toBeInTheDocument()
+})
 
-  describe('Workflow Tab', () => {
-    it('shows workflow collections', () => {
-      renderProviderList({ category: 'workflow' })
-      expect(screen.getByTestId('card-wf-tool')).toBeInTheDocument()
-    })
-
-    it('uses a three-column responsive grid in compact integrations pages', () => {
-      renderProviderList(undefined, 'workflow', 'compact')
-
-      expect(screen.getByTestId('tool-provider-grid')).toHaveClass(
-        'grid',
-        'grid-cols-1',
-        'sm:grid-cols-2',
-        'md:grid-cols-3',
-      )
-      expect(screen.getByTestId('tool-provider-grid')).not.toHaveClass('lg:grid-cols-2')
-      expect(screen.getByTestId('card-wf-tool').parentElement).toHaveClass('min-w-0')
-    })
-
-    it('anchors the Workflow as Tool tour target to the first workflow card', () => {
-      renderProviderList(undefined, 'workflow', 'compact')
-
-      const selector = getStepByStepTourTargetSelector(
-        STEP_BY_STEP_TOUR_TARGETS.integrationWorkflowToolGrid,
-      )
-      const target = document.querySelector(selector)
-
-      expect(target).toBe(screen.getByTestId('card-wf-tool').parentElement)
-      expect(target).not.toBe(screen.getByTestId('tool-provider-grid'))
-    })
-
-    it('does not show the built-in badge on workflow cards', () => {
-      renderProviderList(undefined, 'workflow', 'compact')
-
-      expect(
-        within(screen.getByTestId('card-wf-tool')).queryByText(
-          'dataset.metadata.datasetMetadata.builtIn',
-        ),
-      ).not.toBeInTheDocument()
-    })
-
-    it('shows workflow card author and label tags from collection labels', () => {
-      renderProviderList(undefined, 'workflow', 'compact')
-
-      const card = within(screen.getByTestId('card-wf-tool'))
-      expect(card.getByText('tools.author User')).toBeInTheDocument()
-      expect(card.getByText('productivity')).toBeInTheDocument()
-      expect(card.getByText('utilities')).toBeInTheDocument()
-      expect(card.queryByText(/tools\.mcp\.toolsCount/)).not.toBeInTheDocument()
-    })
-
-    it('shows empty state when no workflow collections exist', () => {
-      mockCollectionData = createDefaultCollections().filter((c) => c.type !== 'workflow')
-      renderProviderList({ category: 'workflow' })
-      expect(screen.getByTestId('workflow-empty')).toBeInTheDocument()
-    })
-
-    it('anchors the Workflow as Tool tour target to the bounded empty state when no workflow collections exist', () => {
-      mockCollectionData = createDefaultCollections().filter((c) => c.type !== 'workflow')
-      renderProviderList(undefined, 'workflow', 'compact')
-
-      const selector = getStepByStepTourTargetSelector(
-        STEP_BY_STEP_TOUR_TARGETS.integrationWorkflowToolGrid,
-      )
-      const target = document.querySelector<HTMLElement>(selector)
-
-      expect(target).not.toBe(screen.getByTestId('tool-provider-grid'))
-      expect(target).toContainElement(screen.getByTestId('workflow-empty'))
-    })
-
-    it('does not show workflow empty state when search has no matches', () => {
-      renderProviderList({ category: 'workflow' })
-      const input = screen.getByRole('searchbox')
-
-      fireEvent.change(input, { target: { value: 'nonexistent' } })
-
-      expect(screen.queryByTestId('card-wf-tool')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('workflow-empty')).not.toBeInTheDocument()
-    })
-
-    it('shows card skeletons instead of empty state while tool providers are loading', () => {
-      mockIsLoadingToolProviders = true
-      mockCollectionData = []
-      renderProviderList({ category: 'workflow' })
-      expect(screen.getAllByTestId('tool-card-skeleton')).toHaveLength(6)
-      expect(screen.queryByTestId('workflow-empty')).not.toBeInTheDocument()
-    })
-
-    it('uses labeled integrations skeletons in compact workflow pages', () => {
-      mockIsLoadingToolProviders = true
-      renderProviderList(undefined, 'workflow', 'compact')
-
-      expect(screen.getAllByTestId('tool-card-skeleton')[0]).toHaveAttribute(
-        'data-variant',
-        'integrations-labeled',
-      )
-    })
+it.each([
+  { state: 'empty', providers: [] },
+  { state: 'populated', providers: [mcp] },
+])('creates and authorizes an MCP provider from the $state catalog', async ({ providers }) => {
+  const user = userEvent.setup()
+  const created = createToolProviderFixture({
+    ...mcp,
+    id: 'created-mcp-id',
+    name: 'New MCP',
+    server_identifier: 'new-mcp',
+    server_url: 'https://new.example.com',
   })
-
-  describe('Builtin Tab Empty State', () => {
-    it('shows empty component when no builtin collections', () => {
-      mockCollectionData = createDefaultCollections().filter((c) => c.type !== 'builtin')
-      renderProviderList()
-      expect(screen.getByTestId('empty')).toBeInTheDocument()
-    })
-
-    it('shows card skeletons instead of empty component while tool providers are loading', () => {
-      mockIsLoadingToolProviders = true
-      mockCollectionData = []
-      renderProviderList()
-      expect(screen.getAllByTestId('tool-card-skeleton')).toHaveLength(6)
-      expect(screen.queryByTestId('empty')).not.toBeInTheDocument()
-    })
-
-    it('uses compact integrations skeletons for built-in tools in compact pages', () => {
-      mockIsLoadingToolProviders = true
-      renderProviderList(undefined, 'builtin', 'compact')
-
-      expect(screen.getAllByTestId('tool-card-skeleton')[0]).toHaveAttribute(
-        'data-variant',
-        'integrations-default',
-      )
-    })
-
-    it('renders collection that has no labels property', () => {
-      mockCollectionData = [
-        {
-          id: 'no-labels',
-          name: 'no-label-tool',
-          author: 'Dify',
-          description: { en_US: 'Tool', zh_Hans: '工具' },
-          icon: 'icon',
-          label: { en_US: 'No Label Tool', zh_Hans: '无标签工具' },
-          type: 'builtin',
-          team_credentials: {},
-          is_team_authorization: false,
-          allow_delete: false,
-        },
-      ] as unknown as ReturnType<typeof createDefaultCollections>
-      renderProviderList()
-      expect(screen.getByTestId('card-no-label-tool')).toBeInTheDocument()
-    })
-
-    it('maps plugin collection identity to the shared card payload', () => {
-      renderProviderList()
-
-      expect(screen.getByTestId('card-plugin-tool')).toHaveAttribute('data-org', 'org')
-      expect(screen.getByTestId('card-plugin-tool')).toHaveAttribute('data-from', 'marketplace')
-    })
-
-    it('keeps non-plugin collections out of the marketplace icon path', () => {
-      renderProviderList()
-
-      expect(screen.getByTestId('card-google-search')).toHaveAttribute('data-from', 'package')
-    })
-
-    it('shows only the built-in source label on integrations tool cards', () => {
-      renderProviderList(undefined, 'builtin', 'compact')
-
-      expect(
-        within(screen.getByTestId('card-google-search')).getByText(
-          'dataset.metadata.datasetMetadata.builtIn',
-        ),
-      ).toBeInTheDocument()
-      expect(
-        within(screen.getByTestId('card-google-search')).queryByText('plugin.from'),
-      ).not.toBeInTheDocument()
-      expect(
-        within(screen.getByTestId('card-plugin-tool')).queryByText('plugin.from'),
-      ).not.toBeInTheDocument()
-      expect(
-        within(screen.getByTestId('card-plugin-tool')).queryByText('plugin.source.marketplace'),
-      ).not.toBeInTheDocument()
-    })
-
-    it('falls back to the collection name when plugin_id has no package segment', () => {
-      mockCollectionData = [
-        {
-          id: 'builtin-plugin-with-short-id',
-          name: 'fallback-plugin-name',
-          author: 'Dify',
-          description: { en_US: 'Plugin Tool', zh_Hans: '插件工具' },
-          icon: 'icon-plugin',
-          label: { en_US: 'Plugin Tool', zh_Hans: '插件工具' },
-          type: 'builtin',
-          team_credentials: {},
-          is_team_authorization: false,
-          allow_delete: false,
-          labels: [],
-          plugin_id: 'openai',
-        },
-      ]
-
-      renderProviderList()
-
-      expect(screen.getByTestId('card-fallback-plugin-name')).toHaveAttribute('data-org', '')
-    })
+  const connected = createToolProviderFixture({ ...created, is_team_authorization: true })
+  api.createMCP.mockResolvedValue(created)
+  api.providers.mockResolvedValue([...providers, created])
+  api.updateMCPTools.mockImplementation(async () => {
+    api.providers.mockResolvedValue([...providers, connected])
+    return connected
   })
-
-  describe('MCP Tab', () => {
-    it('uses database provider IDs from the management list', () => {
-      const provider = {
-        id: '019d3f85-d61c-765e-9615-8f469d02689f',
-        name: 'mcp-server',
-        author: 'User',
-        description: { en_US: 'MCP Server', zh_Hans: 'MCP 服务' },
-        icon: { background: '#fff', content: 'M' },
-        label: { en_US: 'MCP Server', zh_Hans: 'MCP 服务' },
-        type: 'mcp' as const,
-        team_credentials: {},
-        is_team_authorization: false,
-        allow_delete: true,
-        labels: [],
-      }
-      mockCollectionData = [...createDefaultCollections(), provider]
-
-      renderProviderList({ category: 'mcp' })
-
-      expect(screen.getByTestId('mcp-list')).toHaveAttribute(
-        'data-provider-ids',
-        '019d3f85-d61c-765e-9615-8f469d02689f',
-      )
-    })
-
-    it('renders MCPList component', () => {
-      renderProviderList({ category: 'mcp' })
-      expect(screen.getByTestId('mcp-list')).toBeInTheDocument()
-    })
-
-    it('renders MCP list read-only without mcp.manage', () => {
-      mockConsoleState.workspacePermissionKeys = ['tool.manage']
-
-      renderProviderList({ category: 'mcp' })
-
-      expect(mockUseAllToolProviders).toHaveBeenCalledWith(true, 'mcp')
-      expect(mockUseAllCustomTools).toHaveBeenCalledWith(false)
-      expect(mockUseAllWorkflowTools).toHaveBeenCalledWith(false)
-      expect(screen.getByTestId('mcp-list')).toBeInTheDocument()
-      expect(screen.getByTestId('mcp-list')).toHaveAttribute('data-show-create-card', 'false')
-      expect(screen.queryByTestId('toolbar-add-mcp')).not.toBeInTheDocument()
-    })
-
-    it('keeps MCP creation in the empty card when there are no MCP servers', () => {
-      renderProviderList({ category: 'mcp' })
-
-      expect(screen.queryByTestId('toolbar-add-mcp')).not.toBeInTheDocument()
-      expect(screen.getByTestId('mcp-list')).toHaveAttribute('data-show-create-card', 'true')
-    })
-
-    it('moves MCP creation into the toolbar when MCP servers exist', () => {
-      mockCollectionData = [
-        ...createDefaultCollections(),
-        {
-          id: 'mcp-1',
-          name: 'mcp-server',
-          author: 'User',
-          description: { en_US: 'MCP Server', zh_Hans: 'MCP 服务' },
-          icon: { background: '#fff', content: 'M' },
-          label: { en_US: 'MCP Server', zh_Hans: 'MCP 服务' },
-          type: 'mcp',
-          team_credentials: {},
-          is_team_authorization: false,
-          allow_delete: true,
-          labels: [],
-        },
-      ]
-
-      renderProviderList({ category: 'mcp' })
-
-      expect(screen.getByTestId('toolbar-add-mcp')).toBeInTheDocument()
-      expect(screen.getByTestId('mcp-list')).toHaveAttribute('data-show-create-card', 'false')
-    })
-
-    it('passes compact content inset to MCPList when rendered by integrations layout', () => {
-      renderProviderList(undefined, 'mcp', 'compact')
-
-      expect(screen.getByTestId('toolbar-add-mcp')).toBeInTheDocument()
-      expect(screen.getByTestId('mcp-list')).toHaveAttribute('data-content-inset', 'compact')
-    })
+  api.mcpTools.mockResolvedValue(connected)
+  renderProviderList({ searchParams: { category: 'mcp' }, providers })
+  await user.click(screen.getByRole('button', { name: 'tools.mcp.create.cardTitle' }))
+  const form = await screen.findByRole('dialog', { name: 'tools.mcp.modal.title' })
+  await user.type(
+    within(form).getByRole('textbox', { name: 'tools.mcp.modal.serverUrl' }),
+    'https://new.example.com',
+  )
+  await user.type(within(form).getByRole('textbox', { name: 'tools.mcp.modal.name' }), 'New MCP')
+  await user.type(
+    within(form).getByRole('textbox', { name: 'tools.mcp.modal.serverIdentifier' }),
+    'new-mcp',
+  )
+  await waitFor(() =>
+    expect(within(form).getByRole('button', { name: 'tools.mcp.modal.confirm' })).toBeEnabled(),
+  )
+  await user.click(within(form).getByRole('button', { name: 'tools.mcp.modal.confirm' }))
+  await waitFor(() =>
+    expect(api.createMCP).toHaveBeenCalledWith({
+      body: expect.objectContaining({
+        name: 'New MCP',
+        server_url: 'https://new.example.com',
+        server_identifier: 'new-mcp',
+      }),
+    }),
+  )
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog', { name: 'tools.mcp.modal.title' })).not.toBeInTheDocument(),
+  )
+  const detail = await screen.findByRole('dialog')
+  expect(within(detail).getByText('New MCP')).toBeInTheDocument()
+  expect(
+    await within(detail).findByRole('button', { name: 'tools.auth.authorized' }),
+  ).toBeInTheDocument()
+  expect(api.authorizeMCP).toHaveBeenCalledExactlyOnceWith({
+    body: { provider_id: 'created-mcp-id' },
   })
+  await user.click(within(detail).getByRole('button', { name: 'common.operation.close' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  await user.click(screen.getByRole('button', { name: /New MCP/ }))
+  expect(await screen.findByRole('dialog')).toBeInTheDocument()
+  expect(api.authorizeMCP).toHaveBeenCalledTimes(1)
+})
 
-  describe('Provider Detail', () => {
-    it('opens provider detail when a non-plugin collection is clicked', () => {
-      renderProviderList()
-      fireEvent.click(screen.getByTestId('card-google-search'))
-      expect(screen.getByTestId('provider-detail')).toBeInTheDocument()
-      expect(screen.getByTestId('provider-detail')).toHaveTextContent('google-search')
-    })
+it('discards an unfinished MCP creation when cancelled and keeps the documentation link available', async () => {
+  const user = userEvent.setup()
+  renderProviderList({ searchParams: { category: 'mcp' }, providers: [] })
+  expect(screen.getByRole('link', { name: 'tools.mcp.create.cardLink' })).toHaveAttribute(
+    'href',
+    expect.stringContaining('/workspace/tools#mcp'),
+  )
+  await user.click(screen.getByRole('button', { name: 'tools.mcp.create.cardTitle' }))
+  let form = await screen.findByRole('dialog', { name: 'tools.mcp.modal.title' })
+  await user.type(within(form).getByRole('textbox', { name: 'tools.mcp.modal.name' }), 'Unfinished')
+  await user.click(within(form).getByRole('button', { name: 'tools.mcp.modal.cancel' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  await user.click(screen.getByRole('button', { name: 'tools.mcp.create.cardTitle' }))
+  form = await screen.findByRole('dialog', { name: 'tools.mcp.modal.title' })
+  expect(within(form).getByRole('textbox', { name: 'tools.mcp.modal.name' })).toHaveValue('')
+  expect(api.createMCP).not.toHaveBeenCalled()
+})
 
-    it('closes provider detail when close button is clicked', () => {
-      renderProviderList()
-      fireEvent.click(screen.getByTestId('card-google-search'))
-      expect(screen.getByTestId('provider-detail')).toBeInTheDocument()
-      fireEvent.click(screen.getByTestId('detail-close'))
-      expect(screen.queryByTestId('provider-detail')).not.toBeInTheDocument()
-    })
-  })
+it('deletes an MCP provider using its database id and removes it after refresh', async () => {
+  const user = userEvent.setup()
+  api.providers.mockResolvedValue([])
+  renderProviderList({ category: 'mcp', providers: [mcp] })
+  await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'tools.mcp.operation.remove' }))
+  const dialog = await screen.findByRole('alertdialog', { name: 'tools.mcp.delete' })
+  await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
+  await waitFor(() =>
+    expect(api.deleteMCP).toHaveBeenCalledWith({ body: { provider_id: 'mcp-database-id' } }),
+  )
+  await waitFor(() =>
+    expect(screen.queryByRole('button', { name: /MCP Server/ })).not.toBeInTheDocument(),
+  )
+  expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+})
 
-  describe('Plugin Detail Panel', () => {
-    it('shows plugin detail panel when collection with plugin_id is selected', () => {
-      mockCheckedInstalledData = {
-        plugins: [{ id: 'org/plugin-tool', name: 'Plugin Tool' }],
-      }
-      renderProviderList()
-      expect(screen.queryByTestId('plugin-detail-panel')).not.toBeInTheDocument()
-      fireEvent.click(screen.getByTestId('card-plugin-tool'))
-      expect(screen.getByTestId('plugin-detail-panel')).toBeInTheDocument()
-    })
+it('allows plugin preferences from the builtin toolbar with the matching permission', async () => {
+  const user = userEvent.setup()
+  renderProviderList({ category: 'builtin', permissions: ['plugin.plugin_preferences'] })
+  await user.click(screen.getByRole('button', { name: /plugin.autoUpdate.autoUpdate/ }))
+  const dialog = await screen.findByRole('dialog', { name: 'plugin.autoUpdate.autoUpdateSettings' })
+  expect(
+    await within(dialog).findByText('plugin.autoUpdate.strategy.fixOnly.name'),
+  ).toBeInTheDocument()
+})
 
-    it('calls invalidateInstalledPluginList on plugin update', () => {
-      mockCheckedInstalledData = {
-        plugins: [{ id: 'org/plugin-tool', name: 'Plugin Tool' }],
-      }
-      renderProviderList()
-      fireEvent.click(screen.getByTestId('card-plugin-tool'))
-      fireEvent.click(screen.getByTestId('plugin-update'))
-      expect(mockInvalidateInstalledPluginList).toHaveBeenCalled()
-    })
+it.each([
+  { category: 'builtin', permissions: [] },
+  { category: 'api', permissions: ['plugin.plugin_preferences'] },
+] as const)(
+  'does not offer plugin settings for $category with $permissions',
+  ({ category, permissions }) => {
+    renderProviderList({ category, permissions: [...permissions] })
+    expect(
+      screen.queryByRole('button', { name: /plugin.autoUpdate.autoUpdate/ }),
+    ).not.toBeInTheDocument()
+  },
+)
 
-    it('clears current provider on plugin panel close', () => {
-      mockCheckedInstalledData = {
-        plugins: [{ id: 'org/plugin-tool', name: 'Plugin Tool' }],
-      }
-      renderProviderList()
-      fireEvent.click(screen.getByTestId('card-plugin-tool'))
-      expect(screen.getByTestId('plugin-detail-panel')).toBeInTheDocument()
-      fireEvent.click(screen.getByTestId('plugin-close'))
-      expect(screen.queryByTestId('plugin-detail-panel')).not.toBeInTheDocument()
-    })
-  })
+it.each([
+  { category: 'builtin', marketplace: false },
+  { category: 'api', marketplace: true },
+] as const)(
+  'does not load marketplace for $category when enabled=$marketplace',
+  async (options) => {
+    renderProviderList(options)
+    await act(async () => {})
+    expect(screen.queryByText('plugin.marketplace.moreFrom')).not.toBeInTheDocument()
+    expect(api.collections).not.toHaveBeenCalled()
+  },
+)
 
-  describe('Marketplace', () => {
-    it('shows marketplace when enable_marketplace is true and on builtin tab', () => {
-      mockEnableMarketplace = true
-      renderProviderList()
-      expect(screen.getByTestId('marketplace')).toBeInTheDocument()
-    })
+it('loads the tool marketplace when the user expands it', async () => {
+  const user = userEvent.setup()
+  renderProviderList({ marketplace: true })
+  await user.click(screen.getByRole('button', { name: 'plugin.marketplace.moreFrom' }))
+  await waitFor(() =>
+    expect(api.collections).toHaveBeenCalledWith(
+      { query: expect.objectContaining({ category: 'tool', exclude: [] }) },
+      expect.anything(),
+    ),
+  )
+  expect(screen.getByText('plugin.marketplace.moreFrom')).toBeInTheDocument()
+})
 
-    it('passes compact content inset to marketplace when rendered by integrations layout', () => {
-      mockEnableMarketplace = true
-      renderProviderList(undefined, 'builtin', 'compact')
+it('loads an installed plugin detail and closes it without losing the catalog', async () => {
+  const user = userEvent.setup()
+  renderProviderList({ providers: [pluginProvider], permissions: [] })
+  await user.click(screen.getByRole('button', { name: /Installed Plugin/ }))
+  const detail = await screen.findByRole('dialog')
+  expect(within(detail).getByText('Plugin label')).toBeInTheDocument()
+  expect(api.installed).toHaveBeenCalledWith({ body: { plugin_ids: ['langgenius/plugin-entity'] } })
+  await user.click(
+    within(detail).getByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }),
+  )
+  expect(
+    screen.queryByRole('menuitem', { name: 'plugin.detailPanel.operation.remove' }),
+  ).not.toBeInTheDocument()
+  await user.keyboard('{Escape}')
+  await user.click(within(detail).getByRole('button', { name: 'common.operation.close' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(screen.getByRole('button', { name: /Installed Plugin/ })).toBeInTheDocument()
+})
 
-      expect(screen.getByTestId('marketplace')).toHaveAttribute('data-content-inset', 'compact')
-    })
+it('uninstalls a plugin from its real details and refreshes the tool catalog', async () => {
+  const user = userEvent.setup()
+  api.providers.mockResolvedValue([])
+  renderProviderList({ providers: [pluginProvider], permissions: ['plugin.delete'] })
+  await user.click(screen.getByRole('button', { name: /Installed Plugin/ }))
+  const detail = await screen.findByRole('dialog')
+  await user.click(
+    within(detail).getByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }),
+  )
+  await user.click(
+    await screen.findByRole('menuitem', { name: 'plugin.detailPanel.operation.remove' }),
+  )
+  const confirm = await screen.findByRole('alertdialog', { name: 'plugin.action.delete' })
+  await user.click(within(confirm).getByRole('button', { name: 'common.operation.confirm' }))
+  await waitFor(() =>
+    expect(api.uninstall).toHaveBeenCalledWith({
+      body: { plugin_installation_id: pluginEntity.id, preserve_credentials: false },
+    }),
+  )
+  expect(await screen.findByText('tools.noTools')).toBeInTheDocument()
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /Installed Plugin/ })).not.toBeInTheDocument()
+})
 
-    it('does not show marketplace when enable_marketplace is false', () => {
-      renderProviderList()
-      expect(screen.queryByTestId('marketplace')).not.toBeInTheDocument()
-    })
-
-    it('does not initialize marketplace hook outside builtin tools', () => {
-      mockEnableMarketplace = true
-      renderProviderList(undefined, 'workflow')
-      expect(screen.queryByTestId('marketplace')).not.toBeInTheDocument()
-      expect(mockUseMarketplace).not.toHaveBeenCalled()
-    })
-
-    it('scrolls to marketplace panel on arrow click', () => {
-      mockEnableMarketplace = true
-      renderProviderList()
-      fireEvent.click(screen.getByTestId('marketplace-arrow'))
-      expect(Element.prototype.scrollTo).toHaveBeenCalled()
-    })
-  })
-
-  describe('Scroll Handling', () => {
-    it('delegates scroll events to marketplace handleScroll', () => {
-      mockEnableMarketplace = true
-      renderProviderList()
-      const scrollContainer = screen.getByRole('region', {
-        name: 'navigation.menus.tools',
-      }) as HTMLDivElement
-      fireEvent.scroll(scrollContainer)
-      expect(mockHandleScroll).toHaveBeenCalled()
-    })
-
-    it('updates marketplace arrow visibility on scroll', () => {
-      mockEnableMarketplace = true
-      renderProviderList()
-      expect(screen.getByTestId('marketplace-arrow')).toHaveTextContent('arrow-visible')
-      const scrollContainer = screen.getByRole('region', {
-        name: 'navigation.menus.tools',
-      }) as HTMLDivElement
-      fireEvent.scroll(scrollContainer)
-      expect(screen.getByTestId('marketplace-arrow')).toHaveTextContent('arrow-hidden')
-    })
-  })
+it('discards an unfinished custom tool and links to the API tool documentation', async () => {
+  const user = userEvent.setup()
+  renderProviderList({ category: 'api', customTools: [] })
+  expect(screen.getByRole('link', { name: 'tools.swaggerAPIAsToolTip' })).toHaveAttribute(
+    'href',
+    expect.stringContaining('/workspace/tools#swagger-api'),
+  )
+  await user.click(screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' }))
+  let form = await screen.findByRole('dialog', { name: 'tools.createTool.title' })
+  await user.type(
+    within(form).getByRole('textbox', { name: /tools.createTool.name/ }),
+    'Unfinished',
+  )
+  await user.click(within(form).getByRole('button', { name: 'common.operation.cancel' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  await user.click(screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' }))
+  form = await screen.findByRole('dialog', { name: 'tools.createTool.title' })
+  expect(within(form).getByRole('textbox', { name: /tools.createTool.name/ })).toHaveValue('')
+  expect(api.createCustom).not.toHaveBeenCalled()
 })

@@ -4,11 +4,13 @@ import type { Credential, PluginPayload } from '../types'
 import type { EditConnectionDataSource } from './edit-connection-modal'
 import {
   AlertDialog,
+  AlertDialogBody,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import {
@@ -203,18 +205,18 @@ const ConnectionActions = ({
         }}
       >
         <AlertDialogContent>
-          <div className="p-6 pb-0">
-            <AlertDialogTitle className="title-lg-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['list.delete.title'], { ns: 'datasetDocuments' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="mt-2 system-sm-regular text-text-secondary">
-              {deleteCredential?.name}
-            </AlertDialogDescription>
-          </div>
+            <AlertDialogDescription>{deleteCredential?.name}</AlertDialogDescription>
+          </AlertDialogHeader>
           {removalFailed && (
-            <p role="alert" className="px-6 pt-4 system-sm-regular text-text-destructive">
-              {t(($) => $['api.actionFailed'], { ns: 'common' })}
-            </p>
+            <AlertDialogBody>
+              <p role="alert" className="system-sm-regular text-text-destructive">
+                {t(($) => $['api.actionFailed'], { ns: 'common' })}
+              </p>
+            </AlertDialogBody>
           )}
           <AlertDialogFooter>
             <AlertDialogCancelButton disabled={isRemoving}>

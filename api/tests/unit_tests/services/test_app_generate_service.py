@@ -485,7 +485,7 @@ class TestGenerate(_RealSessionTest):
             return_value=gen_instance,
         )
 
-        result = AppGenerateService.generate(
+        AppGenerateService.generate(
             app_model=_make_app(AppMode.ADVANCED_CHAT),
             user=_make_user(),
             args={"workflow_id": None, "query": "hi", "inputs": {}},
@@ -625,7 +625,7 @@ class TestGenerate(_RealSessionTest):
             side_effect=lambda x: x,
         )
 
-        result = AppGenerateService.generate(
+        AppGenerateService.generate(
             app_model=_make_app(AppMode.WORKFLOW),
             user=_make_user(),
             args={"inputs": {}},
@@ -938,7 +938,7 @@ class TestGenerateSingleIteration(_RealSessionTest):
     def test_advanced_chat_mode(self, mocker: MockerFixture):
         workflow = _make_workflow()
         mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
-        gen_spy = mocker.patch(
+        mocker.patch(
             "services.app_generate_service.AdvancedChatAppGenerator.convert_to_event_stream",
             side_effect=lambda x: x,
         )
@@ -1091,7 +1091,7 @@ class TestGetResponseGenerator:
             return_value=gen_instance,
         )
 
-        result = AppGenerateService.get_response_generator(app_model=app, workflow_run=workflow_run)
+        AppGenerateService.get_response_generator(app_model=app, workflow_run=workflow_run)
         gen_instance.retrieve_events.assert_called_once()
 
     def test_ended_workflow_run_still_returns_generator(self, mocker: MockerFixture):
@@ -1107,6 +1107,6 @@ class TestGetResponseGenerator:
             return_value=gen_instance,
         )
 
-        result = AppGenerateService.get_response_generator(app_model=app, workflow_run=workflow_run)
+        AppGenerateService.get_response_generator(app_model=app, workflow_run=workflow_run)
         # current impl falls through the TODO and still creates a generator
         gen_instance.retrieve_events.assert_called_once()

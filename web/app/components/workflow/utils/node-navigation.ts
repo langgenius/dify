@@ -1,8 +1,9 @@
+import type { Node, ReactFlowInstance } from 'reactflow'
+
 /**
  * Node navigation utilities for workflow
  * This module provides functions for node selection, focusing and scrolling in workflow
  */
-import type { Node, ReactFlowInstance } from 'reactflow'
 
 /**
  * Interface for node selection event detail

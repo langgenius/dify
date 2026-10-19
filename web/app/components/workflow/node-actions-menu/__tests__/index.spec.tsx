@@ -1,27 +1,25 @@
-import type { UseQueryResult } from '@tanstack/react-query'
-import type { ToolNodeType } from '@/app/components/workflow/nodes/tool/types'
-import type { Node, ToolWithProvider } from '@/app/components/workflow/types'
+import type { AvailableNodesMetaData } from '../../hooks-store'
+import type { ToolNodeType } from '../../nodes/tool/types'
+import type { Node } from '../../types'
 import { detectPlatform } from '@tanstack/react-hotkeys'
 import { act, fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { use, useLayoutEffect } from 'react'
+import { useNodes } from 'reactflow'
 import { CollectionType } from '@/app/components/tools/types'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
-import { useAllBuiltInTools, useAllWorkflowTools } from '@/service/use-tools'
-import { useNodesInteractions } from '../../hooks/use-nodes-interactions'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
+import { seedToolProviders } from '@/test/console/tool-providers'
+import { HooksStoreContext } from '../../hooks-store'
 import { useNodeMetaData } from '../../hooks/use-nodes-meta-data'
-import { useNodesReadOnly } from '../../hooks/use-workflow'
+import { useWorkflowNodeCatalog } from '../../node-catalog'
 import { NodeActionsDropdown } from '../index'
 
-vi.mock('../../hooks/use-nodes-interactions', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../hooks/use-nodes-interactions')>()
-
-  return {
-    ...actual,
-    useNodesInteractions: vi.fn(),
-  }
-})
-
+// Node metadata comes from the per-app block registry, which has its own suite.
 vi.mock('../../hooks/use-nodes-meta-data', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../hooks/use-nodes-meta-data')>()
 
@@ -31,75 +29,30 @@ vi.mock('../../hooks/use-nodes-meta-data', async (importOriginal) => {
   }
 })
 
-vi.mock('../../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../hooks/use-workflow')>()
-
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    useNodesReadOnly: vi.fn(),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.workflow.get': async () => [],
+    }),
   }
 })
-
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: vi.fn(),
-  useAllWorkflowTools: vi.fn(),
-}))
 
 vi.mock('../change-block-popup', () => ({
   ChangeBlockPopup: () => <div data-testid="node-actions-change-block" />,
 }))
 
 const mockUseNodeMetaData = vi.mocked(useNodeMetaData)
-const mockUseNodesInteractions = vi.mocked(useNodesInteractions)
-const mockUseNodesReadOnly = vi.mocked(useNodesReadOnly)
-const mockUseAllWorkflowTools = vi.mocked(useAllWorkflowTools)
-const mockUseAllBuiltInTools = vi.mocked(useAllBuiltInTools)
 
-const createQueryResult = <T,>(data: T): UseQueryResult<T, Error> =>
-  ({
-    data,
-    error: null,
-    refetch: vi.fn(),
-    isError: false,
-    isPending: false,
-    isLoading: false,
-    isSuccess: true,
-    isFetching: false,
-    isRefetching: false,
-    isLoadingError: false,
-    isRefetchError: false,
-    isInitialLoading: false,
-    isPaused: false,
-    isEnabled: true,
-    status: 'success',
-    fetchStatus: 'idle',
-    dataUpdatedAt: Date.now(),
-    errorUpdatedAt: 0,
-    failureCount: 0,
-    failureReason: null,
-    errorUpdateCount: 0,
-    isFetched: true,
-    isFetchedAfterMount: true,
-    isPlaceholderData: false,
-    isStale: false,
-    promise: Promise.resolve(data),
-  }) as UseQueryResult<T, Error>
-
-const toolProvider: ToolWithProvider = {
+const toolProvider = createToolProviderFixture({
   id: 'provider-id',
   name: 'test-provider',
-  author: 'Dify',
-  description: { en_US: 'Test provider', zh_Hans: '测试提供商' },
-  label: { en_US: 'Test provider', zh_Hans: '测试提供商' },
-  icon: '',
-  type: CollectionType.builtIn,
+  allow_delete: true,
   team_credentials: {},
   is_team_authorization: false,
-  allow_delete: true,
-  labels: [],
-  tools: [],
-}
-
+})
 const makeToolData = (overrides: Partial<ToolNodeType> = {}): ToolNodeType => ({
   title: 'Tool node',
   desc: '',
@@ -114,37 +67,69 @@ const makeToolData = (overrides: Partial<ToolNodeType> = {}): ToolNodeType => ({
   ...overrides,
 })
 
+// Publishes the real block catalog so copy/duplicate know which nodes are copyable.
+const CanvasNodes = () => {
+  const catalog = useWorkflowNodeCatalog()
+  const hooksStore = use(HooksStoreContext)!
+  useLayoutEffect(() => {
+    const nodesMap = catalog.nodesMap as NonNullable<AvailableNodesMetaData['nodesMap']>
+    hooksStore.setState({
+      availableNodesMetaData: {
+        nodes: catalog.nodes.map((node) => nodesMap[node.metaData.type]),
+        nodesMap,
+      },
+    })
+  }, [catalog, hooksStore])
+  const nodes = useNodes<{ selected?: boolean }>()
+  return (
+    <output aria-label="Canvas nodes">
+      {nodes.map((node) => `${node.id}${node.data.selected ? '*' : ''}`).join(',')}
+    </output>
+  )
+}
+const canvasNodes = () => screen.getByRole('status', { name: 'Canvas nodes' }).textContent
 const renderComponent = (
   showHelpLink: boolean = true,
   onOpenChange?: (open: boolean) => void,
-  data?: Node['data'],
-) =>
-  renderWorkflowFlowComponent(
-    <NodeActionsDropdown
-      id="node-1"
-      data={
-        data ?? {
-          title: 'Code Node',
-          desc: '',
-          type: BlockEnum.Code,
-        }
-      }
-      triggerClassName="node-actions-trigger"
-      onOpenChange={onOpenChange}
-      showHelpLink={showHelpLink}
-    />,
+  readOnly = false,
+  data: Node['data'] = { title: 'Code Node', desc: '', type: BlockEnum.Code },
+) => {
+  const { queryClient } = createConsoleQueryWrapper({ appDslVersion: '0.6.0' })
+  seedModelProviderQueries(queryClient)
+  seedToolProviders(queryClient, {
+    builtInTools: [toolProvider],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  return renderWorkflowFlowComponent(
+    <>
+      <NodeActionsDropdown
+        id="node-1"
+        data={data}
+        triggerClassName="node-actions-trigger"
+        onOpenChange={onOpenChange}
+        showHelpLink={showHelpLink}
+      />
+      <CanvasNodes />
+    </>,
     {
-      nodes: [],
+      initialStoreState: { canvasReadOnly: readOnly },
+      nodes: [
+        createNode({
+          id: 'node-1',
+          width: 240,
+          height: 80,
+          data,
+        }),
+      ],
       edges: [],
+      queryClient,
     },
   )
+}
 
 describe('NodeActionsDropdown', () => {
-  const handleNodeSelect = vi.fn()
-  const handleNodeDelete = vi.fn()
-  const handleNodesCopy = vi.fn()
-  const handleNodesDuplicate = vi.fn()
-
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseNodeMetaData.mockReturnValue({
@@ -155,17 +140,6 @@ describe('NodeActionsDropdown', () => {
       author: 'Dify',
       helpLinkUri: 'https://docs.example.com/node',
     } as ReturnType<typeof useNodeMetaData>)
-    mockUseNodesInteractions.mockReturnValue({
-      handleNodeDelete,
-      handleNodesDuplicate,
-      handleNodeSelect,
-      handleNodesCopy,
-    } as unknown as ReturnType<typeof useNodesInteractions>)
-    mockUseNodesReadOnly.mockReturnValue({
-      nodesReadOnly: false,
-    } as ReturnType<typeof useNodesReadOnly>)
-    mockUseAllWorkflowTools.mockReturnValue(createQueryResult<ToolWithProvider[]>([]))
-    mockUseAllBuiltInTools.mockReturnValue(createQueryResult<ToolWithProvider[]>([]))
   })
 
   it('should open the dropdown and trigger single-run actions', async () => {
@@ -181,15 +155,14 @@ describe('NodeActionsDropdown', () => {
 
     await user.click(screen.getByText('workflow.panel.runThisStep'))
 
-    expect(handleNodeSelect).toHaveBeenCalledWith('node-1')
+    expect(canvasNodes()).toBe('node-1*')
     expect(store.getState().initShowLastRunTab).toBe(true)
     expect(store.getState().pendingSingleRun).toEqual({ nodeId: 'node-1', action: 'run' })
   })
 
   it('blocks a tool run in the menu when Workspace authorization is missing', async () => {
     const user = userEvent.setup()
-    mockUseAllBuiltInTools.mockReturnValue(createQueryResult([toolProvider]))
-    const { store } = renderComponent(true, undefined, makeToolData())
+    const { store } = renderComponent(true, undefined, false, makeToolData())
     await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
     const run = screen.getByRole('menuitem', { name: 'workflow.panel.runThisStep' })
 
@@ -202,14 +175,13 @@ describe('NodeActionsDropdown', () => {
 
     expect(store.getState().pendingSingleRun).toBeUndefined()
     expect(store.getState().initShowLastRunTab).toBe(false)
-    expect(handleNodeSelect).not.toHaveBeenCalled()
+    expect(canvasNodes()).toBe('node-1')
     expect(screen.getByRole('menu')).toBeInTheDocument()
   })
 
   it('updates the open menu when the App user test connection is removed', async () => {
     const user = userEvent.setup()
-    mockUseAllBuiltInTools.mockReturnValue(createQueryResult([toolProvider]))
-    const { store } = renderComponent(true, undefined, makeToolData())
+    const { store } = renderComponent(true, undefined, false, makeToolData())
     act(() => {
       store.getState().setNodeAppUserAuthDraft('node-1', toolProvider.name, toolProvider.id, {
         oauthEnabled: false,
@@ -239,15 +211,15 @@ describe('NodeActionsDropdown', () => {
     await user.click(run)
 
     expect(store.getState().pendingSingleRun).toBeUndefined()
-    expect(handleNodeSelect).not.toHaveBeenCalled()
+    expect(canvasNodes()).toBe('node-1')
   })
 
   it('keeps the menu stop action available when Workspace authorization is missing', async () => {
     const user = userEvent.setup()
-    mockUseAllBuiltInTools.mockReturnValue(createQueryResult([toolProvider]))
     const { store } = renderComponent(
       true,
       undefined,
+      false,
       makeToolData({ _singleRunningStatus: NodeRunningStatus.Running }),
     )
     await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
@@ -259,18 +231,18 @@ describe('NodeActionsDropdown', () => {
     await user.click(stop)
 
     expect(store.getState().pendingSingleRun).toEqual({ nodeId: 'node-1', action: 'stop' })
-    expect(handleNodeSelect).toHaveBeenCalledExactlyOnceWith('node-1')
+    expect(canvasNodes()).toBe('node-1*')
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
   it.each([
-    { key: 'c', action: handleNodesCopy },
-    { key: 'd', action: handleNodesDuplicate },
-    { key: 'Delete', action: handleNodeDelete },
-    { key: 'Backspace', action: handleNodeDelete },
-  ])('runs $key from the focused portalled node menu', async ({ key, action }) => {
+    { key: 'c', clipboard: ['node-1'], nodeCount: 1 },
+    { key: 'd', clipboard: undefined, nodeCount: 2 },
+    { key: 'Delete', clipboard: undefined, nodeCount: 0 },
+    { key: 'Backspace', clipboard: undefined, nodeCount: 0 },
+  ])('runs $key from the focused portalled node menu', async ({ key, clipboard, nodeCount }) => {
     const user = userEvent.setup()
-    const { container } = renderComponent()
+    const { container, store } = renderComponent()
     await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
     await user.keyboard('{ArrowDown}')
     const focusedItem = document.activeElement
@@ -280,7 +252,25 @@ describe('NodeActionsDropdown', () => {
     const mod = detectPlatform() === 'mac' ? 'Meta' : 'Control'
     await user.keyboard(key.length === 1 ? `{${mod}>}${key}{/${mod}}` : `{${key}}`)
 
-    expect(action).toHaveBeenCalledExactlyOnceWith('node-1')
+    if (clipboard)
+      expect(store.getState().clipboardElements.map((node) => node.id)).toEqual(clipboard)
+    expect(canvasNodes()!.split(',').filter(Boolean)).toHaveLength(nodeCount)
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+
+  it.each([
+    { name: /workflow\.common\.copy/, clipboard: ['node-1'], nodeCount: 1 },
+    { name: /workflow\.common\.duplicate/, clipboard: undefined, nodeCount: 2 },
+  ])('runs the $name menu item on click', async ({ name, clipboard, nodeCount }) => {
+    const user = userEvent.setup()
+    const { store } = renderComponent()
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+
+    await user.click(screen.getByRole('menuitem', { name }))
+
+    if (clipboard)
+      expect(store.getState().clipboardElements.map((node) => node.id)).toEqual(clipboard)
+    expect(canvasNodes()!.split(',').filter(Boolean)).toHaveLength(nodeCount)
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
@@ -309,32 +299,25 @@ describe('NodeActionsDropdown', () => {
     })
     fireEvent(item, repeat)
     expect(repeat.defaultPrevented).toBe(true)
-    expect(handleNodesDuplicate).not.toHaveBeenCalled()
+    expect(canvasNodes()).toBe('node-1')
     expect(screen.getByRole('menu')).toBeInTheDocument()
   })
 
   it('does not run unavailable editing shortcuts from a readonly node menu', async () => {
-    mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: true } as ReturnType<
-      typeof useNodesReadOnly
-    >)
     const user = userEvent.setup()
-    renderComponent()
+    const { store } = renderComponent(true, undefined, true)
     await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
     await user.keyboard('{ArrowDown}')
     const mod = detectPlatform() === 'mac' ? 'Meta' : 'Control'
     await user.keyboard(`{${mod}>}cd{/${mod}}{Delete}`)
-    expect(handleNodesCopy).not.toHaveBeenCalled()
-    expect(handleNodesDuplicate).not.toHaveBeenCalled()
-    expect(handleNodeDelete).not.toHaveBeenCalled()
+    expect(store.getState().clipboardElements).toEqual([])
+    expect(canvasNodes()).toBe('node-1')
   })
 
   it('should hide single-run actions when nodes are readonly', async () => {
     const user = userEvent.setup()
-    mockUseNodesReadOnly.mockReturnValueOnce({
-      nodesReadOnly: true,
-    } as ReturnType<typeof useNodesReadOnly>)
 
-    renderComponent()
+    renderComponent(true, undefined, true)
 
     await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
 

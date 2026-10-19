@@ -4,14 +4,15 @@ import type { AlertDialogContentProps } from '@langgenius/dify-ui/alert-dialog'
 import type { RemoveAppRequest } from './model'
 import {
   AlertDialog,
+  AlertDialogBody,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { cn } from '@langgenius/dify-ui/cn'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -53,28 +54,17 @@ export default function RemoveAppDialog({ request, open, finalFocus, onCancel, o
       {request && (
         <AlertDialogContent
           finalFocus={finalFocus}
-          className={request.deleteChats ? 'w-130 rounded-xl p-6' : undefined}
+          className={request.deleteChats ? 'w-130' : undefined}
         >
-          <div className={request.deleteChats ? 'space-y-4' : 'space-y-2 px-6 pt-6'}>
-            <AlertDialogTitle
-              className={cn(
-                'text-text-primary',
-                request.deleteChats ? 'title-2xl-semi-bold' : 'title-3xl-semi-bold',
-              )}
-            >
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {request.deleteChats
                 ? t(($) => $['endUser.deleteChatsTitle'], { ns: 'app' })
                 : t(($) => $['endUser.removeTitle'], { ns: 'app', name: request.app.name })}
             </AlertDialogTitle>
-            <AlertDialogDescription
-              render={<div />}
-              className={cn(
-                'text-text-tertiary',
-                request.deleteChats ? 'space-y-4 system-xs-regular' : 'system-md-regular',
-              )}
-            >
+            <AlertDialogDescription render={<div />}>
               {request.deleteChats ? (
-                <>
+                <div className="space-y-4">
                   <p>
                     {t(($) => $['endUser.deleteChatsDescription'], {
                       ns: 'app',
@@ -82,18 +72,20 @@ export default function RemoveAppDialog({ request, open, finalFocus, onCancel, o
                     })}
                   </p>
                   <p>{t(($) => $['endUser.deleteChatsDisclaimer'], { ns: 'app' })}</p>
-                </>
+                </div>
               ) : (
                 t(($) => $['endUser.removeDescription'], { ns: 'app' })
               )}
             </AlertDialogDescription>
-            {failed && (
+          </AlertDialogHeader>
+          {failed && (
+            <AlertDialogBody>
               <p role="alert" className="system-sm-regular text-text-destructive">
                 {t(($) => $['endUser.removeError'], { ns: 'app' })}
               </p>
-            )}
-          </div>
-          <AlertDialogFooter className={request.deleteChats ? 'mt-4 gap-3 p-0' : undefined}>
+            </AlertDialogBody>
+          )}
+          <AlertDialogFooter>
             <AlertDialogCancelButton disabled={pending}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>

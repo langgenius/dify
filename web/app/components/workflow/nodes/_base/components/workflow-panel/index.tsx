@@ -5,7 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { RiCloseLine } from '@remixicon/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { debounce } from 'es-toolkit/compat'
 import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
@@ -26,6 +26,7 @@ import {
 } from '@/app/components/plugins/plugin-auth'
 import { usePluginStore } from '@/app/components/plugins/plugin-detail-panel/store'
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
@@ -49,7 +50,7 @@ import {
   isSupportCustomRunForm,
 } from '@/app/components/workflow/utils'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { useAllBuiltInTools } from '@/service/use-tools'
+import { consoleQuery } from '@/service/console'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { useAvailableBlocks } from '../../../../hooks/use-available-blocks'
 import useInspectVarsCrud from '../../../../hooks/use-inspect-vars-crud'
@@ -267,10 +268,21 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   const [isPaused, setIsPaused] = useState(false)
 
   useEffect(() => {
+    hasClickRunning.current = false
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Reset pause UI when the selected node, execution status, or panel tab changes outside this component.
+    setIsPaused(false)
+  }, [id])
+
+  useEffect(() => {
     if (data._singleRunningStatus === NodeRunningStatus.Running) {
       hasClickRunning.current = true
+      // oxlint-disable-next-line eslint-react/set-state-in-effect -- Reset pause UI when the selected node, execution status, or panel tab changes outside this component.
       setIsPaused(false)
-    } else if (data._isSingleRun && data._singleRunningStatus === undefined && hasClickRunning) {
+    } else if (
+      data._isSingleRun &&
+      data._singleRunningStatus === undefined &&
+      hasClickRunning.current
+    ) {
       setIsPaused(true)
       hasClickRunning.current = false
     }
@@ -288,10 +300,6 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
     },
     [handleNodeDataUpdate, id, data],
   )
-
-  useEffect(() => {
-    hasClickRunning.current = false
-  }, [id])
 
   const { nodesMap } = useNodesMetaData()
 
@@ -330,6 +338,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   })
 
   useEffect(() => {
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Reset pause UI when the selected node, execution status, or panel tab changes outside this component.
     setIsPaused(false)
   }, [tabType])
 
@@ -362,7 +371,11 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   }, [data.type, logParams])
 
   const storeBuildInTools = useStore((s) => s.buildInTools)
-  const { data: buildInTools } = useAllBuiltInTools()
+  const { data: buildInTools } = useQuery(
+    consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
   const currToolCollection = useMemo(
     () => getCurrentToolCollection(buildInTools, storeBuildInTools, data.provider_id),
     [buildInTools, storeBuildInTools, data.provider_id],

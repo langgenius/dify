@@ -131,7 +131,7 @@ export type SnippetIterationNodeRunPayload = {
   } | null
 }
 
-export type GeneratedAppResponse = JsonValue
+export type GeneratedAppResponse = ShallowJsonValue
 
 export type SnippetLoopNodeRunPayload = {
   inputs?: {
@@ -301,7 +301,7 @@ export type WorkflowDraftVariableResponse = {
   name: string
   selector: Array<string>
   type: string
-  value: JsonValue
+  value: RecursiveJsonValue
   value_type: string
   visible: boolean
 }
@@ -311,7 +311,7 @@ export type WorkflowDraftVariableUpdatePayload = {
   value?: unknown | null
 }
 
-export type PublishWorkflowPayload = {
+export type SnippetPublishWorkflowPayload = {
   knowledge_base_setting?: {
     [key: string]: unknown
   } | null
@@ -403,7 +403,7 @@ export type EnvironmentVariableItemResponse = {
   visible: boolean
 }
 
-export type JsonValue =
+export type ShallowJsonValue =
   | string
   | number
   | number
@@ -600,6 +600,17 @@ export type WorkflowDraftVariableFullContentResponse = {
   size_bytes: number | null
   value_type: string
 }
+
+export type RecursiveJsonValue =
+  | string
+  | number
+  | number
+  | boolean
+  | {
+      [key: string]: RecursiveJsonValue
+    }
+  | Array<RecursiveJsonValue>
+  | null
 
 export type AgentScope = 'roster' | 'workflow_only'
 
@@ -2014,7 +2025,7 @@ export type GetSnippetsBySnippetIdWorkflowsPublishResponse =
   GetSnippetsBySnippetIdWorkflowsPublishResponses[keyof GetSnippetsBySnippetIdWorkflowsPublishResponses]
 
 export type PostSnippetsBySnippetIdWorkflowsPublishData = {
-  body: PublishWorkflowPayload
+  body: SnippetPublishWorkflowPayload
   path: {
     snippet_id: string
   }

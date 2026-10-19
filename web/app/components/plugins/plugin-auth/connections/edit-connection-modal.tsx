@@ -2,7 +2,15 @@ import type { Credential } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
 import {
@@ -125,100 +133,104 @@ const EditConnectionModal = ({
     >
       <DialogContent className="w-140">
         <form
-          className="flex flex-col gap-5"
+          className="contents"
           onSubmit={(event) => {
             event.preventDefault()
             void saveConnection()
           }}
         >
-          <DialogTitle className="title-xl-semi-bold text-text-primary">
-            {providerName
-              ? t(($) => $['auth.connection.saveWithProvider'], {
-                  ns: 'plugin',
-                  provider: providerName,
-                })
-              : t(($) => $['auth.connection.save'], { ns: 'plugin' })}
-          </DialogTitle>
-          <Field name="connectionName" className="gap-1.5">
-            <FieldLabel className="system-sm-regular text-text-primary">
-              {t(($) => $['auth.connection.name'], { ns: 'plugin' })}
-              <span aria-hidden className="text-text-destructive">
-                {' '}
-                *
-              </span>
-            </FieldLabel>
-            <Input
-              className="h-8"
-              value={connectionName}
-              onValueChange={setConnectionName}
-              disabled={isSavingConnection}
-              required
-              maxLength={30}
-            />
-            <FieldError match="valueMissing">
-              {t(($) => $['errorMsg.fieldRequired'], {
-                ns: 'common',
-                field: t(($) => $['auth.connection.name'], { ns: 'plugin' }),
-              })}
-            </FieldError>
-          </Field>
-          <Select
-            value={connectionScope}
-            onValueChange={(scope) => {
-              if (!scope) return
-              setConnectionScope(scope)
-              if (scope === PermissionLevel.onlyMe) setSetWorkspaceDefault(false)
-            }}
-            disabled={isSavingConnection || !canEditConnection}
-          >
-            <div className="flex flex-col gap-2">
-              <SelectLabel className="system-md-semibold text-text-primary">
-                {t(($) => $['auth.whoCanUse'], { ns: 'plugin' })}
-              </SelectLabel>
-              <SelectTrigger className="h-10 px-1 system-md-regular">
-                <span className="flex items-center gap-0.5">
-                  <span aria-hidden className="flex size-6 shrink-0 items-center justify-center">
-                    <span
-                      className={cn(
-                        'size-5 text-text-secondary',
-                        connectionScope === PermissionLevel.onlyMe
-                          ? 'i-ri-user-line'
-                          : 'i-ri-user-community-line',
-                      )}
-                    />
-                  </span>
-                  <span className="px-1">{connectionScopeLabel}</span>
+          <DialogHeader>
+            <DialogTitle>
+              {providerName
+                ? t(($) => $['auth.connection.saveWithProvider'], {
+                    ns: 'plugin',
+                    provider: providerName,
+                  })
+                : t(($) => $['auth.connection.save'], { ns: 'plugin' })}
+            </DialogTitle>
+          </DialogHeader>
+          <DialogBody className="space-y-5">
+            <Field name="connectionName" className="gap-1.5">
+              <FieldLabel className="system-sm-regular text-text-primary">
+                {t(($) => $['auth.connection.name'], { ns: 'plugin' })}
+                <span aria-hidden className="text-text-destructive">
+                  {' '}
+                  *
                 </span>
-              </SelectTrigger>
-            </div>
-            <SelectContent>
-              {scopeOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  <span aria-hidden className={cn('size-5 shrink-0', option.icon)} />
-                  <SelectItemText>{option.label}</SelectItemText>
-                  <SelectItemIndicator />
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {showWorkspaceDefault && (
-            <Field>
-              <FieldLabel className="flex cursor-pointer items-center gap-2 system-sm-regular text-text-primary">
-                <Checkbox
-                  checked={setWorkspaceDefault}
-                  onCheckedChange={setSetWorkspaceDefault}
-                  disabled={isSavingConnection || !canUseCredential}
-                />
-                {t(($) => $['auth.connection.setWorkspaceDefault'], { ns: 'plugin' })}
               </FieldLabel>
+              <Input
+                className="h-8"
+                value={connectionName}
+                onValueChange={setConnectionName}
+                disabled={isSavingConnection}
+                required
+                maxLength={30}
+              />
+              <FieldError match="valueMissing">
+                {t(($) => $['errorMsg.fieldRequired'], {
+                  ns: 'common',
+                  field: t(($) => $['auth.connection.name'], { ns: 'plugin' }),
+                })}
+              </FieldError>
             </Field>
-          )}
-          {connectionSaveFailed && (
-            <p role="alert" className="system-sm-regular text-text-destructive">
-              {t(($) => $['api.actionFailed'], { ns: 'common' })}
-            </p>
-          )}
-          <div className="flex justify-end gap-2">
+            <Select
+              value={connectionScope}
+              onValueChange={(scope) => {
+                if (!scope) return
+                setConnectionScope(scope)
+                if (scope === PermissionLevel.onlyMe) setSetWorkspaceDefault(false)
+              }}
+              disabled={isSavingConnection || !canEditConnection}
+            >
+              <div className="flex flex-col gap-2">
+                <SelectLabel className="system-md-semibold text-text-primary">
+                  {t(($) => $['auth.whoCanUse'], { ns: 'plugin' })}
+                </SelectLabel>
+                <SelectTrigger className="h-10 px-1 system-md-regular">
+                  <span className="flex items-center gap-0.5">
+                    <span aria-hidden className="flex size-6 shrink-0 items-center justify-center">
+                      <span
+                        className={cn(
+                          'size-5 text-text-secondary',
+                          connectionScope === PermissionLevel.onlyMe
+                            ? 'i-ri-user-line'
+                            : 'i-ri-user-community-line',
+                        )}
+                      />
+                    </span>
+                    <span className="px-1">{connectionScopeLabel}</span>
+                  </span>
+                </SelectTrigger>
+              </div>
+              <SelectContent>
+                {scopeOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    <span aria-hidden className={cn('size-5 shrink-0', option.icon)} />
+                    <SelectItemText>{option.label}</SelectItemText>
+                    <SelectItemIndicator />
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {showWorkspaceDefault && (
+              <Field>
+                <FieldLabel className="flex cursor-pointer items-center gap-2 system-sm-regular text-text-primary">
+                  <Checkbox
+                    checked={setWorkspaceDefault}
+                    onCheckedChange={setSetWorkspaceDefault}
+                    disabled={isSavingConnection || !canUseCredential}
+                  />
+                  {t(($) => $['auth.connection.setWorkspaceDefault'], { ns: 'plugin' })}
+                </FieldLabel>
+              </Field>
+            )}
+            {connectionSaveFailed && (
+              <p role="alert" className="system-sm-regular text-text-destructive">
+                {t(($) => $['api.actionFailed'], { ns: 'common' })}
+              </p>
+            )}
+          </DialogBody>
+          <DialogFooter>
             <DialogClose
               render={
                 <Button disabled={isSavingConnection}>
@@ -236,7 +248,7 @@ const EditConnectionModal = ({
                 ? t(($) => $['auth.connection.saveAsDefault'], { ns: 'plugin' })
                 : t(($) => $['operation.save'], { ns: 'common' })}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
