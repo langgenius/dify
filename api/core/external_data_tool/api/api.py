@@ -2,11 +2,11 @@ from collections.abc import Mapping
 from typing import Any, TypedDict, override
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session, scoped_session
 
 from core.extension.api_based_extension_requestor import APIBasedExtensionRequestor
 from core.external_data_tool.base import ExternalDataTool
 from core.helper import encrypter
-from extensions.ext_database import db
 from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 
 
@@ -30,12 +30,13 @@ class ApiExternalDataTool(ExternalDataTool):
 
     @classmethod
     @override
-    def validate_config(cls, tenant_id: str, config: dict[str, Any]):
+    def validate_config(cls, tenant_id: str, config: dict[str, Any], session: Session | scoped_session):
         """
         Validate the incoming form config data.
 
         :param tenant_id: the id of workspace
         :param config: the form config data
+        :param session: the database session the extension lookup runs through
         :return:
         """
         # own validation logic
@@ -46,17 +47,18 @@ class ApiExternalDataTool(ExternalDataTool):
         stmt = select(APIBasedExtension).where(
             APIBasedExtension.tenant_id == tenant_id, APIBasedExtension.id == api_based_extension_id
         )
-        api_based_extension = db.session.scalar(stmt)
+        api_based_extension = session.scalar(stmt)
 
         if not api_based_extension:
             raise ValueError("api_based_extension_id is invalid")
 
     @override
-    def query(self, inputs: Mapping[str, Any], query: str | None = None) -> str:
+    def query(self, inputs: Mapping[str, Any], session: Session | scoped_session, query: str | None = None) -> str:
         """
         Query the external data tool.
 
         :param inputs: user inputs
+        :param session: the database session the extension lookup runs through
         :param query: the query of chat app
         :return: the tool query result
         """
@@ -69,7 +71,7 @@ class ApiExternalDataTool(ExternalDataTool):
         stmt = select(APIBasedExtension).where(
             APIBasedExtension.tenant_id == self.tenant_id, APIBasedExtension.id == api_based_extension_id
         )
-        api_based_extension = db.session.scalar(stmt)
+        api_based_extension = session.scalar(stmt)
 
         if not api_based_extension:
             raise ValueError(
