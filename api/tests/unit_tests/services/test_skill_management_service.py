@@ -3390,6 +3390,8 @@ def test_pptx_extraction_ignores_unreferenced_external_and_missing_slide_parts()
         pytest.param(b"{\\rtf1\\u945\\bin6 \xc3\xa9\xf0\x9f\x98\x80OK}", "αOK", id="utf8-mixed-binary-fallback"),
         pytest.param("{\\rtf1 Café 中文}".encode(), "Café 中文", id="utf8-literal-text"),
         pytest.param(b"{\\rtf1 Caf\xe9}", "Café", id="latin1-literal-text"),
+        pytest.param(rb"{\rtf1\ansi caf\'e9}", "café", id="hex-literal-text"),
+        pytest.param(rb"{\rtf1\ansi \{notes\} \\ path}", r"{notes} \ path", id="escaped-literal-text"),
     ],
 )
 def test_build_assistant_attachment_context_extracts_rtf_text(payload: bytes, expected: str) -> None:
