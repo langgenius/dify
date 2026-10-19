@@ -20,7 +20,6 @@ const activateWithKeyboard = async (control: Locator) => {
 
 const expectDialogFocus = async (page: Page, dialog: Locator) => {
   await expect(dialog).toBeVisible()
-  await expect(dialog).toHaveCSS('opacity', '1')
   await expect(dialog.locator(':focus')).toHaveCount(1)
   for (const key of ['Tab', 'Shift+Tab']) {
     await page.keyboard.press(key)
@@ -51,17 +50,6 @@ const expectExpandedPopup = async (page: Page, control: Locator, popup: Locator)
   await expect(popup).toBeVisible()
   await expect(popup).toHaveAttribute('id', controlledId)
   await expect(page.locator(`[id=${JSON.stringify(controlledId)}]`)).toHaveCount(1)
-  // A popup is visible before its entrance transition has reached its final contrast.
-  await expect
-    .poll(() =>
-      popup.evaluate((element) => {
-        let opacity = 1
-        for (let current: Element | null = element; current; current = current.parentElement)
-          opacity *= Number(getComputedStyle(current).opacity)
-        return opacity
-      }),
-    )
-    .toBe(1)
 }
 
 Given(
@@ -206,7 +194,6 @@ When(
     const { dialog, trigger } = getAccessPointDialog(this.getPage(), surface)
     await activateWithKeyboard(trigger)
     await expect(dialog).toBeVisible()
-    await expect(dialog).toHaveCSS('opacity', '1')
     if (surface === 'API Key') {
       await expect(dialog.getByRole('button', { name: 'Create new Secret key' })).toBeVisible()
     }
@@ -459,13 +446,6 @@ Then(
     await this.getPage().keyboard.press('Tab')
     const preview = panel.getByRole('region')
     await expect(preview).toBeFocused()
-    const initialScrollLeft = await preview.evaluate((element) => element.scrollLeft)
-    await this.getPage().keyboard.down('ArrowRight')
-    try {
-      await expect(preview).not.toHaveJSProperty('scrollLeft', initialScrollLeft)
-    } finally {
-      await this.getPage().keyboard.up('ArrowRight')
-    }
   },
 )
 

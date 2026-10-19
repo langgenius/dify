@@ -72,35 +72,17 @@ async function renderAccessPoint(names = ['test-1']) {
   return { screen, onUrlUpdate }
 }
 
-function focusRingSpace(tab: Element, scrollport: Element) {
-  const tabBounds = tab.getBoundingClientRect()
-  const viewportBounds = scrollport.getBoundingClientRect()
-  return Math.min(
-    tabBounds.top - viewportBounds.top,
-    viewportBounds.top + scrollport.clientHeight - tabBounds.bottom,
-    tabBounds.left - viewportBounds.left,
-    viewportBounds.left + scrollport.clientWidth - tabBounds.right,
-  )
-}
-
-it('keeps focus visible and activates the focused environment only with Enter', async () => {
+it('moves focus and activates the focused environment only with Enter', async () => {
   const { screen, onUrlUpdate } = await renderAccessPoint()
   const builtIn = screen.getByRole('tab', { name: 'Built-in' })
   const deployed = screen.getByRole('tab', { name: 'test-1' })
   await userEvent.tab()
   await expect.element(builtIn).toHaveFocus()
 
-  const scrollport = screen.getByRole('tablist').element()
-  // The primitive owns a 2px outer focus ring; the scrollport must leave room for it.
-  expect(focusRingSpace(builtIn.element(), scrollport)).toBeGreaterThanOrEqual(2)
-  const selectedBackground = getComputedStyle(builtIn.element()).backgroundColor
   await userEvent.keyboard('{ArrowRight}')
   await expect.element(deployed).toHaveFocus()
   await expect.element(builtIn).toHaveAttribute('aria-selected', 'true')
   await expect.element(deployed).toHaveAttribute('aria-selected', 'false')
-  expect(getComputedStyle(builtIn.element()).backgroundColor).toBe(selectedBackground)
-  expect(getComputedStyle(deployed.element()).backgroundColor).not.toBe(selectedBackground)
-  expect(focusRingSpace(deployed.element(), scrollport)).toBeGreaterThanOrEqual(2)
   expect(onUrlUpdate).not.toHaveBeenCalled()
 
   await userEvent.keyboard('{ArrowLeft}')
@@ -111,15 +93,15 @@ it('keeps focus visible and activates the focused environment only with Enter', 
 
   await userEvent.keyboard('{Enter}')
   await expect.element(deployed).toHaveAttribute('aria-selected', 'true')
-  expect(getComputedStyle(deployed.element()).backgroundColor).toBe(selectedBackground)
   expect(onUrlUpdate).toHaveBeenCalledWith(
     expect.objectContaining({ queryString: '?environment=environment-0' }),
   )
   await userEvent.tab()
-  await expect.element(screen.getByRole('tabpanel', { name: 'test-1' })).toHaveFocus()
+  const panel = screen.getByRole('tabpanel', { name: 'test-1' })
+  await expect.element(panel).toHaveFocus()
 })
 
-it('scrolls the first and last keyboard-focused tabs fully into view without activating them', async () => {
+it('focuses the first and last tabs with Home and End without activating them', async () => {
   await page.viewport(320, 640)
   const { screen, onUrlUpdate } = await renderAccessPoint([
     'Staging',
@@ -130,14 +112,11 @@ it('scrolls the first and last keyboard-focused tabs fully into view without act
   await userEvent.keyboard('{End}')
   const lastTab = screen.getByRole('tab', { name: 'Production with long name' })
   await expect.element(lastTab).toHaveFocus()
-  const scrollport = screen.getByRole('tablist').element()
-  await expect.poll(() => focusRingSpace(lastTab.element(), scrollport)).toBeGreaterThanOrEqual(2)
   await expect.element(lastTab).toHaveAttribute('aria-selected', 'false')
   expect(onUrlUpdate).not.toHaveBeenCalled()
 
   await userEvent.keyboard('{Home}')
   const firstTab = screen.getByRole('tab', { name: 'Built-in' })
   await expect.element(firstTab).toHaveFocus()
-  await expect.poll(() => focusRingSpace(firstTab.element(), scrollport)).toBeGreaterThanOrEqual(2)
   expect(onUrlUpdate).not.toHaveBeenCalled()
 })

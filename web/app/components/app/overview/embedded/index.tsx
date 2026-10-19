@@ -26,7 +26,7 @@ import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
-import { Suspense, use, useMemo, useRef, useState } from 'react'
+import { Suspense, use, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { createTheme } from '@/app/components/base/chat/embedded-chatbot/theme/theme'
 import { InputVarType } from '@/app/components/workflow/types'
@@ -136,6 +136,7 @@ const EmbeddedContent = ({
     () => createWorkflowLaunchInitialValues(supportedHiddenInputs),
     [supportedHiddenInputs],
   )
+  const previewLabelId = useId()
   const [option, setOption] = useState<Option>('iframe')
   const [copiedOption, setCopiedOption] = useState<Option | null>(null)
   const [hiddenInputValues, setHiddenInputValues] = useState<
@@ -309,7 +310,10 @@ const EmbeddedContent = ({
                 )}
               >
                 <div className="inline-flex items-center justify-start gap-2 self-stretch rounded-t-lg bg-background-section-burn py-1 pr-1 pl-3">
-                  <div className="min-w-0 flex-1 system-sm-medium wrap-break-word text-text-secondary">
+                  <div
+                    id={`${previewLabelId}-${v}`}
+                    className="min-w-0 flex-1 system-sm-medium wrap-break-word text-text-secondary"
+                  >
                     {t(($) => $[`${prefixEmbedded}.${v}`], { ns: 'appOverview' })}
                   </div>
                   <Tooltip>
@@ -339,12 +343,12 @@ const EmbeddedContent = ({
                     </TooltipContent>
                   </Tooltip>
                 </div>
-                <ScrollArea className="relative w-full">
+                <ScrollArea className="relative w-full rounded-b-lg">
                   <ScrollAreaViewport
                     role="region"
-                    aria-label={t(($) => $[`${prefixEmbedded}.${v}`], { ns: 'appOverview' })}
+                    aria-labelledby={`${previewLabelId}-${v}`}
                     tabIndex={0}
-                    className="flex max-h-[clamp(180px,calc(100dvh-320px),360px)] items-start justify-start gap-2 rounded-b-lg p-3 focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
+                    className="flex max-h-[clamp(180px,calc(100dvh-320px),360px)] items-start justify-start gap-2 p-3"
                   >
                     <div className="shrink grow basis-0 font-mono text-[13px] leading-tight text-text-secondary">
                       <pre className="select-text">

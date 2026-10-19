@@ -109,9 +109,14 @@ function AccessPointContent({
 
       <ScrollArea className="relative min-h-0 flex-1 overflow-hidden">
         <ScrollAreaViewport
-          render={showEnvironmentTabs ? <TabsPanel value={selectedEnvironment} /> : undefined}
+          render={
+            showEnvironmentTabs ? (
+              // ScrollArea paints the focus indicator above the viewport contents.
+              <TabsPanel value={selectedEnvironment} className="focus-visible:inset-ring-0" />
+            ) : undefined
+          }
           {...(!showEnvironmentTabs && { 'aria-labelledby': 'access-point-title', role: 'region' })}
-          className="overscroll-contain focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
+          className="overscroll-contain"
           data-environment={selectedEnvironment}
           tabIndex={0}
           style={{ overflowX: 'hidden' }}
