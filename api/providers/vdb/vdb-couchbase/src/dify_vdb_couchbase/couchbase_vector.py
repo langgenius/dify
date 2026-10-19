@@ -315,7 +315,9 @@ class CouchbaseVector(BaseVector):
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 4)
         try:
-            cbrequest = search.SearchRequest.create(search.QueryStringQuery("text:" + query))  # pyrefly: ignore[bad-argument-count]
+            cbrequest = search.SearchRequest.create(
+                search.QueryStringQuery("text:" + query)
+            )  # pyrefly: ignore[bad-argument-count]
             search_iter = self._scope.search(
                 self._collection_name + "_search", cbrequest, SearchOptions(limit=top_k, fields=["*"])
             )
