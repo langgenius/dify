@@ -1,11 +1,12 @@
 import type { EmbeddedFile } from '@/sys'
-import { readdir, readFile, stat } from 'node:fs/promises'
-import { join, relative, sep } from 'node:path'
+import { readFile, stat } from 'node:fs/promises'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { z } from 'zod'
 import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { embeddedFiles, isCompiledBinary } from '@/sys'
+import { ENTRY_KIND, walkTree } from '@/sys/tree'
 
 export const SKILL_NAME = 'difyctl'
 export const SKILL_FILE = 'SKILL.md'
@@ -56,11 +57,9 @@ export async function openDir(root: string): Promise<SkillSource> {
       message: `no ${SKILL_FILE} in "${root}"`,
     })
   }
-  const paths: string[] = []
-  for (const entry of await readdir(root, { recursive: true, withFileTypes: true })) {
-    if (entry.isFile())
-      paths.push(relative(root, join(entry.parentPath, entry.name)).split(sep).join('/'))
-  }
+  const paths = (await walkTree(root))
+    .filter((entry) => entry.kind === ENTRY_KIND.File)
+    .map((entry) => entry.path)
   return { paths, read: (path) => readLocal(join(root, path)) }
 }
 
