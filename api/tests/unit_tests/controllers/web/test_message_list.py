@@ -5,7 +5,6 @@ from __future__ import annotations
 import builtins
 import inspect
 import json
-import uuid
 from datetime import datetime
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
@@ -19,7 +18,15 @@ from flask.views import MethodView
 from controllers.common.controller_schemas import MessageListQuery
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.entities.execution_extra_content import HumanInputContent
-from models.enums import ConversationFromSource, EndUserType, FeedbackFromSource, FeedbackRating
+from graphon.enums import WorkflowExecutionStatus
+from models.enums import (
+    ConversationFromSource,
+    CreatorUserRole,
+    EndUserType,
+    FeedbackFromSource,
+    FeedbackRating,
+    WorkflowRunTriggeredFrom,
+)
 from models.model import (
     App,
     AppMode,
@@ -29,6 +36,7 @@ from models.model import (
     MessageAgentThought,
     MessageFeedback,
 )
+from models.workflow import WorkflowRun, WorkflowType
 
 # Ensure flask_restx.api finds MethodView during import.
 if not hasattr(builtins, "MethodView"):
@@ -83,12 +91,13 @@ def app() -> Flask:
 
 @pytest.mark.parametrize(
     "sqlite_session",
-    [(App, Conversation, EndUser, Message, MessageAgentThought, MessageFeedback)],
+    [(App, Conversation, EndUser, Message, MessageAgentThought, MessageFeedback, WorkflowRun)],
     indirect=True,
 )
 def test_message_list_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session) -> None:
     conversation_id = str(uuid4())
     message_id = str(uuid4())
+    workflow_run_id = str(uuid4())
 
     created_at = datetime(2024, 1, 1, 12, 0, 0)
     resource_created_at = datetime(2024, 1, 1, 13, 0, 0)
@@ -138,7 +147,7 @@ def test_message_list_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlit
         id="app-1",
         tenant_id="tenant-1",
         name="Chat App",
-        mode=AppMode.CHAT,
+        mode=AppMode.ADVANCED_CHAT,
         enable_site=False,
         enable_api=False,
     )
@@ -153,7 +162,7 @@ def test_message_list_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlit
     conversation = Conversation(
         id=conversation_id,
         app_id=app_model.id,
-        mode=AppMode.CHAT,
+        mode=AppMode.ADVANCED_CHAT,
         name="Conversation",
         _inputs={},
         status="normal",
@@ -179,7 +188,8 @@ def test_message_list_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlit
         invoke_from=InvokeFrom.SERVICE_API,
         from_source=ConversationFromSource.API,
         from_end_user_id=end_user.id,
-        app_mode=AppMode.CHAT,
+        app_mode=AppMode.ADVANCED_CHAT,
+        workflow_run_id=workflow_run_id,
         message_metadata=json.dumps(
             {
                 "meta": "value",
@@ -196,10 +206,30 @@ def test_message_list_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlit
     message.set_extra_contents(
         [
             HumanInputContent(
-                workflow_run_id=str(uuid.uuid4()),
+                workflow_run_id=workflow_run_id,
                 submitted=True,
             ).model_dump(mode="json")
         ]
+    )
+    workflow_run = WorkflowRun(
+        id=workflow_run_id,
+        tenant_id=app_model.tenant_id,
+        app_id=app_model.id,
+        workflow_id=str(uuid4()),
+        type=WorkflowType.WORKFLOW,
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        version="1",
+        graph="{}",
+        inputs="{}",
+        status=WorkflowExecutionStatus.RUNNING,
+        outputs="{}",
+        error=None,
+        elapsed_time=0,
+        total_tokens=0,
+        total_steps=0,
+        created_by_role=CreatorUserRole.END_USER,
+        created_by=end_user.id,
+        created_at=created_at,
     )
     feedback = MessageFeedback(
         app_id=app_model.id,
@@ -209,7 +239,7 @@ def test_message_list_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlit
         from_source=FeedbackFromSource.USER,
         from_end_user_id=end_user.id,
     )
-    sqlite_session.add_all([app_model, end_user, conversation, message, feedback, agent_thought])
+    sqlite_session.add_all([app_model, end_user, conversation, message, feedback, agent_thought, workflow_run])
     sqlite_session.commit()
 
     pagination = SimpleNamespace(limit=20, has_more=False, data=[message])
@@ -250,6 +280,8 @@ def test_message_list_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlit
     assert item["agent_thoughts"][0]["created_at"] == int(thought_created_at.timestamp())
     assert item["extra_contents"][0]["workflow_run_id"] == message.extra_contents[0]["workflow_run_id"]
     assert item["extra_contents"][0]["submitted"] == message.extra_contents[0]["submitted"]
+    assert item["workflow_run_id"] == workflow_run_id
+    assert item["workflow_run_is_running"] is True
 
     assert item["message_files"][0]["id"] == "file-dict"
     assert item["message_files"][1]["id"] == "file-obj"

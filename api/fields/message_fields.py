@@ -94,6 +94,8 @@ class WebMessageListItem(MessageListItem):
         default=None,
         validation_alias="message_metadata_dict",
     )
+    workflow_run_id: UUIDString | None = None
+    workflow_run_is_running: bool = False
 
 
 class ExploreMessageListItem(MessageListItem):

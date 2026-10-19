@@ -76,11 +76,15 @@ class TestExploreMessageListItem:
         payload = WebMessageListItem(
             **_base_kwargs(),
             metadata={"usage": {"total_tokens": 18}},
+            workflow_run_id="workflow-run-1",
+            workflow_run_is_running=True,
             message_tokens=7,
             answer_tokens=11,
         ).model_dump(mode="json")
 
         assert payload["metadata"] == {"usage": {"total_tokens": 18}}
+        assert payload["workflow_run_id"] == "workflow-run-1"
+        assert payload["workflow_run_is_running"] is True
         assert payload["message_tokens"] == 7
         assert payload["answer_tokens"] == 11
         assert payload["total_tokens"] == 18

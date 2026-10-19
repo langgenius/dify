@@ -119,6 +119,7 @@ export type IChatItem = {
   reasoningFinished?: boolean
   message_files?: FileEntity[]
   workflow_run_id?: string
+  workflow_run_is_running?: boolean
   // for agent log
   conversationId?: string
   input?: any
