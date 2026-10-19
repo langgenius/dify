@@ -1,5 +1,5 @@
-from typing import cast
-from unittest.mock import MagicMock, patch
+from typing import Protocol, cast
+from unittest.mock import patch
 
 import httpx
 import pytest
@@ -12,6 +12,11 @@ from qdrant_client.http.exceptions import UnexpectedResponse
 
 from core.rag.rerank.entity.weight import KeywordSetting, VectorSetting, Weights
 from core.rag.rerank.weight_rerank import WeightRerankRunner
+
+
+class ScrollMock(Protocol):
+    side_effect: object
+    call_count: int
 
 
 class TestTidbOnQdrantVectorFullTextSearch:
@@ -73,7 +78,7 @@ class TestTidbOnQdrantVectorFullTextSearch:
     def test_later_keywords_are_not_starved_by_first_keyword(
         self, vector: TidbOnQdrantVector, points: list[rest.Record]
     ) -> None:
-        scroll = cast(MagicMock, vector._client.scroll)
+        scroll = cast(ScrollMock, vector._client.scroll)
         scroll.side_effect = [([points[0], points[1]], None), ([points[2]], None)]
 
         documents = vector.search_by_full_text("common rare", top_k=2)
@@ -84,7 +89,7 @@ class TestTidbOnQdrantVectorFullTextSearch:
     def test_overlapping_keyword_matches_are_deduplicated(
         self, vector: TidbOnQdrantVector, points: list[rest.Record]
     ) -> None:
-        cast(MagicMock, vector._client.scroll).side_effect = [
+        cast(ScrollMock, vector._client.scroll).side_effect = [
             ([points[0], points[1]], None),
             ([points[0], points[2]], None),
         ]
@@ -96,7 +101,7 @@ class TestTidbOnQdrantVectorFullTextSearch:
     def test_stops_after_exhausting_duplicate_keyword_matches(
         self, vector: TidbOnQdrantVector, points: list[rest.Record]
     ) -> None:
-        scroll = cast(MagicMock, vector._client.scroll)
+        scroll = cast(ScrollMock, vector._client.scroll)
         scroll.side_effect = [([points[0], points[1]], None), ([points[0]], None)]
 
         documents = vector.search_by_full_text("common rare", top_k=4)
