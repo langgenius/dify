@@ -67,7 +67,7 @@ const LimitConfig: FC<Props> = ({ className, readonly, config = LIMIT_DEFAULT, o
         {payload?.enabled ? (
           <InputNumberWithSlider
             label={t(($) => $[`${i18nPrefix}.limit`], { ns: 'workflowLogic' })}
-            value={payload?.size || LIMIT_SIZE_DEFAULT}
+            value={payload?.size ?? LIMIT_SIZE_DEFAULT}
             min={LIMIT_SIZE_MIN}
             max={LIMIT_SIZE_MAX}
             onChange={handleLimitSizeChange}

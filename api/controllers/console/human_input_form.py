@@ -27,6 +27,7 @@ from controllers.console.wraps import (
 )
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
 from extensions.ext_database import db
+from libs.external_api import error_responses
 from libs.login import login_required
 from models import Account, App
 from models.enums import CreatorUserRole
@@ -34,7 +35,13 @@ from models.model import AppMode
 from models.workflow import WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from services.app.generation.response import convert_to_event_stream
-from services.human_input_service import Form, HumanInputService
+from services.human_input_service import (
+    Form,
+    FormExpiredError,
+    FormSubmittedError,
+    HumanInputService,
+    InvalidFormDataError,
+)
 from services.workflow.execution.adapters.response_converter import WorkflowResponseConverter
 from services.workflow.execution.adapters.response_stream import WorkflowEventStream
 from services.workflow_event_snapshot_service import build_workflow_event_stream
@@ -80,6 +87,7 @@ class ConsoleHumanInputFormApi(Resource):
         if not is_recipient_type_allowed_for_surface(form.recipient_type, HumanInputSurface.CONSOLE):
             raise NotFoundError("form not found")
 
+    @error_responses(FormSubmittedError)
     @setup_required
     @login_required
     @account_initialization_required
@@ -100,6 +108,7 @@ class ConsoleHumanInputFormApi(Resource):
 
         return _jsonify_form_definition(form)
 
+    @error_responses(FormExpiredError, FormSubmittedError, InvalidFormDataError)
     @account_initialization_required
     @login_required
     @with_current_user
@@ -196,7 +205,7 @@ class ConsoleWorkflowEventsApi(Resource):
             payload = response.model_dump(mode="json")
             payload["event"] = response.event.value
 
-            def _generate_finished_events() -> Generator[str, None, None]:
+            def _generate_finished_events() -> Generator[str]:
                 yield f"data: {json.dumps(payload)}\n\n"
 
             event_generator = _generate_finished_events

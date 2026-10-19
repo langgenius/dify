@@ -56,7 +56,7 @@ export function VersionItem({
   exportDisabled?: boolean
   showUpgrade?: boolean
 }) {
-  const { t } = useTranslation(['agentV2', 'app', 'billing', 'agentRoster'])
+  const { t } = useTranslation(['agentV2', 'billing', 'agentRoster'])
   const { t: tWorkflow } = useTranslation(['workflow', 'workflowHistory'])
   const isActive = version.id === activeVersionId
   const label =
@@ -136,7 +136,7 @@ export function VersionItem({
                 className="gap-2"
               >
                 <span aria-hidden className="i-ri-file-download-line size-4 shrink-0" />
-                <span className="flex-1">{t(($) => $.exportApp, { ns: 'app' })}</span>
+                <span className="flex-1">{t(($) => $.exportAgent)}</span>
                 {showUpgrade && (
                   <PremiumBadge size="s">
                     {t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}

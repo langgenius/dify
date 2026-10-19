@@ -4,7 +4,8 @@ from types import SimpleNamespace
 import pytest
 from sqlalchemy.orm import Session
 
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.app_config.entities import WorkflowUIBasedAppConfig
+from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import QueueWorkflowPausedEvent
 from core.app.entities.task_entities import HumanInputRequiredResponse, WorkflowPauseStreamResponse
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
@@ -22,6 +23,7 @@ from models.human_input_entities import (
     StringListSource,
     UserActionConfig,
 )
+from models.model import AppMode
 from services.workflow.execution.adapters.events import WorkflowEventPublisher
 from services.workflow.execution.adapters.response_converter import WorkflowResponseConverter
 
@@ -99,12 +101,20 @@ def test_graph_run_paused_event_emits_queue_pause_event():
     assert queue_event.paused_nodes == ["node-human"]
 
 
-def _build_converter(*, invoke_from: InvokeFrom = InvokeFrom.SERVICE_API, workflow_contexts, tool_providers):
-    application_generate_entity = SimpleNamespace(
+def _build_converter(
+    *, invoke_from: InvokeFrom = InvokeFrom.SERVICE_API, workflow_contexts, tool_providers
+) -> WorkflowResponseConverter:
+    application_generate_entity = WorkflowAppGenerateEntity(
+        task_id="task",
+        workflow_execution_id="run-id",
+        user_id="user",
+        stream=True,
         inputs={},
         files=[],
         invoke_from=invoke_from,
-        app_config=SimpleNamespace(app_id="app-id", tenant_id="tenant-id"),
+        app_config=WorkflowUIBasedAppConfig(
+            app_id="app-id", tenant_id="tenant-id", workflow_id="workflow-id", app_mode=AppMode.WORKFLOW
+        ),
     )
     system_variables = build_system_variables(
         user_id="user",

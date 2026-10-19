@@ -60,7 +60,7 @@ def test_get_app_model_requires_app_id() -> None:
     def handler(app_model: App) -> str:
         return app_model.id
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="missing app_id in path parameters"):
         cast(Callable[..., str], handler)()
 
 

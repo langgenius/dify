@@ -1,3 +1,4 @@
+import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { StateCreator } from 'zustand'
 import type {
   Edge,
@@ -5,7 +6,6 @@ import type {
   TriggerNodeType,
   WorkflowRunningData,
 } from '@/app/components/workflow/types'
-import type { FileUploadConfigResponse } from '@/models/common'
 
 type PreviewRunningData = WorkflowRunningData & {
   resultTabActive?: boolean
@@ -62,14 +62,14 @@ export type WorkflowSliceShape = {
   setCommentPreviewHovering: (hovering: boolean) => void
   mousePosition: { pageX: number; pageY: number; elementX: number; elementY: number }
   setMousePosition: (mousePosition: WorkflowSliceShape['mousePosition']) => void
-  showConfirm?: { title: string; desc?: string; onConfirm: () => void }
+  showConfirm?: { title: string; desc?: string; onConfirm: () => void; onCancel?: () => void }
   setShowConfirm: (showConfirm: WorkflowSliceShape['showConfirm']) => void
   controlPromptEditorRerenderKey: number
   setControlPromptEditorRerenderKey: (controlPromptEditorRerenderKey: number) => void
   showImportDSLModal: boolean
   setShowImportDSLModal: (showImportDSLModal: boolean) => void
-  fileUploadConfig?: FileUploadConfigResponse
-  setFileUploadConfig: (fileUploadConfig: FileUploadConfigResponse) => void
+  fileUploadConfig?: UploadConfig
+  setFileUploadConfig: (fileUploadConfig: UploadConfig) => void
 }
 
 export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = (set) => ({

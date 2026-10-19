@@ -19,6 +19,7 @@ from models.snippet import CustomizedSnippet
 from models.workflow import Workflow
 from repositories.workflow.definition_repository import workflow_record, workflow_snapshot
 from services.workflow.contracts import WorkflowRecord
+from tests.unit_tests.controllers.error_body import raised_error
 from tests.unit_tests.model_factories import make_account
 
 
@@ -165,10 +166,16 @@ def test_draft_workflow_post_returns_400_for_invalid_graph(
         method="POST",
         json={"graph": {"nodes": [], "edges": []}, "hash": "hash-1"},
     ):
-        response, status_code = handler(api, RequestContext("test", None, user.id, snippet.tenant_id), snippet.id)
+        response, status_code = raised_error(
+            lambda: handler(
+                api,
+                RequestContext("test", None, user.id, snippet.tenant_id),
+                snippet.id,
+            )
+        )
 
     assert status_code == 400
-    assert response == {"message": "invalid graph"}
+    assert response == {"code": "invalid_param", "message": "invalid graph"}
 
 
 def test_draft_config_returns_parallel_depth_limit(app: Flask) -> None:
@@ -231,10 +238,10 @@ def test_published_workflow_post_returns_400_when_publish_fails(
     handler = unwrap(api.post)
 
     with app.test_request_context("/snippets/snippet-1/workflows/publish", method="POST", json={}):
-        response, status_code = handler(api, user, snippet)
+        response, status_code = raised_error(lambda: handler(api, user, snippet))
 
     assert status_code == 400
-    assert response == {"message": "No valid workflow found."}
+    assert response == {"code": "invalid_param", "message": "No valid workflow found."}
     sqlite_session.refresh(snippet)
     assert snippet.name == "Snippet"
 
@@ -485,17 +492,19 @@ def test_update_published_snippet_workflow_returns_400_when_no_fields(app: Flask
     handler = unwrap(api.patch)
 
     with app.test_request_context("/snippets/snippet-1/workflows/workflow-1", method="PATCH", json={}):
-        response, status_code = handler(
-            api,
-            snippet_workflow_module.WorkflowUpdatePayload(),
-            unbound_session,
-            _account("account-1"),
-            _snippet(),
-            workflow_id="workflow-1",
+        response, status_code = raised_error(
+            lambda: handler(
+                api,
+                snippet_workflow_module.WorkflowUpdatePayload(),
+                unbound_session,
+                _account("account-1"),
+                _snippet(),
+                workflow_id="workflow-1",
+            )
         )
 
     assert status_code == 400
-    assert response == {"message": "No valid fields to update"}
+    assert response == {"code": "invalid_param", "message": "No valid fields to update"}
 
 
 def test_update_published_snippet_workflow_raises_not_found(

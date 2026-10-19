@@ -86,7 +86,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         session: Session,
         end_users: AppScopedEndUserProvisioner,
         runtime: AppGenerationRuntime,
-    ) -> Generator[Mapping | str, None, None] | Mapping:
+    ) -> Generator[Mapping | str] | Mapping:
         """
         invoke app
         """
@@ -142,7 +142,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         files: list[dict],
         session: Session,
         runtime: AppGenerationRuntime,
-    ) -> Generator[Mapping | str, None, None] | Mapping:
+    ) -> Generator[Mapping | str] | Mapping:
         """
         invoke chat app
         """
@@ -224,7 +224,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         files: list[dict],
         *,
         runtime: AppGenerationRuntime,
-    ) -> Generator[Mapping | str, None, None] | Mapping:
+    ) -> Generator[Mapping | str] | Mapping:
         """
         invoke workflow app
         """
@@ -259,7 +259,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         records: ChatRecords,
         annotations: AnnotationReplies,
         retrieval: DatasetRetrievalFactory,
-    ) -> Generator[Mapping | str, None, None] | Mapping:
+    ) -> Generator[Mapping | str] | Mapping:
         """
         invoke completion app
         """

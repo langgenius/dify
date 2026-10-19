@@ -1,4 +1,4 @@
-import type { RelatedAppResponse } from '@/models/datasets'
+import type { RelatedAppListResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiInformation2Line } from '@remixicon/react'
 import * as React from 'react'
@@ -9,7 +9,7 @@ import NoLinkedAppsPanel from '../no-linked-apps-panel'
 type StatisticsProps = {
   expand: boolean
   documentCount?: number
-  relatedApps?: RelatedAppResponse
+  relatedApps?: RelatedAppListResponse
 }
 
 const Statistics = ({ expand, documentCount, relatedApps }: StatisticsProps) => {

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 
 import pytest
 from sqlalchemy import func, select
@@ -38,10 +39,10 @@ from models.model import App, AppMode, MessageFile
 from services.app.generation.adapters.base_runner import AppRunner
 
 
+@dataclass(eq=False, repr=False)
 class _DummyParameterRule:
-    def __init__(self, name: str, use_template: str | None = None) -> None:
-        self.name = name
-        self.use_template = use_template
+    name: str
+    use_template: str | None = None
 
 
 class _TokenCountingModel:

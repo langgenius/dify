@@ -841,7 +841,7 @@ class WebhookService:
 
             try:
                 # NOTE: don not use `with sessionmaker(bind=db.engine, expire_on_commit=False).begin()`
-                # trigger_workflow_async need to handle multipe session commits internally
+                # trigger_workflow_async need to handle multiple session commits internally
                 with Session(db.engine, expire_on_commit=False) as session:
                     AsyncWorkflowService.trigger_workflow_async(end_user, trigger_data, session=session)
                 quota_charge.commit()

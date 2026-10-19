@@ -46,7 +46,6 @@ from models.agent import (
 )
 from models.annotation_reply import AnnotationReplies, AnnotationReply
 from models.enums import ConversationFromSource
-from models.human_input_contracts import HumanInputFormFactory
 from models.tool_runtime_contracts import WorkflowToolQueries
 from services.app.generation.adapters.agent_request_builder import AgentAppRuntimeRequestBuilder
 from services.app.generation.adapters.agent_runner import AgentAppRunner
@@ -54,16 +53,13 @@ from services.app.generation.agent_config import AgentAppConfigurations
 from services.app.generation.errors import (
     AgentAppGeneratorError,
     AgentAppNotPublishedError,
-    AgentSessionSnapshotIncompatibleError,
 )
 from services.app.generation.message_records import MessageBasedAppGenerator
 from services.app.generation.ports import ChatRecords
 from services.tools.provider_queries import ToolProviders
+from services.workflow.execution.adapters.agent_v2.dify_tools_builder import WorkflowAgentDifyToolsBuilder
 
 logger = logging.getLogger(__name__)
-
-
-from services.workflow.execution.adapters.agent_v2.dify_tools_builder import WorkflowAgentDifyToolsBuilder
 
 
 class AgentAppGenerator(MessageBasedAppGenerator):
@@ -74,13 +70,11 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         workflow_queries: WorkflowToolQueries,
         records: ChatRecords,
         annotations: AnnotationReplies,
-        forms: HumanInputFormFactory,
         agent_configs: AgentAppConfigurations,
     ) -> None:
         super().__init__(records=records, annotations=annotations)
         self._tool_providers = tool_providers
         self._workflow_queries = workflow_queries
-        self._forms = forms
         self._agent_configs = agent_configs
 
     def generate(
@@ -91,7 +85,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,
-    ) -> Mapping[str, Any] | Generator[Mapping | str, None, None]:
+    ) -> Mapping[str, Any] | Generator[Mapping | str]:
         if not streaming:
             raise AgentAppGeneratorError("Agent App only supports streaming mode")
 
@@ -222,133 +216,6 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         )
         return AgentAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
 
-    def resume_after_form_submission(
-        self,
-        *,
-        app_model: App,
-        user: Account | EndUser,
-        conversation_id: str,
-        form_id: str,
-        invoke_from: InvokeFrom,
-    ) -> None:
-        """Resume an Agent App conversation after a submitted ask_human HITL form.
-
-        ENG-635: triggered by a background task (not an HTTP request). Runs one
-        blocking turn with no user query; the runner threads the human's reply
-        into the agent run as deferred_tool_results and the assistant answer is
-        persisted to the conversation. Live streaming to a reconnected client is
-        out of scope here — the message is persisted and can be re-fetched.
-        """
-        conversation = self._records.conversation(
-            app_id=app_model.id,
-            conversation_id=conversation_id,
-            account_id=user.id if isinstance(user, Account) else None,
-            end_user_id=user.id if isinstance(user, EndUser) else None,
-        )
-        config = self._agent_configs.resolve(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
-            account_id=user.id if isinstance(user, Account) else None,
-            debug=invoke_from == InvokeFrom.DEBUGGER,
-            draft_type=None,
-            conversation_id=conversation.id,
-            form_id=form_id,
-        )
-
-        app_model_config = self._get_app_model_config(app_model) if app_model.app_model_config_id else None
-        annotation_reply = (
-            self._records.annotation_config(tenant_id=app_model.tenant_id, app_id=app_model.id)
-            if app_model_config
-            else None
-        )
-
-        app_config = AgentAppConfigManager.get_app_config(
-            app_model=app_model,
-            agent_soul=config.soul,
-            annotation_reply=annotation_reply,
-            app_model_config=app_model_config,
-            conversation=conversation,
-        )
-        model_conf = ModelConfigConverter.convert(app_config)
-        trace_manager = TraceQueueManager(app_model.id, user.id if isinstance(user, Account) else user.session_id)
-
-        # ENG-638: the agent backend requires the resume composition's layer
-        # names to match the suspended snapshot, which includes the per-turn
-        # user-prompt layer. So re-send the original user message (the paused
-        # turn's query); the continuation is driven by deferred_tool_results and
-        # the restored snapshot, not by re-processing this prompt. A blank prompt
-        # would drop the user-prompt layer and fail the snapshot match.
-        paused_query = self._records.latest_query(
-            tenant_id=app_model.tenant_id, app_id=app_model.id, conversation_id=conversation.id
-        )
-        resume_query = paused_query or "(resumed)"
-
-        application_generate_entity = AgentAppGenerateEntity(
-            task_id=str(uuid.uuid4()),
-            app_config=app_config,
-            model_conf=model_conf,
-            conversation_id=conversation.id,
-            # A resume carries no new user inputs; the human's answer is the
-            # submitted form, threaded in by the runner as deferred_tool_results.
-            # The query re-sends the paused turn's message (see above).
-            inputs={},
-            query=resume_query,
-            files=[],
-            parent_message_id=UUID_NIL,
-            user_id=user.id,
-            stream=False,
-            invoke_from=invoke_from,
-            extras={"auto_generate_conversation_name": False},
-            call_depth=0,
-            trace_manager=trace_manager,
-            agent_id=config.agent_id,
-            agent_config_snapshot_id=config.version_id,
-            agent_config_version_kind=config.version_kind,
-            agent_session_scope_config_version_id=config.version_id,
-            agent_llm_gateway_enabled=True,
-        )
-
-        conversation, message = self._init_generate_records(
-            application_generate_entity,
-            conversation,
-        )
-
-        queue_manager = MessageBasedAppQueueManager(
-            task_id=application_generate_entity.task_id,
-            user_id=application_generate_entity.user_id,
-            invoke_from=application_generate_entity.invoke_from,
-            conversation_id=conversation.id,
-            app_mode=conversation.mode,
-            message_id=message.id,
-        )
-
-        context = contextvars.copy_context()
-        worker_thread = threading.Thread(
-            target=self._generate_worker,
-            kwargs={
-                "flask_app": current_app._get_current_object(),  # type: ignore
-                "context": context,
-                "application_generate_entity": application_generate_entity,
-                "queue_manager": queue_manager,
-                "conversation_id": conversation.id,
-                "message_id": message.id,
-                "user_from": UserFrom.ACCOUNT if isinstance(user, Account) else UserFrom.END_USER,
-                # Resume continues a paused agent run; skip input guards (see _generate_worker).
-                "is_resume": True,
-            },
-        )
-        worker_thread.start()
-
-        # Blocking: drive the chat task pipeline to persist the assistant answer.
-        self._handle_response(
-            application_generate_entity=application_generate_entity,
-            queue_manager=queue_manager,
-            conversation=conversation,
-            message=message,
-            user=user,
-            stream=False,
-        )
-
     def _generate_worker(
         self,
         *,
@@ -359,7 +226,6 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         conversation_id: str,
         message_id: str,
         user_from: UserFrom,
-        is_resume: bool = False,
     ) -> None:
         from libs.flask_utils import preserve_flask_contexts
 
@@ -374,41 +240,31 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 )
                 app_config = application_generate_entity.app_config
 
-                if is_resume:
-                    # ENG-638: a resume continues a paused agent run; the human's
-                    # reply is threaded in by the runner as deferred_tool_results.
-                    # The query is the replayed paused-turn message, kept only to
-                    # match the suspended snapshot's layers — it is NOT new
-                    # end-user input, so input guards must NOT run. Moderation or an
-                    # annotation match on the replayed query would short-circuit the
-                    # turn and drop the human reply, stranding the ask_human session.
-                    query = application_generate_entity.query or ""
-                else:
-                    # Apply app-level input guards (content moderation + annotation
-                    # reply) before reaching the Agent backend, mirroring the EasyUI
-                    # chat / agent-chat runners. These can short-circuit the turn.
-                    handled, query, annotation_reply = self._run_input_guards(
-                        application_generate_entity=application_generate_entity,
-                        app_model=app_record,
-                        message=message,
-                        queue_manager=queue_manager,
-                    )
-                    if annotation_reply:
-                        from core.app.entities.queue_entities import QueueAnnotationReplyEvent
-                        from services.app.generation.adapters.agent_runner import publish_text_answer
+                # Apply app-level input guards (content moderation + annotation
+                # reply) before reaching the Agent backend, mirroring the EasyUI
+                # chat / agent-chat runners. These can short-circuit the turn.
+                handled, query, annotation_reply = self._run_input_guards(
+                    application_generate_entity=application_generate_entity,
+                    app_model=app_record,
+                    message=message,
+                    queue_manager=queue_manager,
+                )
+                if annotation_reply:
+                    from core.app.entities.queue_entities import QueueAnnotationReplyEvent
+                    from services.app.generation.adapters.agent_runner import publish_text_answer
 
-                        queue_manager.publish(
-                            QueueAnnotationReplyEvent(message_annotation_id=annotation_reply.id),
-                            PublishFrom.APPLICATION_MANAGER,
-                        )
-                        publish_text_answer(
-                            queue_manager=queue_manager,
-                            model_name=application_generate_entity.model_conf.model,
-                            answer=annotation_reply.content,
-                            user_query=query,
-                        )
-                    if handled:
-                        return
+                    queue_manager.publish(
+                        QueueAnnotationReplyEvent(message_annotation_id=annotation_reply.id),
+                        PublishFrom.APPLICATION_MANAGER,
+                    )
+                    publish_text_answer(
+                        queue_manager=queue_manager,
+                        model_name=application_generate_entity.model_conf.model,
+                        answer=annotation_reply.content,
+                        user_query=query,
+                    )
+                if handled:
+                    return
 
                 dify_context = DifyRunContext(
                     tenant_id=app_config.tenant_id,
@@ -459,15 +315,6 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 )
             except GenerateTaskStoppedError:
                 pass
-            except AgentSessionSnapshotIncompatibleError as error:
-                logger.info(
-                    "Agent App session snapshot no longer matches the current composition",
-                    extra={
-                        "agent_id": application_generate_entity.agent_id,
-                        "conversation_id": conversation_id,
-                    },
-                )
-                queue_manager.publish_error(error, PublishFrom.APPLICATION_MANAGER)
             except Exception as e:
                 logger.exception("Unknown Error in Agent App generate worker")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
@@ -481,7 +328,6 @@ class AgentAppGenerator(MessageBasedAppGenerator):
 
     def _build_runner(self) -> AgentAppRunner:
         return AgentAppRunner(
-            forms=self._forms,
             records=self._records,
             request_builder=AgentAppRuntimeRequestBuilder(
                 dify_tools_builder=WorkflowAgentDifyToolsBuilder(

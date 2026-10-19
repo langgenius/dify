@@ -1,5 +1,3 @@
-from repositories.trigger.workflow_repository import WorkflowTriggerRepository
-
 """Testcontainers integration tests for schedule service SQL-backed behavior."""
 
 from datetime import datetime
@@ -14,6 +12,7 @@ from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig, Schedu
 from core.workflow.nodes.trigger_schedule.exc import ScheduleNotFoundError
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.trigger import WorkflowSchedulePlan
+from repositories.trigger.workflow_repository import WorkflowTriggerRepository
 from services.account_errors import AccountNotFoundError
 from services.trigger.schedule_service import ScheduleService
 from services.trigger.workflow_policy import schedule_config

@@ -1,6 +1,3 @@
-from extensions.application_services.retrieval import build_dataset_retrieval
-from repositories.knowledge import retrieval_repository as retrieval_repository_module
-
 """Published applications sign admin-uploaded images only through valid knowledge bindings."""
 
 from datetime import UTC, datetime
@@ -16,10 +13,12 @@ from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import FileAccessScope, bind_file_access_scope, get_current_file_access_scope
 from core.rag.models.document import Document as RagDocument
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
+from extensions.application_services.retrieval import build_dataset_retrieval
 from extensions.storage.storage_type import StorageType
 from models.dataset import Dataset, Document, DocumentSegment, SegmentAttachmentBinding
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, SegmentStatus
 from models.model import UploadFile
+from repositories.knowledge import retrieval_repository as retrieval_repository_module
 from repositories.knowledge.dataset_read_repository import authorize_retrieved_segment
 from services.knowledge.retrieval import dataset_retrieval as retrieval_module
 from services.knowledge.retrieval.dataset_retrieval import DatasetRetrieval

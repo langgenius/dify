@@ -1,5 +1,3 @@
-from extensions.application_services.retrieval import build_dataset_retrieval
-
 """Focused tests for attachment-aware dataset retrieval entry behavior."""
 
 from unittest.mock import patch
@@ -7,6 +5,7 @@ from unittest.mock import patch
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
+from extensions.application_services.retrieval import build_dataset_retrieval
 from models.dataset import Dataset
 from repositories.knowledge.retrieval_repository import KnowledgeRetrievalRepository
 

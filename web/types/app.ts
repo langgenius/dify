@@ -36,34 +36,14 @@ export type RETRIEVE_METHOD =
   | 'semantic_search'
   | 'full_text_search'
   | 'hybrid_search'
-  | 'invertedIndex'
   | 'keyword_search'
 export const RETRIEVE_METHOD = {
   semantic: 'semantic_search' as RETRIEVE_METHOD,
   fullText: 'full_text_search' as RETRIEVE_METHOD,
   hybrid: 'hybrid_search' as RETRIEVE_METHOD,
-  invertedIndex: 'invertedIndex' as RETRIEVE_METHOD,
   keywordSearch: 'keyword_search' as RETRIEVE_METHOD,
 } as const
 
-/**
- * App modes
- */
-export type AppModeEnum =
-  | 'completion'
-  | 'workflow'
-  | 'chat'
-  | 'advanced-chat'
-  | 'agent-chat'
-  | 'agent'
-export const AppModeEnum = {
-  COMPLETION: 'completion' as AppModeEnum,
-  WORKFLOW: 'workflow' as AppModeEnum,
-  CHAT: 'chat' as AppModeEnum,
-  ADVANCED_CHAT: 'advanced-chat' as AppModeEnum,
-  AGENT_CHAT: 'agent-chat' as AppModeEnum,
-  AGENT: 'agent' as AppModeEnum,
-} as const
 /**
  * Variable type
  */
@@ -173,7 +153,7 @@ export type AgentTool = {
   credential_id?: string
 }
 
-export type ToolItem =
+type ToolItem =
   | {
       dataset: {
         enabled: boolean
@@ -371,7 +351,7 @@ export type RetrievalConfig = {
   }
   top_k: number
   score_threshold_enabled: boolean
-  score_threshold: number
+  score_threshold?: number
   reranking_mode?: RerankingModeEnum
   weights?: {
     weight_type: WeightedScoreEnum

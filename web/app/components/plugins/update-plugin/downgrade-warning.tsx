@@ -1,39 +1,62 @@
-import { Button } from '@langgenius/dify-ui/button'
+import {
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { useTranslation } from 'react-i18next'
 
 const i18nPrefix = 'autoUpdate.pluginDowngradeWarning'
 
 type Props = Readonly<{
-  onCancel: () => void
+  excluding: boolean
+  downgrading: boolean
   onJustDowngrade: () => void
   onExcludeAndDowngrade: () => void
 }>
-const DowngradeWarningModal = ({ onCancel, onJustDowngrade, onExcludeAndDowngrade }: Props) => {
-  const { t } = useTranslation(['app', 'plugin'])
+const DowngradeWarningContent = ({
+  excluding,
+  downgrading,
+  onJustDowngrade,
+  onExcludeAndDowngrade,
+}: Props) => {
+  const { t } = useTranslation(['app', 'plugin', 'common'])
 
   return (
     <>
-      <div className="flex flex-col items-start gap-2 self-stretch">
-        <div className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $[`${i18nPrefix}.title`], { ns: 'plugin' })}
-        </div>
-        <div className="system-md-regular text-text-secondary">
+      <AlertDialogHeader>
+        <AlertDialogTitle>{t(($) => $[`${i18nPrefix}.title`], { ns: 'plugin' })}</AlertDialogTitle>
+        <AlertDialogDescription>
           {t(($) => $[`${i18nPrefix}.description`], { ns: 'plugin' })}
-        </div>
-      </div>
-      <div className="mt-9 flex items-start justify-end space-x-2 self-stretch">
-        <Button variant="secondary" onClick={() => onCancel()}>
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancelButton disabled={excluding || downgrading}>
           {t(($) => $['newApp.Cancel'], { ns: 'app' })}
-        </Button>
-        <Button variant="secondary" tone="destructive" onClick={onJustDowngrade}>
+        </AlertDialogCancelButton>
+        <AlertDialogConfirmButton
+          variant="secondary"
+          tone="destructive"
+          disabled={excluding}
+          loading={downgrading}
+          onClick={onJustDowngrade}
+        >
           {t(($) => $[`${i18nPrefix}.downgrade`], { ns: 'plugin' })}
-        </Button>
-        <Button variant="primary" onClick={onExcludeAndDowngrade}>
+        </AlertDialogConfirmButton>
+        <AlertDialogConfirmButton
+          variant="primary"
+          tone="default"
+          disabled={downgrading}
+          loading={excluding}
+          onClick={onExcludeAndDowngrade}
+        >
           {t(($) => $[`${i18nPrefix}.exclude`], { ns: 'plugin' })}
-        </Button>
-      </div>
+        </AlertDialogConfirmButton>
+      </AlertDialogFooter>
     </>
   )
 }
 
-export default DowngradeWarningModal
+export default DowngradeWarningContent

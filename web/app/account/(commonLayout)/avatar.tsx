@@ -1,5 +1,5 @@
 'use client'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -13,6 +13,7 @@ import PremiumBadge from '@/app/components/base/premium-badge'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
 import { useLogout } from '@/service/use-common'
+import { getAvatarInitial } from '@/utils/avatar'
 
 export default function AppSelector() {
   const { t } = useTranslation(['common'])
@@ -44,7 +45,10 @@ export default function AppSelector() {
           'hover:opacity-80 active:opacity-70 data-popup-open:opacity-80',
         )}
       >
-        <Avatar avatar={userProfile.avatar_url} name={userProfile.name} />
+        <Avatar aria-hidden="true">
+          <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
+          <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
+        </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent
         placement="bottom-end"
@@ -67,7 +71,10 @@ export default function AppSelector() {
                 {userProfile.email}
               </div>
             </div>
-            <Avatar avatar={userProfile.avatar_url} name={userProfile.name} />
+            <Avatar aria-hidden="true">
+              <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
+              <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
+            </Avatar>
           </div>
         </div>
         <div className="p-1">

@@ -102,11 +102,11 @@ def runtime_gateway(
     event.listen(factory, "after_begin", opened)
     workflows = WorkflowService(session_maker=factory, runtime=build_workflow_execution_dependencies(factory))
 
-    def generate(**_kwargs: object) -> Generator[str, None, None]:
+    def generate(**_kwargs: object) -> Generator[str]:
         assert sessions
         assert all(session.closed for session in sessions)
 
-        def events() -> Generator[str, None, None]:
+        def events() -> Generator[str]:
             assert all(session.closed for session in sessions)
             yield "data: ready\n\n"
 
@@ -320,7 +320,13 @@ def test_rejected_debug_handoff_only_notifies_owned_expired_stream(
     runner = task_module._AppRunner(gateway._sessions, params, variables=gateway._variables)
     engine = Mock()
     monkeypatch.setattr(runner, "_run_app", engine)
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match=(
+            r"Trigger debug reservation (?:expired before worker startup|was already claimed)"
+            r"|Workflow snapshot does not belong to this debugger invocation"
+        ),
+    ):
         runner.run()
     engine.assert_not_called()
     finish.assert_not_called()
@@ -517,13 +523,13 @@ def test_paused_trigger_finalizes_once_despite_delayed_start_write(
         topic.publish.side_effect = RuntimeError("pause publish failed")
     monkeypatch.setattr(WorkflowEventStream, "get_response_topic", lambda *_args: topic)
 
-    def events(**_kwargs: object) -> Generator[dict[str, object], None, None]:
+    def events(**_kwargs: object) -> Generator[dict[str, object]]:
         yield {"event": "workflow_paused", "data": {"status": "paused"}}
         if stream_raises:
             raise RuntimeError("stream failed after pause")
 
     @contextmanager
-    def execution_context(_user: object) -> Generator[None, None, None]:
+    def execution_context(_user: object) -> Generator[None]:
         try:
             yield
         finally:
@@ -617,7 +623,7 @@ def test_pause_publication_can_resume_before_old_worker_exits(
     monkeypatch.setattr("tasks.collect_agent_resources_task.collect_agent_resources.delay", collector)
     runs = DifyAPISQLAlchemyWorkflowRunRepository(sqlite_session_factory)
 
-    def events(**_kwargs: object) -> Generator[dict[str, object], None, None]:
+    def events(**_kwargs: object) -> Generator[dict[str, object]]:
         # Pause-state persistence precedes the outgoing engine event.
         with sqlite_session_factory.begin() as session:
             run = session.get(WorkflowRun, snapshot.execution_id)
@@ -784,11 +790,11 @@ def test_real_stream_preparation_releases_reads_before_external_io(
         external("enqueue")
         queued.append(payload)
 
-    def retrieve_events(*_args: object, on_subscribe: Callable[[], None]) -> Generator[str, None, None]:
+    def retrieve_events(*_args: object, on_subscribe: Callable[[], None]) -> Generator[str]:
         # This assertion runs during preparation, before the returned stream is consumed.
         external("subscription-prepare")
 
-        def events() -> Generator[str, None, None]:
+        def events() -> Generator[str]:
             on_subscribe()
             yield from ()
 
@@ -1290,7 +1296,7 @@ def test_full_trigger_execution_preserves_revision_through_task_and_worker(
     queued: list[str] = []
     monkeypatch.setattr(task_module.workflow_based_app_execution_task, "delay", queued.append)
 
-    def retrieve_events(*_args: object, on_subscribe: Callable[[], None]) -> Generator[str, None, None]:
+    def retrieve_events(*_args: object, on_subscribe: Callable[[], None]) -> Generator[str]:
         assert all(session.closed for session in sessions)
         on_subscribe()
         yield from ()
@@ -1334,7 +1340,7 @@ def test_full_trigger_execution_preserves_revision_through_task_and_worker(
         def run(self) -> None:
             pass
 
-    def empty_response(*_args: object, **_kwargs: object) -> Generator[str, None, None]:
+    def empty_response(*_args: object, **_kwargs: object) -> Generator[str]:
         yield from ()
 
     monkeypatch.setattr(base_app_queue_manager.redis_client, "setex", lambda *_args, **_kwargs: None)
@@ -1425,7 +1431,7 @@ def test_container_debug_prepares_database_records_before_redis(
                 assert session.scalar(select(Message.id)) is not None
         writes.append(key)
 
-    def response(*_args: object, **_kwargs: object) -> Generator[str, None, None]:
+    def response(*_args: object, **_kwargs: object) -> Generator[str]:
         yield from ()
 
     def unexpected_gateway_session() -> NoReturn:
@@ -1564,7 +1570,7 @@ def test_trigger_pins_agent_job_and_soul_until_worker_finishes(
     queued: list[str] = []
     monkeypatch.setattr(task_module.workflow_based_app_execution_task, "delay", queued.append)
 
-    def events(*_args: object, on_subscribe: Callable[[], None]) -> Generator[str, None, None]:
+    def events(*_args: object, on_subscribe: Callable[[], None]) -> Generator[str]:
         on_subscribe()
         yield from ()
 
@@ -1582,7 +1588,7 @@ def test_trigger_pins_agent_job_and_soul_until_worker_finishes(
     assert params.workflow_run_id == event_data.workflow.execution_id
     monkeypatch.setattr("services.agent.retirement_service.enqueue_agent_resource_collection", lambda **_kwargs: None)
 
-    def run_app(_runner, *, workflow: Workflow, **_kwargs: object) -> Generator[str, None, None]:
+    def run_app(_runner, *, workflow: Workflow, **_kwargs: object) -> Generator[str]:
         assert workflow.graph_dict["nodes"][1]["id"] == "agent-node"
         resolved = _runner._runtime.agent_bindings.resolve(
             tenant_id="tenant-1",
@@ -2269,7 +2275,7 @@ def test_completed_debug_redelivery_replays_persisted_outcome_without_execution_
     received: list[bytes] = []
     execution_error = None if status == WorkflowExecutionStatus.SUCCEEDED else "Actual engine outcome"
 
-    def execute(_runner: task_module._AppRunner, **_kwargs: object) -> Generator[dict[str, object], None, None]:
+    def execute(_runner: task_module._AppRunner, **_kwargs: object) -> Generator[dict[str, object]]:
         engine_calls.append(params.workflow_run_id)
         yield {"event": "workflow_started"}
         with sqlite_session_factory.begin() as session:

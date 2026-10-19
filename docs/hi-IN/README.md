@@ -165,7 +165,7 @@ Dify सभी प्रकार के योगदानों का स्�
 - [X](https://x.com/dify_ai): रिलीज़ समाचार और प्रोजेक्ट अपडेट के लिए Dify को फ़ॉलो करें।
 ## स्टार इतिहास (Star history)
 
-[![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
+[![Star History Chart](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-light-mode-only) [![Star History Chart](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&theme=dark&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-dark-mode-only)
 
 ## सुरक्षा प्रकटीकरण (Security disclosure)
 

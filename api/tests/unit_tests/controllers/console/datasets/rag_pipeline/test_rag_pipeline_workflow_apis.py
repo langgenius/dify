@@ -60,6 +60,7 @@ from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError,
 from services.errors.workflow_service import WorkflowInUseError
 from services.workflow.contracts import WorkflowOwner, WorkflowSnapshot
 from services.workflow.draft_service import WorkflowDraftService
+from tests.unit_tests.controllers.error_body import raised_error
 
 pytestmark = pytest.mark.usefixtures("pipeline_application")
 
@@ -342,7 +343,9 @@ class TestDraftWorkflowApi:
         with (
             app.test_request_context("/", data="bad-json", headers={"Content-Type": "text/plain"}),
         ):
-            response, status = method(api, RequestContext("test", None, user.id, pipeline.tenant_id), pipeline.id)
+            response, status = raised_error(
+                lambda: method(api, RequestContext("test", None, user.id, pipeline.tenant_id), pipeline.id)
+            )
             assert status == 400
 
     def test_restore_published_workflow_to_draft_success(
@@ -498,7 +501,7 @@ class TestDraftNodeRun:
                 return_value=None,
             ),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="Workflow node execution not found"):
                 method(api, NodeRunRequiredPayload(inputs={}), user, pipeline, "node")
 
 
@@ -561,7 +564,27 @@ class TestMiscApis:
 
         service = MagicMock()
         recommended_plugins = {
-            "installed_recommended_plugins": [{"id": "p1"}],
+            "installed_recommended_plugins": [
+                {
+                    "id": "p1",
+                    "author": "langgenius",
+                    "name": "p1",
+                    "description": {
+                        "en_US": "Plugin one",
+                        "zh_Hans": "Plugin one",
+                        "pt_BR": "Plugin one",
+                        "ja_JP": "Plugin one",
+                    },
+                    "icon": "/icon.svg",
+                    "label": {
+                        "en_US": "Plugin one",
+                        "zh_Hans": "Plugin one",
+                        "pt_BR": "Plugin one",
+                        "ja_JP": "Plugin one",
+                    },
+                    "type": "builtin",
+                }
+            ],
             "uninstalled_recommended_plugins": [{"id": "p2"}],
         }
         service.get_recommended_plugins.return_value = recommended_plugins
@@ -609,7 +632,7 @@ class TestDefaultBlockConfigApi:
         pipeline = make_pipeline()
 
         with app.test_request_context("/?q=bad-json"):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="Invalid filters"):
                 method(api, DefaultBlockConfigQuery(q="bad-json"), pipeline, "llm")
 
 
@@ -690,8 +713,9 @@ class TestRagPipelineByIdApi:
         user = make_account()
 
         with app.test_request_context("/", json={}):
-            result, status = method(api, WorkflowUpdatePayload(), user, pipeline, "w1")
+            result, status = raised_error(lambda: method(api, WorkflowUpdatePayload(), user, pipeline, "w1"))
             assert status == 400
+            assert result == {"code": "invalid_param", "message": "No valid fields to update"}
 
     @pytest.mark.parametrize("in_use", [False, True])
     def test_delete_delegates_to_application(

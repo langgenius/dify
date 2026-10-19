@@ -3,7 +3,7 @@ import logging
 import time
 from collections.abc import Generator, Mapping, Sequence
 from mimetypes import guess_extension
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 from core.app.app_config.entities import ExternalDataVariableEntity, PromptTemplateEntity
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -114,7 +114,7 @@ class AppRunner:
         """
         # get prompt without memory and context
         if prompt_template_entity.prompt_type == PromptTemplateEntity.PromptType.SIMPLE:
-            prompt_transform: Union[SimplePromptTransform, AdvancedPromptTransform]
+            prompt_transform: SimplePromptTransform | AdvancedPromptTransform
             prompt_transform = SimplePromptTransform()
             prompt_messages, stop = prompt_transform.get_prompt(
                 app_mode=AppMode.value_of(app_record.mode),
@@ -132,7 +132,7 @@ class AppRunner:
             memory_config = MemoryConfig(window=MemoryConfig.WindowConfig(enabled=False))
 
             model_mode = ModelMode(model_config.mode)
-            prompt_template: Union[CompletionModelPromptTemplate, list[ChatModelMessage]]
+            prompt_template: CompletionModelPromptTemplate | list[ChatModelMessage]
             if model_mode == ModelMode.COMPLETION:
                 advanced_completion_prompt_template = prompt_template_entity.advanced_completion_prompt_template
                 if not advanced_completion_prompt_template:
@@ -187,8 +187,7 @@ class AppRunner:
         :return:
         """
         if stream:
-            index = 0
-            for token in text:
+            for index, token in enumerate(text):
                 chunk = LLMResultChunk(
                     model=app_generate_entity.model_conf.model,
                     prompt_messages=prompt_messages,
@@ -196,7 +195,6 @@ class AppRunner:
                 )
 
                 queue_manager.publish(QueueLLMChunkEvent(chunk=chunk), PublishFrom.APPLICATION_MANAGER)
-                index += 1
                 time.sleep(0.01)
 
         queue_manager.publish(
@@ -213,7 +211,7 @@ class AppRunner:
 
     def _handle_invoke_result(
         self,
-        invoke_result: Union[LLMResult, Generator[Any, None, None]],
+        invoke_result: LLMResult | Generator[Any],
         queue_manager: AppQueueManager,
         stream: bool,
         agent: bool = False,
@@ -274,7 +272,7 @@ class AppRunner:
 
     def _handle_invoke_result_stream(
         self,
-        invoke_result: Generator[LLMResultChunk, None, None],
+        invoke_result: Generator[LLMResultChunk],
         queue_manager: AppQueueManager,
         agent: bool,
         message_id: str | None = None,
