@@ -4,8 +4,10 @@ import type { AgentConfig } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
+  DialogBackdrop,
   DialogClose,
-  DialogContent,
+  DialogPopup,
+  DialogPortal,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
@@ -44,15 +46,18 @@ export function AgentSettingDialog({ disabled, onSave, ...props }: Props) {
         <span aria-hidden className="i-ri-settings-2-line size-4 text-text-tertiary" />
         {t(($) => $['agent.setting.name'])}
       </DialogTrigger>
-      <DialogContent className="top-2 right-2 bottom-2 left-auto flex h-auto max-h-none w-160 max-w-[calc(100vw-1rem)] translate-x-0 translate-y-0 flex-col overflow-hidden rounded-xl p-0">
-        <AgentSettingsForm
-          {...props}
-          onSave={(payload) => {
-            onSave(payload)
-            actionsRef.current?.close()
-          }}
-        />
-      </DialogContent>
+      <DialogPortal>
+        <DialogBackdrop />
+        <DialogPopup className="fixed top-2 right-2 bottom-2 flex w-160 max-w-[calc(100vw-1rem)] flex-col overflow-hidden overscroll-contain rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl">
+          <AgentSettingsForm
+            {...props}
+            onSave={(payload) => {
+              onSave(payload)
+              actionsRef.current?.close()
+            }}
+          />
+        </DialogPopup>
+      </DialogPortal>
     </Dialog>
   )
 }
@@ -88,9 +93,7 @@ function AgentSettingsForm({
       }}
     >
       <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pr-5 pl-6">
-        <DialogTitle className="text-base leading-6 font-semibold text-text-primary">
-          {t(($) => $['agent.setting.name'], { ns: 'appDebug' })}
-        </DialogTitle>
+        <DialogTitle>{t(($) => $['agent.setting.name'], { ns: 'appDebug' })}</DialogTitle>
         <DialogClose
           render={
             <IconButton

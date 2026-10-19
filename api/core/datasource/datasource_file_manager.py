@@ -6,7 +6,6 @@ import os
 import time
 from datetime import datetime
 from mimetypes import guess_extension, guess_type
-from typing import Union
 from uuid import uuid4
 
 import httpx
@@ -135,7 +134,7 @@ class DatasourceFileManager:
         return tool_file
 
     @staticmethod
-    def get_file_binary(id: str) -> Union[tuple[bytes, str], None]:
+    def get_file_binary(id: str) -> tuple[bytes, str] | None:
         """
         get file binary
 
@@ -154,7 +153,7 @@ class DatasourceFileManager:
         return blob, upload_file.mime_type
 
     @staticmethod
-    def get_file_binary_by_message_file_id(id: str) -> Union[tuple[bytes, str], None]:
+    def get_file_binary_by_message_file_id(id: str) -> tuple[bytes, str] | None:
         """
         get file binary
 

@@ -61,9 +61,19 @@ const OptionCard: FC<Props> = ({
         variants({ align }),
         className,
       )}
-      onClick={handleSelect}
     >
-      <span id={titleId}>{title}</span>
+      <button
+        type="button"
+        disabled={disabled}
+        aria-pressed={selected}
+        onClick={handleSelect}
+        className={cn(
+          'flex min-w-0 flex-1 items-center self-stretch rounded-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+          variants({ align }),
+        )}
+      >
+        <span id={titleId}>{title}</span>
+      </button>
       {tooltip && (
         <Infotip>
           <InfotipTrigger aria-labelledby={titleId} />

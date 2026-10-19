@@ -14,6 +14,7 @@ and ensure proper handling of crawl options, status checking, and data retrieval
 
 from unittest.mock import Mock, create_autospec, patch
 
+import httpx
 import pytest
 from pytest_mock import MockerFixture
 
@@ -97,7 +98,7 @@ def crawl_request(crawl_options: CrawlOptions) -> CrawlRequest:
 class TestCrawlOptions:
     """Test suite for CrawlOptions data class."""
 
-    def test_crawl_options_defaults(self):
+    def test_crawl_options_defaults(self) -> None:
         """Test that CrawlOptions has correct default values."""
         options = CrawlOptions()
 
@@ -110,7 +111,7 @@ class TestCrawlOptions:
         assert options.max_depth is None
         assert options.use_sitemap is True
 
-    def test_get_include_paths_with_values(self, crawl_options: CrawlOptions):
+    def test_get_include_paths_with_values(self, crawl_options: CrawlOptions) -> None:
         """Test parsing include paths from comma-separated string."""
         paths = crawl_options.get_include_paths()
 
@@ -118,14 +119,14 @@ class TestCrawlOptions:
         assert "/blog/*" in paths
         assert "/docs/*" in paths
 
-    def test_get_include_paths_empty(self):
+    def test_get_include_paths_empty(self) -> None:
         """Test that empty includes returns empty list."""
         options = CrawlOptions(includes=None)
         paths = options.get_include_paths()
 
         assert paths == []
 
-    def test_get_exclude_paths_with_values(self, crawl_options: CrawlOptions):
+    def test_get_exclude_paths_with_values(self, crawl_options: CrawlOptions) -> None:
         """Test parsing exclude paths from comma-separated string."""
         paths = crawl_options.get_exclude_paths()
 
@@ -133,14 +134,14 @@ class TestCrawlOptions:
         assert "/admin/*" in paths
         assert "/private/*" in paths
 
-    def test_get_exclude_paths_empty(self):
+    def test_get_exclude_paths_empty(self) -> None:
         """Test that empty excludes returns empty list."""
         options = CrawlOptions(excludes=None)
         paths = options.get_exclude_paths()
 
         assert paths == []
 
-    def test_max_depth_limiting(self):
+    def test_max_depth_limiting(self) -> None:
         """Test that max_depth can be set to limit crawl depth."""
         options = CrawlOptions(max_depth=5, crawl_sub_pages=True)
 
@@ -156,7 +157,7 @@ class TestCrawlOptions:
 class TestWebsiteCrawlDatasourcePlugin:
     """Test suite for WebsiteCrawlDatasourcePlugin."""
 
-    def test_plugin_initialization(self, mock_datasource_entity: DatasourceEntity):
+    def test_plugin_initialization(self, mock_datasource_entity: DatasourceEntity) -> None:
         """Test that plugin initializes correctly with required parameters."""
         from core.datasource.__base.datasource_runtime import DatasourceRuntime
 
@@ -174,7 +175,7 @@ class TestWebsiteCrawlDatasourcePlugin:
         assert plugin.entity == mock_datasource_entity
         assert plugin.datasource_provider_type() == DatasourceProviderType.WEBSITE_CRAWL
 
-    def test_get_website_crawl(self, mock_datasource_entity: DatasourceEntity, mocker: MockerFixture):
+    def test_get_website_crawl(self, mock_datasource_entity: DatasourceEntity, mocker: MockerFixture) -> None:
         """Test that get_website_crawl calls PluginDatasourceManager correctly."""
         from core.datasource.__base.datasource_runtime import DatasourceRuntime
 
@@ -194,7 +195,7 @@ class TestWebsiteCrawlDatasourcePlugin:
 
         datasource_params = {"url": "https://example.com", "max_depth": 2}
 
-        result = plugin.get_website_crawl(
+        plugin.get_website_crawl(
             user_id="test_user", datasource_parameters=datasource_params, provider_type="watercrawl"
         )
 
@@ -218,7 +219,7 @@ class TestWebsiteCrawlDatasourcePlugin:
 class TestWebsiteCrawlDatasourcePluginProviderController:
     """Test suite for WebsiteCrawlDatasourcePluginProviderController."""
 
-    def test_provider_controller_initialization(self, mock_provider_entity: DatasourceProviderEntityWithPlugin):
+    def test_provider_controller_initialization(self, mock_provider_entity: DatasourceProviderEntityWithPlugin) -> None:
         """Test provider controller initialization."""
         controller = WebsiteCrawlDatasourcePluginProviderController(
             entity=mock_provider_entity,
@@ -231,7 +232,7 @@ class TestWebsiteCrawlDatasourcePluginProviderController:
         assert controller.plugin_unique_identifier == "test_unique_id"
         assert controller.provider_type == DatasourceProviderType.WEBSITE_CRAWL
 
-    def test_get_datasource_success(self, mock_provider_entity: DatasourceProviderEntityWithPlugin):
+    def test_get_datasource_success(self, mock_provider_entity: DatasourceProviderEntityWithPlugin) -> None:
         """Test retrieving a datasource by name."""
         controller = WebsiteCrawlDatasourcePluginProviderController(
             entity=mock_provider_entity,
@@ -246,7 +247,7 @@ class TestWebsiteCrawlDatasourcePluginProviderController:
         assert datasource.tenant_id == "test_tenant"
         assert datasource.plugin_unique_identifier == "test_unique_id"
 
-    def test_get_datasource_not_found(self, mock_provider_entity: DatasourceProviderEntityWithPlugin):
+    def test_get_datasource_not_found(self, mock_provider_entity: DatasourceProviderEntityWithPlugin) -> None:
         """Test that ValueError is raised when datasource is not found."""
         controller = WebsiteCrawlDatasourcePluginProviderController(
             entity=mock_provider_entity,
@@ -267,7 +268,7 @@ class TestWebsiteCrawlDatasourcePluginProviderController:
 class TestWaterCrawlProvider:
     """Test suite for WaterCrawl provider crawling functionality."""
 
-    def test_crawl_url_basic(self, mocker: MockerFixture):
+    def test_crawl_url_basic(self, mocker: MockerFixture) -> None:
         """Test basic URL crawling without sub-pages."""
         mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
         mock_instance = mock_client.return_value
@@ -285,7 +286,7 @@ class TestWaterCrawlProvider:
         assert spider_options["max_depth"] == 1
         assert spider_options["page_limit"] == 1
 
-    def test_crawl_url_with_sub_pages(self, mocker: MockerFixture):
+    def test_crawl_url_with_sub_pages(self, mocker: MockerFixture) -> None:
         """Test URL crawling with sub-pages enabled."""
         mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
         mock_instance = mock_client.return_value
@@ -304,7 +305,7 @@ class TestWaterCrawlProvider:
         assert spider_options["max_depth"] == 3
         assert spider_options["page_limit"] == 50
 
-    def test_crawl_url_max_depth_limiting(self, mocker: MockerFixture):
+    def test_crawl_url_max_depth_limiting(self, mocker: MockerFixture) -> None:
         """Test that max_depth properly limits crawl depth."""
         mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
         mock_instance = mock_client.return_value
@@ -320,7 +321,7 @@ class TestWaterCrawlProvider:
         spider_options = call_args.kwargs["spider_options"]
         assert spider_options["max_depth"] == 2
 
-    def test_crawl_url_with_include_exclude_paths(self, mocker: MockerFixture):
+    def test_crawl_url_with_include_exclude_paths(self, mocker: MockerFixture) -> None:
         """Test URL crawling with include and exclude path filters."""
         mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
         mock_instance = mock_client.return_value
@@ -348,7 +349,7 @@ class TestWaterCrawlProvider:
         assert "/admin/*" in spider_options["exclude_paths"]
         assert "/private/*" in spider_options["exclude_paths"]
 
-    def test_crawl_url_content_extraction_options(self, mocker: MockerFixture):
+    def test_crawl_url_content_extraction_options(self, mocker: MockerFixture) -> None:
         """Test that content extraction options are properly configured."""
         mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
         mock_instance = mock_client.return_value
@@ -366,7 +367,7 @@ class TestWaterCrawlProvider:
         assert page_options["wait_time"] == 2000
         assert page_options["include_html"] is False
 
-    def test_crawl_url_minimum_wait_time(self, mocker: MockerFixture):
+    def test_crawl_url_minimum_wait_time(self, mocker: MockerFixture) -> None:
         """Test that wait_time has a minimum value of 1000ms."""
         mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
         mock_instance = mock_client.return_value
@@ -391,7 +392,7 @@ class TestWaterCrawlProvider:
 class TestCrawlStatus:
     """Test suite for crawl status checking and result retrieval."""
 
-    def test_get_crawl_status_active(self, mocker: MockerFixture):
+    def test_get_crawl_status_active(self, mocker: MockerFixture) -> None:
         """Test getting status of an active crawl job."""
         mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
         mock_instance = mock_client.return_value
@@ -412,7 +413,7 @@ class TestCrawlStatus:
         assert status["current"] == 5
         assert status["data"] == []
 
-    def test_get_crawl_status_completed(self, mocker: MockerFixture):
+    def test_get_crawl_status_completed(self, mocker: MockerFixture) -> None:
         """Test getting status of a completed crawl job with results."""
         mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
         mock_instance = mock_client.return_value
@@ -446,7 +447,7 @@ class TestCrawlStatus:
         assert len(status["data"]) == 1
         assert status["time_consuming"] == 15.5
 
-    def test_get_crawl_url_data(self, mocker: MockerFixture):
+    def test_get_crawl_url_data(self, mocker: MockerFixture) -> None:
         """Test retrieving specific URL data from crawl results."""
         mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
         mock_instance = mock_client.return_value
@@ -471,11 +472,11 @@ class TestCrawlStatus:
         assert data["title"] == "Target"
         assert data["markdown"] == "# Target Page"
 
-    def test_get_crawl_url_data_not_found(self, mocker: MockerFixture):
+    def test_get_crawl_url_data_not_found(self, mocker: MockerFixture) -> None:
         """Test that None is returned when URL is not in results."""
         mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
         mock_instance = mock_client.return_value
-        mock_instance.get_crawl_request_results.return_value = {"results": [], "next": None}
+        mock_instance.get_crawl_request_results.return_value = {"results": list[object](), "next": None}
 
         provider = WaterCrawlProvider(api_key="test_key")
         data = provider.get_crawl_url_data("test-job-789", "https://example.com/nonexistent")
@@ -493,7 +494,9 @@ class TestWebsiteService:
 
     @patch("services.data_source.website_service.current_user")
     @patch("services.data_source.website_service.DatasourceProviderService")
-    def test_crawl_url_firecrawl(self, mock_provider_service: Mock, mock_current_user: Mock, mocker: MockerFixture):
+    def test_crawl_url_firecrawl(
+        self, mock_provider_service: Mock, mock_current_user: Mock, mocker: MockerFixture
+    ) -> None:
         """Test crawling with Firecrawl provider."""
         # Setup mocks
         mock_current_user.current_tenant_id = "test_tenant"
@@ -528,7 +531,9 @@ class TestWebsiteService:
 
     @patch("services.data_source.website_service.current_user")
     @patch("services.data_source.website_service.DatasourceProviderService")
-    def test_crawl_url_watercrawl(self, mock_provider_service: Mock, mock_current_user: Mock, mocker: MockerFixture):
+    def test_crawl_url_watercrawl(
+        self, mock_provider_service: Mock, mock_current_user: Mock, mocker: MockerFixture
+    ) -> None:
         """Test crawling with WaterCrawl provider."""
         # Setup mocks
         mock_current_user.current_tenant_id = "test_tenant"
@@ -560,7 +565,9 @@ class TestWebsiteService:
 
     @patch("services.data_source.website_service.current_user")
     @patch("services.data_source.website_service.DatasourceProviderService")
-    def test_crawl_url_jinareader(self, mock_provider_service: Mock, mock_current_user: Mock, mocker: MockerFixture):
+    def test_crawl_url_jinareader(
+        self, mock_provider_service: Mock, mock_current_user: Mock, mocker: MockerFixture
+    ) -> None:
         """Test crawling with JinaReader provider."""
         # Setup mocks
         mock_current_user.current_tenant_id = "test_tenant"
@@ -568,9 +575,8 @@ class TestWebsiteService:
             "api_key": "test_key",
         }
 
-        mock_response = Mock()
-        mock_response.json.return_value = {"code": 200, "data": {"taskId": "task-789"}}
-        mock_httpx_post = mocker.patch(
+        mock_response = httpx.Response(200, json={"code": 200, "data": {"taskId": "task-789"}})
+        mocker.patch(
             "services.data_source.website_service._adaptive_http_client.post",
             return_value=mock_response,
         )
@@ -592,28 +598,28 @@ class TestWebsiteService:
         assert result["status"] == "active"
         assert result["job_id"] == "task-789"
 
-    def test_document_create_args_validate_success(self):
+    def test_document_create_args_validate_success(self) -> None:
         """Test validation of valid document creation arguments."""
         args = {"provider": "watercrawl", "url": "https://example.com", "options": {"limit": 10}}
 
         # Should not raise any exception
         WebsiteService.document_create_args_validate(args)
 
-    def test_document_create_args_validate_missing_provider(self):
+    def test_document_create_args_validate_missing_provider(self) -> None:
         """Test validation fails when provider is missing."""
         args = {"url": "https://example.com", "options": {"limit": 10}}
 
         with pytest.raises(ValueError, match="Provider is required"):
             WebsiteService.document_create_args_validate(args)
 
-    def test_document_create_args_validate_missing_url(self):
+    def test_document_create_args_validate_missing_url(self) -> None:
         """Test validation fails when URL is missing."""
         args = {"provider": "watercrawl", "options": {"limit": 10}}
 
         with pytest.raises(ValueError, match="URL is required"):
             WebsiteService.document_create_args_validate(args)
 
-    def test_document_create_args_validate_missing_options(self):
+    def test_document_create_args_validate_missing_options(self) -> None:
         """Test validation fails when options are missing."""
         args = {"provider": "watercrawl", "url": "https://example.com"}
 
@@ -629,7 +635,7 @@ class TestWebsiteService:
 class TestLinkFollowingLogic:
     """Test suite for link following and navigation logic."""
 
-    def test_link_following_with_includes(self, mocker: MockerFixture):
+    def test_link_following_with_includes(self, mocker: MockerFixture) -> None:
         """Test that only links matching include patterns are followed."""
         mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
         mock_instance = mock_client.return_value
@@ -646,7 +652,7 @@ class TestLinkFollowingLogic:
         assert "/blog/*" in spider_options["include_paths"]
         assert "/news/*" in spider_options["include_paths"]
 
-    def test_link_following_with_excludes(self, mocker: MockerFixture):
+    def test_link_following_with_excludes(self, mocker: MockerFixture) -> None:
         """Test that links matching exclude patterns are not followed."""
         mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
         mock_instance = mock_client.return_value
@@ -663,7 +669,7 @@ class TestLinkFollowingLogic:
         assert "/login/*" in spider_options["exclude_paths"]
         assert "/logout/*" in spider_options["exclude_paths"]
 
-    def test_link_following_respects_max_depth(self, mocker: MockerFixture):
+    def test_link_following_respects_max_depth(self, mocker: MockerFixture) -> None:
         """Test that link following stops at specified max depth."""
         mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
         mock_instance = mock_client.return_value
@@ -679,7 +685,7 @@ class TestLinkFollowingLogic:
         spider_options = call_args.kwargs["spider_options"]
         assert spider_options["max_depth"] == 1
 
-    def test_link_following_page_limit(self, mocker: MockerFixture):
+    def test_link_following_page_limit(self, mocker: MockerFixture) -> None:
         """Test that link following respects page limit."""
         mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
         mock_instance = mock_client.return_value
@@ -710,7 +716,7 @@ class TestRobotsTxtRespect:
     the service layer properly configures providers to respect robots.txt.
     """
 
-    def test_watercrawl_provider_respects_robots_txt(self, mocker: MockerFixture):
+    def test_watercrawl_provider_respects_robots_txt(self, mocker: MockerFixture) -> None:
         """
         Test that WaterCrawl provider is configured to respect robots.txt.
 
@@ -718,7 +724,6 @@ class TestRobotsTxtRespect:
         This test verifies the provider is initialized correctly.
         """
         mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
-        mock_instance = mock_client.return_value
 
         provider = WaterCrawlProvider(api_key="test_key", base_url="https://app.watercrawl.dev/")
 
@@ -726,7 +731,7 @@ class TestRobotsTxtRespect:
         assert provider.client is not None
         mock_client.assert_called_once_with("test_key", "https://app.watercrawl.dev/")
 
-    def test_firecrawl_provider_respects_robots_txt(self, mocker: MockerFixture):
+    def test_firecrawl_provider_respects_robots_txt(self) -> None:
         """
         Test that Firecrawl provider respects robots.txt.
 
@@ -741,7 +746,7 @@ class TestRobotsTxtRespect:
         assert app.api_key == "test_key"
         assert app.base_url == "https://api.firecrawl.dev"
 
-    def test_crawl_respects_domain_restrictions(self, mocker: MockerFixture):
+    def test_crawl_respects_domain_restrictions(self, mocker: MockerFixture) -> None:
         """
         Test that crawl operations respect domain restrictions.
 
@@ -771,9 +776,9 @@ class TestRobotsTxtRespect:
 class TestContentExtraction:
     """Test suite for content extraction from crawled pages."""
 
-    def test_structure_data_with_metadata(self, mocker: MockerFixture):
+    def test_structure_data_with_metadata(self, mocker: MockerFixture) -> None:
         """Test that content is properly structured with metadata."""
-        mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
+        mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
 
         provider = WaterCrawlProvider(api_key="test_key")
 
@@ -796,9 +801,9 @@ class TestContentExtraction:
         assert structured["source_url"] == "https://example.com/page"
         assert structured["markdown"] == "# Page Title\n\nPage content here."
 
-    def test_structure_data_fallback_title(self, mocker: MockerFixture):
+    def test_structure_data_fallback_title(self, mocker: MockerFixture) -> None:
         """Test that fallback title is used when og:title is not available."""
-        mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
+        mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
 
         provider = WaterCrawlProvider(api_key="test_key")
 
@@ -811,9 +816,9 @@ class TestContentExtraction:
 
         assert structured["title"] == "Fallback Title"
 
-    def test_structure_data_invalid_result(self, mocker: MockerFixture):
+    def test_structure_data_invalid_result(self, mocker: MockerFixture) -> None:
         """Test that ValueError is raised for invalid result objects."""
-        mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
+        mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
 
         provider = WaterCrawlProvider(api_key="test_key")
 
@@ -823,7 +828,7 @@ class TestContentExtraction:
         with pytest.raises(ValueError, match="Invalid result object"):
             provider._structure_data(result_object)
 
-    def test_scrape_url_content_extraction(self, mocker: MockerFixture):
+    def test_scrape_url_content_extraction(self, mocker: MockerFixture) -> None:
         """Test content extraction from single URL scraping."""
         mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
         mock_instance = mock_client.return_value
@@ -843,7 +848,7 @@ class TestContentExtraction:
         assert result["markdown"] == "# Main Content"
         assert result["source_url"] == "https://example.com"
 
-    def test_only_main_content_extraction(self, mocker: MockerFixture):
+    def test_only_main_content_extraction(self, mocker: MockerFixture) -> None:
         """Test that only_main_content option filters out non-content elements."""
         mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
         mock_instance = mock_client.return_value
@@ -871,7 +876,7 @@ class TestErrorHandling:
 
     @patch("services.data_source.website_service.current_user")
     @patch("services.data_source.website_service.DatasourceProviderService")
-    def test_invalid_provider_error(self, mock_provider_service: Mock, mock_current_user: Mock):
+    def test_invalid_provider_error(self, mock_provider_service: Mock, mock_current_user: Mock) -> None:
         """Test that invalid provider raises ValueError."""
         from services.data_source.website_service import WebsiteCrawlApiRequest
 
@@ -893,19 +898,18 @@ class TestErrorHandling:
                 )
             ).crawl_url(api_request)
 
-    def test_missing_api_key_error(self, mocker: MockerFixture):
+    def test_missing_api_key_error(self, mocker: MockerFixture) -> None:
         """Test that missing API key is handled properly at the httpx client level."""
         # Mock the client to avoid actual httpx initialization
         mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
-        mock_instance = mock_client.return_value
 
         # Create provider with mocked client - should work with mock
-        provider = WaterCrawlProvider(api_key="test_key")
+        WaterCrawlProvider(api_key="test_key")
 
         # Verify the client was initialized with the API key
         mock_client.assert_called_once_with("test_key", None)
 
-    def test_crawl_status_for_nonexistent_job(self, mocker: MockerFixture):
+    def test_crawl_status_for_nonexistent_job(self, mocker: MockerFixture) -> None:
         """Test handling of status check for non-existent job."""
         mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
         mock_instance = mock_client.return_value
@@ -913,8 +917,7 @@ class TestErrorHandling:
         # Simulate API error for non-existent job
         from core.rag.extractor.watercrawl.exceptions import WaterCrawlBadRequestError
 
-        mock_response = Mock()
-        mock_response.status_code = 404
+        mock_response = httpx.Response(404, json={"message": "Crawl job not found", "errors": {}})
         mock_instance.get_crawl_request.side_effect = WaterCrawlBadRequestError(mock_response)
 
         provider = WaterCrawlProvider(api_key="test_key")
@@ -931,7 +934,7 @@ class TestErrorHandling:
 class TestCrawlWorkflow:
     """Integration-style tests for complete crawl workflows."""
 
-    def test_complete_crawl_workflow(self, mocker: MockerFixture):
+    def test_complete_crawl_workflow(self, mocker: MockerFixture) -> None:
         """Test a complete crawl workflow from start to finish."""
         mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
         mock_instance = mock_client.return_value
@@ -990,7 +993,7 @@ class TestCrawlWorkflow:
         assert data is not None
         assert data["title"] == "Page 1"
 
-    def test_single_page_scrape_workflow(self, mocker: MockerFixture):
+    def test_single_page_scrape_workflow(self, mocker: MockerFixture) -> None:
         """Test workflow for scraping a single page without crawling."""
         mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
         mock_instance = mock_client.return_value
@@ -1007,7 +1010,9 @@ class TestCrawlWorkflow:
 
         assert result["title"] == "Single Page"
         assert result["description"] == "A single page"
-        assert "Single Page" in result["markdown"]
+        markdown = result["markdown"]
+        assert markdown is not None
+        assert "Single Page" in markdown
         assert result["source_url"] == "https://example.com/single-page"
 
 
@@ -1028,7 +1033,7 @@ class TestAdvancedCrawlScenarios:
     - Timeout handling
     """
 
-    def test_pagination_in_crawl_results(self, mocker: MockerFixture):
+    def test_pagination_in_crawl_results(self, mocker: MockerFixture) -> None:
         """
         Test that pagination is properly handled when retrieving crawl results.
 
@@ -1072,7 +1077,7 @@ class TestAdvancedCrawlScenarios:
         assert results[0]["title"] == "Page 1"
         assert results[149]["title"] == "Page 150"
 
-    def test_large_scale_crawl_configuration(self, mocker: MockerFixture):
+    def test_large_scale_crawl_configuration(self, mocker: MockerFixture) -> None:
         """
         Test configuration for large-scale crawls with high page limits.
 
@@ -1105,7 +1110,7 @@ class TestAdvancedCrawlScenarios:
         assert spider_options["page_limit"] == 1000
         assert spider_options["max_depth"] == 5
 
-    def test_crawl_with_custom_wait_time(self, mocker: MockerFixture):
+    def test_crawl_with_custom_wait_time(self, mocker: MockerFixture) -> None:
         """
         Test that custom wait times are properly applied to page loads.
 
@@ -1128,7 +1133,7 @@ class TestAdvancedCrawlScenarios:
         # Verify wait time is set correctly
         assert page_options["wait_time"] == 3000
 
-    def test_crawl_status_progress_tracking(self, mocker: MockerFixture):
+    def test_crawl_status_progress_tracking(self, mocker: MockerFixture) -> None:
         """
         Test that crawl progress is accurately tracked and reported.
 
@@ -1158,7 +1163,7 @@ class TestAdvancedCrawlScenarios:
         progress_percentage = (status["current"] / status["total"]) * 100
         assert progress_percentage == 60.0
 
-    def test_crawl_with_sitemap_usage(self, mocker: MockerFixture):
+    def test_crawl_with_sitemap_usage(self, mocker: MockerFixture) -> None:
         """
         Test that sitemap.xml is utilized when use_sitemap is enabled.
 
@@ -1180,7 +1185,7 @@ class TestAdvancedCrawlScenarios:
         call_args = mock_instance.create_crawl_request.call_args
         assert call_args is not None
 
-    def test_empty_crawl_results(self, mocker: MockerFixture):
+    def test_empty_crawl_results(self, mocker: MockerFixture) -> None:
         """
         Test handling of crawls that return no results.
 
@@ -1196,7 +1201,7 @@ class TestAdvancedCrawlScenarios:
             "options": {"spider_options": {"page_limit": 10}},
             "duration": "00:00:05.000000",
         }
-        mock_instance.get_crawl_request_results.return_value = {"results": [], "next": None}
+        mock_instance.get_crawl_request_results.return_value = {"results": list[object](), "next": None}
 
         provider = WaterCrawlProvider(api_key="test_key")
         status = provider.get_crawl_status("empty-job")
@@ -1207,7 +1212,7 @@ class TestAdvancedCrawlScenarios:
         assert status["total"] == 10
         assert len(status["data"]) == 0
 
-    def test_crawl_with_multiple_include_patterns(self, mocker: MockerFixture):
+    def test_crawl_with_multiple_include_patterns(self, mocker: MockerFixture) -> None:
         """
         Test crawling with multiple include patterns for fine-grained control.
 
@@ -1238,7 +1243,7 @@ class TestAdvancedCrawlScenarios:
         assert "/articles/*" in spider_options["include_paths"]
         assert "/docs/*" in spider_options["include_paths"]
 
-    def test_crawl_duration_calculation(self, mocker: MockerFixture):
+    def test_crawl_duration_calculation(self, mocker: MockerFixture) -> None:
         """
         Test accurate calculation of crawl duration from time strings.
 
@@ -1263,7 +1268,7 @@ class TestAdvancedCrawlScenarios:
                 "options": {"spider_options": {"page_limit": 10}},
                 "duration": duration_str,
             }
-            mock_instance.get_crawl_request_results.return_value = {"results": [], "next": None}
+            mock_instance.get_crawl_request_results.return_value = {"results": list[object](), "next": None}
 
             provider = WaterCrawlProvider(api_key="test_key")
             status = provider.get_crawl_status("duration-test")
@@ -1289,7 +1294,7 @@ class TestProviderSpecificFeatures:
     @patch("services.data_source.website_service.DatasourceProviderService")
     def test_firecrawl_with_prompt_parameter(
         self, mock_provider_service: Mock, mock_current_user: Mock, mocker: MockerFixture
-    ):
+    ) -> None:
         """
         Test Firecrawl's prompt parameter for AI-guided extraction.
 
@@ -1343,7 +1348,7 @@ class TestProviderSpecificFeatures:
     @patch("services.data_source.website_service.DatasourceProviderService")
     def test_jinareader_single_page_mode(
         self, mock_provider_service: Mock, mock_current_user: Mock, mocker: MockerFixture
-    ):
+    ) -> None:
         """
         Test JinaReader's single-page scraping mode.
 
@@ -1356,8 +1361,7 @@ class TestProviderSpecificFeatures:
             "api_key": "test_key",
         }
 
-        mock_response = Mock()
-        mock_response.json.return_value = {
+        response_data = {
             "code": 200,
             "data": {
                 "title": "Single Page Title",
@@ -1365,6 +1369,7 @@ class TestProviderSpecificFeatures:
                 "url": "https://example.com/page",
             },
         }
+        mock_response = httpx.Response(200, json=response_data)
         mocker.patch("services.data_source.website_service._jina_http_client.get", return_value=mock_response)
 
         from services.data_source.website_service import WebsiteCrawlApiRequest
@@ -1388,7 +1393,7 @@ class TestProviderSpecificFeatures:
     @patch("services.data_source.website_service.DatasourceProviderService")
     def test_watercrawl_with_tag_filtering(
         self, mock_provider_service: Mock, mock_current_user: Mock, mocker: MockerFixture
-    ):
+    ) -> None:
         """
         Test WaterCrawl's HTML tag filtering capabilities.
 
@@ -1429,7 +1434,7 @@ class TestProviderSpecificFeatures:
         assert result["status"] == "active"
         assert result["job_id"] == "tag-filter-job"
 
-    def test_firecrawl_base_url_configuration(self, mocker: MockerFixture):
+    def test_firecrawl_base_url_configuration(self) -> None:
         """
         Test that Firecrawl can be configured with custom base URLs.
 
@@ -1445,7 +1450,7 @@ class TestProviderSpecificFeatures:
         assert app.base_url == custom_base_url
         assert app.api_key == "test_key"
 
-    def test_watercrawl_base_url_default(self, mocker: MockerFixture):
+    def test_watercrawl_base_url_default(self, mocker: MockerFixture) -> None:
         """
         Test WaterCrawl's default base URL configuration.
 
@@ -1455,7 +1460,7 @@ class TestProviderSpecificFeatures:
         mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
 
         # Create provider without specifying base_url
-        provider = WaterCrawlProvider(api_key="test_key")
+        WaterCrawlProvider(api_key="test_key")
 
         # Verify default base URL is used
         mock_client.assert_called_once_with("test_key", None)
@@ -1474,7 +1479,7 @@ class TestDataStructureValidation:
     and transformed into the expected format.
     """
 
-    def test_crawl_request_to_api_request_conversion(self):
+    def test_crawl_request_to_api_request_conversion(self) -> None:
         """
         Test conversion from API request to internal CrawlRequest format.
 
@@ -1514,7 +1519,7 @@ class TestDataStructureValidation:
         assert crawl_request.options.max_depth == 3
         assert crawl_request.options.use_sitemap is True
 
-    def test_crawl_options_path_parsing(self):
+    def test_crawl_options_path_parsing(self) -> None:
         """
         Test that include/exclude paths are correctly parsed from strings.
 
@@ -1538,7 +1543,7 @@ class TestDataStructureValidation:
         assert "/private/*" in exclude_paths
         assert "/test/*" in exclude_paths
 
-    def test_crawl_options_with_whitespace(self):
+    def test_crawl_options_with_whitespace(self) -> None:
         """
         Test that whitespace in path strings is handled correctly.
 
@@ -1556,7 +1561,7 @@ class TestDataStructureValidation:
         assert len(include_paths) == 3
         assert len(exclude_paths) == 2
 
-    def test_website_crawl_message_structure(self):
+    def test_website_crawl_message_structure(self) -> None:
         """
         Test the structure of WebsiteCrawlMessage entity.
 
@@ -1576,7 +1581,7 @@ class TestDataStructureValidation:
         assert message.result.completed == 10
         assert isinstance(message.result.web_info_list, list)
 
-    def test_datasource_identity_structure(self):
+    def test_datasource_identity_structure(self) -> None:
         """
         Test that DatasourceIdentity contains all required fields.
 
@@ -1614,7 +1619,7 @@ class TestEdgeCasesAndBoundaries:
     and exceptional scenarios.
     """
 
-    def test_crawl_with_zero_limit(self, mocker: MockerFixture):
+    def test_crawl_with_zero_limit(self, mocker: MockerFixture) -> None:
         """
         Test behavior when limit is set to zero.
 
@@ -1634,7 +1639,7 @@ class TestEdgeCasesAndBoundaries:
         # Verify crawl was created (implementation may handle this differently)
         assert result["status"] == "active"
 
-    def test_crawl_with_very_large_limit(self, mocker: MockerFixture):
+    def test_crawl_with_very_large_limit(self, mocker: MockerFixture) -> None:
         """
         Test crawl configuration with extremely large page limits.
 
@@ -1657,7 +1662,7 @@ class TestEdgeCasesAndBoundaries:
         spider_options = call_args.kwargs["spider_options"]
         assert spider_options["page_limit"] == 10000
 
-    def test_crawl_with_empty_url(self):
+    def test_crawl_with_empty_url(self) -> None:
         """
         Test that empty URLs are rejected with appropriate error.
 
@@ -1670,7 +1675,7 @@ class TestEdgeCasesAndBoundaries:
         with pytest.raises(ValueError, match="URL is required"):
             WebsiteCrawlApiRequest.from_args({"provider": "watercrawl", "url": "", "options": {"limit": 10}})
 
-    def test_crawl_with_special_characters_in_paths(self, mocker: MockerFixture):
+    def test_crawl_with_special_characters_in_paths(self, mocker: MockerFixture) -> None:
         """
         Test handling of special characters in include/exclude paths.
 
@@ -1698,7 +1703,7 @@ class TestEdgeCasesAndBoundaries:
         assert "/blog/[0-9]+/*" in spider_options["include_paths"]
         assert "/category/(tech|science)/*" in spider_options["include_paths"]
 
-    def test_crawl_status_with_null_duration(self, mocker: MockerFixture):
+    def test_crawl_status_with_null_duration(self, mocker: MockerFixture) -> None:
         """
         Test handling of null/missing duration in crawl status.
 
@@ -1720,14 +1725,14 @@ class TestEdgeCasesAndBoundaries:
         # Verify null duration is handled (should default to 0)
         assert status["time_consuming"] == 0
 
-    def test_structure_data_with_missing_metadata_fields(self, mocker: MockerFixture):
+    def test_structure_data_with_missing_metadata_fields(self, mocker: MockerFixture) -> None:
         """
         Test content extraction when metadata fields are missing.
 
         Not all pages have complete metadata, so extraction should
         handle missing fields gracefully.
         """
-        mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
+        mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
 
         provider = WaterCrawlProvider(api_key="test_key")
 
@@ -1736,7 +1741,7 @@ class TestEdgeCasesAndBoundaries:
             "url": "https://example.com/minimal",
             "result": {
                 "markdown": "# Minimal Content",
-                "metadata": {},  # Empty metadata
+                "metadata": dict[str, object](),  # Empty metadata
             },
         }
 
@@ -1748,7 +1753,7 @@ class TestEdgeCasesAndBoundaries:
         assert structured["source_url"] == "https://example.com/minimal"
         assert structured["markdown"] == "# Minimal Content"
 
-    def test_get_results_with_empty_pages(self, mocker: MockerFixture):
+    def test_get_results_with_empty_pages(self, mocker: MockerFixture) -> None:
         """
         Test pagination handling when some pages return empty results.
 
@@ -1769,7 +1774,7 @@ class TestEdgeCasesAndBoundaries:
                 ],
                 "next": "page2",
             },
-            {"results": [], "next": None},  # Empty page breaks the loop
+            {"results": list[object](), "next": None},  # Empty page breaks the loop
         ]
 
         provider = WaterCrawlProvider(api_key="test_key")

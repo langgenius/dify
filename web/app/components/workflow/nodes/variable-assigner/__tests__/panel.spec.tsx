@@ -1,66 +1,16 @@
 import type { VariableAssignerNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import Panel from '../panel'
-
-type MockVarGroupItemProps = {
-  payload: {
-    group_name?: string
-    output_type: VarType
-    variables: string[][]
-  }
-  groupEnabled: boolean
-}
+import { renderAssigner as render } from './test-helpers'
 
 const mockUseConfig = vi.hoisted(() => vi.fn())
-const mockVarGroupItemRender = vi.hoisted(() => vi.fn())
 
 vi.mock('../use-config', () => ({
   __esModule: true,
   default: (...args: unknown[]) => mockUseConfig(...args),
-}))
-
-vi.mock('../components/var-group-item', () => ({
-  __esModule: true,
-  default: (props: MockVarGroupItemProps) => {
-    mockVarGroupItemRender(props)
-    return (
-      <div>{`${props.payload.group_name || 'root'}:${props.payload.output_type}:${props.groupEnabled}`}</div>
-    )
-  },
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
-  __esModule: true,
-  default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  VarItem: ({ name, type, description }: { name: string; type: string; description: string }) => (
-    <div>{`${name}:${type}:${description}`}</div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm', () => ({
-  __esModule: true,
-  default: ({
-    isShow,
-    onCancel,
-    onConfirm,
-  }: {
-    isShow: boolean
-    onCancel: () => void
-    onConfirm: () => void
-  }) =>
-    isShow ? (
-      <div>
-        <button type="button" onClick={onCancel}>
-          cancel-remove
-        </button>
-        <button type="button" onClick={onConfirm}>
-          confirm-remove
-        </button>
-      </div>
-    ) : null,
 }))
 
 const createData = (
@@ -111,7 +61,7 @@ describe('variable-assigner/panel', () => {
       handleListOrTypeChangeInGroup: vi.fn(() => vi.fn()),
       handleGroupRemoved: vi.fn(() => vi.fn()),
       handleVarGroupNameChange: vi.fn(() => vi.fn()),
-      isShowRemoveVarConfirm: true,
+      isShowRemoveVarConfirm: false,
       hideRemoveVarConfirm,
       onRemoveVarConfirm,
       getAvailableVars: vi.fn(() => []),
@@ -119,33 +69,22 @@ describe('variable-assigner/panel', () => {
     })
   })
 
-  it('renders grouped panels, output vars, and confirm actions when aggregation is enabled', async () => {
+  it('renders grouped panels and adds or disables aggregation groups', async () => {
     const user = userEvent.setup()
 
     render(<Panel id="assigner-node" data={createData()} panelProps={panelProps} />)
 
-    expect(screen.getByText('Group1:string:true')).toBeInTheDocument()
-    expect(screen.getByText('Group2:number:true')).toBeInTheDocument()
-    expect(
-      screen.getByText(
-        /Group1\.output:string:workflowLogic\.nodes\.variableAssigner\.outputVars\.varDescribe/,
-      ),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText(
-        /Group2\.output:number:workflowLogic\.nodes\.variableAssigner\.outputVars\.varDescribe/,
-      ),
-    ).toBeInTheDocument()
+    expect(screen.getByText('Group1')).toBeInTheDocument()
+    expect(screen.getByText('Group2')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'workflow.nodes.common.outputVars' }))
+    expect(screen.getByText('Group1.output')).toBeInTheDocument()
+    expect(screen.getByText('Group2.output')).toBeInTheDocument()
 
     await user.click(screen.getByRole('switch'))
     await user.click(screen.getByText('workflowLogic.nodes.variableAssigner.addGroup'))
-    await user.click(screen.getByRole('button', { name: 'cancel-remove' }))
-    await user.click(screen.getByRole('button', { name: 'confirm-remove' }))
 
-    expect(handleGroupEnabledChange).toHaveBeenCalled()
+    expect(handleGroupEnabledChange).toHaveBeenCalledWith(false, expect.anything())
     expect(handleAddGroup).toHaveBeenCalledTimes(1)
-    expect(hideRemoveVarConfirm).toHaveBeenCalledTimes(1)
-    expect(onRemoveVarConfirm).toHaveBeenCalledTimes(1)
   })
 
   it('renders a single root group and hides output vars when aggregation is disabled', () => {
@@ -173,14 +112,33 @@ describe('variable-assigner/panel', () => {
 
     render(<Panel id="assigner-node" data={createData()} panelProps={panelProps} />)
 
-    expect(screen.getByText('root:string:false')).toBeInTheDocument()
+    expect(screen.getByText('rootVar')).toBeInTheDocument()
     expect(
       screen.getByText('workflowLogic.nodes.variableAssigner.aggregationGroup'),
     ).toBeInTheDocument()
-    expect(
-      screen.queryByText(
-        /Group1\.output:string:workflowLogic\.nodes\.variableAssigner\.outputVars\.varDescribe/,
-      ),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByText('Group1.output')).not.toBeInTheDocument()
   })
+  it('prevents adding or renaming groups in read-only mode', async () => {
+    const user = userEvent.setup()
+    mockUseConfig.mockReturnValue({ ...mockUseConfig(), readOnly: true })
+    render(<Panel id="assigner-node" data={createData()} panelProps={panelProps} />)
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
+    expect(
+      screen.queryByRole('button', { name: 'workflowLogic.nodes.variableAssigner.addGroup' }),
+    ).not.toBeInTheDocument()
+    await user.click(screen.getByText('Group1'))
+    expect(screen.queryByDisplayValue('Group1')).not.toBeInTheDocument()
+    expect(handleAddGroup).not.toHaveBeenCalled()
+  })
+
+  it.each(['cancel', 'confirm'])(
+    'forwards the real confirmation dialog %s action',
+    async (action) => {
+      const user = userEvent.setup()
+      mockUseConfig.mockReturnValue({ ...mockUseConfig(), isShowRemoveVarConfirm: true })
+      render(<Panel id="assigner-node" data={createData()} panelProps={panelProps} />)
+      await user.click(screen.getByRole('button', { name: `common.operation.${action}` }))
+      expect(action === 'cancel' ? hideRemoveVarConfirm : onRemoveVarConfirm).toHaveBeenCalled()
+    },
+  )
 })

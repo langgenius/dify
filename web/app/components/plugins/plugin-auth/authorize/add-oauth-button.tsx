@@ -175,7 +175,7 @@ const AddOAuthButton = ({
     [t, redirect_uri, renderI18nObject],
   )
   const memorizedSchemas = useMemo(() => {
-    const result: FormSchema[] = (schema as FormSchema[]).map((item, index) => {
+    const result: FormSchema[] = schema.map((item, index) => {
       return {
         ...item,
         label: index === 0 ? renderCustomLabel(item) : item.label,

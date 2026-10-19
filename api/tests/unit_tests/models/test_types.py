@@ -18,7 +18,7 @@ class NotPydanticModel:
     pass
 
 
-def test_json_model_column_serializes_supported_input_shapes():
+def test_json_model_column_serializes_supported_input_shapes() -> None:
     column = JSONModelColumn(JsonColumnSample)
     dialect = sqlite.dialect()
 
@@ -28,7 +28,7 @@ def test_json_model_column_serializes_supported_input_shapes():
     assert column.process_bind_param('{"name":"json","count":4}', dialect) == '{"count":4,"name":"json"}'
 
 
-def test_json_model_column_deserializes_empty_and_json_values():
+def test_json_model_column_deserializes_empty_and_json_values() -> None:
     column = JSONModelColumn(JsonColumnSample)
     dialect = sqlite.dialect()
 
@@ -40,19 +40,19 @@ def test_json_model_column_deserializes_empty_and_json_values():
     )
 
 
-def test_json_model_column_keeps_model_class_directly():
+def test_json_model_column_keeps_model_class_directly() -> None:
     column = JSONModelColumn(JsonColumnSample)
 
     assert column.process_bind_param({"name": "class", "count": 6}, sqlite.dialect()) == '{"count":6,"name":"class"}'
     assert column._model_class is JsonColumnSample
 
 
-def test_json_model_column_rejects_non_pydantic_model_class():
+def test_json_model_column_rejects_non_pydantic_model_class() -> None:
     with pytest.raises(TypeError, match="must be a Pydantic BaseModel subclass"):
         JSONModelColumn(cast(type[BaseModel], NotPydanticModel))
 
 
-def test_json_model_column_uses_long_text_compatible_dialect_types():
+def test_json_model_column_uses_long_text_compatible_dialect_types() -> None:
     column = JSONModelColumn(JsonColumnSample)
 
     assert isinstance(column.load_dialect_impl(postgresql.dialect()), TEXT)
@@ -60,6 +60,6 @@ def test_json_model_column_uses_long_text_compatible_dialect_types():
     assert isinstance(column.load_dialect_impl(mysql.dialect()), LONGTEXT)
 
 
-def test_json_model_column_rejects_string_model_paths():
+def test_json_model_column_rejects_string_model_paths() -> None:
     with pytest.raises(TypeError):
         JSONModelColumn(cast(type[BaseModel], "tests.unit_tests.models.test_types.JsonColumnSample"))

@@ -174,7 +174,7 @@ const FormInputItem: FC<Props> = ({
         isDynamicSelect &&
         currentTool &&
         currentProvider &&
-        (providerType === PluginCategoryEnum.tool || providerType === PluginCategoryEnum.trigger)
+        providerType === PluginCategoryEnum.tool
       ) {
         setIsLoadingToolsOptions(true)
         try {
@@ -314,6 +314,7 @@ const FormInputItem: FC<Props> = ({
     <div className={cn('gap-1', !(isShowJSONEditor && isConstant) && 'flex')}>
       {showTypeSwitch && (
         <FormInputTypeSwitch
+          readonly={readOnly}
           value={varInput?.type || VarKindType.constant}
           onChange={handleTypeChange}
         />
@@ -381,7 +382,11 @@ const FormInputItem: FC<Props> = ({
         />
       )}
       {isBoolean && isConstant && (
-        <FormInputBoolean value={varInput?.value as boolean} onChange={handleValueChange} />
+        <FormInputBoolean
+          readOnly={readOnly}
+          value={varInput?.value as boolean}
+          onChange={handleValueChange}
+        />
       )}
       {isSelect && isConstant && !isMultipleSelect && (
         <Select
@@ -447,6 +452,7 @@ const FormInputItem: FC<Props> = ({
       )}
       {isShowJSONEditor && isConstant && (
         <JsonEditorField
+          readOnly={readOnly}
           value={(varInput?.value as string) || ''}
           onChange={handleValueChange}
           placeholder={

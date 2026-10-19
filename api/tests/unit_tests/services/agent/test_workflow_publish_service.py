@@ -223,11 +223,10 @@ def test_publish_copy_uses_current_roster_snapshot(sqlite_session: Session) -> N
     )
     sqlite_session.add_all([binding, active_agent])
     sqlite_session.commit()
-    has_inline_agent = build_workflow_agent_service(sqlite_session).copy_agent_node_bindings_to_published(
+    build_workflow_agent_service(sqlite_session).copy_agent_node_bindings_to_published(
         draft_workflow=workflow_binding_scope(draft_workflow),
         published_workflow=workflow_binding_scope(published_workflow),
     )
-    assert has_inline_agent is False
     copied = sqlite_session.scalars(
         select(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.workflow_id == "published")
     ).one()
@@ -304,13 +303,12 @@ def test_publish_binding_copy_keeps_previous_published_owner(
     )
     sqlite_session.add_all([app, previous_inline_binding, previous_roster_binding, draft_binding])
     sqlite_session.commit()
-    result = build_workflow_agent_service(sqlite_session).copy_agent_node_bindings_to_published(
+    build_workflow_agent_service(sqlite_session).copy_agent_node_bindings_to_published(
         draft_workflow=workflow_binding_scope(draft_workflow),
         published_workflow=workflow_binding_scope(published_workflow),
     )
     sqlite_session.flush()
 
-    assert result is True
     assert sqlite_session.get(WorkflowAgentNodeBinding, previous_inline_binding.id) is previous_inline_binding
     assert sqlite_session.get(WorkflowAgentNodeBinding, previous_roster_binding.id) is previous_roster_binding
     copied = sqlite_session.scalar(

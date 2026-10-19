@@ -86,11 +86,8 @@ def is_filtered[T](
 
     name = name_func(data)
 
-    if name in exclude_set:  # exclude_set is prioritized
-        return True
-    if include_set and name not in include_set:  # filter out only if include_set is not empty
-        return True
-    return False
+    # Exclusions take priority; a nonempty include set filters all other names.
+    return name in exclude_set or bool(include_set and name not in include_set)
 
 
 def sort_by_position_map[T](

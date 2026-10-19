@@ -1,6 +1,7 @@
 import type { WebAppAddress } from './webapp-address'
 import type { FormData as HumanInputFormData } from '@/app/(humanInputLayout)/form/[token]/form'
 import type { AppConversationData, ConversationItem } from '@/models/share'
+import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import {
   AppSourceType,
@@ -149,9 +150,8 @@ export const useShareChatList = (params: ShareChatListParams, options: ShareQuer
       try {
         return await fetchChatList(params.conversationId, params.appSourceType, params.appId)
       } catch (error) {
-        if (address?.kind === 'environment' && error instanceof Response && error.status === 404) {
-          const data = (await error.clone().json()) as { reason?: string }
-          if (data.reason === 'APPDEPLOY_CONVERSATION_NOT_FOUND')
+        if (address?.kind === 'environment' && error instanceof ORPCError && error.status === 404) {
+          if (error.data?.reason === 'APPDEPLOY_CONVERSATION_NOT_FOUND')
             throw new EnvironmentConversationNotFoundError()
         }
         throw error
@@ -191,34 +191,11 @@ export const useInvalidateShareConversations = () => {
   return useInvalid(shareQueryKeys.conversations)
 }
 
-export class HumanInputFormError extends Error {
-  code: string
-  status: number
-
-  constructor(code: string, message: string, status: number) {
-    super(message)
-    this.name = 'HumanInputFormError'
-    this.code = code
-    this.status = status
-  }
-}
-
 export const useGetHumanInputForm = (token: string, options: ShareQueryOptions = {}) => {
   const { enabled = true, refetchOnReconnect, refetchOnWindowFocus } = options
-  return useQuery<HumanInputFormData, HumanInputFormError>({
+  return useQuery<HumanInputFormData>({
     queryKey: shareQueryKeys.humanInputForm(token),
-    queryFn: async () => {
-      try {
-        return await getHumanInputForm(token)
-      } catch (error) {
-        const response = error as Response
-        if (response.status && response.json) {
-          const errorData = (await response.json()) as { code: string; message: string }
-          throw new HumanInputFormError(errorData.code, errorData.message, response.status)
-        }
-        throw error
-      }
-    },
+    queryFn: () => getHumanInputForm(token),
     enabled: enabled && !!token,
     refetchOnReconnect,
     refetchOnWindowFocus,

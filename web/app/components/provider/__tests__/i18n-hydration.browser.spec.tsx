@@ -49,6 +49,7 @@ function executeResourceScript(source: string) {
 // A real mouse click on SSR markup reproduces the interaction lost when
 // client translation loading suspends hydration. No disabled trigger or retry.
 it('hydrates the menu from automatically collected SSR resources before the first click', async () => {
+  mocks.server = true
   mocks.callbacks = []
   delete window.__difyI18nResources
   const app = { 'newApp.startFromBlank': 'Create from Blank' }

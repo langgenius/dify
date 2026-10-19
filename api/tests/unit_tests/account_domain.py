@@ -54,7 +54,7 @@ def build_account_domain(session_factory: sessionmaker[Session]) -> AccountDomai
     provisioning = WorkspaceProvisioningService(
         owners=repository,
         provisioning=workspaces,
-        effects=WorkspaceProvisioningEffectsGateway(session_factory=session_factory),
+        effects=WorkspaceProvisioningEffectsGateway(),
         policies=policy,
         memberships=workspaces,
         members=members,

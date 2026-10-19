@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "액세스 권한",
   "accessRule.actions": "작업",
-  "accessRule.addMemberAria": "{{name}} 추가",
   "accessRule.addMembersTitle": "멤버 추가",
   "accessRule.agentDescription": "이 에이전트에 접근할 수 있는 멤버와 권한을 관리합니다.",
   "accessRule.agentTitle": "에이전트 권한 집합",
@@ -21,7 +20,6 @@
   "accessRule.defaultPermission": "역할 권한 기준",
   "accessRule.deleteDescription": "이 접근 규칙은 영구적으로 삭제되며 리소스 권한 부여 목록에서 제거됩니다.",
   "accessRule.deleteTitle": "\"{{name}}\"을(를) 삭제하시겠습니까?",
-  "accessRule.deleted": "접근 규칙이 성공적으로 삭제되었습니다",
   "accessRule.exceptionPermissionFor": "{{name}}에 대한 예외 권한",
   "accessRule.expandSection": "{{title}} 펼치기",
   "accessRule.maintainer": "관리자",
@@ -83,11 +81,8 @@
   "role.copyMembersDescription_other": "\"{{name}}\"이(가) {{count}}명의 멤버에게 할당되어 있습니다. 새 역할 복사본에 동일한 멤버를 포함하시겠습니까?",
   "role.copyMembersLoading": "멤버 할당을 불러오는 중...",
   "role.copyMembersTitle": "멤버 할당을 복사하시겠습니까?",
-  "role.created": "역할이 성공적으로 생성되었습니다",
   "role.deleteDescription": "이 역할은 영구적으로 삭제되며 이를 사용하는 모든 멤버 또는 접근 규칙에서 제거됩니다.",
   "role.deleteTitle": "\"{{name}}\"을(를) 삭제하시겠습니까?",
-  "role.deleted": "역할이 성공적으로 삭제되었습니다",
-  "role.duplicated": "역할이 성공적으로 복제되었습니다",
   "role.groups.builtin": "시스템 역할",
   "role.groups.custom": "사용자 정의 역할",
   "role.loading": "역할을 불러오는 중...",
@@ -104,7 +99,6 @@
   "role.noDescription": "설명 없음",
   "role.noMatchingRoles": "일치하는 역할 없음",
   "role.searchPlaceholder": "역할 검색...",
-  "role.updated": "역할이 성공적으로 업데이트되었습니다",
   "role.workspaceRoles.description": "역할을 생성하고 각 역할이 이 작업 공간에서 할 수 있는 작업을 정의합니다.",
   "role.workspaceRoles.title": "작업 공간 역할"
 }

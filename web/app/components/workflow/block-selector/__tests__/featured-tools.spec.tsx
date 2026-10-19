@@ -1,18 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useGetLanguage } from '@/context/i18n'
-import useTheme from '@/hooks/use-theme'
-import { Theme } from '@/types/app'
 import FeaturedTools from '../featured-tools'
 import { createPlugin, createToolProvider } from './factories'
-
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: vi.fn(),
-}))
-
-vi.mock('@/hooks/use-theme', () => ({
-  default: vi.fn(),
-}))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/mcp-tool-availability', () => ({
   useMCPToolAvailability: () => ({
@@ -40,16 +29,13 @@ vi.mock('@/utils/var', async (importOriginal) => ({
   getMarketplaceUrl: (path = '') => `https://marketplace.test${path}`,
 }))
 
-const mockUseGetLanguage = vi.mocked(useGetLanguage)
-const mockUseTheme = vi.mocked(useTheme)
-
 describe('FeaturedTools', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    localStorage.clear()
-    mockUseGetLanguage.mockReturnValue('en_US')
-    mockUseTheme.mockReturnValue({ theme: Theme.light } as ReturnType<typeof useTheme>)
+    localStorage.removeItem('workflow_tools_featured_collapsed')
   })
+
+  afterEach(() => localStorage.removeItem('workflow_tools_featured_collapsed'))
 
   it('reveals featured tools in batches and then returns to the initial list', async () => {
     const user = userEvent.setup()

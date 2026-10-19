@@ -363,5 +363,6 @@
   "agentDetail.versionHistory.filter": "버전 필터",
   "agentDetail.versionHistory.restore": "복원",
   "agentDetail.versionHistory.versionName": "버전 {{version}}",
-  "agentDetail.versionHistory.viewOnly": "보기 전용"
+  "agentDetail.versionHistory.viewOnly": "보기 전용",
+  "exportAgent": "에이전트 내보내기"
 }
