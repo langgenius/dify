@@ -35,6 +35,7 @@ from extensions.application_services.knowledge import (
     build_dataset_api_key_service,
     build_knowledge_services,
 )
+from extensions.application_services.personal_access_token import build_personal_access_token_service
 from extensions.application_services.rbac import RBACServices, build_rbac_services
 from extensions.application_services.resource_access_token import build_resource_access_token_service
 from extensions.application_services.trial_app import TrialAppServices, build_trial_app_services
@@ -161,6 +162,8 @@ from services.oauth_device_application_service import (
 )
 from services.oauth_device_flow import DeviceFlowRedis
 from services.oauth_server_service import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthServerService
+from services.openapi_execution_service import OpenApiExecutionService
+from services.personal_access_token_service import PersonalAccessTokenService
 from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
 from services.plugin_file_upload_service import PluginFileUploadService
 from services.recommended_app_catalog_gateway import (
@@ -265,6 +268,8 @@ class ApplicationServices:
     app_api_keys: AppApiKeyService
     dataset_api_keys: DatasetApiKeyService
     resource_access_tokens: ResourceAccessTokenService
+    personal_access_tokens: PersonalAccessTokenService
+    openapi_executions: OpenApiExecutionService
     apps: AppServices
     app_definitions: AppDefinitionQueryService
     app_mcp_servers: AppMCPServerService
@@ -548,6 +553,12 @@ def build_application_services(
             dataset_access=dataset_dependencies.access,
         ),
         resource_access_tokens=build_resource_access_token_service(database_client=database_client),
+        personal_access_tokens=build_personal_access_token_service(
+            database_client=database_client, apps=apps.console, datasets=knowledge.datasets
+        ),
+        openapi_executions=OpenApiExecutionService(
+            runs=lambda: DifyAPIRepositoryFactory.create_api_workflow_run_repository(database_client),
+        ),
         app_statistics=AppStatisticQueryRepository(session_factory=database_client),
         app_tracing_configs=AppTracingConfigService(
             configs=SQLAlchemyAppTracingConfigRepository(session_factory=database_client),
@@ -740,7 +751,7 @@ def build_application_services(
 
 
 def init_app(app: Flask) -> None:
-    from extensions.ext_login import bind_account_loader
+    from extensions.ext_login import bind_account_loader, bind_account_only_loader
 
     services = build_application_services(
         database_client=get_session_maker(),
@@ -750,6 +761,7 @@ def init_app(app: Flask) -> None:
     )
     app.extensions[_EXTENSION_KEY] = services
     bind_account_loader(app, services.accounts.identity.load_user)
+    bind_account_only_loader(app, services.accounts.identity.get_account_by_id)
 
 
 def application_services() -> ApplicationServices:

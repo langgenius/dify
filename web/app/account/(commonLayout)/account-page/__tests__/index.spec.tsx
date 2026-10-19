@@ -1,6 +1,7 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
@@ -36,18 +37,29 @@ const createAccountResponse = (name = 'Alice'): GetAccountProfileResponse => ({
 const renderPage = ({ isPasswordSet = false, passwordLoginEnabled = true } = {}) => {
   const queryClient = createConsoleQueryClient()
   queryClient.setQueryData(
+    consoleQuery.account.personalAccessTokens.get.queryOptions({
+      input: { query: { page: 1, limit: 20 } },
+    }).queryKey,
+    { data: [], has_more: false, limit: 20, page: 1, total: 0 },
+  )
+  queryClient.setQueryData(
     consoleQuery.apps.get.queryOptions({
       input: { query: { page: 1, limit: 100, name: '' } },
     }).queryKey,
     { data: [], has_more: false, limit: 100, page: 1, total: 0 },
   )
 
-  renderWithConsoleQuery(<AccountPage />, {
-    queryClient,
-    accountProfile: { ...createAccountResponse(), is_password_set: isPasswordSet },
-    systemFeatures: { enable_email_password_login: passwordLoginEnabled },
-    features: { education: { enabled: false } },
-  })
+  renderWithConsoleQuery(
+    <NuqsTestingAdapter>
+      <AccountPage />
+    </NuqsTestingAdapter>,
+    {
+      queryClient,
+      accountProfile: { ...createAccountResponse(), is_password_set: isPasswordSet },
+      systemFeatures: { enable_email_password_login: passwordLoginEnabled },
+      features: { education: { enabled: false } },
+    },
+  )
   return { queryClient }
 }
 

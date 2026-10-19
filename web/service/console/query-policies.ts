@@ -12,6 +12,24 @@ import type { ConsoleClient } from './index'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
 import { getHttpErrorStatus, isNotFoundError } from '@/service/http-error'
 
+async function refreshRejectedPersonalToken(
+  error: unknown,
+  client: QueryClient,
+  tokenId: string,
+  query: RouterUtils<ConsoleClient>,
+) {
+  const status = getHttpErrorStatus(error)
+  if (status !== 403 && status !== 404 && status !== 409) return
+  await Promise.all([
+    client.invalidateQueries({ queryKey: query.account.personalAccessTokens.get.key() }),
+    client.invalidateQueries({
+      queryKey: query.account.personalAccessTokens.byTokenId.get.queryKey({
+        input: { params: { token_id: tokenId } },
+      }),
+    }),
+  ])
+}
+
 export function createConsoleQuery(consoleClient: ConsoleClient) {
   const consoleQuery: RouterUtils<ConsoleClient> = createTanstackQueryUtils(consoleClient, {
     path: ['console'],
@@ -498,6 +516,69 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
         },
       },
       account: {
+        personalAccessTokens: {
+          byTokenId: {
+            secret: {
+              post: {
+                mutationOptions: {
+                  onError: (error, variables, _onMutateResult, context) =>
+                    refreshRejectedPersonalToken(
+                      error,
+                      context.client,
+                      variables.params.token_id,
+                      consoleQuery,
+                    ),
+                },
+              },
+            },
+            delete: {
+              mutationOptions: {
+                onSuccess: async (_data, variables, _onMutateResult, context) => {
+                  context.client.removeQueries({
+                    queryKey: consoleQuery.account.personalAccessTokens.byTokenId.get.queryKey({
+                      input: { params: variables.params },
+                    }),
+                  })
+                  await context.client.invalidateQueries({
+                    queryKey: consoleQuery.account.personalAccessTokens.get.key(),
+                  })
+                },
+              },
+            },
+            patch: {
+              mutationOptions: {
+                onError: (error, variables, _onMutateResult, context) =>
+                  refreshRejectedPersonalToken(
+                    error,
+                    context.client,
+                    variables.params.token_id,
+                    consoleQuery,
+                  ),
+                onSuccess: async (_data, variables, _onMutateResult, context) => {
+                  await Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.account.personalAccessTokens.get.key(),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.account.personalAccessTokens.byTokenId.get.queryKey({
+                        input: { params: variables.params },
+                      }),
+                    }),
+                  ])
+                },
+              },
+            },
+          },
+          post: {
+            mutationOptions: {
+              onSuccess: async (_data, _variables, _onMutateResult, context) => {
+                await context.client.invalidateQueries({
+                  queryKey: consoleQuery.account.personalAccessTokens.get.key(),
+                })
+              },
+            },
+          },
+        },
         education: {
           get: {
             queryOptions: {

@@ -4000,3 +4000,26 @@ export type GetWorkspacesByWorkspaceIdToolsResponses = {
 
 export type GetWorkspacesByWorkspaceIdToolsResponse =
   GetWorkspacesByWorkspaceIdToolsResponses[keyof GetWorkspacesByWorkspaceIdToolsResponses]
+
+export type PostWorkspacesByWorkspaceIdSwitchData = {
+  body?: never
+  path: {
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}:switch'
+}
+
+export type PostWorkspacesByWorkspaceIdSwitchErrors = {
+  default: ErrorBody
+}
+
+export type PostWorkspacesByWorkspaceIdSwitchError =
+  PostWorkspacesByWorkspaceIdSwitchErrors[keyof PostWorkspacesByWorkspaceIdSwitchErrors]
+
+export type PostWorkspacesByWorkspaceIdSwitchResponses = {
+  200: WorkspaceDetailResponse
+}
+
+export type PostWorkspacesByWorkspaceIdSwitchResponse =
+  PostWorkspacesByWorkspaceIdSwitchResponses[keyof PostWorkspacesByWorkspaceIdSwitchResponses]

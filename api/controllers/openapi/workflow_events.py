@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import NotFound, UnprocessableEntity
 
 from constants.oauth_bearer import Scope
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.fields import EventStreamResponse
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
@@ -54,6 +55,7 @@ class WorkflowEventsQuery(BaseModel):
 class OpenApiWorkflowEventsApi(Resource):
     @endpoint(
         op="get.run.event",
+        pat_policy=PersonalAccessTokenPolicy.RESOURCE_CALLS,
         kind=Kind.SSE,
         summary="Stream the events of a workflow run; `task_id` takes the workflow run id",
         examples=(

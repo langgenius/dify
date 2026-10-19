@@ -317,7 +317,7 @@ class ConsoleAppService:
         if isinstance(params, AppListParams):
             params = permissions.filter_list(params)
         page = self._apps.list_apps(context, params)
-        if not page.data:
+        if not page.data or (isinstance(params, AppListParams) and params.for_selection):
             return page
         app_ids = [app.id for app in page.data]
         modes = self._access.access_modes(app_ids)

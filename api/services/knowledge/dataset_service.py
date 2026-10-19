@@ -153,6 +153,8 @@ class DatasetService:
         include_own_datasets: bool = False,
         *,
         tags: TagTargetQuery,
+        for_selection: bool = False,
+        ids: list[str] | None = None,
     ):
         """Return visible datasets for a tenant using the injected read session."""
         query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc(), Dataset.id)
@@ -180,7 +182,9 @@ class DatasetService:
                     return [], 0
             else:
                 if dify_config.RBAC_ENABLED:
-                    can_manage_all_datasets = DatasetService._can_manage_all_datasets(str(tenant_id), str(user.id))
+                    can_manage_all_datasets = include_all and DatasetService._can_manage_all_datasets(
+                        str(tenant_id), str(user.id)
+                    )
                     should_show_all_datasets = include_all and can_manage_all_datasets
                 else:
                     should_show_all_datasets = user.current_role == TenantAccountRole.OWNER and include_all
@@ -224,9 +228,24 @@ class DatasetService:
                 # if no user, only show datasets that are shared with all team members
                 query = query.where(Dataset.permission == DatasetPermissionEnum.ALL_TEAM)
 
+        if ids is not None:
+            query = query.where(Dataset.id.in_(ids))
+        if for_selection:
+            query = query.order_by(None).order_by(
+                Dataset.name.collate(
+                    {"sqlite": "BINARY", "postgresql": "C", "mysql": "utf8mb4_bin"}[session.get_bind().dialect.name]
+                ),
+                Dataset.id,
+            )
+
         if search:
             escaped_search = helper.escape_like_pattern(search)
-            query = query.where(Dataset.name.ilike(f"%{escaped_search}%", escape="\\"))
+            name_filter = Dataset.name.ilike(f"%{escaped_search}%", escape="\\")
+            query = query.where(
+                sa.or_(name_filter, sa.cast(Dataset.id, sa.String).ilike(f"%{escaped_search}%", escape="\\"))
+                if for_selection
+                else name_filter
+            )
 
         # Check if tag_ids is not empty to avoid WHERE false condition
         if tag_ids and len(tag_ids) > 0:
