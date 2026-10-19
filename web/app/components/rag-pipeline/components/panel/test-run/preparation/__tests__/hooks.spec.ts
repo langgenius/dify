@@ -1,7 +1,7 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import { renderHook } from '@testing-library/react'
 import { act } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { BlockEnum } from '@/app/components/workflow/types'
 import {
   useDatasourceOptions,
@@ -23,55 +23,17 @@ vi.mock('@/app/components/datasets/documents/create-from-pipeline/data-source/st
   }),
 }))
 
-describe('useTestRunSteps', () => {
-  afterEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should initialize with step 1', () => {
-    const { result } = renderHook(() => useTestRunSteps())
-
-    expect(result.current.currentStep).toBe(1)
-  })
-
-  it('should return 2 steps (dataSource and documentProcessing)', () => {
-    const { result } = renderHook(() => useTestRunSteps())
-
-    expect(result.current.steps).toHaveLength(2)
-    expect(result.current.steps[0]!.value).toBe('dataSource')
-    expect(result.current.steps[1]!.value).toBe('documentProcessing')
-  })
-
-  it('should increment step on handleNextStep', () => {
-    const { result } = renderHook(() => useTestRunSteps())
-
-    act(() => {
-      result.current.handleNextStep()
-    })
-
-    expect(result.current.currentStep).toBe(2)
-  })
-
-  it('should decrement step on handleBackStep', () => {
-    const { result } = renderHook(() => useTestRunSteps())
-
-    act(() => {
-      result.current.handleNextStep()
-    })
-    expect(result.current.currentStep).toBe(2)
-
-    act(() => {
-      result.current.handleBackStep()
-    })
-    expect(result.current.currentStep).toBe(1)
-  })
-
-  it('should have translated step labels', () => {
-    const { result } = renderHook(() => useTestRunSteps())
-
-    expect(result.current.steps[0]!.label).toBeDefined()
-    expect(typeof result.current.steps[0]!.label).toBe('string')
-  })
+it('moves between datasource selection and document processing', () => {
+  const { result } = renderHook(() => useTestRunSteps())
+  expect(result.current.currentStep).toBe(1)
+  expect(result.current.steps.map((step) => step.value)).toEqual([
+    'dataSource',
+    'documentProcessing',
+  ])
+  act(() => result.current.handleNextStep())
+  expect(result.current.currentStep).toBe(2)
+  act(() => result.current.handleBackStep())
+  expect(result.current.currentStep).toBe(1)
 })
 
 describe('useDatasourceOptions', () => {
@@ -88,27 +50,6 @@ describe('useDatasourceOptions', () => {
     expect(result.current).toEqual([])
   })
 
-  it('should return options from DataSource nodes', () => {
-    mockNodes.push(
-      { id: 'ds-1', data: { type: BlockEnum.DataSource, title: 'Source A' } },
-      { id: 'ds-2', data: { type: BlockEnum.DataSource, title: 'Source B' } },
-    )
-
-    const { result } = renderHook(() => useDatasourceOptions())
-
-    expect(result.current).toHaveLength(2)
-    expect(result.current[0]).toEqual({
-      label: 'Source A',
-      value: 'ds-1',
-      data: expect.objectContaining({ type: BlockEnum.DataSource }),
-    })
-    expect(result.current[1]).toEqual({
-      label: 'Source B',
-      value: 'ds-2',
-      data: expect.objectContaining({ type: BlockEnum.DataSource }),
-    })
-  })
-
   it('should filter out non-DataSource nodes', () => {
     mockNodes.push(
       { id: 'ds-1', data: { type: BlockEnum.DataSource, title: 'Source' } },
@@ -118,8 +59,9 @@ describe('useDatasourceOptions', () => {
 
     const { result } = renderHook(() => useDatasourceOptions())
 
-    expect(result.current).toHaveLength(1)
-    expect(result.current[0]!.value).toBe('ds-1')
+    expect(result.current).toEqual([
+      { label: 'Source', value: 'ds-1', data: { type: BlockEnum.DataSource, title: 'Source' } },
+    ])
   })
 })
 

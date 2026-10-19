@@ -12,6 +12,7 @@ vi.mock('@/app/notifications', () => ({
 }))
 
 const mockToastError = vi.mocked(toast.error)
+beforeEach(() => vi.clearAllMocks())
 const createParam = (overrides: Partial<Param> = {}): Param => ({
   name: 'city',
   type: ParamType.string,
@@ -91,16 +92,6 @@ describe('Parameter editing', () => {
 
     expect(onSave).not.toHaveBeenCalled()
     expect(mockToastError).toHaveBeenCalled()
-  })
-
-  it('should render the add trigger for new parameters', () => {
-    render(<ParameterDialog type="add" onSave={vi.fn()} />)
-
-    expect(
-      screen.getByRole('button', {
-        name: 'workflowModels.nodes.parameterExtractor.addExtractParameter',
-      }),
-    ).toBeInTheDocument()
   })
 
   it('should reject invalid names and reset add modal fields after canceling', async () => {

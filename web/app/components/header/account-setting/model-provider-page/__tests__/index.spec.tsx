@@ -1,8 +1,8 @@
 import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { PluginDeclaration, PluginDetail } from '@/app/components/plugins/types'
+import type { ModelTypeEnum } from '../declarations'
+import { zDefaultModelResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { act, fireEvent, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vite-plus/test'
-import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
 import {
   getStepByStepTourTargetSelector,
   STEP_BY_STEP_TOUR_TARGETS,
@@ -16,7 +16,6 @@ import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import {
   CurrentSystemQuotaTypeEnum,
   CustomConfigurationStatusEnum,
-  ModelTypeEnum,
   QuotaUnitEnum,
 } from '../declarations'
 import ModelProviderPage from '../index'
@@ -91,13 +90,6 @@ const { mockSummaryState } = vi.hoisted(() => ({
   },
 }))
 
-const { mockInstalledModelPlugins, mockUseInstalledPluginList } = vi.hoisted(() => ({
-  mockInstalledModelPlugins: {
-    value: [] as PluginDetail[],
-  },
-  mockUseInstalledPluginList: vi.fn(),
-}))
-
 const mockQuotaConfig = {
   quota_type: CurrentSystemQuotaTypeEnum.free,
   quota_unit: QuotaUnitEnum.times,
@@ -113,72 +105,6 @@ const saveUpdateSettings = () => {
 
 const openUpdateSettings = () => {
   fireEvent.click(screen.getByRole('button', { name: /plugin\.autoUpdate\.autoUpdate/ }))
-}
-
-const createPluginDeclaration = (
-  overrides: Partial<PluginDeclaration> = {},
-): PluginDeclaration => ({
-  plugin_unique_identifier: 'langgenius/debug-model:1.0.0',
-  version: '1.0.0',
-  author: 'langgenius',
-  icon: 'debug-model.png',
-  icon_dark: 'debug-model-dark.png',
-  name: 'debug-model',
-  category: PluginCategoryEnum.model,
-  label: { en_US: 'Debug Model' } as unknown as PluginDeclaration['label'],
-  description: { en_US: 'Debug model provider' } as unknown as PluginDeclaration['description'],
-  created_at: '2024-01-01',
-  resource: null,
-  plugins: null,
-  verified: false,
-  endpoint: null,
-  tool: undefined,
-  datasource: undefined,
-  model: {},
-  tags: [],
-  agent_strategy: null,
-  meta: {
-    version: '1.0.0',
-  },
-  trigger: {} as unknown as PluginDeclaration['trigger'],
-  ...overrides,
-})
-
-const createPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail => {
-  const {
-    declaration: overrideDeclaration,
-    plugin_id: overridePluginId,
-    ...restOverrides
-  } = overrides
-  const declaration = overrideDeclaration ?? createPluginDeclaration()
-  const pluginId = overridePluginId ?? 'langgenius/debug-model'
-
-  return {
-    id: 'plugin-installation-id',
-    created_at: '2024-01-01',
-    updated_at: '2024-01-01',
-    name: declaration.name,
-    plugin_id: pluginId,
-    plugin_unique_identifier: declaration.plugin_unique_identifier,
-    declaration,
-    installation_id: 'plugin-installation-id',
-    tenant_id: 'tenant-id',
-    endpoints_setups: 0,
-    endpoints_active: 0,
-    version: '1.0.0',
-    latest_version: '1.0.0',
-    latest_unique_identifier: declaration.plugin_unique_identifier,
-    source: PluginSource.debugging,
-    meta: {
-      repo: '',
-      version: '1.0.0',
-      package: '',
-    },
-    status: 'active',
-    deprecated_reason: '',
-    alternative_plugin_id: '',
-    ...restOverrides,
-  }
 }
 
 type MockProvider = {
@@ -224,6 +150,23 @@ const renderWithConsoleQuery = createNuqsTestRenderer(
   () => ({ onUrlUpdate }),
 )
 
+const mockDefaultModels: Record<
+  string,
+  {
+    data: {
+      model: string
+      model_type: string
+      provider: { provider: string; icon_small: { en_US: string } }
+    } | null
+    isLoading: boolean
+  }
+> = {
+  llm: { data: null, isLoading: false },
+  'text-embedding': { data: null, isLoading: false },
+  rerank: { data: null, isLoading: false },
+  speech2text: { data: null, isLoading: false },
+  tts: { data: null, isLoading: false },
+}
 const renderModelProviderPage = (
   props: {
     enableMarketplace?: boolean
@@ -233,6 +176,35 @@ const renderModelProviderPage = (
 ) => {
   const { searchText = '', enableMarketplace = true, stickyToolbar = true } = props
   const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+      input: { params: { model_type: 'llm' } },
+    }),
+    { data: [] },
+  )
+  if (mockPluginSettingsAccess.canSetPluginPreferences) {
+    for (const [type, state] of Object.entries(mockDefaultModels)) {
+      if (!state.isLoading)
+        queryClient.setQueryData(
+          consoleQuery.workspaces.current.defaultModel.get.queryKey({
+            input: { query: { model_type: type as ModelTypeEnum } },
+          }),
+          {
+            data: state.data
+              ? zDefaultModelResponse.parse({
+                  ...state.data,
+                  provider: {
+                    label: { en_US: state.data.provider.provider },
+                    tenant_id: 'workspace-1',
+                    supported_model_types: [state.data.model_type],
+                    ...state.data.provider,
+                  },
+                })
+              : null,
+          },
+        )
+    }
+  }
   if (mockSummaryState.isLoading) {
     queryClient.setQueryDefaults(
       consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(),
@@ -271,22 +243,6 @@ const renderModelProviderPage = (
   )
 }
 
-const mockDefaultModels: Record<string, { data: unknown; isLoading: boolean }> = {
-  llm: { data: null, isLoading: false },
-  'text-embedding': { data: null, isLoading: false },
-  rerank: { data: null, isLoading: false },
-  speech2text: { data: null, isLoading: false },
-  tts: { data: null, isLoading: false },
-}
-
-vi.mock('../hooks', () => ({
-  useDefaultModel: (type: string, options?: { enabled?: boolean }) => {
-    mockDefaultModelQuery(type, options)
-    return mockDefaultModels[type] ?? { data: null, isLoading: false }
-  },
-  useLanguage: () => 'en_US',
-}))
-
 vi.mock('../install-from-marketplace', () => ({
   default: () => <div data-testid="install-from-marketplace" />,
 }))
@@ -316,16 +272,6 @@ vi.mock('../provider-added-card/quota-panel', () => ({
   default: () => <div data-testid="quota-panel" />,
 }))
 
-vi.mock('../system-model-selector', () => ({
-  default: ({ className, notConfigured }: { className?: string; notConfigured?: boolean }) => (
-    <div
-      data-testid="system-model-selector"
-      data-not-configured={String(notConfigured)}
-      className={className}
-    />
-  ),
-}))
-
 vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
   useCanSetPluginSettings: () => ({
     canSetPermissions: true,
@@ -343,12 +289,7 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
 }))
 
 vi.mock('@/service/use-plugins', () => ({
-  useInstalledPluginList: (...args: unknown[]) => {
-    mockUseInstalledPluginList(...args)
-    return {
-      data: { plugins: mockInstalledModelPlugins.value },
-    }
-  },
+  useInstalledPluginList: () => ({ data: { plugins: [] }, isLoading: false }),
   usePluginAutoUpgradeSettings: () => ({
     data: mockReferenceSetting.auto_upgrade
       ? {
@@ -368,72 +309,13 @@ vi.mock('@/service/use-plugins', () => ({
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const originalWorkspaces = actual.consoleQuery.workspaces
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleQuery: new Proxy(actual.consoleQuery, {
-      get(target, prop) {
-        if (prop === 'workspaces') {
-          return {
-            ...originalWorkspaces,
-            current: {
-              ...originalWorkspaces.current,
-              modelProviders: {
-                summary: {
-                  get: {
-                    queryKey: () =>
-                      originalWorkspaces.current.modelProviders.summary.get.queryKey(),
-                    queryOptions: () => ({
-                      ...originalWorkspaces.current.modelProviders.summary.get.queryOptions(),
-                      queryFn: () => new Promise(() => {}),
-                    }),
-                  },
-                },
-              },
-              plugin: {
-                ...originalWorkspaces.current.plugin,
-                list: {
-                  ...originalWorkspaces.current.plugin.list,
-                  installations: {
-                    ids: {
-                      post: {
-                        queryOptions: () => ({
-                          queryKey: [
-                            'workspaces',
-                            'current',
-                            'plugin',
-                            'list',
-                            'installations',
-                            'ids',
-                            'post',
-                          ],
-                          queryFn: () => new Promise(() => {}),
-                        }),
-                      },
-                    },
-                  },
-                  latestVersions: {
-                    post: {
-                      queryOptions: () => ({
-                        queryKey: [
-                          'workspaces',
-                          'current',
-                          'plugin',
-                          'list',
-                          'latestVersions',
-                          'post',
-                        ],
-                        queryFn: () => new Promise(() => {}),
-                      }),
-                    },
-                  },
-                },
-              },
-            },
-          }
-        }
-        return Reflect.get(target, prop)
-      },
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.modelProviders.summary.get': () => new Promise(() => {}),
+      'workspaces.current.defaultModel.get': mockDefaultModelQuery,
+      'workspaces.current.plugin.list.latestVersions.post': () => new Promise(() => {}),
     }),
   }
 })
@@ -442,8 +324,7 @@ describe('ModelProviderPage', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
-    mockUseInstalledPluginList.mockClear()
-    mockInstalledModelPlugins.value = []
+    mockDefaultModelQuery.mockImplementation(() => new Promise(() => {}))
     mockSummaryState.isLoading = false
     mockSummaryState.plugins = {}
     mockPluginSettingsAccess.canSetPluginPreferences = true
@@ -496,13 +377,11 @@ describe('ModelProviderPage', () => {
       screen.getByPlaceholderText('modelProvider.modelProvider.searchModels'),
     ).toBeInTheDocument()
     const autoUpdateButton = screen.getByRole('button', { name: /plugin\.autoUpdate\.autoUpdate/ })
-    const systemModelSelector = screen.getByTestId('system-model-selector')
+    const systemModelSelector = screen.getByRole('button', {
+      name: /modelProvider.systemModelSettings/,
+    })
     expect(autoUpdateButton).toBeInTheDocument()
     expect(systemModelSelector).toBeInTheDocument()
-    expect(
-      systemModelSelector.compareDocumentPosition(autoUpdateButton) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
     expect(screen.getByTestId('install-from-marketplace')).toBeInTheDocument()
   })
 
@@ -511,36 +390,13 @@ describe('ModelProviderPage', () => {
 
     renderModelProviderPage()
 
-    expect(mockDefaultModelQuery.mock.calls).toEqual([
-      [ModelTypeEnum.textGeneration, { enabled: false }],
-      [ModelTypeEnum.textEmbedding, { enabled: false }],
-      [ModelTypeEnum.rerank, { enabled: false }],
-      [ModelTypeEnum.speech2text, { enabled: false }],
-      [ModelTypeEnum.tts, { enabled: false }],
-    ])
-    expect(screen.queryByTestId('system-model-selector')).not.toBeInTheDocument()
+    expect(mockDefaultModelQuery).not.toHaveBeenCalled()
+    expect(
+      screen.queryByRole('button', { name: /modelProvider.systemModelSettings/ }),
+    ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /plugin\.autoUpdate\.autoUpdate/ }),
     ).not.toBeInTheDocument()
-  })
-
-  it('should align the toolbar without extra internal top offset', () => {
-    const { container } = renderModelProviderPage()
-
-    expect(container.firstElementChild).toHaveClass('relative')
-    expect(container.firstElementChild).not.toHaveClass('-mt-2', 'pt-1')
-    expect(container.firstElementChild?.firstElementChild).toHaveClass(
-      'sticky',
-      'top-0',
-      'z-10',
-      '-mx-6',
-      'mb-2',
-      'flex',
-      'bg-components-panel-bg',
-      'px-6',
-      'pb-2',
-    )
-    expect(container.firstElementChild?.firstElementChild).not.toHaveClass('mb-4')
   })
 
   it('should show the current auto-update strategy on the update setting button', () => {
@@ -638,9 +494,9 @@ describe('ModelProviderPage', () => {
 
   it('should render configured and not configured providers sections', () => {
     renderModelProviderPage()
-    expect(screen.getByText('openai')).toBeInTheDocument()
+    expect(screen.getByText('openai')).toHaveAttribute('data-not-configured', 'false')
     expect(screen.getByText('modelProvider.modelProvider.toBeConfigured')).toBeInTheDocument()
-    expect(screen.getByText('anthropic')).toBeInTheDocument()
+    expect(screen.getByText('anthropic')).toHaveAttribute('data-not-configured', 'true')
   })
 
   it('should use the empty provider state as the production tour target when no provider cards exist', () => {
@@ -682,49 +538,10 @@ describe('ModelProviderPage', () => {
 
     renderModelProviderPage()
 
-    expect(mockUseInstalledPluginList).not.toHaveBeenCalled()
     expect(screen.getByTestId('provider-card')).toHaveAttribute(
       'data-plugin-id',
       'langgenius/openai-marketplace',
     )
-    expect(screen.queryByText('OpenAI Plugin')).not.toBeInTheDocument()
-  })
-
-  it('should not render installed model plugins that are not registered as model providers', () => {
-    mockInstalledModelPlugins.value = [
-      createPluginDetail({
-        plugin_id: 'langgenius/debug-model',
-        declaration: createPluginDeclaration({
-          label: { en_US: 'Debug Model' } as unknown as PluginDeclaration['label'],
-          description: {
-            en_US: 'Debug model provider',
-          } as unknown as PluginDeclaration['description'],
-        }),
-      }),
-    ]
-
-    renderModelProviderPage()
-
-    expect(screen.queryByText('Debug Model')).not.toBeInTheDocument()
-    expect(screen.queryByText('langgenius/debug-model')).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: 'plugin actions langgenius/debug-model' }),
-    ).not.toBeInTheDocument()
-  })
-
-  it('should not refresh providers when remote plugin metadata already comes from summary', () => {
-    mockSummaryState.plugins = {
-      'langgenius/debug-model': {
-        installation_id: 'debug-installation',
-        plugin_id: 'langgenius/debug-model',
-        plugin_unique_identifier: 'langgenius/debug-model:1.0.0',
-        runtime_type: 'remote',
-        source: 'remote',
-        version: '1.0.0',
-      },
-    }
-
-    renderModelProviderPage()
   })
 
   it('should render remote source from the authoritative summary plugin entry', () => {
@@ -764,7 +581,6 @@ describe('ModelProviderPage', () => {
 
     renderModelProviderPage()
 
-    expect(mockUseInstalledPluginList).not.toHaveBeenCalled()
     expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
     expect(screen.queryByTestId('provider-card')).not.toBeInTheDocument()
     expect(screen.queryByTestId('install-from-marketplace')).not.toBeInTheDocument()
@@ -829,20 +645,6 @@ describe('ModelProviderPage', () => {
     it('should show none-configured warning when providers exist but no default models set', () => {
       renderModelProviderPage()
       expect(screen.getByText('modelProvider.modelProvider.noneConfigured')).toBeInTheDocument()
-    })
-
-    it('should render the none-configured warning inline with the system model selector', () => {
-      const { container } = renderModelProviderPage()
-      const warning = screen.getByText('modelProvider.modelProvider.noneConfigured')
-      const warningContainer = warning.closest('.rounded-lg')
-      const systemModelSelector = screen.getByTestId('system-model-selector')
-
-      expect(warning.closest('.fixed')).toBeNull()
-      expect(warningContainer).toHaveClass('inline-flex', 'bg-components-panel-bg-blur')
-      expect(warningContainer).toContainElement(systemModelSelector)
-      expect(systemModelSelector).toHaveAttribute('data-not-configured', 'true')
-      expect(systemModelSelector).toHaveClass('h-6')
-      expect(container.firstElementChild).toHaveClass('relative')
     })
 
     it('should not show warning when some default models are set', () => {

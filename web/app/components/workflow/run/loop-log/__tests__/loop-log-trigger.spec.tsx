@@ -1,45 +1,19 @@
-import type { LoopDurationMap, LoopVariableMap, NodeTracing } from '@/types/workflow'
+import type { LoopDurationMap, LoopVariableMap } from '@/types/workflow'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createNodeTracing as createTrace } from '../../../__tests__/fixtures'
 import { BlockEnum } from '../../../types'
 import LoopLogTrigger from '../loop-log-trigger'
 
-const createNodeTracing = (overrides: Partial<NodeTracing> = {}): NodeTracing => ({
-  id: 'trace-1',
-  index: 0,
-  predecessor_node_id: '',
-  node_id: 'loop-node',
-  node_type: BlockEnum.Loop,
-  title: 'Loop',
-  inputs: {},
-  inputs_truncated: false,
-  process_data: {},
-  process_data_truncated: false,
-  outputs: {},
-  outputs_truncated: false,
-  status: 'succeeded',
-  error: '',
-  elapsed_time: 0.2,
-  execution_metadata: {
-    total_tokens: 0,
-    total_price: 0,
-    currency: 'USD',
-  },
-  metadata: {
-    iterator_length: 0,
-    iterator_index: 0,
-    loop_length: 0,
-    loop_index: 0,
-  },
-  created_at: 1710000000,
-  created_by: {
-    id: 'user-1',
-    name: 'Alice',
-    email: 'alice@example.com',
-  },
-  finished_at: 1710000001,
-  ...overrides,
-})
+const createNodeTracing = (overrides: Parameters<typeof createTrace>[0] = {}) =>
+  createTrace({
+    node_id: 'loop-node',
+    node_type: BlockEnum.Loop,
+    title: 'Loop',
+    status: 'succeeded',
+    execution_metadata: { total_tokens: 0, total_price: 0, currency: 'USD' },
+    ...overrides,
+  })
 
 describe('LoopLogTrigger', () => {
   beforeEach(() => {
@@ -52,6 +26,7 @@ describe('LoopLogTrigger', () => {
       const user = userEvent.setup()
       const onShowLoopResultList =
         vi.fn<NonNullable<React.ComponentProps<typeof LoopLogTrigger>['onShowLoopResultList']>>()
+      const onParentClick = vi.fn()
       const detailList = [
         [createNodeTracing({ id: 'loop-1-step-1', status: 'succeeded' })],
         [createNodeTracing({ id: 'loop-2-step-1', status: 'failed' })],
@@ -60,7 +35,7 @@ describe('LoopLogTrigger', () => {
       const loopVariableMap: LoopVariableMap = { 1: { item: 'alpha' } }
 
       render(
-        <div onClick={vi.fn()}>
+        <div onClick={onParentClick}>
           <LoopLogTrigger
             nodeInfo={createNodeTracing({
               details: detailList,
@@ -83,6 +58,7 @@ describe('LoopLogTrigger', () => {
 
       await user.click(screen.getByRole('button'))
 
+      expect(onParentClick).not.toHaveBeenCalled()
       expect(onShowLoopResultList).toHaveBeenCalledWith(
         detailList,
         loopDurationMap,

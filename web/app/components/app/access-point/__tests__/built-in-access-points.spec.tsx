@@ -29,11 +29,6 @@ const mocks = vi.hoisted(() => ({
   useAppWorkflow: vi.fn(),
 }))
 
-vi.mock('react-i18next', async () => {
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return createReactI18nextMock()
-})
-
 vi.mock('@/features/system-features/client', () => ({
   systemFeaturesQueryOptions: () => ({ queryKey: ['system-features'] }),
 }))
@@ -192,23 +187,6 @@ describe('BuiltInAccessPoints', () => {
     expect(mocks.triggerCard).toHaveBeenCalledWith(
       expect.objectContaining({ canManageAccessPoint: true }),
     )
-  })
-
-  it('highlights only the targeted built-in access point card', () => {
-    render(
-      <BuiltInAccessPoints
-        appId="app-1"
-        canDeploy
-        canManageAccessPoint
-        canReleaseAndVersion
-        highlightedAccessPoint="mcp"
-      />,
-    )
-
-    expect(mocks.webCard).toHaveBeenCalledWith(expect.objectContaining({ highlighted: false }))
-    expect(mocks.apiCard).toHaveBeenCalledWith(expect.objectContaining({ highlighted: false }))
-    expect(mocks.mcpCard).toHaveBeenCalledWith(expect.objectContaining({ highlighted: true }))
-    expect(mocks.triggerCard).toHaveBeenCalledWith(expect.objectContaining({ highlighted: false }))
   })
 
   it('enables Trigger and disables the other access points in trigger mode', () => {

@@ -3,7 +3,7 @@ import type { ComponentProps } from 'react'
 import type { Mock } from 'vite-plus/test'
 import type { AnnotationItemBasic } from '../../type'
 import type { Locale } from '@/i18n'
-import { act, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useLocale } from '#i18n'
 import { LanguagesSupported } from '@/i18n/language'
@@ -84,7 +84,7 @@ const expandExportMenu = async (user: ReturnType<typeof userEvent.setup>) => {
   const exportItem = await screen.findByRole('menuitem', {
     name: /appAnnotation\.table\.header\.bulkExport/i,
   })
-  await user.hover(exportItem)
+  await user.click(exportItem)
 }
 
 const getExportItems = async () => {
@@ -96,15 +96,17 @@ const getExportItems = async () => {
   }
 }
 
-const clickMenuItem = async (item: HTMLElement) => {
-  await act(async () => {
-    item.click()
-  })
+const clickMenuItem = async (user: ReturnType<typeof userEvent.setup>, item: HTMLElement) => {
+  item.focus()
+  await user.keyboard('{Enter}')
 }
 
-const clickOperationAction = async (translationKey: string) => {
+const clickOperationAction = async (
+  user: ReturnType<typeof userEvent.setup>,
+  translationKey: string,
+) => {
   const item = await screen.findByRole('menuitem', { name: translationKey })
-  await clickMenuItem(item)
+  await clickMenuItem(user, item)
 }
 
 const mockAnnotations: AnnotationItemBasic[] = [
@@ -118,7 +120,7 @@ describe('HeaderOptions', () => {
   const originalUrl = window.location.href
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     vi.useRealTimers()
     mockJsonToCSV.mockReturnValue('csv-content')
     mockedFetchAnnotations.mockResolvedValue({ data: [] })
@@ -146,7 +148,7 @@ describe('HeaderOptions', () => {
     expect(csvItem).not.toHaveAttribute('data-disabled')
     expect(jsonItem).not.toHaveAttribute('data-disabled')
 
-    await clickMenuItem(csvItem)
+    await clickMenuItem(user, csvItem)
 
     expect(mockJsonToCSV).toHaveBeenCalledWith([
       ['Question', 'Answer'],
@@ -178,13 +180,12 @@ describe('HeaderOptions', () => {
     await expandExportMenu(user)
 
     const { csvItem } = await getExportItems()
-    await clickMenuItem(csvItem)
+    await clickMenuItem(user, csvItem)
 
     expect(mockJsonToCSV).toHaveBeenCalledWith([
       ['问题', '答案'],
       ['Question 1', 'Answer 1'],
     ])
-    expect(createElementSpy).toHaveBeenCalled()
     expect(anchor.download).toBe(`annotations-${LanguagesSupported[1]}.csv`)
     expect(clickSpy).toHaveBeenCalled()
     expect(revokeSpy).toHaveBeenCalledWith('blob://mock-url')
@@ -252,7 +253,7 @@ describe('HeaderOptions', () => {
     renderComponent({ onAdded })
 
     await openOperationsPopover(user)
-    await clickOperationAction('appAnnotation.table.header.bulkImport')
+    await clickOperationAction(user, 'appAnnotation.table.header.bulkImport')
 
     expect(await screen.findByText('appAnnotation.batchModal.title'))!.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'appAnnotation.batchModal.cancel' }))
@@ -283,9 +284,8 @@ describe('HeaderOptions', () => {
     await expandExportMenu(user)
 
     const { jsonItem } = await getExportItems()
-    await clickMenuItem(jsonItem)
+    await clickMenuItem(user, jsonItem)
 
-    expect(createElementSpy).toHaveBeenCalled()
     expect(anchor.download).toBe(`annotations-${LanguagesSupported[1]}.jsonl`)
     expect(clickSpy).toHaveBeenCalled()
     expect(revokeSpy).toHaveBeenCalledWith('blob://mock-url')
@@ -322,10 +322,11 @@ describe('HeaderOptions', () => {
     renderComponent({ onAdded })
 
     await openOperationsPopover(user)
-    await clickOperationAction('appAnnotation.table.header.clearAll')
+    await clickOperationAction(user, 'appAnnotation.table.header.clearAll')
 
     await screen.findByText('appAnnotation.table.header.clearAllConfirm')
     const confirmButton = screen.getByRole('button', { name: 'common.operation.confirm' })
+    expect(mockedRequest).not.toHaveBeenCalled()
     await user.click(confirmButton)
 
     await waitFor(() => {
@@ -347,9 +348,10 @@ describe('HeaderOptions', () => {
     renderComponent({ onAdded })
 
     await openOperationsPopover(user)
-    await clickOperationAction('appAnnotation.table.header.clearAll')
+    await clickOperationAction(user, 'appAnnotation.table.header.clearAll')
     await screen.findByText('appAnnotation.table.header.clearAllConfirm')
     const confirmButton = screen.getByRole('button', { name: 'common.operation.confirm' })
+    expect(mockedRequest).not.toHaveBeenCalled()
     await user.click(confirmButton)
 
     await waitFor(() => {

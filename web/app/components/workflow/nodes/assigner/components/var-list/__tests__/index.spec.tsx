@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { createNode, resetFixtureCounters } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
@@ -68,27 +69,33 @@ const renderVarList = (props: Partial<ComponentProps<typeof VarList>> = {}) => {
   const handleChange = vi.fn()
   const handleOpen = vi.fn()
 
-  const result = renderWorkflowFlowComponent(
-    <VarList
-      readonly={false}
-      nodeId="node-current"
-      list={[]}
-      onChange={handleChange}
-      onOpen={handleOpen}
-      getAssignedVarType={() => VarType.string}
-      getToAssignedVarType={() => VarType.string}
-      writeModeTypes={[WriteMode.overwrite, WriteMode.clear, WriteMode.set]}
-      writeModeTypesArr={[WriteMode.overwrite, WriteMode.clear]}
-      writeModeTypesNum={[WriteMode.increment]}
-      {...props}
-    />,
-    {
-      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
-      nodes: [sourceNode, currentNode],
-      edges: [],
-      hooksStoreProps: {},
-    },
-  )
+  function Harness() {
+    const [list, setList] = useState(props.list ?? [])
+    return (
+      <VarList
+        readonly={false}
+        nodeId="node-current"
+        onOpen={handleOpen}
+        getAssignedVarType={() => VarType.string}
+        getToAssignedVarType={() => VarType.string}
+        writeModeTypes={[WriteMode.overwrite, WriteMode.clear, WriteMode.set]}
+        writeModeTypesArr={[WriteMode.overwrite, WriteMode.clear]}
+        writeModeTypesNum={[WriteMode.increment]}
+        {...props}
+        list={list}
+        onChange={(next) => {
+          setList(next)
+          handleChange(next)
+        }}
+      />
+    )
+  }
+  const result = renderWorkflowFlowComponent(<Harness />, {
+    resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    nodes: [sourceNode, currentNode],
+    edges: [],
+    hooksStoreProps: {},
+  })
 
   return {
     ...result,
@@ -102,16 +109,10 @@ describe('assigner/var-list', () => {
     resetFixtureCounters()
   })
 
-  it('renders the empty placeholder when no operations are configured', () => {
-    renderVarList()
-
-    expect(screen.getByText('workflowLogic.nodes.assigner.noVarTip')).toBeInTheDocument()
-  })
-
   it('switches a boolean assignment to constant mode and updates the selected value', async () => {
     const user = userEvent.setup()
     const list = [createOperation()]
-    const { handleChange, rerender } = renderVarList({
+    const { handleChange } = renderVarList({
       list,
       getAssignedVarType: () => VarType.boolean,
       getToAssignedVarType: () => VarType.boolean,
@@ -128,27 +129,6 @@ describe('assigner/var-list', () => {
       }),
     ])
 
-    rerender(
-      <VarList
-        readonly={false}
-        nodeId="node-current"
-        list={[
-          createOperation({
-            operation: WriteMode.set,
-            input_type: AssignerNodeInputType.constant,
-            value: false,
-          }),
-        ]}
-        onChange={handleChange}
-        onOpen={vi.fn()}
-        getAssignedVarType={() => VarType.boolean}
-        getToAssignedVarType={() => VarType.boolean}
-        writeModeTypes={[WriteMode.overwrite, WriteMode.clear, WriteMode.set]}
-        writeModeTypesArr={[WriteMode.overwrite, WriteMode.clear]}
-        writeModeTypesNum={[WriteMode.increment]}
-      />,
-    )
-
     await user.click(screen.getByText('True'))
 
     expect(handleChange.mock.lastCall?.[0]).toEqual([
@@ -160,17 +140,19 @@ describe('assigner/var-list', () => {
     ])
   })
 
-  it('opens the assigned-variable picker and removes an operation', () => {
+  it('opens the assigned-variable picker and removes an operation', async () => {
+    const user = userEvent.setup()
     const { handleChange, handleOpen } = renderVarList({
       list: [createOperation()],
     })
 
-    fireEvent.click(screen.getAllByTestId('var-reference-picker-trigger')[0]!)
+    await user.click(screen.getAllByTestId('var-reference-picker-trigger')[0]!)
     expect(handleOpen).toHaveBeenCalledWith(0)
 
-    const buttons = screen.getAllByRole('button')
-    fireEvent.click(buttons[buttons.length - 1]!)
+    await user.keyboard('{Escape}')
+    await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
 
     expect(handleChange).toHaveBeenLastCalledWith([])
+    expect(screen.getByText('workflowLogic.nodes.assigner.noVarTip')).toBeVisible()
   })
 })

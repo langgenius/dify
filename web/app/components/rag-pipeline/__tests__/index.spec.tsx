@@ -1,4 +1,6 @@
 import { render, screen } from '@testing-library/react'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { BlockEnum } from '@/app/components/workflow/types'
 import RagPipelineWrapper from '../index'
 
 let pipelineId: string | undefined
@@ -71,12 +73,18 @@ describe('RagPipeline', () => {
   it('passes initialized graph data to the pipeline', () => {
     pipelineId = 'pipeline-1'
     pipelineInit = {
-      data: { graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } } },
+      data: {
+        graph: {
+          nodes: [createNode({ id: 'source', data: { type: BlockEnum.DataSource } })],
+          edges: [],
+          viewport: { x: 0, y: 0, zoom: 1.5 },
+        },
+      },
       isLoading: false,
     }
 
     render(<RagPipelineWrapper />)
 
-    expect(screen.getByText('Pipeline 0/0/1')).toBeInTheDocument()
+    expect(screen.getByText('Pipeline 1/0/1.5')).toBeInTheDocument()
   })
 })

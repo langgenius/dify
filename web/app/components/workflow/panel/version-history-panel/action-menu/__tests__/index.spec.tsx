@@ -1,7 +1,8 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { useState } from 'react'
 import {
   createConsoleQueryClient,
   seedFeatures,
@@ -26,6 +27,8 @@ const renderActionMenu = (ui: React.ReactElement, pipelineId?: string) => {
   })
 }
 
+afterEach(() => vi.unstubAllGlobals())
+
 describe('ActionMenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -33,34 +36,37 @@ describe('ActionMenu', () => {
     deploymentEdition = 'CLOUD'
   })
 
-  it('toggles the trigger and forwards menu clicks', async () => {
+  it('closes the menu before invoking the selected action with focus on its trigger', async () => {
     const user = userEvent.setup()
-    const setOpen = vi.fn()
-    const handleClickActionMenuItem = vi.fn()
-
-    renderActionMenu(
-      <ActionMenu
-        workflowId="version-1"
-        isNamedVersion
-        isShowDelete
-        canImportExportDSL
-        open
-        setOpen={setOpen}
-        handleClickActionMenuItem={handleClickActionMenuItem}
-      />,
+    const onAction = vi.fn(() =>
+      expect(screen.getByRole('button', { name: 'common.operation.more' })).toHaveFocus(),
     )
-
+    function Harness() {
+      const [open, setOpen] = useState(false)
+      return (
+        <ActionMenu
+          workflowId="version-1"
+          isNamedVersion
+          isShowDelete
+          canImportExportDSL
+          open={open}
+          setOpen={setOpen}
+          handleClickActionMenuItem={onAction}
+        />
+      )
+    }
+    renderActionMenu(<Harness />)
     const trigger = screen.getByRole('button', { name: 'common.operation.more' })
-    expect(trigger).not.toHaveAttribute('role')
-    handleClickActionMenuItem.mockImplementation(() => expect(trigger).toHaveFocus())
-
-    await user.click(trigger)
-    await user.click(screen.getByText('workflow.common.restore'))
-    await user.click(screen.getByText('common.operation.delete'))
-
-    expect(setOpen).toHaveBeenCalled()
-    expect(handleClickActionMenuItem).toHaveBeenCalledWith(VersionHistoryContextMenuOptions.restore)
-    expect(handleClickActionMenuItem).toHaveBeenCalledWith(VersionHistoryContextMenuOptions.delete)
+    for (const [name, action] of [
+      ['workflow.common.restore', VersionHistoryContextMenuOptions.restore],
+      ['common.operation.delete', VersionHistoryContextMenuOptions.delete],
+    ] as const) {
+      await user.click(trigger)
+      await user.click(screen.getByRole('menuitem', { name }))
+      await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument())
+      expect(onAction).toHaveBeenLastCalledWith(action)
+    }
+    expect(onAction).toHaveBeenCalledTimes(2)
   })
 
   it.each([
@@ -121,6 +127,5 @@ describe('ActionMenu', () => {
     expect(trackUpgrade).toHaveBeenCalledExactlyOnceWith('event', 'click_upgrade_btn', {
       loc: 'workflow-version-history-menu',
     })
-    vi.unstubAllGlobals()
   })
 })

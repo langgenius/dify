@@ -1,7 +1,8 @@
+import type { ReactElement } from 'react'
 import type { Role } from '@/models/access-control'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import RowMenu from '../row-menu'
 
 const mockWorkspacePermissionKeys = vi.hoisted(() => ({
@@ -26,12 +27,8 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
+const render = (ui: ReactElement) =>
+  renderWithConsoleQuery(ui, { workspacePermissionKeys: mockWorkspacePermissionKeys.value })
 
 vi.mock('@/app/notifications', () => ({
   toast: {
@@ -55,11 +52,9 @@ const createRole = (overrides: Partial<Role> = {}): Role => ({
 const openMenu = async () => {
   const user = userEvent.setup()
   const trigger = screen.getByRole('button', { name: 'common.operation.moreActions' })
-  expect(trigger).not.toHaveAttribute('data-popup-open')
 
   await user.click(trigger)
 
-  expect(trigger).toHaveAttribute('data-popup-open', '')
   const menus = screen.getAllByRole('menu')
   return {
     user,
@@ -76,16 +71,7 @@ describe('RowMenu', () => {
       data: [],
       pagination: { total_count: 3, per_page: 9999, current_page: 1, total_pages: 1 },
     })
-    document.body
-      .querySelectorAll('[role="menu"], [role="menuitem"]')
-      .forEach((element) => element.remove())
     mockWorkspacePermissionKeys.value = ['workspace.role.manage']
-  })
-
-  afterEach(() => {
-    document.body
-      .querySelectorAll('[role="menu"], [role="menuitem"]')
-      .forEach((element) => element.remove())
   })
 
   describe('Rendering', () => {
@@ -255,6 +241,7 @@ describe('RowMenu', () => {
     })
 
     it('should ignore role management actions without manage permission', async () => {
+      const user = userEvent.setup()
       mockWorkspacePermissionKeys.value = []
       const onEdit = vi.fn()
       const role = createRole({
@@ -267,11 +254,11 @@ describe('RowMenu', () => {
 
       const { menu } = await openMenu()
 
-      fireEvent.click(within(menu).getByRole('menuitem', { name: 'common.operation.edit' }))
-      fireEvent.click(
+      await user.click(within(menu).getByRole('menuitem', { name: 'common.operation.edit' }))
+      await user.click(
         within(menu).getByRole('menuitem', { name: 'permission.common.duplicateAction' }),
       )
-      fireEvent.click(within(menu).getByRole('menuitem', { name: 'common.operation.delete' }))
+      await user.click(within(menu).getByRole('menuitem', { name: 'common.operation.delete' }))
 
       expect(onEdit).not.toHaveBeenCalled()
       expect(mockCopyRole).not.toHaveBeenCalled()

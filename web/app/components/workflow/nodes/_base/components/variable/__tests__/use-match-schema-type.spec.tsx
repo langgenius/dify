@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
+import { onTestFinished } from 'vite-plus/test'
 import useMatchSchemaType, { getMatchedSchemaType } from '../use-match-schema-type'
 
 // Built-in definitions as served by /spec/schema-definitions (api/core/schemas/builtin).
@@ -38,14 +39,13 @@ vi.mock('@/service/base', async (importOriginal) => ({
   request: async () => Response.json(schemaDefinitions),
 }))
 
-const wrapper = ({ children }: { children: ReactNode }) => (
-  <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-    {children}
-  </QueryClientProvider>
-)
-
 describe('useMatchSchemaType', () => {
   it('keeps the full definition schemas so typed structures still match', async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    onTestFinished(() => client.clear())
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    )
     const { result } = renderHook(() => useMatchSchemaType(), { wrapper })
 
     await waitFor(() => expect(result.current.schemaTypeDefinitions).toBeDefined())

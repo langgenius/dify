@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import {
   createHumanInputFormFixture,
   createWorkflowProcessFixture,
@@ -36,7 +37,8 @@ describe('WorkflowBody', () => {
     vi.clearAllMocks()
   })
 
-  it('should render workflow information and allow tab switching', () => {
+  it('should render workflow information and allow tab switching', async () => {
+    const user = userEvent.setup()
     render(
       <WorkflowBody
         content="detail"
@@ -68,12 +70,13 @@ describe('WorkflowBody', () => {
     expect(screen.getByText('task-1-1')).toBeInTheDocument()
     expect(screen.getByText('result-tab:RESULT')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText(/(?:^|\.)detail(?=$|:)/))
+    await user.click(screen.getByText(/(?:^|\.)detail(?=$|:)/))
 
     expect(mockSwitchTab).toHaveBeenCalledWith('DETAIL')
   })
 
-  it('should forward human input submissions', () => {
+  it('should forward human input submissions', async () => {
+    const user = userEvent.setup()
     render(
       <WorkflowBody
         content="detail"
@@ -91,7 +94,7 @@ describe('WorkflowBody', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('submit-human-input'))
+    await user.click(screen.getByText('submit-human-input'))
 
     expect(mockSubmit).toHaveBeenCalledWith('token-1', {
       action: 'submit',

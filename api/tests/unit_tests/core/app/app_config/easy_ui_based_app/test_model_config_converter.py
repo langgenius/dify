@@ -165,7 +165,7 @@ class TestModelConfigConverter:
             return_value=mock_manager,
         )
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Model gpt\\-4 not exist\\."):
             ModelConfigConverter.convert(mock_app_config)
 
     @pytest.mark.parametrize(
@@ -207,7 +207,7 @@ class TestModelConfigConverter:
             return_value=mock_manager,
         )
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Model gpt\\-4 not exist\\."):
             ModelConfigConverter.convert(mock_app_config)
 
     # =============================

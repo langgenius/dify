@@ -293,15 +293,8 @@ export type UpdateFromGitHubPayload = {
 }
 
 export type UpdatePluginPayload = {
-  type: PluginSource
   category: PluginCategoryEnum
-  marketPlace?: UpdateFromMarketPlacePayload
-  github?: UpdateFromGitHubPayload
-}
-
-export type UpdatePluginModalType = UpdatePluginPayload & {
-  onCancel: () => void
-  onSave: () => void | Promise<void>
+  github: UpdateFromGitHubPayload
 }
 
 export const InstallStepFromGitHub = {
@@ -410,20 +403,6 @@ export type PackageDependency = {
 }
 
 export type Dependency = GitHubItemAndMarketPlaceDependency | PackageDependency
-
-type Version = {
-  plugin_org: string
-  plugin_name: string
-  version: string
-  file_name: string
-  checksum: string
-  created_at: string
-  unique_identifier: string
-}
-
-export type VersionListResponse = {
-  versions: Version[]
-}
 
 export type VersionInfo = {
   installedId: string // use to uninstall

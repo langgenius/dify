@@ -34,8 +34,8 @@ describe('app-publisher utils', () => {
         getDisabledFunctionTooltip({
           t,
           publishedAt: undefined,
-          missingStartNode: false,
-          noAccessPermission: false,
+          missingStartNode: true,
+          noAccessPermission: true,
         }),
       ).toBe('notPublishedYet')
     })
@@ -44,7 +44,7 @@ describe('app-publisher utils', () => {
       expect(
         getDisabledFunctionTooltip({
           t,
-          publishedAt: Date.now(),
+          publishedAt: 1_710_000_000,
           missingStartNode: false,
           noAccessPermission: true,
         }),

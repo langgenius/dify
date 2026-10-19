@@ -37,14 +37,6 @@ vi.mock('@/app/notifications', () => ({
   toast: toastMocks,
 }))
 
-vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
-  Uploader: ({ file, updateFile }: { file?: File; updateFile: (file?: File) => void }) => (
-    <button type="button" onClick={() => updateFile(new File(['name: snippet'], 'snippet.yml'))}>
-      {file?.name || 'select-dsl-file'}
-    </button>
-  ),
-}))
-
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleClientResponses } = await import('@/test/console/service-responses')
@@ -60,7 +52,7 @@ vi.mock('@/service/console', async (importOriginal) => {
 
 describe('ImportSnippetDSLDialog', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     contextMocks.workspacePermissionKeys = ['snippets.create_and_modify']
   })
 
@@ -77,7 +69,6 @@ describe('ImportSnippetDSLDialog', () => {
     render(<ImportSnippetDSLDialog isOpen onClose={onClose} />)
 
     expect(screen.getByRole('dialog', { name: 'snippet.importDialogTitle' })).toBeInTheDocument()
-    expect(screen.getByRole('tablist', { name: 'snippet.importDialogTitle' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'snippet.importFromDSLFile' })).toHaveAttribute(
       'aria-selected',
       'true',
@@ -125,10 +116,17 @@ describe('ImportSnippetDSLDialog', () => {
 
     render(<ImportSnippetDSLDialog isOpen onClose={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: 'select-dsl-file' }))
+    await user.upload(
+      document.querySelector<HTMLInputElement>('input[type="file"]')!,
+      new File(['name: snippet'], 'snippet.yml', { type: 'application/yaml' }),
+    )
     await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
 
     expect(await screen.findByText('snippet.dslVersionMismatchTitle')).toBeInTheDocument()
+    expect(serviceMocks.importMutateAsync).toHaveBeenCalledExactlyOnceWith({
+      body: { mode: 'yaml-content', yaml_content: 'name: snippet', yaml_url: undefined },
+    })
+    expect(routerMocks.push).not.toHaveBeenCalled()
     expect(screen.getByText('0.9.0')).toBeInTheDocument()
     expect(screen.getByText('1.0.0')).toBeInTheDocument()
 
@@ -149,12 +147,16 @@ describe('ImportSnippetDSLDialog', () => {
 
     render(<ImportSnippetDSLDialog isOpen onClose={onClose} />)
 
-    await user.click(screen.getByRole('button', { name: 'select-dsl-file' }))
+    await user.upload(
+      document.querySelector<HTMLInputElement>('input[type="file"]')!,
+      new File(['name: snippet'], 'snippet.yml', { type: 'application/yaml' }),
+    )
     await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
 
     await waitFor(() => {
       expect(toastMocks.error).toHaveBeenCalledWith('invalid yaml')
       expect(onClose).not.toHaveBeenCalled()
+      expect(routerMocks.push).not.toHaveBeenCalled()
     })
   })
 
@@ -171,7 +173,10 @@ describe('ImportSnippetDSLDialog', () => {
     }
 
     render(<ImportSnippetDSLDialog isOpen onClose={onClose} />)
-    await user.click(screen.getByRole('button', { name: 'select-dsl-file' }))
+    await user.upload(
+      document.querySelector<HTMLInputElement>('input[type="file"]')!,
+      new File(['name: snippet'], 'snippet.yml', { type: 'application/yaml' }),
+    )
     await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
     if (step === 'confirm') {
       await user.click(await screen.findByRole('button', { name: 'common.operation.confirm' }))

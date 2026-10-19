@@ -1,4 +1,5 @@
 import type { Node } from 'reactflow'
+import type { AppSelectorValue } from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema'
 import type { NodeOutPutVar, ValueSelector } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -302,11 +303,7 @@ export function ReasoningConfigForm({
               <AppSelector
                 disabled={false}
                 scope={scope || 'all'}
-                value={
-                  varInput as
-                    | { app_id: string; inputs: Record<string, unknown>; files?: unknown[] }
-                    | undefined
-                }
+                value={(varInput?.value ?? varInput) as AppSelectorValue | undefined}
                 onSelect={handleAppChange(variable)}
               />
             )}

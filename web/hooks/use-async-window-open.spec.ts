@@ -98,8 +98,17 @@ describe('useAsyncWindowOpen', () => {
     window.open = openSpy
     const { result } = renderHook(() => useAsyncWindowOpen())
 
+    let resolveUrl!: (url: string) => void
+    const url = new Promise<string>((resolve) => {
+      resolveUrl = resolve
+    })
+    const pendingOpen = result.current(() => url)
+    expect(openSpy).toHaveBeenCalledWith('about:blank', '_blank', undefined)
+    expect(mockWindow.opener).toBeNull()
+    expect(mockWindow.location.href).toBe('')
     await act(async () => {
-      await result.current(async () => 'https://example.com/path')
+      resolveUrl('https://example.com/path')
+      await pendingOpen
     })
 
     expect(openSpy).toHaveBeenCalledWith('about:blank', '_blank', undefined)

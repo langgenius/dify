@@ -454,7 +454,7 @@ class TestCacheEmbeddingMultimodalQuery:
             mock_redis.get.return_value = None
             mock_model_instance.invoke_multimodal_embedding.return_value = embedding_result
 
-            with pytest.raises(ValueError) as exc_info:
+            with pytest.raises(ValueError, match="Normalized embedding is nan please try again") as exc_info:
                 cache_embedding.embed_multimodal_query(document)
 
             assert "Normalized embedding is nan" in str(exc_info.value)
@@ -471,7 +471,7 @@ class TestCacheEmbeddingMultimodalQuery:
             mock_redis.get.return_value = None
             mock_model_instance.invoke_multimodal_embedding.side_effect = Exception("API Error")
 
-            with pytest.raises(Exception) as exc_info:
+            with pytest.raises(Exception, match="API Error") as exc_info:
                 cache_embedding.embed_multimodal_query(document)
 
             assert "API Error" in str(exc_info.value)
