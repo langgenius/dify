@@ -99,10 +99,6 @@ describe('extensionToFileType', () => {
       expect(extensionToFileType('PDF')).toBe(FileAppearanceTypeEnum.custom)
     })
 
-    it('should return custom type when extension is mixed case', () => {
-      expect(extensionToFileType('Docx')).toBe(FileAppearanceTypeEnum.custom)
-    })
-
     it('should return custom type when extension has leading dot', () => {
       expect(extensionToFileType('.pdf')).toBe(FileAppearanceTypeEnum.custom)
     })

@@ -402,7 +402,6 @@ def knowledge_pipeline_publish_enabled[**P, R](view: Callable[P, R]) -> Callable
 def edit_permission_required[**P, R](f: Callable[P, R]) -> Callable[P, R]:
     @wraps(f)
     def decorated_function(*args: P.args, **kwargs: P.kwargs):
-
         from libs.login import current_user
 
         if not dify_config.RBAC_ENABLED:
@@ -419,7 +418,6 @@ def edit_permission_required[**P, R](f: Callable[P, R]) -> Callable[P, R]:
 def is_admin_or_owner_required[**P, R](f: Callable[P, R]) -> Callable[P, R]:
     @wraps(f)
     def decorated_function(*args: P.args, **kwargs: P.kwargs):
-
         from libs.login import current_user
 
         if not dify_config.RBAC_ENABLED:

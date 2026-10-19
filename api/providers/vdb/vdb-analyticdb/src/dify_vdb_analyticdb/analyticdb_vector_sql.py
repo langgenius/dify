@@ -75,7 +75,7 @@ class AnalyticdbVectorBySql:
         )
 
     @contextmanager
-    def _get_cursor(self) -> Generator[Any, None, None]:  # Changed from Iterator[Any]
+    def _get_cursor(self) -> Generator[Any]:  # Changed from Iterator[Any]
         assert self.pool is not None, "Connection pool is not initialized"
         conn = self.pool.getconn()
         cur = conn.cursor()

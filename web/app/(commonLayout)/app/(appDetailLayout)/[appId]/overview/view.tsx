@@ -3,7 +3,6 @@
 import { useSuspenseQueries } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import ApikeyInfoPanel from '@/app/components/app/overview/apikey-info-panel'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
@@ -39,20 +38,15 @@ const OverviewView = ({ appId }: OverviewViewProps) => {
   if (!appACLCapabilities.canMonitor) return null
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <ApikeyInfoPanel />
-      <div className="min-h-0 flex-1">
-        <ChartView
-          appId={appId}
-          appMode={appDetail.mode}
-          headerRight={
-            appACLCapabilities.canConfigureTracing ? (
-              <TracingPanel appId={appId} readOnly={false} />
-            ) : null
-          }
-        />
-      </div>
-    </div>
+    <ChartView
+      appId={appId}
+      appMode={appDetail.mode}
+      headerRight={
+        appACLCapabilities.canConfigureTracing ? (
+          <TracingPanel appId={appId} readOnly={false} />
+        ) : null
+      }
+    />
   )
 }
 

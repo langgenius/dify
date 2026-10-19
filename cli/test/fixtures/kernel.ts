@@ -80,7 +80,6 @@ export async function testContext(opts: TestWorldOptions): Promise<TestWorld> {
 
   const restoreEnv = applyEnv({
     [ENV.ConfigDir]: dir,
-    [ENV.CacheDir]: dir,
     [ENV.Server]: opts.env === true ? mock.url : undefined,
     [ENV.Token]: opts.env === true ? ENV_LOGIN_TOKEN : undefined,
     [ENV.WorkspaceId]: undefined,

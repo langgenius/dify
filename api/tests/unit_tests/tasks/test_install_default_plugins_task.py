@@ -1,5 +1,6 @@
 import logging
 from types import SimpleNamespace
+from typing import Protocol, cast
 from unittest.mock import MagicMock, call
 
 import pytest
@@ -8,16 +9,20 @@ from celery.exceptions import Retry
 from tests.unit_tests.config_override import apply_config_overrides
 
 
+class _TaskWithQueue(Protocol):
+    queue: str
+
+
 def test_install_default_plugins_task_uses_plugin_queue() -> None:
     from tasks.install_default_plugins_task import install_default_plugins_task
 
-    assert install_default_plugins_task.queue == "plugin"
+    assert cast(_TaskWithQueue, install_default_plugins_task).queue == "plugin"
 
 
 def test_configure_default_models_task_uses_plugin_queue() -> None:
     from tasks.install_default_plugins_task import configure_default_models_task
 
-    assert configure_default_models_task.queue == "plugin"
+    assert cast(_TaskWithQueue, configure_default_models_task).queue == "plugin"
 
 
 def test_install_default_plugins_task_installs_latest_identifiers(monkeypatch: pytest.MonkeyPatch) -> None:

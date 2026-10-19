@@ -3,7 +3,6 @@
   "action.delete": "ລຶບການເຊື່ອມຕໍ່",
   "action.deleteContentLeft": "ທ່ານຕ້ອງການລຶບ ",
   "action.deleteContentRight": " ອອກບໍ່?",
-  "action.deleteSuccess": "ລຶບການເຊື່ອມຕໍ່ສຳເລັດແລ້ວ",
   "action.pluginInfo": "ຂໍ້ມູນການເຊື່ອມຕໍ່",
   "allCategories": "ທຸກໝວດໝູ່",
   "auth.addApi": "ເພີ່ມ API Key",
@@ -302,9 +301,7 @@
   "task.runningPlugins": "ກຳລັງຕິດຕັ້ງການເຊື່ອມຕໍ່",
   "task.successPlugins": "ຕິດຕັ້ງການເຊື່ອມຕໍ່ສຳເລັດແລ້ວ",
   "templatePublishingGuide": "ຄູ່ມືການເຜີຍແຜ່ແທມເພຼດ",
-  "upgrade.close": "ປິດ",
   "upgrade.description": "ກຳລັງຈະຕິດຕັ້ງການເຊື່ອມຕໍ່ຕໍ່ໄປນີ້",
-  "upgrade.successfulTitle": "ຕິດຕັ້ງສຳເລັດ",
   "upgrade.title": "ຕິດຕັ້ງການເຊື່ອມຕໍ່",
   "upgrade.upgrade": "ຕິດຕັ້ງ",
   "upgrade.upgrading": "ກຳລັງຕິດຕັ້ງ..."

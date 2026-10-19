@@ -12,7 +12,6 @@ vi.mock('@/context/permission-state', async () => {
 
 describe('useCredentialPermissions', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     mockWorkspacePermissionKeys = []
   })
 

@@ -38,7 +38,7 @@ const KeyValueList: FC<Props> = ({
   const handleChange = useCallback(
     (index: number) => {
       return (newItem: KeyValue) => {
-        const newList = produce(list, (draft: any) => {
+        const newList = produce(list, (draft) => {
           draft[index] = newItem
         })
         onChange(newList)
@@ -50,7 +50,7 @@ const KeyValueList: FC<Props> = ({
   const handleRemove = useCallback(
     (index: number) => {
       return () => {
-        const newList = produce(list, (draft: any) => {
+        const newList = produce(list, (draft) => {
           draft.splice(index, 1)
         })
         onChange(newList)

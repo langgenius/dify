@@ -1,42 +1,27 @@
 import type { LLMNodeType } from '../../types'
 import type { Memory, Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { render, screen } from '@testing-library/react'
-import { AppModeEnum } from '@/types/app'
-import { FlowType } from '@/types/common'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import PanelMemorySection from '../panel-memory-section'
 
-const mockEditor = vi.hoisted(() => vi.fn())
-const mockMemoryConfig = vi.hoisted(() => vi.fn())
-
-type EditorProps = {
-  value?: string
-  isChatApp?: boolean
-  isChatModel?: boolean
-  isShowContext?: boolean
-}
-
 vi.mock('@/app/components/workflow/nodes/_base/components/prompt/editor', () => ({
-  __esModule: true,
-  default: (props: EditorProps) => {
-    mockEditor(props)
-    return <div data-testid="editor">{props.value}</div>
-  },
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/memory-config', () => ({
-  __esModule: true,
-  default: (props: {
-    canSetRoleName: boolean
-    config: { data?: LLMNodeType['memory'] }
-    defaultMemory?: Memory
-  }) => {
-    mockMemoryConfig(props)
-    return (
-      <div data-testid="memory-config">
-        {props.canSetRoleName ? 'can-set-role' : 'cannot-set-role'}
-      </div>
-    )
-  },
+  default: ({
+    value,
+    onChange,
+    readOnly,
+  }: {
+    value: string
+    onChange: (value: string) => void
+    readOnly?: boolean
+  }) => (
+    <textarea
+      aria-label="Memory prompt"
+      value={value}
+      readOnly={readOnly}
+      onChange={(event) => onChange(event.target.value)}
+    />
+  ),
 }))
 
 const createInputs = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
@@ -46,7 +31,7 @@ const createInputs = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
   model: {
     provider: 'openai',
     name: 'gpt-4o',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     completion_params: {},
   } as LLMNodeType['model'],
   prompt_template: [],
@@ -69,7 +54,7 @@ const createInputs = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
 
 const baseProps = {
   readOnly: false,
-  isChatMode: true,
+  isChatflow: true,
   isChatModel: true,
   isCompletionModel: false,
   inputs: createInputs(),
@@ -84,97 +69,69 @@ const baseProps = {
   handleMemoryChange: vi.fn(),
 }
 
-describe('llm/panel-memory-section', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+it.each([
+  { resourceKind: 'app' as const, expected: '{{#sys.query#}}\n\n{{#sys.files#}}' },
+  { resourceKind: 'snippet' as const, expected: '' },
+])(
+  'enables memory with the correct $resourceKind prompt and saves edits',
+  async ({ resourceKind, expected }) => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    function Harness() {
+      const [memory, setMemory] = useState<Memory>()
+      return (
+        <PanelMemorySection
+          {...baseProps}
+          resourceKind={resourceKind}
+          inputs={createInputs({ memory })}
+          handleMemoryChange={(next) => {
+            setMemory(next)
+            onChange(next)
+          }}
+          handleSyeQueryChange={(query) =>
+            setMemory((previous) => ({ ...previous!, query_prompt_template: query }))
+          }
+        />
+      )
+    }
+    render(<Harness />)
+    await user.click(screen.getByRole('switch'))
+    expect(onChange).toHaveBeenCalledExactlyOnceWith({
+      window: { enabled: false, size: 50 },
+      query_prompt_template: expected,
+    })
+    expect(screen.getByRole('textbox', { name: 'Memory prompt' })).toHaveValue(expected)
+    const prompt = screen.getByRole('textbox', { name: 'Memory prompt' })
+    await user.clear(prompt)
+    expect(prompt).toHaveValue('')
+    await user.type(prompt, 'Custom prompt')
+    expect(screen.getByRole('textbox', { name: 'Memory prompt' })).toHaveValue('Custom prompt')
+    if (resourceKind === 'app')
+      expect(screen.getByText('workflow.nodes.llm.sysQueryInUser')).toBeVisible()
+    else expect(screen.queryByText('workflow.nodes.llm.sysQueryInUser')).not.toBeInTheDocument()
+  },
+)
 
-  it('renders the built-in chat memory editor and memory config in chat mode', () => {
-    render(<PanelMemorySection {...baseProps} />)
+it('prevents memory activation when read-only', async () => {
+  const user = userEvent.setup()
+  const onChange = vi.fn()
+  render(
+    <PanelMemorySection
+      {...baseProps}
+      readOnly
+      inputs={createInputs({ memory: undefined })}
+      handleMemoryChange={onChange}
+    />,
+  )
+  await user.click(screen.getByRole('switch'))
+  expect(onChange).not.toHaveBeenCalled()
+  expect(screen.queryByRole('textbox', { name: 'Memory prompt' })).not.toBeInTheDocument()
+})
 
-    expect(screen.getByText('workflow.nodes.common.memories.title')).toBeInTheDocument()
-    expect(screen.getByTestId('editor')).toHaveTextContent('{{#sys.query#}}')
-    expect(screen.getByTestId('memory-config')).toHaveTextContent('cannot-set-role')
-    expect(mockEditor).toHaveBeenCalledWith(
-      expect.objectContaining({
-        isChatApp: true,
-        isChatModel: true,
-        isShowContext: false,
-      }),
-    )
-  })
-
-  it('shows the sys query warning when the memory prompt omits the required placeholder', () => {
-    render(
-      <PanelMemorySection
-        {...baseProps}
-        inputs={createInputs({
-          memory: {
-            window: {
-              enabled: false,
-              size: 10,
-            },
-            query_prompt_template: 'custom prompt',
-          },
-        })}
-      />,
-    )
-
-    expect(screen.getByText('workflow.nodes.llm.sysQueryInUser')).toBeInTheDocument()
-    expect(screen.getByTestId('editor')).toHaveTextContent('custom prompt')
-  })
-
-  it('does not show the sys query warning in snippet flows', () => {
-    render(
-      <PanelMemorySection
-        {...baseProps}
-        flowType={FlowType.snippet}
-        inputs={createInputs({
-          memory: {
-            window: {
-              enabled: false,
-              size: 10,
-            },
-            query_prompt_template: 'custom prompt',
-          },
-        })}
-      />,
-    )
-
-    expect(screen.queryByText('workflow.nodes.llm.sysQueryInUser')).not.toBeInTheDocument()
-    expect(screen.getByTestId('editor')).toHaveTextContent('custom prompt')
-  })
-
-  it('does not default snippet memory prompts to system variables', () => {
-    render(<PanelMemorySection {...baseProps} flowType={FlowType.snippet} />)
-
-    expect(screen.getByTestId('editor')).toHaveTextContent('')
-    expect(mockEditor).toHaveBeenCalledWith(
-      expect.objectContaining({
-        value: '',
-      }),
-    )
-    expect(mockMemoryConfig).toHaveBeenCalledWith(
-      expect.objectContaining({
-        defaultMemory: expect.objectContaining({
-          query_prompt_template: '',
-        }),
-      }),
-    )
-  })
-
-  it('renders nothing outside chat mode', () => {
-    render(
-      <PanelMemorySection
-        {...baseProps}
-        isChatMode={false}
-        isChatModel={false}
-        isCompletionModel={true}
-      />,
-    )
-
-    expect(screen.queryByText('workflow.nodes.common.memories.title')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('editor')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('memory-config')).not.toBeInTheDocument()
-  })
+it('hides memory settings outside chatflow', () => {
+  render(
+    <PanelMemorySection {...baseProps} isChatflow={false} isChatModel={false} isCompletionModel />,
+  )
+  expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
 })

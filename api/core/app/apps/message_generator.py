@@ -28,7 +28,7 @@ class MessageGenerator:
         ping_interval: float = 10.0,
         on_subscribe: Callable[[], None] | None = None,
         terminal_events: Iterable[str | StreamEvent] | None = None,
-    ) -> Generator[Mapping | str, None, None]:
+    ) -> Generator[Mapping | str]:
         topic = cls.get_response_topic(app_mode, workflow_run_id)
         subscriber = topic.as_subscriber()
         subscription = (

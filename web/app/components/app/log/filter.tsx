@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import type { QueryParam } from './index'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { RiCalendarLine } from '@remixicon/react'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import quarterOfYear from 'dayjs/plugin/quarterOfYear'
 import * as React from 'react'
@@ -10,7 +11,7 @@ import { useTranslation } from 'react-i18next'
 import Chip from '@/app/components/base/chip'
 import { SearchInput } from '@/app/components/base/search-input'
 import Sort from '@/app/components/base/sort'
-import { useAnnotationsCount } from '@/service/use-log'
+import { consoleQuery } from '@/service/console'
 import {
   CLOUD_SANDBOX_CLEARED_TIME_PERIOD,
   CLOUD_SANDBOX_TIME_PERIOD_KEYS,
@@ -50,7 +51,11 @@ const Filter: FC<IFilterProps> = ({
   queryParams,
   setQueryParams,
 }: IFilterProps) => {
-  const { data, isLoading } = useAnnotationsCount(appId)
+  const { data, isLoading } = useQuery(
+    consoleQuery.apps.byAppId.annotations.count.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+    }),
+  )
   const { t } = useTranslation(['appLog', 'common'])
   const planState = useCloudSandboxPlanStatus()
   const isTimePeriodRestricted = isLogTimePeriodRestricted(planState)
@@ -86,7 +91,10 @@ const Filter: FC<IFilterProps> = ({
         showLeftIcon={false}
         value={queryParams.annotation_status || 'all'}
         onSelect={(item) => {
-          setQueryParams({ ...queryParams, annotation_status: item.value as string })
+          setQueryParams({
+            ...queryParams,
+            annotation_status: item.value as QueryParam['annotation_status'],
+          })
         }}
         onClear={() => setQueryParams({ ...queryParams, annotation_status: 'all' })}
         items={[
@@ -123,7 +131,7 @@ const Filter: FC<IFilterProps> = ({
               },
             ]}
             onSelect={(value) => {
-              setQueryParams({ ...queryParams, sort_by: value as string })
+              setQueryParams({ ...queryParams, sort_by: value as QueryParam['sort_by'] })
             }}
           />
         </>

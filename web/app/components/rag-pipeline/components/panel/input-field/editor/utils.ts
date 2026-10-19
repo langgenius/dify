@@ -35,6 +35,7 @@ export const convertToInputFieldFormData = (data?: InputVar): FormData => {
     allowedTypesAndExtensions: {},
   }
 
+  // Number and checkbox variables keep their typed default for the submit schema.
   if (default_value !== undefined && default_value !== null) formData.default = default_value
   if (tooltips !== undefined && tooltips !== null) formData.tooltips = tooltips
   if (placeholder !== undefined && placeholder !== null) formData.placeholder = placeholder

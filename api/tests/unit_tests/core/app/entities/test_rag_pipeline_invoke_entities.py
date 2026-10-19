@@ -2,7 +2,7 @@ from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEnti
 
 
 class TestRagPipelineInvokeEntity:
-    def test_defaults_and_fields(self):
+    def test_defaults_and_fields(self) -> None:
         entity = RagPipelineInvokeEntity(
             pipeline_id="pipe-1",
             application_generate_entity={"foo": "bar"},
