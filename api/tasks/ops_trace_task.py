@@ -1,8 +1,9 @@
 """
 Celery task for asynchronous ops trace dispatch.
 
-Trace providers may report explicitly retryable dispatch failures through the
-core retryable exception contract. The task preserves the payload file only
+Trace providers may report retryable dispatch failures through the core
+exception contract. Unknown acceptance is terminal to prevent automatic replay
+of a possibly accepted prefix. The task preserves the payload file only
 when Celery accepts the retry request; successful dispatches and terminal
 failures clean up the stored payload.
 
@@ -102,15 +103,21 @@ def process_trace_tasks(self, file_info):
 
         logger.info("Processing trace tasks success, app_id: %s", app_id)
     except RetryableTraceDispatchError as e:
-        # Retryable dispatch failures represent a transient provider-side
-        # ordering gap, not corrupt payload data. Keep the payload only after
+        # Only confirmed retryable failures, including transient parent ordering
+        # gaps, may replay. Unknown acceptance must terminate without retry.
+        # Keep the payload only after
         # Celery accepts the retry request; otherwise this attempt becomes a
         # terminal failure and the stored file is cleaned up in `finally`.
         #
         # Enterprise telemetry runs before provider dispatch. If it already ran
         # and provider dispatch asks for a retry, persist that private flag so
         # the next attempt does not emit the same enterprise trace twice.
-        if self.request.retries >= _RETRYABLE_TRACE_DISPATCH_LIMIT:
+        if e.acceptance_unknown:
+            # Provider exception details can contain private request content.
+            logger.exception("Trace acceptance unknown; automatic retry suppressed, app_id: %s", app_id, exc_info=False)
+            failed_key = f"{OPS_TRACE_FAILED_KEY}_{app_id}"
+            redis_client.incr(failed_key)
+        elif self.request.retries >= _RETRYABLE_TRACE_DISPATCH_LIMIT:
             logger.exception("Retryable trace dispatch budget exhausted, app_id: %s", app_id)
             failed_key = f"{OPS_TRACE_FAILED_KEY}_{app_id}"
             redis_client.incr(failed_key)
@@ -133,7 +140,7 @@ def process_trace_tasks(self, file_info):
                 logger.exception("Failed to schedule trace dispatch retry, app_id: %s", app_id)
                 failed_key = f"{OPS_TRACE_FAILED_KEY}_{app_id}"
                 redis_client.incr(failed_key)
-    except Exception as e:
+    except Exception:
         logger.exception("Processing trace tasks failed, app_id: %s", app_id)
         failed_key = f"{OPS_TRACE_FAILED_KEY}_{app_id}"
         redis_client.incr(failed_key)

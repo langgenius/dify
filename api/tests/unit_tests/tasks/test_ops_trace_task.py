@@ -1,6 +1,6 @@
 import json
 import sys
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from types import ModuleType
 from unittest.mock import MagicMock, patch
 
@@ -15,7 +15,8 @@ from core.ops.base_trace_instance import (
 )
 from core.ops.entities.config_entity import OPS_TRACE_FAILED_KEY
 from core.ops.entities.trace_entity import BaseTraceInfo
-from core.ops.exceptions import RetryableTraceDispatchError
+from core.ops.exceptions import PendingTraceParentContextError, RetryableTraceDispatchError
+from services.tracing.provider_dispatch import TraceExportUncertainError
 from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
 from tasks.ops_trace_task import process_trace_tasks
 from tests.unit_tests.config_override import apply_config_overrides
@@ -94,10 +95,20 @@ def _run_task(file_info: dict[str, str], retries: int = 0) -> None:
         process_trace_tasks.pop_request()
 
 
-def test_process_trace_tasks_retries_retryable_dispatch_failure_and_preserves_payload():
+@pytest.mark.parametrize(
+    "pending_error",
+    [
+        _retryable_dispatch_error(),
+        PendingTraceParentContextError("parent-node"),
+        TraceExportUncertainError("DO_NOT_EXPOSE_PROVIDER_BODY"),
+    ],
+)
+def test_process_trace_tasks_retries_only_confirmed_retryable_dispatch_failures(
+    pending_error: RetryableTraceDispatchError,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     file_info = {"app_id": "app-id", "file_id": "file-id"}
     trace_instance = MagicMock()
-    pending_error = _retryable_dispatch_error()
     trace_instance.trace.side_effect = pending_error
     retry_error = Retry()
 
@@ -108,16 +119,23 @@ def test_process_trace_tasks_retries_retryable_dispatch_failure_and_preserves_pa
         patch("tasks.ops_trace_task.storage.delete") as mock_delete,
         patch("tasks.ops_trace_task.redis_client.incr") as mock_incr,
         patch.object(process_trace_tasks, "retry", side_effect=retry_error) as mock_retry,
-        pytest.raises(Retry),
+        pytest.raises(Retry) if not pending_error.acceptance_unknown else nullcontext(),
     ):
         _run_task(file_info)
 
-    mock_retry.assert_called_once_with(
-        exc=pending_error,
-        countdown=process_trace_tasks.default_retry_delay,
-    )
-    mock_delete.assert_not_called()
-    mock_incr.assert_not_called()
+    trace_instance.trace.assert_called_once_with({})
+    if pending_error.acceptance_unknown:
+        mock_retry.assert_not_called()
+        mock_delete.assert_called_once_with("ops_trace/app-id/file-id.json")
+        mock_incr.assert_called_once_with(f"{OPS_TRACE_FAILED_KEY}_app-id")
+        assert "DO_NOT_EXPOSE_PROVIDER_BODY" not in caplog.text
+    else:
+        mock_retry.assert_called_once_with(
+            exc=pending_error,
+            countdown=process_trace_tasks.default_retry_delay,
+        )
+        mock_delete.assert_not_called()
+        mock_incr.assert_not_called()
 
 
 def test_process_trace_tasks_marks_enterprise_trace_dispatched_before_retryable_dispatch_retry():

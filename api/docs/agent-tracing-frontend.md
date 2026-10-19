@@ -314,6 +314,8 @@ Weave 的 POST/PATCH 只读校验账户、项目可写权限和 trace 查询端�
 
 Weave 的 managed 与 legacy 导出共用实例独立的 typed HTTP transport，通过既有 SSRF 请求边界发送显式凭据和目标。legacy 构造器不再调用 `wandb.login` / `weave.init`、写入 `.netrc` 或创建 SDK 后台队列；未配置 entity 的历史记录仅在实际发送时按本实例凭据解析。Celery 仍负责异步投递。legacy 保留旧 call ID、父子关系、状态与 raw usage 映射，不因 managed 的 thread/turn 改进而新增原生 session、费用或用量聚合能力。
 
+legacy 接收结果未知时，任务沿既有终态路径记录导出失败计数及安全日志、清理本次载荷，不自动整树重送；业务执行结果保持原状。任务函数不重新抛异常，这不表示新增 Celery FAILURE 状态。Weave 首个请求被明确 429/503 拒绝、尚无已接收前缀时仍可按既有 Celery 策略重试；一旦已有 call start 被确认接收，后续可重试错误升级为接收不确定，避免旧 mapper 的随机 call ID 在重送时重复生成。该状态按单次 dispatch 隔离。协议故障注入覆盖真实 SDK HTTP 序列化与任务 owner，不代表真实供应商账号的 429/5xx 或凭据撤销已完成验收。legacy 没有 managed 的持久化 uncertain 状态或显式重投界面。
+
 Databricks 的 `host` 必须是 HTTPS workspace origin，`experiment_id` 是已存在的数字 ID。POST/PATCH 使用请求级 PAT 或 OAuth M2M 认证，只读核对 exact experiment ID 与 active 状态；它证明认证和实验可读，不证明写权限、trace API 可用或 artifact 投递成功。GET 在本地生成项目链接，不构造 legacy MLflow exporter，也不修改进程级认证环境、tracking URI 或当前 experiment。可空凭据保留 null / 清空语义，masked-key 原样保存保留原密钥；M2M 与 PAT 的双向切换有真实 RSA/持久化测试，账号级验收目前只有 PAT。
 
 Opik 的 `url` 为以 `/api/` 结尾的 API 基址，可保留自托管路径前缀。POST/PATCH 使用请求级凭据调用官方 auth 接口，验证认证与 workspace 访问；空 workspace 或 `default` 在保存时解析为实际名称并持久化。该校验不证明项目写权限或 ingestion 可用，也不要求项目必须预先存在，不创建项目或测试 trace。配置路径不构造高层 Opik SDK 客户端或启动其后台线程，不使用 SDK 的全局认证回退。

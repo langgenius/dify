@@ -1,6 +1,7 @@
 import logging
 import os
 import uuid
+from contextvars import ContextVar
 from datetime import UTC, datetime, timedelta
 from typing import Any, cast, override
 
@@ -26,6 +27,7 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
+from core.ops.exceptions import RetryableTraceDispatchError
 from core.repositories import DifyCoreRepositoryFactory
 from dify_trace_weave.config import WeaveConfig
 from dify_trace_weave.configuration import console_url, project_url, verify_configuration
@@ -38,6 +40,7 @@ from services.tracing.provider_common import endpoint
 from services.tracing.provider_dispatch import TraceExportUncertainError
 
 logger = logging.getLogger(__name__)
+_dispatch_started_calls: ContextVar[dict[str, dict[str, Any]] | None] = ContextVar("weave_dispatch_calls", default=None)
 
 
 def _same_identifier(actual: str, expected: str) -> bool:
@@ -84,23 +87,37 @@ class WeaveDataTrace(BaseTraceInstance):
     @override
     def trace(self, trace_info: BaseTraceInfo):
         logger.debug("Trace info: %s", trace_info)
-        match trace_info:
-            case WorkflowTraceInfo():
-                self.workflow_trace(trace_info)
-            case MessageTraceInfo():
-                self.message_trace(trace_info)
-            case ModerationTraceInfo():
-                self.moderation_trace(trace_info)
-            case SuggestedQuestionTraceInfo():
-                self.suggested_question_trace(trace_info)
-            case DatasetRetrievalTraceInfo():
-                self.dataset_retrieval_trace(trace_info)
-            case ToolTraceInfo():
-                self.tool_trace(trace_info)
-            case GenerateNameTraceInfo():
-                self.generate_name_trace(trace_info)
-            case _:
-                pass
+        accepted_calls: dict[str, dict[str, Any]] = {}
+        token = _dispatch_started_calls.set(accepted_calls)
+        try:
+            match trace_info:
+                case WorkflowTraceInfo():
+                    self.workflow_trace(trace_info)
+                case MessageTraceInfo():
+                    self.message_trace(trace_info)
+                case ModerationTraceInfo():
+                    self.moderation_trace(trace_info)
+                case SuggestedQuestionTraceInfo():
+                    self.suggested_question_trace(trace_info)
+                case DatasetRetrievalTraceInfo():
+                    self.dataset_retrieval_trace(trace_info)
+                case ToolTraceInfo():
+                    self.tool_trace(trace_info)
+                case GenerateNameTraceInfo():
+                    self.generate_name_trace(trace_info)
+                case _:
+                    pass
+        except RetryableTraceDispatchError as error:
+            if accepted_calls and not error.acceptance_unknown:
+                raise TraceExportUncertainError(
+                    "Weave trace was partially accepted; automatic retry is unsafe"
+                ) from None
+            raise
+        finally:
+            for call_id, call_meta in accepted_calls.items():
+                if self.calls.get(call_id) is call_meta:
+                    self.calls.pop(call_id, None)
+            _dispatch_started_calls.reset(token)
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
         trace_id = trace_info.trace_id or trace_info.message_id or trace_info.workflow_run_id
@@ -470,7 +487,11 @@ class WeaveDataTrace(BaseTraceInstance):
         started = self.server.call_start(call_start_req)
         if not _same_identifier(started.id, run_data.id) or not _same_identifier(started.trace_id, trace_id):
             raise TraceExportUncertainError("Weave did not acknowledge the submitted identifiers")
-        self.calls[run_data.id] = {"trace_id": trace_id, "parent_id": parent_run_id}
+        call_meta = {"trace_id": trace_id, "parent_id": parent_run_id}
+        self.calls[run_data.id] = call_meta
+        dispatch_calls = _dispatch_started_calls.get()
+        if dispatch_calls is not None:
+            dispatch_calls[run_data.id] = call_meta
 
     def finish_call(self, run_data: WeaveTraceModel):
         call_meta = self.calls.get(run_data.id)
