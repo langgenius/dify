@@ -142,7 +142,7 @@ class WorkflowDraftRepository:
     @contextmanager
     def draft_sync(
         self, context: RequestContext, owner: WorkflowOwner, command: DraftSyncCommand, prepared: PreparedDraftSync
-    ) -> Generator[DraftBindingTransaction[WorkflowAgentBindingRepository], None, None]:
+    ) -> Generator[DraftBindingTransaction[WorkflowAgentBindingRepository]]:
         conversations = [
             variable_factory.build_conversation_variable_from_mapping(value) for value in command.conversation_variables
         ]
@@ -175,7 +175,7 @@ class WorkflowDraftRepository:
     @contextmanager
     def draft_restore(
         self, context: RequestContext, owner: WorkflowOwner, source: WorkflowSnapshot
-    ) -> Generator[DraftBindingTransaction[WorkflowAgentBindingRepository], None, None]:
+    ) -> Generator[DraftBindingTransaction[WorkflowAgentBindingRepository]]:
         with self._sessions.begin() as session:
             row = WorkflowDefinitionStore.owner(session, context, owner, lock=True)
             current = WorkflowDefinitionStore.get_published_workflow_by_id(

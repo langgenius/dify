@@ -583,7 +583,7 @@ class RagPipelineService:
         self, type: str, current_user: Account, current_tenant_id: str, *, tool_providers: ToolProviders
     ) -> dict[str, Any]:
         # Query active recommended plugins
-        stmt = select(PipelineRecommendedPlugin).where(PipelineRecommendedPlugin.active == True)
+        stmt = select(PipelineRecommendedPlugin).where(PipelineRecommendedPlugin.active.is_(True))
         if type and type != "all":
             stmt = stmt.where(PipelineRecommendedPlugin.type == type)
 
@@ -709,10 +709,7 @@ class RagPipelineService:
                     continue
 
                 variables = workflow.rag_pipeline_variables
-                if variables:
-                    variables_map = {item["variable"]: item for item in variables}
-                else:
-                    variables_map = {}
+                variables_map = {item["variable"]: item for item in variables} if variables else {}
 
                 datasource_parameters = datasource_node_data.get("datasource_parameters", {})
                 user_input_variables_keys = []

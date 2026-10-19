@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, Mock, create_autospec
 from uuid import uuid4
 
 import pytest
-from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.protocol.snapshot import SessionSnapshot
 from flask import Flask
 from sqlalchemy import create_engine, event, inspect
 from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
@@ -202,7 +202,7 @@ def _conversation_participant(
         base_home_snapshot_id=snapshot.home_snapshot_id,
         backend_binding_ref="participant-ref",
         status=AgentWorkingResourceStatus.ACTIVE,
-        session_snapshot=CompositorSessionSnapshot(layers=[]).model_dump_json(),
+        session_snapshot=SessionSnapshot(layers={}).model_dump_json(),
     )
     session.add(participant)
     session.flush()
@@ -296,7 +296,7 @@ def test_chatflow_keeps_participant_config_and_home_after_agent_update(
     )
     assert stored.binding_id == participant.id
     assert stored.backend_binding_ref == participant.backend_binding_ref
-    assert stored.session_snapshot == CompositorSessionSnapshot(layers=[])
+    assert stored.session_snapshot == SessionSnapshot(layers={})
     create_binding.assert_not_called()
 
     agent.status = AgentStatus.ARCHIVED

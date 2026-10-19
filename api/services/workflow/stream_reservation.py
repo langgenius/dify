@@ -30,8 +30,8 @@ class WorkflowStreamReservation:
         if cancel:
             self._cancel()
 
-    def wrap(self, stream: Generator[str, None, None]) -> Generator[str, None, None]:
-        def events() -> Generator[str, None, None]:
+    def wrap(self, stream: Generator[str]) -> Generator[str]:
+        def events() -> Generator[str]:
             try:
                 # Prime the cleanup scope without consuming the transport. Python
                 # otherwise skips finally when closing a never-started generator.

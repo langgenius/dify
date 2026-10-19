@@ -30,7 +30,7 @@ class PluginToolBackwardsInvocation(BaseBackwardsInvocation):
         *,
         workflow_runtime: WorkflowRuntime,
         draft_variable_saver: Callable[[str, Account], DraftVariableSaverFactory],
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         """
         invoke tool
         """
@@ -46,7 +46,7 @@ class PluginToolBackwardsInvocation(BaseBackwardsInvocation):
             draft_variable_saver=draft_variable_saver,
         )
 
-        def invoke() -> Generator[ToolInvokeMessage, None, None]:
+        def invoke() -> Generator[ToolInvokeMessage]:
             with closing(
                 workflow_runtime.tool_invoker(
                     tool=tool_runtime,

@@ -279,7 +279,7 @@ it('preserves draft selection after focus leaves and does not select hovered opt
   await expect.element(selectedHour).toHaveAttribute('aria-selected', 'true')
   await userEvent.tab()
   await expect.element(minutes.getByRole('option', { name: '30', exact: true })).toHaveFocus()
-  await userEvent.hover(hours.getByRole('option', { name: '3', exact: true }))
+  await hours.getByRole('option', { name: '3', exact: true }).hover({ scroll: 'none' })
   await expect.element(selectedHour).toHaveAttribute('aria-selected', 'true')
   await expect
     .element(hours.getByRole('option', { name: '3', exact: true }))

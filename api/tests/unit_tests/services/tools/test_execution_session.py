@@ -55,7 +55,7 @@ class _SessionRecordingTool(Tool):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         self.sessions.append(session)
         yield self.create_text_message("ok")
 

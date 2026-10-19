@@ -1,4 +1,5 @@
 import json
+from dataclasses import dataclass
 from typing import cast
 
 import pytest
@@ -22,9 +23,9 @@ class _Chunk(BaseModel):
     value: int
 
 
+@dataclass(eq=False, repr=False)
 class _DatabaseWithEngine:
-    def __init__(self, engine: Engine) -> None:
-        self.engine = engine
+    engine: Engine
 
 
 class _EndUserProvisioner:

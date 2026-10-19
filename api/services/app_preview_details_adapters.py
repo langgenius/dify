@@ -1,6 +1,3 @@
-from models.tool_runtime_contracts import WorkflowToolQueries
-from services.tools.provider_queries import ToolProviders
-
 """Enrich detached app and workflow previews through legacy tool and key providers.
 
 The injected queries close their database sessions before this adapter calls tool,
@@ -19,6 +16,7 @@ from core.workflow.environment_variables import load_environment_variables
 from core.workflow.llm_environment_variable import dump_environment_variable
 from models.model import AppMode
 from models.provider_ids import GenericProviderID
+from models.tool_runtime_contracts import WorkflowToolQueries
 from services.app_preview_details_service import (
     AppPreviewDeletedTool,
     AppPreviewDetail,
@@ -29,6 +27,7 @@ from services.app_preview_details_service import (
 )
 from services.app_preview_query_service import AppPreviewRef
 from services.tools.agent_configuration import mask_agent_tool_parameters
+from services.tools.provider_queries import ToolProviders
 from services.tools.tool_manager import ToolManager
 
 

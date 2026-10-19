@@ -5,19 +5,11 @@ import { useWorkflowUpdate } from '../use-workflow-update'
 
 const mockSetViewport = vi.hoisted(() => vi.fn())
 const mockEventEmit = vi.hoisted(() => vi.fn())
-const mockInitialNodes = vi.hoisted(() => vi.fn((nodes: unknown[], _edges: unknown[]) => nodes))
-const mockInitialEdges = vi.hoisted(() => vi.fn((edges: unknown[], _nodes: unknown[]) => edges))
 
-vi.mock('reactflow', () => ({
-  Position: {
-    Left: 'left',
-    Right: 'right',
-    Top: 'top',
-    Bottom: 'bottom',
-  },
-  useReactFlow: () => ({
-    setViewport: mockSetViewport,
-  }),
+// Viewport animation is a browser boundary; graph initialization stays real.
+vi.mock('reactflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('reactflow')>()),
+  useReactFlow: () => ({ setViewport: mockSetViewport }),
 }))
 
 vi.mock('@/context/event-emitter', () => ({
@@ -28,17 +20,7 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
-vi.mock('../../utils', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../utils')>()),
-  initialNodes: (nodes: unknown[], edges: unknown[]) => mockInitialNodes(nodes, edges),
-  initialEdges: (edges: unknown[], nodes: unknown[]) => mockInitialEdges(edges, nodes),
-}))
-
 describe('useWorkflowUpdate', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('emits initialized data and only sets a valid viewport', () => {
     const { result } = renderWorkflowHook(() => useWorkflowUpdate())
 
@@ -47,7 +29,7 @@ describe('useWorkflowUpdate', () => {
         nodes: [createNode({ id: 'n1' })],
         edges: [],
         viewport: { x: 10, y: 20, zoom: 0.5 },
-      } as never)
+      })
       result.current.handleUpdateWorkflowCanvas({
         nodes: [],
         edges: [],
@@ -55,11 +37,20 @@ describe('useWorkflowUpdate', () => {
       })
     })
 
-    expect(mockInitialNodes).toHaveBeenCalled()
-    expect(mockInitialEdges).toHaveBeenCalled()
     expect(mockEventEmit).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'WORKFLOW_DATA_UPDATE',
+        payload: expect.objectContaining({
+          nodes: [
+            expect.objectContaining({
+              id: 'n1',
+              data: expect.objectContaining({
+                _connectedSourceHandleIds: [],
+                _connectedTargetHandleIds: [],
+              }),
+            }),
+          ],
+        }),
       }),
     )
     expect(mockSetViewport).toHaveBeenCalledTimes(1)

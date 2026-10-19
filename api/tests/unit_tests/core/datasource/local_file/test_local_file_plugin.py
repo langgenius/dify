@@ -7,7 +7,7 @@ from tests.unit_tests.core.datasource.factories import datasource_entity
 
 
 class TestLocalFileDatasourcePlugin:
-    def test_init(self):
+    def test_init(self) -> None:
         # Arrange
         entity = datasource_entity("test_name")
         runtime = DatasourceRuntime(tenant_id="test_tenant")
@@ -31,7 +31,7 @@ class TestLocalFileDatasourcePlugin:
         assert plugin.runtime == runtime
         assert plugin.icon == icon
 
-    def test_datasource_provider_type(self):
+    def test_datasource_provider_type(self) -> None:
         # Arrange
         entity = datasource_entity("test_name")
         runtime = DatasourceRuntime(tenant_id="test_tenant")
@@ -42,7 +42,7 @@ class TestLocalFileDatasourcePlugin:
         # Act & Assert
         assert plugin.datasource_provider_type() == DatasourceProviderType.LOCAL_FILE
 
-    def test_get_icon_url(self):
+    def test_get_icon_url(self) -> None:
         # Arrange
         entity = datasource_entity("test_name")
         runtime = DatasourceRuntime(tenant_id="test_tenant")

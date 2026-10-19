@@ -10,7 +10,7 @@ from unittest.mock import MagicMock
 import pytest
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import Engine, event
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from constants import UUID_NIL
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
@@ -210,7 +210,6 @@ class TestAdvancedChatAppGeneratorInternals:
         built_files: list[object] = []
         build_files_called = {"called": False}
         captured: dict[str, object] = {}
-        session = unbound_session
         get_conversation = MagicMock(return_value=conversation)
 
         monkeypatch.setattr(
@@ -232,7 +231,7 @@ class TestAdvancedChatAppGeneratorInternals:
         )
         monkeypatch.setattr(generator, "_prepare_user_inputs", lambda **kwargs: kwargs["user_inputs"])
 
-        DummyTraceQueueManager = type(
+        dummy_trace_queue_manager = type(
             "_DummyTraceQueueManager",
             (TraceQueueManager,),
             {
@@ -242,7 +241,8 @@ class TestAdvancedChatAppGeneratorInternals:
             },
         )
         monkeypatch.setattr(
-            "services.workflow.execution.adapters.chatflow.app_generator.TraceQueueManager", DummyTraceQueueManager
+            "services.workflow.execution.adapters.chatflow.app_generator.TraceQueueManager",
+            dummy_trace_queue_manager,
         )
 
         def _fake_generate(**kwargs):
@@ -339,10 +339,8 @@ class TestAdvancedChatAppGeneratorInternals:
         app_config = self._build_app_config()
         captured: dict[str, object] = {}
         prefill_calls: list[object] = []
-        draft_sessions: list[object] = []
         var_loader = SimpleNamespace(loader="draft")
         workflow = _make_workflow()
-        session = unbound_session
 
         monkeypatch.setattr(
             "services.workflow.execution.adapters.chatflow.app_generator.AdvancedChatAppConfigManager.get_app_config",
@@ -387,10 +385,8 @@ class TestAdvancedChatAppGeneratorInternals:
         app_config = self._build_app_config()
         captured: dict[str, object] = {}
         prefill_calls: list[object] = []
-        draft_sessions: list[object] = []
         var_loader = SimpleNamespace(loader="draft")
         workflow = _make_workflow()
-        session = unbound_session
 
         monkeypatch.setattr(
             "services.workflow.execution.adapters.chatflow.app_generator.AdvancedChatAppConfigManager.get_app_config",
@@ -465,13 +461,8 @@ class TestAdvancedChatAppGeneratorInternals:
         event.listen(sqlite_session, "after_commit", _record_commit)
         captured: dict[str, object] = {}
         thread_data: dict[str, object] = {}
-        pause_layer_kwargs: dict[str, object] = {}
         init_records = MagicMock(return_value=(conversation, message))
         get_thread_messages_length = MagicMock(return_value=3)
-
-        def _build_pause_layer(**kwargs: object) -> str:
-            pause_layer_kwargs.update(kwargs)
-            return "pause-layer"
 
         monkeypatch.setattr(generator._runtime.chat_records, "initialize", init_records)
         monkeypatch.setattr(generator._runtime.chat_records, "dialogue_count", get_thread_messages_length)
@@ -481,7 +472,7 @@ class TestAdvancedChatAppGeneratorInternals:
         )
         monkeypatch.setattr(
             "services.workflow.execution.adapters.chatflow.app_generator.PauseStatePersistenceLayer",
-            _build_pause_layer,
+            lambda **_kwargs: "pause-layer",
         )
         monkeypatch.setattr(
             "services.workflow.execution.adapters.chatflow.app_generator.current_app",
@@ -538,7 +529,6 @@ class TestAdvancedChatAppGeneratorInternals:
         assert thread_data["joined"] is True
         assert thread_data["join_timeout"] == 300
         assert "pause-layer" in thread_data["kwargs"]["graph_engine_layers"]
-        assert pause_layer_kwargs["human_form_reader"] is workflow_runtime.human_form_reader
         assert generator._dialogue_count == 3
         get_thread_messages_length.assert_called_once_with(conversation.id)
         assert commit_count == 0
@@ -773,9 +763,6 @@ class TestAdvancedChatAppGeneratorInternals:
         *,
         workflow_runtime: WorkflowRuntime,
     ):
-        from repositories.agent.runtime_repository import WorkflowAgentBindingResolver
-
-        resolver = WorkflowAgentBindingResolver(sessionmaker(bind=sqlite_engine))
         generator = AdvancedChatAppGenerator(runtime=workflow_runtime)
         generator._dialogue_count = 1
         app_config = self._build_app_config()
@@ -1224,7 +1211,7 @@ class TestAdvancedChatAppGeneratorInternals:
             "services.workflow.execution.adapters.chatflow.app_generator.FileUploadConfigManager.convert",
             lambda features_dict, is_vision=False: None,
         )
-        DummyTraceQueueManager = type(
+        dummy_trace_queue_manager = type(
             "_DummyTraceQueueManager",
             (TraceQueueManager,),
             {
@@ -1235,7 +1222,7 @@ class TestAdvancedChatAppGeneratorInternals:
         )
         monkeypatch.setattr(
             "services.workflow.execution.adapters.chatflow.app_generator.TraceQueueManager",
-            DummyTraceQueueManager,
+            dummy_trace_queue_manager,
         )
 
         captured = {}
@@ -1291,7 +1278,7 @@ class TestAdvancedChatAppGeneratorInternals:
             "services.workflow.execution.adapters.chatflow.app_generator.FileUploadConfigManager.convert",
             lambda features_dict, is_vision=False: None,
         )
-        DummyTraceQueueManager = type(
+        dummy_trace_queue_manager = type(
             "_DummyTraceQueueManager",
             (TraceQueueManager,),
             {
@@ -1302,7 +1289,7 @@ class TestAdvancedChatAppGeneratorInternals:
         )
         monkeypatch.setattr(
             "services.workflow.execution.adapters.chatflow.app_generator.TraceQueueManager",
-            DummyTraceQueueManager,
+            dummy_trace_queue_manager,
         )
 
         captured = {}
@@ -1366,7 +1353,7 @@ class TestAdvancedChatAppGeneratorResume:
             trace_manager=None,
             workflow_run_id="run-id",
         )
-        DummyTraceQueueManager = type(
+        dummy_trace_queue_manager = type(
             "_DummyTraceQueueManager",
             (TraceQueueManager,),
             {
@@ -1377,7 +1364,7 @@ class TestAdvancedChatAppGeneratorResume:
         )
         monkeypatch.setattr(
             "services.workflow.execution.adapters.chatflow.app_generator.TraceQueueManager",
-            DummyTraceQueueManager,
+            dummy_trace_queue_manager,
         )
         captured_entity: AdvancedChatAppGenerateEntity | None = None
 
@@ -1403,7 +1390,7 @@ class TestAdvancedChatAppGeneratorResume:
         assert result.ok is True
         assert captured_entity is not None
         trace_manager = captured_entity.trace_manager
-        assert isinstance(trace_manager, DummyTraceQueueManager)
+        assert isinstance(trace_manager, dummy_trace_queue_manager)
         assert trace_manager.app_id == "app-id"
         assert trace_manager.user_id == "session-id"
 

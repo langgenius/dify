@@ -626,7 +626,7 @@ def test_workflow_tool_skip_records_id_mapping(database: Database, *, workflow_t
 def test_api_tool_existing_provider_records_id_mapping(
     monkeypatch: pytest.MonkeyPatch, database: Database, conflict_strategy: ConflictStrategy, *, workflow_tools
 ):
-    target_provider = _persist_api_provider(database.session, provider_id="target-api-provider-id")
+    _persist_api_provider(database.session, provider_id="target-api-provider-id")
     _persist_api_provider(database.session, provider_id="other-tenant-provider-id", tenant_id="tenant-2")
     id_mapping = {}
     id_mapping_details = []
@@ -763,7 +763,7 @@ def test_mcp_tool_import_restores_exported_tool_list(
 def test_mcp_tool_existing_provider_records_id_mapping(
     monkeypatch: pytest.MonkeyPatch, database: Database, conflict_strategy: ConflictStrategy, *, workflow_tools
 ):
-    provider = _persist_mcp_provider(database.session, provider_id="target-mcp-provider-id")
+    _persist_mcp_provider(database.session, provider_id="target-mcp-provider-id")
     _persist_mcp_provider(
         database.session,
         provider_id="other-mcp-provider-id",

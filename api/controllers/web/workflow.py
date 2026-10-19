@@ -30,6 +30,7 @@ from extensions.ext_redis import redis_client
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
+from libs.external_api import error_responses
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 from services.errors.app import (
@@ -45,6 +46,15 @@ register_response_schema_models(web_ns, GeneratedAppResponse, SimpleResultRespon
 
 @web_ns.route("/workflows/run")
 class WorkflowRunApi(WebApiResource):
+    @error_responses(
+        CompletionRequestError,
+        InvokeRateLimitHttpError,
+        NotWorkflowAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+        TriggerWorkflowServiceModeUnavailableError,
+    )
     @web_ns.doc("Run Workflow")
     @web_ns.doc(description="Execute a workflow with provided inputs and files.")
     @web_ns.expect(web_ns.models[WorkflowRunPayload.__name__])
@@ -106,6 +116,7 @@ class WorkflowRunApi(WebApiResource):
 
 @web_ns.route("/workflows/tasks/<string:task_id>/stop")
 class WorkflowTaskStopApi(WebApiResource):
+    @error_responses(NotWorkflowAppError)
     @web_ns.doc("Stop Workflow Task")
     @web_ns.doc(description="Stop a running workflow task.")
     @web_ns.doc(
@@ -118,7 +129,6 @@ class WorkflowTaskStopApi(WebApiResource):
             200: "Success",
             400: "Bad Request",
             401: "Unauthorized",
-            403: "Forbidden",
             404: "Task Not Found",
             500: "Internal Server Error",
         }

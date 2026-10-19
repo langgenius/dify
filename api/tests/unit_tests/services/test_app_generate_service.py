@@ -485,7 +485,7 @@ class TestGenerate(_RealSessionTest):
         workflow_variables: WorkflowExecutionVariables,
         workflow_runtime: AppGenerationRuntime,
     ):
-        gen_spy = mocker.patch(
+        mocker.patch(
             "services.app_generate_service.AgentAppGenerator.generate",
             return_value={"result": "agent"},
         )
@@ -601,7 +601,7 @@ class TestGenerate(_RealSessionTest):
             new=gen_instance,
         )
 
-        result = AppGenerateService.generate(
+        AppGenerateService.generate(
             app_model=_make_app(AppMode.ADVANCED_CHAT),
             user=_make_user(),
             args={"workflow_id": None, "query": "hi", "inputs": {}},
@@ -779,7 +779,7 @@ class TestGenerate(_RealSessionTest):
             side_effect=lambda x: x,
         )
 
-        result = AppGenerateService.generate(
+        AppGenerateService.generate(
             app_model=_make_app(AppMode.WORKFLOW),
             user=_make_user(),
             args={"inputs": {}},
@@ -1142,7 +1142,7 @@ class TestGenerateSingleIteration(_RealSessionTest):
     ):
         workflow = _make_workflow()
         mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
-        gen_spy = mocker.patch(
+        mocker.patch(
             "services.app_generate_service.convert_to_event_stream",
             side_effect=lambda x: x,
         )
@@ -1151,7 +1151,6 @@ class TestGenerateSingleIteration(_RealSessionTest):
             return_value={"event": "iteration"},
         )
         app = _make_app(AppMode.ADVANCED_CHAT)
-        session = self.session
         result = AppGenerateService.generate_single_iteration(
             workflow=workflow,
             app_model=app,
@@ -1182,7 +1181,6 @@ class TestGenerateSingleIteration(_RealSessionTest):
             return_value={"event": "wf-iteration"},
         )
         app = _make_app(AppMode.WORKFLOW)
-        session = self.session
         result = AppGenerateService.generate_single_iteration(
             workflow=workflow,
             app_model=app,
@@ -1238,7 +1236,6 @@ class TestGenerateSingleLoop(_RealSessionTest):
             return_value={"event": "loop"},
         )
         app = _make_app(AppMode.ADVANCED_CHAT)
-        session = self.session
         result = AppGenerateService.generate_single_loop(
             workflow=workflow,
             app_model=app,
@@ -1269,7 +1266,6 @@ class TestGenerateSingleLoop(_RealSessionTest):
             return_value={"event": "wf-loop"},
         )
         app = _make_app(AppMode.WORKFLOW)
-        session = self.session
         result = AppGenerateService.generate_single_loop(
             workflow=workflow,
             app_model=app,

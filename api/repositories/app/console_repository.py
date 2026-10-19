@@ -25,7 +25,7 @@ from core.trigger.constants import TRIGGER_NODE_TYPES
 from enums.agent import WorkflowAgentBindingType
 from libs.datetime_utils import naive_utc_now
 from libs.pagination import PaginatedResult, paginate_query
-from machinery.context import RequestContext
+from machinery.context import AppRequestContext, RequestContext
 from models.account import Account, Tenant
 from models.agent import (
     APP_BACKED_AGENT_SOURCES,
@@ -44,19 +44,22 @@ from models.workflow import Workflow
 from models.workflow_conversion import ConversionExtension, ConvertedWorkflow, WorkflowConversionSource
 from repositories.app.creation_records import create_installed_app_record, create_site_record
 from repositories.app.response import app_record, app_summary
+from repositories.app_definition_query_repository import load_app_parameter_config
 from repositories.tag_repository import TagRepository
 from services.agent.errors import (
     AgentAccessNotReadyError,
     AgentNameConflictError,
 )
 from services.app.console_service import ConsoleAppNotFoundError, ConsoleApps
-from services.app.query_service import AppQueryStore
+from services.app.query_service import AppDescription, DiscoveryApps, RelatedApps
 from services.entities.app_entities import (
     RECENT_APP_MODES,
+    AppAgentBinding,
     AppChange,
     AppCreationSettings,
     AppDeletion,
     AppEvent,
+    AppFieldChanges,
     AppListBaseParams,
     AppListParams,
     AppListSortBy,
@@ -72,12 +75,14 @@ from services.entities.app_entities import (
     StarredAppListParams,
     UpdateAppParams,
 )
+from services.errors.app import AppDiscoveryNotFoundError
 from services.errors.base import NoPermissionError
 from services.errors.workflow_service import WorkflowConversionError
-from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
+from services.openapi.visibility import apply_openapi_gate
 from services.workflow.contracts import PreparedDraftSync
 
 logger = logging.getLogger(__name__)
+
 _app_trace_settings_adapter = TypeAdapter(AppTraceSettings)
 
 
@@ -123,7 +128,7 @@ def console_app_actor(session: Session, context: RequestContext) -> Account:
     return account
 
 
-class ConsoleAppRepository(ConsoleApps, AppQueryStore):
+class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
@@ -139,11 +144,40 @@ class ConsoleAppRepository(ConsoleApps, AppQueryStore):
             )
             return dict(rows.tuples().all())
 
+    def get_agent_binding(self, workspace_id: str, app_id: str) -> AppAgentBinding | None:
+        with self._session_factory() as session:
+            app = session.scalar(select(App).where(App.id == app_id, App.tenant_id == workspace_id))
+            if app is None:
+                return None
+            binding = app.agent_app_binding_with_session(session=session, include_archived=True)
+            return AppAgentBinding(binding.id, binding.scope == AgentScope.WORKFLOW_ONLY) if binding else None
+
+    def get_maintainer_id(self, workspace_id: str, resource_id: str, *, normal_only: bool = False) -> str | None:
+        statement = select(App.maintainer).where(App.id == resource_id, App.tenant_id == workspace_id)
+        if normal_only:
+            statement = statement.where(App.status == AppStatus.NORMAL)
+        with self._session_factory() as session:
+            return session.scalar(statement)
+
+    @override
+    def describe(self, context: AppRequestContext, *, include_config: bool) -> AppDescription:
+        with self._session_factory() as session:
+            app = self.get_visible_app_by_id(context.app_id, session, tenant_id=context.tenant_id)
+            if app is None:
+                raise AppDiscoveryNotFoundError("app not found")
+            config = load_app_parameter_config(app, session=session) if include_config else None
+            return AppDescription(app_summary(app), bool(app.enable_api), config)
+
+    def list_workspace_app_ids(self, tenant_id: str) -> list[str]:
+        """List every App row in the workspace, ignoring console visibility and status."""
+        with self._session_factory() as session:
+            return list(session.scalars(select(App.id).where(App.tenant_id == tenant_id)).all())
+
     @override
     def find_visible_app(self, app_id: str, tenant_id: str) -> AppSummary | None:
         with self._session_factory() as session:
-            app = self.get_visible_app_by_id(app_id, session)
-            return app_summary(app) if app is not None and app.tenant_id == tenant_id else None
+            app = self.get_visible_app_by_id(app_id, session, tenant_id=tenant_id)
+            return app_summary(app) if app is not None else None
 
     @override
     def find_visible_apps(self, app_ids: Sequence[str]) -> list[AppSummary]:
@@ -235,6 +269,13 @@ class ConsoleAppRepository(ConsoleApps, AppQueryStore):
             return app_record(app, session=session, projection="detail-with-site")
 
     @override
+    def update_fields(self, context: RequestContext, app_id: str, changes: AppFieldChanges) -> AppRecord:
+        with self._session_factory() as session:
+            app = require_console_app(session, context, app_id)
+            app = self.update_app_fields(app, changes, account_id=context.account_id, session=session)
+            return app_record(app, session=session, projection="detail-with-site")
+
+    @override
     def rename(self, context: RequestContext, app_id: str, name: str) -> AppRecord:
         with self._session_factory() as session:
             app = require_console_app(session, context, app_id)
@@ -272,6 +313,17 @@ class ConsoleAppRepository(ConsoleApps, AppQueryStore):
             changed = app.enable_api != enabled
             app = self.update_app_api_status(app, enabled, account_id=context.account_id, session=session)
             return AppChange(app_record(app, session=session, projection="detail"), changed)
+
+    @override
+    def access_ready(self, context: RequestContext, app_id: str) -> bool:
+        with self._session_factory() as session:
+            return self.is_agent_app_access_ready(require_console_app(session, context, app_id), session=session)
+
+    @override
+    def agent_role(self, context: RequestContext, app_id: str) -> str | None:
+        with self._session_factory() as session:
+            agent = self._get_backing_agent(require_console_app(session, context, app_id), session=session)
+            return agent.role if agent is not None else None
 
     @override
     def set_starred(self, context: RequestContext, app_id: str, starred: bool) -> None:
@@ -316,14 +368,14 @@ class ConsoleAppRepository(ConsoleApps, AppQueryStore):
             )
         )
         for workflow in workflows:
-            node_id = None
+            _node_id = None
             try:
-                for node_id, node_data in workflow.walk_nodes():
+                for _node_id, node_data in workflow.walk_nodes():
                     if node_data.get("type") in TRIGGER_NODE_TYPES:
                         result.add(workflow.app_id)
                         break
             except Exception:
-                logger.exception("error while walking nodes, workflow_id=%s, node_id=%s", workflow.id, node_id)
+                logger.exception("error while walking nodes, workflow_id=%s, node_id=%s", workflow.id, _node_id)
         return result
 
     @staticmethod
@@ -348,7 +400,7 @@ class ConsoleAppRepository(ConsoleApps, AppQueryStore):
     def _build_app_list_filters(
         user_id: str, tenant_id: str, params: AppListBaseParams, session: Session
     ) -> list[sa.ColumnElement[bool]]:
-        filters = [App.tenant_id == tenant_id, App.is_universal == False]
+        filters = [App.tenant_id == tenant_id, App.is_universal.is_(False)]
 
         if params.mode == "workflow":
             filters.append(App.mode == AppMode.WORKFLOW)
@@ -440,11 +492,14 @@ class ConsoleAppRepository(ConsoleApps, AppQueryStore):
     def get_visible_app_by_id(
         app_id: str,
         session: Session,
+        *,
+        tenant_id: str,
     ) -> App | None:
-        app = session.get(App, app_id)
-        if not app or app.status != "normal" or not is_openapi_visible(app):
-            return None
-        return app
+        """Find a visible normal app within the admitted tenant."""
+        statement = apply_openapi_gate(
+            select(App).where(App.id == app_id, App.tenant_id == tenant_id, App.status == AppStatus.NORMAL)
+        )
+        return session.scalar(statement)
 
     @staticmethod
     def find_visible_apps_by_ids(
@@ -832,10 +887,7 @@ class ConsoleAppRepository(ConsoleApps, AppQueryStore):
         app.name = args["name"]
         app.description = args["description"]
         icon_type = args.get("icon_type")
-        if icon_type is None:
-            resolved_icon_type = app.icon_type
-        else:
-            resolved_icon_type = IconType(icon_type)
+        resolved_icon_type = app.icon_type if icon_type is None else IconType(icon_type)
 
         app.icon_type = resolved_icon_type
         app.icon = args["icon"]
@@ -860,6 +912,33 @@ class ConsoleAppRepository(ConsoleApps, AppQueryStore):
         )
         cls._commit_app_identity_update(app, session=session)
 
+        return app
+
+    @classmethod
+    def update_app_fields(cls, app: App, changes: AppFieldChanges, *, account_id: str, session: Session) -> App:
+        """Write only the fields in `changes`; the others keep their stored values."""
+        app.name = changes.get("name", app.name)
+        app.description = changes.get("description", app.description)
+        app.icon_type = changes.get("icon_type", app.icon_type)
+        app.icon = changes.get("icon", app.icon)
+        app.icon_background = changes.get("icon_background", app.icon_background)
+        app.use_icon_as_answer_icon = changes.get("use_icon_as_answer_icon", app.use_icon_as_answer_icon)
+        app.max_active_requests = changes.get("max_active_requests", app.max_active_requests)
+        app.updated_by = account_id
+        app.updated_at = naive_utc_now()
+        cls._sync_backing_agent_identity(
+            app,
+            name=changes.get("name"),
+            description=changes.get("description"),
+            role=changes.get("role"),
+            icon_type=changes.get("icon_type"),
+            icon=changes.get("icon"),
+            icon_background=changes.get("icon_background"),
+            account_id=account_id,
+            updated_at=app.updated_at,
+            session=session,
+        )
+        cls._commit_app_identity_update(app, session=session)
         return app
 
     @classmethod

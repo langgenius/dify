@@ -62,7 +62,7 @@ def iter_dify_graph_engine_events(
     response_stream_filter: ResponseStreamFilter | None = None,
     *,
     human_form_reader: HumanInputFormReader,
-) -> Generator[GraphEngineEvent, None, None]:
+) -> Generator[GraphEngineEvent]:
     """
     Apply Dify's response streaming compatibility filter to GraphEngine events.
 
@@ -193,7 +193,7 @@ class WorkflowEntry:
         if dify_config.ENABLE_OTEL or is_instrument_flag_enabled():
             self.graph_engine.layer(ObservabilityLayer())
 
-    def run(self) -> Generator[GraphEngineEvent, None, None]:
+    def run(self) -> Generator[GraphEngineEvent]:
         graph_engine = self.graph_engine
 
         try:
@@ -222,7 +222,7 @@ class WorkflowEntry:
         draft_variable_saver: Callable[[str, Account], DraftVariableSaverFactory] | None = None,
         agent_binding_resolver: WorkflowAgentRuntimeBindings | None = None,
         workflow_runtime: WorkflowRuntime | None = None,
-    ) -> tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest, None, None]]:
+    ) -> tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest]]:
         """
         Single step run workflow node
         :param workflow: immutable workflow definition
@@ -382,7 +382,7 @@ class WorkflowEntry:
     @classmethod
     def run_free_node(
         cls, node_data: dict[str, Any], node_id: str, tenant_id: str, user_id: str, user_inputs: dict[str, Any]
-    ) -> tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest, None, None]]:
+    ) -> tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest]]:
         """
         Run free node
 
@@ -518,9 +518,7 @@ class WorkflowEntry:
         )
 
     @staticmethod
-    def _run_node_with_layers(
-        node: Node, *, tenant_id: str
-    ) -> Generator[GraphNodeEventBase | ContainerAwaitRequest, None, None]:
+    def _run_node_with_layers(node: Node, *, tenant_id: str) -> Generator[GraphNodeEventBase | ContainerAwaitRequest]:
         """
         Run a standalone node with the same quota and observability hooks as GraphEngine.
         """

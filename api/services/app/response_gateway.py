@@ -1,6 +1,3 @@
-from models.tool_runtime_contracts import WorkflowToolQueries
-from services.tools.provider_queries import ToolProviders
-
 """App response enrichment through tool runtimes and plugin metadata."""
 
 from collections.abc import Mapping
@@ -14,8 +11,10 @@ from core.plugin.plugin_service import PluginService
 from machinery.context import RequestContext
 from models.model import AppMode
 from models.provider_ids import GenericProviderID
+from models.tool_runtime_contracts import WorkflowToolQueries
 from services.entities.app_entities import AppRecord, AppToolReference
 from services.tools.agent_configuration import mask_agent_tool_parameters
+from services.tools.provider_queries import ToolProviders
 from services.tools.tool_manager import ToolManager
 
 

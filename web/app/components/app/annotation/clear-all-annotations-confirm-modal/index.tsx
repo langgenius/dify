@@ -1,49 +1,37 @@
 'use client'
 
-import type { FC } from 'react'
 import {
-  AlertDialog,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
 type Props = Readonly<{
-  isShow: boolean
-  onHide: () => void
+  isPending: boolean
   onConfirm: () => void
 }>
 
-const ClearAllAnnotationsConfirmModal: FC<Props> = ({ isShow, onHide, onConfirm }) => {
+export function ClearAllAnnotationsConfirmContent({ isPending, onConfirm }: Props) {
   const { t } = useTranslation(['appAnnotation', 'common'])
   const title = t(($) => $['table.header.clearAllConfirm'], { ns: 'appAnnotation' })
 
   return (
-    <AlertDialog open={isShow} onOpenChange={(open) => !open && onHide()}>
-      <AlertDialogContent>
-        <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-          <AlertDialogTitle
-            className="w-full truncate title-2xl-semi-bold text-text-primary"
-            title={title}
-          >
-            {title}
-          </AlertDialogTitle>
-        </div>
-        <AlertDialogFooter>
-          <AlertDialogCancelButton>
-            {t(($) => $['operation.cancel'], { ns: 'common' })}
-          </AlertDialogCancelButton>
-          <AlertDialogConfirmButton onClick={onConfirm}>
-            {t(($) => $['operation.confirm'], { ns: 'common' })}
-          </AlertDialogConfirmButton>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>{title}</AlertDialogTitle>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancelButton disabled={isPending}>
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
+        </AlertDialogCancelButton>
+        <AlertDialogConfirmButton loading={isPending} onClick={onConfirm}>
+          {t(($) => $['operation.confirm'], { ns: 'common' })}
+        </AlertDialogConfirmButton>
+      </AlertDialogFooter>
+    </AlertDialogContent>
   )
 }
-
-export default React.memo(ClearAllAnnotationsConfirmModal)
