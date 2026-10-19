@@ -21,7 +21,7 @@ class TestTriggerProviderService:
     """Integration tests for TriggerProviderService using testcontainers."""
 
     @pytest.fixture
-    def mock_external_service_dependencies(self) -> Generator[MockExternalServiceDependencies, None, None]:
+    def mock_external_service_dependencies(self) -> Generator[MockExternalServiceDependencies]:
         """Mock setup for external service dependencies."""
         with (
             patch("services.trigger.trigger_provider_service.TriggerManager") as mock_trigger_manager,
@@ -163,7 +163,7 @@ class TestTriggerProviderService:
         - Merged credentials are used for subscribe and update
         - Database state is correctly updated
         """
-        fake = Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             mock_external_service_dependencies, db_session_with_containers
         )
@@ -263,7 +263,7 @@ class TestTriggerProviderService:
         - All new credentials are used when no HIDDEN_VALUE is present
         - Merged credentials contain only new values
         """
-        fake = Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             mock_external_service_dependencies, db_session_with_containers
         )
@@ -323,7 +323,7 @@ class TestTriggerProviderService:
         - All HIDDEN_VALUE credentials are replaced with existing values
         - Original credentials are preserved
         """
-        fake = Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             mock_external_service_dependencies, db_session_with_containers
         )
@@ -381,7 +381,7 @@ class TestTriggerProviderService:
         This test verifies:
         - UNKNOWN_VALUE is used when HIDDEN_VALUE key doesn't exist in original credentials
         """
-        fake = Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             mock_external_service_dependencies, db_session_with_containers
         )
@@ -441,7 +441,7 @@ class TestTriggerProviderService:
         - Database transaction is rolled back when an error occurs
         - Original subscription state is preserved
         """
-        fake = Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             mock_external_service_dependencies, db_session_with_containers
         )
@@ -519,7 +519,7 @@ class TestTriggerProviderService:
         This test verifies:
         - Error is raised when new name conflicts with existing subscription
         """
-        fake = Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             mock_external_service_dependencies, db_session_with_containers
         )

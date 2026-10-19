@@ -1,12 +1,11 @@
 """Serialize generation responses at transport boundaries."""
 
 from collections.abc import Generator, Mapping
-from typing import Union
 
 from libs.orjson import orjson_dumps
 
 
-def convert_to_event_stream(generator: Union[Mapping, Generator[Mapping | str, None, None]]):
+def convert_to_event_stream(generator: Mapping | Generator[Mapping | str]):
     """
     Convert messages into event stream
     """

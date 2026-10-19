@@ -103,13 +103,11 @@ def test_node_accepts_invoke_from_enum():
     assert dify_ctx.user_from == UserFrom.ACCOUNT
     assert dify_ctx.invoke_from == InvokeFrom.DEBUGGER
     assert node.get_run_context_value("missing") is None
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="run_context missing required key: missing"):
         node.require_run_context_value("missing")
 
 
 def test_missing_generic_argument_raises_type_error():
-    graph_config: dict[str, object] = {}
-
     with pytest.raises(TypeError):
 
         class _InvalidNode(Node):  # type: ignore[type-abstract]

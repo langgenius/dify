@@ -227,6 +227,47 @@ class TestWorkflowService:
         # Assert
         assert result is None
 
+    def test_is_workflow_exist_true(self, db_session_with_containers: Session):
+        """
+        Test workflow existence check when a draft workflow exists.
+
+        This test verifies that the service correctly identifies when a draft workflow
+        exists for an application, which is important for workflow management operations.
+        """
+        # Arrange
+        fake = Faker()
+        account = self._create_test_account(db_session_with_containers, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
+        self._create_test_workflow(db_session_with_containers, app, account, fake)
+
+        workflow_service = WorkflowService()
+
+        # Act
+        result = workflow_service.is_workflow_exist(app, session=db_session_with_containers)
+
+        # Assert
+        assert result is True
+
+    def test_is_workflow_exist_false(self, db_session_with_containers: Session):
+        """
+        Test workflow existence check when no draft workflow exists.
+
+        This test ensures that the service correctly identifies when no draft workflow
+        exists for an application, which is the initial state for new apps.
+        """
+        # Arrange
+        fake = Faker()
+        app = self._create_test_app(db_session_with_containers, fake)
+        # Don't create any workflow
+
+        workflow_service = WorkflowService()
+
+        # Act
+        result = workflow_service.is_workflow_exist(app, session=db_session_with_containers)
+
+        # Assert
+        assert result is False
+
     def test_get_draft_workflow_success(self, db_session_with_containers: Session):
         """
         Test successful retrieval of a draft workflow.
@@ -424,8 +465,6 @@ class TestWorkflowService:
 
         db_session_with_containers.commit()
 
-        workflow_service = WorkflowService()
-
         # Act - First page
         result_workflows, has_more = WorkflowDefinitionStore.get_all_published_workflow(
             session=db_session_with_containers,
@@ -480,8 +519,6 @@ class TestWorkflowService:
 
         db_session_with_containers.commit()
 
-        workflow_service = WorkflowService()
-
         # Act - Filter by account1
         result_workflows, has_more = WorkflowDefinitionStore.get_all_published_workflow(
             session=db_session_with_containers, app_model=app, page=1, limit=10, user_id=account1.id
@@ -522,8 +559,6 @@ class TestWorkflowService:
 
         db_session_with_containers.commit()
 
-        workflow_service = WorkflowService()
-
         # Act - Filter named only
         result_workflows, has_more = WorkflowDefinitionStore.get_all_published_workflow(
             session=db_session_with_containers, app_model=app, page=1, limit=10, user_id=None, named_only=True
@@ -540,8 +575,6 @@ class TestWorkflowService:
         app = self._create_test_app(db_session_with_containers, fake)
         app.workflow_id = None
         db_session_with_containers.commit()
-
-        workflow_service = WorkflowService()
 
         # Act
         result_workflows, has_more = WorkflowDefinitionStore.get_all_published_workflow(
@@ -566,8 +599,6 @@ class TestWorkflowService:
 
         app.workflow_id = workflow1.id
         db_session_with_containers.commit()
-
-        workflow_service = WorkflowService()
 
         # Act
         result_workflows, has_more = WorkflowDefinitionStore.get_all_published_workflow(
@@ -607,8 +638,6 @@ class TestWorkflowService:
         app.workflow_id = wf1.id
         db_session_with_containers.commit()
 
-        workflow_service = WorkflowService()
-
         # Act - Filter by account1 + named_only
         result_workflows, has_more = WorkflowDefinitionStore.get_all_published_workflow(
             session=db_session_with_containers,
@@ -635,8 +664,6 @@ class TestWorkflowService:
         workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
         app.workflow_id = workflow.id
         db_session_with_containers.commit()
-
-        workflow_service = WorkflowService()
 
         # Act - Filter by a user that has no workflows
         result_workflows, has_more = WorkflowDefinitionStore.get_all_published_workflow(
@@ -791,9 +818,8 @@ class TestWorkflowService:
         app = self._create_test_app(db_session_with_containers, fake)
 
         # Create existing draft workflow
-        existing_workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        self._create_test_workflow(db_session_with_containers, app, account, fake)
         # Get the actual hash that was generated
-        original_hash = existing_workflow.unique_hash
 
         new_graph = {
             "nodes": [
@@ -1006,7 +1032,6 @@ class TestWorkflowService:
 
         db_session_with_containers.commit()
 
-        workflow_service = WorkflowService()
         update_data = {"marked_name": "Updated Workflow Name", "marked_comment": "Updated workflow comment"}
 
         # Act
@@ -1035,7 +1060,6 @@ class TestWorkflowService:
         account = self._create_test_account(db_session_with_containers, fake)
         app = self._create_test_app(db_session_with_containers, fake)
 
-        workflow_service = WorkflowService()
         non_existent_workflow_id = fake.uuid4()
         update_data = {"marked_name": "Test"}
 
@@ -1062,11 +1086,9 @@ class TestWorkflowService:
         account = self._create_test_account(db_session_with_containers, fake)
         app = self._create_test_app(db_session_with_containers, fake)
         workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
-        original_name = workflow.marked_name
 
         db_session_with_containers.commit()
 
-        workflow_service = WorkflowService()
         update_data = {
             "marked_name": "Allowed Update",
             "graph": "disallowed_field",  # Should be ignored
@@ -1283,7 +1305,7 @@ class TestWorkflowService:
 
         # Act
         # Since start nodes are not supported in run_free_node, we expect an error
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(Exception, match="Node type start not supported") as exc_info:
             workflow_service.run_free_workflow_node(
                 node_data=node_data, tenant_id=tenant_id, user_id=user_id, node_id=node_id, user_inputs=user_inputs
             )

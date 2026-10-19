@@ -6,6 +6,8 @@ import json
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
+from models.enums import ApiTokenType
+from models.model import ApiToken
 from services.api_token_service import (
     CACHE_KEY_PREFIX,
     CACHE_NULL_TTL_SECONDS,
@@ -18,18 +20,18 @@ from services.api_token_service import (
 class TestApiTokenCache:
     """Test cases for ApiTokenCache class."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Setup test fixtures."""
-        self.mock_token = MagicMock()
+        self.mock_token = ApiToken()
         self.mock_token.id = "test-token-id-123"
         self.mock_token.app_id = "test-app-id-456"
         self.mock_token.tenant_id = "test-tenant-id-789"
-        self.mock_token.type = "app"
+        self.mock_token.type = ApiTokenType.APP
         self.mock_token.token = "test-token-value-abc"
         self.mock_token.last_used_at = datetime(2026, 2, 3, 10, 0, 0)
         self.mock_token.created_at = datetime(2026, 1, 1, 0, 0, 0)
 
-    def test_make_cache_key(self):
+    def test_make_cache_key(self) -> None:
         """Test cache key generation."""
         # Test with scope
         key = ApiTokenCache._make_cache_key("my-token", "app")
@@ -39,7 +41,7 @@ class TestApiTokenCache:
         key = ApiTokenCache._make_cache_key("my-token", None)
         assert key == f"{CACHE_KEY_PREFIX}:any:my-token"
 
-    def test_serialize_token(self):
+    def test_serialize_token(self) -> None:
         """Test token serialization."""
         serialized = ApiTokenCache._serialize_token(self.mock_token)
         data = json.loads(serialized)
@@ -52,13 +54,13 @@ class TestApiTokenCache:
         assert data["last_used_at"] == "2026-02-03T10:00:00"
         assert data["created_at"] == "2026-01-01T00:00:00"
 
-    def test_serialize_token_with_nulls(self):
+    def test_serialize_token_with_nulls(self) -> None:
         """Test token serialization with None values."""
-        mock_token = MagicMock()
+        mock_token = ApiToken()
         mock_token.id = "test-id"
         mock_token.app_id = None
         mock_token.tenant_id = None
-        mock_token.type = "dataset"
+        mock_token.type = ApiTokenType.DATASET
         mock_token.token = "test-token"
         mock_token.last_used_at = None
         mock_token.created_at = datetime(2026, 1, 1, 0, 0, 0)
@@ -70,7 +72,7 @@ class TestApiTokenCache:
         assert data["tenant_id"] is None
         assert data["last_used_at"] is None
 
-    def test_deserialize_token(self):
+    def test_deserialize_token(self) -> None:
         """Test token deserialization."""
         cached_data = json.dumps(
             {
@@ -95,18 +97,18 @@ class TestApiTokenCache:
         assert result.last_used_at == datetime(2026, 2, 3, 10, 0, 0)
         assert result.created_at == datetime(2026, 1, 1, 0, 0, 0)
 
-    def test_deserialize_null_token(self):
+    def test_deserialize_null_token(self) -> None:
         """Test deserialization of null token (cached miss)."""
         result = ApiTokenCache._deserialize_token("null")
         assert result is None
 
-    def test_deserialize_invalid_json(self):
+    def test_deserialize_invalid_json(self) -> None:
         """Test deserialization with invalid JSON."""
         result = ApiTokenCache._deserialize_token("invalid-json{")
         assert result is None
 
     @patch("services.api_token_service.redis_client")
-    def test_get_cache_hit(self, mock_redis):
+    def test_get_cache_hit(self, mock_redis: MagicMock) -> None:
         """Test cache hit scenario."""
         cached_data = json.dumps(
             {
@@ -129,7 +131,7 @@ class TestApiTokenCache:
         mock_redis.get.assert_called_once_with(f"{CACHE_KEY_PREFIX}:app:test-token")
 
     @patch("services.api_token_service.redis_client")
-    def test_get_cache_miss(self, mock_redis):
+    def test_get_cache_miss(self, mock_redis: MagicMock) -> None:
         """Test cache miss scenario."""
         mock_redis.get.return_value = None
 
@@ -139,7 +141,7 @@ class TestApiTokenCache:
         mock_redis.get.assert_called_once()
 
     @patch("services.api_token_service.redis_client")
-    def test_set_valid_token(self, mock_redis):
+    def test_set_valid_token(self, mock_redis: MagicMock) -> None:
         """Test setting a valid token in cache."""
         result = ApiTokenCache.set("test-token", "app", self.mock_token)
 
@@ -150,7 +152,7 @@ class TestApiTokenCache:
         assert args[1] == CACHE_TTL_SECONDS
 
     @patch("services.api_token_service.redis_client")
-    def test_set_null_token(self, mock_redis):
+    def test_set_null_token(self, mock_redis: MagicMock) -> None:
         """Test setting a null token (cache penetration prevention)."""
         result = ApiTokenCache.set("invalid-token", "app", None)
 
@@ -162,7 +164,7 @@ class TestApiTokenCache:
         assert args[2] == b"null"
 
     @patch("services.api_token_service.redis_client")
-    def test_delete_with_scope(self, mock_redis):
+    def test_delete_with_scope(self, mock_redis: MagicMock) -> None:
         """Test deleting token cache with specific scope."""
         result = ApiTokenCache.delete("test-token", "app")
 
@@ -170,7 +172,7 @@ class TestApiTokenCache:
         mock_redis.delete.assert_called_once_with(f"{CACHE_KEY_PREFIX}:app:test-token")
 
     @patch("services.api_token_service.redis_client")
-    def test_delete_without_scope(self, mock_redis):
+    def test_delete_without_scope(self, mock_redis: MagicMock) -> None:
         """Test deleting token cache without scope (delete all)."""
         # Mock scan_iter to return an iterator of keys
         mock_redis.scan_iter.return_value = iter(
@@ -195,7 +197,7 @@ class TestApiTokenCache:
         )
 
     @patch("services.api_token_service.redis_client")
-    def test_redis_fallback_on_exception(self, mock_redis):
+    def test_redis_fallback_on_exception(self, mock_redis: MagicMock) -> None:
         """Test Redis fallback when Redis is unavailable."""
         from redis import RedisError
 
@@ -211,14 +213,14 @@ class TestApiTokenCacheIntegration:
     """Integration test scenarios."""
 
     @patch("services.api_token_service.redis_client")
-    def test_full_cache_lifecycle(self, mock_redis):
+    def test_full_cache_lifecycle(self, mock_redis: MagicMock) -> None:
         """Test complete cache lifecycle: set -> get -> delete."""
-        # Setup mock token
-        mock_token = MagicMock()
+        # Use the persisted model's fields for the cache lifecycle.
+        mock_token = ApiToken()
         mock_token.id = "id-123"
         mock_token.app_id = "app-456"
         mock_token.tenant_id = "tenant-789"
-        mock_token.type = "app"
+        mock_token.type = ApiTokenType.APP
         mock_token.token = "token-abc"
         mock_token.last_used_at = datetime(2026, 2, 3, 10, 0, 0)
         mock_token.created_at = datetime(2026, 1, 1, 0, 0, 0)
@@ -240,7 +242,7 @@ class TestApiTokenCacheIntegration:
         assert mock_redis.delete.called
 
     @patch("services.api_token_service.redis_client")
-    def test_cache_penetration_prevention(self, mock_redis):
+    def test_cache_penetration_prevention(self, mock_redis: MagicMock) -> None:
         """Test that non-existent tokens are cached as null."""
         # Set null token (cache miss)
         ApiTokenCache.set("non-existent-token", "app", None)

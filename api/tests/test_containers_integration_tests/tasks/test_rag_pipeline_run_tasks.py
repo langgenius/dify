@@ -253,7 +253,7 @@ class TestRagPipelineRunTasks:
             assert call_kwargs["workflow_id"] == workflow.id
             assert call_kwargs["user"].id == account.id
             assert call_kwargs["invoke_from"] == InvokeFrom.PUBLISHED_PIPELINE
-            assert call_kwargs["streaming"] == False
+            assert call_kwargs["streaming"] is False
             assert isinstance(call_kwargs["application_generate_entity"], RagPipelineGenerateEntity)
 
     def test_rag_pipeline_run_task_success(
@@ -298,7 +298,7 @@ class TestRagPipelineRunTasks:
             assert call_kwargs["workflow_id"] == workflow.id
             assert call_kwargs["user"].id == account.id
             assert call_kwargs["invoke_from"] == InvokeFrom.PUBLISHED_PIPELINE
-            assert call_kwargs["streaming"] == False
+            assert call_kwargs["streaming"] is False
             assert isinstance(call_kwargs["application_generate_entity"], RagPipelineGenerateEntity)
 
     def test_priority_rag_pipeline_run_task_with_waiting_tasks(
@@ -615,7 +615,7 @@ class TestRagPipelineRunTasks:
 
         # Mock file service
         file_id1 = str(uuid.uuid4())
-        file_id2 = str(uuid.uuid4())
+        str(uuid.uuid4())
         mock_file_service["get_content"].side_effect = [file_content1, file_content2]
 
         # Use real Redis for TenantIsolatedTaskQueue
@@ -682,7 +682,7 @@ class TestRagPipelineRunTasks:
 
         # Mock file service
         file_id1 = str(uuid.uuid4())
-        file_id2 = str(uuid.uuid4())
+        str(uuid.uuid4())
         mock_file_service["get_content"].side_effect = [file_content1, file_content2]
 
         # Use real Redis for TenantIsolatedTaskQueue
@@ -759,7 +759,7 @@ class TestRagPipelineRunTasks:
         assert call_kwargs["workflow_id"] == workflow.id
         assert call_kwargs["user"].id == account.id
         assert call_kwargs["invoke_from"] == InvokeFrom.PUBLISHED_PIPELINE
-        assert call_kwargs["streaming"] == False
+        assert call_kwargs["streaming"] is False
         assert isinstance(call_kwargs["application_generate_entity"], RagPipelineGenerateEntity)
 
     def test_run_single_rag_pipeline_task_entity_validation_error(
@@ -774,7 +774,7 @@ class TestRagPipelineRunTasks:
         - Function raises ValueError for missing entities
         """
         # Arrange: Create entity data with valid UUIDs but non-existent entities
-        fake = Faker()
+
         invalid_entity_data = {
             "pipeline_id": str(uuid.uuid4()),
             "application_generate_entity": {
@@ -819,7 +819,7 @@ class TestRagPipelineRunTasks:
         - Function raises ValueError for missing entities
         """
         # Arrange: Create test data with non-existent IDs
-        fake = Faker()
+
         entity_data = {
             "pipeline_id": str(uuid.uuid4()),
             "application_generate_entity": {

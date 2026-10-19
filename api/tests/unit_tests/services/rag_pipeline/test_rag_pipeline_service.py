@@ -1030,7 +1030,6 @@ def test_get_default_block_configs_success(rag_pipeline_service: RagPipelineServ
 
 
 def test_get_default_block_config_success(rag_pipeline_service: RagPipelineServiceTestContext) -> None:
-
     result = rag_pipeline_service.service.get_default_block_config(BuiltinNodeTypes.LLM)
     assert result is not None
     assert result["type"] == "llm"
@@ -1039,7 +1038,6 @@ def test_get_default_block_config_success(rag_pipeline_service: RagPipelineServi
 def test_get_default_block_config_returns_none_when_mapped_type_missing(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-
     mocker.patch("services.rag_pipeline.rag_pipeline.get_node_type_classes_mapping", return_value={})
 
     assert rag_pipeline_service.service.get_default_block_config(BuiltinNodeTypes.START) is None
@@ -1048,7 +1046,6 @@ def test_get_default_block_config_returns_none_when_mapped_type_missing(
 def test_get_default_block_config_injects_http_request_filter(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-
     fake_node_cls = mocker.Mock()
     fake_node_cls.get_default_config.return_value = {"type": "http-request"}
     mocker.patch(
@@ -1663,7 +1660,6 @@ def test_set_datasource_variables_raises_when_node_id_missing(
 def test_get_default_block_configs_skips_empty_configs(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-
     http_node = mocker.Mock()
     http_node.get_default_config.return_value = {"type": "http-request"}
     empty_node = mocker.Mock()
@@ -2111,7 +2107,6 @@ def test_get_all_published_workflow_without_filters_has_no_more(
 def test_get_default_block_config_returns_none_when_default_empty(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-
     node_cls = mocker.Mock()
     node_cls.get_default_config.return_value = None
     mocker.patch(

@@ -16,8 +16,20 @@ from configs import dify_config
 from controllers.common.audio_response import audio_binary_response
 from controllers.common.errors import (
     AuthenticationRequiredError,
+    BlockedFileExtensionError,
+    FilenameNotExistsError,
+    FileTooLargeError,
     InternalServerError,
+    NoFileUploadedError,
     NotFoundError,
+    RemoteFileAccessDeniedError,
+    RemoteFileInvalidResponseError,
+    RemoteFileInvalidUrlError,
+    RemoteFileNotFoundError,
+    RemoteFileUnavailableError,
+    RemoteFileUrlBlockedError,
+    TooManyFilesError,
+    UnsupportedFileTypeError,
 )
 from controllers.common.fields import (
     AudioBinaryResponse,
@@ -44,6 +56,7 @@ from controllers.console.app.error import (
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderNotSupportSpeechToTextError,
+    ProviderNotSupportTextToSpeechError,
     ProviderQuotaExceededError,
     SpeechToTextDisabledError,
     UnsupportedAudioTypeError,
@@ -87,6 +100,7 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from graphon.variables import SecretVariable, VariableBase
 from libs import helper
 from libs.exception import BaseHTTPException
+from libs.external_api import error_responses
 from libs.helper import dump_response, to_timestamp, uuid_value
 from libs.stream import close_stream
 from libs.url_utils import normalize_api_base_url
@@ -108,6 +122,7 @@ from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
+    ProviderNotSupportTextToSpeechServiceError,
     SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
@@ -472,6 +487,14 @@ simple_account_model = console_ns.models[TrialSimpleAccount.__name__]
     endpoint="trial_app_file_upload",
 )
 class TrialAppFileUploadApi(Resource):
+    @error_responses(
+        BlockedFileExtensionError,
+        FilenameNotExistsError,
+        FileTooLargeError,
+        NoFileUploadedError,
+        TooManyFilesError,
+        UnsupportedFileTypeError,
+    )
     @console_ns.doc(consumes=["multipart/form-data"], params=FILE_UPLOAD_PARAMS)
     @console_ns.response(HTTPStatus.CREATED, "File uploaded successfully", console_ns.models[FileResponse.__name__])
     @console_account_admission()
@@ -491,6 +514,17 @@ class TrialAppFileUploadApi(Resource):
     endpoint="trial_app_remote_file_upload",
 )
 class TrialAppRemoteFileUploadApi(Resource):
+    @error_responses(
+        BlockedFileExtensionError,
+        FileTooLargeError,
+        RemoteFileAccessDeniedError,
+        RemoteFileInvalidResponseError,
+        RemoteFileInvalidUrlError,
+        RemoteFileNotFoundError,
+        RemoteFileUnavailableError,
+        RemoteFileUrlBlockedError,
+        UnsupportedFileTypeError,
+    )
     @console_ns.expect(console_ns.models[RemoteFileUploadPayload.__name__])
     @console_ns.response(
         HTTPStatus.CREATED, "File uploaded successfully", console_ns.models[FileWithSignedUrl.__name__]
@@ -516,6 +550,15 @@ class TrialAppRemoteFileUploadApi(Resource):
     endpoint="trial_app_workflow_run",
 )
 class TrialAppWorkflowRunApi(Resource):
+    @error_responses(
+        AppUnavailableError,
+        CompletionRequestError,
+        InvokeRateLimitHttpError,
+        NotWorkflowAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.expect(console_ns.models[WorkflowRunRequest.__name__])
     @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
@@ -560,6 +603,7 @@ class TrialAppWorkflowRunApi(Resource):
 
 @console_ns.route("/trial-apps/<uuid:app_id>/workflows/tasks/<string:task_id>/stop")
 class TrialAppWorkflowTaskStopApi(Resource):
+    @error_responses(NotWorkflowAppError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission()
     @get_trial_app
@@ -580,6 +624,15 @@ class TrialAppWorkflowTaskStopApi(Resource):
     endpoint="trial_app_chat_completion",
 )
 class TrialChatApi(Resource):
+    @error_responses(
+        AppUnavailableError,
+        CompletionRequestError,
+        InvokeRateLimitHttpError,
+        NotChatAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.expect(console_ns.models[ChatRequest.__name__])
     @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
@@ -639,6 +692,7 @@ class TrialChatApi(Resource):
     endpoint="trial_app_stop_chat_completion",
 )
 class TrialChatTaskStopApi(Resource):
+    @error_responses(NotChatAppError)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission()
     @get_trial_app_for_stop
@@ -660,6 +714,15 @@ class TrialChatTaskStopApi(Resource):
     endpoint="trial_app_suggested_question",
 )
 class TrialMessageSuggestedQuestionApi(Resource):
+    @error_responses(
+        AppSuggestedQuestionsAfterAnswerDisabledError,
+        AppUnavailableError,
+        CompletionRequestError,
+        NotChatAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SuggestedQuestionsResponse.__name__])
     @console_account_admission()
     @get_trial_app
@@ -717,6 +780,8 @@ def _trial_audio_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             raise ProviderNotSupportSpeechToTextError() from error
         except SpeechToTextDisabledServiceError as error:
             raise SpeechToTextDisabledError() from error
+        except ProviderNotSupportTextToSpeechServiceError as error:
+            raise ProviderNotSupportTextToSpeechError() from error
         except ProviderTokenNotInitError as error:
             raise ProviderNotInitializeError(error.description) from error
         except QuotaExceededError as error:
@@ -741,6 +806,19 @@ def _trial_audio_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     endpoint="trial_app_audio",
 )
 class TrialChatAudioApi(Resource):
+    @error_responses(
+        AgentVersionNotFoundHTTPError,
+        AppUnavailableError,
+        AudioTooLargeError,
+        CompletionRequestError,
+        NoAudioUploadedError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderNotSupportSpeechToTextError,
+        ProviderQuotaExceededError,
+        SpeechToTextDisabledError,
+        UnsupportedAudioTypeError,
+    )
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AudioTranscriptResponse.__name__])
     @console_account_admission()
     @get_trial_app
@@ -768,6 +846,15 @@ class TrialChatAudioApi(Resource):
     endpoint="trial_app_text",
 )
 class TrialChatTextApi(Resource):
+    @error_responses(
+        AgentVersionNotFoundHTTPError,
+        AppUnavailableError,
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderNotSupportTextToSpeechError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.expect(console_ns.models[TextToSpeechRequest.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AudioBinaryResponse.__name__])
     @console_account_admission()
@@ -804,6 +891,15 @@ class TrialChatTextApi(Resource):
     endpoint="trial_app_completion",
 )
 class TrialCompletionApi(Resource):
+    @error_responses(
+        AppUnavailableError,
+        CompletionRequestError,
+        InvokeRateLimitHttpError,
+        NotCompletionAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.expect(console_ns.models[CompletionRequest.__name__])
     @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
@@ -852,6 +948,7 @@ class TrialCompletionApi(Resource):
 class TrialSitApi(Resource):
     """Resource for trial app sites."""
 
+    @error_responses(AppPreviewOwnerUnavailableHttpError, AppPreviewSiteUnavailableHttpError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SiteResponse.__name__])
     @get_preview_app
     def get(self, app: AppPreviewRef) -> dict[str, object]:
@@ -875,6 +972,7 @@ class TrialSitApi(Resource):
 class TrialAppParameterApi(Resource):
     """Resource for app variables."""
 
+    @error_responses(AppUnavailableError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ParametersResponse.__name__])
     @get_preview_app
     def get(self, app: AppPreviewRef) -> dict[str, object]:
@@ -890,6 +988,7 @@ class TrialAppParameterApi(Resource):
 
 @console_ns.route("/trial-apps/<uuid:app_id>", endpoint="trial_app")
 class AppApi(Resource):
+    @error_responses(AppNotFoundError, AppPreviewSiteUnavailableHttpError, AppUnavailableError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[TrialAppDetailResponse.__name__])
     @console_account_admission()
     @get_preview_app
@@ -921,6 +1020,7 @@ class AppApi(Resource):
 
 @console_ns.route("/trial-apps/<uuid:app_id>/agent-composer")
 class TrialAgentComposerApi(Resource):
+    @error_responses(AppUnavailableError)
     @console_ns.response(200, "Published Agent configuration", console_ns.models[AgentAppComposerResponse.__name__])
     @get_preview_app
     def get(self, app: AppPreviewRef):
@@ -936,6 +1036,7 @@ class TrialAgentComposerApi(Resource):
     endpoint="trial_app_workflow",
 )
 class AppWorkflowApi(Resource):
+    @error_responses(AppNotFoundError, AppUnavailableError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[TrialWorkflowResponse.__name__])
     @get_preview_app
     def get(self, app: AppPreviewRef) -> dict[str, object]:
@@ -954,6 +1055,7 @@ class AppWorkflowApi(Resource):
     endpoint="trial_app_datasets",
 )
 class DatasetListApi(Resource):
+    @error_responses(AppNotFoundError, NeedAddIdsError)
     @console_ns.doc(params=query_params_from_model(TrialDatasetListQuery))
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[TrialDatasetListResponse.__name__])
     @get_preview_app

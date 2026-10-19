@@ -97,7 +97,6 @@ class TestRunInputGuards:
         *,
         annotation_replies,
         app_records,
-        human_forms,
     ):
         _patch_moderation(monkeypatch, returns=(False, {}, "hello"))
         _patch_annotation(monkeypatch, reply=None)
@@ -105,7 +104,6 @@ class TestRunInputGuards:
 
         handled, query, annotation_reply = AgentAppGenerator(
             agent_configs=create_autospec(AgentAppConfigurations, instance=True, spec_set=True),
-            forms=human_forms,
             annotations=annotation_replies,
             records=app_records,
             tool_providers=tool_providers,
@@ -130,7 +128,6 @@ class TestRunInputGuards:
         *,
         annotation_replies,
         app_records,
-        human_forms,
     ):
         _patch_moderation(monkeypatch, returns=(True, {}, "[redacted]"))
         _patch_annotation(monkeypatch, reply=None)
@@ -138,7 +135,6 @@ class TestRunInputGuards:
 
         handled, query, annotation_reply = AgentAppGenerator(
             agent_configs=create_autospec(AgentAppConfigurations, instance=True, spec_set=True),
-            forms=human_forms,
             annotations=annotation_replies,
             records=app_records,
             tool_providers=tool_providers,
@@ -163,7 +159,6 @@ class TestRunInputGuards:
         *,
         annotation_replies,
         app_records,
-        human_forms,
     ):
         _patch_moderation(monkeypatch, raises=ModerationError("blocked preset answer"))
         _patch_annotation(monkeypatch, reply=None)
@@ -171,7 +166,6 @@ class TestRunInputGuards:
 
         handled, _, annotation_reply = AgentAppGenerator(
             agent_configs=create_autospec(AgentAppConfigurations, instance=True, spec_set=True),
-            forms=human_forms,
             annotations=annotation_replies,
             records=app_records,
             tool_providers=tool_providers,
@@ -197,7 +191,6 @@ class TestRunInputGuards:
         *,
         annotation_replies,
         app_records,
-        human_forms,
     ):
         _patch_moderation(monkeypatch, returns=(False, {}, "what is your name"))
         annotation = MessageAnnotation(
@@ -212,7 +205,6 @@ class TestRunInputGuards:
 
         handled, _, annotation_reply = AgentAppGenerator(
             agent_configs=create_autospec(AgentAppConfigurations, instance=True, spec_set=True),
-            forms=human_forms,
             annotations=annotation_replies,
             records=app_records,
             tool_providers=tool_providers,

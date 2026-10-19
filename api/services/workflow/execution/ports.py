@@ -14,6 +14,8 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input_contracts import HumanInputFormFactory, PauseFormSnapshot
 from models.tool_runtime_contracts import WorkflowToolQueries
 from models.workflow import WorkflowAppLogCreatedFrom, WorkflowNodeExecutionTriggeredFrom
+from services.human_input.ports import HumanInputFormReader
+from services.knowledge.retrieval.ports import DatasetRetrievalFactory
 from services.tools.provider_queries import ToolProviders
 from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.node_queries import ConversationHistory, DatasourceCredentials, RetrieverAttachments
@@ -97,11 +99,7 @@ class WorkflowToolInvoker(Protocol):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]: ...
-
-
-from services.human_input.ports import HumanInputFormReader
-from services.knowledge.retrieval.ports import DatasetRetrievalFactory
+    ) -> Generator[ToolInvokeMessage]: ...
 
 
 class WorkflowRuntime(Protocol):

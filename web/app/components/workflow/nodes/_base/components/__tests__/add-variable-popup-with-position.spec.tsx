@@ -1,6 +1,7 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ReactFlow, { ReactFlowProvider } from 'reactflow'
+import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import AddVariablePopupWithPosition from '../add-variable-popup-with-position'
 
@@ -35,7 +36,6 @@ vi.mock('../../../../hooks/use-node-data-update', () => ({
   useNodeDataUpdate: () => ({ handleNodeDataUpdate: vi.fn() }),
 }))
 vi.mock('../../../../hooks/use-workflow', () => ({
-  useIsChatMode: () => false,
   useWorkflow: () => ({ getBeforeNodesInSameBranch: () => [] }),
 }))
 vi.mock('../../../../hooks/use-workflow-variables', () => ({
@@ -56,6 +56,7 @@ it('selects a connection variable from the owning canvas and preserves its focus
         </ReactFlow>
       </ReactFlowProvider>
     </>,
+    { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
   )
 
   screen.getByRole('textbox', { name: 'Outside' }).focus()

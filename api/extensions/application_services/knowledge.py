@@ -12,6 +12,7 @@ from core.repositories.factory import DifyCoreRepositoryFactory
 from extensions.application_services.retrieval import build_dataset_retrieval
 from extensions.application_services.workflow import build_workflow_execution_dependencies
 from libs.helper import generate_text_hash
+from repositories.app.console_repository import ConsoleAppRepository
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.knowledge.dataset_api_key_repository import DatasetApiKeyRepository
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
@@ -23,7 +24,6 @@ from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUpl
 from repositories.workflow.definition_repository import WorkflowDefinitionRepository
 from repositories.workflow.pipeline_publication_repository import PipelinePublicationRepository
 from services.api_token_service import ApiTokenCache
-from services.app.query_service import AppQueryService
 from services.data_source.credential_gateway import (
     ActorAwareDatasourceCredentialGateway,
     TrustedStoredDatasourceCredentialGateway,
@@ -61,6 +61,7 @@ from services.knowledge_retrieval_inner_service import InnerKnowledgeRetrievalSe
 from services.rag_pipeline.execution_service import RagPipelineExecutionService
 from services.rag_pipeline.publication_gateway import PipelineIndexUpdateGateway, PipelinePublicationModelGateway
 from services.rag_pipeline.publication_service import PipelinePublicationService
+from services.rbac.members import MemberService
 from services.tag_application_service import TagTargetQuery
 from services.workflow.execution.adapters.pipeline.pipeline_generator import PipelineGenerator
 from services.workflow.variable_contracts import WorkflowExecutionVariables
@@ -108,8 +109,8 @@ def build_knowledge_services(
     providers: DatasourceProviderService,
     redis: RedisSegmentClient,
     tags: TagTargetQuery,
-    app_queries: AppQueryService,
     variables: WorkflowExecutionVariables,
+    rbac_members: MemberService,
 ) -> KnowledgeServices:
     """Build the dataset-controller knowledge use cases."""
 
@@ -146,7 +147,12 @@ def build_knowledge_services(
         ),
         datasets=DatasetApplicationService(
             dataset_access=dataset_access,
-            operations=SQLAlchemyDatasetOperations(session_factory=database_client, tags=tags, app_queries=app_queries),
+            operations=SQLAlchemyDatasetOperations(
+                session_factory=database_client,
+                tags=tags,
+                app_queries=ConsoleAppRepository(session_factory=database_client),
+                members=rbac_members,
+            ),
             rbac_enabled=dify_config.RBAC_ENABLED,
             service_api_url=dify_config.SERVICE_API_URL,
             vector_store=dify_config.VECTOR_STORE,
@@ -154,7 +160,7 @@ def build_knowledge_services(
         ),
         external=ExternalKnowledgeApplicationService(
             dataset_access=dataset_access,
-            operations=SQLAlchemyExternalKnowledgeOperations(session_factory=database_client),
+            operations=SQLAlchemyExternalKnowledgeOperations(session_factory=database_client, members=rbac_members),
         ),
         documents=DatasetDocumentApplicationService(
             dataset_access=dataset_access,

@@ -85,7 +85,7 @@ def _request() -> AgentToolInvokeRequest:
     )
 
 
-def _messages() -> Generator[ToolInvokeMessage, None, None]:
+def _messages() -> Generator[ToolInvokeMessage]:
     yield ToolInvokeMessage(
         type=ToolInvokeMessage.MessageType.TEXT,
         message=ToolInvokeMessage.TextMessage(text="ok"),
@@ -149,7 +149,7 @@ def test_app_lookup_releases_connection_before_tool_setup_and_stream_consumption
         return tool
 
     class PluginTransport:
-        def invoke(self, **kwargs: object) -> Generator[ToolInvokeMessage, None, None]:
+        def invoke(self, **kwargs: object) -> Generator[ToolInvokeMessage]:
             assert not active
             assert kwargs["tenant_id"] == TENANT_ID
             assert kwargs["app_id"] == APP_ID

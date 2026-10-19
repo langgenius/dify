@@ -171,8 +171,6 @@ export const TagFilter = ({
             >
               <TagSearchContent
                 type={type}
-                inputValue={inputValue}
-                onInputValueChange={setInputValue}
                 canBindOrUnbindTags
                 onOpenTagManagement={onOpenTagManagement}
                 showTagManagement={showTagManagement}

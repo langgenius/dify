@@ -40,7 +40,7 @@ class TestAppGenerateService:
     """Integration tests for AppGenerateService using testcontainers."""
 
     @pytest.fixture
-    def mock_external_service_dependencies(self) -> Generator[dict[str, MagicMock], None, None]:
+    def mock_external_service_dependencies(self) -> Generator[dict[str, MagicMock]]:
         """Mock setup for external service dependencies."""
         with (
             patch("services.billing_service.BillingService", autospec=True) as mock_billing_service,
@@ -813,7 +813,7 @@ class TestAppGenerateService:
         args = {"inputs": {"query": fake.text(max_nb_chars=50)}, "response_mode": "streaming"}
 
         # Execute the method under test and expect ValueError
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Workflow not initialized") as exc_info:
             AppGenerateService.generate(
                 runtime=workflow_runtime,
                 app_model=app,
@@ -851,7 +851,7 @@ class TestAppGenerateService:
         args = {"inputs": {"query": fake.text(max_nb_chars=50)}, "response_mode": "streaming"}
 
         # Execute the method under test and expect ValueError
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Workflow not published") as exc_info:
             AppGenerateService.generate(
                 runtime=workflow_runtime,
                 app_model=app,
@@ -964,7 +964,7 @@ class TestAppGenerateService:
         args = {"inputs": {"query": fake.text(max_nb_chars=50)}}
 
         # Execute the method under test and expect ValueError
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Invalid app mode") as exc_info:
             AppGenerateService.generate_single_iteration(
                 runtime=workflow_runtime,
                 workflow=mock_external_service_dependencies["get_draft_workflow"].return_value,
@@ -1075,7 +1075,7 @@ class TestAppGenerateService:
         args = {"inputs": {"query": fake.text(max_nb_chars=50)}}
 
         # Execute the method under test and expect ValueError
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Invalid app mode") as exc_info:
             AppGenerateService.generate_single_loop(
                 runtime=workflow_runtime,
                 workflow=mock_external_service_dependencies["get_draft_workflow"].return_value,
@@ -1173,7 +1173,7 @@ class TestAppGenerateService:
         """
         Test getting max active requests with app-specific limit.
         """
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(
             db_session_with_containers, mock_external_service_dependencies, mode="completion"
         )
@@ -1193,7 +1193,7 @@ class TestAppGenerateService:
         """
         Test getting max active requests with config limit being smaller.
         """
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(
             db_session_with_containers, mock_external_service_dependencies, mode="completion"
         )
@@ -1214,7 +1214,7 @@ class TestAppGenerateService:
         """
         Test getting max active requests with zero limits (infinite).
         """
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(
             db_session_with_containers, mock_external_service_dependencies, mode="completion"
         )
@@ -1253,7 +1253,7 @@ class TestAppGenerateService:
         args = {"inputs": {"query": fake.text(max_nb_chars=50)}, "response_mode": "streaming"}
 
         # Execute the method under test and expect exception
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(Exception, match="Test exception") as exc_info:
             AppGenerateService.generate(
                 runtime=workflow_runtime,
                 app_model=app,

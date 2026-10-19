@@ -174,7 +174,7 @@ class TestWorkflowVariableService(unittest.TestCase):
         assert node2_var_count == 0
 
     def test_get_draft_variables_by_selectors(self) -> None:
-        srv = self._get_test_srv()
+        self._get_test_srv()
         selectors = [
             [self._node1_id, "str_var"],
             [self._node2_id, "str_var"],
@@ -417,7 +417,7 @@ class TestDraftVariableLoader(unittest.TestCase):
                 session.commit()
 
                 # Use the service method that properly preloads relationships
-                service = build_workflow_variable_service(
+                build_workflow_variable_service(
                     database_client=sessionmaker(bind=session.get_bind(), expire_on_commit=False)
                 )
                 draft_vars = WorkflowDraftVariableRepository(

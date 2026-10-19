@@ -95,7 +95,7 @@ class PipelineGenerator(AppInputAdapter):
         call_depth: int,
         workflow_thread_pool_id: str | None,
         is_retry: bool = False,
-    ) -> Generator[Mapping | str, None, None]: ...
+    ) -> Generator[Mapping | str]: ...
 
     @overload
     def generate(
@@ -125,7 +125,7 @@ class PipelineGenerator(AppInputAdapter):
         call_depth: int,
         workflow_thread_pool_id: str | None,
         is_retry: bool = False,
-    ) -> Mapping[str, Any] | Generator[Mapping | str, None, None]: ...
+    ) -> Mapping[str, Any] | Generator[Mapping | str]: ...
 
     def generate(
         self,
@@ -139,7 +139,7 @@ class PipelineGenerator(AppInputAdapter):
         call_depth: int = 0,
         workflow_thread_pool_id: str | None = None,
         is_retry: bool = False,
-    ) -> Mapping[str, Any] | Generator[Mapping | str, None, None] | None:
+    ) -> Mapping[str, Any] | Generator[Mapping | str] | None:
         # Add null check for dataset
 
         dataset = self._runtime.contexts.pipeline_dataset(tenant_id=pipeline.tenant_id, pipeline_id=pipeline.id)
@@ -200,7 +200,7 @@ class PipelineGenerator(AppInputAdapter):
                     user_inputs=inputs,
                     variables=pipeline_config.rag_pipeline_variables,
                     tenant_id=pipeline.tenant_id,
-                    strict_type_validation=True if invoke_from == InvokeFrom.SERVICE_API else False,
+                    strict_type_validation=invoke_from == InvokeFrom.SERVICE_API,
                 ),
                 files=[],
                 user_id=user.id,
@@ -311,7 +311,7 @@ class PipelineGenerator(AppInputAdapter):
         streaming: bool = True,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         workflow_thread_pool_id: str | None = None,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
 
@@ -387,7 +387,7 @@ class PipelineGenerator(AppInputAdapter):
         user: Account | EndUser,
         args: Mapping[str, Any],
         streaming: bool = True,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
 
@@ -477,7 +477,7 @@ class PipelineGenerator(AppInputAdapter):
         user: Account | EndUser,
         args: Mapping[str, Any],
         streaming: bool = True,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
 
@@ -626,11 +626,7 @@ class PipelineGenerator(AppInputAdapter):
         user: Account | EndUser,
         draft_var_saver_factory: DraftVariableSaverFactory,
         stream: bool = False,
-    ) -> (
-        WorkflowAppBlockingResponse
-        | WorkflowAppPausedBlockingResponse
-        | Generator[WorkflowAppStreamResponse, None, None]
-    ):
+    ) -> WorkflowAppBlockingResponse | WorkflowAppPausedBlockingResponse | Generator[WorkflowAppStreamResponse]:
         """
         Handle response.
         :param application_generate_entity: application generate entity

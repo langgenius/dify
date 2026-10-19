@@ -4,12 +4,13 @@ import json
 from datetime import timedelta
 from typing import cast
 
+import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
-from enums.human_input import HumanInputFormStatus
+from enums.human_input import HumanInputFormStatus, RecipientType
 from libs.datetime_utils import naive_utc_now
 from models.execution_extra_content import HumanInputContent as HumanInputContentModel
-from models.human_input import HumanInputForm
+from models.human_input import HumanInputForm, HumanInputFormRecipient
 from models.human_input_entities import (
     FormDefinition,
     ParagraphInputConfig,
@@ -108,3 +109,51 @@ def test_map_human_input_content_keeps_waiting_form_without_selected_action() ->
     assert content.form_definition.node_title == "Approval"
     assert content.form_definition.form_content == "Rendered Approval"
     assert content.form_definition.resolved_default_values == {"decision": "approve"}
+
+
+@pytest.mark.parametrize(
+    ("status", "has_token"),
+    [
+        (HumanInputFormStatus.WAITING, True),
+        (HumanInputFormStatus.TIMEOUT, False),
+        (HumanInputFormStatus.EXPIRED, False),
+    ],
+)
+def test_map_human_input_content_offers_a_token_only_while_the_form_waits(
+    status: HumanInputFormStatus, has_token: bool
+) -> None:
+    expiration_time = naive_utc_now() - timedelta(minutes=1)
+    form_definition = FormDefinition(
+        form_content="content",
+        inputs=[],
+        user_actions=[UserActionConfig(id="approve", title="Approve")],
+        rendered_content="Rendered Approval",
+        expiration_time=expiration_time,
+        node_title="Approval",
+        display_in_ui=True,
+    )
+    form = HumanInputForm(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_run_id="workflow-run-1",
+        node_id="node-1",
+        form_definition=form_definition.model_dump_json(),
+        rendered_content="Rendered Approval",
+        expiration_time=expiration_time,
+        status=status,
+    )
+    form.id = "form-1"
+    model = HumanInputContentModel.new(workflow_run_id="workflow-run-1", form_id=form.id, message_id="message-1")
+    model.id = "content-1"
+    model.form = form
+    recipient = HumanInputFormRecipient(
+        form_id=form.id, recipient_type=RecipientType.STANDALONE_WEB_APP, access_token="web-token"
+    )
+    repository = SQLAlchemyExecutionExtraContentRepository(cast(sessionmaker[Session], object()))
+
+    content = repository._map_human_input_content(model, {form.id: [recipient]})
+
+    assert content is not None
+    assert content.submitted is False
+    assert content.form_definition is not None
+    assert content.form_definition.form_token == ("web-token" if has_token else None)

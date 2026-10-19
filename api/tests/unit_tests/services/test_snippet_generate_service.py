@@ -5,7 +5,10 @@ from unittest.mock import Mock, create_autospec
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.workflow.snippet_start import SNIPPET_VIRTUAL_START_NODE_ID
+from graphon.file import FileUploadConfig
+from graphon.file.models import File
 from models.account import Account
 from models.snippet import CustomizedSnippet, SnippetType
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionModel
@@ -183,25 +186,38 @@ def test_ensure_start_node_injects_virtual_start_for_root_candidates():
 
 def test_parse_files_returns_empty_when_upload_config_disabled(monkeypatch: pytest.MonkeyPatch):
     workflow = _workflow({"nodes": [], "edges": []})
-    monkeypatch.setattr("services.snippet_generate_service.FileUploadConfigManager.convert", Mock(return_value=None))
+
+    def convert(_config, is_vision):
+        _ = is_vision
+
+    monkeypatch.setattr(FileUploadConfigManager, "convert", convert)
 
     assert SnippetGenerateService.parse_files(workflow, files=[{"id": "file-1"}]) == []
 
 
 def test_parse_files_delegates_to_file_factory(monkeypatch: pytest.MonkeyPatch):
     workflow = _workflow({"nodes": [], "edges": []})
-    upload_config = SimpleNamespace(enabled=True)
-    files = [SimpleNamespace(id="file-1")]
-    monkeypatch.setattr(
-        "services.snippet_generate_service.FileUploadConfigManager.convert", Mock(return_value=upload_config)
-    )
-    build_from_mappings = Mock(return_value=files)
+    upload_config = FileUploadConfig()
+    files = [File.model_construct(id="file-1")]
+
+    def convert(_config, is_vision):
+        _ = is_vision
+        return upload_config
+
+    monkeypatch.setattr(FileUploadConfigManager, "convert", convert)
+    captured: dict[str, object] = {}
+
+    def build_from_mappings(**kwargs):
+        captured.update(kwargs)
+        return files
+
     monkeypatch.setattr("services.snippet_generate_service.file_factory.build_from_mappings", build_from_mappings)
 
     result = SnippetGenerateService.parse_files(workflow, files=[{"id": "file-1"}])
 
     assert result == files
-    build_from_mappings.assert_called_once()
+    assert captured["tenant_id"] == workflow.tenant_id
+    assert captured["config"] is upload_config
 
 
 def test_generate_raises_when_draft_workflow_missing(
@@ -235,8 +251,6 @@ def test_generate_delegates_to_workflow_generator_and_filters_stream(
     )
     generator = SimpleNamespace(generate=Mock(return_value=raw_stream))
     workflow_generator_class = Mock(return_value=generator)
-    workflow_generator_class.convert_to_event_stream = Mock(side_effect=lambda response: response)
-
     snippet_reader.workflow = workflow
     expected_workflow = workflow_snapshot(workflow)
     ensure_start_node = Mock(return_value=expected_workflow)
@@ -262,6 +276,23 @@ def test_generate_delegates_to_workflow_generator_and_filters_stream(
     assert kwargs["user"] is user
     assert kwargs["streaming"] is True
     assert kwargs["call_depth"] == 0
+
+
+def test_ensure_start_node_for_worker_delegates(monkeypatch: pytest.MonkeyPatch):
+    workflow = _workflow({"nodes": [], "edges": []})
+    snippet = _snippet()
+    ensure_calls: list[tuple[Workflow, CustomizedSnippet]] = []
+
+    def ensure_start_node(_cls, current_workflow, current_snippet):
+        ensure_calls.append((current_workflow, current_snippet))
+        return current_workflow
+
+    monkeypatch.setattr(SnippetGenerateService, "_ensure_start_node", classmethod(ensure_start_node))
+
+    result = SnippetGenerateService.ensure_start_node_for_worker(workflow, snippet)
+
+    assert result is workflow
+    assert ensure_calls == [(workflow, snippet)]
 
 
 def test_run_draft_node_delegates_to_workflow_service(
@@ -330,8 +361,6 @@ def test_generate_single_iteration_delegates_to_workflow_generator(
     response = iter(["event"])
     generator = SimpleNamespace(single_iteration_generate=Mock(return_value=response))
     workflow_generator_class = Mock(return_value=generator)
-    workflow_generator_class.convert_to_event_stream = Mock(side_effect=lambda item: item)
-
     snippet_reader.workflow = workflow
     monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", workflow_generator_class)
 
@@ -380,8 +409,6 @@ def test_generate_single_loop_delegates_to_workflow_generator(
     response = iter(["event"])
     generator = SimpleNamespace(single_loop_generate=Mock(return_value=response))
     workflow_generator_class = Mock(return_value=generator)
-    workflow_generator_class.convert_to_event_stream = Mock(side_effect=lambda item: item)
-
     snippet_reader.workflow = workflow
     monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", workflow_generator_class)
 

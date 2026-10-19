@@ -15,7 +15,6 @@ from core.errors.error import QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError, InvokeRateLimitError
 from models.enums import ConversationFromSource, MessageStatus
 from models.model import AppMode, Message
-from services.app.generation.errors import AgentSessionSnapshotIncompatibleError
 
 
 def _persist_message(session: Session, *, message_id: str) -> Message:
@@ -167,17 +166,6 @@ class TestBasedGenerateTaskPipeline:
             "code": "agent_run_limit_exceeded",
             "status": 400,
             "message": "run limit reached (agent_run_id=run-1)",
-        }
-
-    def test_stream_converter_preserves_agent_session_configuration_error(self):
-        data = AppGenerateResponseConverter._error_to_stream_response(AgentSessionSnapshotIncompatibleError())
-
-        assert data == {
-            "code": "agent_session_configuration_changed",
-            "status": 409,
-            "message": (
-                "The Agent configuration changed after this conversation started. Start a new conversation to continue."
-            ),
         }
 
     def test_handle_output_moderation_when_flagged(self, pipeline):

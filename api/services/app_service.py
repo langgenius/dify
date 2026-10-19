@@ -4,6 +4,7 @@ from collections.abc import Callable, Mapping, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
+from types import EllipsisType
 from typing import Any, NotRequired, TypedDict, cast
 
 import sqlalchemy as sa
@@ -14,12 +15,14 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from constants.model_template import default_app_templates
+from constants.resource_access_token import ResourceAccessTokenResourceType
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from enums import DeploymentEdition
 from enums.agent import WorkflowAgentBindingType
 from events.app_event import app_was_created, app_was_deleted, app_was_updated
+from extensions.application_services.resource_access_token import build_resource_access_token_cleanup_service
 from extensions.ext_database import db  # noqa: F401
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
@@ -64,7 +67,7 @@ from services.entities.app_entities import (
     CreateAppParams,
 )
 from services.model_provider.service import ModelProviderService
-from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
+from services.rbac import contracts as rbac_contracts
 from services.rbac_agent_access_service import initialize_agent_rbac_access
 from services.system_feature_service import SystemFeatureService
 from services.tag_service import TagService
@@ -88,7 +91,7 @@ def _initialize_created_app_access(created: _CreatedApp) -> None:
     enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
         created.tenant_id,
         created.creator_account_id,
-        enterprise_rbac_service.RBACResourceType.APP,
+        rbac_contracts.RBACResourceType.APP,
         created.app_id,
     )
 
@@ -242,7 +245,7 @@ class AppService:
     def _build_app_list_filters(
         user_id: str, tenant_id: str, params: AppListBaseParams, session: Session
     ) -> list[sa.ColumnElement[bool]]:
-        filters = [App.tenant_id == tenant_id, App.is_universal == False]
+        filters = [App.tenant_id == tenant_id, App.is_universal.is_(False)]
 
         if params.mode == "workflow":
             filters.append(App.mode == AppMode.WORKFLOW)
@@ -326,29 +329,21 @@ class AppService:
 
     @staticmethod
     def get_app_by_id(
-        app_id: str,
+        app_id: str | None,
         session: Session,
     ) -> App | None:
+        if app_id is None:
+            return None
         return session.get(App, app_id)
 
     @staticmethod
-    def get_visible_app_by_id(
-        app_id: str,
-        session: Session,
-    ) -> App | None:
-        app = session.get(App, app_id)
-        if not app or app.status != "normal" or not is_openapi_visible(app):
-            return None
-        return app
+    def get_app_in_workspace(*, tenant_id: str, app_id: str, session: Session) -> App | None:
+        """Return the app within its owner workspace, or None if it is absent.
 
-    @staticmethod
-    def find_visible_apps_by_ids(
-        app_ids: Sequence[str],
-        session: Session,
-    ) -> list[App]:
-        if not app_ids:
-            return []
-        return list(session.execute(apply_openapi_gate(select(App).where(App.id.in_(list(app_ids))))).scalars().all())
+        Keep the caller's session and leave status/API availability checks to
+        the caller so each admission surface retains its error contract.
+        """
+        return session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant_id))
 
     def get_paginate_apps(
         self,
@@ -727,10 +722,7 @@ class AppService:
         app.name = args["name"]
         app.description = args["description"]
         icon_type = args.get("icon_type")
-        if icon_type is None:
-            resolved_icon_type = app.icon_type
-        else:
-            resolved_icon_type = IconType(icon_type)
+        resolved_icon_type = app.icon_type if icon_type is None else IconType(icon_type)
 
         app.icon_type = resolved_icon_type
         app.icon = args["icon"]
@@ -805,8 +797,10 @@ class AppService:
 
         return app
 
-    def delete_app(self, app: App, *, session: Session) -> None:
+    def delete_app(self, app: App, *, session: Session, account_id: str | None | EllipsisType = ...) -> None:
         """Delete an App and commit the passed session.
+
+        Omit account_id to use the logged-in actor; pass None for system cleanup.
 
         The transaction releases all of a Workflow App's binding owners across
         draft and published versions, archives a backing Roster Agent, retires
@@ -859,7 +853,8 @@ class AppService:
                     AgentSkillBinding.agent_id.in_(agent_ids_to_unbind),
                 )
             )
-        account_id = current_user.id if current_user else None
+        if account_id is ...:
+            account_id = current_user.id if current_user else None
         if backing_agent is not None:
             now = naive_utc_now()
             backing_agent.status = AgentStatus.ARCHIVED
@@ -894,6 +889,9 @@ class AppService:
             session=session,
             tenant_id=app.tenant_id,
             app_id=app.id,
+        )
+        build_resource_access_token_cleanup_service(session=session).delete_resource_relations(
+            tenant_id=app.tenant_id, resource_type=ResourceAccessTokenResourceType.APP, resource_id=app.id
         )
         session.delete(app)
         session.commit()

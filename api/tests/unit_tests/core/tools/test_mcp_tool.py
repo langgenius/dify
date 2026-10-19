@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import contextlib
 from unittest.mock import patch
 
 import pytest
@@ -23,6 +24,7 @@ from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvo
 from core.tools.errors import ToolInvokeError
 from core.tools.mcp_tool.tool import MCPTool
 from enums import DeploymentEdition
+from services.tools.tools_transform_service import ToolTransformService
 
 
 def _build_mcp_tool(*, with_output_schema: bool = True) -> MCPTool:
@@ -152,6 +154,41 @@ def test_mcp_tool_handle_none_parameter_filters_empty_values():
     tool = _build_mcp_tool()
     cleaned = tool._handle_none_parameter({"a": 1, "b": None, "c": "", "d": "  ", "e": "ok"})
     assert cleaned == {"a": 1, "e": "ok"}
+
+
+# Home Assistant's GetLiveContext declares `domain` as `vol.Any(cv.string, [cv.string])`.
+_STRING = {"type": "string"}
+_STRING_LIST = {"type": "array", "items": {"type": "string"}}
+
+
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+@pytest.mark.parametrize(
+    "domain_schema",
+    [
+        {"anyOf": [_STRING, _STRING_LIST]},
+        {"anyOf": [_STRING_LIST, _STRING]},
+        {"oneOf": [_STRING, _STRING_LIST]},
+        {"oneOf": [_STRING_LIST, _STRING]},
+        {"type": ["string", "array"], "items": _STRING},
+        {"type": ["array", "string"], "items": _STRING},
+    ],
+)
+@pytest.mark.parametrize("domain", [["light", "cover"], "light"])
+def test_mcp_tool_invoke_preserves_values_of_mixed_type_union_parameters(
+    sqlite_session: Session, domain_schema, domain
+):
+    tool = _build_mcp_tool()
+    schema = {"type": "object", "properties": {"domain": domain_schema, "name": _STRING}, "required": []}
+    tool.entity.parameters = ToolTransformService.convert_mcp_schema_to_parameter(schema)
+    result = CallToolResult(content=[TextContent(type="text", text="ok")])
+
+    with patch.object(MCPTool, "invoke_remote_mcp_tool", return_value=result) as invoke_remote:
+        list(tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={"domain": domain, "name": 1}))
+
+    sent = invoke_remote.call_args.args[0]
+    assert sent["domain"] == domain
+    # Parameters with a single declared type keep the existing cast.
+    assert sent["name"] == "1"
 
 
 # ----- M2/M3 user-identity forwarding ---------------------------------------
@@ -286,8 +323,6 @@ def test_invoke_skips_forwarding_outside_enterprise_edition(config_overrides):
                 with patch("core.entities.mcp_provider.MCPProviderEntity.decrypt_server_url", return_value="u"):
                     with patch("core.entities.mcp_provider.MCPProviderEntity.decrypt_headers", return_value={}):
                         # Should not raise; should not call enterprise.
-                        try:
+                        with contextlib.suppress(Exception):
                             tool.invoke_remote_mcp_tool({}, user_id=None, app_id=None)
-                        except Exception:
-                            pass
         inject.assert_not_called()

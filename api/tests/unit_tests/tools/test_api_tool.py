@@ -217,7 +217,7 @@ class TestApiToolInvoke:
         result_generator = self.api_tool._invoke(session=unbound_session, user_id="test_user", tool_parameters={})
 
         # Invoke the tool and expect an error
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(Exception, match="Request failed with status code 404 and Not Found") as exc_info:
             list(result_generator)  # Consume the generator to trigger the error
 
         # Verify the error message

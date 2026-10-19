@@ -59,12 +59,13 @@ from services.knowledge.entities.document_creation import DocumentCreationDatase
 from services.knowledge.entities.knowledge_entities import KnowledgeConfig
 from services.knowledge.resource_scope import DatasetRef, DocumentRef
 from services.knowledge.summaries.adapters import SummaryIndexAdapter
+from services.rbac import contracts as rbac_contracts
 from services.vector_space_admission_service import get_vector_space_admission_error_fields
 from tasks.generate_summary_index_task import generate_summary_index_task
 
 
 @contextmanager
-def _translate_errors() -> Generator[None, None, None]:
+def _translate_errors() -> Generator[None]:
     try:
         yield
     except NotFound as error:
@@ -258,7 +259,7 @@ class SQLAlchemyDocumentOperations:
                 data_source_info=document.data_source_info_dict,
                 data_source_detail_dict=get_document_source_detail(document, session=session),
                 dataset_process_rule=DatasetService.get_process_rules(ref.dataset.dataset_id, session),
-                document_process_rule=dict(rule.to_dict()) if rule else {},
+                document_process_rule=dict(rule.to_dict()) if rule else None,
                 segment_count=segment_count,
                 average_segment_length=(document.word_count or 0) // segment_count if segment_count else 0,
                 hit_count=get_document_hit_count(document, session=session),
@@ -319,7 +320,7 @@ class SQLAlchemyDocumentOperations:
             return DocumentService.get_document_download_url(_require_document(session, ref), session)
 
     @contextmanager
-    def build_download_zip(self, ref: DatasetRef, document_ids: Sequence[str]) -> Generator[DocumentZip, None, None]:
+    def build_download_zip(self, ref: DatasetRef, document_ids: Sequence[str]) -> Generator[DocumentZip]:
         with _translate_errors(), self._sessions() as session:
             files_by_document = DocumentService._get_upload_files_by_document_id_for_zip_download(
                 dataset_id=ref.dataset_id, document_ids=document_ids, tenant_id=ref.tenant_id, session=session
@@ -463,12 +464,12 @@ class SQLAlchemyDocumentOperations:
                     context.active_workspace_id,
                     context.account_id,
                     dataset_id,
-                    rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=False),
+                    rbac_contracts.ReplaceMemberBindings(automatic_include_workspace_members=False),
                 )
                 rbac_service.try_sync_creator_access_policy_member_bindings(
                     context.active_workspace_id,
                     context.account_id,
-                    rbac_service.RBACResourceType.DATASET,
+                    rbac_contracts.RBACResourceType.DATASET,
                     dataset_id,
                 )
             return result
