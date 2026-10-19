@@ -1,16 +1,6 @@
 import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Dispatch, FC, SetStateAction } from 'react'
 import type { DefaultModel } from '../declarations'
-import {
-  AlertDialog,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -36,6 +26,7 @@ import { hasPermission } from '@/utils/permission'
 import { ModelTypeEnum } from '../declarations'
 import { useInvalidateDefaultModel, useUpdateModelList } from '../hooks'
 import { ModelSelector } from '../model-selector'
+import ClearDefaultModelDialog from './clear-default-model-dialog'
 
 type SystemModelSelectorProps = {
   className?: string
@@ -527,44 +518,17 @@ function SystemModelSession({
           {t(($) => $['operation.save'], { ns: 'common' })}
         </Button>
       </DialogFooter>
-      <AlertDialog
+      <ClearDefaultModelDialog
         open={clearConfirmation?.open ?? false}
-        onOpenChange={(nextOpen) => {
-          if (!nextOpen) closeClearConfirmation()
+        modelName={modelToClearLabel}
+        disabled={!canManageSystemDefaultModel}
+        finalFocus={() => (clearConfirmedRef.current ? saveButtonRef.current : true)}
+        onConfirm={handleConfirmClear}
+        onClose={closeClearConfirmation}
+        onCloseComplete={() => {
+          setClearConfirmation((current) => (current?.open ? current : undefined))
         }}
-        onOpenChangeComplete={(nextOpen) => {
-          if (!nextOpen) setClearConfirmation((current) => (current?.open ? current : undefined))
-        }}
-      >
-        <AlertDialogContent
-          finalFocus={() => (clearConfirmedRef.current ? saveButtonRef.current : true)}
-        >
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t(($) => $['modelProvider.clearDefaultModel.title'], {
-                ns: 'modelProvider',
-                modelType: modelToClearLabel,
-              })}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t(($) => $['modelProvider.clearDefaultModel.description'], {
-                ns: 'modelProvider',
-              })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancelButton>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </AlertDialogCancelButton>
-            <AlertDialogConfirmButton
-              disabled={!canManageSystemDefaultModel}
-              onClick={handleConfirmClear}
-            >
-              {t(($) => $['operation.clear'], { ns: 'common' })}
-            </AlertDialogConfirmButton>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      />
     </form>
   )
 }
