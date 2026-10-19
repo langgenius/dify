@@ -81,12 +81,40 @@ describe('extractFunctionParams', () => {
       'def main(value: str = make_default("x,y"), other: str = ""):\n    return {"value": value}',
       ['value', 'other'],
     ],
+    [
+      'escaped quotes in string defaults',
+      String.raw`def main(label: str = "one,\"two", count: int = 1):
+    return {"label": label}`,
+      ['label', 'count'],
+    ],
+    [
+      'triple-quoted string defaults',
+      'def main(label: str = """one,two""", count: int = 1):\n    return {"label": label}',
+      ['label', 'count'],
+    ],
+    [
+      'closing parentheses inside strings',
+      'def main(label: str = "close ) here", count: int = 1):\n    return {"label": label}',
+      ['label', 'count'],
+    ],
   ])(
     'splits parameters outside brackets and strings in Python %s',
     (_description, code, expected) => {
       expect(extractFunctionParams(code, CodeLanguage.python3)).toEqual(expected)
     },
   )
+
+  it('splits JavaScript parameters outside template strings', () => {
+    const code = 'function main({ label: label = `one,two`, count }) { return { label } }'
+    expect(extractFunctionParams(code, CodeLanguage.javascript)).toEqual(['label', 'count'])
+  })
+
+  it.each([
+    ['missing main signature', 'print("no main")'],
+    ['unterminated main signature', 'def main(config: dict[str, str]'],
+  ])('returns no parameters for a %s', (_description, code) => {
+    expect(extractFunctionParams(code, CodeLanguage.python3)).toEqual([])
+  })
 
   it.each([
     [
