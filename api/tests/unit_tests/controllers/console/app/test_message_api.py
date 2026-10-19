@@ -205,7 +205,7 @@ def test_list_chat_messages_returns_messages_sharing_created_at(
         message.created_at = created_at
         sqlite_session.add(message)
     sqlite_session.flush()
-    monkeypatch.setattr(message_module, "attach_message_extra_contents", MagicMock())
+    monkeypatch.setattr(message_module, "attach_message_extra_contents", lambda _messages: None)
     monkeypatch.setattr(message_module, "MessageResponseSource", lambda message, **_kwargs: message.id)
     monkeypatch.setattr(message_module, "dump_response", lambda _model, value: value)
 
