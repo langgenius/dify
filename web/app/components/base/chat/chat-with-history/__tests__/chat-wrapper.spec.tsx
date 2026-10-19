@@ -606,24 +606,23 @@ it('resumes the deepest paused descendant, leaving the ancestor subscription uno
 
 it('resumes an active workflow when history arrives after the chat wrapper mounts', async () => {
   const { updateContext } = renderChat({ appPrevChatTree: [] })
+  const historyTree = [
+    {
+      ...question('q1', 'Question', 'a1', ''),
+      children: [
+        {
+          id: 'a1',
+          content: '',
+          isAnswer: true,
+          parentMessageId: 'q1',
+          workflow_run_id: 'active-run',
+          workflow_run_is_running: true,
+        },
+      ],
+    },
+  ]
 
-  updateContext({
-    appPrevChatTree: [
-      {
-        ...question('q1', 'Question', 'a1', ''),
-        children: [
-          {
-            id: 'a1',
-            content: '',
-            isAnswer: true,
-            parentMessageId: 'q1',
-            workflow_run_id: 'active-run',
-            workflow_run_is_running: true,
-          },
-        ],
-      },
-    ],
-  })
+  updateContext({ appPrevChatTree: historyTree })
 
   await waitFor(() =>
     expect(sseGet).toHaveBeenCalledExactlyOnceWith(
@@ -631,6 +630,18 @@ it('resumes an active workflow when history arrives after the chat wrapper mount
       {},
       expect.objectContaining({ isPublicAPI: true }),
     ),
+  )
+
+  updateContext({
+    appPrevChatTree: historyTree.map((node) => ({
+      ...node,
+      children: node.children?.map((child) => ({ ...child })),
+    })),
+  })
+  expect(sseGet).toHaveBeenCalledExactlyOnceWith(
+    '/workflow/active-run/events?include_state_snapshot=true&continue_on_pause=true',
+    {},
+    expect.objectContaining({ isPublicAPI: true }),
   )
 })
 
