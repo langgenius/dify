@@ -3,6 +3,36 @@ import { describe, expect, it } from 'vite-plus/test'
 import { createBinaryStream, createSseStream, parseSseStream } from './sse'
 
 describe('sse parsing', () => {
+  it.each([
+    ['data:  indented', ' indented'],
+    ['data:\tindented', '\tindented'],
+    ['data: \tindented', '\tindented'],
+    ['data:\u00A0indented', '\u00A0indented'],
+    ['data:plain', 'plain'],
+    ['data: plain', 'plain'],
+  ])('preserves payload whitespace in %s', async (line, expected) => {
+    const events = []
+    for await (const event of parseSseStream(Readable.from([`${line}\n\n`]))) {
+      events.push(event)
+    }
+    expect(events).toEqual([{ event: undefined, data: expected, raw: expected }])
+  })
+
+  it('keeps meaningful whitespace in event names', async () => {
+    const events = []
+    for await (const event of parseSseStream(Readable.from(['event:  custom \ndata: text\n\n']))) {
+      events.push(event)
+    }
+    expect(events[0]?.event).toBe(' custom ')
+  })
+
+  it('toText preserves multi-line indentation', async () => {
+    const stream = Readable.from(['data:   first\ndata: \tsecond\n\n'])
+    expect(await createSseStream(stream, { status: 200, headers: {} }).toText()).toBe(
+      '  first\n\tsecond',
+    )
+  })
+
   it('parses event and data lines', async () => {
     const stream = Readable.from(['event: message\n', 'data: {"answer":"hi"}\n', '\n'])
     const events: Array<{ event?: string; data: unknown; raw: string }> = []
@@ -65,6 +95,29 @@ describe('sse parsing', () => {
     const sseStream = createSseStream(stream, { status: 200, headers: {} })
     const text = await sseStream.toText()
     expect(text).toBe('hello')
+  })
+
+  it('toText collects text_chunk events from workflow streams', async () => {
+    const stream = Readable.from([
+      'data: {"event":"workflow_started","data":{"id":"run"}}\n\n',
+      'data: {"event":"text_chunk","data":{"text":"Hello","from_variable_selector":["llm","text"]}}\n\n',
+      'data: {"event":"reasoning_chunk","data":{"text":"thinking"}}\n\n',
+      'data: {"event":"text_chunk","data":{"text":" world"}}\n\n',
+      'data: {"event":"workflow_finished","data":{"outputs":{"text":"Hello world"}}}\n\n',
+    ])
+    const text = await createSseStream(stream, { status: 200, headers: {} }).toText()
+    expect(text).toBe('Hello world')
+  })
+
+  it('toText replaces streamed text on message_replace', async () => {
+    const stream = Readable.from([
+      'data: {"event":"message","answer":"unsafe "}\n\n',
+      'data: {"event":"message","answer":"output"}\n\n',
+      'data: {"event":"message_replace","answer":"Sorry, I cannot answer that.","reason":"output_moderation"}\n\n',
+      'data: {"event":"message_end","id":"msg"}\n\n',
+    ])
+    const text = await createSseStream(stream, { status: 200, headers: {} }).toText()
+    expect(text).toBe('Sorry, I cannot answer that.')
   })
 
   it('toText returns empty for invalid data', async () => {

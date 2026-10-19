@@ -15,9 +15,11 @@ import type { Edge, Node, OnNodeAdd } from '../types'
 import type { RAGPipelineVariables } from '@/models/pipeline'
 import { useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getConnectedEdges, getOutgoers, useReactFlow } from 'reactflow'
+import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
@@ -67,7 +69,7 @@ import { useHelpline } from './use-helpline'
 import useInspectVarsCrud from './use-inspect-vars-crud'
 import { useNodesMetaData } from './use-nodes-meta-data'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
-import { useIsChatMode, useNodesReadOnly, useWorkflow, useWorkflowReadOnly } from './use-workflow'
+import { useNodesReadOnly, useWorkflow, useWorkflowReadOnly } from './use-workflow'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './use-workflow-history'
 
 // Entry node deletion restriction has been removed to allow empty workflows
@@ -163,8 +165,8 @@ const isNoteLinkClickTarget = (target: EventTarget | null, node: Node) => {
 }
 
 export const useNodesInteractions = () => {
-  const { t } = useTranslation(['workflow'])
-  const isChatMode = useIsChatMode()
+  const { t } = useTranslation(['workflow'] as const)
+  const isChatflow = useAtomValue(isChatflowAtom)
   const { data: appDslVersion = '' } = useQuery(
     consoleQuery.appDslVersion.get.queryOptions({
       staleTime: Infinity,
@@ -272,14 +274,13 @@ export const useNodesInteractions = () => {
 
         // Check if current dragging node is an entry node
         const isCurrentEntryNode =
-          isTriggerNode(node.data.type as BlockEnum) || node.data.type === BlockEnum.Start
+          isTriggerNode(node.data.type) || node.data.type === BlockEnum.Start
 
         // X-axis alignment with offset consideration
         if (showVerticalHelpLineNodesLength > 0) {
           const targetNode = showVerticalHelpLineNodes[0]
           const isTargetEntryNode =
-            isTriggerNode(targetNode!.data.type as BlockEnum) ||
-            targetNode!.data.type === BlockEnum.Start
+            isTriggerNode(targetNode!.data.type) || targetNode!.data.type === BlockEnum.Start
 
           // Calculate the wrapper position needed to align the inner nodes
           // Target inner position = target.position + target.offset
@@ -301,8 +302,7 @@ export const useNodesInteractions = () => {
         if (showHorizontalHelpLineNodesLength > 0) {
           const targetNode = showHorizontalHelpLineNodes[0]
           const isTargetEntryNode =
-            isTriggerNode(targetNode!.data.type as BlockEnum) ||
-            targetNode!.data.type === BlockEnum.Start
+            isTriggerNode(targetNode!.data.type) || targetNode!.data.type === BlockEnum.Start
 
           const targetOffset = isTargetEntryNode ? ENTRY_NODE_WRAPPER_OFFSET.y : 0
           const currentOffset = isCurrentEntryNode ? ENTRY_NODE_WRAPPER_OFFSET.y : 0
@@ -2128,7 +2128,7 @@ export const useNodesInteractions = () => {
       }
     })
 
-    if (!isChatMode) {
+    if (!isChatflow) {
       const memoryNodeTypes: BlockEnum[] = [
         BlockEnum.LLM,
         BlockEnum.QuestionClassifier,
@@ -2167,7 +2167,7 @@ export const useNodesInteractions = () => {
     handleNodeLoopChildrenCopy,
     getNodeDefaultValueForPaste,
     appDslVersion,
-    isChatMode,
+    isChatflow,
   ])
 
   const handleNodesDuplicate = useCallback(

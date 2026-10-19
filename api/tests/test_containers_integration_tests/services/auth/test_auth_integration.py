@@ -67,7 +67,7 @@ class TestAuthIntegration:
             encryptor=TenantApiKeyAuthCredentialEncryptor(),
         )
 
-    @patch("services.data_source.auth.firecrawl.firecrawl.httpx.post")
+    @patch("services.data_source.auth.firecrawl.firecrawl.ssrf_proxy.post")
     @patch("services.data_source.auth.api_key_gateways.encrypter.encrypt_token")
     def test_end_to_end_auth_flow(
         self,
@@ -97,7 +97,7 @@ class TestAuthIntegration:
         assert bindings[0].provider == _FIRECRAWL_PROVIDER
 
     @patch("services.data_source.auth.api_key_gateways.encrypter.encrypt_token")
-    @patch("services.data_source.auth.firecrawl.firecrawl.httpx.post")
+    @patch("services.data_source.auth.firecrawl.firecrawl.ssrf_proxy.post")
     @patch("services.data_source.auth.jina.jina._http_client.post")
     def test_multi_tenant_isolation(
         self,
@@ -132,7 +132,7 @@ class TestAuthIntegration:
         assert len(result2) == 1
         assert result2[0].provider == _JINA_PROVIDER
 
-    @patch("services.data_source.auth.firecrawl.firecrawl.httpx.post")
+    @patch("services.data_source.auth.firecrawl.firecrawl.ssrf_proxy.post")
     @patch("services.data_source.auth.api_key_gateways.encrypter.encrypt_token", return_value="encrypted_key")
     def test_concurrent_creation_safety(
         self,
@@ -168,7 +168,7 @@ class TestAuthIntegration:
         assert len(results) == 5
         assert len(exceptions) == 0
 
-    @patch("services.data_source.auth.firecrawl.firecrawl.httpx.post")
+    @patch("services.data_source.auth.firecrawl.firecrawl.ssrf_proxy.post")
     def test_network_failure_recovery(
         self,
         mock_http,

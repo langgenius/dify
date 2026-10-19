@@ -10,6 +10,8 @@ This module tests the mail sending functionality including:
 
 import logging
 import smtplib
+from collections.abc import Callable, Mapping, Sequence
+from email.message import Message
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
@@ -35,7 +37,7 @@ from tasks.mail_reset_password_task import (
 class TestEmailTemplateRendering:
     """Test email template rendering with various scenarios."""
 
-    def test_render_template_unsafe_mode(self, config_overrides):
+    def test_render_template_unsafe_mode(self, config_overrides: Callable[..., None]) -> None:
         """Test template rendering in unsafe mode with Jinja2 syntax."""
         # Arrange
         body = "Hello {{ name }}, your code is {{ code }}"
@@ -48,7 +50,7 @@ class TestEmailTemplateRendering:
         # Assert
         assert result == "Hello John, your code is 123456"
 
-    def test_render_template_sandbox_mode(self, config_overrides):
+    def test_render_template_sandbox_mode(self, config_overrides: Callable[..., None]) -> None:
         """Test template rendering in sandbox mode for security."""
         # Arrange
         body = "Hello {{ name }}, your code is {{ code }}"
@@ -61,7 +63,7 @@ class TestEmailTemplateRendering:
         # Assert
         assert result == "Hello Alice, your code is 654321"
 
-    def test_render_template_disabled_mode(self, config_overrides):
+    def test_render_template_disabled_mode(self, config_overrides: Callable[..., None]) -> None:
         """Test template rendering when templating is disabled."""
         # Arrange
         body = "Hello {{ name }}, your code is {{ code }}"
@@ -74,7 +76,7 @@ class TestEmailTemplateRendering:
         # Assert - should return body unchanged
         assert result == "Hello {{ name }}, your code is {{ code }}"
 
-    def test_render_template_sandbox_timeout(self, config_overrides):
+    def test_render_template_sandbox_timeout(self, config_overrides: Callable[..., None]) -> None:
         """Test that sandbox mode respects timeout settings and range limits."""
         # Arrange - template with very large range (exceeds sandbox MAX_RANGE)
         body = "{% for i in range(1000000) %}{{ i }}{% endfor %}"
@@ -85,7 +87,7 @@ class TestEmailTemplateRendering:
         with pytest.raises((TimeoutError, RuntimeError, OverflowError)):
             _render_template_with_strategy(body, substitutions)
 
-    def test_render_template_invalid_mode(self, config_overrides):
+    def test_render_template_invalid_mode(self, config_overrides: Callable[..., None]) -> None:
         """Test that invalid template mode raises ValueError."""
         # Arrange
         body = "Test"
@@ -96,7 +98,7 @@ class TestEmailTemplateRendering:
         with pytest.raises(ValueError, match="Unsupported mail templating mode"):
             _render_template_with_strategy(body, substitutions)
 
-    def test_render_template_with_special_characters(self, config_overrides):
+    def test_render_template_with_special_characters(self, config_overrides: Callable[..., None]) -> None:
         """Test template rendering with special characters and HTML."""
         # Arrange
         body = "<h1>Hello {{ name }}</h1><p>Code: {{ code }}</p>"
@@ -110,7 +112,7 @@ class TestEmailTemplateRendering:
         assert "Test<User>" in result
         assert "ABC&123" in result
 
-    def test_render_template_missing_variable_sandbox(self, config_overrides):
+    def test_render_template_missing_variable_sandbox(self, config_overrides: Callable[..., None]) -> None:
         """Test sandbox mode handles missing variables gracefully."""
         # Arrange
         body = "Hello {{ name }}, your code is {{ missing_var }}"
@@ -129,7 +131,7 @@ class TestSMTPIntegration:
     """Test SMTP client integration with various configurations."""
 
     @patch("libs.smtp.smtplib.SMTP_SSL")
-    def test_smtp_send_with_tls_ssl(self, mock_smtp_ssl):
+    def test_smtp_send_with_tls_ssl(self, mock_smtp_ssl: MagicMock) -> None:
         """Test SMTP send with TLS using SMTP_SSL."""
         # Arrange
         mock_server = MagicMock()
@@ -157,7 +159,7 @@ class TestSMTPIntegration:
         mock_server.quit.assert_called_once()
 
     @patch("libs.smtp.smtplib.SMTP")
-    def test_smtp_send_with_opportunistic_tls(self, mock_smtp):
+    def test_smtp_send_with_opportunistic_tls(self, mock_smtp: MagicMock) -> None:
         """Test SMTP send with opportunistic TLS (STARTTLS)."""
         # Arrange
         mock_server = MagicMock()
@@ -187,7 +189,7 @@ class TestSMTPIntegration:
         mock_server.quit.assert_called_once()
 
     @patch("libs.smtp.smtplib.SMTP")
-    def test_smtp_send_without_tls(self, mock_smtp):
+    def test_smtp_send_without_tls(self, mock_smtp: MagicMock) -> None:
         """Test SMTP send without TLS encryption."""
         # Arrange
         mock_server = MagicMock()
@@ -215,7 +217,7 @@ class TestSMTPIntegration:
         mock_server.quit.assert_called_once()
 
     @patch("libs.smtp.smtplib.SMTP")
-    def test_smtp_send_without_authentication(self, mock_smtp):
+    def test_smtp_send_without_authentication(self, mock_smtp: MagicMock) -> None:
         """Test SMTP send without authentication (empty credentials)."""
         # Arrange
         mock_server = MagicMock()
@@ -242,7 +244,7 @@ class TestSMTPIntegration:
         mock_server.quit.assert_called_once()
 
     @patch("libs.smtp.smtplib.SMTP_SSL")
-    def test_smtp_send_authentication_failure(self, mock_smtp_ssl):
+    def test_smtp_send_authentication_failure(self, mock_smtp_ssl: MagicMock) -> None:
         """Test SMTP send handles authentication failure."""
         # Arrange
         mock_server = MagicMock()
@@ -268,7 +270,7 @@ class TestSMTPIntegration:
         mock_server.quit.assert_called_once()  # Should still cleanup
 
     @patch("libs.smtp.smtplib.SMTP_SSL")
-    def test_smtp_send_timeout_error(self, mock_smtp_ssl):
+    def test_smtp_send_timeout_error(self, mock_smtp_ssl: MagicMock) -> None:
         """Test SMTP send handles timeout errors."""
         # Arrange
         mock_smtp_ssl.side_effect = TimeoutError("Connection timeout")
@@ -290,7 +292,7 @@ class TestSMTPIntegration:
             client.send(mail_data)
 
     @patch("libs.smtp.smtplib.SMTP_SSL")
-    def test_smtp_send_connection_refused(self, mock_smtp_ssl):
+    def test_smtp_send_connection_refused(self, mock_smtp_ssl: MagicMock) -> None:
         """Test SMTP send handles connection refused errors."""
         # Arrange
         mock_smtp_ssl.side_effect = ConnectionRefusedError("Connection refused")
@@ -312,7 +314,7 @@ class TestSMTPIntegration:
             client.send(mail_data)
 
     @patch("libs.smtp.smtplib.SMTP_SSL")
-    def test_smtp_send_ensures_cleanup_on_error(self, mock_smtp_ssl):
+    def test_smtp_send_ensures_cleanup_on_error(self, mock_smtp_ssl: MagicMock) -> None:
         """Test SMTP send ensures cleanup even when errors occur."""
         # Arrange
         mock_server = MagicMock()
@@ -343,7 +345,7 @@ class TestMailTaskRetryLogic:
     """Test retry logic for mail sending tasks."""
 
     @patch("tasks.mail_register_task.mail")
-    def test_mail_task_skips_when_not_initialized(self, mock_mail):
+    def test_mail_task_skips_when_not_initialized(self, mock_mail: MagicMock) -> None:
         """Test that mail tasks skip execution when mail is not initialized."""
         # Arrange
         mock_mail.is_inited.return_value = False
@@ -357,7 +359,9 @@ class TestMailTaskRetryLogic:
 
     @patch("tasks.mail_register_task.get_email_i18n_service")
     @patch("tasks.mail_register_task.mail")
-    def test_mail_task_logs_success(self, mock_mail, mock_email_service, caplog: pytest.LogCaptureFixture):
+    def test_mail_task_logs_success(
+        self, mock_mail: MagicMock, mock_email_service: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """Test that successful mail sends are logged properly."""
         # Arrange
         mock_mail.is_inited.return_value = True
@@ -383,7 +387,9 @@ class TestMailTaskRetryLogic:
 
     @patch("tasks.mail_register_task.get_email_i18n_service")
     @patch("tasks.mail_register_task.mail")
-    def test_mail_task_logs_failure(self, mock_mail, mock_email_service, caplog: pytest.LogCaptureFixture):
+    def test_mail_task_logs_failure(
+        self, mock_mail: MagicMock, mock_email_service: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """Test that failed mail sends are logged with exception details."""
         # Arrange
         mock_mail.is_inited.return_value = True
@@ -402,7 +408,7 @@ class TestMailTaskRetryLogic:
 
     @patch("tasks.mail_reset_password_task.get_email_i18n_service")
     @patch("tasks.mail_reset_password_task.mail")
-    def test_reset_password_task_success(self, mock_mail, mock_email_service):
+    def test_reset_password_task_success(self, mock_mail: MagicMock, mock_email_service: MagicMock) -> None:
         """Test reset password task sends email successfully."""
         # Arrange
         mock_mail.is_inited.return_value = True
@@ -422,7 +428,9 @@ class TestMailTaskRetryLogic:
 
     @patch("tasks.mail_reset_password_task.get_email_i18n_service")
     @patch("tasks.mail_reset_password_task.mail")
-    def test_reset_password_when_account_not_exist_with_register(self, mock_mail, mock_email_service, config_overrides):
+    def test_reset_password_when_account_not_exist_with_register(
+        self, mock_mail: MagicMock, mock_email_service: MagicMock, config_overrides: Callable[..., None]
+    ) -> None:
         """Test reset password task when account doesn't exist and registration is allowed."""
         # Arrange
         mock_mail.is_inited.return_value = True
@@ -444,7 +452,9 @@ class TestMailTaskRetryLogic:
 
     @patch("tasks.mail_reset_password_task.get_email_i18n_service")
     @patch("tasks.mail_reset_password_task.mail")
-    def test_reset_password_when_account_not_exist_without_register(self, mock_mail, mock_email_service):
+    def test_reset_password_when_account_not_exist_without_register(
+        self, mock_mail: MagicMock, mock_email_service: MagicMock
+    ) -> None:
         """Test reset password task when account doesn't exist and registration is not allowed."""
         # Arrange
         mock_mail.is_inited.return_value = True
@@ -467,7 +477,7 @@ class TestMailTaskInternationalization:
 
     @patch("tasks.mail_register_task.get_email_i18n_service")
     @patch("tasks.mail_register_task.mail")
-    def test_mail_task_with_english_language(self, mock_mail, mock_email_service):
+    def test_mail_task_with_english_language(self, mock_mail: MagicMock, mock_email_service: MagicMock) -> None:
         """Test mail task with English language code."""
         # Arrange
         mock_mail.is_inited.return_value = True
@@ -483,7 +493,7 @@ class TestMailTaskInternationalization:
 
     @patch("tasks.mail_register_task.get_email_i18n_service")
     @patch("tasks.mail_register_task.mail")
-    def test_mail_task_with_chinese_language(self, mock_mail, mock_email_service):
+    def test_mail_task_with_chinese_language(self, mock_mail: MagicMock, mock_email_service: MagicMock) -> None:
         """Test mail task with Chinese language code."""
         # Arrange
         mock_mail.is_inited.return_value = True
@@ -499,7 +509,9 @@ class TestMailTaskInternationalization:
 
     @patch("tasks.mail_register_task.get_email_i18n_service")
     @patch("tasks.mail_register_task.mail")
-    def test_account_exist_task_includes_urls(self, mock_mail, mock_email_service, config_overrides):
+    def test_account_exist_task_includes_urls(
+        self, mock_mail: MagicMock, mock_email_service: MagicMock, config_overrides: Callable[..., None]
+    ) -> None:
         """Test account exist task includes proper URLs in template context."""
         # Arrange
         mock_mail.is_inited.return_value = True
@@ -526,7 +538,9 @@ class TestInnerEmailTask:
     @patch("tasks.mail_inner_task.get_email_i18n_service")
     @patch("tasks.mail_inner_task.mail")
     @patch("tasks.mail_inner_task._render_template_with_strategy")
-    def test_inner_email_task_renders_and_sends(self, mock_render, mock_mail, mock_email_service):
+    def test_inner_email_task_renders_and_sends(
+        self, mock_render: MagicMock, mock_mail: MagicMock, mock_email_service: MagicMock
+    ) -> None:
         """Test inner email task renders template and sends email."""
         # Arrange
         mock_mail.is_inited.return_value = True
@@ -549,7 +563,7 @@ class TestInnerEmailTask:
         )
 
     @patch("tasks.mail_inner_task.mail")
-    def test_inner_email_task_skips_when_not_initialized(self, mock_mail):
+    def test_inner_email_task_skips_when_not_initialized(self, mock_mail: MagicMock) -> None:
         """Test inner email task skips when mail is not initialized."""
         # Arrange
         mock_mail.is_inited.return_value = False
@@ -564,8 +578,12 @@ class TestInnerEmailTask:
     @patch("tasks.mail_inner_task.mail")
     @patch("tasks.mail_inner_task._render_template_with_strategy")
     def test_inner_email_task_logs_failure(
-        self, mock_render, mock_mail, mock_email_service, caplog: pytest.LogCaptureFixture
-    ):
+        self,
+        mock_render: MagicMock,
+        mock_mail: MagicMock,
+        mock_email_service: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
         """Test inner email task logs failures properly."""
         # Arrange
         mock_mail.is_inited.return_value = True
@@ -590,7 +608,7 @@ class TestSendGridIntegration:
     """Test SendGrid client integration."""
 
     @patch("libs.sendgrid.sendgrid.SendGridAPIClient")
-    def test_sendgrid_send_success(self, mock_sg_client):
+    def test_sendgrid_send_success(self, mock_sg_client: MagicMock) -> None:
         """Test SendGrid client sends email successfully."""
         # Arrange
         mock_client_instance = MagicMock()
@@ -611,7 +629,7 @@ class TestSendGridIntegration:
         mock_client_instance.client.mail.send.post.assert_called_once()
 
     @patch("libs.sendgrid.sendgrid.SendGridAPIClient")
-    def test_sendgrid_send_missing_recipient(self, mock_sg_client):
+    def test_sendgrid_send_missing_recipient(self, mock_sg_client: MagicMock) -> None:
         """Test SendGrid client raises error when recipient is missing."""
         # Arrange
         client = SendGridClient(sendgrid_api_key="test_api_key", _from="noreply@example.com")
@@ -621,43 +639,44 @@ class TestSendGridIntegration:
         # Act & Assert
         with pytest.raises(ValueError, match="recipient address is missing"):
             client.send(mail_data)
+        mock_sg_client.assert_not_called()
 
     @patch("libs.sendgrid.sendgrid.SendGridAPIClient")
-    def test_sendgrid_send_unauthorized_error(self, mock_sg_client):
+    def test_sendgrid_send_unauthorized_error(self, mock_sg_client: MagicMock) -> None:
         """Test SendGrid client handles unauthorized errors."""
         # Arrange
         mock_client_instance = MagicMock()
         mock_sg_client.return_value = mock_client_instance
-        mock_client_instance.client.mail.send.post.side_effect = UnauthorizedError(
-            MagicMock(status_code=401), "Unauthorized"
-        )
+        mock_client_instance.client.mail.send.post.side_effect = UnauthorizedError(401, "Unauthorized", b"", Message())
 
         client = SendGridClient(sendgrid_api_key="invalid_key", _from="noreply@example.com")
 
         mail_data = {"to": "recipient@example.com", "subject": "Test", "html": "<p>Content</p>"}
 
         # Act & Assert
-        with pytest.raises(UnauthorizedError):
+        with pytest.raises(UnauthorizedError) as exc_info:
             client.send(mail_data)
+        assert exc_info.value.status_code == 401
 
     @patch("libs.sendgrid.sendgrid.SendGridAPIClient")
-    def test_sendgrid_send_forbidden_error(self, mock_sg_client):
+    def test_sendgrid_send_forbidden_error(self, mock_sg_client: MagicMock) -> None:
         """Test SendGrid client handles forbidden errors."""
         # Arrange
         mock_client_instance = MagicMock()
         mock_sg_client.return_value = mock_client_instance
-        mock_client_instance.client.mail.send.post.side_effect = ForbiddenError(MagicMock(status_code=403), "Forbidden")
+        mock_client_instance.client.mail.send.post.side_effect = ForbiddenError(403, "Forbidden", b"", Message())
 
         client = SendGridClient(sendgrid_api_key="test_api_key", _from="invalid@example.com")
 
         mail_data = {"to": "recipient@example.com", "subject": "Test", "html": "<p>Content</p>"}
 
         # Act & Assert
-        with pytest.raises(ForbiddenError):
+        with pytest.raises(ForbiddenError) as exc_info:
             client.send(mail_data)
+        assert exc_info.value.status_code == 403
 
     @patch("libs.sendgrid.sendgrid.SendGridAPIClient")
-    def test_sendgrid_send_timeout_error(self, mock_sg_client):
+    def test_sendgrid_send_timeout_error(self, mock_sg_client: MagicMock) -> None:
         """Test SendGrid client handles timeout errors."""
         # Arrange
         mock_client_instance = MagicMock()
@@ -677,7 +696,7 @@ class TestMailExtension:
     """Test mail extension initialization and configuration."""
 
     @pytest.fixture(autouse=True)
-    def _smtp_config(self, config_overrides) -> None:
+    def _smtp_config(self, config_overrides: Callable[..., None]) -> None:
         config_overrides(
             MAIL_TYPE="smtp",
             SMTP_SERVER="smtp.example.com",
@@ -689,7 +708,7 @@ class TestMailExtension:
             MAIL_DEFAULT_SEND_FROM="noreply@example.com",
         )
 
-    def test_mail_init_smtp_configuration(self):
+    def test_mail_init_smtp_configuration(self) -> None:
         """Test mail extension initializes SMTP client correctly."""
         # Arrange
         mail = Mail()
@@ -702,7 +721,7 @@ class TestMailExtension:
         assert mail.is_inited() is True
         assert mail._client is not None
 
-    def test_mail_init_without_mail_type(self, config_overrides):
+    def test_mail_init_without_mail_type(self, config_overrides: Callable[..., None]) -> None:
         """Test mail extension skips initialization when MAIL_TYPE is not set."""
         # Arrange
         config_overrides(MAIL_TYPE=None)
@@ -716,7 +735,7 @@ class TestMailExtension:
         # Assert
         assert mail.is_inited() is False
 
-    def test_mail_send_validates_parameters(self):
+    def test_mail_send_validates_parameters(self) -> None:
         """Test mail send validates required parameters."""
         # Arrange
         mail = Mail()
@@ -735,7 +754,7 @@ class TestMailExtension:
         with pytest.raises(ValueError, match="mail html is not set"):
             mail.send(to="test@example.com", subject="Test", html="")
 
-    def test_mail_send_uses_default_from(self):
+    def test_mail_send_uses_default_from(self) -> None:
         """Test mail send uses default from address when not provided."""
         # Arrange
         mail = Mail()
@@ -758,7 +777,9 @@ class TestEmailI18nService:
     @patch("libs.email_i18n.FlaskMailSender")
     @patch("libs.email_i18n.FeatureBrandingService")
     @patch("libs.email_i18n.FlaskEmailRenderer")
-    def test_email_service_sends_with_branding(self, mock_renderer_class, mock_branding_class, mock_sender_class):
+    def test_email_service_sends_with_branding(
+        self, mock_renderer_class: MagicMock, mock_branding_class: MagicMock, mock_sender_class: MagicMock
+    ) -> None:
         """Test email service sends email with branding support."""
         # Arrange
         mock_renderer = MagicMock()
@@ -803,7 +824,7 @@ class TestEmailI18nService:
         )
 
     @patch("libs.email_i18n.FlaskMailSender")
-    def test_email_service_send_raw_email_single_recipient(self, mock_sender_class):
+    def test_email_service_send_raw_email_single_recipient(self, mock_sender_class: MagicMock) -> None:
         """Test email service sends raw email to single recipient."""
         # Arrange
         mock_sender = MagicMock()
@@ -825,7 +846,7 @@ class TestEmailI18nService:
         )
 
     @patch("libs.email_i18n.FlaskMailSender")
-    def test_email_service_send_raw_email_multiple_recipients(self, mock_sender_class):
+    def test_email_service_send_raw_email_multiple_recipients(self, mock_sender_class: MagicMock) -> None:
         """Test email service sends raw email to multiple recipients."""
         # Arrange
         mock_sender = MagicMock()
@@ -856,8 +877,12 @@ class TestPerformanceAndTiming:
     @patch("tasks.mail_register_task.mail")
     @patch("tasks.mail_register_task.time")
     def test_mail_task_tracks_execution_time(
-        self, mock_time, mock_mail, mock_email_service, caplog: pytest.LogCaptureFixture
-    ):
+        self,
+        mock_time: MagicMock,
+        mock_mail: MagicMock,
+        mock_email_service: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
         """Test that mail tasks track and log execution time."""
         # Arrange
         mock_mail.is_inited.return_value = True
@@ -886,7 +911,7 @@ class TestEdgeCasesAndErrorHandling:
     and various error scenarios to ensure robust error handling.
     """
 
-    def test_mail_init_invalid_smtp_config_missing_server(self, config_overrides):
+    def test_mail_init_invalid_smtp_config_missing_server(self, config_overrides: Callable[..., None]) -> None:
         """
         Test mail initialization fails when SMTP server is missing.
 
@@ -903,7 +928,7 @@ class TestEdgeCasesAndErrorHandling:
         with pytest.raises(ValueError, match="SMTP_SERVER and SMTP_PORT are required"):
             mail.init_app(mock_app)
 
-    def test_mail_init_invalid_smtp_opportunistic_tls_without_tls(self, config_overrides):
+    def test_mail_init_invalid_smtp_opportunistic_tls_without_tls(self, config_overrides: Callable[..., None]) -> None:
         """
         Test mail initialization fails with opportunistic TLS but TLS disabled.
 
@@ -926,7 +951,7 @@ class TestEdgeCasesAndErrorHandling:
         with pytest.raises(ValueError, match="SMTP_OPPORTUNISTIC_TLS is not supported without enabling SMTP_USE_TLS"):
             mail.init_app(mock_app)
 
-    def test_mail_init_unsupported_mail_type(self, config_overrides):
+    def test_mail_init_unsupported_mail_type(self, config_overrides: Callable[..., None]) -> None:
         """
         Test mail initialization fails with unsupported mail type.
 
@@ -944,7 +969,7 @@ class TestEdgeCasesAndErrorHandling:
             mail.init_app(mock_app)
 
     @patch("libs.smtp.smtplib.SMTP_SSL")
-    def test_smtp_send_with_empty_subject(self, mock_smtp_ssl):
+    def test_smtp_send_with_empty_subject(self, mock_smtp_ssl: MagicMock) -> None:
         """
         Test SMTP client handles empty subject gracefully.
 
@@ -975,7 +1000,7 @@ class TestEdgeCasesAndErrorHandling:
         mock_server.sendmail.assert_called_once()
 
     @patch("libs.smtp.smtplib.SMTP_SSL")
-    def test_smtp_send_with_unicode_characters(self, mock_smtp_ssl):
+    def test_smtp_send_with_unicode_characters(self, mock_smtp_ssl: MagicMock) -> None:
         """
         Test SMTP client handles Unicode characters in email content.
 
@@ -1013,7 +1038,9 @@ class TestEdgeCasesAndErrorHandling:
     @patch("tasks.mail_inner_task.get_email_i18n_service")
     @patch("tasks.mail_inner_task.mail")
     @patch("tasks.mail_inner_task._render_template_with_strategy")
-    def test_inner_email_task_with_empty_recipient_list(self, mock_render, mock_mail, mock_email_service):
+    def test_inner_email_task_with_empty_recipient_list(
+        self, mock_render: MagicMock, mock_mail: MagicMock, mock_email_service: MagicMock
+    ) -> None:
         """
         Test inner email task handles empty recipient list.
 
@@ -1043,7 +1070,9 @@ class TestConcurrencyAndThreadSafety:
 
     @patch("tasks.mail_register_task.get_email_i18n_service")
     @patch("tasks.mail_register_task.mail")
-    def test_multiple_mail_tasks_concurrent_execution(self, mock_mail, mock_email_service):
+    def test_multiple_mail_tasks_concurrent_execution(
+        self, mock_mail: MagicMock, mock_email_service: MagicMock
+    ) -> None:
         """
         Test multiple mail tasks can execute concurrently.
 
@@ -1073,7 +1102,7 @@ class TestResendIntegration:
     """
 
     @pytest.fixture(autouse=True)
-    def _resend_config(self, config_overrides) -> None:
+    def _resend_config(self, config_overrides: Callable[..., None]) -> None:
         config_overrides(
             MAIL_TYPE="resend",
             RESEND_API_KEY="re_test_api_key",
@@ -1082,7 +1111,7 @@ class TestResendIntegration:
         )
 
     @patch("builtins.__import__", side_effect=__import__)
-    def test_mail_init_resend_configuration(self, mock_import):
+    def test_mail_init_resend_configuration(self, mock_import: MagicMock) -> None:
         """
         Test mail extension initializes Resend client correctly.
 
@@ -1098,10 +1127,16 @@ class TestResendIntegration:
         # Override import for resend module
         original_import = __import__
 
-        def custom_import(name, *args, **kwargs):
+        def custom_import(
+            name: str,
+            globals_: Mapping[str, object] | None = None,
+            locals_: Mapping[str, object] | None = None,
+            fromlist: Sequence[str] = (),
+            level: int = 0,
+        ) -> object:
             if name == "resend":
                 return mock_resend
-            return original_import(name, *args, **kwargs)
+            return original_import(name, globals_, locals_, fromlist, level)
 
         mock_import.side_effect = custom_import
 
@@ -1116,7 +1151,9 @@ class TestResendIntegration:
         assert mock_resend.api_key == "re_test_api_key"
 
     @patch("builtins.__import__", side_effect=__import__)
-    def test_mail_init_resend_with_custom_url(self, mock_import, config_overrides):
+    def test_mail_init_resend_with_custom_url(
+        self, mock_import: MagicMock, config_overrides: Callable[..., None]
+    ) -> None:
         """
         Test mail extension initializes Resend with custom API URL.
 
@@ -1134,10 +1171,16 @@ class TestResendIntegration:
         # Override import for resend module
         original_import = __import__
 
-        def custom_import(name, *args, **kwargs):
+        def custom_import(
+            name: str,
+            globals_: Mapping[str, object] | None = None,
+            locals_: Mapping[str, object] | None = None,
+            fromlist: Sequence[str] = (),
+            level: int = 0,
+        ) -> object:
             if name == "resend":
                 return mock_resend
-            return original_import(name, *args, **kwargs)
+            return original_import(name, globals_, locals_, fromlist, level)
 
         mock_import.side_effect = custom_import
 
@@ -1151,7 +1194,7 @@ class TestResendIntegration:
         assert mail.is_inited() is True
         assert mock_resend.api_url == "https://custom-resend.example.com"
 
-    def test_mail_init_resend_missing_api_key(self, config_overrides):
+    def test_mail_init_resend_missing_api_key(self, config_overrides: Callable[..., None]) -> None:
         """
         Test mail initialization fails when Resend API key is missing.
 
@@ -1179,7 +1222,9 @@ class TestTemplateContextValidation:
 
     @patch("tasks.mail_register_task.get_email_i18n_service")
     @patch("tasks.mail_register_task.mail")
-    def test_mail_task_template_context_includes_all_required_fields(self, mock_mail, mock_email_service):
+    def test_mail_task_template_context_includes_all_required_fields(
+        self, mock_mail: MagicMock, mock_email_service: MagicMock
+    ) -> None:
         """
         Test that mail tasks include all required fields in template context.
 
@@ -1204,7 +1249,7 @@ class TestTemplateContextValidation:
         assert context["to"] == "test@example.com"
         assert context["code"] == "ABC123"
 
-    def test_render_template_with_complex_nested_data(self, config_overrides):
+    def test_render_template_with_complex_nested_data(self, config_overrides: Callable[..., None]) -> None:
         """
         Test template rendering with complex nested data structures.
 
@@ -1228,7 +1273,7 @@ class TestTemplateContextValidation:
         assert "banana" in result
         assert "cherry" in result
 
-    def test_render_template_with_conditional_logic(self, config_overrides):
+    def test_render_template_with_conditional_logic(self, config_overrides: Callable[..., None]) -> None:
         """
         Test template rendering with conditional logic.
 
@@ -1256,7 +1301,7 @@ class TestEmailValidation:
     validated before sending to prevent errors.
     """
 
-    def test_mail_send_with_invalid_email_format(self):
+    def test_mail_send_with_invalid_email_format(self) -> None:
         """
         Test mail send with malformed email address.
 
@@ -1285,7 +1330,7 @@ class TestSMTPEdgeCases:
     """
 
     @patch("libs.smtp.smtplib.SMTP_SSL")
-    def test_smtp_send_with_very_large_email_body(self, mock_smtp_ssl):
+    def test_smtp_send_with_very_large_email_body(self, mock_smtp_ssl: MagicMock) -> None:
         """
         Test SMTP client handles large email bodies.
 
@@ -1320,7 +1365,7 @@ class TestSMTPEdgeCases:
         assert len(sent_message) > 10000  # Should be a large message
 
     @patch("libs.smtp.smtplib.SMTP_SSL")
-    def test_smtp_send_with_multiple_recipients_in_to_field(self, mock_smtp_ssl):
+    def test_smtp_send_with_multiple_recipients_in_to_field(self, mock_smtp_ssl: MagicMock) -> None:
         """
         Test SMTP client with single recipient (current implementation).
 
@@ -1351,7 +1396,7 @@ class TestSMTPEdgeCases:
         assert call_args[0][1] == "recipient@example.com"
 
     @patch("libs.smtp.smtplib.SMTP")
-    def test_smtp_send_with_whitespace_in_credentials(self, mock_smtp):
+    def test_smtp_send_with_whitespace_in_credentials(self, mock_smtp: MagicMock) -> None:
         """
         Test SMTP client strips whitespace from credentials.
 
@@ -1393,8 +1438,8 @@ class TestLoggingAndMonitoring:
     @patch("tasks.mail_register_task.get_email_i18n_service")
     @patch("tasks.mail_register_task.mail")
     def test_mail_task_logs_recipient_information(
-        self, mock_mail, mock_email_service, caplog: pytest.LogCaptureFixture
-    ):
+        self, mock_mail: MagicMock, mock_email_service: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """
         Test that mail tasks log recipient information for audit trails.
 
@@ -1417,8 +1462,8 @@ class TestLoggingAndMonitoring:
     @patch("tasks.mail_inner_task.get_email_i18n_service")
     @patch("tasks.mail_inner_task.mail")
     def test_inner_email_task_logs_subject_for_tracking(
-        self, mock_mail, mock_email_service, caplog: pytest.LogCaptureFixture
-    ):
+        self, mock_mail: MagicMock, mock_email_service: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """
         Test that inner email task logs subject for tracking purposes.
 

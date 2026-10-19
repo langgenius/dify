@@ -28,11 +28,12 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
-from controllers.common.schema import JsonResponseWithStatus, register_schema_models
+from controllers.common.schema import JsonResponseWithStatus, register_response_schema_models, register_schema_models
 from controllers.web import web_ns
 from extensions.ext_application_services import application_services
 from fields.file_fields import FileResponse, FileWithSignedUrl
 from libs.exception import BaseHTTPException
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from services.human_input_file_upload_service import (
     HITL_UPLOAD_TOKEN_PREFIX,
@@ -40,6 +41,7 @@ from services.human_input_file_upload_service import (
     HumanInputUploadContext,
     InvalidUploadTokenError,
 )
+from services.human_input_service import FormExpiredError, FormSubmittedError
 from services.remote_file_service import (
     RemoteFileAccessDeniedError as RemoteFileAccessDeniedServiceError,
 )
@@ -53,13 +55,13 @@ from services.remote_file_service import RemoteFileUrlBlockedError as RemoteFile
 
 
 class InvalidUploadTokenBadRequestError(BaseHTTPException):
-    error_code = "invalid_upload_token"
-    description = "Invalid upload token."
+    error_code = "malformed_upload_token"
+    description = "The upload token is malformed."
     code = 400
 
 
 class InvalidUploadTokenUnauthorizedError(BaseHTTPException):
-    error_code = "invalid_upload_token"
+    error_code = "upload_token_required"
     description = "Upload token is required."
     code = 401
 
@@ -78,7 +80,8 @@ class HumanInputFileUploadFormPayload(BaseModel):
     url: HttpUrl | None = Field(default=None, description="Remote file URL")
 
 
-register_schema_models(web_ns, HumanInputFileUploadFormPayload, FileResponse, FileWithSignedUrl)
+register_schema_models(web_ns, HumanInputFileUploadFormPayload)
+register_response_schema_models(web_ns, FileResponse, FileWithSignedUrl)
 
 
 def _extract_hitl_upload_token() -> str:
@@ -183,6 +186,25 @@ def _upload_remote_file(
 @web_ns.route("/human-input-forms/files")
 @web_ns.response(201, "File uploaded successfully", web_ns.models[FileResponse.__name__])
 class HumanInputFileUploadApi(Resource):
+    @error_responses(
+        BlockedFileExtensionError,
+        FilenameNotExistsError,
+        FileTooLargeError,
+        FormExpiredError,
+        FormSubmittedError,
+        InvalidUploadTokenBadRequestError,
+        InvalidUploadTokenForbiddenError,
+        InvalidUploadTokenUnauthorizedError,
+        NoFileUploadedError,
+        RemoteFileAccessDeniedError,
+        RemoteFileInvalidResponseError,
+        RemoteFileInvalidUrlError,
+        RemoteFileNotFoundError,
+        RemoteFileUnavailableError,
+        RemoteFileUrlBlockedError,
+        TooManyFilesError,
+        UnsupportedFileTypeError,
+    )
     def post(self) -> JsonResponseWithStatus:
         """Upload one local file or remote URL file for a HITL human input form."""
 

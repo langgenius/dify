@@ -29,7 +29,8 @@ API_ROOT = Path(__file__).resolve().parents[1]
 if str(API_ROOT) not in sys.path:
     sys.path.insert(0, str(API_ROOT))
 
-from libs.flask_restx_compat import finalize_openapi_payload
+# Import after script path setup.
+from libs.flask_restx_compat import finalize_openapi_payload  # noqa: E402
 
 
 @dataclass(frozen=True)
@@ -49,6 +50,8 @@ SPEC_TARGETS: tuple[SpecTarget, ...] = (
     SpecTarget(route="/api/openapi.json", filename="web-openapi.json"),
     SpecTarget(route="/v1/openapi.json", filename="service-openapi.json"),
     SpecTarget(route="/openapi/v1/openapi.json", filename="openapi-openapi.json"),
+    # Not consumed by @dify/contracts; enterprise generates its inner API client from this spec.
+    SpecTarget(route="/inner/api/openapi.json", filename="inner-openapi.json"),
 )
 
 
@@ -167,6 +170,8 @@ def create_spec_app() -> Flask:
 
     from controllers.console import bp as console_bp
     from controllers.console import console_ns
+    from controllers.inner_api import bp as inner_api_bp
+    from controllers.inner_api import inner_api_ns
     from controllers.openapi import bp as openapi_bp
     from controllers.openapi import openapi_ns
     from controllers.service_api import bp as service_api_bp
@@ -178,8 +183,9 @@ def create_spec_app() -> Flask:
     app.register_blueprint(web_bp)
     app.register_blueprint(service_api_bp)
     app.register_blueprint(openapi_bp)
+    app.register_blueprint(inner_api_bp)
 
-    for namespace in (console_ns, web_ns, service_api_ns, openapi_ns):
+    for namespace in (console_ns, web_ns, service_api_ns, openapi_ns, inner_api_ns):
         for api in namespace.apis:
             _materialize_inline_model_definitions(api)
 
@@ -190,6 +196,7 @@ def _target_apis() -> dict[str, Api]:
     """Return the API instance that owns each exported OpenAPI target."""
 
     from controllers.console import api as console_api
+    from controllers.inner_api import api as inner_api
     from controllers.openapi import api as openapi_api
     from controllers.service_api import api as service_api
     from controllers.web import api as web_api
@@ -199,6 +206,7 @@ def _target_apis() -> dict[str, Api]:
         "/api/openapi.json": web_api,
         "/v1/openapi.json": service_api,
         "/openapi/v1/openapi.json": openapi_api,
+        "/inner/api/openapi.json": inner_api,
     }
 
 

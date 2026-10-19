@@ -85,9 +85,7 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
                 end_at = time.perf_counter()
                 logger.info(
                     click.style(
-                        "Build index successful for batch import annotation: {} latency: {}".format(
-                            job_id, end_at - start_at
-                        ),
+                        f"Build index successful for batch import annotation: {job_id} latency: {end_at - start_at}",
                         fg="green",
                     )
                 )

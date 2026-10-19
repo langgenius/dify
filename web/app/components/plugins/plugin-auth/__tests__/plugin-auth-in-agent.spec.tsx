@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
 import type { Credential, PluginPayload } from '../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { render } from '@/test/console/render'
@@ -31,10 +32,6 @@ vi.mock('@/service/use-plugins-auth', () => ({
   useInvalidPluginOAuthClientSchema: () => vi.fn(),
   useAddPluginCredential: () => ({ mutateAsync: vi.fn() }),
   useGetPluginCredentialSchema: () => ({ data: undefined, isLoading: false }),
-}))
-
-vi.mock('@/service/use-tools', () => ({
-  useInvalidToolsByType: () => vi.fn(),
 }))
 
 const mockIsCurrentWorkspaceManager = vi.fn()
@@ -68,8 +65,6 @@ vi.mock('@/hooks/use-oauth', () => ({
 
 vi.mock('@/service/use-triggers', () => ({
   useTriggerPluginDynamicOptions: () => ({ data: { options: [] }, isLoading: false }),
-  useTriggerPluginDynamicOptionsInfo: () => ({ data: null, isLoading: false }),
-  useInvalidTriggerDynamicOptions: () => vi.fn(),
 }))
 
 // ==================== Test Utilities ====================
@@ -77,7 +72,7 @@ vi.mock('@/service/use-triggers', () => ({
 const createConsoleQueryClient = () =>
   new QueryClient({
     defaultOptions: {
-      queries: { retry: false, gcTime: 0 },
+      queries: { retry: false, gcTime: Infinity, staleTime: Infinity },
     },
   })
 
@@ -132,14 +127,13 @@ describe('PluginAuthInAgent Component', () => {
     })
     const pluginPayload = createPluginPayload()
     render(<PluginAuthInAgent pluginPayload={pluginPayload} />, { wrapper: createWrapper() })
-    expect(screen.getByRole('button'))!.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'plugin.auth.useApiAuth' })).toBeEnabled()
   })
 
   it('should render Authorized with workspace default when authorized', async () => {
     const PluginAuthInAgent = (await import('../plugin-auth-in-agent')).default
     const pluginPayload = createPluginPayload()
     render(<PluginAuthInAgent pluginPayload={pluginPayload} />, { wrapper: createWrapper() })
-    expect(screen.getByRole('button'))!.toBeInTheDocument()
     expect(screen.getByText('plugin.auth.workspaceDefault'))!.toBeInTheDocument()
   })
 
@@ -193,22 +187,6 @@ describe('PluginAuthInAgent Component', () => {
     expect(button.textContent).toContain('plugin.auth.unavailable')
   })
 
-  it('should call onAuthorizationItemClick when item is clicked', async () => {
-    const PluginAuthInAgent = (await import('../plugin-auth-in-agent')).default
-    const onAuthorizationItemClick = vi.fn()
-    const pluginPayload = createPluginPayload()
-    render(
-      <PluginAuthInAgent
-        pluginPayload={pluginPayload}
-        onAuthorizationItemClick={onAuthorizationItemClick}
-      />,
-      { wrapper: createWrapper() },
-    )
-    const buttons = screen.getAllByRole('button')
-    fireEvent.click(buttons[0]!)
-    expect(screen.getAllByRole('button').length).toBeGreaterThan(0)
-  })
-
   it('should trigger handleAuthorizationItemClick and close popup when item is clicked', async () => {
     const PluginAuthInAgent = (await import('../plugin-auth-in-agent')).default
     const onAuthorizationItemClick = vi.fn()
@@ -226,13 +204,13 @@ describe('PluginAuthInAgent Component', () => {
       />,
       { wrapper: createWrapper() },
     )
-    const triggerButton = screen.getByRole('button')
-    fireEvent.click(triggerButton)
-    const workspaceDefaultItems = screen.getAllByText('plugin.auth.workspaceDefault')
-    const popupItem =
-      workspaceDefaultItems.length > 1 ? workspaceDefaultItems[1] : workspaceDefaultItems[0]
-    fireEvent.click(popupItem!)
-    expect(onAuthorizationItemClick).toHaveBeenCalledWith('')
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'plugin.auth.workspaceDefault' }))
+    await user.click(
+      within(await screen.findByRole('dialog')).getByText('plugin.auth.workspaceDefault'),
+    )
+    expect(onAuthorizationItemClick).toHaveBeenCalledExactlyOnceWith('')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
   it('should call onAuthorizationItemClick with credential id when specific credential is clicked', async () => {
@@ -256,11 +234,10 @@ describe('PluginAuthInAgent Component', () => {
       />,
       { wrapper: createWrapper() },
     )
-    const triggerButton = screen.getByRole('button')
-    fireEvent.click(triggerButton)
-    const credentialItems = screen.getAllByText('Specific Credential')
-    const popupItem = credentialItems[credentialItems.length - 1]
-    fireEvent.click(popupItem!)
-    expect(onAuthorizationItemClick).toHaveBeenCalledWith('specific-cred-id')
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'plugin.auth.workspaceDefault' }))
+    await user.click(within(await screen.findByRole('dialog')).getByText('Specific Credential'))
+    expect(onAuthorizationItemClick).toHaveBeenCalledExactlyOnceWith('specific-cred-id')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 })

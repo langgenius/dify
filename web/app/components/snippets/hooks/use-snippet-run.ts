@@ -1,21 +1,24 @@
 import type { IOtherOptions } from '@/service/base'
 import type { SnippetDraftRunPayload } from '@/types/snippet'
-import type { VersionHistory } from '@/types/workflow'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { useCallback, useRef } from 'react'
 import { useReactFlow, useStoreApi } from 'reactflow'
+import { snippetIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { ssePost } from '@/service/base'
-import { useInvalidAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'
+import { useInvalidateAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'
 import { stopWorkflowRun } from '@/service/workflow'
-import { FlowType } from '@/types/common'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 
-export const useSnippetRun = (snippetId: string) => {
+export const useSnippetRun = () => {
+  const resource = useAtomValue(snippetIdentityAtom)
+  const { snippetId } = resource
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
@@ -73,12 +76,9 @@ export const useSnippetRun = (snippetId: string) => {
     }
   }, [handleUpdateWorkflowCanvas, workflowStore])
 
-  const invalidAllLastRun = useInvalidAllLastRun(FlowType.snippet, snippetId)
+  const invalidAllLastRun = useInvalidateAllLastRun(resource)
   const invalidateRunHistory = useInvalidateWorkflowRunHistory()
-  const { fetchInspectVars } = useSetWorkflowVarsWithValue({
-    flowType: FlowType.snippet,
-    flowId: snippetId,
-  })
+  const { fetchInspectVars } = useSetWorkflowVarsWithValue()
 
   const handleRun = useCallback(
     async (params: SnippetDraftRunPayload, callback?: IOtherOptions) => {
@@ -277,7 +277,7 @@ export const useSnippetRun = (snippetId: string) => {
   )
 
   const handleRestoreFromPublishedWorkflow = useCallback(
-    (publishedWorkflow: VersionHistory) => {
+    (publishedWorkflow: FetchWorkflowDraftResponse) => {
       const nodes = publishedWorkflow.graph.nodes.map((node) => ({
         ...node,
         selected: false,
