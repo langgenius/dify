@@ -63,7 +63,7 @@ from services.tools.mcp_tools_manage_service import MCPToolManageService
 from services.tools.tools_transform_service import ToolTransformService
 
 if TYPE_CHECKING:
-    pass
+    from core.app.apps.workflow_app_runner import WorkflowRunDriver
 
 logger = logging.getLogger(__name__)
 
@@ -195,6 +195,7 @@ class ToolManager:
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         tool_invoke_from: ToolInvokeFrom = ToolInvokeFrom.AGENT,
         credential_id: str | None = None,
+        execution_driver: "WorkflowRunDriver | None" = None,
     ) -> BuiltinTool | PluginTool | ApiTool | WorkflowTool | MCPTool:
         """
         get the tool runtime
@@ -381,7 +382,7 @@ class ToolManager:
                 if controller_tools is None or len(controller_tools) == 0:
                     raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
 
-                return controller.get_tools(tenant_id=workflow_provider.tenant_id)[0].fork_tool_runtime(
+                workflow_tool = controller.get_tools(tenant_id=workflow_provider.tenant_id)[0].fork_tool_runtime(
                     runtime=ToolRuntime(
                         tenant_id=tenant_id,
                         user_id=user_id,
@@ -390,6 +391,8 @@ class ToolManager:
                         tool_invoke_from=tool_invoke_from,
                     )
                 )
+                workflow_tool.execution_driver = execution_driver
+                return workflow_tool
             case ToolProviderType.APP:
                 raise NotImplementedError("app provider not implemented")
             case ToolProviderType.PLUGIN:
@@ -424,6 +427,7 @@ class ToolManager:
         variable_pool: "VariablePool | None" = None,
         allow_file_parameters: bool = False,
         use_default_for_missing_form_parameters: bool = False,
+        execution_driver: "WorkflowRunDriver | None" = None,
     ) -> Tool:
         """
         get the agent tool runtime
@@ -437,6 +441,7 @@ class ToolManager:
             invoke_from=invoke_from,
             tool_invoke_from=ToolInvokeFrom.AGENT,
             credential_id=agent_tool.credential_id,
+            execution_driver=execution_driver,
         )
         runtime_parameters: dict[str, Any] = {}
         parameters = tool_entity.get_merged_runtime_parameters()
@@ -473,6 +478,7 @@ class ToolManager:
         user_id: str | None = None,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         variable_pool: "VariablePool | None" = None,
+        execution_driver: "WorkflowRunDriver | None" = None,
     ) -> Tool:
         """
         get the workflow tool runtime
@@ -487,6 +493,7 @@ class ToolManager:
             invoke_from=invoke_from,
             tool_invoke_from=ToolInvokeFrom.WORKFLOW,
             credential_id=workflow_tool.credential_id,
+            execution_driver=execution_driver,
         )
 
         parameters = tool_runtime.get_merged_runtime_parameters()
@@ -518,6 +525,7 @@ class ToolManager:
         tool_parameters: dict[str, Any],
         user_id: str | None = None,
         credential_id: str | None = None,
+        execution_driver: "WorkflowRunDriver | None" = None,
     ) -> Tool:
         """
         get tool runtime from plugin
@@ -531,6 +539,7 @@ class ToolManager:
             invoke_from=InvokeFrom.SERVICE_API,
             tool_invoke_from=ToolInvokeFrom.PLUGIN,
             credential_id=credential_id,
+            execution_driver=execution_driver,
         )
         runtime_parameters: dict[str, Any] = {}
         parameters = tool_entity.get_merged_runtime_parameters()
@@ -905,8 +914,8 @@ class ToolManager:
                 provider = mcp_service.get_provider_by_persisted_reference(
                     id_or_server_identifier=provider_id, tenant_id=tenant_id
                 )
-            except ValueError:
-                raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found")
+            except ValueError as caught_error:
+                raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found") from caught_error
 
         controller = MCPToolProviderController.from_db(provider)
 
@@ -1058,8 +1067,8 @@ class ToolManager:
                         id_or_server_identifier=provider_id, tenant_id=tenant_id
                     )
                     return cast(EmojiIconDict | str, mcp_provider.provider_icon)
-                except ValueError:
-                    raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found")
+                except ValueError as caught_error:
+                    raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found") from caught_error
         except Exception:
             return {"background": "#252525", "content": "\ud83d\ude01"}
 

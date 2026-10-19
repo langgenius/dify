@@ -51,6 +51,7 @@ from models import Account, Tenant
 from models.model import EndUser
 from services.file_request_service import FileRequestService
 from services.plugin.datasource_backwards_invocation import PluginDatasourceBackwardsInvocation
+from services.workflow_run_agg import WorkflowRunAgg
 
 
 def _model_invocation_error_response(error: Exception) -> dict[str, object]:
@@ -392,6 +393,7 @@ class PluginInvokeToolApi(Resource):
         def generator():
             return PluginToolBackwardsInvocation.convert_to_event_stream(
                 PluginToolBackwardsInvocation.invoke_tool(
+                    execution_driver=WorkflowRunAgg.run,
                     session=session,
                     tenant_id=tenant_model.id,
                     user_id=user_model.id,
@@ -490,6 +492,7 @@ class PluginInvokeAppApi(Resource):
     @with_session
     def post(self, session: Session, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeApp):
         response = PluginAppBackwardsInvocation.invoke_app(
+            execution_driver=WorkflowRunAgg.run,
             session=session,
             app_id=payload.app_id,
             user_id=user_model.id,

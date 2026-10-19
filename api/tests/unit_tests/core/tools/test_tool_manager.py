@@ -23,14 +23,21 @@ from core.helper.provider_encryption import ProviderConfigEncrypter
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.exc import PluginDaemonNotFoundError, PluginNotFoundError
 from core.tools.__base.tool_runtime import ToolRuntime
+from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
+    ToolEntity,
+    ToolIdentity,
     ToolInvokeFrom,
     ToolParameter,
+    ToolProviderEntity,
+    ToolProviderIdentity,
     ToolProviderType,
 )
 from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
+from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
+from core.tools.workflow_as_tool.tool import WorkflowTool
 from graphon.runtime import VariablePool
 from models.base import TypeBase
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
@@ -601,23 +608,50 @@ def test_get_tool_runtime_workflow_path(monkeypatch: pytest.MonkeyPatch, tool_da
     tool_database.session.add(workflow_provider)
     tool_database.session.commit()
     monkeypatch.setattr("core.tools.tool_manager.db", tool_database)
-    workflow_tool = Mock()
-    workflow_tool.fork_tool_runtime.return_value = "wf-runtime"
-    workflow_controller = Mock()
-    workflow_controller.get_tools.return_value = [workflow_tool]
+    workflow_tool = WorkflowTool(
+        workflow_app_id=workflow_provider.app_id,
+        workflow_as_tool_id=provider_id,
+        version=workflow_provider.version,
+        workflow_entities={},
+        workflow_call_depth=0,
+        entity=ToolEntity(
+            identity=ToolIdentity(author="test", name="wf", label=I18nObject(en_US="Workflow"), provider=provider_id),
+        ),
+        runtime=ToolRuntime(tenant_id=tenant_id),
+    )
+    workflow_controller = WorkflowToolProviderController(
+        entity=ToolProviderEntity(
+            identity=ToolProviderIdentity(
+                author="test",
+                name=workflow_provider.name,
+                label=I18nObject(en_US=workflow_provider.label),
+                description=I18nObject(en_US=workflow_provider.description),
+                icon=workflow_provider.icon,
+            ),
+        ),
+        provider_id=provider_id,
+    )
+    workflow_controller.tools = [workflow_tool]
     with patch(
         "core.tools.tool_manager.ToolTransformService.workflow_provider_to_controller",
         return_value=workflow_controller,
     ):
-        assert (
-            ToolManager.get_tool_runtime(
-                provider_type=ToolProviderType.WORKFLOW,
-                provider_id=provider_id,
-                tool_name="wf",
-                tenant_id=tenant_id,
-            )
-            == "wf-runtime"
+        runtime_tool = ToolManager.get_tool_runtime(
+            provider_type=ToolProviderType.WORKFLOW,
+            provider_id=provider_id,
+            tool_name="wf",
+            tenant_id=tenant_id,
         )
+    assert isinstance(runtime_tool, WorkflowTool)
+    assert runtime_tool is not workflow_tool
+    assert runtime_tool.entity == workflow_tool.entity
+    assert runtime_tool.workflow_as_tool_id == provider_id
+    assert runtime_tool.runtime == ToolRuntime(
+        tenant_id=tenant_id,
+        invoke_from=InvokeFrom.DEBUGGER,
+        tool_invoke_from=ToolInvokeFrom.AGENT,
+    )
+    assert runtime_tool.execution_driver is None
 
 
 def test_get_tool_runtime_plugin_path():
@@ -708,6 +742,7 @@ def test_get_agent_runtime_apply_runtime_parameters():
         invoke_from=InvokeFrom.DEBUGGER,
         tool_invoke_from=ToolInvokeFrom.AGENT,
         credential_id=None,
+        execution_driver=None,
     )
 
 
@@ -755,6 +790,7 @@ def test_get_workflow_runtime_apply_runtime_parameters():
         invoke_from=InvokeFrom.DEBUGGER,
         tool_invoke_from=ToolInvokeFrom.WORKFLOW,
         credential_id=None,
+        execution_driver=None,
     )
 
 
@@ -818,6 +854,7 @@ def test_get_tool_runtime_from_plugin_only_uses_form_parameters():
         invoke_from=InvokeFrom.SERVICE_API,
         tool_invoke_from=ToolInvokeFrom.PLUGIN,
         credential_id=None,
+        execution_driver=None,
     )
 
 

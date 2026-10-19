@@ -17,7 +17,7 @@ from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutio
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.entities.rerank_entities import RerankDocument, RerankResult
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from graphon.variables import FileSegment, StringSegment
 from services.knowledge_fs import query_images as query_image_dependencies
 from services.knowledge_fs.app_admission_service import (
@@ -235,7 +235,7 @@ class RecordingRerankModelManager:
         return self.model
 
 
-def _runtime_state(query: object = "camera") -> GraphRuntimeState:
+def _runtime_state(query: object = "camera") -> RuntimeState:
     pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(user_id="user-1", files=[]),
         user_inputs={},
@@ -243,7 +243,7 @@ def _runtime_state(query: object = "camera") -> GraphRuntimeState:
         conversation_variables=[],
     )
     pool.add(["start", "query"], StringSegment(value=query) if isinstance(query, str) else query)
-    return GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter())
+    return RuntimeState(workflow_id="workflow", variable_pool=pool, start_at=time.perf_counter())
 
 
 def _node(
@@ -252,7 +252,7 @@ def _node(
     spaces: list[str],
     top_n: int = 10,
     mode: str | None = None,
-    runtime_state: GraphRuntimeState | None = None,
+    runtime_state: RuntimeState | None = None,
     binding_service: RecordingBindingService | None = None,
     invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
     user_from: UserFrom = UserFrom.ACCOUNT,
@@ -273,14 +273,14 @@ def _node(
     return KnowledgeRetrievalV2Node(
         node_id="retrieval-v2",
         data=KnowledgeRetrievalV2NodeData.model_validate(node_data),
-        graph_init_params=build_test_graph_init_params(
+        init_params=build_test_graph_init_params(
             tenant_id="tenant-1",
             app_id="app-1",
             user_id="user-1",
             invoke_from=invoke_from,
             user_from=user_from,
         ),
-        graph_runtime_state=runtime_state or _runtime_state(),
+        runtime_state=runtime_state or _runtime_state(),
         query_image_issuer=lambda app_id, file, tenant_id: (
             query_image_dependencies.issue_workflow_query_image_reference(app_id=app_id, file=file, tenant_id=tenant_id)
         ),

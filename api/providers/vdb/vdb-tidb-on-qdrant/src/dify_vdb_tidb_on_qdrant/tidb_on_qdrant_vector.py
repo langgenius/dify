@@ -384,36 +384,51 @@ class TidbOnQdrantVector(BaseVector):
 
     @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        """Return docs most similar by bm25.
-        Returns:
-            List of documents most similar to the query text and distance for each.
-        """
+        """Return keyword matches in query order, leaving relevance scoring to reranking."""
         from qdrant_client.http import models
 
-        scroll_filter = None
+        keywords = list(dict.fromkeys(query.split()))[:10]
+        top_k = kwargs.get("top_k", 2)
+        if not keywords or top_k <= 0:
+            return []
+
+        base_must_conditions: list[models.FieldCondition] = []
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
+            base_must_conditions.append(
+                models.FieldCondition(
+                    key="metadata.document_id",
+                    match=models.MatchAny(any=document_ids_filter),
+                )
+            )
+
+        seen_ids: set[str | int] = set()
+        documents: list[Document] = []
+        # MatchText combines tokens with AND; separate searches provide OR between keywords.
+        for keyword in keywords:
             scroll_filter = models.Filter(
                 must=[
+                    *base_must_conditions,
                     models.FieldCondition(
-                        key="metadata.document_id",
-                        match=models.MatchAny(any=document_ids_filter),
-                    )
+                        key="page_content",
+                        match=models.MatchText(text=keyword),
+                    ),
                 ]
             )
-        response = self._client.scroll(
-            collection_name=self._collection_name,
-            scroll_filter=scroll_filter,
-            limit=kwargs.get("top_k", 2),
-            with_payload=True,
-            with_vectors=True,
-        )
-        results = response[0]
-        documents = []
-        for result in results:
-            if result:
-                document = self._document_from_scored_point(result, Field.CONTENT_KEY, Field.METADATA_KEY)
-                documents.append(document)
+            results, _ = self._client.scroll(
+                collection_name=self._collection_name,
+                scroll_filter=scroll_filter,
+                limit=top_k,
+                with_payload=True,
+                with_vectors=True,
+            )
+            for result in results:
+                if result and result.id not in seen_ids:
+                    seen_ids.add(result.id)
+                    document = self._document_from_scored_point(result, Field.CONTENT_KEY, Field.METADATA_KEY)
+                    documents.append(document)
+                    if len(documents) >= top_k:
+                        return documents
 
         return documents
 

@@ -18,7 +18,6 @@ from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunC
 from core.app.llm.model_access import build_dify_model_access
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError
 from core.model_manager import ModelInstance, ModelManager
-from graphon.entities import GraphInitParams
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.file import File
 from graphon.model_runtime.entities.llm_entities import LLMUsage
@@ -77,7 +76,7 @@ from .exc import (
 )
 
 if TYPE_CHECKING:
-    from graphon.runtime import GraphRuntimeState
+    from graphon.runtime import InitParams, RuntimeState
 
 logger = logging.getLogger(__name__)
 
@@ -172,8 +171,8 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
         node_id: str,
         data: KnowledgeRetrievalV2NodeData,
         *,
-        graph_init_params: GraphInitParams,
-        graph_runtime_state: GraphRuntimeState,
+        init_params: InitParams,
+        runtime_state: RuntimeState,
         capability_service: _RetrievalCapability | None = None,
         binding_service: _BindingCapability | None = None,
         rerank_model_manager: _RerankModelManager | None = None,
@@ -185,8 +184,8 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
         super().__init__(
             node_id=node_id,
             data=data,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=init_params,
+            runtime_state=runtime_state,
         )
         if max_concurrency < 1 or max_concurrency > 10:
             raise ValueError("Agent Knowledge Retrieval concurrency must be between 1 and 10")
@@ -280,7 +279,7 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
         selector = self._node_data.query_variable_selector
         if not selector:
             return ""
-        variable = self.graph_runtime_state.variable_pool.get(selector)
+        variable = self.runtime_state.variable_pool.get(selector)
         if variable is None:
             return ""
         if not isinstance(variable, StringSegment):
@@ -299,7 +298,7 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
         selector = self._node_data.query_attachment_selector
         if not selector:
             return [], []
-        variable = self.graph_runtime_state.variable_pool.get(selector)
+        variable = self.runtime_state.variable_pool.get(selector)
         if isinstance(variable, FileSegment):
             files = [variable.value]
         elif isinstance(variable, ArrayFileSegment):
@@ -610,7 +609,7 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
         for condition in configured.conditions:
             value = condition.value
             if isinstance(value, str):
-                segment_group = convert_template(self.graph_runtime_state.variable_pool, value)
+                segment_group = convert_template(self.runtime_state.variable_pool, value)
                 if len(segment_group.value) == 1:
                     value = _normalize_metadata_filter_scalar(segment_group.value[0].to_object())
                 else:

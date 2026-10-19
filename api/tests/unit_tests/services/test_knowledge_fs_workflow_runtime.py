@@ -14,7 +14,7 @@ from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.node_runtime import build_knowledge_fs_node_dependencies
 from extensions import ext_application_services
 from graphon.enums import WorkflowNodeExecutionStatus
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from graphon.variables import StringSegment
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
 from services.knowledge_fs import runtime as runtime_module
@@ -151,8 +151,8 @@ def test_graph_can_create_unused_retrieval_node_without_knowledge_fs_config(
     pool = VariablePool()
     pool.add(["start", "query"], StringSegment(value="test query"))
     factory = DifyNodeFactory(
-        graph_init_params=build_test_graph_init_params(),
-        graph_runtime_state=GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter()),
+        init_params=build_test_graph_init_params(),
+        runtime_state=RuntimeState(workflow_id="workflow", variable_pool=pool, start_at=time.perf_counter()),
     )
 
     with app.app_context():
