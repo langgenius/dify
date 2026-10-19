@@ -58,6 +58,37 @@ def enforce_download_for_html(
     return True
 
 
+def slice_content_for_range(content, start: int, end: int):
+    """Slice the [start, end] byte window out of file content while streaming.
+
+    Joining the whole stream before slicing loads the entire file into
+    memory on every ranged request; the full-file path is streamed, so the
+    range path should be too. Iterates the source only until the window
+    ends, so memory stays bounded by the chunk size instead of the file
+    size. Bytes input is sliced directly.
+    """
+    if isinstance(content, bytes):
+        return content[start : end + 1]
+
+    def _windowed():
+        pos = 0
+        remaining = end - start + 1
+        for chunk in content:
+            if remaining <= 0:
+                break
+            chunk_len = len(chunk)
+            if pos + chunk_len <= start:
+                pos += chunk_len
+                continue
+            offset = max(start - pos, 0)
+            take = min(chunk_len - offset, remaining)
+            yield chunk[offset : offset + take]
+            remaining -= take
+            pos += chunk_len
+
+    return _windowed()
+
+
 def requested_byte_range(mime_type: str | None, size: int, range_media_types: frozenset[str]) -> tuple[int, int] | str | None:
     """Resolve the request's Range header against the file size.
 
