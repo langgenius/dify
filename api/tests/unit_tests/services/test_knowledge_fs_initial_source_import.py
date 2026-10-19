@@ -762,7 +762,6 @@ def test_initial_website_source_import_polls_existing_workflow_without_recreatin
     assert facade.call_count("create_source") == 0
     assert facade.call_count("import_selected_source_crawl") == 0
     source_update_payload = facade.payload("update_source", KnowledgeFSSourceUpdatePayload)
-    source_update_metadata = json_object(source_update_payload.metadata)
     assert source_update_payload.status == "active"
 
 
