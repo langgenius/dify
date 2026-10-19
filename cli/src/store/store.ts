@@ -132,14 +132,23 @@ export class YamlStore {
     return this.rawContent
   }
 
-  /** Read and replace raw content under one lock for read-modify-write operations. */
-  async updateRaw(update: (rawContent: string | undefined) => string | undefined): Promise<void> {
+  /** Read, transform, and replace a document under one lock for read-modify-write operations. */
+  async update<T>(
+    update: (rawContent: string | undefined) => T | undefined | Promise<T | undefined>,
+  ): Promise<void> {
     await this.withLock(async () => {
       await this.load()
-      const next = update(this.rawContent)
+      const next = await update(this.rawContent)
       if (next === undefined) return
-      this.setRawContent(next)
+      this.setRawContent(dump(next, { lineWidth: -1, noRefs: true }))
       await this.flush()
+    })
+  }
+
+  async getRaw(): Promise<string | undefined> {
+    return this.withLock(async () => {
+      await this.load()
+      return this.rawContent
     })
   }
 

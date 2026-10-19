@@ -1,5 +1,4 @@
 import type { z } from 'zod'
-import { dump } from 'js-yaml'
 import { isRecord } from '@/util/is-record'
 import { BadYamlFormatError } from './errors'
 import { loadYaml, YamlStore } from './store'
@@ -32,15 +31,15 @@ function remove(doc: Record<string, unknown>, path: Path): void {
   else if (isRecord(parent)) delete parent[last as string]
 }
 
-async function readTolerant<S extends z.ZodType>(
-  store: YamlStore,
+function readTolerant<S extends z.ZodType>(
+  content: string | undefined,
   schema: S,
+  path: string,
   notice: Notice,
-): Promise<z.output<S> | null> {
-  const path = store.filePath
+): z.output<S> | null {
   let raw: unknown
   try {
-    raw = await store.getTyped<unknown>()
+    raw = loadYaml(content, path)
   } catch (err) {
     if (!(err instanceof BadYamlFormatError)) throw err
     notice(`${path} is not valid YAML; ignoring it`)
@@ -81,7 +80,7 @@ export type LocalFile<T> = Readonly<{
   path: string
   read: () => Promise<T | null>
   write: (doc: T) => Promise<void>
-  update: (transform: (doc: T | null) => T | undefined) => Promise<void>
+  update: (transform: (doc: T | null) => T | undefined | Promise<T | undefined>) => Promise<void>
   remove: () => Promise<void>
   /** Remove the file only while it still holds a document `matches` accepts. */
   removeIf: (matches: (doc: T) => boolean) => Promise<void>
@@ -96,25 +95,12 @@ export function localFile<S extends z.ZodType>(
   const store = new YamlStore(path)
   return {
     path,
-    read: () => readTolerant(store, schema, notice),
+    read: async () => readTolerant(await store.getRaw(), schema, path, notice),
     write: async (doc) => store.setTyped(schema.parse(doc)),
     update: async (transform) => {
-      await store.updateRaw((content) => {
-        let raw: Record<string, unknown> | null
-        try {
-          raw =
-            content === undefined
-              ? null
-              : (loadYaml(content, path) as Record<string, unknown> | null)
-        } catch (err) {
-          if (!(err instanceof BadYamlFormatError)) throw err
-          notice(`${path} is not valid YAML; ignoring it`)
-          raw = null
-        }
-        const next = transform(parseTolerant(raw, path, schema, notice))
-        return next === undefined
-          ? undefined
-          : dump(schema.parse(next), { lineWidth: -1, noRefs: true })
+      await store.update(async (content) => {
+        const next = await transform(readTolerant(content, schema, path, notice))
+        return next === undefined ? undefined : schema.parse(next)
       })
     },
     remove: () => store.rm(),

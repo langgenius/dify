@@ -49,36 +49,53 @@ describe('FileTokenStore', () => {
   })
 
   it('preserves concurrent writes from separate stores', async () => {
-    let readCount = 0
-    let releaseReads!: () => void
-    const bothReads = new Promise<void>((resolve) => {
-      releaseReads = resolve
+    let updateCount = 0
+    let releaseFirstUpdate!: () => void
+    let signalFirstUpdate!: () => void
+    let signalSecondRequest!: () => void
+    const firstUpdateStarted = new Promise<void>((resolve) => {
+      signalFirstUpdate = resolve
     })
+    const secondUpdateRequested = new Promise<void>((resolve) => {
+      signalSecondRequest = resolve
+    })
+    const firstUpdateGate = new Promise<void>((resolve) => {
+      releaseFirstUpdate = resolve
+    })
+    let secondTransformEntered = false
 
-    function openWithSynchronizedRead(): FileTokenStore {
+    function openWithSynchronizedUpdate(): FileTokenStore {
       const source = localFile(file, TOKENS_SCHEMA, ioService(streams).notice)
-      let firstRead = true
       return new FileTokenStore({
         ...source,
-        read: async () => {
-          const doc = await source.read()
-          if (firstRead) {
-            firstRead = false
-            readCount += 1
-            if (readCount === 2) releaseReads()
-            await bothReads
-          }
-          return doc
+        update: async (transform) => {
+          updateCount += 1
+          if (updateCount === 2) signalSecondRequest()
+          await source.update(async (doc) => {
+            if (updateCount === 1) {
+              signalFirstUpdate()
+              await firstUpdateGate
+            } else {
+              secondTransformEntered = true
+            }
+            return transform(doc)
+          })
         },
       })
     }
 
-    const first = openWithSynchronizedRead()
-    const second = openWithSynchronizedRead()
-    await Promise.all([
-      first.write('https://one.example.com', 'a@x.com', 'A'),
-      second.write('https://two.example.com', 'b@x.com', 'B'),
-    ])
+    const first = openWithSynchronizedUpdate()
+    const second = openWithSynchronizedUpdate()
+    const firstWrite = first.write('https://one.example.com', 'a@x.com', 'A')
+    await firstUpdateStarted
+    const secondWrite = second.write('https://two.example.com', 'b@x.com', 'B')
+    await secondUpdateRequested
+    await new Promise<void>((resolve) => setImmediate(resolve))
+    const secondWaitedForLock = !secondTransformEntered
+    releaseFirstUpdate()
+    await Promise.all([firstWrite, secondWrite])
+
+    expect(secondWaitedForLock).toBe(true)
 
     const result = open()
     expect(await result.read('https://one.example.com', 'a@x.com')).toBe('A')
