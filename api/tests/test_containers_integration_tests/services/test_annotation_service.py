@@ -241,7 +241,7 @@ class TestAnnotationService:
             "answer": fake.text(max_nb_chars=200),
         }
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="'question' is required"):
             AppAnnotationService.insert_app_annotation_directly(annotation_args, app.id, db_session_with_containers)
 
     def test_insert_app_annotation_directly_app_not_found(
