@@ -5,9 +5,10 @@ from unittest.mock import MagicMock, create_autospec
 import pytest
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from core.entities.model_entities import ModelStatus, ModelWithProviderEntity
+from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, SimpleModelProviderEntity
 from core.entities.provider_configuration import ProviderConfigurations
 from core.entities.provider_entities import CredentialConfiguration
 from core.plugin.entities.plugin import PluginInstallationSource
@@ -15,7 +16,7 @@ from core.plugin.entities.plugin_daemon import PluginModelProviderBinding
 from enums import DeploymentEdition
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType, ParameterRule, ParameterType
-from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
+from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
 from models.account import Account, TenantAccountRole
 from models.provider import (
     Provider,
@@ -36,6 +37,141 @@ def _create_service_with_mocked_manager() -> tuple[ModelProviderService, MagicMo
     service = ModelProviderService()
     service._get_provider_manager = MagicMock(return_value=manager)
     return service, manager
+
+
+def _build_available_llm(model: str) -> ModelWithProviderEntity:
+    provider = ProviderEntity(
+        provider="langgenius/openai/openai",
+        label=I18nObject(en_US="OpenAI"),
+        supported_model_types=[ModelType.LLM],
+        configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+    )
+    return ModelWithProviderEntity(
+        model=model,
+        label=I18nObject(en_US=model),
+        model_type=ModelType.LLM,
+        fetch_from=FetchFrom.PREDEFINED_MODEL,
+        model_properties={},
+        status=ModelStatus.ACTIVE,
+        provider=SimpleModelProviderEntity(provider),
+    )
+
+
+@pytest.mark.parametrize("has_active_models", [True, False])
+def test_initialize_default_llm_selects_first_active_model_once(
+    sqlite_session: Session, has_active_models: bool
+) -> None:
+    sqlite_session.add_all(
+        [
+            TenantDefaultModel(
+                tenant_id="other-tenant", model_type=ModelType.LLM, provider_name="other", model_name="other-model"
+            ),
+            TenantDefaultModel(
+                tenant_id="tenant-1",
+                model_type=ModelType.TEXT_EMBEDDING,
+                provider_name="embedding",
+                model_name="embedding-model",
+            ),
+        ]
+    )
+    sqlite_session.commit()
+    service, manager = _create_service_with_mocked_manager()
+    models = [_build_available_llm("gpt-4o-mini"), _build_available_llm("gpt-4o")] if has_active_models else []
+    configurations = manager.get_configurations.return_value
+    configurations.get_models.return_value = models
+
+    service.initialize_default_llm("tenant-1")
+    service.initialize_default_llm("tenant-1")
+
+    expected_defaults = {
+        ("other-tenant", ModelType.LLM, "other", "other-model"),
+        ("tenant-1", ModelType.TEXT_EMBEDDING, "embedding", "embedding-model"),
+    }
+    if has_active_models:
+        expected_defaults.add(("tenant-1", ModelType.LLM, "langgenius/openai/openai", "gpt-4o-mini"))
+    assert {
+        (record.tenant_id, record.model_type, record.provider_name, record.model_name)
+        for record in sqlite_session.query(TenantDefaultModel).all()
+    } == expected_defaults
+    assert configurations.get_models.call_count == (1 if has_active_models else 2)
+    configurations.get_models.assert_called_with(model_type=ModelType.LLM, only_active=True)
+
+
+def test_initialize_default_llm_preserves_existing_selection(sqlite_session: Session) -> None:
+    saved_default = TenantDefaultModel(
+        tenant_id="tenant-1", model_type=ModelType.LLM, provider_name="chosen-provider", model_name="chosen-model"
+    )
+    sqlite_session.add(saved_default)
+    sqlite_session.commit()
+    service, manager = _create_service_with_mocked_manager()
+
+    service.initialize_default_llm("tenant-1")
+
+    manager.get_configurations.assert_not_called()
+    sqlite_session.refresh(saved_default)
+    assert (saved_default.provider_name, saved_default.model_name) == ("chosen-provider", "chosen-model")
+
+
+@pytest.mark.parametrize("selection_time", ["discovery", "insert"])
+def test_initialize_default_llm_preserves_concurrent_selection(
+    sqlite_session: Session, sqlite_engine: Engine, selection_time: str
+) -> None:
+    service, manager = _create_service_with_mocked_manager()
+    selected = False
+
+    def save_selection() -> None:
+        nonlocal selected
+        selected = True
+        sqlite_session.add(
+            TenantDefaultModel(
+                tenant_id="tenant-1",
+                model_type=ModelType.LLM,
+                provider_name="chosen-provider",
+                model_name="chosen-model",
+            )
+        )
+        sqlite_session.commit()
+
+    def discover_models(*, model_type: ModelType, only_active: bool) -> list[ModelWithProviderEntity]:
+        assert model_type == ModelType.LLM
+        assert only_active
+        if selection_time == "discovery":
+            save_selection()
+        return [_build_available_llm("gpt-4o-mini")]
+
+    manager.get_configurations.return_value.get_models.side_effect = discover_models
+
+    def select_before_insert(
+        _connection: Any, _cursor: Any, statement: str, _parameters: Any, _context: Any, _executemany: bool
+    ) -> None:
+        if selection_time == "insert" and not selected and statement.startswith("INSERT INTO tenant_default_models"):
+            save_selection()
+
+    event.listen(sqlite_engine, "before_cursor_execute", select_before_insert)
+    try:
+        service.initialize_default_llm("tenant-1")
+    finally:
+        event.remove(sqlite_engine, "before_cursor_execute", select_before_insert)
+
+    defaults = sqlite_session.query(TenantDefaultModel).all()
+    assert selected
+    assert len(defaults) == 1
+    assert (defaults[0].provider_name, defaults[0].model_name) == ("chosen-provider", "chosen-model")
+
+
+def test_initialize_default_llm_propagates_database_failure(sqlite_session: Session, sqlite_engine: Engine) -> None:
+    service, manager = _create_service_with_mocked_manager()
+    manager.get_configurations.return_value.get_models.return_value = [_build_available_llm("gpt-4o-mini")]
+    with sqlite_engine.begin() as connection:
+        connection.exec_driver_sql(
+            "CREATE TRIGGER reject_default_model BEFORE INSERT ON tenant_default_models "
+            "BEGIN SELECT RAISE(ABORT, 'default model write rejected'); END"
+        )
+
+    with pytest.raises(IntegrityError, match="default model write rejected"):
+        service.initialize_default_llm("tenant-1")
+
+    assert sqlite_session.query(TenantDefaultModel).count() == 0
 
 
 def test_available_credentials_use_injected_query_for_admin_viewer() -> None:
