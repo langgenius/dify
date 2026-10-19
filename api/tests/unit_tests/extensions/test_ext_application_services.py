@@ -1891,3 +1891,56 @@ def test_installed_app_visibility_propagates_access_unavailable_with_original_ca
     assert type(caught.value) is WebAppAccessUnavailableError
     assert caught.value.__cause__ is enterprise_error
     assert enterprise_request.call_count == (2 if failure_stage == "permissions" else 1)
+
+
+@pytest.mark.parametrize("edition", list(DeploymentEdition))
+@pytest.mark.parametrize("enabled", [True, False])
+def test_account_passport_exchange_is_cloud_only_and_requires_rollout_opt_in(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    edition: DeploymentEdition,
+    enabled: bool,
+) -> None:
+    from services.entities.passport_entities import WebPassportIdentity, WebPassportRequest
+    from services.web_passport_service import (
+        WebPassportAccountExchangeDisabledError,
+        WebPassportAuthenticationRequiredError,
+    )
+    from tests.unit_tests.config_override import apply_config_overrides
+
+    apply_config_overrides(monkeypatch, WEBAPP_ACCOUNT_PASSPORT_ENABLED=enabled)
+    app_model = App(tenant_id=str(uuid4()), name="Rollout", mode="chat", enable_site=True, enable_api=False)
+    sqlite_session.add(app_model)
+    sqlite_session.flush()
+    sqlite_session.add(
+        Site(
+            app_id=app_model.id,
+            code="rollout-code",
+            title="Rollout",
+            default_language="en-US",
+            customize_token_strategy=CustomizeTokenStrategy.UUID,
+        )
+    )
+    sqlite_session.commit()
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=edition,
+        initialization_password="",
+        redis=_redis(),
+    )
+    error = (
+        WebPassportAuthenticationRequiredError
+        if edition == DeploymentEdition.CLOUD and enabled
+        else WebPassportAccountExchangeDisabledError
+    )
+    with pytest.raises(error):
+        services.web_passport.issue(
+            WebPassportRequest(
+                app_code="rollout-code",
+                user_session_id=None,
+                access_token=None,
+                app_passport=None,
+                identity=WebPassportIdentity.ACCOUNT,
+            )
+        )

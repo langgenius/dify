@@ -7,11 +7,13 @@ from services.entities.passport_entities import (
     EndUserRecord,
     WebAppRecord,
     WebPassportEndUserResolution,
+    WebPassportIdentity,
     WebPassportRequest,
 )
 from services.web_passport_service import (
     WebAppAuthType,
     WebPassportAccessDeniedError,
+    WebPassportAccountExchangeDisabledError,
     WebPassportAuthenticationRequiredError,
     WebPassportAuthGateway,
     WebPassportNotFoundError,
@@ -105,11 +107,23 @@ class PassportTokens(WebPassportTokenGateway):
         return self.token
 
 
+class PassportSessions:
+    def __init__(self, valid: bool = True) -> None:
+        self.valid = valid
+        self.calls: list[tuple[str | None, str, str | None]] = []
+
+    def verify(self, *, token: str | None, app_code: str, user_id: str | None) -> bool:
+        self.calls.append((token, app_code, user_id))
+        return self.valid
+
+
 def _service(
     *,
     repository: PassportRepository | None = None,
     auth: PassportAuth | None = None,
     tokens: PassportTokens | None = None,
+    app_sessions: PassportSessions | None = None,
+    account_passports_enabled: bool = True,
 ) -> tuple[WebPassportService, PassportRepository, PassportAuth, PassportTokens]:
     if repository is None:
         repository = PassportRepository()
@@ -122,15 +136,23 @@ def _service(
         auth=auth,
         tokens=tokens,
         identities=web_identities(),
+        app_sessions=app_sessions or PassportSessions(),
+        account_passports_enabled=account_passports_enabled,
         now=lambda: NOW,
         access_token_expire_minutes=60,
     )
     return service, repository, auth, tokens
 
 
-def _request(*, user_session_id: str | None = None, access_token: str | None = None) -> WebPassportRequest:
+def _request(
+    *, user_session_id: str | None = None, access_token: str | None = None, identity: WebPassportIdentity | None = None
+) -> WebPassportRequest:
     return WebPassportRequest(
-        app_code="app-code", user_session_id=user_session_id, access_token=access_token, guest_passport=None
+        app_code="app-code",
+        user_session_id=user_session_id,
+        access_token=access_token,
+        app_passport=None,
+        identity=identity,
     )
 
 
@@ -315,7 +337,7 @@ def test_issue_requires_session_id_when_enterprise_user_is_missing() -> None:
         service.issue(_request(access_token="login-token"))
 
 
-def test_public_webapp_maps_optional_account_login() -> None:
+def test_public_webapp_does_not_use_incidental_login_to_switch_identity() -> None:
     auth = PassportAuth()
     auth.enabled = True
     auth.auth_type = WebAppAuthType.PUBLIC
@@ -328,18 +350,21 @@ def test_public_webapp_maps_optional_account_login() -> None:
         "exp": 2_000_000_000,
     }
     tokens.token = "public-token"
-    service, _repository, _auth, _tokens = _service(auth=auth, tokens=tokens)
+    service, repository, _auth, _tokens = _service(auth=auth, tokens=tokens)
 
     service.issue(_request(access_token="login-token"))
 
-    assert tokens.verify_calls == ["login-token"]
+    assert tokens.verify_calls == []
+    assert repository.account_calls == []
     assert tokens.issue_calls[0]["iss"] == "app-1"
 
 
 def test_cloud_account_ignores_user_hint_and_never_exposes_account_identity() -> None:
     service, repository, _, tokens = _service()
     tokens.claims = {"sub": "Console API Passport", "user_id": ACCOUNT_ID, "exp": int(NOW.timestamp()) + 120}
-    service.issue(_request(user_session_id="another-user", access_token="console-login"))
+    service.issue(
+        _request(user_session_id="another-user", access_token="console-login", identity=WebPassportIdentity.ACCOUNT)
+    )
     assert repository.account_calls == [(APP, ACCOUNT_ID)]
     assert repository.standard_calls == []
     payload = tokens.issue_calls[0]
@@ -353,7 +378,7 @@ def test_cloud_account_ignores_user_hint_and_never_exposes_account_identity() ->
 def test_account_passport_expiration_is_bounded_by_passport_lifetime() -> None:
     service, _, _, tokens = _service()
     tokens.claims = {"sub": "Console API Passport", "user_id": ACCOUNT_ID, "exp": 2_000_000_000}
-    service.issue(_request(access_token="console-login"))
+    service.issue(_request(access_token="console-login", identity=WebPassportIdentity.ACCOUNT))
     assert tokens.issue_calls[0]["exp"] == int(NOW.timestamp()) + 3600
 
 
@@ -364,41 +389,117 @@ def test_private_app_rejects_account_before_creating_mapping() -> None:
     service, repository, _, tokens = _service(auth=auth)
     tokens.claims = {"sub": "Console API Passport", "user_id": ACCOUNT_ID, "exp": 2_000_000_000}
     with pytest.raises(WebPassportAccessDeniedError, match="cannot access"):
-        service.issue(_request(access_token="console-login"))
+        service.issue(_request(access_token="console-login", identity=WebPassportIdentity.ACCOUNT))
     assert repository.account_calls == []
     assert tokens.issue_calls == []
 
 
-def test_guest_passport_recovers_identity_without_trusting_user_hint() -> None:
-    service, repository, _, tokens = _service()
+@pytest.mark.parametrize("enabled", [True, False])
+@pytest.mark.parametrize("access_token", [None, "other-account-login", "expired-login"])
+def test_existing_passport_is_independent_of_login_and_issuance_switch(enabled: bool, access_token: str | None) -> None:
+    sessions = PassportSessions()
+    service, repository, _, tokens = _service(app_sessions=sessions, account_passports_enabled=enabled)
+    result = service.issue(
+        WebPassportRequest(
+            app_code=APP.app_code,
+            user_session_id="public-hint",
+            access_token=access_token,
+            app_passport="existing-passport",
+            identity=None,
+        )
+    )
+    assert result.access_token == "existing-passport"
+    assert sessions.calls == [("existing-passport", APP.app_code, None)]
+    assert repository.standard_calls == repository.account_calls == []
+    assert tokens.verify_calls == tokens.issue_calls == []
+
+
+def test_invalid_passport_is_not_silently_replaced_by_account_or_guest_identity() -> None:
+    service, repository, _, tokens = _service(app_sessions=PassportSessions(valid=False))
+    with pytest.raises(WebPassportUnauthorizedError, match="App Passport"):
+        service.issue(
+            WebPassportRequest(
+                app_code=APP.app_code,
+                user_session_id="hint",
+                access_token="account-login",
+                app_passport="invalid-passport",
+                identity=None,
+            )
+        )
+    assert repository.standard_calls == repository.account_calls == []
+    assert tokens.issue_calls == []
+
+
+def test_reader_only_deployment_rejects_explicit_exchange_before_reading_login() -> None:
+    service, repository, _, tokens = _service(account_passports_enabled=False)
+    with pytest.raises(WebPassportAccountExchangeDisabledError):
+        service.issue(_request(access_token="account-login", identity=WebPassportIdentity.ACCOUNT))
+    assert repository.account_calls == repository.standard_calls == []
+    assert tokens.verify_calls == tokens.issue_calls == []
+
+
+def test_reader_only_deployment_preserves_legacy_anonymous_session_hint() -> None:
+    service, repository, _, tokens = _service(account_passports_enabled=False)
+    service.issue(_request(user_session_id="legacy-session", access_token="incidental-login"))
+    assert repository.standard_calls == [(APP, "legacy-session")]
+    assert repository.account_calls == []
+    assert tokens.verify_calls == []
+    assert "token_source" not in tokens.issue_calls[0]
+
+
+def test_enterprise_internal_login_keeps_legacy_end_user_mapping() -> None:
+    auth = PassportAuth()
+    auth.enabled = True
+    auth.auth_type = WebAppAuthType.INTERNAL
+    service, repository, _, tokens = _service(auth=auth, account_passports_enabled=False)
     tokens.claims = {
         "sub": "Web API Passport",
-        "app_id": APP.app_id,
-        "app_code": APP.app_code,
-        "end_user_id": "guest-1",
+        "token_source": "webapp_login_token",
+        "user_id": ACCOUNT_ID,
+        "auth_type": "internal",
+        "session_id": "legacy-email@example.com",
+        "exp": 2_000_000_000,
+    }
+    service.issue(_request(access_token="ee-login"))
+    assert repository.authenticated_calls == [(APP, None, "legacy-email@example.com")]
+    assert repository.account_calls == []
+    assert tokens.issue_calls[0]["token_source"] == "webapp"
+
+
+def test_explicit_account_exchange_requires_login_and_does_not_fall_back_to_guest() -> None:
+    service, repository, _, _ = _service()
+    with pytest.raises(WebPassportAuthenticationRequiredError):
+        service.issue(_request(identity=WebPassportIdentity.ACCOUNT))
+    assert repository.standard_calls == repository.account_calls == []
+
+
+@pytest.mark.parametrize("auth_type", [WebAppAuthType.INTERNAL, WebAppAuthType.EXTERNAL])
+def test_enterprise_can_recover_expired_passport_using_legacy_sso_mapping(auth_type: WebAppAuthType) -> None:
+    auth = PassportAuth()
+    auth.enabled = True
+    auth.auth_type = auth_type
+    service, repository, _, tokens = _service(
+        auth=auth,
+        app_sessions=PassportSessions(valid=False),
+        account_passports_enabled=False,
+    )
+    tokens.claims = {
+        "sub": "Web API Passport",
+        "token_source": "webapp_login_token",
+        "user_id": ACCOUNT_ID,
+        "auth_type": auth_type.value,
+        "session_id": "legacy-session",
+        "exp": 2_000_000_000,
     }
     service.issue(
         WebPassportRequest(
-            app_code=APP.app_code, user_session_id="someone-else", access_token=None, guest_passport="guest-token"
+            app_code=APP.app_code,
+            user_session_id=None,
+            access_token="ee-login",
+            app_passport="expired-passport",
+            identity=None,
         )
     )
-    assert repository.guest_calls == [(APP, "guest-1")]
-    assert repository.standard_calls == []
-
-
-def test_cross_app_guest_passport_cannot_restore_identity() -> None:
-    service, repository, _, tokens = _service()
-    tokens.claims = {
-        "sub": "Web API Passport",
-        "app_id": "other-app",
-        "app_code": "other-code",
-        "end_user_id": "guest-1",
-    }
-    with pytest.raises(WebPassportUnauthorizedError, match="guest Passport"):
-        service.issue(
-            WebPassportRequest(
-                app_code=APP.app_code, user_session_id=None, access_token=None, guest_passport="other-passport"
-            )
-        )
-    assert repository.guest_calls == []
-    assert repository.standard_calls == []
+    assert repository.authenticated_calls == [(APP, None, "legacy-session")]
+    assert repository.account_calls == repository.standard_calls == []
+    assert tokens.issue_calls[0]["token_source"] == "webapp"

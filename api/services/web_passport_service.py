@@ -10,9 +10,11 @@ from services.entities.passport_entities import (
     WebAppLoginClaims,
     WebAppRecord,
     WebPassportEndUserResolution,
+    WebPassportIdentity,
     WebPassportRequest,
     WebPassportResult,
 )
+from services.web_authentication_service import WebAppSessionGateway
 from services.web_identity_service import WebIdentityError, WebIdentityService
 
 
@@ -35,6 +37,10 @@ class WebPassportAuthenticationRequiredError(Exception):
 
 
 class WebPassportAccessDeniedError(Exception):
+    pass
+
+
+class WebPassportAccountExchangeDisabledError(Exception):
     pass
 
 
@@ -80,6 +86,8 @@ class WebPassportService:
         auth: WebPassportAuthGateway,
         tokens: WebPassportTokenGateway,
         identities: WebIdentityService,
+        app_sessions: WebAppSessionGateway,
+        account_passports_enabled: bool,
         now: Callable[[], datetime],
         access_token_expire_minutes: int,
     ) -> None:
@@ -87,6 +95,8 @@ class WebPassportService:
         self._auth = auth
         self._tokens = tokens
         self._identities = identities
+        self._app_sessions = app_sessions
+        self._account_passports_enabled = account_passports_enabled
         self._now = now
         self._access_token_expire_minutes = access_token_expire_minutes
 
@@ -95,18 +105,29 @@ class WebPassportService:
         if app is None:
             raise WebPassportNotFoundError()
 
-        login_claims = self._decode_login_token(request.access_token)
+        if request.identity == WebPassportIdentity.ACCOUNT and not self._account_passports_enabled:
+            raise WebPassportAccountExchangeDisabledError("Account Passport exchange is not enabled.")
+
         auth_type = WebAppAuthType.PUBLIC
         if self._auth.is_webapp_auth_enabled():
             auth_type = self._auth.get_app_auth_type(app.app_id)
-            if auth_type != WebAppAuthType.PUBLIC:
-                if login_claims is None:
-                    raise WebPassportAuthenticationRequiredError("Web app authentication required.")
-                self._require_active_web_app(app)
-                if login_claims.account_id is None:
-                    return self._exchange_enterprise_token(app, login_claims, auth_type)
 
-        if login_claims is not None and login_claims.account_id is not None:
+        if request.identity is None and request.app_passport:
+            # Verification remains enabled during issuance rollback. Never renew or replace
+            # a valid identity based on a different, incidental Account cookie.
+            if self._app_sessions.verify(token=request.app_passport, app_code=app.app_code, user_id=None):
+                return WebPassportResult(access_token=request.app_passport)
+            if auth_type == WebAppAuthType.PUBLIC:
+                raise WebPassportUnauthorizedError("Invalid App Passport.")
+            # A private EE App can still exchange its existing SSO login after its
+            # previous Passport expires, using the original session-based mapping.
+
+        if request.identity == WebPassportIdentity.ACCOUNT:
+            login_claims = self._decode_login_token(request.access_token)
+            if login_claims is None:
+                raise WebPassportAuthenticationRequiredError("Account login required.")
+            if login_claims.token_source is not None or login_claims.account_id is None:
+                raise WebPassportUnauthorizedError("Cloud Account login required.")
             if auth_type == WebAppAuthType.EXTERNAL:
                 raise WebPassportAuthenticationRequiredError("Please login as external user.")
             if auth_type == WebAppAuthType.INTERNAL and not self._auth.is_account_allowed(
@@ -115,7 +136,18 @@ class WebPassportService:
                 raise WebPassportAccessDeniedError("Account cannot access this web app.")
             return self._exchange_account_token(app, login_claims)
 
-        end_user = self._resolve_guest(app, request)
+        if auth_type != WebAppAuthType.PUBLIC:
+            login_claims = self._decode_login_token(request.access_token)
+            if login_claims is None:
+                raise WebPassportAuthenticationRequiredError("Web app authentication required.")
+            self._require_active_web_app(app)
+            # EE internal and external SSO retain their existing session-based mappings.
+            return self._exchange_enterprise_token(app, login_claims, auth_type)
+
+        # Keep legacy Guest issuance during the reader-only deployment. Once the
+        # Account capability is enabled, public session hints cannot restore a Guest.
+        session_hint = None if self._account_passports_enabled else request.user_session_id
+        end_user = self._resolve_standard_user(app, session_hint)
         token = self._tokens.issue(
             {
                 "iss": app.app_id,
@@ -160,30 +192,6 @@ class WebPassportService:
                 }
             )
         )
-
-    def _resolve_guest(self, app: WebAppRecord, request: WebPassportRequest) -> EndUserRecord:
-        if request.guest_passport:
-            decoded = self._tokens.verify(request.guest_passport)
-            if decoded.get("token_source") in {"webapp_account", "webapp"}:
-                # Logging out or making an enterprise App public must not convert its
-                # authenticated user's existing resources into anonymous resources.
-                return self._resolve_standard_user(app, None)
-            if (
-                decoded.get("sub") != "Web API Passport"
-                or decoded.get("token_source") is not None
-                or decoded.get("app_id") != app.app_id
-                or decoded.get("app_code") != app.app_code
-                or not isinstance(decoded.get("end_user_id"), str)
-            ):
-                raise WebPassportUnauthorizedError("Invalid guest Passport.")
-            resolution = self._passports.restore_guest_end_user(app, decoded["end_user_id"])
-            self._require_active_resolution(resolution)
-            if resolution.end_user is None:
-                raise WebPassportUnauthorizedError("Guest session is unavailable.")
-            return resolution.end_user
-        # Session IDs appear in Builder logs and are not bearer credentials. Keep accepting
-        # the legacy query parameter, but only a verified Passport can restore an identity.
-        return self._resolve_standard_user(app, None)
 
     def _resolve_standard_user(self, app: WebAppRecord, session_id: str | None) -> EndUserRecord:
         resolution = self._passports.resolve_standard_end_user(app, session_id)

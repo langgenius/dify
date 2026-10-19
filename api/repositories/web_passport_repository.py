@@ -148,7 +148,6 @@ class WebPassportRepository:
                 EndUser.tenant_id == app.tenant_id,
                 EndUser.app_id == app.app_id,
                 EndUser.account_id.is_(None),
-                EndUser.type == EndUserType.BROWSER,
             )
         )
         return EndUserRecord(id=persisted_id) if persisted_id is not None else None
@@ -165,7 +164,6 @@ class WebPassportRepository:
                 EndUser.tenant_id == app.tenant_id,
                 EndUser.app_id == app.app_id,
                 EndUser.account_id.is_(None),
-                EndUser.type == EndUserType.BROWSER,
             )
         )
         return EndUserRecord(id=end_user_id) if end_user_id is not None else None

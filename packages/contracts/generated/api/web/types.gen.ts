@@ -832,6 +832,7 @@ export type PassportAccessTokenResponse = {
 }
 
 export type PassportQuery = {
+  identity?: WebPassportIdentity | null
   user_id?: string | null
 }
 
@@ -1194,6 +1195,8 @@ export type WebModelConfigResponse = {
   suggested_questions_after_answer?: unknown
   user_input_form?: unknown
 }
+
+export type WebPassportIdentity = 'account'
 
 export type WebSiteResponse = {
   chat_color_theme?: string | null
@@ -2082,6 +2085,7 @@ export type GetPassportData = {
   body?: never
   path?: never
   query?: {
+    identity?: 'account'
     user_id?: string
   }
   url: '/passport'

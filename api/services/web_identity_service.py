@@ -43,7 +43,7 @@ class WebIdentityService:
             raise WebIdentityError("Invalid login token source.")
         if not claims.user_id or not claims.exp or claims.exp <= 0:
             raise WebIdentityError("Missing login identity or expiration.")
-        if claims.account_id is not None:
+        if claims.token_source is None and claims.account_id is not None:
             self.require_account(claims.account_id)
         return claims
 

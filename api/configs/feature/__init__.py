@@ -1042,6 +1042,12 @@ class AuthConfig(BaseSettings):
     Configuration for authentication and OAuth
     """
 
+    WEBAPP_ACCOUNT_PASSPORT_ENABLED: bool = Field(
+        default=False,
+        description="Enable explicit Cloud Account Passport exchange only after every API instance supports it. "
+        "Disabling issuance does not revoke existing Passports. Ignored outside Cloud.",
+    )
+
     OAUTH_REDIRECT_PATH: str = Field(
         description="Redirect path for OAuth authentication callbacks",
         default="/console/api/oauth/authorize",

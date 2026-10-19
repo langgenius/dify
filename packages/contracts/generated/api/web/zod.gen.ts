@@ -774,13 +774,6 @@ export const zPassportAccessTokenResponse = z.object({
 })
 
 /**
- * PassportQuery
- */
-export const zPassportQuery = z.object({
-  user_id: z.string().nullish(),
-})
-
-/**
  * PasswordMismatchError
  *
  * The passwords do not match.
@@ -1771,6 +1764,19 @@ export const zWebModelConfigResponse = z.object({
 })
 
 /**
+ * WebPassportIdentity
+ */
+export const zWebPassportIdentity = z.enum(['account'])
+
+/**
+ * PassportQuery
+ */
+export const zPassportQuery = z.object({
+  identity: zWebPassportIdentity.nullish(),
+  user_id: z.string().nullish(),
+})
+
+/**
  * WebSiteResponse
  */
 export const zWebSiteResponse = z.object({
@@ -2159,6 +2165,7 @@ export const zGetMetaResponse = zAppMetaResponse
 export const zGetParametersResponse = zParameters
 
 export const zGetPassportQuery = z.object({
+  identity: z.enum(['account']).optional(),
   user_id: z.string().optional(),
 })
 

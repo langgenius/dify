@@ -484,6 +484,11 @@ def build_application_services(
         allow_console_login=deployment_edition == DeploymentEdition.CLOUD,
         allow_webapp_login=deployment_edition == DeploymentEdition.ENTERPRISE,
     )
+    web_app_sessions = PassportWebAppSessionGateway(
+        sessions=webapp_access_repository,
+        app_access=webapp_access,
+        identities=web_identity,
+    )
     web_authentication_tokens = TokenManagerWebAuthenticationGateway(
         reset_password_rate_limiter=RateLimiter(
             prefix=FORGOT_PASSWORD_SEND_RATE_LIMIT_PREFIX,
@@ -588,11 +593,7 @@ def build_application_services(
                 login_security=RedisConsoleAuthSecurityGateway(redis=redis),
             ),
             app_access=webapp_access,
-            app_sessions=PassportWebAppSessionGateway(
-                sessions=webapp_access_repository,
-                app_access=webapp_access,
-                identities=web_identity,
-            ),
+            app_sessions=web_app_sessions,
             audit=LoggingWebAuthenticationAuditGateway(logger=logging.getLogger("controllers.web.login")),
             private_app_access_enabled=deployment_edition == DeploymentEdition.ENTERPRISE,
         ),
@@ -717,6 +718,10 @@ def build_application_services(
             ),
             tokens=PassportTokenGateway(passport=PassportService()),
             identities=web_identity,
+            app_sessions=web_app_sessions,
+            account_passports_enabled=(
+                deployment_edition == DeploymentEdition.CLOUD and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
+            ),
             now=lambda: datetime.now(UTC),
             access_token_expire_minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES,
         ),

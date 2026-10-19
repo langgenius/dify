@@ -184,7 +184,7 @@ class PassportWebAppSessionGateway(WebAppSessionGateway):
         self._identities = identities
 
     @override
-    def verify(self, *, token: str | None, app_code: str, user_id: str | None, access_token: str | None) -> bool:
+    def verify(self, *, token: str | None, app_code: str, user_id: str | None) -> bool:
         if not token:
             return False
         try:
@@ -205,9 +205,6 @@ class PassportWebAppSessionGateway(WebAppSessionGateway):
             if session is None:
                 return False
             self._identities.validate_passport(decoded, account_id=session.account_id)
-            login = self._identities.resolve_login(PassportService().verify(access_token)) if access_token else None
-            if session.account_id != (login.account_id if login is not None else None):
-                return False
             if session.account_id is None and user_id is not None and session.end_user_session_id != user_id:
                 return False
             if session.account_id is not None:

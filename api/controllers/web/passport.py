@@ -1,7 +1,7 @@
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
-from werkzeug.exceptions import NotFound, Unauthorized
+from werkzeug.exceptions import NotFound, ServiceUnavailable, Unauthorized
 
 from constants import HEADER_NAME_APP_CODE
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
@@ -13,9 +13,10 @@ from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.helper import dump_response
 from libs.token import extract_webapp_passport
-from services.entities.passport_entities import WebPassportRequest
+from services.entities.passport_entities import WebPassportIdentity, WebPassportRequest
 from services.web_passport_service import (
     WebPassportAccessDeniedError,
+    WebPassportAccountExchangeDisabledError,
     WebPassportAuthenticationRequiredError,
     WebPassportNotFoundError,
     WebPassportUnauthorizedError,
@@ -24,6 +25,11 @@ from services.web_passport_service import (
 
 class PassportQuery(BaseModel):
     user_id: str | None = Field(default=None, description="End user session ID")
+    identity: WebPassportIdentity | None = Field(
+        default=None,
+        description="Explicitly exchange the Cloud Account login for an App Passport. "
+        "Omit to preserve the existing App identity independently of Account login.",
+    )
 
 
 register_schema_models(web_ns, PassportQuery)
@@ -61,7 +67,8 @@ class PassportResource(Resource):
             app_code=app_code,
             user_session_id=query.user_id,
             access_token=extract_web_login_token(),
-            guest_passport=extract_webapp_passport(app_code, request),
+            app_passport=extract_webapp_passport(app_code, request),
+            identity=query.identity,
         )
         try:
             result = application_services().web_passport.issue(passport_request)
@@ -69,6 +76,8 @@ class PassportResource(Resource):
             raise WebAppAuthRequiredError(str(exc)) from exc
         except WebPassportAccessDeniedError as exc:
             raise WebAppAuthAccessDeniedError(str(exc)) from exc
+        except WebPassportAccountExchangeDisabledError as exc:
+            raise ServiceUnavailable(str(exc)) from exc
         except WebPassportUnauthorizedError as exc:
             raise Unauthorized(str(exc)) from exc
         except WebPassportNotFoundError as exc:

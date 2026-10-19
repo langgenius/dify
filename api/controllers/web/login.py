@@ -6,7 +6,6 @@ from jwt import InvalidTokenError
 from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import Unauthorized
 
-from configs import dify_config
 from controllers.common.fields import (
     AccessTokenData,
     AccessTokenResultResponse,
@@ -34,12 +33,8 @@ from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from libs.external_api import error_responses
 from libs.helper import EmailStr
-from libs.passport import PassportService
 from libs.password import valid_password
 from libs.token import (
-    clear_access_token_from_cookie,
-    clear_csrf_token_from_cookie,
-    clear_refresh_token_from_cookie,
     clear_webapp_access_token_from_cookie,
     extract_webapp_passport,
 )
@@ -52,7 +47,6 @@ from services.web_authentication_service import (
     WebInvalidEmailError,
     WebInvalidTokenError,
 )
-from services.web_identity_service import WebIdentityError
 from services.webapp_access_query_service import WebAppAccessAppNotFoundError, WebAppAccessUnavailableError
 
 _ENTERPRISE_ONLY = frozenset({DeploymentEdition.ENTERPRISE})
@@ -176,21 +170,8 @@ class LogoutApi(Resource):
     )
     @web_ns.response(200, "Logout successful", web_ns.models[SimpleResultResponse.__name__])
     def post(self, _request_context: RequestContext):
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
-            token = extract_web_login_token()
-            if token:
-                try:
-                    identity = application_services().web_identity.resolve_login(PassportService().verify(token))
-                except (Unauthorized, WebIdentityError):
-                    identity = None
-                if identity is not None and identity.account_id is not None:
-                    application_services().accounts.authentication.logout(identity.account_id)
         # response-contract:ignore hand-crafted response
         response = make_response(SimpleResultResponse(result="success").model_dump(mode="json"))
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
-            clear_access_token_from_cookie(response)
-            clear_refresh_token_from_cookie(response)
-            clear_csrf_token_from_cookie(response)
         # enterprise SSO sets same site to None in https deployment
         # so we need to logout by calling api
         clear_webapp_access_token_from_cookie(response, samesite="None")

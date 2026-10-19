@@ -253,7 +253,7 @@ def test_logout_only_serializes_response_and_clears_cookie(
 
 
 @pytest.mark.parametrize("valid_login", [True, False])
-def test_cloud_logout_clears_account_cookies_and_revokes_verified_session(
+def test_webapp_logout_never_revokes_account_or_clears_its_cookies(
     monkeypatch: pytest.MonkeyPatch, app: Flask, context: RequestContext, valid_login: bool
 ) -> None:
     apply_config_overrides(
@@ -268,10 +268,9 @@ def test_cloud_logout_clears_account_cookies_and_revokes_verified_session(
     monkeypatch.setattr(login, "extract_web_login_token", lambda: token if valid_login else "invalid-token")
     with app.test_request_context("/logout", method="POST"):
         response = unwrap(LogoutApi.post)(LogoutApi(), context)
-    if valid_login:
-        authentication.logout.assert_called_once_with(ACCOUNT_ID)
-    else:
-        authentication.logout.assert_not_called()
+    authentication.logout.assert_not_called()
     cookies = response.headers.getlist("Set-Cookie")
-    for name in ("access_token", "refresh_token", "csrf_token"):
-        assert any(f"{name}=;" in cookie and "Expires=Thu, 01 Jan 1970" in cookie for cookie in cookies)
+    assert len(cookies) == 1
+    assert "webapp_access_token=" in cookies[0]
+    assert "refresh_token=" not in cookies[0]
+    assert "csrf_token=" not in cookies[0]
