@@ -58,7 +58,6 @@ select = [
 ]
 
 ignore = [
-    "E402",    # module-import-not-at-top-of-file
     "F841",    # unused-variable
     "B901",    # allow return in yield
     "B904",    # raise-without-from-inside-except

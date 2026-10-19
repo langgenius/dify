@@ -222,7 +222,6 @@ class CompletionMessageStopApi(Resource):
     @with_current_user_id
     @get_app_model(mode=AppMode.COMPLETION)
     def post(self, current_user_id: str, app_model: App, task_id: str):
-
         AppTaskService.stop_task(
             task_id=task_id,
             invoke_from=InvokeFrom.DEBUGGER,

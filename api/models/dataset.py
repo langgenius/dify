@@ -27,6 +27,7 @@ from models.enums import (
     DocumentCreatedFrom,
     DocumentDocType,
     IndexingStatus,
+    PermissionEnum,
     ProcessRuleMode,
     SegmentStatus,
     SegmentType,
@@ -140,8 +141,6 @@ class DocumentDict(TypedDict):
     segment_count: int | None
     hit_count: int | None
 
-
-from models.enums import PermissionEnum
 
 # Backward-compatible alias — new code should import PermissionEnum from models.enums
 DatasetPermissionEnum = PermissionEnum
