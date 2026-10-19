@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react'
 import type { SessionRunEvents } from '../session/types'
-import type { DifyBuilderCanvasNode } from '../utils'
+import type { DifyBuilderCanvasSnapshot } from '../utils'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ScopeProvider } from 'jotai-scope'
@@ -27,7 +27,7 @@ type DifyBuilderProviderProps = {
   canEdit: boolean
   canStartCreation?: boolean
   children: ReactNode
-  getCanvasSnapshot: () => { nodes: DifyBuilderCanvasNode[]; edgeCount: number }
+  getCanvasSnapshot: () => DifyBuilderCanvasSnapshot
   onRefreshCanvas: (shouldApply: () => boolean) => Promise<boolean>
   onSyncDraft: (saveDraft: boolean, signal: AbortSignal) => Promise<void>
   tenantId?: string

@@ -10,8 +10,9 @@ from core.dify_builder.ports import Repository
 from core.dify_builder.state import PcState
 from graphon.variables import SecretVariable, StringVariable
 from models.workflow import Workflow
+from services.app.console_gateway import _CHATFLOW_STARTER_GRAPH
 from services.dify_builder.graph_ops import apply_connect, apply_create_node
-from services.dify_builder.revision import execution_revision, merge_canvas_presentation
+from services.dify_builder.revision import executable_graph_revision, execution_revision, merge_canvas_presentation
 from services.dify_builder.service import DifyBuilderService, SessionLock
 
 
@@ -53,8 +54,36 @@ def test_canvas_changes_preserve_execution_revision_but_change_persistence_hash(
     assert workflow.unique_hash != storage_hash
 
 
+def test_node_reordering_preserves_execution_revisions(workflow: Workflow) -> None:
+    revision = execution_revision(workflow)
+    graph_revision = executable_graph_revision(dict(workflow.graph_dict))
+    storage_hash = workflow.unique_hash
+    graph = dict(workflow.graph_dict)
+    graph["nodes"].reverse()
+    workflow.graph = json.dumps(graph)
+
+    assert execution_revision(workflow) == revision
+    assert executable_graph_revision(dict(workflow.graph_dict)) == graph_revision
+    assert workflow.unique_hash != storage_hash
+    assert [node["id"] for node in workflow.graph_dict["nodes"]] == ["end", "llm"]
+
+
+def test_prompt_message_order_remains_execution_configuration(workflow: Workflow) -> None:
+    graph = dict(workflow.graph_dict)
+    prompts = [{"role": "system", "text": "Instructions"}, {"role": "user", "text": "Request"}]
+    graph["nodes"][0]["data"]["prompt_template"] = prompts
+    workflow.graph = json.dumps(graph)
+    revision = execution_revision(workflow)
+    graph_revision = executable_graph_revision(graph)
+    prompts.reverse()
+    workflow.graph = json.dumps(graph)
+
+    assert execution_revision(workflow) != revision
+    assert executable_graph_revision(graph) != graph_revision
+
+
 def test_repair_preserves_concurrent_canvas_presentation(workflow: Workflow) -> None:
-    before = deepcopy(workflow.graph_dict)
+    before = deepcopy(dict(workflow.graph_dict))
     after = deepcopy(before)
     after["nodes"][0]["data"]["prompt_template"][0]["text"] = "Builder edit"
     latest = deepcopy(before)
@@ -75,7 +104,7 @@ def test_repair_preserves_concurrent_canvas_presentation(workflow: Workflow) -> 
 
 
 def test_repair_keeps_builder_layout_when_canvas_did_not_change_it(workflow: Workflow) -> None:
-    before = deepcopy(workflow.graph_dict)
+    before = deepcopy(dict(workflow.graph_dict))
     after = deepcopy(before)
     after["nodes"][0]["position"] = {"x": 300, "y": 400}
     after["viewport"] = {"x": 10, "y": 20, "zoom": 1.5}
@@ -90,7 +119,7 @@ def test_repair_keeps_builder_layout_when_canvas_did_not_change_it(workflow: Wor
 
 
 def test_repair_does_not_add_empty_edge_data(workflow: Workflow) -> None:
-    before = deepcopy(workflow.graph_dict)
+    before = deepcopy(dict(workflow.graph_dict))
     after = deepcopy(before)
     latest = deepcopy(before)
 
@@ -203,6 +232,71 @@ def test_actions_accept_canvas_save_after_builder_writes_graph(
     with pytest.raises(ConflictError, match="stale app revision"):
         service.submit_action(session.id, actor, action)
     action.base_app_revision = execution_revision(builder_workflow)
+    with pytest.raises(ConflictError, match="draft changed outside Builder"):
+        service.submit_action(session.id, actor, action)
+    assert enqueued.call_count == 1
+
+
+def test_chatflow_requirements_accept_canvas_node_reordering() -> None:
+    workflow = Workflow(
+        tenant_id="tenant-1",
+        graph=json.dumps(_CHATFLOW_STARTER_GRAPH),
+        features="{}",
+        environment_variables=[],
+        conversation_variables=[],
+    )
+    session = Session(
+        id="session-1",
+        app_id="app-1",
+        tenant_id="tenant-1",
+        owner_account_id="account-1",
+        entry_mode=EntryMode.BUILD,
+        current_state=PcState.BUILD_GOAL_ANALYSIS,
+        version=2,
+    )
+    repo = MagicMock(spec=Repository)
+    repo.get_session.return_value = (
+        session,
+        DifyBuilderContext(last_snapshot_hash=execution_revision(workflow)),
+    )
+    repo.get_latest_conversation_item.return_value = None
+    lock = MagicMock(spec=SessionLock)
+    lock.exists.return_value = False
+    enqueued = MagicMock()
+    service = DifyBuilderService(
+        repo,
+        lock,
+        enqueued,
+        get_app_revision_fn=lambda _app_id, _actor: execution_revision(workflow),
+    )
+    actor = Actor(account_id=session.owner_account_id, tenant_id=session.tenant_id)
+    view = service.get_session_view(session.id, actor)
+    assert view.app_revision is not None
+    action = Action(
+        kind="submit_requirements",
+        payload={"goal": "Reply to the user"},
+        base_version=view.version,
+        base_app_revision=view.app_revision.current,
+    )
+
+    # Refresh/collaboration can export the same graph in map order. The next
+    # command flushes that canvas before submitting the requirement form.
+    graph = dict(workflow.graph_dict)
+    start, llm, answer = graph["nodes"]
+    graph["nodes"] = [start, answer, llm]
+    workflow.graph = json.dumps(graph)
+    result = service.submit_action(session.id, actor, action)
+
+    assert result.app_revision is not None
+    assert result.app_revision.conflicted is False
+    assert result.app_revision.current == view.app_revision.current
+    enqueued.assert_called_once_with(session.id, action, actor, lock.acquire.return_value)
+
+    llm["data"]["prompt_template"][0]["text"] = "An actual configuration edit"
+    workflow.graph = json.dumps(graph)
+    with pytest.raises(ConflictError, match="stale app revision"):
+        service.submit_action(session.id, actor, action)
+    action.base_app_revision = execution_revision(workflow)
     with pytest.raises(ConflictError, match="draft changed outside Builder"):
         service.submit_action(session.id, actor, action)
     assert enqueued.call_count == 1

@@ -62,7 +62,6 @@ from core.dify_builder.models import (
     ConversationItem,
     Diagnosis,
     DifyBuilderContext,
-    MutationIntent,
     NodeEvent,
     Risk,
     Run,
@@ -76,6 +75,7 @@ from core.dify_builder.state import PcState
 from core.dify_builder.testdata import stamp_testdata_http_fixtures
 from core.dify_builder.verification import SUCCESS_REPLY, has_output_blocker, is_execution_policy_blocker, result_card
 from services.dify_builder.copy_ids import BuilderCopyId
+from services.dify_builder.initial_draft import build_intents_for_draft
 from services.dify_builder.plan import make_plan_card, store_plan
 from services.dify_builder.presentation import BuilderText, copy_text, text_parts
 
@@ -440,14 +440,9 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     out (it all already exists), so apply_repair([]) is a no-op rather than
     raising on a colliding node id.
 
-    From-scratch delete-placeholder branch: when the draft has no non-start
-    nodes yet (nothing has been built), any start node(s) already on the
-    draft (e.g. the canvas's default placeholder start) are deleted before
-    the generator's intents are applied, so the generator's own start node
-    is the only one left. (Final-review fix, Minor #2): ids about to be
-    deleted are excluded from the already-present comparison, so a generator
-    create_node/connect that happens to reuse a just-deleted placeholder id
-    still gets applied instead of being silently dropped."""
+    The service-owned initial-draft policy replaces placeholder Start nodes or
+    the unconfigured Chatflow template in the same batch as generation. IDs
+    being replaced do not suppress the generated nodes or connections."""
     kind = action_kind(turn)
     if kind != "approve_repair":
         return StepResult(next=PcState.BUILD_PLAN_APPROVAL, context=fc)
@@ -516,40 +511,7 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
 
     progress.activate("build-validate-graph")
     current_graph, _current_hash = env.dify.read_graph(s.app_id, turn.actor)
-    current_nodes = current_graph.get("nodes", [])
-    existing_node_ids = {n.get("id") for n in current_nodes}
-    existing_edges = {(e.get("source"), e.get("target")) for e in current_graph.get("edges", [])}
-
-    existing_non_start = [n for n in current_nodes if (n.get("data") or {}).get("type") != "start"]
-    delete_intents: list[MutationIntent] = []
-    if not existing_non_start:  # from-scratch build: drop the draft's placeholder start(s)
-        delete_intents = [
-            MutationIntent(op="delete_node", args={"node_id": n["id"]})
-            for n in current_nodes
-            if (n.get("data") or {}).get("type") == "start" and n.get("id")
-        ]
-
-    # M2 fix (final review, Minor/latent): ids about to be deleted must NOT
-    # count as "already present" for the create/connect filter below -- else
-    # a generator create_node/connect that reuses a just-deleted placeholder
-    # id (e.g. both named "start") is dropped, and the node vanishes (delete
-    # with no re-create). Only affects the from-scratch branch: on loop-back
-    # delete_intents is empty, so these sets are identical to the originals
-    # and behavior there is unchanged.
-    deleted_node_ids = {intent.args["node_id"] for intent in delete_intents}
-    creatable_existing_node_ids = existing_node_ids - deleted_node_ids
-    creatable_existing_edges = {
-        (src, dst) for (src, dst) in existing_edges if src not in deleted_node_ids and dst not in deleted_node_ids
-    }
-
-    def _already_present(intent) -> bool:
-        if intent.op == "create_node":
-            return intent.args.get("node_id") in creatable_existing_node_ids
-        if intent.op == "connect":
-            return (intent.args.get("from_node"), intent.args.get("to_node")) in creatable_existing_edges
-        return False
-
-    to_apply = delete_intents + [intent for intent in intents if not _already_present(intent)]
+    to_apply = build_intents_for_draft(current_graph, intents, mode=env.dify.get_app_mode(s.app_id, turn.actor))
 
     # A FIRST build of this session that would apply no node at all has not
     # built anything. The draft already carries a PREVIOUS graph under the same
