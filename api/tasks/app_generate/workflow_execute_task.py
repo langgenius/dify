@@ -38,6 +38,7 @@ from models.model import App, AppMode, Conversation, EndUser, Message
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_api_workflow_run_repository import WorkflowRunNotPausedError
+from services.app_task_service import AppTaskService
 from services.workflow_run_agg import WorkflowRunAgg
 
 logger = logging.getLogger(__name__)
@@ -561,6 +562,29 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
             type(generate_entity),
         )
         return
+
+    # TODO: Remove legacy task recovery 30 days after the last legacy writer is retired.
+    task_id = workflow_run.task_id
+    if task_id is None:
+        try:
+            task_id = str(uuid.UUID(generate_entity.task_id))
+        except ValueError:
+            logger.warning("Invalid saved task ID for workflow run %s", workflow_run_id)
+            return
+        AppTaskService.index_workflow_pause_task(
+            workflow_run=workflow_run,
+            pause_entity=pause_entity,
+            resumption_context=resumption_context,
+            workflow_run_repo=workflow_run_repo,
+        )
+        indexed_run = workflow_run_repo.get_workflow_run_by_id(
+            workflow_run.tenant_id, workflow_run.app_id, workflow_run.id
+        )
+        if indexed_run is None or indexed_run.task_id != task_id:
+            logger.warning("Cannot recover saved task ownership for workflow run %s", workflow_run_id)
+            return
+        workflow_run.task_id = task_id
+    generate_entity.task_id = task_id
 
     # The resumed attempt reuses the paused run's task ID, so cancellation
     # signals armed against that ID before or during the pause would abort it

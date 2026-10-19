@@ -8,7 +8,6 @@ from sqlalchemy.orm import sessionmaker
 from configs import dify_config
 from enums import DeploymentEdition
 from events.app_event import app_was_created
-from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.db_migration_lock import DbMigrationAutoRenewLock
@@ -132,17 +131,6 @@ def convert_to_agent_apps():
                 click.echo(click.style(f"Convert app error: {e.__class__.__name__} {str(e)}", fg="red"))
 
     click.echo(click.style(f"Conversion complete. Converted {len(proceeded_app_ids)} agent apps.", fg="green"))
-
-
-@click.command(
-    "backfill-workflow-task-ids", help="Recover task IDs from legacy workflow pauses after draining old workers."
-)
-def backfill_workflow_task_ids() -> None:
-    try:
-        indexed = application_services().app_tasks.backfill_legacy_workflow_task_ids()
-    except ValueError as error:
-        raise click.ClickException(str(error)) from error
-    click.echo(f"Indexed {indexed} legacy workflow tasks.")
 
 
 @click.command("upgrade-db", help="Upgrade the database")

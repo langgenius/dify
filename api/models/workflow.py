@@ -793,7 +793,7 @@ class WorkflowRun(Base):
         sa.PrimaryKeyConstraint("id", name="workflow_run_pkey"),
         sa.Index("workflow_run_triggerd_from_idx", "tenant_id", "app_id", "triggered_from"),
         sa.Index("workflow_run_created_at_id_idx", "created_at", "id"),
-        sa.Index("workflow_run_task_id_idx", "task_id"),
+        sa.Index("workflow_run_task_id_idx", "task_id", postgresql_where=sa.text("task_id IS NOT NULL")),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))

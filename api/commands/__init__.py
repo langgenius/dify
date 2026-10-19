@@ -44,7 +44,6 @@ from .retention import (
 )
 from .storage import clear_orphaned_file_records, file_usage, migrate_oss, remove_orphaned_files_on_storage
 from .system import (
-    backfill_workflow_task_ids,
     convert_to_agent_apps,
     fix_app_site_missing,
     reset_encrypt_key_pair,
@@ -64,7 +63,6 @@ __all__ = [
     "archive_workflow_runs_plan",
     "backfill_plugin_auto_upgrade",
     "backfill_workflow_run_archive_bundles",
-    "backfill_workflow_task_ids",
     "clean_expired_messages",
     "clean_workflow_runs",
     "cleanup_orphaned_draft_variables",

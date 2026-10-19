@@ -487,14 +487,18 @@ def test_live_chatflow_stop_does_not_send_either_signal_for_another_owner(
     AppTaskService.stop_task(
         task_id, InvokeFrom.SERVICE_API, _USER_ID, AppMode.ADVANCED_CHAT, tenant_id="tenant-1", app_id="app-1"
     )
-    assert admissions == [
-        {
-            "tenant_id": "tenant-1",
-            "app_id": "app-1",
-            "task_id": task_id,
-            "owner": (CreatorUserRole.END_USER, _USER_ID),
-        }
-    ]
+    assert (
+        admissions
+        == [
+            {
+                "tenant_id": "tenant-1",
+                "app_id": "app-1",
+                "task_id": task_id,
+                "owner": (CreatorUserRole.END_USER, _USER_ID),
+            }
+        ]
+        * 2
+    )
     assert redis.reads == []
     assert redis.operations == []
     assert redis.commands == {}

@@ -85,40 +85,6 @@ class AppTaskControlService:
         set_app_task_stop_flag(task_id, redis=self._redis_client)
         return True
 
-    def backfill_legacy_workflow_task_ids(self) -> int:
-        """Index saved pauses before admitting traffic after a legacy-worker drain."""
-        repository = DifyAPISQLAlchemyWorkflowRunRepository(sessionmaker(bind=db.engine))
-        after_id: str | None = None
-        indexed = 0
-        while runs := repository.list_legacy_workflow_runs(after_id=after_id, limit=100):
-            for run in runs:
-                if run.status != WorkflowExecutionStatus.PAUSED:
-                    continue
-                try:
-                    pause = repository.get_workflow_pause(run.id)
-                    if pause is None:
-                        continue
-                    context = WorkflowResumptionContext.loads(pause.get_state().decode())
-                    indexed += AppTaskService.index_workflow_pause_task(
-                        workflow_run=run,
-                        pause_entity=pause,
-                        resumption_context=context,
-                        workflow_run_repo=repository,
-                    )
-                except Exception:
-                    logger.exception("Failed to index legacy workflow task, workflow_run_id=%s", run.id)
-            after_id = runs[-1].id
-
-        unresolved = repository.list_legacy_workflow_runs(after_id=None, limit=1)
-        if unresolved:
-            run = unresolved[0]
-            raise ValueError(
-                f"Legacy workflow task remains unindexed: {run.id} ({run.status}). "
-                "Drain legacy running executions and repair missing or invalid pause snapshots "
-                "before admitting traffic."
-            )
-        return indexed
-
     def stop_workflow_task_no_user_check(self, *, task_id: str) -> None:
         """Stop a workflow after app admission, without consulting the user ownership cache.
 
@@ -160,6 +126,7 @@ class AppTaskService:
         workflow_run_repo: APIWorkflowRunRepository,
     ) -> bool:
         """Recover a missing task ID only from the same run's saved invocation."""
+        # TODO: Remove legacy task recovery 30 days after the last legacy writer is retired.
         if workflow_run.task_id is not None:
             return False
         generate_entity = resumption_context.get_generate_entity()
@@ -174,6 +141,7 @@ class AppTaskService:
         )
         if (
             run_id != workflow_run.id
+            or generate_entity.app_config is None
             or generate_entity.app_config.tenant_id != workflow_run.tenant_id
             or generate_entity.app_config.app_id != workflow_run.app_id
             or generate_entity.user_id != workflow_run.created_by
@@ -186,6 +154,36 @@ class AppTaskService:
             pause_id=pause_entity.id,
             task_id=task_id,
         )
+
+    @staticmethod
+    def _recover_legacy_workflow_task_id(
+        *,
+        tenant_id: str,
+        app_id: str,
+        task_id: str,
+        owner: tuple[CreatorUserRole, str] | None,
+        repository: DifyAPISQLAlchemyWorkflowRunRepository,
+    ) -> None:
+        # TODO: Remove legacy task recovery 30 days after the last legacy writer is retired.
+        after_id: str | None = None
+        while pauses := repository.list_legacy_workflow_pauses(
+            tenant_id=tenant_id, app_id=app_id, owner=owner, after_id=after_id, limit=100
+        ):
+            for run, pause in pauses:
+                try:
+                    context = WorkflowResumptionContext.loads(pause.get_state().decode())
+                    saved_task_id = str(UUID(context.get_generate_entity().task_id))
+                except Exception:
+                    logger.exception("Failed to recover legacy workflow task, workflow_run_id=%s", run.id)
+                    continue
+                if saved_task_id == task_id and AppTaskService.index_workflow_pause_task(
+                    workflow_run=run,
+                    pause_entity=pause,
+                    resumption_context=context,
+                    workflow_run_repo=repository,
+                ):
+                    return
+            after_id = pauses[-1][1].id
 
     @staticmethod
     def stop_workflow_task(
@@ -210,6 +208,13 @@ class AppTaskService:
         repository = DifyAPISQLAlchemyWorkflowRunRepository(sessionmaker(bind=db.engine))
         try:
             run = repository.stop_paused_workflow_task(tenant_id=tenant_id, app_id=app_id, task_id=task_id, owner=owner)
+            if run is None:
+                AppTaskService._recover_legacy_workflow_task_id(
+                    tenant_id=tenant_id, app_id=app_id, task_id=task_id, owner=owner, repository=repository
+                )
+                run = repository.stop_paused_workflow_task(
+                    tenant_id=tenant_id, app_id=app_id, task_id=task_id, owner=owner
+                )
         except WorkflowTaskOwnerMismatchError:
             return False
         if run is not None and run.status == WorkflowExecutionStatus.RUNNING:

@@ -1247,10 +1247,21 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 .values(task_id=task_id)
             )
 
-    def list_legacy_workflow_runs(self, *, after_id: str | None, limit: int) -> Sequence[WorkflowRun]:
-        """Page unresolved control records across tenants for the upgrade backfill."""
+    def list_legacy_workflow_pauses(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        owner: tuple[CreatorUserRole, str] | None,
+        after_id: str | None,
+        limit: int,
+    ) -> Sequence[tuple[WorkflowRun, WorkflowPauseEntity]]:
+        """Page admitted legacy snapshots without loading graphs or pause reasons."""
+        # TODO: Remove legacy task recovery 30 days after the last legacy writer is retired.
         stmt = (
-            select(WorkflowRun)
+            select(WorkflowRun, WorkflowPause)
+            .select_from(WorkflowPause)
+            .join(WorkflowRun, WorkflowRun.id == WorkflowPause.workflow_run_id)
             .options(
                 load_only(
                     WorkflowRun.id,
@@ -1259,20 +1270,29 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                     WorkflowRun.task_id,
                     WorkflowRun.status,
                     WorkflowRun.created_by,
+                    WorkflowRun.created_by_role,
                 )
             )
             .where(
+                WorkflowRun.tenant_id == tenant_id,
+                WorkflowRun.app_id == app_id,
                 WorkflowRun.task_id.is_(None),
                 WorkflowRun.type.in_([WorkflowType.WORKFLOW, WorkflowType.CHAT]),
-                WorkflowRun.status.in_([WorkflowExecutionStatus.RUNNING, WorkflowExecutionStatus.PAUSED]),
+                WorkflowRun.status == WorkflowExecutionStatus.PAUSED,
+                WorkflowPause.resumed_at.is_(None),
             )
-            .order_by(WorkflowRun.id)
+            .order_by(WorkflowPause.id)
             .limit(limit)
         )
+        if owner is not None:
+            stmt = stmt.where(WorkflowRun.created_by_role == owner[0], WorkflowRun.created_by == owner[1])
         if after_id is not None:
-            stmt = stmt.where(WorkflowRun.id > after_id)
+            stmt = stmt.where(WorkflowPause.id > after_id)
         with self._session_maker() as session:
-            return session.scalars(stmt).all()
+            return [
+                (run, _PrivateWorkflowPauseEntity(pause_model=pause, reason_models=(), pause_reasons=()))
+                for run, pause in session.execute(stmt).tuples()
+            ]
 
     @override
     def backfill_workflow_pause_task_id(
