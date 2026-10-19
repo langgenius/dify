@@ -191,8 +191,6 @@ describe('AccessPoint', () => {
     expect(onUrlUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ queryString: '?environment=staging' }),
     )
-    await user.tab()
-    expect(stagingPanel).toHaveFocus()
   })
 
   it('selects the target environment and highlights its access point from the URL', () => {

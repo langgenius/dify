@@ -96,9 +96,6 @@ it('moves focus and activates the focused environment only with Enter', async ()
   expect(onUrlUpdate).toHaveBeenCalledWith(
     expect.objectContaining({ queryString: '?environment=environment-0' }),
   )
-  await userEvent.tab()
-  const panel = screen.getByRole('tabpanel', { name: 'test-1' })
-  await expect.element(panel).toHaveFocus()
 })
 
 it('focuses the first and last tabs with Home and End without activating them', async () => {

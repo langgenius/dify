@@ -118,7 +118,6 @@ function AccessPointContent({
           {...(!showEnvironmentTabs && { 'aria-labelledby': 'access-point-title', role: 'region' })}
           className="overscroll-contain"
           data-environment={selectedEnvironment}
-          tabIndex={0}
           style={{ overflowX: 'hidden' }}
         >
           <ScrollAreaContent
