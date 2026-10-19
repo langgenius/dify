@@ -2320,11 +2320,6 @@
       "count": 3
     }
   },
-  "web/app/components/workflow/nodes/knowledge-retrieval-v2/components/add-knowledge-space.tsx": {
-    "shadcn/no-restyle": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-common-variable-selector.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
