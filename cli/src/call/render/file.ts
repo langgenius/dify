@@ -19,11 +19,29 @@ const EXTENSIONS: Readonly<Record<string, string>> = {
   'application/pdf': 'pdf',
 }
 
+const EXTENDED_FILENAME = /(?:^|;)\s*filename\*=UTF-8'[^']*'([^;]*)/i
+
 const QUOTED_FILENAME = /filename="([^"]+)"/
 const BARE_FILENAME = /filename=([^;]+)/
 
 function filenameFromContentDisposition(value: string | null): string | undefined {
   if (value === null) return undefined
+  const extended = EXTENDED_FILENAME.exec(value)?.[1]
+  if (extended !== undefined) {
+    try {
+      const decoded = decodeURIComponent(extended.trim())
+      // An extended filename is a name, never a directory supplied by the server.
+      if (
+        decoded !== '' &&
+        decoded !== '.' &&
+        decoded !== '..' &&
+        !/[\\/\u0000-\u001F\u007F]/.test(decoded)
+      )
+        return decoded
+    } catch {
+      // Invalid percent escapes or UTF-8 fall back to the ordinary filename.
+    }
+  }
   return QUOTED_FILENAME.exec(value)?.[1] ?? BARE_FILENAME.exec(value)?.[1]?.trim()
 }
 
