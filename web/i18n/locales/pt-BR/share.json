@@ -29,6 +29,7 @@
   "connections.apiKeys.replace": "Substituir",
   "connections.apiKeys.replaceTitle": "Substituir chave de API",
   "connections.apiKeys.title": "Chaves de API do {{provider}}",
+  "connections.apiKeys.validationError": "A chave de API é inválida. Verifique a chave e tente novamente.",
   "connections.apiKeys.warning": "A chave de API é inválida. Substitua-a ou escolha outra chave.",
   "connections.configure.runningDescription": "As conexões podem ser alteradas após a conclusão desta resposta.",
   "connections.configure.title": "Conexões",

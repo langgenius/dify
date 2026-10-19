@@ -15,12 +15,20 @@ import {
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import { ReplaceApiKeyForm } from './replace-api-key-dialog'
+import { ApiKeyForm } from './api-key-dialog'
 import RequiredServices from './required-services'
 
-type Props = Omit<ComponentProps<typeof RequiredServices>, 'disabled' | 'onRequestReplace'> & {
+type Props = Omit<
+  ComponentProps<typeof RequiredServices>,
+  'disabled' | 'onRequestReplace' | 'onRequestAddApiKey'
+> & {
   isResponding?: boolean
 }
+
+type ApiKeyEditor = {
+  serviceId: string
+  readmeUrl?: string
+} & ({ mode: 'add' } | { mode: 'replace'; connectionId: string; name: string })
 
 export default function ConfigureConnections({
   services,
@@ -34,13 +42,8 @@ export default function ConfigureConnections({
 }: Props) {
   const { t } = useTranslation(['share', 'common'])
   const [open, setOpen] = useState(false)
-  const [replacement, setReplacement] = useState<{
-    serviceId: string
-    connectionId: string
-    name: string
-    readmeUrl?: string
-  } | null>(null)
-  const replacementSavingRef = useRef(false)
+  const [apiKeyEditor, setApiKeyEditor] = useState<ApiKeyEditor | null>(null)
+  const apiKeySavingRef = useRef(false)
   const returnToConfigurationRef = useRef(false)
   const warningCount = services.filter((service) => {
     const selectedConnection = service.availableConnections.find(
@@ -53,24 +56,31 @@ export default function ConfigureConnections({
     const service = services.find((item) => item.id === serviceId)
     const connection = service?.availableConnections.find((item) => item.id === connectionId)
     if (!connection) return
-    setReplacement({
+    setApiKeyEditor({
+      mode: 'replace',
       serviceId,
       connectionId,
       name: connection.name,
       readmeUrl: service?.readmeUrl,
     })
   }
+  const requestAddApiKey = (serviceId: string) => {
+    if (isResponding) return
+    const service = services.find((item) => item.id === serviceId)
+    if (!service?.methods.includes('api-key')) return
+    setApiKeyEditor({ mode: 'add', serviceId, readmeUrl: service.readmeUrl })
+  }
   const showConfiguration = () => {
-    if (replacementSavingRef.current) return
+    if (apiKeySavingRef.current) return
     returnToConfigurationRef.current = true
-    setReplacement(null)
+    setApiKeyEditor(null)
   }
 
   return (
     <Dialog
       open={open}
       onOpenChange={(nextOpen, details) => {
-        if (!nextOpen && replacement) {
+        if (!nextOpen && apiKeyEditor) {
           details.cancel()
           showConfiguration()
           return
@@ -79,7 +89,7 @@ export default function ConfigureConnections({
       }}
       onOpenChangeComplete={(nextOpen) => {
         if (!nextOpen) {
-          setReplacement(null)
+          setApiKeyEditor(null)
           returnToConfigurationRef.current = false
         }
       }}
@@ -98,20 +108,23 @@ export default function ConfigureConnections({
           </Badge>
         )}
       </DialogTrigger>
-      <DialogContent className={replacement ? 'w-140' : 'w-160'}>
-        {replacement ? (
-          <ReplaceApiKeyForm
-            key={`${replacement.serviceId}:${replacement.connectionId}`}
-            connectionName={replacement.name}
-            readmeUrl={replacement.readmeUrl}
+      <DialogContent className={apiKeyEditor ? 'w-140' : 'w-160'}>
+        {apiKeyEditor ? (
+          <ApiKeyForm
+            key={`${apiKeyEditor.mode}:${apiKeyEditor.serviceId}:${apiKeyEditor.mode === 'replace' ? apiKeyEditor.connectionId : ''}`}
+            mode={apiKeyEditor.mode}
+            connectionName={apiKeyEditor.mode === 'replace' ? apiKeyEditor.name : ''}
+            readmeUrl={apiKeyEditor.readmeUrl}
             onSave={(values) =>
-              onReplace?.(replacement.serviceId, replacement.connectionId, values)
+              apiKeyEditor.mode === 'add'
+                ? onConnect(apiKeyEditor.serviceId, 'api-key', values)
+                : onReplace?.(apiKeyEditor.serviceId, apiKeyEditor.connectionId, values)
             }
             onClose={showConfiguration}
             onSavingChange={(saving) => {
-              replacementSavingRef.current = saving
+              apiKeySavingRef.current = saving
             }}
-            disabled={isResponding || !onReplace}
+            disabled={isResponding || (apiKeyEditor.mode === 'replace' && !onReplace)}
           />
         ) : (
           <>
@@ -146,6 +159,7 @@ export default function ConfigureConnections({
                   onReconnect={onReconnect}
                   onReplace={onReplace}
                   onRequestReplace={requestReplacement}
+                  onRequestAddApiKey={requestAddApiKey}
                   onRemove={onRemove}
                 />
               </div>

@@ -1,7 +1,7 @@
 'use client'
 
 import type { RefObject } from 'react'
-import type { ReplaceApiKeyValues } from './replace-api-key-dialog'
+import type { ApiKeyValues } from './api-key-dialog'
 import type { RequiredConnectionService } from './required-services'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -16,17 +16,18 @@ import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@langgeni
 import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import ReplaceApiKeyDialog from './replace-api-key-dialog'
+import ApiKeyDialog from './api-key-dialog'
 
 export type ConnectionActions = {
   onReconnect?: (serviceId: string, connectionId: string) => void
   onReplace?: (
     serviceId: string,
     connectionId: string,
-    values: ReplaceApiKeyValues,
+    values: ApiKeyValues,
   ) => void | Promise<void>
   onRemove?: (serviceId: string, connectionId: string) => void
   onRequestReplace?: (serviceId: string, connectionId: string) => void
+  onRequestAddApiKey?: (serviceId: string) => void
 }
 
 type Connection = RequiredConnectionService['availableConnections'][number]
@@ -36,7 +37,11 @@ type Props = ConnectionActions & {
   labelledBy: string
   describedBy: string
   disabled?: boolean
-  onConnect: (serviceId: string, method: RequiredConnectionService['methods'][number]) => void
+  onConnect: (
+    serviceId: string,
+    method: RequiredConnectionService['methods'][number],
+    values?: ApiKeyValues,
+  ) => void | Promise<void>
   onConnectionChange: (serviceId: string, connectionId: string) => void
 }
 
@@ -115,14 +120,17 @@ export default function ServiceConnectionSelector({
   onReconnect,
   onReplace,
   onRequestReplace,
+  onRequestAddApiKey,
   onRemove,
 }: Props) {
   const { t } = useTranslation(['share'])
   const methodId = useId()
   const selectedNameId = useId()
   const triggerRef = useRef<HTMLButtonElement>(null)
-  const [replacementConnection, setReplacementConnection] = useState<Connection | null>(null)
-  const [replacementOpen, setReplacementOpen] = useState(false)
+  const [editor, setEditor] = useState<
+    { mode: 'add' } | { mode: 'replace'; connection: Connection } | null
+  >(null)
+  const [editorOpen, setEditorOpen] = useState(false)
   const selectedConnection = service.availableConnections.find(
     (connection) => connection.id === service.selectedConnectionId,
   )
@@ -240,8 +248,8 @@ export default function ServiceConnectionSelector({
                               onRequestReplace(service.id, connection.id)
                               return
                             }
-                            setReplacementConnection(connection)
-                            setReplacementOpen(true)
+                            setEditor({ mode: 'replace', connection })
+                            setEditorOpen(true)
                           }}
                         >
                           {t(($) => $['connections.apiKeys.replace'], { ns: 'share' })}
@@ -303,7 +311,15 @@ export default function ServiceConnectionSelector({
                 render={
                   <Button variant="ghost" disabled={disabled} className="justify-start px-2" />
                 }
-                onClick={() => onConnect(service.id, 'api-key')}
+                onClick={() => {
+                  if (disabled) return
+                  if (onRequestAddApiKey) {
+                    onRequestAddApiKey(service.id)
+                    return
+                  }
+                  setEditor({ mode: 'add' })
+                  setEditorOpen(true)
+                }}
               >
                 <span className="i-ri-add-line size-4" aria-hidden="true" />
                 {t(($) => $['connections.setup.addApiKey'], { ns: 'share' })}
@@ -312,17 +328,22 @@ export default function ServiceConnectionSelector({
           </div>
         </PopoverContent>
       </Popover>
-      {replacementConnection && (
-        <ReplaceApiKeyDialog
-          key={replacementConnection.id}
-          connectionName={replacementConnection.name}
+      {editor && (
+        <ApiKeyDialog
+          key={editor.mode === 'replace' ? editor.connection.id : 'add'}
+          mode={editor.mode}
+          connectionName={editor.mode === 'replace' ? editor.connection.name : undefined}
           readmeUrl={service.readmeUrl}
-          open={replacementOpen}
-          onOpenChange={setReplacementOpen}
-          onCloseComplete={() => setReplacementConnection(null)}
-          onSave={(values) => onReplace?.(service.id, replacementConnection.id, values)}
+          open={editorOpen}
+          onOpenChange={setEditorOpen}
+          onCloseComplete={() => setEditor(null)}
+          onSave={(values) =>
+            editor.mode === 'add'
+              ? onConnect(service.id, 'api-key', values)
+              : onReplace?.(service.id, editor.connection.id, values)
+          }
           finalFocus={triggerRef}
-          disabled={disabled || !onReplace}
+          disabled={disabled || (editor.mode === 'replace' && !onReplace)}
         />
       )}
     </>

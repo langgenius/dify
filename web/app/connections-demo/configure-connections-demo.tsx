@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReplaceApiKeyValues } from '@/app/components/share/connections/replace-api-key-dialog'
+import type { ApiKeyValues } from '@/app/components/share/connections/api-key-dialog'
 import type {
   ConnectionMethod,
   RequiredConnectionService,
@@ -66,10 +66,13 @@ const initialServices: readonly RequiredConnectionService[] = [
 export default function ConfigureConnectionsDemo() {
   const [services, setServices] = useState(initialServices)
 
-  const handleConnect = (serviceId: string, method: ConnectionMethod) => {
+  const handleConnect = (serviceId: string, method: ConnectionMethod, values?: ApiKeyValues) => {
     const connection: RequiredConnectionService['availableConnections'][number] = {
-      id: `${serviceId}-${method}-demo`,
-      name: method === 'api-key' ? 'Demo API Key' : 'demo@dify.ai',
+      id:
+        method === 'api-key'
+          ? `${serviceId}-api-key-${crypto.randomUUID()}`
+          : `${serviceId}-${method}-demo`,
+      name: method === 'api-key' ? (values?.name ?? 'Demo API Key') : 'demo@dify.ai',
       method,
       status: 'active',
     }
@@ -102,7 +105,7 @@ export default function ConfigureConnectionsDemo() {
   const handleRestoreConnection = (
     serviceId: string,
     connectionId: string,
-    replacement?: ReplaceApiKeyValues,
+    replacement?: ApiKeyValues,
   ) => {
     setServices((currentServices) =>
       currentServices.map((service) => {

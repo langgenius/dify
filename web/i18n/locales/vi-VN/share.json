@@ -29,6 +29,7 @@
   "connections.apiKeys.replace": "Thay thế",
   "connections.apiKeys.replaceTitle": "Thay thế khóa API",
   "connections.apiKeys.title": "Khóa API của {{provider}}",
+  "connections.apiKeys.validationError": "Khóa API không hợp lệ. Hãy kiểm tra khóa và thử lại.",
   "connections.apiKeys.warning": "Khóa API không hợp lệ. Thay thế hoặc chọn khóa khác.",
   "connections.configure.runningDescription": "Có thể thay đổi các kết nối sau khi phản hồi này hoàn tất.",
   "connections.configure.title": "Kết nối",

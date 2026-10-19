@@ -29,6 +29,7 @@
   "connections.apiKeys.replace": "बदलें",
   "connections.apiKeys.replaceTitle": "API कुंजी बदलें",
   "connections.apiKeys.title": "{{provider}} API कुंजियाँ",
+  "connections.apiKeys.validationError": "API कुंजी अमान्य है। कुंजी की जाँच करें और फिर से कोशिश करें।",
   "connections.apiKeys.warning": "API कुंजी अमान्य है। इसे बदलें या दूसरी कुंजी चुनें।",
   "connections.configure.runningDescription": "यह जवाब पूरा होने के बाद कनेक्शन बदले जा सकते हैं।",
   "connections.configure.title": "कनेक्शन",

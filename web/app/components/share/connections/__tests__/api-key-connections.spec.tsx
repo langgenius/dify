@@ -61,13 +61,13 @@ describe('API Key connection management', () => {
     await user.type(apiKey, '   ')
     expect(save).toBeDisabled()
     await user.clear(apiKey)
-    await user.type(apiKey, 'new-api-key')
+    await user.type(apiKey, 'sk-new-api-key')
     await user.clear(name)
     await user.type(name, 'Replacement key')
     await user.click(save)
     expect(onReplace).toHaveBeenCalledExactlyOnceWith('google-search', 'invalid-key', {
       name: 'Replacement key',
-      apiKey: 'new-api-key',
+      apiKey: 'sk-new-api-key',
     })
     await waitFor(() => expect(replacement).not.toBeInTheDocument())
     await waitFor(() => expect(trigger).toHaveFocus())
@@ -137,7 +137,23 @@ describe('API Key connection management', () => {
     await user.click(
       within(popover).getByRole('button', { name: 'share.connections.setup.addApiKey' }),
     )
-    expect(onConnect).toHaveBeenCalledExactlyOnceWith('google-search', 'api-key')
+    expect(onConnect).not.toHaveBeenCalled()
+    const addDialog = await screen.findByRole('dialog', {
+      name: 'share.connections.setup.addApiKey',
+    })
+    await user.type(
+      within(addDialog).getByRole('textbox', { name: 'plugin.auth.authorizationName' }),
+      'Search key',
+    )
+    await user.type(
+      within(addDialog).getByLabelText(/share\.connections\.setup\.apiKey/),
+      'sk-search-secret',
+    )
+    await user.click(within(addDialog).getByRole('button', { name: 'common.operation.save' }))
+    expect(onConnect).toHaveBeenCalledExactlyOnceWith('google-search', 'api-key', {
+      name: 'Search key',
+      apiKey: 'sk-search-secret',
+    })
   })
 
   it('discards unsaved secrets after cancelling or dismissing a replacement session', async () => {
@@ -168,7 +184,7 @@ describe('API Key connection management', () => {
       expect(
         within(dialog).getByRole('textbox', { name: 'plugin.auth.authorizationName' }),
       ).toHaveValue('Personal key')
-      await user.type(apiKey, 'unsaved-api-key')
+      await user.type(apiKey, 'sk-unsaved-api-key')
       if (dismissal === 'escape') await user.keyboard('{Escape}')
       else
         await user.click(
@@ -226,7 +242,7 @@ describe('API Key connection management', () => {
     expect(replacement).toBe(dialog)
     expect(screen.getAllByRole('dialog', { hidden: true })).toHaveLength(1)
     const apiKey = within(replacement).getByLabelText(/share\.connections\.setup\.apiKey/)
-    await user.type(apiKey, 'new-api-key')
+    await user.type(apiKey, 'sk-new-api-key')
     rerender(<ConfigureConnections {...props} isResponding />)
     expect(apiKey).toBeDisabled()
     expect(

@@ -29,6 +29,7 @@
   "connections.apiKeys.replace": "Замінити",
   "connections.apiKeys.replaceTitle": "Замінити ключ API",
   "connections.apiKeys.title": "Ключі API {{provider}}",
+  "connections.apiKeys.validationError": "Ключ API недійсний. Перевірте ключ і спробуйте ще раз.",
   "connections.apiKeys.warning": "Ключ API недійсний. Замініть його або виберіть інший ключ.",
   "connections.configure.runningDescription": "Підключення можна змінити після завершення цієї відповіді.",
   "connections.configure.title": "Підключення",

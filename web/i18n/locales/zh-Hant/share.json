@@ -29,6 +29,7 @@
   "connections.apiKeys.replace": "替換",
   "connections.apiKeys.replaceTitle": "替換 API Key",
   "connections.apiKeys.title": "{{provider}} API Key",
+  "connections.apiKeys.validationError": "API Key 無效，請檢查後重試。",
   "connections.apiKeys.warning": "API Key 無效，請替換或選擇其他 Key。",
   "connections.configure.runningDescription": "本次回覆結束後可變更連接。",
   "connections.configure.title": "連接",

@@ -29,6 +29,7 @@
   "connections.apiKeys.replace": "替换",
   "connections.apiKeys.replaceTitle": "替换 API Key",
   "connections.apiKeys.title": "{{provider}} API Key",
+  "connections.apiKeys.validationError": "API Key 无效，请检查后重试。",
   "connections.apiKeys.warning": "API Key 无效，请替换或选择其他 Key。",
   "connections.configure.runningDescription": "本次回复结束后可更改连接。",
   "connections.configure.title": "连接",

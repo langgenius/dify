@@ -29,6 +29,7 @@
   "connections.apiKeys.replace": "Ganti",
   "connections.apiKeys.replaceTitle": "Ganti kunci API",
   "connections.apiKeys.title": "Kunci API {{provider}}",
+  "connections.apiKeys.validationError": "Kunci API tidak valid. Periksa kunci dan coba lagi.",
   "connections.apiKeys.warning": "Kunci API tidak valid. Ganti atau pilih kunci lain.",
   "connections.configure.runningDescription": "Koneksi dapat diubah setelah respons ini selesai.",
   "connections.configure.title": "Koneksi",

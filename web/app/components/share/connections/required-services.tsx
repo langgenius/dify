@@ -1,12 +1,14 @@
 'use client'
 
+import type { ApiKeyValues } from './api-key-dialog'
 import type { RequiredConnection } from './required-connections'
 import type { ConnectionActions } from './service-connection-selector'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useId } from 'react'
+import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import ApiKeyDialog from './api-key-dialog'
 import ServiceConnectionSelector from './service-connection-selector'
 
 export type ConnectionMethod = 'oauth' | 'api-key'
@@ -26,7 +28,11 @@ export type RequiredConnectionService = RequiredConnection & {
 
 type Props = ConnectionActions & {
   services: readonly RequiredConnectionService[]
-  onConnect: (serviceId: string, method: ConnectionMethod) => void
+  onConnect: (
+    serviceId: string,
+    method: ConnectionMethod,
+    values?: ApiKeyValues,
+  ) => void | Promise<void>
   onConnectionChange: (serviceId: string, connectionId: string) => void
   disabled?: boolean
   className?: string
@@ -40,6 +46,7 @@ function ServiceItem({
   onReconnect,
   onReplace,
   onRequestReplace,
+  onRequestAddApiKey,
   onRemove,
 }: {
   service: RequiredConnectionService
@@ -51,12 +58,16 @@ function ServiceItem({
   | 'onReconnect'
   | 'onReplace'
   | 'onRequestReplace'
+  | 'onRequestAddApiKey'
   | 'onRemove'
 >) {
   const { t } = useTranslation(['share'])
   const nameId = useId()
   const descriptionId = useId()
   const warningId = useId()
+  const rowRef = useRef<HTMLLIElement>(null)
+  const addApiKeyTriggerRef = useRef<HTMLButtonElement>(null)
+  const [addApiKeyOpen, setAddApiKeyOpen] = useState(false)
   const canOAuth = service.methods.includes('oauth')
   const canApiKey = service.methods.includes('api-key')
   const selectedConnection = service.availableConnections.find(
@@ -67,8 +78,10 @@ function ServiceItem({
 
   return (
     <li
+      ref={rowRef}
+      tabIndex={-1}
       aria-labelledby={nameId}
-      className="grid grid-cols-[32px_minmax(0,1fr)] items-center gap-3 rounded-2xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-3 sm:grid-cols-[32px_minmax(0,1fr)_auto]"
+      className="grid grid-cols-[32px_minmax(0,1fr)] items-center gap-3 rounded-2xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-3 focus-visible:ring-2 focus-visible:ring-state-accent-solid sm:grid-cols-[32px_minmax(0,1fr)_auto]"
     >
       <AppIcon
         size="small"
@@ -113,6 +126,7 @@ function ServiceItem({
             onReconnect={onReconnect}
             onReplace={onReplace}
             onRequestReplace={onRequestReplace}
+            onRequestAddApiKey={onRequestAddApiKey}
             onRemove={onRemove}
           />
         ) : (
@@ -134,10 +148,15 @@ function ServiceItem({
             )}
             {canApiKey && (
               <Button
+                ref={addApiKeyTriggerRef}
                 disabled={disabled}
                 variant="secondary-accent"
                 aria-describedby={`${nameId} ${descriptionId}`}
-                onClick={() => onConnect(service.id, 'api-key')}
+                onClick={() => {
+                  if (disabled) return
+                  if (onRequestAddApiKey) onRequestAddApiKey(service.id)
+                  else setAddApiKeyOpen(true)
+                }}
               >
                 {t(($) => $['connections.setup.addApiKey'], { ns: 'share' })}
               </Button>
@@ -145,6 +164,15 @@ function ServiceItem({
           </>
         )}
       </div>
+      <ApiKeyDialog
+        mode="add"
+        readmeUrl={service.readmeUrl}
+        open={addApiKeyOpen}
+        onOpenChange={setAddApiKeyOpen}
+        onSave={(values) => onConnect(service.id, 'api-key', values)}
+        finalFocus={() => addApiKeyTriggerRef.current ?? rowRef.current}
+        disabled={disabled}
+      />
     </li>
   )
 }
@@ -157,6 +185,7 @@ export default function RequiredServices({
   onReconnect,
   onReplace,
   onRequestReplace,
+  onRequestAddApiKey,
   onRemove,
   className,
 }: Props) {
@@ -174,6 +203,7 @@ export default function RequiredServices({
           onReconnect={onReconnect}
           onReplace={onReplace}
           onRequestReplace={onRequestReplace}
+          onRequestAddApiKey={onRequestAddApiKey}
           onRemove={onRemove}
         />
       ))}

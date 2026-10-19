@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReplaceApiKeyValues } from '@/app/components/share/connections/replace-api-key-dialog'
+import type { ApiKeyValues } from '@/app/components/share/connections/api-key-dialog'
 import type { RequiredConnection } from '@/app/components/share/connections/required-connections'
 import type { RequiredConnectionService } from '@/app/components/share/connections/required-services'
 import { useState } from 'react'
@@ -73,12 +73,16 @@ export default function ConnectionsDemo() {
   const handleConnect = (
     serviceId: string,
     method: RequiredConnectionService['methods'][number],
+    values?: ApiKeyValues,
   ) => {
     const connection: RequiredConnectionService['availableConnections'][number] = {
-      id: `${serviceId}-${method}-demo`,
+      id:
+        method === 'api-key'
+          ? `${serviceId}-api-key-${crypto.randomUUID()}`
+          : `${serviceId}-${method}-demo`,
       name:
         method === 'api-key'
-          ? 'Demo API Key'
+          ? (values?.name ?? 'Demo API Key')
           : (demoAccountNames[serviceId] ?? 'Demo OAuth account'),
       method,
       status: 'active',
@@ -109,11 +113,7 @@ export default function ConnectionsDemo() {
     )
   }
 
-  const handleReconnect = (
-    serviceId: string,
-    connectionId: string,
-    replacement?: ReplaceApiKeyValues,
-  ) => {
+  const handleReconnect = (serviceId: string, connectionId: string, replacement?: ApiKeyValues) => {
     setServices((currentServices) =>
       currentServices.map((service) =>
         service.id === serviceId

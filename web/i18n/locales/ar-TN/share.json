@@ -29,6 +29,7 @@
   "connections.apiKeys.replace": "استبدال",
   "connections.apiKeys.replaceTitle": "استبدال مفتاح API",
   "connections.apiKeys.title": "مفاتيح API لـ {{provider}}",
+  "connections.apiKeys.validationError": "مفتاح API غير صالح. تحقق من المفتاح وحاول مرة أخرى.",
   "connections.apiKeys.warning": "مفتاح API غير صالح. استبدله أو اختر مفتاحًا آخر.",
   "connections.configure.runningDescription": "يمكن تغيير الاتصالات بعد اكتمال هذا الرد.",
   "connections.configure.title": "الاتصالات",

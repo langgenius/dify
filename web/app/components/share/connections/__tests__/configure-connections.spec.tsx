@@ -36,6 +36,94 @@ const invalidService: RequiredConnectionService = {
 }
 
 describe('ConfigureConnections', () => {
+  it('adds a key in the same configuration surface without changing another service selection', async () => {
+    const user = userEvent.setup()
+    const onConnect = vi.fn()
+    function ConnectedConfiguration() {
+      const [currentServices, setCurrentServices] = useState(services)
+      return (
+        <ConfigureConnections
+          services={currentServices}
+          onConnectionChange={vi.fn()}
+          onConnect={(serviceId, method, values) => {
+            onConnect(serviceId, method, values)
+            if (method !== 'api-key' || !values) return
+            setCurrentServices((current) =>
+              current.map((service) =>
+                service.id === serviceId
+                  ? {
+                      ...service,
+                      availableConnections: [
+                        { id: 'new-key', name: values.name, method: 'api-key', status: 'active' },
+                      ],
+                      selectedConnectionId: 'new-key',
+                    }
+                  : service,
+              ),
+            )
+          }}
+        />
+      )
+    }
+    render(<ConnectedConfiguration />)
+    await user.click(screen.getByRole('button', { name: 'share.connections.configure.title' }))
+    const configuration = await screen.findByRole('dialog', {
+      name: 'share.connections.configure.title',
+    })
+    const openAdd = async () => {
+      const notion = within(configuration).getByRole('listitem', { name: 'Notion' })
+      await user.click(
+        within(notion).getByRole('button', { name: 'share.connections.setup.addApiKey' }),
+      )
+      const form = await screen.findByRole('dialog', { name: 'share.connections.setup.addApiKey' })
+      expect(form).toBe(configuration)
+      expect(screen.getAllByRole('dialog', { hidden: true })).toHaveLength(1)
+      expect(
+        within(form).getByRole('textbox', { name: 'plugin.auth.authorizationName' }),
+      ).toHaveValue('')
+      expect(within(form).getByLabelText(/share\.connections\.setup\.apiKey/)).toHaveValue('')
+      return form
+    }
+    for (const dismissal of ['close', 'escape']) {
+      const discarded = await openAdd()
+      await user.type(
+        within(discarded).getByLabelText(/share\.connections\.setup\.apiKey/),
+        'sk-unsaved-secret',
+      )
+      if (dismissal === 'escape') await user.keyboard('{Escape}')
+      else
+        await user.click(within(discarded).getByRole('button', { name: 'common.operation.close' }))
+      expect(await screen.findByRole('dialog', { name: 'share.connections.configure.title' })).toBe(
+        configuration,
+      )
+      expect(onConnect).not.toHaveBeenCalled()
+      expect(within(configuration).getByRole('button', { name: 'Gmail' })).toHaveTextContent(
+        'alex@example.com',
+      )
+    }
+    const confirmed = await openAdd()
+    await user.type(
+      within(confirmed).getByRole('textbox', { name: 'plugin.auth.authorizationName' }),
+      'Notion key',
+    )
+    await user.type(
+      within(confirmed).getByLabelText(/share\.connections\.setup\.apiKey/),
+      'sk-notion-secret',
+    )
+    expect(onConnect).not.toHaveBeenCalled()
+    await user.click(within(confirmed).getByRole('button', { name: 'common.operation.save' }))
+    const resumed = await screen.findByRole('dialog', { name: 'share.connections.configure.title' })
+    expect(resumed).toBe(configuration)
+    expect(onConnect).toHaveBeenCalledExactlyOnceWith('notion', 'api-key', {
+      name: 'Notion key',
+      apiKey: 'sk-notion-secret',
+    })
+    expect(within(resumed).getByRole('button', { name: 'Notion' })).toHaveTextContent('Notion key')
+    expect(within(resumed).getByRole('button', { name: 'Gmail' })).toHaveTextContent(
+      'alex@example.com',
+    )
+  })
+
   it('returns to the same configuration surface after discarding a replacement and starts the next draft empty', async () => {
     const user = userEvent.setup()
     const onReplace = vi.fn()
@@ -76,7 +164,7 @@ describe('ConfigureConnections', () => {
       expect(apiKey).toHaveValue('')
       await user.clear(name)
       await user.type(name, 'Unsaved name')
-      await user.type(apiKey, 'unsaved-secret')
+      await user.type(apiKey, 'sk-unsaved-secret')
       if (dismissal === 'escape') await user.keyboard('{Escape}')
       else
         await user.click(
@@ -168,7 +256,7 @@ describe('ConfigureConnections', () => {
     await user.type(replacementName, 'Replacement key')
     await user.type(
       within(replacement).getByLabelText(/share\.connections\.setup\.apiKey/),
-      'replacement-key',
+      'sk-replacement-key',
     )
     expect(onReplace).not.toHaveBeenCalled()
     expect(trigger).toHaveAccessibleName('share.connections.configure.title 1')
@@ -177,7 +265,7 @@ describe('ConfigureConnections', () => {
 
     expect(onReplace).toHaveBeenCalledExactlyOnceWith('search', 'key', {
       name: 'Replacement key',
-      apiKey: 'replacement-key',
+      apiKey: 'sk-replacement-key',
     })
     const resumed = await screen.findByRole('dialog', {
       name: 'share.connections.configure.title',
@@ -332,7 +420,44 @@ describe('ConfigureConnections', () => {
     expect(connect).toBeEnabled()
     expect(addApiKey).toBeEnabled()
     await user.click(addApiKey)
-    expect(onConnect).toHaveBeenCalledExactlyOnceWith('notion', 'api-key')
+    expect(onConnect).not.toHaveBeenCalled()
+    const addDialog = await screen.findByRole('dialog', {
+      name: 'share.connections.setup.addApiKey',
+    })
+    expect(addDialog).toBe(dialog)
+    await user.type(
+      within(addDialog).getByRole('textbox', { name: 'plugin.auth.authorizationName' }),
+      'Notion key',
+    )
+    await user.type(
+      within(addDialog).getByLabelText(/share\.connections\.setup\.apiKey/),
+      'sk-notion-secret',
+    )
+    rerender(
+      <ConfigureConnections
+        services={services}
+        onConnect={onConnect}
+        onConnectionChange={onConnectionChange}
+        isResponding
+      />,
+    )
+    expect(within(addDialog).getByLabelText(/share\.connections\.setup\.apiKey/)).toBeDisabled()
+    expect(within(addDialog).getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
+    rerender(
+      <ConfigureConnections
+        services={services}
+        onConnect={onConnect}
+        onConnectionChange={onConnectionChange}
+      />,
+    )
+    await user.click(within(addDialog).getByRole('button', { name: 'common.operation.save' }))
+    expect(onConnect).toHaveBeenCalledExactlyOnceWith('notion', 'api-key', {
+      name: 'Notion key',
+      apiKey: 'sk-notion-secret',
+    })
+    expect(await screen.findByRole('dialog', { name: 'share.connections.configure.title' })).toBe(
+      dialog,
+    )
   })
 
   it('keeps the controlled connection and API Key label after closing and reopening the dialog', async () => {

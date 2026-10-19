@@ -29,6 +29,7 @@
   "connections.apiKeys.replace": "Zamenjaj",
   "connections.apiKeys.replaceTitle": "Zamenjaj ključ API",
   "connections.apiKeys.title": "Ključi API {{provider}}",
+  "connections.apiKeys.validationError": "Ključ API ni veljaven. Preverite ključ in poskusite znova.",
   "connections.apiKeys.warning": "Ključ API ni veljaven. Zamenjajte ga ali izberite drug ključ.",
   "connections.configure.runningDescription": "Povezave lahko spremenite, ko bo ta odgovor dokončan.",
   "connections.configure.title": "Povezave",

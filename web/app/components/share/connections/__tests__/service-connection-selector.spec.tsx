@@ -124,9 +124,22 @@ describe('Service connection management', () => {
     await user.click(
       within(reopenedPopover).getByRole('button', { name: 'share.connections.setup.addApiKey' }),
     )
+    expect(onConnect.mock.calls).toEqual([['gmail', 'oauth']])
+    const addDialog = await screen.findByRole('dialog', {
+      name: 'share.connections.setup.addApiKey',
+    })
+    await user.type(
+      within(addDialog).getByRole('textbox', { name: 'plugin.auth.authorizationName' }),
+      'Work key',
+    )
+    await user.type(
+      within(addDialog).getByLabelText(/share\.connections\.setup\.apiKey/),
+      'sk-work-secret',
+    )
+    await user.click(within(addDialog).getByRole('button', { name: 'common.operation.save' }))
     expect(onConnect.mock.calls).toEqual([
       ['gmail', 'oauth'],
-      ['gmail', 'api-key'],
+      ['gmail', 'api-key', { name: 'Work key', apiKey: 'sk-work-secret' }],
     ])
   })
 })

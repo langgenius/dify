@@ -29,6 +29,7 @@
   "connections.apiKeys.replace": "ປ່ຽນແທນ",
   "connections.apiKeys.replaceTitle": "ປ່ຽນແທນຄີ API",
   "connections.apiKeys.title": "ຄີ API ຂອງ {{provider}}",
+  "connections.apiKeys.validationError": "ຄີ API ບໍ່ຖືກຕ້ອງ. ກວດສອບຄີ ແລະ ລອງໃໝ່.",
   "connections.apiKeys.warning": "ຄີ API ບໍ່ຖືກຕ້ອງ. ປ່ຽນແທນ ຫຼື ເລືອກຄີອື່ນ.",
   "connections.configure.runningDescription": "ສາມາດປ່ຽນການເຊື່ອມຕໍ່ໄດ້ຫຼັງຈາກຄຳຕອບນີ້ສຳເລັດ.",
   "connections.configure.title": "ການເຊື່ອມຕໍ່",

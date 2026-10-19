@@ -29,6 +29,7 @@
   "connections.apiKeys.replace": "Reemplazar",
   "connections.apiKeys.replaceTitle": "Reemplazar clave API",
   "connections.apiKeys.title": "Claves API de {{provider}}",
+  "connections.apiKeys.validationError": "La clave API no es válida. Comprueba la clave e inténtalo de nuevo.",
   "connections.apiKeys.warning": "La clave API no es válida. Reemplázala o elige otra clave.",
   "connections.configure.runningDescription": "Las conexiones se pueden cambiar cuando termine esta respuesta.",
   "connections.configure.title": "Conexiones",
