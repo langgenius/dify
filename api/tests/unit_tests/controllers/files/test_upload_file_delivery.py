@@ -138,6 +138,30 @@ class TestFilePreviewApi:
         assert b"".join(response.response) == b"x" * 100
 
     @patch.object(module, "application_services")
+    def test_range_request_does_not_drain_the_stream(self, mock_application_services, app: Flask):
+        # A Range response must slice while streaming. Joining the whole
+        # stream first loads the entire file into memory for every ranged
+        # request; the old full-file path was streamed.
+        drained = False
+
+        def big_stream():
+            nonlocal drained
+            for index in range(10):
+                yield bytes([index]) * 100
+            drained = True
+
+        mock_application_services.return_value.upload_file_delivery.get_signed_file_preview.return_value = _delivery(
+            mime_type="audio/mpeg", size=1000, extension="mp3", content=big_stream()
+        )
+
+        with app.test_request_context(_SIGNED_QUERY, headers={"Range": "bytes=0-99"}):
+            response = module.FilePreviewApi().get("file-id")
+
+        assert response.status_code == 206
+        assert b"".join(response.response) == bytes([0]) * 100
+        assert drained is False
+
+    @patch.object(module, "application_services")
     def test_audio_preview_suffix_range_returns_file_tail(self, mock_application_services, app: Flask):
         mock_application_services.return_value.upload_file_delivery.get_signed_file_preview.return_value = _delivery(
             mime_type="audio/mpeg", size=1000, extension="mp3", content=b"x" * 1000
