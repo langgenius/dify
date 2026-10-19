@@ -258,6 +258,7 @@
   "resize.width": "Breedte: {{width}} pixels",
   "settings.ipPolicies": "IP Policies",
   "settings.ipPoliciesDescription": "Reusable rules that control which IP addresses or ranges can access your apps",
+  "settings.ipPoliciesProPlanRequired": "Voor het toepassen van een beleid op een app is het Pro-abonnement vereist",
   "settings.ipPolicyAddCurrentIp": "Add it",
   "settings.ipPolicyAddEntry": "Add",
   "settings.ipPolicyAllowlist": "Allowlist",

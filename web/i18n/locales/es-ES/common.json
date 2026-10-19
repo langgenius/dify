@@ -258,6 +258,7 @@
   "resize.width": "Ancho: {{width}} píxeles",
   "settings.ipPolicies": "IP Policies",
   "settings.ipPoliciesDescription": "Reusable rules that control which IP addresses or ranges can access your apps",
+  "settings.ipPoliciesProPlanRequired": "Aplicar una política a una aplicación requiere el plan Pro",
   "settings.ipPolicyAddCurrentIp": "Add it",
   "settings.ipPolicyAddEntry": "Add",
   "settings.ipPolicyAllowlist": "Allowlist",

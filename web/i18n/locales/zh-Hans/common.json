@@ -258,6 +258,7 @@
   "resize.width": "宽度：{{width}} 像素",
   "settings.ipPolicies": "IP 策略",
   "settings.ipPoliciesDescription": "可复用的规则，用于控制允许访问的 IP 地址或网段",
+  "settings.ipPoliciesProPlanRequired": "将策略应用到应用需要 Pro 套餐",
   "settings.ipPolicyAddCurrentIp": "添加",
   "settings.ipPolicyAddEntry": "添加",
   "settings.ipPolicyAllowlist": "允许列表",

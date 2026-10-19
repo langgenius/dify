@@ -256,6 +256,7 @@
   "resize.nodeHelp": "Ölçünü dəyişmək üçün ox düymələrindən istifadə edin. Daha böyük addımlar üçün Shift düyməsini basılı saxlayın. Home və ya Enter düyməsi ölçünü məzmuna uyğun kiçildir.",
   "resize.size": "{{width}} piksel enində, {{height}} piksel hündürlüyündə",
   "resize.width": "En: {{width}} piksel",
+  "settings.ipPoliciesProPlanRequired": "Tətbiqə siyasət tətbiq etmək üçün Pro planı tələb olunur",
   "settings.ipPolicyEmptyCreate": "IP siyasəti yarat",
   "settings.ipPolicyEmptyDescription": "Siyasət girişə icazə verilən IP ünvanlarının siyahısıdır.",
   "settings.ipPolicyEmptyTitle": "Bu iş məkanında hələ IP siyasəti yoxdur",
