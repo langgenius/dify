@@ -4,6 +4,7 @@ from http import HTTPStatus
 
 from flask_restx import Resource
 
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint, op_of
 from controllers.openapi._models import (
@@ -53,6 +54,7 @@ class ReleaseCheckApi(Resource):
         kind=Kind.OBJECT,
         summary="Is the draft ready to publish: draft valid, last test passed on this draft, and what changed",
         examples=(Example(title="Before publishing", input={"app_id": "<app_id>"}),),
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         requirements=VERSION_READ_GUARDS,
         returns=(HTTPStatus.OK, ReleaseCheckResponse, "Release check"),
     )

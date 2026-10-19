@@ -8,6 +8,7 @@ from typing import Final
 from flask_restx import Resource
 
 from constants.oauth_bearer import Scope
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.rbac import AgentBehindApp, PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import _app_settings as settings
 from controllers.openapi import openapi_ns
@@ -48,6 +49,7 @@ class WorkflowAppInfoApi(Resource):
         kind=Kind.OBJECT,
         summary="Name, description, icon and run cap of a workflow app",
         examples=(_INFO_EXAMPLE,),
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         requirements=account_settings_guards(_INFO_READ, scope=Scope.APPS_READ, modes=(AppMode.WORKFLOW,), roles=None),
         returns=(HTTPStatus.OK, AppSettingsInfo, "App info"),
     )
@@ -56,6 +58,7 @@ class WorkflowAppInfoApi(Resource):
 
     @endpoint(
         op="set.app_info.workflow",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Change a workflow app's info; only the fields passed change",
         examples=(_RENAME_EXAMPLE,),
