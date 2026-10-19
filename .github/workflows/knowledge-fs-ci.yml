@@ -112,7 +112,6 @@ jobs:
               - 'docker/envs/core-services/knowledge-fs-unstructured.env.example'
               - 'docker/knowledge-fs-unstructured-sandbox.compose.yaml'
               - 'docker/generate_docker_compose'
-              - 'docs/design/knowledge-fs*'
               - '.github/dependabot.yml'
               - '.github/workflows/deploy-knowledge.yml'
               - '.github/workflows/deploy-dev.yml'
