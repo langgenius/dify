@@ -6,6 +6,7 @@ import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.g
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
+import { httpErrorFromResponse } from '@/service/http-error'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { createDeferred } from '@/test/deferred'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
@@ -846,6 +847,108 @@ describe('Tracing overview panel', () => {
     expect(onUrlUpdate).toHaveBeenLastCalledWith(
       expect.objectContaining({ queryString: '?tracing=configure' }),
     )
+  })
+
+  it('does not carry a pending policy change or its failure into another app', async () => {
+    mockServer()
+    const server = request.getMockImplementation()!
+    const save = createDeferred<Response>()
+    request.mockImplementation(async (...args) => {
+      if (args[2].request.method === 'POST') return save.promise
+      return server(...args)
+    })
+    const { rerender } = renderPanel()
+    const user = await openConfiguredPanel()
+    await user.click(screen.getByRole('switch', { name: 'app.tracing.tracing' }))
+    expect(screen.getByRole('switch', { name: 'app.tracing.tracing' })).not.toBeChecked()
+    await waitFor(() =>
+      expect(request.mock.calls.some(([, , { request: sent }]) => sent.method === 'POST')).toBe(
+        true,
+      ),
+    )
+
+    rerender(<Panel resource={{ kind: 'app', appId: 'app-2', mode: 'chat' }} readOnly={false} />)
+    expect(await screen.findByRole('switch', { name: 'app.tracing.tracing' })).toBeChecked()
+    await act(async () => {
+      save.reject(
+        await httpErrorFromResponse(
+          Response.json({ code: 'save_failed', message: 'App 1 save failed' }, { status: 500 }),
+        ),
+      )
+    })
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: 'app.tracing.tracing' })).toBeChecked()
+
+    rerender(<Panel resource={{ kind: 'app', appId: 'app-1', mode: 'chat' }} readOnly={false} />)
+    expect(await screen.findByRole('alert')).toHaveTextContent('App 1 save failed')
+    expect(screen.getByRole('switch', { name: 'app.tracing.tracing' })).toBeChecked()
+    expect(
+      request.mock.calls
+        .filter(([, , { request: sent }]) => sent.method === 'POST')
+        .map(([, , { request: sent }]) => new URL(sent.url).pathname),
+    ).toEqual([expect.stringMatching(/\/apps\/app-1\/trace$/)])
+  })
+
+  it('refreshes a concurrently removed provider after a selection conflict and lets the user retry', async () => {
+    const writes = mockServer()
+    const server = request.getMockImplementation()!
+    let removed = false
+    request.mockImplementation(async (...args) => {
+      const sent = args[2].request
+      const url = new URL(sent.url)
+      if (sent.method === 'POST' && url.pathname.endsWith('/trace') && !removed) {
+        removed = true
+        throw await httpErrorFromResponse(
+          Response.json(
+            {
+              code: 'tracing_config_conflict',
+              message: 'Provider was removed. Choose another provider.',
+            },
+            { status: 409 },
+          ),
+        )
+      }
+      if (
+        sent.method === 'GET' &&
+        url.pathname.endsWith('/trace-config') &&
+        url.searchParams.get('tracing_provider') === 'langsmith'
+      ) {
+        return Response.json({
+          has_not_configured: removed,
+          tracing_config: removed ? null : { api_key: '[__MASKED__]', project: 'project' },
+        })
+      }
+      return server(...args)
+    })
+    renderPanel()
+    const user = await openConfiguredPanel()
+    await user.click(screen.getByRole('button', { name: 'app.tracing.langsmith.title' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Provider was removed')
+    const provider = within(screen.getByRole('group', { name: 'app.tracing.langsmith.title' }))
+    await waitFor(() =>
+      expect(
+        provider.queryByRole('button', {
+          name: 'app.tracing.langsmith.title',
+        }),
+      ).not.toBeInTheDocument(),
+    )
+    expect(provider.getByRole('button', { name: 'app.tracing.config' })).toBeEnabled()
+    expect(screen.getByRole('switch', { name: 'app.tracing.tracing' })).toBeChecked()
+
+    await user.click(screen.getByRole('switch', { name: 'app.tracing.tracing' }))
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+    expect(screen.getByRole('switch', { name: 'app.tracing.tracing' })).not.toBeChecked()
+    expect(writes).toEqual([
+      {
+        method: 'POST',
+        body: {
+          enabled: false,
+          tracing_provider: 'langfuse',
+          capture_content: false,
+          capture_agent: true,
+        },
+      },
+    ])
   })
 
   it('keeps an open draft across config refreshes and starts a new session for another app', async () => {
