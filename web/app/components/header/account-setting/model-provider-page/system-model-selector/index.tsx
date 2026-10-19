@@ -1,5 +1,6 @@
-import type { FC } from 'react'
-import type { DefaultModel, DefaultModelResponse } from '../declarations'
+import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { Dispatch, FC, SetStateAction } from 'react'
+import type { DefaultModel } from '../declarations'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -24,7 +25,7 @@ import {
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQueries, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useId, useRef, useState } from 'react'
@@ -33,20 +34,11 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import { ModelTypeEnum } from '../declarations'
-import {
-  useInvalidateDefaultModel,
-  useSystemDefaultModelAndModelList,
-  useUpdateModelList,
-} from '../hooks'
+import { useInvalidateDefaultModel, useUpdateModelList } from '../hooks'
 import { ModelSelector } from '../model-selector'
 
 type SystemModelSelectorProps = {
   className?: string
-  textGenerationDefaultModel: DefaultModelResponse | undefined
-  embeddingsDefaultModel: DefaultModelResponse | undefined
-  rerankDefaultModel: DefaultModelResponse | undefined
-  speech2textDefaultModel: DefaultModelResponse | undefined
-  ttsDefaultModel: DefaultModelResponse | undefined
   notConfigured: boolean
   isLoading?: boolean
   hideProviderSettingsFooter?: boolean
@@ -69,89 +61,42 @@ type SystemModelTipKey =
 
 const systemModelDialogQueryParser = parseAsStringLiteral(['system-models'] as const)
 
+const systemModelTypes = [
+  ModelTypeEnum.textGeneration,
+  ModelTypeEnum.textEmbedding,
+  ModelTypeEnum.rerank,
+  ModelTypeEnum.speech2text,
+  ModelTypeEnum.tts,
+] as const
+
+type DefaultModelDraft = Partial<Record<ModelTypeEnum, DefaultModel>>
+type ClearConfirmation = {
+  modelType: ModelTypeEnum
+  labelKey: SystemModelLabelKey
+  open: boolean
+}
+
 const SystemModel: FC<SystemModelSelectorProps> = ({
   className,
-  textGenerationDefaultModel,
-  embeddingsDefaultModel,
-  rerankDefaultModel,
-  speech2textDefaultModel,
-  ttsDefaultModel,
   notConfigured,
   isLoading,
   hideProviderSettingsFooter,
   onOpenMarketplace,
 }) => {
-  const modelLabelId = useId()
-  const saveButtonRef = useRef<HTMLButtonElement>(null)
-  const clearConfirmedRef = useRef(false)
-  const [clearConfirmation, setClearConfirmation] = useState<{
-    modelType: ModelTypeEnum
-    labelKey: SystemModelLabelKey
-    open: boolean
-  }>()
-
+  const [clearConfirmation, setClearConfirmation] = useState<ClearConfirmation>()
   const { t } = useTranslation(['common', 'modelProvider'])
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const { data: textGenerationModelList = [] } = useQuery(
-    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
-      input: { params: { model_type: ModelTypeEnum.textGeneration } },
-      select: (response) => response.data,
-    }),
-  )
-  const canManageSystemDefaultModel = hasPermission(workspacePermissionKeys, 'plugin.model_config')
+  const { data: textGenerationModelList = [], isPending: isTextGenerationModelListLoading } =
+    useQuery(
+      consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+        input: { params: { model_type: ModelTypeEnum.textGeneration } },
+        select: (response) => response.data,
+      }),
+    )
   const updateModelList = useUpdateModelList()
   const invalidateDefaultModel = useInvalidateDefaultModel()
   const [activeDialog, setActiveDialog] = useQueryState('dialog', systemModelDialogQueryParser)
   const [manuallyOpen, setManuallyOpen] = useState(false)
   const open = manuallyOpen || activeDialog === 'system-models'
-  const { data: embeddingModelList = [], isPending: isEmbeddingModelListLoading } = useQuery(
-    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
-      input: { params: { model_type: ModelTypeEnum.textEmbedding } },
-      select: (response) => response.data,
-      enabled: open,
-    }),
-  )
-  const { data: rerankModelList = [], isPending: isRerankModelListLoading } = useQuery(
-    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
-      input: { params: { model_type: ModelTypeEnum.rerank } },
-      select: (response) => response.data,
-      enabled: open,
-    }),
-  )
-  const { data: speech2textModelList = [], isPending: isSpeech2textModelListLoading } = useQuery(
-    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
-      input: { params: { model_type: ModelTypeEnum.speech2text } },
-      select: (response) => response.data,
-      enabled: open,
-    }),
-  )
-  const { data: ttsModelList = [], isPending: isTTSModelListLoading } = useQuery(
-    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
-      input: { params: { model_type: ModelTypeEnum.tts } },
-      select: (response) => response.data,
-      enabled: open,
-    }),
-  )
-  const [changedModelTypes, setChangedModelTypes] = useState<ModelTypeEnum[]>([])
-  const [
-    currentTextGenerationDefaultModel,
-    changeCurrentTextGenerationDefaultModel,
-    resetTextGenerationDefaultModel,
-  ] = useSystemDefaultModelAndModelList(textGenerationDefaultModel, textGenerationModelList)
-  const [
-    currentEmbeddingsDefaultModel,
-    changeCurrentEmbeddingsDefaultModel,
-    resetEmbeddingsDefaultModel,
-  ] = useSystemDefaultModelAndModelList(embeddingsDefaultModel, embeddingModelList)
-  const [currentRerankDefaultModel, changeCurrentRerankDefaultModel, resetRerankDefaultModel] =
-    useSystemDefaultModelAndModelList(rerankDefaultModel, rerankModelList)
-  const [
-    currentSpeech2textDefaultModel,
-    changeCurrentSpeech2textDefaultModel,
-    resetSpeech2textDefaultModel,
-  ] = useSystemDefaultModelAndModelList(speech2textDefaultModel, speech2textModelList)
-  const [currentTTSDefaultModel, changeCurrentTTSDefaultModel, resetTTSDefaultModel] =
-    useSystemDefaultModelAndModelList(ttsDefaultModel, ttsModelList)
   const saveMutation = useMutation(
     consoleQuery.workspaces.current.defaultModel.post.mutationOptions({
       context: { silent: true },
@@ -160,16 +105,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
 
         setManuallyOpen(false)
         if (activeDialog === 'system-models') void setActiveDialog(null)
-        setChangedModelTypes([])
-        const allModelTypes = [
-          ModelTypeEnum.textGeneration,
-          ModelTypeEnum.textEmbedding,
-          ModelTypeEnum.rerank,
-          ModelTypeEnum.speech2text,
-          ModelTypeEnum.tts,
-        ]
-        allModelTypes.forEach((type) => invalidateDefaultModel(type))
-        changedModelTypes.forEach((type) => updateModelList(type))
+        systemModelTypes.forEach((type) => invalidateDefaultModel(type))
       },
     }),
   )
@@ -181,64 +117,194 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
   const handleOpenChange = (nextOpen: boolean) => {
     if (saveMutation.isPending) return
     saveMutation.reset()
-    if (!nextOpen) {
-      resetTextGenerationDefaultModel()
-      resetEmbeddingsDefaultModel()
-      resetRerankDefaultModel()
-      resetSpeech2textDefaultModel()
-      resetTTSDefaultModel()
-      setChangedModelTypes([])
-      setClearConfirmation(undefined)
-    }
+    if (!nextOpen) setClearConfirmation(undefined)
     setManuallyOpen(nextOpen)
     if (!nextOpen && activeDialog === 'system-models') void setActiveDialog(null)
   }
-  const isSystemModelListLoading =
-    open &&
-    (isEmbeddingModelListLoading ||
-      isRerankModelListLoading ||
-      isSpeech2textModelListLoading ||
-      isTTSModelListLoading)
-
-  const getCurrentDefaultModelByModelType = (modelType: ModelTypeEnum) => {
-    if (modelType === ModelTypeEnum.textGeneration) return currentTextGenerationDefaultModel
-    else if (modelType === ModelTypeEnum.textEmbedding) return currentEmbeddingsDefaultModel
-    else if (modelType === ModelTypeEnum.rerank) return currentRerankDefaultModel
-    else if (modelType === ModelTypeEnum.speech2text) return currentSpeech2textDefaultModel
-    else if (modelType === ModelTypeEnum.tts) return currentTTSDefaultModel
-
-    return undefined
+  const handleSave = (defaultModels: DefaultModelDraft, changedModelTypes: ModelTypeEnum[]) => {
+    saveMutation.mutate(
+      {
+        body: {
+          model_settings: systemModelTypes.map((modelType) => ({
+            model_type: modelType,
+            provider: defaultModels[modelType]?.provider ?? null,
+            model: defaultModels[modelType]?.model ?? null,
+          })),
+        },
+      },
+      {
+        onSuccess: (res) => {
+          if (res.result === 'success') changedModelTypes.forEach((type) => updateModelList(type))
+        },
+      },
+    )
   }
-  const handleChangeDefaultModel = (modelType: ModelTypeEnum, model: DefaultModel | undefined) => {
-    if (modelType === ModelTypeEnum.textGeneration) changeCurrentTextGenerationDefaultModel(model)
-    else if (modelType === ModelTypeEnum.textEmbedding) changeCurrentEmbeddingsDefaultModel(model)
-    else if (modelType === ModelTypeEnum.rerank) changeCurrentRerankDefaultModel(model)
-    else if (modelType === ModelTypeEnum.speech2text) changeCurrentSpeech2textDefaultModel(model)
-    else if (modelType === ModelTypeEnum.tts) changeCurrentTTSDefaultModel(model)
 
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen, details) => {
+        if (saveMutation.isPending) {
+          details.cancel()
+          return
+        }
+        handleOpenChange(nextOpen)
+      }}
+    >
+      <DialogTrigger
+        render={<Button variant={notConfigured ? 'primary' : 'secondary'} size="small" />}
+        className={cn('relative', className)}
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <span className="i-ri-loader-2-line size-3.5 animate-spin" />
+        ) : (
+          <span className="i-ri-brain-2-line size-3.5" />
+        )}
+        {t(($) => $['modelProvider.systemModelSettings'], { ns: 'modelProvider' })}
+      </DialogTrigger>
+      <DialogContent
+        backdropProps={{ forceRender: true }}
+        className={cn(
+          'max-h-[calc(100dvh-2rem)] max-w-120',
+          // oxlint-disable-next-line shadcn/no-restyle -- Hide the settings through the nested confirmation's exit while keeping its backdrop mounted.
+          clearConfirmation && 'invisible',
+        )}
+      >
+        <DialogHeader>
+          <DialogTitle>
+            {t(($) => $['modelProvider.systemModelSettingsTitle'], { ns: 'modelProvider' })}
+          </DialogTitle>
+          <DialogDescription>
+            {t(($) => $['modelProvider.systemModelSettingsDesc'], { ns: 'modelProvider' })}
+          </DialogDescription>
+          <DialogHeaderCloseButton
+            disabled={saveMutation.isPending}
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+          />
+        </DialogHeader>
+        <SystemModelSession
+          textGenerationModelList={textGenerationModelList}
+          isTextGenerationModelListLoading={isTextGenerationModelListLoading}
+          isSaving={saveMutation.isPending}
+          saveError={saveError}
+          onSave={handleSave}
+          onClose={() => handleOpenChange(false)}
+          clearConfirmation={clearConfirmation}
+          setClearConfirmation={setClearConfirmation}
+          hideProviderSettingsFooter={hideProviderSettingsFooter}
+          onOpenMarketplace={onOpenMarketplace}
+        />
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+type SystemModelSessionProps = Pick<
+  SystemModelSelectorProps,
+  'hideProviderSettingsFooter' | 'onOpenMarketplace'
+> & {
+  textGenerationModelList: ProviderWithModelsResponse[]
+  isTextGenerationModelListLoading: boolean
+  isSaving: boolean
+  saveError?: string
+  onSave: (defaultModels: DefaultModelDraft, changedModelTypes: ModelTypeEnum[]) => void
+  onClose: () => void
+  clearConfirmation: ClearConfirmation | undefined
+  setClearConfirmation: Dispatch<SetStateAction<ClearConfirmation | undefined>>
+}
+
+function SystemModelSession({
+  textGenerationModelList,
+  isTextGenerationModelListLoading,
+  isSaving,
+  saveError,
+  onSave,
+  onClose,
+  clearConfirmation,
+  setClearConfirmation,
+  hideProviderSettingsFooter,
+  onOpenMarketplace,
+}: SystemModelSessionProps) {
+  const { t } = useTranslation(['common', 'modelProvider'])
+  const modelLabelId = useId()
+  const saveButtonRef = useRef<HTMLButtonElement>(null)
+  const clearConfirmedRef = useRef(false)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const canManageSystemDefaultModel = hasPermission(workspacePermissionKeys, 'plugin.model_config')
+  const defaultModelQueries = useQueries({
+    queries: systemModelTypes.map((modelType) =>
+      consoleQuery.workspaces.current.defaultModel.get.queryOptions({
+        input: { query: { model_type: modelType } },
+        context: { silent: true },
+        refetchOnMount: 'always',
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+      }),
+    ),
+  })
+  const { data: embeddingModelList = [], isPending: isEmbeddingModelListLoading } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textEmbedding } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: rerankModelList = [], isPending: isRerankModelListLoading } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.rerank } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: speech2textModelList = [], isPending: isSpeech2textModelListLoading } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.speech2text } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: ttsModelList = [], isPending: isTTSModelListLoading } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.tts } },
+      select: (response) => response.data,
+    }),
+  )
+  const [defaultModels, setDefaultModels] = useState<DefaultModelDraft>()
+  const [changedModelTypes, setChangedModelTypes] = useState<ModelTypeEnum[]>([])
+
+  // Start this mounted editing session only after every default has been refreshed.
+  // Later cache updates must not replace the user's draft.
+  if (
+    !defaultModels &&
+    defaultModelQueries.every(
+      (query) => query.isFetchedAfterMount && query.isSuccess && !query.isFetching,
+    )
+  ) {
+    const freshDefaults: DefaultModelDraft = {}
+    defaultModelQueries.forEach(({ data }, index) => {
+      const modelType = systemModelTypes[index]
+      if (modelType && data?.data) {
+        freshDefaults[modelType] = {
+          provider: data.data.provider.provider,
+          model: data.data.model,
+        }
+      }
+    })
+    setDefaultModels(freshDefaults)
+  }
+
+  const failedDefaultModelQuery = !defaultModels
+    ? defaultModelQueries.find((query) => query.isError && !query.isFetching)
+    : undefined
+  const isSystemModelLoading =
+    !defaultModels ||
+    isTextGenerationModelListLoading ||
+    isEmbeddingModelListLoading ||
+    isRerankModelListLoading ||
+    isSpeech2textModelListLoading ||
+    isTTSModelListLoading
+  const handleChangeDefaultModel = (modelType: ModelTypeEnum, model: DefaultModel | undefined) => {
+    setDefaultModels((current) => ({ ...current, [modelType]: model }))
     if (!changedModelTypes.includes(modelType))
       setChangedModelTypes([...changedModelTypes, modelType])
-  }
-  const handleSave = () => {
-    if (!canManageSystemDefaultModel || isSystemModelListLoading || saveMutation.isPending) return
-
-    saveMutation.mutate({
-      body: {
-        model_settings: [
-          ModelTypeEnum.textGeneration,
-          ModelTypeEnum.textEmbedding,
-          ModelTypeEnum.rerank,
-          ModelTypeEnum.speech2text,
-          ModelTypeEnum.tts,
-        ].map((modelType) => {
-          return {
-            model_type: modelType,
-            provider: getCurrentDefaultModelByModelType(modelType)?.provider ?? null,
-            model: getCurrentDefaultModelByModelType(modelType)?.model ?? null,
-          }
-        }),
-      },
-    })
   }
 
   const getResetProps = (modelType: ModelTypeEnum, labelKey: SystemModelLabelKey) => ({
@@ -294,237 +360,212 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(nextOpen, details) => {
-        if (saveMutation.isPending) {
-          details.cancel()
+    <form
+      className="contents"
+      onSubmit={(event) => {
+        event.preventDefault()
+        if (!canManageSystemDefaultModel || isSystemModelLoading || isSaving || !defaultModels)
           return
-        }
-        handleOpenChange(nextOpen)
+        onSave(defaultModels, changedModelTypes)
       }}
     >
-      <DialogTrigger
-        render={<Button variant={notConfigured ? 'primary' : 'secondary'} size="small" />}
-        className={cn('relative', className)}
-        disabled={isLoading}
-      >
-        {isLoading ? (
-          <span className="i-ri-loader-2-line size-3.5 animate-spin" />
-        ) : (
-          <span className="i-ri-brain-2-line size-3.5" />
-        )}
-        {t(($) => $['modelProvider.systemModelSettings'], { ns: 'modelProvider' })}
-      </DialogTrigger>
-      <DialogContent
-        render={
-          <form
-            onSubmit={(event) => {
-              event.preventDefault()
-              handleSave()
-            }}
-          />
-        }
-        backdropProps={{ forceRender: true }}
-        className={cn('max-h-[calc(100dvh-2rem)] max-w-120', clearConfirmation && 'invisible')}
-      >
-        <DialogHeader>
-          <DialogTitle>
-            {t(($) => $['modelProvider.systemModelSettingsTitle'], { ns: 'modelProvider' })}
-          </DialogTitle>
-          <DialogDescription>
-            {t(($) => $['modelProvider.systemModelSettingsDesc'], { ns: 'modelProvider' })}
-          </DialogDescription>
-          <DialogHeaderCloseButton
-            disabled={saveMutation.isPending}
-            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-          />
-        </DialogHeader>
-        <DialogBody>
-          {isSystemModelListLoading ? (
-            <div
-              role="status"
-              aria-label={t(($) => $.loading, { ns: 'common' })}
-              className="flex h-full min-h-48 items-center justify-center"
-            >
-              <span
-                aria-hidden
-                className="i-ri-loader-2-line size-5 animate-spin text-text-tertiary"
-              />
-            </div>
-          ) : (
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1">
-                {renderModelLabel(
-                  'modelProvider.systemReasoningModel.key',
-                  'modelProvider.systemReasoningModel.tip',
-                )}
-                <div>
-                  <ModelSelector
-                    disabled={saveMutation.isPending}
-                    {...getResetProps(
-                      ModelTypeEnum.textGeneration,
-                      'modelProvider.systemReasoningModel.key',
-                    )}
-                    value={currentTextGenerationDefaultModel}
-                    models={textGenerationModelList}
-                    hideProviderSettingsFooter={hideProviderSettingsFooter}
-                    onOpenMarketplace={onOpenMarketplace}
-                    onConfigureEmptyState={() => handleOpenChange(false)}
-                    showModelMeta={false}
-                    onValueChange={(model) =>
-                      handleChangeDefaultModel(ModelTypeEnum.textGeneration, model)
-                    }
-                  />
-                </div>
-              </div>
-              <div className="flex flex-col gap-1">
-                {renderModelLabel(
-                  'modelProvider.embeddingModel.key',
-                  'modelProvider.embeddingModel.tip',
-                )}
-                <div>
-                  <ModelSelector
-                    disabled={saveMutation.isPending}
-                    {...getResetProps(
-                      ModelTypeEnum.textEmbedding,
-                      'modelProvider.embeddingModel.key',
-                    )}
-                    value={currentEmbeddingsDefaultModel}
-                    models={embeddingModelList}
-                    hideProviderSettingsFooter={hideProviderSettingsFooter}
-                    onOpenMarketplace={onOpenMarketplace}
-                    onConfigureEmptyState={() => handleOpenChange(false)}
-                    showModelMeta={false}
-                    onValueChange={(model) =>
-                      handleChangeDefaultModel(ModelTypeEnum.textEmbedding, model)
-                    }
-                  />
-                </div>
-              </div>
-              <div className="flex flex-col gap-1">
-                {renderModelLabel('modelProvider.rerankModel.key', 'modelProvider.rerankModel.tip')}
-                <div>
-                  <ModelSelector
-                    disabled={saveMutation.isPending}
-                    {...getResetProps(ModelTypeEnum.rerank, 'modelProvider.rerankModel.key')}
-                    value={currentRerankDefaultModel}
-                    models={rerankModelList}
-                    hideProviderSettingsFooter={hideProviderSettingsFooter}
-                    onOpenMarketplace={onOpenMarketplace}
-                    onConfigureEmptyState={() => handleOpenChange(false)}
-                    showModelMeta={false}
-                    onValueChange={(model) => handleChangeDefaultModel(ModelTypeEnum.rerank, model)}
-                  />
-                </div>
-              </div>
-              <div className="flex flex-col gap-1">
-                {renderModelLabel(
-                  'modelProvider.speechToTextModel.key',
-                  'modelProvider.speechToTextModel.tip',
-                )}
-                <div>
-                  <ModelSelector
-                    disabled={saveMutation.isPending}
-                    {...getResetProps(
-                      ModelTypeEnum.speech2text,
-                      'modelProvider.speechToTextModel.key',
-                    )}
-                    value={currentSpeech2textDefaultModel}
-                    models={speech2textModelList}
-                    hideProviderSettingsFooter={hideProviderSettingsFooter}
-                    onOpenMarketplace={onOpenMarketplace}
-                    onConfigureEmptyState={() => handleOpenChange(false)}
-                    showModelMeta={false}
-                    onValueChange={(model) =>
-                      handleChangeDefaultModel(ModelTypeEnum.speech2text, model)
-                    }
-                  />
-                </div>
-              </div>
-              <div className="flex flex-col gap-1">
-                {renderModelLabel('modelProvider.ttsModel.key', 'modelProvider.ttsModel.tip')}
-                <div>
-                  <ModelSelector
-                    disabled={saveMutation.isPending}
-                    {...getResetProps(ModelTypeEnum.tts, 'modelProvider.ttsModel.key')}
-                    value={currentTTSDefaultModel}
-                    models={ttsModelList}
-                    hideProviderSettingsFooter={hideProviderSettingsFooter}
-                    onOpenMarketplace={onOpenMarketplace}
-                    onConfigureEmptyState={() => handleOpenChange(false)}
-                    showModelMeta={false}
-                    onValueChange={(model) => handleChangeDefaultModel(ModelTypeEnum.tts, model)}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-          {saveError && (
-            <p role="alert" className="mt-4 text-sm text-text-destructive">
-              {saveError}
+      <DialogBody>
+        {failedDefaultModelQuery ? (
+          <div className="flex min-h-48 flex-col items-center justify-center gap-3">
+            <p role="alert" className="text-sm text-text-destructive">
+              {failedDefaultModelQuery.error?.message || t(($) => $.error, { ns: 'common' })}
             </p>
-          )}
-        </DialogBody>
-        <DialogFooter>
-          <Button
-            className="min-w-18"
-            disabled={saveMutation.isPending}
-            onClick={() => handleOpenChange(false)}
+            <Button
+              onClick={() => {
+                defaultModelQueries
+                  .filter((query) => query.isError)
+                  .forEach((query) => {
+                    void query.refetch()
+                  })
+              }}
+            >
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </div>
+        ) : isSystemModelLoading ? (
+          <div
+            role="status"
+            aria-label={t(($) => $.loading, { ns: 'common' })}
+            className="flex h-full min-h-48 items-center justify-center"
           >
-            {t(($) => $['operation.cancel'], { ns: 'common' })}
-          </Button>
-          <Button
-            ref={saveButtonRef}
-            className="min-w-18"
-            variant="primary"
-            type="submit"
-            loading={saveMutation.isPending}
-            disabled={!canManageSystemDefaultModel || isSystemModelListLoading}
-          >
-            {t(($) => $['operation.save'], { ns: 'common' })}
-          </Button>
-        </DialogFooter>
-        <AlertDialog
-          open={clearConfirmation?.open ?? false}
-          onOpenChange={(nextOpen) => {
-            if (!nextOpen) closeClearConfirmation()
-          }}
-          onOpenChangeComplete={(nextOpen) => {
-            if (!nextOpen) setClearConfirmation((current) => (current?.open ? current : undefined))
-          }}
+            <span
+              aria-hidden
+              className="i-ri-loader-2-line size-5 animate-spin text-text-tertiary"
+            />
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1">
+              {renderModelLabel(
+                'modelProvider.systemReasoningModel.key',
+                'modelProvider.systemReasoningModel.tip',
+              )}
+              <div>
+                <ModelSelector
+                  disabled={isSaving}
+                  {...getResetProps(
+                    ModelTypeEnum.textGeneration,
+                    'modelProvider.systemReasoningModel.key',
+                  )}
+                  value={defaultModels?.[ModelTypeEnum.textGeneration]}
+                  models={textGenerationModelList}
+                  hideProviderSettingsFooter={hideProviderSettingsFooter}
+                  onOpenMarketplace={onOpenMarketplace}
+                  onConfigureEmptyState={onClose}
+                  showModelMeta={false}
+                  onValueChange={(model) =>
+                    handleChangeDefaultModel(ModelTypeEnum.textGeneration, model)
+                  }
+                />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              {renderModelLabel(
+                'modelProvider.embeddingModel.key',
+                'modelProvider.embeddingModel.tip',
+              )}
+              <div>
+                <ModelSelector
+                  disabled={isSaving}
+                  {...getResetProps(
+                    ModelTypeEnum.textEmbedding,
+                    'modelProvider.embeddingModel.key',
+                  )}
+                  value={defaultModels?.[ModelTypeEnum.textEmbedding]}
+                  models={embeddingModelList}
+                  hideProviderSettingsFooter={hideProviderSettingsFooter}
+                  onOpenMarketplace={onOpenMarketplace}
+                  onConfigureEmptyState={onClose}
+                  showModelMeta={false}
+                  onValueChange={(model) =>
+                    handleChangeDefaultModel(ModelTypeEnum.textEmbedding, model)
+                  }
+                />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              {renderModelLabel('modelProvider.rerankModel.key', 'modelProvider.rerankModel.tip')}
+              <div>
+                <ModelSelector
+                  disabled={isSaving}
+                  {...getResetProps(ModelTypeEnum.rerank, 'modelProvider.rerankModel.key')}
+                  value={defaultModels?.[ModelTypeEnum.rerank]}
+                  models={rerankModelList}
+                  hideProviderSettingsFooter={hideProviderSettingsFooter}
+                  onOpenMarketplace={onOpenMarketplace}
+                  onConfigureEmptyState={onClose}
+                  showModelMeta={false}
+                  onValueChange={(model) => handleChangeDefaultModel(ModelTypeEnum.rerank, model)}
+                />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              {renderModelLabel(
+                'modelProvider.speechToTextModel.key',
+                'modelProvider.speechToTextModel.tip',
+              )}
+              <div>
+                <ModelSelector
+                  disabled={isSaving}
+                  {...getResetProps(
+                    ModelTypeEnum.speech2text,
+                    'modelProvider.speechToTextModel.key',
+                  )}
+                  value={defaultModels?.[ModelTypeEnum.speech2text]}
+                  models={speech2textModelList}
+                  hideProviderSettingsFooter={hideProviderSettingsFooter}
+                  onOpenMarketplace={onOpenMarketplace}
+                  onConfigureEmptyState={onClose}
+                  showModelMeta={false}
+                  onValueChange={(model) =>
+                    handleChangeDefaultModel(ModelTypeEnum.speech2text, model)
+                  }
+                />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              {renderModelLabel('modelProvider.ttsModel.key', 'modelProvider.ttsModel.tip')}
+              <div>
+                <ModelSelector
+                  disabled={isSaving}
+                  {...getResetProps(ModelTypeEnum.tts, 'modelProvider.ttsModel.key')}
+                  value={defaultModels?.[ModelTypeEnum.tts]}
+                  models={ttsModelList}
+                  hideProviderSettingsFooter={hideProviderSettingsFooter}
+                  onOpenMarketplace={onOpenMarketplace}
+                  onConfigureEmptyState={onClose}
+                  showModelMeta={false}
+                  onValueChange={(model) => handleChangeDefaultModel(ModelTypeEnum.tts, model)}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+        {saveError && (
+          <p role="alert" className="mt-4 text-sm text-text-destructive">
+            {saveError}
+          </p>
+        )}
+      </DialogBody>
+      <DialogFooter>
+        <Button className="min-w-18" disabled={isSaving} onClick={onClose}>
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
+        </Button>
+        <Button
+          ref={saveButtonRef}
+          className="min-w-18"
+          variant="primary"
+          type="submit"
+          loading={isSaving}
+          disabled={!canManageSystemDefaultModel || isSystemModelLoading}
         >
-          <AlertDialogContent
-            finalFocus={() => (clearConfirmedRef.current ? saveButtonRef.current : true)}
-          >
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                {t(($) => $['modelProvider.clearDefaultModel.title'], {
-                  ns: 'modelProvider',
-                  modelType: modelToClearLabel,
-                })}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {t(($) => $['modelProvider.clearDefaultModel.description'], {
-                  ns: 'modelProvider',
-                })}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancelButton>
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </AlertDialogCancelButton>
-              <AlertDialogConfirmButton
-                disabled={!canManageSystemDefaultModel}
-                onClick={handleConfirmClear}
-              >
-                {t(($) => $['operation.clear'], { ns: 'common' })}
-              </AlertDialogConfirmButton>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </DialogContent>
-    </Dialog>
+          {t(($) => $['operation.save'], { ns: 'common' })}
+        </Button>
+      </DialogFooter>
+      <AlertDialog
+        open={clearConfirmation?.open ?? false}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) closeClearConfirmation()
+        }}
+        onOpenChangeComplete={(nextOpen) => {
+          if (!nextOpen) setClearConfirmation((current) => (current?.open ? current : undefined))
+        }}
+      >
+        <AlertDialogContent
+          finalFocus={() => (clearConfirmedRef.current ? saveButtonRef.current : true)}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t(($) => $['modelProvider.clearDefaultModel.title'], {
+                ns: 'modelProvider',
+                modelType: modelToClearLabel,
+              })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(($) => $['modelProvider.clearDefaultModel.description'], {
+                ns: 'modelProvider',
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancelButton>
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton
+              disabled={!canManageSystemDefaultModel}
+              onClick={handleConfirmClear}
+            >
+              {t(($) => $['operation.clear'], { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </form>
   )
 }
 

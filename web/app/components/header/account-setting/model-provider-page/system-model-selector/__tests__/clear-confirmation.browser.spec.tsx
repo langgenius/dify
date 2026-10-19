@@ -9,6 +9,23 @@ import {
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import SystemModel from '../index'
 
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.defaultModel.get': async ({
+        query: { model_type },
+      }: {
+        query: { model_type: string }
+      }) => ({
+        data: model_type === 'llm' ? createDefaultModelFixture() : null,
+      }),
+    }),
+  }
+})
+
 vi.mock('react-i18next', async () => {
   const actual = await vi.importActual<typeof import('react-i18next')>('react-i18next')
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
@@ -46,14 +63,7 @@ it('replaces the settings surface with its confirmation while preserving the bac
   const screen = await render(
     <NuqsTestingAdapter>
       <Wrapper>
-        <SystemModel
-          textGenerationDefaultModel={createDefaultModelFixture()}
-          embeddingsDefaultModel={undefined}
-          rerankDefaultModel={undefined}
-          speech2textDefaultModel={undefined}
-          ttsDefaultModel={undefined}
-          notConfigured={false}
-        />
+        <SystemModel notConfigured={false} />
       </Wrapper>
     </NuqsTestingAdapter>,
   )
