@@ -1,6 +1,9 @@
 import type { ReactElement } from 'react'
 import { screen } from '@testing-library/react'
 import { StrictMode } from 'react'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { consoleQuery } from '@/service/console'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { seedAppDetail } from '@/test/console/query-data'
@@ -18,6 +21,10 @@ const render = (ui: ReactElement) => {
       mode: 'workflow' as const,
       permission_keys: [],
     }),
+  )
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.triggers.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+    { data: [] },
   )
   return renderWithConsoleState(ui, {
     wrapper: createQueryClientWrapper(queryClient),
@@ -45,19 +52,6 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
   useSearchParams: () => ({ get: () => null }),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'apps.byAppId.triggers.get': () => ({}),
-  })
-})
-
-vi.mock('../hooks/use-get-run-and-trace-url', () => ({
-  useGetRunAndTraceUrl: () => ({
-    getWorkflowRunAndTraceUrl: () => ({ runUrl: '' }),
-  }),
-}))
-
 vi.mock('../hooks/use-workflow-init', async () => {
   const React = await import('react')
   const { useStore, useWorkflowStore } = await import('@/app/components/workflow/store')
@@ -74,7 +68,7 @@ vi.mock('../hooks/use-workflow-init', async () => {
       return {
         data: {
           graph: {
-            nodes: [{ id: 'raw-node' }],
+            nodes: [createNode({ id: 'raw-node', data: { type: BlockEnum.Start } })],
             edges: [],
             viewport: { x: 0, y: 0, zoom: 1 },
           },
@@ -84,22 +78,6 @@ vi.mock('../hooks/use-workflow-init', async () => {
         fileUploadConfigResponse: null,
       }
     },
-  }
-})
-
-vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/workflow/utils')>()
-  return {
-    ...actual,
-    initialNodes: () => [
-      {
-        id: 'node-1',
-        type: 'custom',
-        position: { x: 0, y: 0 },
-        data: { title: 'Start', type: 'start' },
-      },
-    ],
-    initialEdges: () => [],
   }
 })
 

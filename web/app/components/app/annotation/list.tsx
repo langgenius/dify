@@ -1,6 +1,6 @@
 'use client'
+import type { Annotation } from '@dify/contracts/api/console/apps/types.gen'
 import type { AlertDialogActions } from '@langgenius/dify-ui/alert-dialog'
-import type { AnnotationItem } from './type'
 import { AlertDialog, AlertDialogTrigger } from '@langgenius/dify-ui/alert-dialog'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
@@ -15,8 +15,8 @@ import { RemoveAnnotationConfirmContent } from './remove-annotation-confirm-moda
 
 type Props = Readonly<{
   appId: string
-  list: AnnotationItem[]
-  onView: (item: AnnotationItem) => void
+  list: Annotation[]
+  onView: (item: Annotation) => void
   onRemoved: () => void
   selectedIds: string[]
   onSelectedIdsChange: (selectedIds: string[]) => void
@@ -25,9 +25,9 @@ type Props = Readonly<{
 
 type AnnotationTableRowProps = {
   appId: string
-  item: AnnotationItem
+  item: Annotation
   formattedCreatedAt: string
-  onView: (item: AnnotationItem) => void
+  onView: (item: Annotation) => void
   onRemoved: () => void
 }
 

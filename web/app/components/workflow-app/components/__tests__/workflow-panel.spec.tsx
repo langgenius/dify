@@ -1,316 +1,389 @@
-import type { ReactNode } from 'react'
-import type { DifyBuilderRuntime } from '../dify-builder/store'
 import type { Shape } from '@/app/components/workflow/store/workflow'
-import { act, screen, waitFor } from '@testing-library/react'
+import type { fetchRunDetail, fetchTracingList } from '@/service/log'
+import type { FetchWorkflowDraftPageResponse, FetchWorkflowDraftResponse } from '@/types/workflow'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
-import * as React from 'react'
-import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { queryClientAtom } from 'jotai-tanstack-query'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { FeaturesProvider } from '@/app/components/base/features'
+import {
+  createStartNode,
+  createWorkflowRunningData,
+} from '@/app/components/workflow/__tests__/fixtures'
+import DatasetsDetailProvider from '@/app/components/workflow/datasets-detail-store/provider'
 import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
+import { useStore } from '@/app/components/workflow/store'
+import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
+import { AppToastHost } from '@/app/notifications/host'
+import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper, seedAppDetail } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createDifyBuilderRuntime } from '@/test/fixtures/dify-builder'
+import { createWorkflowResponseFixture } from '@/test/fixtures/workflow-response'
+import { renderWorkflowEditor } from '@/test/workflow-editor'
 import { difyBuilderSessionBusyAtom } from '../dify-builder/session/state'
 import { difyBuilderRuntimeAtom } from '../dify-builder/store'
 import WorkflowPanel from '../workflow-panel'
 
-type WorkflowStoreState = Partial<Shape>
-
-const mockUseIsChatMode = vi.fn()
-const mockSetShowPanel = vi.fn()
-const mockStartFix = vi.fn(async () => true)
-
-let workflowStoreState: WorkflowStoreState
-
+const api = vi.hoisted(() => ({
+  run: vi.fn<typeof fetchRunDetail>(),
+  tracing: vi.fn<typeof fetchTracingList>(),
+  history: vi.fn<(url: string, options?: unknown) => Promise<FetchWorkflowDraftPageResponse>>(),
+  update:
+    vi.fn<
+      (
+        url: string,
+        options: { body: { marked_name: string; marked_comment: string } },
+      ) => Promise<ReturnType<typeof createWorkflowResponseFixture>>
+    >(),
+  remove: vi.fn<(url: string) => Promise<void>>(),
+}))
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
   useParams: () => ({ appId: 'app-123' }),
+  usePathname: () => '/app/app-123/workflow',
 }))
-
-const renderPanel = (initialStoreState: WorkflowStoreState, children = <WorkflowPanel />) => {
-  const { queryClient } = createConsoleQueryWrapper({ appDslVersion: '0.6.0' })
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  get: api.history,
+  patch: api.update,
+  del: api.remove,
+}))
+vi.mock('@/service/log', () => ({
+  fetchRunDetail: api.run,
+  fetchTracingList: api.tracing,
+}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.agentProviders.get': async () => [],
+      'apps.byAppId.workflows.draft.environmentVariables.get': async () => ({ items: [] }),
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.triggers.get': async () => [],
+      'apps.byAppId.workflows.draft.variables.get': async () => ({ items: [], total: 0 }),
+    }),
+  }
+})
+const version = (
+  overrides: Partial<FetchWorkflowDraftResponse> = {},
+): FetchWorkflowDraftResponse => ({
+  ...createWorkflowResponseFixture(),
+  id: 'release-1',
+  version: '2026-06-01T00:00:00Z',
+  marked_name: 'First release',
+  conversation_variables: [],
+  environment_variables: [],
+  rag_pipeline_variables: [],
+  graph: { nodes: [], edges: [] },
+  created_by: { id: 'user-1', name: 'Alice', email: 'alice@example.com' },
+  updated_by: { id: 'user-1', name: 'Alice', email: 'alice@example.com' },
+  ...overrides,
+})
+let versions: FetchWorkflowDraftResponse[]
+const nodes = [createStartNode({ id: 'start', data: { title: 'User input', variables: [] } })]
+const logItem = { id: 'log-1', content: 'Answer', isAnswer: true, workflow_run_id: 'run-1' }
+const startFix = vi.fn(async () => true)
+function OpenPanels() {
+  const showLog = useStore((s) => s.setMessageLogItem)
+  const showPreview = useStore((s) => s.setShowDebugAndPreviewPanel)
+  const showGlobals = useStore((s) => s.setShowGlobalVariablePanel)
+  return (
+    <>
+      <button type="button" onClick={() => showLog(logItem)}>
+        Open message log
+      </button>
+      <button type="button" onClick={() => showPreview(true)}>
+        Open preview
+      </button>
+      <button type="button" onClick={() => showGlobals(true)}>
+        Open global variables
+      </button>
+    </>
+  )
+}
+function setup(
+  initialStoreState: Partial<Shape> = {},
+  mode: 'workflow' | 'advanced-chat' = 'workflow',
+  builder = { enabled: false, canEdit: true, busy: false },
+) {
+  const { queryClient } = createConsoleQueryWrapper({
+    appDslVersion: '0.6.0',
+    features: {},
+    systemFeatures: { deployment_edition: 'COMMUNITY' },
+  })
+  seedModelProviderQueries(queryClient)
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
   seedAppDetail(
     queryClient,
-    createAppDetailFixture({
-      id: 'app-123',
-      mode: 'workflow' as const,
-      workflow: { id: 'workflow-version-id' },
+    createAppDetailFixture({ id: 'app-123', mode, workflow: { id: 'release-1' } }),
+  )
+  const builderStore = createStore()
+  builderStore.set(queryClientAtom, queryClient)
+  builderStore.set(
+    difyBuilderRuntimeAtom,
+    createDifyBuilderRuntime({
+      appId: 'app-123',
+      enabled: builder.enabled,
+      canEdit: builder.canEdit,
+      session: { startFix },
     }),
   )
-  return renderWorkflowComponent(children, {
-    initialStoreState,
-    queryClient,
-    resource: { kind: 'app', appId: 'app-123', mode: 'workflow' },
-  })
-}
-
-vi.mock('@/app/components/workflow/panel', () => ({
-  default: ({
-    components,
-    versionHistoryPanelProps,
-  }: {
-    components?: {
-      left?: ReactNode
-      right?: ReactNode
-    }
-    versionHistoryPanelProps?: {
-      getVersionListUrl: string
-      deleteVersionUrl: (versionId: string) => string
-      updateVersionUrl: (versionId: string) => string
-      latestVersionId?: string
-    }
-  }) => (
-    <div
-      data-testid="panel"
-      data-version-list-url={versionHistoryPanelProps?.getVersionListUrl ?? ''}
-      data-delete-version-url={versionHistoryPanelProps?.deleteVersionUrl('version-1') ?? ''}
-      data-update-version-url={versionHistoryPanelProps?.updateVersionUrl('version-1') ?? ''}
-      data-latest-version-id={versionHistoryPanelProps?.latestVersionId ?? ''}
-    >
-      <div data-testid="panel-left">{components?.left}</div>
-      <div data-testid="panel-right">{components?.right}</div>
-    </div>
-  ),
-}))
-
-vi.mock('next/dynamic', () => ({
-  default: (loader: () => Promise<{ default: React.ComponentType<Record<string, unknown>> }>) => {
-    const LazyComp = React.lazy(loader)
-    return function DynamicWrapper(props: Record<string, unknown>) {
-      return React.createElement(
-        React.Suspense,
-        { fallback: null },
-        React.createElement(LazyComp, props),
-      )
-    }
-  },
-}))
-
-vi.mock('@/service/log', () => ({
-  fetchRunDetail: vi.fn().mockResolvedValue(undefined),
-  fetchTracingList: vi.fn().mockResolvedValue({ data: [] }),
-}))
-
-vi.mock('@/app/components/workflow/panel/record', () => ({
-  default: () => <div data-testid="record-panel">record</div>,
-}))
-
-vi.mock('@/app/components/workflow/panel/chat-record', () => ({
-  default: () => <div data-testid="chat-record-panel">chat-record</div>,
-}))
-
-vi.mock('@/app/components/workflow/panel/debug-and-preview', () => ({
-  default: () => <div data-testid="debug-and-preview-panel">debug</div>,
-}))
-
-vi.mock('@/app/components/workflow/panel/workflow-preview', () => ({
-  default: ({
-    fixWithBuilderDisabled,
-    onFixRun,
-  }: {
-    fixWithBuilderDisabled?: boolean
-    onFixRun?: (runId: string) => void
-  }) => (
-    <div data-testid="workflow-preview-panel">
-      preview
-      {onFixRun && (
-        <button
-          type="button"
-          disabled={fixWithBuilderDisabled}
-          onClick={() => onFixRun('failed-run-1')}
-        >
-          Fix failed run with App Builder
-        </button>
-      )}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/panel/chat-variable-panel', () => ({
-  default: () => <div data-testid="chat-variable-panel">chat-variable</div>,
-}))
-
-vi.mock('@/app/components/workflow/panel/global-variable-panel', () => ({
-  default: () => <div data-testid="global-variable-panel">global-variable</div>,
-}))
-
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => mockUseIsChatMode()) }
-})
-
-const createDifyBuilderRuntime = (enabled: boolean, canEdit: boolean): DifyBuilderRuntime => ({
-  appId: 'app-123',
-  canEdit,
-  enabled,
-  getCanvasSnapshot: () => ({ nodes: [], edgeCount: 0 }),
-  session: {
-    onCanvasRefreshed: vi.fn(),
-    getTrace: vi.fn(() => ({ entries: [], truncated: false })),
-    loadOlderConversation: vi.fn(async () => true),
-    refresh: vi.fn(async () => true),
-    restore: vi.fn(async () => true),
-    reset: vi.fn(),
-    runAction: vi.fn(async () => true),
-    sendMessage: vi.fn(async () => true),
-    startBuild: vi.fn(async () => true),
-    startChecklistFix: vi.fn(async () => true),
-    startEdit: vi.fn(async () => true),
-    startFix: mockStartFix,
-    updateModel: vi.fn(async () => true),
-  },
-  setShowPanel: mockSetShowPanel,
-})
-
-const renderWorkflowPanel = ({
-  busy = false,
-  canEdit = true,
-  enabled,
-}: {
-  busy?: boolean
-  canEdit?: boolean
-  enabled: boolean
-}) => {
-  const store = createStore()
-  store.set(difyBuilderRuntimeAtom, createDifyBuilderRuntime(enabled, canEdit))
-  store.set(difyBuilderSessionBusyAtom, busy)
-
-  return renderPanel(
-    workflowStoreState,
-    <Provider store={store}>
-      <EditorResourceScope resource={{ kind: 'app', appId: 'app-123', mode: 'workflow' }}>
-        <WorkflowPanel />
+  builderStore.set(difyBuilderSessionBusyAtom, builder.busy)
+  const rendered = renderWorkflowEditor(
+    <Provider store={builderStore}>
+      <EditorResourceScope resource={{ kind: 'app', appId: 'app-123', mode }}>
+        <NuqsTestingAdapter>
+          <FeaturesProvider>
+            <EventEmitterContextProvider>
+              <DatasetsDetailProvider nodes={nodes}>
+                <OpenPanels />
+                <WorkflowPanel />
+                <AppToastHost timeout={0} />
+              </DatasetsDetailProvider>
+            </EventEmitterContextProvider>
+          </FeaturesProvider>
+        </NuqsTestingAdapter>
       </EditorResourceScope>
     </Provider>,
+    {
+      queryClient,
+      nodes,
+      historyStore: { nodes, edges: [] },
+      initialStoreState,
+      resource: { kind: 'app', appId: 'app-123', mode },
+    },
   )
+  return { ...rendered, user: userEvent.setup() }
 }
-
-describe('WorkflowPanel', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    workflowStoreState = {
-      historyWorkflowData: undefined,
-      showDebugAndPreviewPanel: false,
-      showChatVariablePanel: false,
-      showGlobalVariablePanel: false,
-    }
-    mockUseIsChatMode.mockReturnValue(false)
+let originalUrl: string
+beforeEach(() => {
+  startFix.mockClear()
+  originalUrl = window.location.href
+  window.history.replaceState({}, '', '/app/app-123/workflow')
+  versions = [version()]
+  api.run.mockReset().mockResolvedValue({
+    id: 'run-1',
+    version: '1',
+    graph: { nodes: [], edges: [] },
+    inputs: '{}',
+    inputs_truncated: false,
+    status: 'succeeded',
+    outputs: '{}',
+    outputs_truncated: false,
+    elapsed_time: 1,
+    total_tokens: 24,
+    total_steps: 2,
+    created_by_role: 'account',
+    created_by_account: { id: 'user-1', name: 'Alice', email: 'alice@example.com' },
+    created_at: 1700000000,
+    finished_at: 1700000001,
   })
-
-  it('should configure workflow version history urls and latest version id for the panel shell', async () => {
-    renderPanel(workflowStoreState)
-
-    const panel = await screen.findByTestId('panel')
-    expect(panel).toHaveAttribute('data-version-list-url', '/apps/app-123/workflows')
-    expect(panel).toHaveAttribute('data-delete-version-url', '/apps/app-123/workflows/version-1')
-    expect(panel).toHaveAttribute('data-update-version-url', '/apps/app-123/workflows/version-1')
-    expect(panel).toHaveAttribute('data-latest-version-id', 'workflow-version-id')
+  api.tracing.mockReset().mockResolvedValue({ data: [] })
+  api.history.mockReset().mockImplementation(async (url) => {
+    if (url !== '/apps/app-123/workflows') throw new Error(`Unexpected GET: ${url}`)
+    return { items: versions, page: 1, limit: 10, total: versions.length, has_more: false }
   })
-
-  it('should close the selected log and reopen on the default detail tab', async () => {
-    await import('@/app/components/base/message-log-modal')
-    const user = userEvent.setup()
-    const messageLogItem = {
-      id: 'log-1',
-      content: 'Answer',
-      isAnswer: true,
-      workflow_run_id: 'run-1',
-    }
-    const { store } = renderPanel({ messageLogItem })
-    expect(await screen.findByRole('tab', { name: 'runLog.detail' })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    )
-    await user.click(screen.getByRole('tab', { name: 'runLog.tracing' }))
-    expect(screen.getByRole('tab', { name: 'runLog.tracing' })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    )
-    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
-    await waitFor(() =>
-      expect(screen.queryByRole('tab', { name: 'runLog.detail' })).not.toBeInTheDocument(),
-    )
-    act(() => store.getState().setMessageLogItem(messageLogItem))
-    expect(await screen.findByRole('tab', { name: 'runLog.detail' })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    )
+  api.update.mockReset().mockImplementation(async (_url, { body }) => {
+    const updated = version(body)
+    versions = [updated]
+    return createWorkflowResponseFixture({ ...body, id: updated.id })
   })
-
-  it('should switch right-side workflow panels based on chat mode and workflow state', async () => {
-    workflowStoreState = {
-      historyWorkflowData: { id: 'history-1', status: 'succeeded' },
-      showDebugAndPreviewPanel: true,
-      showChatVariablePanel: true,
-      showGlobalVariablePanel: true,
-    }
-    mockUseIsChatMode.mockReturnValue(true)
-
-    const { unmount } = renderPanel(workflowStoreState)
-
-    expect(await screen.findByTestId('chat-record-panel')).toBeInTheDocument()
-    expect(screen.getByTestId('debug-and-preview-panel')).toBeInTheDocument()
-    expect(screen.getByTestId('chat-variable-panel')).toBeInTheDocument()
-    expect(screen.getByTestId('global-variable-panel')).toBeInTheDocument()
-    expect(screen.queryByTestId('record-panel')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('workflow-preview-panel')).not.toBeInTheDocument()
-
-    unmount()
-    mockUseIsChatMode.mockReturnValue(false)
-    renderPanel(workflowStoreState)
-
-    expect(await screen.findByTestId('record-panel')).toBeInTheDocument()
-    expect(screen.getByTestId('workflow-preview-panel')).toBeInTheDocument()
-    expect(screen.getByTestId('global-variable-panel')).toBeInTheDocument()
-    expect(screen.queryByTestId('chat-record-panel')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('debug-and-preview-panel')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('chat-variable-panel')).not.toBeInTheDocument()
-  })
-
-  it('should hide live run Fix when Builder is disabled and start it when enabled', async () => {
-    const user = userEvent.setup()
-    workflowStoreState.showDebugAndPreviewPanel = true
-
-    const { unmount } = renderWorkflowPanel({ enabled: false })
-    await screen.findByTestId('workflow-preview-panel')
-    expect(
-      screen.queryByRole('button', { name: 'Fix failed run with App Builder' }),
-    ).not.toBeInTheDocument()
-
-    unmount()
-    renderWorkflowPanel({ enabled: true })
-    await user.click(await screen.findByRole('button', { name: 'Fix failed run with App Builder' }))
-
-    expect(mockSetShowPanel).toHaveBeenCalledWith(true)
-    expect(mockStartFix).toHaveBeenCalledExactlyOnceWith('app-123', 'failed-run-1', undefined)
-  })
-
-  it('should keep run Fix disabled without edit access or while the Builder session is busy', async () => {
-    workflowStoreState.showDebugAndPreviewPanel = true
-
-    const { unmount } = renderWorkflowPanel({ canEdit: false, enabled: true })
-    expect(
-      await screen.findByRole('button', { name: 'Fix failed run with App Builder' }),
-    ).toBeDisabled()
-
-    unmount()
-    renderWorkflowPanel({ busy: true, enabled: true })
-    expect(
-      await screen.findByRole('button', { name: 'Fix failed run with App Builder' }),
-    ).toBeDisabled()
-  })
-
-  it('should hide run Fix while viewing history even when the live preview is open', async () => {
-    workflowStoreState.historyWorkflowData = { id: 'history-1', status: 'succeeded' }
-    workflowStoreState.showDebugAndPreviewPanel = true
-    renderWorkflowPanel({ enabled: true })
-
-    await screen.findByTestId('record-panel')
-    await screen.findByTestId('workflow-preview-panel')
-    expect(
-      screen.queryByRole('button', { name: 'Fix failed run with App Builder' }),
-    ).not.toBeInTheDocument()
-    expect(mockStartFix).not.toHaveBeenCalled()
+  api.remove.mockReset().mockImplementation(async () => {
+    versions = []
   })
 })
+
+it.each([
+  { enabled: false, canEdit: true, busy: false },
+  { enabled: true, canEdit: false, busy: false },
+  { enabled: true, canEdit: true, busy: true },
+  { enabled: true, canEdit: true, busy: false },
+])('gates the live run Builder fix with workspace and session access: %j', async (builder) => {
+  const { user } = setup(
+    {
+      showDebugAndPreviewPanel: true,
+      workflowRunningData: createWorkflowRunningData({
+        result: {
+          ...createWorkflowRunningData().result,
+          id: 'failed-run',
+          status: WorkflowRunningStatus.Failed,
+        },
+      }),
+    },
+    'workflow',
+    builder,
+  )
+  if (!builder.enabled) {
+    await screen.findByRole('separator', { name: 'workflow.singleRun.testRun' })
+    expect(screen.queryByRole('button', { name: 'difyBuilder.fixRun' })).not.toBeInTheDocument()
+    return
+  }
+  const fix = await screen.findByRole('button', { name: 'difyBuilder.fixRun' })
+  if (!builder.canEdit || builder.busy) {
+    expect(fix).toBeDisabled()
+    await user.click(fix)
+    expect(startFix).not.toHaveBeenCalled()
+  } else {
+    await user.click(fix)
+    expect(startFix).toHaveBeenCalledExactlyOnceWith('app-123', 'failed-run', undefined)
+  }
+})
+
+it('hides the live run fix while inspecting history', async () => {
+  setup(
+    {
+      showDebugAndPreviewPanel: true,
+      historyWorkflowData: { id: 'run-1', status: 'failed' },
+      workflowRunningData: createWorkflowRunningData({
+        result: {
+          ...createWorkflowRunningData().result,
+          id: 'failed-run',
+          status: WorkflowRunningStatus.Failed,
+        },
+      }),
+    },
+    'workflow',
+    { enabled: true, canEdit: true, busy: false },
+  )
+  await screen.findByRole('separator', { name: 'workflow.singleRun.testRun' })
+  expect(screen.queryByRole('button', { name: 'difyBuilder.fixRun' })).not.toBeInTheDocument()
+})
+afterEach(() => {
+  window.history.replaceState({}, '', originalUrl)
+  act(() => toast.dismiss())
+})
+
+it('loads this app’s version history and protects the published version from deletion', async () => {
+  const { user } = setup({ showWorkflowVersionHistoryPanel: true })
+  expect(await screen.findByText('First release')).toBeInTheDocument()
+  expect(api.history).toHaveBeenCalledWith('/apps/app-123/workflows', {
+    params: { page: 1, limit: 10, user_id: '', named_only: false },
+  })
+  expect(screen.getByText('workflowHistory.versionHistory.latest')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+  expect(
+    screen.queryByRole('menuitem', { name: 'common.operation.delete' }),
+  ).not.toBeInTheDocument()
+})
+
+it('edits and deletes an older version through this app’s real history actions', async () => {
+  versions = [version({ id: 'old-release' })]
+  api.update.mockImplementation(async (_url, { body }) => {
+    versions = [version({ ...body, id: 'old-release' })]
+    return createWorkflowResponseFixture({ ...body, id: 'old-release' })
+  })
+  const { user } = setup({ showWorkflowVersionHistoryPanel: true })
+  await screen.findByText('First release')
+  await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+  await user.click(
+    await screen.findByRole('menuitem', { name: 'workflowHistory.versionHistory.editVersionInfo' }),
+  )
+  const dialog = await screen.findByRole('dialog', {
+    name: 'workflowHistory.versionHistory.editVersionInfo',
+  })
+  const title = within(dialog).getByRole('textbox', {
+    name: 'workflowHistory.versionHistory.editField.title',
+  })
+  await user.clear(title)
+  await user.type(title, 'Renamed release')
+  await user.type(
+    within(dialog).getByRole('textbox', {
+      name: 'workflowHistory.versionHistory.editField.releaseNotes',
+    }),
+    'Updated notes',
+  )
+  await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+  expect(await screen.findByText('Renamed release')).toBeInTheDocument()
+  expect(api.update).toHaveBeenCalledExactlyOnceWith('/apps/app-123/workflows/old-release', {
+    body: { marked_name: 'Renamed release', marked_comment: 'Updated notes' },
+  })
+  await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'common.operation.delete' }))
+  const confirm = await screen.findByRole('alertdialog')
+  await user.click(within(confirm).getByRole('button', { name: 'common.operation.delete' }))
+  await waitFor(() =>
+    expect(api.remove).toHaveBeenCalledExactlyOnceWith('/apps/app-123/workflows/old-release'),
+  )
+  await waitFor(() => expect(screen.queryByText('Renamed release')).not.toBeInTheDocument())
+})
+
+it('reopens a closed message log on its default detail tab', async () => {
+  const { user } = setup()
+  await user.click(screen.getByRole('button', { name: 'Open message log' }))
+  expect(await screen.findByRole('tab', { name: 'runLog.detail' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
+  expect(api.run).toHaveBeenCalledWith('/apps/app-123/workflow-runs/run-1')
+  await user.click(screen.getByRole('tab', { name: 'runLog.tracing' }))
+  expect(screen.getByRole('tab', { name: 'runLog.tracing' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
+  await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+  await waitFor(() =>
+    expect(screen.queryByRole('tab', { name: 'runLog.detail' })).not.toBeInTheDocument(),
+  )
+  await user.click(screen.getByRole('button', { name: 'Open message log' }))
+  expect(await screen.findByRole('tab', { name: 'runLog.detail' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
+})
+
+it.each(['workflow', 'advanced-chat'] as const)(
+  'opens and closes the appropriate real preview in %s mode',
+  async (mode) => {
+    const { user } = setup({}, mode)
+    await user.click(screen.getByRole('button', { name: 'Open preview' }))
+    const name =
+      mode === 'workflow' ? 'workflow.singleRun.testRun' : 'workflow.common.debugAndPreview'
+    expect(await screen.findByRole('separator', { name })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() => expect(screen.queryByRole('separator', { name })).not.toBeInTheDocument())
+  },
+)
+
+it.each(['workflow', 'advanced-chat'] as const)(
+  'exposes the system variables belonging to %s mode',
+  async (mode) => {
+    const { user } = setup({}, mode)
+    await user.click(screen.getByRole('button', { name: 'Open global variables' }))
+    expect(await screen.findByText('workflow.globalVar.title')).toBeInTheDocument()
+    if (mode === 'workflow') {
+      expect(
+        screen.getByText((_, node) => node?.textContent === 'sys.timestamp'),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByText('workflow.globalVar.fieldsDescription.triggerTimestamp'),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByText((_, node) => node?.textContent === 'sys.conversation_id'),
+      ).not.toBeInTheDocument()
+    } else {
+      expect(
+        screen.getByText((_, node) => node?.textContent === 'sys.conversation_id'),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByText((_, node) => node?.textContent === 'sys.dialog_count'),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByText('workflow.globalVar.fieldsDescription.triggerTimestamp'),
+      ).not.toBeInTheDocument()
+    }
+  },
+)

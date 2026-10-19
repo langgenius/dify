@@ -2,7 +2,7 @@ import type { HandleRunOptions } from './use-workflow-run-utils'
 import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
 import type { Node } from '@/app/components/workflow/types'
 import type { IOtherOptions } from '@/service/base'
-import type { VersionHistory } from '@/types/workflow'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
@@ -533,7 +533,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   )
 
   const handleRestoreFromPublishedWorkflow = useCallback(
-    (publishedWorkflow: VersionHistory) => {
+    (publishedWorkflow: FetchWorkflowDraftResponse) => {
       const nodes = normalizePublishedWorkflowNodes(publishedWorkflow)
       const edges = publishedWorkflow.graph.edges
       const viewport = publishedWorkflow.graph.viewport!

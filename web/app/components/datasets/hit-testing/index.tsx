@@ -1,16 +1,15 @@
 'use client'
 
-import type { FC } from 'react'
 import type {
-  ExternalKnowledgeBaseHitTesting,
-  ExternalKnowledgeBaseHitTestingRequest,
-  ExternalKnowledgeBaseHitTestingResponse,
-  HitTesting,
+  DatasetQueryContentResponse,
+  DatasetQueryDetailResponse,
+  ExternalHitTestingRecordResponse,
+  ExternalHitTestingResponse,
   HitTestingRecord,
-  HitTestingRequest,
   HitTestingResponse,
-  Query,
-} from '@/models/datasets'
+} from '@dify/contracts/api/console/datasets/types.gen'
+import type { FC } from 'react'
+import type { ExternalKnowledgeBaseHitTestingRequest, HitTestingRequest } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -61,9 +60,9 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
 
   const [hitResult, setHitResult] = useState<HitTestingResponse | undefined>()
   const [externalHitResult, setExternalHitResult] = useState<
-    ExternalKnowledgeBaseHitTestingResponse | undefined
+    ExternalHitTestingResponse | undefined
   >()
-  const [queries, setQueries] = useState<Query[]>([])
+  const [queries, setQueries] = useState<DatasetQueryContentResponse[]>([])
   const [queryInputKey, setQueryInputKey] = useState(Date.now())
 
   const [currPage, setCurrPage] = useState<number>(0)
@@ -105,7 +104,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   ] = useBoolean(!isMobile)
 
   const {
-    mutateAsync: hitTestingMutation,
+    mutate: hitTestingMutation,
     isPending: isHitTestingPending,
     isError: isHitTestingError,
   } = useMutation({
@@ -117,7 +116,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
       }),
   })
   const {
-    mutateAsync: externalKnowledgeBaseHitTestingMutation,
+    mutate: externalKnowledgeBaseHitTestingMutation,
     isPending: isExternalKnowledgeBaseHitTestingPending,
     isError: isExternalKnowledgeBaseHitTestingError,
   } = useMutation({
@@ -149,7 +148,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
         ? resultTitle
         : ''
 
-  const renderHitResults = (results: HitTesting[] | ExternalKnowledgeBaseHitTesting[]) => (
+  const renderHitResults = (results: HitTestingRecord[] | ExternalHitTestingRecordResponse[]) => (
     <div className="flex h-full flex-col rounded-tl-2xl bg-background-body px-4 py-3">
       <h2 className="mb-2 shrink-0 pl-2 leading-6 font-semibold text-text-primary">
         {t(($) => $['hit.title'], { ns: 'datasetHitTesting', num: results.length })}
@@ -160,10 +159,10 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
             <ResultItemExternal
               key={idx}
               positionId={idx + 1}
-              payload={record as ExternalKnowledgeBaseHitTesting}
+              payload={record as ExternalHitTestingRecordResponse}
             />
           ) : (
-            <ResultItem key={idx} payload={record as HitTesting} />
+            <ResultItem key={idx} payload={record as HitTestingRecord} />
           ),
         )}
       </div>
@@ -181,7 +180,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
     </div>
   )
 
-  const handleClickRecord = useCallback((record: HitTestingRecord) => {
+  const handleClickRecord = useCallback((record: DatasetQueryDetailResponse) => {
     setQueries(record.queries)
     setQueryInputKey(Date.now())
   }, [])

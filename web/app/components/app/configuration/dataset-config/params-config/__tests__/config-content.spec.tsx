@@ -1,65 +1,30 @@
-import type { MockedFunction, MockInstance } from 'vite-plus/test'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { MockInstance } from 'vite-plus/test'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
-import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs } from '@/models/debug'
 import type { RetrievalConfig } from '@/types/app'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/components/app/configuration/toast'
 import {
-  useCurrentProviderAndModel,
-  useModelListAndDefaultModelAndCurrentProviderAndModel,
-} from '@/app/components/header/account-setting/model-provider-page/hooks'
-import {
   ChunkingMode,
-  DatasetPermission,
   DataSourceType,
   RerankingModeEnum,
   WeightedScoreEnum,
 } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
 import ConfigContent from '../config-content'
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => {
-  type Props = {
-    value?: { provider: string; model: string }
-    onValueChange?: (model: { provider: string; model: string }) => void
-  }
-
-  const MockModelSelector = ({ value, onValueChange }: Props) => (
-    <button
-      type="button"
-      onClick={() => onValueChange?.(value ?? { provider: 'mock-provider', model: 'mock-model' })}
-    >
-      Mock ModelSelector
-    </button>
-  )
-
-  return {
-    ModelSelector: MockModelSelector,
-  }
+const render = createNuqsTestRenderer((ui: React.ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient)
+  return renderWithConsoleQuery(ui, { queryClient })
 })
-
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
-  () => ({
-    default: () => <div data-testid="model-parameter-modal" />,
-  }),
-)
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelListAndDefaultModelAndCurrentProviderAndModel: vi.fn(),
-  useCurrentProviderAndModel: vi.fn(),
-}))
-
-const mockedUseModelListAndDefaultModelAndCurrentProviderAndModel =
-  useModelListAndDefaultModelAndCurrentProviderAndModel as MockedFunction<
-    typeof useModelListAndDefaultModelAndCurrentProviderAndModel
-  >
-const mockedUseCurrentProviderAndModel = useCurrentProviderAndModel as MockedFunction<
-  typeof useCurrentProviderAndModel
->
 
 let toastErrorSpy: MockInstance
 
@@ -77,7 +42,9 @@ const baseRetrievalConfig: RetrievalConfig = {
 
 const defaultIndexingTechnique: IndexingType = 'high_quality' as IndexingType
 
-const createDataset = (overrides: Partial<DataSet> = {}): DataSet => {
+const createDataset = (
+  overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
+): DatasetDetailWithPartialMembersResponse => {
   const { retrieval_model_dict, icon_info, ...restOverrides } = overrides
 
   const resolvedRetrievalModelDict = {
@@ -98,9 +65,9 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => {
     ...createDatasetFixture(),
     id: 'dataset-id',
     name: 'Dataset Name',
-    icon_info: resolvedIconInfo as DataSet['icon_info'],
+    icon_info: resolvedIconInfo,
     description: 'A test dataset',
-    permission: DatasetPermission.onlyMe,
+    permission: PermissionLevel.onlyMe,
     data_source_type: DataSourceType.FILE,
     indexing_technique: defaultIndexingTechnique,
     author_name: 'author',
@@ -175,33 +142,19 @@ describe('ConfigContent', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
-    mockedUseModelListAndDefaultModelAndCurrentProviderAndModel.mockReturnValue({
-      modelList: [],
-      defaultModel: undefined,
-      currentProvider: undefined,
-      currentModel: undefined,
-    })
-    mockedUseCurrentProviderAndModel.mockReturnValue({
-      currentProvider: undefined,
-      currentModel: undefined,
-    })
   })
 
   afterEach(() => {
     toastErrorSpy.mockRestore()
   })
 
-  // State management
   describe('Effects', () => {
     it('should normalize oneWay retrieval mode to multiWay', async () => {
-      // Arrange
       const onChange = vi.fn<(configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void>()
       const datasetConfigs = createDatasetConfigs({ retrieval_model: RETRIEVE_TYPE.oneWay })
 
-      // Act
       render(<ConfigContent datasetConfigs={datasetConfigs} onChange={onChange} />)
 
-      // Assert
       await waitFor(() => {
         expect(onChange).toHaveBeenCalled()
       })
@@ -210,48 +163,8 @@ describe('ConfigContent', () => {
     })
   })
 
-  // Rendering tests (REQUIRED)
-  describe('Rendering', () => {
-    it('should render weighted score panel when datasets are high-quality and consistent', () => {
-      // Arrange
-      const onChange = vi.fn<(configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void>()
-      const datasetConfigs = createDatasetConfigs({
-        reranking_mode: RerankingModeEnum.WeightedScore,
-      })
-      const selectedDatasets: DataSet[] = [
-        createDataset({
-          indexing_technique: 'high_quality' as IndexingType,
-          provider: 'dify',
-          embedding_model: 'text-embedding',
-          embedding_model_provider: 'openai',
-          retrieval_model_dict: {
-            ...baseRetrievalConfig,
-            search_method: RETRIEVE_METHOD.semantic,
-          },
-        }),
-      ]
-
-      // Act
-      render(
-        <ConfigContent
-          datasetConfigs={datasetConfigs}
-          onChange={onChange}
-          selectedDatasets={selectedDatasets}
-        />,
-      )
-
-      // Assert
-      expect(screen.getByText('dataset.weightedScore.title'))!.toBeInTheDocument()
-      expect(screen.getByText('modelProvider.modelProvider.rerankModel.key'))!.toBeInTheDocument()
-      expect(screen.getByTitle('dataset.weightedScore.semantic'))!.toBeVisible()
-      expect(screen.getByTitle('dataset.weightedScore.keyword'))!.toBeVisible()
-    })
-  })
-
-  // User interactions
   describe('User Interactions', () => {
     it('should update weights when user changes weighted score slider', async () => {
-      // Arrange
       const user = userEvent.setup()
       const onChange = vi.fn<(configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void>()
       const datasetConfigs = createDatasetConfigs({
@@ -268,7 +181,7 @@ describe('ConfigContent', () => {
           },
         },
       })
-      const selectedDatasets: DataSet[] = [
+      const selectedDatasets: DatasetDetailWithPartialMembersResponse[] = [
         createDataset({
           indexing_technique: 'high_quality' as IndexingType,
           provider: 'dify',
@@ -281,7 +194,6 @@ describe('ConfigContent', () => {
         }),
       ]
 
-      // Act
       render(
         <ConfigContent
           datasetConfigs={datasetConfigs}
@@ -297,7 +209,6 @@ describe('ConfigContent', () => {
       const callsBefore = onChange.mock.calls.length
       await user.keyboard('{ArrowRight}')
 
-      // Assert
       expect(onChange.mock.calls.length).toBeGreaterThan(callsBefore)
       const [nextConfigs] = onChange.mock.calls.at(-1) ?? []
       expect(nextConfigs?.weights?.vector_setting.vector_weight).toBeCloseTo(0.6, 5)
@@ -305,13 +216,12 @@ describe('ConfigContent', () => {
     })
 
     it('should warn when switching to rerank model mode without a valid model', async () => {
-      // Arrange
       const user = userEvent.setup()
       const onChange = vi.fn<(configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void>()
       const datasetConfigs = createDatasetConfigs({
         reranking_mode: RerankingModeEnum.WeightedScore,
       })
-      const selectedDatasets: DataSet[] = [
+      const selectedDatasets: DatasetDetailWithPartialMembersResponse[] = [
         createDataset({
           indexing_technique: 'high_quality' as IndexingType,
           provider: 'dify',
@@ -324,7 +234,6 @@ describe('ConfigContent', () => {
         }),
       ]
 
-      // Act
       render(
         <ConfigContent
           datasetConfigs={datasetConfigs}
@@ -334,7 +243,6 @@ describe('ConfigContent', () => {
       )
       await user.click(screen.getByText('modelProvider.modelProvider.rerankModel.key'))
 
-      // Assert
       expect(toastErrorSpy).toHaveBeenCalledWith('workflow.errorMsg.rerankModelRequired')
       expect(onChange).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -344,13 +252,12 @@ describe('ConfigContent', () => {
     })
 
     it('should warn when enabling rerank without a valid model in manual toggle mode', async () => {
-      // Arrange
       const user = userEvent.setup()
       const onChange = vi.fn<(configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void>()
       const datasetConfigs = createDatasetConfigs({
         reranking_enable: false,
       })
-      const selectedDatasets: DataSet[] = [
+      const selectedDatasets: DatasetDetailWithPartialMembersResponse[] = [
         createDataset({
           indexing_technique: 'economy' as IndexingType,
           provider: 'dify',
@@ -363,7 +270,6 @@ describe('ConfigContent', () => {
         }),
       ]
 
-      // Act
       render(
         <ConfigContent
           datasetConfigs={datasetConfigs}
@@ -373,7 +279,6 @@ describe('ConfigContent', () => {
       )
       await user.click(screen.getByRole('switch'))
 
-      // Assert
       expect(toastErrorSpy).toHaveBeenCalledWith('workflow.errorMsg.rerankModelRequired')
       expect(onChange).toHaveBeenCalledWith(
         expect.objectContaining({

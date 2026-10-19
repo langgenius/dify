@@ -1281,7 +1281,7 @@ export class CollaborationManager {
 
     this.sendCollaborationEvent({
       type: 'workflow_restore_intent',
-      data: data as unknown as Record<string, unknown>,
+      data: data as Record<string, unknown>,
       timestamp: Date.now(),
     })
   }
@@ -1291,7 +1291,7 @@ export class CollaborationManager {
 
     this.sendCollaborationEvent({
       type: 'workflow_restore_complete',
-      data: data as unknown as Record<string, unknown>,
+      data: data as Record<string, unknown>,
       timestamp: Date.now(),
     })
   }
@@ -1328,8 +1328,8 @@ export class CollaborationManager {
           // Get ReactFlow's native setters, not the collaborative ones
           const state = reactFlowStore.getState()
           const previousNodes = state.getNodes()
-          const updatedNodes = Array.from(this.nodesMap?.values() || []) as Node[]
-          const updatedEdges = Array.from(this.edgesMap?.values() || []) as Edge[]
+          const updatedNodes = this.mergeLocalNodeState(this.getNodes())
+          const updatedEdges = this.getEdges()
           // Call ReactFlow's native setters directly to avoid triggering collaboration
           this.captureSetNodesAnomaly(previousNodes, updatedNodes, 'reactflow-native:undo-apply')
           state.setNodes(updatedNodes)
@@ -1368,8 +1368,8 @@ export class CollaborationManager {
           // Get ReactFlow's native setters, not the collaborative ones
           const state = reactFlowStore.getState()
           const previousNodes = state.getNodes()
-          const updatedNodes = Array.from(this.nodesMap?.values() || []) as Node[]
-          const updatedEdges = Array.from(this.edgesMap?.values() || []) as Edge[]
+          const updatedNodes = this.mergeLocalNodeState(this.getNodes())
+          const updatedEdges = this.getEdges()
           // Call ReactFlow's native setters directly to avoid triggering collaboration
           this.captureSetNodesAnomaly(previousNodes, updatedNodes, 'reactflow-native:redo-apply')
           state.setNodes(updatedNodes)
@@ -1579,7 +1579,7 @@ export class CollaborationManager {
         const previousNodes = state.getNodes()
         const previousEdges = state.getEdges()
         this.startImportLog('edges', { nodes: previousNodes, edges: previousEdges })
-        const updatedEdges = Array.from(this.edgesMap?.values() || []) as Edge[]
+        const updatedEdges = this.getEdges()
 
         this.pendingInitialSync = false
 

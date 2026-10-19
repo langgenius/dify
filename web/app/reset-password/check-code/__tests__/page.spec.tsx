@@ -48,7 +48,7 @@ describe('ResetPasswordCheckCodePage', () => {
       new URLSearchParams({
         email: 'user@example.com',
         token: 'email-token',
-      }) as unknown as ReturnType<typeof useSearchParams>,
+      }) as ReturnType<typeof useSearchParams>,
     )
     vi.mocked(consoleClient.forgotPassword.validity.post).mockResolvedValue({
       email: 'user@example.com',

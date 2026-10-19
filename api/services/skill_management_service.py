@@ -4599,9 +4599,37 @@ class SkillManagementService:
         parts: list[str] = []
         try:
             with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+                archive_names = set(archive.namelist())
                 slide_names = sorted(
                     name for name in archive.namelist() if name.startswith("ppt/slides/slide") and name.endswith(".xml")
                 )
+                if {"ppt/presentation.xml", "ppt/_rels/presentation.xml.rels"} <= archive_names:
+                    # Part filenames need not match the presentation's displayed slide order.
+                    relationships = ET.fromstring(archive.read("ppt/_rels/presentation.xml.rels"))
+                    slide_targets: dict[str, str] = {}
+                    for relationship in relationships:
+                        if (
+                            not relationship.attrib.get("Type", "").endswith("/slide")
+                            or relationship.attrib.get("TargetMode") == "External"
+                        ):
+                            continue
+                        relationship_id = relationship.attrib.get("Id")
+                        target = relationship.attrib.get("Target")
+                        if relationship_id and target:
+                            slide_targets[relationship_id] = posixpath.normpath(posixpath.join("ppt", target)).lstrip(
+                                "/"
+                            )
+                    presentation = ET.fromstring(archive.read("ppt/presentation.xml"))
+                    slide_names = []
+                    for slide in presentation.iter():
+                        if slide.tag.rsplit("}", 1)[-1] != "sldId":
+                            continue
+                        relationship_id = next(
+                            (value for key, value in slide.attrib.items() if key.endswith("}id")), ""
+                        )
+                        target = slide_targets.get(relationship_id)
+                        if target is not None and target in archive_names:
+                            slide_names.append(target)
                 for name in slide_names:
                     parts.extend(SkillManagementService._xml_text_content(archive.read(name), text_tags={"t"}))
                     if sum(len(part) for part in parts) >= max_chars:
@@ -4657,23 +4685,33 @@ class SkillManagementService:
     @staticmethod
     def _extract_rtf_text(payload: bytes, *, max_chars: int) -> str:
         try:
-            source = payload.decode("utf-8")
+            payload.decode("utf-8")
+            text_encoding = "utf-8"
         except UnicodeDecodeError:
-            source = payload.decode("latin-1", errors="replace")
+            text_encoding = "latin-1"
+        # Keep source positions byte-aligned: \bin lengths count bytes, not decoded characters.
+        source = payload.decode("latin-1")
 
         text_parts: list[str] = []
         destination_skip_depth: int | None = None
         depth = 0
+        unicode_skip = 1
+        unicode_skip_stack: list[int] = []
+        fallback_remaining = 0
         index = 0
         while index < len(source):
             char = source[index]
             if char == "{":
+                unicode_skip_stack.append(unicode_skip)
+                fallback_remaining = 0
                 depth += 1
                 index += 1
                 if source[index : index + 1] == "\\" and source[index + 1 : index + 2] == "*":
                     destination_skip_depth = depth
                 continue
             if char == "}":
+                unicode_skip = unicode_skip_stack.pop() if unicode_skip_stack else 1
+                fallback_remaining = 0
                 if destination_skip_depth is not None and depth <= destination_skip_depth:
                     destination_skip_depth = None
                 depth = max(0, depth - 1)
@@ -4683,7 +4721,17 @@ class SkillManagementService:
                 index += 1
                 continue
             if char != "\\":
-                text_parts.append("\n" if char in "\r\n" else char)
+                if fallback_remaining:
+                    if char not in "\r\n\x00":
+                        fallback_remaining -= 1
+                else:
+                    end = index + 1
+                    while end < len(source) and source[end] not in "\\{}":
+                        end += 1
+                    literal = payload[index:end].decode(text_encoding, errors="replace")
+                    text_parts.append(literal.replace("\r", "\n"))
+                    index = end
+                    continue
                 index += 1
                 continue
 
@@ -4691,7 +4739,15 @@ class SkillManagementService:
             if match:
                 word = match.group(1)
                 value = match.group(2)
-                if word in {"par", "line"}:
+                index += len(match.group(0))
+                if fallback_remaining:
+                    # A control word (including its binary payload) counts as one fallback character.
+                    fallback_remaining -= 1
+                    if word == "bin" and value is not None:
+                        index += max(0, int(value))
+                elif word == "uc" and value is not None:
+                    unicode_skip = max(0, int(value))
+                elif word in {"par", "line"}:
                     text_parts.append("\n")
                 elif word == "tab":
                     text_parts.append("\t")
@@ -4700,19 +4756,20 @@ class SkillManagementService:
                     if codepoint < 0:
                         codepoint += 65536
                     text_parts.append(chr(codepoint))
-                index += len(match.group(0))
-                if word == "u" and source[index : index + 2].startswith("\\'"):
-                    index += 4
-                elif word == "u" and index < len(source):
-                    index += 1
+                    fallback_remaining = unicode_skip
                 continue
 
             if source[index : index + 2] == "\\'":
-                with suppress(ValueError):
-                    text_parts.append(bytes.fromhex(source[index + 2 : index + 4]).decode("latin-1"))
+                if fallback_remaining:
+                    fallback_remaining -= 1
+                else:
+                    with suppress(ValueError):
+                        text_parts.append(bytes.fromhex(source[index + 2 : index + 4]).decode("latin-1"))
                 index += 4
                 continue
-            if index + 1 < len(source):
+            if fallback_remaining:
+                fallback_remaining -= 1
+            elif index + 1 < len(source):
                 text_parts.append(source[index + 1])
             index += 2
 

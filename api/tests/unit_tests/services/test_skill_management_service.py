@@ -184,21 +184,29 @@ def _skill_md(name: str = "finance-sop", description: str = "Finance SOP", body:
 def test_validate_skill_name_rejects_underscores_and_double_hyphens() -> None:
     assert validate_skill_name("finance-sop") == "finance-sop"
     for bad in ["finance_sop", "finance--sop", "-finance", "finance-", "Finance", "x" * 65]:
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match="config skill name .* must match|skill name must",
+        ):
             validate_skill_name(bad)
 
 
 def test_validate_skill_description_rejects_blank_and_long_values() -> None:
     assert validate_skill_description(" Finance SOP ") == "Finance SOP"
     for bad in ["", "   ", "x" * 1025]:
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match=("(?:skill description must be at most 1024 characters|skill description must not be blank)"),
+        ):
             validate_skill_description(bad)
 
 
 def test_normalize_skill_file_path_rejects_escape_paths() -> None:
     assert normalize_skill_file_path("references//guide.md") == "references/guide.md"
     for bad in ["", "../x", "/etc/passwd", "a/\x00b"]:
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError, match="(?:skill file path contains control characters|skill file path is invalid)"
+        ):
             normalize_skill_file_path(bad)
 
 
@@ -3264,27 +3272,154 @@ def test_build_assistant_attachment_context_extracts_pptx_text() -> None:
     assert "Binary attachment available" not in context
 
 
-def test_build_assistant_attachment_context_extracts_rtf_text() -> None:
+@pytest.mark.parametrize(
+    ("slide_order", "max_chars", "strict"),
+    [
+        pytest.param([1, 2, 10], 1000, False, id="double-digit-slides"),
+        pytest.param([3, 1, 2], 1000, False, id="reordered-slides"),
+        pytest.param([2, 1, 3], 8, True, id="bounded-strict-presentation"),
+        pytest.param([1, 2], 1000, False, id="ordinary-order"),
+    ],
+)
+def test_build_assistant_attachment_context_preserves_pptx_slide_order(
+    slide_order: list[int], max_chars: int, strict: bool
+) -> None:
+    presentation_ns = (
+        "http://purl.oclc.org/ooxml/presentationml/main"
+        if strict
+        else "http://schemas.openxmlformats.org/presentationml/2006/main"
+    )
+    relationship_ns = (
+        "http://purl.oclc.org/ooxml/officeDocument/relationships"
+        if strict
+        else "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+    )
+    drawing_ns = (
+        "http://purl.oclc.org/ooxml/drawingml/main"
+        if strict
+        else "http://schemas.openxmlformats.org/drawingml/2006/main"
+    )
+    slide_ids = "".join(f'<p:sldId id="{256 + number}" r:id="rId{500 + number}"/>' for number in slide_order)
+    relationships = "".join(
+        f'<Relationship Id="rId{500 + number}" Type="{relationship_ns}/slide" '
+        f'Target="{f"/ppt/slides/slide{number}.xml" if number % 2 else f"slides/./slide{number}.xml"}"/>'
+        for number in reversed(slide_order)
+    )
+    files = {
+        "ppt/presentation.xml": (
+            f'<p:presentation xmlns:p="{presentation_ns}" xmlns:r="{relationship_ns}">'
+            f"<p:sldIdLst>{slide_ids}</p:sldIdLst></p:presentation>"
+        ),
+        "ppt/_rels/presentation.xml.rels": (
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            f"{relationships}</Relationships>"
+        ),
+    }
+    for number in reversed(slide_order):
+        files[f"ppt/slides/slide{number}.xml"] = (
+            f'<p:sld xmlns:p="{presentation_ns}" '
+            f'xmlns:a="{drawing_ns}">'
+            f"<p:cSld><a:p><a:r><a:t>Step {number}</a:t></a:r></a:p></p:cSld></p:sld>"
+        )
+    payload = _zip_payload(files)
+    attachment = SkillAssistAttachmentPayload(
+        tool_file_id="ordered-pptx",
+        name="steps.pptx",
+        mime_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        size=len(payload),
+    )
+    header = f"--- {attachment.name} ({attachment.mime_type}, {attachment.size} bytes) ---\n"
+    expected = "\n".join(f"Step {number}" for number in slide_order)
+    if len(expected) > max_chars:
+        expected = f"{expected[:max_chars]}\n[TRUNCATED]"
+    with (
+        patch(
+            "services.skill_management_service.SkillManagementService._load_assistant_tool_file_bytes",
+            return_value=payload,
+        ),
+        patch("services.skill_management_service._MAX_ASSISTANT_ATTACHMENT_CHARS", len(header) + max_chars),
+    ):
+        context = SkillManagementService._build_assistant_attachment_context(tenant_id=TENANT, attachments=[attachment])
+    assert context == header + expected
+
+
+def test_pptx_extraction_ignores_unreferenced_external_and_missing_slide_parts() -> None:
+    relationship_ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+    slide_ids = "".join(
+        f'<p:sldId id="{256 + index}" r:id="{rid}"/>'
+        for index, rid in enumerate(["keep", "external", "missing", "master"])
+    )
+    relationships = (
+        f'<Relationship Id="keep" Type="{relationship_ns}/slide" Target="slides/slide2.xml"/>'
+        f'<Relationship Id="external" Type="{relationship_ns}/slide" Target="slides/slide1.xml" TargetMode="External"/>'
+        f'<Relationship Id="missing" Type="{relationship_ns}/slide" Target="slides/slide404.xml"/>'
+        f'<Relationship Id="master" Type="{relationship_ns}/slideMaster" Target="slides/slide3.xml"/>'
+    )
+    payload = _zip_payload(
+        {
+            "ppt/presentation.xml": (
+                '<p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" '
+                f'xmlns:r="{relationship_ns}"><p:sldIdLst>{slide_ids}</p:sldIdLst></p:presentation>'
+            ),
+            "ppt/_rels/presentation.xml.rels": (
+                '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+                f"{relationships}</Relationships>"
+            ),
+            "ppt/slides/slide1.xml": "<slide><t>external</t></slide>",
+            "ppt/slides/slide2.xml": "<slide><t>keep</t></slide>",
+            "ppt/slides/slide3.xml": "<slide><t>master</t></slide>",
+            "ppt/slides/slide99.xml": "<slide><t>unreferenced</t></slide>",
+        }
+    )
+    assert SkillManagementService._extract_pptx_text(payload, max_chars=1000) == "keep"
+
+
+@pytest.mark.parametrize(
+    ("payload", "expected"),
+    [
+        pytest.param(
+            rb"{\rtf1\ansi Skill Builder\par reads RTF notes.}", "Skill Builder\nreads RTF notes.", id="ascii"
+        ),
+        pytest.param(rb"{\rtf1\ansi \u945? followed}", "α followed", id="default-uc1"),
+        pytest.param(rb"{\rtf1\ansi\uc0\u20320\u22909!}", "你好!", id="uc0-adjacent-unicode"),
+        pytest.param(rb"{\rtf1\ansi\uc2\u945?? followed}", "α followed", id="uc2-plain-fallback"),
+        pytest.param(rb"{\rtf1\ansi\uc2\u945\'3f\'3f followed}", "α followed", id="uc2-hex-fallback"),
+        pytest.param(rb"{\rtf1\ansi\u945\{ followed}", "α followed", id="escaped-brace-fallback"),
+        pytest.param(rb"{\rtf1\ansi\u945\tab followed}", "αfollowed", id="control-word-fallback"),
+        pytest.param(rb"{\rtf1\ansi\uc2\u945??{\uc0\u946!}\u947?? end}", "αβ!γ end", id="group-scope"),
+        pytest.param(rb"{\rtf1\ansi\uc2{\u945?}\u946?? end}", "αβ end", id="group-ends-fallback"),
+        pytest.param(b"{\\rtf1\\ansi\\uc2\\u945?\r\n? followed}", "α followed", id="newline-in-fallback"),
+        pytest.param(rb"{\rtf1\ansi\uc0\u-255!}", "！!", id="signed-unicode"),
+        pytest.param(rb"{\rtf1\ansi\u945\bin3 abc followed}", "α followed", id="binary-fallback"),
+        pytest.param(rb"{\rtf1\ansi{\*\hidden\uc0 discarded}\u945? kept}", "α kept", id="ignored-group"),
+        pytest.param(b"{\\rtf1\\u945\\bin2 \xc3\xa9OK}", "αOK", id="utf8-binary-fallback"),
+        pytest.param(b"{\\rtf1\\u945\\bin2 \xc3\xa9OK{\\*\\hidden \xff}}", "αOK", id="latin1-binary-fallback"),
+        pytest.param(b"{\\rtf1\\u945\\bin4 \xf0\x9f\x98\x80OK}", "αOK", id="utf8-four-byte-binary-fallback"),
+        pytest.param(b"{\\rtf1\\u945\\bin6 \xc3\xa9\xf0\x9f\x98\x80OK}", "αOK", id="utf8-mixed-binary-fallback"),
+        pytest.param("{\\rtf1 Café 中文}".encode(), "Café 中文", id="utf8-literal-text"),
+        pytest.param(b"{\\rtf1 Caf\xe9}", "Café", id="latin1-literal-text"),
+        pytest.param(rb"{\rtf1\ansi caf\'e9}", "café", id="hex-literal-text"),
+        pytest.param(rb"{\rtf1\ansi \{notes\} \\ path}", r"{notes} \ path", id="escaped-literal-text"),
+    ],
+)
+def test_build_assistant_attachment_context_extracts_rtf_text(payload: bytes, expected: str) -> None:
     attachment = SkillAssistAttachmentPayload(
         tool_file_id="rtf-file-1",
         name="notes.rtf",
         mime_type="application/rtf",
-        size=74,
+        size=len(payload),
     )
 
     with patch(
         "services.skill_management_service.SkillManagementService._load_assistant_tool_file_bytes",
-        return_value=b"{\\rtf1\\ansi Skill Builder\\par reads RTF notes.}",
+        return_value=payload,
     ):
         context = SkillManagementService._build_assistant_attachment_context(
             tenant_id=TENANT,
             attachments=[attachment],
         )
 
-    assert "--- notes.rtf" in context
-    assert "Skill Builder" in context
-    assert "reads RTF notes." in context
-    assert "Binary attachment available" not in context
+    assert context == f"--- notes.rtf (application/rtf, {len(payload)} bytes) ---\n{expected}"
 
 
 def test_build_assistant_image_contents_encodes_images_for_vision_models() -> None:

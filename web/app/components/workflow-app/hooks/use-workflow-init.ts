@@ -1,6 +1,6 @@
 import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
+import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { Edge, Node } from '@/app/components/workflow/types'
-import type { FileUploadConfigResponse } from '@/models/common'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { ORPCError } from '@orpc/client'
 import { CancelledError, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
@@ -84,7 +84,7 @@ export const useWorkflowInit = () => {
   const [isLoading, setIsLoading] = useState(true)
 
   const handleUpdateWorkflowFileUploadConfig = useCallback(
-    (config: FileUploadConfigResponse) => {
+    (config: UploadConfig) => {
       const { setFileUploadConfig } = workflowStore.getState()
       setFileUploadConfig(config)
     },

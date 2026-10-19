@@ -6,7 +6,6 @@ import { BlockEnum } from '../../../types'
 import { CollaborationManager } from '../collaboration-manager'
 import { ServerDraftSync } from '../server-draft-sync'
 import { webSocketClient } from '../websocket-manager'
-import { attachCrdtRuntime } from './test-crdt-runtime'
 
 const createSocket = () => {
   const handlers = new Map<string, (...args: unknown[]) => void>()
@@ -63,7 +62,6 @@ describe('server draft synchronization', () => {
     let nodes: Node[] = [node('llm')]
     let edges: Edge[] = []
     const manager = new CollaborationManager()
-    attachCrdtRuntime(manager)
     const connection = await manager.connect('app-1', {
       getState: () => ({
         getNodes: () => nodes,

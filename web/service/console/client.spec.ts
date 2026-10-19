@@ -1,5 +1,5 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
-import type { AppDetail, AppSiteResponse } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppSiteResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { DifyBuilderStreamEventResponse } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { MutationFunctionContext, QueryFunctionContext } from '@tanstack/react-query'
@@ -9,6 +9,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
 import { normalizeConsoleOpenAPIURL } from './openapi-url'
+
+const clients: QueryClient[] = []
+const createQueryClient = (...args: ConstructorParameters<typeof QueryClient>) => {
+  const client = new QueryClient(...args)
+  clients.push(client)
+  return client
+}
+
+afterEach(() => {
+  for (const client of clients.splice(0)) client.clear()
+  vi.restoreAllMocks()
+  vi.doUnmock('../base')
+  vi.doUnmock('@/utils/client')
+})
 
 const loadConsoleQuery = async () => {
   vi.resetModules()
@@ -76,16 +90,6 @@ type WorkflowAgentComposerMutationResponse = Parameters<
     >['onSuccess']
   >
 >[0]
-type RetryFn = (failureCount: number, error: unknown) => boolean
-
-const getRetryFn = (queryOptions: object): RetryFn => {
-  const retry = (queryOptions as { retry?: unknown }).retry
-  expect(typeof retry).toBe('function')
-  if (typeof retry !== 'function') throw new TypeError('Expected query retry to be a function.')
-
-  return retry as RetryFn
-}
-
 const createAgent = (overrides: Partial<AgentMutationResponse> = {}): AgentMutationResponse =>
   createAgentFixture({ role: 'Assistant', ...overrides })
 
@@ -195,7 +199,7 @@ describe('consoleQuery transport context', () => {
     )
     const consoleQuery = await loadConsoleQueryWithRequest(request)
     const mutation = new MutationObserver(
-      new QueryClient(),
+      createQueryClient(),
       consoleQuery.files.upload.post.mutationOptions(),
     )
     await expect(mutation.mutate({ body: { file } })).resolves.toEqual(response)
@@ -228,7 +232,7 @@ describe('consoleQuery transport context', () => {
       )
       const consoleQuery = await loadConsoleQueryWithRequest(request)
       const mutation = new MutationObserver(
-        new QueryClient(),
+        createQueryClient(),
         consoleQuery.apps.imports.post.mutationOptions(),
       )
       await mutation.mutate({ body: { file, ...(appId ? { app_id: appId } : {}) } })
@@ -281,7 +285,7 @@ describe('consoleQuery transport context', () => {
       .mockResolvedValue(new Response(bytes, { headers: { 'content-type': 'audio/wav' } }))
     const consoleQuery = await loadConsoleQueryWithRequest(request)
     const mutation = new MutationObserver(
-      new QueryClient(),
+      createQueryClient(),
       consoleQuery.agent.byAgentId.textToAudio.post.mutationOptions(),
     )
     const audio = await mutation.mutate({
@@ -319,9 +323,9 @@ describe('consoleQuery transport context', () => {
       },
     })
 
-    await Promise.resolve(
+    await expect(
       queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext),
-    ).catch(() => undefined)
+    ).resolves.toEqual({})
 
     expect(request).toHaveBeenCalledWith(
       expect.stringContaining('/agent/agent-1/build-draft'),
@@ -354,9 +358,9 @@ describe('consoleQuery transport context', () => {
       },
     })
 
-    await Promise.resolve(
+    await expect(
       queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext),
-    ).catch(() => undefined)
+    ).resolves.toEqual({})
 
     expect(request).toHaveBeenCalledWith(
       expect.stringContaining('/agent/agent-1/build-draft'),
@@ -646,40 +650,25 @@ describe('normalizeConsoleOpenAPIURL', () => {
   })
 })
 
-// Scenario: oRPC query defaults own shared Agent detail fetch behavior.
-describe('consoleQuery agent query defaults', () => {
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
-
-  it('should not retry missing agent detail errors', async () => {
-    const consoleQuery = await loadConsoleQuery()
-    const queryOptions = consoleQuery.agent.byAgentId.get.queryOptions({
-      input: {
-        params: {
-          agent_id: 'agent-1',
-        },
-      },
-    })
-    const retry = getRetryFn(queryOptions)
-
+describe('consoleQuery agent query retries', () => {
+  it.each([
+    [404, 1],
+    [500, 4],
+  ])('retries status %s for the configured attempt count', async (status, attempts) => {
     const { createHttpError } = await import('@/service/http-error')
-    expect(retry(0, createHttpError(new Response(null, { status: 404 })))).toBe(false)
-  })
-
-  it('should retry other agent detail errors fewer than three times', async () => {
-    const consoleQuery = await loadConsoleQuery()
-    const queryOptions = consoleQuery.agent.byAgentId.get.queryOptions({
-      input: {
-        params: {
-          agent_id: 'agent-1',
-        },
-      },
-    })
-    const retry = getRetryFn(queryOptions)
-
-    expect(retry(2, new Error('temporary failure'))).toBe(true)
-    expect(retry(3, new Error('temporary failure'))).toBe(false)
+    const error = createHttpError(new Response(null, { status }))
+    const request = vi.fn().mockRejectedValue(error)
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const queryClient = createQueryClient()
+    await expect(
+      queryClient.query(
+        consoleQuery.agent.byAgentId.get.queryOptions({
+          input: { params: { agent_id: 'agent-1' } },
+          retryDelay: 0,
+        }),
+      ),
+    ).rejects.toBe(error)
+    expect(request).toHaveBeenCalledTimes(attempts)
   })
 })
 
@@ -687,7 +676,7 @@ describe('consoleQuery education defaults', () => {
   it('should not retry education status failures', async () => {
     const request = vi.fn().mockRejectedValue(new Error('education status failed'))
     const consoleQuery = await loadConsoleQueryWithRequest(request)
-    const queryClient = new QueryClient({
+    const queryClient = createQueryClient({
       defaultOptions: {
         queries: { retry: 2 },
       },
@@ -700,58 +689,39 @@ describe('consoleQuery education defaults', () => {
     expect(request).toHaveBeenCalledTimes(1)
   })
 
-  it('should invalidate education status after activation succeeds', async () => {
-    const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
-    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
-
-    await consoleQuery.account.education.post.mutationOptions().onSuccess?.(
-      { message: 'success' },
-      {
-        body: {
-          institution: 'Dify University',
-          role: 'Student',
-          token: 'education-token',
-        },
-      },
-      undefined,
-      createMutationContext(queryClient),
-    )
-
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: consoleQuery.account.education.get.key(),
-    })
-  })
-
-  it('should preserve education status after activation is rejected', async () => {
-    const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
-    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
-
-    await consoleQuery.account.education.post.mutationOptions().onSuccess?.(
-      { message: 'failed' },
-      {
-        body: {
-          institution: 'Dify University',
-          role: 'Student',
-          token: 'education-token',
-        },
-      },
-      undefined,
-      createMutationContext(queryClient),
-    )
-
-    expect(invalidateQueries).not.toHaveBeenCalled()
-  })
+  it.each(['success', 'failed'])(
+    'updates education cache freshness after activation reports %s',
+    async (message) => {
+      const consoleQuery = await loadConsoleQuery()
+      const queryClient = createQueryClient()
+      const key = consoleQuery.account.education.get.queryKey()
+      const cached = { is_student: false, allow_refresh: false, expire_at: null }
+      queryClient.setQueryData(key, cached)
+      const unrelatedKey = ['unrelated-account-data']
+      queryClient.setQueryData(unrelatedKey, { name: 'User' })
+      const mutation = new MutationObserver(
+        queryClient,
+        consoleQuery.account.education.post.mutationOptions({
+          mutationFn: async () => ({ message }),
+        }),
+      )
+      await mutation.mutate({
+        body: { institution: 'Dify University', role: 'Student', token: 'education-token' },
+      })
+      expect(queryClient.getQueryData(key)).toEqual(cached)
+      expect(queryClient.getQueryState(key)?.isInvalidated).toBe(message === 'success')
+      expect(queryClient.getQueryState(unrelatedKey)?.isInvalidated).toBe(false)
+    },
+  )
 })
 
 describe('consoleQuery account profile mutation defaults', () => {
   it('should invalidate the account profile after a profile update', async () => {
     const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
+    const queryClient = createQueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
 
-    await consoleQuery.account.profile.patch.mutationOptions().onSuccess?.(
+    await consoleQuery.account.profile.patch.mutationOptions().onSuccess!(
       {
         id: 'user-1',
         name: 'Test User',
@@ -774,7 +744,7 @@ describe('consoleQuery account profile mutation defaults', () => {
 describe('consoleQuery app mutation defaults', () => {
   it('should merge the reset token into the exact app site without replacing other detail fields', async () => {
     const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
+    const queryClient = createQueryClient()
     const input = { params: { app_id: 'app-1' } }
     const detailKey = consoleQuery.apps.byAppId.get.queryKey({ input })
     const otherKey = consoleQuery.apps.byAppId.get.queryKey({
@@ -795,93 +765,29 @@ describe('consoleQuery app mutation defaults', () => {
       use_icon_as_answer_icon: false,
     }
 
-    await consoleQuery.apps.byAppId.site.accessTokenReset.post
-      .mutationOptions()
-      .onSettled?.(response, null, input, undefined, createMutationContext(queryClient))
+    await consoleQuery.apps.byAppId.site.accessTokenReset.post.mutationOptions().onSettled!(
+      response,
+      null,
+      input,
+      undefined,
+      createMutationContext(queryClient),
+    )
 
     expect(queryClient.getQueryData(detailKey)).toEqual({
       ...original,
       site: { ...original.site, code: response.code, access_token: response.code },
     })
     expect(queryClient.getQueryData(otherKey)).toEqual(other)
+    expect(queryClient.getQueryState(detailKey)?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(otherKey)?.isInvalidated).toBe(false)
     expect(original.site?.access_token).toBe('site-token')
-  })
-
-  it('should invalidate the exact app detail after access mutations', async () => {
-    const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
-    const invalidateQueries = vi
-      .spyOn(queryClient, 'invalidateQueries')
-      .mockImplementation(() => new Promise(() => {}))
-    const context = createMutationContext(queryClient)
-    const appDetail: AppDetail = createAppDetailFixture()
-    const appSite: AppSiteResponse = {
-      app_id: 'app-1',
-      customize_token_strategy: 'fixed',
-      default_language: 'en-US',
-      prompt_public: false,
-      show_workflow_steps: false,
-      title: 'App',
-      use_icon_as_answer_icon: false,
-    }
-
-    const results = [
-      consoleQuery.apps.byAppId.apiEnable.post
-        .mutationOptions()
-        .onSettled?.(
-          appDetail,
-          null,
-          { params: { app_id: 'app-1' }, body: { enable_api: true } },
-          undefined,
-          context,
-        ),
-      consoleQuery.apps.byAppId.siteEnable.post
-        .mutationOptions()
-        .onSettled?.(
-          appDetail,
-          null,
-          { params: { app_id: 'app-2' }, body: { enable_site: true } },
-          undefined,
-          context,
-        ),
-      consoleQuery.apps.byAppId.site.accessTokenReset.post
-        .mutationOptions()
-        .onSettled?.(appSite, null, { params: { app_id: 'app-3' } }, undefined, context),
-      consoleQuery.apps.byAppId.siteEnable.post
-        .mutationOptions()
-        .onSettled?.(
-          undefined,
-          new Error('request failed'),
-          { params: { app_id: 'app-4' }, body: { enable_site: false } },
-          undefined,
-          context,
-        ),
-    ]
-
-    expect(results).toEqual([undefined, undefined, undefined, undefined])
-    expect(invalidateQueries).toHaveBeenCalledTimes(3)
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: consoleQuery.apps.byAppId.get.queryKey({
-        input: { params: { app_id: 'app-1' } },
-      }),
-    })
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: consoleQuery.apps.byAppId.get.queryKey({
-        input: { params: { app_id: 'app-2' } },
-      }),
-    })
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: consoleQuery.apps.byAppId.get.queryKey({
-        input: { params: { app_id: 'app-3' } },
-      }),
-    })
   })
 
   it.each(['api', 'site'] as const)(
     'keeps complete detail and other apps when updating %s access',
     async (kind) => {
       const consoleQuery = await loadConsoleQuery()
-      const queryClient = new QueryClient()
+      const queryClient = createQueryClient()
       const input = { params: { app_id: 'app-1' } }
       const detailKey = consoleQuery.apps.byAppId.get.queryKey({ input })
       const otherKey = consoleQuery.apps.byAppId.get.queryKey({
@@ -899,19 +805,21 @@ describe('consoleQuery app mutation defaults', () => {
       const context = createMutationContext(queryClient)
 
       if (kind === 'api') {
-        await consoleQuery.apps.byAppId.apiEnable.post
-          .mutationOptions()
-          .onSettled?.(updated, null, { ...input, body: { enable_api: false } }, undefined, context)
+        await consoleQuery.apps.byAppId.apiEnable.post.mutationOptions().onSettled!(
+          updated,
+          null,
+          { ...input, body: { enable_api: false } },
+          undefined,
+          context,
+        )
       } else {
-        await consoleQuery.apps.byAppId.siteEnable.post
-          .mutationOptions()
-          .onSettled?.(
-            updated,
-            null,
-            { ...input, body: { enable_site: false } },
-            undefined,
-            context,
-          )
+        await consoleQuery.apps.byAppId.siteEnable.post.mutationOptions().onSettled!(
+          updated,
+          null,
+          { ...input, body: { enable_site: false } },
+          undefined,
+          context,
+        )
       }
 
       expect(queryClient.getQueryData(detailKey)).toEqual({
@@ -920,12 +828,36 @@ describe('consoleQuery app mutation defaults', () => {
         updated_at: updated.updated_at,
       })
       expect(queryClient.getQueryData(otherKey)).toEqual(other)
+      expect(queryClient.getQueryState(detailKey)?.isInvalidated).toBe(true)
+      expect(queryClient.getQueryState(otherKey)?.isInvalidated).toBe(false)
     },
   )
 
+  it('preserves app access state when saving fails', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = createQueryClient()
+    const params = { app_id: 'app-1' }
+    const key = consoleQuery.apps.byAppId.get.queryKey({ input: { params } })
+    const detail = createAppDetailFixture({ enable_site: true })
+    queryClient.setQueryData(key, detail)
+    const mutation = new MutationObserver(
+      queryClient,
+      consoleQuery.apps.byAppId.siteEnable.post.mutationOptions({
+        mutationFn: async () => {
+          throw new Error('Save failed')
+        },
+      }),
+    )
+    await expect(mutation.mutate({ params, body: { enable_site: false } })).rejects.toThrow(
+      'Save failed',
+    )
+    expect(queryClient.getQueryData(key)).toEqual(detail)
+    expect(queryClient.getQueryState(key)?.isInvalidated).toBe(false)
+  })
+
   it('should write an updated app into its exact detail cache', async () => {
     const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
+    const queryClient = createQueryClient()
     const detailQueryKey = consoleQuery.apps.byAppId.get.queryKey({
       input: { params: { app_id: 'app-1' } },
     })
@@ -941,7 +873,7 @@ describe('consoleQuery app mutation defaults', () => {
     queryClient.setQueryData(otherDetailQueryKey, { ...updatedApp, id: 'app-2', name: 'Other app' })
 
     const mutationOptions = consoleQuery.apps.byAppId.put.mutationOptions()
-    await mutationOptions.onSuccess?.(
+    await mutationOptions.onSuccess!(
       updatedApp,
       {
         params: { app_id: 'app-1' },
@@ -963,13 +895,13 @@ describe('consoleQuery app mutation defaults', () => {
     'should refresh completed import data without blocking (overwrite: %s)',
     async (appId) => {
       const consoleQuery = await loadConsoleQuery()
-      const queryClient = new QueryClient()
+      const queryClient = createQueryClient()
       const invalidateQueries = vi
         .spyOn(queryClient, 'invalidateQueries')
         .mockImplementation(() => new Promise(() => {}))
       const mutationOptions = consoleQuery.apps.imports.post.mutationOptions()
 
-      const result = mutationOptions.onSuccess?.(
+      const result = mutationOptions.onSuccess!(
         {
           id: 'import-1',
           status: 'completed',
@@ -1007,11 +939,11 @@ describe('consoleQuery app mutation defaults', () => {
 
   it('should keep app lists intact while an import awaits confirmation', async () => {
     const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
+    const queryClient = createQueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     const mutationOptions = consoleQuery.apps.imports.post.mutationOptions()
 
-    mutationOptions.onSuccess?.(
+    mutationOptions.onSuccess!(
       {
         id: 'import-1',
         status: 'pending',
@@ -1029,7 +961,7 @@ describe('consoleQuery app mutation defaults', () => {
 
   it('should keep a star mutation pending until visible app lists synchronize', async () => {
     const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
+    const queryClient = createQueryClient()
     const invalidationResolvers: Array<() => void> = []
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(
       () =>
@@ -1039,7 +971,7 @@ describe('consoleQuery app mutation defaults', () => {
     )
     const mutationOptions = consoleQuery.apps.byAppId.star.post.mutationOptions()
 
-    const synchronization = mutationOptions.onSuccess?.(
+    const synchronization = mutationOptions.onSuccess!(
       { result: 'success' },
       { params: { app_id: 'app-1' } },
       undefined,
@@ -1068,7 +1000,7 @@ describe('consoleQuery app mutation defaults', () => {
 
   it('should wait for deleted app lists to synchronize without waiting for quota', async () => {
     const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
+    const queryClient = createQueryClient()
     const invalidationResolvers: Array<() => void> = []
     const invalidateQueries = vi
       .spyOn(queryClient, 'invalidateQueries')
@@ -1082,7 +1014,7 @@ describe('consoleQuery app mutation defaults', () => {
       })
     const mutationOptions = consoleQuery.apps.byAppId.delete.mutationOptions()
 
-    const synchronization = mutationOptions.onSuccess?.(
+    const synchronization = mutationOptions.onSuccess!(
       undefined,
       { params: { app_id: 'app-1' } },
       undefined,
@@ -1115,14 +1047,14 @@ describe('consoleQuery app mutation defaults', () => {
 
   it('should invalidate the owning API key cache after app and dataset mutations', async () => {
     const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
+    const queryClient = createQueryClient()
     const invalidateQueries = vi
       .spyOn(queryClient, 'invalidateQueries')
       .mockImplementation(() => new Promise(() => {}))
     const context = createMutationContext(queryClient)
 
     const results = [
-      consoleQuery.apps.byResourceId.apiKeys.post.mutationOptions().onSuccess?.(
+      consoleQuery.apps.byResourceId.apiKeys.post.mutationOptions().onSuccess!(
         {
           id: 'app-key-1',
           token: 'app-token',
@@ -1133,7 +1065,7 @@ describe('consoleQuery app mutation defaults', () => {
         undefined,
         context,
       ),
-      consoleQuery.datasets.apiKeys.post.mutationOptions().onSuccess?.(
+      consoleQuery.datasets.apiKeys.post.mutationOptions().onSuccess!(
         {
           id: 'dataset-key-1',
           token: 'dataset-token',
@@ -1144,17 +1076,18 @@ describe('consoleQuery app mutation defaults', () => {
         undefined,
         context,
       ),
-      consoleQuery.apps.byResourceId.apiKeys.byApiKeyId.delete
-        .mutationOptions()
-        .onSuccess?.(
-          undefined,
-          { params: { resource_id: 'app-1', api_key_id: 'app-key-1' } },
-          undefined,
-          context,
-        ),
-      consoleQuery.datasets.apiKeys.byApiKeyId.delete
-        .mutationOptions()
-        .onSuccess?.(undefined, { params: { api_key_id: 'dataset-key-1' } }, undefined, context),
+      consoleQuery.apps.byResourceId.apiKeys.byApiKeyId.delete.mutationOptions().onSuccess!(
+        undefined,
+        { params: { resource_id: 'app-1', api_key_id: 'app-key-1' } },
+        undefined,
+        context,
+      ),
+      consoleQuery.datasets.apiKeys.byApiKeyId.delete.mutationOptions().onSuccess!(
+        undefined,
+        { params: { api_key_id: 'dataset-key-1' } },
+        undefined,
+        context,
+      ),
     ]
 
     expect(results).toEqual([undefined, undefined, undefined, undefined])
@@ -1184,27 +1117,23 @@ describe('consoleQuery agent mutation defaults', () => {
     'invalidates agent keys and access status after key %s',
     async (operation) => {
       const consoleQuery = await loadConsoleQuery()
-      const queryClient = new QueryClient()
+      const queryClient = createQueryClient()
       const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
       const context = createMutationContext(queryClient)
       if (operation === 'creation') {
-        await consoleQuery.agent.byAgentId.apiKeys.post
-          .mutationOptions()
-          .onSuccess?.(
-            { id: 'key-1', token: 'app-secret', type: 'app', dataset_ids: [] },
-            { params: { agent_id: 'agent-1' } },
-            undefined,
-            context,
-          )
+        await consoleQuery.agent.byAgentId.apiKeys.post.mutationOptions().onSuccess!(
+          { id: 'key-1', token: 'app-secret', type: 'app', dataset_ids: [] },
+          { params: { agent_id: 'agent-1' } },
+          undefined,
+          context,
+        )
       } else {
-        await consoleQuery.agent.byAgentId.apiKeys.byApiKeyId.delete
-          .mutationOptions()
-          .onSuccess?.(
-            undefined,
-            { params: { agent_id: 'agent-1', api_key_id: 'key-1' } },
-            undefined,
-            context,
-          )
+        await consoleQuery.agent.byAgentId.apiKeys.byApiKeyId.delete.mutationOptions().onSuccess!(
+          undefined,
+          { params: { agent_id: 'agent-1', api_key_id: 'key-1' } },
+          undefined,
+          context,
+        )
       }
       expect(invalidateQueries).toHaveBeenCalledWith({
         queryKey: consoleQuery.agent.byAgentId.apiKeys.get.queryKey({
@@ -1221,12 +1150,12 @@ describe('consoleQuery agent mutation defaults', () => {
 
   it('should invalidate roster and invite option lists after creating an agent', async () => {
     const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
+    const queryClient = createQueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     const createdAgent = createAgent()
 
     const mutationOptions = consoleQuery.agent.post.mutationOptions()
-    await mutationOptions.onSuccess?.(
+    await mutationOptions.onSuccess!(
       createdAgent,
       {
         body: {
@@ -1249,12 +1178,12 @@ describe('consoleQuery agent mutation defaults', () => {
 
   it('should cache copied agent detail and invalidate roster lists after copying an agent', async () => {
     const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
+    const queryClient = createQueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     const copiedAgent = createAgent({ id: 'copied-agent', name: 'Agent copy' })
 
     const mutationOptions = consoleQuery.agent.byAgentId.copy.post.mutationOptions()
-    await mutationOptions.onSuccess?.(
+    await mutationOptions.onSuccess!(
       copiedAgent,
       {
         params: {
@@ -1287,7 +1216,7 @@ describe('consoleQuery agent mutation defaults', () => {
 
   it('should cache workflow composer state after copying a roster agent into an inline agent', async () => {
     const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
+    const queryClient = createQueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     const composerState = createWorkflowComposerState({
       binding: {
@@ -1302,7 +1231,7 @@ describe('consoleQuery agent mutation defaults', () => {
 
     const mutationOptions =
       consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.copyFromRoster.post.mutationOptions()
-    await mutationOptions.onSuccess?.(
+    await mutationOptions.onSuccess!(
       composerState,
       {
         params: {
@@ -1339,7 +1268,7 @@ describe('consoleQuery agent mutation defaults', () => {
 
   it('should cache workflow composer state after saving workflow node composer', async () => {
     const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
+    const queryClient = createQueryClient()
     const composerState = createWorkflowComposerState({
       binding: {
         agent_id: 'inline-agent-1',
@@ -1353,7 +1282,7 @@ describe('consoleQuery agent mutation defaults', () => {
 
     const mutationOptions =
       consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions()
-    await mutationOptions.onSuccess?.(
+    await mutationOptions.onSuccess!(
       composerState,
       {
         params: {
@@ -1385,7 +1314,7 @@ describe('consoleQuery agent mutation defaults', () => {
 
   it('should cache snippet composer state after saving the inline agent', async () => {
     const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
+    const queryClient = createQueryClient()
     const composerState = createWorkflowComposerState({
       binding: {
         agent_id: 'snippet-inline-agent-1',
@@ -1399,7 +1328,7 @@ describe('consoleQuery agent mutation defaults', () => {
 
     const mutationOptions =
       consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions()
-    await mutationOptions.onSuccess?.(
+    await mutationOptions.onSuccess!(
       composerState,
       {
         params: {
@@ -1433,13 +1362,13 @@ describe('consoleQuery agent mutation defaults', () => {
 
   it('should cache workflow composer state and invalidate roster lists after saving inline agent to roster', async () => {
     const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
+    const queryClient = createQueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     const composerState = createWorkflowComposerState()
 
     const mutationOptions =
       consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.saveToRoster.post.mutationOptions()
-    await mutationOptions.onSuccess?.(
+    await mutationOptions.onSuccess!(
       composerState,
       {
         params: {
@@ -1489,13 +1418,13 @@ describe('consoleQuery agent mutation defaults', () => {
 
   it('should cache snippet composer state and invalidate roster lists after saving inline agent to roster', async () => {
     const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
+    const queryClient = createQueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     const composerState = createWorkflowComposerState()
 
     const mutationOptions =
       consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.saveToRoster.post.mutationOptions()
-    await mutationOptions.onSuccess?.(
+    await mutationOptions.onSuccess!(
       composerState,
       {
         params: {
@@ -1547,12 +1476,12 @@ describe('consoleQuery agent mutation defaults', () => {
 
   it('should invalidate invite option lists after updating an agent', async () => {
     const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
+    const queryClient = createQueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     const updatedAgent = createAgent({ name: 'Updated Agent' })
 
     const mutationOptions = consoleQuery.agent.byAgentId.put.mutationOptions()
-    await mutationOptions.onSuccess?.(
+    await mutationOptions.onSuccess!(
       updatedAgent,
       {
         params: {
@@ -1574,7 +1503,7 @@ describe('consoleQuery agent mutation defaults', () => {
 
   it('should invalidate roster and invite option lists after publishing an agent config', async () => {
     const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
+    const queryClient = createQueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     const removeQueries = vi.spyOn(queryClient, 'removeQueries')
     const inviteOptionsQueryKey = consoleQuery.agent.inviteOptions.get.queryKey({
@@ -1661,7 +1590,7 @@ describe('consoleQuery agent mutation defaults', () => {
     })
 
     const mutationOptions = consoleQuery.agent.byAgentId.publish.post.mutationOptions()
-    await mutationOptions.onSuccess?.(
+    await mutationOptions.onSuccess!(
       publishResponse,
       {
         params: {
@@ -1698,7 +1627,7 @@ describe('consoleQuery agent mutation defaults', () => {
 
   it('should invalidate roster list but keep invite options stable after saving an agent draft', async () => {
     const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
+    const queryClient = createQueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     const composerQueryKey = consoleQuery.agent.byAgentId.composer.get.queryKey({
       input: {
@@ -1715,7 +1644,7 @@ describe('consoleQuery agent mutation defaults', () => {
     })
 
     const mutationOptions = consoleQuery.agent.byAgentId.composer.put.mutationOptions()
-    await mutationOptions.onSuccess?.(
+    await mutationOptions.onSuccess!(
       savedComposerState,
       {
         params: {
@@ -1744,7 +1673,7 @@ describe('consoleQuery agent mutation defaults', () => {
 
   it('should clear deleted agent queries and invalidate invite option lists', async () => {
     const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
+    const queryClient = createQueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     const deletedAgent = createAgent()
     const otherAgent = createAgent({ id: 'agent-2' })
@@ -1774,7 +1703,7 @@ describe('consoleQuery agent mutation defaults', () => {
     queryClient.setQueryData(otherAgentDetailQueryKey, otherAgent)
 
     const mutationOptions = consoleQuery.agent.byAgentId.delete.mutationOptions()
-    await mutationOptions.onSuccess?.(
+    await mutationOptions.onSuccess!(
       {},
       {
         params: {
@@ -1802,12 +1731,12 @@ describe('consoleQuery Web app access mutation defaults', () => {
 
   it('should invalidate access data and Agent details after updating Web app access', async () => {
     const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
+    const queryClient = createQueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
 
     const mutationOptions =
       consoleQuery.enterprise.webAppAuth.updateWebAppWhitelistSubjects.mutationOptions()
-    await mutationOptions.onSuccess?.(
+    await mutationOptions.onSuccess!(
       { message: 'updated' },
       {
         body: {
@@ -1850,7 +1779,7 @@ describe('consoleQuery App Deploy cache behavior', () => {
     'keeps the saved %s switch in %s deployment reads when refreshing fails',
     async (accessPoint, view) => {
       const consoleQuery = await loadConsoleQuery()
-      const client = new QueryClient({
+      const client = createQueryClient({
         defaultOptions: { queries: { staleTime: Infinity, retry: false } },
       })
       const params = { app_id: 'app-1', environment_id: 'staging' }
@@ -1969,7 +1898,7 @@ describe('consoleQuery App Deploy cache behavior', () => {
     'refreshes environment keys and their count after %s',
     async (action) => {
       const consoleQuery = await loadConsoleQuery()
-      const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } })
+      const client = createQueryClient({ defaultOptions: { queries: { staleTime: Infinity } } })
       const params = { app_id: 'app-1', environment_id: 'staging' }
       const key = { created_at: 1, id: 'key-1', token: 'secret', type: 'api' }
       let keys = action === 'create' ? [] : [key]
@@ -2020,7 +1949,7 @@ describe('consoleQuery App Deploy cache behavior', () => {
     'refreshes deployment reads after %s',
     async (action) => {
       const consoleQuery = await loadConsoleQuery()
-      const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } })
+      const client = createQueryClient({ defaultOptions: { queries: { staleTime: Infinity } } })
       const params = { app_id: 'app-1', environment_id: 'staging', workflow_id: 'workflow-1' }
       const environment = {
         id: 'staging',
@@ -2096,7 +2025,7 @@ describe('consoleQuery tag mutation defaults', () => {
 
   it('should add created tags to the matching list query cache', async () => {
     const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
+    const queryClient = createQueryClient()
     const appListKey = consoleQuery.tags.get.queryKey({
       input: {
         query: {
@@ -2123,7 +2052,7 @@ describe('consoleQuery tag mutation defaults', () => {
     queryClient.setQueryData(knowledgeListKey, [existingKnowledgeTag])
 
     const mutationOptions = consoleQuery.tags.post.mutationOptions()
-    await mutationOptions.onSuccess?.(
+    await mutationOptions.onSuccess!(
       createdTag,
       {
         body: {
@@ -2141,7 +2070,7 @@ describe('consoleQuery tag mutation defaults', () => {
 
   it('should update matching tags across cached list queries', async () => {
     const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
+    const queryClient = createQueryClient()
     const appListKey = consoleQuery.tags.get.queryKey({
       input: {
         query: {
@@ -2174,7 +2103,7 @@ describe('consoleQuery tag mutation defaults', () => {
     })
     const mutationOptions = consoleQuery.tags.byTagId.patch.mutationOptions()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
-    await mutationOptions.onSuccess?.(
+    await mutationOptions.onSuccess!(
       updatedTag,
       {
         params: {
@@ -2203,7 +2132,7 @@ describe('consoleQuery tag mutation defaults', () => {
 
   it('should remove deleted tags across cached list queries', async () => {
     const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
+    const queryClient = createQueryClient()
     const appListKey = consoleQuery.tags.get.queryKey({
       input: {
         query: {
@@ -2231,7 +2160,7 @@ describe('consoleQuery tag mutation defaults', () => {
 
     const mutationOptions = consoleQuery.tags.byTagId.delete.mutationOptions()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
-    await mutationOptions.onSuccess?.(
+    await mutationOptions.onSuccess!(
       undefined,
       {
         params: {
@@ -2268,7 +2197,7 @@ describe('consoleQuery apiBasedExtension mutation defaults', () => {
 
   it('should add created API Extension to the list query cache', async () => {
     const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
+    const queryClient = createQueryClient()
     const listKey = consoleQuery.apiBasedExtension.get.queryKey()
     const existingExtension = createApiBasedExtension({ id: 'extension-1', name: 'Existing' })
     const createdExtension = createApiBasedExtension({ id: 'extension-2', name: 'Created' })
@@ -2276,7 +2205,7 @@ describe('consoleQuery apiBasedExtension mutation defaults', () => {
     queryClient.setQueryData(listKey, [existingExtension])
 
     const mutationOptions = consoleQuery.apiBasedExtension.post.mutationOptions()
-    await mutationOptions.onSuccess?.(
+    await mutationOptions.onSuccess!(
       createdExtension,
       {
         body: {
@@ -2294,7 +2223,7 @@ describe('consoleQuery apiBasedExtension mutation defaults', () => {
 
   it('should update matching API Extension in the list query cache', async () => {
     const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
+    const queryClient = createQueryClient()
     const listKey = consoleQuery.apiBasedExtension.get.queryKey()
     const targetExtension = createApiBasedExtension({ id: 'extension-1', name: 'Before' })
     const otherExtension = createApiBasedExtension({ id: 'extension-2', name: 'Other' })
@@ -2303,7 +2232,7 @@ describe('consoleQuery apiBasedExtension mutation defaults', () => {
     queryClient.setQueryData(listKey, [targetExtension, otherExtension])
 
     const mutationOptions = consoleQuery.apiBasedExtension.byId.post.mutationOptions()
-    await mutationOptions.onSuccess?.(
+    await mutationOptions.onSuccess!(
       updatedExtension,
       {
         params: {
@@ -2324,7 +2253,7 @@ describe('consoleQuery apiBasedExtension mutation defaults', () => {
 
   it('should remove deleted API Extension from the list query cache', async () => {
     const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
+    const queryClient = createQueryClient()
     const listKey = consoleQuery.apiBasedExtension.get.queryKey()
     const deletedExtension = createApiBasedExtension({ id: 'extension-1', name: 'Delete me' })
     const remainingExtension = createApiBasedExtension({ id: 'extension-2', name: 'Keep me' })
@@ -2332,7 +2261,7 @@ describe('consoleQuery apiBasedExtension mutation defaults', () => {
     queryClient.setQueryData(listKey, [deletedExtension, remainingExtension])
 
     const mutationOptions = consoleQuery.apiBasedExtension.byId.delete.mutationOptions()
-    await mutationOptions.onSuccess?.(
+    await mutationOptions.onSuccess!(
       {},
       {
         params: {
@@ -2350,7 +2279,7 @@ describe('consoleQuery apiBasedExtension mutation defaults', () => {
 describe('workspace skill deletion cache', () => {
   it.each([true, false])('refreshes agent bindings after deletion (active: %s)', async (active) => {
     const consoleQuery = await loadConsoleQuery()
-    const client = new QueryClient({
+    const client = createQueryClient({
       defaultOptions: { queries: { staleTime: Infinity, retry: false } },
     })
     const input = { params: { agent_id: 'agent-1' } }
@@ -2387,7 +2316,7 @@ describe('workspace skill deletion cache', () => {
 
   it('preserves cached bindings when deletion fails', async () => {
     const consoleQuery = await loadConsoleQuery()
-    const client = new QueryClient()
+    const client = createQueryClient()
     const queryKey = consoleQuery.workspaces.current.agents.byAgentId.skills.get.queryKey({
       input: { params: { agent_id: 'agent-1' } },
     })
@@ -2419,38 +2348,32 @@ describe('consoleQuery resourceAccessTokens mutation defaults', () => {
 
   it('should refresh the token list after a token is created, updated, or deleted', async () => {
     const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
+    const queryClient = createQueryClient()
     const context = createMutationContext(queryClient)
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
     const tokens = consoleQuery.resourceAccessTokens
 
-    await tokens.post
-      .mutationOptions()
-      .onSettled?.(
-        createdToken,
-        null,
-        { body: { name: 'Token', resources: [] } },
-        undefined,
-        context,
-      )
-    await tokens.byTokenId.patch
-      .mutationOptions()
-      .onSettled?.(
-        tokenList,
-        null,
-        { params: { token_id: 'token-1' }, body: { name: 'Token', resources: [] } },
-        undefined,
-        context,
-      )
-    await tokens.byTokenId.relations.byRelationId.delete
-      .mutationOptions()
-      .onSettled?.(
-        undefined,
-        null,
-        { params: { token_id: 'token-1', relation_id: 'relation-1' } },
-        undefined,
-        context,
-      )
+    await tokens.post.mutationOptions().onSettled!(
+      createdToken,
+      null,
+      { body: { name: 'Token', resources: [] } },
+      undefined,
+      context,
+    )
+    await tokens.byTokenId.patch.mutationOptions().onSettled!(
+      tokenList,
+      null,
+      { params: { token_id: 'token-1' }, body: { name: 'Token', resources: [] } },
+      undefined,
+      context,
+    )
+    await tokens.byTokenId.relations.byRelationId.delete.mutationOptions().onSettled!(
+      undefined,
+      null,
+      { params: { token_id: 'token-1', relation_id: 'relation-1' } },
+      undefined,
+      context,
+    )
 
     expect(invalidateQueries).toHaveBeenCalledTimes(3)
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: tokens.get.key() })
@@ -2458,18 +2381,17 @@ describe('consoleQuery resourceAccessTokens mutation defaults', () => {
 
   it('should leave the token list alone when the mutation fails', async () => {
     const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
+    const queryClient = createQueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
 
-    await consoleQuery.resourceAccessTokens.byTokenId.relations.byRelationId.delete
-      .mutationOptions()
-      .onSettled?.(
-        undefined,
-        new Error('failed'),
-        { params: { token_id: 'token-1', relation_id: 'relation-1' } },
-        undefined,
-        createMutationContext(queryClient),
-      )
+    await consoleQuery.resourceAccessTokens.byTokenId.relations.byRelationId.delete.mutationOptions()
+      .onSettled!(
+      undefined,
+      new Error('failed'),
+      { params: { token_id: 'token-1', relation_id: 'relation-1' } },
+      undefined,
+      createMutationContext(queryClient),
+    )
 
     expect(invalidateQueries).not.toHaveBeenCalled()
   })

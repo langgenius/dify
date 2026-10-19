@@ -1,4 +1,5 @@
 import { act, waitFor } from '@testing-library/react'
+import { createNodeTracing } from '../../../__tests__/fixtures'
 import { baseRunningData } from '../../../__tests__/workflow-test-env'
 import { NodeRunningStatus } from '../../../types'
 import { useWorkflowNodeStarted } from '../use-workflow-node-started'
@@ -80,8 +81,8 @@ describe('useWorkflowNodeStarted', () => {
       initialStoreState: {
         workflowRunningData: baseRunningData({
           tracing: [
-            { node_id: 'n0', status: NodeRunningStatus.Succeeded } as never,
-            { node_id: 'n1', status: NodeRunningStatus.Succeeded } as never,
+            createNodeTracing({ node_id: 'n0', status: NodeRunningStatus.Succeeded }),
+            createNodeTracing({ node_id: 'n1', status: NodeRunningStatus.Succeeded }),
           ],
         }),
       },
@@ -93,6 +94,7 @@ describe('useWorkflowNodeStarted', () => {
 
     const tracing = store.getState().workflowRunningData!.tracing!
     expect(tracing).toHaveLength(2)
-    expect(tracing[1]!.status).toBe(NodeRunningStatus.Running)
+    expect(tracing[0]).toMatchObject({ node_id: 'n0', status: NodeRunningStatus.Succeeded })
+    expect(tracing[1]).toMatchObject({ node_id: 'n1', status: NodeRunningStatus.Running })
   })
 })

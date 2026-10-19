@@ -71,60 +71,19 @@ describe('LogAnnotation', () => {
       // Assert
       expect(screen.getByText('Loading logs')).toBeInTheDocument()
     })
+  })
 
-    it('should render log content without the old page tabs', () => {
-      // Arrange
-      appDetail = createMockApp({ mode: 'chat' })
-
-      // Act
-      render(<LogAnnotation appId="app-123" pageType={PageType.log} />)
-
-      // Assert
-      expect(screen.getByRole('region', { name: 'App log' })).toBeInTheDocument()
-      expect(screen.queryByText('appLog.title')).not.toBeInTheDocument()
-      expect(screen.queryByText('appAnnotation.title')).not.toBeInTheDocument()
-    })
-
-    it('should render completion logs without the old page tabs', () => {
-      // Arrange
-      appDetail = createMockApp({ mode: 'completion' as const })
-
-      // Act
-      render(<LogAnnotation appId="app-123" pageType={PageType.log} />)
-
-      // Assert
-      expect(screen.getByRole('region', { name: 'App log' })).toBeInTheDocument()
-      expect(screen.queryByText('appLog.title')).not.toBeInTheDocument()
-      expect(screen.queryByText('appAnnotation.title')).not.toBeInTheDocument()
-    })
-
-    it('should hide tabs and render workflow log in workflow mode', () => {
-      // Arrange
-      appDetail = createMockApp({ mode: 'workflow' as const })
-
-      // Act
-      render(<LogAnnotation appId="app-123" pageType={PageType.log} />)
-
-      // Assert
-      expect(screen.queryByText('appLog.title')).not.toBeInTheDocument()
-      expect(screen.getByRole('region', { name: 'Workflow log' })).toBeInTheDocument()
-    })
+  it.each(['chat', 'completion', 'workflow'] as const)('selects the correct log for %s', (mode) => {
+    appDetail = createMockApp({ mode })
+    render(<LogAnnotation appId="app-123" pageType={PageType.log} />)
+    expect(
+      screen.getByRole('region', { name: mode === 'workflow' ? 'Workflow log' : 'App log' }),
+    ).toHaveTextContent('app-123')
+    expect(screen.queryByRole('region', { name: 'Annotation log' })).not.toBeInTheDocument()
   })
 
   // Prop-driven behavior
   describe('Props', () => {
-    it('should render log content when page type is log', () => {
-      // Arrange
-      appDetail = createMockApp({ mode: 'chat' })
-
-      // Act
-      render(<LogAnnotation appId="app-123" pageType={PageType.log} />)
-
-      // Assert
-      expect(screen.getByRole('region', { name: 'App log' })).toBeInTheDocument()
-      expect(screen.queryByRole('region', { name: 'Annotation log' })).not.toBeInTheDocument()
-    })
-
     it('should render annotation content when page type is annotation', () => {
       // Arrange
       appDetail = createMockApp({ mode: 'chat' })

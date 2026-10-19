@@ -129,19 +129,23 @@ function Form<
     fieldMoreInfo,
   }
 
-  const handleFormChange = (key: string, val: FormValue[string]) => {
-    if (isEditMode && (key === '__model_type' || key === '__model_name')) return
+  const handleFormChange = useCallback(
+    (key: string, val: FormValue[string]) => {
+      if (readonly) return
+      if (isEditMode && (key === '__model_type' || key === '__model_name')) return
 
-    setChangeKey(key)
-    const shouldClearVariable: FormValue = {}
-    if (showOnVariableMap[key]?.length) {
-      showOnVariableMap[key].forEach((clearVariable) => {
-        const schema = formSchemas.find((it) => it.variable === clearVariable)
-        shouldClearVariable[clearVariable] = schema ? schema.default : undefined
-      })
-    }
-    onChange({ ...value, [key]: val, ...shouldClearVariable })
-  }
+      setChangeKey(key)
+      const shouldClearVariable: FormValue = {}
+      if (showOnVariableMap[key]?.length) {
+        showOnVariableMap[key].forEach((clearVariable) => {
+          const schema = formSchemas.find((it) => it.variable === clearVariable)
+          shouldClearVariable[clearVariable] = schema ? schema.default : undefined
+        })
+      }
+      onChange({ ...value, [key]: val, ...shouldClearVariable })
+    },
+    [readonly, isEditMode, showOnVariableMap, formSchemas, onChange, value],
+  )
 
   const handleModelChanged = useCallback(
     (key: string, model: ModelSelectorValue) => {
@@ -150,9 +154,9 @@ function Form<
         ...model,
         type: FormTypeEnum.modelSelector,
       }
-      onChange({ ...value, [key]: newValue })
+      handleFormChange(key, newValue)
     },
-    [onChange, value],
+    [handleFormChange, value],
   )
 
   const renderField = (formSchema: CredentialFormSchema | CustomFormSchema) => {
@@ -261,7 +265,8 @@ function Form<
       )
         return null
 
-      const disabled = isEditMode && (variable === '__model_type' || variable === '__model_name')
+      const disabled =
+        readonly || (isEditMode && (variable === '__model_type' || variable === '__model_name'))
       const gridColumnsClassName = radioGridColumnsClassNames[options.length] ?? 'grid-cols-1'
       const selectedValue = typeof value[variable] === 'string' ? value[variable] : undefined
       const translatedLabel = label[language] || label.en_US
@@ -408,6 +413,7 @@ function Form<
             <Fieldset
               render={
                 <RadioGroup<boolean>
+                  disabled={readonly}
                   className="flex items-center justify-between gap-3 py-2"
                   value={booleanValue}
                   onValueChange={(val) => handleFormChange(variable, val)}
@@ -588,7 +594,7 @@ function Form<
             {infotipContent}
           </div>
           <VarReferencePicker
-            readonly={false}
+            readonly={!!readonly}
             isShowNodeName
             nodeId={nodeId || ''}
             value={value[variable] || []}

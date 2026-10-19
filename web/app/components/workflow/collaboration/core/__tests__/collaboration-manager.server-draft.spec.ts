@@ -4,7 +4,6 @@ import { LoroDoc } from 'loro-crdt'
 import { BlockEnum } from '../../../types'
 import { CollaborationManager } from '../collaboration-manager'
 import { webSocketClient } from '../websocket-manager'
-import { attachCrdtRuntime } from './test-crdt-runtime'
 
 const createNode = (id: string): Node => ({
   id,
@@ -42,7 +41,6 @@ describe('server draft replacement in collaboration', () => {
     let nodes = [createNode('initial')]
     let edges: Edge[] = []
     const manager = new CollaborationManager()
-    attachCrdtRuntime(manager)
     const connection = await manager.connect('app-1', {
       getState: () => ({
         getNodes: () => nodes,

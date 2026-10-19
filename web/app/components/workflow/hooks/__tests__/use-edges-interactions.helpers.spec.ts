@@ -1,5 +1,4 @@
 import { createEdge, createNode } from '../../__tests__/fixtures'
-import { getNodesConnectedSourceOrTargetHandleIdsMap } from '../../utils'
 import {
   applyConnectedHandleNodeData,
   buildContextMenuEdges,
@@ -9,26 +8,8 @@ import {
   updateEdgeSelectionState,
 } from '../use-edges-interactions.helpers'
 
-vi.mock('../../utils', () => ({
-  getNodesConnectedSourceOrTargetHandleIdsMap: vi.fn(),
-}))
-
-const mockGetNodesConnectedSourceOrTargetHandleIdsMap = vi.mocked(
-  getNodesConnectedSourceOrTargetHandleIdsMap,
-)
-
 describe('use-edges-interactions.helpers', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('applyConnectedHandleNodeData should merge connected handle metadata into matching nodes', () => {
-    mockGetNodesConnectedSourceOrTargetHandleIdsMap.mockReturnValue({
-      'node-1': {
-        _connectedSourceHandleIds: ['branch-a'],
-      },
-    })
-
     const nodes = [
       createNode({ id: 'node-1', data: { title: 'Source' } }),
       createNode({ id: 'node-2', data: { title: 'Target' } }),
@@ -36,7 +17,13 @@ describe('use-edges-interactions.helpers', () => {
     const edgeChanges = [
       {
         type: 'add',
-        edge: createEdge({ id: 'edge-1', source: 'node-1', target: 'node-2' }),
+        edge: createEdge({
+          id: 'edge-1',
+          source: 'node-1',
+          target: 'node-2',
+          sourceHandle: 'branch-a',
+          targetHandle: 'target',
+        }),
       },
     ]
 
@@ -44,7 +31,10 @@ describe('use-edges-interactions.helpers', () => {
 
     expect(result[0]!.data._connectedSourceHandleIds).toEqual(['branch-a'])
     expect(result[1]!.data._connectedSourceHandleIds).toEqual([])
-    expect(mockGetNodesConnectedSourceOrTargetHandleIdsMap).toHaveBeenCalledWith(edgeChanges, nodes)
+    expect(result[1]!.data._connectedTargetHandleIds).toEqual(['target'])
+    expect(result.map((node) => node.data.title)).toEqual(['Source', 'Target'])
+    expect(nodes[0]!.data._connectedSourceHandleIds).toEqual([])
+    expect(nodes[1]!.data._connectedTargetHandleIds).toEqual([])
   })
 
   it('clearEdgeMenuIfNeeded should return true only when the open menu belongs to a removed edge', () => {

@@ -16,7 +16,7 @@ import { useAtomValue } from 'jotai'
 import { useQueryStates } from 'nuqs'
 import { useCallback, useId, useMemo, useRef, useState } from 'react'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { CheckModal } from '@/hooks/use-pay'
+import { CheckResultToast } from '@/hooks/use-pay'
 import { hasPermission } from '@/utils/permission'
 import { AppListCatalog } from './app-list-catalog'
 import { AppListCreationModals } from './app-list-creation-modals'
@@ -177,7 +177,7 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
           </ScrollArea>
         </div>
 
-        <CheckModal />
+        <CheckResultToast />
         <AppListTagManagementModal
           show={showTagManagementModal}
           onClose={() => setShowTagManagementModal(false)}

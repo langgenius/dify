@@ -211,18 +211,21 @@ describe('log list utils', () => {
   it('should update annotation state helpers', () => {
     const items = createChatItems()
 
-    expect(applyAnnotationEdited(items, 'updated question', 'updated answer', 1)[0]!.content).toBe(
-      'updated question',
-    )
-    expect(
-      applyAnnotationAdded(items, 'annotation-1', 'Dify', 'question', 'answer', 1)[1]!.annotation,
-    ).toEqual(
+    const annotated = applyAnnotationAdded(items, 'annotation-1', 'Dify', 'question', 'answer', 1)
+    expect(annotated[0]!.content).toBe('question')
+    expect(annotated[1]!.annotation).toEqual(
       expect.objectContaining({
         id: 'annotation-1',
         authorName: 'Dify',
+        logAnnotation: expect.objectContaining({ content: 'answer' }),
       }),
     )
-    expect(applyAnnotationRemoved(items, 1)[1]!.annotation).toBeUndefined()
+    const edited = applyAnnotationEdited(annotated, 'updated question', 'updated answer', 1)
+    expect(edited[0]!.content).toBe('updated question')
+    expect(edited[1]!.annotation?.logAnnotation?.content).toBe('updated answer')
+    expect(applyAnnotationRemoved(edited, 1)[1]!.annotation).toBeUndefined()
+    expect(items[0]!.content).toBe('hello')
+    expect(items[1]!.annotation).toBeUndefined()
   })
 
   it('should derive urls, scroll thresholds, row values, and detail metadata', () => {

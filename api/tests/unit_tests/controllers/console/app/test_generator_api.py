@@ -136,7 +136,7 @@ def test_instruction_generate_workflow_not_found(
     api = generator_module.InstructionGenerateApi()
     method = unwrap(api.post)
 
-    app_model = _persist_app(sqlite_session)
+    _persist_app(sqlite_session)
     _install_workflow_service(monkeypatch, workflow=None)
 
     with app.test_request_context(
@@ -164,7 +164,7 @@ def test_instruction_generate_node_missing(
     api = generator_module.InstructionGenerateApi()
     method = unwrap(api.post)
 
-    app_model = _persist_app(sqlite_session)
+    _persist_app(sqlite_session)
 
     workflow = _workflow({"nodes": []})
     _install_workflow_service(monkeypatch, workflow=workflow)
@@ -298,7 +298,7 @@ def test_instruction_template_invalid_type(app: Flask) -> None:
         method="POST",
         json={"type": "unknown"},
     ):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Invalid type: unknown"):
             method(api, InstructionTemplatePayload.model_validate(request.get_json()))
 
 

@@ -1,110 +1,24 @@
 import type { Role } from '@/models/access-control'
-import { screen, within } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { render } from '@/test/console/render'
-import { useRoleGroups } from '../hooks'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import PermissionsPage from '../index'
 
-const { mockCreateWorkspaceRoleHook, mockUpdateWorkspaceRoleHook } = vi.hoisted(() => ({
-  mockCreateWorkspaceRoleHook: vi.fn(),
-  mockUpdateWorkspaceRoleHook: vi.fn(),
-}))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.rbac.roles.post': () => mockCreateWorkspaceRoleHook(),
-    'workspaces.current.rbac.roles.byRoleId.put': () => mockUpdateWorkspaceRoleHook(),
-  })
+const mocks = vi.hoisted(() => ({ list: vi.fn(), create: vi.fn(), update: vi.fn() }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.rbac.roles.get': (input) => mocks.list(input),
+      'workspaces.current.rbac.roles.post': (input) => mocks.create(input),
+      'workspaces.current.rbac.roles.byRoleId.put': (input) => mocks.update(input),
+      'workspaces.current.rbac.rolePermissions.catalog.get': () => ({ groups: [] }),
+    }),
+  }
 })
-
-const mocks = vi.hoisted(() => ({
-  workspacePermissionKeys: [] as string[],
-  createWorkspaceRole: vi.fn(),
-  updateWorkspaceRole: vi.fn(),
-}))
-
-vi.mock('@/app/notifications', () => ({
-  toast: {
-    success: vi.fn(),
-  },
-}))
-
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: mocks.workspacePermissionKeys,
-  }))
-})
-
-vi.mock('../hooks', () => ({
-  useRoleGroups: vi.fn(),
-}))
-
-vi.mock('../role-list', () => ({
-  default: ({
-    groups,
-    isLoading,
-    isFetchingNextPage,
-    onView,
-    onEdit,
-  }: {
-    groups: Array<{ items: Role[] }>
-    isLoading?: boolean
-    isFetchingNextPage?: boolean
-    onView: (role: Role) => void
-    onEdit: (role: Role) => void
-  }) => {
-    const role = groups[0]?.items[0]
-
-    return (
-      <div>
-        {isLoading && <span>initial role loading</span>}
-        {isFetchingNextPage && <span>next role page loading</span>}
-        {role && (
-          <>
-            <span>{role.name}</span>
-            <button type="button" onClick={() => onView(role)}>
-              view role
-            </button>
-            <button type="button" onClick={() => onEdit(role)}>
-              edit role
-            </button>
-          </>
-        )}
-      </div>
-    )
-  },
-}))
-
-vi.mock('../role-modal', () => ({
-  default: ({
-    mode,
-    role,
-    onSubmit,
-  }: {
-    mode: string
-    role?: Role
-    onSubmit: (data: { name: string; description: string; permissionKeys: string[] }) => void
-  }) => (
-    <div role="dialog" aria-label={`${mode} role`}>
-      <span>{role?.name}</span>
-      <button
-        type="button"
-        onClick={() =>
-          onSubmit({
-            name: `${mode} name`,
-            description: `${mode} description`,
-            permissionKeys: ['workspace.member.manage'],
-          })
-        }
-      >
-        submit role
-      </button>
-    </div>
-  ),
-}))
-
 const role: Role = {
   id: 'role-1',
   tenant_id: 'tenant-1',
@@ -116,125 +30,91 @@ const role: Role = {
   permission_keys: ['workspace.member.manage'],
   role_tag: '',
 }
-
-const mockMutation = (mock: ReturnType<typeof vi.fn>) => {
-  mock.mockImplementation((_payload, options) => {
-    options?.onSuccess?.()
-    return Promise.resolve()
+function setup(canManage = true) {
+  render(<PermissionsPage containerRef={{ current: document.createElement('div') }} />, {
+    workspacePermissionKeys: canManage ? ['workspace.role.manage'] : [],
   })
-
-  return { mutateAsync: mock }
+  return userEvent.setup()
 }
-
-const renderPermissionsPage = () => {
-  const containerRef = {
-    current: document.createElement('div'),
-  }
-
-  Object.defineProperty(containerRef.current, 'clientHeight', {
-    configurable: true,
-    value: 800,
-  })
-
-  return render(<PermissionsPage containerRef={containerRef} />)
+async function openCreate(user: ReturnType<typeof userEvent.setup>) {
+  await screen.findByText('Custom manager')
+  await user.click(screen.getByRole('button', { name: 'permission.role.addRole' }))
+  await user.type(screen.getByLabelText('permission.role.modal.nameLabel'), 'New manager')
+  await user.type(screen.getByLabelText('permission.role.modal.descriptionLabel'), 'Support team')
 }
-
-describe('PermissionsPage', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mocks.workspacePermissionKeys = []
-    vi.mocked(useRoleGroups).mockReturnValue({
-      roleGroups: [
-        {
-          id: 'custom',
-          category: 'global_custom',
-          title: 'Custom roles',
-          items: [role],
-        },
-      ],
-      isLoading: false,
-      isFetchingNextPage: false,
-      fetchNextPage: vi.fn(),
-      hasNextPage: false,
-      error: null,
-    } as ReturnType<typeof useRoleGroups>)
-    vi.mocked(mockCreateWorkspaceRoleHook).mockReturnValue(
-      mockMutation(mocks.createWorkspaceRole) as unknown as ReturnType<
-        typeof mockCreateWorkspaceRoleHook
-      >,
-    )
-    vi.mocked(mockUpdateWorkspaceRoleHook).mockReturnValue(
-      mockMutation(mocks.updateWorkspaceRole) as unknown as ReturnType<
-        typeof mockUpdateWorkspaceRoleHook
-      >,
-    )
+beforeEach(() => {
+  vi.resetAllMocks()
+  mocks.list.mockResolvedValue({
+    data: [role],
+    pagination: { current_page: 1, total_pages: 1, total_count: 1, per_page: 20 },
   })
+  mocks.create.mockResolvedValue(role)
+  mocks.update.mockResolvedValue(role)
+})
 
-  it('hides role creation without workspace role manage permission', () => {
-    renderPermissionsPage()
+it('blocks create and edit without role management permission', async () => {
+  const user = setup(false)
+  await screen.findByText('Custom manager')
+  expect(screen.queryByRole('button', { name: 'permission.role.addRole' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'common.operation.moreActions' }))
+  const edit = await screen.findByRole('menuitem', { name: 'common.operation.edit' })
+  expect(edit).toHaveAttribute('aria-disabled', 'true')
+  await user.click(edit)
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+})
 
-    expect(
-      screen.queryByRole('button', { name: 'permission.role.addRole' }),
-    ).not.toBeInTheDocument()
-    expect(screen.getByText('Custom manager')).toBeInTheDocument()
+it('keeps the real role draft open and blocks duplicate submits until creation succeeds', async () => {
+  const response = createDeferred<Role>()
+  mocks.create.mockReturnValue(response.promise)
+  const user = setup()
+  await openCreate(user)
+  const confirm = screen.getByRole('button', { name: 'common.operation.confirm' })
+  await user.click(confirm)
+  expect(screen.getByRole('dialog')).toBeInTheDocument()
+  expect(confirm).toBeDisabled()
+  await user.click(confirm)
+  expect(mocks.create).toHaveBeenCalledExactlyOnceWith({
+    body: {
+      name: 'New manager',
+      description: 'Support team',
+      permission_keys: [],
+    },
   })
+  await act(async () => response.resolve(role))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+})
 
-  it('passes role loading states to the role list', () => {
-    vi.mocked(useRoleGroups).mockReturnValue({
-      roleGroups: [],
-      isLoading: true,
-      isFetchingNextPage: true,
-      fetchNextPage: vi.fn(),
-      hasNextPage: true,
-      error: null,
-    } as ReturnType<typeof useRoleGroups>)
+it('retains a failed creation draft for retry', async () => {
+  mocks.create.mockRejectedValueOnce(new Error('Save failed'))
+  const user = setup()
+  await openCreate(user)
+  await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'common.operation.confirm' })).toBeEnabled(),
+  )
+  expect(screen.getByLabelText('permission.role.modal.nameLabel')).toHaveValue('New manager')
+  await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(mocks.create).toHaveBeenCalledTimes(2)
+})
 
-    renderPermissionsPage()
-
-    expect(screen.getByText('initial role loading')).toBeInTheDocument()
-    expect(screen.getByText('next role page loading')).toBeInTheDocument()
-  })
-
-  it('creates workspace roles when role management is allowed', async () => {
-    mocks.workspacePermissionKeys = ['workspace.role.manage']
-
-    renderPermissionsPage()
-
-    await userEvent.click(screen.getByRole('button', { name: 'permission.role.addRole' }))
-    expect(screen.getByRole('dialog', { name: 'create role' })).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'submit role' }))
-
-    expect(mocks.createWorkspaceRole).toHaveBeenCalledWith(
-      {
-        body: {
-          name: 'create name',
-          description: 'create description',
-          permission_keys: ['workspace.member.manage'],
-        },
-      },
-      expect.any(Object),
-    )
-  })
-
-  it('updates the selected workspace role from the edit modal', async () => {
-    renderPermissionsPage()
-
-    await userEvent.click(screen.getByRole('button', { name: 'edit role' }))
-    const dialog = screen.getByRole('dialog', { name: 'edit role' })
-    expect(dialog).toBeInTheDocument()
-    expect(within(dialog).getByText('Custom manager')).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'submit role' }))
-
-    expect(mocks.updateWorkspaceRole).toHaveBeenCalledWith(
-      {
-        params: { role_id: 'role-1' },
-        body: {
-          name: 'edit name',
-          description: 'edit description',
-          permission_keys: ['workspace.member.manage'],
-        },
-      },
-      expect.any(Object),
-    )
+it('opens the selected role and saves edited fields with its existing permissions', async () => {
+  const user = setup()
+  await screen.findByText('Custom manager')
+  await user.click(screen.getByRole('button', { name: 'common.operation.moreActions' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'common.operation.edit' }))
+  const name = screen.getByLabelText('permission.role.modal.nameLabel')
+  expect(name).toHaveValue('Custom manager')
+  await user.clear(name)
+  await user.type(name, 'Updated manager')
+  await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(mocks.update).toHaveBeenCalledWith({
+    params: { role_id: 'role-1' },
+    body: {
+      name: 'Updated manager',
+      description: role.description,
+      permission_keys: role.permission_keys,
+    },
   })
 })

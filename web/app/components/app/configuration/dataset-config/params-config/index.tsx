@@ -1,5 +1,5 @@
 'use client'
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { DatasetConfigs } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -22,7 +22,7 @@ import ConfigContent from './config-content'
 
 type ParamsConfigProps = {
   disabled?: boolean
-  selectedDatasets: DataSet[]
+  selectedDatasets: DatasetDetailWithPartialMembersResponse[]
 }
 const ParamsConfig = ({ disabled, selectedDatasets }: ParamsConfigProps) => {
   const { t } = useTranslation(['appDebug', 'common', 'dataset'])
@@ -125,7 +125,7 @@ const ParamsConfig = ({ disabled, selectedDatasets }: ParamsConfigProps) => {
             }
           }}
         >
-          <DialogContent className="w-full max-w-120 border-none text-left align-middle sm:min-w-132">
+          <DialogContent className="w-120 p-6 sm:min-w-132">
             <ConfigContent
               datasetConfigs={tempDataSetConfigs}
               onChange={handleSetTempDataSetConfigs}

@@ -303,7 +303,6 @@ class RuleGenerateApi(Resource):
     @with_current_tenant_id
     @model_validate(RuleGeneratePayload)
     def post(self, req_data: RuleGeneratePayload, current_tenant_id: str):
-
         try:
             rules = LLMGenerator.generate_rule_config(tenant_id=current_tenant_id, args=req_data)
         except ProviderTokenNotInitError as ex:
@@ -337,7 +336,6 @@ class RuleCodeGenerateApi(Resource):
     @with_current_tenant_id
     @model_validate(RuleCodeGeneratePayload)
     def post(self, req_data: RuleCodeGeneratePayload, current_tenant_id: str):
-
         try:
             code_result = LLMGenerator.generate_code(
                 tenant_id=current_tenant_id,
@@ -378,7 +376,6 @@ class RuleStructuredOutputGenerateApi(Resource):
     @with_current_tenant_id
     @model_validate(RuleStructuredOutputPayload)
     def post(self, req_data: RuleStructuredOutputPayload, current_tenant_id: str):
-
         try:
             structured_output = LLMGenerator.generate_structured_output(
                 tenant_id=current_tenant_id,
@@ -618,7 +615,6 @@ class WorkflowGenerateApi(Resource):
     @with_current_tenant_id
     @model_validate(WorkflowGeneratePayload)
     def post(self, req_data: WorkflowGeneratePayload, current_tenant_id: str):
-
         # Reject empty / over-length instructions at the boundary (shared with
         # the streaming endpoint) before spending a planner+builder roundtrip.
         guard = _workflow_instruction_guard(req_data)
@@ -754,7 +750,6 @@ class WorkflowGenerateStreamApi(Resource):
     @with_current_tenant_id
     @model_validate(WorkflowGeneratePayload)
     def post(self, req_data: WorkflowGeneratePayload, current_tenant_id: str):
-
         # Same boundary guards as the blocking endpoint — return a normal 400
         # JSON for these BEFORE opening the stream.
         guard = _workflow_instruction_guard(req_data)

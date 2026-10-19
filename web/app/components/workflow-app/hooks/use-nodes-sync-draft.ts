@@ -1,9 +1,9 @@
+import type { WorkflowFeaturesConfigPayload } from '@dify/contracts/api/console/apps/types.gen'
 import type {
   SyncDraftCallback,
   SyncDraftOptions,
   SyncDraftResult,
 } from '@/app/components/workflow/hooks-store'
-import type { WorkflowDraftFeaturesPayload } from '@/service/workflow'
 import { safe } from '@orpc/client'
 import { skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
@@ -47,7 +47,7 @@ const isEmptyGraph = (graph: { nodes: unknown[]; edges: unknown[] }) =>
   graph.nodes.length === 0 && graph.edges.length === 0
 
 const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
-  const { t } = useTranslation(['workflow'] as const)
+  const { t } = useTranslation(['workflow'])
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const atomStore = useAtomStore()
@@ -140,7 +140,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         })
       },
     )
-    const featuresPayload: WorkflowDraftFeaturesPayload = {
+    const featuresPayload: WorkflowFeaturesConfigPayload = {
       opening_statement: features.opening?.enabled ? features.opening?.opening_statement || '' : '',
       suggested_questions: features.opening?.enabled
         ? features.opening?.suggested_questions || []

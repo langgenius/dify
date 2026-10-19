@@ -77,7 +77,6 @@ def test_declares_variable():
 
 
 def test_collect_container_errors():
-
     # Not a container error
     nodes = [{"id": "n1", "data": {"type": "llm"}}, {"id": "n2", "data": {"type": "code", "parentId": "n1"}}]
     errors = WorkflowGenerator._collect_container_errors(nodes=nodes)
@@ -88,12 +87,10 @@ def test_collect_container_errors():
     nodes = [
         {"id": "n1", "data": {"type": "llm"}},
     ]
-    edges = []
     # Test would go here but we need to see what _validate_structure calls
 
 
 def test_collect_unknown_tools():
-
     # Missing tool/provider info
     nodes = [
         {"id": "n1", "data": {"type": "tool", "provider_id": "", "tool_name": ""}},
@@ -108,7 +105,6 @@ def test_collect_unknown_tools():
 
 
 def test_collect_unresolved_refs():
-
     # Missing node ref
     nodes = [{"id": "n1", "data": {"type": "llm", "prompt_template": [{"text": "{#unknown.var#}"}]}}]
     # To trigger the parsing we need to mock _collect_refs_in_data behavior or let it parse naturally
@@ -131,7 +127,6 @@ def test_collect_unresolved_refs():
 
 
 def test_collect_edge_cycle_errors():
-
     # Self-loop
     graph = {"nodes": [{"id": "n1"}], "edges": [{"source": "n1", "target": "n1"}]}
     errors = WorkflowGenerator._collect_edge_cycle_errors(graph=graph, known_ids={"n1"})
@@ -140,7 +135,6 @@ def test_collect_edge_cycle_errors():
 
 
 def test_collect_container_errors_empty_container():
-
     # Empty container
     nodes = [
         {"id": "n1", "data": {"type": "iteration"}},
@@ -151,7 +145,6 @@ def test_collect_container_errors_empty_container():
 
 
 def test_collect_container_errors_cycle():
-
     # Ancestor cycle
     nodes = [
         {"id": "n1", "data": {"type": "iteration", "parentId": "n2"}},
@@ -163,7 +156,6 @@ def test_collect_container_errors_cycle():
 
 
 def test_postprocess_graph_edges():
-
     # Try calling _postprocess_graph directly to trigger _sanitize_node_ids
     graph = {
         "nodes": [{"id": "sys", "data": {"type": "start"}}, {"id": "bad id", "data": {"type": "llm"}}],
@@ -190,10 +182,9 @@ def test_document_extractor_start_vars():
 
 
 def test_missing_terminal_mode_auto():
-
     # Empty graph, should get MISSING_TERMINAL
     graph = {"nodes": [{"id": "n1", "data": {"type": "start"}}], "edges": []}
 
     # Missing terminal check happens inside _validate_structure
-    errors = WorkflowGenerator._validate_structure(graph=graph, mode="workflow", installed_tools=set())
+    WorkflowGenerator._validate_structure(graph=graph, mode="workflow", installed_tools=set())
     # Mocking this deeply is hard, but we can verify it doesn't fail

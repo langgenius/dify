@@ -1,10 +1,17 @@
 'use client'
 import type { MCPServerDetail } from '@/app/components/tools/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { RiCloseLine } from '@remixicon/react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -101,76 +108,70 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
         if (!open) onHide()
       }}
     >
-      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-130! flex-col overflow-hidden! border-none p-0! text-left align-middle transition-all duration-100 ease-in">
-        <button
-          type="button"
-          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-          className="absolute top-5 right-5 z-10 cursor-pointer border-none bg-transparent p-1.5 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-          onClick={onHide}
-        >
-          <RiCloseLine className="size-5 text-text-tertiary" aria-hidden="true" />
-        </button>
-        <div className="relative shrink-0 p-6 pr-12 pb-3 title-2xl-semi-bold text-xl wrap-break-word text-text-primary">
-          {!data
-            ? t(($) => $['mcp.server.modal.addTitle'], { ns: 'tools' })
-            : t(($) => $['mcp.server.modal.editTitle'], { ns: 'tools' })}
-        </div>
-        <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
-          <div className="min-w-0 space-y-5 px-6 py-3">
-            <div className="space-y-0.5">
-              <div className="flex h-6 items-center gap-1">
-                <div className="system-sm-medium text-text-secondary">
-                  {t(($) => $['mcp.server.modal.description'], { ns: 'tools' })}
-                </div>
-                <div className="system-xs-regular text-text-destructive-secondary">*</div>
+      <DialogContent className="w-130">
+        <DialogHeader>
+          <DialogTitle>
+            {!data
+              ? t(($) => $['mcp.server.modal.addTitle'], { ns: 'tools' })
+              : t(($) => $['mcp.server.modal.editTitle'], { ns: 'tools' })}
+          </DialogTitle>
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody className="space-y-5">
+          <div className="space-y-0.5">
+            <div className="flex h-6 items-center gap-1">
+              <div className="system-sm-medium text-text-secondary">
+                {t(($) => $['mcp.server.modal.description'], { ns: 'tools' })}
               </div>
-              <Textarea
-                aria-label={t(($) => $['mcp.server.modal.description'], { ns: 'tools' })}
-                className="h-24 resize-none"
-                value={description}
-                placeholder={t(($) => $['mcp.server.modal.descriptionPlaceholder'], {
-                  ns: 'tools',
-                })}
-                onValueChange={(value) => setDescription(value)}
-              />
+              <div className="system-xs-regular text-text-destructive-secondary">*</div>
             </div>
-
-            {latestParams.length > 0 && (
-              <div className="min-w-0">
-                <div className="mb-1 flex items-center gap-2">
-                  <div className="shrink-0 system-xs-medium-uppercase text-text-primary">
-                    {t(($) => $['mcp.server.modal.parameters'], { ns: 'tools' })}
-                  </div>
-                  <Separator
-                    decorative
-                    orientation="horizontal"
-                    className="m-0 grow bg-divider-subtle"
-                  />
-                </div>
-                <div className="mb-2 body-xs-regular text-text-tertiary">
-                  {t(($) => $['mcp.server.modal.parametersTip'], { ns: 'tools' })}
-                </div>
-                <div className="min-w-0 space-y-3">
-                  {latestParams.map((paramItem) => {
-                    if (!paramItem.variable) return null
-
-                    const { variable } = paramItem
-
-                    return (
-                      <MCPServerParamItem
-                        key={variable}
-                        data={paramItem}
-                        value={params[variable] || ''}
-                        onChange={(value) => handleParamChange(variable, value)}
-                      />
-                    )
-                  })}
-                </div>
-              </div>
-            )}
+            <Textarea
+              aria-label={t(($) => $['mcp.server.modal.description'], { ns: 'tools' })}
+              className="h-24 resize-none"
+              value={description}
+              placeholder={t(($) => $['mcp.server.modal.descriptionPlaceholder'], {
+                ns: 'tools',
+              })}
+              onValueChange={(value) => setDescription(value)}
+            />
           </div>
-        </div>
-        <div className="flex shrink-0 flex-row-reverse flex-wrap gap-2 p-6 pt-5">
+
+          {latestParams.length > 0 && (
+            <div className="min-w-0">
+              <div className="mb-1 flex items-center gap-2">
+                <div className="shrink-0 system-xs-medium-uppercase text-text-primary">
+                  {t(($) => $['mcp.server.modal.parameters'], { ns: 'tools' })}
+                </div>
+                <Separator
+                  decorative
+                  orientation="horizontal"
+                  className="m-0 grow bg-divider-subtle"
+                />
+              </div>
+              <div className="mb-2 body-xs-regular text-text-tertiary">
+                {t(($) => $['mcp.server.modal.parametersTip'], { ns: 'tools' })}
+              </div>
+              <div className="min-w-0 space-y-3">
+                {latestParams.map((paramItem) => {
+                  if (!paramItem.variable) return null
+
+                  const { variable } = paramItem
+
+                  return (
+                    <MCPServerParamItem
+                      key={variable}
+                      data={paramItem}
+                      value={params[variable] || ''}
+                      onChange={(value) => handleParamChange(variable, value)}
+                    />
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </DialogBody>
+        <DialogFooter>
+          <Button onClick={onHide}>{t(($) => $['mcp.modal.cancel'], { ns: 'tools' })}</Button>
           <Button
             disabled={!description || creating || updating}
             variant="primary"
@@ -180,8 +181,7 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
               ? t(($) => $['mcp.modal.save'], { ns: 'tools' })
               : t(($) => $['mcp.server.modal.confirm'], { ns: 'tools' })}
           </Button>
-          <Button onClick={onHide}>{t(($) => $['mcp.modal.cancel'], { ns: 'tools' })}</Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

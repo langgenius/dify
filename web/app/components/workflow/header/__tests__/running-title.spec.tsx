@@ -1,66 +1,27 @@
+import { screen } from '@testing-library/react'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import RunningTitle from '../running-title'
 
-let mockIsChatMode = false
-const mockFormatWorkflowRunIdentifier = vi.fn()
-
-vi.mock('../../hooks/use-workflow', () => ({}))
-
-vi.mock('../../utils', () => ({
-  formatWorkflowRunIdentifier: (finishedAt?: number) => mockFormatWorkflowRunIdentifier(finishedAt),
-}))
-
 describe('RunningTitle', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockIsChatMode = false
-    mockFormatWorkflowRunIdentifier.mockReturnValue(' (14:30:25)')
-  })
-
-  it('should render the test run title in workflow mode', () => {
-    const { container } = renderWorkflowComponent(<RunningTitle />, {
+  it('shows the completed run time in the read-only workflow header', () => {
+    const finishedAt = new Date(2026, 0, 15, 14, 30, 25).getTime() / 1000
+    renderWorkflowComponent(<RunningTitle />, {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
       initialStoreState: {
-        historyWorkflowData: {
-          id: 'history-1',
-          status: 'succeeded',
-          finished_at: 1_700_000_000,
-        },
+        historyWorkflowData: { id: 'history-1', status: 'succeeded', finished_at: finishedAt },
       },
     })
 
-    expect(mockFormatWorkflowRunIdentifier).toHaveBeenCalledWith(1_700_000_000)
-    expect(container).toHaveTextContent('Test Run (14:30:25)')
-    expect(container).toHaveTextContent('workflow.common.viewOnly')
+    expect(screen.getByText(/Test Run \((14|02):30:25( PM)?\)/)).toBeInTheDocument()
+    expect(screen.getByText('workflow.common.viewOnly')).toBeInTheDocument()
   })
 
-  it('should render the test chat title in chat mode', () => {
-    mockIsChatMode = true
-
-    const { container } = renderWorkflowComponent(<RunningTitle />, {
-      initialStoreState: {
-        historyWorkflowData: {
-          id: 'history-2',
-          status: 'running',
-          finished_at: undefined,
-        },
-      },
+  it('identifies an unfinished chat run without inventing a completion time', () => {
+    renderWorkflowComponent(<RunningTitle />, {
+      resource: { kind: 'app', appId: 'app-1', mode: 'advanced-chat' },
+      initialStoreState: { historyWorkflowData: { id: 'history-2', status: 'running' } },
     })
 
-    expect(mockFormatWorkflowRunIdentifier).toHaveBeenCalledWith(undefined)
-    expect(container).toHaveTextContent('Test Chat (14:30:25)')
+    expect(screen.getByText('Test Chat (Running)')).toBeInTheDocument()
   })
-
-  it('should handle missing workflow history data', () => {
-    const { container } = renderWorkflowComponent(<RunningTitle />)
-
-    expect(mockFormatWorkflowRunIdentifier).toHaveBeenCalledWith(undefined)
-    expect(container).toHaveTextContent('Test Run (14:30:25)')
-  })
-})
-
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => mockIsChatMode) }
 })

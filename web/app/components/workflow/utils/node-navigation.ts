@@ -1,5 +1,4 @@
-import type { ReactFlowInstance } from 'reactflow'
-import type { Node } from '../types'
+import type { Node, ReactFlowInstance } from 'reactflow'
 
 /**
  * Node navigation utilities for workflow

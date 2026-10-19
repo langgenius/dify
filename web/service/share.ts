@@ -73,7 +73,7 @@ export const stopChatMessageResponding = async (
 }
 
 export const sendCompletionMessage = async (
-  body: Record<string, any>,
+  body: Record<string, unknown>,
   {
     onData,
     onCompleted,
@@ -110,7 +110,7 @@ export const sendCompletionMessage = async (
 }
 
 export const sendWorkflowMessage = async (
-  body: Record<string, any>,
+  body: Record<string, unknown>,
   otherOptions: IOtherOptions,
   appSourceType: AppSourceType,
   appId = '',

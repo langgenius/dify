@@ -1,3 +1,4 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { AgentNodeType } from '../nodes/agent/types'
 import type { DataSourceNodeType } from '../nodes/data-source/types'
@@ -18,7 +19,6 @@ import type { ModelItem } from '@/app/components/header/account-setting/model-pr
 import type { Emoji } from '@/app/components/tools/types'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { AgentToolPublishIssue } from '@/features/agent-v2/agent-detail/configure/tool-provider-catalog'
-import type { DataSet } from '@/models/datasets'
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import isDeepEqual from 'fast-deep-equal'
 import { useAtomValue } from 'jotai'
@@ -115,8 +115,7 @@ const resolveNodeValidator = (
   const validator = nodesExtraData?.[getNodeCatalogType(data)]?.checkValid
   if (validator) return validator
 
-  if (data.type === BlockEnum.Agent && !isAgentV2NodeData(data))
-    return AgentDefault.checkValid as NodeValidator
+  if (data.type === BlockEnum.Agent && !isAgentV2NodeData(data)) return AgentDefault.checkValid
 }
 
 const START_NODE_TYPES: BlockEnum[] = [
@@ -341,10 +340,13 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
       let checkData = data
       if (data.type === BlockEnum.KnowledgeRetrieval) {
         const datasetIds = (data as CommonNodeType<KnowledgeRetrievalNodeType>).dataset_ids
-        const _datasets = datasetIds.reduce<DataSet[]>((acc, id) => {
-          if (datasetsDetail[id]) acc.push(datasetsDetail[id])
-          return acc
-        }, [])
+        const _datasets = datasetIds.reduce<DatasetDetailWithPartialMembersResponse[]>(
+          (acc, id) => {
+            if (datasetsDetail[id]) acc.push(datasetsDetail[id])
+            return acc
+          },
+          [],
+        )
         checkData = {
           ...data,
           _datasets,
@@ -548,9 +550,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 
     // Check for start nodes (including triggers)
     if (shouldCheckStartNode) {
-      const startNodesFiltered = nodes.filter((node) =>
-        START_NODE_TYPES.includes(node.data.type as BlockEnum),
-      )
+      const startNodesFiltered = nodes.filter((node) => START_NODE_TYPES.includes(node.data.type))
       const hasStartPlaceholderNode = nodes.some(
         (node) => node.data.type === BlockEnum.StartPlaceholder,
       )
@@ -674,20 +674,25 @@ export const useChecklistBeforePublish = () => {
   const getCheckData = useCallback(
     (
       data: CommonNodeType<object>,
-      datasets: DataSet[],
+      datasets: DatasetDetailWithPartialMembersResponse[],
       embeddingProviderModelMap?: Partial<Record<string, ModelItem[]>>,
     ) => {
       let checkData = data
       if (data.type === BlockEnum.KnowledgeRetrieval) {
         const datasetIds = (data as CommonNodeType<KnowledgeRetrievalNodeType>).dataset_ids
-        const datasetsDetail = datasets.reduce<Record<string, DataSet>>((acc, dataset) => {
+        const datasetsDetail = datasets.reduce<
+          Record<string, DatasetDetailWithPartialMembersResponse>
+        >((acc, dataset) => {
           acc[dataset.id] = dataset
           return acc
         }, {})
-        const _datasets = datasetIds.reduce<DataSet[]>((acc, id) => {
-          if (datasetsDetail[id]) acc.push(datasetsDetail[id])
-          return acc
-        }, [])
+        const _datasets = datasetIds.reduce<DatasetDetailWithPartialMembersResponse[]>(
+          (acc, id) => {
+            if (datasetsDetail[id]) acc.push(datasetsDetail[id])
+            return acc
+          },
+          [],
+        )
         checkData = {
           ...data,
           _datasets,
@@ -751,7 +756,9 @@ export const useChecklistBeforePublish = () => {
       return modelMap
     }
 
-    const fetchLatestDatasets = async (): Promise<DataSet[] | null> => {
+    const fetchLatestDatasets = async (): Promise<
+      DatasetDetailWithPartialMembersResponse[] | null
+    > => {
       const allDatasetIds = new Set<string>()
       filteredNodes.forEach((node) => {
         if (node.data.type !== BlockEnum.KnowledgeRetrieval) return

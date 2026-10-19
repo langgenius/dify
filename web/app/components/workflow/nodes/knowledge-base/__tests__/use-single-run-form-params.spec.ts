@@ -25,20 +25,17 @@ const createPayload = (overrides: Partial<KnowledgeBaseNodeType> = {}): Knowledg
 })
 
 describe('useSingleRunFormParams', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   // The hook should expose the single query form and map chunk dependencies for single-run execution.
   describe('Forms', () => {
-    it('should build the query form with the current run input value', () => {
+    it('builds the query form and preserves other run inputs when the query changes', () => {
+      const setRunInputData = vi.fn()
       const { result } = renderHook(() =>
         useSingleRunFormParams({
           id: 'knowledge-base-1',
           payload: createPayload(),
-          runInputData: { query: 'what is dify' },
+          runInputData: { query: 'what is dify', locale: 'en-US' },
           getInputVars: vi.fn(),
-          setRunInputData: vi.fn(),
+          setRunInputData,
           toVarInputs: vi.fn(),
         }),
       )
@@ -53,26 +50,11 @@ describe('useSingleRunFormParams', () => {
         },
       ])
       expect(result.current.forms[0]!.values).toEqual({ query: 'what is dify' })
-    })
-
-    it('should update run input data when the query changes', () => {
-      const setRunInputData = vi.fn()
-      const { result } = renderHook(() =>
-        useSingleRunFormParams({
-          id: 'knowledge-base-1',
-          payload: createPayload(),
-          runInputData: { query: 'old query' },
-          getInputVars: vi.fn(),
-          setRunInputData,
-          toVarInputs: vi.fn(),
-        }),
-      )
-
-      act(() => {
-        result.current.forms[0]!.onChange({ query: 'new query' })
+      act(() => result.current.forms[0]!.onChange({ query: 'new query' }))
+      expect(setRunInputData).toHaveBeenCalledExactlyOnceWith({
+        query: 'new query',
+        locale: 'en-US',
       })
-
-      expect(setRunInputData).toHaveBeenCalledWith({ query: 'new query' })
     })
   })
 

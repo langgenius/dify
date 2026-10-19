@@ -430,8 +430,10 @@ export const handleStream = (
         }
         buffer += decoder.decode(result.value, { stream: true })
         const lines = buffer.split('\n')
+        buffer = lines.pop() ?? ''
         try {
           lines.forEach((message) => {
+            if (hasError) return
             if (message.startsWith('data: ')) {
               // check if it starts with data:
               try {
@@ -553,7 +555,6 @@ export const handleStream = (
               }
             }
           })
-          buffer = lines[lines.length - 1]!
         } catch (e) {
           onData('', false, {
             conversationId: undefined,
@@ -716,8 +717,8 @@ export const ssePost = async (
   )
   options.headers = new Headers(options.headers)
 
-  const contentType = (options.headers as Headers).get('Content-Type')
-  if (!contentType) (options.headers as Headers).set('Content-Type', ContentType.json)
+  const contentType = options.headers.get('Content-Type')
+  if (!contentType) options.headers.set('Content-Type', ContentType.json)
 
   getAbortController?.(abortController)
 
@@ -874,8 +875,8 @@ export const sseGet = async (
   )
   options.headers = new Headers(options.headers)
 
-  const contentType = (options.headers as Headers).get('Content-Type')
-  if (!contentType) (options.headers as Headers).set('Content-Type', ContentType.json)
+  const contentType = options.headers.get('Content-Type')
+  if (!contentType) options.headers.set('Content-Type', ContentType.json)
 
   getAbortController?.(abortController)
 
@@ -1012,7 +1013,7 @@ export const sseGeneratorPost = (
   }
 
   globalThis
-    .fetch(urlWithPrefix, options as RequestInit)
+    .fetch(urlWithPrefix, options)
     .then((res) => {
       if (!/^[23]\d{2}$/.test(String(res.status))) {
         if (res.status === 401) {

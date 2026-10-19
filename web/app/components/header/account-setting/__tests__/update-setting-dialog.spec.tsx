@@ -87,7 +87,7 @@ const strategy = (value: 'disabled' | 'fixOnly' | 'latest') =>
   screen.getByRole('radio', { name: `plugin.autoUpdate.strategy.${value}.name` })
 
 beforeEach(() => {
-  vi.clearAllMocks()
+  vi.resetAllMocks()
   getSettings.mockImplementation(
     async (_url, { params }: { params: { category: PluginCategoryEnum } }) => ({
       category: params.category,
